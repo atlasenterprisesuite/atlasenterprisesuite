@@ -38,6 +38,7 @@ export interface JournalRecord {
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  reversesJournalEntryId: string | null;
   lines: JournalLineRecord[];
 }
 
