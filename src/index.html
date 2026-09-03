@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ATLAS Site Review Center for visual website feedback and technical audits.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ATLAS Site Review Center</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="ATLAS navigation">
+      <div class="brand-mark" aria-label="ATLAS Enterprise Suite">
+        <span class="brand-orbit">A</span>
+        <div><strong>ATLAS</strong><small>Enterprise Suite</small></div>
+      </div>
+      <nav class="primary-nav">
+        <button class="nav-item active" type="button" aria-current="page">
+          <span>Sites</span><small>Site Review</small>
+        </button>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div><strong>Foundation</strong><small>Local runtime</small></div>
+      </div>
+    </aside>
+
+    <div class="application">
+      <header class="topbar">
+        <div class="heading-block">
+          <p class="eyebrow">ATLAS Sites</p>
+          <h1>ATLAS Site Review Center</h1>
+        </div>
+        <div class="topbar-actions">
+          <label class="role-preview">Role preview
+            <select id="role-select" aria-label="Preview role permissions">
+              <option value="owner">Owner</option>
+              <option value="admin">Admin</option>
+              <option value="developer">Developer</option>
+              <option value="designer">Designer</option>
+              <option value="reviewer">Reviewer</option>
+              <option value="client">Client</option>
+            </select>
+          </label>
+          <button id="export-button" class="secondary-button" type="button" disabled>Export JSON</button>
+        </div>
+      </header>
+
+      <section class="session-bar" aria-label="Start website review">
+        <form id="session-form" class="session-form">
+          <label>Website URL
+            <input id="site-url" name="siteUrl" type="url" inputmode="url" placeholder="https://example.com" required>
+          </label>
+          <label>Review name
+            <input id="session-title" name="title" type="text" placeholder="Homepage review" required>
+          </label>
+          <button class="primary-button" type="submit">Start review</button>
+        </form>
+        <div id="session-message" class="session-message" role="status" aria-live="polite">No active review session.</div>
+      </section>
+
+      <main class="workspace">
+        <section class="review-column" aria-label="Visual review workspace">
+          <div class="review-toolbar">
+            <div class="viewport-switcher" role="group" aria-label="Viewport">
+              <button type="button" class="viewport-button active" data-viewport="desktop">Desktop</button>
+              <button type="button" class="viewport-button" data-viewport="tablet">Tablet</button>
+              <button type="button" class="viewport-button" data-viewport="mobile">Mobile</button>
+            </div>
+            <label class="pin-toggle"><input id="pin-mode" type="checkbox" checked> Pin mode</label>
+          </div>
+
+          <div class="browser-card">
+            <div class="browser-bar">
+              <span class="browser-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span id="browser-url" class="browser-url">No site loaded</span>
+            </div>
+            <div id="viewport-shell" class="viewport-shell" data-viewport="desktop">
+              <div id="empty-canvas" class="empty-canvas">
+                <strong>Start a review session</strong>
+                <span>Enter a website URL above. ATLAS will create a review workspace without inventing site data.</span>
+              </div>
+              <iframe id="site-frame" title="Website under review" hidden referrerpolicy="no-referrer"></iframe>
+              <div id="pin-layer" class="pin-layer pin-mode" hidden aria-label="Review pins"></div>
+            </div>
+          </div>
+
+          <form id="pin-composer" class="pin-composer" hidden>
+            <div>
+              <p class="eyebrow">New pinned issue</p>
+              <strong id="pin-location">Select a point on the page.</strong>
+            </div>
+            <label>Severity
+              <select id="issue-severity">
+                <option value="medium">Medium</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
+            <label>Comment
+              <textarea id="issue-message" rows="3" placeholder="Describe what needs attention" required></textarea>
+            </label>
+            <div class="composer-actions">
+              <button id="cancel-pin" class="ghost-button" type="button">Cancel</button>
+              <button class="primary-button" type="submit">Save pin</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="inspector" aria-label="Review inspector">
+          <div class="tabs" role="tablist">
+            <button id="review-tab" class="tab active" type="button" role="tab" aria-selected="true">Review</button>
+            <button id="audit-tab" class="tab" type="button" role="tab" aria-selected="false">Technical audit</button>
+          </div>
+
+          <section id="review-panel" class="tab-panel" role="tabpanel">
+            <div class="summary-grid">
+              <article><span>Total</span><strong id="summary-total">0</strong></article>
+              <article><span>Open</span><strong id="summary-open">0</strong></article>
+              <article><span>Resolved</span><strong id="summary-resolved">0</strong></article>
+              <article><span>Critical</span><strong id="summary-critical">0</strong></article>
+            </div>
+
+            <div class="filter-row">
+              <label>Status
+                <select id="filter-status">
+                  <option value="">All</option>
+                  <option value="open">Open</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </label>
+              <label>Severity
+                <select id="filter-severity">
+                  <option value="">All</option>
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="issue-list" class="issue-list">
+              <div class="panel-empty">No review issues yet.</div>
+            </div>
+          </section>
+
+          <section id="audit-panel" class="tab-panel" role="tabpanel" hidden>
+            <p class="audit-explainer">Paste the actual page HTML to run checks that do not require an external provider. Live crawling, Search Console and Core Web Vitals remain explicitly unconfigured until authorized integrations exist.</p>
+            <label>Page HTML
+              <textarea id="audit-markup" rows="10" placeholder="<!doctype html>..."></textarea>
+            </label>
+            <div class="audit-actions">
+              <button id="run-audit" class="primary-button" type="button">Run deterministic audit</button>
+            </div>
+            <div id="audit-status" class="session-message">No audit has been run.</div>
+            <div id="finding-list" class="finding-list"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
