@@ -1,12 +1,24 @@
 import { Route, Routes } from 'react-router-dom';
+import { AtlasProvider } from '../AtlasContext';
+import { AtlasShell } from '../AtlasShell';
 import { RouteErrorPage } from '../errors/RouteErrorPage';
+import { AccountingPlaceholder } from '../../modules/accounting/AccountingPlaceholder';
+import { FinanceHome } from '../../modules/finance/FinanceHome';
+import { HealthRoutes } from '../../modules/health/HealthRoutes';
 import { EnterpriseHome } from '../../modules/home/EnterpriseHome';
 
 export function AppRouter() {
   return (
-    <Routes>
-      <Route path="/" element={<EnterpriseHome />} />
-      <Route path="*" element={<RouteErrorPage />} />
-    </Routes>
+    <AtlasProvider>
+      <Routes>
+        <Route element={<AtlasShell />}>
+          <Route path="/" element={<EnterpriseHome />} />
+          <Route path="/finance" element={<FinanceHome />} />
+          <Route path="/finance/accounting" element={<AccountingPlaceholder />} />
+          <Route path="/health/*" element={<HealthRoutes />} />
+        </Route>
+        <Route path="*" element={<RouteErrorPage />} />
+      </Routes>
+    </AtlasProvider>
   );
 }
