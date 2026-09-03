@@ -1,0 +1,87 @@
+name: ATLAS Production Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "data/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vercel.json"
+      - ".github/workflows/production-deploy.yml"
+
+concurrency:
+  group: atlas-production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_SCOPE: winderaranguren-gifs-projects
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Security gate
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Production build
+        run: npm run build
+
+      - name: Validate Vercel authorization
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error title=ATLAS production deploy blocked::Repository secret VERCEL_TOKEN is not configured."
+            echo "Build and tests passed, but deployment was not attempted because Vercel authorization is missing." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Deploy production
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          DEPLOYMENT_URL="$(vercel deploy . --prod --yes --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN")"
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+          echo "ATLAS deployment URL: $DEPLOYMENT_URL"
+
+      - name: Verify production routes
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/" > /dev/null
+          curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/finance/accounting/accounts-payable" > /dev/null
+          HEALTH="$(curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/healthz")"
+          echo "$HEALTH" | grep -q '"status": "ok"'
+          echo "Production route and health verification passed for $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
