@@ -43,6 +43,7 @@ type JournalRow = {
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
+  reverses_journal_entry_id: string | null;
 };
 
 type JournalLineRow = {
@@ -152,7 +153,7 @@ export class AccountingRepositoryImpl implements AccountingRepository {
     const orgId = requireOrganizationId(organizationId);
     const rows = await this.gateway.select<JournalRow>(
       'journal_entries',
-      'id,org_id,entry_number,entry_date,memo,status,created_by,created_at,updated_at',
+      'id,org_id,entry_number,entry_date,memo,status,created_by,created_at,updated_at,reverses_journal_entry_id',
       orgId,
     );
     const lineRows = await this.gateway.select<JournalLineRow>(
@@ -187,6 +188,7 @@ export class AccountingRepositoryImpl implements AccountingRepository {
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      reversesJournalEntryId: row.reverses_journal_entry_id,
       lines: linesByJournal.get(row.id) ?? [],
     }));
   }
