@@ -106,7 +106,7 @@ test('shows an explicit unavailable state when no real repository is configured'
   renderAccounting(null);
 
   expect(await screen.findByRole('heading', { name: 'Accounting' })).toBeInTheDocument();
-  expect(screen.getByText('Accounting connection unavailable')).toBeInTheDocument();
+  expect(await screen.findByText('Accounting connection unavailable')).toBeInTheDocument();
 });
 
 test('shows an explicit error state when the real query fails', async () => {
