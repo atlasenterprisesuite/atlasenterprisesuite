@@ -1,0 +1,10 @@
+{
+  "name": "@atlas/accounting",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}
