@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { AtlasAccessState } from './AtlasAccessState';
 import { useAtlasContext } from './AtlasContext';
 
 const moduleLinks = [
@@ -9,7 +10,11 @@ const moduleLinks = [
 ] as const;
 
 export function AtlasShell() {
-  const context = useAtlasContext();
+  const identity = useAtlasContext();
+
+  if (identity.status !== 'ready') {
+    return <AtlasAccessState state={identity} />;
+  }
 
   return (
     <div className="atlas-shell">
@@ -18,7 +23,6 @@ export function AtlasShell() {
           <Link className="atlas-shell__brand" to="/" aria-label="ATLAS Enterprise home">
             ATLAS
           </Link>
-          <span className="atlas-shell__badge">Demo environment</span>
         </div>
 
         <nav className="atlas-shell__nav" aria-label="ATLAS modules">
@@ -37,8 +41,8 @@ export function AtlasShell() {
         </nav>
 
         <div className="atlas-shell__context" aria-label="Current ATLAS scope">
-          <span>{context.organizationName}</span>
-          <small>{context.userDisplayName}</small>
+          <span>{identity.organizationName}</span>
+          <small>{identity.role}</small>
         </div>
       </aside>
 
