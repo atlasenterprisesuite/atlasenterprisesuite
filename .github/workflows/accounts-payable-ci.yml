@@ -7,7 +7,7 @@ on:
     branches: ["main"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -18,23 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-      - name: Persist generated lockfile
-        if: github.event_name == 'push'
-        run: |
-          if ! git diff --quiet -- package-lock.json || [ -n "$(git status --porcelain package-lock.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "build: lock accounts payable dependencies"
-            git push origin HEAD:feat/accounts-payable
-          fi
+          cache: npm
+      - run: npm ci
       - run: npm audit --audit-level=high
       - run: npm run typecheck
       - run: npm run test:unit
