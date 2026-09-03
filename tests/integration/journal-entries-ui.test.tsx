@@ -138,8 +138,8 @@ test('posts a balanced journal using only selected real account ids', async () =
     }),
   });
 
-  await screen.findByRole('heading', { name: 'Journal Entries' });
-  fireEvent.change(screen.getByLabelText('Entry number'), { target: { value: 'JE-2001' } });
+  const entryNumberInput = await screen.findByLabelText('Entry number');
+  fireEvent.change(entryNumberInput, { target: { value: 'JE-2001' } });
   fireEvent.change(screen.getByLabelText('Entry date'), { target: { value: '2026-09-03' } });
   fireEvent.change(screen.getByLabelText('Memo'), { target: { value: 'Cash sale' } });
   fireEvent.change(screen.getByLabelText('Debit account'), { target: { value: 'account-cash' } });
