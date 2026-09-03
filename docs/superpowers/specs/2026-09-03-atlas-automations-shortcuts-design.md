@@ -119,13 +119,12 @@ Responsibilities:
 1. verify shortcut is enabled;
 2. verify the incoming trigger matches the shortcut trigger;
 3. evaluate all conditions;
-4. resolve required permissions;
-5. execute actions sequentially through the registry;
-6. stop on a failed required action;
-7. collect results without fabricating success;
-8. return a structured execution record.
+4. execute actions sequentially through the registry;
+5. stop on a failed required action;
+6. collect results without fabricating success;
+7. return a structured execution record.
 
-The engine does not persist shortcuts and does not decide role capabilities itself.
+The engine does not persist shortcuts and does not decide role capabilities itself. The service must complete tenant and RBAC authorization before invoking the engine.
 
 ### `automation-store.js`
 Repository-compatible persistence abstraction.
@@ -151,9 +150,10 @@ Required operations:
 - `enableShortcut`
 - `disableShortcut`
 - `executeShortcut`
+- `listExecutions`
 - `listTemplates`
 
-All state-changing and execution operations require an actor context with `tenantId`, `userId`, and `role`.
+All state-changing and execution operations require an actor context with `tenantId`, `userId`, and `role`. `listExecutions` is tenant-scoped and requires `automation.audit`; `listTemplates` requires `automation.read`.
 
 ### `templates.js`
 Contains reusable definitions only. Templates are not treated as installed shortcuts until a user explicitly creates one for a tenant.
@@ -243,13 +243,13 @@ Role policy for v0.1:
 - `reviewer`: read;
 - `client`: read.
 
-`automation.manage` controls enable/disable operations and template administration. `automation.delete` remains separate from update.
+`automation.manage` controls enable/disable operations. Built-in template definitions are immutable in v0.1, so template administration is outside this version. `automation.delete` remains separate from update.
 
 The service must check both tenant boundary and capability before returning or mutating shortcut data.
 
 ## 10. Audit model
 
-Every execution produces an execution record even when it is denied, skipped, fails, or encounters an unavailable action.
+Every execution attempt produces an execution record even when it is denied, skipped, fails, or encounters an unavailable action. Permission-denied attempts are recorded by the service before the engine is invoked.
 
 Record shape:
 
@@ -313,7 +313,7 @@ Provide these templates as safe definitions:
    - network/event-ready trigger;
    - intended future Connect/Security/approved smart-device actions.
 
-Templates may reference action types that are not registered. In that case installation is allowed, but execution must surface `ACTION_UNAVAILABLE`; ATLAS must not claim that the provider or device is connected.
+Templates may reference action types that are not registered. A tenant may instantiate a template through `createShortcut`; execution must then surface `ACTION_UNAVAILABLE` for any missing adapter. ATLAS must not claim that the provider or device is connected.
 
 ## 12. Network Intelligence boundary
 
