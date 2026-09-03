@@ -55,6 +55,7 @@ test('renders intentional not found state', async () => {
 it.each([
   ['/finance', 'Finance'],
   ['/finance/accounting', 'Accounting'],
+  ['/finance/accounting/journal-entries', 'Journal Entries'],
   ['/health', 'ATLAS Health'],
 ])('renders %s in the ATLAS shell for a ready organization identity', async (path, heading) => {
   renderAtlas(path);
