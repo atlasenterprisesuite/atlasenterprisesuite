@@ -1,4 +1,4 @@
-import type { TenantScope } from '../../core/src';
+import { sameScope, type TenantScope } from '../../core/src';
 
 export type BillStatus = 'draft' | 'open' | 'partially_paid' | 'paid' | 'overdue';
 export type ApprovalStatus = 'pending' | 'approved' | 'not_required';
@@ -42,6 +42,29 @@ export type PayablesFilters = {
   status: BillStatus | 'all';
   dueWindow: DueWindow;
 };
+
+export function scopePayablesData(
+  scope: TenantScope,
+  vendors: readonly Vendor[],
+  bills: readonly Bill[],
+  paymentApplications: readonly PaymentApplication[]
+) {
+  const scopedVendors = vendors.filter((vendor) => sameScope(vendor, scope));
+  const vendorIds = new Set(scopedVendors.map((vendor) => vendor.id));
+  const scopedBills = bills.filter(
+    (bill) => sameScope(bill, scope) && vendorIds.has(bill.vendorId)
+  );
+  const billIds = new Set(scopedBills.map((bill) => bill.id));
+  const scopedPaymentApplications = paymentApplications.filter(
+    (payment) => sameScope(payment, scope) && billIds.has(payment.billId)
+  );
+
+  return {
+    vendors: scopedVendors,
+    bills: scopedBills,
+    paymentApplications: scopedPaymentApplications
+  };
+}
 
 export function parseIsoDate(value: string) {
   return new Date(`${value}T00:00:00Z`);
