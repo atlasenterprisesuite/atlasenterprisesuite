@@ -4,7 +4,7 @@
 
 **Goal:** Turn the current partial ATLAS repository into a buildable single-shell application and deliver Accounting as the first complete enterprise module with coherent double-entry demo data, permission gates, audit contracts, tests, and production verification gates.
 
-**Architecture:** Keep one React/TypeScript web application under `apps/web`, move global routing/shell concerns into ATLAS Core, and isolate business logic in typed `packages/core` and `packages/accounting` modules. The first milestone uses deterministic in-memory/demo adapters with explicit non-production labels; all accounting calculations share the same domain contracts so dashboards, ledgers, journals, reconciliations, and reports cannot diverge.
+**Architecture:** Keep one React/TypeScript web application under `apps/web`, move global routing and shell concerns into ATLAS Core, and isolate business logic in typed `packages/core` and `packages/accounting` modules. The first milestone uses deterministic in-memory/demo adapters with explicit non-production labels; dashboards, journals, ledgers, reconciliations, and reports all consume the same accounting contracts.
 
 **Tech Stack:** React, TypeScript, React Router, Vite, Vitest, Testing Library, Playwright, npm workspaces.
 
@@ -27,46 +27,49 @@
 
 ## File Map
 
-### Workspace and application
-- `package.json` — npm workspace scripts for build, typecheck, unit, integration, and e2e tests.
-- `tsconfig.base.json` — shared TypeScript configuration.
-- `apps/web/package.json` — web dependencies and scripts.
-- `apps/web/index.html` — Vite entry document.
-- `apps/web/tsconfig.json` — web TypeScript project.
-- `apps/web/vite.config.ts` — Vite + Vitest configuration.
-- `apps/web/src/main.tsx` — browser entrypoint.
-- `apps/web/src/App.tsx` — thin app root only; no domain implementation.
-- `apps/web/src/styles.css` — shared ATLAS shell and responsive UI styles.
+### Workspace
+- `package.json`
+- `tsconfig.base.json`
+- `apps/web/package.json`
+- `apps/web/index.html`
+- `apps/web/tsconfig.json`
+- `apps/web/vite.config.ts`
+- `apps/web/src/main.tsx`
+- `apps/web/src/App.tsx`
+- `apps/web/src/styles.css`
 
-### ATLAS Core
-- `packages/core/src/tenancy.ts` — `TenantScope` and scope predicates.
-- `packages/core/src/rbac.ts` — permission vocabulary and authorization helpers.
-- `packages/core/src/audit.ts` — audit event contract and in-memory audit sink.
-- `packages/core/src/result.ts` — typed success/failure result helpers.
-- `packages/core/src/index.ts` — public Core exports.
-- `apps/web/src/app/providers/AtlasContext.tsx` — active tenant, organization, actor, permissions, adapters.
-- `apps/web/src/app/shell/AtlasShell.tsx` — global responsive navigation and breadcrumbs.
-- `apps/web/src/app/router/AppRouter.tsx` — canonical route tree.
-- `apps/web/src/app/errors/RouteErrorPage.tsx` — intentional route/error state.
+### Core application
+- `apps/web/src/app/router/AppRouter.tsx`
+- `apps/web/src/app/providers/AtlasContext.tsx`
+- `apps/web/src/app/shell/AtlasShell.tsx`
+- `apps/web/src/app/errors/RouteErrorPage.tsx`
+- `apps/web/src/modules/home/EnterpriseHome.tsx`
+- `apps/web/src/modules/finance/FinanceHome.tsx`
+- `apps/web/src/modules/finance/accounting/AccountingModulePlaceholder.tsx`
+- `apps/web/src/modules/health/HealthRoutes.tsx`
+- `apps/web/src/modules/health/HealthPlaceholder.tsx`
 
-### Health compatibility
-- `apps/web/src/modules/health/HealthRoutes.tsx` — Health route ownership moved out of `App.tsx`.
-- `apps/web/src/modules/health/HealthPlaceholder.tsx` — explicit degraded/non-production state only where source implementation is unavailable.
+### Core packages
+- `packages/core/src/tenancy.ts`
+- `packages/core/src/rbac.ts`
+- `packages/core/src/audit.ts`
+- `packages/core/src/result.ts`
+- `packages/core/src/index.ts`
 
-### Accounting domain
-- `packages/accounting/src/types.ts` — shared accounting types.
-- `packages/accounting/src/validation.ts` — account hierarchy and journal validation.
-- `packages/accounting/src/ledger.ts` — posting and ledger projection.
-- `packages/accounting/src/reconciliation.ts` — matching and difference calculation.
-- `packages/accounting/src/assets.ts` — deterministic depreciation calculations.
-- `packages/accounting/src/reports.ts` — trial balance, P&L, balance sheet, GL detail, AR/AP aging.
-- `packages/accounting/src/repository.ts` — typed repository interface.
-- `packages/accounting/src/demoRepository.ts` — coherent scoped demo implementation.
-- `packages/accounting/src/index.ts` — public Accounting exports.
-- `data/demo/accounting/seed.ts` — balanced demo dataset with explicit demo provenance.
+### Accounting package
+- `packages/accounting/src/types.ts`
+- `packages/accounting/src/validation.ts`
+- `packages/accounting/src/repository.ts`
+- `packages/accounting/src/demoRepository.ts`
+- `packages/accounting/src/ledger.ts`
+- `packages/accounting/src/reconciliation.ts`
+- `packages/accounting/src/assets.ts`
+- `packages/accounting/src/reports.ts`
+- `packages/accounting/src/index.ts`
+- `data/demo/accounting/seed.ts`
 
 ### Accounting UI
-- `apps/web/src/modules/finance/FinanceHome.tsx`
+- `apps/web/src/modules/finance/accounting/AccountingRoutes.tsx`
 - `apps/web/src/modules/finance/accounting/AccountingLayout.tsx`
 - `apps/web/src/modules/finance/accounting/AccountingDashboard.tsx`
 - `apps/web/src/modules/finance/accounting/ChartOfAccountsPage.tsx`
@@ -82,7 +85,7 @@
 - `apps/web/src/modules/finance/accounting/AuditTrailPage.tsx`
 - `apps/web/src/modules/finance/accounting/AccountingSettingsPage.tsx`
 
-### Tests
+### Tests and release gates
 - `tests/unit/core.test.ts`
 - `tests/unit/accounting-validation.test.ts`
 - `tests/unit/accounting-ledger.test.ts`
@@ -93,10 +96,12 @@
 - `tests/integration/routes.test.tsx`
 - `tests/e2e/accounting.spec.ts`
 - `playwright.config.ts`
+- `.github/workflows/atlas-core-accounting-ci.yml`
+- `apps/web/public/healthz.json`
 
 ---
 
-### Task 1: Restore a buildable workspace baseline
+### Task 1: Restore a buildable workspace and minimal application root
 
 **Files:**
 - Create: `package.json`
@@ -107,12 +112,14 @@
 - Create: `apps/web/vite.config.ts`
 - Create: `apps/web/src/main.tsx`
 - Modify: `apps/web/src/App.tsx`
+- Create: `apps/web/src/app/router/AppRouter.tsx`
+- Create: `apps/web/src/app/errors/RouteErrorPage.tsx`
+- Create: `apps/web/src/modules/home/EnterpriseHome.tsx`
 - Create: `apps/web/src/styles.css`
 - Test: `tests/integration/routes.test.tsx`
 
 **Interfaces:**
-- Consumes: current repository `apps/web/src/App.tsx` and the approved design spec.
-- Produces: `App`, `AppRouter`, npm scripts `build`, `typecheck`, `test`, `test:integration`, and a browser entrypoint that compiles without unresolved imports.
+- Produces: `App`, `AppRouter`, a valid browser entrypoint, `/`, intentional `*` not-found behavior, and npm scripts `build`, `typecheck`, `test`, `test:integration`, `test:e2e`.
 
 - [ ] **Step 1: Write the failing smoke test**
 
@@ -123,17 +130,24 @@ import { App } from '../../apps/web/src/App';
 
 test('renders the ATLAS application root', () => {
   render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>);
-  expect(screen.getByRole('heading', { name: /ATLAS Enterprise Suite/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'ATLAS Enterprise Suite' })).toBeInTheDocument();
+});
+
+test('renders intentional not found state', () => {
+  render(<MemoryRouter initialEntries={['/missing']}><App /></MemoryRouter>);
+  expect(screen.getByRole('heading', { name: 'Route not found' })).toBeInTheDocument();
 });
 ```
 
-- [ ] **Step 2: Run the smoke test and record the current baseline failure**
+- [ ] **Step 2: Run the test and capture the real baseline failure**
 
 Run: `npm test -- tests/integration/routes.test.tsx`
 
-Expected before implementation: FAIL because the repository has no runnable workspace/dependency configuration and `App.tsx` references missing modules.
+Expected before implementation: FAIL because the repository has no runnable workspace configuration and the current `App.tsx` imports files that are absent from `main`.
 
-- [ ] **Step 3: Add workspace scripts and web toolchain**
+- [ ] **Step 3: Add workspace and web scripts**
+
+Root `package.json` must expose:
 
 ```json
 {
@@ -167,7 +181,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 ```
 
-- [ ] **Step 4: Reduce `App.tsx` to a thin root while route modules are introduced in Task 3**
+- [ ] **Step 4: Replace the broken monolithic root with the minimal router**
+
+`apps/web/src/App.tsx`:
 
 ```tsx
 import { AppRouter } from './app/router/AppRouter';
@@ -177,11 +193,9 @@ export function App() {
 }
 ```
 
-Create a minimal `AppRouter` in Task 1 only with `/` and an intentional not-found screen; Task 3 expands it to Finance, Accounting, and Health.
+`AppRouter` at this task contains only `/` and `*`; later tasks modify this existing file.
 
 - [ ] **Step 5: Run baseline gates**
-
-Run:
 
 ```bash
 npm install
@@ -190,7 +204,7 @@ npm test -- tests/integration/routes.test.tsx
 npm run build
 ```
 
-Expected: all PASS; no unresolved import remains.
+Expected: PASS with no unresolved imports.
 
 - [ ] **Step 6: Commit**
 
@@ -213,9 +227,9 @@ git commit -m "build: restore ATLAS web workspace baseline"
 - Test: `tests/unit/core.test.ts`
 
 **Interfaces:**
-- Produces: `TenantScope`, `sameScope`, `AccountingPermission`, `hasPermission`, `AuditEvent`, `AuditSink`, `InMemoryAuditSink`, and `Result<T, E>`.
+- Produces: `TenantScope`, `sameScope`, `AccountingPermission`, `hasPermission`, `AuditEvent`, `AuditSink`, `InMemoryAuditSink`, `Result<T,E>`.
 
-- [ ] **Step 1: Write failing Core contract tests**
+- [ ] **Step 1: Write failing Core tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -229,11 +243,11 @@ describe('ATLAS Core', () => {
     )).toBe(false);
   });
 
-  it('checks explicit permission membership', () => {
+  it('requires explicit permission', () => {
     expect(hasPermission(['accounting.read'], 'accounting.post')).toBe(false);
   });
 
-  it('records immutable audit snapshots', () => {
+  it('lists audit events only for the requested scope', () => {
     const sink = new InMemoryAuditSink();
     sink.append({
       id: 'a1', tenantId: 't1', organizationId: 'o1', actorId: 'u1',
@@ -242,15 +256,16 @@ describe('ATLAS Core', () => {
       timestamp: '2026-09-03T16:00:00Z', correlationId: 'c1'
     });
     expect(sink.list({ tenantId: 't1', organizationId: 'o1' })).toHaveLength(1);
+    expect(sink.list({ tenantId: 't1', organizationId: 'o2' })).toHaveLength(0);
   });
 });
 ```
 
-- [ ] **Step 2: Run tests and verify they fail because Core exports do not exist**
+- [ ] **Step 2: Verify tests fail because Core exports do not exist**
 
 Run: `npm test -- tests/unit/core.test.ts`
 
-- [ ] **Step 3: Implement the contracts**
+- [ ] **Step 3: Implement contracts**
 
 ```ts
 export type TenantScope = { tenantId: string; organizationId: string };
@@ -260,17 +275,21 @@ export function sameScope(a: TenantScope, b: TenantScope) {
 }
 
 export type AccountingPermission =
-  | 'accounting.read' | 'accounting.write' | 'accounting.post'
-  | 'accounting.close' | 'accounting.admin' | 'audit.read';
+  | 'accounting.read'
+  | 'accounting.write'
+  | 'accounting.post'
+  | 'accounting.close'
+  | 'accounting.admin'
+  | 'audit.read';
 
 export function hasPermission(granted: readonly AccountingPermission[], required: AccountingPermission) {
   return granted.includes(required) || granted.includes('accounting.admin');
 }
 ```
 
-`InMemoryAuditSink.list(scope)` must return only events matching both tenant and organization.
+`InMemoryAuditSink.list(scope)` must require both tenant and organization to match.
 
-- [ ] **Step 4: Run Core tests**
+- [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/core.test.ts`
 
@@ -285,46 +304,44 @@ git commit -m "feat: add ATLAS Core tenancy RBAC and audit contracts"
 
 ---
 
-### Task 3: Build the shared shell, providers, canonical routes, and Health compatibility boundary
+### Task 3: Build the shared shell and safe Finance/Health route boundaries
 
 **Files:**
 - Create: `apps/web/src/app/providers/AtlasContext.tsx`
 - Create: `apps/web/src/app/shell/AtlasShell.tsx`
-- Create: `apps/web/src/app/router/AppRouter.tsx`
-- Create: `apps/web/src/app/errors/RouteErrorPage.tsx`
-- Create: `apps/web/src/modules/home/EnterpriseHome.tsx`
 - Create: `apps/web/src/modules/finance/FinanceHome.tsx`
+- Create: `apps/web/src/modules/finance/accounting/AccountingModulePlaceholder.tsx`
 - Create: `apps/web/src/modules/health/HealthRoutes.tsx`
 - Create: `apps/web/src/modules/health/HealthPlaceholder.tsx`
+- Modify: `apps/web/src/app/router/AppRouter.tsx`
 - Modify: `apps/web/src/styles.css`
 - Test: `tests/integration/routes.test.tsx`
 
 **Interfaces:**
-- Consumes: Core `TenantScope`, permission helpers, audit sink.
-- Produces: `useAtlasContext()`, `AtlasShell`, `AppRouter`, Finance/Accounting route mount point, and retained `/health` route ownership.
+- Consumes: Core permission and scope contracts.
+- Produces: `useAtlasContext()`, `AtlasShell`, `/finance`, `/finance/accounting`, `/health`, and preserved known Health URLs with explicit degraded states when historical source is unavailable.
 
-- [ ] **Step 1: Extend route integration tests**
+- [ ] **Step 1: Add failing route tests**
 
 ```tsx
 it.each([
-  ['/', 'ATLAS Enterprise Suite'],
   ['/finance', 'Finance'],
   ['/finance/accounting', 'Accounting'],
   ['/health', 'ATLAS Health']
-])('renders %s inside the shared shell', (path, heading) => {
+])('renders %s in the ATLAS shell', (path, heading) => {
   render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
   expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
-  expect(screen.getByRole('navigation', { name: /ATLAS modules/i })).toBeInTheDocument();
+  expect(screen.getByRole('navigation', { name: 'ATLAS modules' })).toBeInTheDocument();
 });
 ```
 
-- [ ] **Step 2: Run and verify Finance/Accounting/Health route cases fail**
+- [ ] **Step 2: Verify the new cases fail**
 
 Run: `npm test -- tests/integration/routes.test.tsx`
 
 - [ ] **Step 3: Implement context and shell**
 
-```tsx
+```ts
 export type AtlasContextValue = {
   scope: { tenantId: string; organizationId: string };
   actorId: string;
@@ -333,40 +350,30 @@ export type AtlasContextValue = {
 };
 ```
 
-Default local context must use explicit demo identifiers such as `tenant-demo` and `org-demo`; the shell must visibly label `Demo data` when environment is `demo`.
+Default local context uses `tenant-demo` and `org-demo`. The shell visibly labels demo mode and includes desktop, tablet, and mobile navigation states.
 
-- [ ] **Step 4: Implement canonical route tree**
+- [ ] **Step 4: Expand the existing router without referencing future Accounting files**
 
 ```tsx
-<Routes>
-  <Route element={<AtlasShell />}>
-    <Route path="/" element={<EnterpriseHome />} />
-    <Route path="/finance" element={<FinanceHome />} />
-    <Route path="/finance/accounting/*" element={<AccountingRoutes />} />
-    <Route path="/health/*" element={<HealthRoutes />} />
-    <Route path="*" element={<RouteErrorPage kind="not-found" />} />
-  </Route>
-</Routes>
+<Route path="/finance" element={<FinanceHome />} />
+<Route path="/finance/accounting" element={<AccountingModulePlaceholder />} />
+<Route path="/health/*" element={<HealthRoutes />} />
 ```
 
-Until the missing historical Health source files are restored, `HealthRoutes` must preserve known route URLs and display an explicit `development/degraded source unavailable` state rather than fabricate clinical functionality.
+Known Health paths from the existing `App.tsx` must continue resolving. Where the referenced Health implementation is missing from `main`, render an explicit development/degraded message rather than a fake clinical or research feature.
 
-- [ ] **Step 5: Verify route and responsive shell tests**
-
-Run: `npm test -- tests/integration/routes.test.tsx`
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Run route tests and commit**
 
 ```bash
-git add apps/web/src/app apps/web/src/modules/home apps/web/src/modules/finance apps/web/src/modules/health apps/web/src/styles.css tests/integration/routes.test.tsx
-git commit -m "feat: add shared ATLAS shell and canonical routing"
+npm test -- tests/integration/routes.test.tsx
+npm run typecheck
+git add apps/web/src/app apps/web/src/modules apps/web/src/styles.css tests/integration/routes.test.tsx
+git commit -m "feat: add shared ATLAS shell and module route boundaries"
 ```
 
 ---
 
-### Task 4: Define Accounting domain types, validation, and coherent demo repository
+### Task 4: Define Accounting domain types, validation, and scoped demo repository
 
 **Files:**
 - Create: `packages/accounting/package.json`
@@ -380,9 +387,9 @@ git commit -m "feat: add shared ATLAS shell and canonical routing"
 - Test: `tests/integration/accounting-repository.test.ts`
 
 **Interfaces:**
-- Produces: `Account`, `JournalEntry`, `JournalLine`, `Invoice`, `Bill`, `BankAccount`, `BankTransaction`, `Reconciliation`, `FixedAsset`, `AccountingPeriod`, `AccountingRepository`, `validateJournalEntry()`, `DemoAccountingRepository`.
+- Produces: `Account`, `JournalEntry`, `JournalLine`, `Customer`, `Vendor`, `Invoice`, `Bill`, `PaymentApplication`, `BankAccount`, `BankTransaction`, `Reconciliation`, `FixedAsset`, `AccountingPeriod`, `AccountingRepository`, `validateJournalEntry`, `DemoAccountingRepository`.
 
-- [ ] **Step 1: Write journal-balance and scoping tests**
+- [ ] **Step 1: Write failing validation and scoping tests**
 
 ```ts
 it('rejects an unbalanced journal', () => {
@@ -396,29 +403,27 @@ it('rejects an unbalanced journal', () => {
   expect(result.ok).toBe(false);
 });
 
-it('never returns records from another organization', async () => {
-  const repo = new DemoAccountingRepository(seed);
+it('never leaks accounts across organizations', async () => {
   const rows = await repo.listAccounts({ tenantId: 'tenant-demo', organizationId: 'org-demo' });
-  expect(rows.every(r => r.tenantId === 'tenant-demo' && r.organizationId === 'org-demo')).toBe(true);
+  expect(rows.every(row => row.tenantId === 'tenant-demo' && row.organizationId === 'org-demo')).toBe(true);
 });
 ```
 
-- [ ] **Step 2: Run tests and verify failure**
+- [ ] **Step 2: Verify failures**
 
 Run: `npm test -- tests/unit/accounting-validation.test.ts tests/integration/accounting-repository.test.ts`
 
-- [ ] **Step 3: Implement domain types and repository interface**
+- [ ] **Step 3: Implement core types**
 
 ```ts
-export type Money = number;
 export type JournalStatus = 'draft' | 'validated' | 'posted' | 'reversed';
 
 export interface JournalLine {
   id: string;
   accountId: string;
   description: string;
-  debit: Money;
-  credit: Money;
+  debit: number;
+  credit: number;
   dimensions: Record<string, string>;
 }
 
@@ -434,54 +439,56 @@ export interface JournalEntry extends TenantScope {
 }
 ```
 
-`validateJournalEntry` must reject negative debit/credit values, lines containing both debit and credit, empty journals, and totals whose rounded two-decimal debit/credit values differ.
+`validateJournalEntry` rejects empty entries, negative values, lines with both debit and credit, and rounded two-decimal debit/credit totals that differ.
 
 - [ ] **Step 4: Seed coherent demo data**
 
-Seed at minimum Cash, AR, AP, Equity, Revenue, and Expense control accounts plus balanced posted and draft journals. Every seeded financial total must be derivable from journal lines; do not seed dashboard totals separately.
+Seed Cash, AR, AP, Equity, Revenue, and Expense control accounts plus balanced posted and draft journals, sample invoices/bills, a bank statement, reconciliation, fixed asset, and accounting period. Every displayed financial total must be derivable from these records; do not seed dashboard totals separately.
 
-- [ ] **Step 5: Run domain/repository tests**
-
-Run: `npm test -- tests/unit/accounting-validation.test.ts tests/integration/accounting-repository.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Run tests and commit**
 
 ```bash
-git add packages/accounting data/demo/accounting tests/unit/accounting-validation.test.ts tests/integration/accounting-repository.test.ts
+npm test -- tests/unit/accounting-validation.test.ts tests/integration/accounting-repository.test.ts
+git add packages/accounting data/demo/accounting tests
 git commit -m "feat: add scoped accounting domain and demo repository"
 ```
 
 ---
 
-### Task 5: Implement journal posting, General Ledger projection, and audit emission
+### Task 5: Implement governed journal posting, reversal, ledger projection, and audit emission
 
 **Files:**
 - Create: `packages/accounting/src/ledger.ts`
+- Modify: `packages/accounting/src/repository.ts`
 - Modify: `packages/accounting/src/demoRepository.ts`
+- Modify: `packages/accounting/src/index.ts`
 - Test: `tests/unit/accounting-ledger.test.ts`
 - Test: `tests/integration/accounting-repository.test.ts`
 
 **Interfaces:**
-- Produces: `postJournal(entry, context)`, `reverseJournal(entry, context)`, `projectLedger(entries)`.
-- Requires: `accounting.post` and an unlocked period for posting.
+- Produces: `PostingContext`, `projectLedger`, repository methods `postJournal` and `reverseJournal`.
 
 - [ ] **Step 1: Write failing posting tests**
 
 ```ts
 it('posts a balanced authorized journal and emits audit', async () => {
   const result = await repo.postJournal('j-draft', {
-    scope, actorId: 'u1', permissions: ['accounting.post'], correlationId: 'c-post-1'
+    scope,
+    actorId: 'u1',
+    permissions: ['accounting.post'],
+    correlationId: 'c-post-1'
   });
   expect(result.ok).toBe(true);
   expect((await repo.getJournal(scope, 'j-draft'))?.status).toBe('posted');
-  expect(audit.list(scope).some(e => e.action === 'journal.post')).toBe(true);
+  expect(audit.list(scope).some(event => event.action === 'journal.post')).toBe(true);
 });
 
-it('blocks posting without permission', async () => {
+it('blocks posting without accounting.post', async () => {
   const result = await repo.postJournal('j-draft', {
-    scope, actorId: 'u1', permissions: ['accounting.read'], correlationId: 'c-post-2'
+    scope,
+    actorId: 'u1',
+    permissions: ['accounting.read'],
+    correlationId: 'c-post-2'
   });
   expect(result.ok).toBe(false);
 });
@@ -491,7 +498,7 @@ it('blocks posting without permission', async () => {
 
 Run: `npm test -- tests/unit/accounting-ledger.test.ts tests/integration/accounting-repository.test.ts`
 
-- [ ] **Step 3: Implement immutable posted entries and reversal flow**
+- [ ] **Step 3: Implement posting context and ledger projection**
 
 ```ts
 export type PostingContext = {
@@ -500,13 +507,7 @@ export type PostingContext = {
   permissions: AccountingPermission[];
   correlationId: string;
 };
-```
 
-A reversal creates a new posted journal with debit/credit sides swapped and links it to the original; it must not mutate posted monetary lines.
-
-- [ ] **Step 4: Implement ledger projection from posted journal lines only**
-
-```ts
 export function projectLedger(entries: readonly JournalEntry[]) {
   return entries
     .filter(entry => entry.status === 'posted')
@@ -516,158 +517,125 @@ export function projectLedger(entries: readonly JournalEntry[]) {
       accountId: line.accountId,
       debit: line.debit,
       credit: line.credit,
-      reference: entry.reference
+      reference: entry.reference,
+      source: entry.source
     })));
 }
 ```
 
-- [ ] **Step 5: Run tests and commit**
+Posting requires a balanced entry, `accounting.post`, matching scope, and an unlocked period. Posted monetary lines are immutable. Reversal creates a new posted journal with sides swapped and a reference to the original.
+
+- [ ] **Step 4: Run tests and commit**
 
 ```bash
 npm test -- tests/unit/accounting-ledger.test.ts tests/integration/accounting-repository.test.ts
-git add packages/accounting/src tests/unit/accounting-ledger.test.ts tests/integration/accounting-repository.test.ts
+git add packages/accounting tests
 git commit -m "feat: add governed journal posting and ledger projection"
 ```
 
 ---
 
-### Task 6: Implement Accounting dashboard, Chart of Accounts, Journals, and General Ledger UI
+### Task 6: Replace the Accounting placeholder with dashboard, COA, journals, and General Ledger
 
 **Files:**
+- Create: `apps/web/src/modules/finance/accounting/AccountingRoutes.tsx`
 - Create: `apps/web/src/modules/finance/accounting/AccountingLayout.tsx`
 - Create: `apps/web/src/modules/finance/accounting/AccountingDashboard.tsx`
 - Create: `apps/web/src/modules/finance/accounting/ChartOfAccountsPage.tsx`
 - Create: `apps/web/src/modules/finance/accounting/GeneralLedgerPage.tsx`
 - Create: `apps/web/src/modules/finance/accounting/JournalEntriesPage.tsx`
-- Create: `apps/web/src/modules/finance/accounting/AccountingRoutes.tsx`
 - Modify: `apps/web/src/app/router/AppRouter.tsx`
+- Modify: `apps/web/src/app/providers/AtlasContext.tsx`
 - Modify: `apps/web/src/styles.css`
 - Test: `tests/integration/routes.test.tsx`
 
 **Interfaces:**
-- Consumes: `AccountingRepository`, `validateJournalEntry`, posting methods, `useAtlasContext()`.
-- Produces: working routes `/finance/accounting`, `/general-ledger`, `/chart-of-accounts`, `/journal-entries`.
+- Consumes: `AccountingRepository`, `validateJournalEntry`, `postJournal`, `projectLedger`, `useAtlasContext()`.
+- Produces routes `/finance/accounting`, `/chart-of-accounts`, `/journal-entries`, `/general-ledger`.
 
-- [ ] **Step 1: Write route and interaction tests**
+- [ ] **Step 1: Write failing Accounting UI tests**
 
 ```tsx
-it('filters the Chart of Accounts', async () => {
+it('filters Chart of Accounts', async () => {
   renderAccounting('/finance/accounting/chart-of-accounts');
   await userEvent.type(screen.getByRole('searchbox'), 'cash');
   expect(await screen.findByText('Cash')).toBeInTheDocument();
   expect(screen.queryByText('Accounts Payable')).not.toBeInTheDocument();
 });
 
-it('does not enable posting for an unbalanced draft', async () => {
+it('does not allow posting an unbalanced draft', async () => {
   renderAccounting('/finance/accounting/journal-entries');
   await openDraft('j-draft');
-  expect(screen.getByRole('button', { name: /Post journal/i })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Post journal' })).toBeDisabled();
 });
 ```
 
-- [ ] **Step 2: Verify UI tests fail**
+- [ ] **Step 2: Verify failures**
 
 Run: `npm test -- tests/integration/routes.test.tsx`
 
-- [ ] **Step 3: Implement Accounting nested navigation and dashboard derived values**
+- [ ] **Step 3: Mount the real Accounting route tree**
 
-Dashboard values must be selectors over repository journals, invoices, bills, and reconciliations. If the active adapter has no dataset, render `No accounting dataset configured` instead of numeric zero cards.
+```tsx
+<Route path="/finance/accounting/*" element={<AccountingRoutes />} />
+```
 
-- [ ] **Step 4: Implement COA search/filter/sort and journal editing/posting states**
+`AccountingRoutes` owns nested routes and `AccountingLayout`; remove `AccountingModulePlaceholder` from active routing once these routes pass.
 
-Journal form validation must preserve input after validation failure and surface a visible error summary. Posting button visibility/disabled state must derive from `accounting.post` plus journal validity.
+- [ ] **Step 4: Implement data-derived dashboard and working controls**
 
-- [ ] **Step 5: Implement GL filters and journal drill-down**
+Dashboard cards: Cash, AR, AP, current-period net activity, unposted journals, reconciliation status, close status. If no dataset exists, render `No accounting dataset configured` instead of zero-valued financial cards.
 
-GL filters: date range, account, source. Each ledger row links to its journal detail route/state.
+COA must support search, type/status filters, sort, detail, create/edit with `accounting.write`, and activate/deactivate. Journals must preserve input on validation failure and enforce permission/validation states. GL supports date/account/source filters and journal drill-down.
 
-- [ ] **Step 6: Run tests and commit**
+- [ ] **Step 5: Run UI gates and commit**
 
 ```bash
 npm test -- tests/integration/routes.test.tsx
 npm run typecheck
-git add apps/web/src/modules/finance/accounting apps/web/src/app/router/AppRouter.tsx apps/web/src/styles.css tests/integration/routes.test.tsx
+git add apps/web/src/modules/finance/accounting apps/web/src/app apps/web/src/styles.css tests/integration/routes.test.tsx
 git commit -m "feat: add Accounting dashboard ledger journals and chart of accounts"
 ```
 
 ---
 
-### Task 7: Implement AR/AP workspaces and accounting impact links
+### Task 7: Implement AR/AP, Bank & Cash, and reconciliation
 
 **Files:**
+- Create: `packages/accounting/src/reconciliation.ts`
 - Create: `apps/web/src/modules/finance/accounting/ReceivablesPage.tsx`
 - Create: `apps/web/src/modules/finance/accounting/PayablesPage.tsx`
-- Modify: `packages/accounting/src/types.ts`
+- Create: `apps/web/src/modules/finance/accounting/BankCashPage.tsx`
+- Create: `apps/web/src/modules/finance/accounting/ReconciliationPage.tsx`
 - Modify: `packages/accounting/src/demoRepository.ts`
+- Modify: `packages/accounting/src/index.ts`
 - Modify: `apps/web/src/modules/finance/accounting/AccountingRoutes.tsx`
+- Test: `tests/unit/accounting-reconciliation.test.ts`
 - Test: `tests/integration/accounting-repository.test.ts`
 - Test: `tests/integration/routes.test.tsx`
 
 **Interfaces:**
-- Produces: customer/vendor balances, invoice/bill list/detail, aging buckets, payment application state, and journal references.
+- Produces: deterministic AR/AP aging, payment application state, `calculateReconciliationDifference`, match/unmatch behavior, and reconciliation completion guards.
 
-- [ ] **Step 1: Write aging tests**
+- [ ] **Step 1: Write failing aging and reconciliation tests**
 
 ```ts
-it('places overdue receivables into deterministic aging buckets', async () => {
+it('AR aging totals equal the sum of buckets', async () => {
   const aging = await repo.getReceivablesAging(scope, '2026-09-03');
   expect(aging.total).toBe(
     aging.current + aging.days1to30 + aging.days31to60 + aging.days61to90 + aging.over90
   );
 });
-```
 
-- [ ] **Step 2: Implement aging as a pure date-based calculation**
-
-Buckets: current, 1-30, 31-60, 61-90, over 90. Compute balances from invoice/bill open amounts; never maintain a second independent aging-total source.
-
-- [ ] **Step 3: Implement UI filters and journal links**
-
-Routes:
-- `/finance/accounting/accounts-receivable`
-- `/finance/accounting/accounts-payable`
-
-No `Pay now`, bank transfer, card, or gateway control may be shown as connected in this milestone.
-
-- [ ] **Step 4: Run tests and commit**
-
-```bash
-npm test -- tests/integration/accounting-repository.test.ts tests/integration/routes.test.tsx
-git add packages/accounting apps/web/src/modules/finance/accounting tests/integration
-git commit -m "feat: add accounts receivable and payable workspaces"
-```
-
----
-
-### Task 8: Implement Bank & Cash plus reconciliation engine and UI
-
-**Files:**
-- Create: `packages/accounting/src/reconciliation.ts`
-- Create: `apps/web/src/modules/finance/accounting/BankCashPage.tsx`
-- Create: `apps/web/src/modules/finance/accounting/ReconciliationPage.tsx`
-- Modify: `packages/accounting/src/demoRepository.ts`
-- Modify: `apps/web/src/modules/finance/accounting/AccountingRoutes.tsx`
-- Test: `tests/unit/accounting-reconciliation.test.ts`
-- Test: `tests/integration/routes.test.tsx`
-
-**Interfaces:**
-- Produces: `calculateReconciliationDifference`, `matchTransactions`, `completeReconciliation`.
-
-- [ ] **Step 1: Write failing reconciliation rules**
-
-```ts
-it('cannot complete while difference is non-zero', () => {
+it('cannot complete reconciliation with a non-zero difference', () => {
   const result = completeReconciliation({ ...recon, calculatedDifference: 25 });
   expect(result.ok).toBe(false);
 });
-
-it('completes when difference is zero and required items are resolved', () => {
-  const result = completeReconciliation({ ...recon, calculatedDifference: 0, unresolvedRequiredItems: [] });
-  expect(result.ok).toBe(true);
-});
 ```
 
-- [ ] **Step 2: Implement pure matching/difference functions**
+- [ ] **Step 2: Implement deterministic calculations**
+
+Aging buckets are current, 1-30, 31-60, 61-90, over 90 and derive from open invoice/bill amounts. Reconciliation difference:
 
 ```ts
 export function calculateReconciliationDifference(statementEnding: number, bookEnding: number, adjustments: number) {
@@ -675,21 +643,29 @@ export function calculateReconciliationDifference(statementEnding: number, bookE
 }
 ```
 
-- [ ] **Step 3: Implement Bank & Cash and reconciliation routes**
+Completion requires zero difference and no unresolved required items.
 
-Statement source must display `Demo imported statement` for seed data. Never show `Connected` unless a verified live integration adapter exists.
+- [ ] **Step 3: Implement routes and UI**
+
+Routes:
+- `/finance/accounting/accounts-receivable`
+- `/finance/accounting/accounts-payable`
+- `/finance/accounting/bank-cash`
+- `/finance/accounting/reconciliation`
+
+Invoices/bills link to accounting impact journals. Demo statements display `Demo imported statement`. No live bank, card, gateway, or money-movement state is shown as connected.
 
 - [ ] **Step 4: Run tests and commit**
 
 ```bash
-npm test -- tests/unit/accounting-reconciliation.test.ts tests/integration/routes.test.tsx
-git add packages/accounting/src/reconciliation.ts packages/accounting/src/demoRepository.ts apps/web/src/modules/finance/accounting tests
-git commit -m "feat: add bank cash and reconciliation workflows"
+npm test -- tests/unit/accounting-reconciliation.test.ts tests/integration/accounting-repository.test.ts tests/integration/routes.test.tsx
+git add packages/accounting apps/web/src/modules/finance/accounting tests
+git commit -m "feat: add receivables payables bank cash and reconciliation"
 ```
 
 ---
 
-### Task 9: Implement fixed assets, period close, reports, audit trail, and Accounting settings
+### Task 8: Implement fixed assets, close, reports, audit trail, and settings
 
 **Files:**
 - Create: `packages/accounting/src/assets.ts`
@@ -700,19 +676,25 @@ git commit -m "feat: add bank cash and reconciliation workflows"
 - Create: `apps/web/src/modules/finance/accounting/AuditTrailPage.tsx`
 - Create: `apps/web/src/modules/finance/accounting/AccountingSettingsPage.tsx`
 - Modify: `packages/accounting/src/demoRepository.ts`
+- Modify: `packages/accounting/src/index.ts`
 - Modify: `apps/web/src/modules/finance/accounting/AccountingRoutes.tsx`
 - Test: `tests/unit/accounting-assets.test.ts`
 - Test: `tests/unit/accounting-reports.test.ts`
 - Test: `tests/integration/accounting-repository.test.ts`
 
 **Interfaces:**
-- Produces: `straightLineSchedule`, `trialBalance`, `profitAndLoss`, `balanceSheet`, close validation/locking, audit viewer, effective settings.
+- Produces: `straightLineSchedule`, `trialBalance`, `profitAndLoss`, `balanceSheet`, period-close validation/locking, audit view, effective settings.
 
-- [ ] **Step 1: Write depreciation and report invariant tests**
+- [ ] **Step 1: Write failing asset/report/close tests**
 
 ```ts
-it('straight-line depreciation never exceeds depreciable basis', () => {
-  const schedule = straightLineSchedule({ cost: 12000, salvageValue: 0, usefulLifeMonths: 12, acquisitionDate: '2026-01-01' });
+it('straight-line depreciation does not exceed depreciable basis', () => {
+  const schedule = straightLineSchedule({
+    cost: 12000,
+    salvageValue: 0,
+    usefulLifeMonths: 12,
+    acquisitionDate: '2026-01-01'
+  });
   expect(schedule.reduce((sum, row) => sum + row.depreciation, 0)).toBe(12000);
 });
 
@@ -722,11 +704,11 @@ it('trial balance debits equal credits', async () => {
 });
 ```
 
-- [ ] **Step 2: Implement deterministic asset and report calculations**
+- [ ] **Step 2: Implement deterministic reports and depreciation**
 
-Reports must consume posted journal data from the repository. P&L and Balance Sheet mappings derive from `accountType`; AR/AP Aging consume the same open invoices/bills used by their pages.
+Reports consume the same posted journals used by the ledger. P&L and Balance Sheet classifications derive from account types. AR/AP Aging uses the same open invoices/bills as Task 7.
 
-- [ ] **Step 3: Implement period close guard**
+- [ ] **Step 3: Implement close guard and locked-period behavior**
 
 ```ts
 export type CloseCheck = {
@@ -741,9 +723,9 @@ export function canClosePeriod(check: CloseCheck) {
 }
 ```
 
-Repository close must additionally require `accounting.close`, emit `period.close` audit event, and block later journal posting into the locked period.
+Repository close also requires `accounting.close`, emits `period.close`, and prevents later journal posting into the locked period.
 
-- [ ] **Step 4: Implement UI routes and permission states**
+- [ ] **Step 4: Implement routes and permission states**
 
 Routes:
 - `/finance/accounting/fixed-assets`
@@ -752,7 +734,7 @@ Routes:
 - `/finance/accounting/audit-trail`
 - `/finance/accounting/settings`
 
-Audit Trail requires `audit.read`. Settings expose only fiscal year start, base currency, supported accounting basis, and default AR/AP control accounts that actually affect repository behavior.
+Audit Trail requires `audit.read`. Settings expose only fiscal year start, base currency, supported accounting basis, and default AR/AP control accounts that affect repository behavior.
 
 - [ ] **Step 5: Run tests and commit**
 
@@ -760,12 +742,12 @@ Audit Trail requires `audit.read`. Settings expose only fiscal year start, base 
 npm test -- tests/unit/accounting-assets.test.ts tests/unit/accounting-reports.test.ts tests/integration/accounting-repository.test.ts
 npm run typecheck
 git add packages/accounting apps/web/src/modules/finance/accounting tests
-git commit -m "feat: complete accounting close reports assets audit and settings"
+git commit -m "feat: complete accounting assets close reports audit and settings"
 ```
 
 ---
 
-### Task 10: Add critical E2E flows, responsive checks, build gates, and production verification hooks
+### Task 9: Add E2E flows, responsive checks, CI, build health, and deployment verification
 
 **Files:**
 - Create: `playwright.config.ts`
@@ -776,31 +758,31 @@ git commit -m "feat: complete accounting close reports assets audit and settings
 - Modify: `README.md`
 
 **Interfaces:**
-- Produces: reproducible CI gates and a static health artifact for deployment smoke verification until a server-side `/healthz` endpoint exists.
+- Produces: repeatable release gates and a static-build health artifact; it does not claim backend or external integration health.
 
-- [ ] **Step 1: Write E2E flows before declaring the milestone complete**
+- [ ] **Step 1: Write critical E2E flows**
 
 ```ts
 import { test, expect } from '@playwright/test';
 
-test('authorized user can post a balanced journal and see it in ledger', async ({ page }) => {
+test('authorized user posts a balanced journal and sees it in the ledger', async ({ page }) => {
   await page.goto('/finance/accounting/journal-entries');
   await page.getByRole('link', { name: /Demo draft/i }).click();
-  await page.getByRole('button', { name: /Post journal/i }).click();
-  await expect(page.getByText(/Posted successfully/i)).toBeVisible();
+  await page.getByRole('button', { name: 'Post journal' }).click();
+  await expect(page.getByText('Posted successfully')).toBeVisible();
   await page.goto('/finance/accounting/general-ledger');
-  await expect(page.getByText(/j-draft/i)).toBeVisible();
+  await expect(page.getByText('j-draft')).toBeVisible();
 });
 
-test('unknown route renders intentional not-found state', async ({ page }) => {
+test('unknown routes render an intentional state', async ({ page }) => {
   await page.goto('/route-that-does-not-exist');
-  await expect(page.getByRole('heading', { name: /Route not found/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Route not found' })).toBeVisible();
 });
 ```
 
-Add tests for: COA search/filter, unbalanced-journal rejection, reconciliation to zero, period close, permission denial, Health navigation round trip, and mobile navigation at a phone viewport.
+Also cover COA search/filter, unbalanced journal rejection, reconciliation to zero, period close, permission denial, Accounting-to-Health round trip, desktop/tablet/mobile navigation, and empty/error states.
 
-- [ ] **Step 2: Run complete local gates**
+- [ ] **Step 2: Run full local gates**
 
 ```bash
 npm run typecheck
@@ -811,9 +793,7 @@ npm run test:e2e
 
 Expected: all PASS.
 
-- [ ] **Step 3: Add CI workflow**
-
-Workflow sequence:
+- [ ] **Step 3: Add CI**
 
 ```yaml
 steps:
@@ -830,9 +810,9 @@ steps:
   - run: npm run test:e2e
 ```
 
-CI must not contain deployment credentials. Deployment stays behind separately authorized production secrets/workflows.
+CI contains no deployment credentials.
 
-- [ ] **Step 4: Add health artifact and README status language**
+- [ ] **Step 4: Add static-build health artifact**
 
 `apps/web/public/healthz.json`:
 
@@ -844,20 +824,16 @@ CI must not contain deployment credentials. Deployment stays behind separately a
 }
 ```
 
-README must say this file verifies the deployed static build only; it does not prove datastore, external integrations, or server health.
+README must state that this proves only that the deployed static web artifact is reachable; it does not prove datastore, external integration, or server health.
 
-- [ ] **Step 5: Verify after authorized deployment**
-
-Run smoke checks against the deployed site:
+- [ ] **Step 5: Verify after an authorized production deployment**
 
 ```bash
 curl -f https://www.atlasenterprisesuite.com/healthz.json
 curl -I https://www.atlasenterprisesuite.com/finance/accounting
 ```
 
-Then manually or automatically verify `/`, `/finance/accounting`, `/finance/accounting/journal-entries`, `/finance/accounting/reports`, and `/health` return the intended app instead of 404/403/500.
-
-Do not mark production complete if deployment credentials are unavailable, the deploy workflow fails, the domain returns 403/404/500, or route rewrites are not configured.
+Smoke-test `/`, `/finance/accounting`, `/finance/accounting/journal-entries`, `/finance/accounting/reports`, and `/health`. Do not claim production if credentials are unavailable, deployment fails, the domain returns 403/404/500, SPA rewrites are broken, or any required gate lacks evidence.
 
 - [ ] **Step 6: Commit**
 
@@ -870,9 +846,9 @@ git commit -m "test: add ATLAS Core Accounting release gates"
 
 ## Completion Gate
 
-The milestone is complete only when all ten tasks are committed and the following evidence exists:
+The milestone is complete only when all nine tasks are committed and evidence confirms:
 
-1. `npm install`/`npm ci` succeeds.
+1. `npm install` or `npm ci` succeeds.
 2. `npm run typecheck` passes.
 3. Unit and integration tests pass.
 4. Critical Playwright flows pass.
@@ -881,8 +857,8 @@ The milestone is complete only when all ten tasks are committed and the followin
 7. No active UI control is a dead placeholder.
 8. Demo data is visibly labeled and internally balanced.
 9. Permission-gated mutations are tested.
-10. Tenant/organization scoping is tested.
+10. Tenant and organization scoping is tested.
 11. Health remains navigable inside the shared shell.
 12. CI passes on the implementation commit.
-13. If deployment is authorized, production deployment succeeds and the health/static-build check plus key-route smoke tests pass.
-14. Production is not claimed when any gate above lacks evidence.
+13. When deployment is authorized, production deployment succeeds and static-build health plus key-route smoke tests pass.
+14. Production is not claimed when any gate lacks evidence.
