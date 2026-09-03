@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { agingBucket, effectiveStatus, filterBills, openBalance, summarizeAging, summarizePayables } from '../../packages/accounting/src';
-import { bills, payablesAsOf, vendors } from '../../data/demo/accounting/payablesSeed';
+import {
+  agingBucket,
+  effectiveStatus,
+  filterBills,
+  openBalance,
+  scopePayablesData,
+  summarizeAging,
+  summarizePayables
+} from '../../packages/accounting/src';
+import { bills, payablesAsOf, paymentApplications, vendors } from '../../data/demo/accounting/payablesSeed';
 
 describe('ATLAS Accounts Payable domain', () => {
   it('calculates open balance without going negative', () => {
@@ -36,5 +44,23 @@ describe('ATLAS Accounts Payable domain', () => {
   it('filters by vendor query and overdue state', () => {
     const result = filterBills(bills, vendors, { query: 'Blue Harbor', status: 'overdue', dueWindow: 'all' }, payablesAsOf);
     expect(result.map((bill) => bill.id)).toEqual(['bill-002']);
+  });
+
+  it('excludes vendors, bills, and payments outside the active tenant scope', () => {
+    const foreignScope = { tenantId: 'tenant-foreign', organizationId: 'org-foreign' };
+    const foreignVendor = { ...vendors[0], ...foreignScope, id: 'vendor-foreign', vendorCode: 'V-FOREIGN', name: 'Foreign Vendor' };
+    const foreignBill = { ...bills[0], ...foreignScope, id: 'bill-foreign', vendorId: foreignVendor.id, billNumber: 'FOREIGN-001' };
+    const foreignPayment = { ...paymentApplications[0], ...foreignScope, id: 'payapp-foreign', billId: foreignBill.id, reference: 'FOREIGN-PMT' };
+
+    const scoped = scopePayablesData(
+      { tenantId: 'tenant-demo', organizationId: 'org-demo' },
+      [...vendors, foreignVendor],
+      [...bills, foreignBill],
+      [...paymentApplications, foreignPayment]
+    );
+
+    expect(scoped.vendors.some((vendor) => vendor.id === foreignVendor.id)).toBe(false);
+    expect(scoped.bills.some((bill) => bill.id === foreignBill.id)).toBe(false);
+    expect(scoped.paymentApplications.some((payment) => payment.id === foreignPayment.id)).toBe(false);
   });
 });
