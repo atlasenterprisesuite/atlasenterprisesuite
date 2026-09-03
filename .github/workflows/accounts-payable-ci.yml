@@ -15,7 +15,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - name: Install dependencies
+        shell: bash
+        run: |
+          npm install --verbose || {
+            echo "=== npm resolver debug log ==="
+            cat ~/.npm/_logs/*-debug-0.log
+            exit 1
+          }
       - run: npm audit --audit-level=high
       - run: npm run typecheck
       - run: npm run test:unit
