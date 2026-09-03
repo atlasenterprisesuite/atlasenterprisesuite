@@ -1,3 +1,4 @@
+export * from './journalWrites';
 export * from './repository';
 export * from './supabaseRepository';
 export * from './types';
