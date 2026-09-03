@@ -1,0 +1,6 @@
+{
+  "status": "ok",
+  "service": "atlas-enterprise-suite-web",
+  "module": "accounts-payable",
+  "environment": "build-artifact"
+}
