@@ -5,6 +5,7 @@ on:
     branches: [main]
   push:
     branches:
+      - main
       - feat/atlas-health-disease-reconstruction-lab
 
 permissions:
