@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
+import { demoAtlasContext, hasPermission } from '../../../../../../packages/core/src';
 import {
   agingBucket,
   effectiveStatus,
   filterBills,
   openBalance,
+  scopePayablesData,
   summarizeAging,
   summarizePayables,
   type Bill,
@@ -11,21 +13,30 @@ import {
   type DueWindow
 } from '../../../../../../packages/accounting/src';
 import {
-  bills,
+  bills as demoBills,
   payablesAsOf,
   payablesDemoNotice,
-  paymentApplications,
-  vendors
+  paymentApplications as demoPaymentApplications,
+  vendors as demoVendors
 } from '../../../../../../data/demo/accounting/payablesSeed';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const date = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const scopedData = scopePayablesData(
+  demoAtlasContext.scope,
+  demoVendors,
+  demoBills,
+  demoPaymentApplications
+);
+const bills = scopedData.bills;
+const vendors = scopedData.vendors;
+const paymentApplications = scopedData.paymentApplications;
 
 function vendorFor(bill: Bill) {
   return vendors.find((vendor) => vendor.id === bill.vendorId);
 }
 
-export function PayablesPage() {
+function PayablesWorkspace() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<BillStatus | 'all'>('all');
   const [dueWindow, setDueWindow] = useState<DueWindow>('all');
@@ -44,7 +55,7 @@ export function PayablesPage() {
     });
   }, [query, status, dueWindow, sort]);
 
-  const selected = bills.find((bill) => bill.id === selectedId) ?? visibleBills[0];
+  const selected = visibleBills.find((bill) => bill.id === selectedId) ?? visibleBills[0];
   const selectedVendor = selected ? vendorFor(selected) : undefined;
   const selectedPayments = selected
     ? paymentApplications.filter((payment) => payment.billId === selected.id)
@@ -166,4 +177,20 @@ export function PayablesPage() {
       )}
     </div>
   );
+}
+
+export function PayablesPage() {
+  if (!hasPermission(demoAtlasContext.permissions, 'accounting.read')) {
+    return (
+      <section className="page-stack">
+        <header className="page-header">
+          <p className="eyebrow">Finance / Accounting</p>
+          <h1>Access denied</h1>
+          <p>Your current ATLAS role does not include permission to read Accounts Payable.</p>
+        </header>
+      </section>
+    );
+  }
+
+  return <PayablesWorkspace />;
 }
