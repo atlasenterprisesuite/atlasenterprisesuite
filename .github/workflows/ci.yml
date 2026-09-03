@@ -1,0 +1,31 @@
+name: ATLAS CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Verify frontend syntax
+        run: node --check src/app.js
+      - name: Verify server syntax
+        run: node --check server.mjs
+      - name: Run tests
+        run: npm test
