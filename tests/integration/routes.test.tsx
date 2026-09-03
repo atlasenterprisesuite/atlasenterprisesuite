@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
 import { App } from '../../apps/web/src/App';
 
 test('renders the ATLAS application root', () => {
