@@ -4,6 +4,7 @@ import { AtlasShell } from './components/AtlasShell';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
+import { SpatialEntry } from './spatial/SpatialEntry';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -31,27 +32,17 @@ function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: s
   );
 }
 
-function EnterpriseHome() {
-  return (
-    <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed ecosystem" description="Enterprise foundations for connected business and health modules, built with explicit security, evide[...]" />
-      <div className="hero-grid">
-        <article className="feature-card accent"><p className="eyebrow">Active foundation</p><h2>ATLAS Health</h2><p>Health research architecture with explicit separation between evidence, hypothe[...]</p></article>
-        <article className="feature-card"><p className="eyebrow">Environment</p><h2>Development</h2><p>No live clinical integrations, patient data, or production datastore are represented in this [...]</p></article>
-      </div>
-    </section>
-  );
-}
-
 function HealthHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="Health" title="ATLAS Health" description="A governed smart-health and biomedical research ecosystem. This milestone implements the research layer without pretending to b[...]" />
+      <PageHeader eyebrow="Health" title="ATLAS Health" description="A governed smart-health and biomedical research ecosystem. This milestone exposes research functionality without pretending to be a live clinical system." />
       <ResearchBadge />
       <div className="module-grid">
-        <Link className="module-card enabled" to="/health/research"><span>Research & Innovation</span><strong>Health Frontiers</strong><p>Evidence registry, Neural Graph, falsification, reconstruc[...]</p></Link>
-        <div className="module-card disabled" aria-disabled="true"><span>Clinical systems</span><strong>Not configured</strong><p>EHR, FHIR, HL7 and patient workflows are intentionally absent from[...]</p></div>
-        <div className="module-card disabled" aria-disabled="true"><span>Hospital operations</span><strong>No live connection</strong><p>No fabricated census, bed, staffing, pharmacy or facility m[...]</p></div>
+        <Link className="module-card enabled" to="/health/research">
+          <span>Research & Innovation</span><strong>Health Frontiers</strong><p>Evidence registry, Neural Graph, falsification and transparent reconstruction models.</p>
+        </Link>
+        <div className="module-card disabled" aria-disabled="true"><span>Clinical systems</span><strong>Not configured</strong><p>No EHR, FHIR, HL7 or patient workflow is represented as connected.</p></div>
+        <div className="module-card disabled" aria-disabled="true"><span>Hospital operations</span><strong>No live connection</strong><p>No fabricated census, bed, staffing, pharmacy or facility metric is shown.</p></div>
       </div>
     </section>
   );
@@ -60,10 +51,10 @@ function HealthHome() {
 function ResearchHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Health" title="Research & Innovation" description="Convert biomedical claims into traceable evidence, mechanisms, contradictions and testable reconstruction models[...]" />
+      <PageHeader eyebrow="ATLAS Health" title="Research & Innovation" description="Convert biomedical claims into traceable evidence, mechanisms, contradictions and testable reconstruction models." />
       <ResearchBadge />
       <Link className="feature-card link-card" to="/health/research/frontiers">
-        <p className="eyebrow">Research program</p><h2>Health Frontiers</h2><p>Cross-disease investigation with explicit falsification and evidence-level controls.</p><span className="action-link">[...]</span>
+        <p className="eyebrow">Research program</p><h2>Health Frontiers</h2><p>Cross-disease investigation with explicit falsification and evidence-level controls.</p><span className="action-link">Open Health Frontiers</span>
       </Link>
     </section>
   );
@@ -72,10 +63,10 @@ function ResearchHome() {
 function FrontiersHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="Research & Innovation" title="Health Frontiers" description="A structured research workspace for persistent diseases, causal mechanisms, escape routes, repair and durabl[...]" />
+      <PageHeader eyebrow="Research & Innovation" title="Health Frontiers" description="A structured research workspace for persistent disease mechanisms, escape routes, repair and durable surveillance concepts." />
       <ResearchBadge />
       <Link className="feature-card link-card accent" to={labBase}>
-        <p className="eyebrow">Core laboratory</p><h2>Disease Reconstruction Lab</h2><p>Ask what minimum surviving biological states are sufficient to reconstruct disease, then test those connecti[...]</p>
+        <p className="eyebrow">Core laboratory</p><h2>Disease Reconstruction Lab</h2><p>Model what surviving biological states may be sufficient to reconstruct disease, then challenge those connections with evidence.</p><span className="action-link">Enter laboratory</span>
       </Link>
     </section>
   );
@@ -97,20 +88,20 @@ function LabOverview() {
   const graphStatus = validateGraph(graphNodes, graphEdges, evidenceRecords);
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Health Frontiers" title="Disease Reconstruction Lab" description="Map disease persistence as seed, state, niche, adaptation, reconstruction and relapse while preserving[...]" />
+      <PageHeader eyebrow="Health Frontiers" title="Disease Reconstruction Lab" description="Map persistence as seed, state, niche, adaptation, reconstruction and relapse while preserving evidence uncertainty." />
       <ResearchBadge />
       <div className="notice">{demoDataNotice}</div>
-      <div className="stat-grid" aria-label="Repository data status">
+      <div className="stat-grid" aria-label="Repository demo data status">
         <article><strong>{diseases.length}</strong><span>demo disease workspaces</span></article>
         <article><strong>{evidenceRecords.length}</strong><span>governed demo evidence records</span></article>
         <article><strong>{graphNodes.length}</strong><span>Neural Graph nodes</span></article>
         <article><strong>{graphStatus.valid ? 'PASS' : 'FAIL'}</strong><span>graph integrity</span></article>
       </div>
       <div className="module-grid compact">
-        <Link className="module-card enabled" to={`${labBase}/neural-graph`}><span>Mechanisms</span><strong>Neural Graph</strong><p>Inspect nodes, edges, confidence and evidence references.</p></Link>
-        <Link className="module-card enabled" to={`${labBase}/evidence`}><span>Provenance</span><strong>Evidence Registry</strong><p>Separate human, preclinical, mechanistic and hypothesis-level [...]</p></Link>
-        <Link className="module-card enabled" to={`${labBase}/falsification`}><span>Challenge</span><strong>Falsification Engine</strong><p>Preserve counterexamples, escape routes, negative evide[...]</p></Link>
-        <Link className="module-card enabled" to={`${labBase}/vulnerability`}><span>Research model</span><strong>Vulnerability Engine</strong><p>Transparent, research-only reconstruction scoring [...]</p></Link>
+        <Link className="module-card enabled" to={`${labBase}/neural-graph`}><span>Mechanisms</span><strong>Neural Graph</strong><p>Inspect nodes, relationships, confidence and evidence references.</p></Link>
+        <Link className="module-card enabled" to={`${labBase}/evidence`}><span>Provenance</span><strong>Evidence Registry</strong><p>Separate human, preclinical, mechanistic and hypothesis-level records.</p></Link>
+        <Link className="module-card enabled" to={`${labBase}/falsification`}><span>Challenge</span><strong>Falsification Engine</strong><p>Preserve counterexamples, escape routes and negative evidence.</p></Link>
+        <Link className="module-card enabled" to={`${labBase}/vulnerability`}><span>Research model</span><strong>Vulnerability Engine</strong><p>Transparent research-only reconstruction scoring.</p></Link>
       </div>
     </div>
   );
@@ -119,7 +110,7 @@ function LabOverview() {
 function DiseasesPage() {
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Diseases" description="Mechanism-centered workspaces. Clinical labels do not imply a universal molecular mechanism." />
+      <PageHeader eyebrow="Disease Reconstruction Lab" title="Diseases" description="Mechanism-centered demo workspaces. Clinical labels do not imply a universal molecular mechanism." />
       <div className="disease-list">
         {diseases.map((disease) => (
           <Link key={disease.id} className="disease-row" to={`${labBase}/diseases/${disease.slug}`}>
@@ -145,7 +136,7 @@ function DiseaseDetailPage() {
       <div className="detail-grid">
         <article className="feature-card"><p className="eyebrow">Mechanisms</p><strong>{graph.nodes.length}</strong><p>governed demo graph nodes</p></article>
         <article className="feature-card"><p className="eyebrow">Evidence</p><strong>{diseaseEvidence.length}</strong><p>registered demo evidence records</p></article>
-        <article className="feature-card"><p className="eyebrow">Curability display</p><strong>{disease.curabilityLevel}</strong><p>Demo classification only; not a clinical determination.</p></article>
+        <article className="feature-card"><p className="eyebrow">Curability display</p><strong>{disease.curabilityLevel}</strong><p>Research classification only; not a clinical determination.</p></article>
       </div>
       <NeuralGraphPanel nodes={graph.nodes} edges={graph.edges} evidence={diseaseEvidence} />
     </div>
@@ -155,11 +146,12 @@ function DiseaseDetailPage() {
 function NeuralGraphPage() {
   const [diseaseId, setDiseaseId] = useState('all');
   const graph = useMemo(() => diseaseId === 'all' ? { nodes: graphNodes, edges: graphEdges } : graphForDisease(diseaseId, graphNodes, graphEdges), [diseaseId]);
+  const visibleEvidence = diseaseId === 'all' ? evidenceRecords : evidenceRecords.filter((record) => record.diseaseIds.includes(diseaseId));
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Neural Graph" description="Interactive mechanism graph. Confidence is visible; synthetic demo nodes are never promoted into scientifi[...]" />
+      <PageHeader eyebrow="Disease Reconstruction Lab" title="Neural Graph" description="Interactive mechanism registry. Confidence is visible; synthetic demo nodes are never promoted into scientific fact." />
       <label className="field">Disease filter<select value={diseaseId} onChange={(event) => setDiseaseId(event.target.value)}><option value="all">All diseases</option>{diseases.map((disease) => <option key={disease.id} value={disease.id}>{disease.name}</option>)}</select></label>
-      <NeuralGraphPanel nodes={graph.nodes} edges={graph.edges} evidence={evidenceRecords} />
+      <NeuralGraphPanel nodes={graph.nodes} edges={graph.edges} evidence={visibleEvidence} />
     </div>
   );
 }
@@ -170,7 +162,7 @@ function EvidencePage() {
   const filtered = evidenceRecords.filter((record) => (level === 'all' || record.evidenceLevel === level) && (status === 'all' || record.status === status));
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Evidence Registry" description="Every record exposes provenance, evidence level, limitations, replication state, confidence and scien[...]" />
+      <PageHeader eyebrow="Disease Reconstruction Lab" title="Evidence Registry" description="Every demo record exposes provenance, evidence level, limitations, replication state and status." />
       <div className="filter-row">
         <label className="field">Evidence level<select value={level} onChange={(event) => setLevel(event.target.value as 'all' | EvidenceLevel)}><option value="all">All levels</option><option value="human">Human</option><option value="preclinical">Preclinical</option><option value="mechanistic">Mechanistic</option><option value="hypothesis">Hypothesis</option></select></label>
         <label className="field">Status<select value={status} onChange={(event) => setStatus(event.target.value as 'all' | EvidenceStatus)}><option value="all">All statuses</option><option value="active">Active</option><option value="retracted">Retracted</option></select></label>
@@ -192,7 +184,7 @@ function EvidencePage() {
 function FalsificationPage() {
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Falsification Engine" description="A hypothesis is not protected from bad news. Counterexamples, alternative explanations, escape rou[...]" />
+      <PageHeader eyebrow="Disease Reconstruction Lab" title="Falsification Engine" description="A hypothesis is not protected from bad news. Counterexamples, alternative explanations and escape routes remain visible." />
       {falsificationRecords.map((record) => (
         <article key={record.id} className="feature-card wide">
           <div className="card-heading"><span className="status-chip warning">{record.resultingStatus}</span><small>{record.challengeType}</small></div>
@@ -206,14 +198,13 @@ function FalsificationPage() {
 
 function VulnerabilityPage() {
   const [diseaseId, setDiseaseId] = useState(diseases[0].id);
-  const profile = vulnerabilityProfiles[diseaseId];
-  const result = calculateVulnerability(profile);
+  const result = calculateVulnerability(vulnerabilityProfiles[diseaseId]);
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Reconstruction Vulnerability Engine" description="Transparent rule-based research model. Scores are synthetic demonstration outputs, [...]" />
+      <PageHeader eyebrow="Disease Reconstruction Lab" title="Reconstruction Vulnerability Engine" description="Transparent rule-based research model. Scores are synthetic demonstration outputs, not clinical risk scores." />
       <div className="notice">Research model only · formula {result.formulaVersion}</div>
       <label className="field">Disease workspace<select value={diseaseId} onChange={(event) => setDiseaseId(event.target.value)}>{diseases.map((disease) => <option key={disease.id} value={disease.id}>{disease.name}</option>)}</select></label>
-      <div className="risk-panel"><div className="risk-score"><strong>{result.reconstructionRisk}</strong><span>/100 demo reconstruction score</span></div><div className="contribution-list">{Object.entries(result.contributionsByFactor).map(([factor, contribution]) => <div key={factor}><span>{factor}</span><span>{Math.round(contribution as number)}%</span></div>)}</div></div>
+      <div className="risk-panel"><div className="risk-score"><strong>{result.reconstructionRisk}</strong><span>/100 demo reconstruction score</span></div><div className="contribution-list">{Object.entries(result.contributionsByFactor).map(([factor, contribution]) => <div key={factor}><span>{factor}</span><span>{Math.round(contribution)} pts</span></div>)}</div></div>
     </div>
   );
 }
@@ -222,34 +213,30 @@ function CurabilityPage() {
   const levels = Object.entries(curabilityDefinitions) as [CurabilityLevel, string][];
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Curability Index" description="Research classification that separates symptom control, disease modification, remission, reproducible [...]" />
-      <div className="notice strong">C5-C7 are code-gated. A case report, animal result, hypothesis, biomarker response, or retracted record cannot promote a disease into a cure-level claim.</div>
+      <PageHeader eyebrow="Disease Reconstruction Lab" title="Curability Index" description="Research classification separating symptom control, modification, remission, reproducible cure, elimination and eradication." />
+      <div className="notice strong">C5–C7 are evidence-gated. A hypothesis, preclinical model or isolated observation cannot promote a disease into a cure-level claim.</div>
       <div className="curability-list">{levels.map(([level, definition]) => <article key={level}><strong>{level}</strong><span>{definition}</span></article>)}</div>
     </div>
   );
 }
 
 function UpdatesPage() {
-  return (
-    <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Research Updates" description="This view reports only data actually registered in the repository." /><div className="empty-state"><strong>No updates</strong><span>Register research activities to populate this feed.</span></div></div>
-  );
+  return <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Research Updates" description="This view reports only data actually registered in the repository." /><div className="empty-state"><strong>No updates</strong><span>Register governed research activity to populate this feed.</span></div></div>;
 }
 
 function SettingsPage() {
-  return (
-    <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Settings" description="Environment and governance status for this implementation milestone." /><div className="empty-state"><strong>Settings unavailable</strong><span>This is a read-only demonstration environment.</span></div></div>
-  );
+  return <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Settings" description="Environment and governance status for this implementation milestone." /><div className="empty-state"><strong>Read-only development foundation</strong><span>No production datastore or external clinical integration is configured.</span></div></div>;
 }
 
 function NotFound() {
-  return <section className="page-stack"><PageHeader eyebrow="Navigation" title="Route not found" description="This route is not part of the supported ATLAS Health flow." /><Link className="action-link" to="/">Return home</Link></section>;
+  return <section className="page-stack"><PageHeader eyebrow="Navigation" title="Route not found" description="This route is not part of the supported ATLAS flow." /><Link className="action-link" to="/">Return home</Link></section>;
 }
 
 export function AppRoutes() {
   return (
     <AtlasShell>
       <Routes>
-        <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/" element={<SpatialEntry />} />
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
