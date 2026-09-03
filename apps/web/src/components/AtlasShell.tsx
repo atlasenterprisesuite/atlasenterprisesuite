@@ -2,9 +2,9 @@ import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 
 const enterpriseLinks = [
-  { to: '/', label: 'Enterprise' },
-  { to: '/health', label: 'Health' },
-  { to: '/health/research', label: 'Research & Innovation' }
+  { to: '/', label: 'Enterprise', ariaLabel: 'Enterprise home' },
+  { to: '/health', label: 'Health', ariaLabel: 'ATLAS Health workspace' },
+  { to: '/health/research', label: 'Research & Innovation', ariaLabel: 'Research workspace' }
 ];
 
 export function AtlasShell({ children }: { children: ReactNode }) {
@@ -17,7 +17,13 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="topnav" aria-label="Primary navigation">
           {enterpriseLinks.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => isActive ? 'active' : undefined}>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              aria-label={item.ariaLabel}
+              end={item.to === '/'}
+              className={({ isActive }) => isActive ? 'active' : undefined}
+            >
               {item.label}
             </NavLink>
           ))}
