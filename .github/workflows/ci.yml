@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
-          cache: npm
       - name: Verify frontend syntax
         run: node --check src/app.js
       - name: Verify server syntax
