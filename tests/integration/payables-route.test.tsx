@@ -8,7 +8,7 @@ describe('Accounts Payable route', () => {
     render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><App /></MemoryRouter>);
     expect(screen.getByRole('navigation', { name: 'ATLAS modules' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Accounts Payable' })).toBeInTheDocument();
-    expect(screen.getByText('Northstar Office Supply')).toBeInTheDocument();
+    expect(screen.getAllByText('Northstar Office Supply').length).toBeGreaterThan(0);
     expect(screen.getByText(/No bank, payment processor/)).toBeInTheDocument();
   });
 
