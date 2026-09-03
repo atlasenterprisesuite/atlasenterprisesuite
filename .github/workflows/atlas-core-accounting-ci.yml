@@ -50,6 +50,9 @@ jobs:
       - name: Journal RPC gateway tests
         run: npm test -- tests/integration/journal-rpc-gateway.test.ts
 
+      - name: Journal Entries UI tests
+        run: npm test -- tests/integration/journal-entries-ui.test.tsx
+
       - name: Runtime real-data safety scan
         run: |
           if grep -R -nE 'DemoAccountingRepository|data/demo|tenant-demo|org-demo|Demo environment' apps/web/src packages/accounting/src 2>/dev/null; then
