@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, test } from 'vitest';
 import {
   AtlasProvider,
@@ -41,11 +42,13 @@ function repositoryWith(overrides: Partial<AccountingRepository> = {}): Accounti
 
 function renderAccounting(repository: AccountingRepository | null) {
   render(
-    <AtlasProvider source={source}>
-      <AccountingRepositoryProvider repository={repository}>
-        <AccountingPage />
-      </AccountingRepositoryProvider>
-    </AtlasProvider>,
+    <MemoryRouter>
+      <AtlasProvider source={source}>
+        <AccountingRepositoryProvider repository={repository}>
+          <AccountingPage />
+        </AccountingRepositoryProvider>
+      </AtlasProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -55,6 +58,13 @@ test('shows a truthful empty state when the organization has no accounting rows'
   expect(await screen.findByRole('heading', { name: 'Accounting' })).toBeInTheDocument();
   expect(await screen.findByText('No accounting records')).toBeInTheDocument();
   expect(screen.queryByText(/demo/i)).not.toBeInTheDocument();
+});
+
+test('links Accounting to the real Journal Entries route', async () => {
+  renderAccounting(repositoryWith());
+
+  const link = await screen.findByRole('link', { name: 'Journal Entries' });
+  expect(link).toHaveAttribute('href', '/finance/accounting/journal-entries');
 });
 
 test('shows counts derived only from repository records', async () => {
