@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { expect, it, test } from 'vitest';
+import { afterEach, expect, it, test } from 'vitest';
 import { App } from '../../apps/web/src/App';
+
+afterEach(cleanup);
 
 test('renders the ATLAS application root', () => {
   render(
