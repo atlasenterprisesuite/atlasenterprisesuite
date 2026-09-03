@@ -1,9 +1,6 @@
 name: ATLAS Spatial Entry CI
 
 on:
-  push:
-    branches:
-      - atlas/spatial-entry-v1
   pull_request:
     branches:
       - main
