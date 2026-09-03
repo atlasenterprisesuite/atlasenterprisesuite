@@ -8,7 +8,7 @@ const checks = [
   { name: 'placeholder href', regex: /href\s*=\s*["']#["']/g },
   { name: 'Coming Soon placeholder', regex: /Coming Soon/gi },
   { name: 'hard-coded private key', regex: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
-  { name: 'hard-coded common secret', regex: /(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][A-Za-z0-9_\-]{20,}["']/gi },
+  { name: 'hard-coded common secret', regex: /(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][A-Za-z0-9_-]{20,}["']/gi },
   { name: 'unsupported cure claim', regex: /(?:HIV|Alzheimer|Parkinson|type 1 diabetes|fibrosis).{0,24}(?:is cured|has been cured|cure confirmed)/gi }
 ];
 
