@@ -4,7 +4,7 @@
 
 **Goal:** Build the first functional ATLAS Mobility → Aviation experience with a 10-model ATLAS concept-aircraft catalog, evidence-aware aircraft detail, certification intelligence, read-only investment intelligence, saved aircraft, alerts, responsive navigation, and truthful empty/stale/restricted states without inventing production metrics.
 
-**Architecture:** Extend the existing zero-runtime-dependency Node 22 ATLAS foundation instead of creating a second application shell. Convert the current single-module router/app entry into a small module registry, keep Site Review isolated, and add `src/modules/aviation/` with focused domain, store, service, alert, view-model, and UI files. The first persistence layer remains in memory but all UI consumers call a service boundary so durable storage can replace it later.
+**Architecture:** Extend the existing zero-runtime-dependency Node 22 ATLAS foundation instead of creating a second application shell. Convert the current single-module router/app entry into a small module registry, keep Site Review isolated, and add `src/modules/aviation/` with focused status, concept-data, store, service, alert, view-model, and UI files. The first persistence layer remains in memory, but all UI consumers call a service boundary so durable storage can replace it later.
 
 **Tech Stack:** Node.js >=22, native ES modules, `node:test`, `node:assert/strict`, vanilla HTML/CSS/JavaScript, existing static `server.mjs`, zero runtime dependencies.
 
@@ -16,7 +16,7 @@
 - Keep zero runtime dependencies for this implementation.
 - Do not copy Doroni, Instagram, manufacturer, or third-party proprietary UI/assets.
 - Do not present share price, valuation, market size, range, speed, certification, delivery, funding, or availability as production truth without evidence.
-- The initial ATLAS aircraft lineup is internal concept data; all unvalidated engineering metrics remain `null` and render as “Not validated”.
+- The initial ATLAS aircraft lineup is internal concept data; all unvalidated engineering metrics remain `null` and render as `Not validated`.
 - No securities transaction execution. Investment actions are read-only intelligence plus official-source links when available.
 - Distinguish `empty`, `loading`, `ready`, `stale`, `not_configured`, `error`, and `restricted` states.
 - All sensitive editing capabilities remain authorization-gated even though editing UI is not part of this slice.
@@ -25,47 +25,36 @@
 
 ---
 
-## File Structure Locked for This Plan
+## File Structure
 
 ### Core files modified
-
 - `src/core/routes.js` — declarative route registry and Aviation route matching.
-- `src/core/permissions.js` — central Aviation capabilities added to existing role model.
-- `src/app.js` — thin route dispatcher only.
-- `src/index.html` — shared ATLAS shell containers; module content mounted at runtime.
-- `src/styles.css` — shared tokens plus shell/responsive primitives only.
-- `server.mjs` — serve all recognized SPA routes through `index.html`.
+- `src/core/permissions.js` — central Aviation capabilities.
+- `src/app.js` — thin route dispatcher.
+- `src/index.html` — shared ATLAS shell containers.
+- `src/styles.css` — shared tokens and shell/responsive primitives.
+- `server.mjs` — explicit SPA route serving.
 
-### Site Review files modified/created
-
-- `src/modules/site-review/site-review-app.js` — receives the existing Site Review boot/render/event code currently embedded in `src/app.js`.
+### Site Review file created/modified
+- `src/modules/site-review/site-review-app.js` — receives the existing Site Review browser bootstrap currently embedded in `src/app.js`.
 
 ### Aviation files created
-
-- `src/modules/aviation/aviation-concepts.js` — internal 10-model ATLAS concept lineup and internal provenance records.
-- `src/modules/aviation/aviation-status.js` — state enums, stale calculation, certification normalization, and evidence precedence/conflict rules.
+- `src/modules/aviation/aviation-concepts.js` — 10 approved internal ATLAS concept records and internal provenance.
+- `src/modules/aviation/aviation-status.js` — state enums, stale calculation, certification normalization, evidence precedence/conflicts.
 - `src/modules/aviation/aviation-store.js` — deterministic in-memory aircraft/save/alert repository.
-- `src/modules/aviation/aviation-service.js` — search, filters, detail composition, save toggles, investment/certification read models.
-- `src/modules/aviation/aviation-alerts.js` — alert rule validation and evidence-change evaluation.
-- `src/modules/aviation/aviation-ui.js` — pure view-model builders and escaping helpers.
+- `src/modules/aviation/aviation-service.js` — search, filters, detail composition, save toggles, certification/investment read models.
+- `src/modules/aviation/aviation-alerts.js` — alert validation and evidence-change evaluation.
+- `src/modules/aviation/aviation-ui.js` — pure view models and escaping helpers.
 - `src/modules/aviation/aviation-app.js` — DOM mount/render/event orchestration.
-- `src/modules/aviation/aviation.css` — module-specific visual system for the approved blue-black Aviation direction.
+- `src/modules/aviation/aviation.css` — approved ATLAS Aviation blue-black visual layer.
 
-### Tests created/modified
-
-- `tests/routes.test.mjs`
-- `tests/permissions.test.mjs`
-- `tests/server.test.mjs`
-- `tests/aviation-status.test.mjs`
-- `tests/aviation-store.test.mjs`
-- `tests/aviation-service.test.mjs`
-- `tests/aviation-alerts.test.mjs`
-- `tests/aviation-ui.test.mjs`
-- `tests/app-regression.test.mjs` if an import-safe dispatcher test is needed after Task 1.
+### Tests
+- Modify: `tests/routes.test.mjs`, `tests/permissions.test.mjs`, `tests/server.test.mjs`.
+- Create: `tests/aviation-status.test.mjs`, `tests/aviation-store.test.mjs`, `tests/aviation-service.test.mjs`, `tests/aviation-alerts.test.mjs`, `tests/aviation-ui.test.mjs`.
 
 ---
 
-### Task 1: Generalize the ATLAS Route Registry and Module Dispatcher
+### Task 1: Generalize the ATLAS Route Registry and Dispatcher
 
 **Files:**
 - Modify: `src/core/routes.js`
@@ -75,10 +64,10 @@
 
 **Interfaces:**
 - Produces: `resolveRoute(pathname) -> { id, module, path, params, title, status }`.
-- Produces: `mountSiteReviewApp({ route })` from `site-review-app.js`.
-- Later tasks consume route ids `aviation-home`, `aviation-aircraft-index`, `aviation-aircraft-detail`, `aviation-certification`, `aviation-saved`, and `aviation-alerts`.
+- Produces: `mountSiteReviewApp({ route })`.
+- Later tasks consume route ids `aviation-home`, `aviation-aircraft-index`, `aviation-aircraft-detail`, `aviation-certification`, `aviation-saved`, `aviation-alerts`.
 
-- [ ] **Step 1: Replace the route test with failing multi-module expectations**
+- [ ] **Step 1: Write failing multi-module route tests**
 
 ```js
 import test from 'node:test';
@@ -90,12 +79,12 @@ test('resolves existing Site Review routes', () => {
   assert.equal(resolveRoute('/sites/review').id, 'site-review');
 });
 
-test('resolves Aviation routes and aircraft id params', () => {
+test('resolves Aviation routes and aircraft params', () => {
   assert.equal(resolveRoute('/mobility/aviation').id, 'aviation-home');
   assert.equal(resolveRoute('/mobility/aviation/aircraft').id, 'aviation-aircraft-index');
-  const detail = resolveRoute('/mobility/aviation/aircraft/atlas-one');
+  const detail = resolveRoute('/mobility/aviation/aircraft/atlas-a1');
   assert.equal(detail.id, 'aviation-aircraft-detail');
-  assert.equal(detail.params.aircraftId, 'atlas-one');
+  assert.equal(detail.params.aircraftId, 'atlas-a1');
   assert.equal(resolveRoute('/mobility/aviation/certification').id, 'aviation-certification');
   assert.equal(resolveRoute('/mobility/aviation/saved').id, 'aviation-saved');
   assert.equal(resolveRoute('/mobility/aviation/alerts').id, 'aviation-alerts');
@@ -107,15 +96,13 @@ test('normalizes trailing slashes and returns controlled 404s', () => {
 });
 ```
 
-- [ ] **Step 2: Run the route test and verify it fails**
+- [ ] **Step 2: Verify the tests fail**
 
 Run: `node --test tests/routes.test.mjs`
 
-Expected: FAIL because Aviation routes are not yet defined.
+Expected: FAIL because Aviation routes are absent.
 
-- [ ] **Step 3: Implement a declarative route resolver**
-
-Replace `src/core/routes.js` with a registry that normalizes paths and matches one dynamic aircraft segment:
+- [ ] **Step 3: Implement the route registry**
 
 ```js
 const ROUTES = Object.freeze([
@@ -140,26 +127,28 @@ export function resolveRoute(pathname) {
     const match = path.match(route.pattern);
     if (!match) continue;
     const params = Object.fromEntries((route.paramNames ?? []).map((name, index) => [name, decodeURIComponent(match[index + 1])]));
-    return Object.freeze({ ...route, pattern: undefined, paramNames: undefined, path, params, status: 200 });
+    return Object.freeze({ id: route.id, module: route.module, path, params, title: route.title, status: 200 });
   }
   return Object.freeze({ id: 'not-found', module: null, path, params: {}, title: 'Not Found', status: 404 });
 }
 ```
 
-- [ ] **Step 4: Extract existing Site Review bootstrap from `src/app.js`**
+- [ ] **Step 4: Extract Site Review browser bootstrap without changing behavior**
 
-Move the current Site Review imports, state, DOM references, rendering functions, event listeners, and initialization into `src/modules/site-review/site-review-app.js`. Wrap execution in:
+Move the existing Site Review-specific imports and all browser initialization code currently in `src/app.js` into `src/modules/site-review/site-review-app.js`. The move begins with the imports of `hasCapability`, review store/service, audit engine, and Site Review UI helpers, and includes the existing state, DOM lookups, render functions, event listeners, and initialization calls. Remove only the current `resolveRoute` import and unsupported-route guard. Wrap the moved browser initialization in:
 
 ```js
 export function mountSiteReviewApp({ route }) {
-  if (route.module !== 'site-review') throw new Error('Site Review received an incompatible route');
-  // existing Site Review initialization body
+  if (route.module !== 'site-review') {
+    throw new Error('Site Review received an incompatible route');
+  }
+  // the moved Site Review initialization executes here, unchanged
 }
 ```
 
-Keep behavior unchanged. Do not refactor Site Review domain logic in this task.
+The comment above is descriptive documentation inside the plan, not code to ship. The implementation must contain the moved existing code, not that comment.
 
-- [ ] **Step 5: Make `src/app.js` a dispatcher**
+- [ ] **Step 5: Replace `src/app.js` with the dispatcher**
 
 ```js
 import { resolveRoute } from './core/routes.js';
@@ -171,13 +160,11 @@ async function boot() {
     document.body.innerHTML = '<main class="panel-empty"><h1>404</h1><p>ATLAS route not found.</p></main>';
     return;
   }
-
   if (route.module === 'site-review') {
     const { mountSiteReviewApp } = await import('./modules/site-review/site-review-app.js');
     mountSiteReviewApp({ route });
     return;
   }
-
   if (route.module === 'aviation') {
     const { mountAviationApp } = await import('./modules/aviation/aviation-app.js');
     mountAviationApp({ route });
@@ -190,13 +177,11 @@ boot().catch((error) => {
 });
 ```
 
-The Aviation import may fail until Task 7, so do not manually browse Aviation routes before that task. Route unit tests remain deterministic.
-
-- [ ] **Step 6: Run existing and route tests**
+- [ ] **Step 6: Run regression tests**
 
 Run: `npm test`
 
-Expected: all current tests plus route tests PASS. Site Review tests must remain green.
+Expected: all current tests and route tests PASS.
 
 - [ ] **Step 7: Commit**
 
@@ -214,12 +199,9 @@ git commit -m "refactor: add ATLAS module route dispatcher"
 - Modify: `tests/permissions.test.mjs`
 
 **Interfaces:**
-- Consumes: existing `capabilitiesForRole(role)` and `hasCapability(role, capability)`.
-- Produces Aviation capabilities: `aviation.view`, `aviation.search`, `aviation.save`, `aviation.alerts.manage`, `aviation.sources.view`, `aviation.sources.manage`, `aviation.records.manage`, `aviation.investment.view`, `aviation.admin`.
+- Adds: `aviation.view`, `aviation.search`, `aviation.save`, `aviation.alerts.manage`, `aviation.sources.view`, `aviation.sources.manage`, `aviation.records.manage`, `aviation.investment.view`, `aviation.admin`.
 
-- [ ] **Step 1: Add failing Aviation capability tests**
-
-Append:
+- [ ] **Step 1: Add failing capability tests**
 
 ```js
 test('owner receives every Aviation capability', () => {
@@ -227,12 +209,10 @@ test('owner receives every Aviation capability', () => {
     'aviation.view', 'aviation.search', 'aviation.save', 'aviation.alerts.manage',
     'aviation.sources.view', 'aviation.sources.manage', 'aviation.records.manage',
     'aviation.investment.view', 'aviation.admin'
-  ]) {
-    assert.equal(hasCapability('owner', capability), true);
-  }
+  ]) assert.equal(hasCapability('owner', capability), true);
 });
 
-test('client can research and save aircraft but cannot manage evidence or records', () => {
+test('client can research and save but cannot manage Aviation records', () => {
   assert.equal(hasCapability('client', 'aviation.view'), true);
   assert.equal(hasCapability('client', 'aviation.search'), true);
   assert.equal(hasCapability('client', 'aviation.save'), true);
@@ -243,25 +223,24 @@ test('client can research and save aircraft but cannot manage evidence or record
 });
 ```
 
-- [ ] **Step 2: Run and verify failure**
+- [ ] **Step 2: Verify failure**
 
 Run: `node --test tests/permissions.test.mjs`
 
-Expected: FAIL because Aviation capabilities do not exist.
-
-- [ ] **Step 3: Implement role capability groups without duplicating strings**
-
-Use arrays such as:
+- [ ] **Step 3: Implement capability groups**
 
 ```js
-const AVIATION_RESEARCH = ['aviation.view', 'aviation.search', 'aviation.save', 'aviation.alerts.manage', 'aviation.sources.view', 'aviation.investment.view'];
+const AVIATION_RESEARCH = [
+  'aviation.view', 'aviation.search', 'aviation.save', 'aviation.alerts.manage',
+  'aviation.sources.view', 'aviation.investment.view'
+];
 const AVIATION_MANAGE = ['aviation.sources.manage', 'aviation.records.manage', 'aviation.admin'];
 const ALL_AVIATION = [...AVIATION_RESEARCH, ...AVIATION_MANAGE];
 ```
 
-Owner/admin receive `ALL_AVIATION`; developer receives research plus source/record management; designer/reviewer/client receive research capabilities only. Preserve all existing Site Review capability behavior.
+Owner/admin receive `ALL_AVIATION`; developer receives research plus source/record management; designer/reviewer/client receive `AVIATION_RESEARCH`. Preserve all existing Site Review capabilities.
 
-- [ ] **Step 4: Run permission tests**
+- [ ] **Step 4: Run tests**
 
 Run: `node --test tests/permissions.test.mjs`
 
@@ -276,19 +255,18 @@ git commit -m "feat: add Aviation capabilities"
 
 ---
 
-### Task 3: Add Truthful Aviation Status and Evidence Rules
+### Task 3: Add Truthful Status and Evidence Rules
 
 **Files:**
 - Create: `src/modules/aviation/aviation-status.js`
 - Create: `tests/aviation-status.test.mjs`
 
 **Interfaces:**
-- Produces: `dataState({ value, lastVerifiedAt, now, staleAfterMs, configured=true, error=null })`.
-- Produces: `normalizeCertificationStage(sourceStage)`.
-- Produces: `selectEvidence(evidence[]) -> { primary, conflicts }`.
-- Evidence trust order: `primary_authority > primary_party > internal_verified > secondary_reputable > unverified`.
+- `dataState({ value, lastVerifiedAt, now, staleAfterMs, configured=true, error=null })`.
+- `normalizeCertificationStage(sourceStage)`.
+- `selectEvidence(evidence[]) -> { primary, conflicts }`.
 
-- [ ] **Step 1: Write failing tests for all state types and evidence conflicts**
+- [ ] **Step 1: Write failing tests**
 
 ```js
 import test from 'node:test';
@@ -297,7 +275,7 @@ import { dataState, normalizeCertificationStage, selectEvidence } from '../src/m
 
 const NOW = new Date('2026-09-03T12:00:00Z').getTime();
 
-test('distinguishes not_configured, empty, ready, stale and error', () => {
+test('distinguishes data states', () => {
   assert.equal(dataState({ configured: false, now: NOW }).status, 'not_configured');
   assert.equal(dataState({ value: null, now: NOW }).status, 'empty');
   assert.equal(dataState({ value: 'x', lastVerifiedAt: '2026-09-03T11:00:00Z', now: NOW, staleAfterMs: 7200000 }).status, 'ready');
@@ -305,14 +283,14 @@ test('distinguishes not_configured, empty, ready, stale and error', () => {
   assert.equal(dataState({ error: new Error('source failed'), now: NOW }).status, 'error');
 });
 
-test('normalizes common certification language without inventing approval', () => {
+test('normalizes certification wording without inventing approval', () => {
   assert.equal(normalizeCertificationStage('flight testing'), 'testing');
   assert.equal(normalizeCertificationStage('type certification issued'), 'approved');
   assert.equal(normalizeCertificationStage('marketing announcement'), 'announced');
   assert.equal(normalizeCertificationStage('unclear wording'), 'unknown');
 });
 
-test('prefers higher-trust evidence and preserves conflicting claims', () => {
+test('prefers authority evidence and preserves conflicts', () => {
   const result = selectEvidence([
     { id: 'mfg', trustClass: 'primary_party', claimKey: 'cert.stage', value: 'testing', retrievedAt: '2026-09-03T10:00:00Z' },
     { id: 'faa', trustClass: 'primary_authority', claimKey: 'cert.stage', value: 'review', retrievedAt: '2026-09-03T09:00:00Z' }
@@ -322,27 +300,17 @@ test('prefers higher-trust evidence and preserves conflicting claims', () => {
 });
 ```
 
-- [ ] **Step 2: Run and verify failure**
+- [ ] **Step 2: Verify failure**
 
 Run: `node --test tests/aviation-status.test.mjs`
 
-Expected: FAIL because module does not exist.
+- [ ] **Step 3: Implement deterministic logic**
 
-- [ ] **Step 3: Implement deterministic state and evidence logic**
+Use state precedence `error > not_configured > empty > stale > ready`. A non-null value with invalid/missing `lastVerifiedAt` is `stale`. Certification output is limited to `announced`, `application`, `accepted`, `testing`, `review`, `approved`, `operational`, `suspended`, `unknown`. Evidence trust order is `primary_authority > primary_party > internal_verified > secondary_reputable > unverified`, with newest retrieval time breaking ties.
 
-`dataState` precedence must be: `error`, `not_configured`, `empty`, `stale`, `ready`. Invalid/missing `lastVerifiedAt` with a non-null value returns `stale`, not `ready`.
-
-`normalizeCertificationStage` must lowercase/trim and map only explicit wording to: `announced`, `application`, `accepted`, `testing`, `review`, `approved`, `operational`, `suspended`, or `unknown`.
-
-`selectEvidence` sorts by trust class first, then newest `retrievedAt`; it returns all entries with a different `value` for the same `claimKey` in `conflicts`.
-
-- [ ] **Step 4: Run status tests**
+- [ ] **Step 4: Run tests and commit**
 
 Run: `node --test tests/aviation-status.test.mjs`
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
 
 ```bash
 git add src/modules/aviation/aviation-status.js tests/aviation-status.test.mjs
@@ -351,7 +319,7 @@ git commit -m "feat: add Aviation evidence truth rules"
 
 ---
 
-### Task 4: Create the 10-Model ATLAS Concept Catalog and Memory Store
+### Task 4: Create the 10-Model Concept Catalog and Memory Store
 
 **Files:**
 - Create: `src/modules/aviation/aviation-concepts.js`
@@ -359,11 +327,11 @@ git commit -m "feat: add Aviation evidence truth rules"
 - Create: `tests/aviation-store.test.mjs`
 
 **Interfaces:**
-- Produces: `ATLAS_CONCEPT_AIRCRAFT` frozen array.
-- Produces: `ATLAS_INTERNAL_SOURCES` frozen array.
-- Produces: `createMemoryAviationStore({ aircraft, sources })` with methods `listAircraft()`, `getAircraft(idOrSlug)`, `listSources()`, `getSource(id)`, `saveAircraft(userId, aircraftId)`, `unsaveAircraft(userId, aircraftId)`, `listSavedAircraft(userId)`, `putAlert(rule)`, `listAlerts(userId)`, `setAlertEnabled(userId, ruleId, enabled)`.
+- `ATLAS_CONCEPT_AIRCRAFT` frozen array.
+- `ATLAS_INTERNAL_SOURCES` frozen array.
+- `createMemoryAviationStore()` with aircraft/source/save/alert methods.
 
-- [ ] **Step 1: Write failing deterministic store tests**
+- [ ] **Step 1: Write failing store tests**
 
 ```js
 import test from 'node:test';
@@ -371,7 +339,7 @@ import assert from 'node:assert/strict';
 import { ATLAS_CONCEPT_AIRCRAFT } from '../src/modules/aviation/aviation-concepts.js';
 import { createMemoryAviationStore } from '../src/modules/aviation/aviation-store.js';
 
-test('ships exactly ten internal concept aircraft with no invented validated performance metrics', () => {
+test('ships exactly ten internal concepts with no invented performance metrics', () => {
   assert.equal(ATLAS_CONCEPT_AIRCRAFT.length, 10);
   for (const aircraft of ATLAS_CONCEPT_AIRCRAFT) {
     assert.equal(aircraft.recordClass, 'internal_concept');
@@ -381,10 +349,9 @@ test('ships exactly ten internal concept aircraft with no invented validated per
   }
 });
 
-test('store returns copies and save toggle is user-scoped', () => {
+test('save state is user scoped', () => {
   const store = createMemoryAviationStore();
   const aircraft = store.listAircraft();
-  assert.equal(aircraft.length, 10);
   store.saveAircraft('u1', aircraft[0].id);
   assert.deepEqual(store.listSavedAircraft('u1'), [aircraft[0].id]);
   assert.deepEqual(store.listSavedAircraft('u2'), []);
@@ -393,63 +360,47 @@ test('store returns copies and save toggle is user-scoped', () => {
 });
 ```
 
-- [ ] **Step 2: Run and verify failure**
-
-Run: `node --test tests/aviation-store.test.mjs`
-
-Expected: FAIL because catalog/store modules do not exist.
-
-- [ ] **Step 3: Define the approved concept lineup**
-
-Create exactly these internal records, using stable ids/slugs and mission labels:
+- [ ] **Step 2: Define the lineup exactly**
 
 ```js
 const LINEUP = [
-  ['atlas-a1', 'atlas-a1', 'ATLAS A1', 'Urban Air Taxi'],
-  ['atlas-a2', 'atlas-a2', 'ATLAS A2', 'Executive Mobility'],
-  ['atlas-a3', 'atlas-a3', 'ATLAS A3', 'Family Mobility'],
-  ['atlas-a4', 'atlas-a4', 'ATLAS A4', 'Cargo & Logistics'],
-  ['atlas-a5', 'atlas-a5', 'ATLAS A5', 'Emergency & Medical'],
-  ['atlas-a6', 'atlas-a6', 'ATLAS A6', 'Security & Response'],
-  ['atlas-a7', 'atlas-a7', 'ATLAS A7', 'Exploration & Remote Access'],
-  ['atlas-a8', 'atlas-a8', 'ATLAS A8', 'Personal Flight'],
-  ['atlas-a9', 'atlas-a9', 'ATLAS A9', 'Autonomous Mobility Research'],
-  ['atlas-a10', 'atlas-a10', 'ATLAS A10', 'Hydro / Coastal Mobility']
+  ['atlas-a1', 'ATLAS A1', 'Urban Air Taxi', 'A compact concept for short urban mobility research.'],
+  ['atlas-a2', 'ATLAS A2', 'Executive Mobility', 'A premium passenger concept for business-oriented regional mobility research.'],
+  ['atlas-a3', 'ATLAS A3', 'Family Mobility', 'A multi-passenger concept focused on family and small-group mobility research.'],
+  ['atlas-a4', 'ATLAS A4', 'Cargo & Logistics', 'An uncrewed-or-crewed cargo concept for logistics and supply missions.'],
+  ['atlas-a5', 'ATLAS A5', 'Emergency & Medical', 'An emergency-response concept intended for future medical transport research.'],
+  ['atlas-a6', 'ATLAS A6', 'Security & Response', 'A public-safety and infrastructure-response concept for authorized operations research.'],
+  ['atlas-a7', 'ATLAS A7', 'Exploration & Remote Access', 'A remote-access concept for research, tourism, and difficult-terrain missions.'],
+  ['atlas-a8', 'ATLAS A8', 'Personal Flight', 'A small personal-mobility concept for individual flight research.'],
+  ['atlas-a9', 'ATLAS A9', 'Autonomous Mobility Research', 'A research concept for future automation and supervised autonomous-flight systems.'],
+  ['atlas-a10', 'ATLAS A10', 'Hydro / Coastal Mobility', 'A coastal-mobility concept exploring compatible land-and-water operations.']
 ];
 ```
 
-Each record includes:
+Each aircraft is built with stable slug equal to id, `manufacturer: 'ATLAS Mobility'`, `recordClass: 'internal_concept'`, `category: 'advanced_air_mobility'`, `propulsion: 'not_validated'`, `seatCount: null`, all engineering metrics `null`, certification `not_configured/unknown`, `investmentProfileId: null`, source `atlas-concept-2026-09-03`, and `updatedAt: '2026-09-03T00:00:00Z'`.
+
+- [ ] **Step 3: Add internal provenance**
 
 ```js
-{
-  id, slug, displayName, mission,
-  manufacturer: 'ATLAS Mobility',
-  recordClass: 'internal_concept',
-  category: 'advanced_air_mobility',
-  propulsion: 'not_validated',
-  seatCount: null,
-  description: '<mission-specific factual concept description>',
-  specifications: { rangeMiles: null, maxSpeedMph: null, payloadLb: null },
-  certification: { status: 'not_configured', normalizedStage: 'unknown', evidenceIds: [] },
-  investmentProfileId: null,
-  sourceIds: ['atlas-concept-2026-09-03'],
-  updatedAt: '2026-09-03T00:00:00Z'
-}
+export const ATLAS_INTERNAL_SOURCES = Object.freeze([Object.freeze({
+  id: 'atlas-concept-2026-09-03',
+  sourceType: 'internal',
+  publisher: 'ATLAS Mobility',
+  title: 'ATLAS Aviation concept lineup approval',
+  canonicalUrl: null,
+  retrievedAt: '2026-09-03T00:00:00Z',
+  trustClass: 'internal_verified',
+  status: 'ready'
+})]);
 ```
 
-Create source `atlas-concept-2026-09-03` with `sourceType: 'internal'`, `trustClass: 'internal_verified'`, title `ATLAS Aviation concept lineup approval`, and no external URL.
+- [ ] **Step 4: Implement memory store methods**
 
-- [ ] **Step 4: Implement the memory store**
+Methods: `listAircraft`, `getAircraft`, `listSources`, `getSource`, `saveAircraft`, `unsaveAircraft`, `listSavedAircraft`, `putAlert`, `listAlerts`, `setAlertEnabled`. Use `Map`/`Set`, return copies, validate ids, and set `error.code` to `aircraft_not_found` or `alert_not_found` for missing records.
 
-Use `Map`/`Set` internally. Validate aircraft ids before save. Return copies to prevent callers mutating store state. Throw `aircraft_not_found` or `alert_not_found` errors with `error.code` set to that identifier.
-
-- [ ] **Step 5: Run store tests**
+- [ ] **Step 5: Run tests and commit**
 
 Run: `node --test tests/aviation-store.test.mjs`
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
 
 ```bash
 git add src/modules/aviation/aviation-concepts.js src/modules/aviation/aviation-store.js tests/aviation-store.test.mjs
@@ -458,18 +409,17 @@ git commit -m "feat: add ATLAS Aviation concept catalog"
 
 ---
 
-### Task 5: Build Aviation Search, Filters, Detail Composition, and Investment Boundaries
+### Task 5: Build Search, Filters, Detail, Save, Certification, and Investment Read Models
 
 **Files:**
 - Create: `src/modules/aviation/aviation-service.js`
 - Create: `tests/aviation-service.test.mjs`
 
 **Interfaces:**
-- Consumes: `createMemoryAviationStore`, `dataState`, `selectEvidence`.
-- Produces: `createAviationService({ store, hasCapability, now=Date.now })`.
-- Produces service methods: `searchAircraft({ query='', mission='', recordClass='' })`, `getAircraftDetail(idOrSlug, { role })`, `toggleSaved({ role, userId, aircraftId })`, `listSaved({ role, userId })`, `getCertificationTracker({ role })`, `getInvestmentIntelligence(idOrSlug, { role })`.
+- `createAviationService({ store, hasCapability, now=Date.now })`.
+- Methods: `searchAircraft`, `getAircraftDetail`, `toggleSaved`, `listSaved`, `getCertificationTracker`, `getInvestmentIntelligence`.
 
-- [ ] **Step 1: Write failing search/filter/detail tests**
+- [ ] **Step 1: Write failing service tests**
 
 ```js
 import test from 'node:test';
@@ -486,14 +436,14 @@ test('searches model and mission and combines filters', () => {
   assert.equal(service.searchAircraft({ query: 'zzzz' }).length, 0);
 });
 
-test('detail marks engineering metrics as not validated', () => {
+test('detail keeps engineering metrics unvalidated', () => {
   const service = createAviationService({ store: createMemoryAviationStore(), hasCapability: allow });
   const detail = service.getAircraftDetail('atlas-a1', { role: 'owner' });
   assert.equal(detail.specifications.rangeMiles.status, 'not_configured');
   assert.equal(detail.certification.status, 'not_configured');
 });
 
-test('investment intelligence is unavailable for internal concepts instead of inventing terms', () => {
+test('investment intelligence is unavailable instead of invented', () => {
   const service = createAviationService({ store: createMemoryAviationStore(), hasCapability: allow });
   const investment = service.getInvestmentIntelligence('atlas-a1', { role: 'owner' });
   assert.equal(investment.status, 'not_configured');
@@ -503,15 +453,7 @@ test('investment intelligence is unavailable for internal concepts instead of in
 });
 ```
 
-- [ ] **Step 2: Run and verify failure**
-
-Run: `node --test tests/aviation-service.test.mjs`
-
-Expected: FAIL because service does not exist.
-
-- [ ] **Step 3: Implement permission-aware service creation**
-
-The constructor must receive `hasCapability(role, capability)`. Add an internal guard:
+- [ ] **Step 2: Implement authorization guard**
 
 ```js
 function requireCapability(role, capability) {
@@ -523,26 +465,13 @@ function requireCapability(role, capability) {
 }
 ```
 
-Search requires `aviation.search` only when role is supplied; read detail requires `aviation.view`; investment requires `aviation.investment.view`; save requires `aviation.save`.
+Detail requires `aviation.view`, investment requires `aviation.investment.view`, save requires `aviation.save`, alerts later require `aviation.alerts.manage`.
 
-- [ ] **Step 4: Implement null-safe detail composition**
+- [ ] **Step 3: Implement null-safe metric models**
 
-For every engineering metric, return:
+For each engineering field return `{ value, unit, status, label }`; null values use status `not_configured` and label `Not validated`, never `0`.
 
-```js
-{
-  value: aircraft.specifications.rangeMiles,
-  unit: 'mi',
-  status: aircraft.specifications.rangeMiles == null ? 'not_configured' : 'ready',
-  label: aircraft.specifications.rangeMiles == null ? 'Not validated' : String(aircraft.specifications.rangeMiles)
-}
-```
-
-Certification for concept aircraft stays `not_configured` with `normalizedStage: 'unknown'`.
-
-- [ ] **Step 5: Implement read-only investment intelligence**
-
-For concept aircraft without `investmentProfileId`, return exactly:
+- [ ] **Step 4: Implement investment unavailable result exactly**
 
 ```js
 {
@@ -559,17 +488,13 @@ For concept aircraft without `investmentProfileId`, return exactly:
 }
 ```
 
-- [ ] **Step 6: Add save permission tests and implementation**
+- [ ] **Step 5: Add permission/save tests**
 
-Add a test where `hasCapability` returns false for `aviation.save` and assert `error.code === 'capability_required'`. Then implement `toggleSaved` and `listSaved` through the store.
+Test that denied `aviation.save` throws with `error.code === 'capability_required'`. Test save toggles on first call and off on second call for the same user/aircraft.
 
-- [ ] **Step 7: Run service tests**
+- [ ] **Step 6: Run tests and commit**
 
 Run: `node --test tests/aviation-service.test.mjs`
-
-Expected: PASS.
-
-- [ ] **Step 8: Commit**
 
 ```bash
 git add src/modules/aviation/aviation-service.js tests/aviation-service.test.mjs
@@ -578,7 +503,7 @@ git commit -m "feat: add Aviation intelligence service"
 
 ---
 
-### Task 6: Implement Saved Aircraft Alert Rules and Change Evaluation
+### Task 6: Implement Alert Rules and Evidence-Change Evaluation
 
 **Files:**
 - Create: `src/modules/aviation/aviation-alerts.js`
@@ -587,18 +512,18 @@ git commit -m "feat: add Aviation intelligence service"
 - Modify: `tests/aviation-service.test.mjs`
 
 **Interfaces:**
-- Produces: `validateAlertRule(input) -> normalizedRule`.
-- Produces: `evaluateAlertRule(rule, previousSnapshot, currentSnapshot) -> { triggered, eventType, evidenceIds }`.
-- Service adds `createAlert({ role, userId, aircraftId, eventTypes })`, `listAlerts({ role, userId })`, `setAlertEnabled({ role, userId, ruleId, enabled })`.
+- `validateAlertRule(input)`.
+- `evaluateAlertRule(rule, previousSnapshot, currentSnapshot)`.
+- Service adds `createAlert`, `listAlerts`, `setAlertEnabled`.
 
-- [ ] **Step 1: Write failing alert validation tests**
+- [ ] **Step 1: Write failing alert tests**
 
 ```js
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateAlertRule, evaluateAlertRule } from '../src/modules/aviation/aviation-alerts.js';
 
-test('accepts only supported Aviation event types', () => {
+test('accepts only supported event types', () => {
   const rule = validateAlertRule({ aircraftId: 'atlas-a1', eventTypes: ['certification_stage_changed'] });
   assert.deepEqual(rule.eventTypes, ['certification_stage_changed']);
   assert.throws(() => validateAlertRule({ aircraftId: 'atlas-a1', eventTypes: ['price_every_second'] }), /Unsupported alert event type/);
@@ -613,7 +538,7 @@ test('does not trigger when evidence-backed state is unchanged', () => {
   assert.equal(result.triggered, false);
 });
 
-test('triggers certification change and carries the new evidence ids', () => {
+test('triggers certification change and carries new evidence ids', () => {
   const result = evaluateAlertRule(
     { eventTypes: ['certification_stage_changed'] },
     { certificationStage: 'testing', evidenceIds: ['e1'] },
@@ -625,15 +550,7 @@ test('triggers certification change and carries the new evidence ids', () => {
 });
 ```
 
-- [ ] **Step 2: Run and verify failure**
-
-Run: `node --test tests/aviation-alerts.test.mjs`
-
-Expected: FAIL.
-
-- [ ] **Step 3: Implement supported events and validation**
-
-Supported event types are exactly:
+- [ ] **Step 2: Implement supported event set**
 
 ```js
 const SUPPORTED_EVENTS = new Set([
@@ -644,23 +561,15 @@ const SUPPORTED_EVENTS = new Set([
 ]);
 ```
 
-Rules require at least one event type and either `aircraftId` or `companyId`.
+Rules require at least one event and either `aircraftId` or `companyId`. Evaluation compares only relevant fields and never triggers solely because `lastEvaluatedAt` changed.
 
-- [ ] **Step 4: Implement change evaluation**
+- [ ] **Step 3: Wire service methods with `aviation.alerts.manage`**
 
-Compare only fields relevant to the requested event. Never trigger because `lastEvaluatedAt` changed. `new_primary_evidence` triggers only when the current primary evidence id was not present previously.
+Persist through the Task 4 store. Use a monotonic in-store rule counter for deterministic ids.
 
-- [ ] **Step 5: Wire service alert methods with `aviation.alerts.manage` capability**
-
-Use the store methods from Task 4. IDs may be generated deterministically from a monotonic counter in the store; do not use a runtime dependency.
-
-- [ ] **Step 6: Run alert and service tests**
+- [ ] **Step 4: Run tests and commit**
 
 Run: `node --test tests/aviation-alerts.test.mjs tests/aviation-service.test.mjs`
-
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
 
 ```bash
 git add src/modules/aviation/aviation-alerts.js src/modules/aviation/aviation-service.js tests/aviation-alerts.test.mjs tests/aviation-service.test.mjs
@@ -669,31 +578,27 @@ git commit -m "feat: add Aviation watch alerts"
 
 ---
 
-### Task 7: Build Pure Aviation View Models Before DOM Rendering
+### Task 7: Build Pure Aviation View Models
 
 **Files:**
 - Create: `src/modules/aviation/aviation-ui.js`
 - Create: `tests/aviation-ui.test.mjs`
 
 **Interfaces:**
-- Produces: `buildAviationHomeModel({ aircraft, savedIds, query, filters })`.
-- Produces: `buildAircraftDetailModel(detail)`.
-- Produces: `buildCertificationModel(items)`.
-- Produces: `buildInvestmentModel(investment)`.
-- Produces: `escapeHtml(value)`.
+- `buildAviationHomeModel`, `buildAircraftDetailModel`, `buildCertificationModel`, `buildInvestmentModel`, `escapeHtml`.
 
-- [ ] **Step 1: Write failing view-model tests**
+- [ ] **Step 1: Write failing UI-model tests**
 
 ```js
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAircraftDetailModel, buildInvestmentModel, escapeHtml } from '../src/modules/aviation/aviation-ui.js';
 
-test('escapes untrusted strings before HTML interpolation', () => {
+test('escapes untrusted strings', () => {
   assert.equal(escapeHtml('<script>'), '&lt;script&gt;');
 });
 
-test('renders null metrics as Not validated, not zero', () => {
+test('renders null metrics as Not validated', () => {
   const model = buildAircraftDetailModel({
     id: 'atlas-a1', displayName: 'ATLAS A1', mission: 'Urban Air Taxi',
     specifications: { rangeMiles: { value: null, status: 'not_configured', label: 'Not validated' } },
@@ -703,26 +608,20 @@ test('renders null metrics as Not validated, not zero', () => {
   assert.equal(model.specRows[0].value, 'Not validated');
 });
 
-test('investment model always exposes disclosure when offering is not configured', () => {
-  const model = buildInvestmentModel({ status: 'not_configured', sharePrice: null, minimumInvestment: null, disclosures: ['No verified investment offering is configured for this aircraft.'] });
+test('investment model exposes disclosure and no offering action when unconfigured', () => {
+  const model = buildInvestmentModel({
+    status: 'not_configured', sharePrice: null, minimumInvestment: null,
+    officialActionUrl: null,
+    disclosures: ['No verified investment offering is configured for this aircraft.']
+  });
   assert.equal(model.canOpenOffering, false);
   assert.equal(model.disclosures.length, 1);
 });
 ```
 
-- [ ] **Step 2: Run and verify failure**
+- [ ] **Step 2: Implement pure models with no browser globals**
 
-Run: `node --test tests/aviation-ui.test.mjs`
-
-Expected: FAIL.
-
-- [ ] **Step 3: Implement pure immutable UI models**
-
-Do not access `document`, `window`, or browser globals. Every user/source string that will be interpolated into HTML must pass through `escapeHtml` in the final renderer. View models should preserve raw values where needed for filtering but expose explicit display values.
-
-- [ ] **Step 4: Add state labels**
-
-Use these visible labels exactly:
+Use visible state labels exactly:
 
 ```js
 const STATE_LABELS = {
@@ -736,13 +635,9 @@ const STATE_LABELS = {
 };
 ```
 
-- [ ] **Step 5: Run UI tests**
+- [ ] **Step 3: Run tests and commit**
 
 Run: `node --test tests/aviation-ui.test.mjs`
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
 
 ```bash
 git add src/modules/aviation/aviation-ui.js tests/aviation-ui.test.mjs
@@ -751,21 +646,19 @@ git commit -m "feat: add Aviation view models"
 
 ---
 
-### Task 8: Implement the Functional Aviation UI and Approved Visual Direction
+### Task 8: Implement Functional Aviation UI and Approved Visual Direction
 
 **Files:**
 - Create: `src/modules/aviation/aviation-app.js`
 - Create: `src/modules/aviation/aviation.css`
 - Modify: `src/index.html`
 - Modify: `src/styles.css`
+- Modify: `src/modules/site-review/site-review-app.js`
 
 **Interfaces:**
-- Consumes: `route`, `hasCapability`, memory store, Aviation service, Aviation UI models.
 - Produces: `mountAviationApp({ route })`.
 
-- [ ] **Step 1: Generalize `src/index.html` into a shared shell**
-
-Replace Site-Review-only body content with stable mount containers:
+- [ ] **Step 1: Generalize `src/index.html` into shared shell containers**
 
 ```html
 <body>
@@ -780,15 +673,13 @@ Replace Site-Review-only body content with stable mount containers:
 </body>
 ```
 
-Update `mountSiteReviewApp` to render its previous shell content into these containers so Site Review remains functional.
+Update `mountSiteReviewApp` to render its existing Site Review shell markup into these three containers before binding its existing events.
 
-- [ ] **Step 2: Add Aviation stylesheet loading from the module**
+- [ ] **Step 2: Load `aviation.css` once**
 
-In `mountAviationApp`, load `/modules/aviation/aviation.css` once using a `<link data-atlas-module-style="aviation">` element. Do not inline generated screenshot art as a background replacement for the UI.
+`mountAviationApp` creates a `<link rel="stylesheet" href="/modules/aviation/aviation.css" data-atlas-module-style="aviation">` only if one is not already present.
 
-- [ ] **Step 3: Build shared Aviation navigation**
-
-Sidebar destinations must be real links:
+- [ ] **Step 3: Render real Aviation navigation**
 
 ```html
 <a href="/mobility/aviation">Overview</a>
@@ -798,51 +689,21 @@ Sidebar destinations must be real links:
 <a href="/mobility/aviation/alerts">Alerts</a>
 ```
 
-Highlight the current route by `aria-current="page"`.
+Current route receives `aria-current="page"`.
 
-- [ ] **Step 4: Build Aviation home and aircraft index**
+- [ ] **Step 4: Build Aviation home/index controls**
 
-Required functional elements:
+Required ids: `aviation-search`, `aviation-mission-filter`, `aviation-class-filter`, `aviation-reset-filters`. Search rerenders on `input`; filters on `change`; reset clears all values. Cards come only from service records and save buttons call `service.toggleSaved`.
 
-- Search input with id `aviation-search`.
-- Mission filter with id `aviation-mission-filter`.
-- Record-class filter with id `aviation-class-filter`.
-- Reset button with id `aviation-reset-filters`.
-- Aircraft cards generated from service data only.
-- Save buttons that call `service.toggleSaved`.
-- Empty state when filters produce zero results.
+- [ ] **Step 5: Build aircraft detail with seven working tabs**
 
-Search reacts on `input`; filters react on `change`; reset clears all controls and rerenders.
+Tabs are exactly `overview`, `specifications`, `certification`, `company`, `investment`, `documents`, `news`. Use `role="tab"`, `aria-selected`, `aria-controls`, and one visible `role="tabpanel"`. Current concept data displays `Not validated`, `Not configured`, or truthful empty states. Investment has no `Complete your investment` action.
 
-- [ ] **Step 5: Build the aircraft detail route with seven functional tabs**
+- [ ] **Step 6: Build certification, saved, and alerts pages**
 
-Tabs:
+Certification lists every aircraft with `unknown / Not configured` until regulator evidence exists. Saved supports removal. Alerts supports aircraft selection, event selection, create, enable, disable, and shows `No evidence-change history yet` before real evaluations exist.
 
-```js
-['overview', 'specifications', 'certification', 'company', 'investment', 'documents', 'news']
-```
-
-Each tab button uses `role="tab"`, `aria-selected`, and `aria-controls`. Only the active `role="tabpanel"` is visible. Use a horizontal scroll container below 900px.
-
-For the current concept lineup:
-
-- Specifications show `Not validated` for null range/speed/payload.
-- Certification shows `Not configured` and explains that no regulator evidence is connected.
-- Company identifies `ATLAS Mobility` as the internal concept owner.
-- Investment shows the read-only unavailable state and disclosure.
-- Documents and News show truthful empty/not-configured states rather than fake entries.
-
-- [ ] **Step 6: Build certification, saved, and alerts routes**
-
-Certification page lists all aircraft with normalized stage and visible source state. Current concept aircraft render `unknown / not configured` rather than a progress percentage.
-
-Saved page lists the current user's saved aircraft and supports removal.
-
-Alerts page allows event-type selection for a chosen aircraft, create, enable, and disable. The page must say “No evidence-change history yet” until evidence changes have actually been evaluated.
-
-- [ ] **Step 7: Implement approved ATLAS Aviation styling**
-
-`aviation.css` uses existing tokens plus module-specific variables:
+- [ ] **Step 7: Apply approved Aviation styling without using poster screenshots as UI**
 
 ```css
 .aviation-module {
@@ -860,33 +721,15 @@ Alerts page allows event-type selection for a chosen aircraft, create, enable, a
 }
 ```
 
-Use CSS aircraft-media placeholders built from gradient/silhouette framing until approved rendered assets are explicitly added as repository assets. The functional UI must never depend on a poster screenshot.
+Use CSS-based media placeholders until approved generated aircraft art is deliberately added as repository assets. The application remains fully usable without those images.
 
-- [ ] **Step 8: Add responsive behavior**
+- [ ] **Step 8: Add responsive rules**
 
-Desktop >=1180px: full sidebar, hero + evidence rail, multi-card directory.
+At `>=1180px`: full sidebar, wide hero/evidence layout. At `900–1179px`: compact sidebar and wrapped filters. At `<900px`: no desktop sidebar, single column, horizontally scrollable tabs, full-width cards, no document-level horizontal overflow.
 
-Tablet 900–1179px: compact sidebar, wrapped filters, evidence below when narrow.
+- [ ] **Step 9: Manual interaction check**
 
-Mobile <900px: hide desktop sidebar, single column, horizontally scrollable tabs, full-width cards, topbar navigation trigger, no horizontal page overflow.
-
-Use existing breakpoints rather than inventing a second responsive system.
-
-- [ ] **Step 9: Perform browser interaction checks locally**
-
-Run: `npm start`
-
-Verify manually:
-
-- `/mobility/aviation`
-- `/mobility/aviation/aircraft`
-- `/mobility/aviation/aircraft/atlas-a1`
-- `/mobility/aviation/certification`
-- `/mobility/aviation/saved`
-- `/mobility/aviation/alerts`
-- `/sites/review`
-
-Check search, filters, tabs, save, alert create/disable, keyboard focus, empty states, and mobile widths.
+Run `npm start` and verify all six Aviation routes plus `/sites/review`; test search, filters, tabs, save, alert create/disable, keyboard focus, truthful empty states, and mobile layout.
 
 - [ ] **Step 10: Commit**
 
@@ -897,19 +740,17 @@ git commit -m "feat: build ATLAS Aviation interface"
 
 ---
 
-### Task 9: Serve Aviation SPA Routes and Protect Existing Server Behavior
+### Task 9: Serve Aviation Routes and Preserve Real 404s
 
 **Files:**
 - Modify: `server.mjs`
 - Modify: `tests/server.test.mjs`
 
 **Interfaces:**
-- Consumes: recognized frontend route prefixes.
-- Produces: HTTP 200 with `index.html` for all valid Aviation app routes; still returns 404 for unknown non-file paths.
+- Valid Aviation application paths serve `index.html` with HTTP 200.
+- Unknown paths remain HTTP 404.
 
-- [ ] **Step 1: Add failing server tests for Aviation routes**
-
-Extend the existing server test using its current temporary server helper:
+- [ ] **Step 1: Add failing server checks**
 
 ```js
 for (const path of [
@@ -926,15 +767,11 @@ for (const path of [
 }
 ```
 
-Keep existing assertions that assets return 200 and unknown routes return 404.
-
-- [ ] **Step 2: Run and verify failure**
+- [ ] **Step 2: Verify failure**
 
 Run: `node --test tests/server.test.mjs`
 
-Expected: FAIL because `safeTarget` only maps `/` and `/sites/review` to `index.html`.
-
-- [ ] **Step 3: Add an explicit app-route matcher**
+- [ ] **Step 3: Add explicit app-route matcher**
 
 ```js
 function isAppRoute(pathname) {
@@ -943,25 +780,17 @@ function isAppRoute(pathname) {
 }
 ```
 
-In `safeTarget`, map `isAppRoute(pathname) ? '/index.html' : pathname`.
+In `safeTarget`, use `isAppRoute(pathname) ? '/index.html' : pathname`. Do not add a blanket SPA catch-all.
 
-Do not create a blanket catch-all fallback because unknown routes must remain real 404s.
-
-- [ ] **Step 4: Update server startup message**
-
-Change the console line from Site Review-specific wording to:
+- [ ] **Step 4: Generalize startup log**
 
 ```js
 console.log(`ATLAS Enterprise Suite listening on http://0.0.0.0:${port}`);
 ```
 
-- [ ] **Step 5: Run server and full tests**
+- [ ] **Step 5: Run full tests and commit**
 
 Run: `npm test`
-
-Expected: all tests PASS.
-
-- [ ] **Step 6: Commit**
 
 ```bash
 git add server.mjs tests/server.test.mjs
@@ -973,15 +802,12 @@ git commit -m "feat: serve Aviation application routes"
 ### Task 10: Final Regression, Truthfulness, Accessibility, and Release Gate
 
 **Files:**
-- Modify only files required by failures discovered in this gate.
-- No feature expansion is allowed in this task.
+- Modify only files that fail this gate; do not expand scope.
 
 **Interfaces:**
-- Produces: verified implementation ready for code review/PR, not a production claim.
+- Produces verified implementation evidence for review, not a production/deployment claim.
 
 - [ ] **Step 1: Run syntax checks**
-
-Run:
 
 ```bash
 node --check src/app.js
@@ -997,86 +823,61 @@ node --check server.mjs
 
 Expected: every command exits 0.
 
-- [ ] **Step 2: Run the complete test suite**
+- [ ] **Step 2: Run complete tests**
 
 Run: `npm test`
 
 Expected: 0 failures.
 
-- [ ] **Step 3: Scan for forbidden fake-production language and placeholders**
-
-Run:
+- [ ] **Step 3: Scan for fake-production/placeholder language**
 
 ```bash
-grep -RniE "coming soon|href=\"#\"|console\.log\(|100% functional|certified|live connection|guaranteed return|complete your investment" src/modules/aviation src/index.html || true
+grep -RniE "coming soon|href=\"#\"|100% functional|guaranteed return|complete your investment" src/modules/aviation src/index.html || true
 ```
 
-Review every match. Allowed matches must be factual explanatory copy such as “not certified” or status labels. Remove placeholder actions, fake connectivity, and transaction language.
+Expected: no matches. If there is a match, remove it unless it is part of a test explicitly asserting forbidden copy.
 
-- [ ] **Step 4: Scan for invented aircraft performance values**
-
-Run:
+- [ ] **Step 4: Scan performance/investment fields**
 
 ```bash
-grep -RniE "mph|miles|payload|sharePrice|minimumInvestment|valuation" src/modules/aviation
+grep -RniE "maxSpeedMph|rangeMiles|payloadLb|sharePrice|minimumInvestment|valuation" src/modules/aviation
 ```
 
-Expected: implementation keys/labels may match, but concept records must keep unvalidated numeric values `null`. Any non-null production-looking number requires source evidence or removal.
+Expected: keys/labels exist, but the ten internal concept records keep these unvalidated numeric fields `null`.
 
-- [ ] **Step 5: Scan for obvious secret material**
-
-Run:
+- [ ] **Step 5: Scan for obvious secrets**
 
 ```bash
 grep -RniE "BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk-[A-Za-z0-9]|api[_-]?key\s*[:=]|token\s*[:=]" src tests || true
 ```
 
-Expected: no secrets.
+Expected: no secret material.
 
-- [ ] **Step 6: Manual responsive/accessibility gate**
+- [ ] **Step 6: Manual accessibility/responsive gate**
 
-At desktop, tablet, and mobile widths verify:
-
-- no horizontal document overflow,
-- visible focus states,
-- tab keyboard navigation reaches every tab button,
-- `aria-selected` changes correctly,
-- active navigation has `aria-current`,
-- buttons have visible labels,
-- status meaning remains understandable without color,
-- restricted/not-configured/empty states are distinct,
-- Site Review still works.
+Verify desktop/tablet/mobile: no horizontal document overflow, visible focus, tab keyboard reachability, correct `aria-selected`, current nav `aria-current`, labelled buttons, status understandable without color, distinct restricted/not-configured/empty states, and Site Review regression-free.
 
 - [ ] **Step 7: HTTP gate**
 
-With `npm start`, verify valid routes return 200 and `/does-not-exist` returns 404.
+With `npm start`, verify all valid Aviation routes and `/sites/review` return 200 and `/does-not-exist` returns 404.
 
-- [ ] **Step 8: Commit only if the verification gate required fixes**
+- [ ] **Step 8: Commit gate fixes only when changes were required**
+
+If tracked files changed because of this gate, run:
 
 ```bash
-git add <only-files-fixed-by-gate>
+git add -u
 git commit -m "fix: close Aviation verification findings"
 ```
 
-If no changes were required, do not create an empty commit.
+If nothing changed, do not create an empty commit.
 
-- [ ] **Step 9: Prepare implementation evidence for review**
+- [ ] **Step 9: Report evidence**
 
-Report exact test counts, syntax-check results, HTTP route results, truthfulness-scan results, and known limitations. Do not claim deployment or production until a separate authorized deploy gate is executed and verified.
+Report exact test counts, syntax-check results, HTTP route results, scan results, and known limitations. Do not claim production until a separate authorized deployment gate is executed and verified.
 
 ---
 
-## Implementation Completion Definition
+## Completion Definition
 
-This plan is complete only when all ten tasks pass their own test cycle and the final gate confirms:
-
-1. The existing Site Review module still works.
-2. Every Aviation route is reachable without 404.
-3. The 10 ATLAS aircraft appear as clearly labeled internal concepts.
-4. No unvalidated range, speed, payload, share price, valuation, or certification claim is shown as fact.
-5. Search, filters, tabs, save, and alert management are functional.
-6. Certification and investment surfaces show truthful `not_configured` states until evidence exists.
-7. Permission checks are centralized and enforced by services.
-8. Desktop, tablet, and mobile layouts are usable.
-9. Full tests and syntax checks pass.
-10. No deployment claim is made without separate production evidence.
+All ten tasks must pass. Completion requires: Site Review regression-free; every Aviation route reachable; ten aircraft clearly labelled as internal concepts; no invented range/speed/payload/share-price/valuation/certification facts; functional search/filters/tabs/save/alerts; truthful certification/investment not-configured states; centralized permissions; usable desktop/tablet/mobile layouts; passing full tests and syntax checks; and no deployment claim without separate production evidence.
