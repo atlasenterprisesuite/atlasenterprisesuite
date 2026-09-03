@@ -1,10 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { createSupabaseAccountingRepository } from '../../../packages/accounting/src';
+import {
+  createSupabaseAccountingRepository,
+  JournalWriteService,
+  SupabaseAccountingWriteGateway,
+} from '../../../packages/accounting/src';
 import { App } from './App';
 import { AtlasProvider } from './app/AtlasContext';
 import { AccountingRepositoryProvider } from './modules/accounting/AccountingDataProvider';
+import { AccountingWriteProvider } from './modules/accounting/AccountingWriteProvider';
 import { createAtlasSupabaseClient } from './lib/supabase/client';
 import { createAtlasIdentitySource } from './lib/supabase/atlasIdentitySource';
 import './styles.css';
@@ -14,13 +19,18 @@ const identitySource = createAtlasIdentitySource(supabaseClient);
 const accountingRepository = supabaseClient
   ? createSupabaseAccountingRepository(supabaseClient)
   : null;
+const accountingWriteService = supabaseClient
+  ? new JournalWriteService(new SupabaseAccountingWriteGateway(supabaseClient))
+  : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AtlasProvider source={identitySource}>
         <AccountingRepositoryProvider repository={accountingRepository}>
-          <App />
+          <AccountingWriteProvider service={accountingWriteService}>
+            <App />
+          </AccountingWriteProvider>
         </AccountingRepositoryProvider>
       </AtlasProvider>
     </BrowserRouter>
