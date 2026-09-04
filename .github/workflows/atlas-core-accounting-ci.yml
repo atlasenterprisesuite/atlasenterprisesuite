@@ -38,6 +38,9 @@ jobs:
       - name: Accounting validation tests
         run: npm test -- tests/unit/accounting-validation.test.ts
 
+      - name: Accounting aging tests
+        run: npm test -- tests/unit/accounting-aging.test.ts
+
       - name: Accounting repository tests
         run: npm test -- tests/integration/accounting-repository.test.ts
 
