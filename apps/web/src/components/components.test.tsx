@@ -1,13 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import type { EvidenceRecord, GraphEdge, GraphNode } from '../../../../packages/health/types';
 import { AtlasShell } from './AtlasShell';
 import { LabNav } from './LabNav';
 import { NeuralGraphPanel } from './NeuralGraphPanel';
 import { ResearchBadge } from './ResearchBadge';
 
-const nodes = [{ id: 'n1', type: 'seed', label: 'Reservoir seed', description: 'Demo node', diseaseIds: ['hiv'], evidenceRecordIds: ['e1'], confidence: 0.8, status: 'supported' }] as const;
-const edges = [] as const;
-const evidence = [{ id: 'e1', diseaseIds: ['hiv'], title: 'Demo evidence', sourceName: 'ATLAS demo registry', sourceIdentifier: 'DEMO-1', evidenceLevel: 'human', status: 'active', finding: 'Demo finding', limitations: ['Demo only'], safetySignals: [], replicationStatus: 'demo' }] as const;
+const nodes: GraphNode[] = [{ id: 'n1', type: 'seed', label: 'Reservoir seed', description: 'Demo node', diseaseIds: ['hiv'], evidenceRecordIds: ['e1'], confidence: 0.8, status: 'supported' }];
+const edges: GraphEdge[] = [];
+const evidence: EvidenceRecord[] = [{ id: 'e1', diseaseIds: ['hiv'], title: 'Demo evidence', sourceName: 'ATLAS demo registry', sourceIdentifier: 'DEMO-1', evidenceLevel: 'human', status: 'active', finding: 'Demo finding', limitations: ['Demo only'], safetySignals: [], replicationStatus: 'demo' }];
 
 test('shell exposes skip navigation and the real Health route', () => {
   render(<MemoryRouter><AtlasShell><div>content</div></AtlasShell></MemoryRouter>);
@@ -20,7 +21,7 @@ test('research components expose real information and routes', () => {
     <MemoryRouter>
       <LabNav />
       <ResearchBadge />
-      <NeuralGraphPanel nodes={[...nodes]} edges={[...edges]} evidence={[...evidence]} />
+      <NeuralGraphPanel nodes={nodes} edges={edges} evidence={evidence} />
     </MemoryRouter>
   );
   expect(screen.getByText(/research.*demo/i)).toBeInTheDocument();
