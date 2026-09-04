@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { AccountingEmptyState } from './AccountingEmptyState';
 import { useAccountingData } from './AccountingDataProvider';
 
@@ -15,6 +16,10 @@ export function AccountingPage() {
       <p className="atlas-page__lede">
         Organization-scoped accounting records are loaded from the configured ATLAS data source and remain subject to database authorization policies.
       </p>
+
+      <nav className="atlas-submodule-nav" aria-label="Accounting workflows">
+        <Link to="/finance/accounting/journal-entries">Journal Entries</Link>
+      </nav>
 
       {(state.status === 'waiting' || state.status === 'loading') && (
         <section className="atlas-status-panel" role="status">
