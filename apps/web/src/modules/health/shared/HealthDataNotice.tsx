@@ -1,4 +1,4 @@
-import type { HealthSourceState } from '../../../../../../../packages/health/src';
+import type { HealthSourceState } from '../../../../../../packages/health/src';
 
 export function HealthDataNotice({ state, text }: { state: HealthSourceState; text: string }) {
   return (
