@@ -47,6 +47,9 @@ jobs:
       - name: AR AP repository tests
         run: npm test -- tests/integration/ar-ap-repository.test.ts
 
+      - name: Bank Cash repository tests
+        run: npm test -- tests/integration/bank-cash-repository.test.ts
+
       - name: AR AP write contract tests
         run: npm test -- tests/unit/ar-ap-writes.test.ts
 
