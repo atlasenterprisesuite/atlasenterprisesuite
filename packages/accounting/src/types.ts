@@ -14,6 +14,7 @@ export interface AccountRecord {
   accountNumber: string;
   name: string;
   accountType: string;
+  active: boolean;
   createdAt: string | null;
   updatedAt: string | null;
 }
