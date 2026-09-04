@@ -33,6 +33,7 @@ function repositoryWith(journals: JournalRecord[] = []): AccountingRepository {
         accountNumber: '1000',
         name: 'Cash',
         accountType: 'asset',
+        active: true,
         createdAt: null,
         updatedAt: null,
       },
@@ -42,6 +43,7 @@ function repositoryWith(journals: JournalRecord[] = []): AccountingRepository {
         accountNumber: '4000',
         name: 'Revenue',
         accountType: 'revenue',
+        active: true,
         createdAt: null,
         updatedAt: null,
       },
@@ -51,6 +53,7 @@ function repositoryWith(journals: JournalRecord[] = []): AccountingRepository {
     listVendors: async () => [],
     listInvoices: async () => [],
     listPayments: async () => [],
+    listBills: async () => [],
     listAuditEvents: async () => [],
   };
 }
