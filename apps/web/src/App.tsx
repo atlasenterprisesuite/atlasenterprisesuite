@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { MifiControlPage } from './modules/telecom/MifiControlPage';
 
 function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return <header className="page-header"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></header>;
@@ -13,6 +14,7 @@ function EnterpriseHome() {
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Known routes remain preserved while unavailable source packages are restored.</p></Link>
+        <Link className="module-card enabled" to="/telecom/devices/mifi"><span>Communications</span><strong>Telecom</strong><p>MiFi device controls with capability and authorization gates.</p></Link>
       </div>
     </section>
   );
@@ -60,6 +62,7 @@ export function App() {
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
+        <Route path="/telecom/devices/mifi" element={<MifiControlPage />} />
         <Route path="/health/*" element={<HealthDegraded />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
