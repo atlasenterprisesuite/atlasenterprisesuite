@@ -9,8 +9,8 @@ export const commandCenterMetrics: HealthMetric[] = [
 ];
 
 export const healthAlerts: HealthAlert[] = [
-  { id: 'alert-1', tenantId: 'atlas-demo', organizationId: 'health-demo-org', severity: 'warning', title: 'Demo supply stock threshold review', moduleId: 'supply-chain', sourceState: 'demo' },
-  { id: 'alert-2', tenantId: 'atlas-demo', organizationId: 'health-demo-org', severity: 'info', title: 'Demo facilities work-order review', moduleId: 'smart-facilities', sourceState: 'demo' }
+  { id: 'alert-1', tenantId: 'tenant-demo', organizationId: 'org-demo', severity: 'warning', title: 'Demo supply stock threshold review', moduleId: 'supply-chain', sourceState: 'demo' },
+  { id: 'alert-2', tenantId: 'tenant-demo', organizationId: 'org-demo', severity: 'info', title: 'Demo facilities work-order review', moduleId: 'smart-facilities', sourceState: 'demo' }
 ];
 
 export const healthIntegrations: HealthIntegration[] = [

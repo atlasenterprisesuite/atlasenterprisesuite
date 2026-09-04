@@ -1,7 +1,7 @@
 export const healthSystemProfile = {
-  tenantId: 'atlas-demo',
-  organizationId: 'health-demo-org',
-  name: 'ATLAS Health Demo Organization',
+  tenantId: 'tenant-demo',
+  organizationId: 'org-demo',
+  name: 'ATLAS Demo Organization',
   location: 'Orlando, FL',
   sourceState: 'demo' as const
 };

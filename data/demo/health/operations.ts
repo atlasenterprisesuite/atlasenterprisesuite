@@ -1,6 +1,6 @@
 import type { HealthOperationalRecord } from '../../../packages/health/src';
 
-const scope = { tenantId: 'atlas-demo', organizationId: 'health-demo-org', sourceState: 'demo' as const };
+const scope = { tenantId: 'tenant-demo', organizationId: 'org-demo', sourceState: 'demo' as const };
 
 export const healthOperations: HealthOperationalRecord[] = [
   { ...scope, id: 'enterprise-1', moduleId: 'enterprise-os', title: 'Orlando campus operational review', status: 'active', category: 'site', detail: 'Demo cross-service operational checkpoint.' },
