@@ -1,0 +1,3 @@
+export function SearchFilterBar({ query, status, onQueryChange, onStatusChange }: { query: string; status: string; onQueryChange: (value: string) => void; onStatusChange: (value: string) => void }) {
+  return <div className="health-filter-bar"><label className="field"><span>Search</span><input aria-label="Search records" type="search" value={query} onChange={event => onQueryChange(event.target.value)} /></label><label className="field"><span>Status</span><select aria-label="Status filter" value={status} onChange={event => onStatusChange(event.target.value)}><option value="all">All</option><option value="open">Open</option><option value="active">Active</option><option value="closed">Closed</option><option value="unavailable">Unavailable</option></select></label></div>;
+}
