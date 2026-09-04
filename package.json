@@ -7,6 +7,7 @@
     "build": "npm --workspace apps/web run build",
     "typecheck": "npm --workspace apps/web run typecheck",
     "test": "vitest run --config apps/web/vite.config.ts",
+    "test:unit": "vitest run --config apps/web/vite.config.ts tests/unit",
     "test:integration": "vitest run --config apps/web/vite.config.ts tests/integration",
     "test:e2e": "playwright test"
   },
