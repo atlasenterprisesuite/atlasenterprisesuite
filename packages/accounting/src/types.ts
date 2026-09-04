@@ -6,6 +6,7 @@ export type AccountingTable =
   | 'vendors'
   | 'invoices'
   | 'payments'
+  | 'accounting_bills'
   | 'audit_logs';
 
 export interface AccountRecord {
@@ -77,6 +78,25 @@ export interface PaymentRecord {
   amount: number;
   paymentDate: string | null;
   status: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface BillRecord {
+  id: string;
+  organizationId: string | null;
+  entityId: string | null;
+  vendorId: string | null;
+  billNumber: string;
+  billDate: string | null;
+  dueDate: string | null;
+  amount: number;
+  balanceDue: number;
+  approvalState: string;
+  matchState: string;
+  status: string;
+  sourceDocumentId: string | null;
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
