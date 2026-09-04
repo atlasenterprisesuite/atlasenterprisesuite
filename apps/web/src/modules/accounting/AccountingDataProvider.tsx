@@ -8,6 +8,7 @@ import {
 import type {
   AccountRecord,
   AccountingRepository,
+  BillRecord,
   InvoiceRecord,
   JournalRecord,
   PartyRecord,
@@ -22,6 +23,7 @@ export interface AccountingData {
   vendors: PartyRecord[];
   invoices: InvoiceRecord[];
   payments: PaymentRecord[];
+  bills: BillRecord[];
 }
 
 export type AccountingDataState =
@@ -83,12 +85,13 @@ export function useAccountingData(): AccountingDataState {
       repository.listVendors(identity.organizationId),
       repository.listInvoices(identity.organizationId),
       repository.listPayments(identity.organizationId),
+      repository.listBills(identity.organizationId),
     ])
-      .then(([accounts, journals, customers, vendors, invoices, payments]) => {
+      .then(([accounts, journals, customers, vendors, invoices, payments, bills]) => {
         if (!active) return;
         setState({
           status: 'ready',
-          data: { accounts, journals, customers, vendors, invoices, payments },
+          data: { accounts, journals, customers, vendors, invoices, payments, bills },
         });
       })
       .catch(() => {
