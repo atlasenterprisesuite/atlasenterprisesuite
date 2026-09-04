@@ -1,3 +1,4 @@
+export * from './generalLedger';
 export * from './journalWrites';
 export * from './repository';
 export * from './supabaseRepository';
