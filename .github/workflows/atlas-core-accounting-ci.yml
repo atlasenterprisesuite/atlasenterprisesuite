@@ -53,6 +53,9 @@ jobs:
       - name: Task 8 write contract tests
         run: npm test -- tests/unit/accounting-task8-writes.test.ts
 
+      - name: Task 8 RPC gateway tests
+        run: npm test -- tests/integration/accounting-task8-rpc-gateway.test.ts
+
       - name: Task 8 repository tests
         run: npm test -- tests/integration/accounting-task8-repository.test.ts
 
