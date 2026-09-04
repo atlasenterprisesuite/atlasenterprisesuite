@@ -56,6 +56,9 @@ jobs:
       - name: Bank Cash RPC gateway tests
         run: npm test -- tests/integration/bank-cash-rpc-gateway.test.ts
 
+      - name: Bank Cash UI tests
+        run: npm test -- tests/integration/bank-cash-ui.test.tsx
+
       - name: AR AP write contract tests
         run: npm test -- tests/unit/ar-ap-writes.test.ts
 
