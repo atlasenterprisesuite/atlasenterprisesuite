@@ -44,6 +44,9 @@ jobs:
       - name: Accounting repository tests
         run: npm test -- tests/integration/accounting-repository.test.ts
 
+      - name: AR AP repository tests
+        run: npm test -- tests/integration/ar-ap-repository.test.ts
+
       - name: Accounting UI tests
         run: npm test -- tests/integration/accounting-ui.test.tsx
 
