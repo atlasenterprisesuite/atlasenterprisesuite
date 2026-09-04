@@ -33,6 +33,7 @@ function repositoryWith(overrides: Partial<AccountingRepository> = {}): Accounti
     listVendors: async () => [],
     listInvoices: async () => [],
     listPayments: async () => [],
+    listBills: async () => [],
     listAuditEvents: async () => [],
     ...overrides,
   };
@@ -84,6 +85,7 @@ test('shows counts derived only from repository records', async () => {
           accountNumber: '1000',
           name: 'Cash',
           accountType: 'asset',
+          active: true,
           createdAt: null,
           updatedAt: null,
         },
@@ -93,6 +95,7 @@ test('shows counts derived only from repository records', async () => {
           accountNumber: '2000',
           name: 'Accounts Payable',
           accountType: 'liability',
+          active: true,
           createdAt: null,
           updatedAt: null,
         },
