@@ -4,6 +4,7 @@ export * from './arApWrites';
 export * from './bankCashWrites';
 export * from './generalLedger';
 export * from './journalWrites';
+export * from './payables';
 export * from './repository';
 export * from './supabaseRepository';
 export * from './types';
