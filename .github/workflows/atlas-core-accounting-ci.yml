@@ -47,6 +47,12 @@ jobs:
       - name: General Ledger derivation tests
         run: npm test -- tests/unit/general-ledger.test.ts
 
+      - name: General Ledger UI tests
+        run: npm test -- tests/integration/general-ledger-ui.test.tsx
+
+      - name: Chart of Accounts UI tests
+        run: npm test -- tests/integration/chart-of-accounts-ui.test.tsx
+
       - name: Journal write contract tests
         run: npm test -- tests/unit/journal-writes.test.ts
 
