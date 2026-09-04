@@ -62,6 +62,7 @@ function repositoryWithInactive(): AccountingRepository {
     listVendors: async () => [],
     listInvoices: async () => [],
     listPayments: async () => [],
+    listBills: async () => [],
     listAuditEvents: async () => [],
   };
 }
