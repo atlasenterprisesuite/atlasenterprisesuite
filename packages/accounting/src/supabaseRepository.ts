@@ -5,6 +5,11 @@ import type {
   UpdateAccountCommand,
 } from './accountWrites';
 import type {
+  ArApWriteGateway,
+  RecordInvoicePaymentCommand,
+  SetBillApprovalCommand,
+} from './arApWrites';
+import type {
   CreatePostedJournalCommand,
   JournalWriteGateway,
   ReversePostedJournalCommand,
@@ -63,6 +68,36 @@ export class SupabaseAccountWriteGateway implements AccountWriteGateway {
     const { data, error } = await this.client.rpc(functionName, args);
     if (error) throw new Error(error.message);
     if (typeof data !== 'string' || !data) throw new Error('Account write did not return an id');
+    return data;
+  }
+}
+
+export class SupabaseArApWriteGateway implements ArApWriteGateway {
+  constructor(private readonly client: Pick<SupabaseClient, 'rpc'>) {}
+
+  async recordInvoicePayment(command: RecordInvoicePaymentCommand): Promise<string> {
+    return this.runArApRpc('record_invoice_payment', {
+      invoice_uuid: command.invoiceId,
+      payment_amount: command.amount,
+      paid_on: command.paidOn,
+    });
+  }
+
+  async setBillApprovalState(command: SetBillApprovalCommand): Promise<string> {
+    return this.runArApRpc('set_accounting_bill_approval_state', {
+      organization_uuid: command.organizationId,
+      bill_uuid: command.billId,
+      approval_state: command.approvalState,
+    });
+  }
+
+  private async runArApRpc(
+    functionName: 'record_invoice_payment' | 'set_accounting_bill_approval_state',
+    args: Record<string, unknown>,
+  ): Promise<string> {
+    const { data, error } = await this.client.rpc(functionName, args);
+    if (error) throw new Error(error.message);
+    if (typeof data !== 'string' || !data) throw new Error('AR/AP write did not return an id');
     return data;
   }
 }
