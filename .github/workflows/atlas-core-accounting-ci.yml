@@ -56,6 +56,9 @@ jobs:
       - name: AR AP UI tests
         run: npm test -- tests/integration/ar-ap-ui.test.tsx
 
+      - name: AR AP write UI tests
+        run: npm test -- tests/integration/ar-ap-write-ui.test.tsx
+
       - name: Accounting UI tests
         run: npm test -- tests/integration/accounting-ui.test.tsx
 
