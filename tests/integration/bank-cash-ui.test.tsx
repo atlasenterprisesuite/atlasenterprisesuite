@@ -126,7 +126,7 @@ test('does not expose reconciliation write controls without accounting.write', a
     service: new BankCashWriteService(gatewayWith()),
   });
 
-  await screen.findByText('Operating Account');
+  await screen.findByText(/Operating Account/);
   expect(screen.queryByRole('button', { name: 'Start reconciliation' })).not.toBeInTheDocument();
 });
 
