@@ -10,6 +10,12 @@ import type {
   SetBillApprovalCommand,
 } from './arApWrites';
 import type {
+  BankCashWriteGateway,
+  CloseReconciliationCommand,
+  ResolveReconciliationItemCommand,
+  StartReconciliationCommand,
+} from './bankCashWrites';
+import type {
   CreatePostedJournalCommand,
   JournalWriteGateway,
   ReversePostedJournalCommand,
@@ -98,6 +104,52 @@ export class SupabaseArApWriteGateway implements ArApWriteGateway {
     const { data, error } = await this.client.rpc(functionName, args);
     if (error) throw new Error(error.message);
     if (typeof data !== 'string' || !data) throw new Error('AR/AP write did not return an id');
+    return data;
+  }
+}
+
+export class SupabaseBankCashWriteGateway implements BankCashWriteGateway {
+  constructor(private readonly client: Pick<SupabaseClient, 'rpc'>) {}
+
+  async startReconciliation(command: StartReconciliationCommand): Promise<string> {
+    return this.runBankCashRpc('start_accounting_reconciliation', {
+      organization_uuid: command.organizationId,
+      bank_account_uuid: command.bankAccountId,
+      period_start_date: command.periodStart,
+      period_end_date: command.periodEnd,
+      statement_balance: command.statementEndingBalance,
+      ledger_balance: command.ledgerEndingBalance,
+    });
+  }
+
+  async resolveReconciliationItem(command: ResolveReconciliationItemCommand): Promise<string> {
+    return this.runBankCashRpc('resolve_accounting_reconciliation_item', {
+      organization_uuid: command.organizationId,
+      item_uuid: command.itemId,
+      item_status: command.status,
+      item_match_type: command.matchType,
+      item_variance: command.variance,
+      item_note: command.note,
+    });
+  }
+
+  async closeReconciliation(command: CloseReconciliationCommand): Promise<string> {
+    return this.runBankCashRpc('close_accounting_reconciliation', {
+      organization_uuid: command.organizationId,
+      session_uuid: command.sessionId,
+    });
+  }
+
+  private async runBankCashRpc(
+    functionName:
+      | 'start_accounting_reconciliation'
+      | 'resolve_accounting_reconciliation_item'
+      | 'close_accounting_reconciliation',
+    args: Record<string, unknown>,
+  ): Promise<string> {
+    const { data, error } = await this.client.rpc(functionName, args);
+    if (error) throw new Error(error.message);
+    if (typeof data !== 'string' || !data) throw new Error('Bank/Cash write did not return an id');
     return data;
   }
 }

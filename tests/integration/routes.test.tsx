@@ -54,6 +54,8 @@ it.each([
   ['/finance/accounting/journal-entries', 'Journal Entries'],
   ['/finance/accounting/accounts-receivable', 'Accounts Receivable'],
   ['/finance/accounting/accounts-payable', 'Accounts Payable'],
+  ['/finance/accounting/bank-cash', 'Bank & Cash'],
+  ['/finance/accounting/reconciliation', 'Reconciliation'],
   ['/health', 'ATLAS Health'],
 ])('renders %s in the ATLAS shell for a ready organization identity', async (path, heading) => {
   renderAtlas(path);

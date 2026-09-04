@@ -23,6 +23,8 @@ export function AccountingPage() {
         <Link to="/finance/accounting/journal-entries">Journal Entries</Link>
         <Link to="/finance/accounting/accounts-receivable">Accounts Receivable</Link>
         <Link to="/finance/accounting/accounts-payable">Accounts Payable</Link>
+        <Link to="/finance/accounting/bank-cash">Bank &amp; Cash</Link>
+        <Link to="/finance/accounting/reconciliation">Reconciliation</Link>
       </nav>
 
       {(state.status === 'waiting' || state.status === 'loading') && (
@@ -48,17 +50,8 @@ export function AccountingPage() {
 
       {state.status === 'ready' && (() => {
         const { accounts, journals, customers, vendors, invoices, payments, bills } = state.data;
-        const totalRecords =
-          accounts.length +
-          journals.length +
-          customers.length +
-          vendors.length +
-          invoices.length +
-          payments.length +
-          bills.length;
-
+        const totalRecords = accounts.length + journals.length + customers.length + vendors.length + invoices.length + payments.length + bills.length;
         if (totalRecords === 0) return <AccountingEmptyState />;
-
         return (
           <section className="atlas-card-grid" aria-label="Accounting record counts">
             <div className="atlas-module-card"><strong>{countLabel(accounts.length, 'Account', 'Accounts')}</strong></div>

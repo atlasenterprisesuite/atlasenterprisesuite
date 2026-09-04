@@ -7,6 +7,10 @@ export type AccountingTable =
   | 'invoices'
   | 'payments'
   | 'accounting_bills'
+  | 'accounting_bank_accounts'
+  | 'accounting_transactions'
+  | 'accounting_reconciliation_sessions'
+  | 'accounting_reconciliation_items'
   | 'audit_logs';
 
 export interface AccountRecord {
@@ -100,6 +104,80 @@ export interface BillRecord {
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+}
+
+export interface BankAccountRecord {
+  id: string;
+  organizationId: string | null;
+  entityId: string | null;
+  provider: string | null;
+  providerAccountRef: string | null;
+  displayName: string;
+  accountType: string | null;
+  currency: string;
+  mask: string | null;
+  connectionState: string;
+  currentBalance: number | null;
+  balanceAsOf: string | null;
+  metadata: unknown;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface BankTransactionRecord {
+  id: string;
+  organizationId: string | null;
+  entityId: string | null;
+  bankAccountId: string | null;
+  externalId: string | null;
+  postedDate: string;
+  description: string;
+  merchant: string | null;
+  amount: number;
+  currency: string;
+  suggestedAccountId: string | null;
+  finalAccountId: string | null;
+  confidence: number | null;
+  status: string;
+  evidenceState: string;
+  reviewReason: string | null;
+  flag: string | null;
+  dimension: unknown;
+  fingerprint: string | null;
+  sourcePayload: unknown;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface ReconciliationSessionRecord {
+  id: string;
+  organizationId: string | null;
+  entityId: string | null;
+  bankAccountId: string;
+  periodStart: string;
+  periodEnd: string;
+  statementEndingBalance: number | null;
+  ledgerEndingBalance: number | null;
+  status: string;
+  readinessScore: number;
+  closedBy: string | null;
+  closedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface ReconciliationItemRecord {
+  id: string;
+  organizationId: string | null;
+  sessionId: string;
+  transactionId: string | null;
+  matchType: string | null;
+  status: string;
+  variance: number;
+  note: string | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  createdAt: string | null;
 }
 
 export interface AccountingAuditEvent {
