@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["main"]
 
+concurrency:
+  group: atlas-health-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -20,7 +24,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm audit --audit-level=high
       - run: npm run typecheck
       - run: npm run test:unit
       - run: npm run test:integration
@@ -28,3 +31,17 @@ jobs:
       - name: Guard against copied reference metrics
         run: |
           ! grep -R -E '98%|2,847|1,523|96%' apps/web/src packages/health data/demo/health
+
+  security-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: High-severity dependency audit
+        timeout-minutes: 2
+        run: npm audit --audit-level=high
