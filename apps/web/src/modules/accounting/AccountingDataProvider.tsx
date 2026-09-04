@@ -35,10 +35,11 @@ export type AccountingDataState =
   | { status: 'error' };
 
 const AccountingRepositoryContext = createContext<AccountingRepository | null | undefined>(undefined);
-const AccountingRefreshContext = createContext<{
-  version: number;
-  refresh: () => void;
-} | null>(null);
+const DEFAULT_REFRESH_CONTEXT = {
+  version: 0,
+  refresh: () => undefined,
+};
+const AccountingRefreshContext = createContext(DEFAULT_REFRESH_CONTEXT);
 
 export function AccountingRepositoryProvider({
   repository,
@@ -67,19 +68,11 @@ export function useAccountingRepository(): AccountingRepository | null {
 }
 
 export function useAccountingRefresh(): () => void {
-  const context = useContext(AccountingRefreshContext);
-  if (!context) {
-    throw new Error('Accounting refresh must be used inside AccountingRepositoryProvider');
-  }
-  return context.refresh;
+  return useContext(AccountingRefreshContext).refresh;
 }
 
 function useAccountingRefreshVersion(): number {
-  const context = useContext(AccountingRefreshContext);
-  if (!context) {
-    throw new Error('Accounting data must be used inside AccountingRepositoryProvider');
-  }
-  return context.version;
+  return useContext(AccountingRefreshContext).version;
 }
 
 export function useAccountingData(): AccountingDataState {
