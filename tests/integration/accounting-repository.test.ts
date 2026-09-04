@@ -59,6 +59,7 @@ describe('AccountingRepositoryImpl', () => {
           account_number: '1000',
           name: 'Cash',
           account_type: 'asset',
+          active: true,
           created_at: '2026-09-03T00:00:00Z',
           updated_at: '2026-09-03T00:00:00Z',
         },
@@ -73,10 +74,12 @@ describe('AccountingRepositoryImpl', () => {
         accountNumber: '1000',
         name: 'Cash',
         accountType: 'asset',
+        active: true,
         createdAt: '2026-09-03T00:00:00Z',
         updatedAt: '2026-09-03T00:00:00Z',
       },
     ]);
+    expect(gateway.calls[0]?.columns).toContain('active');
   });
 
   test('preserves journal reversal linkage from the canonical column', async () => {
