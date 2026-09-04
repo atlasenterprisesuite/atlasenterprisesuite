@@ -75,7 +75,7 @@ describe('ATLAS Telecom MiFi route', () => {
 
     await waitFor(() => expect(setCallForwarding).toHaveBeenCalledTimes(1));
     expect(setCallForwarding.mock.calls[0][0].rule.destinationE164).toBe('+17865550123');
-    expect(screen.getByText(/accepted/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Command accepted/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Verify forwarding' }));
     expect(await screen.findByText('Verified')).toBeInTheDocument();
