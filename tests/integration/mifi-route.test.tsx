@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
 import { MifiControlPage } from '../../apps/web/src/modules/telecom/MifiControlPage';
-import type { MifiAdapter, MifiDevice } from '../../packages/telecom/src';
+import type { CallForwardingRequest, MifiAdapter, MifiDevice } from '../../packages/telecom/src';
 
 describe('ATLAS Telecom MiFi route', () => {
   it('renders MiFi controls inside the shared ATLAS shell without false live state', async () => {
@@ -50,7 +50,7 @@ describe('ATLAS Telecom MiFi route', () => {
         mbim: false
       }
     };
-    const setCallForwarding = vi.fn(async () => ({
+    const setCallForwarding = vi.fn(async (_request: CallForwardingRequest) => ({
       requestId: 'req-1',
       accepted: true,
       verified: false,
