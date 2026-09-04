@@ -1,0 +1,75 @@
+name: ATLAS Consensus CI
+
+on:
+  push:
+    branches: ["atlas/integration-consensus-v1"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-consensus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  product-ux:
+    name: Opinion 1 - Product and UX
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Integration and route contracts
+        run: npm run test:integration
+
+  architecture:
+    name: Opinion 2 - Architecture and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: TypeScript contract
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+
+  security:
+    name: Opinion 3 - Security and Reliability
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Dependency security gate
+        run: npm audit --audit-level=high
+      - name: Unit tests
+        run: npm run test:unit
+
+  consensus:
+    name: ATLAS 3-of-3 Consensus
+    runs-on: ubuntu-latest
+    needs: [product-ux, architecture, security]
+    if: ${{ always() }}
+    steps:
+      - name: Require unanimous consensus
+        run: |
+          test "${{ needs.product-ux.result }}" = "success"
+          test "${{ needs.architecture.result }}" = "success"
+          test "${{ needs.security.result }}" = "success"
+          echo "ATLAS consensus: 3/3 gates approved." >> "$GITHUB_STEP_SUMMARY"
