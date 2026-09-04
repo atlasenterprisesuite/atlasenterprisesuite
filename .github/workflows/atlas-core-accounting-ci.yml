@@ -53,6 +53,12 @@ jobs:
       - name: Chart of Accounts UI tests
         run: npm test -- tests/integration/chart-of-accounts-ui.test.tsx
 
+      - name: Account write contract tests
+        run: npm test -- tests/unit/account-writes.test.ts
+
+      - name: Account RPC gateway tests
+        run: npm test -- tests/integration/account-rpc-gateway.test.ts
+
       - name: Journal write contract tests
         run: npm test -- tests/unit/journal-writes.test.ts
 
