@@ -4,11 +4,13 @@ import { BrowserRouter } from 'react-router-dom';
 import {
   AccountWriteService,
   ArApWriteService,
+  BankCashWriteService,
   createSupabaseAccountingRepository,
   JournalWriteService,
   SupabaseAccountingWriteGateway,
   SupabaseAccountWriteGateway,
   SupabaseArApWriteGateway,
+  SupabaseBankCashWriteGateway,
 } from '../../../packages/accounting/src';
 import { App } from './App';
 import { AtlasProvider } from './app/AtlasContext';
@@ -16,6 +18,7 @@ import { AccountWriteProvider } from './modules/accounting/AccountWriteProvider'
 import { AccountingRepositoryProvider } from './modules/accounting/AccountingDataProvider';
 import { AccountingWriteProvider } from './modules/accounting/AccountingWriteProvider';
 import { ArApWriteProvider } from './modules/accounting/ArApWriteProvider';
+import { BankCashWriteProvider } from './modules/accounting/BankCashWriteProvider';
 import { createAtlasSupabaseClient } from './lib/supabase/client';
 import { createAtlasIdentitySource } from './lib/supabase/atlasIdentitySource';
 import './styles.css';
@@ -34,6 +37,9 @@ const accountWriteService = supabaseClient
 const arApWriteService = supabaseClient
   ? new ArApWriteService(new SupabaseArApWriteGateway(supabaseClient))
   : null;
+const bankCashWriteService = supabaseClient
+  ? new BankCashWriteService(new SupabaseBankCashWriteGateway(supabaseClient))
+  : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -43,7 +49,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <AccountingWriteProvider service={accountingWriteService}>
             <AccountWriteProvider service={accountWriteService}>
               <ArApWriteProvider service={arApWriteService}>
-                <App />
+                <BankCashWriteProvider service={bankCashWriteService}>
+                  <App />
+                </BankCashWriteProvider>
               </ArApWriteProvider>
             </AccountWriteProvider>
           </AccountingWriteProvider>
