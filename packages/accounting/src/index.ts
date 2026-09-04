@@ -1,4 +1,5 @@
 export * from './accountWrites';
+export * from './aging';
 export * from './generalLedger';
 export * from './journalWrites';
 export * from './repository';
