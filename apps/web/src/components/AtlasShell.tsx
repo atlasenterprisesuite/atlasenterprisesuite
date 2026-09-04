@@ -5,6 +5,7 @@ const navItems = [
   { to: '/', label: 'Home' },
   { to: '/finance', label: 'Finance' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
+  { to: '/telecom/devices/mifi', label: 'Telecom' },
   { to: '/health', label: 'Health' }
 ];
 
