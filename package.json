@@ -10,6 +10,10 @@
     "test:integration": "vitest run --config apps/web/vite.config.ts tests/integration",
     "test:e2e": "playwright test"
   },
+  "devDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "overrides": {
     "electron-to-chromium": "1.5.420"
   }
