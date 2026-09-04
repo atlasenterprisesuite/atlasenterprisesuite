@@ -39,7 +39,7 @@ export class UnavailableMifiAdapter implements MifiAdapter {
   }
 
   async getCallForwarding(_deviceId: string, _scope: TenantScope): Promise<CallForwardingRule[]> {
-    return [];
+    throw new TelecomError('ADAPTER_UNAVAILABLE', 'No authorized MiFi device adapter is connected.');
   }
 
   async setCallForwarding(_request: CallForwardingRequest): Promise<CallForwardingResult> {
