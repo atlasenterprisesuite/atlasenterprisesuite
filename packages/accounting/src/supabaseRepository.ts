@@ -5,6 +5,12 @@ import type {
   UpdateAccountCommand,
 } from './accountWrites';
 import type {
+  AccountingGovernanceWriteGateway,
+  CloseAccountingPeriodCommand,
+  CreateFixedAssetCommand,
+  UpdateAccountingSettingsCommand,
+} from './accountingGovernanceWrites';
+import type {
   ArApWriteGateway,
   RecordInvoicePaymentCommand,
   SetBillApprovalCommand,
@@ -74,6 +80,50 @@ export class SupabaseAccountWriteGateway implements AccountWriteGateway {
     const { data, error } = await this.client.rpc(functionName, args);
     if (error) throw new Error(error.message);
     if (typeof data !== 'string' || !data) throw new Error('Account write did not return an id');
+    return data;
+  }
+}
+
+export class SupabaseAccountingGovernanceWriteGateway implements AccountingGovernanceWriteGateway {
+  constructor(private readonly client: Pick<SupabaseClient, 'rpc'>) {}
+
+  async createFixedAsset(command: CreateFixedAssetCommand): Promise<string> {
+    return this.runGovernanceRpc('create_accounting_fixed_asset', {
+      organization_uuid: command.organizationId,
+      asset_code: command.assetCode,
+      asset_name: command.name,
+      acquired_on: command.acquisitionDate,
+      asset_cost: command.cost,
+      salvage_amount: command.salvageValue,
+      useful_life_months: command.usefulLifeMonths,
+    });
+  }
+
+  async closeAccountingPeriod(command: CloseAccountingPeriodCommand): Promise<string> {
+    return this.runGovernanceRpc('close_accounting_period', {
+      organization_uuid: command.organizationId,
+      period_uuid: command.periodId,
+    });
+  }
+
+  async updateAccountingSettings(command: UpdateAccountingSettingsCommand): Promise<string> {
+    return this.runGovernanceRpc('set_accounting_settings', {
+      organization_uuid: command.organizationId,
+      fiscal_year_start_value: command.fiscalYearStart,
+      base_currency_value: command.baseCurrency,
+      accounting_basis_value: command.accountingBasis,
+      default_ar_account_uuid: command.defaultArAccountId,
+      default_ap_account_uuid: command.defaultApAccountId,
+    });
+  }
+
+  private async runGovernanceRpc(
+    functionName: 'create_accounting_fixed_asset' | 'close_accounting_period' | 'set_accounting_settings',
+    args: Record<string, unknown>,
+  ): Promise<string> {
+    const { data, error } = await this.client.rpc(functionName, args);
+    if (error) throw new Error(error.message);
+    if (typeof data !== 'string' || !data) throw new Error('Accounting governance write did not return an id');
     return data;
   }
 }
