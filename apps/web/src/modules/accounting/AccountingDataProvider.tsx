@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -34,6 +35,10 @@ export type AccountingDataState =
   | { status: 'error' };
 
 const AccountingRepositoryContext = createContext<AccountingRepository | null | undefined>(undefined);
+const AccountingRefreshContext = createContext<{
+  version: number;
+  refresh: () => void;
+} | null>(null);
 
 export function AccountingRepositoryProvider({
   repository,
@@ -42,9 +47,16 @@ export function AccountingRepositoryProvider({
   repository: AccountingRepository | null;
   children: ReactNode;
 }) {
+  const [version, setVersion] = useState(0);
+  const refresh = useCallback(() => {
+    setVersion((current) => current + 1);
+  }, []);
+
   return (
     <AccountingRepositoryContext.Provider value={repository}>
-      {children}
+      <AccountingRefreshContext.Provider value={{ version, refresh }}>
+        {children}
+      </AccountingRefreshContext.Provider>
     </AccountingRepositoryContext.Provider>
   );
 }
@@ -54,9 +66,26 @@ export function useAccountingRepository(): AccountingRepository | null {
   return repository ?? null;
 }
 
+export function useAccountingRefresh(): () => void {
+  const context = useContext(AccountingRefreshContext);
+  if (!context) {
+    throw new Error('Accounting refresh must be used inside AccountingRepositoryProvider');
+  }
+  return context.refresh;
+}
+
+function useAccountingRefreshVersion(): number {
+  const context = useContext(AccountingRefreshContext);
+  if (!context) {
+    throw new Error('Accounting data must be used inside AccountingRepositoryProvider');
+  }
+  return context.version;
+}
+
 export function useAccountingData(): AccountingDataState {
   const identity = useAtlasContext();
   const repository = useAccountingRepository();
+  const refreshVersion = useAccountingRefreshVersion();
   const [state, setState] = useState<AccountingDataState>({ status: 'waiting' });
 
   useEffect(() => {
@@ -101,7 +130,7 @@ export function useAccountingData(): AccountingDataState {
     return () => {
       active = false;
     };
-  }, [identity, repository]);
+  }, [identity, repository, refreshVersion]);
 
   return state;
 }
