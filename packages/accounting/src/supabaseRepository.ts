@@ -1,5 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+  AccountWriteGateway,
+  CreateAccountCommand,
+  UpdateAccountCommand,
+} from './accountWrites';
+import type {
   CreatePostedJournalCommand,
   JournalWriteGateway,
   ReversePostedJournalCommand,
@@ -25,6 +30,40 @@ export class SupabaseAccountingReadGateway implements AccountingReadGateway {
     }
 
     return (data ?? []) as T[];
+  }
+}
+
+export class SupabaseAccountWriteGateway implements AccountWriteGateway {
+  constructor(private readonly client: Pick<SupabaseClient, 'rpc'>) {}
+
+  async createAccount(command: CreateAccountCommand): Promise<string> {
+    return this.runAccountRpc('create_chart_account', {
+      organization_uuid: command.organizationId,
+      account_code: command.accountNumber,
+      account_name: command.name,
+      account_kind: command.accountType,
+    });
+  }
+
+  async updateAccount(command: UpdateAccountCommand): Promise<string> {
+    return this.runAccountRpc('update_chart_account', {
+      organization_uuid: command.organizationId,
+      account_uuid: command.accountId,
+      account_code: command.accountNumber,
+      account_name: command.name,
+      account_kind: command.accountType,
+      account_active: command.active,
+    });
+  }
+
+  private async runAccountRpc(
+    functionName: 'create_chart_account' | 'update_chart_account',
+    args: Record<string, unknown>,
+  ): Promise<string> {
+    const { data, error } = await this.client.rpc(functionName, args);
+    if (error) throw new Error(error.message);
+    if (typeof data !== 'string' || !data) throw new Error('Account write did not return an id');
+    return data;
   }
 }
 
