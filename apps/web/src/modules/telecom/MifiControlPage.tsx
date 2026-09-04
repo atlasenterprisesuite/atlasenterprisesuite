@@ -133,11 +133,11 @@ export function MifiControlPage({ adapter = defaultAdapter, writeAuthorized = fa
   }
 
   async function verifyForwarding() {
-    if (!canWrite || !lastRequestedRule || operationState === 'submitting') return;
+    if (!canWrite || !device || !lastRequestedRule || operationState === 'submitting') return;
     setOperationState('submitting');
     setResultMessage('Reading the forwarding rule back from the modem or network.');
     try {
-      const activeRules = await adapter.verifyCallForwarding(deviceId, demoAtlasContext.scope);
+      const activeRules = await adapter.verifyCallForwarding(device.id, demoAtlasContext.scope);
       if (!rulesMatch(lastRequestedRule, activeRules)) {
         throw new TelecomError('VERIFICATION_MISMATCH', 'Network read-back does not match the requested forwarding rule.');
       }
