@@ -3,16 +3,19 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import {
   AccountWriteService,
+  ArApWriteService,
   createSupabaseAccountingRepository,
   JournalWriteService,
   SupabaseAccountingWriteGateway,
   SupabaseAccountWriteGateway,
+  SupabaseArApWriteGateway,
 } from '../../../packages/accounting/src';
 import { App } from './App';
 import { AtlasProvider } from './app/AtlasContext';
 import { AccountWriteProvider } from './modules/accounting/AccountWriteProvider';
 import { AccountingRepositoryProvider } from './modules/accounting/AccountingDataProvider';
 import { AccountingWriteProvider } from './modules/accounting/AccountingWriteProvider';
+import { ArApWriteProvider } from './modules/accounting/ArApWriteProvider';
 import { createAtlasSupabaseClient } from './lib/supabase/client';
 import { createAtlasIdentitySource } from './lib/supabase/atlasIdentitySource';
 import './styles.css';
@@ -28,6 +31,9 @@ const accountingWriteService = supabaseClient
 const accountWriteService = supabaseClient
   ? new AccountWriteService(new SupabaseAccountWriteGateway(supabaseClient))
   : null;
+const arApWriteService = supabaseClient
+  ? new ArApWriteService(new SupabaseArApWriteGateway(supabaseClient))
+  : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -36,7 +42,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AccountingRepositoryProvider repository={accountingRepository}>
           <AccountingWriteProvider service={accountingWriteService}>
             <AccountWriteProvider service={accountWriteService}>
-              <App />
+              <ArApWriteProvider service={arApWriteService}>
+                <App />
+              </ArApWriteProvider>
             </AccountWriteProvider>
           </AccountingWriteProvider>
         </AccountingRepositoryProvider>
