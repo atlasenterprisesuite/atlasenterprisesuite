@@ -21,6 +21,8 @@ export function AccountingPage() {
         <Link to="/finance/accounting/general-ledger">General Ledger</Link>
         <Link to="/finance/accounting/chart-of-accounts">Chart of Accounts</Link>
         <Link to="/finance/accounting/journal-entries">Journal Entries</Link>
+        <Link to="/finance/accounting/accounts-receivable">Accounts Receivable</Link>
+        <Link to="/finance/accounting/accounts-payable">Accounts Payable</Link>
       </nav>
 
       {(state.status === 'waiting' || state.status === 'loading') && (
@@ -45,14 +47,15 @@ export function AccountingPage() {
       )}
 
       {state.status === 'ready' && (() => {
-        const { accounts, journals, customers, vendors, invoices, payments } = state.data;
+        const { accounts, journals, customers, vendors, invoices, payments, bills } = state.data;
         const totalRecords =
           accounts.length +
           journals.length +
           customers.length +
           vendors.length +
           invoices.length +
-          payments.length;
+          payments.length +
+          bills.length;
 
         if (totalRecords === 0) return <AccountingEmptyState />;
 
@@ -64,6 +67,7 @@ export function AccountingPage() {
             <div className="atlas-module-card"><strong>{countLabel(vendors.length, 'Vendor', 'Vendors')}</strong></div>
             <div className="atlas-module-card"><strong>{countLabel(invoices.length, 'Invoice', 'Invoices')}</strong></div>
             <div className="atlas-module-card"><strong>{countLabel(payments.length, 'Payment', 'Payments')}</strong></div>
+            <div className="atlas-module-card"><strong>{countLabel(bills.length, 'Bill', 'Bills')}</strong></div>
           </section>
         );
       })()}
