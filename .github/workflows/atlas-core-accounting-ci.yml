@@ -50,6 +50,9 @@ jobs:
       - name: AR AP write contract tests
         run: npm test -- tests/unit/ar-ap-writes.test.ts
 
+      - name: AR AP RPC gateway tests
+        run: npm test -- tests/integration/ar-ap-rpc-gateway.test.ts
+
       - name: AR AP UI tests
         run: npm test -- tests/integration/ar-ap-ui.test.tsx
 
