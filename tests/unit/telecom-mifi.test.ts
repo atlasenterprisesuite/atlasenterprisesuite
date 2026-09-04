@@ -83,6 +83,11 @@ describe('ATLAS Telecom MiFi domain', () => {
     })).rejects.toThrow('ADAPTER_UNAVAILABLE');
   });
 
+  it('unavailable adapter never reports an empty forwarding read as a successful network query', async () => {
+    const adapter = new UnavailableMifiAdapter();
+    await expect(adapter.getCallForwarding('mifi-1', scope)).rejects.toThrow('ADAPTER_UNAVAILABLE');
+  });
+
   it('marks verification as matching only when the network rule matches', () => {
     const expected = { enabled: true, reason: 'all' as const, destinationE164: '+17865550123' };
     expect(rulesMatch(expected, [{ ...expected }])).toBe(true);
