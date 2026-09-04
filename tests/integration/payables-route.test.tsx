@@ -13,8 +13,10 @@ describe('Accounts Payable route', () => {
     expect(screen.getByText(/No bank, payment processor/)).toBeInTheDocument();
   });
 
-  it('preserves an intentional degraded Health route instead of breaking', () => {
+  it('keeps the restored Health home inside the same shared ATLAS shell', () => {
     render(<MemoryRouter initialEntries={['/health']}><App /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: /Health source unavailable/ })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'ATLAS modules' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Smart Health Ecosystem' })).toBeInTheDocument();
+    expect(screen.getByText(/demonstration data unless a source is explicitly marked live/i)).toBeInTheDocument();
   });
 });
