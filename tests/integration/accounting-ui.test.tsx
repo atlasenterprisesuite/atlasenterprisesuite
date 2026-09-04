@@ -58,7 +58,7 @@ test('shows a truthful empty state when the organization has no accounting rows'
   expect(screen.queryByText(/demo/i)).not.toBeInTheDocument();
 });
 
-test('links Accounting to the real General Ledger, Chart of Accounts, and Journal Entries routes', async () => {
+test('links Accounting to the real ledger, journal, AR, and AP routes', async () => {
   renderAccounting(repositoryWith());
 
   expect(await screen.findByRole('link', { name: 'General Ledger' })).toHaveAttribute(
@@ -72,6 +72,14 @@ test('links Accounting to the real General Ledger, Chart of Accounts, and Journa
   expect(screen.getByRole('link', { name: 'Journal Entries' })).toHaveAttribute(
     'href',
     '/finance/accounting/journal-entries',
+  );
+  expect(screen.getByRole('link', { name: 'Accounts Receivable' })).toHaveAttribute(
+    'href',
+    '/finance/accounting/accounts-receivable',
+  );
+  expect(screen.getByRole('link', { name: 'Accounts Payable' })).toHaveAttribute(
+    'href',
+    '/finance/accounting/accounts-payable',
   );
 });
 
@@ -120,6 +128,36 @@ test('shows counts derived only from repository records', async () => {
   expect(screen.getByText('1 Vendor')).toBeInTheDocument();
   expect(screen.getByText('0 Journals')).toBeInTheDocument();
   expect(screen.queryByText('$0')).not.toBeInTheDocument();
+});
+
+test('counts canonical bills as accounting records instead of showing a false empty state', async () => {
+  renderAccounting(
+    repositoryWith({
+      listBills: async () => [
+        {
+          id: 'bill-1',
+          organizationId: 'org-test',
+          entityId: null,
+          vendorId: null,
+          billNumber: 'BILL-1001',
+          billDate: '2026-09-04',
+          dueDate: null,
+          amount: 58.98,
+          balanceDue: 58.98,
+          approvalState: 'pending',
+          matchState: 'no_po',
+          status: 'open',
+          sourceDocumentId: null,
+          createdBy: null,
+          createdAt: null,
+          updatedAt: null,
+        },
+      ],
+    }),
+  );
+
+  expect(await screen.findByText('1 Bill')).toBeInTheDocument();
+  expect(screen.queryByText('No accounting records')).not.toBeInTheDocument();
 });
 
 test('shows an explicit unavailable state when no real repository is configured', async () => {
