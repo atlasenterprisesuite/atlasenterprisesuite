@@ -2,12 +2,16 @@ import type {
   AccountingAuditEvent,
   AccountingTable,
   AccountRecord,
+  BankAccountRecord,
+  BankTransactionRecord,
   BillRecord,
   InvoiceRecord,
   JournalLineRecord,
   JournalRecord,
   PartyRecord,
   PaymentRecord,
+  ReconciliationItemRecord,
+  ReconciliationSessionRecord,
 } from './types';
 
 export interface AccountingReadGateway {
@@ -22,6 +26,10 @@ export interface AccountingRepository {
   listInvoices(organizationId: string): Promise<InvoiceRecord[]>;
   listPayments(organizationId: string): Promise<PaymentRecord[]>;
   listBills(organizationId: string): Promise<BillRecord[]>;
+  listBankAccounts(organizationId: string): Promise<BankAccountRecord[]>;
+  listBankTransactions(organizationId: string): Promise<BankTransactionRecord[]>;
+  listReconciliationSessions(organizationId: string): Promise<ReconciliationSessionRecord[]>;
+  listReconciliationItems(organizationId: string): Promise<ReconciliationItemRecord[]>;
   listAuditEvents(organizationId: string): Promise<AccountingAuditEvent[]>;
 }
 
@@ -115,6 +123,80 @@ type BillRow = {
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type BankAccountRow = {
+  id: string;
+  org_id: string | null;
+  entity_id: string | null;
+  provider: string | null;
+  provider_account_ref: string | null;
+  display_name: string;
+  account_type: string | null;
+  currency: string;
+  mask: string | null;
+  connection_state: string;
+  current_balance: number | null;
+  balance_as_of: string | null;
+  metadata: unknown;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type BankTransactionRow = {
+  id: string;
+  org_id: string | null;
+  entity_id: string | null;
+  bank_account_id: string | null;
+  external_id: string | null;
+  posted_date: string;
+  description: string;
+  merchant: string | null;
+  amount: number;
+  currency: string;
+  suggested_account_id: string | null;
+  final_account_id: string | null;
+  confidence: number | null;
+  status: string;
+  evidence_state: string;
+  review_reason: string | null;
+  flag: string | null;
+  dimension: unknown;
+  fingerprint: string | null;
+  source_payload: unknown;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type ReconciliationSessionRow = {
+  id: string;
+  org_id: string | null;
+  entity_id: string | null;
+  bank_account_id: string;
+  period_start: string;
+  period_end: string;
+  statement_ending_balance: number | null;
+  ledger_ending_balance: number | null;
+  status: string;
+  readiness_score: number;
+  closed_by: string | null;
+  closed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type ReconciliationItemRow = {
+  id: string;
+  org_id: string | null;
+  session_id: string;
+  transaction_id: string | null;
+  match_type: string | null;
+  status: string;
+  variance: number;
+  note: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string | null;
 };
 
 type AuditRow = {
@@ -306,6 +388,116 @@ export class AccountingRepositoryImpl implements AccountingRepository {
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+    }));
+  }
+
+  async listBankAccounts(organizationId: string): Promise<BankAccountRecord[]> {
+    const orgId = requireOrganizationId(organizationId);
+    const rows = await this.gateway.select<BankAccountRow>(
+      'accounting_bank_accounts',
+      'id,org_id,entity_id,provider,provider_account_ref,display_name,account_type,currency,mask,connection_state,current_balance,balance_as_of,metadata,created_at,updated_at',
+      orgId,
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      organizationId: row.org_id,
+      entityId: row.entity_id,
+      provider: row.provider,
+      providerAccountRef: row.provider_account_ref,
+      displayName: row.display_name,
+      accountType: row.account_type,
+      currency: row.currency,
+      mask: row.mask,
+      connectionState: row.connection_state,
+      currentBalance: row.current_balance,
+      balanceAsOf: row.balance_as_of,
+      metadata: row.metadata,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  }
+
+  async listBankTransactions(organizationId: string): Promise<BankTransactionRecord[]> {
+    const orgId = requireOrganizationId(organizationId);
+    const rows = await this.gateway.select<BankTransactionRow>(
+      'accounting_transactions',
+      'id,org_id,entity_id,bank_account_id,external_id,posted_date,description,merchant,amount,currency,suggested_account_id,final_account_id,confidence,status,evidence_state,review_reason,flag,dimension,fingerprint,source_payload,created_at,updated_at',
+      orgId,
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      organizationId: row.org_id,
+      entityId: row.entity_id,
+      bankAccountId: row.bank_account_id,
+      externalId: row.external_id,
+      postedDate: row.posted_date,
+      description: row.description,
+      merchant: row.merchant,
+      amount: row.amount,
+      currency: row.currency,
+      suggestedAccountId: row.suggested_account_id,
+      finalAccountId: row.final_account_id,
+      confidence: row.confidence,
+      status: row.status,
+      evidenceState: row.evidence_state,
+      reviewReason: row.review_reason,
+      flag: row.flag,
+      dimension: row.dimension,
+      fingerprint: row.fingerprint,
+      sourcePayload: row.source_payload,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  }
+
+  async listReconciliationSessions(organizationId: string): Promise<ReconciliationSessionRecord[]> {
+    const orgId = requireOrganizationId(organizationId);
+    const rows = await this.gateway.select<ReconciliationSessionRow>(
+      'accounting_reconciliation_sessions',
+      'id,org_id,entity_id,bank_account_id,period_start,period_end,statement_ending_balance,ledger_ending_balance,status,readiness_score,closed_by,closed_at,created_at,updated_at',
+      orgId,
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      organizationId: row.org_id,
+      entityId: row.entity_id,
+      bankAccountId: row.bank_account_id,
+      periodStart: row.period_start,
+      periodEnd: row.period_end,
+      statementEndingBalance: row.statement_ending_balance,
+      ledgerEndingBalance: row.ledger_ending_balance,
+      status: row.status,
+      readinessScore: row.readiness_score,
+      closedBy: row.closed_by,
+      closedAt: row.closed_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  }
+
+  async listReconciliationItems(organizationId: string): Promise<ReconciliationItemRecord[]> {
+    const orgId = requireOrganizationId(organizationId);
+    const rows = await this.gateway.select<ReconciliationItemRow>(
+      'accounting_reconciliation_items',
+      'id,org_id,session_id,transaction_id,match_type,status,variance,note,resolved_by,resolved_at,created_at',
+      orgId,
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      organizationId: row.org_id,
+      sessionId: row.session_id,
+      transactionId: row.transaction_id,
+      matchType: row.match_type,
+      status: row.status,
+      variance: row.variance,
+      note: row.note,
+      resolvedBy: row.resolved_by,
+      resolvedAt: row.resolved_at,
+      createdAt: row.created_at,
     }));
   }
 
