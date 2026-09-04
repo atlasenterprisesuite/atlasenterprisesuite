@@ -6,7 +6,7 @@ Approved in chat on 2026-09-04. This specification defines the software architec
 ## Goal
 Add an ATLAS Telecom / Connect control surface that can manage a MiFi cellular line, beginning with call forwarding, while preserving tenant isolation, explicit capability detection, auditability, and truthful live-state reporting.
 
-The initial target line is a Mint Mobile SIM used in a MiFi/hotspot. The desired user flow is to forward incoming calls from the MiFi line to another authorized telephone number. Telephone numbers are configuration data and must not be hard-coded in source.
+The initial target is a user-owned Mint Mobile SIM used in a MiFi/hotspot. The desired user flow is to forward incoming calls from the MiFi line to another authorized telephone number. Telephone numbers are configuration data and must not be hard-coded in source.
 
 ## Product ownership and navigation
 Primary owner: **ATLAS Telecom**.
@@ -16,21 +16,25 @@ Navigation:
 
 `ATLAS → Telecom → Devices → MiFi → Voice & Call Forwarding`
 
-Canonical route for the first slice:
+Canonical route:
 
 `/telecom/devices/mifi`
 
 The Enterprise home and global sidebar expose Telecom only when the route exists. The MiFi page must remain usable on desktop, tablet, and mobile.
 
 ## Current repository constraints
-The current web application is React 18 + TypeScript + Vite with React Router. Domain logic is tested through Vitest and existing business logic lives in `packages/*`. The current `apps/web/src/modules` snapshot contains Finance only, so Telecom is a new module in this repository snapshot rather than an extension of an existing Telecom implementation.
+The current web application is React 18 + TypeScript + Vite with React Router. Domain logic is tested through Vitest and existing business logic lives in `packages/*`.
 
-There is no device-control backend in the current snapshot. Therefore browser code must not directly issue modem commands, pretend to contact Mint, or report network state that was not returned by an authorized device adapter.
+ATLAS core already defines `TenantScope` and `sameScope()` in `packages/core/src/index.ts`; Telecom must reuse them rather than create a second tenancy model.
+
+The current `apps/web/src/modules` snapshot contains Finance only, so Telecom is a new module in this repository snapshot rather than an extension of an existing Telecom implementation.
+
+There is no device-control backend in the current snapshot. Browser code must not directly issue modem commands, pretend to contact Mint, or report network state that was not returned by an authorized device adapter.
 
 ## Architecture
 The feature is split into four isolated units:
 
-1. **Telecom domain package** — pure TypeScript types, validation, capability modeling, state transitions, and call-forwarding request construction.
+1. **Telecom domain package** — pure TypeScript types, validation, capability modeling, state transitions, and call-forwarding request construction. It imports tenant primitives from `packages/core`.
 2. **MiFi control UI** — route, forms, capability/status display, and user actions. It consumes only the adapter contract, not vendor-specific commands.
 3. **Device adapter boundary** — normalized interface between ATLAS and a future local/embedded MiFi bridge. The default repository adapter is `unavailable`, never a fake live adapter.
 4. **Hardware bridge protocol** — a documented contract for a future embedded/edge agent that may use AT commands, USSD/MMI, QMI, MBIM, or a manufacturer API only after the actual MiFi hardware is identified and capability-probed.
@@ -41,14 +45,12 @@ This design deliberately does **not** flash or replace firmware in the first sof
 Create `packages/telecom/src/types.ts` with these public types:
 
 ```ts
+import type { TenantScope } from '../../core/src';
+
 export type ForwardingReason = 'all' | 'busy' | 'no-answer' | 'not-reachable';
 export type DeviceConnectionState = 'unavailable' | 'discovering' | 'connected' | 'error';
 export type OperationState = 'idle' | 'submitting' | 'verified' | 'failed';
-
-export interface TenantScope {
-  tenantId: string;
-  organizationId: string;
-}
+export type TelecomPermission = 'telecom.mifi.read' | 'telecom.mifi.forwarding.write';
 
 export interface ModemCapabilities {
   callForwarding: boolean;
@@ -99,12 +101,15 @@ export interface CallForwardingResult {
 - `noAnswerSeconds` is allowed only for `no-answer` and must be an integer from 5 through 30 inclusive.
 - A requested forwarding reason must exist in `device.capabilities.callForwardingReasons`.
 - If `device.capabilities.callForwarding === false`, activation and verification actions remain disabled.
-- Tenant and organization scope on a request must match the active device scope.
+- Tenant and organization scope on a request must match the active device scope using the shared `sameScope()` helper.
 
 ## Adapter contract
 Create `packages/telecom/src/adapter.ts`:
 
 ```ts
+import type { TenantScope } from '../../core/src';
+import type { CallForwardingRequest, CallForwardingResult, CallForwardingRule, MifiDevice } from './types';
+
 export interface MifiAdapter {
   getDevice(deviceId: string, scope: TenantScope): Promise<MifiDevice>;
   getCallForwarding(deviceId: string, scope: TenantScope): Promise<CallForwardingRule[]>;
@@ -141,26 +146,27 @@ Create `apps/web/src/modules/telecom/MifiControlPage.tsx`.
 The page contains:
 
 - Breadcrumb: `Telecom / Devices / MiFi`.
-- Device card: display name, carrier, line number, and connection state.
+- Device configuration card for display name, carrier, and line number.
+- Connection state card.
 - Capability panel: Call Forwarding, SMS, USSD, AT, QMI, MBIM with explicit supported/unsupported/unknown presentation.
 - Call Forwarding card with enable switch, destination input, reason selector, optional no-answer seconds, Activate, Verify, and Disable actions.
 - Result area with `idle`, `submitting`, `verified`, and `failed` states.
-- A persistent development notice when the adapter is unavailable: `No authorized MiFi device adapter is connected. ATLAS will not report carrier state until a real modem confirms it.`
+- A persistent notice when the adapter is unavailable: `No authorized MiFi device adapter is connected. ATLAS will not report carrier state until a real modem confirms it.`
 
 Do not display `Live`, `Connected`, `Verified`, or carrier-confirmed language unless returned by a real adapter.
 
 ## Initial device configuration
-The first user-owned MiFi should be represented as configuration, not source constants. Until a real adapter is connected, the page may show the user-entered line and carrier as local configuration while the connection state remains `unavailable`.
+The first user-owned MiFi is represented as user-entered configuration, not source constants. The form may store display name, carrier label, and line number in component state for this slice, while connection state remains `unavailable` until a real adapter is attached.
 
 No live forwarding rule is persisted merely because the user presses Activate. A rule becomes verified only when `verifyCallForwarding()` returns a matching network-confirmed rule.
 
 ## Permissions and audit
-Define two logical permissions for future RBAC wiring:
+Logical permissions:
 
 - `telecom.mifi.read`
 - `telecom.mifi.forwarding.write`
 
-The current repository snapshot does not expose a shared RBAC service. The UI must therefore keep write controls disabled unless a future authorization adapter grants write access; it must not invent permission success.
+The current repository exposes Accounting-specific permissions but not a shared cross-module RBAC service. This slice therefore renders Telecom in a safe read/configuration mode and keeps network write controls disabled while the adapter is unavailable. A future authorization adapter must grant `telecom.mifi.forwarding.write` before a real hardware adapter can execute a write.
 
 Every future hardware write must create an audit event. Browser-only local form changes are not network audit events.
 
@@ -184,7 +190,7 @@ The UI maps these to concise user messages and preserves the last safe network s
 - invalid destination rejection;
 - reason capability checks;
 - `noAnswerSeconds` validation;
-- tenant-scope mismatch rejection;
+- tenant-scope mismatch rejection using shared core scope logic;
 - unavailable adapter write rejection;
 - verified state only after a matching verification response.
 
@@ -193,7 +199,7 @@ The UI maps these to concise user messages and preserves the last safe network s
 - `/telecom/devices/mifi` renders under the ATLAS shell;
 - Telecom appears in navigation;
 - unavailable-adapter notice is visible;
-- Activate is disabled when call forwarding capability is unavailable;
+- Activate and Verify are disabled when call forwarding capability is unavailable;
 - destination validation is rendered accessibly;
 - no false `Connected` or `Verified` state appears.
 
