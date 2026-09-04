@@ -29,6 +29,7 @@ export function MifiControlPage({ adapter = defaultAdapter, writeAuthorized = fa
   const [lineNumber, setLineNumber] = useState('');
   const [destination, setDestination] = useState('');
   const [reason, setReason] = useState<ForwardingReason>('all');
+  const [desiredEnabled, setDesiredEnabled] = useState(false);
   const [noAnswerSeconds, setNoAnswerSeconds] = useState(20);
   const [validationMessage, setValidationMessage] = useState('');
   const [operationState, setOperationState] = useState<OperationState>('idle');
@@ -119,6 +120,7 @@ export function MifiControlPage({ adapter = defaultAdapter, writeAuthorized = fa
       if (!result.accepted) {
         throw new TelecomError('NETWORK_REJECTED', result.networkMessage ?? 'The modem or network rejected the request.');
       }
+      setDesiredEnabled(enabled);
       setLastRequestedRule(request.rule);
       setOperationState('idle');
       setResultMessage(result.networkMessage
@@ -185,6 +187,7 @@ export function MifiControlPage({ adapter = defaultAdapter, writeAuthorized = fa
       <section className="workspace-card" aria-labelledby="mifi-forwarding-heading">
         <div><p className="eyebrow">Voice</p><h2 id="mifi-forwarding-heading">Call Forwarding</h2></div>
         <div className="mifi-form-grid">
+          <label className="toggle-field"><span>Desired state</span><span className="toggle-control"><input aria-label="Forwarding enabled" type="checkbox" checked={desiredEnabled} onChange={(event) => setDesiredEnabled(event.target.checked)} /><strong>{desiredEnabled ? 'ON' : 'OFF'}</strong></span></label>
           <label className="field"><span>Forward calls to</span><input value={destination} onChange={(event) => setDestination(event.target.value)} onBlur={validateDestination} inputMode="tel" aria-describedby="destination-message" /></label>
           <label className="field"><span>Forwarding mode</span><select value={reason} onChange={(event) => setReason(event.target.value as ForwardingReason)}><option value="all">All calls</option><option value="busy">When busy</option><option value="no-answer">No answer</option><option value="not-reachable">Not reachable</option></select></label>
           {reason === 'no-answer' && <label className="field"><span>No-answer delay</span><input type="number" min={5} max={30} value={noAnswerSeconds} onChange={(event) => setNoAnswerSeconds(Number(event.target.value))} /></label>}
