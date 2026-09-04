@@ -18,6 +18,8 @@ export function AccountingPage() {
       </p>
 
       <nav className="atlas-submodule-nav" aria-label="Accounting workflows">
+        <Link to="/finance/accounting/general-ledger">General Ledger</Link>
+        <Link to="/finance/accounting/chart-of-accounts">Chart of Accounts</Link>
         <Link to="/finance/accounting/journal-entries">Journal Entries</Link>
       </nav>
 
