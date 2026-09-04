@@ -31,6 +31,7 @@
 - Create: `packages/telecom/src/errors.ts`
 - Create: `packages/telecom/src/validation.ts`
 - Create: `packages/telecom/src/index.ts`
+- Modify: `package-lock.json`
 - Create: `tests/unit/telecom-mifi.test.ts`
 
 **Interfaces:**
@@ -39,7 +40,7 @@
 
 - [ ] **Step 1: Write failing unit tests for E.164 normalization and validation**
 
-Add to `tests/unit/telecom-mifi.test.ts`:
+Create `tests/unit/telecom-mifi.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -89,7 +90,10 @@ describe('ATLAS Telecom MiFi domain', () => {
   });
 
   it('rejects a forwarding reason the modem does not support', () => {
-    const limited = { ...device, capabilities: { ...device.capabilities, callForwardingReasons: ['all'] as const } };
+    const limited: MifiDevice = {
+      ...device,
+      capabilities: { ...device.capabilities, callForwardingReasons: ['all'] }
+    };
     expect(() => validateForwardingRequest(limited, {
       deviceId: device.id,
       scope,
@@ -120,7 +124,7 @@ describe('ATLAS Telecom MiFi domain', () => {
 Run:
 
 ```bash
-npm run test:unit -- tests/unit/telecom-mifi.test.ts
+npx vitest run tests/unit/telecom-mifi.test.ts
 ```
 
 Expected: FAIL with module resolution errors for `../../packages/telecom/src`.
@@ -256,20 +260,30 @@ export * from './errors';
 export * from './validation';
 ```
 
-- [ ] **Step 5: Run the Telecom unit tests**
+- [ ] **Step 5: Refresh the workspace lockfile without adding dependencies**
 
 Run:
 
 ```bash
-npm run test:unit -- tests/unit/telecom-mifi.test.ts
+npm install --package-lock-only --ignore-scripts
+```
+
+Expected: `package-lock.json` contains the new `packages/telecom` workspace entry and no unrelated dependency upgrade is introduced.
+
+- [ ] **Step 6: Run the Telecom unit tests**
+
+Run:
+
+```bash
+npx vitest run tests/unit/telecom-mifi.test.ts
 ```
 
 Expected: PASS for normalization, capability, delay, and scope tests.
 
-- [ ] **Step 6: Commit the domain package**
+- [ ] **Step 7: Commit the domain package**
 
 ```bash
-git add packages/telecom tests/unit/telecom-mifi.test.ts
+git add packages/telecom package-lock.json tests/unit/telecom-mifi.test.ts
 git commit -m "feat: add telecom MiFi domain"
 ```
 
@@ -288,11 +302,9 @@ git commit -m "feat: add telecom MiFi domain"
 
 - [ ] **Step 1: Add failing tests for adapter safety and verification matching**
 
-Append to `tests/unit/telecom-mifi.test.ts`:
+Append these tests inside the existing Telecom `describe` block and add `UnavailableMifiAdapter` plus `rulesMatch` to the current package import:
 
 ```ts
-import { UnavailableMifiAdapter, rulesMatch } from '../../packages/telecom/src';
-
 it('unavailable adapter never accepts a forwarding write', async () => {
   const adapter = new UnavailableMifiAdapter();
   await expect(adapter.setCallForwarding({
@@ -314,7 +326,7 @@ it('marks verification as matching only when the network rule matches', () => {
 Run:
 
 ```bash
-npm run test:unit -- tests/unit/telecom-mifi.test.ts
+npx vitest run tests/unit/telecom-mifi.test.ts
 ```
 
 Expected: FAIL because `UnavailableMifiAdapter` and `rulesMatch` do not exist.
@@ -326,7 +338,13 @@ Expected: FAIL because `UnavailableMifiAdapter` and `rulesMatch` do not exist.
 ```ts
 import type { TenantScope } from '../../core/src';
 import { TelecomError } from './errors';
-import type { CallForwardingRequest, CallForwardingResult, CallForwardingRule, MifiDevice } from './types';
+import type {
+  CallForwardingRequest,
+  CallForwardingResult,
+  CallForwardingRule,
+  MifiDevice,
+  ModemCapabilities
+} from './types';
 
 export interface MifiAdapter {
   getDevice(deviceId: string, scope: TenantScope): Promise<MifiDevice>;
@@ -335,7 +353,7 @@ export interface MifiAdapter {
   verifyCallForwarding(deviceId: string, scope: TenantScope): Promise<CallForwardingRule[]>;
 }
 
-const noCapabilities = {
+const noCapabilities: ModemCapabilities = {
   callForwarding: false,
   callForwardingReasons: [],
   sms: false,
@@ -343,7 +361,7 @@ const noCapabilities = {
   atCommands: false,
   qmi: false,
   mbim: false
-} as const;
+};
 
 export class UnavailableMifiAdapter implements MifiAdapter {
   async getDevice(deviceId: string, scope: TenantScope): Promise<MifiDevice> {
@@ -358,15 +376,15 @@ export class UnavailableMifiAdapter implements MifiAdapter {
     };
   }
 
-  async getCallForwarding(): Promise<CallForwardingRule[]> {
+  async getCallForwarding(_deviceId: string, _scope: TenantScope): Promise<CallForwardingRule[]> {
     return [];
   }
 
-  async setCallForwarding(): Promise<CallForwardingResult> {
+  async setCallForwarding(_request: CallForwardingRequest): Promise<CallForwardingResult> {
     throw new TelecomError('ADAPTER_UNAVAILABLE', 'No authorized MiFi device adapter is connected.');
   }
 
-  async verifyCallForwarding(): Promise<CallForwardingRule[]> {
+  async verifyCallForwarding(_deviceId: string, _scope: TenantScope): Promise<CallForwardingRule[]> {
     throw new TelecomError('ADAPTER_UNAVAILABLE', 'No authorized MiFi device adapter is connected.');
   }
 }
@@ -395,7 +413,7 @@ export * from './adapter';
 Run:
 
 ```bash
-npm run test:unit -- tests/unit/telecom-mifi.test.ts
+npx vitest run tests/unit/telecom-mifi.test.ts
 ```
 
 Expected: PASS, including the rejection of all writes by the unavailable adapter.
@@ -423,7 +441,7 @@ git commit -m "feat: add safe MiFi adapter boundary"
 
 - [ ] **Step 1: Write the failing route integration test**
 
-`tests/integration/mifi-route.test.tsx`:
+Create `tests/integration/mifi-route.test.tsx`:
 
 ```tsx
 import React from 'react';
@@ -453,14 +471,14 @@ describe('ATLAS Telecom MiFi route', () => {
 Run:
 
 ```bash
-npm run test:integration -- tests/integration/mifi-route.test.tsx
+npx vitest run tests/integration/mifi-route.test.tsx
 ```
 
 Expected: FAIL because the Telecom route and navigation item are missing.
 
 - [ ] **Step 3: Create the MiFi control page**
 
-Create `apps/web/src/modules/telecom/MifiControlPage.tsx` with these implementation rules:
+Create `apps/web/src/modules/telecom/MifiControlPage.tsx`:
 
 ```tsx
 import { useEffect, useMemo, useState } from 'react';
@@ -563,7 +581,7 @@ The local configuration inputs intentionally do not persist a network rule. The 
 
 - [ ] **Step 4: Register the route and navigation item**
 
-In `apps/web/src/App.tsx`:
+In `apps/web/src/App.tsx` add:
 
 ```tsx
 import { MifiControlPage } from './modules/telecom/MifiControlPage';
@@ -581,7 +599,7 @@ Add the route:
 <Route path="/telecom/devices/mifi" element={<MifiControlPage />} />
 ```
 
-In `apps/web/src/components/AtlasShell.tsx`, add:
+In `apps/web/src/components/AtlasShell.tsx`, add to `navItems`:
 
 ```ts
 { to: '/telecom/devices/mifi', label: 'Telecom' }
@@ -592,7 +610,7 @@ In `apps/web/src/components/AtlasShell.tsx`, add:
 Run:
 
 ```bash
-npm run test:integration -- tests/integration/mifi-route.test.tsx
+npx vitest run tests/integration/mifi-route.test.tsx
 ```
 
 Expected: PASS with disabled write controls and no false live state.
@@ -618,7 +636,7 @@ git commit -m "feat: add ATLAS MiFi control route"
 
 - [ ] **Step 1: Add integration assertions for labels and disabled controls**
 
-Append to `tests/integration/mifi-route.test.tsx`:
+Append inside the existing `describe` block in `tests/integration/mifi-route.test.tsx`:
 
 ```tsx
 it('exposes accessible MiFi form labels and safe disabled actions', async () => {
@@ -638,10 +656,10 @@ it('exposes accessible MiFi form labels and safe disabled actions', async () => 
 Run:
 
 ```bash
-npm run test:integration -- tests/integration/mifi-route.test.tsx
+npx vitest run tests/integration/mifi-route.test.tsx
 ```
 
-Expected: PASS; this establishes that styling changes must not regress semantics.
+Expected: PASS; styling changes must not regress semantics.
 
 - [ ] **Step 3: Add focused MiFi styles**
 
@@ -669,14 +687,14 @@ Append to `apps/web/src/styles.css`:
 }
 ```
 
-If existing CSS variables differ, use the repository's existing border/background variables rather than introducing a second visual system.
+If `--line` is not present in the current stylesheet, the fallback remains valid and no new global color token is required.
 
 - [ ] **Step 4: Run integration tests, typecheck, and build**
 
 Run:
 
 ```bash
-npm run test:integration -- tests/integration/mifi-route.test.tsx
+npx vitest run tests/integration/mifi-route.test.tsx
 npm run typecheck
 npm run build
 ```
@@ -704,7 +722,7 @@ git commit -m "style: make MiFi control responsive"
 
 - [ ] **Step 1: Add a unit test locking the unavailable production-safe default**
 
-Append:
+Append inside the Telecom `describe` block:
 
 ```ts
 it('reports no modem capabilities from the repository default adapter', async () => {
@@ -721,7 +739,7 @@ it('reports no modem capabilities from the repository default adapter', async ()
 Run:
 
 ```bash
-npm run test:unit -- tests/unit/telecom-mifi.test.ts
+npx vitest run tests/unit/telecom-mifi.test.ts
 ```
 
 Expected: PASS.
@@ -739,27 +757,7 @@ The bridge is a trusted local/embedded service. Browser clients never receive ra
 Every request carries an ATLAS-issued bearer credential over HTTPS or a mutually authenticated local transport. The bridge validates tenant, organization, actor, device permission, expiry, and request idempotency before writes.
 
 ## GET /v1/devices/:deviceId
-Returns:
-
-```json
-{
-  "id": "primary-mifi",
-  "scope": { "tenantId": "tenant-demo", "organizationId": "org-demo" },
-  "displayName": "Primary MiFi",
-  "carrierName": null,
-  "lineNumber": null,
-  "connectionState": "unavailable",
-  "capabilities": {
-    "callForwarding": false,
-    "callForwardingReasons": [],
-    "sms": false,
-    "ussd": false,
-    "atCommands": false,
-    "qmi": false,
-    "mbim": false
-  }
-}
-```
+Returns the normalized `MifiDevice` schema defined in `packages/telecom/src/types.ts`. An unavailable bridge returns `connectionState: "unavailable"` and false capabilities; it does not fabricate a connected device.
 
 ## GET /v1/devices/:deviceId/call-forwarding
 Returns an array of network-read `CallForwardingRule` values. Empty is valid only when the bridge successfully queried the network and no rule exists. Adapter failure returns a non-2xx response instead of an invented empty success.
@@ -847,15 +845,17 @@ npm run build
 
 Expected: PASS and a Vite production bundle.
 
-- [ ] **Step 6: Inspect the final diff for prohibited false-live language and hard-coded phone numbers**
+- [ ] **Step 6: Inspect final changes for whitespace errors, prohibited raw modem access, and accidental user-number constants**
 
 Run:
 
 ```bash
-git diff HEAD~5..HEAD -- apps/web packages/telecom tests docs/telecom
+git diff --check
+git grep -nE 'AT\+|ATD|qmicli|mbimcli' -- apps/web/src || true
+git grep -nE '(4072344222|7867849945|407-234-4222|786-784-9945)' -- apps/web packages/telecom || true
 ```
 
-Expected: no user phone numbers in source; no claim that a carrier rule is active; no raw modem command sent from browser code.
+Expected: `git diff --check` has no output; browser source contains no raw modem commands; the user's real telephone numbers do not appear in source.
 
 - [ ] **Step 7: Record the implementation state accurately**
 
