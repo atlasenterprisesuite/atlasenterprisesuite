@@ -18,7 +18,7 @@ describe('ATLAS shared shell routes', () => {
   it.each([
     ['/finance', 'Finance'],
     ['/finance/accounting', 'Accounting'],
-    ['/health', 'ATLAS Health']
+    ['/health', 'Smart Health Ecosystem']
   ])('renders %s in the ATLAS shell', (path, heading) => {
     render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
