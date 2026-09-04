@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test } from 'vitest';
 import {
   AccountWriteService,
@@ -186,7 +186,12 @@ test('deactivates and reactivates without destructive deletion', async () => {
   renderPage({ permissions: ['accounting.read', 'accounting.write'], service });
 
   fireEvent.click(await screen.findByRole('button', { name: 'Deactivate 1000' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Activate 2000' }));
+  expect(await screen.findByText('Account deactivated')).toBeInTheDocument();
+
+  const activateButton = screen.getByRole('button', { name: 'Activate 2000' });
+  await waitFor(() => expect(activateButton).toBeEnabled());
+  fireEvent.click(activateButton);
+  expect(await screen.findByText('Account activated')).toBeInTheDocument();
 
   expect(received).toEqual([
     {
