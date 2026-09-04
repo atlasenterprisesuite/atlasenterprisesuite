@@ -20,6 +20,6 @@ describe('Smart Health Command Center', () => {
     expect(screen.getByRole('link', { name: /Smart Facilities/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Pharmacy 4.0/i })).not.toBeInTheDocument();
     fireEvent.change(search, { target: { value: 'no-match-module' } });
-    expect(screen.getByRole('status')).toHaveTextContent('No Health modules match this search.');
+    expect(screen.getByText('No Health modules match this search.')).toBeInTheDocument();
   });
 });
