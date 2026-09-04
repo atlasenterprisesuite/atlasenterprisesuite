@@ -6,22 +6,11 @@
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
     "typecheck": "npm --workspace apps/web run typecheck",
-    "test": "vitest run",
-    "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration"
+    "test": "vitest run --config apps/web/vite.config.ts",
+    "test:integration": "vitest run --config apps/web/vite.config.ts tests/integration",
+    "test:e2e": "playwright test"
   },
-  "devDependencies": {
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "4.7.0",
-    "jsdom": "^25.0.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "typescript": "^5.7.2",
-    "vite": "6.4.3",
-    "vitest": "3.2.6"
+  "overrides": {
+    "electron-to-chromium": "1.5.420"
   }
 }
