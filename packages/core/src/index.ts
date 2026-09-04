@@ -1,26 +1,10 @@
-export type TenantScope = {
-  tenantId: string;
-  organizationId: string;
-};
+export * from './tenancy';
+export * from './rbac';
+export * from './audit';
+export * from './result';
 
-export type AccountingPermission =
-  | 'accounting.read'
-  | 'accounting.write'
-  | 'accounting.post'
-  | 'accounting.close'
-  | 'accounting.admin'
-  | 'audit.read';
-
-export function sameScope(a: TenantScope, b: TenantScope) {
-  return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
-}
-
-export function hasPermission(
-  granted: readonly AccountingPermission[],
-  required: AccountingPermission
-) {
-  return granted.includes(required) || granted.includes('accounting.admin');
-}
+import type { TenantScope } from './tenancy';
+import type { AccountingPermission } from './rbac';
 
 export const demoAtlasContext = {
   scope: { tenantId: 'tenant-demo', organizationId: 'org-demo' } satisfies TenantScope,
