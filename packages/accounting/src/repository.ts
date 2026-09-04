@@ -29,6 +29,7 @@ type AccountRow = {
   account_number: string;
   name: string;
   account_type: string;
+  active: boolean;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -134,7 +135,7 @@ export class AccountingRepositoryImpl implements AccountingRepository {
     const orgId = requireOrganizationId(organizationId);
     const rows = await this.gateway.select<AccountRow>(
       'chart_of_accounts',
-      'id,org_id,account_number,name,account_type,created_at,updated_at',
+      'id,org_id,account_number,name,account_type,active,created_at,updated_at',
       orgId,
     );
 
@@ -144,6 +145,7 @@ export class AccountingRepositoryImpl implements AccountingRepository {
       accountNumber: row.account_number,
       name: row.name,
       accountType: row.account_type,
+      active: row.active,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
