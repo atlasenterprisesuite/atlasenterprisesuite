@@ -11,7 +11,8 @@ describe('AdventHealth proposal workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Executive Summary' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'Pilot Roadmap' }));
     expect(await screen.findByRole('heading', { name: 'Pilot Roadmap' })).toBeInTheDocument();
-    expect(screen.getByText(/illustrative|demo/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/Illustrative proposal environment/i);
+    expect(screen.getByText(/Pilot sequence is illustrative/i)).toBeInTheDocument();
     expect(screen.queryByText(/AdventHealth deployment is live/i)).not.toBeInTheDocument();
   });
 
