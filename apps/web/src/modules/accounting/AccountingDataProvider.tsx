@@ -35,9 +35,9 @@ export type AccountingDataState =
   | { status: 'error' };
 
 const AccountingRepositoryContext = createContext<AccountingRepository | null | undefined>(undefined);
-const DEFAULT_REFRESH_CONTEXT = {
+const DEFAULT_REFRESH_CONTEXT: { version: number; refresh: () => void } = {
   version: 0,
-  refresh: () => undefined,
+  refresh: () => {},
 };
 const AccountingRefreshContext = createContext(DEFAULT_REFRESH_CONTEXT);
 
