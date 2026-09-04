@@ -41,6 +41,15 @@ jobs:
       - name: Accounting aging tests
         run: npm test -- tests/unit/accounting-aging.test.ts
 
+      - name: Fixed asset depreciation tests
+        run: npm test -- tests/unit/accounting-assets.test.ts
+
+      - name: Financial report tests
+        run: npm test -- tests/unit/accounting-reports.test.ts
+
+      - name: Period close guard tests
+        run: npm test -- tests/unit/accounting-close.test.ts
+
       - name: Accounting repository tests
         run: npm test -- tests/integration/accounting-repository.test.ts
 
