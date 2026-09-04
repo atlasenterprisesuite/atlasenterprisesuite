@@ -2,6 +2,7 @@ import type {
   AccountingAuditEvent,
   AccountingTable,
   AccountRecord,
+  BillRecord,
   InvoiceRecord,
   JournalLineRecord,
   JournalRecord,
@@ -20,6 +21,7 @@ export interface AccountingRepository {
   listVendors(organizationId: string): Promise<PartyRecord[]>;
   listInvoices(organizationId: string): Promise<InvoiceRecord[]>;
   listPayments(organizationId: string): Promise<PaymentRecord[]>;
+  listBills(organizationId: string): Promise<BillRecord[]>;
   listAuditEvents(organizationId: string): Promise<AccountingAuditEvent[]>;
 }
 
@@ -91,6 +93,25 @@ type PaymentRow = {
   amount: number;
   payment_date: string | null;
   status: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type BillRow = {
+  id: string;
+  org_id: string | null;
+  entity_id: string | null;
+  vendor_id: string | null;
+  bill_number: string;
+  bill_date: string | null;
+  due_date: string | null;
+  amount: number;
+  balance_due: number;
+  approval_state: string;
+  match_state: string;
+  status: string;
+  source_document_id: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -254,6 +275,34 @@ export class AccountingRepositoryImpl implements AccountingRepository {
       amount: row.amount,
       paymentDate: row.payment_date,
       status: row.status,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  }
+
+  async listBills(organizationId: string): Promise<BillRecord[]> {
+    const orgId = requireOrganizationId(organizationId);
+    const rows = await this.gateway.select<BillRow>(
+      'accounting_bills',
+      'id,org_id,entity_id,vendor_id,bill_number,bill_date,due_date,amount,balance_due,approval_state,match_state,status,source_document_id,created_by,created_at,updated_at',
+      orgId,
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      organizationId: row.org_id,
+      entityId: row.entity_id,
+      vendorId: row.vendor_id,
+      billNumber: row.bill_number,
+      billDate: row.bill_date,
+      dueDate: row.due_date,
+      amount: row.amount,
+      balanceDue: row.balance_due,
+      approvalState: row.approval_state,
+      matchState: row.match_state,
+      status: row.status,
+      sourceDocumentId: row.source_document_id,
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
