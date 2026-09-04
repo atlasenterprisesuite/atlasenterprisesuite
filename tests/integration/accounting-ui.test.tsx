@@ -8,9 +8,7 @@ import {
   type AtlasIdentitySource,
   type AtlasIdentityState,
 } from '../../apps/web/src/app/AtlasContext';
-import {
-  AccountingRepositoryProvider,
-} from '../../apps/web/src/modules/accounting/AccountingDataProvider';
+import { AccountingRepositoryProvider } from '../../apps/web/src/modules/accounting/AccountingDataProvider';
 import { AccountingPage } from '../../apps/web/src/modules/accounting/AccountingPage';
 import type { AccountingRepository } from '../../packages/accounting/src';
 
@@ -54,17 +52,26 @@ function renderAccounting(repository: AccountingRepository | null) {
 
 test('shows a truthful empty state when the organization has no accounting rows', async () => {
   renderAccounting(repositoryWith());
-
   expect(await screen.findByRole('heading', { name: 'Accounting' })).toBeInTheDocument();
   expect(await screen.findByText('No accounting records')).toBeInTheDocument();
   expect(screen.queryByText(/demo/i)).not.toBeInTheDocument();
 });
 
-test('links Accounting to the real Journal Entries route', async () => {
+test('links Accounting to the real General Ledger, Chart of Accounts, and Journal Entries routes', async () => {
   renderAccounting(repositoryWith());
 
-  const link = await screen.findByRole('link', { name: 'Journal Entries' });
-  expect(link).toHaveAttribute('href', '/finance/accounting/journal-entries');
+  expect(await screen.findByRole('link', { name: 'General Ledger' })).toHaveAttribute(
+    'href',
+    '/finance/accounting/general-ledger',
+  );
+  expect(screen.getByRole('link', { name: 'Chart of Accounts' })).toHaveAttribute(
+    'href',
+    '/finance/accounting/chart-of-accounts',
+  );
+  expect(screen.getByRole('link', { name: 'Journal Entries' })).toHaveAttribute(
+    'href',
+    '/finance/accounting/journal-entries',
+  );
 });
 
 test('shows counts derived only from repository records', async () => {
@@ -114,7 +121,6 @@ test('shows counts derived only from repository records', async () => {
 
 test('shows an explicit unavailable state when no real repository is configured', async () => {
   renderAccounting(null);
-
   expect(await screen.findByRole('heading', { name: 'Accounting' })).toBeInTheDocument();
   expect(await screen.findByText('Accounting connection unavailable')).toBeInTheDocument();
 });
