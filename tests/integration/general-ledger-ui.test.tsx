@@ -109,7 +109,7 @@ test('shows a truthful empty General Ledger when there is no posted activity', a
 test('renders only posted journal lines with account metadata and running net', async () => {
   renderPage(repositoryWith([journal('draft'), journal('posted')]));
 
-  expect(await screen.findByText('JE-1001')).toBeInTheDocument();
+  expect(await screen.findAllByText('JE-1001')).toHaveLength(2);
   expect(screen.queryByText('JE-DRAFT')).not.toBeInTheDocument();
   expect(screen.getByText('1000 · Cash')).toBeInTheDocument();
   expect(screen.getByText('4000 · Revenue')).toBeInTheDocument();
