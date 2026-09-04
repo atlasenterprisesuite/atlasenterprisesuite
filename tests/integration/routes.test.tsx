@@ -13,9 +13,7 @@ import {
 afterEach(cleanup);
 
 function sourceFor(state: AtlasIdentityState): AtlasIdentitySource {
-  return {
-    resolve: async () => state,
-  };
+  return { resolve: async () => state };
 }
 
 const readyIdentity: AtlasIdentityState = {
@@ -39,22 +37,20 @@ function renderAtlas(path: string, state: AtlasIdentityState = readyIdentity) {
 
 test('renders the ATLAS application root for a resolved real identity', async () => {
   renderAtlas('/');
-
-  expect(
-    await screen.findByRole('heading', { name: 'ATLAS Enterprise Suite' }),
-  ).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'ATLAS Enterprise Suite' })).toBeInTheDocument();
   expect(screen.queryByText('Demo environment')).not.toBeInTheDocument();
 });
 
 test('renders intentional not found state', async () => {
   renderAtlas('/missing');
-
   expect(await screen.findByRole('heading', { name: 'Route not found' })).toBeInTheDocument();
 });
 
 it.each([
   ['/finance', 'Finance'],
   ['/finance/accounting', 'Accounting'],
+  ['/finance/accounting/general-ledger', 'General Ledger'],
+  ['/finance/accounting/chart-of-accounts', 'Chart of Accounts'],
   ['/finance/accounting/journal-entries', 'Journal Entries'],
   ['/health', 'ATLAS Health'],
 ])('renders %s in the ATLAS shell for a ready organization identity', async (path, heading) => {
