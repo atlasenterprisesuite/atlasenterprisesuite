@@ -55,9 +55,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - name: Dependency security gate
-        run: npm audit --audit-level=high
+      - name: Locked install + dependency security gate
+        run: npm ci --audit --audit-level=high
       - name: Unit tests
         run: npm run test:unit
 
