@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -10,7 +10,8 @@ describe('ATLAS Health governed routes', () => {
     expect(screen.getByRole('heading', { name: 'Disease Reconstruction Lab' })).toBeInTheDocument();
     expect(screen.getByText(/ATLAS research demo data only/i)).toBeInTheDocument();
     expect(screen.getByText('PASS')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Evidence Registry/i })).toHaveAttribute('href', expect.stringContaining('/evidence'));
+    const labNavigation = screen.getByRole('navigation', { name: 'Disease Reconstruction Lab navigation' });
+    expect(within(labNavigation).getByRole('link', { name: 'Evidence Registry' })).toHaveAttribute('href', expect.stringContaining('/evidence'));
   });
 
   it('renders a disease detail without presenting it as clinical advice', () => {
