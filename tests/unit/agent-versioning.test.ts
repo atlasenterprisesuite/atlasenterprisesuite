@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import {
   canTransitionAgentStatus,
   createAgentDraft,
+  publishAgentVersion,
   transitionAgentStatus
 } from '../../packages/agents/src';
 
@@ -37,4 +38,34 @@ it('moves approved to published', () => {
   expect(
     transitionAgentStatus({ ...draft, status: 'approved' }, 'published').status
   ).toBe('published');
+});
+
+it('denies publication without agents.publish', () => {
+  const approved = { ...draft, status: 'approved' as const };
+  const result = publishAgentVersion({
+    version: approved,
+    actorId: 'user-2',
+    actor: { scope: approved.scope, permissions: ['agents.read'] as const },
+    publishedAt: '2026-09-06T18:05:00.000Z'
+  });
+
+  expect(result.ok).toBe(false);
+});
+
+it('publishes immutably and emits audit evidence', () => {
+  const approved = { ...draft, status: 'approved' as const };
+  const result = publishAgentVersion({
+    version: approved,
+    actorId: 'publisher',
+    actor: { scope: approved.scope, permissions: ['agents.publish'] as const },
+    publishedAt: '2026-09-06T18:05:00.000Z'
+  });
+
+  expect(result.ok).toBe(true);
+  if (result.ok) {
+    expect(result.version.status).toBe('published');
+    expect(Object.isFrozen(result.version)).toBe(true);
+    expect(Object.isFrozen(result.version.permissions)).toBe(true);
+    expect(result.audit.action).toBe('agents.version.published');
+  }
 });
