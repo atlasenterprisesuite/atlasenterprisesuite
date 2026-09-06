@@ -34,7 +34,7 @@ describe("ATLAS Tax IRS monitor", () => {
 
   it("evaluates only newly added text for materiality", () => {
     const previous = { digest: "old", text: "Tax credit guidance remains available. Navigation A." };
-    const current = { digest: "new", title: "Hub", text: "Tax credit guidance remains available. Navigation B." };
+    const current = { digest: "new", title: "Forms and instructions", text: "Tax credit guidance remains available. Navigation B." };
     const classification = classifyMaterialChange(previous, current);
     expect(extractAddedText(previous.text, current.text)).toBe("Navigation B.");
     expect(classification.material).toBe(false);

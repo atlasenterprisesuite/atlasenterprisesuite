@@ -33,11 +33,14 @@ export function normalizeContent(content) {
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<!--([\s\S]*?)-->/g, " ")
+    .replace(/<br\s*\/?>|<\/(?:p|li|h[1-6]|tr|div|section|article)>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&amp;/gi, "&")
-    .replace(/\s+/g, " ")
-    .trim();
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function fingerprint(content) {
@@ -73,7 +76,7 @@ export function classifyMaterialChange(previous, current) {
 
   const addedText = extractAddedText(previous.text, current.text);
   if (!addedText) return { material: false, reason: "non-semantic-change", workflows: [] };
-  const haystack = `${current.title || ""} ${addedText}`;
+  const haystack = addedText;
   const terms = MATERIAL_TERMS.filter((term) => haystack.toLowerCase().includes(term.toLowerCase()));
   const workflows = [...new Set(WORKFLOW_RULES.filter(([pattern]) => pattern.test(haystack)).map(([, name]) => name))];
   return {
