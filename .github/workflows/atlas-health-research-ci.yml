@@ -34,10 +34,18 @@ jobs:
         run: npm test -- packages/health/neural-graph/neural-graph.test.ts
       - name: Reconstruction vulnerability engine
         run: npm test -- packages/health/reconstruction/reconstruction.test.ts
+      - name: Health module catalog
+        run: npm test -- tests/unit/health-catalog.test.ts
+      - name: Health permission governance
+        run: npm test -- tests/unit/health-permissions.test.ts
+      - name: Health selectors
+        run: npm test -- tests/unit/health-selectors.test.ts
+      - name: Health source-state governance
+        run: npm test -- tests/unit/health-source-state.test.ts
       - name: Runtime research safety scan
         run: |
-          if grep -R -nE --exclude='*.test.ts' 'data/research/seed|demo: true' apps/web/src packages/health 2>/dev/null; then
-            echo "Demo research data referenced by runtime Health code"
+          if grep -R -nE --exclude='*.test.ts' 'data/research/seed|data/demo/health|demo: true' apps/web/src packages/health 2>/dev/null; then
+            echo "Demo Health data referenced by runtime Health code"
             exit 1
           fi
       - run: npm run build
