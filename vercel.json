@@ -6,6 +6,10 @@
   "outputDirectory": "apps/web/dist",
   "rewrites": [
     {
+      "source": "/atlas/infra/status",
+      "destination": "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-status"
+    },
+    {
       "source": "/finance/:path*",
       "destination": "/index.html"
     },
@@ -15,6 +19,19 @@
     }
   ],
   "headers": [
+    {
+      "source": "/atlas/infra/status",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
     {
       "source": "/healthz",
       "headers": [
