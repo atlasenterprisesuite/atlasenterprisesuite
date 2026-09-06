@@ -2,7 +2,7 @@ name: Accounts Payable CI
 
 on:
   push:
-    branches: ["feat/accounts-payable"]
+    branches: ["feat/accounts-payable", "release/atlas-a-z"]
   pull_request:
     branches: ["main"]
 
