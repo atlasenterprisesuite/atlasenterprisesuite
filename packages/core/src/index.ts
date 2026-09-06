@@ -34,6 +34,15 @@ export type IntegrationConnection = {
   status: IntegrationConnectionStatus;
 };
 
+export type GoogleOAuthStatePayload = {
+  version: 1;
+  userId: string;
+  organizationId: string;
+  permissions: string[];
+  nonce: string;
+  expiresAt: number;
+};
+
 const GOOGLE_OAUTH_SCOPES: Record<IntegrationPermission, readonly string[]> = {
   'integrations.admin': [],
   'google.gmail.read': ['https://www.googleapis.com/auth/gmail.readonly'],
@@ -47,6 +56,75 @@ const GOOGLE_OAUTH_SCOPES: Record<IntegrationPermission, readonly string[]> = {
   'google.drive.read': ['https://www.googleapis.com/auth/drive.readonly'],
   'google.drive.write': ['https://www.googleapis.com/auth/drive.file']
 };
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+function encodeBase64UrlText(value: string): string {
+  return bytesToBase64Url(textEncoder.encode(value));
+}
+
+function decodeBase64UrlText(value: string): string {
+  return textDecoder.decode(base64UrlToBytes(value));
+}
+
+function assertGoogleOAuthStatePayload(
+  payload: GoogleOAuthStatePayload,
+  now?: number
+): void {
+  if (payload.version !== 1) throw new Error('Invalid Google OAuth state version');
+  if (!payload.userId?.trim()) throw new Error('Invalid Google OAuth state user');
+  if (!payload.organizationId?.trim()) throw new Error('Invalid Google OAuth state organization');
+  if (!payload.nonce?.trim()) throw new Error('Invalid Google OAuth state nonce');
+  if (!Number.isFinite(payload.expiresAt) || payload.expiresAt <= 0) {
+    throw new Error('Invalid Google OAuth state expiration');
+  }
+  if (!Array.isArray(payload.permissions) || payload.permissions.length === 0) {
+    throw new Error('Invalid Google OAuth state permissions');
+  }
+
+  for (const permission of payload.permissions) {
+    if (
+      typeof permission !== 'string' ||
+      permission === 'integrations.admin' ||
+      !(permission in GOOGLE_OAUTH_SCOPES) ||
+      GOOGLE_OAUTH_SCOPES[permission as IntegrationPermission].length === 0
+    ) {
+      throw new Error('Invalid Google OAuth state permission');
+    }
+  }
+
+  if (now !== undefined && payload.expiresAt <= now) {
+    throw new Error('Google OAuth state expired');
+  }
+}
+
+async function importGoogleOAuthStateKey(secret: string): Promise<CryptoKey> {
+  if (secret.trim().length < 32) {
+    throw new Error('Google OAuth state secret must be at least 32 characters');
+  }
+
+  return crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+}
 
 export function sameScope(a: TenantScope, b: TenantScope) {
   return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
@@ -111,6 +189,58 @@ export function buildGoogleAuthorizationUrl(input: {
   url.searchParams.set('state', state);
 
   return url.toString();
+}
+
+export async function signGoogleOAuthState(input: {
+  secret: string;
+  payload: GoogleOAuthStatePayload;
+}): Promise<string> {
+  assertGoogleOAuthStatePayload(input.payload);
+  const key = await importGoogleOAuthStateKey(input.secret);
+  const body = encodeBase64UrlText(JSON.stringify(input.payload));
+  const signature = new Uint8Array(
+    await crypto.subtle.sign('HMAC', key, textEncoder.encode(body))
+  );
+  return `${body}.${bytesToBase64Url(signature)}`;
+}
+
+export async function verifyGoogleOAuthState(input: {
+  secret: string;
+  state: string;
+  now?: number;
+}): Promise<GoogleOAuthStatePayload> {
+  const parts = input.state.split('.');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new Error('Invalid Google OAuth state');
+  }
+
+  const [body, encodedSignature] = parts;
+  const key = await importGoogleOAuthStateKey(input.secret);
+
+  let signature: Uint8Array;
+  try {
+    signature = base64UrlToBytes(encodedSignature);
+  } catch {
+    throw new Error('Invalid Google OAuth state signature');
+  }
+
+  const valid = await crypto.subtle.verify(
+    'HMAC',
+    key,
+    signature,
+    textEncoder.encode(body)
+  );
+  if (!valid) throw new Error('Invalid Google OAuth state signature');
+
+  let payload: GoogleOAuthStatePayload;
+  try {
+    payload = JSON.parse(decodeBase64UrlText(body)) as GoogleOAuthStatePayload;
+  } catch {
+    throw new Error('Invalid Google OAuth state payload');
+  }
+
+  assertGoogleOAuthStatePayload(payload, input.now ?? Date.now());
+  return payload;
 }
 
 export function createIntegrationConnection(input: {
