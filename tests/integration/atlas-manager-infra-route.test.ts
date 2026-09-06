@@ -33,4 +33,14 @@ describe('ATLAS Manager infrastructure route contract', () => {
     expect(workflow).toContain('$DEPLOYMENT_URL/atlas/infra/status');
     expect(workflow).toContain('test "$INFRA_STATUS_CODE" = "401"');
   });
+
+  it('registers successful production evidence through short-lived GitHub OIDC', () => {
+    const workflow = readFileSync('.github/workflows/production-deploy.yml', 'utf-8');
+
+    expect(workflow).toContain('id-token: write');
+    expect(workflow).toContain('audience=atlas-infrastructure-evidence');
+    expect(workflow).toContain('atlas-infra-evidence?api=record');
+    expect(workflow).toContain('target_version');
+    expect(workflow).toContain('deployment_url');
+  });
 });
