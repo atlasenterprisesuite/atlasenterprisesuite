@@ -1,30 +1,12 @@
-export type TenantScope = {
-  tenantId: string;
-  organizationId: string;
-};
+export * from './scope';
+export * from './permissions';
 
-export type AccountingPermission =
-  | 'accounting.read'
-  | 'accounting.write'
-  | 'accounting.post'
-  | 'accounting.close'
-  | 'accounting.admin'
-  | 'audit.read';
-
-export function sameScope(a: TenantScope, b: TenantScope) {
-  return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
-}
-
-export function hasPermission(
-  granted: readonly AccountingPermission[],
-  required: AccountingPermission
-) {
-  return granted.includes(required) || granted.includes('accounting.admin');
-}
+import type { TenantScope } from './scope';
+import type { AtlasPermission } from './permissions';
 
 export const demoAtlasContext = {
   scope: { tenantId: 'tenant-demo', organizationId: 'org-demo' } satisfies TenantScope,
   actorId: 'demo-user',
-  permissions: ['accounting.read'] as AccountingPermission[],
+  permissions: ['accounting.read'] as AtlasPermission[],
   environment: 'demo' as const
 };
