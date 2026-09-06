@@ -156,7 +156,8 @@ a { color: inherit; }
 .atlas-table-wrap th { color: var(--atlas-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }
 
 .people-time-page,
-.people-payroll-page {
+.people-payroll-page,
+.people-recruiting-page {
   align-content: start;
   place-content: initial;
   gap: 1.15rem;
@@ -250,6 +251,7 @@ a { color: inherit; }
   .atlas-page { min-height: calc(100vh - 9rem); padding-top: 2rem; padding-bottom: 2rem; }
   .people-time-page,
   .people-payroll-page,
+  .people-recruiting-page,
   .telecom-mifi-page { min-height: auto; }
   .atlas-action-row,
   .telecom-actions { display: grid; grid-template-columns: 1fr; }
