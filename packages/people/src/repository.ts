@@ -58,6 +58,7 @@ type PayrollRunRow = {
   status: string;
   approved_by: string | null;
   approved_at: string | null;
+  void_reason: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -160,6 +161,7 @@ function mapPayrollRun(row: PayrollRunRow): PayrollRun {
     status: payrollRunStatus(row.status),
     approvedBy: row.approved_by,
     approvedAt: row.approved_at,
+    voidReason: row.void_reason,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -219,7 +221,7 @@ export class PeopleRepositoryImpl implements PeopleRepository {
     const orgId = requireOrganizationId(organizationId);
     const rows = await this.gateway.select<PayrollRunRow>(
       'people_payroll_runs',
-      'id,org_id,period_start,period_end,pay_date,status,approved_by,approved_at,created_at,updated_at',
+      'id,org_id,period_start,period_end,pay_date,status,approved_by,approved_at,void_reason,created_at,updated_at',
       orgId,
     );
     return rows.filter((row) => row.org_id === orgId).map(mapPayrollRun);
