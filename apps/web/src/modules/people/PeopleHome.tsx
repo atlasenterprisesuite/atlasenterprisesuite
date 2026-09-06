@@ -9,10 +9,11 @@ export function PeopleHome() {
   const canSeeTime = ['hr.read', 'hr.write', 'payroll.self']
     .some((permission) => hasPermission(identity.permissions, permission));
   const canSeePayroll = hasPermission(identity.permissions, 'payroll.read');
+  const canSeeCompensation = hasPermission(identity.permissions, 'payroll.read');
   const canSeeRecruiting = hasPermission(identity.permissions, 'hr.read');
   const canSeeSelfService = hasPermission(identity.permissions, 'payroll.self');
 
-  if (!canSeeTime && !canSeePayroll && !canSeeRecruiting && !canSeeSelfService) {
+  if (!canSeeTime && !canSeePayroll && !canSeeCompensation && !canSeeRecruiting && !canSeeSelfService) {
     return (
       <main className="atlas-page atlas-module-page">
         <p className="atlas-eyebrow">People / Access</p>
@@ -27,7 +28,7 @@ export function PeopleHome() {
       <p className="atlas-eyebrow">ATLAS People</p>
       <h1>People Operations</h1>
       <p className="atlas-page__lede">
-        Governed employee, time, payroll, recruiting and self-service workflows scoped to the current organization and ATLAS identity permissions.
+        Governed employee, time, payroll, compensation, recruiting and self-service workflows scoped to the current organization and ATLAS identity permissions.
       </p>
       <div className="atlas-card-grid">
         {canSeeTime && (
@@ -40,6 +41,12 @@ export function PeopleHome() {
           <Link className="atlas-module-card" to="/people/payroll">
             <strong>Payroll</strong>
             <span>Review persisted payroll runs and lines with permission-gated lifecycle actions.</span>
+          </Link>
+        )}
+        {canSeeCompensation && (
+          <Link className="atlas-module-card" to="/people/compensation">
+            <strong>Compensation &amp; Benefits</strong>
+            <span>Manage effective-dated pay records and deductions through governed, audited writes.</span>
           </Link>
         )}
         {canSeeRecruiting && (
