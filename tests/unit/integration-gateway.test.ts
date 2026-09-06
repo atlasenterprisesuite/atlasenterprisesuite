@@ -73,3 +73,45 @@ describe('ATLAS integration gateway connection model', () => {
     expect(first).not.toBe(second);
   });
 });
+
+describe('ATLAS Google OAuth scope registry', () => {
+  it('maps ATLAS permissions to narrow Google OAuth scopes and deduplicates them', () => {
+    const googleOAuthScopesForPermissions = (core as Record<string, unknown>)
+      .googleOAuthScopesForPermissions as
+      | ((permissions: readonly string[]) => string[])
+      | undefined;
+
+    expect(googleOAuthScopesForPermissions).toBeTypeOf('function');
+
+    expect(
+      googleOAuthScopesForPermissions?.([
+        'google.gmail.read',
+        'google.gmail.read',
+        'google.gmail.write',
+        'google.calendar.read',
+        'google.calendar.write',
+        'google.drive.read',
+        'google.drive.write'
+      ])
+    ).toEqual([
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.compose',
+      'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+      'https://www.googleapis.com/auth/calendar.events.freebusy',
+      'https://www.googleapis.com/auth/calendar.events.readonly',
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/drive.file'
+    ]);
+  });
+
+  it('does not turn ATLAS integration admin into blanket Google OAuth access', () => {
+    const googleOAuthScopesForPermissions = (core as Record<string, unknown>)
+      .googleOAuthScopesForPermissions as
+      | ((permissions: readonly string[]) => string[])
+      | undefined;
+
+    expect(googleOAuthScopesForPermissions).toBeTypeOf('function');
+    expect(googleOAuthScopesForPermissions?.(['integrations.admin'])).toEqual([]);
+  });
+});
