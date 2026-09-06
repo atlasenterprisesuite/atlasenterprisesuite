@@ -8,6 +8,8 @@ import {
 } from 'react';
 import type {
   EmployeeRecord,
+  PayrollLine,
+  PayrollRun,
   PeopleRepository,
   TimeEntry,
 } from '../../../../../packages/people/src';
@@ -18,6 +20,13 @@ export type PeopleTimeDataState =
   | { status: 'connection_unavailable' }
   | { status: 'loading' }
   | { status: 'ready'; employees: EmployeeRecord[]; timeEntries: TimeEntry[] }
+  | { status: 'error'; message: string };
+
+export type PeoplePayrollDataState =
+  | { status: 'waiting' }
+  | { status: 'connection_unavailable' }
+  | { status: 'loading' }
+  | { status: 'ready'; employees: EmployeeRecord[]; payrollRuns: PayrollRun[]; payrollLines: PayrollLine[] }
   | { status: 'error'; message: string };
 
 const PeopleRepositoryContext = createContext<PeopleRepository | null | undefined>(undefined);
@@ -69,16 +78,12 @@ export function usePeopleTimeData(): PeopleTimeDataState {
 
     if (identity.status !== 'ready') {
       setState({ status: 'waiting' });
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }
 
     if (!repository) {
       setState({ status: 'connection_unavailable' });
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }
 
     setState({ status: 'loading' });
@@ -98,9 +103,50 @@ export function usePeopleTimeData(): PeopleTimeDataState {
         });
       });
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
+  }, [identity, repository, refreshVersion]);
+
+  return state;
+}
+
+export function usePeoplePayrollData(): PeoplePayrollDataState {
+  const identity = useAtlasContext();
+  const repository = usePeopleRepository();
+  const refreshVersion = usePeopleRefreshVersion();
+  const [state, setState] = useState<PeoplePayrollDataState>({ status: 'waiting' });
+
+  useEffect(() => {
+    let active = true;
+
+    if (identity.status !== 'ready') {
+      setState({ status: 'waiting' });
+      return () => { active = false; };
+    }
+
+    if (!repository) {
+      setState({ status: 'connection_unavailable' });
+      return () => { active = false; };
+    }
+
+    setState({ status: 'loading' });
+    void Promise.all([
+      repository.listEmployees(identity.organizationId),
+      repository.listPayrollRuns(identity.organizationId),
+      repository.listPayrollLines(identity.organizationId),
+    ])
+      .then(([employees, payrollRuns, payrollLines]) => {
+        if (!active) return;
+        setState({ status: 'ready', employees, payrollRuns, payrollLines });
+      })
+      .catch((error) => {
+        if (!active) return;
+        setState({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Payroll data could not be loaded.',
+        });
+      });
+
+    return () => { active = false; };
   }, [identity, repository, refreshVersion]);
 
   return state;
