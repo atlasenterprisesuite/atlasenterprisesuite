@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, expect, test, vi } from 'vitest';
 import { readSpatialPreferences, supportsWebGL } from './useSpatialPreferences';
 
@@ -5,9 +6,21 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test('reports reduced motion from matchMedia', () => {
-  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
-  expect(readSpatialPreferences(() => false)).toEqual({ reducedMotion: true, webglSupported: false });
+test('reports reduced motion from window.matchMedia', () => {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  });
+
+  expect(readSpatialPreferences(() => false)).toEqual({
+    reducedMotion: true,
+    webglSupported: false,
+  });
 });
 
 test('WebGL detection fails closed when a context cannot be created', () => {
