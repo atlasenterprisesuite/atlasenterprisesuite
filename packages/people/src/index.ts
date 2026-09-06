@@ -1,4 +1,5 @@
 export * from './compensation';
+export * from './compensationRepository';
 export * from './employee';
 export * from './errors';
 export * from './payroll';
@@ -7,6 +8,7 @@ export * from './recruiting';
 export * from './recruitingRepository';
 export * from './recruitingWrites';
 export * from './repository';
+export * from './supabaseCompensationRepository';
 export * from './supabaseRecruitingRepository';
 export * from './supabaseRecruitingWrites';
 export * from './supabaseRepository';
