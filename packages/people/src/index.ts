@@ -2,6 +2,7 @@ export * from './employee';
 export * from './errors';
 export * from './payroll';
 export * from './payrollWrites';
+export * from './recruiting';
 export * from './repository';
 export * from './supabaseRepository';
 export * from './time';
