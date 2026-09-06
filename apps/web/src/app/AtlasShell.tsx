@@ -1,14 +1,22 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { hasPermission, type AtlasPermission } from '../../../../packages/core/src';
 import { AtlasAccessState } from './AtlasAccessState';
 import { useAtlasContext } from './AtlasContext';
 
-const moduleLinks = [
+type ModuleLink = {
+  to: string;
+  label: string;
+  end: boolean;
+  permission?: AtlasPermission;
+};
+
+const moduleLinks: readonly ModuleLink[] = [
   { to: '/', label: 'Enterprise', end: true },
   { to: '/finance', label: 'Finance', end: true },
   { to: '/finance/accounting', label: 'Accounting', end: true },
   { to: '/health', label: 'Health', end: false },
-  { to: '/telecom/devices/mifi', label: 'Telecom', end: false },
-] as const;
+  { to: '/telecom/devices/mifi', label: 'Telecom', end: false, permission: 'telecom.mifi.read' },
+];
 
 export function AtlasShell() {
   const identity = useAtlasContext();
@@ -16,6 +24,10 @@ export function AtlasShell() {
   if (identity.status !== 'ready') {
     return <AtlasAccessState state={identity} />;
   }
+
+  const visibleModuleLinks = moduleLinks.filter(
+    (item) => !item.permission || hasPermission(identity.permissions, item.permission),
+  );
 
   return (
     <div className="atlas-shell">
@@ -27,7 +39,7 @@ export function AtlasShell() {
         </div>
 
         <nav className="atlas-shell__nav" aria-label="ATLAS modules">
-          {moduleLinks.map((item) => (
+          {visibleModuleLinks.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
