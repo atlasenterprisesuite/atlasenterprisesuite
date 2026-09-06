@@ -1,0 +1,33 @@
+name: ATLAS Spatial CI
+
+on:
+  push:
+    branches:
+      - release/atlas-a-z
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - name: Spatial preference guardrails
+        run: npm test -- apps/web/src/spatial/useSpatialPreferences.test.ts
+      - name: Spatial scene caps
+        run: npm test -- apps/web/src/spatial/spatial-scene.test.ts
+      - name: Spatial route integration
+        run: npm test -- tests/integration/spatial-route.test.tsx
+      - run: npm run build

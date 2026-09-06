@@ -12,12 +12,14 @@ import { ReconciliationPage } from '../../modules/accounting/ReconciliationPage'
 import { FinanceHome } from '../../modules/finance/FinanceHome';
 import { HealthRoutes } from '../../modules/health/HealthRoutes';
 import { EnterpriseHome } from '../../modules/home/EnterpriseHome';
+import { SpatialEntry } from '../../spatial/SpatialEntry';
 
 export function AppRouter() {
   return (
     <Routes>
       <Route element={<AtlasShell />}>
         <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/spatial" element={<SpatialEntry />} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingPage />} />
         <Route path="/finance/accounting/general-ledger" element={<GeneralLedgerPage />} />
