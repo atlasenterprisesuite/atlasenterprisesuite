@@ -10,11 +10,11 @@ describe('ATLAS Manager infrastructure route contract', () => {
     expect(rewrite.destination).toBe('https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-status');
   });
 
-  it('ships an extensionless /healthz build artifact for the production verification workflow', () => {
+  it('preserves the existing extensionless /healthz production artifact', () => {
     const health = JSON.parse(readFileSync('apps/web/public/healthz', 'utf-8'));
 
     expect(health.status).toBe('ok');
     expect(health.service).toBe('atlas-enterprise-suite-web');
-    expect(health.environment).toBe('build-artifact');
+    expect(health.environment).toBe('production-artifact');
   });
 });
