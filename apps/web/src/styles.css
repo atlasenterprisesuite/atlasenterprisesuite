@@ -157,6 +157,7 @@ a { color: inherit; }
 
 .people-time-page,
 .people-payroll-page,
+.people-compensation-page,
 .people-recruiting-page,
 .people-self-service-page {
   align-content: start;
@@ -252,6 +253,7 @@ a { color: inherit; }
   .atlas-page { min-height: calc(100vh - 9rem); padding-top: 2rem; padding-bottom: 2rem; }
   .people-time-page,
   .people-payroll-page,
+  .people-compensation-page,
   .people-recruiting-page,
   .people-self-service-page,
   .telecom-mifi-page { min-height: auto; }
