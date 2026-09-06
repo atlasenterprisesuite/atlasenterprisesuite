@@ -10,8 +10,9 @@ export function PeopleHome() {
     .some((permission) => hasPermission(identity.permissions, permission));
   const canSeePayroll = hasPermission(identity.permissions, 'payroll.read');
   const canSeeRecruiting = hasPermission(identity.permissions, 'hr.read');
+  const canSeeSelfService = hasPermission(identity.permissions, 'payroll.self');
 
-  if (!canSeeTime && !canSeePayroll && !canSeeRecruiting) {
+  if (!canSeeTime && !canSeePayroll && !canSeeRecruiting && !canSeeSelfService) {
     return (
       <main className="atlas-page atlas-module-page">
         <p className="atlas-eyebrow">People / Access</p>
@@ -26,7 +27,7 @@ export function PeopleHome() {
       <p className="atlas-eyebrow">ATLAS People</p>
       <h1>People Operations</h1>
       <p className="atlas-page__lede">
-        Governed employee, time, payroll and recruiting workflows scoped to the current organization and the identity permissions resolved by ATLAS.
+        Governed employee, time, payroll, recruiting and self-service workflows scoped to the current organization and ATLAS identity permissions.
       </p>
       <div className="atlas-card-grid">
         {canSeeTime && (
@@ -45,6 +46,12 @@ export function PeopleHome() {
           <Link className="atlas-module-card" to="/people/recruiting">
             <strong>Recruiting</strong>
             <span>Review requisitions, candidates, application stages and assessment evidence.</span>
+          </Link>
+        )}
+        {canSeeSelfService && (
+          <Link className="atlas-module-card" to="/people/self-service">
+            <strong>Employee Self-Service</strong>
+            <span>View your own profile, time, payroll, compensation and deduction records.</span>
           </Link>
         )}
       </div>
