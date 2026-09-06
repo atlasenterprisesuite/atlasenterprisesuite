@@ -15,6 +15,7 @@ import { EnterpriseHome } from '../../modules/home/EnterpriseHome';
 import { PeopleHome } from '../../modules/people/PeopleHome';
 import { PeoplePayrollRoute } from '../../modules/people/PeoplePayrollRoute';
 import { PeopleRecruitingRoute } from '../../modules/people/PeopleRecruitingRoute';
+import { PeopleSelfServiceRoute } from '../../modules/people/PeopleSelfServiceRoute';
 import { PeopleTimeRoute } from '../../modules/people/PeopleTimeRoute';
 import { TelecomMifiRoute } from '../../modules/telecom/TelecomMifiRoute';
 import { SpatialEntry } from '../../spatial/SpatialEntry';
@@ -38,6 +39,7 @@ export function AppRouter() {
         <Route path="/people/time" element={<PeopleTimeRoute />} />
         <Route path="/people/payroll" element={<PeoplePayrollRoute />} />
         <Route path="/people/recruiting" element={<PeopleRecruitingRoute />} />
+        <Route path="/people/self-service" element={<PeopleSelfServiceRoute />} />
         <Route path="/health/*" element={<HealthRoutes />} />
         <Route path="/telecom/devices/mifi" element={<TelecomMifiRoute />} />
       </Route>
