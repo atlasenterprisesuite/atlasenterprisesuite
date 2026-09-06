@@ -11,11 +11,12 @@
 **Spec:** `docs/superpowers/specs/2026-09-06-winter27-atlas-platform-controls-design.md`
 
 ## Global Constraints
+- Execute after `docs/superpowers/plans/2026-09-06-atlas-core-platform-controls.md`.
 - GitHub is the evidence/arbitration surface; model identity never decides a merge.
 - Agent policy cannot bypass tenant scope, safety, or authorization.
 - Published versions are immutable.
 - Tool capability, permission, safety-policy, and provider/model conflicts are never auto-resolved silently.
-- Reuse `AtlasPermission` from `@atlas/core` after the core platform-control plan lands.
+- Reuse `AtlasPermission` and `TenantScope` from `packages/core`.
 - Do not embed governance rules in `apps/web`.
 
 ---
@@ -31,7 +32,7 @@
 
 **Interfaces:**
 - Consumes: `AtlasPermission`, `TenantScope` from `packages/core/src`.
-- Produces: `AgentStatus`, `AgentChannel`, `AgentVersion`, `createAgentDraft`, `publishAgentVersion`.
+- Produces: `AgentStatus`, `AgentChannel`, `AgentVersion`, `AgentDraftInput`, `createAgentDraft`, `publishAgentVersion`.
 
 - [ ] **Step 1: Write failing versioning tests**
 
@@ -40,30 +41,24 @@ import { expect, it } from 'vitest';
 import { createAgentDraft, publishAgentVersion } from '../../packages/agents/src';
 
 const draft = createAgentDraft({
-  agentId: 'atlas-assistant',
-  versionId: 'v1',
-  parentVersionId: null,
+  agentId: 'atlas-assistant', versionId: 'v1', parentVersionId: null,
   scope: { tenantId: 't1', organizationId: 'o1' },
-  provider: 'openai',
-  model: 'gpt-5.6',
+  provider: 'openai', model: 'gpt-5.6',
   coreInstructions: 'Assist within ATLAS policy.',
-  permissions: ['agents.read'],
-  tools: ['search'],
-  safetyRules: ['tenant-isolation'],
+  permissions: ['agents.read'], tools: ['search'], safetyRules: ['tenant-isolation'],
   channelInstructions: { web: 'Use concise web responses.' },
-  createdByActorId: 'user-1',
-  createdAt: '2026-09-06T18:00:00.000Z'
+  createdByActorId: 'user-1', createdAt: '2026-09-06T18:00:00.000Z'
 });
 
-it('creates a draft version', () => {
-  expect(draft.status).toBe('draft');
-});
+it('creates a draft version', () => expect(draft.status).toBe('draft'));
 
-it('publishes as a frozen immutable version', () => {
+it('publishes as a deeply frozen version', () => {
   const published = publishAgentVersion(draft, '2026-09-06T18:05:00.000Z');
   expect(published.status).toBe('published');
   expect(Object.isFrozen(published)).toBe(true);
   expect(Object.isFrozen(published.permissions)).toBe(true);
+  expect(Object.isFrozen(published.scope)).toBe(true);
+  expect(Object.isFrozen(published.channelInstructions)).toBe(true);
 });
 ```
 
@@ -71,9 +66,21 @@ it('publishes as a frozen immutable version', () => {
 
 Run: `npm test -- tests/unit/agent-versioning.test.ts`
 
-- [ ] **Step 3: Implement exact model**
+Expected: FAIL because `packages/agents` does not exist.
+
+- [ ] **Step 3: Create package and exact types**
+
+```json
+{
+  "name": "@atlas/agents",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module"
+}
+```
 
 ```ts
+// packages/agents/src/types.ts
 import type { AtlasPermission, TenantScope } from '../../core/src';
 
 export type AgentStatus = 'draft' | 'review' | 'approved' | 'published' | 'retired';
@@ -96,15 +103,59 @@ export type AgentVersion = {
   createdAt: string;
   publishedAt?: string;
 };
+
+export type AgentDraftInput = Omit<AgentVersion, 'status' | 'publishedAt'>;
 ```
 
-`createAgentDraft` must defensively copy arrays/objects. `publishAgentVersion` must return a deeply frozen value for arrays, scope, channel instructions, and the outer version object.
+- [ ] **Step 4: Implement immutable draft and publish functions**
 
-- [ ] **Step 4: Run tests and typecheck**
+```ts
+// packages/agents/src/versioning.ts
+import type { AgentDraftInput, AgentVersion } from './types';
+
+function freezeVersion(version: AgentVersion): AgentVersion {
+  const frozen: AgentVersion = {
+    ...version,
+    scope: Object.freeze({ ...version.scope }),
+    permissions: Object.freeze([...version.permissions]),
+    tools: Object.freeze([...version.tools]),
+    safetyRules: Object.freeze([...version.safetyRules]),
+    channelInstructions: Object.freeze({ ...version.channelInstructions })
+  };
+  return Object.freeze(frozen);
+}
+
+export function createAgentDraft(input: AgentDraftInput): AgentVersion {
+  return {
+    ...input,
+    scope: { ...input.scope },
+    status: 'draft',
+    permissions: [...input.permissions],
+    tools: [...input.tools],
+    safetyRules: [...input.safetyRules],
+    channelInstructions: { ...input.channelInstructions }
+  };
+}
+
+export function publishAgentVersion(version: AgentVersion, publishedAt: string): AgentVersion {
+  if (version.status === 'retired') throw new Error('retired_agent_cannot_publish');
+  return freezeVersion({ ...version, status: 'published', publishedAt });
+}
+```
+
+```ts
+// packages/agents/src/index.ts
+export * from './types';
+export * from './versioning';
+```
+
+- [ ] **Step 5: Run tests and typecheck**
 
 Run: `npm test -- tests/unit/agent-versioning.test.ts && npm run typecheck`
 
-- [ ] **Step 5: Commit**
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add packages/agents tests/unit/agent-versioning.test.ts
@@ -137,8 +188,7 @@ it('combines core and channel presentation instructions', () => {
 });
 
 it('uses no fabricated overlay when channel is absent', () => {
-  const resolved = resolveAgentInstructions(draft, 'mobile');
-  expect(resolved.channel).toBeNull();
+  expect(resolveAgentInstructions(draft, 'mobile').channel).toBeNull();
 });
 ```
 
@@ -149,6 +199,7 @@ Run: `npm test -- tests/unit/agent-versioning.test.ts`
 - [ ] **Step 3: Implement resolver**
 
 ```ts
+// packages/agents/src/channels.ts
 import type { AgentChannel, AgentVersion } from './types';
 
 export type ResolvedAgentInstructions = {
@@ -170,9 +221,13 @@ export function resolveAgentInstructions(version: AgentVersion, channel: AgentCh
 }
 ```
 
+Add `export * from './channels';` to `packages/agents/src/index.ts`.
+
 - [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/agent-versioning.test.ts`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -191,23 +246,26 @@ git commit -m "feat: resolve channel-aware agent instructions"
 - Create: `tests/unit/agent-diff.test.ts`
 
 **Interfaces:**
-- Produces: `AgentDiff`, `diffAgentVersions`.
+- Produces: `AgentDiffField`, `AgentDiff`, `diffAgentVersions`.
 
 - [ ] **Step 1: Write failing comparison test**
 
 ```ts
 import { expect, it } from 'vitest';
-import { diffAgentVersions } from '../../packages/agents/src';
+import { createAgentDraft, diffAgentVersions } from '../../packages/agents/src';
+
+const base = createAgentDraft({
+  agentId: 'a', versionId: 'v1', parentVersionId: null,
+  scope: { tenantId: 't1', organizationId: 'o1' }, provider: 'openai', model: 'm1',
+  coreInstructions: 'core', permissions: ['agents.read'], tools: ['search'],
+  safetyRules: ['tenant-isolation'], channelInstructions: {},
+  createdByActorId: 'u1', createdAt: '2026-09-06T18:00:00.000Z'
+});
 
 it('surfaces sensitive changes explicitly', () => {
-  const result = diffAgentVersions(
-    { ...draft, versionId: 'v1' },
-    { ...draft, versionId: 'v2', model: 'model-b', permissions: ['agents.publish'], tools: ['search', 'deploy'] }
-  );
-  expect(result.changedFields).toContain('model');
-  expect(result.changedFields).toContain('permissions');
-  expect(result.changedFields).toContain('tools');
-  expect(result.sensitiveFields).toEqual(expect.arrayContaining(['permissions', 'tools', 'model']));
+  const result = diffAgentVersions(base, { ...base, versionId: 'v2', model: 'm2', permissions: ['agents.publish'], tools: ['search', 'deploy'] });
+  expect(result.changedFields).toEqual(['model', 'permissions', 'tools']);
+  expect(result.sensitiveFields).toEqual(['model', 'permissions', 'tools']);
 });
 ```
 
@@ -218,23 +276,34 @@ Run: `npm test -- tests/unit/agent-diff.test.ts`
 - [ ] **Step 3: Implement canonical diff**
 
 ```ts
+// packages/agents/src/diff.ts
+import type { AgentVersion } from './types';
+
 export type AgentDiffField =
   | 'provider' | 'model' | 'coreInstructions' | 'permissions'
   | 'tools' | 'safetyRules' | 'channelInstructions';
 
-export type AgentDiff = {
-  changedFields: AgentDiffField[];
-  sensitiveFields: AgentDiffField[];
-};
+export type AgentDiff = { changedFields: AgentDiffField[]; sensitiveFields: AgentDiffField[] };
 
+const fields: AgentDiffField[] = [
+  'provider', 'model', 'coreInstructions', 'permissions', 'tools', 'safetyRules', 'channelInstructions'
+];
 const sensitive = new Set<AgentDiffField>(['provider', 'model', 'permissions', 'tools', 'safetyRules']);
+const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+export function diffAgentVersions(a: AgentVersion, b: AgentVersion): AgentDiff {
+  const changedFields = fields.filter((field) => !equal(a[field], b[field]));
+  return { changedFields, sensitiveFields: changedFields.filter((field) => sensitive.has(field)) };
+}
 ```
 
-`diffAgentVersions(a, b)` must compare normalized JSON for arrays and channel maps, preserve the field order above, and derive `sensitiveFields` from that ordered result.
+Add `export * from './diff';` to `packages/agents/src/index.ts`.
 
 - [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/agent-diff.test.ts`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -259,23 +328,28 @@ git commit -m "feat: compare ATLAS agent versions"
 
 ```ts
 import { expect, it } from 'vitest';
-import { mergeAgentVersions } from '../../packages/agents/src';
+import { createAgentDraft, mergeAgentVersions } from '../../packages/agents/src';
 
-it('refuses to silently merge conflicting permission changes', () => {
-  const base = { ...draft, versionId: 'base' };
-  const left = { ...base, versionId: 'left', permissions: ['agents.read', 'agents.write'] };
-  const right = { ...base, versionId: 'right', permissions: ['agents.read', 'agents.publish'] };
-  const result = mergeAgentVersions(base, left, right, 'merged');
+const base = createAgentDraft({
+  agentId: 'a', versionId: 'base', parentVersionId: null,
+  scope: { tenantId: 't1', organizationId: 'o1' }, provider: 'openai', model: 'm1',
+  coreInstructions: 'core', permissions: ['agents.read'], tools: ['search'],
+  safetyRules: ['tenant-isolation'], channelInstructions: {},
+  createdByActorId: 'u1', createdAt: '2026-09-06T18:00:00.000Z'
+});
+
+it('refuses conflicting permission changes', () => {
+  const left = { ...base, versionId: 'left', permissions: ['agents.read', 'agents.write'] as const };
+  const right = { ...base, versionId: 'right', permissions: ['agents.read', 'agents.publish'] as const };
+  const result = mergeAgentVersions(base, left, right, 'merged', 'u2', '2026-09-06T18:10:00.000Z');
   expect(result.ok).toBe(false);
   if (!result.ok) expect(result.conflicts.map((c) => c.field)).toContain('permissions');
 });
 
-it('merges a non-conflicting channel edit with an unrelated instruction edit', () => {
-  const base = { ...draft, versionId: 'base' };
-  const left = { ...base, versionId: 'left', coreInstructions: 'Updated core.' };
-  const right = { ...base, versionId: 'right', channelInstructions: { ...base.channelInstructions, mobile: 'Short mobile output.' } };
-  const result = mergeAgentVersions(base, left, right, 'merged');
-  expect(result.ok).toBe(true);
+it('merges unrelated edits', () => {
+  const left = { ...base, versionId: 'left', coreInstructions: 'updated core' };
+  const right = { ...base, versionId: 'right', channelInstructions: { mobile: 'short output' } };
+  expect(mergeAgentVersions(base, left, right, 'merged', 'u2', '2026-09-06T18:10:00.000Z').ok).toBe(true);
 });
 ```
 
@@ -283,32 +357,71 @@ it('merges a non-conflicting channel edit with an unrelated instruction edit', (
 
 Run: `npm test -- tests/unit/agent-merge.test.ts`
 
-- [ ] **Step 3: Implement merge behavior**
+- [ ] **Step 3: Implement exact merge function**
 
 ```ts
-export type AgentMergeConflict = {
-  field: 'provider' | 'model' | 'coreInstructions' | 'permissions' | 'tools' | 'safetyRules' | 'channelInstructions';
-  left: unknown;
-  right: unknown;
-};
+// packages/agents/src/merge.ts
+import type { AgentDiffField } from './diff';
+import type { AgentVersion } from './types';
+import { createAgentDraft } from './versioning';
 
-export type AgentMergeResult =
-  | { ok: true; version: AgentVersion }
-  | { ok: false; conflicts: AgentMergeConflict[] };
+export type AgentMergeConflict = { field: AgentDiffField; left: unknown; right: unknown };
+export type AgentMergeResult = { ok: true; version: AgentVersion } | { ok: false; conflicts: AgentMergeConflict[] };
+
+const fields: AgentDiffField[] = [
+  'provider', 'model', 'coreInstructions', 'permissions', 'tools', 'safetyRules', 'channelInstructions'
+];
+const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+export function mergeAgentVersions(
+  base: AgentVersion,
+  left: AgentVersion,
+  right: AgentVersion,
+  versionId: string,
+  createdByActorId: string,
+  createdAt: string
+): AgentMergeResult {
+  const values: Record<AgentDiffField, unknown> = {} as Record<AgentDiffField, unknown>;
+  const conflicts: AgentMergeConflict[] = [];
+
+  for (const field of fields) {
+    const b = base[field]; const l = left[field]; const r = right[field];
+    if (equal(l, r)) values[field] = l;
+    else if (equal(l, b)) values[field] = r;
+    else if (equal(r, b)) values[field] = l;
+    else conflicts.push({ field, left: l, right: r });
+  }
+
+  if (conflicts.length) return { ok: false, conflicts };
+
+  return {
+    ok: true,
+    version: createAgentDraft({
+      agentId: base.agentId,
+      versionId,
+      parentVersionId: base.versionId,
+      scope: base.scope,
+      provider: values.provider as string,
+      model: values.model as string,
+      coreInstructions: values.coreInstructions as string,
+      permissions: values.permissions as AgentVersion['permissions'],
+      tools: values.tools as AgentVersion['tools'],
+      safetyRules: values.safetyRules as AgentVersion['safetyRules'],
+      channelInstructions: values.channelInstructions as AgentVersion['channelInstructions'],
+      createdByActorId,
+      createdAt
+    })
+  };
+}
 ```
 
-Use three-way rules per field:
-- if left equals right, take either;
-- if left equals base, take right;
-- if right equals base, take left;
-- otherwise record a conflict;
-- never auto-union permissions, tools, or safety rules.
-
-The successful merged version must be a new `draft` with the supplied version ID and `parentVersionId` set to `base.versionId`.
+Add `export * from './merge';` to `packages/agents/src/index.ts`.
 
 - [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/agent-merge.test.ts`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -350,7 +463,7 @@ Run: `npm run build`
 
 Expected: PASS.
 
-- [ ] **Step 5: Verify package contains no provider-specific execution code**
+- [ ] **Step 5: Verify package contains no provider-specific endpoints**
 
 Run: `git grep -nE '(salesforce\.com|api\.openai\.com|generativelanguage\.googleapis\.com)' -- packages/agents || true`
 
