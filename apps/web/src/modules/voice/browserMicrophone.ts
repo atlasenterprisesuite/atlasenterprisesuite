@@ -21,6 +21,10 @@ type SampleFrame = {
   rms: number;
 };
 
+type AudioContextWindow = Window & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
 function mean(values: readonly number[]): number {
   if (values.length === 0) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -51,6 +55,11 @@ function summarizeFrames(frames: readonly SampleFrame[]): MeasuredAudioStats {
     noiseFloor,
     volumeStdDev: stdDev(rmsValues, averageRms),
   };
+}
+
+function resolveAudioContextConstructor(): typeof AudioContext | null {
+  const webkitWindow = window as AudioContextWindow;
+  return window.AudioContext ?? webkitWindow.webkitAudioContext ?? null;
 }
 
 export class BrowserMicrophoneAdapter implements MicrophoneAdapter {
@@ -89,13 +98,14 @@ export class BrowserMicrophoneAdapter implements MicrophoneAdapter {
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const AudioContextConstructor = window.AudioContext;
+    const AudioContextConstructor = resolveAudioContextConstructor();
     if (!AudioContextConstructor) {
       stream.getTracks().forEach((track) => track.stop());
       throw new Error('Browser audio analysis is unavailable.');
     }
 
     const audioContext = new AudioContextConstructor();
+    if (audioContext.state === 'suspended') await audioContext.resume();
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
     audioContext.createMediaStreamSource(stream).connect(analyser);
