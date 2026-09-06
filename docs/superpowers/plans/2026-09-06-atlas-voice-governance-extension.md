@@ -4,24 +4,25 @@
 
 **Goal:** Extend the approved ATLAS Personal Voice domain with explicit recording-state governance, consent-aware recording policy, and scoped transcript provenance without duplicating the existing Voice implementation plan.
 
-**Architecture:** This plan layers onto `docs/superpowers/plans/2026-09-06-atlas-personal-voice-core-web.md`. It consumes the shared authorization contracts from `packages/core` and the provider capability model from `packages/voice`. Recording state is evidence-driven, policy decisions are deterministic and testable, and transcript records preserve provenance and scope without placing raw audio in audit metadata.
+**Architecture:** This plan layers onto `docs/superpowers/plans/2026-09-06-atlas-personal-voice-core-web.md`. It consumes shared authorization/audit contracts from `packages/core` and the provider-aware Voice domain from `packages/voice`. Recording state is evidence-driven, policy decisions are deterministic and testable, and transcript records preserve provenance and scope without placing raw audio in audit metadata.
 
-**Tech Stack:** TypeScript 5.7, npm workspaces, Vitest 3.2, existing planned `packages/voice` domain.
+**Tech Stack:** TypeScript 5.7, npm workspaces, Vitest 3.2, planned `packages/voice` domain.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-winter27-atlas-platform-controls-design.md`
 
 ## Global Constraints
-- Execute after the Core Platform Controls plan establishes shared authorization.
+- Execute `docs/superpowers/plans/2026-09-06-atlas-core-platform-controls.md` first.
+- In the existing Personal Voice core plan, skip its Task 1 permission migration because the Core Platform Controls plan supersedes it; then execute the remaining Personal Voice tasks that create `packages/voice` before this extension.
 - Reuse the existing Personal Voice domain and granular Voice permissions; do not create a second Voice package.
 - Never display `recording` unless provider/device/runtime evidence confirms recording is active.
-- Recording requires tenant scope, `voice.personal.record`, provider capability, applicable consent, and runtime/device readiness.
-- Transcript access requires `voice.transcript.read` or an explicitly equivalent future scoped permission.
+- Recording requires tenant scope, `voice.personal.record`, capability support, applicable consent, and runtime/device readiness.
+- Transcript access requires `voice.transcript.read`.
 - Never store raw audio in audit events.
-- Apple Personal Voice remains device-local and is not treated as server-recording capability unless a future verified API permits it.
+- Apple Personal Voice remains device-local and is not treated as server recording capability unless a future verified API permits it.
 
 ---
 
-### Task 1: Add explicit recording-state types and transitions
+### Task 1: Add explicit recording-state types and evidence mapping
 
 **Files:**
 - Create: `packages/voice/src/recording.ts`
@@ -29,7 +30,6 @@
 - Create: `tests/unit/voice-recording.test.ts`
 
 **Interfaces:**
-- Consumes: `VoiceProviderCapabilities` from `packages/voice/src/types.ts`.
 - Produces: `VoiceRecordingState`, `RecordingEvidence`, `deriveRecordingState`.
 
 - [ ] **Step 1: Write failing recording-state tests**
@@ -41,37 +41,29 @@ import { deriveRecordingState } from '../../packages/voice/src';
 describe('voice recording state', () => {
   it('never reports recording without runtime confirmation', () => {
     expect(deriveRecordingState({
-      capabilitySupported: true,
-      enabledByPolicy: true,
-      consentSatisfied: true,
-      runtimeConfirmedRecording: false,
-      paused: false,
-      stopped: false,
-      error: null
-    })).toBe('awaiting_consent');
+      capabilitySupported: true, enabledByPolicy: true, consentSatisfied: true,
+      runtimeConfirmedRecording: false, paused: false, stopped: false, error: null
+    })).toBe('stopped');
   });
 
-  it('reports recording only after confirmation', () => {
+  it('reports recording only after runtime confirmation', () => {
     expect(deriveRecordingState({
-      capabilitySupported: true,
-      enabledByPolicy: true,
-      consentSatisfied: true,
-      runtimeConfirmedRecording: true,
-      paused: false,
-      stopped: false,
-      error: null
+      capabilitySupported: true, enabledByPolicy: true, consentSatisfied: true,
+      runtimeConfirmedRecording: true, paused: false, stopped: false, error: null
     })).toBe('recording');
+  });
+
+  it('reports awaiting consent when consent is unsatisfied', () => {
+    expect(deriveRecordingState({
+      capabilitySupported: true, enabledByPolicy: true, consentSatisfied: false,
+      runtimeConfirmedRecording: false, paused: false, stopped: false, error: null
+    })).toBe('awaiting_consent');
   });
 
   it('reports unsupported before all other states', () => {
     expect(deriveRecordingState({
-      capabilitySupported: false,
-      enabledByPolicy: true,
-      consentSatisfied: true,
-      runtimeConfirmedRecording: true,
-      paused: false,
-      stopped: false,
-      error: null
+      capabilitySupported: false, enabledByPolicy: true, consentSatisfied: true,
+      runtimeConfirmedRecording: true, paused: false, stopped: false, error: null
     })).toBe('unsupported');
   });
 });
@@ -81,9 +73,12 @@ describe('voice recording state', () => {
 
 Run: `npm test -- tests/unit/voice-recording.test.ts`
 
-- [ ] **Step 3: Implement exact recording state**
+Expected: FAIL because recording governance does not exist.
+
+- [ ] **Step 3: Implement exact recording state mapping**
 
 ```ts
+// packages/voice/src/recording.ts
 export type VoiceRecordingState =
   | 'unsupported' | 'disabled' | 'awaiting_consent'
   | 'recording' | 'paused' | 'stopped' | 'error';
@@ -103,15 +98,19 @@ export function deriveRecordingState(input: RecordingEvidence): VoiceRecordingSt
   if (input.error) return 'error';
   if (!input.enabledByPolicy) return 'disabled';
   if (!input.consentSatisfied) return 'awaiting_consent';
-  if (input.stopped) return 'stopped';
   if (input.paused) return 'paused';
-  return input.runtimeConfirmedRecording ? 'recording' : 'awaiting_consent';
+  if (input.stopped) return 'stopped';
+  return input.runtimeConfirmedRecording ? 'recording' : 'stopped';
 }
 ```
+
+Add `export * from './recording';` to `packages/voice/src/index.ts`.
 
 - [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/voice-recording.test.ts`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -122,7 +121,7 @@ git commit -m "feat: add evidence-based voice recording states"
 
 ---
 
-### Task 2: Add tenant-, permission-, capability-, and consent-aware recording policy
+### Task 2: Add scoped recording policy and policy-change audit evidence
 
 **Files:**
 - Create: `packages/voice/src/recordingPolicy.ts`
@@ -130,13 +129,13 @@ git commit -m "feat: add evidence-based voice recording states"
 - Modify: `tests/unit/voice-recording.test.ts`
 
 **Interfaces:**
-- Consumes: `AuthorizationContext`, `TenantScope`, `authorize` from `packages/core/src`.
-- Produces: `RecordingPolicyInput`, `RecordingPolicyDecision`, `evaluateRecordingPolicy`.
+- Consumes: `AuthorizationContext`, `TenantScope`, `authorize`, `createAuditEvent` from `packages/core/src`.
+- Produces: `RecordingPolicyInput`, `RecordingPolicyDecision`, `evaluateRecordingPolicy`, `auditRecordingPolicyChange`.
 
 - [ ] **Step 1: Add failing policy tests**
 
 ```ts
-import { evaluateRecordingPolicy } from '../../packages/voice/src';
+import { auditRecordingPolicyChange, evaluateRecordingPolicy } from '../../packages/voice/src';
 
 const actor = {
   scope: { tenantId: 't1', organizationId: 'o1' },
@@ -147,33 +146,31 @@ it('denies recording across tenant scope', () => {
   expect(evaluateRecordingPolicy({
     actor,
     resourceScope: { tenantId: 't2', organizationId: 'o1' },
-    providerSupportsRecording: true,
-    consentRequired: true,
-    consentSatisfied: true,
-    runtimeReady: true
+    capabilitySupported: true, consentRequired: true, consentSatisfied: true, runtimeReady: true
   })).toEqual({ allowed: false, reason: 'scope_mismatch' });
 });
 
 it('denies when consent is required but missing', () => {
   expect(evaluateRecordingPolicy({
-    actor,
-    resourceScope: actor.scope,
-    providerSupportsRecording: true,
-    consentRequired: true,
-    consentSatisfied: false,
-    runtimeReady: true
+    actor, resourceScope: actor.scope,
+    capabilitySupported: true, consentRequired: true, consentSatisfied: false, runtimeReady: true
   })).toEqual({ allowed: false, reason: 'consent_required' });
 });
 
 it('allows only when every gate passes', () => {
   expect(evaluateRecordingPolicy({
-    actor,
-    resourceScope: actor.scope,
-    providerSupportsRecording: true,
-    consentRequired: true,
-    consentSatisfied: true,
-    runtimeReady: true
+    actor, resourceScope: actor.scope,
+    capabilitySupported: true, consentRequired: true, consentSatisfied: true, runtimeReady: true
   })).toEqual({ allowed: true });
+});
+
+it('creates metadata-only audit for policy changes', () => {
+  const event = auditRecordingPolicyChange({
+    scope: actor.scope, actorId: 'user-1', enabled: false,
+    occurredAt: '2026-09-06T18:00:00.000Z'
+  });
+  expect(event.action).toBe('voice.recording_policy.changed');
+  expect(event.resource).toBe('voice:recording-policy');
 });
 ```
 
@@ -181,15 +178,19 @@ it('allows only when every gate passes', () => {
 
 Run: `npm test -- tests/unit/voice-recording.test.ts`
 
-- [ ] **Step 3: Implement policy evaluator**
+- [ ] **Step 3: Implement policy evaluator and audit helper**
 
 ```ts
-import { authorize, type AuthorizationContext, type TenantScope } from '../../core/src';
+// packages/voice/src/recordingPolicy.ts
+import {
+  authorize, createAuditEvent,
+  type AuthorizationContext, type TenantScope
+} from '../../core/src';
 
 export type RecordingPolicyInput = {
   actor: AuthorizationContext;
   resourceScope: TenantScope;
-  providerSupportsRecording: boolean;
+  capabilitySupported: boolean;
   consentRequired: boolean;
   consentSatisfied: boolean;
   runtimeReady: boolean;
@@ -202,16 +203,34 @@ export type RecordingPolicyDecision =
 export function evaluateRecordingPolicy(input: RecordingPolicyInput): RecordingPolicyDecision {
   const auth = authorize(input.actor, { scope: input.resourceScope, permission: 'voice.personal.record' });
   if (!auth.ok) return { allowed: false, reason: auth.reason };
-  if (!input.providerSupportsRecording) return { allowed: false, reason: 'unsupported' };
+  if (!input.capabilitySupported) return { allowed: false, reason: 'unsupported' };
   if (input.consentRequired && !input.consentSatisfied) return { allowed: false, reason: 'consent_required' };
   if (!input.runtimeReady) return { allowed: false, reason: 'runtime_not_ready' };
   return { allowed: true };
 }
+
+export function auditRecordingPolicyChange(input: {
+  scope: TenantScope; actorId: string; enabled: boolean; occurredAt: string;
+}) {
+  return createAuditEvent({
+    scope: input.scope,
+    actorId: input.actorId,
+    action: 'voice.recording_policy.changed',
+    resource: 'voice:recording-policy',
+    result: 'success',
+    occurredAt: input.occurredAt,
+    evidenceRef: `enabled:${String(input.enabled)}`
+  });
+}
 ```
+
+Add `export * from './recordingPolicy';` to `packages/voice/src/index.ts`.
 
 - [ ] **Step 4: Run tests and typecheck**
 
 Run: `npm test -- tests/unit/voice-recording.test.ts && npm run typecheck`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -240,16 +259,11 @@ import { validateTranscriptProvenance } from '../../packages/voice/src';
 
 it('accepts a scoped complete transcript with source provenance', () => {
   expect(validateTranscriptProvenance({
-    id: 'tr-1',
-    sessionId: 'session-1',
-    scope: { tenantId: 't1', organizationId: 'o1' },
-    ownerActorId: 'user-1',
-    source: { kind: 'provider', providerId: 'voice-provider-a' },
-    completeness: 'complete',
-    generatedAt: '2026-09-06T18:00:00.000Z',
-    recordingId: 'rec-1',
-    sourceStartedAt: '2026-09-06T17:59:00.000Z',
-    sourceEndedAt: '2026-09-06T18:00:00.000Z'
+    id: 'tr-1', sessionId: 'session-1',
+    scope: { tenantId: 't1', organizationId: 'o1' }, ownerActorId: 'user-1',
+    source: { kind: 'provider', providerId: 'voice-provider-a' }, completeness: 'complete',
+    generatedAt: '2026-09-06T18:00:00.000Z', recordingId: 'rec-1',
+    sourceStartedAt: '2026-09-06T17:59:00.000Z', sourceEndedAt: '2026-09-06T18:00:00.000Z'
   })).toEqual({ ok: true });
 });
 
@@ -270,6 +284,7 @@ Run: `npm test -- tests/unit/voice-transcripts.test.ts`
 - [ ] **Step 3: Implement provenance model**
 
 ```ts
+// packages/voice/src/transcripts.ts
 import type { TenantScope } from '../../core/src';
 
 export type TranscriptCompleteness = 'partial' | 'complete';
@@ -304,9 +319,13 @@ export function validateTranscriptProvenance(transcript: VoiceTranscript) {
 }
 ```
 
+Add `export * from './transcripts';` to `packages/voice/src/index.ts`.
+
 - [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/voice-transcripts.test.ts`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -341,7 +360,7 @@ it('requires voice.transcript.read within the same scope', () => {
   };
   expect(authorizeTranscriptRead({
     actorId: 'reviewer',
-    actor: { scope: transcript.scope, permissions: ['voice.transcript.read'] },
+    actor: { scope: transcript.scope, permissions: ['voice.transcript.read'] as const },
     transcript,
     occurredAt: '2026-09-06T18:01:00.000Z'
   }).allowed).toBe(true);
@@ -355,6 +374,7 @@ Run: `npm test -- tests/unit/voice-transcripts.test.ts`
 - [ ] **Step 3: Implement authorization result plus metadata-only audit**
 
 ```ts
+// packages/voice/src/transcriptAccess.ts
 import { authorize, createAuditEvent, type AuthorizationContext } from '../../core/src';
 import type { VoiceTranscript } from './transcripts';
 
@@ -382,9 +402,13 @@ export function authorizeTranscriptRead(input: {
 }
 ```
 
+Add `export * from './transcriptAccess';` to `packages/voice/src/index.ts`.
+
 - [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/voice-transcripts.test.ts tests/unit/core-permissions.test.ts tests/unit/core-audit.test.ts`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -400,7 +424,7 @@ git commit -m "feat: govern transcript access and audit"
 **Files:**
 - Test: `tests/unit/voice-recording.test.ts`
 - Test: `tests/unit/voice-transcripts.test.ts`
-- Regression: existing Voice tests from `2026-09-06-atlas-personal-voice-core-web.md` once implemented.
+- Regression: all implemented `tests/unit/voice-*.test.ts`.
 
 - [ ] **Step 1: Run focused governance tests**
 
@@ -408,7 +432,7 @@ Run: `npm test -- tests/unit/voice-recording.test.ts tests/unit/voice-transcript
 
 Expected: PASS.
 
-- [ ] **Step 2: Run all Voice tests**
+- [ ] **Step 2: Run all Voice unit tests**
 
 Run: `npm test -- tests/unit/voice-*.test.ts`
 
@@ -426,11 +450,11 @@ Run: `npm run typecheck && npm run build`
 
 Expected: PASS.
 
-- [ ] **Step 5: Verify no fake recording state is hard-coded in UI/domain code**
+- [ ] **Step 5: Inspect recording/readiness claims**
 
-Run: `git grep -n "recording" -- apps/web packages/voice | grep -E "(true|connected|ready)" || true`
+Run: `git grep -nE "(recording|connected|ready)" -- apps/web packages/voice || true`
 
-Expected: no unconditional production recording/readiness claim; every live state must derive from runtime/provider evidence.
+Expected: every live-state claim in affected Voice code is derived from provider/device/runtime state or a tested domain state; no unconditional production readiness claim is introduced by this plan.
 
 - [ ] **Step 6: Commit compatibility corrections only if needed**
 
