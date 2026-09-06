@@ -5,6 +5,7 @@ import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -31,10 +32,23 @@ function EnterpriseHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance and Health now share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
+    </section>
+  );
+}
+
+function BusinessHome() {
+  return (
+    <section className="page-stack">
+      <PageHeader eyebrow="ATLAS Business Suite" title="Business Suite" description="Connected growth, customer, commerce and publishing operations under one governed organization." />
+      <div className="module-grid">
+        <Link className="module-card enabled" to="/business/growth/social-publisher"><span>Growth · Creator Studio</span><strong>Social Publisher</strong><p>Attach photos and videos, select each platform format, validate assets and prepare governed publication.</p></Link>
+        <div className="module-card disabled" aria-disabled="true"><span>Channel connections</span><strong>Authorization required</strong><p>External publishing remains unavailable until each organization authorizes its social accounts.</p></div>
+      </div>
     </section>
   );
 }
@@ -216,6 +230,8 @@ export function App() {
     <AtlasShell>
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/business" element={<BusinessHome />} />
+        <Route path="/business/growth/social-publisher" element={<SocialPublisherPage />} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
