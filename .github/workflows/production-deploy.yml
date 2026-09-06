@@ -19,6 +19,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   verify-and-deploy:
@@ -107,3 +108,22 @@ jobs:
           INFRA_STATUS_CODE="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /tmp/atlas-infra-status.json --write-out '%{http_code}' "$DEPLOYMENT_URL/atlas/infra/status")"
           test "$INFRA_STATUS_CODE" = "401"
           echo "Production route, health, and authenticated ATLAS Manager boundary verification passed for $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Register deployment evidence
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          OIDC_RESPONSE="$(curl --fail --silent --show-error \
+            --url "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-infrastructure-evidence" \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const v=JSON.parse(s).value||"";if(!v)process.exit(1);process.stdout.write(v)})')"
+          test -n "$OIDC_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=record" \
+            --header "Authorization: Bearer $OIDC_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"target_version\":\"$GITHUB_SHA\",\"checks\":{\"root\":\"passed\",\"finance_accounts_payable\":\"passed\",\"healthz\":\"passed\",\"infra_auth_boundary\":\"passed\"},\"metadata\":{\"deployment_url\":\"$DEPLOYMENT_URL\",\"vercel_project\":\"$VERCEL_PROJECT_NAME\",\"vercel_scope\":\"$VERCEL_SCOPE\"}}" \
+            > /tmp/atlas-deployment-evidence.json
+          echo "ATLAS deployment evidence registered through GitHub OIDC." >> "$GITHUB_STEP_SUMMARY"
