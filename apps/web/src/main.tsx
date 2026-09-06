@@ -14,9 +14,12 @@ import {
 } from '../../../packages/accounting/src';
 import {
   createSupabasePeopleRepository,
+  createSupabaseRecruitingRepository,
   PeoplePayrollWriteService,
+  PeopleRecruitingWriteService,
   PeopleTimeWriteService,
   SupabasePeoplePayrollWriteGateway,
+  SupabasePeopleRecruitingWriteGateway,
   SupabasePeopleTimeWriteGateway,
 } from '../../../packages/people/src';
 import { App } from './App';
@@ -29,6 +32,8 @@ import { BankCashWriteProvider } from './modules/accounting/BankCashWriteProvide
 import { PeopleRepositoryProvider } from './modules/people/PeopleDataProvider';
 import { PeoplePayrollWriteProvider } from './modules/people/PeoplePayrollWriteProvider';
 import { PeopleTimeWriteProvider } from './modules/people/PeopleTimeWriteProvider';
+import { RecruitingRepositoryProvider } from './modules/people/RecruitingDataProvider';
+import { RecruitingWriteProvider } from './modules/people/RecruitingWriteProvider';
 import { createAtlasSupabaseClient } from './lib/supabase/client';
 import { createAtlasIdentitySource } from './lib/supabase/atlasIdentitySource';
 import './styles.css';
@@ -59,27 +64,37 @@ const peopleTimeWriteService = supabaseClient
 const peoplePayrollWriteService = supabaseClient
   ? new PeoplePayrollWriteService(new SupabasePeoplePayrollWriteGateway(supabaseClient))
   : null;
+const recruitingRepository = supabaseClient
+  ? createSupabaseRecruitingRepository(supabaseClient)
+  : null;
+const recruitingWriteService = supabaseClient
+  ? new PeopleRecruitingWriteService(new SupabasePeopleRecruitingWriteGateway(supabaseClient))
+  : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AtlasProvider source={identitySource}>
         <PeopleRepositoryProvider repository={peopleRepository}>
-          <PeopleTimeWriteProvider service={peopleTimeWriteService}>
-            <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
-              <AccountingRepositoryProvider repository={accountingRepository}>
-                <AccountingWriteProvider service={accountingWriteService}>
-                  <AccountWriteProvider service={accountWriteService}>
-                    <ArApWriteProvider service={arApWriteService}>
-                      <BankCashWriteProvider service={bankCashWriteService}>
-                        <App />
-                      </BankCashWriteProvider>
-                    </ArApWriteProvider>
-                  </AccountWriteProvider>
-                </AccountingWriteProvider>
-              </AccountingRepositoryProvider>
-            </PeoplePayrollWriteProvider>
-          </PeopleTimeWriteProvider>
+          <RecruitingRepositoryProvider repository={recruitingRepository}>
+            <PeopleTimeWriteProvider service={peopleTimeWriteService}>
+              <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
+                <RecruitingWriteProvider service={recruitingWriteService}>
+                  <AccountingRepositoryProvider repository={accountingRepository}>
+                    <AccountingWriteProvider service={accountingWriteService}>
+                      <AccountWriteProvider service={accountWriteService}>
+                        <ArApWriteProvider service={arApWriteService}>
+                          <BankCashWriteProvider service={bankCashWriteService}>
+                            <App />
+                          </BankCashWriteProvider>
+                        </ArApWriteProvider>
+                      </AccountWriteProvider>
+                    </AccountingWriteProvider>
+                  </AccountingRepositoryProvider>
+                </RecruitingWriteProvider>
+              </PeoplePayrollWriteProvider>
+            </PeopleTimeWriteProvider>
+          </RecruitingRepositoryProvider>
         </PeopleRepositoryProvider>
       </AtlasProvider>
     </BrowserRouter>
