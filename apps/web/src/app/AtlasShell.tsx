@@ -14,7 +14,7 @@ const moduleLinks: readonly ModuleLink[] = [
   { to: '/', label: 'Enterprise', end: true },
   { to: '/finance', label: 'Finance', end: true },
   { to: '/finance/accounting', label: 'Accounting', end: true },
-  { to: '/people/time', label: 'People', end: false, permissions: ['hr.read', 'hr.write', 'payroll.self'] },
+  { to: '/people', label: 'People', end: false, permissions: ['hr.read', 'hr.write', 'payroll.read', 'payroll.self'] },
   { to: '/health', label: 'Health', end: false },
   { to: '/telecom/devices/mifi', label: 'Telecom', end: false, permissions: ['telecom.mifi.read'] },
 ];
