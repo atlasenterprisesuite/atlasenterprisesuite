@@ -1,5 +1,6 @@
 export * from './scope';
 export * from './permissions';
+export * from './audit';
 
 import type { TenantScope } from './scope';
 import type { AtlasPermission } from './permissions';
