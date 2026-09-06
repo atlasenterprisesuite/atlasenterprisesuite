@@ -1,5 +1,10 @@
 import { expect, it } from 'vitest';
-import { canTransitionVoice, providerSupports } from '../../packages/voice/src';
+import {
+  canGenerateVoice,
+  canTransitionVoice,
+  canUseVoice,
+  providerSupports
+} from '../../packages/voice/src';
 
 it('allows recording to reviewing', () => {
   expect(canTransitionVoice('recording', 'reviewing')).toBe(true);
@@ -22,4 +27,37 @@ it('blocks unsupported telephony', () => {
       'telephony'
     )
   ).toBe(false);
+});
+
+it('requires consent challenge and review before generation', () => {
+  expect(
+    canGenerateVoice({
+      consentAccepted: true,
+      challengeVerified: false,
+      sampleReviewComplete: true
+    })
+  ).toBe(false);
+  expect(
+    canGenerateVoice({
+      consentAccepted: true,
+      challengeVerified: true,
+      sampleReviewComplete: true
+    })
+  ).toBe(true);
+});
+
+it('does not grant another actor voice use without an explicit grant', () => {
+  expect(
+    canUseVoice({ ownerActorId: 'owner', actorId: 'other', grantedActorIds: [] })
+  ).toBe(false);
+  expect(
+    canUseVoice({ ownerActorId: 'owner', actorId: 'owner', grantedActorIds: [] })
+  ).toBe(true);
+  expect(
+    canUseVoice({
+      ownerActorId: 'owner',
+      actorId: 'other',
+      grantedActorIds: ['other']
+    })
+  ).toBe(true);
 });
