@@ -11,12 +11,15 @@ ATLAS Enterprise Suite is the shared enterprise platform for people, finance, op
 - A-Z integration branch: `release/atlas-a-z`
 - Production URL: `https://www.atlasenterprisesuite.com`
 - Governance: `docs/governance/ATLAS_CANONICAL_REPOSITORY.md`
+- Infrastructure control plane: `docs/architecture/ATLAS_MANAGER_SPEC.md`
 
 The previously referenced `winderaranguren-gif/Atlas-enterprise-suite` repository is legacy/historical and is **not a blocker** for current ATLAS development. If access returns, unique work is reconciled through comparison and auditable integration; canonical history is not force-replaced.
 
 ## Operating rule
 
 ATLAS advances continuously through analysis, implementation, correction, testing, integration, deployment gates, and verification. Work stops only when a real human, legal, authorization, or technically irresolvable dependency makes further progress impossible. Independent work continues even when another dependency is blocked.
+
+ATLAS Manager is the shared infrastructure control plane and deployment brain for GitHub, Vercel, Cloudflare, Supabase, and production verification. Provider-specific deployment mechanisms must converge through ATLAS Manager instead of becoming isolated sources of infrastructure truth.
 
 ## Truthful production state
 
