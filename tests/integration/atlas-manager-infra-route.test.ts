@@ -17,4 +17,13 @@ describe('ATLAS Manager infrastructure route contract', () => {
     expect(health.service).toBe('atlas-enterprise-suite-web');
     expect(health.environment).toBe('production-artifact');
   });
+
+  it('makes the production workflow create the Vercel project when it is missing', () => {
+    const workflow = readFileSync('.github/workflows/production-deploy.yml', 'utf-8');
+
+    expect(workflow).toContain('VERCEL_PROJECT_NAME: atlasenterprisesuite');
+    expect(workflow).toContain('vercel project inspect "$VERCEL_PROJECT_NAME"');
+    expect(workflow).toContain('vercel project add "$VERCEL_PROJECT_NAME"');
+    expect(workflow).toContain('--project "$VERCEL_PROJECT_NAME"');
+  });
 });
