@@ -130,7 +130,8 @@ a { color: inherit; }
   outline: 2px solid var(--atlas-accent);
   outline-offset: 2px;
 }
-.atlas-action-row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.atlas-action-row { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; }
+.atlas-action-row input { min-height: 2.55rem; min-width: 12rem; }
 .atlas-action-row button,
 .atlas-page > button {
   min-height: 2.55rem;
@@ -154,7 +155,8 @@ a { color: inherit; }
 }
 .atlas-table-wrap th { color: var(--atlas-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }
 
-.people-time-page {
+.people-time-page,
+.people-payroll-page {
   align-content: start;
   place-content: initial;
   gap: 1.15rem;
@@ -247,9 +249,11 @@ a { color: inherit; }
   .atlas-shell__context { display: none; }
   .atlas-page { min-height: calc(100vh - 9rem); padding-top: 2rem; padding-bottom: 2rem; }
   .people-time-page,
+  .people-payroll-page,
   .telecom-mifi-page { min-height: auto; }
   .atlas-action-row,
   .telecom-actions { display: grid; grid-template-columns: 1fr; }
+  .atlas-action-row input,
   .atlas-action-row button,
   .telecom-actions button { width: 100%; }
 }
