@@ -247,6 +247,52 @@ export async function verifyGoogleOAuthState(input: {
   return payload;
 }
 
+export async function prepareGoogleOAuthAuthorization(input: {
+  clientId: string;
+  redirectUri: string;
+  stateSecret: string;
+  userId: string;
+  organizationId: string;
+  permissions: readonly string[];
+  nonce: string;
+  now: number;
+  ttlMs?: number;
+}): Promise<{ authorizationUrl: string; state: string; expiresAt: number }> {
+  const ttlMs = input.ttlMs ?? 10 * 60 * 1000;
+  if (!Number.isFinite(input.now) || input.now <= 0) {
+    throw new Error('Google OAuth authorization time is invalid');
+  }
+  if (!Number.isFinite(ttlMs) || ttlMs <= 0) {
+    throw new Error('Google OAuth state TTL must be positive');
+  }
+
+  const payload: GoogleOAuthStatePayload = {
+    version: 1,
+    userId: input.userId.trim(),
+    organizationId: input.organizationId.trim(),
+    permissions: [...input.permissions],
+    nonce: input.nonce.trim(),
+    expiresAt: input.now + ttlMs
+  };
+
+  const state = await signGoogleOAuthState({
+    secret: input.stateSecret,
+    payload
+  });
+  const authorizationUrl = buildGoogleAuthorizationUrl({
+    clientId: input.clientId,
+    redirectUri: input.redirectUri,
+    state,
+    permissions: payload.permissions
+  });
+
+  return {
+    authorizationUrl,
+    state,
+    expiresAt: payload.expiresAt
+  };
+}
+
 export function createIntegrationConnection(input: {
   scope: TenantScope;
   provider: IntegrationProvider;
