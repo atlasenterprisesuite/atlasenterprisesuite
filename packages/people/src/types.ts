@@ -50,6 +50,7 @@ export interface PayrollRun {
   status: PayrollRunStatus;
   approvedBy: string | null;
   approvedAt: string | null;
+  voidReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
