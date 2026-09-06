@@ -1,0 +1,43 @@
+name: ATLAS Health Research CI
+
+on:
+  push:
+    branches:
+      - release/atlas-a-z
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - name: Evidence guardrails
+        run: npm test -- packages/health/evidence/evidence.test.ts
+      - name: Curability guardrails
+        run: npm test -- packages/health/curability/curability.test.ts
+      - name: Falsification engine
+        run: npm test -- packages/health/falsification/falsification.test.ts
+      - name: Neural graph integrity
+        run: npm test -- packages/health/neural-graph/neural-graph.test.ts
+      - name: Reconstruction vulnerability engine
+        run: npm test -- packages/health/reconstruction/reconstruction.test.ts
+      - name: Runtime research safety scan
+        run: |
+          if grep -R -nE --exclude='*.test.ts' 'data/research/seed|demo: true' apps/web/src packages/health 2>/dev/null; then
+            echo "Demo research data referenced by runtime Health code"
+            exit 1
+          fi
+      - run: npm run build
