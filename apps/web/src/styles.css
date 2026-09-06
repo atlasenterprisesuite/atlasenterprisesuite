@@ -97,6 +97,76 @@ a { color: inherit; }
 .atlas-status-panel span { color: var(--atlas-text-muted); line-height: 1.5; }
 .atlas-status-panel--degraded { border-style: dashed; }
 
+.telecom-mifi-page {
+  align-content: start;
+  place-content: initial;
+  gap: 1.25rem;
+}
+.telecom-mifi-page__header { display: grid; gap: 0.75rem; padding-top: 1rem; }
+.telecom-mifi-page__header h1 { margin: 0; font-size: clamp(2rem, 4vw, 3.5rem); }
+.telecom-card {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.4rem);
+  border: 1px solid var(--atlas-border);
+  border-radius: 1rem;
+  background: var(--atlas-panel);
+}
+.telecom-card h2 { margin: 0.2rem 0 0; font-size: 1.25rem; }
+.telecom-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.9rem;
+}
+.telecom-field { display: grid; gap: 0.45rem; color: var(--atlas-text-muted); font-size: 0.85rem; }
+.telecom-field input,
+.telecom-field select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--atlas-border);
+  border-radius: 0.7rem;
+  color: #e8f0f8;
+  background: rgba(5, 11, 20, 0.7);
+}
+.telecom-field input:focus-visible,
+.telecom-field select:focus-visible,
+.telecom-actions button:focus-visible { outline: 2px solid var(--atlas-accent); outline-offset: 2px; }
+.telecom-toggle-field > span:last-child { display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; }
+.telecom-capability-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.75rem; }
+.telecom-capability-grid article {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem;
+  border: 1px solid var(--atlas-border);
+  border-radius: 0.8rem;
+  background: rgba(5, 11, 20, 0.5);
+}
+.telecom-capability-grid span,
+.telecom-connection-state span { color: var(--atlas-text-muted); }
+.telecom-connection-state {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.8rem;
+  border: 1px dashed var(--atlas-border);
+  border-radius: 0.75rem;
+}
+.telecom-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.telecom-actions button {
+  min-height: 2.6rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--atlas-border);
+  border-radius: 0.7rem;
+  color: #e8f0f8;
+  background: var(--atlas-panel-strong);
+  cursor: pointer;
+}
+.telecom-actions button:disabled { cursor: not-allowed; opacity: 0.45; }
+.telecom-field-message { min-height: 1.25rem; color: var(--atlas-text-muted); font-size: 0.85rem; }
+.telecom-result { align-items: start; }
+
 @media (max-width: 760px) {
   .atlas-shell { grid-template-columns: 1fr; }
   .atlas-shell__sidebar {
@@ -113,4 +183,7 @@ a { color: inherit; }
   .atlas-shell__link { white-space: nowrap; }
   .atlas-shell__context { display: none; }
   .atlas-page { min-height: calc(100vh - 9rem); padding-top: 2rem; padding-bottom: 2rem; }
+  .telecom-mifi-page { min-height: auto; }
+  .telecom-actions { display: grid; grid-template-columns: 1fr; }
+  .telecom-actions button { width: 100%; }
 }
