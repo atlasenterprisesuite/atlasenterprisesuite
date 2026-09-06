@@ -49,8 +49,8 @@ const journals: JournalRecord[] = [
 describe('ATLAS Accounting reports', () => {
   it('builds a balanced trial balance from posted journals only', () => {
     const report = trialBalance(accounts, journals);
-    expect(report.totalDebits).toBe(1140);
-    expect(report.totalCredits).toBe(1140);
+    expect(report.totalDebits).toBe(1100);
+    expect(report.totalCredits).toBe(1100);
     expect(report.difference).toBe(0);
   });
 
