@@ -1,17 +1,27 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AccountingPermission } from '../../../../../packages/core/src';
+import type { AtlasPermission } from '../../../../../packages/core/src';
 import type { AtlasIdentitySource, AtlasIdentityState } from '../../app/AtlasContext';
 
-const ACCOUNTING_WRITE_ROLES = new Set(['owner', 'admin', 'accountant']);
+type RolePermissionRow = { permission_code: string };
+type OrganizationPermissionOverrideRow = { permission_code: string; allowed: boolean };
 
-function permissionsForRole(role: string): AccountingPermission[] {
-  const permissions: AccountingPermission[] = ['accounting.read'];
+export function mergeAtlasPermissions(
+  baseRows: readonly RolePermissionRow[],
+  overrideRows: readonly OrganizationPermissionOverrideRow[],
+): AtlasPermission[] {
+  const permissions = new Set<AtlasPermission>();
 
-  if (ACCOUNTING_WRITE_ROLES.has(role)) {
-    permissions.push('accounting.write', 'audit.read');
+  for (const row of baseRows) {
+    if (row.permission_code) permissions.add(row.permission_code);
   }
 
-  return permissions;
+  for (const row of overrideRows) {
+    if (!row.permission_code) continue;
+    if (row.allowed) permissions.add(row.permission_code);
+    else permissions.delete(row.permission_code);
+  }
+
+  return [...permissions].sort();
 }
 
 async function resolveIdentity(client: SupabaseClient | null): Promise<AtlasIdentityState> {
@@ -54,13 +64,37 @@ async function resolveIdentity(client: SupabaseClient | null): Promise<AtlasIden
     return { status: 'organization_required', userId };
   }
 
+  const [basePermissionsResult, overridesResult] = await Promise.all([
+    client
+      .from('identity_role_permissions')
+      .select('permission_code')
+      .eq('role', membership.role),
+    client
+      .from('organization_role_permissions')
+      .select('permission_code, allowed')
+      .eq('org_id', organization.id)
+      .eq('role', membership.role),
+  ]);
+
+  if (basePermissionsResult.error || overridesResult.error) {
+    return {
+      status: 'error',
+      message: 'Unable to resolve ATLAS permissions for the active organization.',
+    };
+  }
+
+  const permissions = mergeAtlasPermissions(
+    (basePermissionsResult.data ?? []) as RolePermissionRow[],
+    (overridesResult.data ?? []) as OrganizationPermissionOverrideRow[],
+  );
+
   return {
     status: 'ready',
     userId,
     organizationId: organization.id,
     organizationName: organization.name,
     role: membership.role,
-    permissions: permissionsForRole(membership.role),
+    permissions,
   };
 }
 
