@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 
 const navItems = [
   { to: '/', label: 'Home' },
+  { to: '/business', label: 'Business' },
+  { to: '/business/growth/social-publisher', label: 'Social Publisher' },
   { to: '/finance', label: 'Finance' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
   { to: '/health', label: 'Health' }
