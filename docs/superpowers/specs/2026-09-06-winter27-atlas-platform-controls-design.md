@@ -1,49 +1,52 @@
 # Winter '27-Informed ATLAS Platform Controls Design
 
 Date: 2026-09-06
-Status: Approved design, pending implementation plan
-Repository: atlasenterprisesuite/atlasenterprisesuite
+Status: Approved in chat; hardened after repository review; pending implementation plan
+Repository: `atlasenterprisesuite/atlasenterprisesuite`
 
 ## 1. Purpose
 
-Translate the material Salesforce Winter '27 platform changes into provider-neutral ATLAS architecture improvements without copying Salesforce proprietary code, UI, or implementation details.
+Translate material Salesforce Winter '27 platform changes into provider-neutral ATLAS architecture improvements without copying Salesforce proprietary code, UI, or implementation details.
 
 This design strengthens ATLAS in five areas:
 
 1. shared cross-module authorization and audit contracts;
 2. OAuth/OIDC-first enterprise integrations;
-3. endpoint resolution that avoids brittle provider instance URLs;
+3. provider endpoint resolution that avoids brittle instance URLs;
 4. versioned, channel-aware agent governance;
 5. policy-driven ATLAS Voice recording and transcript provenance.
 
-GitHub remains the operational source of truth and arbitration surface for ChatGPT-, Gemini-, Copilot-, and human-authored changes. No model wins by assertion; changes win by repository contracts, security, tests, CI, and review evidence.
+GitHub remains the operational source of truth and arbitration surface for ChatGPT-, Gemini-, Copilot-, and human-authored changes. No model wins by assertion; changes win by repository compatibility, security, tests, CI, and review evidence.
 
 ## 2. Architectural Principles
 
 - Reuse existing ATLAS tenancy, permissions, audit, navigation, and provider abstractions where they already exist.
-- Do not create a Salesforce-specific security architecture. Salesforce is a reference provider and adapter, not the platform authority.
-- Do not introduce parallel RBAC, audit, OAuth, or agent-governance implementations.
-- Preserve compatibility with current Accounting permissions while evolving `packages/core` into the shared authorization authority.
-- Never report `connected`, `recording`, `online`, or similar live states unless backed by real provider/runtime evidence.
+- Do not create a Salesforce-specific security architecture. Salesforce is a reference provider/adapter, not the platform authority.
+- Do not introduce parallel RBAC, audit, OAuth, Voice, or agent-governance implementations.
+- Preserve current Accounting behavior and the already-approved granular ATLAS Voice permission vocabulary.
+- Never report `connected`, `recording`, `online`, `ready`, or similar live states unless backed by real provider/runtime evidence.
 - Sensitive actions must be authorized server-side and emit audit events when they change durable or security-relevant state.
+- ATLAS Manager remains the infrastructure/deployment authority and must be reused for provider state, deployment evidence, permissions, and audit where applicable.
 
 ## 3. Current-State Findings
 
-`packages/core` currently exposes shared tenant scope utilities but its permission type is still Accounting-specific. That is insufficient for cross-module Voice, integrations, agents, CRM, Health, Finance, and Manager controls.
+`packages/core` currently exposes shared tenant scope utilities but its permission type is Accounting-specific. That prevents safe cross-module authorization without unsafe casts.
 
-Existing architecture documentation already requires ATLAS Manager to reuse auth, tenancy, RBAC, audit, navigation, and provider integrations instead of duplicating them.
+ATLAS Manager already requires reuse of auth, tenancy, RBAC, audit, navigation, and provider integrations instead of parallel implementations.
 
-The existing ATLAS Personal Voice design already establishes a provider-aware Voice domain and explicitly forbids fake provider readiness. This design extends that direction with recording-policy and transcript-provenance contracts rather than replacing it.
+The existing ATLAS Personal Voice design already establishes `packages/voice`, granular Voice permissions, provider capability checks, consent, ownership, and truthful readiness rules. This design extends that architecture with runtime recording-policy and transcript-provenance contracts; it does not replace the existing Voice model.
+
+No implemented provider-neutral agent registry/orchestration package was found in the current default-branch code search. Agent-governance implementation must therefore reuse a stronger approved package if one appears before implementation; otherwise it may create one canonical provider-neutral package during its own implementation slice.
 
 ## 4. Shared Authorization Model
 
 ### 4.1 Goal
 
-Create a provider-neutral authorization contract in `packages/core` that supports all ATLAS modules while retaining the existing Accounting permission strings.
+Generalize authorization so shared ATLAS code can evaluate namespaced permissions from multiple modules without replacing module-specific vocabularies.
 
-### 4.2 Permission Shape
+### 4.2 Permission Compatibility
 
-Adopt namespaced permission identifiers:
+Existing Accounting permissions remain valid:
 
 - `accounting.read`
 - `accounting.write`
@@ -51,30 +54,34 @@ Adopt namespaced permission identifiers:
 - `accounting.close`
 - `accounting.admin`
 - `audit.read`
-- `integrations.read`
-- `integrations.write`
-- `integrations.admin`
-- `agents.read`
-- `agents.write`
-- `agents.publish`
-- `voice.read`
-- `voice.write`
-- `voice.record`
-- `voice.transcript.read`
-- `security.admin`
 
-The implementation may expand this set only when a concrete workflow requires it.
+Existing approved Voice permissions remain valid:
+
+- `voice.personal.read`
+- `voice.personal.create`
+- `voice.personal.record`
+- `voice.personal.generate`
+- `voice.personal.use`
+- `voice.personal.delete`
+- `voice.apple.request`
+- `voice.apple.use`
+- `voice.integration.manage`
+
+Additional namespaces may be introduced only for concrete workflows, for example `integrations.*`, `agents.*`, and `security.*`.
+
+The shared core must support namespaced permission strings without forcing every module into one coarse permission set.
 
 ### 4.3 Authorization Contract
 
-Replace Accounting-only authorization helpers with generic helpers that accept shared ATLAS permissions. Preserve backward compatibility for Accounting consumers.
+Evolve Accounting-only helpers into generic shared authorization helpers while preserving current Accounting consumers.
 
-Authorization requirements:
+Requirements:
 
 - tenant and organization scope must match;
-- UI visibility may depend on permissions, but backend authorization remains authoritative;
-- admin wildcard behavior must be explicit and namespaced;
-- privileged cross-module actions must not silently inherit from an unrelated module admin role;
+- UI visibility may derive from permissions, but backend authorization remains authoritative;
+- admin behavior must be explicit and namespaced;
+- privileged actions must not silently inherit from an unrelated module-admin role;
+- ownership/consent checks remain separate from permission checks where the domain requires them;
 - denials must be testable and auditable where appropriate.
 
 ## 5. OAuth/OIDC-First Integration Policy
@@ -85,17 +92,17 @@ All new enterprise integrations must use OAuth 2.0, OIDC, signed service credent
 
 Username/password-style provider authentication is forbidden by default for new integrations.
 
-Legacy authentication may exist only when all of the following are true:
+A legacy-auth exception is permitted only when:
 
 - the provider has no safer supported alternative;
 - the exception is explicitly declared in configuration;
-- secrets are stored outside source control;
+- secrets stay outside source control;
 - the exception is auditable;
-- the integration UI does not represent the connection as healthy unless a real verification succeeds.
+- the integration is never shown as healthy until real verification succeeds.
 
 ### 5.2 Connection State
 
-Standardize integration states:
+Standardize provider connection states:
 
 - `unconfigured`
 - `authorizing`
@@ -105,39 +112,40 @@ Standardize integration states:
 - `revoked`
 - `error`
 
-A connection becomes `connected` only after provider verification.
+`connected` requires provider evidence. UI state alone is never proof of connectivity.
 
 ## 6. Provider Endpoint Resolution
 
 ### 6.1 Goal
 
-Prevent hard-coded or stale provider instance URLs from becoming a platform dependency.
+Prevent hard-coded or stale provider instance URLs from becoming an ATLAS platform dependency.
 
 ### 6.2 Resolver Contract
 
-Introduce a provider endpoint resolver that can:
+A provider-neutral endpoint resolver must be able to:
 
-- accept a provider-authorized base URL or discovery response;
-- normalize host and path safely;
-- reject insecure protocols where not explicitly allowed;
-- update persisted endpoint metadata after verified redirects or provider migrations;
-- avoid embedding environment-specific hosts directly in feature code;
-- expose the effective endpoint through a typed adapter contract.
+- accept an authorized base URL or provider discovery result;
+- normalize scheme, host, and path safely;
+- reject insecure protocols unless explicitly permitted for a controlled environment;
+- handle verified redirects/provider migrations;
+- persist only non-secret endpoint metadata through approved configuration channels;
+- prevent feature code from embedding environment-specific provider hosts;
+- expose the effective endpoint through a typed adapter boundary.
 
-Salesforce-specific instance/domain handling should live in its adapter, while the resolver rules remain generic.
+Salesforce-specific domain/instance semantics belong inside a Salesforce adapter. Shared resolver rules remain provider-neutral.
 
 ## 7. Agent Governance and Versioning
 
 ### 7.1 Agent Versions
 
-Agent definitions must be immutable once published. Any edit creates a new version.
+Published agent definitions are immutable. Any modification creates a new version.
 
-Each version includes:
+Each version records:
 
 - agent ID;
 - version ID;
 - parent version;
-- status (`draft`, `review`, `approved`, `published`, `retired`);
+- status: `draft`, `review`, `approved`, `published`, or `retired`;
 - provider/model metadata;
 - tool capabilities;
 - permission requirements;
@@ -148,34 +156,27 @@ Each version includes:
 
 ### 7.2 Channel-Aware Instructions
 
-Agents may define behavior overlays for channels such as:
+Agent behavior may include overlays for channels such as web, mobile, voice, WhatsApp, email, or an internal operator console.
 
-- web;
-- mobile;
-- voice;
-- WhatsApp;
-- email;
-- internal operator console.
-
-Channel overlays may refine presentation and interaction behavior but cannot bypass core policy, safety, authorization, or tenant constraints.
+Channel overlays may refine presentation and interaction behavior but may not bypass shared policy, safety, authorization, ownership, consent, or tenant constraints.
 
 ### 7.3 Compare and Merge
 
-Agent version comparison must surface:
+Version comparison must surface changes to:
 
-- instruction changes;
-- tool capability changes;
-- provider/model changes;
-- permission changes;
-- channel-specific changes.
+- instructions;
+- tool capabilities;
+- provider/model configuration;
+- permissions;
+- channel overlays.
 
-Merge behavior must never silently choose between conflicting permission, safety, or tool-capability changes. Those conflicts require explicit resolution.
+Merge must never silently resolve conflicts involving permissions, safety, ownership/consent, or tool capabilities. Those require explicit resolution and auditable evidence.
 
 ## 8. GitHub Arbitration Rule
 
-GitHub is the evidence and decision surface for changes proposed by ChatGPT, Gemini, Copilot, or humans.
+GitHub is the evidence and decision surface for competing changes proposed by ChatGPT, Gemini, Copilot, or humans.
 
-A competing implementation is preferred only if it performs better against the following gates, in order:
+A competing implementation is preferred only when it performs better against these gates, in order:
 
 1. architecture compatibility;
 2. security and authorization correctness;
@@ -185,15 +186,25 @@ A competing implementation is preferred only if it performs better against the f
 6. maintainability and simplicity;
 7. UX and performance.
 
-Model identity is not a tie-breaker.
+Model identity is never a tie-breaker.
 
-The repository should preserve the rationale through commits, pull requests, tests, or documented review notes rather than conversational claims.
+Rationale must survive in repository evidence such as commits, PRs, tests, CI results, or review notes rather than conversational claims.
 
 ## 9. ATLAS Voice Recording and Transcript Governance
 
-### 9.1 Recording State
+### 9.1 Relationship to Existing Voice Design
 
-Introduce explicit recording state:
+`packages/voice` remains the owner of Voice profiles, recording sessions, provider capabilities, consent, ownership, permissions, and Voice audit events.
+
+The security gate remains:
+
+`Identity → Tenant Scope → User Ownership → Permission → Consent Scope → Provider Capability → Audit`
+
+This design adds runtime recording state and transcript provenance to that existing domain.
+
+### 9.2 Recording Runtime State
+
+A recording session may expose:
 
 - `unsupported`
 - `disabled`
@@ -203,102 +214,114 @@ Introduce explicit recording state:
 - `stopped`
 - `error`
 
-The runtime must not display `recording` unless the provider/device confirms it.
+The runtime must not display `recording` unless the actual provider/device confirms it.
 
-### 9.2 Recording Policy
+### 9.3 Recording Policy
 
-A recording request must evaluate:
+A recording request evaluates:
 
 - tenant policy;
-- user permission (`voice.record`);
+- user ownership where applicable;
+- existing granular Voice permission, including `voice.personal.record` for personal-voice capture or a future explicitly approved call-recording permission for call workflows;
+- consent scope;
 - provider capability;
-- consent requirement;
-- applicable channel/device state.
+- channel/device state.
 
-No silent fallback from a denied/unsupported recording request to simulated recording is allowed.
+No denied or unsupported request may fall back to simulated recording.
 
-### 9.3 Transcript Provenance
+### 9.4 Transcript Provenance
 
-A transcript record must preserve:
+A transcript record preserves:
 
 - conversation/session ID;
 - provider or local runtime source;
 - source timestamps when available;
-- generation/completion timestamp;
-- whether the transcript is partial or complete;
+- completion timestamp;
+- partial/complete state;
 - recording linkage when applicable;
 - tenant/organization scope;
 - actor/user ownership;
-- audit metadata for material access or mutation.
+- access policy reference;
+- audit metadata for sensitive access or mutation.
 
-Transcript access must require `voice.transcript.read` or an equivalent scoped permission.
+A dedicated transcript permission must be added only when the concrete transcription/calls workflow is implemented; until then, access must follow the owning Voice workflow's approved permission/ownership/consent contract rather than inventing an incompatible permission name.
 
 ## 10. Module Boundaries
 
 ### `packages/core`
 
-Owns:
+Owns shared primitives that already belong to core, including:
 
 - tenant scope;
-- shared permission types and authorization helpers;
-- audit contract primitives;
-- integration connection-state primitives;
-- provider endpoint resolver primitives.
+- generic namespaced-permission types/helpers;
+- shared authorization result contracts;
+- provider connection-state primitives if no stronger canonical integration package exists;
+- endpoint-resolver primitives if no stronger canonical integration package exists.
+
+If the approved ATLAS Manager `packages/governance` or `packages/integrations` structure is implemented before this work, permission/audit/integration responsibilities move to those canonical packages rather than being duplicated in `packages/core`.
 
 ### `packages/voice`
 
 Owns:
 
 - Voice profile/provider contracts;
-- recording state and policy evaluation;
-- transcript provenance types;
+- recording session/runtime state;
+- recording policy evaluation;
+- transcript provenance;
+- consent/ownership integration;
 - provider capability adaptation.
 
-### Agent/Orchestration package
+### Agent governance
 
-Use the existing orchestration location if present. If it is not yet implemented, create a single provider-neutral agent-governance package rather than embedding agent versioning in `apps/web`.
+Reuse an existing canonical orchestration/agent-registry package if implemented before this slice. If none exists, introduce one provider-neutral canonical package only after the implementation plan fixes its exact location.
 
-It owns:
+It will own:
 
 - immutable agent versions;
 - channel overlays;
 - compare/merge contracts;
-- publication state transitions.
+- publication-state transitions.
 
 ### `apps/web`
 
-Consumes domain contracts. It must not become the source of truth for permissions, recording state, provider connection state, or agent publication rules.
+Consumes domain contracts. It must not become the source of truth for permissions, recording state, provider connectivity, or agent publication rules.
+
+### ATLAS Manager
+
+Owns deployment/provider operational state and production verification. This design does not create a parallel deployment mechanism.
 
 ## 11. Data and Persistence Rules
 
 - Do not invent production metrics or connection states.
-- Provider tokens/secrets never live in repository files or browser-persisted plaintext.
-- Persistent records must include tenant and organization scope.
-- Agent publication, integration credential changes, recording-policy changes, and transcript-sensitive actions should emit audit events.
-- Any future Supabase schema must preserve tenant isolation and apply server-side authorization/RLS where appropriate.
+- Tokens/secrets never live in repository files or browser-persisted plaintext.
+- Persistent domain records include tenant/organization scope where applicable.
+- Agent publication, integration credential/configuration changes, recording-policy changes, and transcript-sensitive actions emit audit events when the underlying domain marks them sensitive.
+- Future Supabase persistence must preserve tenant isolation and server-side authorization/RLS where appropriate.
+- Raw Voice audio must never be written into audit events.
 
 ## 12. Failure Handling
 
-Expected explicit failure states include:
+Expected explicit failures include:
 
 - OAuth authorization failure;
 - expired/revoked token;
 - provider endpoint migration failure;
 - permission denied;
 - tenant mismatch;
+- ownership/consent failure;
 - unsupported recording capability;
-- missing recording consent;
 - incomplete transcript;
 - conflicting agent-version merge;
 - provider unavailable.
 
-Errors must be surfaced as real states, not replaced with fabricated success content.
+Errors are represented truthfully and never replaced with fabricated success states.
 
 ## 13. Testing Strategy
 
 ### Core authorization
 
 - preserve existing Accounting permission behavior;
+- accept existing granular Voice permission vocabulary;
 - authorize correct namespaced permissions;
 - deny unrelated module-admin privilege escalation;
 - reject tenant/organization mismatch.
@@ -306,54 +329,55 @@ Errors must be surfaced as real states, not replaced with fabricated success con
 ### OAuth/integrations
 
 - reject unsupported legacy auth by default;
-- verify state transitions;
+- verify connection-state transitions;
 - prevent `connected` before provider verification;
 - handle expiry/revocation.
 
 ### Endpoint resolution
 
 - normalize valid endpoints;
-- reject insecure/invalid hosts;
-- accept verified provider migration/redirect behavior;
+- reject insecure/invalid endpoints;
+- support verified provider migration/redirect behavior;
 - ensure feature code does not require hard-coded instance URLs.
 
 ### Agent governance
 
 - immutable published versions;
-- channel overlay inheritance;
+- channel-overlay inheritance;
 - compare output correctness;
-- explicit conflict handling for permissions/safety/tool capability changes.
+- explicit conflict handling for permissions/safety/ownership/tool-capability changes.
 
 ### Voice
 
-- recording permission enforcement;
-- consent gating;
+- preserve Personal Voice permission/consent/ownership contracts;
+- recording-state evidence requirements;
 - provider capability enforcement;
 - transcript provenance completeness;
 - no fake recording/connected states.
 
 ### Regression gates
 
-- existing Accounting tests remain passing;
-- typecheck;
-- build;
-- affected unit/integration tests;
-- no secrets committed;
-- no duplicate RBAC/provider state implementations introduced.
+- existing Accounting tests pass;
+- existing Voice design assumptions remain valid;
+- typecheck passes;
+- production build passes;
+- affected unit/integration tests pass;
+- no secrets are committed;
+- no duplicate RBAC, integration-state, or Voice-governance architecture is introduced.
 
 ## 14. Delivery Sequence
 
-Implementation should proceed in this order:
+Implementation planning should order work as:
 
-1. shared `packages/core` permission and authorization evolution;
-2. integration connection-state and endpoint-resolver primitives;
+1. shared namespaced authorization evolution with Accounting compatibility;
+2. provider connection-state and endpoint-resolution primitives in the canonical package boundary;
 3. OAuth/OIDC policy contracts;
 4. agent versioning/channel/merge contracts;
-5. Voice recording and transcript-governance contracts;
-6. adapters and UI consumers;
+5. Voice recording-runtime and transcript-provenance extensions;
+6. provider adapters and UI consumers;
 7. tests and CI hardening;
-8. PR arbitration and merge;
-9. deployment only after repository gates and ATLAS production rules permit it.
+8. GitHub review/arbitration and merge;
+9. deployment only after ATLAS Manager and production gates permit it.
 
 ## 15. Non-Goals
 
@@ -361,20 +385,22 @@ This design does not:
 
 - clone Salesforce UI or proprietary code;
 - make Salesforce the ATLAS platform authority;
-- activate a Salesforce integration without credentials and verification;
-- redesign all of ATLAS Orchestrator in one change;
+- activate Salesforce without credentials and real verification;
+- redesign all ATLAS Orchestrator/Manager in one change;
 - replace stronger existing functionality;
-- authorize production deployment before tests and repository gates pass.
+- weaken granular ATLAS Voice ownership/consent/permission rules;
+- authorize production deployment before repository and ATLAS Manager gates pass.
 
 ## 16. Acceptance Criteria
 
 The design is ready for implementation planning when:
 
-- shared authorization is provider/module neutral while preserving Accounting compatibility;
+- shared authorization is module/provider neutral while preserving Accounting and Voice permission compatibility;
 - OAuth/OIDC-first policy is explicit;
-- endpoint resolution eliminates hard-coded provider-instance dependence;
+- endpoint resolution removes hard-coded provider-instance dependence;
 - agent versions are immutable and channel-aware;
-- merge conflicts for sensitive agent changes require explicit resolution;
-- Voice recording and transcript states are evidence-based and permission-aware;
+- sensitive merge conflicts require explicit resolution;
+- Voice recording/transcript states are evidence-, ownership-, consent-, and permission-aware;
 - GitHub arbitration is test/CI/review driven;
-- no duplicate architecture is introduced.
+- ATLAS Manager remains the deployment authority;
+- no parallel security, integration, agent, or Voice architecture is introduced.
