@@ -23,7 +23,7 @@ describe('ATLAS Manager infrastructure route contract', () => {
 
     expect(workflow).toContain('VERCEL_PROJECT_NAME: atlasenterprisesuite');
     expect(workflow).toContain('vercel project inspect "$VERCEL_PROJECT_NAME"');
-    expect(workflow).toContain('vercel project add "$VERCEL_PROJECT_NAME"');
+    expect(workflow).toContain('https://api.vercel.com/v11/projects?slug=$VERCEL_SCOPE');
     expect(workflow).toContain('--project "$VERCEL_PROJECT_NAME"');
   });
 });
