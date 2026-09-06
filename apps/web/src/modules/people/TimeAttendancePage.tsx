@@ -45,11 +45,12 @@ export function TimeAttendancePage() {
     | { status: 'error'; message: string }
   >({ status: 'idle' });
 
-  if (identity.status !== 'ready') return null;
-
-  const canManage = hasPermission(identity.permissions, 'hr.write');
-  const ownEmployee = state.status === 'ready'
-    ? state.employees.find((employee) => employee.userId === identity.userId) ?? null
+  const readyIdentity = identity.status === 'ready' ? identity : null;
+  const canManage = readyIdentity
+    ? hasPermission(readyIdentity.permissions, 'hr.write')
+    : false;
+  const ownEmployee = readyIdentity && state.status === 'ready'
+    ? state.employees.find((employee) => employee.userId === readyIdentity.userId) ?? null
     : null;
   const canCreate = Boolean(writeService && (canManage || ownEmployee));
 
@@ -70,6 +71,8 @@ export function TimeAttendancePage() {
     }
     return map;
   }, [state]);
+
+  if (!readyIdentity) return null;
 
   async function runWrite(action: () => Promise<string>, successMessage: string) {
     setWriteState({ status: 'saving' });
@@ -93,7 +96,7 @@ export function TimeAttendancePage() {
 
     await runWrite(
       () => writeService.createTimeEntry({
-        organizationId: identity.organizationId,
+        organizationId: readyIdentity.organizationId,
         employeeId,
         workDate,
         clockIn: isoFromLocal(clockIn, 'Clock-in'),
@@ -109,7 +112,7 @@ export function TimeAttendancePage() {
     if (!writeService || entry.status !== 'draft') return false;
     if (canManage) return true;
     return state.status === 'ready'
-      && state.employees.some((employee) => employee.id === entry.employeeId && employee.userId === identity.userId);
+      && state.employees.some((employee) => employee.id === entry.employeeId && employee.userId === readyIdentity.userId);
   }
 
   return (
@@ -260,7 +263,7 @@ export function TimeAttendancePage() {
                                 aria-label={`Submit time entry ${entry.id}`}
                                 disabled={writeState.status === 'saving'}
                                 onClick={() => void runWrite(
-                                  () => writeService!.submitTimeEntry({ organizationId: identity.organizationId, timeEntryId: entry.id }),
+                                  () => writeService!.submitTimeEntry({ organizationId: readyIdentity.organizationId, timeEntryId: entry.id }),
                                   'Time entry submitted',
                                 )}
                               >Submit</button>
@@ -272,7 +275,7 @@ export function TimeAttendancePage() {
                                   aria-label={`Approve time entry ${entry.id}`}
                                   disabled={writeState.status === 'saving'}
                                   onClick={() => void runWrite(
-                                    () => writeService.approveTimeEntry({ organizationId: identity.organizationId, timeEntryId: entry.id }),
+                                    () => writeService.approveTimeEntry({ organizationId: readyIdentity.organizationId, timeEntryId: entry.id }),
                                     'Time entry approved',
                                   )}
                                 >Approve</button>
@@ -281,7 +284,7 @@ export function TimeAttendancePage() {
                                   aria-label={`Reject time entry ${entry.id}`}
                                   disabled={writeState.status === 'saving'}
                                   onClick={() => void runWrite(
-                                    () => writeService.rejectTimeEntry({ organizationId: identity.organizationId, timeEntryId: entry.id }),
+                                    () => writeService.rejectTimeEntry({ organizationId: readyIdentity.organizationId, timeEntryId: entry.id }),
                                     'Time entry rejected',
                                   )}
                                 >Reject</button>
