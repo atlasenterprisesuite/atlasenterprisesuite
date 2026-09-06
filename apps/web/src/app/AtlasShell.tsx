@@ -7,6 +7,7 @@ const moduleLinks = [
   { to: '/finance', label: 'Finance', end: true },
   { to: '/finance/accounting', label: 'Accounting', end: true },
   { to: '/health', label: 'Health', end: false },
+  { to: '/telecom/devices/mifi', label: 'Telecom', end: false },
 ] as const;
 
 export function AtlasShell() {
