@@ -12,6 +12,14 @@ import { usePeopleRepository } from './PeopleDataProvider';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
+function requiredNumber(value: string, label: string): number {
+  const normalized = value.trim();
+  if (!normalized) throw new Error(`${label} is required.`);
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) throw new Error(`${label} must be a valid number.`);
+  return parsed;
+}
+
 type CompensationPageState =
   | { status: 'loading' }
   | { status: 'connection_unavailable' }
@@ -48,6 +56,13 @@ export function CompensationPage() {
     readyIdentity
       && writeService
       && hasPermission(readyIdentity.permissions, 'payroll.write'),
+  );
+  const compensationFormComplete = Boolean(
+    effectiveFrom
+      && (payType === 'hourly' ? hourlyRate.trim() : annualSalary.trim()),
+  );
+  const deductionFormComplete = Boolean(
+    deductionCode.trim() && deductionLabel.trim() && deductionAmount.trim(),
   );
 
   useEffect(() => {
@@ -122,8 +137,8 @@ export function CompensationPage() {
         organizationId: readyIdentity.organizationId,
         employeeId: selectedEmployee.id,
         payType,
-        hourlyRate: payType === 'hourly' ? Number(hourlyRate) : null,
-        annualSalary: payType === 'salary' ? Number(annualSalary) : null,
+        hourlyRate: payType === 'hourly' ? requiredNumber(hourlyRate, 'Hourly rate') : null,
+        annualSalary: payType === 'salary' ? requiredNumber(annualSalary, 'Annual salary') : null,
         effectiveFrom,
         effectiveTo: effectiveTo || null,
       }),
@@ -141,7 +156,7 @@ export function CompensationPage() {
         label: deductionLabel,
         treatment: deductionTreatment,
         calculationType: deductionType,
-        amount: Number(deductionAmount),
+        amount: requiredNumber(deductionAmount, 'Deduction amount'),
         active: true,
       }),
       'Deduction saved',
@@ -244,7 +259,7 @@ export function CompensationPage() {
                   <label>Effective end<input aria-label="Effective end" type="date" value={effectiveTo} onChange={(event) => setEffectiveTo(event.target.value)} /></label>
                 </div>
                 <div className="atlas-action-row">
-                  <button type="button" aria-label="Save compensation" disabled={writeState.status === 'saving'} onClick={saveCompensation}>Save compensation</button>
+                  <button type="button" aria-label="Save compensation" disabled={writeState.status === 'saving' || !compensationFormComplete} onClick={saveCompensation}>Save compensation</button>
                 </div>
               </section>
 
@@ -270,7 +285,7 @@ export function CompensationPage() {
                   <label>Amount<input aria-label="Deduction amount" inputMode="decimal" value={deductionAmount} onChange={(event) => setDeductionAmount(event.target.value)} /></label>
                 </div>
                 <div className="atlas-action-row">
-                  <button type="button" aria-label="Save deduction" disabled={writeState.status === 'saving'} onClick={saveDeduction}>Save deduction</button>
+                  <button type="button" aria-label="Save deduction" disabled={writeState.status === 'saving' || !deductionFormComplete} onClick={saveDeduction}>Save deduction</button>
                 </div>
               </section>
             </>
