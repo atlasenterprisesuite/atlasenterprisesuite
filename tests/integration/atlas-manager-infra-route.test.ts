@@ -26,4 +26,11 @@ describe('ATLAS Manager infrastructure route contract', () => {
     expect(workflow).toContain('https://api.vercel.com/v11/projects?slug=$VERCEL_SCOPE');
     expect(workflow).toContain('--project "$VERCEL_PROJECT_NAME"');
   });
+
+  it('verifies the infrastructure status route remains authentication-gated after deployment', () => {
+    const workflow = readFileSync('.github/workflows/production-deploy.yml', 'utf-8');
+
+    expect(workflow).toContain('$DEPLOYMENT_URL/atlas/infra/status');
+    expect(workflow).toContain('test "$INFRA_STATUS_CODE" = "401"');
+  });
 });
