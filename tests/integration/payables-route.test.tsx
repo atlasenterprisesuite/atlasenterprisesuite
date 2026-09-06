@@ -37,12 +37,13 @@ function renderAtlas(path: string) {
 }
 
 describe('Accounts Payable route', () => {
-  it('renders the AP workspace inside the shared ATLAS shell without fabricated vendor data', async () => {
+  it('renders the truthful AP connection state inside the shared ATLAS shell without fabricated vendor data', async () => {
     renderAtlas('/finance/accounting/accounts-payable');
     expect(await screen.findByRole('heading', { name: 'Accounts Payable' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'ATLAS modules' })).toBeInTheDocument();
     expect(screen.getByText('Test Organization')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Loading payables');
+    expect(await screen.findByText('Accounts Payable connection unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('No configured real Accounting repository is available.');
     expect(screen.getByText(/authorized organization accounting records/i)).toBeInTheDocument();
     expect(screen.queryByText('Northstar Office Supply')).not.toBeInTheDocument();
   });
