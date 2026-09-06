@@ -1,3 +1,4 @@
+export * from './compensation';
 export * from './employee';
 export * from './errors';
 export * from './payroll';
