@@ -55,6 +55,25 @@ export interface PayrollRun {
   updatedAt: string;
 }
 
+export interface PayrollLineRecord {
+  id: string;
+  organizationId: string;
+  payrollRunId: string;
+  employeeId: string;
+  regularHours: number;
+  overtimeHours: number;
+  hourlyRate: number | null;
+  salaryPeriodAmount: number | null;
+  grossPay: number;
+  pretaxDeductions: number;
+  taxesWithheld: number;
+  posttaxDeductions: number;
+  netPay: number;
+  calculation: unknown;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ApplicationStage =
   | 'applied'
   | 'screening'
@@ -79,4 +98,5 @@ export type PeopleTable =
   | 'employees'
   | 'people_time_entries'
   | 'people_payroll_runs'
+  | 'people_payroll_lines'
   | 'people_applications';
