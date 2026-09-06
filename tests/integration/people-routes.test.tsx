@@ -26,7 +26,7 @@ function renderPeopleHome(state: AtlasIdentityState) {
 
 afterEach(cleanup);
 
-it('shows only Payroll for a payroll reader', async () => {
+it('shows Payroll and Compensation for a payroll reader', async () => {
   renderPeopleHome({
     status: 'ready',
     userId: 'payroll-reader',
@@ -39,8 +39,10 @@ it('shows only Payroll for a payroll reader', async () => {
   expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'People' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Payroll/ })).toHaveAttribute('href', '/people/payroll');
+  expect(screen.getByRole('link', { name: /Compensation & Benefits/ })).toHaveAttribute('href', '/people/compensation');
   expect(screen.queryByRole('link', { name: /Time & Attendance/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /Recruiting/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Employee Self-Service/ })).not.toBeInTheDocument();
 });
 
 it('shows Time & Attendance and Recruiting for an HR reader without payroll access', async () => {
@@ -57,6 +59,24 @@ it('shows Time & Attendance and Recruiting for an HR reader without payroll acce
   expect(screen.getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
   expect(screen.getByRole('link', { name: /Recruiting/ })).toHaveAttribute('href', '/people/recruiting');
   expect(screen.queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Compensation & Benefits/ })).not.toBeInTheDocument();
+});
+
+it('shows self-service and time for an employee self-service identity', async () => {
+  renderPeopleHome({
+    status: 'ready',
+    userId: 'employee-a',
+    organizationId: 'org-a',
+    organizationName: 'Test Organization',
+    role: 'staff',
+    permissions: ['payroll.self'],
+  });
+
+  expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
+  expect(screen.getByRole('link', { name: /Employee Self-Service/ })).toHaveAttribute('href', '/people/self-service');
+  expect(screen.queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Compensation & Benefits/ })).not.toBeInTheDocument();
 });
 
 it('fails closed and hides People navigation without People permissions', async () => {
