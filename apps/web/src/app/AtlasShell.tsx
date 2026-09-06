@@ -7,15 +7,16 @@ type ModuleLink = {
   to: string;
   label: string;
   end: boolean;
-  permission?: AtlasPermission;
+  permissions?: readonly AtlasPermission[];
 };
 
 const moduleLinks: readonly ModuleLink[] = [
   { to: '/', label: 'Enterprise', end: true },
   { to: '/finance', label: 'Finance', end: true },
   { to: '/finance/accounting', label: 'Accounting', end: true },
+  { to: '/people/time', label: 'People', end: false, permissions: ['hr.read', 'hr.write', 'payroll.self'] },
   { to: '/health', label: 'Health', end: false },
-  { to: '/telecom/devices/mifi', label: 'Telecom', end: false, permission: 'telecom.mifi.read' },
+  { to: '/telecom/devices/mifi', label: 'Telecom', end: false, permissions: ['telecom.mifi.read'] },
 ];
 
 export function AtlasShell() {
@@ -26,7 +27,8 @@ export function AtlasShell() {
   }
 
   const visibleModuleLinks = moduleLinks.filter(
-    (item) => !item.permission || hasPermission(identity.permissions, item.permission),
+    (item) => !item.permissions
+      || item.permissions.some((permission) => hasPermission(identity.permissions, permission)),
   );
 
   return (
