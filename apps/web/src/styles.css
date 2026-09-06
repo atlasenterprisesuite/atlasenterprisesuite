@@ -157,7 +157,8 @@ a { color: inherit; }
 
 .people-time-page,
 .people-payroll-page,
-.people-recruiting-page {
+.people-recruiting-page,
+.people-self-service-page {
   align-content: start;
   place-content: initial;
   gap: 1.15rem;
@@ -252,6 +253,7 @@ a { color: inherit; }
   .people-time-page,
   .people-payroll-page,
   .people-recruiting-page,
+  .people-self-service-page,
   .telecom-mifi-page { min-height: auto; }
   .atlas-action-row,
   .telecom-actions { display: grid; grid-template-columns: 1fr; }
