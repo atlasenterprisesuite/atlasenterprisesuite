@@ -37,16 +37,20 @@ function renderAtlas(path: string) {
 }
 
 describe('Accounts Payable route', () => {
-  it('renders the AP workspace inside the shared ATLAS shell', async () => {
+  it('renders the AP workspace inside the shared ATLAS shell without fabricated vendor data', async () => {
     renderAtlas('/finance/accounting/accounts-payable');
     expect(await screen.findByRole('heading', { name: 'Accounts Payable' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'ATLAS modules' })).toBeInTheDocument();
-    expect(screen.getAllByText('Northstar Office Supply').length).toBeGreaterThan(0);
-    expect(screen.getByText(/No bank, payment processor/)).toBeInTheDocument();
+    expect(screen.getByText('Test Organization')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading payables');
+    expect(screen.getByText(/authorized organization accounting records/i)).toBeInTheDocument();
+    expect(screen.queryByText('Northstar Office Supply')).not.toBeInTheDocument();
   });
 
-  it('preserves an intentional degraded Health route instead of breaking', async () => {
+  it('preserves the intentional Health safe handoff instead of breaking the shared shell', async () => {
     renderAtlas('/health');
-    expect(await screen.findByRole('heading', { name: /Health source unavailable/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'ATLAS Health' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Safe handoff active');
+    expect(screen.getByText(/historical implementation is reconnected through verified sources and permissions/i)).toBeInTheDocument();
   });
 });
