@@ -173,6 +173,13 @@ export function transitionPayrollRun(
 ): PayrollRun {
   const actor = requireActor(actorInput);
 
+  if (run.status === 'locked') {
+    throw new Error('Locked payroll runs are immutable.');
+  }
+  if (run.status === 'void') {
+    throw new Error('Void payroll runs are immutable.');
+  }
+
   if (action.type === 'calculate') {
     if (!hasPermission(actor.permissions, 'payroll.write')) {
       throw new Error('payroll.write permission is required.');
@@ -208,7 +215,6 @@ export function transitionPayrollRun(
   requireApprovalPermission(actor);
   const reason = action.reason.trim();
   if (!reason) throw new Error('Void reason is required.');
-  if (run.status === 'void') throw new Error('Payroll run is already void.');
 
   return {
     ...run,
