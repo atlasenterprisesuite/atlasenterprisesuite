@@ -17,6 +17,20 @@ const forwardStage: Partial<Record<ApplicationStage, ApplicationStage>> = {
   offer: 'hired',
 };
 
+type AssessmentDraft = {
+  type: string;
+  earned: string;
+  possible: string;
+  passing: string;
+};
+
+const emptyAssessmentDraft: AssessmentDraft = {
+  type: '',
+  earned: '',
+  possible: '',
+  passing: '70',
+};
+
 export function RecruitingPage() {
   const identity = useAtlasContext();
   const state = useRecruitingData();
@@ -25,6 +39,7 @@ export function RecruitingPage() {
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [assessmentDrafts, setAssessmentDrafts] = useState<Record<string, AssessmentDraft>>({});
   const [writeState, setWriteState] = useState<
     | { status: 'idle' }
     | { status: 'saving' }
@@ -104,6 +119,34 @@ export function RecruitingPage() {
     );
   }
 
+  function assessmentDraft(applicationId: string): AssessmentDraft {
+    return assessmentDrafts[applicationId] ?? emptyAssessmentDraft;
+  }
+
+  function updateAssessmentDraft(applicationId: string, patch: Partial<AssessmentDraft>) {
+    setAssessmentDrafts((current) => ({
+      ...current,
+      [applicationId]: { ...emptyAssessmentDraft, ...(current[applicationId] ?? {}), ...patch },
+    }));
+  }
+
+  function recordAssessment(applicationId: string) {
+    if (!writeService) return;
+    const draft = assessmentDraft(applicationId);
+    void runWrite(
+      () => writeService.recordAssessmentResult({
+        organizationId: readyIdentity.organizationId,
+        applicationId,
+        assessmentType: draft.type,
+        earned: Number(draft.earned),
+        possible: Number(draft.possible),
+        passingPercent: Number(draft.passing),
+        evidence: { source: 'manual-authorized-entry' },
+      }),
+      'Assessment recorded',
+    );
+  }
+
   return (
     <main className="atlas-page atlas-module-page people-recruiting-page">
       <p className="atlas-eyebrow">ATLAS People / Recruiting</p>
@@ -170,6 +213,13 @@ export function RecruitingPage() {
             const nextStage = forwardStage[application.stage];
             const decisionReason = reasons[application.id] ?? '';
             const assessments = assessmentsByApplication.get(application.id) ?? [];
+            const draft = assessmentDraft(application.id);
+            const assessmentReady = Boolean(
+              draft.type.trim()
+              && draft.earned.trim()
+              && draft.possible.trim()
+              && draft.passing.trim(),
+            );
             return (
               <section className="atlas-status-panel" key={application.id} aria-label={`Application ${application.id}`}>
                 <strong>{candidateById.get(application.candidateId) ?? 'Unknown candidate'}</strong>
@@ -184,34 +234,84 @@ export function RecruitingPage() {
                     ))}
 
                 {canWrite && !['hired', 'rejected', 'withdrawn'].includes(application.stage) && (
-                  <div className="atlas-action-row">
-                    {nextStage && (
+                  <>
+                    <div className="atlas-filter-grid" aria-label={`Assessment entry ${application.id}`}>
+                      <label>
+                        Assessment type
+                        <input
+                          aria-label={`Assessment type ${application.id}`}
+                          value={draft.type}
+                          onChange={(event) => updateAssessmentDraft(application.id, { type: event.target.value })}
+                          placeholder="english"
+                        />
+                      </label>
+                      <label>
+                        Earned
+                        <input
+                          aria-label={`Assessment earned ${application.id}`}
+                          type="number"
+                          min="0"
+                          value={draft.earned}
+                          onChange={(event) => updateAssessmentDraft(application.id, { earned: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        Possible
+                        <input
+                          aria-label={`Assessment possible ${application.id}`}
+                          type="number"
+                          min="0.001"
+                          value={draft.possible}
+                          onChange={(event) => updateAssessmentDraft(application.id, { possible: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        Passing %
+                        <input
+                          aria-label={`Assessment passing ${application.id}`}
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={draft.passing}
+                          onChange={(event) => updateAssessmentDraft(application.id, { passing: event.target.value })}
+                        />
+                      </label>
+                    </div>
+                    <div className="atlas-action-row">
                       <button
                         type="button"
-                        aria-label={`Advance ${application.id} to ${nextStage}`}
-                        disabled={writeState.status === 'saving'}
-                        onClick={() => transition(application, nextStage, null)}
-                      >Advance to {nextStage}</button>
-                    )}
-                    <input
-                      aria-label={`Decision reason ${application.id}`}
-                      placeholder="Reason for reject/withdraw"
-                      value={decisionReason}
-                      onChange={(event) => setReasons((current) => ({ ...current, [application.id]: event.target.value }))}
-                    />
-                    <button
-                      type="button"
-                      aria-label={`Reject application ${application.id}`}
-                      disabled={writeState.status === 'saving' || !decisionReason.trim()}
-                      onClick={() => transition(application, 'rejected', decisionReason)}
-                    >Reject</button>
-                    <button
-                      type="button"
-                      aria-label={`Withdraw application ${application.id}`}
-                      disabled={writeState.status === 'saving' || !decisionReason.trim()}
-                      onClick={() => transition(application, 'withdrawn', decisionReason)}
-                    >Withdraw</button>
-                  </div>
+                        aria-label={`Record assessment ${application.id}`}
+                        disabled={writeState.status === 'saving' || !assessmentReady}
+                        onClick={() => recordAssessment(application.id)}
+                      >Record assessment</button>
+                      {nextStage && (
+                        <button
+                          type="button"
+                          aria-label={`Advance ${application.id} to ${nextStage}`}
+                          disabled={writeState.status === 'saving'}
+                          onClick={() => transition(application, nextStage, null)}
+                        >Advance to {nextStage}</button>
+                      )}
+                      <input
+                        aria-label={`Decision reason ${application.id}`}
+                        placeholder="Reason for reject/withdraw"
+                        value={decisionReason}
+                        onChange={(event) => setReasons((current) => ({ ...current, [application.id]: event.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Reject application ${application.id}`}
+                        disabled={writeState.status === 'saving' || !decisionReason.trim()}
+                        onClick={() => transition(application, 'rejected', decisionReason)}
+                      >Reject</button>
+                      <button
+                        type="button"
+                        aria-label={`Withdraw application ${application.id}`}
+                        disabled={writeState.status === 'saving' || !decisionReason.trim()}
+                        onClick={() => transition(application, 'withdrawn', decisionReason)}
+                      >Withdraw</button>
+                    </div>
+                  </>
                 )}
               </section>
             );
