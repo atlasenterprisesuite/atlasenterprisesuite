@@ -82,6 +82,37 @@ export function googleOAuthScopesForPermissions(
   return [...scopes];
 }
 
+export function buildGoogleAuthorizationUrl(input: {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  permissions: readonly string[];
+}): string {
+  const clientId = input.clientId.trim();
+  const redirectUri = input.redirectUri.trim();
+  const state = input.state.trim();
+
+  if (!clientId) throw new Error('Google OAuth client ID is required');
+  if (!redirectUri) throw new Error('Google OAuth redirect URI is required');
+  if (!state) throw new Error('Google OAuth state is required');
+
+  const scopes = googleOAuthScopesForPermissions(input.permissions);
+  if (scopes.length === 0) {
+    throw new Error('Google OAuth scope set cannot be empty');
+  }
+
+  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('redirect_uri', redirectUri);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', scopes.join(' '));
+  url.searchParams.set('access_type', 'offline');
+  url.searchParams.set('include_granted_scopes', 'true');
+  url.searchParams.set('state', state);
+
+  return url.toString();
+}
+
 export function createIntegrationConnection(input: {
   scope: TenantScope;
   provider: IntegrationProvider;
