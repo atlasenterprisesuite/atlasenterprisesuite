@@ -8,6 +8,7 @@ This baseline separates tax year, filing year, publication date, effective date,
 - Schedule 1-A carries new deductions for qualified tips, qualified overtime, qualified passenger-vehicle loan interest, and eligible seniors for tax years 2025–2028, subject to separate eligibility and phaseout rules.
 - The federal third-party settlement organization Form 1099-K threshold was restored to more than $20,000 and more than 200 transactions; absence of a form does not make taxable income non-taxable.
 - Information-return e-file is generally required at an aggregate 10 or more covered returns for filings required on or after January 1, 2024.
+- The IRS announced that the legacy FIRE information-return system is transitioning to IRIS before the 2027 filing season; ATLAS must treat transmitter onboarding, format conversion, acknowledgments and correction workflows as a launch dependency.
 - Tax year 2026 inflation parameters must remain separate from tax year 2025 return calculations.
 
 ## Decade map
@@ -27,7 +28,7 @@ This baseline separates tax year, filing year, publication date, effective date,
 
 ## Official source registry
 
-The machine-readable registry is `data/tax/irs-monitor/sources.json`. It is restricted to HTTPS pages on `irs.gov`. The monitor creates a baseline without alerting, then compares normalized content fingerprints on later runs. A detected material change opens a review issue containing the official source, detection date, affected workflows, and required human review.
+The machine-readable registry is `data/tax/irs-monitor/sources.json`. It is restricted to HTTPS pages on `irs.gov`. The monitor creates a baseline without alerting, then compares normalized content fingerprints and newly added text on later runs. A detected material change opens a review issue containing what changed, source status, detected/effective dates, affected workflows, and required human review.
 
 ## Activation gates
 
@@ -45,6 +46,7 @@ The machine-readable registry is `data/tax/irs-monitor/sources.json`. It is rest
 - [IRS Schedule 1-A](https://www.irs.gov/newsroom/schedule-1-a-additional-deductions-what-to-know-about-the-new-form)
 - [IRS Form 1099-K FAQs](https://www.irs.gov/newsroom/form-1099-k-faqs-general-information)
 - [IRS e-file information returns](https://www.irs.gov/filing/e-file-information-returns)
+- [IRS FIRE-to-IRIS transition](https://www.irs.gov/newsroom/irs-reminder-information-return-e-file-system-transitioning-to-a-new-platform)
 - [IRS inflation adjustments by tax year](https://www.irs.gov/newsroom/inflation-adjusted-tax-items-by-tax-year)
 - [IRS TCJA hub](https://www.irs.gov/tax-cuts-and-jobs-act)
 - [IRS coronavirus tax relief archive](https://www.irs.gov/coronavirus-tax-relief-and-economic-impact-payments)

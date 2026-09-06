@@ -44,18 +44,44 @@ export function fingerprint(content) {
   return createHash("sha256").update(normalizeContent(content)).digest("hex");
 }
 
+export function extractAddedText(previousText = "", currentText = "") {
+  const prior = new Set(previousText.split(/(?<=[.!?])\s+|\n+/).map((part) => part.trim()).filter(Boolean));
+  return currentText
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 8 && !prior.has(part))
+    .join(" ")
+    .slice(0, 8000);
+}
+
+function inferEffectiveDate(text) {
+  const patterns = [
+    /effective (?:for|on|beginning|after)?\s*([^.;]{4,80})/i,
+    /(?:tax years?|calendar years?)\s+((?:20)\d{2}(?:\s*(?:through|to|-)\s*(?:20)\d{2})?)/i,
+    /(?:deadline|due date)\s+(?:is|of|on)?\s*([A-Z][a-z]+\s+\d{1,2},\s+20\d{2})/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[1].trim();
+  }
+  return "requires-human-review";
+}
+
 export function classifyMaterialChange(previous, current) {
   if (!previous) return { material: false, reason: "baseline-created", workflows: [] };
   if (previous.digest === current.digest) return { material: false, reason: "unchanged", workflows: [] };
 
-  const haystack = `${current.title || ""} ${current.text || ""}`;
+  const addedText = extractAddedText(previous.text, current.text);
+  if (!addedText) return { material: false, reason: "non-semantic-change", workflows: [] };
+  const haystack = `${current.title || ""} ${addedText}`;
   const terms = MATERIAL_TERMS.filter((term) => haystack.toLowerCase().includes(term.toLowerCase()));
   const workflows = [...new Set(WORKFLOW_RULES.filter(([pattern]) => pattern.test(haystack)).map(([, name]) => name))];
   return {
     material: terms.length > 0,
     reason: terms.length > 0 ? "material-terms-detected" : "content-changed-without-material-signal",
     workflows,
-    matchedTerms: terms
+    matchedTerms: terms,
+    addedText
   };
 }
 
@@ -86,7 +112,7 @@ export async function inspectSources({ sources, previousState = {}, fetchImpl = 
     };
     const prior = previousState.sources?.[source.id];
     const classification = classifyMaterialChange(prior, current);
-    nextState.sources[source.id] = { ...current, text: undefined };
+    nextState.sources[source.id] = current;
 
     if (classification.material) {
       changes.push({
@@ -95,7 +121,9 @@ export async function inspectSources({ sources, previousState = {}, fetchImpl = 
         url,
         category: source.category,
         detectedAt: checkedAt,
-        effectiveDate: "requires-human-review",
+        sourceStatus: source.status || "final-or-operational",
+        effectiveDate: inferEffectiveDate(classification.addedText),
+        whatChanged: classification.addedText.slice(0, 1200),
         workflows: classification.workflows,
         matchedTerms: classification.matchedTerms,
         action: "Review the official IRS revision, determine its effective tax year and affected form revision, then approve versioned ATLAS Tax rule changes and regression tests."
@@ -113,7 +141,9 @@ export function renderAlert(changes) {
     lines.push(`## ${change.title}`);
     lines.push(`- Official source: ${change.url}`);
     lines.push(`- Detected: ${change.detectedAt}`);
+    lines.push(`- Source status: ${change.sourceStatus}`);
     lines.push(`- Effective date: ${change.effectiveDate}`);
+    lines.push(`- What changed: ${change.whatChanged}`);
     lines.push(`- Workflows: ${change.workflows.join(", ") || "human classification required"}`);
     lines.push(`- Review action: ${change.action}`, "");
   }

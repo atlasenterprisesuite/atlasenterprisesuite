@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyMaterialChange, fingerprint, inspectSources, normalizeContent, normalizeOfficialUrl } from "../../packages/tax-irs-monitor/src/monitor.mjs";
+import { classifyMaterialChange, extractAddedText, fingerprint, inspectSources, normalizeContent, normalizeOfficialUrl } from "../../packages/tax-irs-monitor/src/monitor.mjs";
 
 describe("ATLAS Tax IRS monitor", () => {
   it("accepts only official HTTPS IRS sources", () => {
@@ -25,10 +25,26 @@ describe("ATLAS Tax IRS monitor", () => {
 
   it("maps a changed filing deadline to the affected workflow", () => {
     const classification = classifyMaterialChange(
-      { digest: "old" },
+      { digest: "old", text: "Existing navigation and standard content." },
       { digest: "new", title: "Deadline notice", text: "The filing due date and disaster relief changed." }
     );
     expect(classification.material).toBe(true);
     expect(classification.workflows).toContain("filing-and-payment-deadlines");
+  });
+
+  it("evaluates only newly added text for materiality", () => {
+    const previous = { digest: "old", text: "Tax credit guidance remains available. Navigation A." };
+    const current = { digest: "new", title: "Hub", text: "Tax credit guidance remains available. Navigation B." };
+    const classification = classifyMaterialChange(previous, current);
+    expect(extractAddedText(previous.text, current.text)).toBe("Navigation B.");
+    expect(classification.material).toBe(false);
+  });
+
+  it("retains source text so future runs can produce an evidence-based diff", async () => {
+    const result = await inspectSources({
+      sources: [{ id: "forms", title: "Forms", category: "forms", url: "https://www.irs.gov/forms" }],
+      fetchImpl: async () => new Response("<main>Official Form 1040 instructions</main>", { status: 200 })
+    });
+    expect(result.nextState.sources.forms.text).toContain("Form 1040 instructions");
   });
 });
