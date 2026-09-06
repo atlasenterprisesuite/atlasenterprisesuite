@@ -13,6 +13,7 @@ import {
   SupabaseBankCashWriteGateway,
 } from '../../../packages/accounting/src';
 import {
+  createSupabaseCompensationRepository,
   createSupabasePeopleRepository,
   createSupabaseRecruitingRepository,
   PeoplePayrollWriteService,
@@ -29,6 +30,7 @@ import { AccountingRepositoryProvider } from './modules/accounting/AccountingDat
 import { AccountingWriteProvider } from './modules/accounting/AccountingWriteProvider';
 import { ArApWriteProvider } from './modules/accounting/ArApWriteProvider';
 import { BankCashWriteProvider } from './modules/accounting/BankCashWriteProvider';
+import { CompensationRepositoryProvider } from './modules/people/CompensationDataProvider';
 import { PeopleRepositoryProvider } from './modules/people/PeopleDataProvider';
 import { PeoplePayrollWriteProvider } from './modules/people/PeoplePayrollWriteProvider';
 import { PeopleTimeWriteProvider } from './modules/people/PeopleTimeWriteProvider';
@@ -58,6 +60,9 @@ const bankCashWriteService = supabaseClient
 const peopleRepository = supabaseClient
   ? createSupabasePeopleRepository(supabaseClient)
   : null;
+const compensationRepository = supabaseClient
+  ? createSupabaseCompensationRepository(supabaseClient)
+  : null;
 const peopleTimeWriteService = supabaseClient
   ? new PeopleTimeWriteService(new SupabasePeopleTimeWriteGateway(supabaseClient))
   : null;
@@ -76,25 +81,27 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AtlasProvider source={identitySource}>
         <PeopleRepositoryProvider repository={peopleRepository}>
-          <RecruitingRepositoryProvider repository={recruitingRepository}>
-            <PeopleTimeWriteProvider service={peopleTimeWriteService}>
-              <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
-                <RecruitingWriteProvider service={recruitingWriteService}>
-                  <AccountingRepositoryProvider repository={accountingRepository}>
-                    <AccountingWriteProvider service={accountingWriteService}>
-                      <AccountWriteProvider service={accountWriteService}>
-                        <ArApWriteProvider service={arApWriteService}>
-                          <BankCashWriteProvider service={bankCashWriteService}>
-                            <App />
-                          </BankCashWriteProvider>
-                        </ArApWriteProvider>
-                      </AccountWriteProvider>
-                    </AccountingWriteProvider>
-                  </AccountingRepositoryProvider>
-                </RecruitingWriteProvider>
-              </PeoplePayrollWriteProvider>
-            </PeopleTimeWriteProvider>
-          </RecruitingRepositoryProvider>
+          <CompensationRepositoryProvider repository={compensationRepository}>
+            <RecruitingRepositoryProvider repository={recruitingRepository}>
+              <PeopleTimeWriteProvider service={peopleTimeWriteService}>
+                <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
+                  <RecruitingWriteProvider service={recruitingWriteService}>
+                    <AccountingRepositoryProvider repository={accountingRepository}>
+                      <AccountingWriteProvider service={accountingWriteService}>
+                        <AccountWriteProvider service={accountWriteService}>
+                          <ArApWriteProvider service={arApWriteService}>
+                            <BankCashWriteProvider service={bankCashWriteService}>
+                              <App />
+                            </BankCashWriteProvider>
+                          </ArApWriteProvider>
+                        </AccountWriteProvider>
+                      </AccountingWriteProvider>
+                    </AccountingRepositoryProvider>
+                  </RecruitingWriteProvider>
+                </PeoplePayrollWriteProvider>
+              </PeopleTimeWriteProvider>
+            </RecruitingRepositoryProvider>
+          </CompensationRepositoryProvider>
         </PeopleRepositoryProvider>
       </AtlasProvider>
     </BrowserRouter>
