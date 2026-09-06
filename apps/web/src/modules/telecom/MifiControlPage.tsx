@@ -19,6 +19,8 @@ const unavailableNotice =
   'No authorized MiFi device adapter is connected. ATLAS will not report carrier state until a real modem confirms it.';
 const scopeNotice =
   'Telecom tenant scope is not configured. Network controls remain disabled until ATLAS Identity resolves an explicit tenant scope.';
+const idleWithoutScopeNotice =
+  'No network operation can run until Telecom scope and an authorized adapter are configured.';
 
 type MifiControlPageProps = {
   adapter?: MifiAdapter;
@@ -42,7 +44,7 @@ export function MifiControlPage({
   const [validationMessage, setValidationMessage] = useState('');
   const [operationState, setOperationState] = useState<OperationState>('idle');
   const [resultMessage, setResultMessage] = useState(
-    scope ? 'No network operation has been submitted.' : scopeNotice,
+    scope ? 'No network operation has been submitted.' : idleWithoutScopeNotice,
   );
   const [lastRequestedRule, setLastRequestedRule] = useState<CallForwardingRule | null>(null);
 
@@ -52,7 +54,7 @@ export function MifiControlPage({
     if (!scope) {
       setDevice(null);
       setOperationState('idle');
-      setResultMessage(scopeNotice);
+      setResultMessage(idleWithoutScopeNotice);
       return () => {
         active = false;
       };
@@ -219,6 +221,11 @@ export function MifiControlPage({
           ? 'Submitting'
           : 'Ready';
 
+  const providerNotice =
+    device?.connectionState === 'connected'
+      ? 'Authorized MiFi adapter reported the device as connected. Call-forwarding state is not verified until network read-back succeeds.'
+      : unavailableNotice;
+
   return (
     <main className="atlas-page atlas-module-page telecom-mifi-page">
       <header className="telecom-mifi-page__header">
@@ -231,7 +238,7 @@ export function MifiControlPage({
 
       <div className="atlas-status-panel atlas-status-panel--degraded" role="status">
         <strong>Provider state</strong>
-        <span>{unavailableNotice}</span>
+        <span>{providerNotice}</span>
         {!scope && <span>{scopeNotice}</span>}
       </div>
 
