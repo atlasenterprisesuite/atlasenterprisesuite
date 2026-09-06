@@ -34,6 +34,20 @@ export type IntegrationConnection = {
   status: IntegrationConnectionStatus;
 };
 
+const GOOGLE_OAUTH_SCOPES: Record<IntegrationPermission, readonly string[]> = {
+  'integrations.admin': [],
+  'google.gmail.read': ['https://www.googleapis.com/auth/gmail.readonly'],
+  'google.gmail.write': ['https://www.googleapis.com/auth/gmail.compose'],
+  'google.calendar.read': [
+    'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+    'https://www.googleapis.com/auth/calendar.events.freebusy',
+    'https://www.googleapis.com/auth/calendar.events.readonly'
+  ],
+  'google.calendar.write': ['https://www.googleapis.com/auth/calendar.events'],
+  'google.drive.read': ['https://www.googleapis.com/auth/drive.readonly'],
+  'google.drive.write': ['https://www.googleapis.com/auth/drive.file']
+};
+
 export function sameScope(a: TenantScope, b: TenantScope) {
   return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
 }
@@ -50,6 +64,22 @@ export function hasIntegrationPermission(
   required: IntegrationPermission
 ) {
   return granted.includes(required) || granted.includes('integrations.admin');
+}
+
+export function googleOAuthScopesForPermissions(
+  permissions: readonly string[]
+): string[] {
+  const scopes = new Set<string>();
+
+  for (const permission of permissions) {
+    if (!(permission in GOOGLE_OAUTH_SCOPES)) continue;
+
+    for (const scope of GOOGLE_OAUTH_SCOPES[permission as IntegrationPermission]) {
+      scopes.add(scope);
+    }
+  }
+
+  return [...scopes];
 }
 
 export function createIntegrationConnection(input: {
