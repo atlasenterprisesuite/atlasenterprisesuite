@@ -4,7 +4,7 @@ import {
   socialPlatforms,
   validateMedia,
   type PlatformId
-} from '../../../../../packages/social/src/platforms';
+} from '../../../../../../packages/social/src/platforms';
 
 type MediaPreview = { file: File; url: string };
 
