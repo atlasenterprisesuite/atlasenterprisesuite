@@ -12,6 +12,7 @@ import { ReconciliationPage } from '../../modules/accounting/ReconciliationPage'
 import { FinanceHome } from '../../modules/finance/FinanceHome';
 import { HealthRoutes } from '../../modules/health/HealthRoutes';
 import { EnterpriseHome } from '../../modules/home/EnterpriseHome';
+import { PeopleTimeRoute } from '../../modules/people/PeopleTimeRoute';
 import { TelecomMifiRoute } from '../../modules/telecom/TelecomMifiRoute';
 import { SpatialEntry } from '../../spatial/SpatialEntry';
 
@@ -30,6 +31,7 @@ export function AppRouter() {
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/bank-cash" element={<BankCashPage />} />
         <Route path="/finance/accounting/reconciliation" element={<ReconciliationPage />} />
+        <Route path="/people/time" element={<PeopleTimeRoute />} />
         <Route path="/health/*" element={<HealthRoutes />} />
         <Route path="/telecom/devices/mifi" element={<TelecomMifiRoute />} />
       </Route>
