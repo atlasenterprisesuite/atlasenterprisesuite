@@ -3,6 +3,7 @@ import type {
   ApplicationStage,
   EmployeeRecord,
   EmploymentStatus,
+  PayrollLineRecord,
   PayrollRun,
   PayrollRunStatus,
   PeopleTable,
@@ -19,72 +20,46 @@ export interface PeopleRepository {
   getEmployee(organizationId: string, employeeId: string): Promise<EmployeeRecord | null>;
   listTimeEntries(organizationId: string, employeeId?: string): Promise<TimeEntry[]>;
   listPayrollRuns(organizationId: string): Promise<PayrollRun[]>;
+  listPayrollLines(organizationId: string, payrollRunId?: string): Promise<PayrollLineRecord[]>;
   listApplications(organizationId: string): Promise<ApplicationRecord[]>;
 }
 
 type EmployeeRow = {
-  id: string;
-  org_id: string | null;
-  user_id: string | null;
-  full_name: string;
-  department: string | null;
-  job_title: string | null;
-  status: string | null;
-  created_at: string | null;
-  updated_at: string | null;
+  id: string; org_id: string | null; user_id: string | null; full_name: string;
+  department: string | null; job_title: string | null; status: string | null;
+  created_at: string | null; updated_at: string | null;
 };
 
 type TimeEntryRow = {
-  id: string;
-  org_id: string;
-  employee_id: string;
-  work_date: string;
-  clock_in: string | null;
-  clock_out: string | null;
-  break_minutes: number;
-  status: string;
-  approved_by: string | null;
-  approved_at: string | null;
-  created_at: string;
-  updated_at: string;
+  id: string; org_id: string; employee_id: string; work_date: string;
+  clock_in: string | null; clock_out: string | null; break_minutes: number; status: string;
+  approved_by: string | null; approved_at: string | null; created_at: string; updated_at: string;
 };
 
 type PayrollRunRow = {
-  id: string;
-  org_id: string;
-  period_start: string;
-  period_end: string;
-  pay_date: string;
-  status: string;
-  approved_by: string | null;
-  approved_at: string | null;
-  void_reason: string | null;
-  created_at: string;
-  updated_at: string;
+  id: string; org_id: string; period_start: string; period_end: string; pay_date: string;
+  status: string; approved_by: string | null; approved_at: string | null; void_reason: string | null;
+  created_at: string; updated_at: string;
+};
+
+type PayrollLineRow = {
+  id: string; org_id: string; payroll_run_id: string; employee_id: string;
+  regular_hours: number; overtime_hours: number; hourly_rate: number | null;
+  salary_period_amount: number | null; gross_pay: number; pretax_deductions: number;
+  taxes_withheld: number; posttax_deductions: number; net_pay: number; calculation: unknown;
+  created_at: string; updated_at: string;
 };
 
 type ApplicationRow = {
-  id: string;
-  org_id: string;
-  requisition_id: string;
-  candidate_id: string;
-  stage: string;
-  created_at: string;
-  updated_at: string;
+  id: string; org_id: string; requisition_id: string; candidate_id: string;
+  stage: string; created_at: string; updated_at: string;
 };
 
 const employmentStatuses = new Set<EmploymentStatus>(['active', 'leave', 'terminated']);
 const timeEntryStatuses = new Set<TimeEntryStatus>(['draft', 'submitted', 'approved', 'rejected']);
 const payrollRunStatuses = new Set<PayrollRunStatus>(['draft', 'calculated', 'approved', 'locked', 'void']);
 const applicationStages = new Set<ApplicationStage>([
-  'applied',
-  'screening',
-  'assessment',
-  'interview',
-  'offer',
-  'hired',
-  'rejected',
-  'withdrawn',
+  'applied', 'screening', 'assessment', 'interview', 'offer', 'hired', 'rejected', 'withdrawn',
 ]);
 
 function requireOrganizationId(organizationId: string): string {
@@ -122,60 +97,46 @@ function applicationStage(value: string): ApplicationStage {
 function mapEmployee(row: EmployeeRow): EmployeeRecord {
   if (!row.org_id) throw new Error(`Employee ${row.id} is missing organization scope`);
   return {
-    id: row.id,
-    organizationId: row.org_id,
-    userId: row.user_id,
-    fullName: row.full_name,
-    department: row.department,
-    jobTitle: row.job_title,
-    status: employmentStatus(row.status),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    id: row.id, organizationId: row.org_id, userId: row.user_id, fullName: row.full_name,
+    department: row.department, jobTitle: row.job_title, status: employmentStatus(row.status),
+    createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
 
 function mapTimeEntry(row: TimeEntryRow): TimeEntry {
   return {
-    id: row.id,
-    organizationId: row.org_id,
-    employeeId: row.employee_id,
-    workDate: row.work_date,
-    clockIn: row.clock_in,
-    clockOut: row.clock_out,
-    breakMinutes: row.break_minutes,
-    status: timeEntryStatus(row.status),
-    approvedBy: row.approved_by,
-    approvedAt: row.approved_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    id: row.id, organizationId: row.org_id, employeeId: row.employee_id, workDate: row.work_date,
+    clockIn: row.clock_in, clockOut: row.clock_out, breakMinutes: row.break_minutes,
+    status: timeEntryStatus(row.status), approvedBy: row.approved_by, approvedAt: row.approved_at,
+    createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
 
 function mapPayrollRun(row: PayrollRunRow): PayrollRun {
   return {
-    id: row.id,
-    organizationId: row.org_id,
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
-    payDate: row.pay_date,
-    status: payrollRunStatus(row.status),
-    approvedBy: row.approved_by,
-    approvedAt: row.approved_at,
-    voidReason: row.void_reason,
-    createdAt: row.created_at,
+    id: row.id, organizationId: row.org_id, periodStart: row.period_start, periodEnd: row.period_end,
+    payDate: row.pay_date, status: payrollRunStatus(row.status), approvedBy: row.approved_by,
+    approvedAt: row.approved_at, voidReason: row.void_reason, createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapPayrollLine(row: PayrollLineRow): PayrollLineRecord {
+  return {
+    id: row.id, organizationId: row.org_id, payrollRunId: row.payroll_run_id,
+    employeeId: row.employee_id, regularHours: row.regular_hours, overtimeHours: row.overtime_hours,
+    hourlyRate: row.hourly_rate, salaryPeriodAmount: row.salary_period_amount, grossPay: row.gross_pay,
+    pretaxDeductions: row.pretax_deductions, taxesWithheld: row.taxes_withheld,
+    posttaxDeductions: row.posttax_deductions, netPay: row.net_pay, calculation: row.calculation,
+    createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
 
 function mapApplication(row: ApplicationRow): ApplicationRecord {
   return {
-    id: row.id,
-    organizationId: row.org_id,
-    requisitionId: row.requisition_id,
-    candidateId: row.candidate_id,
-    stage: applicationStage(row.stage),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    id: row.id, organizationId: row.org_id, requisitionId: row.requisition_id,
+    candidateId: row.candidate_id, stage: applicationStage(row.stage),
+    createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
 
@@ -185,9 +146,7 @@ export class PeopleRepositoryImpl implements PeopleRepository {
   async listEmployees(organizationId: string): Promise<EmployeeRecord[]> {
     const orgId = requireOrganizationId(organizationId);
     const rows = await this.gateway.select<EmployeeRow>(
-      'employees',
-      'id,org_id,user_id,full_name,department,job_title,status,created_at,updated_at',
-      orgId,
+      'employees', 'id,org_id,user_id,full_name,department,job_title,status,created_at,updated_at', orgId,
     );
     return rows.filter((row) => row.org_id === orgId).map(mapEmployee);
   }
@@ -196,9 +155,7 @@ export class PeopleRepositoryImpl implements PeopleRepository {
     const orgId = requireOrganizationId(organizationId);
     const id = requireRecordId(employeeId, 'employeeId');
     const rows = await this.gateway.select<EmployeeRow>(
-      'employees',
-      'id,org_id,user_id,full_name,department,job_title,status,created_at,updated_at',
-      orgId,
+      'employees', 'id,org_id,user_id,full_name,department,job_title,status,created_at,updated_at', orgId,
     );
     const row = rows.find((candidate) => candidate.org_id === orgId && candidate.id === id);
     return row ? mapEmployee(row) : null;
@@ -227,12 +184,23 @@ export class PeopleRepositoryImpl implements PeopleRepository {
     return rows.filter((row) => row.org_id === orgId).map(mapPayrollRun);
   }
 
+  async listPayrollLines(organizationId: string, payrollRunId?: string): Promise<PayrollLineRecord[]> {
+    const orgId = requireOrganizationId(organizationId);
+    const requestedRunId = payrollRunId ? requireRecordId(payrollRunId, 'payrollRunId') : null;
+    const rows = await this.gateway.select<PayrollLineRow>(
+      'people_payroll_lines',
+      'id,org_id,payroll_run_id,employee_id,regular_hours,overtime_hours,hourly_rate,salary_period_amount,gross_pay,pretax_deductions,taxes_withheld,posttax_deductions,net_pay,calculation,created_at,updated_at',
+      orgId,
+    );
+    return rows
+      .filter((row) => row.org_id === orgId && (!requestedRunId || row.payroll_run_id === requestedRunId))
+      .map(mapPayrollLine);
+  }
+
   async listApplications(organizationId: string): Promise<ApplicationRecord[]> {
     const orgId = requireOrganizationId(organizationId);
     const rows = await this.gateway.select<ApplicationRow>(
-      'people_applications',
-      'id,org_id,requisition_id,candidate_id,stage,created_at,updated_at',
-      orgId,
+      'people_applications', 'id,org_id,requisition_id,candidate_id,stage,created_at,updated_at', orgId,
     );
     return rows.filter((row) => row.org_id === orgId).map(mapApplication);
   }
