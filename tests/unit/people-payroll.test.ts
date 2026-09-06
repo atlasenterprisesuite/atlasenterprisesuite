@@ -122,7 +122,7 @@ describe('ATLAS People payroll lifecycle', () => {
     expect(next.approvedAt).toBeNull();
   });
 
-  it('requires payroll.approve to approve and lock a payroll run', () => {
+  it('requires payroll.approve to approve and lock a payroll run while preserving approval evidence', () => {
     expect(() => transitionPayrollRun(calculatedRun, { type: 'approve' }, {
       userId: 'payroll-user',
       at: '2026-09-06T13:00:00Z',
@@ -141,11 +141,15 @@ describe('ATLAS People payroll lifecycle', () => {
     });
 
     const locked = transitionPayrollRun(approved, { type: 'lock' }, {
-      userId: 'approver-a',
+      userId: 'locker-b',
       at: '2026-09-06T14:00:00Z',
       permissions: ['payroll.approve'],
     });
-    expect(locked.status).toBe('locked');
+    expect(locked).toMatchObject({
+      status: 'locked',
+      approvedBy: 'approver-a',
+      approvedAt: '2026-09-06T13:00:00Z',
+    });
   });
 
   it('requires an audit reason and approval permission to void a run', () => {
@@ -161,6 +165,21 @@ describe('ATLAS People payroll lifecycle', () => {
       permissions: ['payroll.approve'],
     });
     expect(voided).toMatchObject({ status: 'void', voidReason: 'Duplicate payroll run' });
+  });
+
+  it('rejects changes after a payroll run is locked', () => {
+    const locked: PayrollRun = {
+      ...calculatedRun,
+      status: 'locked',
+      approvedBy: 'approver-a',
+      approvedAt: '2026-09-06T13:00:00Z',
+    };
+
+    expect(() => transitionPayrollRun(locked, { type: 'void', reason: 'Late correction' }, {
+      userId: 'approver-a',
+      at: '2026-09-06T15:00:00Z',
+      permissions: ['payroll.approve'],
+    })).toThrow('Locked payroll runs are immutable.');
   });
 
   it('rejects invalid lifecycle jumps', () => {
