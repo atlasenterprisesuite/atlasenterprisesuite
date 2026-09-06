@@ -1,0 +1,35 @@
+name: ATLAS Site Review CI
+
+on:
+  push:
+    branches:
+      - release/atlas-a-z
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - name: Site Review domain guardrails
+        run: npm test -- tests/unit/site-review-core.test.ts
+      - name: Reject unconfigured live crawling in Site Review core
+        run: |
+          if grep -R -nE "\bfetch\(|axios|from ['\"](node:)?https?['\"]" packages/site-review/src 2>/dev/null; then
+            echo "Live network primitive detected in Site Review core"
+            exit 1
+          fi
+      - run: npm run build
