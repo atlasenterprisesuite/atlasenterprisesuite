@@ -97,6 +97,69 @@ a { color: inherit; }
 .atlas-status-panel span { color: var(--atlas-text-muted); line-height: 1.5; }
 .atlas-status-panel--degraded { border-style: dashed; }
 
+.atlas-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.85rem;
+}
+.atlas-filter-grid label,
+.atlas-status-panel label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--atlas-text-muted);
+  font-size: 0.85rem;
+}
+.atlas-filter-grid input,
+.atlas-filter-grid select,
+.atlas-status-panel input,
+.atlas-status-panel select {
+  min-width: 0;
+  min-height: 2.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--atlas-border);
+  border-radius: 0.7rem;
+  color: #e8f0f8;
+  background: rgba(5, 11, 20, 0.7);
+}
+.atlas-filter-grid input:focus-visible,
+.atlas-filter-grid select:focus-visible,
+.atlas-status-panel input:focus-visible,
+.atlas-status-panel select:focus-visible,
+.atlas-action-row button:focus-visible,
+.atlas-page > button:focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+.atlas-action-row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.atlas-action-row button,
+.atlas-page > button {
+  min-height: 2.55rem;
+  padding: 0.62rem 0.85rem;
+  border: 1px solid var(--atlas-border);
+  border-radius: 0.7rem;
+  color: #e8f0f8;
+  background: var(--atlas-panel-strong);
+  cursor: pointer;
+}
+.atlas-action-row button:disabled,
+.atlas-page > button:disabled { cursor: not-allowed; opacity: 0.45; }
+.atlas-table-wrap { width: 100%; overflow-x: auto; }
+.atlas-table-wrap table { width: 100%; border-collapse: collapse; min-width: 42rem; }
+.atlas-table-wrap th,
+.atlas-table-wrap td {
+  padding: 0.7rem;
+  border-bottom: 1px solid var(--atlas-border);
+  text-align: left;
+  vertical-align: top;
+}
+.atlas-table-wrap th { color: var(--atlas-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.people-time-page {
+  align-content: start;
+  place-content: initial;
+  gap: 1.15rem;
+}
+
 .telecom-mifi-page {
   align-content: start;
   place-content: initial;
@@ -183,7 +246,10 @@ a { color: inherit; }
   .atlas-shell__link { white-space: nowrap; }
   .atlas-shell__context { display: none; }
   .atlas-page { min-height: calc(100vh - 9rem); padding-top: 2rem; padding-bottom: 2rem; }
+  .people-time-page,
   .telecom-mifi-page { min-height: auto; }
+  .atlas-action-row,
   .telecom-actions { display: grid; grid-template-columns: 1fr; }
+  .atlas-action-row button,
   .telecom-actions button { width: 100%; }
 }
