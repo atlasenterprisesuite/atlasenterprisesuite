@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/atlas-core-accounting
+      - release/atlas-a-z
   pull_request:
     branches:
       - main
