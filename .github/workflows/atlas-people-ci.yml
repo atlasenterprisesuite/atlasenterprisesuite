@@ -30,7 +30,7 @@ jobs:
         run: npm run typecheck
 
       - name: People unit tests
-        run: npm test -- tests/unit/people-employee.test.ts tests/unit/people-time.test.ts tests/unit/people-payroll.test.ts tests/unit/people-recruiting.test.ts tests/unit/people-recruiting-writes.test.ts
+        run: npm test -- tests/unit/people-employee.test.ts tests/unit/people-time.test.ts tests/unit/people-payroll.test.ts tests/unit/people-recruiting.test.ts tests/unit/people-recruiting-writes.test.ts tests/unit/people-compensation.test.ts tests/unit/people-compensation-writes.test.ts
 
       - name: People repository tests
         run: npm test -- tests/integration/people-repository.test.ts tests/integration/people-recruiting-repository.test.ts
@@ -44,12 +44,18 @@ jobs:
       - name: People Recruiting UI tests
         run: npm test -- tests/integration/people-recruiting-ui.test.tsx
 
+      - name: People Compensation UI tests
+        run: npm test -- tests/integration/people-compensation-ui.test.tsx
+
+      - name: People Self-Service UI tests
+        run: npm test -- tests/integration/people-self-service-ui.test.tsx
+
       - name: People route tests
         run: npm test -- tests/integration/people-routes.test.tsx
 
       - name: Runtime truth-state safety scan
         run: |
-          if grep -R -nE 'tenant-demo|org-demo|Demo environment|Tax filing: Connected|Payment rail: Connected|Tax filing: Filed|Payment rail: Paid|auto[- ]?hire|automatic hiring decision' apps/web/src/modules/people packages/people/src 2>/dev/null; then
+          if grep -R -nE 'tenant-demo|org-demo|Demo environment|Tax filing: Connected|Payment rail: Connected|Tax filing: Filed|Payment rail: Paid|Benefits provider enrollment: Connected|auto[- ]?hire|automatic hiring decision' apps/web/src/modules/people packages/people/src 2>/dev/null; then
             echo "People runtime contains a forbidden demo/provider/automated-hiring claim"
             exit 1
           fi
