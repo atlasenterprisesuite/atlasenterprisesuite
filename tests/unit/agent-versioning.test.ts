@@ -3,6 +3,7 @@ import {
   canTransitionAgentStatus,
   createAgentDraft,
   publishAgentVersion,
+  resolveAgentInstructions,
   transitionAgentStatus
 } from '../../packages/agents/src';
 
@@ -68,4 +69,17 @@ it('publishes immutably and emits audit evidence', () => {
     expect(Object.isFrozen(result.version.permissions)).toBe(true);
     expect(result.audit.action).toBe('agents.version.published');
   }
+});
+
+it('keeps permissions and safety outside channel overlays', () => {
+  const resolved = resolveAgentInstructions(draft, 'web');
+
+  expect(resolved.core).toBe('Assist within ATLAS policy.');
+  expect(resolved.channel).toBe('Use concise web responses.');
+  expect(resolved.permissions).toEqual(['agents.read']);
+  expect(resolved.safetyRules).toEqual(['tenant-isolation']);
+});
+
+it('does not fabricate a missing channel overlay', () => {
+  expect(resolveAgentInstructions(draft, 'mobile').channel).toBeNull();
 });
