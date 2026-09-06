@@ -64,6 +64,7 @@ it('renders persisted recruiting evidence for an HR reader', async () => {
   expect(screen.getByText(/English · 84/)).toBeInTheDocument();
   expect(screen.getByLabelText('Candidate search')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Advance app-a to assessment' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Record assessment app-a' })).not.toBeInTheDocument();
 });
 
 it('advances an application only through the governed service with HR write', async () => {
@@ -90,6 +91,39 @@ it('advances an application only through the governed service with HR write', as
     decisionReason: null,
   }));
   expect(await screen.findByText('Application moved to assessment')).toBeInTheDocument();
+});
+
+it('records explicit assessment evidence only through the governed service with HR write', async () => {
+  const recordAssessmentResult = vi.fn(async () => 'assessment-new');
+  const gateway: PeopleRecruitingWriteGateway = {
+    advanceApplicationStage: async () => 'app-a',
+    recordAssessmentResult,
+  };
+  const service = new PeopleRecruitingWriteService(gateway);
+
+  renderRecruiting({
+    status: 'ready', userId: 'manager-a', organizationId: 'org-a', organizationName: 'Test Organization',
+    role: 'manager', permissions: ['hr.read', 'hr.write'],
+  }, service);
+
+  await screen.findByRole('heading', { name: 'Recruiting' });
+  fireEvent.change(screen.getByLabelText('Assessment type app-a'), { target: { value: 'english' } });
+  fireEvent.change(screen.getByLabelText('Assessment earned app-a'), { target: { value: '42' } });
+  fireEvent.change(screen.getByLabelText('Assessment possible app-a'), { target: { value: '50' } });
+  fireEvent.change(screen.getByLabelText('Assessment passing app-a'), { target: { value: '70' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Record assessment app-a' }));
+
+  await waitFor(() => expect(recordAssessmentResult).toHaveBeenCalledWith(expect.objectContaining({
+    organizationId: 'org-a',
+    applicationId: 'app-a',
+    assessmentType: 'english',
+    earned: 42,
+    possible: 50,
+    passingPercent: 70,
+    evidence: { source: 'manual-authorized-entry' },
+    score: { score: 84, passed: true },
+  })));
+  expect(await screen.findByText('Assessment recorded')).toBeInTheDocument();
 });
 
 it('denies Recruiting without hr.read', async () => {
