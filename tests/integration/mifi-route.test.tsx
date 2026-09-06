@@ -25,13 +25,19 @@ const readyIdentity: AtlasIdentityState = {
   organizationId: 'test-organization-id',
   organizationName: 'Test Organization',
   role: 'admin',
-  permissions: ['accounting.read', 'accounting.write', 'audit.read'],
+  permissions: [
+    'accounting.read',
+    'accounting.write',
+    'audit.read',
+    'telecom.mifi.read',
+    'telecom.mifi.forwarding.write',
+  ],
 };
 
-function renderRoute() {
+function renderRoute(state: AtlasIdentityState = readyIdentity) {
   return render(
     <MemoryRouter initialEntries={['/telecom/devices/mifi']}>
-      <AtlasProvider source={sourceFor(readyIdentity)}>
+      <AtlasProvider source={sourceFor(state)}>
         <App />
       </AtlasProvider>
     </MemoryRouter>,
@@ -52,6 +58,18 @@ describe('ATLAS Telecom MiFi route', () => {
     expect(screen.getByRole('button', { name: 'Disable forwarding' })).toBeDisabled();
     expect(screen.queryByText(/^Connected$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Verified$/)).not.toBeInTheDocument();
+  });
+
+  it('hides Telecom navigation and denies the route without telecom.mifi.read', async () => {
+    renderRoute({
+      ...readyIdentity,
+      permissions: ['accounting.read', 'accounting.write', 'audit.read'],
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Access denied' })).toBeInTheDocument();
+    expect(screen.getByText(/telecom.mifi.read/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Telecom' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'MiFi Control' })).not.toBeInTheDocument();
   });
 
   it('exposes accessible MiFi form controls in the unavailable state', async () => {
