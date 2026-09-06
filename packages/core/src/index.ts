@@ -20,6 +20,20 @@ export type IntegrationPermission =
   | 'google.drive.read'
   | 'google.drive.write';
 
+export type IntegrationProvider = 'google';
+
+export type IntegrationConnectionStatus =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'error';
+
+export type IntegrationConnection = {
+  scope: TenantScope;
+  provider: IntegrationProvider;
+  status: IntegrationConnectionStatus;
+};
+
 export function sameScope(a: TenantScope, b: TenantScope) {
   return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
 }
@@ -36,6 +50,27 @@ export function hasIntegrationPermission(
   required: IntegrationPermission
 ) {
   return granted.includes(required) || granted.includes('integrations.admin');
+}
+
+export function createIntegrationConnection(input: {
+  scope: TenantScope;
+  provider: IntegrationProvider;
+}): IntegrationConnection {
+  return {
+    scope: {
+      tenantId: input.scope.tenantId,
+      organizationId: input.scope.organizationId
+    },
+    provider: input.provider,
+    status: 'disconnected'
+  };
+}
+
+export function integrationConnectionKey(input: {
+  scope: TenantScope;
+  provider: IntegrationProvider;
+}) {
+  return `${input.scope.tenantId}:${input.scope.organizationId}:${input.provider}`;
 }
 
 export const demoAtlasContext = {
