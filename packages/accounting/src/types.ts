@@ -11,6 +11,10 @@ export type AccountingTable =
   | 'accounting_transactions'
   | 'accounting_reconciliation_sessions'
   | 'accounting_reconciliation_items'
+  | 'accounting_fixed_assets'
+  | 'accounting_periods'
+  | 'accounting_close_tasks'
+  | 'organization_settings'
   | 'audit_logs';
 
 export interface AccountRecord {
@@ -178,6 +182,70 @@ export interface ReconciliationItemRecord {
   resolvedBy: string | null;
   resolvedAt: string | null;
   createdAt: string | null;
+}
+
+export interface FixedAssetRecord {
+  id: string;
+  organizationId: string | null;
+  entityId: string | null;
+  assetCode: string;
+  name: string;
+  description: string | null;
+  acquisitionDate: string;
+  cost: number;
+  salvageValue: number;
+  usefulLifeMonths: number;
+  depreciationMethod: string;
+  status: string;
+  accumulatedDepreciation: number;
+  disposalDate: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AccountingPeriodRecord {
+  id: string;
+  organizationId: string | null;
+  entityId: string | null;
+  periodStart: string;
+  periodEnd: string;
+  status: string;
+  closeReadiness: number;
+  filingReadiness: number;
+  closedBy: string | null;
+  closedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AccountingCloseTaskRecord {
+  id: string;
+  organizationId: string | null;
+  periodId: string;
+  taskKey: string;
+  name: string;
+  taskGroup: string;
+  ownerId: string | null;
+  ownerLabel: string | null;
+  status: string;
+  blocker: string | null;
+  dueAt: string | null;
+  weight: number;
+  evidence: unknown;
+  completedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AccountingSettingsRecord {
+  organizationId: string;
+  fiscalYearStart: string;
+  baseCurrency: string;
+  accountingBasis: 'accrual';
+  defaultArAccountId: string | null;
+  defaultApAccountId: string | null;
+  configured: boolean;
 }
 
 export interface AccountingAuditEvent {
