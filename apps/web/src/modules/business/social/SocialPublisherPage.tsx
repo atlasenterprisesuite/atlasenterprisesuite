@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import {
   getPlatform,
   socialPlatforms,
@@ -16,8 +16,6 @@ export function SocialPublisherPage() {
   const [media, setMedia] = useState<MediaPreview[]>([]);
   const format = platform.formats.find((item) => item.id === formatId) ?? platform.formats[0];
   const errors = useMemo(() => validateMedia(media.map((item) => item.file), format), [media, format]);
-
-  useEffect(() => () => media.forEach((item) => URL.revokeObjectURL(item.url)), [media]);
 
   function selectPlatform(nextId: PlatformId) {
     const next = getPlatform(nextId);
@@ -38,7 +36,7 @@ export function SocialPublisherPage() {
     });
   }
 
-  const publishDisabled = platform.connectionStatus !== 'not_configured' || media.length === 0 || errors.length > 0;
+  const publishDisabled = platform.connectionStatus === 'not_configured' || media.length === 0 || errors.length > 0;
 
   return (
     <section className="page-stack social-publisher">
@@ -59,7 +57,7 @@ export function SocialPublisherPage() {
             role="tab"
             aria-selected={item.id === platformId}
             className={item.id === platformId ? 'platform-tab active' : 'platform-tab'}
-            style={{ '--platform-accent': item.accent } as React.CSSProperties}
+            style={{ '--platform-accent': item.accent } as CSSProperties}
             onClick={() => selectPlatform(item.id)}
           >
             {item.name}
@@ -118,7 +116,7 @@ export function SocialPublisherPage() {
           {errors.length > 0 && <div className="validation-errors" role="alert">{errors.map((error) => <span key={error}>{error}</span>)}</div>}
 
           <div className="publisher-actions">
-            <button className="secondary-button" type="button" onClick={() => { setCaption(''); setMedia([]); }}>Clear draft</button>
+            <button className="secondary-button" type="button" onClick={() => { media.forEach((item) => URL.revokeObjectURL(item.url)); setCaption(''); setMedia([]); }}>Clear draft</button>
             <button className="primary-button" type="button" disabled={publishDisabled}>Publish to {platform.name}</button>
           </div>
           <div className="connection-gate">
