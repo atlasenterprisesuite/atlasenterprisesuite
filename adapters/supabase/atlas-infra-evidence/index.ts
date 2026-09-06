@@ -137,6 +137,7 @@ Deno.serve(async (req: Request) => {
         target_version: targetVersion,
         environment: 'production',
         status: 'passed',
+        started_at: completedAt,
         completed_at: completedAt,
         duration_ms: durationMs,
         trace_id: `github:${github.claims.run_id || 'unknown'}:${github.claims.run_attempt || '1'}`,
