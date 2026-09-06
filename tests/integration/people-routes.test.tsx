@@ -40,9 +40,10 @@ it('shows only Payroll for a payroll reader', async () => {
   expect(screen.getByRole('link', { name: 'People' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Payroll/ })).toHaveAttribute('href', '/people/payroll');
   expect(screen.queryByRole('link', { name: /Time & Attendance/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Recruiting/ })).not.toBeInTheDocument();
 });
 
-it('shows only Time & Attendance for an HR reader without payroll access', async () => {
+it('shows Time & Attendance and Recruiting for an HR reader without payroll access', async () => {
   renderPeopleHome({
     status: 'ready',
     userId: 'hr-reader',
@@ -54,6 +55,7 @@ it('shows only Time & Attendance for an HR reader without payroll access', async
 
   expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
+  expect(screen.getByRole('link', { name: /Recruiting/ })).toHaveAttribute('href', '/people/recruiting');
   expect(screen.queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
 });
 
