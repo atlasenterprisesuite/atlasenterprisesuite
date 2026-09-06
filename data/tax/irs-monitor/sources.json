@@ -1,0 +1,12 @@
+[
+  { "id": "newsroom", "title": "IRS Newsroom", "category": "guidance", "url": "https://www.irs.gov/newsroom" },
+  { "id": "forms-updates", "title": "Forms and instructions", "category": "forms-and-instructions", "url": "https://www.irs.gov/forms-instructions-and-publications" },
+  { "id": "draft-forms", "title": "Draft tax forms", "category": "forms-and-instructions", "url": "https://www.irs.gov/draft-tax-forms" },
+  { "id": "irb", "title": "Internal Revenue Bulletin", "category": "guidance", "url": "https://www.irs.gov/irb" },
+  { "id": "efile-providers", "title": "Tax professionals e-file providers", "category": "e-file", "url": "https://www.irs.gov/e-file-providers" },
+  { "id": "information-return-efile", "title": "E-file information returns", "category": "e-file", "url": "https://www.irs.gov/filing/e-file-information-returns" },
+  { "id": "inflation-adjustments", "title": "Inflation-adjusted tax items by year", "category": "rates-and-thresholds", "url": "https://www.irs.gov/newsroom/inflation-adjusted-tax-items-by-tax-year" },
+  { "id": "disaster-relief", "title": "Tax relief in disaster situations", "category": "filing-and-payment-deadlines", "url": "https://www.irs.gov/newsroom/tax-relief-in-disaster-situations" },
+  { "id": "working-families", "title": "Working Families Tax Cuts", "category": "credits-and-deductions", "url": "https://www.irs.gov/newsroom/working-families-tax-cuts" },
+  { "id": "retirement-cola", "title": "Retirement plan COLA limits", "category": "retirement", "url": "https://www.irs.gov/retirement-plans/cola-increases-for-dollar-limitations-on-benefits-and-contributions" }
+]
