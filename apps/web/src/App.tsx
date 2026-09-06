@@ -5,6 +5,7 @@ import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { NeuroplasticityProgramPage } from './modules/learning/NeuroplasticityProgramPage';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -32,7 +33,8 @@ function EnterpriseHome() {
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance and Health now share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
-        <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tools with explicit evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
     </section>
@@ -67,9 +69,19 @@ function HealthHome() {
       <ResearchBadge />
       <div className="module-grid">
         <Link className="module-card enabled" to="/health/research"><span>Research & Innovation</span><strong>Health Frontiers</strong><p>Evidence registry, Neural Graph, falsification and transparent reconstruction models.</p></Link>
+        <Link className="module-card enabled" to="/health/wellbeing/neuroplasticity"><span>Wellbeing</span><strong>Neuroplasticity Program</strong><p>Build safe learning-readiness habits with visible non-clinical boundaries.</p></Link>
         <div className="module-card disabled" aria-disabled="true"><span>Clinical systems</span><strong>Not configured</strong><p>No EHR, FHIR, HL7 or patient workflow is represented as connected.</p></div>
         <div className="module-card disabled" aria-disabled="true"><span>Hospital operations</span><strong>No live connection</strong><p>No fabricated census, bed, staffing, pharmacy or facility metric is shown.</p></div>
       </div>
+    </section>
+  );
+}
+
+function LearningHome() {
+  return (
+    <section className="page-stack">
+      <PageHeader eyebrow="ATLAS Learning" title="Learning" description="Turn goals into deliberate practice, active recall, spaced review and measurable activity progress." />
+      <Link className="feature-card link-card accent" to="/learning/neuroplasticity"><p className="eyebrow">Practice Lab</p><h2>Neuroplasticity Program</h2><p>A cross-module program coordinated with ATLAS Health for readiness, recovery and safety.</p><span className="action-link">Build a daily plan</span></Link>
     </section>
   );
 }
@@ -220,6 +232,9 @@ export function App() {
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/health" element={<HealthHome />} />
+        <Route path="/health/wellbeing/neuroplasticity" element={<NeuroplasticityProgramPage entry="health" />} />
+        <Route path="/learning" element={<LearningHome />} />
+        <Route path="/learning/neuroplasticity" element={<NeuroplasticityProgramPage entry="learning" />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
         <Route path={labBase} element={<LabLayout />}>
