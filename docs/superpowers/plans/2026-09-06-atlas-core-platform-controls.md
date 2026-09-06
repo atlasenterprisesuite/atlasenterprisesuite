@@ -11,6 +11,7 @@
 **Spec:** `docs/superpowers/specs/2026-09-06-winter27-atlas-platform-controls-design.md`
 
 ## Global Constraints
+- This plan supersedes Task 1 (`Generalize ATLAS permissions without breaking Accounting`) in `docs/superpowers/plans/2026-09-06-atlas-personal-voice-core-web.md`; execute that permission migration only once, here.
 - Preserve current Accounting permission strings and `accounting.admin` behavior.
 - Preserve the approved granular ATLAS Voice permission vocabulary.
 - Do not create Salesforce-specific security primitives in core.
@@ -31,7 +32,7 @@
 - Create: `tests/unit/core-permissions.test.ts`
 
 **Interfaces:**
-- Produces: `TenantScope`, `sameScope`, `AccountingPermission`, `VoicePermission`, `IntegrationPermission`, `AgentPermission`, `SecurityPermission`, `AuditPermission`, `AtlasPermission`, `hasPermission`, `authorize`.
+- Produces: `TenantScope`, `sameScope`, `AccountingPermission`, `VoicePermission`, `IntegrationPermission`, `AgentPermission`, `SecurityPermission`, `AuditPermission`, `AtlasPermission`, `AuthorizationContext`, `hasPermission`, `authorize`.
 
 - [ ] **Step 1: Write the failing authorization tests**
 
@@ -136,7 +137,8 @@ export const sameScope = (a: TenantScope, b: TenantScope) =>
 export * from './scope';
 export * from './permissions';
 
-import type { AtlasPermission, TenantScope } from './index';
+import type { TenantScope } from './scope';
+import type { AtlasPermission } from './permissions';
 
 export const demoAtlasContext = {
   scope: { tenantId: 'tenant-demo', organizationId: 'org-demo' } satisfies TenantScope,
@@ -145,8 +147,6 @@ export const demoAtlasContext = {
   environment: 'demo' as const
 };
 ```
-
-If the self-import above is rejected by TypeScript, import the types directly from `./scope` and `./permissions`; do not duplicate their definitions.
 
 - [ ] **Step 5: Run permission and Accounting regression tests**
 
@@ -198,9 +198,12 @@ it('creates scoped metadata-only audit evidence', () => {
 
 Run: `npm test -- tests/unit/core-audit.test.ts`
 
+Expected: FAIL because audit primitives do not exist.
+
 - [ ] **Step 3: Implement the audit contract**
 
 ```ts
+// packages/core/src/audit.ts
 import type { TenantScope } from './scope';
 
 export type AuditResult = 'success' | 'denied' | 'failed';
@@ -219,9 +222,13 @@ export function createAuditEvent(event: AtlasAuditEvent): AtlasAuditEvent {
 }
 ```
 
-- [ ] **Step 4: Export and run tests**
+Add `export * from './audit';` to `packages/core/src/index.ts`.
+
+- [ ] **Step 4: Run tests and typecheck**
 
 Run: `npm test -- tests/unit/core-audit.test.ts && npm run typecheck`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -240,7 +247,7 @@ git commit -m "feat: add ATLAS audit contract primitives"
 - Create: `tests/unit/core-integrations.test.ts`
 
 **Interfaces:**
-- Produces: `IntegrationConnectionState`, `IntegrationAuthKind`, `IntegrationAuthPolicy`, `validateIntegrationAuthPolicy`, `canReportConnected`.
+- Produces: `IntegrationConnectionState`, `IntegrationAuthKind`, `LegacyAuthException`, `IntegrationAuthPolicy`, `validateIntegrationAuthPolicy`, `canReportConnected`.
 
 - [ ] **Step 1: Write failing integration-policy tests**
 
@@ -270,9 +277,12 @@ describe('integration policy', () => {
 
 Run: `npm test -- tests/unit/core-integrations.test.ts`
 
+Expected: FAIL because integration policy contracts do not exist.
+
 - [ ] **Step 3: Implement exact policy types**
 
 ```ts
+// packages/core/src/integrations.ts
 export type IntegrationConnectionState =
   | 'unconfigured' | 'authorizing' | 'connected' | 'degraded'
   | 'expired' | 'revoked' | 'error';
@@ -302,9 +312,13 @@ export function canReportConnected(input: { authorized: boolean; providerVerifie
 }
 ```
 
+Add `export * from './integrations';` to `packages/core/src/index.ts`.
+
 - [ ] **Step 4: Run tests and typecheck**
 
 Run: `npm test -- tests/unit/core-integrations.test.ts && npm run typecheck`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -333,8 +347,7 @@ import { applyVerifiedEndpointMigration, resolveProviderEndpoint } from '../../p
 
 it('normalizes a secure provider URL', () => {
   expect(resolveProviderEndpoint('https://example.my.salesforce.com/')).toEqual({
-    origin: 'https://example.my.salesforce.com',
-    verified: false
+    origin: 'https://example.my.salesforce.com', verified: false
   });
 });
 
@@ -355,9 +368,12 @@ it('updates only after migration verification', () => {
 
 Run: `npm test -- tests/unit/core-endpoints.test.ts`
 
+Expected: FAIL because the resolver does not exist.
+
 - [ ] **Step 3: Implement resolver**
 
 ```ts
+// packages/core/src/endpoints.ts
 export type ResolvedProviderEndpoint = { origin: string; verified: boolean };
 
 export function resolveProviderEndpoint(input: string): ResolvedProviderEndpoint {
@@ -376,9 +392,13 @@ export function applyVerifiedEndpointMigration(
 }
 ```
 
+Add `export * from './endpoints';` to `packages/core/src/index.ts`.
+
 - [ ] **Step 4: Run tests**
 
 Run: `npm test -- tests/unit/core-endpoints.test.ts`
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -392,8 +412,11 @@ git commit -m "feat: add verified provider endpoint resolution"
 ### Task 5: Verify core platform-control regressions and public API
 
 **Files:**
-- Modify only if required by test/type errors: `packages/core/src/index.ts`
-- Test: all `tests/unit/core-*.test.ts` plus existing Accounting tests.
+- Test: `tests/unit/core-permissions.test.ts`
+- Test: `tests/unit/core-audit.test.ts`
+- Test: `tests/unit/core-integrations.test.ts`
+- Test: `tests/unit/core-endpoints.test.ts`
+- Regression: `tests/unit/accounting-payables.test.ts`
 
 - [ ] **Step 1: Run the complete core and Accounting regression set**
 
@@ -419,13 +442,17 @@ Run: `npm run build`
 
 Expected: PASS.
 
-- [ ] **Step 5: Inspect diff for secrets or duplicate authorization implementations**
+- [ ] **Step 5: Inspect diff for whitespace and obvious committed credential assignments**
 
-Run: `git diff --check && git grep -nE '(password|client_secret|access_token)\s*[:=]\s*["'\''][^"'\'']+' -- ':!package-lock.json' || true`
+Run: `git diff --check`
 
-Expected: no committed credential values and no whitespace errors.
+Expected: no whitespace errors.
 
-- [ ] **Step 6: Commit any compatibility-only corrections**
+Run: `git grep -nE '(client_secret|access_token|refresh_token)[[:space:]]*[:=]' -- ':!package-lock.json' || true`
+
+Expected: only schema/type/config-key references if any; no literal credential values.
+
+- [ ] **Step 6: Commit compatibility corrections only if required**
 
 ```bash
 git add packages/core tests/unit
