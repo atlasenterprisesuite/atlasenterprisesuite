@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { hasPermission } from '../../../../../packages/core/src';
-import type { ApplicationStage, RecruitingApplicationRecord } from '../../../../../packages/people/src';
+import type {
+  ApplicationStage,
+  AssessmentResultRecord,
+  RecruitingApplicationRecord,
+} from '../../../../../packages/people/src';
 import { useAtlasContext } from '../../app/AtlasContext';
 import { useRecruitingData, useRecruitingRefresh } from './RecruitingDataProvider';
 import { useRecruitingWriteService } from './RecruitingWriteProvider';
@@ -48,9 +52,8 @@ export function RecruitingPage() {
   }, [state]);
 
   const assessmentsByApplication = useMemo(() => {
-    const map = new Map<string, typeof state extends { status: 'ready'; assessments: infer T } ? T : never>();
-    if (state.status !== 'ready') return new Map<string, never>();
-    const result = new Map<string, typeof state.assessments>();
+    const result = new Map<string, AssessmentResultRecord[]>();
+    if (state.status !== 'ready') return result;
     for (const assessment of state.assessments) {
       const existing = result.get(assessment.applicationId) ?? [];
       existing.push(assessment);
