@@ -2,95 +2,50 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the first governed ATLAS multi-agent control plane that lets OpenAI-backed agents and GitHub Copilot agents collaborate through shared task contracts, ATLAS-owned MCP tools, scoped permissions, audit events, CI evidence, and an explicit human production gate.
+**Goal:** Build the first governed ATLAS multi-agent control plane so OpenAI-backed agents and GitHub Copilot agents can collaborate through shared task contracts, ATLAS-owned MCP tools, scoped permissions, audit events, CI evidence, and an explicit human production gate.
 
-**Architecture:** Keep ATLAS as an npm workspace monorepo. Put the runtime in `apps/atlas-orchestrator`, provider-neutral contracts in `packages/task-protocol`, `packages/ai-core`, `packages/agent-registry`, `packages/governance`, and `packages/atlas-mcp`, and provider-specific code under one `packages/integrations` workspace with `openai/` and `github/` subdirectories. The first usable slice is local/CI-capable with in-memory persistence marked non-durable; production deployment remains blocked until a durable authorized persistence adapter exists.
+**Architecture:** Keep the existing npm workspace monorepo. Put the runtime in `apps/atlas-orchestrator`; provider-neutral contracts in `packages/task-protocol`, `packages/governance`, `packages/agent-registry`, and `packages/ai-core`; MCP in `packages/atlas-mcp`; and provider-specific code in one `packages/integrations` workspace. The first usable slice is local/CI-capable with an in-memory persistence adapter that is explicitly non-durable. Production deployment of the orchestrator remains blocked until a durable authorized persistence adapter and protected production environment are verified.
 
-**Tech Stack:** Node.js 22, TypeScript 5.7 strict mode, npm workspaces, Vitest 3, Zod v4, `@openai/agents`, MCP TypeScript SDK v2 via `@modelcontextprotocol/server`, GitHub REST APIs, GitHub Actions.
+**Tech Stack:** Node.js 22, TypeScript 5.7 strict mode, npm workspaces, Vitest 3, Zod v4, `@openai/agents`, MCP TypeScript SDK v2 via `@modelcontextprotocol/server`, native GitHub REST calls, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-09-05-atlas-sovereign-ai-orchestrator-design.md`
 
 ## Global Constraints
 
-- Reuse `TenantScope` and `sameScope()` from `packages/core/src/index.ts`; do not create a parallel tenant or organization identity model.
-- Keep the orchestrator authoritative for workflow state; providers may return findings, artifacts, code proposals, or tool requests but cannot directly mutate canonical task state.
-- No LLM receives `release.deploy` permission.
-- `awaiting_human_approval -> approved` is allowed only for an authorized human actor with `release.approve` in the matching tenant/organization scope.
-- Preserve the existing ATLAS 3-of-3 Consensus CI gate and consume its result; do not create a competing CI approval system.
-- Remove automatic production deployment on ordinary `main` pushes before any orchestrator code is merged to `main`.
-- Never store provider tokens, API keys, authorization headers, passwords, or secrets in tasks, events, findings, or audit payloads.
-- The in-memory persistence adapter is local/test-only and must expose `durable: false`.
-- `/readyz` must remain non-ready while persistence is non-durable or required provider configuration is absent.
-- Do not claim OpenAI, GitHub, MCP, CI, or deployment connectivity as live unless the runtime has verified that connection.
-- Gemini, Claude, and local-model execution adapters are outside this implementation plan.
-- Do not modify `apps/web` UI in this plan except shared root scripts required to include orchestrator checks.
-- All implementation tasks use TDD: failing test, minimal implementation, passing test, then commit.
+- Reuse `TenantScope` and `sameScope()` from `packages/core/src/index.ts`; never create a second tenant/organization scope model.
+- The orchestrator is authoritative for task state. Providers can return findings, artifacts, code proposals, or tool requests but cannot mutate canonical task state directly.
+- No LLM receives `release.deploy`.
+- `awaiting_human_approval -> approved` is valid only for an authorized human actor with `release.approve` in the same tenant/organization scope.
+- Preserve the existing ATLAS 3-of-3 Consensus CI gate and consume its evidence instead of creating a competing CI approval system.
+- Remove automatic production deployment on ordinary `main` pushes before orchestrator code is merged to `main`.
+- Never persist or log API keys, bearer tokens, passwords, webhook secrets, or authorization headers in tasks, findings, events, or audit payloads.
+- The in-memory adapter must expose `durable: false`; `/readyz` must be false while persistence is non-durable.
+- Never label OpenAI, GitHub, MCP, CI, or deployment as live/connected without verified runtime evidence.
+- Gemini, Claude, and local-model execution adapters are outside this plan.
+- Do not modify ATLAS web UI in this plan except shared repository scripts required for verification.
+- Every implementation task follows TDD: failing test -> minimum code -> passing test -> commit.
 
 ---
 
 ## File Map
 
-### Existing files to modify
-- `package.json` — add orchestrator typecheck scripts without breaking existing web scripts.
-- `package-lock.json` — generated by `npm install` for new workspaces/dependencies.
-- `.github/workflows/atlas-consensus-ci.yml` — include orchestrator typecheck in Architecture/Build evidence.
-- `.github/workflows/production-deploy.yml` — remove automatic `push` deployment and require manual production dispatch/environment gate.
+### Existing files modified
+- `packages/core/package.json` — expose the existing core package entry point for new workspaces.
+- `package.json` — add orchestrator verification scripts without removing existing web scripts.
+- `package-lock.json` — generated by npm after workspace/dependency changes.
+- `.github/workflows/atlas-consensus-ci.yml` — add orchestrator typecheck evidence.
+- `.github/workflows/production-deploy.yml` — remove automatic push deployment and place deploy behind a manual production environment gate.
 
-### New task protocol workspace
-- `packages/task-protocol/package.json`
-- `packages/task-protocol/src/types.ts`
-- `packages/task-protocol/src/schemas.ts`
-- `packages/task-protocol/src/stateMachine.ts`
-- `packages/task-protocol/src/index.ts`
+### New workspaces
+- `packages/task-protocol/{package.json,src/types.ts,src/schemas.ts,src/stateMachine.ts,src/index.ts}`
+- `packages/governance/{package.json,src/permissions.ts,src/approvals.ts,src/audit.ts,src/index.ts}`
+- `packages/agent-registry/{package.json,src/types.ts,src/registry.ts,src/defaultAgents.ts,src/index.ts}`
+- `packages/ai-core/{package.json,src/persistence.ts,src/inMemoryPersistence.ts,src/providers.ts,src/orchestrator.ts,src/index.ts}`
+- `packages/atlas-mcp/{package.json,src/toolIds.ts,src/toolExecutor.ts,src/server.ts,src/stdio.ts,src/index.ts}`
+- `packages/integrations/{package.json,src/openai/adapter.ts,src/github/types.ts,src/github/restClient.ts,src/github/adapter.ts,src/index.ts}`
+- `apps/atlas-orchestrator/{package.json,tsconfig.json,src/runtime/config.ts,src/runtime/container.ts,src/api/health.ts,src/webhooks/github.ts,src/index.ts}`
 
-### New governance workspace
-- `packages/governance/package.json`
-- `packages/governance/src/permissions.ts`
-- `packages/governance/src/approvals.ts`
-- `packages/governance/src/audit.ts`
-- `packages/governance/src/index.ts`
-
-### New agent registry workspace
-- `packages/agent-registry/package.json`
-- `packages/agent-registry/src/types.ts`
-- `packages/agent-registry/src/registry.ts`
-- `packages/agent-registry/src/defaultAgents.ts`
-- `packages/agent-registry/src/index.ts`
-
-### New AI core workspace
-- `packages/ai-core/package.json`
-- `packages/ai-core/src/persistence.ts`
-- `packages/ai-core/src/inMemoryPersistence.ts`
-- `packages/ai-core/src/providers.ts`
-- `packages/ai-core/src/orchestrator.ts`
-- `packages/ai-core/src/index.ts`
-
-### New integrations workspace
-- `packages/integrations/package.json`
-- `packages/integrations/src/openai/adapter.ts`
-- `packages/integrations/src/github/types.ts`
-- `packages/integrations/src/github/restClient.ts`
-- `packages/integrations/src/github/adapter.ts`
-- `packages/integrations/src/index.ts`
-
-### New MCP workspace
-- `packages/atlas-mcp/package.json`
-- `packages/atlas-mcp/src/toolIds.ts`
-- `packages/atlas-mcp/src/toolExecutor.ts`
-- `packages/atlas-mcp/src/server.ts`
-- `packages/atlas-mcp/src/stdio.ts`
-- `packages/atlas-mcp/src/index.ts`
-
-### New orchestrator app
-- `apps/atlas-orchestrator/package.json`
-- `apps/atlas-orchestrator/tsconfig.json`
-- `apps/atlas-orchestrator/src/runtime/config.ts`
-- `apps/atlas-orchestrator/src/runtime/container.ts`
-- `apps/atlas-orchestrator/src/api/health.ts`
-- `apps/atlas-orchestrator/src/webhooks/github.ts`
-- `apps/atlas-orchestrator/src/index.ts`
-
-### Copilot agent profiles
+### Copilot profiles
 - `.github/agents/atlas-implementer.agent.md`
 - `.github/agents/atlas-reviewer.agent.md`
 - `.github/agents/atlas-qa.agent.md`
@@ -101,18 +56,21 @@
 - `tests/unit/orchestrator-persistence.test.ts`
 - `tests/unit/orchestrator-agent-registry.test.ts`
 - `tests/unit/orchestrator-core.test.ts`
+- `tests/unit/orchestrator-mcp.test.ts`
 - `tests/unit/orchestrator-openai-adapter.test.ts`
 - `tests/unit/orchestrator-github-adapter.test.ts`
-- `tests/unit/orchestrator-mcp.test.ts`
+- `tests/unit/orchestrator-agent-profiles.test.ts`
 - `tests/integration/orchestrator-runtime.test.ts`
 - `tests/integration/orchestrator-github-webhook.test.ts`
 - `tests/integration/orchestrator-release-gate.test.ts`
+- `tests/integration/orchestrator-task-flow.test.ts`
 
 ---
 
 ### Task 1: Canonical task protocol and state machine
 
 **Files:**
+- Modify: `packages/core/package.json`
 - Create: `packages/task-protocol/package.json`
 - Create: `packages/task-protocol/src/types.ts`
 - Create: `packages/task-protocol/src/schemas.ts`
@@ -121,53 +79,110 @@
 - Test: `tests/unit/orchestrator-task-protocol.test.ts`
 
 **Interfaces:**
-- Produces: `AtlasTaskState`, `AtlasTask`, `AtlasEvent`, `AtlasTaskSchema`, `canTransition(from, to)`, `assertTransition(from, to)`.
-- Transition policy: normal path follows the approved state chain; any non-terminal active state may enter `blocked`, `failed`, or `cancelled`; `blocked -> queued` is the only unblock transition in this slice; terminal states cannot transition.
 
-- [ ] **Step 1: Write the failing state-machine test**
+```ts
+export type AtlasTaskState =
+  | 'draft' | 'queued' | 'planning' | 'implementation' | 'review' | 'qa'
+  | 'ci' | 'awaiting_human_approval' | 'approved' | 'deploying'
+  | 'verified' | 'completed' | 'blocked' | 'failed' | 'cancelled';
+
+export type AtlasArtifactRef = { id: string; kind: string; uri: string };
+export type AtlasFinding = { id: string; summary: string; severity: 'info' | 'warning' | 'error' };
+export type AtlasCommitRef = { repo: string; sha: string; url: string | null };
+export type AtlasTestResult = { name: string; status: 'passed' | 'failed'; evidence: string | null };
+export type AtlasApproval = { actorId: string; result: 'approved' | 'denied'; target: string; createdAt: string };
+export type AtlasEventRef = { eventId: string; type: string };
+export type AtlasDeploymentRef = { id: string; status: 'requested' | 'started' | 'verified' | 'failed'; url: string | null };
+
+export interface AtlasTask {
+  schemaVersion: 1;
+  taskId: string;
+  objective: string;
+  requestedBy: string;
+  scope: TenantScope;
+  assignedAgents: string[];
+  state: AtlasTaskState;
+  artifacts: AtlasArtifactRef[];
+  findings: AtlasFinding[];
+  commits: AtlasCommitRef[];
+  tests: AtlasTestResult[];
+  approvals: AtlasApproval[];
+  events: AtlasEventRef[];
+  traceId: string | null;
+  deployment: AtlasDeploymentRef | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AtlasEvent {
+  eventId: string;
+  taskId: string;
+  scope: TenantScope;
+  type: string;
+  actorId: string;
+  agentId: string | null;
+  providerId: string | null;
+  outcome: 'success' | 'denied' | 'failed';
+  correlationId: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+```
+
+- [ ] **Step 1: Write the failing task-protocol test**
 
 ```ts
 import { describe, expect, it } from 'vitest';
 import { AtlasTaskSchema, canTransition } from '../../packages/task-protocol/src';
 
 describe('ATLAS task protocol', () => {
-  it('allows only governed state transitions', () => {
+  it('enforces the governed path', () => {
     expect(canTransition('draft', 'queued')).toBe(true);
     expect(canTransition('implementation', 'review')).toBe(true);
     expect(canTransition('implementation', 'completed')).toBe(false);
     expect(canTransition('blocked', 'queued')).toBe(true);
-    expect(canTransition('blocked', 'implementation')).toBe(false);
     expect(canTransition('completed', 'queued')).toBe(false);
   });
 
-  it('requires tenant and organization scope on every task', () => {
-    const parsed = AtlasTaskSchema.safeParse({
+  it('requires tenant and organization scope', () => {
+    const result = AtlasTaskSchema.safeParse({
       schemaVersion: 1,
       taskId: 'ATL-2026-000184',
       objective: 'Fix ATLAS production authentication',
       requestedBy: 'user',
       scope: { tenantId: 'tenant-demo', organizationId: 'org-demo' },
-      assignedAgents: ['openai-architect', 'copilot-engineer'],
+      assignedAgents: ['atlas-architect', 'atlas-copilot-engineer'],
       state: 'implementation',
       artifacts: [], findings: [], commits: [], tests: [], approvals: [], events: [],
       traceId: null, deployment: null,
-      createdAt: '2026-09-06T00:00:00.000Z',
-      updatedAt: '2026-09-06T00:00:00.000Z'
+      createdAt: '2026-09-06T00:00:00.000Z', updatedAt: '2026-09-06T00:00:00.000Z'
     });
-    expect(parsed.success).toBe(true);
+    expect(result.success).toBe(true);
   });
 });
 ```
 
-- [ ] **Step 2: Run the test and verify failure**
+- [ ] **Step 2: Run it and confirm failure**
 
 Run: `npx vitest run tests/unit/orchestrator-task-protocol.test.ts`
 
-Expected: FAIL because `packages/task-protocol/src` does not exist.
+Expected: FAIL because the package does not exist.
 
-- [ ] **Step 3: Create the package and minimal contracts**
+- [ ] **Step 3: Expose core and create the task-protocol package**
 
-`packages/task-protocol/package.json`:
+Change `packages/core/package.json` to:
+
+```json
+{
+  "name": "@atlas/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts"
+}
+```
+
+Create `packages/task-protocol/package.json`:
 
 ```json
 {
@@ -175,30 +190,54 @@ Expected: FAIL because `packages/task-protocol/src` does not exist.
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "dependencies": { "zod": "^4.0.0" }
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@atlas/core": "0.1.0",
+    "zod": "^4.0.0"
+  }
 }
 ```
 
-`packages/task-protocol/src/stateMachine.ts` must define the exact allowed map, with `blocked -> queued` and no outgoing transitions from `completed`, `failed`, or `cancelled`.
+Then run `npm install` from repository root so the new workspace and Zod dependency are recorded in `package-lock.json`.
 
-`packages/task-protocol/src/schemas.ts` must use Zod v4 and validate ISO timestamp strings, scope, task arrays, nullable `traceId`, and nullable deployment.
+- [ ] **Step 4: Implement types, schemas, and exact transitions**
 
-- [ ] **Step 4: Run the focused test**
+Normal transitions:
+
+```ts
+const normal: Record<AtlasTaskState, readonly AtlasTaskState[]> = {
+  draft: ['queued', 'blocked', 'failed', 'cancelled'],
+  queued: ['planning', 'blocked', 'failed', 'cancelled'],
+  planning: ['implementation', 'blocked', 'failed', 'cancelled'],
+  implementation: ['review', 'blocked', 'failed', 'cancelled'],
+  review: ['qa', 'implementation', 'blocked', 'failed', 'cancelled'],
+  qa: ['ci', 'implementation', 'blocked', 'failed', 'cancelled'],
+  ci: ['awaiting_human_approval', 'implementation', 'blocked', 'failed', 'cancelled'],
+  awaiting_human_approval: ['approved', 'implementation', 'cancelled'],
+  approved: ['deploying', 'cancelled'],
+  deploying: ['verified', 'failed'],
+  verified: ['completed', 'failed'],
+  blocked: ['queued', 'cancelled'],
+  completed: [], failed: [], cancelled: []
+};
+```
+
+`assertTransition()` throws on illegal transitions. `AtlasTaskSchema` uses Zod v4 and validates all fields above.
+
+- [ ] **Step 5: Run focused tests and commit**
 
 Run: `npx vitest run tests/unit/orchestrator-task-protocol.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
-
 ```bash
-git add packages/task-protocol tests/unit/orchestrator-task-protocol.test.ts package-lock.json
+git add packages/core/package.json packages/task-protocol package-lock.json tests/unit/orchestrator-task-protocol.test.ts
 git commit -m "feat: add ATLAS orchestrator task protocol"
 ```
 
 ---
 
-### Task 2: Scoped governance, permissions, approvals, and redacted audit payloads
+### Task 2: Governance, scope checks, human approvals, and audit redaction
 
 **Files:**
 - Create: `packages/governance/package.json`
@@ -209,82 +248,62 @@ git commit -m "feat: add ATLAS orchestrator task protocol"
 - Test: `tests/unit/orchestrator-governance.test.ts`
 
 **Interfaces:**
-- Consumes: `TenantScope`, `sameScope()` from `packages/core/src/index.ts`; `AtlasTask` from task protocol.
-- Produces: `AiPermission`, `AtlasActor`, `authorize(actor, permission, scope)`, `canHumanApproveRelease(actor, task)`, `redactAuditPayload(payload)`.
-
-- [ ] **Step 1: Write failing governance tests**
-
-```ts
-import { describe, expect, it } from 'vitest';
-import { authorize, canHumanApproveRelease, redactAuditPayload } from '../../packages/governance/src';
-
-const scope = { tenantId: 'tenant-demo', organizationId: 'org-demo' };
-
-describe('ATLAS orchestrator governance', () => {
-  it('denies cross-scope permission use', () => {
-    const actor = { actorId: 'human-1', kind: 'human' as const, scope, permissions: ['ai.task.read'] as const };
-    expect(() => authorize(actor, 'ai.task.read', { tenantId: 'other', organizationId: 'org-demo' })).toThrow(/scope/i);
-  });
-
-  it('never lets an agent grant production approval', () => {
-    const task = { scope, state: 'awaiting_human_approval' } as any;
-    const agent = { actorId: 'agent-1', kind: 'agent' as const, scope, permissions: ['release.approve'] as const };
-    expect(canHumanApproveRelease(agent, task)).toBe(false);
-  });
-
-  it('allows matching authorized human approval', () => {
-    const task = { scope, state: 'awaiting_human_approval' } as any;
-    const human = { actorId: 'human-1', kind: 'human' as const, scope, permissions: ['release.approve'] as const };
-    expect(canHumanApproveRelease(human, task)).toBe(true);
-  });
-
-  it('redacts credential-shaped audit values', () => {
-    expect(redactAuditPayload({ token: 'secret', nested: { apiKey: 'abc', safe: 'ok' } })).toEqual({
-      token: '[REDACTED]', nested: { apiKey: '[REDACTED]', safe: 'ok' }
-    });
-  });
-});
-```
-
-- [ ] **Step 2: Run and verify failure**
-
-Run: `npx vitest run tests/unit/orchestrator-governance.test.ts`
-
-Expected: FAIL because governance package does not exist.
-
-- [ ] **Step 3: Implement the minimum permission surface**
-
-Define the exact permission union:
 
 ```ts
 export type AiPermission =
   | 'ai.task.read' | 'ai.task.create' | 'ai.task.update' | 'ai.delegate'
   | 'ai.repo.read' | 'ai.code.write' | 'ai.test.execute' | 'ai.review.submit'
   | 'ai.pr.create' | 'ai.ci.read' | 'ai.deploy.request'
-  | 'ai.approval.read' | 'ai.audit.read'
-  | 'release.approve' | 'release.deploy';
+  | 'ai.approval.read' | 'ai.audit.read' | 'release.approve' | 'release.deploy';
+
+export interface AtlasActor {
+  actorId: string;
+  kind: 'human' | 'agent' | 'service';
+  scope: TenantScope;
+  permissions: readonly AiPermission[];
+}
 ```
 
-`authorize()` must first call `sameScope()`, then require the exact permission. `canHumanApproveRelease()` must require `kind === 'human'`, matching scope, state `awaiting_human_approval`, and `release.approve`.
+- [ ] **Step 1: Create package metadata and install workspace links**
 
-`redactAuditPayload()` must recursively redact keys matching `/token|secret|password|api[_-]?key|authorization/i`.
+`packages/governance/package.json`:
 
-- [ ] **Step 4: Run governance tests**
+```json
+{
+  "name": "@atlas/governance",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@atlas/core": "0.1.0",
+    "@atlas/task-protocol": "0.1.0"
+  }
+}
+```
+
+Run: `npm install`.
+
+- [ ] **Step 2: Write failing tests**
+
+Test cross-scope denial, exact permission denial, agent rejection for release approval, authorized human acceptance only in `awaiting_human_approval`, and recursive redaction for keys matching `/token|secret|password|api[_-]?key|authorization/i`.
+
+- [ ] **Step 3: Implement minimum policy**
+
+`authorize(actor, permission, targetScope)` first calls `sameScope()` and then requires the exact permission. `canHumanApproveRelease()` returns true only for `kind === 'human'`, matching scope, `release.approve`, and task state `awaiting_human_approval`. `redactAuditPayload()` recursively replaces secret-shaped values with `[REDACTED]`.
+
+- [ ] **Step 4: Run and commit**
 
 Run: `npx vitest run tests/unit/orchestrator-governance.test.ts`
 
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
 ```bash
-git add packages/governance tests/unit/orchestrator-governance.test.ts
+git add packages/governance package-lock.json tests/unit/orchestrator-governance.test.ts
 git commit -m "feat: add ATLAS orchestrator governance"
 ```
 
 ---
 
-### Task 3: Persistence port and non-durable in-memory adapter
+### Task 3: Persistence port and explicit non-durable adapter
 
 **Files:**
 - Create: `packages/ai-core/package.json`
@@ -294,7 +313,6 @@ git commit -m "feat: add ATLAS orchestrator governance"
 - Test: `tests/unit/orchestrator-persistence.test.ts`
 
 **Interfaces:**
-- Produces:
 
 ```ts
 export interface PersistencePort {
@@ -307,47 +325,45 @@ export interface PersistencePort {
 }
 ```
 
-- [ ] **Step 1: Write failing persistence tests**
+- [ ] **Step 1: Create package metadata and run install**
 
-```ts
-import { describe, expect, it } from 'vitest';
-import { InMemoryPersistence } from '../../packages/ai-core/src';
-
-it('isolates task reads by tenant and organization', async () => {
-  const store = new InMemoryPersistence();
-  await store.createTask({ taskId: 'ATL-1', scope: { tenantId: 't1', organizationId: 'o1' } } as any);
-  expect(await store.getTask({ tenantId: 't1', organizationId: 'o1' }, 'ATL-1')).not.toBeNull();
-  expect(await store.getTask({ tenantId: 't2', organizationId: 'o1' }, 'ATL-1')).toBeNull();
-  expect(store.durable).toBe(false);
-});
+```json
+{
+  "name": "@atlas/ai-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@atlas/core": "0.1.0",
+    "@atlas/task-protocol": "0.1.0",
+    "@atlas/governance": "0.1.0"
+  }
+}
 ```
 
-- [ ] **Step 2: Run and verify failure**
+Run: `npm install`.
+
+- [ ] **Step 2: Write failing persistence tests**
+
+Verify same-scope reads succeed, cross-scope reads return `null`, returned objects are clones, events are append-oriented, and `durable === false`.
+
+- [ ] **Step 3: Implement `InMemoryPersistence`**
+
+Use key `${tenantId}:${organizationId}:${taskId}` and `structuredClone()` for all reads/writes. Throw on duplicate `createTask()`.
+
+- [ ] **Step 4: Run and commit**
 
 Run: `npx vitest run tests/unit/orchestrator-persistence.test.ts`
-
-Expected: FAIL.
-
-- [ ] **Step 3: Implement scoped clone-on-read/write storage**
-
-Use a key of `${tenantId}:${organizationId}:${taskId}`. Deep-clone on create/save/read using `structuredClone()` so tests cannot mutate stored state through references. Event lists use the same scope key.
-
-- [ ] **Step 4: Run focused test**
-
-Run: `npx vitest run tests/unit/orchestrator-persistence.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/ai-core tests/unit/orchestrator-persistence.test.ts
+git add packages/ai-core package-lock.json tests/unit/orchestrator-persistence.test.ts
 git commit -m "feat: add orchestrator persistence port"
 ```
 
 ---
 
-### Task 4: Agent registry and least-privilege defaults
+### Task 4: Agent registry with least-privilege defaults
 
 **Files:**
 - Create: `packages/agent-registry/package.json`
@@ -358,12 +374,11 @@ git commit -m "feat: add orchestrator persistence port"
 - Test: `tests/unit/orchestrator-agent-registry.test.ts`
 
 **Interfaces:**
-- Produces `AgentCapability`, `AtlasAgentDefinition`, `AgentRegistry`, `defaultAgents`.
-
-`AtlasAgentDefinition` fields:
 
 ```ts
-{
+export type AgentCapability = 'plan' | 'architect' | 'research' | 'implement' | 'review' | 'qa' | 'release-govern';
+
+export interface AtlasAgentDefinition {
   id: string;
   providerId: 'openai' | 'github-copilot';
   role: string;
@@ -376,35 +391,24 @@ git commit -m "feat: add orchestrator persistence port"
 }
 ```
 
-- [ ] **Step 1: Write failing registry tests**
+- [ ] **Step 1: Create package metadata and run install**
 
-Verify `atlas-copilot-engineer` can write code but not approve/deploy, `atlas-reviewer` cannot write code, and capability lookup for `review` never returns an implementation-only agent.
+Package depends on `@atlas/task-protocol` and `@atlas/governance`; run `npm install` after creating it.
 
-- [ ] **Step 2: Run and verify failure**
+- [ ] **Step 2: Write failing tests**
 
-Run: `npx vitest run tests/unit/orchestrator-agent-registry.test.ts`
+Assert implementers have code-write/test/PR permissions but not release approval/deploy; reviewer has no code-write; release governor has `ai.deploy.request` but neither `release.approve` nor `release.deploy`.
 
 - [ ] **Step 3: Implement registry and defaults**
 
-Minimum default agents:
-- `atlas-architect` provider `openai`, repo read, task read/update, no code write.
-- `atlas-planner` provider `openai`, task read/update/delegate, no code write.
-- `atlas-openai-engineer` provider `openai`, repo read/code write/test/pr request, no release approval/deploy.
-- `atlas-copilot-engineer` provider `github-copilot`, repo read/code write/test/pr request, no release approval/deploy.
-- `atlas-reviewer` provider `openai`, repo read/review/ci read, no code write.
-- `atlas-qa` provider `github-copilot`, repo read/test/ci read, no release approval/deploy.
-- `atlas-release-governor` provider `openai`, task read/approval read/ci read/deploy request, no `release.approve` and no `release.deploy`.
+Required ids: `atlas-architect`, `atlas-planner`, `atlas-openai-engineer`, `atlas-copilot-engineer`, `atlas-reviewer`, `atlas-qa`, `atlas-release-governor`.
 
-- [ ] **Step 4: Run registry tests**
+- [ ] **Step 4: Run and commit**
 
 Run: `npx vitest run tests/unit/orchestrator-agent-registry.test.ts`
 
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
 ```bash
-git add packages/agent-registry tests/unit/orchestrator-agent-registry.test.ts
+git add packages/agent-registry package-lock.json tests/unit/orchestrator-agent-registry.test.ts
 git commit -m "feat: add governed ATLAS agent registry"
 ```
 
@@ -415,6 +419,7 @@ git commit -m "feat: add governed ATLAS agent registry"
 **Files:**
 - Create: `packages/ai-core/src/providers.ts`
 - Create: `packages/ai-core/src/orchestrator.ts`
+- Modify: `packages/ai-core/package.json`
 - Modify: `packages/ai-core/src/index.ts`
 - Test: `tests/unit/orchestrator-core.test.ts`
 
@@ -432,7 +437,7 @@ export interface ProviderInvocation {
 export interface ProviderResult {
   finalOutput: string;
   traceId: string | null;
-  findings: Array<{ summary: string; severity: 'info' | 'warning' | 'error' }>;
+  findings: AtlasFinding[];
 }
 
 export interface ProviderAdapter {
@@ -441,98 +446,163 @@ export interface ProviderAdapter {
 }
 ```
 
-`AtlasOrchestrator` constructor receives `{ persistence, registry, providers, now, idFactory }`.
+Add `@atlas/agent-registry: 0.1.0` to `packages/ai-core/package.json` and run `npm install`.
 
-- [ ] **Step 1: Write failing orchestration tests**
+- [ ] **Step 1: Write failing command tests**
 
-Cover these behaviors:
-1. `createTask()` requires `ai.task.create`, persists `draft`, appends `task.created`.
-2. `transitionTask()` rejects `implementation -> completed` and appends a denial/failure audit event.
-3. `delegate()` checks agent allowed state and actor `ai.delegate` before provider invocation.
-4. `approveRelease()` rejects agent actors even when they carry `release.approve`.
-5. `approveRelease()` accepts an authorized human and moves only `awaiting_human_approval -> approved`.
+Test these exact methods:
 
-- [ ] **Step 2: Run and verify failure**
+```ts
+createTask(task: AtlasTask, actor: AtlasActor): Promise<AtlasTask>
+transitionTask(scope: TenantScope, taskId: string, next: AtlasTaskState, actor: AtlasActor): Promise<AtlasTask>
+delegate(scope: TenantScope, taskId: string, agentId: string, prompt: string, actor: AtlasActor): Promise<ProviderResult>
+recordFinding(scope: TenantScope, taskId: string, finding: AtlasFinding, actor: AtlasActor): Promise<AtlasTask>
+linkCommit(scope: TenantScope, taskId: string, commit: AtlasCommitRef, actor: AtlasActor): Promise<AtlasTask>
+recordTest(scope: TenantScope, taskId: string, test: AtlasTestResult, actor: AtlasActor): Promise<AtlasTask>
+recordCiSuccess(scope: TenantScope, taskId: string, evidence: string, actor: AtlasActor): Promise<AtlasTask>
+approveRelease(scope: TenantScope, taskId: string, target: string, actor: AtlasActor): Promise<AtlasTask>
+requestDeployment(scope: TenantScope, taskId: string, actor: AtlasActor): Promise<AtlasTask>
+```
+
+Assert illegal transitions fail closed and append a failed/denied event; provider failures append `agent.invocation_failed`; release approval rejects agent actors.
+
+- [ ] **Step 2: Implement minimum orchestration logic**
+
+Every mutation: load by scope -> authorize -> validate state/action -> create a new task object -> save -> append redacted event. `recordCiSuccess()` only operates in state `ci`; `approveRelease()` only operates in `awaiting_human_approval`; `requestDeployment()` only operates in `approved` and does not execute deployment.
+
+- [ ] **Step 3: Run and commit**
 
 Run: `npx vitest run tests/unit/orchestrator-core.test.ts`
-
-- [ ] **Step 3: Implement command methods with append-oriented events**
-
-All task mutations must load the task by scope, authorize, validate state transition, create a new immutable task object with updated timestamp, save it, then append an event. Provider exceptions append `agent.invocation_failed` and do not produce a success transition.
-
-- [ ] **Step 4: Run focused tests**
-
-Run: `npx vitest run tests/unit/orchestrator-core.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/ai-core tests/unit/orchestrator-core.test.ts
+git add packages/ai-core package-lock.json tests/unit/orchestrator-core.test.ts
 git commit -m "feat: add ATLAS orchestration engine"
 ```
 
 ---
 
-### Task 6: OpenAI provider adapter using ATLAS MCP tool filtering
+### Task 6: ATLAS MCP v2 server and fixed-command tool executor
+
+**Files:**
+- Create: `packages/atlas-mcp/package.json`
+- Create: `packages/atlas-mcp/src/toolIds.ts`
+- Create: `packages/atlas-mcp/src/toolExecutor.ts`
+- Create: `packages/atlas-mcp/src/server.ts`
+- Create: `packages/atlas-mcp/src/stdio.ts`
+- Create: `packages/atlas-mcp/src/index.ts`
+- Test: `tests/unit/orchestrator-mcp.test.ts`
+
+- [ ] **Step 1: Create workspace metadata, then install dependencies**
+
+```json
+{
+  "name": "@atlas/atlas-mcp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": { "stdio": "tsx src/stdio.ts" },
+  "dependencies": {
+    "@atlas/ai-core": "0.1.0",
+    "@atlas/governance": "0.1.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "zod": "^4.0.0"
+  }
+}
+```
+
+Then run:
+
+```bash
+npm install
+npm install -D tsx
+```
+
+- [ ] **Step 2: Write failing MCP tests**
+
+Tool ids are exactly:
+
+```ts
+export const toolIds = [
+  'atlas.task.create','atlas.task.read','atlas.task.update','atlas.task.claim',
+  'atlas.agent.delegate','atlas.agent.respond','atlas.repo.inspect','atlas.code.propose',
+  'atlas.test.run','atlas.review.request','atlas.pr.create','atlas.ci.verify',
+  'atlas.deploy.request','atlas.audit.read'
+] as const;
+```
+
+Verify permission filtering and that `atlas.test.run` accepts only `unit | integration | typecheck | build`, mapping to fixed npm commands. Arbitrary shell text must be rejected.
+
+- [ ] **Step 3: Implement MCP v2 server**
+
+Use:
+
+```ts
+import { McpServer } from '@modelcontextprotocol/server';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
+```
+
+Create `McpServer({ name: 'atlas-mcp', version: '0.1.0' })`; register each tool with `server.registerTool(name, { description, inputSchema }, handler)`. Every handler delegates to `ToolExecutor`; no handler performs privileged work directly. `stdio.ts` calls `void serveStdio(createAtlasMcpServer);` and writes diagnostics only to stderr.
+
+- [ ] **Step 4: Run and commit**
+
+Run: `npx vitest run tests/unit/orchestrator-mcp.test.ts`
+
+```bash
+git add packages/atlas-mcp package.json package-lock.json tests/unit/orchestrator-mcp.test.ts
+git commit -m "feat: add governed ATLAS MCP server"
+```
+
+---
+
+### Task 7: OpenAI adapter connected to the ATLAS MCP boundary
 
 **Files:**
 - Create: `packages/integrations/package.json`
 - Create: `packages/integrations/src/openai/adapter.ts`
 - Create: `packages/integrations/src/index.ts`
 - Test: `tests/unit/orchestrator-openai-adapter.test.ts`
-- Modify generated: `package-lock.json`
 
-**Interfaces:**
-- Consumes: `ProviderAdapter` and `ProviderInvocation`.
-- Uses the current TypeScript Agents SDK through `@openai/agents`.
-- Produces `OpenAiProviderAdapter`.
+- [ ] **Step 1: Create workspace metadata before installation**
 
-- [ ] **Step 1: Install official dependencies in the integrations workspace**
-
-Run:
-
-```bash
-npm install --workspace packages/integrations @openai/agents zod
+```json
+{
+  "name": "@atlas/integrations",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@atlas/ai-core": "0.1.0",
+    "@openai/agents": "^0.3.0",
+    "zod": "^4.0.0"
+  }
+}
 ```
 
-- [ ] **Step 2: Write a failing adapter test with an injected runner**
+Run `npm install` after the file exists. If npm resolves a newer compatible `@openai/agents` within the declared range, keep the exact resolved version in `package-lock.json`.
 
-The adapter constructor must accept an injectable function so unit tests never spend API credits:
+- [ ] **Step 2: Write adapter tests with an injected runner**
+
+Tests must run with zero network/API usage. Verify allowed tool ids are passed through, output maps to `ProviderResult`, missing `OPENAI_API_KEY` blocks the default live runner before network access, and absent trace metadata produces `traceId: null`.
+
+- [ ] **Step 3: Implement default runner**
+
+Use `Agent`, `run`, `MCPServerStdio`, and an MCP tool filter from `@openai/agents`. Spawn ATLAS MCP with:
 
 ```ts
-const adapter = new OpenAiProviderAdapter({
-  runAgent: async ({ allowedTools }) => ({
-    finalOutput: 'review complete',
-    traceId: 'trace-1',
-    findings: [],
-    exposedTools: allowedTools
-  })
+new MCPServerStdio({
+  command: 'npm',
+  args: ['--workspace', '@atlas/atlas-mcp', 'run', 'stdio'],
+  toolFilter: async (_context, tool) => input.allowedTools.includes(tool.name)
 });
-
-const result = await adapter.invoke({
-  taskId: 'ATL-1', agentId: 'atlas-reviewer', prompt: 'Review',
-  allowedTools: ['atlas.task.read', 'atlas.repo.inspect'], correlationId: 'corr-1'
-});
-expect(result.traceId).toBe('trace-1');
 ```
 
-Also assert the adapter throws a configuration error before any live call when `OPENAI_API_KEY` is absent and the default runner is used.
+Connect before `run()`, close in `finally`, and never expose the API key to the child process unless the MCP server itself needs it (it does not in this slice).
 
-- [ ] **Step 3: Implement the default OpenAI runner**
-
-Use `Agent`, `run`, and `MCPServerStdio` from `@openai/agents`. Start the local ATLAS MCP process with command + args rather than embedding shell text. Apply a static/dynamic MCP tool filter so the agent only sees `ProviderInvocation.allowedTools`. Always close the MCP server in `finally`.
-
-The adapter must map SDK output to `ProviderResult` and return `traceId: null` when no trace identifier is available rather than fabricating one.
-
-- [ ] **Step 4: Run the adapter test**
+- [ ] **Step 4: Run and commit**
 
 Run: `npx vitest run tests/unit/orchestrator-openai-adapter.test.ts`
-
-Expected: PASS without network access.
-
-- [ ] **Step 5: Commit**
 
 ```bash
 git add packages/integrations package-lock.json tests/unit/orchestrator-openai-adapter.test.ts
@@ -541,7 +611,7 @@ git commit -m "feat: add OpenAI orchestrator adapter"
 
 ---
 
-### Task 7: GitHub adapter for repository reads, governed branches/PRs, and CI evidence
+### Task 8: GitHub adapter for repository, PR, and consensus evidence
 
 **Files:**
 - Create: `packages/integrations/src/github/types.ts`
@@ -557,7 +627,7 @@ export interface GitHubHttpClient {
   request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH', path: string, body?: unknown): Promise<T>;
 }
 
-export interface GitHubAdapter {
+export interface AtlasGitHubAdapter {
   readFile(repo: string, path: string, ref?: string): Promise<string>;
   createTaskBranch(repo: string, taskId: string, baseRef: string): Promise<string>;
   createPullRequest(repo: string, taskId: string, head: string, base: string, title: string, body: string): Promise<{ number: number; url: string }>;
@@ -567,29 +637,15 @@ export interface GitHubAdapter {
 
 - [ ] **Step 1: Write failing tests with a fake HTTP client**
 
-Assert:
-- task branch names are normalized to `atlas/task/ATL-2026-000184`;
-- PR body includes `Task: ATL-2026-000184`;
-- CI success is true only when the ATLAS 3-of-3 Consensus check is successful;
-- missing GitHub credentials cause a configuration error in the real REST client before the first request.
+Verify branch `atlas/task/ATL-2026-000184`, PR body includes `Task: ATL-2026-000184`, and CI success requires an explicitly successful ATLAS 3-of-3 Consensus check. Missing token must fail before first request.
 
-- [ ] **Step 2: Run and verify failure**
+- [ ] **Step 2: Implement native REST client**
 
-Run: `npx vitest run tests/unit/orchestrator-github-adapter.test.ts`
+Base URL `https://api.github.com`; headers `Accept: application/vnd.github+json` and `X-GitHub-Api-Version: 2022-11-28`; bearer token comes only from runtime config. Never echo it in exceptions.
 
-- [ ] **Step 3: Implement REST client with native `fetch`**
-
-Use `https://api.github.com`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, and bearer authorization loaded from runtime configuration only. Never write the token to logs or errors.
-
-For branch creation, read the base ref SHA then POST a new ref. For CI evidence, read check-runs/status data and require an explicitly named successful ATLAS consensus check rather than interpreting any green check as consensus.
-
-- [ ] **Step 4: Run adapter tests**
+- [ ] **Step 3: Run and commit**
 
 Run: `npx vitest run tests/unit/orchestrator-github-adapter.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
 
 ```bash
 git add packages/integrations tests/unit/orchestrator-github-adapter.test.ts
@@ -598,75 +654,93 @@ git commit -m "feat: add governed GitHub orchestrator adapter"
 
 ---
 
-### Task 8: ATLAS MCP v2 server with explicit tool authorization
+### Task 9: Restricted GitHub Copilot custom agents
 
 **Files:**
-- Create: `packages/atlas-mcp/package.json`
-- Create: `packages/atlas-mcp/src/toolIds.ts`
-- Create: `packages/atlas-mcp/src/toolExecutor.ts`
-- Create: `packages/atlas-mcp/src/server.ts`
-- Create: `packages/atlas-mcp/src/stdio.ts`
-- Create: `packages/atlas-mcp/src/index.ts`
-- Test: `tests/unit/orchestrator-mcp.test.ts`
-- Modify generated: `package-lock.json`
+- Create: `.github/agents/atlas-implementer.agent.md`
+- Create: `.github/agents/atlas-reviewer.agent.md`
+- Create: `.github/agents/atlas-qa.agent.md`
+- Test: `tests/unit/orchestrator-agent-profiles.test.ts`
 
-**Interfaces:**
-- Tool ids:
-  - `atlas.task.create`
-  - `atlas.task.read`
-  - `atlas.task.update`
-  - `atlas.task.claim`
-  - `atlas.agent.delegate`
-  - `atlas.agent.respond`
-  - `atlas.repo.inspect`
-  - `atlas.code.propose`
-  - `atlas.test.run`
-  - `atlas.review.request`
-  - `atlas.pr.create`
-  - `atlas.ci.verify`
-  - `atlas.deploy.request`
-  - `atlas.audit.read`
+- [ ] **Step 1: Write failing profile tests**
 
-- [ ] **Step 1: Install MCP v2 server dependency**
+Assert every profile has explicit `tools`, no profile grants a deployment tool, reviewer lacks `edit`/`execute`, and QA lacks `edit`.
 
-Run:
+- [ ] **Step 2: Create least-privilege frontmatter**
 
-```bash
-npm install --workspace packages/atlas-mcp @modelcontextprotocol/server zod
+Implementer:
+
+```yaml
+---
+name: atlas-implementer
+description: Implements approved ATLAS tasks on assigned branches under ATLAS governance.
+target: github-copilot
+tools:
+  - read
+  - edit
+  - search
+  - execute
+  - atlas-mcp/atlas.task.read
+  - atlas-mcp/atlas.task.update
+  - atlas-mcp/atlas.repo.inspect
+  - atlas-mcp/atlas.code.propose
+  - atlas-mcp/atlas.test.run
+  - atlas-mcp/atlas.review.request
+  - atlas-mcp/atlas.pr.create
+  - atlas-mcp/atlas.ci.verify
+---
 ```
 
-- [ ] **Step 2: Write failing MCP authorization tests**
+Reviewer:
 
-Test a `ToolExecutor` directly. An actor with only `ai.task.read` can call `atlas.task.read` but receives an authorization error for `atlas.pr.create`. Test that `atlas.test.run` accepts only one of `unit`, `integration`, `typecheck`, or `build` and rejects arbitrary shell text such as `rm -rf /`.
+```yaml
+---
+name: atlas-reviewer
+description: Reviews ATLAS changes and reports findings without modifying source or deploying.
+target: github-copilot
+tools:
+  - read
+  - search
+  - atlas-mcp/atlas.task.read
+  - atlas-mcp/atlas.repo.inspect
+  - atlas-mcp/atlas.review.request
+  - atlas-mcp/atlas.ci.verify
+  - atlas-mcp/atlas.audit.read
+---
+```
 
-- [ ] **Step 3: Implement server factory and stdio entrypoint**
+QA:
 
-Use MCP v2 `McpServer` and stdio transport. Each tool receives an injected request context containing actor, scope, task id, and correlation id. Tool registration must not bypass `ToolExecutor`.
+```yaml
+---
+name: atlas-qa
+description: Runs approved ATLAS verification commands and reports evidence without source edits.
+target: github-copilot
+tools:
+  - read
+  - search
+  - execute
+  - atlas-mcp/atlas.task.read
+  - atlas-mcp/atlas.repo.inspect
+  - atlas-mcp/atlas.test.run
+  - atlas-mcp/atlas.ci.verify
+---
+```
 
-`atlas.deploy.request` calls the orchestrator request method only; it never invokes a deployment command.
+Body instructions: act only on the assigned task id; respect tenant/organization scope; never expose secrets; never claim CI/deployment success without ATLAS/GitHub evidence; never deploy production.
 
-`atlas.test.run` maps enum values to fixed npm commands:
-- `unit` -> `npm run test:unit`
-- `integration` -> `npm run test:integration`
-- `typecheck` -> `npm run typecheck`
-- `build` -> `npm run build`
+- [ ] **Step 3: Run and commit**
 
-- [ ] **Step 4: Run MCP tests**
-
-Run: `npx vitest run tests/unit/orchestrator-mcp.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
+Run: `npx vitest run tests/unit/orchestrator-agent-profiles.test.ts`
 
 ```bash
-git add packages/atlas-mcp package-lock.json tests/unit/orchestrator-mcp.test.ts
-git commit -m "feat: add governed ATLAS MCP server"
+git add .github/agents tests/unit/orchestrator-agent-profiles.test.ts
+git commit -m "feat: add governed ATLAS Copilot agents"
 ```
 
 ---
 
-### Task 9: Orchestrator runtime, health/readiness, and GitHub webhook verification
+### Task 10: Orchestrator runtime, health/readiness, and webhook authentication
 
 **Files:**
 - Create: `apps/atlas-orchestrator/package.json`
@@ -680,55 +754,73 @@ git commit -m "feat: add governed ATLAS MCP server"
 - Test: `tests/integration/orchestrator-runtime.test.ts`
 - Test: `tests/integration/orchestrator-github-webhook.test.ts`
 
-**Interfaces:**
-- `GET /healthz` -> process liveness only.
-- `GET /readyz` -> `{ ready: boolean, persistenceDurable: boolean, openaiConfigured: boolean, githubConfigured: boolean }`.
-- `POST /webhooks/github` -> verifies `X-Hub-Signature-256` using `GITHUB_WEBHOOK_SECRET` before parsing/processing the event.
+- [ ] **Step 1: Create app metadata and TypeScript config**
 
-- [ ] **Step 1: Write failing runtime tests**
-
-Assert:
-- `/healthz` returns 200 with `status: 'ok'`;
-- `/readyz` returns 503 while `InMemoryPersistence.durable === false`;
-- webhook with invalid signature returns 401 and does not call the event handler;
-- webhook with valid HMAC SHA-256 signature reaches the handler.
-
-- [ ] **Step 2: Run and verify failure**
-
-Run:
-
-```bash
-npx vitest run tests/integration/orchestrator-runtime.test.ts tests/integration/orchestrator-github-webhook.test.ts
-```
-
-- [ ] **Step 3: Implement a minimal Node 22 HTTP runtime**
-
-Use `node:http` and `node:crypto`; do not add an HTTP framework. `container.ts` wires `InMemoryPersistence`, `AgentRegistry`, providers enabled by config, `AtlasOrchestrator`, and MCP executor.
-
-`config.ts` reads environment values once and exposes booleans; it must never expose raw secret values in `/readyz`.
-
-- [ ] **Step 4: Extend root scripts**
-
-Add:
-
-```json
-"typecheck:orchestrator": "npm --workspace apps/atlas-orchestrator run typecheck"
-```
-
-Do not replace existing `typecheck` yet; CI will call both explicitly in Task 11.
-
-`apps/atlas-orchestrator/package.json` scripts:
+`apps/atlas-orchestrator/package.json`:
 
 ```json
 {
-  "typecheck": "tsc --noEmit -p tsconfig.json",
-  "start": "node --import tsx src/index.ts"
+  "name": "@atlas/atlas-orchestrator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@atlas/ai-core": "0.1.0",
+    "@atlas/agent-registry": "0.1.0",
+    "@atlas/atlas-mcp": "0.1.0",
+    "@atlas/integrations": "0.1.0"
+  }
 }
 ```
 
-Install `tsx` as an orchestrator dev dependency if it is not already present in the lockfile.
+`apps/atlas-orchestrator/tsconfig.json`:
 
-- [ ] **Step 5: Run integration tests and typecheck**
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["src", "../../packages"]
+}
+```
+
+Run `npm install`.
+
+- [ ] **Step 2: Write failing runtime tests**
+
+`/healthz` -> 200 `{ "status": "ok" }`.
+
+`/readyz` -> 503 while persistence is non-durable and returns only booleans:
+
+```json
+{
+  "ready": false,
+  "persistenceDurable": false,
+  "openaiConfigured": false,
+  "githubConfigured": false
+}
+```
+
+Webhook tests verify HMAC SHA-256 `X-Hub-Signature-256` using `GITHUB_WEBHOOK_SECRET`; invalid signature returns 401 without processing the event.
+
+- [ ] **Step 3: Implement Node 22 runtime**
+
+Use `node:http` and `node:crypto`; no web framework. Config reads environment once and never exposes raw secrets. Container wires `InMemoryPersistence`, registry, configured provider adapters, orchestrator, and MCP executor.
+
+- [ ] **Step 4: Add root verification script**
+
+Add to root `package.json`:
+
+```json
+"typecheck:orchestrator": "npm --workspace @atlas/atlas-orchestrator run typecheck"
+```
+
+Keep existing `typecheck` and `build` scripts unchanged in this slice.
+
+- [ ] **Step 5: Run and commit**
 
 Run:
 
@@ -737,10 +829,6 @@ npx vitest run tests/integration/orchestrator-runtime.test.ts tests/integration/
 npm run typecheck:orchestrator
 ```
 
-Expected: PASS; `/readyz` remains intentionally non-ready with the in-memory adapter.
-
-- [ ] **Step 6: Commit**
-
 ```bash
 git add apps/atlas-orchestrator package.json package-lock.json tests/integration/orchestrator-runtime.test.ts tests/integration/orchestrator-github-webhook.test.ts
 git commit -m "feat: add ATLAS orchestrator runtime"
@@ -748,130 +836,41 @@ git commit -m "feat: add ATLAS orchestrator runtime"
 
 ---
 
-### Task 10: GitHub Copilot custom agents with restricted tools
-
-**Files:**
-- Create: `.github/agents/atlas-implementer.agent.md`
-- Create: `.github/agents/atlas-reviewer.agent.md`
-- Create: `.github/agents/atlas-qa.agent.md`
-- Test: `tests/unit/orchestrator-agent-profiles.test.ts`
-
-**Interfaces:**
-- Profiles use YAML frontmatter supported by current GitHub Copilot custom agents.
-- All profiles include explicit `tools`; never omit the field because omission grants all available tools.
-
-- [ ] **Step 1: Write failing profile-content tests**
-
-Read the three files as text and assert:
-- implementer contains `read`, `edit`, `search`, `execute`, and `atlas-mcp/*`;
-- reviewer does not contain `edit` or `execute`;
-- QA contains `read`, `search`, `execute`, and `atlas-mcp/*` but its instructions prohibit source edits;
-- none mention direct production deployment.
-
-- [ ] **Step 2: Create profiles**
-
-Implementer frontmatter:
-
-```yaml
----
-name: atlas-implementer
-description: Implements approved ATLAS tasks on assigned branches under ATLAS governance.
-target: github-copilot
-tools: ["read", "edit", "search", "execute", "atlas-mcp/*"]
----
-```
-
-Reviewer frontmatter:
-
-```yaml
----
-name: atlas-reviewer
-description: Reviews ATLAS changes and reports findings without modifying source or deploying.
-target: github-copilot
-tools: ["read", "search", "atlas-mcp/*"]
----
-```
-
-QA frontmatter:
-
-```yaml
----
-name: atlas-qa
-description: Runs approved ATLAS verification commands and reports evidence without source edits.
-target: github-copilot
-tools: ["read", "search", "execute", "atlas-mcp/*"]
----
-```
-
-The Markdown body must instruct each agent to act only on the assigned `task_id`, respect tenant/organization scope, use only approved test commands, never expose secrets, and never claim CI/deployment success without evidence returned by ATLAS/GitHub.
-
-- [ ] **Step 3: Run tests**
-
-Run: `npx vitest run tests/unit/orchestrator-agent-profiles.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add .github/agents tests/unit/orchestrator-agent-profiles.test.ts
-git commit -m "feat: add governed ATLAS Copilot agents"
-```
-
----
-
-### Task 11: Extend consensus CI and enforce a real human deployment gate
+### Task 11: Extend consensus CI and enforce the human production gate
 
 **Files:**
 - Modify: `.github/workflows/atlas-consensus-ci.yml`
 - Modify: `.github/workflows/production-deploy.yml`
 - Test: `tests/integration/orchestrator-release-gate.test.ts`
 
-**Interfaces:**
-- Consensus CI remains Product/UX + Architecture/Build + Security/Reliability + unanimous consensus.
-- Production deployment becomes manual-only from repository workflow configuration and references GitHub environment `production`.
+- [ ] **Step 1: Write failing workflow contract test**
 
-- [ ] **Step 1: Write a failing workflow contract test**
-
-Load the workflow YAML as text and assert:
-- `production-deploy.yml` does not contain a `push:` trigger;
-- it contains `workflow_dispatch:`;
+Read both workflow files as text and assert:
+- production workflow contains `workflow_dispatch:` and no `push:` trigger;
 - deploy job contains `environment: production`;
-- consensus Architecture/Build runs both `npm run typecheck` and `npm run typecheck:orchestrator`;
-- security gate still runs unit tests and audit.
+- consensus Architecture/Build runs `npm run typecheck` and `npm run typecheck:orchestrator`;
+- security still runs `npm ci --audit --audit-level=high` and unit tests.
 
-- [ ] **Step 2: Run and verify failure**
+- [ ] **Step 2: Harden the workflows**
 
-Run: `npx vitest run tests/integration/orchestrator-release-gate.test.ts`
+In `production-deploy.yml`, remove the entire `push:` block, retain `workflow_dispatch:`, and add:
 
-Expected: FAIL because the current production workflow still contains automatic `push` deployment and the consensus workflow does not typecheck the orchestrator.
+```yaml
+environment: production
+```
 
-- [ ] **Step 3: Harden workflows**
+to the deploy job. Preserve existing install, audit, tests, build, Vercel authorization, deploy, and route verification.
 
-In `.github/workflows/production-deploy.yml`:
-- remove the entire `push:` trigger;
-- retain `workflow_dispatch:`;
-- add `environment: production` to the deploy job;
-- keep all existing install, audit, typecheck, unit, integration, build, Vercel authorization, deploy, and post-deploy verification steps.
-
-In `.github/workflows/atlas-consensus-ci.yml`, add after the existing web TypeScript contract:
+In `atlas-consensus-ci.yml`, add:
 
 ```yaml
 - name: Orchestrator TypeScript contract
   run: npm run typecheck:orchestrator
 ```
 
-Do not add any direct LLM deployment step.
+after the existing TypeScript contract step.
 
-- [ ] **Step 4: Run the workflow contract test**
-
-Run: `npx vitest run tests/integration/orchestrator-release-gate.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 5: Run repository gates locally**
-
-Run:
+- [ ] **Step 3: Run repository gates**
 
 ```bash
 npm ci
@@ -883,9 +882,9 @@ npm run typecheck:orchestrator
 npm run build
 ```
 
-Expected: all commands PASS. If `npm audit --audit-level=high` fails, stop; do not weaken the audit threshold.
+All must pass. Do not weaken the audit threshold if security fails.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add .github/workflows/atlas-consensus-ci.yml .github/workflows/production-deploy.yml tests/integration/orchestrator-release-gate.test.ts
@@ -894,21 +893,33 @@ git commit -m "ci: enforce ATLAS orchestrator release governance"
 
 ---
 
-### Task 12: End-to-end local task ATL-2026-000184 without production claims
+### Task 12: End-to-end governed task ATL-2026-000184
 
 **Files:**
-- Test: `tests/integration/orchestrator-task-flow.test.ts`
-- Modify only if needed to satisfy the test: files created in Tasks 1-11.
+- Create: `tests/integration/orchestrator-task-flow.test.ts`
+- Modify only files from Tasks 1-11 if the test exposes a real integration defect.
 
-**Interfaces:**
-- Demonstrates the approved example task through the control plane using fake provider adapters and in-memory persistence.
+- [ ] **Step 1: Write the end-to-end test**
 
-- [ ] **Step 1: Write the end-to-end failing test**
+Use fake provider adapters and `InMemoryPersistence`; do not call live OpenAI/GitHub services. Exercise:
 
-Construct the task:
+1. create `ATL-2026-000184` in `draft`;
+2. `draft -> queued -> planning`;
+3. delegate to `atlas-architect`;
+4. `planning -> implementation`;
+5. link a fake commit and record a passed test;
+6. `implementation -> review -> qa -> ci`;
+7. record successful fake 3-of-3 CI evidence;
+8. `ci -> awaiting_human_approval`;
+9. prove an agent actor cannot approve;
+10. approve with authorized human actor;
+11. assert state becomes `approved`;
+12. assert `deployment === null` and persistence remains non-durable.
+
+Use this task record:
 
 ```ts
-{
+const task: AtlasTask = {
   schemaVersion: 1,
   taskId: 'ATL-2026-000184',
   objective: 'Fix ATLAS production authentication',
@@ -918,36 +929,11 @@ Construct the task:
   state: 'draft',
   artifacts: [], findings: [], commits: [], tests: [], approvals: [], events: [],
   traceId: null, deployment: null,
-  createdAt: now,
-  updatedAt: now
-}
+  createdAt: now, updatedAt: now
+};
 ```
 
-Exercise:
-1. create task;
-2. transition `draft -> queued -> planning`;
-3. delegate to architect fake provider;
-4. transition to `implementation`;
-5. record fake commit/test evidence;
-6. transition `review -> qa -> ci`;
-7. record successful fake 3-of-3 CI evidence;
-8. transition to `awaiting_human_approval`;
-9. prove an agent cannot approve;
-10. approve using authorized human actor;
-11. transition to `approved`;
-12. assert deployment remains `null` because this plan does not deploy production and persistence is non-durable.
-
-- [ ] **Step 2: Run and verify failure**
-
-Run: `npx vitest run tests/integration/orchestrator-task-flow.test.ts`
-
-- [ ] **Step 3: Make only the minimum integration fixes required**
-
-Do not add provider mocks to production source; keep fake provider adapters inside the test.
-
-- [ ] **Step 4: Run full verification**
-
-Run:
+- [ ] **Step 2: Run full verification**
 
 ```bash
 npm run test:unit
@@ -959,7 +945,7 @@ npm run build
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add tests/integration/orchestrator-task-flow.test.ts packages apps package.json package-lock.json
@@ -970,21 +956,21 @@ git commit -m "test: verify governed ATLAS multi-agent task flow"
 
 ## Completion Evidence Required Before PR
 
-The branch is ready for review only when all of the following are true:
+The implementation branch is reviewable only when:
 
-1. `npm ci` succeeds from a clean checkout.
-2. `npm audit --audit-level=high` succeeds.
-3. `npm run test:unit` succeeds.
-4. `npm run test:integration` succeeds.
-5. `npm run typecheck` succeeds.
-6. `npm run typecheck:orchestrator` succeeds.
-7. `npm run build` succeeds.
-8. `tests/integration/orchestrator-task-flow.test.ts` proves an LLM cannot approve production.
-9. `tests/integration/orchestrator-release-gate.test.ts` proves production deploy no longer auto-runs on `main` push.
+1. `npm ci` passes from a clean checkout.
+2. `npm audit --audit-level=high` passes.
+3. `npm run test:unit` passes.
+4. `npm run test:integration` passes.
+5. `npm run typecheck` passes.
+6. `npm run typecheck:orchestrator` passes.
+7. `npm run build` passes.
+8. The end-to-end test proves an agent cannot approve production.
+9. The release-gate test proves production no longer auto-deploys on `main` push.
 10. `/readyz` truthfully reports non-ready with in-memory persistence.
-11. No secret or token appears in committed files, test fixtures, task payloads, logs, or documentation examples.
-12. No deployment is performed by this plan.
+11. No committed file or test fixture contains a real secret/token.
+12. No production deployment is performed by this plan.
 
-## Explicit Follow-on Gate
+## Production Follow-on Gate
 
-A separate approved design/plan is required before production deployment of `apps/atlas-orchestrator`. That follow-on work must select and verify an authorized durable persistence backend, add migration/rollback evidence, configure runtime secrets, configure the GitHub `production` environment approval policy, expose authenticated remote MCP transport if needed, and verify real OpenAI/GitHub provider connectivity. Until those conditions are proven, the orchestrator is a governed local/CI control-plane implementation, not a production-live service.
+A separate approved design and implementation plan is required before deploying `apps/atlas-orchestrator` to production. That plan must choose and verify an authorized durable ATLAS persistence backend, include migration/rollback evidence, configure runtime secrets, configure required reviewers for the GitHub `production` environment, expose authenticated remote MCP transport when needed, and verify real OpenAI/GitHub connectivity. Until those gates are proven, Sovereign AI is a governed local/CI control plane, not a production-live service.
