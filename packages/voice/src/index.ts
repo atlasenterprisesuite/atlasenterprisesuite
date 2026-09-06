@@ -6,3 +6,5 @@ export * from './recording';
 export * from './recordingPolicy';
 export * from './transcripts';
 export * from './transcriptAccess';
+export * from './repository';
+export * from './deletion';
