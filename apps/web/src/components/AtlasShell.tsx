@@ -5,7 +5,8 @@ const navItems = [
   { to: '/', label: 'Home' },
   { to: '/finance', label: 'Finance' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
-  { to: '/health', label: 'Health' }
+  { to: '/health', label: 'Health' },
+  { to: '/learning', label: 'Learning' }
 ];
 
 export function AtlasShell({ children }: { children: ReactNode }) {
@@ -30,13 +31,13 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="environment-card">
           <span className="pulse-dot" />
-          <div><strong>Demo adapter</strong><small>No live financial rails</small></div>
+          <div><strong>Demo adapter</strong><small>No live clinical rails</small></div>
         </div>
       </aside>
       <div className="atlas-workspace">
         <header className="topbar">
           <div><span className="eyebrow">Organization</span><strong>ATLAS Demo Organization</strong></div>
-          <div className="topbar-meta"><span>tenant-demo / org-demo</span><span className="badge">READ ONLY</span></div>
+          <div className="topbar-meta"><span>tenant-demo / org-demo</span><span className="badge">LOCAL DATA</span></div>
         </header>
         <main>{children}</main>
       </div>
