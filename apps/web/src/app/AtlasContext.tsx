@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { AccountingPermission } from '../../../../packages/core/src';
+import type { AtlasPermission } from '../../../../packages/core/src';
 
 export type AtlasIdentityState =
   | { status: 'loading' }
@@ -18,7 +18,7 @@ export type AtlasIdentityState =
       organizationId: string;
       organizationName: string;
       role: string;
-      permissions: AccountingPermission[];
+      permissions: AtlasPermission[];
     }
   | { status: 'error'; message: string };
 
