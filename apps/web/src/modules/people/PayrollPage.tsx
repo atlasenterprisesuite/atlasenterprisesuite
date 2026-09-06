@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { hasPermission } from '../../../../../packages/core/src';
-import type { PayrollRun } from '../../../../../packages/people/src';
+import type { PayrollLine, PayrollRun } from '../../../../../packages/people/src';
 import { useAtlasContext } from '../../app/AtlasContext';
 import { usePeoplePayrollData, usePeopleRefresh } from './PeopleDataProvider';
 import { usePeoplePayrollWriteService } from './PeoplePayrollWriteProvider';
@@ -33,9 +33,8 @@ export function PayrollPage() {
   }, [state]);
 
   const linesByRun = useMemo(() => {
-    const map = new Map<string, typeof state extends { status: 'ready'; payrollLines: infer T } ? T : never>();
-    if (state.status !== 'ready') return new Map<string, typeof state.payrollLines>();
-    const result = new Map<string, typeof state.payrollLines>();
+    const result = new Map<string, PayrollLine[]>();
+    if (state.status !== 'ready') return result;
     for (const run of state.payrollRuns) result.set(run.id, []);
     for (const line of state.payrollLines) {
       const lines = result.get(line.payrollRunId) ?? [];
