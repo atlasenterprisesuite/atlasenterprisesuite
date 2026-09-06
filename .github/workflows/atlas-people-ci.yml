@@ -30,10 +30,10 @@ jobs:
         run: npm run typecheck
 
       - name: People unit tests
-        run: npm test -- tests/unit/people-employee.test.ts tests/unit/people-time.test.ts tests/unit/people-payroll.test.ts tests/unit/people-recruiting.test.ts tests/unit/people-recruiting-writes.test.ts tests/unit/people-compensation.test.ts tests/unit/people-compensation-writes.test.ts
+        run: npm test -- tests/unit/people-employee.test.ts tests/unit/people-time.test.ts tests/unit/people-time-write.test.ts tests/unit/people-payroll.test.ts tests/unit/people-payroll-write.test.ts tests/unit/people-recruiting.test.ts tests/unit/people-recruiting-writes.test.ts tests/unit/people-compensation.test.ts tests/unit/people-compensation-writes.test.ts
 
       - name: People repository tests
-        run: npm test -- tests/integration/people-repository.test.ts tests/integration/people-recruiting-repository.test.ts
+        run: npm test -- tests/integration/people-repository.test.ts tests/integration/people-recruiting-repository.test.ts tests/integration/people-compensation-repository.test.ts
 
       - name: People Time UI tests
         run: npm test -- tests/integration/people-time-ui.test.tsx
