@@ -14,7 +14,9 @@ import {
 } from '../../../packages/accounting/src';
 import {
   createSupabasePeopleRepository,
+  PeoplePayrollWriteService,
   PeopleTimeWriteService,
+  SupabasePeoplePayrollWriteGateway,
   SupabasePeopleTimeWriteGateway,
 } from '../../../packages/people/src';
 import { App } from './App';
@@ -25,6 +27,7 @@ import { AccountingWriteProvider } from './modules/accounting/AccountingWritePro
 import { ArApWriteProvider } from './modules/accounting/ArApWriteProvider';
 import { BankCashWriteProvider } from './modules/accounting/BankCashWriteProvider';
 import { PeopleRepositoryProvider } from './modules/people/PeopleDataProvider';
+import { PeoplePayrollWriteProvider } from './modules/people/PeoplePayrollWriteProvider';
 import { PeopleTimeWriteProvider } from './modules/people/PeopleTimeWriteProvider';
 import { createAtlasSupabaseClient } from './lib/supabase/client';
 import { createAtlasIdentitySource } from './lib/supabase/atlasIdentitySource';
@@ -53,6 +56,9 @@ const peopleRepository = supabaseClient
 const peopleTimeWriteService = supabaseClient
   ? new PeopleTimeWriteService(new SupabasePeopleTimeWriteGateway(supabaseClient))
   : null;
+const peoplePayrollWriteService = supabaseClient
+  ? new PeoplePayrollWriteService(new SupabasePeoplePayrollWriteGateway(supabaseClient))
+  : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -60,17 +66,19 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AtlasProvider source={identitySource}>
         <PeopleRepositoryProvider repository={peopleRepository}>
           <PeopleTimeWriteProvider service={peopleTimeWriteService}>
-            <AccountingRepositoryProvider repository={accountingRepository}>
-              <AccountingWriteProvider service={accountingWriteService}>
-                <AccountWriteProvider service={accountWriteService}>
-                  <ArApWriteProvider service={arApWriteService}>
-                    <BankCashWriteProvider service={bankCashWriteService}>
-                      <App />
-                    </BankCashWriteProvider>
-                  </ArApWriteProvider>
-                </AccountWriteProvider>
-              </AccountingWriteProvider>
-            </AccountingRepositoryProvider>
+            <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
+              <AccountingRepositoryProvider repository={accountingRepository}>
+                <AccountingWriteProvider service={accountingWriteService}>
+                  <AccountWriteProvider service={accountWriteService}>
+                    <ArApWriteProvider service={arApWriteService}>
+                      <BankCashWriteProvider service={bankCashWriteService}>
+                        <App />
+                      </BankCashWriteProvider>
+                    </ArApWriteProvider>
+                  </AccountWriteProvider>
+                </AccountingWriteProvider>
+              </AccountingRepositoryProvider>
+            </PeoplePayrollWriteProvider>
           </PeopleTimeWriteProvider>
         </PeopleRepositoryProvider>
       </AtlasProvider>
