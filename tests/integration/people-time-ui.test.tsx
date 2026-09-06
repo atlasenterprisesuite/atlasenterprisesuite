@@ -45,6 +45,7 @@ const repository: PeopleRepository = {
     updatedAt: '2026-09-06T17:30:00Z',
   }],
   listPayrollRuns: async () => [],
+  listPayrollLines: async () => [],
   listApplications: async () => [],
 };
 
