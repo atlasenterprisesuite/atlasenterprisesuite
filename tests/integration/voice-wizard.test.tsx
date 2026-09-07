@@ -45,6 +45,19 @@ describe('ATLAS Personal Voice wizard', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
+  it('requires a measured sound check before guided recording', async () => {
+    render(<MemoryRouter><PersonalVoiceWizard initialStep="sound-check" microphone={new GoodMicrophone()} /></MemoryRouter>);
+    const continueButton = screen.getByRole('button', { name: 'Continue' });
+    expect(continueButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
+
+    await waitFor(() => expect(screen.getByText('Overall quality').parentElement).toHaveTextContent('Pass'));
+    expect(continueButton).toBeEnabled();
+  });
+
   it('accepts a high-quality in-session challenge sample', async () => {
     render(<MemoryRouter><PersonalVoiceWizard initialStep="record" microphone={new GoodMicrophone()} /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: 'Record' }));
