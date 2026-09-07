@@ -233,7 +233,7 @@ Target route:
 
 `/atlas/infra/status`
 
-The route MUST be backed by real state. It must never invent readiness percentages or provider connectivity.
+The route MUST be backed by real state. It must never invent readiness percentages or provider connectivity. Reachability and readiness are separate facts: for example, a reachable repair bridge with no configured planner must surface a blocker rather than appearing healthy.
 
 Suggested response shape:
 
