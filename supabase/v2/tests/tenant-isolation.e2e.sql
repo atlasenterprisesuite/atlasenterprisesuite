@@ -1,5 +1,3 @@
-\set ON_ERROR_STOP on
-
 begin;
 
 create temp table atlas_e2e_scope (
@@ -25,10 +23,12 @@ select user_id,'authenticated','authenticated',
        '', '{"provider":"email","providers":["email"]}'::jsonb,'{}'::jsonb,now(),now(),false,false
 from atlas_e2e_scope;
 
-if has_function_privilege('authenticated','public.bootstrap_atlas_tenant_service(uuid,text,text,text,text)','execute') then
-  \echo 'bootstrap must not be executable by authenticated'
-  \quit 1
-endif
+do $$
+begin
+  if has_function_privilege('authenticated','public.bootstrap_atlas_tenant_service(uuid,text,text,text,text)','execute') then
+    raise exception 'bootstrap must not be executable by authenticated';
+  end if;
+end $$;
 
 set local role service_role;
 update atlas_e2e_scope s
@@ -119,5 +119,3 @@ end $$;
 reset role;
 
 rollback;
-
-\echo 'ATLAS Supabase v2 tenant isolation E2E: PASS'
