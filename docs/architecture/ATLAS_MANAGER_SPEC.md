@@ -101,6 +101,12 @@ blocking_reason
 last_verified_at
 ```
 
+### GitHub-hosted runner pre-allocation failure
+
+When a GitHub Actions job terminates with no executed steps, `runner_id = 0`, and no runner name/group, ATLAS Manager MUST NOT classify that result as `test_failure`, `build_failure`, or application-code failure because no repository command has executed.
+
+The initial normalized classification is `authorization_missing` with provider-boundary detail `runner_entitlement_or_billing_control`, unless GitHub provider evidence identifies a more specific cause. ATLAS Manager must preserve the failed run/job identifiers, retry evidence, and the exact human/provider dependency. If a targeted rerun reproduces the same pre-allocation state while GitHub Actions is publicly operational, the affected release gate remains blocked and independent work continues.
+
 ## ATLAS Vercel Manager
 
 Responsibilities:
@@ -277,18 +283,26 @@ ATLAS Manager MUST record an audit event containing actor/context, provider, act
 
 ## Current production P0
 
-As of 2026-09-06, the known Vercel production path for the canonical repository is blocked because the connected Vercel team has no ATLAS project and the GitHub production workflow has no usable `VERCEL_TOKEN` secret. This is a deployment-control-plane problem, not evidence of an application build failure.
+As of 2026-09-06, two separate provider boundaries block the canonical Vercel release path:
 
-ATLAS Manager must treat this incident as the first real integration test for the new architecture:
+1. GitHub-hosted Actions is failing before runner allocation for the canonical repository, preventing required consensus and deployment jobs from executing. This is tracked by canonical issue #38 and is not evidence of a failing application test.
+2. The connected Vercel team currently contains no ATLAS project. The production workflow therefore contains a bounded create-if-missing step, but that recovery cannot execute until GitHub allocates a runner and the repository's Vercel deployment credential is usable.
 
-1. discover or provision the Vercel project;
-2. bind the canonical GitHub repository;
-3. resolve project/org identifiers;
-4. establish authorized deployment credentials;
-5. deploy;
-6. verify `/`, Finance, Health, and `/healthz`;
-7. verify production domain routing;
-8. close the P0 only with evidence.
+Cloudflare public edge remains separately reachable, while Cloudflare control-plane authorization is not yet verified. These are independent truth states and must not be collapsed into one generic deploy failure.
+
+ATLAS Manager must treat these incidents as the first real integration test for the new architecture:
+
+1. restore GitHub-hosted runner execution or obtain provider confirmation of the account/action required;
+2. discover or provision the Vercel project;
+3. bind the canonical GitHub repository;
+4. resolve project/org identifiers;
+5. establish authorized deployment credentials;
+6. deploy;
+7. verify `/`, Finance, Health, and `/healthz`;
+8. verify `/atlas/infra/status` remains authentication-gated;
+9. verify production domain routing;
+10. register deployment evidence through GitHub OIDC;
+11. close P0 only with evidence.
 
 ## Implementation sequence
 
@@ -302,7 +316,7 @@ ATLAS Manager must treat this incident as the first real integration test for th
 8. Implement `/atlas/infra/status` using real provider state.
 9. Add provider contract tests and failure-classification tests.
 10. Add end-to-end deployment verification gates.
-11. Exercise the system against the current Vercel P0.
+11. Exercise the system against the current Vercel/GitHub P0.
 
 ## Acceptance criteria
 
