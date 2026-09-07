@@ -70,7 +70,10 @@ export class BrowserConnectStore implements ConnectStore {
 
     try {
       const parsed: unknown = JSON.parse(raw);
-      return isConnectStoreState(parsed) ? cloneState(parsed) : emptyState();
+      if (!isConnectStoreState(parsed) || containsSensitiveKey(parsed)) {
+        return emptyState();
+      }
+      return cloneState(parsed);
     } catch {
       return emptyState();
     }
