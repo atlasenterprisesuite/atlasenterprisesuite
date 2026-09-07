@@ -14,27 +14,15 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 Deno.serve(async (req: Request) => {
   if (req.method !== 'GET') return json({ ok: false, error: 'method_not_allowed' }, 405);
   if (!OPENAI_API_KEY) return json({ ok: true, provider: 'openai', model: MODEL, configured: false, available: false, state: 'provider_not_configured' });
-
-  const url = new URL(req.url);
-  const inference = url.searchParams.get('test') === 'inference';
   try {
-    const response = inference
-      ? await fetch('https://api.openai.com/v1/responses', {
-          method: 'POST',
-          headers: { authorization: `Bearer ${OPENAI_API_KEY}`, 'content-type': 'application/json' },
-          body: JSON.stringify({ model: MODEL, input: 'Reply with exactly: ASTRA_READY', reasoning: { effort: 'low' }, max_output_tokens: 32, store: false })
-        })
-      : await fetch(`https://api.openai.com/v1/models/${MODEL}`, { headers: { authorization: `Bearer ${OPENAI_API_KEY}` }, cache: 'no-store' });
+    const response = await fetch(`https://api.openai.com/v1/models/${MODEL}`, {
+      headers: { authorization: `Bearer ${OPENAI_API_KEY}` },
+      cache: 'no-store'
+    });
     const requestId = response.headers.get('x-request-id');
-    const data = await response.json().catch(() => ({}));
     if (response.ok) {
-      let output = '';
-      if (inference) {
-        const chunks: string[] = [];
-        for (const item of data?.output || []) for (const part of item?.content || []) if (part?.type === 'output_text' && part?.text) chunks.push(String(part.text));
-        output = chunks.join('\n').trim();
-      }
-      return json({ ok: true, provider: 'openai', model: MODEL, configured: true, available: true, state: inference ? (output === 'ASTRA_READY' ? 'inference_verified' : 'inference_unexpected_output') : 'ready', resolved_model: data?.model || data?.id || MODEL, request_id: requestId, ...(inference ? { output } : {}) });
+      const data = await response.json().catch(() => ({}));
+      return json({ ok: true, provider: 'openai', model: MODEL, configured: true, available: true, state: 'ready', resolved_model: data?.id || MODEL, request_id: requestId });
     }
     const state = response.status === 429 ? 'rate_limited' : response.status === 401 ? 'authentication_failed' : response.status === 403 || response.status === 404 ? 'model_not_available' : 'provider_unavailable';
     return json({ ok: true, provider: 'openai', model: MODEL, configured: true, available: false, state, provider_status: response.status, request_id: requestId });
