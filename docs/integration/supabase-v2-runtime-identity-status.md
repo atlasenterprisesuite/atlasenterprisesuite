@@ -104,6 +104,19 @@ Post-run cleanup check: **0 persisted `e2e-%` tenants**.
 
 No service-role or server-only secret belongs in `VITE_*` configuration or the repository.
 
+## A-Z release PR gate
+
+The existing domain workflows only trigger pull-request checks when the base is `main`, so feature branches targeting `release/atlas-a-z` previously received no CI at all. A canonical release-lane gate now exists on the A-Z base branch:
+
+- `.github/workflows/atlas-release-pr-forge-gate.yml`
+- trigger: pull requests targeting `release/atlas-a-z`
+- executor: `node --experimental-strip-types forge/runner.ts --local-ci`
+- evidence: `.atlas-forge/local-runs/*.json` uploaded as a workflow artifact
+
+This reuses ATLAS Forge instead of duplicating its install/typecheck/unit/integration/audit/build pipeline in YAML.
+
+A push to A-Z after adding this gate triggered the existing domain workflows, but those workflows again failed before any step execution. That remains a hosted-runner allocation/infrastructure issue distinct from the earlier missing PR trigger.
+
 ## Remaining gate
 
 The repository already contains ATLAS Forge local CI. Its canonical pipeline is:
@@ -117,11 +130,13 @@ The repository already contains ATLAS Forge local CI. Its canonical pipeline is:
 
 Forge records exact source SHA evidence and is suitable as the self-hosted verification layer requested when GitHub Actions cannot allocate a runner.
 
-A full Forge run is **not yet verified for this branch** because this session does not have an authenticated clean local checkout of the private repository. The feature must remain unmerged until full repo CI/Forge is green or equivalent complete evidence is obtained.
+A full Forge run is **not yet verified for this branch** because this session does not have an authenticated clean local checkout of the private repository and GitHub-hosted jobs continue to fail before executing steps. The feature must remain unmerged until full repo CI/Forge is green or equivalent complete evidence is obtained.
 
 ## Truth state
 
 - Supabase v2 tenancy/RLS/Accounting E2E: **verified**
 - Identity contract slice: **verified by dependency-free tests and minimal strict typecheck**
-- Full repository typecheck/tests/build: **pending Forge/GitHub runner**
+- A-Z feature PR CI trigger wiring: **implemented**
+- GitHub-hosted runner execution: **blocked before steps**
+- Full repository typecheck/tests/build: **pending Forge/self-hosted or recovered GitHub runner**
 - Production deployment/readiness: **not claimed**
