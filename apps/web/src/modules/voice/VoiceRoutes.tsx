@@ -19,7 +19,7 @@ function PersonalVoiceWizardRoute() {
 export function VoiceRoutes() {
   return (
     <Routes>
-      <Route index element={<VoiceHomePage />} />
+      <Route path="" element={<VoiceHomePage />} />
       <Route path="personal-voice" element={<PersonalVoicePage />} />
       <Route path="personal-voice/library" element={<PersonalVoicePage />} />
       <Route path="personal-voice/apple" element={<AppleVoicePage />} />
