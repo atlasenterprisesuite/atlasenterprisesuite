@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { ATLAS_NEWS_WHATSAPP_CHANNEL, getPublishDestination } from '../../packages/connect/destinations';
 import { fingerprintDraft } from '../../packages/connect/fingerprint';
+import { createDevelopmentPermissionAdapter, requirePermission } from '../../packages/connect/permissions';
 import { transitionPublication } from '../../packages/connect/state';
 import { validateDraftForDestination } from '../../packages/connect/validation';
 import type { PublishDestination, PublishDraft } from '../../packages/connect/types';
@@ -43,5 +45,18 @@ describe('ATLAS Connect publication domain', () => {
   it('rejects empty content and accepts a valid link draft', () => {
     expect(validateDraftForDestination({ ...draft, body: '', link: null }, destination).valid).toBe(false);
     expect(validateDraftForDestination(draft, destination).valid).toBe(true);
+  });
+
+  it('registers the official channel as manual handoff only', () => {
+    expect(ATLAS_NEWS_WHATSAPP_CHANNEL.publicUrl).toBe('https://whatsapp.com/channel/0029VbDVlpzFcowFQpPHTR32');
+    expect(ATLAS_NEWS_WHATSAPP_CHANNEL.capability).toBe('manual_handoff');
+    expect(ATLAS_NEWS_WHATSAPP_CHANNEL.provider).toBe('none_verified_for_channel_publish');
+    expect(getPublishDestination(ATLAS_NEWS_WHATSAPP_CHANNEL.id)).toEqual(ATLAS_NEWS_WHATSAPP_CHANNEL);
+  });
+
+  it('uses an explicit permission boundary and fails closed when permission is absent', () => {
+    const permissions = createDevelopmentPermissionAdapter();
+    expect(permissions.has('connect.publish.request')).toBe(true);
+    expect(() => requirePermission({ has: () => false }, 'connect.publish.request')).toThrow(/permission denied/i);
   });
 });
