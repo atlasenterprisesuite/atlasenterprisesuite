@@ -8,6 +8,14 @@ import {
   providerSupports,
   type VoiceProfile
 } from '../../packages/voice/src';
+import { LocalVoiceSessionStore, type StorageLike } from '../../apps/web/src/modules/voice/storage';
+
+class MapStorage implements StorageLike {
+  private readonly values = new Map<string, string>();
+  getItem(key: string) { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string) { this.values.set(key, value); }
+  removeItem(key: string) { this.values.delete(key); }
+}
 
 const baseProfile: VoiceProfile = {
   id: 'vp-1',
@@ -75,5 +83,24 @@ describe('ATLAS Voice domain', () => {
     expect(repository.grants.get(baseProfile.id)).toEqual([]);
     expect(repository.audit[0].metadata).toEqual({ providerKind: 'atlas' });
     expect(JSON.stringify(repository.audit[0])).not.toContain('sample-1');
+  });
+
+  it('persists only resumable wizard metadata', () => {
+    const store = new LocalVoiceSessionStore(new MapStorage());
+    store.save({ profileId: 'vp-1', step: 'record', consentAccepted: true });
+    expect(store.load()).toEqual({
+      version: 1,
+      profileId: 'vp-1',
+      step: 'record',
+      consentAccepted: true
+    });
+  });
+
+  it('clears invalid stored wizard state', () => {
+    const storage = new MapStorage();
+    storage.setItem('atlas.voice.personal.session.v1', '{"version":2,"audio":"forbidden"}');
+    const store = new LocalVoiceSessionStore(storage);
+    expect(store.load()).toBeNull();
+    expect(storage.getItem('atlas.voice.personal.session.v1')).toBeNull();
   });
 });
