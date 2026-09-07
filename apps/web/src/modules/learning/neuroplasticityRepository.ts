@@ -44,15 +44,11 @@ function accessToken(): string | null {
 }
 
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${url}${path}`, {
-    ...init,
-    headers: {
-      apikey: publishableKey!,
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...init?.headers
-    }
-  });
+  const headers = new Headers(init?.headers);
+  headers.set('apikey', publishableKey!);
+  headers.set('Authorization', `Bearer ${token}`);
+  headers.set('Content-Type', 'application/json');
+  const response = await fetch(`${url}${path}`, { ...init, headers });
   if (!response.ok) throw new Error(`Supabase request failed (${response.status})`);
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
