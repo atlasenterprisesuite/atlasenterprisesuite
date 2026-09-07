@@ -4,6 +4,7 @@ import { hasPermission } from '../../packages/core/src';
 describe('ATLAS permission domains', () => {
   it('keeps accounting admin semantics', () => {
     expect(hasPermission(['accounting.admin'], 'accounting.post')).toBe(true);
+    expect(hasPermission(['accounting.admin'], 'audit.read')).toBe(true);
   });
 
   it('does not let accounting admin grant voice permissions', () => {
