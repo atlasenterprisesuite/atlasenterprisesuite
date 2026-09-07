@@ -1,45 +1,52 @@
 # ATLAS Manager — Infrastructure Control Plane + Deployment Brain
 
-Effective date: 2026-09-06
+Effective date: 2026-09-07
 Status: Approved architecture directive
 Owner: ATLAS Manager
 Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`
 
 ## Purpose
 
-ATLAS Manager is the central infrastructure control plane and deployment brain for ATLAS Enterprise Suite. It governs the path from source control to verified production and prevents provider-specific failures from becoming repeated manual diagnosis loops.
+ATLAS Manager is the central infrastructure control plane and deployment brain for ATLAS Enterprise Suite. It governs source, verification, backend state, edge delivery, deployment and public production evidence without allowing a single provider to become the source of truth for the whole platform.
 
 Primary control path:
 
-`GitHub → Vercel → Cloudflare → Supabase → Production`
+`GitHub → ATLAS Forge/CI → Supabase + Cloudflare → Production`
 
-ATLAS Manager MUST distinguish code state, CI state, provider authorization, provider resource existence, deployment state, runtime health, DNS/edge state, and public production verification as separate facts.
+Provider roles are explicit:
+
+- GitHub is the canonical source/review/release authority.
+- ATLAS Forge is the provider-neutral execution and evidence layer for install, typecheck, tests, audit and build.
+- Supabase is the primary backend platform for database, Auth, Storage, Edge Functions and governed data services.
+- Cloudflare is the primary web/edge/DNS/TLS delivery layer.
+- Vercel is legacy compatibility only. It is not a required production dependency and a missing Vercel project or token must not block the approved Supabase + Cloudflare path.
+
+ATLAS Manager MUST distinguish code state, CI state, runner state, provider authorization, provider resource existence, data-layer verification, deployment state, runtime health, DNS/edge state and public production verification as separate facts.
 
 ## Operating principle
 
-ATLAS Manager follows this rule:
-
-1. Detect the current state from real provider evidence.
-2. Classify the problem at the correct boundary.
+1. Detect current state from real provider evidence.
+2. Classify the failure at the correct boundary.
 3. Repair automatically when the authorized integration exposes the required action.
 4. Re-run the smallest verification that proves or disproves the repair.
-5. Continue through remaining independent work when one dependency is blocked.
-6. Stop only the affected step when a human, legal, security, credential, billing, or unavailable-provider action is genuinely required.
-7. Never claim `live`, `connected`, `ready`, `verified`, or `production` without corresponding evidence.
+5. Continue independent work when one dependency is blocked.
+6. Stop only the affected step when a human, legal, security, credential, billing or unavailable-provider action is genuinely required.
+7. Never claim `live`, `connected`, `ready`, `verified` or `production` without corresponding evidence.
+8. Never mutate a production database from an incomplete migration mirror.
 
-Repeated diagnosis without a new test, repair attempt, or evidence-producing action is not an acceptable terminal state.
+Repeated diagnosis without a new test, repair attempt or evidence-producing action is not an acceptable terminal state.
 
 ## Scope
 
-ATLAS Manager owns infrastructure orchestration across:
+ATLAS Manager owns orchestration across:
 
-- GitHub repository authority, branches, pull requests, Actions, workflows, release gates, and deployment evidence.
-- Vercel project discovery, project provisioning when authorized, repository linking, deployment configuration, deployment execution, logs, aliases, and production verification.
-- Cloudflare DNS, SSL/TLS, Workers/Pages routing, Zero Trust controls, domain status, and public-edge verification.
-- Supabase project connectivity, database readiness, migrations, Auth, Storage, RLS, backups, and production dependency health.
-- Cross-provider deployment state, recovery policy, audit evidence, and production readiness.
+- GitHub repository authority, branches, pull requests, Actions, workflows, release gates and deployment evidence.
+- ATLAS Forge local/self-hosted execution, exact-SHA verification, artifact evidence and provider-independent CI.
+- Supabase project connectivity, database readiness, migrations, Auth, Storage, Edge Functions, RLS, backups and backend verification.
+- Cloudflare DNS, SSL/TLS, Pages/Workers delivery, Zero Trust controls, domain status and public-edge verification.
+- Cross-provider deployment state, recovery policy, audit evidence and production readiness.
 
-ATLAS Manager does not invent or persist provider secrets in source control. Secret material remains in approved secret stores or provider-managed credentials.
+ATLAS Manager never stores provider secrets in source control. Secret material remains in approved secret stores or provider-managed credentials.
 
 ## Target architecture
 
@@ -55,81 +62,80 @@ apps/
 packages/
 ├── integrations/
 │   ├── github/
-│   ├── vercel/
-│   ├── cloudflare/
-│   └── supabase/
-│
+│   ├── forge/
+│   ├── supabase/
+│   └── cloudflare/
 ├── infra-control/
 │   ├── diagnostics/
 │   ├── provisioning/
 │   ├── deployment/
 │   ├── verification/
 │   └── recovery/
-│
 └── governance/
     ├── permissions/
     ├── secrets/
     └── audit/
 ```
 
-Existing shared ATLAS components, auth, tenancy, RBAC, audit, navigation, and provider integrations MUST be reused when they are already stronger than this target layout. This document does not authorize parallel duplicate implementations.
+Existing shared ATLAS components, auth, tenancy, RBAC, audit, navigation and provider integrations MUST be reused when they are already stronger than this target layout. This directive does not authorize duplicate parallel implementations.
 
 ## ATLAS GitHub Manager
 
 Responsibilities:
 
-- resolve the operational canonical repository;
-- verify `main` and release branch state;
-- inspect commits, pull requests, checks, Actions, and workflows;
-- detect missing required secret names without exposing secret values;
-- validate CI and release gates;
-- open or update auditable infrastructure issues when failures persist;
-- preserve the canonical-repository governance policy;
+- resolve `atlasenterprisesuite/atlasenterprisesuite` as the operational canonical repository;
+- verify `main` and `release/atlas-a-z` state;
+- inspect commits, pull requests, checks, Actions and workflows;
+- distinguish workflow creation from runner allocation and executable step results;
+- detect missing required secret names without exposing values;
+- validate release gates and preserve auditable infrastructure issues;
 - prevent legacy repositories from becoming global blockers.
 
-Required state model:
+A job with `runner_id = 0` and no executable steps is classified as `runner_allocation_failure`, not `code_failure` or `test_failure`.
 
-```text
-repository
-branch
-commit_sha
-ci_status
-release_gate_status
-required_secret_names
-workflow_status
-blocking_reason
-last_verified_at
-```
-
-## ATLAS Vercel Manager
+## ATLAS Forge Manager
 
 Responsibilities:
 
-- discover the target Vercel team/account;
-- discover the production project;
-- create/import/link the project when authorized actions exist;
-- resolve and persist non-secret project identifiers such as `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` through approved configuration channels;
-- verify framework, build command, output directory, and SPA routing;
-- execute preview and production deployments;
-- inspect build/runtime logs;
-- verify aliases and custom domains;
-- perform rollback or redeploy only when evidence supports that action.
+- execute the canonical provider-neutral pipeline when an authorized host is available;
+- use exact commit SHAs and a clean working tree;
+- run `npm ci → typecheck → unit → integration → dependency audit → build`;
+- record immutable run evidence and artifacts;
+- remain usable even when GitHub-hosted runner allocation is unavailable;
+- never claim a local/self-hosted run occurred until host execution evidence exists.
 
-A missing project is classified as `resource_missing`, not as an application-code failure.
+GitHub-hosted Actions may invoke Forge, but that wrapper does not make Forge dependent on GitHub-hosted runners.
 
-A missing deployment credential is classified as `authorization_missing`, not as a Vite/React failure.
+## ATLAS Supabase Manager
+
+Canonical backend target:
+
+- project: `atlas-core-v2`
+- project ref: `qawxltbplsxcjvwxdkes`
+- region: `us-east-1`
+
+Responsibilities:
+
+- verify the canonical project before any backend action;
+- validate database, Auth, Storage, Edge Functions and RLS independently;
+- execute the service-role-only `atlas_backend_gate()` as a data-layer release gate when authorized;
+- validate tenant isolation and governed write paths;
+- verify migration reproducibility before automated migration deployment;
+- preserve backups/recovery and audit requirements.
+
+The Backend Gate is data-layer evidence only. It does not substitute for TypeScript tests, dependency audit, frontend build, authenticated full-application E2E or public production verification.
+
+Until the complete v2 migration history is mirrored in the canonical repository, the production deployment workflow MUST NOT perform an automatic `supabase db push`. Database changes remain separately governed and must be applied only through an auditable, complete migration source.
 
 ## ATLAS Cloudflare Manager
 
 Responsibilities:
 
-- resolve zone ownership and domain state;
-- inspect and manage DNS when authorized;
-- validate SSL/TLS state;
-- validate Workers/Pages routing when used;
-- validate Zero Trust controls relevant to ATLAS;
+- resolve zone and Pages/Workers ownership;
+- deploy the verified web artifact to the configured Cloudflare production target;
+- validate DNS and SSL/TLS;
 - verify apex and `www` routing;
-- distinguish Cloudflare edge failures from origin failures;
+- distinguish edge failures from application/backend failures;
 - maintain public production verification evidence.
 
 Initial production domains:
@@ -137,24 +143,15 @@ Initial production domains:
 - `atlasenterprisesuite.com`
 - `www.atlasenterprisesuite.com`
 
-## ATLAS Supabase Manager
+## Vercel legacy compatibility
 
-Responsibilities:
+`vercel.json` and any existing Vercel deployment may remain temporarily for rollback/history while the Cloudflare cutover is not yet fully verified. They are not authoritative infrastructure for new ATLAS development.
 
-- discover and validate the expected Supabase project;
-- verify database connectivity without leaking credentials;
-- validate migration state;
-- validate Auth readiness;
-- validate Storage readiness;
-- validate tenant isolation and RLS policies;
-- validate backup/recovery readiness;
-- classify database, auth, storage, and policy failures independently.
+Do not delete legacy Vercel configuration solely to make architecture look clean. Remove it only after Cloudflare production delivery, domain routing and rollback requirements are independently verified.
 
-No database, Auth, Storage, RLS, or backup capability may be reported as production-ready without real provider evidence.
+Missing `VERCEL_TOKEN`, Vercel team/project state or Vercel billing is therefore non-blocking for the approved production architecture.
 
 ## ATLAS Deployment Brain
-
-The Deployment Brain consumes normalized provider states and determines the next action.
 
 ```text
 Detect
@@ -163,15 +160,18 @@ Classify
   ↓
 Can ATLAS repair with current authorization?
   ├─ Yes → Repair → Verify → Continue
-  └─ No  → Mark affected step blocked → Continue independent work
+  └─ No  → Mark only affected step blocked → Continue independent work
+  ↓
+Backend gate + build evidence + edge deploy
   ↓
 Production verification
   ↓
 Audit result
 ```
 
-### Failure classes
+Failure classes include:
 
+- `runner_allocation_failure`
 - `code_failure`
 - `test_failure`
 - `build_failure`
@@ -189,140 +189,101 @@ Audit result
 - `verification_failure`
 - `human_approval_required`
 
-Each failure MUST contain evidence, affected provider, affected resource, attempted actions, retry eligibility, and the next executable action.
+Every failure MUST contain evidence, affected provider/resource, attempted actions, retry eligibility and the next executable action.
 
-## Recovery policy
+## Production deployment contract
 
-For recoverable failures, ATLAS Manager MUST:
+The production workflow is allowed to continue only when all of the following can execute truthfully:
 
-1. record the failure and evidence;
-2. identify the smallest corrective action;
-3. execute it when authorized;
-4. verify the exact failing boundary again;
-5. escalate only if the corrective action cannot be executed or verification still fails;
-6. avoid unrelated refactors while repairing infrastructure.
+1. exact canonical commit is checked out;
+2. required non-secret configuration and secret presence checks pass without echoing values;
+3. locked dependencies install;
+4. dependency security gate passes;
+5. TypeScript typecheck passes;
+6. unit tests pass;
+7. integration tests pass;
+8. production build passes;
+9. Supabase URL resolves to canonical project ref `qawxltbplsxcjvwxdkes`;
+10. `atlas_backend_gate()` returns no failed checks;
+11. Cloudflare accepts the built `apps/web/dist` artifact;
+12. apex and `www` public routes respond successfully;
+13. required ATLAS module routes respond successfully;
+14. `/healthz` truthfully reports healthy state;
+15. deployment evidence is traceable to the commit.
 
-For missing authorization or secrets, ATLAS Manager MUST identify the exact credential or approval required and MUST NOT fabricate, echo, log, or commit sensitive values.
+A provider accepting an upload is not sufficient evidence of production completion.
 
-## Production verification contract
+## Required production secret names
 
-A production deployment is not complete merely because a provider accepted a deployment request.
+The workflow may require these repository/environment secrets; values MUST NOT be logged or committed:
 
-ATLAS Manager MUST verify, as applicable:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_PAGES_PROJECT`
 
-- deployment reaches provider-ready/success state;
-- root route returns success;
-- required module routes return success;
-- `/healthz` returns a truthful healthy response;
-- expected production commit/version is traceable;
-- critical backend dependencies respond as expected;
-- apex and `www` domains route to the intended production deployment;
-- SSL/TLS is valid;
-- no provider protection layer is unintentionally blocking public production;
-- the public URL presents the expected current ATLAS build.
+`VERCEL_TOKEN` is not part of the approved required production contract.
 
 ## Status endpoint
 
-Target route:
+Target route: `/atlas/infra/status`
 
-`/atlas/infra/status`
+The route MUST use real normalized evidence. It must never invent provider connectivity or readiness percentages.
 
-The route MUST be backed by real state. It must never invent readiness percentages or provider connectivity.
-
-Suggested response shape:
+Representative truth state while the current blockers remain:
 
 ```json
 {
   "status": "blocked",
-  "productionReadiness": {
-    "verifiedChecks": 7,
-    "totalChecks": 10
-  },
   "providers": {
-    "github": { "status": "connected" },
-    "vercel": { "status": "blocked", "reason": "resource_missing" },
-    "cloudflare": { "status": "unknown", "reason": "not_verified" },
-    "supabase": { "status": "unknown", "reason": "not_verified" }
-  },
-  "blocking": [
-    {
-      "provider": "vercel",
-      "reason": "resource_missing",
-      "nextAction": "create_or_link_project"
-    }
-  ]
+    "github": { "status": "blocked", "reason": "runner_allocation_failure" },
+    "forge": { "status": "versioned", "reason": "host_execution_not_verified" },
+    "supabase": { "status": "verified_data_layer", "projectRef": "qawxltbplsxcjvwxdkes" },
+    "cloudflare": { "status": "unknown", "reason": "production_delivery_not_verified" },
+    "vercel": { "status": "legacy_non_blocking" }
+  }
 }
 ```
 
-If a readiness percentage is displayed in the UI, it MUST be computed from explicit verification gates rather than entered manually.
+If a readiness percentage is displayed, it MUST be computed from explicit gates rather than manually entered.
 
 ## Permissions and audit
 
-Every provider action MUST pass through authorization checks appropriate to the operation.
+Sensitive actions include repository/workflow mutation, production deployment, DNS/TLS/security changes, database migrations, RLS/Auth changes, secret changes, rollback and destructive provider operations. Each action requires appropriate authorization and an audit event containing actor/context, provider, action, resource, result, timestamp and non-secret evidence.
 
-Sensitive actions include, at minimum:
+## Current production P0s
 
-- repository mutation;
-- workflow mutation;
-- production deployment;
-- DNS changes;
-- TLS/security policy changes;
-- database migrations;
-- RLS changes;
-- Auth configuration;
-- secret changes;
-- rollback or destructive provider operations.
+As of 2026-09-07:
 
-ATLAS Manager MUST record an audit event containing actor/context, provider, action, resource, result, timestamp, and non-secret evidence reference.
+1. GitHub-hosted Actions is failing before runner assignment on the A-Z release. Issue #22 is authoritative evidence; jobs show `runner_id: 0` and no executable steps. This blocks hosted-CI evidence but is not an ATLAS code/test failure.
+2. ATLAS Forge is versioned but a real self-hosted/Linux execution environment is not yet verified in this control path.
+3. Supabase `atlas-core-v2` is the canonical backend and its Backend Gate currently provides verified data-layer evidence; this does not by itself prove full app production readiness.
+4. The complete Supabase v2 migration history still needs a canonical repository mirror before automatic migration replay can be considered disaster-recovery-safe.
+5. Cloudflare Pages/Workers production project, deployment credentials and current domain routing must be verified before the Cloudflare deployment path can be called live.
 
-## Current production P0
-
-As of 2026-09-06, the known Vercel production path for the canonical repository is blocked because the connected Vercel team has no ATLAS project and the GitHub production workflow has no usable `VERCEL_TOKEN` secret. This is a deployment-control-plane problem, not evidence of an application build failure.
-
-ATLAS Manager must treat this incident as the first real integration test for the new architecture:
-
-1. discover or provision the Vercel project;
-2. bind the canonical GitHub repository;
-3. resolve project/org identifiers;
-4. establish authorized deployment credentials;
-5. deploy;
-6. verify `/`, Finance, Health, and `/healthz`;
-7. verify production domain routing;
-8. close the P0 only with evidence.
+The absence of a Vercel project/token is no longer a production P0 under this approved directive.
 
 ## Implementation sequence
 
-1. Establish provider-neutral status and failure contracts.
-2. Implement GitHub adapter around existing GitHub capabilities.
-3. Implement Vercel adapter and provisioning/deployment boundary.
-4. Implement Cloudflare adapter.
-5. Implement Supabase adapter.
-6. Implement Deployment Brain decision engine.
-7. Implement audit and permission gates.
-8. Implement `/atlas/infra/status` using real provider state.
-9. Add provider contract tests and failure-classification tests.
-10. Add end-to-end deployment verification gates.
-11. Exercise the system against the current Vercel P0.
+1. Keep GitHub canonical state and runner-allocation diagnostics truthful.
+2. Maintain/activate ATLAS Forge as provider-neutral CI evidence.
+3. Use Supabase v2 as the primary backend target and expand its governed E2E coverage.
+4. Mirror the complete v2 migration history before automating migration replay.
+5. Implement/verify Cloudflare deployment and domain delivery.
+6. Implement Deployment Brain normalized state/recovery decisions.
+7. Implement audit and permission gates for provider mutations.
+8. Implement `/atlas/infra/status` from real evidence.
+9. Execute full A-Z CI/consensus gates.
+10. Merge/deploy to `main` only after the release gate is actually green and production verification succeeds.
 
 ## Acceptance criteria
 
-ATLAS Manager is not considered production-ready until all of the following are verified:
-
-- canonical repository is resolved correctly;
-- provider adapters return normalized truthful states;
-- missing resources are distinguished from missing credentials;
-- recoverable failures trigger bounded automated recovery;
-- non-recoverable authorization blocks identify the exact dependency;
-- secrets never appear in committed files or logs;
-- production deployment can be traced to a canonical commit;
-- route and health checks validate the deployed artifact;
-- domain verification confirms the public site reaches the intended deployment;
-- Supabase security controls are verified when the application depends on them;
-- all infrastructure mutations create audit evidence;
-- ATLAS continues independent work when one provider is blocked.
+ATLAS Manager is not production-ready until canonical source is resolved, executable CI/build evidence exists, Supabase backend security and tenant isolation are verified, Cloudflare deployment/domain/TLS are verified, secrets remain protected, production routes and `/healthz` pass, the deployed artifact is traceable to a canonical commit, and all infrastructure mutations create audit evidence.
 
 ## Governance rule
 
-All future ATLAS modules MUST integrate with ATLAS Manager for infrastructure state, deployment verification, permissions, and audit where applicable. Modules must not create isolated provider-specific deployment mechanisms when a shared ATLAS Manager capability exists.
+All future ATLAS modules MUST integrate with ATLAS Manager for infrastructure state, deployment verification, permissions and audit where applicable. Modules must not create isolated provider-specific deployment mechanisms when a shared ATLAS Manager capability exists.
 
-This specification is subordinate only to a newer explicitly approved ATLAS architecture directive committed to the canonical repository.
+This specification supersedes the 2026-09-06 Vercel-first control path and is subordinate only to a newer explicitly approved ATLAS architecture directive committed to the canonical repository.
