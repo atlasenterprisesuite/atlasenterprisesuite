@@ -11,8 +11,8 @@ import type {
   NeuroplasticityGoal,
   NeuroplasticityProfile
 } from '../../../../../packages/learning/neuroplasticity';
-
-const STORAGE_KEY = 'atlas.neuroplasticity.v1';
+import { deleteProgram, loadProgram, resolvePersistence, saveProgram } from './neuroplasticityRepository';
+import type { PersistenceState } from './neuroplasticityRepository';
 
 const defaultProfile: NeuroplasticityProfile = {
   goal: 'focus',
@@ -23,60 +23,94 @@ const defaultProfile: NeuroplasticityProfile = {
   hasNeurologicalCondition: false
 };
 
-type SavedProgram = {
-  profile: NeuroplasticityProfile;
-  completedIds: string[];
-  startDate: string;
-};
-
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function readSavedProgram(): SavedProgram | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SavedProgram;
-    return validateProfile(parsed.profile).length === 0 ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 export function NeuroplasticityProgramPage({ entry }: { entry: 'health' | 'learning' }) {
-  const saved = useMemo(readSavedProgram, []);
-  const [profile, setProfile] = useState<NeuroplasticityProfile>(saved?.profile ?? defaultProfile);
-  const [activeProfile, setActiveProfile] = useState<NeuroplasticityProfile | null>(saved?.profile ?? null);
-  const [completedIds, setCompletedIds] = useState<string[]>(saved?.completedIds ?? []);
-  const [startDate, setStartDate] = useState(saved?.startDate ?? today());
+  const [profile, setProfile] = useState<NeuroplasticityProfile>(defaultProfile);
+  const [activeProfile, setActiveProfile] = useState<NeuroplasticityProfile | null>(null);
+  const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState(today());
+  const [persistence, setPersistence] = useState<PersistenceState>({ status: 'unconfigured' });
+  const [syncStatus, setSyncStatus] = useState<'loading' | 'ready' | 'saving' | 'saved' | 'error'>('loading');
+  const [syncMessage, setSyncMessage] = useState('Checking secure storage…');
   const [errors, setErrors] = useState<string[]>([]);
   const plan = useMemo(() => activeProfile ? buildNeuroplasticityPlan(activeProfile) : null, [activeProfile]);
   const progress = plan ? completionPercent(completedIds, plan.blocks) : 0;
 
   useEffect(() => {
-    if (!activeProfile) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile: activeProfile, completedIds, startDate }));
-  }, [activeProfile, completedIds, startDate]);
+    let cancelled = false;
+    async function hydrate() {
+      try {
+        const context = await resolvePersistence();
+        if (cancelled) return;
+        setPersistence(context);
+        if (context.status !== 'ready') {
+          setSyncStatus('ready');
+          setSyncMessage(context.status === 'signed-out' ? 'Sign in to save this program.' : 'Supabase environment is not configured.');
+          return;
+        }
+        const stored = await loadProgram(context);
+        if (cancelled) return;
+        if (stored) {
+          setProfile(stored.profile);
+          setActiveProfile(stored.profile);
+          setCompletedIds(stored.completedIds);
+          setStartDate(stored.startDate);
+          setSyncMessage('Program loaded from Supabase.');
+        } else {
+          setSyncMessage('Secure storage ready. No saved program yet.');
+        }
+        setSyncStatus('ready');
+      } catch {
+        if (!cancelled) {
+          setSyncStatus('error');
+          setSyncMessage('Secure storage could not be reached. Your changes were not saved.');
+        }
+      }
+    }
+    hydrate();
+    return () => { cancelled = true; };
+  }, []);
 
-  function submit(event: FormEvent) {
+  async function persist(nextProfile: NeuroplasticityProfile, nextCompleted: string[], nextStartDate: string) {
+    if (persistence.status !== 'ready') return;
+    setSyncStatus('saving');
+    setSyncMessage('Saving securely…');
+    try {
+      await saveProgram(persistence, { profile: nextProfile, completedIds: nextCompleted, startDate: nextStartDate });
+      setSyncStatus('saved');
+      setSyncMessage('Saved to Supabase.');
+    } catch {
+      setSyncStatus('error');
+      setSyncMessage('Save failed. Your last confirmed cloud version was preserved.');
+    }
+  }
+
+  async function submit(event: FormEvent) {
     event.preventDefault();
     const validationErrors = validateProfile(profile);
     setErrors(validationErrors);
     if (validationErrors.length) return;
     setActiveProfile(profile);
     setCompletedIds([]);
-    setStartDate(today());
+    const nextStartDate = today();
+    setStartDate(nextStartDate);
+    await persist(profile, [], nextStartDate);
   }
 
-  function toggleBlock(blockId: string) {
-    setCompletedIds((current) => current.includes(blockId)
-      ? current.filter((id) => id !== blockId)
-      : [...current, blockId]);
+  async function toggleBlock(blockId: string) {
+    if (!activeProfile) return;
+    const next = completedIds.includes(blockId)
+      ? completedIds.filter((id) => id !== blockId)
+      : [...completedIds, blockId];
+    setCompletedIds(next);
+    await persist(activeProfile, next, startDate);
   }
 
-  function reset() {
-    window.localStorage.removeItem(STORAGE_KEY);
+  async function reset() {
+    if (persistence.status === 'ready') await deleteProgram(persistence);
     setProfile(defaultProfile);
     setActiveProfile(null);
     setCompletedIds([]);
@@ -156,7 +190,7 @@ export function NeuroplasticityProgramPage({ entry }: { entry: 'health' | 'learn
 
           <button className="primary-button" type="submit">{plan ? 'Rebuild plan' : 'Build my plan'}</button>
           {plan && <button className="secondary-button" type="button" onClick={reset}>Reset program</button>}
-          <small className="local-note">Saved only in this browser. No clinical record or cloud connection is active.</small>
+          <small className={syncStatus === 'error' ? 'local-note sync-error' : 'local-note'} aria-live="polite">{syncMessage} No clinical record is created.</small>
         </form>
 
         <div className="page-stack">
@@ -202,7 +236,7 @@ export function NeuroplasticityProgramPage({ entry }: { entry: 'health' | 'learn
               <section className="feature-card review-card">
                 <p className="eyebrow">Spaced review</p>
                 <h2>Review schedule</h2>
-                <label className="field"><span>Program start</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
+                <label className="field"><span>Program start</span><input type="date" value={startDate} onChange={(event) => { const next = event.target.value; setStartDate(next); if (activeProfile) void persist(activeProfile, completedIds, next); }} /></label>
                 <div className="review-grid">
                   {plan.reviewDays.map((day) => <div key={day}><strong>Day {day}</strong><span>{nextReviewDate(startDate, day)}</span></div>)}
                 </div>
