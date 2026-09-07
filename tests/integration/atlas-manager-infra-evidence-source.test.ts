@@ -18,6 +18,6 @@ describe('atlas-infra-evidence provider-neutral contract', () => {
   it('allows only approved main-branch infrastructure workflows through OIDC', () => {
     expect(source).toContain(".github/workflows/production-deploy.yml@refs/heads/main");
     expect(source).toContain(".github/workflows/cloudflare-deploy.yml@refs/heads/main");
-    expect(source).toContain('ALLOWED_WORKFLOWS.has(payload.workflow_ref)');
+    expect(source).toContain("ALLOWED_WORKFLOWS.has(String(payload.workflow_ref || ''))");
   });
 });
