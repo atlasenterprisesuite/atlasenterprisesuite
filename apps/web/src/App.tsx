@@ -4,7 +4,13 @@ import { AtlasShell } from './components/AtlasShell';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
+import { ConnectHome } from './modules/connect/ConnectHome';
+import { DestinationsPage } from './modules/connect/DestinationsPage';
+import { PublicationsPage } from './modules/connect/PublicationsPage';
+import { WhatsAppChannelPage } from './modules/connect/WhatsAppChannelPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { PublishPage } from './modules/studio/PublishPage';
+import { StudioHome } from './modules/studio/StudioHome';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -29,10 +35,12 @@ function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: s
 function EnterpriseHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance and Health now share one shell, route graph, permission boundary and verification pipeline." />
+      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Health, Creator Studio and Connect share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/studio"><span>Communication</span><strong>Creator Studio</strong><p>Prepare reviewed public content for governed ATLAS Connect destinations.</p></Link>
+        <Link className="module-card enabled" to="/connect"><span>Communication</span><strong>ATLAS Connect</strong><p>Manage destination capability, publication receipts and delivery truth.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
     </section>
@@ -219,6 +227,12 @@ export function App() {
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
+        <Route path="/studio" element={<StudioHome />} />
+        <Route path="/studio/publish" element={<PublishPage />} />
+        <Route path="/connect" element={<ConnectHome />} />
+        <Route path="/connect/destinations" element={<DestinationsPage />} />
+        <Route path="/connect/destinations/whatsapp-channel" element={<WhatsAppChannelPage />} />
+        <Route path="/connect/publications" element={<PublicationsPage />} />
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
