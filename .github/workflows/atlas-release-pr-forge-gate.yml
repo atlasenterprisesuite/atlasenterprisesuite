@@ -1,0 +1,42 @@
+name: ATLAS Release PR Forge Gate
+
+on:
+  pull_request:
+    branches:
+      - release/atlas-a-z
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-release-pr-forge-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  forge:
+    name: ATLAS Forge Full Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout exact PR merge candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run canonical ATLAS Forge pipeline
+        run: node --experimental-strip-types forge/runner.ts --local-ci
+
+      - name: Publish Forge SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-forge-evidence-${{ github.sha }}
+          path: .atlas-forge/local-runs/*.json
+          if-no-files-found: warn
+          retention-days: 14
