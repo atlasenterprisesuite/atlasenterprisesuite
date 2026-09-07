@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PersonalVoiceWizard } from '../../apps/web/src/modules/voice/PersonalVoiceWizard';
 import type { MicrophoneAdapter } from '../../apps/web/src/modules/voice/browserMicrophone';
@@ -48,7 +48,7 @@ describe('ATLAS Personal Voice wizard', () => {
   it('accepts a high-quality in-session challenge sample', async () => {
     render(<MemoryRouter><PersonalVoiceWizard initialStep="record" microphone={new GoodMicrophone()} /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: 'Record' }));
-    expect(await screen.findByRole('button', { name: 'Stop' })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     expect(await screen.findByText('Accepted')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Accept' })).toBeEnabled();
