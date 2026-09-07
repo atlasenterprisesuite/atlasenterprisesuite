@@ -40,7 +40,8 @@ const SAFE_TESTS = new Set([
 ]);
 
 function exec(command, args = [], options = {}) {
-  return execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options }).trim();
+  const output = execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options });
+  return typeof output === 'string' ? output.trim() : '';
 }
 
 async function responseJson(response) {
@@ -220,6 +221,9 @@ async function main() {
 
     const changed = exec('git', ['status', '--porcelain']);
     if (!changed) throw new Error('repair_patch_made_no_changes');
+
+    console.log('ATLAS repair job claimed; installing locked dependencies for validation.');
+    exec('npm', ['ci'], { stdio: 'inherit' });
     for (const command of tests) runValidation(command);
 
     exec('git', ['config', 'user.name', 'atlas-manager[bot]']);
