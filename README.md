@@ -12,8 +12,10 @@ ATLAS Enterprise Suite is the shared enterprise platform for people, finance, op
 - Production URL: `https://www.atlasenterprisesuite.com`
 - Governance: `docs/governance/ATLAS_CANONICAL_REPOSITORY.md`
 - Infrastructure control plane: `docs/architecture/ATLAS_MANAGER_SPEC.md`
+- Intelligence runtime migration: `docs/architecture/GPT_6_ASTRA_MIGRATION.md`
 - Primary backend/control plane: Supabase `atlas-core` (`ggmanzcgtlrvqfoccgsh`)
 - Primary public edge target: Cloudflare
+- Primary OpenAI intelligence model: `gpt-6-astra` through the Responses API
 
 The previously referenced `winderaranguren-gif/Atlas-enterprise-suite` repository is legacy/historical and is **not a blocker** for current ATLAS development. If access returns, unique work is reconciled through comparison and auditable integration; canonical history is not force-replaced.
 
