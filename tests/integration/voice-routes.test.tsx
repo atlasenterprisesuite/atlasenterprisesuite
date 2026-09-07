@@ -1,8 +1,10 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../apps/web/src/App';
+
+beforeEach(() => window.localStorage.clear());
 
 describe('ATLAS Voice governed routes', () => {
   it('renders ATLAS Voice from the canonical route graph', () => {
