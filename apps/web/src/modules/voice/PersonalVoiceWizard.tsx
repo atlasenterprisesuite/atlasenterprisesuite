@@ -49,6 +49,12 @@ function statusLabel(status: SampleState['status']) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function initialSamples(): Record<string, SampleState> {
+  return Object.fromEntries(
+    phrases.map((phrase) => [phrase.id, { status: 'missing' } satisfies SampleState])
+  );
+}
+
 export function PersonalVoiceWizard({
   initialStep,
   microphone,
@@ -70,7 +76,7 @@ export function PersonalVoiceWizard({
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
-  const [samples, setSamples] = useState<Record<string, SampleState>>(() => Object.fromEntries(phrases.map((phrase) => [phrase.id, { status: 'missing' }])));
+  const [samples, setSamples] = useState<Record<string, SampleState>>(initialSamples);
   const [challengeVerified, setChallengeVerified] = useState(false);
   const [lastStats, setLastStats] = useState<MeasuredAudioStats | null>(null);
   const [providerAvailability, setProviderAvailability] = useState<VoiceProviderAvailability | 'checking'>('checking');
@@ -156,17 +162,18 @@ export function PersonalVoiceWizard({
     go('review');
   }
 
-  async function evaluateProvider() {
+  async function evaluateProvider(): Promise<VoiceProviderAvailability> {
     const availability = await voiceProvider.availability();
     setProviderAvailability(availability);
+    return availability;
   }
 
   async function requestGeneration() {
-    await evaluateProvider();
+    const availability = await evaluateProvider();
     const eligible = canGenerateVoice({ consentAccepted, challengeVerified, sampleReviewComplete: reviewComplete });
     if (!eligible
       || !hasPermission(permissions, 'voice.personal.generate')
-      || providerAvailability !== 'available'
+      || availability !== 'available'
       || !voiceProvider.capabilities.serverSynthesis) return;
     try {
       const result = await voiceProvider.createVoice({ profileId, sampleIds: phrases.map((phrase) => phrase.id) });
