@@ -7,9 +7,9 @@ Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`
 
 ## Current phase
 
-Multi-wave convergence on the A-Z release branch. Core + Accounting remains the surviving architecture baseline. Health Research, Automations, Site Review, Spatial, Telecom/MiFi, and a substantial governed People Operations slice are now present in the release tree. Revenue Operations and several platform/mobility domains remain future waves.
+Multi-wave convergence on the A-Z release branch. Core + Accounting remains the surviving architecture baseline. Health Research, Automations, Site Review, Spatial, Telecom/MiFi, a substantial governed People Operations slice, and the ATLAS Forge sovereign-CI bootstrap are now present in the release tree. Revenue Operations and several platform/mobility domains remain future waves.
 
-`main` has been reconciled back into `release/atlas-a-z` through a real two-parent merge commit. The release is no longer behind `main`; newer Humanity Atlas, ATLAS Manager, and Personal Voice architecture/plan documents are preserved alongside A-Z implementation work.
+`main` has been reconciled back into `release/atlas-a-z` through a real two-parent merge commit. The release is no longer behind `main`; newer Humanity Atlas, ATLAS Manager, Personal Voice architecture/plan documents, and Forge continuity work are preserved alongside A-Z implementation work.
 
 ## Completed / integrated into the release tree
 
@@ -34,6 +34,8 @@ Multi-wave convergence on the A-Z release branch. Core + Accounting remains the 
 - Integrated Recruiting/Assessments reads, stage transitions, rejection/withdrawal reasons, governed assessment scoring/evidence, audit writes, responsive UI, and no automated hiring decision.
 - Integrated Employee Self-Service as a read-only `payroll.self` surface that resolves the authenticated employee and re-filters own time, payroll, compensation, and deduction records in addition to RLS.
 - Added dedicated ATLAS People CI covering People domain/write/repository/UI/route tests, truth-state scans, typecheck and build once a runner is actually allocated.
+- Integrated ATLAS Forge bootstrap at `869cdd6b15b70b04a22f3baa5e45fa245a6360e4`: versioned CI pipeline, exact-SHA local Git checkout, provider-neutral mirror states, ATLAS-owned runner execution, separate control/runner authentication, serialized single-process job claiming, audit evidence, SHA-256 Artifact Vault, local CI entrypoint, systemd service contracts, and operations documentation.
+- Added `npm run forge:ci:local` and `npm run test:forge` so Forge bootstrap validation does not depend on GitHub Actions runner allocation.
 - Preserved production deployment workflow and `/healthz` assets without authorizing a partial A-Z deploy.
 
 ## People production boundary
@@ -48,6 +50,18 @@ Current boundary:
 
 Do not collapse `implemented`, `migrated`, `tested`, `deployed`, and `verified` into one status.
 
+## Forge sovereignty boundary
+
+ATLAS Forge Milestone 1 is **integrated in source but not yet host-verified or resilient**.
+
+Current boundary:
+- The Forge bootstrap can express and test local source continuity, exact-SHA job execution, artifact integrity, audit evidence, and degraded GitHub mirror behavior.
+- The release tree contains hardened systemd contracts for an ATLAS-controlled Linux host.
+- Forge is not yet claimed `host-verified` because the API and runner services have not been activated and observed on an ATLAS-controlled host from this execution context.
+- `/healthz` readiness, one real exact-SHA host runner execution, service restart evidence, and a second independent repository copy or tested restore remain acceptance requirements.
+- GitHub remains an optional mirror in the Forge design; GitHub availability must not be used as proof that Forge itself is healthy.
+- Forge bootstrap integration does not authorize merge to `main` or production deployment.
+
 ## Current P0 infrastructure gate: GitHub Actions runner allocation
 
 Issue: #22
@@ -61,9 +75,11 @@ Fresh A-Z workflow runs are currently failing before any workflow step executes.
 - completion within seconds
 - no application/test step beginning
 
-The same failure reproduced on the dedicated ATLAS People CI after branch reconciliation. This is isolated as a GitHub Actions runner-allocation/account/infrastructure gate rather than an application test failure because `Set up job` never begins.
+The failure reproduced again on Forge-integrated head `869cdd6b15b70b04a22f3baa5e45fa245a6360e4`. ATLAS Consensus CI run `34070379833` created all four jobs, including the final 3-of-3 gate, with `runner_id: 0` and `steps: []`.
 
-Do not change ATLAS application code solely to clear these red workflow statuses. Continue independent integration/review work. Once a runner is assigned and steps execute, treat any actual typecheck/test/build failure as a separate software defect and correct it normally.
+This is isolated as a GitHub Actions runner-allocation/account/infrastructure gate rather than an application test failure because `Set up job` never begins.
+
+Do not change ATLAS application code solely to clear these red workflow statuses. Continue independent integration/review work and advance the ATLAS-owned Forge path. Once a GitHub runner is assigned and steps execute, treat any actual typecheck/test/build failure as a separate software defect and correct it normally.
 
 ## Verified historical control evidence
 
@@ -80,6 +96,7 @@ Present now:
 - Spatial entry
 - Telecom/MiFi foundation and governed route
 - People Operations: Time, Payroll, Compensation/Benefits, Recruiting/Assessments, Self-Service
+- ATLAS Forge sovereign-CI bootstrap, runner/API contracts, local Git continuity, artifact integrity and operations contracts
 - governed Supabase Accounting and People migrations
 - shared React/Vite application shell
 - production deployment workflow and health endpoint assets
@@ -94,6 +111,7 @@ Not yet first-class implementation domains:
 - remaining Mobility/Physical Ops domains such as Ride, GPS 4D, Parks, AutoWash, Insurance
 - specialized financial rails such as ATLAS Pay with authorized providers
 - real external Telecom carrier/device adapter
+- Forge internal reviews/consensus UX, multi-runner scheduling, encrypted secret references, release engine UI, second-source replication and tested disaster recovery
 
 ## Canonical and migration policy
 
@@ -106,9 +124,11 @@ Not yet first-class implementation domains:
 
 ## Next executable work
 
-1. Continue independent A-Z integration/review on `release/atlas-a-z` while Actions is pre-runner blocked.
-2. Keep People provider-dependent capabilities in truthful readiness states and do not apply production migrations until executable gates can run.
-3. Continue approved domain plans only where they reuse current Core/RBAC/audit architecture and do not duplicate existing work.
-4. Watch GitHub Actions; as soon as a runner is assigned and steps begin, inspect the real failures/successes, correct reversible defects, and re-run verification.
-5. Require actual green typecheck, unit/integration tests, build and final release matrix before accepting the affected wave as verified.
-6. Do not merge A-Z to `main` or deploy the release until the full final gate is green and production verification succeeds.
+1. Activate the Forge API and runner on an ATLAS-controlled Linux host when host access is available, then capture `/healthz`, exact-SHA run, Artifact Vault and restart evidence.
+2. Establish a second independent source copy or verified restore before calling Forge resilient.
+3. Continue independent A-Z integration/review on `release/atlas-a-z` while GitHub Actions remains pre-runner blocked.
+4. Keep People provider-dependent capabilities in truthful readiness states and do not apply production migrations until executable gates can run.
+5. Continue approved domain plans only where they reuse current Core/RBAC/audit architecture and do not duplicate existing work.
+6. Watch GitHub Actions; as soon as a runner is assigned and steps begin, inspect the real failures/successes, correct reversible defects, and re-run verification.
+7. Require actual green typecheck, unit/integration tests, build and final release matrix before accepting the affected wave as verified.
+8. Do not merge A-Z to `main` or deploy the release until the full final gate is green and production verification succeeds.
