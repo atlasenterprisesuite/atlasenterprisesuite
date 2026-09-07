@@ -11,20 +11,35 @@ export type AccountingPermission =
   | 'accounting.admin'
   | 'audit.read';
 
+export type VoicePermission =
+  | 'voice.personal.read'
+  | 'voice.personal.create'
+  | 'voice.personal.record'
+  | 'voice.personal.generate'
+  | 'voice.personal.use'
+  | 'voice.personal.delete'
+  | 'voice.apple.request'
+  | 'voice.apple.use'
+  | 'voice.integration.manage';
+
+export type AtlasPermission = AccountingPermission | VoicePermission;
+
 export function sameScope(a: TenantScope, b: TenantScope) {
   return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
 }
 
 export function hasPermission(
-  granted: readonly AccountingPermission[],
-  required: AccountingPermission
+  granted: readonly AtlasPermission[],
+  required: AtlasPermission
 ) {
-  return granted.includes(required) || granted.includes('accounting.admin');
+  if (granted.includes(required)) return true;
+  if (granted.includes('accounting.admin') && (required.startsWith('accounting.') || required === 'audit.read')) return true;
+  return false;
 }
 
 export const demoAtlasContext = {
   scope: { tenantId: 'tenant-demo', organizationId: 'org-demo' } satisfies TenantScope,
   actorId: 'demo-user',
-  permissions: ['accounting.read'] as AccountingPermission[],
+  permissions: ['accounting.read'] as AtlasPermission[],
   environment: 'demo' as const
 };

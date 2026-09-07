@@ -5,7 +5,8 @@ const navItems = [
   { to: '/', label: 'Home' },
   { to: '/finance', label: 'Finance' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
-  { to: '/health', label: 'Health' }
+  { to: '/health', label: 'Health' },
+  { to: '/voice', label: 'Voice' }
 ];
 
 export function AtlasShell({ children }: { children: ReactNode }) {

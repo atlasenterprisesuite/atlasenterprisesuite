@@ -5,6 +5,7 @@ import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { VoiceRoutes } from './modules/voice/VoiceRoutes';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -29,10 +30,11 @@ function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: s
 function EnterpriseHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance and Health now share one shell, route graph, permission boundary and verification pipeline." />
+      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Health and Voice share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/voice"><span>Communication</span><strong>ATLAS Voice</strong><p>Personal Voice capture, consent, quality and provider capability boundaries.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
     </section>
@@ -234,6 +236,7 @@ export function App() {
           <Route path="updates" element={<UpdatesPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
+        <Route path="/voice/*" element={<VoiceRoutes />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AtlasShell>
