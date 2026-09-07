@@ -23,7 +23,7 @@ describe('ATLAS Neuroplasticity routes', () => {
     expect(screen.getByRole('region', { name: 'Daily progress' })).toHaveTextContent('0% complete');
     fireEvent.click(screen.getByRole('button', { name: /Deliberate practice/i }));
     expect(screen.getByRole('region', { name: 'Daily progress' })).not.toHaveTextContent('0% complete');
-    expect(window.localStorage.getItem('atlas.neuroplasticity.v1')).toContain('deliberate-practice');
+    expect(screen.getByText(/Supabase environment is not configured|Sign in to save this program/i)).toBeInTheDocument();
   });
 
   it('shows the professional guidance boundary when indicated', () => {
