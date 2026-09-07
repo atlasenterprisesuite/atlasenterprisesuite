@@ -1,0 +1,13 @@
+{
+  "id": "atlas-ci",
+  "version": 1,
+  "steps": [
+    { "id": "install", "command": "npm", "args": ["ci", "--no-audit", "--no-fund"], "timeoutMs": 600000 },
+    { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"], "timeoutMs": 600000 },
+    { "id": "unit", "command": "npm", "args": ["run", "test:unit"], "timeoutMs": 900000 },
+    { "id": "integration", "command": "npm", "args": ["run", "test:integration"], "timeoutMs": 900000 },
+    { "id": "dependency-audit", "command": "npm", "args": ["audit", "--audit-level=high"], "timeoutMs": 600000 },
+    { "id": "build", "command": "npm", "args": ["run", "build"], "timeoutMs": 900000 }
+  ],
+  "artifactPaths": ["apps/web/dist"]
+}

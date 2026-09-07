@@ -9,7 +9,11 @@
     "test": "vitest run --config apps/web/vite.config.ts",
     "test:unit": "vitest run --config apps/web/vite.config.ts tests/unit",
     "test:integration": "vitest run --config apps/web/vite.config.ts tests/integration",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "forge:ci:local": "node --experimental-strip-types forge/runner.ts --local-ci",
+    "forge:api:start": "node --experimental-strip-types forge/api.ts",
+    "forge:runner:start": "node --experimental-strip-types forge/runner.ts",
+    "test:forge": "node --experimental-strip-types --test tests/forge/forge-bootstrap.test.ts"
   },
   "devDependencies": {
     "react": "^19.0.0",

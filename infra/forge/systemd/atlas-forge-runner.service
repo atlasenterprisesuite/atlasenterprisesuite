@@ -1,0 +1,24 @@
+[Unit]
+Description=ATLAS Forge Runner
+After=network.target atlas-forge-api.service
+Requires=atlas-forge-api.service
+
+[Service]
+Type=simple
+User=atlas-forge
+Group=atlas-forge
+WorkingDirectory=/opt/atlas/atlasenterprisesuite
+EnvironmentFile=/etc/atlas-forge/forge.env
+Environment=HOME=/srv/atlas-forge/home
+Environment=NPM_CONFIG_CACHE=/srv/atlas-forge/npm-cache
+ExecStart=/usr/bin/npm run forge:runner:start
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/atlas-forge
+
+[Install]
+WantedBy=multi-user.target

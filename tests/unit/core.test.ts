@@ -22,9 +22,11 @@ describe('ATLAS Core contracts', () => {
     )).toBe(false);
   });
 
-  it('requires explicit permission unless the matching accounting admin permission applies', () => {
+  it('requires explicit permission unless the matching domain admin permission applies', () => {
     expect(hasPermission(['accounting.read'], 'accounting.post')).toBe(false);
     expect(hasPermission(['accounting.admin'], 'accounting.post')).toBe(true);
+    expect(hasPermission(['forge.admin'], 'forge.pipeline.execute')).toBe(true);
+    expect(hasPermission(['accounting.admin'], 'forge.pipeline.execute')).toBe(false);
     expect(hasPermission(['ride.read'], 'ride.read')).toBe(true);
     expect(hasPermission(['accounting.admin'], 'ride.read')).toBe(false);
     expect(hasPermission(['telecom.mifi.read'], 'telecom.mifi.forwarding.write')).toBe(false);
