@@ -5,7 +5,7 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const CANONICAL_REPO = Deno.env.get('ATLAS_CANONICAL_REPO') || 'atlasenterprisesuite/atlasenterprisesuite';
 const PRODUCTION_URL = Deno.env.get('ATLAS_PRODUCTION_URL') || 'https://www.atlasenterprisesuite.com';
-const VERSION = 4;
+const VERSION = 5;
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -51,7 +51,7 @@ async function authorize(req: Request) {
 async function probe(url: string) {
   const started = Date.now();
   try {
-    const response = await timeout(url, { redirect: 'manual', headers: { 'user-agent': 'ATLAS-Manager/4.0' } });
+    const response = await timeout(url, { redirect: 'manual', headers: { 'user-agent': 'ATLAS-Manager/5.0' } });
     return { reachable: response.status >= 200 && response.status < 500, status_code: response.status, duration_ms: Date.now() - started };
   } catch (error) {
     return { reachable: false, status_code: null, duration_ms: Date.now() - started, error: error instanceof Error ? error.name : 'probe_failed' };
@@ -62,7 +62,7 @@ async function repairBridgeState() {
   const started = Date.now();
   try {
     const response = await timeout(`${SUPABASE_URL}/functions/v1/atlas-repair-bridge?api=readiness`, {
-      headers: ANON_KEY ? { apikey: ANON_KEY, 'user-agent': 'ATLAS-Manager/4.0' } : { 'user-agent': 'ATLAS-Manager/4.0' },
+      headers: ANON_KEY ? { apikey: ANON_KEY, 'user-agent': 'ATLAS-Manager/5.0' } : { 'user-agent': 'ATLAS-Manager/5.0' },
     });
     const data = await response.json().catch(() => ({}));
     const openaiConfigured = data?.openaiConfigured === true;
@@ -174,11 +174,12 @@ Deno.serve(async (req: Request) => {
   if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { autoRefreshToken: false, persistSession: false } });
-  const verificationColumns = 'verification_type,target_service,target_version,environment,status,provider,provider_state,storage_state,error_code,created_at,checks,metadata';
-  const [releaseQ, runtimeQ, infraQ, productionRoot, productionStatus, github, vercel, cloudflare] = await Promise.all([
+  const verificationColumns = 'verification_type,target_service,target_version,environment,status,provider,provider_state,storage_state,error_code,error_detail,created_at,checks,metadata';
+  const [releaseQ, runtimeQ, infraQ, controlQ, productionRoot, productionStatus, github, vercel, cloudflare] = await Promise.all([
     admin.from('atlas_release_registry').select('release_key,version,release_status,released_at').order('released_at', { ascending: false }).limit(1),
     admin.from('atlas_runtime_verification_runs').select(verificationColumns).order('created_at', { ascending: false }).limit(1),
     admin.from('atlas_runtime_verification_runs').select(verificationColumns).eq('verification_type', 'infrastructure-deployment').order('created_at', { ascending: false }).limit(1),
+    admin.from('atlas_runtime_verification_runs').select(verificationColumns).eq('verification_type', 'infrastructure-control').order('created_at', { ascending: false }).limit(1),
     probe(`${PRODUCTION_URL}/`),
     probe(`${PRODUCTION_URL}/status`),
     githubState(),
@@ -189,6 +190,7 @@ Deno.serve(async (req: Request) => {
   const latestRelease = releaseQ.data?.[0] || null;
   const latestRuntimeVerification = runtimeQ.data?.[0] || null;
   const latestInfrastructureVerification = infraQ.data?.[0] || null;
+  const latestControlVerification = controlQ.data?.[0] || null;
   const blockers: Array<{ stage: string; code: string; detail: string }> = [];
 
   if (!productionRoot.reachable) blockers.push({ stage: 'production', code: 'public_site_unreachable', detail: 'The production root did not answer successfully.' });
@@ -198,10 +200,11 @@ Deno.serve(async (req: Request) => {
   if (vercel.state !== 'ready') blockers.push({ stage: 'vercel', code: vercel.state, detail: 'Vercel is not yet a verified deployment stage.' });
   if (cloudflare.state !== 'ready') blockers.push({ stage: 'cloudflare', code: cloudflare.state, detail: 'Cloudflare public edge may be reachable, but control-plane authorization is not fully verified.' });
   if (latestRuntimeVerification?.status === 'blocked' || latestRuntimeVerification?.status === 'failed') blockers.push({ stage: 'runtime', code: latestRuntimeVerification.error_code || latestRuntimeVerification.status, detail: `Latest ${latestRuntimeVerification.target_service || 'runtime'} verification is ${latestRuntimeVerification.status}.` });
-  if (latestInfrastructureVerification?.status === 'failed' || latestInfrastructureVerification?.status === 'blocked') blockers.push({ stage: 'deployment', code: latestInfrastructureVerification.error_code || latestInfrastructureVerification.status, detail: 'Latest infrastructure deployment verification is not passing.' });
+  if (latestInfrastructureVerification?.status === 'failed' || latestInfrastructureVerification?.status === 'blocked') blockers.push({ stage: 'deployment', code: latestInfrastructureVerification.error_code || latestInfrastructureVerification.status, detail: latestInfrastructureVerification.error_detail || 'Latest infrastructure deployment verification is not passing.' });
+  if (latestControlVerification?.status === 'failed' || latestControlVerification?.status === 'blocked') blockers.push({ stage: 'control', code: latestControlVerification.error_code || latestControlVerification.status, detail: latestControlVerification.error_detail || 'Latest infrastructure control verification is not passing.' });
   blockers.push({ stage: 'routing', code: 'public_route_bridge_required', detail: 'Internal ATLAS Manager status is available here; /atlas/infra/status is staged in the canonical repository and still requires merge/deploy verification.' });
 
-  const readiness = blockers.length === 0 ? 'ready' : blockers.some((blocker) => ['production', 'runtime', 'deployment'].includes(blocker.stage)) ? 'blocked' : 'partial';
+  const readiness = blockers.length === 0 ? 'ready' : blockers.some((blocker) => ['production', 'runtime', 'deployment', 'control'].includes(blocker.stage)) ? 'blocked' : 'partial';
 
   return json({
     ok: true,
@@ -218,12 +221,13 @@ Deno.serve(async (req: Request) => {
       vercel,
       cloudflare,
       supabase: {
-        state: releaseQ.error || runtimeQ.error || infraQ.error ? 'degraded' : 'ready',
+        state: releaseQ.error || runtimeQ.error || infraQ.error || controlQ.error ? 'degraded' : 'ready',
         project: 'atlas-core',
         database: 'reachable',
         latest_release: latestRelease,
         latest_runtime_verification: latestRuntimeVerification,
         latest_infrastructure_verification: latestInfrastructureVerification,
+        latest_control_verification: latestControlVerification,
       },
       production: { root: productionRoot, status_page: productionStatus },
     },
@@ -232,6 +236,7 @@ Deno.serve(async (req: Request) => {
       release_registry: !releaseQ.error,
       runtime_verification_registry: !runtimeQ.error,
       infrastructure_evidence: latestInfrastructureVerification,
+      control_evidence: latestControlVerification,
       generated_at: new Date().toISOString(),
     },
   });
