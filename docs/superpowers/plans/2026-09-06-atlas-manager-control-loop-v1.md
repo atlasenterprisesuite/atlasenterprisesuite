@@ -19,6 +19,16 @@
 - Do not call a provider `live`, `connected`, `ready`, or `verified` without evidence.
 - Continue independent work when a provider or authorization boundary is blocked.
 
+## Current execution state — 2026-09-06
+
+- `atlas-infra-status` is deployed in Supabase with platform JWT verification enabled. Supabase deployment metadata reports ACTIVE version 7; source contract version is 4.
+- `atlas-infra-evidence` is deployed and accepts only the canonical production workflow through GitHub OIDC.
+- Vercel team `winderaranguren-gifs-projects` is reachable but currently contains zero projects. Self-provisioning is staged in the canonical production workflow.
+- GitHub-hosted Actions is the current P0 release gate: jobs terminate before runner allocation (`steps: []`, `runner_id: 0`) and a targeted rerun reproduced the condition. Canonical issue #38 records the blocker.
+- The canonical repair executor and source-controlled repair bridge are staged on `atlas/manager-infra-status-v1`; they never write directly to `main`.
+- The active repair queue has no `pending`, `claimed`, or `planning` jobs.
+- The currently deployed repair bridge is reachable but retains a historical validation-command contract. Do not promote the staged repair executor until required repo verification can actually run.
+
 ---
 
 ### Task 1: Infrastructure status route and normalized truth
@@ -27,35 +37,33 @@
 - Modify: `vercel.json`
 - Create: `adapters/supabase/atlas-infra-status/index.ts`
 - Test: `tests/integration/atlas-manager-infra-route.test.ts`
-- Test: `tests/unit/atlas-infra-status-source.test.ts`
+- Test: `tests/unit/atlas-infra-status.test.ts`
 
 **Interfaces:**
 - Consumes: authenticated ATLAS JWT, `atlas_release_registry`, `atlas_runtime_verification_runs`, provider environment variables.
-- Produces: `GET /atlas/infra/status` proxy and normalized `production_readiness`, provider states, blockers, latest runtime verification, and latest infrastructure-deployment verification.
+- Produces: `GET /atlas/infra/status` proxy and normalized `production_readiness`, provider states, blockers, latest runtime verification, latest infrastructure-deployment verification, and repair-planner readiness.
 
-- [ ] **Step 1: Add failing route/status source tests**
+- [x] **Step 1: Add route/status source tests**
 
-Assert `/atlas/infra/status` rewrites to the Supabase status function, disables rewrite caching, uses `atlasenterprisesuite/atlasenterprisesuite`, queries `verification_type = infrastructure-deployment`, and preserves `/healthz`.
+Assert `/atlas/infra/status` rewrites to the Supabase status function, disables rewrite caching, uses `atlasenterprisesuite/atlasenterprisesuite`, queries `verification_type = infrastructure-deployment`, preserves `/healthz`, and does not treat repair-bridge reachability as planner readiness.
 
-- [ ] **Step 2: Run the focused tests and confirm RED when the binding or source contract is absent**
+- [x] **Step 2: Confirm RED for the planner-readiness delta**
 
-Run: `npx vitest run tests/integration/atlas-manager-infra-route.test.ts tests/unit/atlas-infra-status-source.test.ts`
+The prior v3 source only probed repair-bridge reachability; `repair_planner_not_configured` and `openaiConfigured` planner truth were absent.
 
-Expected before implementation: at least one assertion fails because the route/source contract is missing.
+- [x] **Step 3: Implement the minimum route and status aggregator**
 
-- [ ] **Step 3: Implement the minimum route and status aggregator**
+The Edge Function remains admin/JWT gated, no-store, and read-only. It queries the latest general runtime verification independently from the latest `infrastructure-deployment` verification and parses repair-bridge readiness.
 
-Keep the Edge Function admin/JWT gated, no-store, and read-only. Query the latest general runtime verification independently from the latest `infrastructure-deployment` verification.
+- [ ] **Step 4: Run the focused Vitest suite and confirm GREEN**
 
-- [ ] **Step 4: Run the focused tests and confirm GREEN**
+Run: `npx vitest run tests/integration/atlas-manager-infra-route.test.ts tests/unit/atlas-infra-status.test.ts`
 
-Run: `npx vitest run tests/integration/atlas-manager-infra-route.test.ts tests/unit/atlas-infra-status-source.test.ts`
+Blocked by GitHub-hosted runner allocation. Full Vitest remains required before merge.
 
-Expected: PASS.
+- [x] **Step 5: Deploy the Edge Function and verify provider metadata**
 
-- [ ] **Step 5: Deploy the Edge Function and verify provider state**
-
-Deploy `adapters/supabase/atlas-infra-status/index.ts` as `atlas-infra-status` with JWT verification enabled. Verify the deployed function is ACTIVE and versioned.
+Supabase reports `atlas-infra-status` ACTIVE, platform JWT verification enabled, deployment version 7.
 
 ### Task 2: OIDC deployment evidence ingress
 
@@ -68,29 +76,15 @@ Deploy `adapters/supabase/atlas-infra-status/index.ts` as `atlas-infra-status` w
 - Consumes: GitHub Actions OIDC token with audience `atlas-infrastructure-evidence`; successful deployment metadata.
 - Produces: one `atlas_runtime_verification_runs` row with `verification_type = infrastructure-deployment` and canonical commit traceability.
 
-- [ ] **Step 1: Add failing security contract tests**
-
-Assert the ingress accepts only `atlasenterprisesuite/atlasenterprisesuite`, `refs/heads/main`, and `.github/workflows/production-deploy.yml`; assert it does not read a `GITHUB_TOKEN`; assert it reuses `atlas_runtime_verification_runs`.
-
-- [ ] **Step 2: Run the unit test and confirm RED before implementation**
-
-Run: `npx vitest run tests/unit/atlas-infra-evidence.test.ts`
-
-Expected before implementation: FAIL because the ingress source is absent.
-
-- [ ] **Step 3: Implement OIDC verification and evidence persistence**
-
-Verify GitHub JWKS signature, issuer, audience, expiry/not-before, repository, owner, ref, and workflow ref. Insert only non-secret deployment evidence and set both `started_at` and `completed_at` for a terminal `passed` row.
-
-- [ ] **Step 4: Add production workflow OIDC registration**
-
-Grant only `contents: read` and `id-token: write`. After route verification succeeds, request an OIDC token and POST commit/deployment/check metadata to `atlas-infra-evidence?api=record`.
-
-- [ ] **Step 5: Run unit/integration tests and deploy the ingress**
+- [x] **Step 1: Add security contract tests**
+- [x] **Step 2: Implement OIDC verification and evidence persistence**
+- [x] **Step 3: Add production workflow OIDC registration**
+- [x] **Step 4: Deploy the ingress**
+- [ ] **Step 5: Run full unit/integration verification**
 
 Run: `npm run test:unit && npm run test:integration`.
 
-Deploy `atlas-infra-evidence` with platform JWT verification disabled only because the function performs explicit GitHub OIDC authentication internally.
+Blocked by GitHub-hosted runner allocation; must be green before merge.
 
 ### Task 3: Vercel self-provisioning and production gates
 
@@ -102,29 +96,16 @@ Deploy `atlas-infra-evidence` with platform JWT verification disabled only becau
 - Consumes: repository secret `VERCEL_TOKEN`, team slug `winderaranguren-gifs-projects`, project name `atlasenterprisesuite`.
 - Produces: existing-or-created Vercel project, explicit production deployment URL, route/health/auth-boundary verification.
 
-- [ ] **Step 1: Add failing workflow contract assertions**
+- [x] **Step 1: Add workflow contract assertions**
+- [x] **Step 2: Implement the smallest provisioning path**
+- [x] **Step 3: Define deployed-boundary verification**
+- [ ] **Step 4: Exercise self-provisioning against Vercel**
 
-Assert the workflow inspects the project, creates it through `POST https://api.vercel.com/v11/projects?slug=$VERCEL_SCOPE` if absent, and deploys with explicit `--project`.
+Current provider evidence: team exists, project count = 0. Execution is blocked because the GitHub-hosted deploy runner cannot currently allocate.
 
-- [ ] **Step 2: Confirm RED against the pre-self-provisioning workflow**
+- [ ] **Step 5: Confirm production deployment and evidence**
 
-Run: `npx vitest run tests/integration/atlas-manager-infra-route.test.ts`.
-
-Expected before implementation: FAIL on the provisioning assertions.
-
-- [ ] **Step 3: Implement the smallest provisioning path**
-
-If `vercel project inspect` succeeds, continue. Otherwise create a Vite project with the repository build/output contract, immediately re-inspect it, then deploy.
-
-- [ ] **Step 4: Verify deployed boundaries**
-
-Require success for `/`, `/finance/accounting/accounts-payable`, `/healthz`; require anonymous `/atlas/infra/status` to return `401` so the infrastructure endpoint remains private.
-
-- [ ] **Step 5: Run the integration suite**
-
-Run: `npm run test:integration`.
-
-Expected: PASS before merge/deployment is attempted.
+Requires a successful GitHub-hosted production workflow and Vercel deployment.
 
 ### Task 4: Canonical GitHub repair execution alignment
 
@@ -132,72 +113,41 @@ Expected: PASS before merge/deployment is attempted.
 - Create: `.github/workflows/atlas-ai-repair-executor.yml`
 - Create: `scripts/atlas-ai-repair-runner.mjs`
 - Create: `tests/unit/atlas-ai-repair-runner.test.ts`
+- Create: `tests/unit/atlas-repair-bridge-source.test.ts`
 - Create: `adapters/supabase/atlas-repair-bridge/index.ts`
 
 **Interfaces:**
 - Consumes: queued `atlas_ai_repair_jobs`, GitHub OIDC audience `atlas-enterprise-suite-repair`, canonical repository checkout, existing test commands.
 - Produces: bounded repair branch/PR or truthful blocked/failed result with evidence; never writes directly to `main`.
 
-- [ ] **Step 1: Add failing repair-executor contract tests**
+- [x] **Step 1: Add repair-executor contract tests before implementation**
+- [x] **Step 2: Confirm RED before runner/workflow implementation**
+- [x] **Step 3: Add the canonical OIDC repair workflow and bounded runner**
+- [x] **Step 4: Correct runner execution bug found during independent verification**
+- [x] **Step 5: Source-control an updated canonical repair bridge**
+- [ ] **Step 6: Run full repo tests and deploy the updated repair bridge**
 
-Assert the runner uses the canonical repository, refuses `.github/`, secret/env/credential paths, refuses deletion/binary patches, limits patch size, and allows only existing ATLAS validation commands.
-
-- [ ] **Step 2: Run the focused repair test and confirm RED**
-
-Run: `npx vitest run tests/unit/atlas-ai-repair-runner.test.ts`.
-
-Expected before implementation: FAIL because the runner/workflow is absent.
-
-- [ ] **Step 3: Add the canonical OIDC repair workflow**
-
-The workflow must request `id-token: write`, check out `main`, claim one repair job, gather bounded repository context, request or accept a repair plan, apply it on a new `atlas/repair-*` branch, execute allowlisted validations, push the branch, and open a PR. It must not bypass branch review or production gates.
-
-- [ ] **Step 4: Align the repair bridge with canonical governance**
-
-Set repository to `atlasenterprisesuite/atlasenterprisesuite`, owner to `atlasenterprisesuite`, and workflow ref to `.github/workflows/atlas-ai-repair-executor.yml@refs/heads/main`. Keep OIDC verification and existing repair-job RPC/storage semantics.
-
-- [ ] **Step 5: Verify source security and deploy bridge only after the canonical workflow exists**
-
-Run: `npm run test:unit && npm run test:integration && npm run typecheck && npm run build`.
-
-Deploy the updated bridge only when those checks pass or when the sole remaining failure is independently proven to be the external GitHub-hosted-runner entitlement blocker.
+Do not replace the active bridge until the canonical workflow exists on `main` and required verification can actually execute. Current repair queue has no pending/claimed/planning jobs.
 
 ### Task 5: GitHub Actions pre-run blocker classification
 
-**Files:**
-- Modify: `docs/architecture/ATLAS_MANAGER_SPEC.md` only if a newer evidence classification is needed; do not change workflow code to mask the failure.
-- Evidence source: GitHub workflow/job API and ATLAS Manager blocker output.
+**Evidence:** GitHub issue #38 and workflow/job API.
 
-**Interfaces:**
-- Consumes: workflow run/job metadata.
-- Produces: blocker classification separate from application/test failure.
+- [x] **Step 1: Reproduce with one failed-job rerun**
+- [x] **Step 2: Separate provider/account gate from test failure**
+- [x] **Step 3: Record auditable blocker in issue #38**
+- [x] **Step 4: Keep PR gated**
 
-- [ ] **Step 1: Reproduce with one failed-job rerun**
-
-Use the GitHub Actions rerun API on one failed job only.
-
-Expected: if the platform/entitlement issue persists, the new job again ends with `steps: []`, `runner_id: 0`, and no runner name.
-
-- [ ] **Step 2: Check GitHub public service status**
-
-If Actions is operational publicly while this private repository consistently receives no runner, classify the problem as repository/account runner entitlement/billing/authorization rather than `test_failure`.
-
-- [ ] **Step 3: Keep PR gated**
-
-Do not merge solely on source inspection while the required consensus workflow cannot execute. Continue independent Supabase/architecture work and surface the exact human/provider dependency.
+PR #27 remains draft. No merge is authorized by source inspection alone.
 
 ### Task 6: Final verification and promotion
 
 **Files:**
 - PR: `atlas/manager-infra-status-v1` → `main`
 
-**Interfaces:**
-- Consumes: green unit/integration/typecheck/build/consensus, Vercel authorization, deployed endpoint evidence.
-- Produces: traceable canonical merge and production deployment evidence.
+- [x] **Step 1: Synchronize with latest observed `main` without force-push**
 
-- [ ] **Step 1: Synchronize with latest `main` without force-push**
-
-Confirm `behind_by = 0` and preserve newer parallel work.
+Latest verified compare showed the branch ahead and `behind_by = 0`, preserving parallel work.
 
 - [ ] **Step 2: Run full verification**
 
@@ -207,7 +157,7 @@ Expected: all exit 0.
 
 - [ ] **Step 3: Require ATLAS 3-of-3 Consensus**
 
-Product/UX, Architecture/Build, and Security/Reliability must all complete successfully with actual executed steps.
+Product/UX, Architecture/Build, and Security/Reliability must all complete successfully with actual executed steps and a non-zero allocated runner.
 
 - [ ] **Step 4: Merge and let production workflow deploy**
 
@@ -215,4 +165,4 @@ Merge only after the verification gates are green. Production workflow must crea
 
 - [ ] **Step 5: Verify production truth**
 
-Verify production root, module routes, `/healthz`, authenticated `/atlas/infra/status`, deployment commit traceability, and the latest `infrastructure-deployment` evidence row before marking ATLAS Manager production-ready.
+Verify production root, module routes, `/healthz`, authenticated `/atlas/infra/status`, deployment commit traceability, Cloudflare routing/control state, and the latest `infrastructure-deployment` evidence row before marking ATLAS Manager production-ready.
