@@ -8,13 +8,13 @@
 
 ## Truth state
 
-This document records executable evidence for the clean ATLAS Supabase v2 data layer. It does **not** claim that the full ATLAS application, GitHub CI, deployment, or production traffic is verified.
+This document records executable evidence for the clean ATLAS Supabase v2 data layer. It does **not** claim that the full ATLAS application, GitHub CI, Cloudflare deployment, or production traffic is verified.
 
-The previous Supabase projects remain unchanged and are not the canonical target for the new v2 architecture. New work should target `atlas-core-v2` unless a later approved migration supersedes this decision.
+The previous Supabase projects remain unchanged and are not the canonical target for the v2 architecture. New work targets `atlas-core-v2` unless a later approved migration supersedes this decision.
 
 ## Canonical scope
 
-The v2 foundation makes `tenant_id + org_id` explicit and mandatory for scoped business data. Accounting v1 does not preserve the legacy nullable-organization contract.
+The v2 foundation makes `tenant_id + org_id` explicit and mandatory for scoped business data.
 
 Foundation hierarchy:
 
@@ -33,8 +33,8 @@ Foundation hierarchy:
 - JWT-protected `atlas-bootstrap-tenant` Edge Function
 - authenticated `atlas_identity_context()` returning real tenant + organization + role + effective permissions
 - Foundation and Identity self-checks
-- A-Z web runtime now carries `tenantId + organizationId` in ready identity state
-- A-Z identity source now resolves scope and permissions from `atlas_identity_context()` rather than rebuilding tenancy client-side
+- A-Z web runtime carries `tenantId + organizationId` in ready identity state
+- A-Z identity source resolves scope and permissions from `atlas_identity_context()` rather than rebuilding tenancy client-side
 
 ## Implemented Accounting v1
 
@@ -95,16 +95,7 @@ Foundation hierarchy:
 
 `atlas_backend_gate()` is the canonical service-role-only aggregate data-layer gate.
 
-It consolidates:
-
-- `atlas_foundation_self_check()`
-- `atlas_identity_self_check()`
-- `atlas_accounting_self_check()`
-- `atlas_accounting_arap_self_check()`
-- `atlas_accounting_bank_self_check()`
-- `atlas_accounting_assets_close_self_check()`
-
-Latest service-role execution:
+Latest service-role execution on `atlas-core-v2`:
 
 | Component | Passed | Failed |
 | --- | ---: | ---: |
@@ -116,42 +107,68 @@ Latest service-role execution:
 | Accounting Assets/Close | 13 | 0 |
 | **Total** | **58** | **0** |
 
-The first service-role execution exposed a real tooling defect: Accounting self-checks inspected private function definitions but lacked the execution context required to inspect the private schema. This was corrected without granting clients access to the private schema. The Accounting self-checks now run as locked-down `SECURITY DEFINER` functions with `EXECUTE` revoked from public/anon/authenticated and granted only to `service_role`.
+The Accounting self-checks run as locked-down `SECURITY DEFINER` functions with `EXECUTE` revoked from public/anon/authenticated and granted only to `service_role`.
 
-Latest Supabase Security Advisor result after this change: **0 findings**.
+Latest Supabase Security Advisor result: **0 findings**.
 
-Latest Performance Advisor result before this change contained only `unused_index` INFO notices on the fresh database. These indexes are retained until real workload evidence exists; they are not removed merely to silence a no-traffic advisory.
+Latest Performance Advisor result contains only `unused_index` INFO notices on the fresh database. Those indexes remain until workload evidence supports removal; no index is deleted merely to silence a no-traffic advisory.
+
+Supabase guidance: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
 
 ## Authenticated tenant-isolation E2E
 
-A reusable pure-SQL test is versioned at:
+Reusable test:
 
 `supabase/v2/tests/tenant-isolation.e2e.sql`
 
-The test creates two synthetic users and two independent tenant/org scopes, then verifies:
+The executed test verified two independent tenant/org scopes, authenticated identity resolution, own-scope Accounting writes, RLS read isolation, blocked cross-tenant writes, and rollback cleanup.
 
-1. `bootstrap_atlas_tenant_service(...)` is not executable by `authenticated`.
-2. Each synthetic authenticated user resolves the correct `auth.uid()`.
-3. `atlas_identity_context()` returns the correct `tenant_id + organization_id + owner role`.
-4. `accounting.write` resolves for each owner.
-5. Each user can create an Accounting account inside its own scope.
-6. RLS exposes only the caller's tenant account rows.
-7. User A cannot create an Accounting account inside User B's tenant/org; the RPC fails closed with a permission error.
-8. User B independently sees only its own scope.
-9. The script ends with `ROLLBACK`.
+Post-run cleanup evidence showed zero persisted synthetic users, tenants, organizations, memberships, test accounts, and audit fixtures.
 
-The exact pure-SQL test was executed against `atlas-core-v2` and completed without SQL errors. A post-run check confirmed the database returned to:
+## Accounting lifecycle E2E
 
-- auth users: **0**
-- tenants: **0**
-- organizations: **0**
-- memberships: **0**
-- test accounts: **0**
-- test audit rows: **0**
+Reusable test:
 
-No synthetic E2E fixture remains persisted.
+`supabase/v2/tests/accounting-lifecycle.e2e.sql`
 
-## Migration manifest
+Detailed execution evidence:
+
+`docs/superpowers/release/ATLAS_SUPABASE_V2_ACCOUNTING_E2E.md`
+
+The corrected complete lifecycle executed successfully against `atlas-core-v2` inside a transaction ending with `ROLLBACK`. It exercised, among other checks:
+
+- tenant/org bootstrap and authenticated identity
+- Chart of Accounts and Accounting settings
+- balanced journal posting and governed reversal
+- customer/invoice/payment lifecycle
+- vendor/bill/approval/payment lifecycle
+- bank inflow/outflow, matching and reconciliation close
+- fixed asset creation and month-end straight-line depreciation
+- close task evidence, period close, closed-period posting rejection and governed reopen
+- Trial Balance equality
+- expected P&L values
+- Balance Sheet equation including Current Earnings
+- non-empty General Ledger
+
+Fresh post-run checks confirmed no synthetic Accounting or identity fixtures persisted.
+
+## Exact migration mirror
+
+The complete applied v2 migration history is now mirrored in:
+
+`supabase/v2/migrations/`
+
+Evidence manifest:
+
+`supabase/v2/MIGRATION_MIRROR.md`
+
+The source SQL was recovered from `supabase_migrations.schema_migrations.statements` and every repository migration file was compared byte-for-byte using the Git blob SHA-1 algorithm.
+
+Result: **25/25 exact matches; 0 mismatches.**
+
+No migration was replayed, rolled back, or changed on the canonical `atlas-core-v2` database during recovery.
+
+### Migration manifest
 
 1. `20260907174239 atlas_foundation_v1`
 2. `20260907174346 harden_foundation_security_v1`
@@ -179,15 +196,13 @@ No synthetic E2E fixture remains persisted.
 24. `20260907205806 atlas_backend_gate_v1`
 25. `20260907205840 harden_accounting_self_checks_service_execution_v1`
 
-The latest two migrations are also versioned under `supabase/v2/migrations/` on A-Z. Earlier v2 migrations were applied directly to the clean project during construction and still need a complete repository mirror before disaster-recovery reproducibility can be called complete.
-
 ## Generated TypeScript / runtime contract
 
-Supabase TypeScript generation was run after Accounting v1. The generated contract confirms mandatory `tenant_id` and `org_id` fields on v2 Accounting tables and exposes `atlas_identity_context()` with both identifiers.
+Supabase TypeScript generation confirms mandatory `tenant_id` and `org_id` fields on v2 Accounting tables and exposes `atlas_identity_context()` with both identifiers.
 
-The A-Z identity runtime has now been converted to the v2 tenant-scoped contract and tests were added for tenant mapping and fail-closed behavior.
+The A-Z identity runtime is converted to the v2 tenant-scoped contract and tests exist for tenant mapping and fail-closed behavior.
 
-The full generated `Database` type surface is not yet mirrored and wired across every repository/provider. That remains a separate contract-hardening task.
+The full generated `Database` type surface is not yet adopted across every repository/provider. This remains a contract-hardening gate.
 
 ## Forge / CI state
 
@@ -195,24 +210,29 @@ A-Z contains ATLAS Forge with the canonical local pipeline:
 
 `npm ci → typecheck → unit → integration → dependency audit → build`
 
-Forge records SHA evidence and requires a clean working tree for local CI. However:
+Current hosted-runner truth state:
 
-- GitHub Hosted Actions still fails before assigning an `ubuntu-latest` runner (`runner_id = 0`, no steps executed).
-- No SentinelX Linux host is currently enrolled, so this session cannot start `atlas-forge-api` / `atlas-forge-runner` on the user's server yet.
-- The Supabase Backend Gate is therefore the current independent **data-layer** verification path; it is not a substitute for TypeScript tests, dependency audit, or frontend build.
+- GitHub Hosted Actions still fails before assigning an `ubuntu-latest` runner (`runner_id = 0`, `steps = []`).
+- The same pre-runner failure reproduced on PR #46, so no migration/test/build step ran in that red check.
+- No SentinelX Linux host is currently enrolled.
+- Backend Gate and database E2E evidence do not substitute for the repository TypeScript/test/audit/build pipeline.
 
 ## Known gates before production claim
 
-1. Bootstrap at least one real authenticated user into v2 through the JWT-protected bootstrap path.
-2. Expand authenticated E2E beyond identity/account creation to balanced journal posting, reversal, invoice/bill posting, payments, reconciliation, depreciation, period close/reopen, and report reads.
-3. Mirror the complete v2 migration history into the canonical repository.
-4. Wire generated Supabase `Database` types across all v2 repositories/providers.
-5. Enroll/start a real ATLAS Forge Linux runner or recover GitHub Actions runner allocation, then execute the full repository pipeline.
-6. Run full A-Z cross-module CI and consensus gates.
-7. Do not merge PR #13 to `main` until broader A-Z release gates are satisfied.
+1. Replay the exact 25-migration chain in a fresh compatible **non-production** Supabase environment.
+2. Run Backend Gate, tenant-isolation E2E and Accounting lifecycle E2E against the replayed environment.
+3. Confirm replayed schema/generated types match the expected v2 contract.
+4. Complete generated Supabase `Database` type adoption across v2 repositories/providers.
+5. Bootstrap and verify real authenticated production identities through the governed path when production onboarding is authorized.
+6. Enroll/start a real ATLAS Forge Linux runner or recover GitHub Actions runner allocation and execute the full repository pipeline.
+7. Run full A-Z cross-module CI and consensus gates.
+8. Verify Cloudflare deployment, domains, TLS, required routes and `/healthz` against the intended canonical commit.
+9. Do not merge PR #13 to `main` until the broader A-Z release gates are satisfied.
+
+Automated `supabase db push` remains disabled until clean non-production replay evidence exists.
 
 ## Release interpretation
 
-**Verified now:** clean Supabase v2 Foundation/Identity/Accounting structural invariants, tenant-scoped Identity runtime contract, service-role Backend Gate, authenticated own-scope account write/read, and negative cross-tenant read/write isolation.
+**Verified now:** Supabase v2 Foundation/Identity/Accounting structural invariants; tenant-scoped runtime contract; Backend Gate 58/58; authenticated tenant isolation; database-level Accounting lifecycle; exact 25/25 migration-history mirror; zero current Supabase Security Advisor findings.
 
-**Not verified yet:** full Accounting transaction lifecycle E2E, complete generated type adoption, full repository CI/build, deployment, production traffic, or production readiness.
+**Not verified yet:** clean empty-environment migration replay, complete generated type adoption, full repository CI/build, Cloudflare deployment, production traffic, or overall production readiness.
