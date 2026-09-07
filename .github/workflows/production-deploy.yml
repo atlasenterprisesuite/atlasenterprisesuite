@@ -19,6 +19,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   verify-and-deploy:
@@ -26,6 +27,7 @@ jobs:
     timeout-minutes: 15
     env:
       VERCEL_SCOPE: winderaranguren-gifs-projects
+      VERCEL_PROJECT_NAME: atlasenterprisesuite
     steps:
       - uses: actions/checkout@v4
 
@@ -65,13 +67,32 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      - name: Ensure Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          if vercel project inspect "$VERCEL_PROJECT_NAME" --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN" > /dev/null 2>&1; then
+            echo "Vercel project $VERCEL_SCOPE/$VERCEL_PROJECT_NAME already exists." >> "$GITHUB_STEP_SUMMARY"
+          else
+            curl --fail-with-body --silent --show-error \
+              --request POST \
+              --url "https://api.vercel.com/v11/projects?slug=$VERCEL_SCOPE" \
+              --header "Authorization: Bearer $VERCEL_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data "{\"name\":\"$VERCEL_PROJECT_NAME\",\"framework\":\"vite\",\"installCommand\":\"npm ci\",\"buildCommand\":\"npm run build\",\"outputDirectory\":\"apps/web/dist\"}" \
+              > /tmp/atlas-vercel-project.json
+            vercel project inspect "$VERCEL_PROJECT_NAME" --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN" > /dev/null
+            echo "Created and verified Vercel project $VERCEL_SCOPE/$VERCEL_PROJECT_NAME." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Deploy production
         id: deploy
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          DEPLOYMENT_URL="$(vercel deploy . --prod --yes --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN")"
+          DEPLOYMENT_URL="$(vercel deploy . --prod --yes --scope "$VERCEL_SCOPE" --project "$VERCEL_PROJECT_NAME" --token "$VERCEL_TOKEN")"
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "ATLAS deployment URL: $DEPLOYMENT_URL"
 
@@ -84,4 +105,25 @@ jobs:
           curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/finance/accounting/accounts-payable" > /dev/null
           HEALTH="$(curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/healthz")"
           echo "$HEALTH" | grep -q '"status": "ok"'
-          echo "Production route and health verification passed for $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+          INFRA_STATUS_CODE="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /tmp/atlas-infra-status.json --write-out '%{http_code}' "$DEPLOYMENT_URL/atlas/infra/status")"
+          test "$INFRA_STATUS_CODE" = "401"
+          echo "Production route, health, and authenticated ATLAS Manager boundary verification passed for $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Register deployment evidence
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          OIDC_RESPONSE="$(curl --fail --silent --show-error \
+            --url "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-infrastructure-evidence" \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const v=JSON.parse(s).value||"";if(!v)process.exit(1);process.stdout.write(v)})')"
+          test -n "$OIDC_TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=record" \
+            --header "Authorization: Bearer $OIDC_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"target_version\":\"$GITHUB_SHA\",\"checks\":{\"root\":\"passed\",\"finance_accounts_payable\":\"passed\",\"healthz\":\"passed\",\"infra_auth_boundary\":\"passed\"},\"metadata\":{\"deployment_url\":\"$DEPLOYMENT_URL\",\"vercel_project\":\"$VERCEL_PROJECT_NAME\",\"vercel_scope\":\"$VERCEL_SCOPE\"}}" \
+            > /tmp/atlas-deployment-evidence.json
+          echo "ATLAS deployment evidence registered through GitHub OIDC." >> "$GITHUB_STEP_SUMMARY"
