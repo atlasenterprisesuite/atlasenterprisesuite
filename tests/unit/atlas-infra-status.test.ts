@@ -19,4 +19,13 @@ describe('ATLAS infrastructure status aggregation contract', () => {
     expect(code).toContain('latest_runtime_verification');
     expect(code).toContain('infrastructure_evidence');
   });
+
+  it('reads the repair bridge readiness payload instead of treating reachability as readiness', () => {
+    const code = source();
+
+    expect(code).toContain("atlas-repair-bridge?api=readiness");
+    expect(code).toContain('repair_planner_not_configured');
+    expect(code).toContain('openaiConfigured');
+    expect(code).toContain('repair_bridge');
+  });
 });
