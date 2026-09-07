@@ -33,7 +33,7 @@ export function hasPermission(
   required: AtlasPermission
 ) {
   if (granted.includes(required)) return true;
-  if (required.startsWith('accounting.') && granted.includes('accounting.admin')) return true;
+  if (granted.includes('accounting.admin') && (required.startsWith('accounting.') || required === 'audit.read')) return true;
   return false;
 }
 
