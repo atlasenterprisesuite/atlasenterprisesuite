@@ -10,14 +10,17 @@ describe('ATLAS infrastructure status aggregation contract', () => {
     expect(code).toContain("'atlasenterprisesuite/atlasenterprisesuite'");
     expect(code).toContain("from('atlas_runtime_verification_runs')");
     expect(code).toContain(".eq('verification_type', 'infrastructure-deployment')");
+    expect(code).toContain(".eq('verification_type', 'infrastructure-control')");
   });
 
-  it('reports infrastructure evidence separately from runtime provider verification', () => {
+  it('reports deployment and control evidence separately from runtime provider verification', () => {
     const code = source();
 
     expect(code).toContain('latest_infrastructure_verification');
+    expect(code).toContain('latest_control_verification');
     expect(code).toContain('latest_runtime_verification');
     expect(code).toContain('infrastructure_evidence');
+    expect(code).toContain('control_evidence');
   });
 
   it('reads the repair bridge readiness payload instead of treating reachability as readiness', () => {
