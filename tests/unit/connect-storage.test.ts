@@ -85,4 +85,21 @@ describe('ATLAS Connect persistence and service', () => {
     expect(() => store.write(unsafe)).toThrow(/sensitive material/i);
     expect(localStorage.getItem('atlas.connect.dev.v1')).toBeNull();
   });
+
+  it('discards previously contaminated browser-local data instead of reading it', () => {
+    localStorage.setItem('atlas.connect.dev.v1', JSON.stringify({
+      schemaVersion: 1,
+      drafts: [],
+      receipts: [],
+      auditEvents: [],
+      sessionCookie: 'must-not-load'
+    }));
+
+    expect(new BrowserConnectStore(localStorage).read()).toEqual({
+      schemaVersion: 1,
+      drafts: [],
+      receipts: [],
+      auditEvents: []
+    });
+  });
 });
