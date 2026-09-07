@@ -75,6 +75,7 @@ export function PersonalVoiceWizard({
   const [microphonePermission, setMicrophonePermission] = useState<MicrophonePermission | 'unchecked'>('unchecked');
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [soundCheckAssessment, setSoundCheckAssessment] = useState<VoiceQualityAssessment | null>(null);
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [samples, setSamples] = useState<Record<string, SampleState>>(initialSamples);
   const [challengeVerified, setChallengeVerified] = useState(false);
@@ -95,11 +96,44 @@ export function PersonalVoiceWizard({
     navigate(routeForStep(step));
   }
 
-  async function checkMicrophone() {
+  async function checkMicrophone(): Promise<MicrophonePermission> {
     setMicrophoneError(null);
     const result = await mic.requestPermission();
     setMicrophonePermission(result);
     if (result === 'denied') setMicrophoneError('Microphone access is required to create a Personal Voice.');
+    if (result === 'unavailable') setMicrophoneError('Microphone capture is unavailable in this browser or device context.');
+    return result;
+  }
+
+  async function startSoundCheck() {
+    setMicrophoneError(null);
+    setSoundCheckAssessment(null);
+    let permission: MicrophonePermission = microphonePermission === 'unchecked' ? await checkMicrophone() : microphonePermission;
+    if (permission !== 'granted') return;
+    try {
+      await mic.start();
+      setRecording(true);
+    } catch {
+      setMicrophoneError('ATLAS could not start the sound check. Verify microphone access and retry.');
+    }
+  }
+
+  async function stopSoundCheck() {
+    try {
+      const result = await mic.stop();
+      const assessment = assessVoiceQuality(result.stats);
+      setLastStats(result.stats);
+      setSoundCheckAssessment(assessment);
+      if (assessment.status !== 'accepted') {
+        setMicrophoneError('Sound quality needs attention. Adjust your environment or microphone and run the check again.');
+      } else {
+        setMicrophoneError(null);
+      }
+    } catch {
+      setMicrophoneError('ATLAS could not finish the sound check. Retry the check.');
+    } finally {
+      setRecording(false);
+    }
   }
 
   async function startRecording() {
@@ -209,22 +243,28 @@ export function PersonalVoiceWizard({
   }
 
   if (initialStep === 'sound-check') {
+    const soundCheckReady = microphonePermission === 'granted' && soundCheckAssessment?.status === 'accepted';
     return (
       <section className="voice-wizard" aria-labelledby="voice-sound-heading">
         <WizardHeader step="2 of 5" title="Sound Check" id="voice-sound-heading" />
-        <p>Use a quiet space and speak naturally. ATLAS reports only measurements that are actually available.</p>
+        <p>Use a quiet space and speak naturally for a few seconds. ATLAS measures the captured sample before allowing guided recording.</p>
         {microphoneError ? <div className="voice-alert" role="alert">{microphoneError}</div> : null}
         <div className="voice-check-list">
           <CheckRow label="Microphone input" value={microphonePermission === 'granted' ? 'Pass' : microphonePermission === 'unchecked' ? 'Not checked' : 'Unavailable'} />
-          <CheckRow label="Clipping" value={lastStats ? (lastStats.peak < 0.98 ? 'Pass' : 'Needs attention') : 'Unavailable until recording'} />
-          <CheckRow label="Background noise" value={lastStats ? (lastStats.noiseFloor <= 0.08 ? 'Pass' : 'Needs attention') : 'Unavailable until recording'} />
-          <CheckRow label="Volume" value={lastStats ? (lastStats.rms >= 0.04 ? 'Pass' : 'Needs attention') : 'Unavailable until recording'} />
-          <CheckRow label="Consistency" value={lastStats ? (lastStats.volumeStdDev <= 0.18 ? 'Pass' : 'Needs attention') : 'Unavailable until recording'} />
+          <CheckRow label="Clipping" value={lastStats ? (lastStats.peak < 0.98 ? 'Pass' : 'Needs attention') : 'Unavailable until sound check'} />
+          <CheckRow label="Background noise" value={lastStats ? (lastStats.noiseFloor <= 0.08 ? 'Pass' : 'Needs attention') : 'Unavailable until sound check'} />
+          <CheckRow label="Volume" value={lastStats ? (lastStats.rms >= 0.04 ? 'Pass' : 'Needs attention') : 'Unavailable until sound check'} />
+          <CheckRow label="Consistency" value={lastStats ? (lastStats.volumeStdDev <= 0.18 ? 'Pass' : 'Needs attention') : 'Unavailable until sound check'} />
+          <CheckRow label="Overall quality" value={soundCheckAssessment ? (soundCheckAssessment.status === 'accepted' ? 'Pass' : 'Needs attention') : 'Not checked'} />
         </div>
-        <button type="button" className="secondary-action" onClick={() => void checkMicrophone()}>Check microphone</button>
+        <div className="voice-record-controls">
+          <button type="button" className="secondary-action" disabled={recording} onClick={() => void checkMicrophone()}>Check microphone</button>
+          <button type="button" className="record-action" disabled={recording} onClick={() => void startSoundCheck()}>Start</button>
+          <button type="button" className="secondary-action" disabled={!recording} onClick={() => void stopSoundCheck()}>Finish</button>
+        </div>
         <div className="voice-actions">
           <button type="button" className="secondary-action" onClick={() => go('setup')}>Back</button>
-          <button type="button" className="primary-action" disabled={microphonePermission !== 'granted'} onClick={() => go('record')}>Continue</button>
+          <button type="button" className="primary-action" disabled={!soundCheckReady} onClick={() => go('record')}>Continue</button>
         </div>
       </section>
     );
