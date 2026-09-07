@@ -73,3 +73,17 @@ test('Forge API rejects a runner-supplied forged artifact record', async (t) => 
   const fakeDigest = 'b'.repeat(64), completeResponse = await fetch(`${base}/v1/jobs/${jobId}/complete`, { method: 'POST', headers: { authorization: `Bearer ${runner}`, 'content-type': 'application/json' }, body: JSON.stringify({ runnerId: 'runner-1', status: 'passed', stepResults: [], artifact: { id: fakeDigest, sourceSha: 'a'.repeat(40), runId: created.run.id, digest: fakeDigest, manifestPath: '/tmp/not-the-forge-vault/manifest.json', payloadPath: '/tmp/not-the-forge-vault/payload', createdAt: new Date().toISOString(), verified: true } }) });
   assert.equal(completeResponse.status, 400);
 });
+
+test('Forge API rejects passed status without complete passing step evidence', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'forge-step-evidence-')), home = join(root, 'forge'), repos = join(home, 'repos'), pipelines = join(home, 'pipelines');
+  await mkdir(repos, { recursive: true }); await mkdir(pipelines, { recursive: true });
+  await writeFile(join(pipelines, 'steps.json'), JSON.stringify({ id: 'steps', version: 1, steps: [{ id: 'unit', command: 'npm', args: ['test'], timeoutMs: 1000 }], artifactPaths: [] }));
+  const control = 'c'.repeat(64), runner = 'r'.repeat(64), server = createForgeServer({ home, repositoriesRoot: repos, pipelinesRoot: pipelines, controlToken: control, runnerToken: runner, bindHost: '127.0.0.1', port: 0, testMode: true });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve)); t.after(() => new Promise<void>((resolve) => server.close(() => resolve())));
+  const address = server.address(); if (!address || typeof address === 'string') throw new Error('missing address'); const base = `http://127.0.0.1:${address.port}`;
+  const createdResponse = await fetch(`${base}/v1/runs`, { method: 'POST', headers: { authorization: `Bearer ${control}`, 'content-type': 'application/json' }, body: JSON.stringify({ repositoryId: 'atlas', sourceSha: 'a'.repeat(40), pipelineId: 'steps', requestedBy: 'security-test' }) }); assert.equal(createdResponse.status, 201);
+  const claimResponse = await fetch(`${base}/v1/jobs/claim`, { method: 'POST', headers: { authorization: `Bearer ${runner}`, 'content-type': 'application/json' }, body: JSON.stringify({ runnerId: 'runner-1' }) }); const claimed = await claimResponse.json(); const jobId = claimed.job.id;
+  await fetch(`${base}/v1/jobs/${jobId}/start`, { method: 'POST', headers: { authorization: `Bearer ${runner}`, 'content-type': 'application/json' }, body: JSON.stringify({ runnerId: 'runner-1' }) });
+  const completeResponse = await fetch(`${base}/v1/jobs/${jobId}/complete`, { method: 'POST', headers: { authorization: `Bearer ${runner}`, 'content-type': 'application/json' }, body: JSON.stringify({ runnerId: 'runner-1', status: 'passed', stepResults: [], artifact: null }) });
+  assert.equal(completeResponse.status, 400);
+});
