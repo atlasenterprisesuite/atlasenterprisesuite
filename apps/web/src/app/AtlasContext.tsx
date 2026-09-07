@@ -15,6 +15,8 @@ export type AtlasIdentityState =
   | {
       status: 'ready';
       userId: string;
+      tenantId: string;
+      tenantName: string;
       organizationId: string;
       organizationName: string;
       role: string;
