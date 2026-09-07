@@ -12,6 +12,7 @@ ATLAS Enterprise Suite is the shared enterprise platform for people, finance, op
 - Production URL: `https://www.atlasenterprisesuite.com`
 - Governance: `docs/governance/ATLAS_CANONICAL_REPOSITORY.md`
 - Infrastructure control plane: `docs/architecture/ATLAS_MANAGER_SPEC.md`
+- ATLAS Manager execution plan: `docs/superpowers/plans/2026-09-06-atlas-manager-control-loop-v1.md`
 
 The previously referenced `winderaranguren-gif/Atlas-enterprise-suite` repository is legacy/historical and is **not a blocker** for current ATLAS development. If access returns, unique work is reconciled through comparison and auditable integration; canonical history is not force-replaced.
 
