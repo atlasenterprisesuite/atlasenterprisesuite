@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   clearAtlasSession,
@@ -134,7 +134,7 @@ export function IdentityPage() {
                   type="email"
                   autoComplete="username"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
                   required
                   disabled={loading}
                 />
@@ -145,7 +145,7 @@ export function IdentityPage() {
                   type="password"
                   autoComplete="current-password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
                   required
                   disabled={loading}
                 />
