@@ -5,6 +5,7 @@ import {
   filterAnimalTaxa,
   type AnimalTaxon
 } from '../../packages/knowledge/animal-atlas';
+import { animalAtlasSeed } from '../../data/knowledge/animalAtlasSeed';
 
 const records: AnimalTaxon[] = [
   {
@@ -98,5 +99,29 @@ describe('ATLAS Knowledge Atlas animal domain', () => {
   it('derives deterministic sorted filter options from loaded records', () => {
     expect(animalGroupOptions(records)).toEqual(['Insects', 'Reptiles']);
     expect(animalRoleOptions(records)).toEqual(['detritivore', 'ecosystem engineer', 'nutrient recycling', 'predator']);
+  });
+
+  it('keeps the lovebug seed evidence-backed and myth-corrected', () => {
+    const lovebug = animalAtlasSeed.find((record) => record.slug === 'common-lovebug');
+    expect(lovebug?.scientificName).toBe('Plecia nearctica');
+    expect(lovebug?.taxonomy).toEqual({
+      kingdom: 'Animalia',
+      phylum: 'Arthropoda',
+      class: 'Insecta',
+      order: 'Diptera',
+      family: 'Bibionidae',
+      genus: 'Plecia',
+      species: 'Plecia nearctica'
+    });
+    expect(lovebug?.ecologicalRoles).toContain('nutrient recycling');
+    expect(lovebug?.mythCorrection).toMatch(/not created|not engineered|myth/i);
+    expect(lovebug?.sources.some((source) => source.organization.includes('University of Florida'))).toBe(true);
+    expect(lovebug?.sources.some((source) => /GBIF|Catalogue of Life/.test(source.organization))).toBe(true);
+  });
+
+  it('ships a representative, source-backed foundation without claiming global completeness', () => {
+    expect(animalAtlasSeed).toHaveLength(10);
+    expect(animalAtlasSeed.every((record) => record.sources.length > 0)).toBe(true);
+    expect(new Set(animalAtlasSeed.map((record) => record.group)).size).toBeGreaterThanOrEqual(8);
   });
 });
