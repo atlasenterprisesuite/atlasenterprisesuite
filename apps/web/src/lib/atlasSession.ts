@@ -1,3 +1,12 @@
+import type {
+  DecisionCompassRecord,
+  DecisionEvidenceRef,
+  DecisionRisk,
+  DecisionSignalKind,
+  DecisionTruthState,
+  VerificationGateItem
+} from '../../../../packages/decision-compass';
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 
@@ -61,6 +70,17 @@ export type LivePayablesLedger = {
   organization: AtlasOrganization;
   bills: LivePayableBill[];
   loaded_at: string;
+};
+
+export type DecisionCompassCreateInput = {
+  signalKind: DecisionSignalKind;
+  signalLabel: string;
+  signalText: string;
+  interpretation: string;
+  targetModule: string | null;
+  risk: DecisionRisk;
+  proposedAction: string | null;
+  verificationGate: VerificationGateItem[];
 };
 
 function storageAvailable() {
@@ -225,4 +245,127 @@ export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
     bills,
     loaded_at: new Date().toISOString()
   };
+}
+
+function normalizeDecisionEvidence(raw: any): DecisionEvidenceRef {
+  return {
+    id: raw?.id ? String(raw.id) : undefined,
+    kind: String(raw?.source_kind || ''),
+    sourceModule: String(raw?.source_module || ''),
+    sourceId: String(raw?.source_id || ''),
+    label: String(raw?.label || ''),
+    verifiedAt: raw?.verified_at ? String(raw.verified_at) : undefined
+  };
+}
+
+function normalizeDecisionRecord(raw: any): DecisionCompassRecord {
+  const organizationId = String(raw?.org_id || '');
+  const evidence = Array.isArray(raw?.decision_compass_evidence_refs)
+    ? raw.decision_compass_evidence_refs.map(normalizeDecisionEvidence)
+    : [];
+
+  return {
+    tenantId: organizationId,
+    organizationId,
+    id: String(raw?.id || ''),
+    createdBy: String(raw?.created_by || ''),
+    createdAt: String(raw?.created_at || ''),
+    signalKind: String(raw?.signal_kind || 'observation') as DecisionSignalKind,
+    signalLabel: String(raw?.signal_label || ''),
+    signalText: String(raw?.signal_text || ''),
+    interpretation: String(raw?.interpretation || ''),
+    targetModule: raw?.target_module ? String(raw.target_module) : null,
+    evidenceRefs: evidence,
+    risk: String(raw?.risk || 'low') as DecisionRisk,
+    proposedAction: raw?.proposed_action ? String(raw.proposed_action) : null,
+    verificationGate: Array.isArray(raw?.verification_gate) ? raw.verification_gate : [],
+    truthState: String(raw?.truth_state || 'reflection') as DecisionTruthState,
+    verifiedBy: raw?.verified_by ? String(raw.verified_by) : null,
+    verifiedAt: raw?.verified_at ? String(raw.verified_at) : null
+  };
+}
+
+function assertRecordOrganization(record: DecisionCompassRecord, organizationId: string) {
+  if (record.organizationId !== organizationId) throw new Error('decision_scope_mismatch');
+  return record;
+}
+
+export async function listDecisionCompassRecords(): Promise<DecisionCompassRecord[]> {
+  const organization = await getActiveAtlasOrganization();
+  const orgFilter = encodeURIComponent(`eq.${organization.id}`);
+  const response = await authorizedFetch(
+    `/rest/v1/decision_compass_records?org_id=${orgFilter}&select=*,decision_compass_evidence_refs(*)&order=created_at.desc`,
+    { method: 'GET' }
+  );
+  const data = await parseResponse(response);
+  if (!Array.isArray(data)) throw new Error('invalid_decision_compass_response');
+  return data.map(normalizeDecisionRecord).map((record) => assertRecordOrganization(record, organization.id));
+}
+
+export async function createDecisionCompassRecord(input: DecisionCompassCreateInput): Promise<DecisionCompassRecord> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedFetch('/rest/v1/decision_compass_records?select=*', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({
+      org_id: organization.id,
+      signal_kind: input.signalKind,
+      signal_label: input.signalLabel,
+      signal_text: input.signalText,
+      interpretation: input.interpretation,
+      target_module: input.targetModule,
+      risk: input.risk,
+      proposed_action: input.proposedAction,
+      verification_gate: input.verificationGate,
+      truth_state: 'reflection'
+    })
+  });
+  const data = await parseResponse(response);
+  const raw = Array.isArray(data) ? data[0] : data;
+  if (!raw?.id) throw new Error('decision_record_not_created');
+  return assertRecordOrganization(normalizeDecisionRecord(raw), organization.id);
+}
+
+export async function addDecisionEvidence(
+  recordId: string,
+  evidence: Omit<DecisionEvidenceRef, 'id'>
+): Promise<DecisionEvidenceRef> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedFetch('/rest/v1/decision_compass_evidence_refs?select=*', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({
+      record_id: recordId,
+      org_id: organization.id,
+      source_module: evidence.sourceModule,
+      source_kind: evidence.kind,
+      source_id: evidence.sourceId,
+      label: evidence.label,
+      verified_at: evidence.verifiedAt || null
+    })
+  });
+  const data = await parseResponse(response);
+  const raw = Array.isArray(data) ? data[0] : data;
+  if (!raw?.id) throw new Error('decision_evidence_not_created');
+  return normalizeDecisionEvidence(raw);
+}
+
+export async function transitionDecisionCompassRecord(
+  recordId: string,
+  nextState: DecisionTruthState,
+  reason: string
+): Promise<DecisionCompassRecord> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedFetch('/rest/v1/rpc/decision_compass_transition', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_record_id: recordId,
+      p_next_state: nextState,
+      p_reason: reason
+    })
+  });
+  const data = await parseResponse(response);
+  const raw = Array.isArray(data) ? data[0] : data;
+  if (!raw?.id) throw new Error('decision_transition_failed');
+  return assertRecordOrganization(normalizeDecisionRecord(raw), organization.id);
 }
