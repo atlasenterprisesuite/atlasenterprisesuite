@@ -3,18 +3,18 @@
 **Project:** `atlas-core-v2`  
 **Supabase project ref:** `qawxltbplsxcjvwxdkes`  
 **Region:** `us-east-1`  
-**Verification date:** 2026-09-07  
+**Verification date:** 2026-09-08  
 **Repository integration branch:** `release/atlas-a-z`
 
 ## Truth state
 
-This document records executable evidence for the clean ATLAS Supabase v2 data layer. It does **not** claim that the full ATLAS application, GitHub CI, Cloudflare deployment, or production traffic is verified.
+This document records executable evidence for the ATLAS Supabase v2 data layer. It does **not** claim that the full ATLAS application, GitHub CI, Cloudflare deployment, production traffic, or overall production readiness is verified.
 
-The previous Supabase projects remain unchanged and are not the canonical target for the v2 architecture. New work targets `atlas-core-v2` unless a later approved migration supersedes this decision.
+The canonical v2 backend target is `atlas-core-v2`. `main` remains outside this integration work; repository changes are staged on `release/atlas-a-z` and PR #13 remains the master integration lane.
 
 ## Canonical scope
 
-The v2 foundation makes `tenant_id + org_id` explicit and mandatory for scoped business data.
+Scoped business data uses explicit `tenant_id + org_id` boundaries.
 
 Foundation hierarchy:
 
@@ -31,7 +31,7 @@ Foundation hierarchy:
 - module registry / organization modules
 - service-role-only transactional tenant bootstrap
 - JWT-protected `atlas-bootstrap-tenant` Edge Function
-- authenticated `atlas_identity_context()` returning real tenant + organization + role + effective permissions
+- authenticated `atlas_identity_context()` returning tenant + organization + role + effective permissions
 - Foundation and Identity self-checks
 - A-Z web runtime carries `tenantId + organizationId` in ready identity state
 - A-Z identity source resolves scope and permissions from `atlas_identity_context()` rather than rebuilding tenancy client-side
@@ -46,9 +46,9 @@ Foundation hierarchy:
 - `journal_lines`
 - exact double-entry posting validation
 - posted/reversed journal immutability
-- reversal journals instead of editing history
+- governed reversal journals
 - server-derived actor/time
-- governed RPCs with audit
+- audited governed RPCs
 - no direct authenticated DML on ledger core tables
 
 ### AR / AP
@@ -58,44 +58,62 @@ Foundation hierarchy:
 - customer payments
 - bills / bill lines
 - vendor payments
-- invoice and bill postings route through governed journals
-- bill approval required before posting
-- overpayments rejected
+- invoice and bill postings through governed journals
+- bill approval before posting
+- overpayment rejection
 - tax posting fails closed when `tax_amount <> 0` until ATLAS Tax supplies a governed tax-accounting contract
 
 ### Bank / Cash / Reconciliation
 
-- bank accounts
-- bank transactions
+- bank accounts and transactions
 - reconciliation sessions / items
-- source evidence immutable after capture
-- classification stored separately from source evidence
+- immutable captured source evidence
+- classification separate from source evidence
 - provider state restricted to `not_configured`, `configured`, `live`, `unavailable`
-- `live` requires provider reference and source evidence
-- provider-state changes and provider ingestion are `service_role` only
-- reconciliation matches to posted ledger lines and requires exact statement/ledger ending balance before close
+- provider-state changes and provider ingestion restricted to `service_role`
+- reconciliation requires posted ledger evidence and exact statement/ledger ending balance before close
 
 ### Assets / Close / Reports
 
-- fixed assets
-- depreciation events
-- straight-line depreciation posted through the ledger
-- no free editable accumulated-depreciation balance
-- accounting periods
-- close tasks with required evidence
-- period close blocks unresolved tasks, draft journals, and open reconciliations
-- period reopen requires `accounting.admin` plus reason and audit
+- fixed assets and depreciation events
+- straight-line depreciation posted through ledger journals
+- accounting periods and evidence-backed close tasks
+- close blocks unresolved tasks, draft journals and open reconciliations
+- governed period reopen with `accounting.admin`, reason and audit
 - Trial Balance
 - General Ledger
 - Profit & Loss
-- Balance Sheet with synthetic current-earnings equity row
-- reports derive from journal entries / journal lines rather than report snapshots
+- Balance Sheet with synthetic Current Earnings equity row
+
+## Revenue Ops v1 — verified foundation/governance slice
+
+Applied to `atlas-core-v2`:
+
+- CRM accounts, contacts and opportunities
+- sales orders
+- inventory items and movements
+- POS transactions
+- projects
+- 10 Revenue Ops permissions across CRM, Sales, Inventory, POS and Projects
+- five module-registry entries, currently `preview`
+- RLS on all eight Revenue Ops tables
+- authenticated direct INSERT/UPDATE/DELETE/TRUNCATE revoked
+- governed RPCs for account creation, opportunity creation/transition, sales-order creation, inventory movements and POS transaction creation
+- audit events for governed mutations
+
+Security hardening follows the Accounting pattern:
+
+`public SECURITY INVOKER wrapper → private SECURITY DEFINER implementation`
+
+The six public Revenue Ops RPCs are no longer exposed as `SECURITY DEFINER`. The private implementations retain the elevated mutation boundary while `anon` cannot execute them.
+
+This is a verified data-layer/governance slice, **not** a claim that every Revenue Ops UI, workflow, external provider, inventory lifecycle, POS settlement path or project workflow is production-complete.
 
 ## ATLAS Backend Gate
 
 `atlas_backend_gate()` is the canonical service-role-only aggregate data-layer gate.
 
-Latest service-role execution on `atlas-core-v2`:
+Fresh execution on 2026-09-08:
 
 | Component | Passed | Failed |
 | --- | ---: | ---: |
@@ -105,15 +123,23 @@ Latest service-role execution on `atlas-core-v2`:
 | Accounting AR/AP | 12 | 0 |
 | Accounting Bank | 11 | 0 |
 | Accounting Assets/Close | 13 | 0 |
-| **Total** | **58** | **0** |
+| Revenue Ops | 11 | 0 |
+| **Total** | **69** | **0** |
 
-The Accounting self-checks run as locked-down `SECURITY DEFINER` functions with `EXECUTE` revoked from public/anon/authenticated and granted only to `service_role`.
+The Revenue Ops component includes structural/RLS/RBAC/RPC checks plus a dedicated check that public mutation RPCs are `SECURITY INVOKER` and private implementations are governed `SECURITY DEFINER` functions.
 
 Latest Supabase Security Advisor result: **0 findings**.
 
-Latest Performance Advisor result contains only `unused_index` INFO notices on the fresh database. Those indexes remain until workload evidence supports removal; no index is deleted merely to silence a no-traffic advisory.
+Latest synthetic-fixture cleanup verification after the Revenue Ops E2E showed:
 
-Supabase guidance: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
+- auth users: 0
+- tenants: 0
+- organizations: 0
+- memberships: 0
+- Revenue Ops accounts: 0
+- opportunities: 0
+- sales orders: 0
+- audit fixtures: 0
 
 ## Authenticated tenant-isolation E2E
 
@@ -121,9 +147,13 @@ Reusable test:
 
 `supabase/v2/tests/tenant-isolation.e2e.sql`
 
-The executed test verified two independent tenant/org scopes, authenticated identity resolution, own-scope Accounting writes, RLS read isolation, blocked cross-tenant writes, and rollback cleanup.
+Verified with two independent tenant/org scopes:
 
-Post-run cleanup evidence showed zero persisted synthetic users, tenants, organizations, memberships, test accounts, and audit fixtures.
+- authenticated identity resolution
+- own-scope Accounting writes
+- RLS read isolation
+- blocked cross-tenant writes
+- transaction rollback cleanup
 
 ## Accounting lifecycle E2E
 
@@ -131,108 +161,114 @@ Reusable test:
 
 `supabase/v2/tests/accounting-lifecycle.e2e.sql`
 
-Detailed execution evidence:
+Detailed evidence:
 
 `docs/superpowers/release/ATLAS_SUPABASE_V2_ACCOUNTING_E2E.md`
 
-The corrected complete lifecycle executed successfully against `atlas-core-v2` inside a transaction ending with `ROLLBACK`. It exercised, among other checks:
+The lifecycle executed inside a transaction ending with `ROLLBACK` and covered Chart of Accounts/settings, balanced posting, reversal, AR/AP, payments, bank reconciliation, depreciation, period close/reopen and financial-report reads.
 
-- tenant/org bootstrap and authenticated identity
-- Chart of Accounts and Accounting settings
-- balanced journal posting and governed reversal
-- customer/invoice/payment lifecycle
-- vendor/bill/approval/payment lifecycle
-- bank inflow/outflow, matching and reconciliation close
-- fixed asset creation and month-end straight-line depreciation
-- close task evidence, period close, closed-period posting rejection and governed reopen
-- Trial Balance equality
-- expected P&L values
-- Balance Sheet equation including Current Earnings
-- non-empty General Ledger
+## Revenue Ops E2E and security regression
 
-Fresh post-run checks confirmed no synthetic Accounting or identity fixtures persisted.
+Reusable tests:
 
-## Exact migration mirror
+- `supabase/v2/tests/revenue-ops.e2e.sql`
+- `supabase/v2/tests/revenue-ops-security.e2e.sql`
 
-The complete applied v2 migration history is now mirrored in:
+TDD evidence:
+
+1. Revenue Ops acceptance test was executed before the capability existed and failed on missing `revenue_accounts`.
+2. After applying Revenue Ops, own-scope CRM/sales mutations and RLS visibility passed while a cross-tenant account write was blocked.
+3. Supabase Security Advisor then identified six public authenticated `SECURITY DEFINER` RPCs.
+4. A regression test was added and failed with `Revenue Ops exposes 6 SECURITY DEFINER RPC(s) in public schema`.
+5. The RPC architecture was hardened to public invoker wrappers plus private governed implementations.
+6. The regression test and full Revenue Ops cross-tenant E2E were rerun successfully.
+7. Security Advisor returned to **0 findings**.
+
+All E2E fixtures were rolled back.
+
+## Exact migration history
+
+### Historical recovery set
+
+The original 25 applied v2 migrations were recovered from `supabase_migrations.schema_migrations.statements` and mirrored byte-for-byte in:
 
 `supabase/v2/migrations/`
 
-Evidence manifest:
+Historical evidence manifest:
 
 `supabase/v2/MIGRATION_MIRROR.md`
 
-The source SQL was recovered from `supabase_migrations.schema_migrations.statements` and every repository migration file was compared byte-for-byte using the Git blob SHA-1 algorithm.
+Result for the historical recovery set: **25/25 exact Git blob matches; 0 mismatches**.
 
-Result: **25/25 exact matches; 0 mismatches.**
+### Revenue Ops applied ledger additions
 
-No migration was replayed, rolled back, or changed on the canonical `atlas-core-v2` database during recovery.
+The canonical Supabase ledger now additionally contains these five migrations, and the repository files use the exact ledger timestamps and exact Git blobs:
 
-### Migration manifest
+| Version | Migration | Git blob SHA-1 |
+| --- | --- | --- |
+| `20260908205643` | `atlas_revenue_ops_core_v1` | `e46dd52496de80089b992b860589c1da87830ea4` |
+| `20260908205719` | `atlas_revenue_ops_governance_v1` | `c79283b03dcb6a0636ea4eefa872193bbfa15037` |
+| `20260908205740` | `atlas_revenue_ops_self_check_v1` | `177768192219d7722120fd0d80d338e58f89dadf` |
+| `20260908205751` | `extend_backend_gate_revenue_ops_v1` | `0e995514716e65f1b92205c0ae57447424fce262` |
+| `20260908210237` | `harden_revenue_ops_rpc_security_v1` | `84947b48a7e975f21c1449d42b8334b0a6c924c1` |
 
-1. `20260907174239 atlas_foundation_v1`
-2. `20260907174346 harden_foundation_security_v1`
-3. `20260907174412 optimize_foundation_indexes_v1`
-4. `20260907174455 service_bootstrap_tenant_v1`
-5. `20260907174702 atlas_foundation_self_check_v1`
-6. `20260907174738 atlas_identity_context_v1`
-7. `20260907174751 atlas_identity_self_check_v1`
-8. `20260907192123 atlas_accounting_ledger_core_v1`
-9. `20260907192348 atlas_accounting_ledger_governance_v1`
-10. `20260907192503 atlas_accounting_fk_index_alignment_v1`
-11. `20260907192544 atlas_accounting_self_check_v1`
-12. `20260907192735 atlas_accounting_ar_ap_v1`
-13. `20260907193004 atlas_accounting_ar_ap_governance_v1`
-14. `20260907193100 atlas_accounting_ar_ap_self_check_v1`
-15. `20260907193251 atlas_accounting_bank_reconciliation_v1`
-16. `20260907193417 atlas_accounting_bank_governance_v1`
-17. `20260907193459 atlas_accounting_bank_self_check_v1`
-18. `20260907193647 atlas_accounting_assets_close_v1`
-19. `20260907193824 atlas_accounting_assets_close_reports_governance_v1`
-20. `20260907193846 atlas_accounting_pnl_date_scope_fix_v1`
-21. `20260907193928 atlas_accounting_assets_close_self_check_v1`
-22. `20260907203112 fix_identity_rls_recursion_v1`
-23. `20260907203250 fix_audit_correlation_uuid_v1`
-24. `20260907205806 atlas_backend_gate_v1`
-25. `20260907205840 harden_accounting_self_checks_service_execution_v1`
+Current applied Supabase migration ledger count represented by these two sets: **30 migrations**.
+
+## Pending Release Train
+
+Release Train / Release Queue work exists in A-Z but is **not applied to `atlas-core-v2` and is not considered verified**.
+
+Its SQL blob is quarantined at:
+
+`supabase/v2/pending/20260908203000_atlas_release_train_v1.sql`
+
+Blob SHA:
+
+`dd615a26271dc5624c666daf4ae3b9050c35d31a`
+
+The corresponding path under `supabase/v2/migrations/` is intentionally absent, preventing a future migration replay from treating this pending work as an approved applied migration.
+
+Release Train must pass its own replay/E2E/security gates before it can move back into the active migration chain.
 
 ## Generated TypeScript / runtime contract
 
-Supabase TypeScript generation confirms mandatory `tenant_id` and `org_id` fields on v2 Accounting tables and exposes `atlas_identity_context()` with both identifiers.
+Generated Supabase types confirm mandatory `tenant_id` and `org_id` fields for the v2 Accounting contract and expose `atlas_identity_context()` with both identifiers.
 
-The A-Z identity runtime is converted to the v2 tenant-scoped contract and tests exist for tenant mapping and fail-closed behavior.
+The A-Z identity runtime is converted to the tenant-scoped contract and tests exist for tenant mapping and fail-closed behavior.
 
-The full generated `Database` type surface is not yet adopted across every repository/provider. This remains a contract-hardening gate.
+Full generated `Database` type adoption across every repository/provider remains a contract-hardening gate.
 
 ## Forge / CI state
 
-A-Z contains ATLAS Forge with the canonical local pipeline:
+A-Z contains ATLAS Forge with the canonical pipeline:
 
 `npm ci → typecheck → unit → integration → dependency audit → build`
 
-Current hosted-runner truth state:
+Current verified limitation:
 
-- GitHub Hosted Actions still fails before assigning an `ubuntu-latest` runner (`runner_id = 0`, `steps = []`).
-- The same pre-runner failure reproduced on PR #46, so no migration/test/build step ran in that red check.
-- No SentinelX Linux host is currently enrolled.
-- Backend Gate and database E2E evidence do not substitute for the repository TypeScript/test/audit/build pipeline.
+- GitHub Hosted Actions has previously failed before assigning an `ubuntu-latest` runner (`runner_id = 0`, `steps = []`).
+- no SentinelX Linux host was enrolled at the latest check
+- database Backend Gate/E2E evidence does not substitute for repository TypeScript/test/audit/build execution
+
+Do not interpret database success as full repository CI success.
 
 ## Known gates before production claim
 
-1. Replay the exact 25-migration chain in a fresh compatible **non-production** Supabase environment.
-2. Run Backend Gate, tenant-isolation E2E and Accounting lifecycle E2E against the replayed environment.
+1. Replay the exact applied migration chain in a fresh compatible **non-production** Supabase environment.
+2. Run Backend Gate, tenant-isolation, Accounting lifecycle and Revenue Ops E2E/security tests against that replayed environment.
 3. Confirm replayed schema/generated types match the expected v2 contract.
 4. Complete generated Supabase `Database` type adoption across v2 repositories/providers.
-5. Bootstrap and verify real authenticated production identities through the governed path when production onboarding is authorized.
-6. Enroll/start a real ATLAS Forge Linux runner or recover GitHub Actions runner allocation and execute the full repository pipeline.
-7. Run full A-Z cross-module CI and consensus gates.
-8. Verify Cloudflare deployment, domains, TLS, required routes and `/healthz` against the intended canonical commit.
-9. Do not merge PR #13 to `main` until the broader A-Z release gates are satisfied.
+5. Review and independently verify the pending Release Train before moving its SQL into active migrations.
+6. Bootstrap and verify real authenticated production identities only when production onboarding is authorized.
+7. Enroll/start a real ATLAS Forge Linux runner or recover GitHub Actions runner allocation and execute the full repository pipeline.
+8. Run full A-Z cross-module CI and consensus gates.
+9. Verify Cloudflare deployment, domains, TLS, required routes and `/healthz` against the intended canonical commit.
+10. Do not merge PR #13 to `main` until broader A-Z release gates are satisfied.
 
 Automated `supabase db push` remains disabled until clean non-production replay evidence exists.
 
 ## Release interpretation
 
-**Verified now:** Supabase v2 Foundation/Identity/Accounting structural invariants; tenant-scoped runtime contract; Backend Gate 58/58; authenticated tenant isolation; database-level Accounting lifecycle; exact 25/25 migration-history mirror; zero current Supabase Security Advisor findings.
+**Verified now:** Supabase v2 Foundation/Identity/Accounting plus the Revenue Ops v1 foundation/governance slice; tenant isolation; Accounting lifecycle; Revenue Ops cross-tenant/security regression; Backend Gate **69/69**; zero current Supabase Security Advisor findings; exact 25-migration historical mirror plus five exact Revenue Ops ledger additions.
 
-**Not verified yet:** clean empty-environment migration replay, complete generated type adoption, full repository CI/build, Cloudflare deployment, production traffic, or overall production readiness.
+**Pending/unverified:** Release Train migration, clean empty-environment replay of the current applied chain, complete generated-type adoption, full repository CI/build, Cloudflare deployment, production traffic and overall production readiness.
