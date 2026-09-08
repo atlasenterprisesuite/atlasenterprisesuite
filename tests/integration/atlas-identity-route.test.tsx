@@ -49,6 +49,37 @@ describe('ATLAS Identity route', () => {
     expect(String(fetchMock.mock.calls[1][0])).toContain('/rest/v1/organization_members');
   });
 
+  it('routes unauthenticated ATLAS Voice access through Identity', () => {
+    render(
+      <MemoryRouter initialEntries={['/studio/voice']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'ATLAS Identity' })).toBeInTheDocument();
+    expect(screen.getByText('/studio/voice')).toBeInTheDocument();
+  });
+
+  it('returns an authenticated member to ATLAS Voice Studio with truthful native capability state', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'identity-token', refresh_token: 'refresh-token' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/identity?app=%2Fstudio%2Fvoice']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'operator@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'not-a-real-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'ATLAS Voice Studio' })).toBeInTheDocument());
+    expect(screen.getByText('Requires ATLAS iOS app')).toBeInTheDocument();
+  });
+
   it('rejects external return targets and keeps navigation inside ATLAS', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'identity-token', refresh_token: 'refresh-token' }), { status: 200 }))
