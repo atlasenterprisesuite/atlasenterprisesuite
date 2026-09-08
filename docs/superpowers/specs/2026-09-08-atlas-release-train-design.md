@@ -16,7 +16,8 @@ Development concurrency and production promotion are separate concerns.
 - Modules may advance independently through design, implementation, integration and test preparation.
 - A blocked module does not block unrelated development.
 - A module cannot become `VERIFIED` without executable evidence.
-- A module cannot enter production merely because implementation is complete.
+- A module cannot become `RELEASE_READY` unless verification passed.
+- A module cannot become visible/live merely because its code was deployed.
 - Production promotion is sequential, dependency-aware and rollback-capable.
 
 ## Module Lifecycle
@@ -33,6 +34,22 @@ Exceptional states:
 
 `BLOCKED` and `PROVIDER_REQUIRED` never stop independent modules from advancing.
 
+## Deploy Is Not Activation
+
+ATLAS separates code deployment from module activation.
+
+The preferred production strategy is:
+
+1. Build and verify one immutable release candidate SHA containing all approved queued code.
+2. Deploy that SHA with unreleased modules disabled by the server-side release registry.
+3. Activate module waves sequentially without rebuilding or changing the candidate SHA.
+4. Smoke-test each activation before opening the next wave.
+5. On failure, deactivate/rollback the affected wave while preserving the same known candidate or the last verified production state.
+
+A deployed but disabled module is **not live** and must not be reported as published.
+
+This minimizes deployment churn and makes the user's requested “one after another” launch deterministic and reversible.
+
 ## Global Release Lock
 
 ATLAS maintains a global release lock for A-Z work.
@@ -40,8 +57,9 @@ ATLAS maintains a global release lock for A-Z work.
 While locked:
 - `release/atlas-a-z` can continue receiving integrated module work;
 - modules may become `RELEASE_READY` and enter the queue;
-- no A-Z module is promoted to production;
-- `main` remains the production-stable branch.
+- unreleased modules remain disabled in the production release registry;
+- no A-Z module is activated for users;
+- `main` remains the production-stable branch until a verified release candidate is promoted.
 
 The lock may open only when the release controller has sufficient executable evidence for the wave being promoted and all mandatory upstream dependencies are verified.
 
@@ -59,6 +77,7 @@ Each module or releasable surface must have a canonical queue record with at lea
 - `provider_status`
 - `security_status`
 - `release_ready`
+- `activation_enabled`
 - `queue_position`
 - `release_wave`
 - `candidate_sha`
@@ -67,12 +86,12 @@ Each module or releasable surface must have a canonical queue record with at lea
 - `blocker_reason`
 - `updated_at`
 
-A percentage alone can never promote a module.
+A percentage alone can never promote or activate a module.
 
 ## Recommended Release Waves
 
 ### Wave 0 — Foundation
-Core, Identity, RBAC, Audit, Security, Settings, ATLAS Manager, Observability.
+Core, Identity, RBAC, Audit, Security, Settings, ATLAS Manager, Observability and Release Controller.
 
 ### Wave 1 — Finance
 Finance, Accounting, GL, AP, AR, Bank/Cash, Reconciliation and financial reporting foundations.
@@ -100,16 +119,17 @@ A-Z registry verification, final cross-module smoke matrix, production evidence 
 
 ## Promotion Algorithm
 
-For each queued wave:
+For each queued release train:
 
-1. Freeze the candidate SHA for that wave.
-2. Confirm required upstream modules are `PROD_VERIFIED` or part of the same approved wave.
+1. Freeze one immutable candidate SHA.
+2. Confirm required upstream modules are `PROD_VERIFIED` or part of the same approved candidate.
 3. Confirm typecheck, unit, integration, security and build gates actually executed and passed.
 4. Confirm required migrations and provider readiness states.
-5. Promote the wave.
-6. Run production smoke tests for routes, auth, permissions, data and critical actions.
-7. If successful, mark the wave/modules `PROD_VERIFIED` and continue to the next wave.
-8. If unsuccessful, stop promotion, rollback/disable the affected wave, preserve the last verified production state, diagnose and correct before continuing.
+5. Promote/deploy the candidate SHA with unreleased modules disabled.
+6. Activate Wave 0 and run production smoke tests.
+7. If successful, mark Wave 0 modules `PROD_VERIFIED`, then activate Wave 1.
+8. Repeat activation → smoke test → evidence → next wave.
+9. If a wave fails, stop the train, deactivate/rollback that affected wave, preserve prior verified waves, diagnose and correct before continuing.
 
 A failed wave does not automatically undo already verified prior waves.
 
@@ -125,7 +145,7 @@ Once runners execute real steps, actual software failures are handled normally a
 
 Never represent a capability as connected, live, paid, filed, clinical-production-ready, device-controlled or provider-backed without evidence.
 
-Provider-dependent modules may be `RELEASE_READY` for their internal surface while retaining `PROVIDER_REQUIRED` capabilities. The UI must expose truthful readiness states rather than simulate success.
+Provider-dependent modules may complete their internal implementation while retaining `PROVIDER_REQUIRED` capabilities. They may become `RELEASE_READY` only for the verified internal surface whose unavailable provider capabilities remain disabled and truthfully labeled.
 
 ## Higher-Risk Gates
 
@@ -142,7 +162,7 @@ A wave no longer needs to be green before development on another wave begins.
 
 Instead:
 
-> A wave must be green before it is promoted to production, not before another independent wave may be developed.
+> A wave must be green before it is activated in production, not before another independent wave may be developed.
 
 Teams/agents should continue independent work whenever dependencies permit, while recording exact blockers and readiness states in the release queue.
 
@@ -153,16 +173,17 @@ Teams/agents should continue independent work whenever dependencies permit, whil
 - routes/actions are real and permission-gated;
 - no fake runtime/provider state;
 - migrations/configuration are versioned;
-- required tests exist;
-- mandatory external dependencies are either verified or explicitly classified `PROVIDER_REQUIRED`;
+- required typecheck/tests/build/security gates actually executed and passed;
+- mandatory external dependencies are either verified or their unavailable capabilities are explicitly `PROVIDER_REQUIRED` and disabled;
 - no unresolved design or security blocker remains.
 
-It does **not** mean tested, deployed or production verified.
+It does **not** mean deployed, activated, live or production verified.
 
 ## Definition of Production Verified
 
-`PROD_VERIFIED` requires evidence from the actual promoted production SHA, including:
-- successful deployment;
+`PROD_VERIFIED` requires evidence from the actual promoted production SHA and activated module, including:
+- successful candidate deployment;
+- correct release-registry activation;
 - healthy domain/routes/assets/APIs;
 - authentication and authorization behavior;
 - data isolation/persistence checks where applicable;
@@ -172,6 +193,6 @@ It does **not** mean tested, deployed or production verified.
 
 ## Relationship to Existing A-Z Program
 
-This design supersedes the old sequencing rule that required each wave to finish before the next wave could be accepted for development. The A-Z program remains the canonical integration program, but wave ordering now governs **release promotion**, not development concurrency.
+This design supersedes the old sequencing rule that required each wave to finish before the next wave could be accepted for development. The A-Z program remains the canonical integration program, but wave ordering now governs **production activation**, not development concurrency.
 
-`release/atlas-a-z` remains the integration axis. `main` remains production-stable until the controlled release train promotes verified waves according to this design.
+`release/atlas-a-z` remains the integration axis. `main` remains production-stable until a verified immutable release candidate is promoted. Subsequent module exposure is controlled by the release registry and Release Controller according to this design.
