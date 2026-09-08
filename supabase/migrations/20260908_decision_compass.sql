@@ -136,6 +136,7 @@ create policy decision_compass_records_insert
     and truth_state = 'reflection'
     and verified_by is null
     and verified_at is null
+    and not exists (select 1 from jsonb_array_elements(verification_gate) gate where coalesce((gate->>'passed')::boolean, false) is true)
   );
 
 drop policy if exists decision_compass_evidence_read on public.decision_compass_evidence_refs;
