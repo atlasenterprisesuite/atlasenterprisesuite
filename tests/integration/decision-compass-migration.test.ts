@@ -42,6 +42,11 @@ describe('Decision Compass Supabase governance contract', () => {
     expect(source).toContain("not exists (select 1 from jsonb_array_elements(verification_gate) gate where coalesce((gate->>'passed')::boolean, false) is true)");
   });
 
+  it('prevents review-level evidence inserts from claiming verification timestamps', () => {
+    expect(source).toContain("public.decision_compass_has_permission(org_id, 'decision.review')");
+    expect(source).toContain('and verified_at is null');
+  });
+
   it('enforces transitions server-side and forbids direct reflection to verified', () => {
     expect(source).toContain('create or replace function public.decision_compass_transition');
     expect(source).toContain("when 'reflection' then p_next_state in ('needs_evidence', 'blocked', 'rejected', 'superseded')");
@@ -54,8 +59,8 @@ describe('Decision Compass Supabase governance contract', () => {
     expect(source).toContain("raise exception 'proposed_action_required'");
   });
 
-  it('requires verify permission, evidence, and every verification gate before verified', () => {
-    expect(source).toContain("required_permission := case when p_next_state = 'verified' then 'decision.verify' else 'decision.review' end");
+  it('requires verify permission for verification and for superseding a verified record', () => {
+    expect(source).toContain("required_permission := case when p_next_state = 'verified' or current_record.truth_state = 'verified' then 'decision.verify' else 'decision.review' end");
     expect(source).toContain("if p_next_state = 'verified' then");
     expect(source).toContain("raise exception 'verification_requires_independent_evidence'");
     expect(source).toContain("raise exception 'verification_gate_incomplete'");
