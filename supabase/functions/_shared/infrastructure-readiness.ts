@@ -1,8 +1,18 @@
 export type ProviderName = 'github' | 'supabase' | 'cloudflare' | 'production' | 'vercel';
+export type ProviderIncidentScope = 'dashboard' | 'edge' | 'mixed' | 'unknown';
+
+export type ProviderIncident = {
+  source: 'cloudflare_status';
+  active: boolean;
+  scope: ProviderIncidentScope;
+  impact: string;
+  name?: string;
+};
 
 export type ProviderSnapshot = {
   state: string;
   required: boolean;
+  incident?: ProviderIncident | null;
 };
 
 export type InfrastructureBlocker = {
@@ -11,10 +21,19 @@ export type InfrastructureBlocker = {
   nextAction: string;
 };
 
+export type InfrastructureDiagnostic = {
+  provider: ProviderName;
+  cause: 'provider' | 'atlas_or_unknown';
+  scope: ProviderIncidentScope | 'production';
+  blocking: boolean;
+  summary: string;
+};
+
 export type InfrastructureEvaluation = {
   status: 'ready' | 'partial';
   providers: Record<ProviderName, ProviderSnapshot>;
   blockers: InfrastructureBlocker[];
+  diagnostics: InfrastructureDiagnostic[];
   requiredPath: ProviderName[];
 };
 
@@ -45,10 +64,27 @@ export function evaluateInfrastructure(
       nextAction: `verify_or_repair_${provider}`
     }));
 
+  const diagnostics: InfrastructureDiagnostic[] = [];
+  const cloudflareIncident = providers.cloudflare.incident;
+  if (
+    cloudflareIncident?.active &&
+    cloudflareIncident.scope === 'dashboard' &&
+    providers.production.state === 'ready'
+  ) {
+    diagnostics.push({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'dashboard',
+      blocking: false,
+      summary: 'Cloudflare has an active dashboard incident, but ATLAS production is reachable.'
+    });
+  }
+
   return {
     status: blockers.length === 0 ? 'ready' : 'partial',
     providers,
     blockers,
+    diagnostics,
     requiredPath
   };
 }
