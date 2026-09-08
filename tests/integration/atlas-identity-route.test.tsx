@@ -61,9 +61,11 @@ describe('ATLAS Identity route', () => {
   });
 
   it('returns an authenticated member to ATLAS Voice Studio with truthful native capability state', async () => {
+    const membership = [{ org_id: 'org-1', role: 'owner', status: 'active' }];
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'identity-token', refresh_token: 'refresh-token' }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify(membership), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(membership), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(
@@ -78,6 +80,7 @@ describe('ATLAS Identity route', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'ATLAS Voice Studio' })).toBeInTheDocument());
     expect(screen.getByText('Requires ATLAS iOS app')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('rejects external return targets and keeps navigation inside ATLAS', async () => {
