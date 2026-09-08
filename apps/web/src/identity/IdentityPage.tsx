@@ -6,6 +6,7 @@ import {
   getAtlasAccessToken,
   signInAtlas
 } from '../lib/atlasSession';
+import './identity.css';
 
 const DEFAULT_TARGET = '/';
 const SUPPORTED_PREFIXES = ['/finance', '/health'];
