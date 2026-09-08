@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { demoAtlasContext, hasPermission } from '../../../../../../packages/core/src';
 import {
   agingBucket,
@@ -19,9 +19,17 @@ import {
   paymentApplications as demoPaymentApplications,
   vendors as demoVendors
 } from '../../../../../../data/demo/accounting/payablesSeed';
+import {
+  clearAtlasSession,
+  getAccountingInsight,
+  getAtlasAccessToken,
+  signInAtlas,
+  type AccountingInsight
+} from '../../../lib/atlasSession';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const date = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const dateTime = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 const scopedData = scopePayablesData(
   demoAtlasContext.scope,
   demoVendors,
@@ -34,6 +42,127 @@ const paymentApplications = scopedData.paymentApplications;
 
 function vendorFor(bill: Bill) {
   return vendors.find((vendor) => vendor.id === bill.vendorId);
+}
+
+function InsightBody({ text }: { text: string }) {
+  return (
+    <div className="ai-insight-copy">
+      {text.split('\n').filter(Boolean).map((line, index) => {
+        if (line.startsWith('## ')) return <h3 key={`${line}-${index}`}>{line.slice(3)}</h3>;
+        if (line.startsWith('- ')) return <p key={`${line}-${index}`} className="ai-insight-bullet">{line.slice(2)}</p>;
+        return <p key={`${line}-${index}`}>{line}</p>;
+      })}
+    </div>
+  );
+}
+
+function LiveAccountingInsight() {
+  const [hasSession, setHasSession] = useState(() => Boolean(getAtlasAccessToken()));
+  const [insight, setInsight] = useState<AccountingInsight | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  async function loadInsight(forceRefresh = false) {
+    setLoading(true);
+    setError('');
+    try {
+      const next = await getAccountingInsight(forceRefresh);
+      setInsight(next);
+      setHasSession(true);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'Unable to load live accounting intelligence.';
+      if (message === 'authentication_required' || message === 'session_expired' || message === 'invalid_session') {
+        clearAtlasSession();
+        setHasSession(false);
+        setInsight(null);
+      }
+      setError(message.replaceAll('_', ' '));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (hasSession && !insight && !loading) void loadInsight(false);
+  }, [hasSession]);
+
+  async function handleSignIn(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await signInAtlas(email.trim(), password);
+      setPassword('');
+      setHasSession(true);
+      const next = await getAccountingInsight(false);
+      setInsight(next);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Sign in failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleSignOut() {
+    clearAtlasSession();
+    setInsight(null);
+    setHasSession(false);
+    setError('');
+  }
+
+  return (
+    <section className="ai-insight-card" aria-label="ATLAS Astra Accounts Payable intelligence">
+      <div className="ai-insight-heading">
+        <div>
+          <p className="eyebrow">ATLAS Intelligence / Live RLS data</p>
+          <h2>Astra AP Intelligence</h2>
+          <p>Reads the authenticated organization snapshot in Supabase and recommends controls without executing payments or journal entries.</p>
+        </div>
+        {insight && <span className="status-chip neutral">{insight.cached ? 'Cached snapshot' : 'Fresh analysis'} · {insight.model}</span>}
+      </div>
+
+      {!hasSession ? (
+        <form className="ai-session-form" onSubmit={handleSignIn}>
+          <div>
+            <strong>Live ATLAS session required</strong>
+            <p>Sign in to load the organization-scoped AP snapshot under Supabase RLS.</p>
+          </div>
+          <label className="field"><span>Email</span><input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+          <label className="field"><span>Password</span><input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          <button className="primary-action" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in & analyze'}</button>
+        </form>
+      ) : (
+        <>
+          <div className="ai-insight-actions">
+            <button className="primary-action" type="button" onClick={() => void loadInsight(true)} disabled={loading}>{loading ? 'Analyzing…' : 'Refresh analysis'}</button>
+            <button className="link-button" type="button" onClick={handleSignOut}>Sign out</button>
+          </div>
+
+          {insight && (
+            <>
+              <div className="ai-insight-metrics" aria-label="Live AP snapshot summary">
+                <article><span>Live bills</span><strong>{insight.snapshot.bill_count}</strong></article>
+                <article><span>Open balance</span><strong>{currency.format(insight.snapshot.open_balance)}</strong></article>
+                <article><span>Chart accounts</span><strong>{insight.snapshot.chart_account_count}</strong></article>
+                <article><span>Generated</span><strong>{dateTime.format(new Date(insight.generated_at))}</strong></article>
+              </div>
+              <InsightBody text={insight.analysis} />
+              <div className="ai-execution-boundary">
+                <strong>Execution boundary</strong>
+                <span>Recommendations only · payments {insight.execution.payments ? 'enabled' : 'not executed'} · journal entries {insight.execution.journal_entries ? 'enabled' : 'not executed'} · mutations {insight.execution.mutations ? 'enabled' : 'disabled'}</span>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {loading && hasSession && !insight && <div className="empty-state"><strong>Analyzing live AP data…</strong><span>ATLAS is reading the RLS-scoped accounting snapshot.</span></div>}
+      {error && <div className="notice" role="alert">{error}</div>}
+      <small className="muted">The intelligence panel is live. The AP ledger table below remains the repository demo dataset until its separate live-data cutover is completed.</small>
+    </section>
+  );
 }
 
 function PayablesWorkspace() {
@@ -71,6 +200,8 @@ function PayablesWorkspace() {
         </div>
         <div className="asof-card"><span>As of</span><strong>{date.format(new Date(`${payablesAsOf}T00:00:00Z`))}</strong></div>
       </header>
+
+      <LiveAccountingInsight />
 
       <div className="notice" role="status">{payablesDemoNotice}</div>
 
