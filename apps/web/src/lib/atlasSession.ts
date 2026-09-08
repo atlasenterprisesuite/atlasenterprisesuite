@@ -369,3 +369,25 @@ export async function transitionDecisionCompassRecord(
   if (!raw?.id) throw new Error('decision_transition_failed');
   return assertRecordOrganization(normalizeDecisionRecord(raw), organization.id);
 }
+
+export async function setDecisionCompassGate(
+  recordId: string,
+  gateId: string,
+  passed: boolean,
+  reason: string
+): Promise<DecisionCompassRecord> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedFetch('/rest/v1/rpc/decision_compass_set_gate', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_record_id: recordId,
+      p_gate_id: gateId,
+      p_passed: passed,
+      p_reason: reason
+    })
+  });
+  const data = await parseResponse(response);
+  const raw = Array.isArray(data) ? data[0] : data;
+  if (!raw?.id) throw new Error('decision_gate_update_failed');
+  return assertRecordOrganization(normalizeDecisionRecord(raw), organization.id);
+}
