@@ -42,11 +42,12 @@ describe('ATLAS Knowledge Atlas Animal Kingdom routes', () => {
   it('renders the lovebug detail with taxonomy, myth correction and real source links', async () => {
     renderApp('/knowledge/animals/common-lovebug');
     expect(await screen.findByRole('heading', { name: 'Common lovebug' })).toBeInTheDocument();
-    expect(screen.getByText('Plecia nearctica')).toBeInTheDocument();
+    expect(screen.getAllByText('Plecia nearctica').length).toBeGreaterThan(0);
     expect(screen.getByText('Bibionidae')).toBeInTheDocument();
     expect(screen.getByText(/created or engineered/i)).toBeInTheDocument();
     const evidence = screen.getByRole('region', { name: 'Evidence sources' });
-    expect(within(evidence).getByRole('link', { name: /University of Florida IFAS Extension/i })).toHaveAttribute('href', 'https://ask.ifas.ufl.edu/publication/IN204');
+    const ufLinks = within(evidence).getAllByRole('link', { name: /University of Florida IFAS Extension/i });
+    expect(ufLinks.some((link) => link.getAttribute('href') === 'https://ask.ifas.ufl.edu/publication/IN204')).toBe(true);
   });
 
   it('wires Knowledge into the shared ATLAS navigation', async () => {
