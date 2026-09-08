@@ -28,6 +28,13 @@ const base: DecisionCompassRecord = {
   verifiedAt: null
 };
 
+const independentEvidence = {
+  kind: 'workflow',
+  sourceModule: 'github',
+  sourceId: 'run-1',
+  label: 'CI run'
+};
+
 describe('ATLAS Decision Compass truth-state engine', () => {
   it('forbids reflection to verified even when requested', () => {
     expect(canTransitionDecision('reflection', 'verified')).toBe(false);
@@ -39,9 +46,8 @@ describe('ATLAS Decision Compass truth-state engine', () => {
     const withEvidence: DecisionCompassRecord = {
       ...base,
       truthState: 'action_proposed',
-      evidenceRefs: [
-        { kind: 'workflow', sourceModule: 'github', sourceId: 'run-1', label: 'CI run' }
-      ],
+      proposedAction: 'Inspect the confirmed CI result.',
+      evidenceRefs: [independentEvidence],
       verificationGate: [
         { id: 'g1', label: 'CI passed', passed: true }
       ]
@@ -64,14 +70,30 @@ describe('ATLAS Decision Compass truth-state engine', () => {
     });
   });
 
+  it('refuses evidence_found when no independent evidence is attached', () => {
+    expect(() => transitionDecision(
+      { ...base, truthState: 'needs_evidence' },
+      'evidence_found',
+      { actorId: 'u-1' }
+    )).toThrow('evidence_required_for_truth_state');
+  });
+
   it('supports evidence-first progression without auto-verifying', () => {
     const evidenceFound = transitionDecision(
-      { ...base, truthState: 'needs_evidence' },
+      { ...base, truthState: 'needs_evidence', evidenceRefs: [independentEvidence] },
       'evidence_found',
       { actorId: 'u-1' }
     );
     expect(evidenceFound.truthState).toBe('evidence_found');
     expect(evidenceFound.verifiedBy).toBeNull();
+  });
+
+  it('refuses action_proposed without a concrete proposed action', () => {
+    expect(() => transitionDecision(
+      { ...base, truthState: 'evidence_found', evidenceRefs: [independentEvidence] },
+      'action_proposed',
+      { actorId: 'u-1' }
+    )).toThrow('proposed_action_required');
   });
 
   it('allows rejection and supersession without claiming success', () => {
