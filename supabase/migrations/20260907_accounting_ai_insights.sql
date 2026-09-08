@@ -21,6 +21,7 @@ create index if not exists accounting_ai_insights_snapshot_idx
 alter table public.accounting_ai_insights enable row level security;
 
 revoke all on public.accounting_ai_insights from anon;
+revoke all on public.accounting_ai_insights from authenticated;
 grant select on public.accounting_ai_insights to authenticated;
 
 drop policy if exists accounting_ai_insights_read on public.accounting_ai_insights;
