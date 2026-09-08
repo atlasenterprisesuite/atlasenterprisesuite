@@ -66,17 +66,43 @@ export function evaluateInfrastructure(
 
   const diagnostics: InfrastructureDiagnostic[] = [];
   const cloudflareIncident = providers.cloudflare.incident;
-  if (
-    cloudflareIncident?.active &&
-    cloudflareIncident.scope === 'dashboard' &&
-    providers.production.state === 'ready'
-  ) {
+  const productionReady = providers.production.state === 'ready';
+
+  if (cloudflareIncident?.active && cloudflareIncident.scope === 'dashboard') {
     diagnostics.push({
       provider: 'cloudflare',
       cause: 'provider',
       scope: 'dashboard',
       blocking: false,
-      summary: 'Cloudflare has an active dashboard incident, but ATLAS production is reachable.'
+      summary: productionReady
+        ? 'Cloudflare has an active dashboard incident, but ATLAS production is reachable.'
+        : 'Cloudflare reports a dashboard incident; it does not by itself explain the ATLAS production outage.'
+    });
+  }
+
+  const matchingCloudflareEdgeIncident = Boolean(
+    cloudflareIncident?.active &&
+      (cloudflareIncident.scope === 'edge' || cloudflareIncident.scope === 'mixed')
+  );
+
+  if (!productionReady && matchingCloudflareEdgeIncident) {
+    diagnostics.push({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: cloudflareIncident!.scope,
+      blocking: true,
+      summary:
+        cloudflareIncident!.scope === 'edge'
+          ? 'ATLAS production is unreachable while Cloudflare reports an active edge incident.'
+          : 'ATLAS production is unreachable while Cloudflare reports an active incident affecting dashboard and edge services.'
+    });
+  } else if (!productionReady) {
+    diagnostics.push({
+      provider: 'production',
+      cause: 'atlas_or_unknown',
+      scope: 'production',
+      blocking: true,
+      summary: 'ATLAS production is unreachable and no matching Cloudflare provider incident is active.'
     });
   }
 
