@@ -97,4 +97,52 @@ describe('ATLAS Manager infrastructure readiness', () => {
       summary: 'Cloudflare has an active dashboard incident, but ATLAS production is reachable.'
     });
   });
+
+  it('attributes a production outage to Cloudflare when an active edge incident overlaps it', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: {
+        state: 'ready',
+        required: true,
+        incident: {
+          source: 'cloudflare_status',
+          active: true,
+          scope: 'edge',
+          impact: 'major',
+          name: 'Network connectivity issues'
+        }
+      },
+      production: { state: 'public_site_unreachable', required: true },
+      vercel: { state: 'not_configured', required: false }
+    });
+
+    expect(result.status).toBe('partial');
+    expect(result.diagnostics).toContainEqual({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'edge',
+      blocking: true,
+      summary: 'ATLAS production is unreachable while Cloudflare reports an active edge incident.'
+    });
+  });
+
+  it('does not blame Cloudflare for an ATLAS production outage when no provider incident is active', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: { state: 'ready', required: true },
+      production: { state: 'public_site_unreachable', required: true },
+      vercel: { state: 'not_configured', required: false }
+    });
+
+    expect(result.status).toBe('partial');
+    expect(result.diagnostics).toContainEqual({
+      provider: 'production',
+      cause: 'atlas_or_unknown',
+      scope: 'production',
+      blocking: true,
+      summary: 'ATLAS production is unreachable and no matching Cloudflare provider incident is active.'
+    });
+  });
 });
