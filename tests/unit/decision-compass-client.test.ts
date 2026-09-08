@@ -4,6 +4,7 @@ import {
   clearAtlasSession,
   createDecisionCompassRecord,
   listDecisionCompassRecords,
+  setDecisionCompassGate,
   transitionDecisionCompassRecord
 } from '../../apps/web/src/lib/atlasSession';
 
@@ -116,6 +117,29 @@ describe('Decision Compass Supabase client', () => {
       p_record_id: 'd-1',
       p_next_state: 'needs_evidence',
       p_reason: 'Review supporting evidence'
+    });
+  });
+
+  it('updates a verification gate only through the governed gate RPC', async () => {
+    authenticate();
+    const gated = {
+      ...databaseRecord,
+      verification_gate: [{ id: 'g1', label: 'CI passed', passed: true }]
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(gated), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await setDecisionCompassGate('d-1', 'g1', true, 'Evidence reviewed');
+
+    expect(result.verificationGate[0].passed).toBe(true);
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/rest/v1/rpc/decision_compass_set_gate');
+    expect(JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body))).toEqual({
+      p_record_id: 'd-1',
+      p_gate_id: 'g1',
+      p_passed: true,
+      p_reason: 'Evidence reviewed'
     });
   });
 });
