@@ -105,6 +105,14 @@ export function transitionDecision(
     throw new Error('invalid_truth_state_transition');
   }
 
+  if ((nextState === 'evidence_found' || nextState === 'action_proposed' || nextState === 'verified') && record.evidenceRefs.length === 0) {
+    throw new Error('evidence_required_for_truth_state');
+  }
+
+  if (nextState === 'action_proposed' && !record.proposedAction?.trim()) {
+    throw new Error('proposed_action_required');
+  }
+
   if (nextState === 'verified') {
     const gate = evaluateVerificationGate(record);
     if (!gate.ready) throw new Error(`verification_gate_incomplete:${gate.missing.join(',')}`);
