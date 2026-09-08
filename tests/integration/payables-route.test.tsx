@@ -1,22 +1,57 @@
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../../apps/web/src/App';
+import {
+  AtlasProvider,
+  type AtlasIdentitySource,
+  type AtlasIdentityState,
+} from '../../apps/web/src/app/AtlasContext';
 
-describe('ATLAS integrated route graph', () => {
-  it('renders the AP workspace inside the shared ATLAS shell', () => {
-    render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><App /></MemoryRouter>);
+afterEach(cleanup);
+
+function sourceFor(state: AtlasIdentityState): AtlasIdentitySource {
+  return { resolve: async () => state };
+}
+
+const readyIdentity: AtlasIdentityState = {
+  status: 'ready',
+  userId: 'test-user-id',
+  organizationId: 'test-organization-id',
+  organizationName: 'Test Organization',
+  role: 'accountant',
+  permissions: ['accounting.read', 'accounting.write', 'audit.read'],
+};
+
+function renderAtlas(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <AtlasProvider source={sourceFor(readyIdentity)}>
+        <App />
+      </AtlasProvider>
+    </MemoryRouter>,
+  );
+}
+
+describe('Accounts Payable route', () => {
+  it('renders the truthful AP connection state inside the shared ATLAS shell without fabricated vendor data', async () => {
+    renderAtlas('/finance/accounting/accounts-payable');
+    expect(await screen.findByRole('heading', { name: 'Accounts Payable' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'ATLAS modules' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Accounts Payable' })).toBeInTheDocument();
-    expect(screen.getAllByText('Northstar Office Supply').length).toBeGreaterThan(0);
-    expect(screen.getByText(/No bank, payment processor/)).toBeInTheDocument();
+    expect(screen.getByText('Test Organization')).toBeInTheDocument();
+    expect(await screen.findByText('Accounts Payable connection unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('No configured real Accounting repository is available.');
+    expect(screen.getByText(/authorized organization accounting records/i)).toBeInTheDocument();
+    expect(screen.queryByText('Northstar Office Supply')).not.toBeInTheDocument();
   });
 
-  it('renders the governed Health route in the same shell', () => {
-    render(<MemoryRouter initialEntries={['/health']}><App /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: 'Health' })).toBeInTheDocument();
-    expect(screen.getByText(/Research \/ Demo Environment/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Health Frontiers/i })).toHaveAttribute('href', '/health/research');
+  it('preserves the intentional Health safe handoff instead of breaking the shared shell', async () => {
+    renderAtlas('/health');
+    expect(await screen.findByRole('heading', { name: 'ATLAS Health' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Safe handoff active');
+    expect(screen.getByText(/historical implementation is reconnected through verified sources and permissions/i)).toBeInTheDocument();
   });
 });

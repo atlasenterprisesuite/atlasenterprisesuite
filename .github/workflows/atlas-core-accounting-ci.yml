@@ -1,0 +1,128 @@
+name: ATLAS Core Accounting CI
+
+on:
+  push:
+    branches:
+      - feat/atlas-core-accounting
+      - release/atlas-a-z
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Integration smoke tests
+        run: npm test -- tests/integration/routes.test.tsx
+
+      - name: Core unit tests
+        run: npm test -- tests/unit/core.test.ts
+
+      - name: Accounting validation tests
+        run: npm test -- tests/unit/accounting-validation.test.ts
+
+      - name: Accounting aging tests
+        run: npm test -- tests/unit/accounting-aging.test.ts
+
+      - name: Fixed asset depreciation tests
+        run: npm test -- tests/unit/accounting-assets.test.ts
+
+      - name: Financial report tests
+        run: npm test -- tests/unit/accounting-reports.test.ts
+
+      - name: Period close guard tests
+        run: npm test -- tests/unit/accounting-close.test.ts
+
+      - name: Task 8 write contract tests
+        run: npm test -- tests/unit/accounting-task8-writes.test.ts
+
+      - name: Task 8 RPC gateway tests
+        run: npm test -- tests/integration/accounting-task8-rpc-gateway.test.ts
+
+      - name: Task 8 repository tests
+        run: npm test -- tests/integration/accounting-task8-repository.test.ts
+
+      - name: Accounting repository tests
+        run: npm test -- tests/integration/accounting-repository.test.ts
+
+      - name: AR AP repository tests
+        run: npm test -- tests/integration/ar-ap-repository.test.ts
+
+      - name: Bank Cash repository tests
+        run: npm test -- tests/integration/bank-cash-repository.test.ts
+
+      - name: Bank Cash write contract tests
+        run: npm test -- tests/unit/bank-cash-writes.test.ts
+
+      - name: Bank Cash RPC gateway tests
+        run: npm test -- tests/integration/bank-cash-rpc-gateway.test.ts
+
+      - name: Bank Cash UI tests
+        run: npm test -- tests/integration/bank-cash-ui.test.tsx
+
+      - name: AR AP write contract tests
+        run: npm test -- tests/unit/ar-ap-writes.test.ts
+
+      - name: AR AP RPC gateway tests
+        run: npm test -- tests/integration/ar-ap-rpc-gateway.test.ts
+
+      - name: AR AP UI tests
+        run: npm test -- tests/integration/ar-ap-ui.test.tsx
+
+      - name: AR AP write UI tests
+        run: npm test -- tests/integration/ar-ap-write-ui.test.tsx
+
+      - name: Accounting UI tests
+        run: npm test -- tests/integration/accounting-ui.test.tsx
+
+      - name: General Ledger derivation tests
+        run: npm test -- tests/unit/general-ledger.test.ts
+
+      - name: General Ledger UI tests
+        run: npm test -- tests/integration/general-ledger-ui.test.tsx
+
+      - name: Chart of Accounts UI tests
+        run: npm test -- tests/integration/chart-of-accounts-ui.test.tsx
+
+      - name: Account write contract tests
+        run: npm test -- tests/unit/account-writes.test.ts
+
+      - name: Account RPC gateway tests
+        run: npm test -- tests/integration/account-rpc-gateway.test.ts
+
+      - name: Journal write contract tests
+        run: npm test -- tests/unit/journal-writes.test.ts
+
+      - name: Journal RPC gateway tests
+        run: npm test -- tests/integration/journal-rpc-gateway.test.ts
+
+      - name: Journal Entries UI tests
+        run: npm test -- tests/integration/journal-entries-ui.test.tsx
+
+      - name: Runtime real-data safety scan
+        run: |
+          if grep -R -nE 'DemoAccountingRepository|data/demo|tenant-demo|org-demo|Demo environment' apps/web/src packages/accounting/src 2>/dev/null; then
+            echo "Runtime demo data reference detected"
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
