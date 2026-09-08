@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateInfrastructure } from '../../supabase/functions/_shared/infrastructure-readiness';
+import * as readiness from '../../supabase/functions/_shared/infrastructure-readiness';
+
+const { evaluateInfrastructure } = readiness;
 
 describe('ATLAS Manager infrastructure readiness', () => {
   it('does not block when optional Vercel is unconfigured', () => {
@@ -144,5 +146,18 @@ describe('ATLAS Manager infrastructure readiness', () => {
       blocking: true,
       summary: 'ATLAS production is unreachable and no matching Cloudflare provider incident is active.'
     });
+  });
+
+  it('classifies Cloudflare incident scope from incident and component names', () => {
+    const classify = (readiness as any).classifyCloudflareIncidentScope;
+
+    expect(classify?.(['Intermittent issues accessing the Dashboard on Firefox and Safari'])).toBe(
+      'dashboard'
+    );
+    expect(classify?.(['Cloudflare Workers', 'CDN/Cache', 'Network connectivity issues'])).toBe(
+      'edge'
+    );
+    expect(classify?.(['Cloudflare Dashboard', 'Workers'])).toBe('mixed');
+    expect(classify?.(['Investigating an issue with a third-party dependency'])).toBe('unknown');
   });
 });
