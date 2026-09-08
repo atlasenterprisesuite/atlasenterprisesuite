@@ -80,7 +80,7 @@ describe('Decision Compass Supabase client', () => {
     expect(body.verified_at).toBeUndefined();
   });
 
-  it('adds evidence inside the active organization boundary', async () => {
+  it('adds unverified evidence inside the active organization boundary', async () => {
     authenticate();
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }))
@@ -98,6 +98,7 @@ describe('Decision Compass Supabase client', () => {
     expect(body.record_id).toBe('d-1');
     expect(body.org_id).toBe('org-1');
     expect(body.source_module).toBe('github');
+    expect(body.verified_at).toBeNull();
   });
 
   it('uses the governed transition RPC instead of directly patching truth_state', async () => {
