@@ -226,5 +226,105 @@ begin
 end;
 $$;
 
+create or replace function public.decision_compass_set_gate(
+  p_record_id uuid,
+  p_gate_id text,
+  p_passed boolean,
+  p_reason text default null
+)
+returns public.decision_compass_records
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  current_record public.decision_compass_records%rowtype;
+  updated_record public.decision_compass_records%rowtype;
+  next_gate jsonb;
+  evidence_count integer := 0;
+begin
+  if auth.uid() is null then
+    raise exception 'authentication_required';
+  end if;
+
+  select *
+    into current_record
+    from public.decision_compass_records
+    where id = p_record_id
+    for update;
+
+  if not found then
+    raise exception 'decision_record_not_found';
+  end if;
+
+  if not public.is_org_member(current_record.org_id) then
+    raise exception 'decision_scope_mismatch';
+  end if;
+
+  if not exists (
+    select 1
+    from jsonb_array_elements(current_record.verification_gate) gate
+    where gate->>'id' = p_gate_id
+  ) then
+    raise exception 'verification_gate_not_found';
+  end if;
+
+  select count(*)
+    into evidence_count
+    from public.decision_compass_evidence_refs e
+    where e.record_id = current_record.id
+      and e.org_id = current_record.org_id;
+
+  if p_passed and evidence_count < 1 then
+    raise exception 'verification_gate_requires_evidence';
+  end if;
+
+  select coalesce(
+    jsonb_agg(
+      case
+        when gate->>'id' = p_gate_id then jsonb_set(gate, '{passed}', to_jsonb(p_passed), true)
+        else gate
+      end
+      order by ordinal
+    ),
+    '[]'::jsonb
+  )
+    into next_gate
+    from jsonb_array_elements(current_record.verification_gate) with ordinality as items(gate, ordinal);
+
+  update public.decision_compass_records
+    set verification_gate = next_gate
+    where id = current_record.id
+    returning * into updated_record;
+
+  insert into public.decision_compass_audit (
+    record_id,
+    org_id,
+    previous_state,
+    next_state,
+    actor_id,
+    reason,
+    evidence_snapshot
+  ) values (
+    current_record.id,
+    current_record.org_id,
+    current_record.truth_state,
+    current_record.truth_state,
+    auth.uid(),
+    coalesce(nullif(trim(p_reason), ''), 'verification_gate_update'),
+    jsonb_build_object(
+      'gate_id', p_gate_id,
+      'passed', p_passed,
+      'evidence_count', evidence_count,
+      'verification_gate', next_gate
+    )
+  );
+
+  return updated_record;
+end;
+$$;
+
 revoke all on function public.decision_compass_transition(uuid, text, text) from public;
+revoke all on function public.decision_compass_set_gate(uuid, text, boolean, text) from public;
 grant execute on function public.decision_compass_transition(uuid, text, text) to authenticated;
+grant execute on function public.decision_compass_set_gate(uuid, text, boolean, text) to authenticated;
