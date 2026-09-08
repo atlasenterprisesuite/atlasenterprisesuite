@@ -39,11 +39,19 @@ describe('Decision Compass Supabase governance contract', () => {
     expect(source).toContain("coalesce((gate->>'passed')::boolean, false) is not true");
   });
 
-  it('writes immutable audit evidence for every accepted transition', () => {
+  it('updates verification gates only through a governed RPC with evidence present', () => {
+    expect(source).toContain('create or replace function public.decision_compass_set_gate');
+    expect(source).toContain("raise exception 'verification_gate_requires_evidence'");
+    expect(source).toContain("raise exception 'verification_gate_not_found'");
+    expect(source).toContain("jsonb_set(gate, '{passed}', to_jsonb(p_passed), true)");
+  });
+
+  it('writes immutable audit evidence for every accepted transition and gate update', () => {
     expect(source).toContain('insert into public.decision_compass_audit');
     expect(source).toContain('previous_state');
     expect(source).toContain('next_state');
     expect(source).toContain('actor_id');
     expect(source).toContain('reason');
+    expect(source).toContain('verification_gate_update');
   });
 });
