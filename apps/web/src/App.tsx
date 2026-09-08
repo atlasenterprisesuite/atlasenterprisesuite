@@ -7,6 +7,7 @@ import { ResearchBadge } from './components/ResearchBadge';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { DecisionCompassPage } from './modules/governance/DecisionCompassPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
@@ -221,6 +222,7 @@ export function App() {
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
+        <Route path="/governance/decision-compass" element={<RequireAtlasIdentity><DecisionCompassPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
