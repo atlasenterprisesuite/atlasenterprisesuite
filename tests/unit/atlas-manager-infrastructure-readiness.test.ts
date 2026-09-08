@@ -148,6 +148,35 @@ describe('ATLAS Manager infrastructure readiness', () => {
     });
   });
 
+  it('keeps an active Cloudflare edge incident non-blocking while ATLAS production is healthy', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: {
+        state: 'ready',
+        required: true,
+        incident: {
+          source: 'cloudflare_status',
+          active: true,
+          scope: 'edge',
+          impact: 'minor',
+          name: 'Cloudflare Workers degraded performance'
+        }
+      },
+      production: { state: 'ready', required: true },
+      vercel: { state: 'not_configured', required: false }
+    });
+
+    expect(result.status).toBe('ready');
+    expect(result.diagnostics).toContainEqual({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'edge',
+      blocking: false,
+      summary: 'Cloudflare reports an active edge incident, but ATLAS production is reachable.'
+    });
+  });
+
   it('classifies Cloudflare incident scope from incident and component names', () => {
     const classify = (readiness as any).classifyCloudflareIncidentScope;
 
