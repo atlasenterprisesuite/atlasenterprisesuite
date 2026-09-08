@@ -154,6 +154,7 @@ create policy decision_compass_evidence_insert
   with check (
     public.decision_compass_has_permission(org_id, 'decision.review')
     and created_by = auth.uid()
+    and verified_at is null
     and exists (
       select 1
       from public.decision_compass_records r
@@ -218,7 +219,7 @@ begin
     raise exception 'decision_scope_mismatch';
   end if;
 
-  required_permission := case when p_next_state = 'verified' then 'decision.verify' else 'decision.review' end;
+  required_permission := case when p_next_state = 'verified' or current_record.truth_state = 'verified' then 'decision.verify' else 'decision.review' end;
   if not public.decision_compass_has_permission(current_record.org_id, required_permission) then
     raise exception 'decision_permission_denied';
   end if;
