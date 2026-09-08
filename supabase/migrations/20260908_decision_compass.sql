@@ -48,34 +48,82 @@ create table if not exists public.decision_compass_audit (
     on delete cascade
 );
 
+create table if not exists public.decision_compass_permissions (
+  org_id uuid not null references public.organizations(id) on delete cascade,
+  user_id uuid not null,
+  permission text not null check (permission in ('decision.read', 'decision.create', 'decision.review', 'decision.verify', 'decision.admin')),
+  granted_by uuid,
+  created_at timestamptz not null default now(),
+  primary key (org_id, user_id, permission)
+);
+
 create index if not exists decision_compass_records_org_created_idx
   on public.decision_compass_records (org_id, created_at desc);
 create index if not exists decision_compass_evidence_record_idx
   on public.decision_compass_evidence_refs (org_id, record_id, created_at desc);
 create index if not exists decision_compass_audit_record_idx
   on public.decision_compass_audit (org_id, record_id, created_at desc);
+create index if not exists decision_compass_permissions_user_idx
+  on public.decision_compass_permissions (user_id, org_id);
 
 alter table public.decision_compass_records enable row level security;
 alter table public.decision_compass_evidence_refs enable row level security;
 alter table public.decision_compass_audit enable row level security;
+alter table public.decision_compass_permissions enable row level security;
 
 revoke all on public.decision_compass_records from anon;
 revoke all on public.decision_compass_evidence_refs from anon;
 revoke all on public.decision_compass_audit from anon;
+revoke all on public.decision_compass_permissions from anon;
 revoke all on public.decision_compass_records from authenticated;
 revoke all on public.decision_compass_evidence_refs from authenticated;
 revoke all on public.decision_compass_audit from authenticated;
+revoke all on public.decision_compass_permissions from authenticated;
 
 grant select, insert on public.decision_compass_records to authenticated;
 grant select, insert on public.decision_compass_evidence_refs to authenticated;
 grant select on public.decision_compass_audit to authenticated;
+grant select on public.decision_compass_permissions to authenticated;
+
+create or replace function public.decision_compass_has_permission(
+  p_org_id uuid,
+  p_permission text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select public.is_org_member(p_org_id)
+    and exists (
+      select 1
+      from public.organization_members m
+      where m.org_id = p_org_id
+        and m.user_id = auth.uid()
+        and coalesce(m.status, 'active') = 'active'
+        and (
+          m.role = 'owner'
+          or exists (
+            select 1
+            from public.decision_compass_permissions p
+            where p.org_id = p_org_id
+              and p.user_id = auth.uid()
+              and (p.permission = 'decision.admin' or p.permission = p_permission)
+          )
+        )
+    );
+$$;
+
+revoke all on function public.decision_compass_has_permission(uuid, text) from public;
+grant execute on function public.decision_compass_has_permission(uuid, text) to authenticated;
 
 drop policy if exists decision_compass_records_read on public.decision_compass_records;
 create policy decision_compass_records_read
   on public.decision_compass_records
   for select
   to authenticated
-  using (public.is_org_member(org_id));
+  using (public.decision_compass_has_permission(org_id, 'decision.read'));
 
 drop policy if exists decision_compass_records_insert on public.decision_compass_records;
 create policy decision_compass_records_insert
@@ -83,7 +131,7 @@ create policy decision_compass_records_insert
   for insert
   to authenticated
   with check (
-    public.is_org_member(org_id)
+    public.decision_compass_has_permission(org_id, 'decision.create')
     and created_by = auth.uid()
     and truth_state = 'reflection'
     and verified_by is null
@@ -95,7 +143,7 @@ create policy decision_compass_evidence_read
   on public.decision_compass_evidence_refs
   for select
   to authenticated
-  using (public.is_org_member(org_id));
+  using (public.decision_compass_has_permission(org_id, 'decision.read'));
 
 drop policy if exists decision_compass_evidence_insert on public.decision_compass_evidence_refs;
 create policy decision_compass_evidence_insert
@@ -103,7 +151,7 @@ create policy decision_compass_evidence_insert
   for insert
   to authenticated
   with check (
-    public.is_org_member(org_id)
+    public.decision_compass_has_permission(org_id, 'decision.review')
     and created_by = auth.uid()
     and exists (
       select 1
@@ -119,7 +167,20 @@ create policy decision_compass_audit_read
   on public.decision_compass_audit
   for select
   to authenticated
-  using (public.is_org_member(org_id));
+  using (public.decision_compass_has_permission(org_id, 'decision.read'));
+
+drop policy if exists decision_compass_permissions_read on public.decision_compass_permissions;
+create policy decision_compass_permissions_read
+  on public.decision_compass_permissions
+  for select
+  to authenticated
+  using (
+    public.is_org_member(org_id)
+    and (
+      user_id = auth.uid()
+      or public.decision_compass_has_permission(org_id, 'decision.admin')
+    )
+  );
 
 create or replace function public.decision_compass_transition(
   p_record_id uuid,
@@ -136,6 +197,7 @@ declare
   updated_record public.decision_compass_records%rowtype;
   transition_allowed boolean := false;
   evidence_count integer := 0;
+  required_permission text;
 begin
   if auth.uid() is null then
     raise exception 'authentication_required';
@@ -155,6 +217,11 @@ begin
     raise exception 'decision_scope_mismatch';
   end if;
 
+  required_permission := case when p_next_state = 'verified' then 'decision.verify' else 'decision.review' end;
+  if not public.decision_compass_has_permission(current_record.org_id, required_permission) then
+    raise exception 'decision_permission_denied';
+  end if;
+
   transition_allowed := case current_record.truth_state
     when 'reflection' then p_next_state in ('needs_evidence', 'blocked', 'rejected', 'superseded')
     when 'needs_evidence' then p_next_state in ('evidence_found', 'blocked', 'rejected', 'superseded')
@@ -170,13 +237,21 @@ begin
     raise exception 'invalid_truth_state_transition';
   end if;
 
-  if p_next_state = 'verified' then
-    select count(*)
-      into evidence_count
-      from public.decision_compass_evidence_refs e
-      where e.record_id = current_record.id
-        and e.org_id = current_record.org_id;
+  select count(*)
+    into evidence_count
+    from public.decision_compass_evidence_refs e
+    where e.record_id = current_record.id
+      and e.org_id = current_record.org_id;
 
+  if p_next_state in ('evidence_found', 'action_proposed') and evidence_count < 1 then
+    raise exception 'evidence_required_for_truth_state';
+  end if;
+
+  if p_next_state = 'action_proposed' and nullif(trim(coalesce(current_record.proposed_action, '')), '') is null then
+    raise exception 'proposed_action_required';
+  end if;
+
+  if p_next_state = 'verified' then
     if evidence_count < 1 then
       raise exception 'verification_requires_independent_evidence';
     end if;
@@ -259,6 +334,10 @@ begin
 
   if not public.is_org_member(current_record.org_id) then
     raise exception 'decision_scope_mismatch';
+  end if;
+
+  if not public.decision_compass_has_permission(current_record.org_id, 'decision.verify') then
+    raise exception 'decision_permission_denied';
   end if;
 
   if not exists (
