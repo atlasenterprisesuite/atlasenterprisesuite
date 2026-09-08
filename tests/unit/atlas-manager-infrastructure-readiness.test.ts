@@ -67,4 +67,34 @@ describe('ATLAS Manager infrastructure readiness', () => {
     expect(result.blockers).toEqual([]);
     expect(result.providers.vercel.state).toBe('authorization_error');
   });
+
+  it('classifies a dashboard-only Cloudflare incident as provider-side without blocking healthy ATLAS production', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: {
+        state: 'ready',
+        required: true,
+        incident: {
+          source: 'cloudflare_status',
+          active: true,
+          scope: 'dashboard',
+          impact: 'minor',
+          name: 'Intermittent issues accessing the Dashboard on Firefox and Safari'
+        }
+      },
+      production: { state: 'ready', required: true },
+      vercel: { state: 'not_configured', required: false }
+    } as any);
+
+    expect(result.status).toBe('ready');
+    expect(result.blockers).toEqual([]);
+    expect(result.diagnostics).toContainEqual({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'dashboard',
+      blocking: false,
+      summary: 'Cloudflare has an active dashboard incident, but ATLAS production is reachable.'
+    });
+  });
 });
