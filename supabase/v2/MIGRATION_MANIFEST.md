@@ -32,6 +32,14 @@ This manifest records the exact migration version, name, SQL character count, an
 | 20260907205806 | atlas_backend_gate_v1 | 1528 | `6f699041c55f53ece3ac4110913f5410` |
 | 20260907205840 | harden_accounting_self_checks_service_execution_v1 | 1466 | `0118d9cc0d228e9075ad03e1a3a4e3e6` |
 
+## Pending versioned migrations — not applied
+
+The entries below exist in Git but are **not** claimed to exist in `supabase_migrations.schema_migrations` on the canonical project. They remain pending until a clean compatible non-production replay passes and production application is separately authorized.
+
+| Version | Migration | SQL chars | MD5 | Truth state |
+| --- | --- | ---: | --- | --- |
+| 20260908203000 | atlas_release_train_v1 | 57633 | `21150b3689e06383aa83aee58810b814` | Versioned only; not applied |
+
 ## Verification rule
 
-A migration mirror is accepted only when its normalized SQL matches the corresponding digest and character count above, or when an intentionally transformed representation is reviewed and separately documented. Do not silently replace an applied v2 migration with a legacy migration of the same purpose.
+An applied migration mirror is accepted only when its normalized SQL matches the corresponding digest and character count recorded by `supabase_migrations.schema_migrations`, or when an intentionally transformed representation is reviewed and separately documented. Pending/versioned migrations must never be represented as applied until that database evidence exists. Do not silently replace an applied v2 migration with a legacy migration of the same purpose.
