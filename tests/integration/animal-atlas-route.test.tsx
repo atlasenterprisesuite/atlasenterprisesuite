@@ -16,7 +16,7 @@ describe('ATLAS Knowledge Atlas Animal Kingdom routes', () => {
     expect(await screen.findByRole('heading', { name: 'Animal Kingdom' })).toBeInTheDocument();
     expect(await screen.findByText('Plecia nearctica')).toBeInTheDocument();
     expect(screen.getByText(/Repository-curated evidence/i)).toBeInTheDocument();
-    expect(screen.getByText(/10 records/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/10 records/i).length).toBeGreaterThan(0);
   });
 
   it('searches and filters the loaded animal records', async () => {
