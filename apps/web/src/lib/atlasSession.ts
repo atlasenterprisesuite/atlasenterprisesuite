@@ -190,13 +190,17 @@ export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
 
   const rawBills = await parseResponse(billsResponse) as any[];
   const rawVendors = await parseResponse(vendorsResponse) as any[];
-  const vendorMap = new Map<string, LivePayableVendor>(rawVendors.map((vendor) => [String(vendor.id), {
-    id: String(vendor.id),
-    name: String(vendor.name || 'Unnamed vendor'),
-    email: vendor.email ? String(vendor.email) : null,
-    phone: vendor.phone ? String(vendor.phone) : null,
-    status: String(vendor.status || 'unknown')
-  }]));
+  const vendorMap = new Map<string, LivePayableVendor>();
+  for (const vendor of rawVendors) {
+    const normalizedVendor: LivePayableVendor = {
+      id: String(vendor.id),
+      name: String(vendor.name || 'Unnamed vendor'),
+      email: vendor.email ? String(vendor.email) : null,
+      phone: vendor.phone ? String(vendor.phone) : null,
+      status: String(vendor.status || 'unknown')
+    };
+    vendorMap.set(normalizedVendor.id, normalizedVendor);
+  }
 
   const bills: LivePayableBill[] = rawBills.map((bill) => ({
     id: String(bill.id),
