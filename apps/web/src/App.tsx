@@ -7,6 +7,7 @@ import { ResearchBadge } from './components/ResearchBadge';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { AnimalAtlasPage, AnimalDetailPage } from './modules/knowledge/animals/AnimalAtlasPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
@@ -32,10 +33,11 @@ function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: s
 function EnterpriseHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance and Health now share one shell, route graph, permission boundary and verification pipeline." />
+      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Health and Knowledge share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/knowledge/animals"><span>Knowledge Atlas</span><strong>Animal Kingdom</strong><p>Evidence-backed taxonomy, ecology, human relationships and provenance.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
     </section>
@@ -239,6 +241,8 @@ export function App() {
           <Route path="updates" element={<UpdatesPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
+        <Route path="/knowledge/animals" element={<AnimalAtlasPage />} />
+        <Route path="/knowledge/animals/:slug" element={<AnimalDetailPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AtlasShell>
