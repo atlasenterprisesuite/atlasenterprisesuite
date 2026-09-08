@@ -94,6 +94,23 @@ export function evaluateInfrastructure(
     });
   }
 
+  if (
+    cloudflareIncident?.active &&
+    productionReady &&
+    (cloudflareIncident.scope === 'edge' || cloudflareIncident.scope === 'mixed')
+  ) {
+    diagnostics.push({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: cloudflareIncident.scope,
+      blocking: false,
+      summary:
+        cloudflareIncident.scope === 'edge'
+          ? 'Cloudflare reports an active edge incident, but ATLAS production is reachable.'
+          : 'Cloudflare reports an active dashboard and edge incident, but ATLAS production is reachable.'
+    });
+  }
+
   const matchingCloudflareEdgeIncident = Boolean(
     cloudflareIncident?.active &&
       (cloudflareIncident.scope === 'edge' || cloudflareIncident.scope === 'mixed')
