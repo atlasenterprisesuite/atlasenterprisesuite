@@ -89,7 +89,7 @@ describe('ATLAS Manager infrastructure readiness', () => {
 
     expect(result.status).toBe('ready');
     expect(result.blockers).toEqual([]);
-    expect(result.diagnostics).toContainEqual({
+    expect((result as any).diagnostics).toContainEqual({
       provider: 'cloudflare',
       cause: 'provider',
       scope: 'dashboard',
