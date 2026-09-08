@@ -350,13 +350,14 @@ async function cloudflarePublicStatus() {
     const edgeAffected = relevantIncidents.some(
       (incident) => incident.scope === 'edge' || incident.scope === 'mixed'
     );
-    const aggregateScope = dashboardAffected && edgeAffected
-      ? 'mixed'
-      : dashboardAffected
-        ? 'dashboard'
-        : edgeAffected
-          ? 'edge'
-          : 'unknown';
+    const aggregateScope: ReturnType<typeof classifyCloudflareIncidentScope> =
+      dashboardAffected && edgeAffected
+        ? 'mixed'
+        : dashboardAffected
+          ? 'dashboard'
+          : edgeAffected
+            ? 'edge'
+            : 'unknown';
     const incidentSetForImpact = relevantIncidents.length > 0 ? relevantIncidents : incidents;
     const providerIncident = incidents.length === 0
       ? null
