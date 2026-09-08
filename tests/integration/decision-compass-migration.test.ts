@@ -36,15 +36,22 @@ describe('Decision Compass Supabase governance contract', () => {
     expect(source).not.toContain('grant insert on public.decision_compass_audit to authenticated');
   });
 
-  it('forces new client-created records to start as reflection', () => {
+  it('forces new client-created records to start as reflection with unpassed verification gates', () => {
     expect(source).toContain("truth_state = 'reflection'");
     expect(source).toContain('created_by = auth.uid()');
+    expect(source).toContain("not exists (select 1 from jsonb_array_elements(verification_gate) gate where coalesce((gate->>'passed')::boolean, false) is true)");
   });
 
   it('enforces transitions server-side and forbids direct reflection to verified', () => {
     expect(source).toContain('create or replace function public.decision_compass_transition');
     expect(source).toContain("when 'reflection' then p_next_state in ('needs_evidence', 'blocked', 'rejected', 'superseded')");
     expect(source).toContain("raise exception 'invalid_truth_state_transition'");
+  });
+
+  it('requires evidence before evidence_found or action_proposed', () => {
+    expect(source).toContain("if p_next_state in ('evidence_found', 'action_proposed') and evidence_count < 1 then");
+    expect(source).toContain("raise exception 'evidence_required_for_truth_state'");
+    expect(source).toContain("raise exception 'proposed_action_required'");
   });
 
   it('requires verify permission, evidence, and every verification gate before verified', () => {
