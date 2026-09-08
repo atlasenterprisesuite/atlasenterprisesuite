@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   clearAtlasSession,
   getAccountingInsight,
+  getLivePayablesLedger,
   signInAtlas
 } from '../../apps/web/src/lib/atlasSession';
 
@@ -50,5 +51,40 @@ describe('ATLAS accounting Astra session bridge', () => {
     expect(String(insightCall[0])).toContain('/functions/v1/atlas-accounting-insights');
     expect((insightCall[1]?.headers as Record<string, string>).authorization).toBe('Bearer live-token');
     expect(JSON.parse(String(insightCall[1]?.body))).toEqual({ org_id: 'org-1', force_refresh: false });
+  });
+
+  it('loads live bills and vendor data from the same RLS-scoped organization', async () => {
+    localStorage.setItem('atlas_access_token', 'live-token');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        {
+          id: 'bill-1', org_id: 'org-1', vendor_id: 'vendor-1', bill_number: 'WAL-1', bill_date: '2026-08-20', due_date: null,
+          amount: '18.99', balance_due: '18.99', approval_state: 'pending', match_state: 'no_po', status: 'open',
+          created_at: '2026-08-20T00:00:00Z', updated_at: '2026-08-20T00:00:00Z'
+        }
+      ]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        { id: 'vendor-1', name: 'Walgreens', email: null, phone: null, status: 'active' }
+      ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const ledger = await getLivePayablesLedger();
+
+    expect(ledger.source).toBe('supabase_rls_live');
+    expect(ledger.organization).toEqual({ id: 'org-1', role: 'owner' });
+    expect(ledger.bills).toHaveLength(1);
+    expect(ledger.bills[0]).toMatchObject({
+      bill_number: 'WAL-1',
+      amount: 18.99,
+      balance_due: 18.99,
+      approval_state: 'pending',
+      match_state: 'no_po',
+      vendor: { name: 'Walgreens' }
+    });
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/rest/v1/accounting_bills');
+    expect(String(fetchMock.mock.calls[2][0])).toContain('/rest/v1/vendors');
+    expect((fetchMock.mock.calls[1][1]?.headers as Record<string, string>).authorization).toBe('Bearer live-token');
+    expect((fetchMock.mock.calls[2][1]?.headers as Record<string, string>).authorization).toBe('Bearer live-token');
   });
 });
