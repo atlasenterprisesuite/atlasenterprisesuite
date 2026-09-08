@@ -3,6 +3,7 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_pub
 
 const ACCESS_TOKEN_KEY = 'atlas_access_token';
 const REFRESH_TOKEN_KEY = 'atlas_refresh_token';
+export const ATLAS_SESSION_EVENT = 'atlas-session-changed';
 
 export type AtlasOrganization = {
   id: string;
@@ -30,8 +31,44 @@ export type AccountingInsight = {
   };
 };
 
+export type LivePayableVendor = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+};
+
+export type LivePayableBill = {
+  id: string;
+  org_id: string;
+  vendor_id: string | null;
+  bill_number: string;
+  bill_date: string;
+  due_date: string | null;
+  amount: number;
+  balance_due: number;
+  approval_state: string;
+  match_state: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  vendor: LivePayableVendor | null;
+};
+
+export type LivePayablesLedger = {
+  source: 'supabase_rls_live';
+  organization: AtlasOrganization;
+  bills: LivePayableBill[];
+  loaded_at: string;
+};
+
 function storageAvailable() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function announceSessionChange() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(ATLAS_SESSION_EVENT));
 }
 
 export function getAtlasAccessToken() {
@@ -46,12 +83,14 @@ function persistSession(data: { access_token?: string; refresh_token?: string })
   if (!storageAvailable() || !data.access_token) return;
   window.localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
   if (data.refresh_token) window.localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+  announceSessionChange();
 }
 
 export function clearAtlasSession() {
   if (!storageAvailable()) return;
   window.localStorage.removeItem(ACCESS_TOKEN_KEY);
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  announceSessionChange();
 }
 
 function baseHeaders(token?: string) {
@@ -139,4 +178,47 @@ export async function getAccountingInsight(forceRefresh = false): Promise<Accoun
     body: JSON.stringify({ org_id: organization.id, force_refresh: forceRefresh })
   });
   return parseResponse(response) as Promise<AccountingInsight>;
+}
+
+export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
+  const organization = await getActiveAtlasOrganization();
+  const orgFilter = encodeURIComponent(`eq.${organization.id}`);
+  const [billsResponse, vendorsResponse] = await Promise.all([
+    authorizedFetch(`/rest/v1/accounting_bills?org_id=${orgFilter}&select=id,org_id,vendor_id,bill_number,bill_date,due_date,amount,balance_due,approval_state,match_state,status,created_at,updated_at&order=bill_date.desc,bill_number.asc`, { method: 'GET' }),
+    authorizedFetch(`/rest/v1/vendors?org_id=${orgFilter}&select=id,name,email,phone,status&order=name.asc`, { method: 'GET' })
+  ]);
+
+  const rawBills = await parseResponse(billsResponse) as any[];
+  const rawVendors = await parseResponse(vendorsResponse) as any[];
+  const vendorMap = new Map<string, LivePayableVendor>(rawVendors.map((vendor) => [String(vendor.id), {
+    id: String(vendor.id),
+    name: String(vendor.name || 'Unnamed vendor'),
+    email: vendor.email ? String(vendor.email) : null,
+    phone: vendor.phone ? String(vendor.phone) : null,
+    status: String(vendor.status || 'unknown')
+  }]));
+
+  const bills: LivePayableBill[] = rawBills.map((bill) => ({
+    id: String(bill.id),
+    org_id: String(bill.org_id),
+    vendor_id: bill.vendor_id ? String(bill.vendor_id) : null,
+    bill_number: String(bill.bill_number || ''),
+    bill_date: String(bill.bill_date || ''),
+    due_date: bill.due_date ? String(bill.due_date) : null,
+    amount: Number(bill.amount || 0),
+    balance_due: Number(bill.balance_due || 0),
+    approval_state: String(bill.approval_state || 'unknown'),
+    match_state: String(bill.match_state || 'unknown'),
+    status: String(bill.status || 'unknown'),
+    created_at: String(bill.created_at || ''),
+    updated_at: String(bill.updated_at || ''),
+    vendor: bill.vendor_id ? vendorMap.get(String(bill.vendor_id)) || null : null
+  }));
+
+  return {
+    source: 'supabase_rls_live',
+    organization,
+    bills,
+    loaded_at: new Date().toISOString()
+  };
 }
