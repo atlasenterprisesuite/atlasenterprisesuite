@@ -44,6 +44,20 @@ const OPTIONAL_UNCONFIGURED_STATES = new Set([
   'authorization_missing'
 ]);
 
+export function classifyCloudflareIncidentScope(values: string[]): ProviderIncidentScope {
+  const text = values.join(' ').toLowerCase();
+  const dashboardAffected = /\bdashboard\b|control plane|dash\.cloudflare\.com/.test(text);
+  const edgeAffected =
+    /\bworkers?\b|\bcdn\b|\bcache\b|\bdns\b|\bnetwork\b|\brouting\b|\btraffic\b|\bedge\b|\bpages\b|load balancing|\bssl\b|\btls\b/.test(
+      text
+    );
+
+  if (dashboardAffected && edgeAffected) return 'mixed';
+  if (dashboardAffected) return 'dashboard';
+  if (edgeAffected) return 'edge';
+  return 'unknown';
+}
+
 export function evaluateInfrastructure(
   input: Record<ProviderName, ProviderSnapshot>
 ): InfrastructureEvaluation {
