@@ -33,6 +33,11 @@ export interface AtlasIdentitySource {
   subscribe?(listener: () => void): () => void;
 }
 
+export interface AtlasInteractiveIdentitySource extends AtlasIdentitySource {
+  signIn(email: string, password: string): Promise<void>;
+  signOut(): Promise<void>;
+}
+
 export type AtlasSessionActions = Readonly<{
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
