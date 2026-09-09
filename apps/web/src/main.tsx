@@ -32,6 +32,7 @@ import {
 import { createSupabaseRevenueOpsRepository } from '../../../packages/revenue-ops/src';
 import { App } from './App';
 import { AtlasProvider } from './app/AtlasContext';
+import { AtlasModuleStateProvider } from './app/modules/AtlasModuleState';
 import { AccountWriteProvider } from './modules/accounting/AccountWriteProvider';
 import { AccountingRepositoryProvider } from './modules/accounting/AccountingDataProvider';
 import { AccountingWriteProvider } from './modules/accounting/AccountingWriteProvider';
@@ -99,35 +100,37 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AtlasProvider source={identitySource}>
-        <ReleaseControlProvider service={releaseControlService}>
-          <RevenueOpsRepositoryProvider repository={revenueOpsRepository}>
-            <PeopleRepositoryProvider repository={peopleRepository}>
-              <CompensationRepositoryProvider repository={compensationRepository}>
-                <PeopleCompensationWriteProvider service={peopleCompensationWriteService}>
-                  <RecruitingRepositoryProvider repository={recruitingRepository}>
-                    <PeopleTimeWriteProvider service={peopleTimeWriteService}>
-                      <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
-                        <RecruitingWriteProvider service={recruitingWriteService}>
-                          <AccountingRepositoryProvider repository={accountingRepository}>
-                            <AccountingWriteProvider service={accountingWriteService}>
-                              <AccountWriteProvider service={accountWriteService}>
-                                <ArApWriteProvider service={arApWriteService}>
-                                  <BankCashWriteProvider service={bankCashWriteService}>
-                                    <App />
-                                  </BankCashWriteProvider>
-                                </ArApWriteProvider>
-                              </AccountWriteProvider>
-                            </AccountingWriteProvider>
-                          </AccountingRepositoryProvider>
-                        </RecruitingWriteProvider>
-                      </PeoplePayrollWriteProvider>
-                    </PeopleTimeWriteProvider>
-                  </RecruitingRepositoryProvider>
-                </PeopleCompensationWriteProvider>
-              </CompensationRepositoryProvider>
-            </PeopleRepositoryProvider>
-          </RevenueOpsRepositoryProvider>
-        </ReleaseControlProvider>
+        <AtlasModuleStateProvider client={supabaseClient}>
+          <ReleaseControlProvider service={releaseControlService}>
+            <RevenueOpsRepositoryProvider repository={revenueOpsRepository}>
+              <PeopleRepositoryProvider repository={peopleRepository}>
+                <CompensationRepositoryProvider repository={compensationRepository}>
+                  <PeopleCompensationWriteProvider service={peopleCompensationWriteService}>
+                    <RecruitingRepositoryProvider repository={recruitingRepository}>
+                      <PeopleTimeWriteProvider service={peopleTimeWriteService}>
+                        <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
+                          <RecruitingWriteProvider service={recruitingWriteService}>
+                            <AccountingRepositoryProvider repository={accountingRepository}>
+                              <AccountingWriteProvider service={accountingWriteService}>
+                                <AccountWriteProvider service={accountWriteService}>
+                                  <ArApWriteProvider service={arApWriteService}>
+                                    <BankCashWriteProvider service={bankCashWriteService}>
+                                      <App />
+                                    </BankCashWriteProvider>
+                                  </ArApWriteProvider>
+                                </AccountWriteProvider>
+                              </AccountingWriteProvider>
+                            </AccountingRepositoryProvider>
+                          </RecruitingWriteProvider>
+                        </PeoplePayrollWriteProvider>
+                      </PeopleTimeWriteProvider>
+                    </RecruitingRepositoryProvider>
+                  </PeopleCompensationWriteProvider>
+                </CompensationRepositoryProvider>
+              </PeopleRepositoryProvider>
+            </RevenueOpsRepositoryProvider>
+          </ReleaseControlProvider>
+        </AtlasModuleStateProvider>
       </AtlasProvider>
     </BrowserRouter>
   </React.StrictMode>,
