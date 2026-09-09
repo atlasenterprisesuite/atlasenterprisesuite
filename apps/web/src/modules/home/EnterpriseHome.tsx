@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ATLAS_MODULE_CATALOG } from '../../app/modules/moduleCatalog';
+import '../../app/modules/moduleWorkspace.css';
 
 export function EnterpriseHome() {
   return (
