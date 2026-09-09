@@ -1,6 +1,8 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AtlasShell } from '../AtlasShell';
 import { RouteErrorPage } from '../errors/RouteErrorPage';
+import { ModuleGatewayPage } from '../modules/ModuleGatewayPage';
+import { IdentityPage } from '../../identity/IdentityPage';
 import { AccountingPage } from '../../modules/accounting/AccountingPage';
 import { BankCashPage } from '../../modules/accounting/BankCashPage';
 import { ChartOfAccountsPage } from '../../modules/accounting/ChartOfAccountsPage';
@@ -32,8 +34,31 @@ import { SpatialRoute } from '../../spatial/SpatialRoute';
 export function AppRouter() {
   return (
     <Routes>
+      <Route path="/identity" element={<IdentityPage />} />
+
       <Route element={<AtlasShell />}>
         <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/app" element={<EnterpriseHome />} />
+
+        <Route path="/app/hr" element={<Navigate to="/people" replace />} />
+        <Route path="/app/payroll" element={<Navigate to="/people/payroll" replace />} />
+        <Route path="/app/finance" element={<Navigate to="/finance" replace />} />
+        <Route path="/app/erp" element={<Navigate to="/operations" replace />} />
+        <Route path="/app/pay-wallet" element={<ModuleGatewayPage moduleId="pay-wallet" />} />
+        <Route path="/app/health/*" element={<Navigate to="/health" replace />} />
+        <Route path="/app/education" element={<ModuleGatewayPage moduleId="education" />} />
+        <Route path="/app/analytics" element={<ModuleGatewayPage moduleId="analytics" />} />
+        <Route path="/app/connect" element={<ModuleGatewayPage moduleId="connect" />} />
+        <Route path="/app/documents" element={<ModuleGatewayPage moduleId="documents" />} />
+        <Route path="/app/knowledge" element={<ModuleGatewayPage moduleId="knowledge" />} />
+        <Route path="/app/security" element={<ModuleGatewayPage moduleId="security" />} />
+        <Route path="/app/identity" element={<ModuleGatewayPage moduleId="identity" />} />
+        <Route path="/app/projects" element={<ModuleGatewayPage moduleId="projects" />} />
+        <Route path="/app/studio" element={<ModuleGatewayPage moduleId="studio" />} />
+        <Route path="/app/workbench" element={<ModuleGatewayPage moduleId="workbench" />} />
+        <Route path="/app/ride" element={<ModuleGatewayPage moduleId="ride" />} />
+        <Route path="/app/global" element={<ModuleGatewayPage moduleId="global" />} />
+
         <Route path="/spatial" element={<SpatialRoute />} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingPage />} />
