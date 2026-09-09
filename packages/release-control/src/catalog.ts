@@ -65,6 +65,9 @@ export const RELEASE_CATALOG: readonly ReleaseModuleDefinition[] = Object.freeze
   defineModule('communications', 'platform-services', 4, withFoundation()),
   defineModule('creator-studio', 'platform-services', 4, withFoundation()),
   defineModule('sites', 'platform-services', 4, withFoundation()),
+  defineModule('automations', 'platform-services', 4, withFoundation()),
+  defineModule('site-review', 'platform-services', 4, withFoundation()),
+  defineModule('spatial', 'platform-services', 4, withFoundation()),
 
   defineModule('health', 'health', 5, withFoundation()),
 
