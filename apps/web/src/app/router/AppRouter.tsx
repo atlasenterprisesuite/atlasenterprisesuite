@@ -9,6 +9,7 @@ import { JournalEntriesPage } from '../../modules/accounting/JournalEntriesPage'
 import { PayablesPage } from '../../modules/accounting/PayablesPage';
 import { ReceivablesPage } from '../../modules/accounting/ReceivablesPage';
 import { ReconciliationPage } from '../../modules/accounting/ReconciliationPage';
+import { AutomationsRoute } from '../../modules/automations/AutomationsRoute';
 import { FinanceHome } from '../../modules/finance/FinanceHome';
 import { HealthRoutes } from '../../modules/health/HealthRoutes';
 import { EnterpriseHome } from '../../modules/home/EnterpriseHome';
@@ -19,6 +20,7 @@ import { PeopleRecruitingRoute } from '../../modules/people/PeopleRecruitingRout
 import { PeopleSelfServiceRoute } from '../../modules/people/PeopleSelfServiceRoute';
 import { PeopleTimeRoute } from '../../modules/people/PeopleTimeRoute';
 import { RevenueOpsRoute } from '../../modules/revenue/RevenueOpsRoute';
+import { SiteReviewRoute } from '../../modules/site-review/SiteReviewRoute';
 import { TelecomMifiRoute } from '../../modules/telecom/TelecomMifiRoute';
 import { ApplePersonalVoicePage } from '../../modules/voice/ApplePersonalVoicePage';
 import { PersonalVoicePage } from '../../modules/voice/PersonalVoicePage';
@@ -48,6 +50,8 @@ export function AppRouter() {
         <Route path="/people/recruiting" element={<PeopleRecruitingRoute />} />
         <Route path="/people/self-service" element={<PeopleSelfServiceRoute />} />
         <Route path="/operations" element={<RevenueOpsRoute />} />
+        <Route path="/automations" element={<AutomationsRoute />} />
+        <Route path="/site-review" element={<SiteReviewRoute />} />
         <Route path="/health/*" element={<HealthRoutes />} />
         <Route path="/voice" element={<VoiceRoute><VoiceHomePage /></VoiceRoute>} />
         <Route path="/voice/personal-voice" element={<VoiceRoute><PersonalVoicePage /></VoiceRoute>} />
