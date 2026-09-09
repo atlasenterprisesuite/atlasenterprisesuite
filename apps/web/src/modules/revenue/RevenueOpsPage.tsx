@@ -7,6 +7,8 @@ type RevenueSnapshot = {
   crmAccounts: number | null;
   opportunities: number | null;
   salesOrders: number | null;
+  vendors: number | null;
+  purchaseOrders: number | null;
   inventoryItems: number | null;
   posTransactions: number | null;
   projects: number | null;
@@ -16,6 +18,8 @@ const EMPTY_SNAPSHOT: RevenueSnapshot = {
   crmAccounts: null,
   opportunities: null,
   salesOrders: null,
+  vendors: null,
+  purchaseOrders: null,
   inventoryItems: null,
   posTransactions: null,
   projects: null,
@@ -38,6 +42,7 @@ export function RevenueOpsPage() {
 
   const canReadCrm = hasPermission(permissions, 'revenue.crm.read');
   const canReadSales = hasPermission(permissions, 'revenue.sales.read');
+  const canReadPurchasing = hasPermission(permissions, 'revenue.purchasing.read');
   const canReadInventory = hasPermission(permissions, 'revenue.inventory.read');
   const canReadPos = hasPermission(permissions, 'revenue.pos.read');
   const canReadProjects = hasPermission(permissions, 'revenue.projects.read');
@@ -50,11 +55,14 @@ export function RevenueOpsPage() {
 
     const load = async () => {
       try {
-        const [crm, sales, inventory, pos, projects] = await Promise.all([
+        const [crm, sales, purchasing, inventory, pos, projects] = await Promise.all([
           canReadCrm
             ? Promise.all([repository.listAccounts(scope), repository.listOpportunities(scope)])
             : Promise.resolve(null),
           canReadSales ? repository.listSalesOrders(scope) : Promise.resolve(null),
+          canReadPurchasing
+            ? Promise.all([repository.listVendors(scope), repository.listPurchaseOrders(scope)])
+            : Promise.resolve(null),
           canReadInventory ? repository.listInventoryItems(scope) : Promise.resolve(null),
           canReadPos ? repository.listPosTransactions(scope) : Promise.resolve(null),
           canReadProjects ? repository.listProjects(scope) : Promise.resolve(null),
@@ -65,6 +73,8 @@ export function RevenueOpsPage() {
           crmAccounts: crm ? crm[0].length : null,
           opportunities: crm ? crm[1].length : null,
           salesOrders: sales ? sales.length : null,
+          vendors: purchasing ? purchasing[0].length : null,
+          purchaseOrders: purchasing ? purchasing[1].length : null,
           inventoryItems: inventory ? inventory.length : null,
           posTransactions: pos ? pos.length : null,
           projects: projects ? projects.length : null,
@@ -85,6 +95,7 @@ export function RevenueOpsPage() {
     organizationId,
     canReadCrm,
     canReadSales,
+    canReadPurchasing,
     canReadInventory,
     canReadPos,
     canReadProjects,
@@ -97,7 +108,7 @@ export function RevenueOpsPage() {
       <p className="atlas-eyebrow">ATLAS Operations</p>
       <h1>Revenue Operations</h1>
       <p className="atlas-page__lede">
-        One governed operational layer for customer relationships, sales, inventory, point of sale and projects, scoped to the current tenant and organization.
+        One governed operational layer for customer relationships, sales, purchasing, inventory, point of sale and projects, scoped to the current tenant and organization.
       </p>
 
       {!repository && (
@@ -127,6 +138,13 @@ export function RevenueOpsPage() {
             <span>{displayCount(snapshot.salesOrders, 'sales orders')}</span>
           </article>
         )}
+        {canReadPurchasing && (
+          <article className="atlas-status-panel">
+            <strong>Vendors & Purchasing</strong>
+            <span>{displayCount(snapshot.vendors, 'vendors')} • {displayCount(snapshot.purchaseOrders, 'purchase orders')}</span>
+            <span>Operational receiving does not create Accounts Payable automatically.</span>
+          </article>
+        )}
         {canReadInventory && (
           <article className="atlas-status-panel">
             <strong>Inventory</strong>
@@ -145,10 +163,6 @@ export function RevenueOpsPage() {
             <span>{displayCount(snapshot.projects, 'projects')}</span>
           </article>
         )}
-        <article className="atlas-status-panel atlas-status-panel--degraded">
-          <strong>Purchasing</strong>
-          <span>Purchasing: Not configured</span>
-        </article>
       </div>
     </main>
   );
