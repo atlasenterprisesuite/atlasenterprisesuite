@@ -35,8 +35,27 @@ it('mounts the Revenue Operations Center for an authorized identity', async () =
   });
 
   expect(await screen.findByRole('heading', { name: 'Revenue Operations' })).toBeInTheDocument();
-  expect(screen.getByText('Purchasing: Not configured')).toBeInTheDocument();
+  expect(screen.queryByText('Vendors & Purchasing')).not.toBeInTheDocument();
   expect(screen.queryByText(/Payment provider connected/i)).not.toBeInTheDocument();
+});
+
+it('allows a purchasing-only reader into Operations without granting unrelated surfaces', async () => {
+  renderRoute({
+    status: 'ready',
+    userId: 'buyer-a',
+    tenantId: 'tenant-a',
+    tenantName: 'Tenant A',
+    organizationId: 'org-a',
+    organizationName: 'Org A',
+    role: 'staff',
+    permissions: ['revenue.purchasing.read'],
+  });
+
+  expect(await screen.findByRole('heading', { name: 'Revenue Operations' })).toBeInTheDocument();
+  expect(screen.getByText('Vendors & Purchasing')).toBeInTheDocument();
+  expect(screen.getByText(/Operational receiving does not create Accounts Payable automatically/i)).toBeInTheDocument();
+  expect(screen.queryByText('CRM')).not.toBeInTheDocument();
+  expect(screen.queryByText('Sales')).not.toBeInTheDocument();
 });
 
 it('fails closed without Revenue Operations permissions', async () => {
