@@ -15,7 +15,7 @@ const moduleLinks: readonly ModuleLink[] = [
   { to: '/finance', label: 'Finance', end: true },
   { to: '/finance/accounting', label: 'Accounting', end: true },
   { to: '/people', label: 'People', end: false, permissions: ['hr.read', 'hr.write', 'payroll.read', 'payroll.self'] },
-  { to: '/operations', label: 'Operations', end: false, permissions: ['revenue.crm.read', 'revenue.sales.read', 'revenue.inventory.read', 'revenue.pos.read', 'revenue.projects.read'] },
+  { to: '/operations', label: 'Operations', end: false, permissions: ['revenue.crm.read', 'revenue.sales.read', 'revenue.purchasing.read', 'revenue.inventory.read', 'revenue.pos.read', 'revenue.projects.read'] },
   { to: '/automations', label: 'Automations', end: false, permissions: ['automation.read'] },
   { to: '/site-review', label: 'Site Review', end: false, permissions: ['site-review.read'] },
   { to: '/spatial', label: 'Spatial', end: false, permissions: ['spatial.read'] },
