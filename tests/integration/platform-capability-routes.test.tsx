@@ -46,6 +46,12 @@ it('mounts Site Review with external providers explicitly not configured', async
   expect(screen.getByText(/Search Console: Not configured/)).toBeInTheDocument();
 });
 
+it('mounts Spatial only for identities with spatial.read', async () => {
+  renderAt('/spatial', ['spatial.read']);
+  expect(await screen.findByRole('heading', { name: 'ATLAS Enterprise Suite' })).toBeInTheDocument();
+  expect(screen.getByText(/No fabricated live connections/)).toBeInTheDocument();
+});
+
 it('fails closed when platform permissions are absent', async () => {
   renderAt('/automations', ['core.read']);
   expect(await screen.findByRole('heading', { name: 'Access denied' })).toBeInTheDocument();
