@@ -19,6 +19,7 @@ const moduleLinks: readonly ModuleLink[] = [
   { to: '/automations', label: 'Automations', end: false, permissions: ['automation.read'] },
   { to: '/site-review', label: 'Site Review', end: false, permissions: ['site-review.read'] },
   { to: '/spatial', label: 'Spatial', end: false, permissions: ['spatial.read'] },
+  { to: '/release', label: 'Release', end: false, permissions: ['forge.release.read'] },
   { to: '/health', label: 'Health', end: false },
   { to: '/voice', label: 'Voice', end: false, permissions: ['voice.personal.read'] },
   { to: '/telecom/devices/mifi', label: 'Telecom', end: false, permissions: ['telecom.mifi.read'] },
