@@ -19,6 +19,10 @@ import { PeopleRecruitingRoute } from '../../modules/people/PeopleRecruitingRout
 import { PeopleSelfServiceRoute } from '../../modules/people/PeopleSelfServiceRoute';
 import { PeopleTimeRoute } from '../../modules/people/PeopleTimeRoute';
 import { TelecomMifiRoute } from '../../modules/telecom/TelecomMifiRoute';
+import { ApplePersonalVoicePage } from '../../modules/voice/ApplePersonalVoicePage';
+import { PersonalVoicePage } from '../../modules/voice/PersonalVoicePage';
+import { VoiceHomePage } from '../../modules/voice/VoiceHomePage';
+import { VoiceRoute } from '../../modules/voice/VoiceRoute';
 import { SpatialEntry } from '../../spatial/SpatialEntry';
 
 export function AppRouter() {
@@ -43,6 +47,9 @@ export function AppRouter() {
         <Route path="/people/recruiting" element={<PeopleRecruitingRoute />} />
         <Route path="/people/self-service" element={<PeopleSelfServiceRoute />} />
         <Route path="/health/*" element={<HealthRoutes />} />
+        <Route path="/voice" element={<VoiceRoute><VoiceHomePage /></VoiceRoute>} />
+        <Route path="/voice/personal-voice" element={<VoiceRoute><PersonalVoicePage /></VoiceRoute>} />
+        <Route path="/voice/personal-voice/apple" element={<VoiceRoute><ApplePersonalVoicePage /></VoiceRoute>} />
         <Route path="/telecom/devices/mifi" element={<TelecomMifiRoute />} />
       </Route>
       <Route path="*" element={<RouteErrorPage />} />
