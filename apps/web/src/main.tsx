@@ -25,6 +25,7 @@ import {
   SupabasePeopleRecruitingWriteGateway,
   SupabasePeopleTimeWriteGateway,
 } from '../../../packages/people/src';
+import { createSupabaseRevenueOpsRepository } from '../../../packages/revenue-ops/src';
 import { App } from './App';
 import { AtlasProvider } from './app/AtlasContext';
 import { AccountWriteProvider } from './modules/accounting/AccountWriteProvider';
@@ -39,6 +40,7 @@ import { PeoplePayrollWriteProvider } from './modules/people/PeoplePayrollWriteP
 import { PeopleTimeWriteProvider } from './modules/people/PeopleTimeWriteProvider';
 import { RecruitingRepositoryProvider } from './modules/people/RecruitingDataProvider';
 import { RecruitingWriteProvider } from './modules/people/RecruitingWriteProvider';
+import { RevenueOpsRepositoryProvider } from './modules/revenue/RevenueOpsDataProvider';
 import { createAtlasSupabaseClient } from './lib/supabase/client';
 import { createAtlasIdentitySource } from './lib/supabase/atlasIdentitySource';
 import './styles.css';
@@ -81,36 +83,41 @@ const recruitingRepository = supabaseClient
 const recruitingWriteService = supabaseClient
   ? new PeopleRecruitingWriteService(new SupabasePeopleRecruitingWriteGateway(supabaseClient))
   : null;
+const revenueOpsRepository = supabaseClient
+  ? createSupabaseRevenueOpsRepository(supabaseClient)
+  : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AtlasProvider source={identitySource}>
-        <PeopleRepositoryProvider repository={peopleRepository}>
-          <CompensationRepositoryProvider repository={compensationRepository}>
-            <PeopleCompensationWriteProvider service={peopleCompensationWriteService}>
-              <RecruitingRepositoryProvider repository={recruitingRepository}>
-                <PeopleTimeWriteProvider service={peopleTimeWriteService}>
-                  <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
-                    <RecruitingWriteProvider service={recruitingWriteService}>
-                      <AccountingRepositoryProvider repository={accountingRepository}>
-                        <AccountingWriteProvider service={accountingWriteService}>
-                          <AccountWriteProvider service={accountWriteService}>
-                            <ArApWriteProvider service={arApWriteService}>
-                              <BankCashWriteProvider service={bankCashWriteService}>
-                                <App />
-                              </BankCashWriteProvider>
-                            </ArApWriteProvider>
-                          </AccountWriteProvider>
-                        </AccountingWriteProvider>
-                      </AccountingRepositoryProvider>
-                    </RecruitingWriteProvider>
-                  </PeoplePayrollWriteProvider>
-                </PeopleTimeWriteProvider>
-              </RecruitingRepositoryProvider>
-            </PeopleCompensationWriteProvider>
-          </CompensationRepositoryProvider>
-        </PeopleRepositoryProvider>
+        <RevenueOpsRepositoryProvider repository={revenueOpsRepository}>
+          <PeopleRepositoryProvider repository={peopleRepository}>
+            <CompensationRepositoryProvider repository={compensationRepository}>
+              <PeopleCompensationWriteProvider service={peopleCompensationWriteService}>
+                <RecruitingRepositoryProvider repository={recruitingRepository}>
+                  <PeopleTimeWriteProvider service={peopleTimeWriteService}>
+                    <PeoplePayrollWriteProvider service={peoplePayrollWriteService}>
+                      <RecruitingWriteProvider service={recruitingWriteService}>
+                        <AccountingRepositoryProvider repository={accountingRepository}>
+                          <AccountingWriteProvider service={accountingWriteService}>
+                            <AccountWriteProvider service={accountWriteService}>
+                              <ArApWriteProvider service={arApWriteService}>
+                                <BankCashWriteProvider service={bankCashWriteService}>
+                                  <App />
+                                </BankCashWriteProvider>
+                              </ArApWriteProvider>
+                            </AccountWriteProvider>
+                          </AccountingWriteProvider>
+                        </AccountingRepositoryProvider>
+                      </RecruitingWriteProvider>
+                    </PeoplePayrollWriteProvider>
+                  </PeopleTimeWriteProvider>
+                </RecruitingRepositoryProvider>
+              </PeopleCompensationWriteProvider>
+            </CompensationRepositoryProvider>
+          </PeopleRepositoryProvider>
+        </RevenueOpsRepositoryProvider>
       </AtlasProvider>
     </BrowserRouter>
   </React.StrictMode>,
