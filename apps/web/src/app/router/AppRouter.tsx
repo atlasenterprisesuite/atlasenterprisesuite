@@ -19,6 +19,7 @@ import { PeoplePayrollRoute } from '../../modules/people/PeoplePayrollRoute';
 import { PeopleRecruitingRoute } from '../../modules/people/PeopleRecruitingRoute';
 import { PeopleSelfServiceRoute } from '../../modules/people/PeopleSelfServiceRoute';
 import { PeopleTimeRoute } from '../../modules/people/PeopleTimeRoute';
+import { ReleaseControllerRoute } from '../../modules/release/ReleaseControllerRoute';
 import { RevenueOpsRoute } from '../../modules/revenue/RevenueOpsRoute';
 import { SiteReviewRoute } from '../../modules/site-review/SiteReviewRoute';
 import { TelecomMifiRoute } from '../../modules/telecom/TelecomMifiRoute';
@@ -52,6 +53,7 @@ export function AppRouter() {
         <Route path="/operations" element={<RevenueOpsRoute />} />
         <Route path="/automations" element={<AutomationsRoute />} />
         <Route path="/site-review" element={<SiteReviewRoute />} />
+        <Route path="/release" element={<ReleaseControllerRoute />} />
         <Route path="/health/*" element={<HealthRoutes />} />
         <Route path="/voice" element={<VoiceRoute><VoiceHomePage /></VoiceRoute>} />
         <Route path="/voice/personal-voice" element={<VoiceRoute><PersonalVoicePage /></VoiceRoute>} />
