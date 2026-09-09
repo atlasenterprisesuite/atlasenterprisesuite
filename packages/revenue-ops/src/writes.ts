@@ -7,6 +7,7 @@ import type {
   ProjectRecord,
   PurchaseOrder,
   SalesOrder,
+  Vendor,
 } from './types';
 import type { RevenueScope } from './repository';
 
@@ -26,6 +27,7 @@ export interface RevenueOpsWrites {
   createContact(context: RevenueWriteContext, input: Omit<CrmContact, 'id' | 'tenantId' | 'organizationId' | 'createdAt' | 'updatedAt'>): Promise<CrmContact>;
   createOpportunity(context: RevenueWriteContext, input: Omit<Opportunity, 'id' | 'tenantId' | 'organizationId' | 'createdAt' | 'updatedAt'>): Promise<Opportunity>;
   createSalesOrder(context: RevenueWriteContext, input: Omit<SalesOrder, 'id' | 'tenantId' | 'organizationId' | 'createdAt' | 'updatedAt'>): Promise<SalesOrder>;
+  createVendor(context: RevenueWriteContext, input: Omit<Vendor, 'id' | 'tenantId' | 'organizationId' | 'createdAt' | 'updatedAt'>): Promise<Vendor>;
   createPurchaseOrder(context: RevenueWriteContext, input: Omit<PurchaseOrder, 'id' | 'tenantId' | 'organizationId' | 'createdAt' | 'updatedAt'>): Promise<PurchaseOrder>;
   recordInventoryMovement(context: RevenueWriteContext, input: Omit<InventoryMovement, 'id' | 'tenantId' | 'organizationId' | 'createdAt' | 'updatedAt'>): Promise<InventoryMovement>;
   createPosTransaction(context: RevenueWriteContext, input: Omit<PosTransaction, 'id' | 'tenantId' | 'organizationId' | 'createdAt' | 'updatedAt'>): Promise<PosTransaction>;
