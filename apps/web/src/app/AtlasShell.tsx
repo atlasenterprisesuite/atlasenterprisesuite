@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { hasPermission } from '../../../../packages/core/src';
 import { AtlasAccessState } from './AtlasAccessState';
 import { useAtlasContext, useAtlasSessionActions } from './AtlasContext';
@@ -7,6 +7,12 @@ import { ATLAS_MODULE_CATALOG } from './modules/moduleCatalog';
 export function AtlasShell() {
   const identity = useAtlasContext();
   const session = useAtlasSessionActions();
+  const location = useLocation();
+
+  if (identity.status === 'authentication_required' && location.pathname.startsWith('/app')) {
+    const target = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);
+    return <Navigate to={`/identity?app=${target}`} replace />;
+  }
 
   if (identity.status !== 'ready') {
     return <AtlasAccessState state={identity} />;
