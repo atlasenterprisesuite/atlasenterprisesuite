@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAtlasContext } from '../AtlasContext';
 import { findAtlasModule } from './moduleCatalog';
+import './moduleWorkspace.css';
 
 const workbenchActions = [
   { to: '/release', label: 'Release Controller' },
