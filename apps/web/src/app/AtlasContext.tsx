@@ -16,7 +16,7 @@ export type AtlasIdentityState =
   | {
       status: 'ready';
       userId: string;
-      userEmail: string;
+      userEmail?: string;
       tenantId: string;
       tenantName: string;
       organizationId: string;
@@ -28,8 +28,8 @@ export type AtlasIdentityState =
 
 export interface AtlasIdentitySource {
   resolve(): Promise<AtlasIdentityState>;
-  signIn(email: string, password: string): Promise<void>;
-  signOut(): Promise<void>;
+  signIn?(email: string, password: string): Promise<void>;
+  signOut?(): Promise<void>;
   subscribe?(listener: () => void): () => void;
 }
 
@@ -47,8 +47,7 @@ export function AtlasProvider({ children, source }: { children: ReactNode; sourc
 
   const resolveIdentity = async () => {
     try {
-      const next = await source.resolve();
-      setState(next);
+      setState(await source.resolve());
     } catch (error) {
       setState({ status: 'error', message: error instanceof Error ? error.message : 'Unable to resolve ATLAS identity' });
     }
@@ -74,10 +73,12 @@ export function AtlasProvider({ children, source }: { children: ReactNode; sourc
 
   const actions = useMemo<AtlasSessionActions>(() => ({
     async signIn(email, password) {
+      if (!source.signIn) throw new Error('authentication_action_unavailable');
       await source.signIn(email, password);
       await resolveIdentity();
     },
     async signOut() {
+      if (!source.signOut) throw new Error('authentication_action_unavailable');
       await source.signOut();
       setState({ status: 'authentication_required' });
     },
