@@ -26,6 +26,8 @@ The A-Z branch already contains ATLAS People routes for Time & Attendance, Payro
 
 Skills & Growth must reuse those boundaries rather than create a parallel identity or persistence layer.
 
+The verified v2 status through 2026-09-08 contains Foundation/Identity, Accounting, and Revenue Ops, but does not record a verified People profile/employee slice in `atlas-core-v2`. Skills & Growth therefore includes the minimum v2 People profile identity required by this feature rather than binding to an unverified legacy employee table.
+
 ## 3. Product ownership and integrations
 
 ### Primary owner
@@ -73,7 +75,7 @@ The current authenticated employee can:
 - view explainable role/project/learning matches;
 - see what evidence is missing or stale.
 
-The employee cannot approve their own validation state unless a future explicit policy allows a credential source to do so automatically.
+The employee cannot approve their own validation state.
 
 ### Navigation integration
 
@@ -145,6 +147,34 @@ Catalog entries can later be expanded by authorized HR/talent users.
 
 All scoped tables use both `tenant_id` and `org_id`, with composite organization foreign keys following the v2 foundation pattern.
 
+### `people_profiles`
+
+Minimum v2 People identity used by Skills & Growth. It is deliberately small so it can later be shared with the broader People migration without duplicating person identity.
+
+Required fields:
+
+- `id uuid primary key`
+- `tenant_id uuid not null`
+- `org_id uuid not null`
+- `user_id uuid` referencing `auth.users(id)`
+- `external_employee_ref text`
+- `display_name text not null`
+- `department text`
+- `job_title text`
+- `status text not null default 'active'`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Constraints:
+
+- foreign key `(org_id, tenant_id)` to organizations
+- unique `(org_id, id)`
+- unique `(org_id, user_id)` when `user_id` is not null
+- status in `active`, `leave`, `inactive`
+- non-empty display name
+
+Self-service identity resolves through `(tenant_id, org_id, user_id = auth.uid())`. `external_employee_ref` is a compatibility bridge only; it is not trusted for authorization.
+
 ### `people_skill_catalog`
 
 Organization-owned skill vocabulary.
@@ -171,7 +201,7 @@ Constraints:
 
 ### `people_employee_skills`
 
-Employee-to-skill relationship.
+People-profile-to-skill relationship. `employee_id` references `people_profiles.id` to preserve compatibility with the existing People domain vocabulary.
 
 Required fields:
 
@@ -193,7 +223,8 @@ Constraints:
 
 - unique `(org_id, employee_id, skill_id)`
 - allowed proficiency/source/validation values
-- scope-consistent employee and skill foreign keys
+- foreign key `(org_id, employee_id)` to `people_profiles(org_id, id)`
+- scope-consistent skill foreign key
 
 ### `people_skill_evidence`
 
@@ -336,16 +367,13 @@ Allowed opportunity type: `role`, `project`, `learning`.
 
 The `explanation` JSON must contain the skill strengths, missing required skills, proficiency gaps, evidence-state caveats, and rule version used to calculate the score.
 
-## 8. Employee identity linkage
+## 8. People identity compatibility
 
-Skills require a stable employee/person row. The v2 implementation must not assume the legacy People schema is already migrated into `atlas-core-v2` unless verified.
+As of the verified v2 status through 2026-09-08, `atlas-core-v2` does not record a verified People employee/profile slice. Skills & Growth therefore creates `people_profiles` in v2 and uses it as the authorization-safe person anchor.
 
-The implementation therefore has two valid paths:
+Existing A-Z People code may retain legacy employee identifiers while that broader module is migrated. Compatibility is handled only through `external_employee_ref` or an explicit repository mapping; authorization always uses the v2 profile’s tenant/org scope and authenticated `user_id`.
 
-1. Reuse a v2 employee/profile table if one exists at implementation time and satisfies tenant/org isolation.
-2. If no verified v2 employee table exists, add the minimum v2 People profile identity required by Skills & Growth as part of the same People data-layer slice, preserving compatibility with the web module’s employee identifiers.
-
-The implementation must fail closed rather than connect v2 skill rows to an unverified or cross-project employee identifier.
+No Skills & Growth code may join directly to a legacy or different Supabase project at runtime. If a profile mapping is missing, the UI shows `no employee identity linked` and fails closed.
 
 ## 9. Permissions
 
@@ -373,18 +401,18 @@ Exact role grants follow existing ATLAS role naming from v2 identity. No route m
 ### Read policies
 
 - Organization-wide skill data requires `skills.read` for the same `tenant_id + org_id`.
-- A user with self permissions can read only skill/interests/goals/evidence rows tied to their own employee identity in the current organization.
+- A user with self permissions can read only skill/interests/goals/evidence rows tied to their own `people_profiles` row in the current organization.
 - Cross-tenant and cross-org reads are blocked.
 
 ### Writes
 
-Direct authenticated INSERT/UPDATE/DELETE should be revoked for governed validation-sensitive tables.
+Direct authenticated INSERT/UPDATE/DELETE is revoked for governed validation-sensitive tables.
 
 Use the same hardened v2 pattern already adopted elsewhere:
 
 `public SECURITY INVOKER wrapper → private SECURITY DEFINER implementation`
 
-Governed RPCs should cover at minimum:
+Governed RPCs cover at minimum:
 
 - self-declare or update own skill;
 - remove own self-declared skill;
@@ -542,17 +570,17 @@ The router adds the organization and self-service routes without breaking existi
 
 ## 17. Backend migration structure
 
-Target Supabase v2 migrations as a coherent People Skills slice, using ledger timestamps assigned when the migration is actually applied. Repository filenames created before provider application may use pending/plan status until exact ledger timestamps are verified.
+Target Supabase v2 migrations as a coherent People Skills slice, using ledger timestamps assigned when the migration is actually applied. Repository filenames created before provider application use pending/plan status until exact ledger timestamps are verified.
 
 Logical migration units:
 
-1. Skills schema/tables/indexes.
+1. People profile + Skills schema/tables/indexes.
 2. Permissions + module registry + RLS.
 3. Governed public/private RPC writes + audit.
 4. Self-check function.
 5. Backend gate extension.
 
-If provider access is unavailable, code can be staged and tested locally/repository-side but must remain explicitly `pending` and not be documented as applied or verified in Supabase.
+If provider access is unavailable, code can be staged and tested repository-side but remains explicitly `pending` and is not documented as applied or verified in Supabase.
 
 ## 18. Tests
 
@@ -630,6 +658,7 @@ Skills & Growth is release-ready only when all of the following are true:
 - `/people/skills` and `/people/self-service/skills` are implemented and navigable;
 - desktop/tablet/mobile behavior is usable;
 - Supabase persistence uses v2 `tenant_id + org_id` scope;
+- `people_profiles` provides the v2 self-service person anchor;
 - RLS blocks cross-scope data;
 - governed validation writes are audited;
 - self-service CRUD works for own skills/interests/goals;
