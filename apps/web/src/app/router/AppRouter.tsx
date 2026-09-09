@@ -26,14 +26,14 @@ import { ApplePersonalVoicePage } from '../../modules/voice/ApplePersonalVoicePa
 import { PersonalVoicePage } from '../../modules/voice/PersonalVoicePage';
 import { VoiceHomePage } from '../../modules/voice/VoiceHomePage';
 import { VoiceRoute } from '../../modules/voice/VoiceRoute';
-import { SpatialEntry } from '../../spatial/SpatialEntry';
+import { SpatialRoute } from '../../spatial/SpatialRoute';
 
 export function AppRouter() {
   return (
     <Routes>
       <Route element={<AtlasShell />}>
         <Route path="/" element={<EnterpriseHome />} />
-        <Route path="/spatial" element={<SpatialEntry />} />
+        <Route path="/spatial" element={<SpatialRoute />} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingPage />} />
         <Route path="/finance/accounting/general-ledger" element={<GeneralLedgerPage />} />
