@@ -1,15 +1,32 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AtlasPermission } from '../../../../../packages/core/src';
-import type { AtlasIdentitySource, AtlasIdentityState } from '../../app/AtlasContext';
+import type { AtlasIdentityState, AtlasInteractiveIdentitySource } from '../../app/AtlasContext';
 
+type RolePermissionRow = { permission_code: string };
+type OrganizationPermissionOverrideRow = { permission_code: string; allowed: boolean };
 type IdentityContextRow = { tenant_id: string; tenant_name: string; organization_id: string; organization_name: string; role: string; permissions: string[] | null };
 
-export function mapAtlasIdentityContext(userId: string, userEmail: string, row: IdentityContextRow): AtlasIdentityState {
-  if (!row.tenant_id || !row.organization_id) return { status: 'error', message: 'ATLAS identity context is missing tenant scope.' };
+export function mergeAtlasPermissions(baseRows: readonly RolePermissionRow[], overrideRows: readonly OrganizationPermissionOverrideRow[]): AtlasPermission[] {
+  const permissions = new Set<AtlasPermission>();
+  for (const row of baseRows) if (row.permission_code) permissions.add(row.permission_code);
+  for (const row of overrideRows) {
+    if (!row.permission_code) continue;
+    if (row.allowed) permissions.add(row.permission_code);
+    else permissions.delete(row.permission_code);
+  }
+  return [...permissions].sort();
+}
+
+export function mapAtlasIdentityContext(userId: string, row: IdentityContextRow): AtlasIdentityState;
+export function mapAtlasIdentityContext(userId: string, userEmail: string, row: IdentityContextRow): AtlasIdentityState;
+export function mapAtlasIdentityContext(userId: string, emailOrRow: string | IdentityContextRow, maybeRow?: IdentityContextRow): AtlasIdentityState {
+  const userEmail = typeof emailOrRow === 'string' ? emailOrRow : '';
+  const row = typeof emailOrRow === 'string' ? maybeRow : emailOrRow;
+  if (!row || !row.tenant_id || !row.organization_id) return { status: 'error', message: 'ATLAS identity context is missing tenant scope.' };
   return {
     status: 'ready',
     userId,
-    userEmail,
+    ...(userEmail ? { userEmail } : {}),
     tenantId: row.tenant_id,
     tenantName: row.tenant_name,
     organizationId: row.organization_id,
@@ -34,7 +51,7 @@ async function resolveIdentity(client: SupabaseClient | null): Promise<AtlasIden
   return mapAtlasIdentityContext(userData.user.id, userData.user.email ?? '', rows[0]);
 }
 
-export function createAtlasIdentitySource(client: SupabaseClient | null): AtlasIdentitySource {
+export function createAtlasIdentitySource(client: SupabaseClient | null): AtlasInteractiveIdentitySource {
   return {
     resolve: () => resolveIdentity(client),
     async signIn(email, password) {
