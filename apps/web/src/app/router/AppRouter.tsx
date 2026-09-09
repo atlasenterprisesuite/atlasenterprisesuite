@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AtlasShell } from '../AtlasShell';
 import { RouteErrorPage } from '../errors/RouteErrorPage';
 import { ModuleGatewayPage } from '../modules/ModuleGatewayPage';
+import { ModuleRouteGate } from '../modules/ModuleRouteGate';
 import { IdentityPage } from '../../identity/IdentityPage';
 import { AccountingPage } from '../../modules/accounting/AccountingPage';
 import { BankCashPage } from '../../modules/accounting/BankCashPage';
@@ -40,12 +41,12 @@ export function AppRouter() {
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/app" element={<EnterpriseHome />} />
 
-        <Route path="/app/hr" element={<Navigate to="/people" replace />} />
-        <Route path="/app/payroll" element={<Navigate to="/people/payroll" replace />} />
-        <Route path="/app/finance" element={<Navigate to="/finance" replace />} />
-        <Route path="/app/erp" element={<Navigate to="/operations" replace />} />
+        <Route path="/app/hr" element={<ModuleRouteGate moduleId="hr"><Navigate to="/people" replace /></ModuleRouteGate>} />
+        <Route path="/app/payroll" element={<ModuleRouteGate moduleId="payroll"><Navigate to="/people/payroll" replace /></ModuleRouteGate>} />
+        <Route path="/app/finance" element={<ModuleRouteGate moduleId="finance"><Navigate to="/finance" replace /></ModuleRouteGate>} />
+        <Route path="/app/erp" element={<ModuleRouteGate moduleId="erp"><Navigate to="/operations" replace /></ModuleRouteGate>} />
         <Route path="/app/pay-wallet" element={<ModuleGatewayPage moduleId="pay-wallet" />} />
-        <Route path="/app/health/*" element={<Navigate to="/health" replace />} />
+        <Route path="/app/health/*" element={<ModuleRouteGate moduleId="health"><Navigate to="/health" replace /></ModuleRouteGate>} />
         <Route path="/app/education" element={<ModuleGatewayPage moduleId="education" />} />
         <Route path="/app/analytics" element={<ModuleGatewayPage moduleId="analytics" />} />
         <Route path="/app/connect" element={<ModuleGatewayPage moduleId="connect" />} />
