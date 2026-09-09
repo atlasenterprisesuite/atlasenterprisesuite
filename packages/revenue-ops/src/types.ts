@@ -68,6 +68,14 @@ export interface SalesOrder extends TenantScopedEntity {
   currency: string;
 }
 
+export interface Vendor extends TenantScopedEntity {
+  name: string;
+  externalReference?: string;
+  status: 'active' | 'inactive';
+  email?: string;
+  phone?: string;
+}
+
 export interface PurchaseOrder extends TenantScopedEntity {
   vendorId: RevenueRecordId;
   orderNumber: string;
