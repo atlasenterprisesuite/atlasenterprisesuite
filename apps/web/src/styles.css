@@ -159,7 +159,9 @@ a { color: inherit; }
 .people-payroll-page,
 .people-compensation-page,
 .people-recruiting-page,
-.people-self-service-page {
+.people-self-service-page,
+.voice-page,
+.revenue-ops-page {
   align-content: start;
   place-content: initial;
   gap: 1.15rem;
@@ -256,6 +258,8 @@ a { color: inherit; }
   .people-compensation-page,
   .people-recruiting-page,
   .people-self-service-page,
+  .voice-page,
+  .revenue-ops-page,
   .telecom-mifi-page { min-height: auto; }
   .atlas-action-row,
   .telecom-actions { display: grid; grid-template-columns: 1fr; }
