@@ -9,6 +9,7 @@ import type {
   PurchaseOrder,
   RevenueRecordId,
   SalesOrder,
+  Vendor,
 } from './types';
 
 export interface RevenueScope {
@@ -22,7 +23,8 @@ export interface RevenueOpsRepository {
   listContacts(scope: RevenueScope, accountId?: RevenueRecordId): Promise<CrmContact[]>;
   listOpportunities(scope: RevenueScope, accountId?: RevenueRecordId): Promise<Opportunity[]>;
   listSalesOrders(scope: RevenueScope, accountId?: RevenueRecordId): Promise<SalesOrder[]>;
-  listPurchaseOrders(scope: RevenueScope): Promise<PurchaseOrder[]>;
+  listVendors(scope: RevenueScope): Promise<Vendor[]>;
+  listPurchaseOrders(scope: RevenueScope, vendorId?: RevenueRecordId): Promise<PurchaseOrder[]>;
   listInventoryItems(scope: RevenueScope): Promise<InventoryItem[]>;
   listInventoryMovements(scope: RevenueScope, itemId?: RevenueRecordId): Promise<InventoryMovement[]>;
   listPosTransactions(scope: RevenueScope): Promise<PosTransaction[]>;
