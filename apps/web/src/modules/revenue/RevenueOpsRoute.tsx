@@ -5,6 +5,7 @@ import { RevenueOpsPage } from './RevenueOpsPage';
 const REVENUE_READ_PERMISSIONS = [
   'revenue.crm.read',
   'revenue.sales.read',
+  'revenue.purchasing.read',
   'revenue.inventory.read',
   'revenue.pos.read',
   'revenue.projects.read',
