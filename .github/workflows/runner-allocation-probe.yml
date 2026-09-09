@@ -1,0 +1,31 @@
+name: Runner Allocation Probe
+
+on:
+  push:
+    branches: ["diag/actions-runner-allocation"]
+
+permissions:
+  contents: read
+
+jobs:
+  slim:
+    name: Probe ubuntu-slim
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Runner acquired
+        run: |
+          echo "runner-ready"
+          uname -a
+          node --version || true
+
+  standard:
+    name: Probe ubuntu-24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Runner acquired
+        run: |
+          echo "runner-ready"
+          uname -a
+          node --version || true
