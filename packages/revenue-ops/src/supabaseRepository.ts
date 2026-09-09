@@ -10,6 +10,7 @@ import type {
   ProjectRecord,
   PurchaseOrder,
   SalesOrder,
+  Vendor,
 } from './types';
 
 function scopedRows<T extends Record<string, unknown>>(
@@ -90,8 +91,28 @@ export class SupabaseRevenueOpsRepository implements RevenueOpsRepository {
       }));
   }
 
-  async listPurchaseOrders(_scope: RevenueScope): Promise<PurchaseOrder[]> {
-    throw new Error('Purchasing source is not configured in Supabase v2');
+  async listVendors(scope: RevenueScope): Promise<Vendor[]> {
+    const rows = await this.listRows<Record<string, unknown>>('revenue_vendors', scope);
+    return rows.map((row) => ({
+      id: String(row.id), tenantId: String(row.tenant_id), organizationId: String(row.org_id),
+      name: String(row.name), externalReference: row.external_reference ? String(row.external_reference) : undefined,
+      status: row.status === 'inactive' ? 'inactive' : 'active',
+      email: row.email ? String(row.email) : undefined,
+      phone: row.phone ? String(row.phone) : undefined,
+      createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+    }));
+  }
+
+  async listPurchaseOrders(scope: RevenueScope, vendorId?: string): Promise<PurchaseOrder[]> {
+    const rows = await this.listRows<Record<string, unknown>>('revenue_purchase_orders', scope);
+    return rows
+      .filter((row) => !vendorId || row.vendor_id === vendorId)
+      .map((row) => ({
+        id: String(row.id), tenantId: String(row.tenant_id), organizationId: String(row.org_id),
+        vendorId: String(row.vendor_id), orderNumber: String(row.order_number),
+        status: row.status as PurchaseOrder['status'], totalCents: Number(row.total_cents ?? 0),
+        currency: String(row.currency), createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+      }));
   }
 
   async listInventoryItems(scope: RevenueScope): Promise<InventoryItem[]> {
