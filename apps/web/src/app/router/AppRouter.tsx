@@ -17,6 +17,7 @@ import { FinanceHome } from '../../modules/finance/FinanceHome';
 import { HealthRoutes } from '../../modules/health/HealthRoutes';
 import { EnterpriseHome } from '../../modules/home/EnterpriseHome';
 import { PeopleCompensationRoute } from '../../modules/people/PeopleCompensationRoute';
+import { PeopleEmployeesRoute } from '../../modules/people/PeopleEmployeesRoute';
 import { PeopleHome } from '../../modules/people/PeopleHome';
 import { PeoplePayrollRoute } from '../../modules/people/PeoplePayrollRoute';
 import { PeopleRecruitingRoute } from '../../modules/people/PeopleRecruitingRoute';
@@ -71,6 +72,7 @@ export function AppRouter() {
         <Route path="/finance/accounting/bank-cash" element={<BankCashPage />} />
         <Route path="/finance/accounting/reconciliation" element={<ReconciliationPage />} />
         <Route path="/people" element={<PeopleHome />} />
+        <Route path="/people/employees" element={<PeopleEmployeesRoute />} />
         <Route path="/people/time" element={<PeopleTimeRoute />} />
         <Route path="/people/payroll" element={<PeoplePayrollRoute />} />
         <Route path="/people/compensation" element={<PeopleCompensationRoute />} />
