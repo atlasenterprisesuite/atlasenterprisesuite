@@ -212,3 +212,5 @@ export function createGitHubDiscussionsAdapter(options: {
     },
   });
 }
+
+export * from './ingress';
