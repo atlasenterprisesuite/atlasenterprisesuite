@@ -230,6 +230,15 @@ it('saves an hourly payroll line and uses persisted compensation as the rate sou
       taxesWithheld: 150,
       posttaxDeductions: 25,
     },
+    calculation: {
+      regularPay: 900,
+      overtimePay: 168.75,
+      grossPay: 1068.75,
+      pretaxDeductions: 50,
+      taxesWithheld: 150,
+      posttaxDeductions: 25,
+      netPay: 843.75,
+    },
   }));
   expect(await screen.findByText('Payroll line saved')).toBeInTheDocument();
 });
