@@ -30,6 +30,8 @@ it('shows Payroll and Compensation for a payroll reader', async () => {
   renderPeopleHome({
     status: 'ready',
     userId: 'payroll-reader',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'accountant',
@@ -40,15 +42,18 @@ it('shows Payroll and Compensation for a payroll reader', async () => {
   expect(screen.getByRole('link', { name: 'People' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Payroll/ })).toHaveAttribute('href', '/people/payroll');
   expect(screen.getByRole('link', { name: /Compensation & Benefits/ })).toHaveAttribute('href', '/people/compensation');
+  expect(screen.queryByRole('link', { name: /Employees/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /Time & Attendance/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /Recruiting/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /Employee Self-Service/ })).not.toBeInTheDocument();
 });
 
-it('shows Time & Attendance and Recruiting for an HR reader without payroll access', async () => {
+it('shows Employees, Time & Attendance and Recruiting for an HR reader without payroll access', async () => {
   renderPeopleHome({
     status: 'ready',
     userId: 'hr-reader',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'manager',
@@ -56,6 +61,7 @@ it('shows Time & Attendance and Recruiting for an HR reader without payroll acce
   });
 
   expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Employees/ })).toHaveAttribute('href', '/people/employees');
   expect(screen.getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
   expect(screen.getByRole('link', { name: /Recruiting/ })).toHaveAttribute('href', '/people/recruiting');
   expect(screen.queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
@@ -66,6 +72,8 @@ it('shows self-service and time for an employee self-service identity', async ()
   renderPeopleHome({
     status: 'ready',
     userId: 'employee-a',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'staff',
@@ -75,6 +83,7 @@ it('shows self-service and time for an employee self-service identity', async ()
   expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
   expect(screen.getByRole('link', { name: /Employee Self-Service/ })).toHaveAttribute('href', '/people/self-service');
+  expect(screen.queryByRole('link', { name: /Employees/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /Compensation & Benefits/ })).not.toBeInTheDocument();
 });
@@ -83,6 +92,8 @@ it('fails closed and hides People navigation without People permissions', async 
   renderPeopleHome({
     status: 'ready',
     userId: 'viewer-a',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'viewer',
