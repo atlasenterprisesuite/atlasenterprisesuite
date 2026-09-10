@@ -2,6 +2,7 @@ export * from './compensation';
 export * from './compensationRepository';
 export * from './compensationWrites';
 export * from './employee';
+export * from './employeeWrites';
 export * from './errors';
 export * from './payroll';
 export * from './payrollWrites';
