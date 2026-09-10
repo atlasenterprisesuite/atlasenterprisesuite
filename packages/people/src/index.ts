@@ -12,6 +12,7 @@ export * from './recruitingWrites';
 export * from './repository';
 export * from './supabaseCompensationRepository';
 export * from './supabaseCompensationWrites';
+export * from './supabaseEmployeeWrites';
 export * from './supabaseRecruitingRepository';
 export * from './supabaseRecruitingWrites';
 export * from './supabaseRepository';
