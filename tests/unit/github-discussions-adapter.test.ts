@@ -14,13 +14,13 @@ function sign(secret: string, body: string): string {
 }
 
 describe('ATLAS GitHub Discussions adapter', () => {
-  it('verifies GitHub webhook HMAC and rejects malformed or incorrect signatures', () => {
+  it('verifies GitHub webhook HMAC and rejects malformed or incorrect signatures', async () => {
     const secret = 'test-only-webhook-secret';
     const body = JSON.stringify({ action: 'created' });
 
-    expect(verifyGitHubWebhookSignature(secret, body, sign(secret, body))).toBe(true);
-    expect(verifyGitHubWebhookSignature(secret, body, 'sha256=deadbeef')).toBe(false);
-    expect(verifyGitHubWebhookSignature(secret, body, 'not-sha256')).toBe(false);
+    await expect(verifyGitHubWebhookSignature(secret, body, sign(secret, body))).resolves.toBe(true);
+    await expect(verifyGitHubWebhookSignature(secret, body, 'sha256=deadbeef')).resolves.toBe(false);
+    await expect(verifyGitHubWebhookSignature(secret, body, 'not-sha256')).resolves.toBe(false);
   });
 
   it('normalizes created discussion comments into a provider-independent event', () => {
