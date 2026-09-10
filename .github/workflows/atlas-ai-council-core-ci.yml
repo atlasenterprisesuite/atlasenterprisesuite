@@ -1,0 +1,23 @@
+name: ATLAS AI Council Core CI
+
+on:
+  push:
+    branches: ["feature/atlas-ai-council-core-tdd-red"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: AI Council core unit tests
+        run: npx vitest run tests/unit/ai-council-core.test.ts
