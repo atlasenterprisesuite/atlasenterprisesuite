@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { COUNCIL_GENERATED_MARKER } from '../../ai-council-core/src';
 
 export type NormalizedDiscussionEvent = Readonly<{
@@ -35,19 +34,38 @@ function requiredNumber(record: Record<string, unknown> | null, key: string): nu
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-export function verifyGitHubWebhookSignature(
+function hexToBytes(hex: string): Uint8Array | null {
+  if (!/^[0-9a-f]+$/i.test(hex) || hex.length % 2 !== 0) return null;
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+export async function verifyGitHubWebhookSignature(
   secret: string,
   rawBody: string,
   signatureHeader: string | null | undefined,
-): boolean {
+): Promise<boolean> {
   if (!secret || !signatureHeader?.startsWith('sha256=')) return false;
 
-  const suppliedHex = signatureHeader.slice('sha256='.length);
-  if (!/^[0-9a-f]{64}$/i.test(suppliedHex)) return false;
+  const signature = hexToBytes(signatureHeader.slice('sha256='.length));
+  if (!signature || signature.length !== 32) return false;
 
-  const expected = createHmac('sha256', secret).update(rawBody, 'utf8').digest();
-  const supplied = Buffer.from(suppliedHex, 'hex');
-  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    );
+    return crypto.subtle.verify('HMAC', key, signature, encoder.encode(rawBody));
+  } catch {
+    return false;
+  }
 }
 
 export function normalizeDiscussionWebhook(
