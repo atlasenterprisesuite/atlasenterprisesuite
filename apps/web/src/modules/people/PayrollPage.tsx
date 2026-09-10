@@ -1,16 +1,131 @@
 import { useMemo, useState } from 'react';
 import { hasPermission } from '../../../../../packages/core/src';
-import type { PayrollLine, PayrollRun } from '../../../../../packages/people/src';
+import {
+  calculatePayrollLine,
+  selectCompensation,
+  type PayrollCalculation,
+  type PayrollCalculationInput,
+  type PayrollLine,
+  type PayrollRun,
+} from '../../../../../packages/people/src';
 import { useAtlasContext } from '../../app/AtlasContext';
+import { useCompensationRepository } from './CompensationDataProvider';
 import { usePeoplePayrollData, usePeopleRefresh } from './PeopleDataProvider';
 import { usePeoplePayrollWriteService } from './PeoplePayrollWriteProvider';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
+type PayrollRunDraft = {
+  periodStart: string;
+  periodEnd: string;
+  payDate: string;
+};
+
+type PayrollLineDraft = {
+  employeeId: string;
+  payType: 'hourly' | 'salary';
+  regularHours: string;
+  overtimeHours: string;
+  hourlyRate: string;
+  overtimeMultiplier: string;
+  salaryPeriodAmount: string;
+  pretaxDeductions: string;
+  taxesWithheld: string;
+  posttaxDeductions: string;
+  compensationNote: string | null;
+  compensationLoading: boolean;
+};
+
+const EMPTY_RUN_DRAFT: PayrollRunDraft = {
+  periodStart: '',
+  periodEnd: '',
+  payDate: '',
+};
+
+function emptyLineDraft(): PayrollLineDraft {
+  return {
+    employeeId: '',
+    payType: 'hourly',
+    regularHours: '',
+    overtimeHours: '',
+    hourlyRate: '',
+    overtimeMultiplier: '1.5',
+    salaryPeriodAmount: '',
+    pretaxDeductions: '',
+    taxesWithheld: '',
+    posttaxDeductions: '',
+    compensationNote: null,
+    compensationLoading: false,
+  };
+}
+
+function numberOrZero(value: string, label: string): number {
+  if (!value.trim()) return 0;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) throw new Error(`${label} must be a non-negative number.`);
+  return parsed;
+}
+
+function requiredNumber(value: string, label: string): number {
+  if (!value.trim()) throw new Error(`${label} is required.`);
+  return numberOrZero(value, label);
+}
+
+function calculationInputFromDraft(draft: PayrollLineDraft): PayrollCalculationInput {
+  const hourly = draft.payType === 'hourly';
+  return {
+    regularHours: hourly ? numberOrZero(draft.regularHours, 'Regular hours') : 0,
+    overtimeHours: hourly ? numberOrZero(draft.overtimeHours, 'Overtime hours') : 0,
+    hourlyRate: hourly ? requiredNumber(draft.hourlyRate, 'Hourly rate') : null,
+    overtimeMultiplier: hourly ? requiredNumber(draft.overtimeMultiplier, 'Overtime multiplier') : 1.5,
+    salaryPeriodAmount: hourly ? null : requiredNumber(draft.salaryPeriodAmount, 'Salary period amount'),
+    pretaxDeductions: numberOrZero(draft.pretaxDeductions, 'Pretax deductions'),
+    taxesWithheld: numberOrZero(draft.taxesWithheld, 'Taxes withheld'),
+    posttaxDeductions: numberOrZero(draft.posttaxDeductions, 'Posttax deductions'),
+  };
+}
+
+function previewDraft(draft: PayrollLineDraft): { calculation: PayrollCalculation | null; error: string | null } {
+  if (!draft.employeeId) return { calculation: null, error: null };
+  try {
+    return { calculation: calculatePayrollLine(calculationInputFromDraft(draft)), error: null };
+  } catch (error) {
+    return {
+      calculation: null,
+      error: error instanceof Error ? error.message : 'Payroll inputs are invalid.',
+    };
+  }
+}
+
+function persistedOvertimeMultiplier(line: PayrollLine): number {
+  if (!line.calculation || typeof line.calculation !== 'object') return 1.5;
+  const value = (line.calculation as Record<string, unknown>).overtime_multiplier;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 1.5;
+}
+
+function lineDraftFromPersisted(line: PayrollLine): PayrollLineDraft {
+  const payType = line.hourlyRate !== null ? 'hourly' : 'salary';
+  return {
+    employeeId: line.employeeId,
+    payType,
+    regularHours: payType === 'hourly' ? String(line.regularHours) : '0',
+    overtimeHours: payType === 'hourly' ? String(line.overtimeHours) : '0',
+    hourlyRate: line.hourlyRate === null ? '' : String(line.hourlyRate),
+    overtimeMultiplier: String(persistedOvertimeMultiplier(line)),
+    salaryPeriodAmount: line.salaryPeriodAmount === null ? '' : String(line.salaryPeriodAmount),
+    pretaxDeductions: String(line.pretaxDeductions),
+    taxesWithheld: String(line.taxesWithheld),
+    posttaxDeductions: String(line.posttaxDeductions),
+    compensationNote: 'Existing persisted payroll line loaded.',
+    compensationLoading: false,
+  };
+}
+
 export function PayrollPage() {
   const identity = useAtlasContext();
   const state = usePeoplePayrollData();
   const writeService = usePeoplePayrollWriteService();
+  const compensationRepository = useCompensationRepository();
   const refresh = usePeopleRefresh();
   const [writeState, setWriteState] = useState<
     | { status: 'idle' }
@@ -19,6 +134,8 @@ export function PayrollPage() {
     | { status: 'error'; message: string }
   >({ status: 'idle' });
   const [voidReasons, setVoidReasons] = useState<Record<string, string>>({});
+  const [runDraft, setRunDraft] = useState<PayrollRunDraft>(EMPTY_RUN_DRAFT);
+  const [lineDrafts, setLineDrafts] = useState<Record<string, PayrollLineDraft>>({});
 
   const readyIdentity = identity.status === 'ready' ? identity : null;
   const canWrite = Boolean(readyIdentity && writeService && hasPermission(readyIdentity.permissions, 'payroll.write'));
@@ -46,21 +163,161 @@ export function PayrollPage() {
 
   if (!readyIdentity) return null;
 
-  async function runWrite(action: () => Promise<string>, successMessage: string) {
+  function updateLineDraft(runId: string, update: (current: PayrollLineDraft) => PayrollLineDraft) {
+    setLineDrafts((current) => ({
+      ...current,
+      [runId]: update(current[runId] ?? emptyLineDraft()),
+    }));
+  }
+
+  async function runWrite(action: () => Promise<string>, successMessage: string): Promise<boolean> {
     setWriteState({ status: 'saving' });
     try {
       await action();
       setWriteState({ status: 'success', message: successMessage });
       refresh();
+      return true;
     } catch (error) {
       setWriteState({
         status: 'error',
         message: error instanceof Error ? error.message : 'Payroll write failed',
       });
+      return false;
     }
   }
 
-  function lifecycleActions(run: PayrollRun) {
+  async function createPayrollRun() {
+    if (!writeService || !canWrite) return;
+    const saved = await runWrite(
+      () => writeService.createPayrollRun({
+        organizationId: readyIdentity.organizationId,
+        periodStart: runDraft.periodStart,
+        periodEnd: runDraft.periodEnd,
+        payDate: runDraft.payDate,
+      }),
+      'Payroll run created',
+    );
+    if (saved) setRunDraft(EMPTY_RUN_DRAFT);
+  }
+
+  async function selectPayrollEmployee(run: PayrollRun, employeeId: string) {
+    if (!employeeId) {
+      setLineDrafts((current) => ({ ...current, [run.id]: emptyLineDraft() }));
+      return;
+    }
+
+    const existingLine = (linesByRun.get(run.id) ?? []).find((line) => line.employeeId === employeeId);
+    if (existingLine) {
+      setLineDrafts((current) => ({ ...current, [run.id]: lineDraftFromPersisted(existingLine) }));
+      return;
+    }
+
+    updateLineDraft(run.id, () => ({
+      ...emptyLineDraft(),
+      employeeId,
+      compensationLoading: Boolean(compensationRepository),
+      compensationNote: compensationRepository ? 'Loading compensation…' : 'No configured compensation repository; enter verified pay values.',
+    }));
+
+    if (!compensationRepository) return;
+
+    try {
+      const history = await compensationRepository.listCompensation(readyIdentity.organizationId, employeeId);
+      const compensation = selectCompensation(history, run.periodEnd);
+
+      setLineDrafts((current) => {
+        const draft = current[run.id] ?? emptyLineDraft();
+        if (draft.employeeId !== employeeId) return current;
+
+        if (!compensation) {
+          return {
+            ...current,
+            [run.id]: {
+              ...draft,
+              compensationLoading: false,
+              compensationNote: `No compensation record is effective on ${run.periodEnd}; enter verified pay values.`,
+            },
+          };
+        }
+
+        if (compensation.payType === 'hourly') {
+          return {
+            ...current,
+            [run.id]: {
+              ...draft,
+              payType: 'hourly',
+              hourlyRate: compensation.hourlyRate === null ? '' : String(compensation.hourlyRate),
+              salaryPeriodAmount: '',
+              compensationLoading: false,
+              compensationNote: `Rate loaded from compensation effective on ${run.periodEnd}.`,
+            },
+          };
+        }
+
+        return {
+          ...current,
+          [run.id]: {
+            ...draft,
+            payType: 'salary',
+            regularHours: '0',
+            overtimeHours: '0',
+            hourlyRate: '',
+            salaryPeriodAmount: '',
+            compensationLoading: false,
+            compensationNote: compensation.annualSalary === null
+              ? `Salary compensation is effective on ${run.periodEnd}, but no annual salary value is available.`
+              : `Annual salary on file: ${currency.format(compensation.annualSalary)}. Enter the verified amount for this payroll period; ATLAS does not infer payroll frequency.`,
+          },
+        };
+      });
+    } catch (error) {
+      setLineDrafts((current) => {
+        const draft = current[run.id] ?? emptyLineDraft();
+        if (draft.employeeId !== employeeId) return current;
+        return {
+          ...current,
+          [run.id]: {
+            ...draft,
+            compensationLoading: false,
+            compensationNote: error instanceof Error ? error.message : 'Compensation could not be loaded.',
+          },
+        };
+      });
+    }
+  }
+
+  async function savePayrollLine(run: PayrollRun) {
+    if (!writeService || !canWrite) return;
+    const draft = lineDrafts[run.id] ?? emptyLineDraft();
+    if (!draft.employeeId) {
+      setWriteState({ status: 'error', message: 'Employee is required.' });
+      return;
+    }
+
+    let calculationInput: PayrollCalculationInput;
+    try {
+      calculationInput = calculationInputFromDraft(draft);
+      calculatePayrollLine(calculationInput);
+    } catch (error) {
+      setWriteState({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Payroll inputs are invalid.',
+      });
+      return;
+    }
+
+    await runWrite(
+      () => writeService.savePayrollLine({
+        organizationId: readyIdentity.organizationId,
+        payrollRunId: run.id,
+        employeeId: draft.employeeId,
+        calculationInput,
+      }),
+      'Payroll line saved',
+    );
+  }
+
+  function lifecycleActions(run: PayrollRun, lineCount: number) {
     if (!writeService) return null;
 
     return (
@@ -69,7 +326,7 @@ export function PayrollPage() {
           <button
             type="button"
             aria-label={`Calculate payroll ${run.id}`}
-            disabled={writeState.status === 'saving'}
+            disabled={writeState.status === 'saving' || lineCount === 0}
             onClick={() => void runWrite(
               () => writeService.calculatePayrollRun({ organizationId: readyIdentity.organizationId, payrollRunId: run.id }),
               'Payroll calculated',
@@ -125,6 +382,168 @@ export function PayrollPage() {
     );
   }
 
+  function payrollLineEditor(run: PayrollRun, lines: PayrollLine[]) {
+    if (!canWrite || run.status !== 'draft') return null;
+    const draft = lineDrafts[run.id] ?? emptyLineDraft();
+    const preview = previewDraft(draft);
+
+    return (
+      <section className="atlas-status-panel" aria-label={`Payroll line editor ${run.id}`}>
+        <strong>Payroll line</strong>
+        <span>Select an employee to add or update this draft run. Persisted lines are upserted; calculated runs are read-only.</span>
+        <div className="atlas-filter-grid">
+          <label>
+            Employee
+            <select
+              aria-label={`Payroll line employee ${run.id}`}
+              value={draft.employeeId}
+              disabled={writeState.status === 'saving'}
+              onChange={(event) => void selectPayrollEmployee(run, event.target.value)}
+            >
+              <option value="">Select employee</option>
+              {state.status === 'ready' && state.employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.fullName}{employee.status === 'active' ? '' : ` (${employee.status})`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Pay type
+            <select
+              aria-label={`Pay type ${run.id}`}
+              value={draft.payType}
+              disabled={!draft.employeeId || writeState.status === 'saving'}
+              onChange={(event) => updateLineDraft(run.id, (current) => {
+                const payType = event.target.value as 'hourly' | 'salary';
+                return payType === 'salary'
+                  ? { ...current, payType, regularHours: '0', overtimeHours: '0', hourlyRate: '' }
+                  : { ...current, payType, salaryPeriodAmount: '' };
+              })}
+            >
+              <option value="hourly">Hourly</option>
+              <option value="salary">Salary</option>
+            </select>
+          </label>
+          {draft.payType === 'hourly' ? (
+            <>
+              <label>
+                Regular hours
+                <input
+                  aria-label={`Regular hours ${run.id}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.regularHours}
+                  onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, regularHours: event.target.value }))}
+                />
+              </label>
+              <label>
+                Overtime hours
+                <input
+                  aria-label={`Overtime hours ${run.id}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.overtimeHours}
+                  onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, overtimeHours: event.target.value }))}
+                />
+              </label>
+              <label>
+                Hourly rate
+                <input
+                  aria-label={`Hourly rate ${run.id}`}
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={draft.hourlyRate}
+                  onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, hourlyRate: event.target.value }))}
+                />
+              </label>
+              <label>
+                Overtime multiplier
+                <input
+                  aria-label={`Overtime multiplier ${run.id}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.overtimeMultiplier}
+                  onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, overtimeMultiplier: event.target.value }))}
+                />
+              </label>
+            </>
+          ) : (
+            <label>
+              Salary period amount
+              <input
+                aria-label={`Salary period amount ${run.id}`}
+                type="number"
+                min="0"
+                step="0.01"
+                value={draft.salaryPeriodAmount}
+                onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, salaryPeriodAmount: event.target.value }))}
+              />
+            </label>
+          )}
+          <label>
+            Pretax deductions
+            <input
+              aria-label={`Pretax deductions ${run.id}`}
+              type="number"
+              min="0"
+              step="0.01"
+              value={draft.pretaxDeductions}
+              onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, pretaxDeductions: event.target.value }))}
+            />
+          </label>
+          <label>
+            Taxes withheld
+            <input
+              aria-label={`Taxes withheld ${run.id}`}
+              type="number"
+              min="0"
+              step="0.01"
+              value={draft.taxesWithheld}
+              onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, taxesWithheld: event.target.value }))}
+            />
+          </label>
+          <label>
+            Posttax deductions
+            <input
+              aria-label={`Posttax deductions ${run.id}`}
+              type="number"
+              min="0"
+              step="0.01"
+              value={draft.posttaxDeductions}
+              onChange={(event) => updateLineDraft(run.id, (current) => ({ ...current, posttaxDeductions: event.target.value }))}
+            />
+          </label>
+        </div>
+
+        {draft.compensationLoading && <span role="status">Loading compensation…</span>}
+        {draft.compensationNote && !draft.compensationLoading && <span>{draft.compensationNote}</span>}
+        {preview.calculation && (
+          <span>
+            Preview: gross {currency.format(preview.calculation.grossPay)} · net {currency.format(preview.calculation.netPay)}
+          </span>
+        )}
+        {preview.error && draft.employeeId && <span>{preview.error}</span>}
+        {draft.employeeId && lines.some((line) => line.employeeId === draft.employeeId) && (
+          <span>This employee already has a persisted line in the run; Save will update it.</span>
+        )}
+
+        <div className="atlas-action-row">
+          <button
+            type="button"
+            aria-label={`Save payroll line ${run.id}`}
+            disabled={writeState.status === 'saving' || !draft.employeeId || Boolean(preview.error) || !preview.calculation}
+            onClick={() => void savePayrollLine(run)}
+          >Save payroll line</button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <main className="atlas-page atlas-module-page people-payroll-page">
       <p className="atlas-eyebrow">ATLAS People / Payroll</p>
@@ -168,6 +587,50 @@ export function PayrollPage() {
         <section className="atlas-status-panel atlas-status-panel--degraded" role="alert">
           <strong>Payroll data unavailable</strong>
           <span>{state.message}</span>
+        </section>
+      )}
+
+      {state.status === 'ready' && canWrite && (
+        <section className="atlas-status-panel" aria-label="Create payroll run form">
+          <strong>Create payroll run</strong>
+          <span>Create the organization pay period first, then add employee payroll lines while the run is draft.</span>
+          <div className="atlas-filter-grid">
+            <label>
+              Period start
+              <input
+                aria-label="Payroll period start"
+                type="date"
+                value={runDraft.periodStart}
+                onChange={(event) => setRunDraft((current) => ({ ...current, periodStart: event.target.value }))}
+              />
+            </label>
+            <label>
+              Period end
+              <input
+                aria-label="Payroll period end"
+                type="date"
+                value={runDraft.periodEnd}
+                onChange={(event) => setRunDraft((current) => ({ ...current, periodEnd: event.target.value }))}
+              />
+            </label>
+            <label>
+              Pay date
+              <input
+                aria-label="Payroll pay date"
+                type="date"
+                value={runDraft.payDate}
+                onChange={(event) => setRunDraft((current) => ({ ...current, payDate: event.target.value }))}
+              />
+            </label>
+          </div>
+          <div className="atlas-action-row">
+            <button
+              type="button"
+              aria-label="Create payroll run"
+              disabled={writeState.status === 'saving' || !runDraft.periodStart || !runDraft.periodEnd || !runDraft.payDate}
+              onClick={() => void createPayrollRun()}
+            >Create payroll run</button>
+          </div>
         </section>
       )}
 
@@ -215,7 +678,11 @@ export function PayrollPage() {
               </div>
             )}
 
-            {lifecycleActions(run)}
+            {payrollLineEditor(run, lines)}
+            {canWrite && run.status === 'draft' && lines.length === 0 && (
+              <span>Add at least one payroll line before calculating this run.</span>
+            )}
+            {lifecycleActions(run, lines.length)}
           </section>
         );
       })}
