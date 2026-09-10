@@ -90,7 +90,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/pay-wallet',
     category: 'finance',
     description: 'Identity-scoped wallet and payment workflows with governed provider readiness.',
-    moduleCodes: [],
+    moduleCodes: ['atlas-pay'],
     implementationState: 'partial',
   }),
   defineModule({
@@ -109,7 +109,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/education',
     category: 'industry',
     description: 'Learners, assessments, courses, credentials and education operations.',
-    moduleCodes: [],
+    moduleCodes: ['education'],
     implementationState: 'partial',
   }),
   defineModule({
@@ -118,7 +118,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/analytics',
     category: 'intelligence',
     description: 'Governed KPIs, reports and AI-assisted analysis tied to authorized organization data.',
-    moduleCodes: [],
+    moduleCodes: ['analytics'],
     implementationState: 'partial',
   }),
   defineModule({
@@ -127,7 +127,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/connect',
     category: 'connectivity',
     description: 'Business communications and provider-backed connectivity with explicit connection state.',
-    moduleCodes: [],
+    moduleCodes: ['connect'],
     implementationState: 'blocked',
   }),
   defineModule({
@@ -136,7 +136,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/documents',
     category: 'collaboration',
     description: 'Governed document workflows for contracts, reports, invoices and authorized organization records.',
-    moduleCodes: [],
+    moduleCodes: ['documents'],
     implementationState: 'partial',
   }),
   defineModule({
@@ -145,7 +145,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/knowledge',
     category: 'intelligence',
     description: 'Connected organizational knowledge, evidence, policies, training and reusable context.',
-    moduleCodes: [],
+    moduleCodes: ['knowledge'],
     implementationState: 'partial',
   }),
   defineModule({
@@ -154,7 +154,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/security',
     category: 'platform',
     description: 'Identity-aware security controls, audit evidence, access posture and production safeguards.',
-    moduleCodes: [],
+    moduleCodes: ['security'],
     implementationState: 'partial',
   }),
   defineModule({
@@ -183,7 +183,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/studio',
     category: 'creative',
     description: 'ATLAS-owned content, media and voice production surfaces with provider-gated generation.',
-    moduleCodes: [],
+    moduleCodes: ['creator-studio'],
     permissions: ['voice.personal.read'],
     legacyRoute: '/voice',
     implementationState: 'partial',
@@ -214,7 +214,7 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     route: '/app/global',
     category: 'global',
     description: 'Country-aware ATLAS editions and jurisdiction-specific configuration on the shared platform.',
-    moduleCodes: [],
+    moduleCodes: ['global'],
     implementationState: 'configuration_required',
   }),
 ]);
