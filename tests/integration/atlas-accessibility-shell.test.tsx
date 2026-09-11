@@ -6,7 +6,7 @@ import { AtlasAccessibility } from '../../apps/web/src/components/AtlasAccessibi
 import { defaultAccessibilityProfile } from '../../apps/web/src/services/accessibilityProfile';
 
 describe('AtlasAccessibility', () => {
-  it('exposes a global launcher and truthful provider readiness', () => {
+  it('exposes a global launcher, manages dialog focus and reports truthful provider readiness', () => {
     render(
       <MemoryRouter>
         <AtlasAccessibility
@@ -17,11 +17,18 @@ describe('AtlasAccessibility', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /open accessibility communication center/i }));
-    expect(screen.getByRole('dialog', { name: /accessibility communication center/i })).toBeInTheDocument();
+    const launcher = screen.getByRole('button', { name: /open accessibility communication center/i });
+    fireEvent.click(launcher);
+    const dialog = screen.getByRole('dialog', { name: /accessibility communication center/i });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveFocus();
     expect(screen.getByText(/ASL recognition/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Not configured/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /communication settings/i })).toHaveAttribute('href', '/settings/accessibility/communication');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: /accessibility communication center/i })).not.toBeInTheDocument();
+    expect(launcher).toHaveFocus();
   });
 
   it('requires confirmation for medium-confidence recognition', () => {
