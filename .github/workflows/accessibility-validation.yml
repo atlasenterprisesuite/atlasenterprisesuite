@@ -7,6 +7,7 @@ on:
       - "apps/web/**"
       - "data/accessibility/**"
       - "tests/**accessibility**"
+      - "tests/unit/sign-language-registry.test.ts"
       - "docs/validation/**"
       - ".github/workflows/accessibility-validation.yml"
   workflow_dispatch:
@@ -70,7 +71,14 @@ jobs:
               --verbose
           done
       - name: Focused accessibility tests
-        run: npx vitest run tests/unit/accessibility-confidence.test.ts tests/unit/accessibility-profile.test.ts tests/integration/atlas-accessibility-shell.test.tsx tests/integration/accessibility-settings-route.test.tsx tests/integration/accessibility-validation-contract.test.ts
+        run: >-
+          npx vitest run
+          tests/unit/accessibility-confidence.test.ts
+          tests/unit/accessibility-profile.test.ts
+          tests/unit/sign-language-registry.test.ts
+          tests/integration/atlas-accessibility-shell.test.tsx
+          tests/integration/accessibility-settings-route.test.tsx
+          tests/integration/accessibility-validation-contract.test.ts
       - name: Upload preview log on failure
         if: failure()
         uses: actions/upload-artifact@v4
