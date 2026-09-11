@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { generateCreatorAsset } from '../../lib/atlasSession';
 import { creatorProviders } from './providerRegistry';
 import './creator.css';
 
 type MediaKind = 'image' | 'video' | 'music' | 'voice';
+type Visibility = 'Private' | 'Organization';
 
 const tools = [
   { kind: 'image' as MediaKind, title: 'Image Lab', description: 'Create and refine campaign imagery from a governed prompt.', route: '/studio/create?type=image' },
@@ -26,25 +28,53 @@ export function CreatorWorkspace() {
   const initial = params.get('type');
   const [kind, setKind] = useState<MediaKind>(initial === 'video' || initial === 'music' || initial === 'voice' ? initial : 'image');
   const [prompt, setPrompt] = useState('');
+  const [format, setFormat] = useState('Adaptive');
+  const [visibility, setVisibility] = useState<Visibility>('Private');
   const [notice, setNotice] = useState('');
+  const [providerLabel, setProviderLabel] = useState('Not configured');
+  const [assetUrl, setAssetUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const canSubmit = prompt.trim().length >= 8;
-  function submit(event: React.FormEvent) {
+
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSubmit) { setNotice('Describe the result in at least 8 characters.'); return; }
-    setNotice('Generation is not submitted: configure and authorize a compatible self-hosted provider first.');
+    if (!canSubmit || submitting) {
+      if (!canSubmit) setNotice('Describe the result in at least 8 characters.');
+      return;
+    }
+
+    setSubmitting(true);
+    setNotice('Submitting to ATLAS Auto in Zero-Cost Mode…');
+    setAssetUrl('');
+    try {
+      const result = await generateCreatorAsset({ kind, prompt: prompt.trim(), format, visibility });
+      setProviderLabel(result.providerId || 'ATLAS Auto');
+      const url = typeof result.asset?.url === 'string' ? result.asset.url : '';
+      if (result.ok && result.state === 'completed' && url) {
+        setAssetUrl(url);
+        setNotice('Generation completed and verified by the configured self-hosted provider.');
+      } else {
+        setNotice(result.message || result.error || `Generation state: ${result.state}`);
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Generation failed.');
+    } finally {
+      setSubmitting(false);
+    }
   }
+
   return <section className="creator-page">
     <nav className="creator-breadcrumb" aria-label="Breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Create</span></nav>
     <header className="creator-hero compact"><div><p className="eyebrow">Creator workspace</p><h1>Bring an idea to life.</h1><p>Requests remain inside the organization boundary and are never reported as generated until a provider returns a verified result.</p></div></header>
     <div className="creator-workbench">
       <form className="creator-composer" onSubmit={submit}>
-        <div className="creator-tabs" role="tablist">{(['image','video','music','voice'] as MediaKind[]).map(item => <button key={item} type="button" role="tab" aria-selected={kind===item} className={kind===item?'active':''} onClick={()=>{setKind(item);setNotice('')}}>{item}</button>)}</div>
+        <div className="creator-tabs" role="tablist">{(['image','video','music','voice'] as MediaKind[]).map(item => <button key={item} type="button" role="tab" aria-selected={kind===item} className={kind===item?'active':''} onClick={()=>{setKind(item);setNotice('');setAssetUrl('')}}>{item}</button>)}</div>
         <label><span>Creative brief</span><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder={'Describe the '+kind+' you want to create…'} rows={7} /></label>
-        <div className="creator-options"><label><span>Format</span><select><option>Adaptive</option><option>Square 1:1</option><option>Portrait 9:16</option><option>Landscape 16:9</option></select></label><label><span>Visibility</span><select><option>Private</option><option>Organization</option></select></label></div>
-        <button className="creator-primary" type="submit" disabled={!canSubmit}>Generate {kind}</button>
+        <div className="creator-options"><label><span>Format</span><select value={format} onChange={e=>setFormat(e.target.value)}><option>Adaptive</option><option>Square 1:1</option><option>Portrait 9:16</option><option>Landscape 16:9</option></select></label><label><span>Visibility</span><select value={visibility} onChange={e=>setVisibility(e.target.value as Visibility)}><option>Private</option><option>Organization</option></select></label></div>
+        <button className="creator-primary" type="submit" disabled={!canSubmit || submitting}>{submitting ? 'Generating…' : `Generate ${kind}`}</button>
         {notice && <p className="creator-notice" role="status">{notice}</p>}
       </form>
-      <aside className="creator-preview"><div className={'creator-preview-orb '+kind} /><h2>Preview</h2><p>A verified result will appear here. ATLAS does not insert fabricated output.</p><dl><div><dt>Provider</dt><dd>Not configured</dd></div><div><dt>Mode</dt><dd>Zero cost</dd></div><div><dt>Storage</dt><dd>Supabase connection required</dd></div><div><dt>Audit</dt><dd>Enabled on submission</dd></div></dl></aside>
+      <aside className="creator-preview"><div className={'creator-preview-orb '+kind} />{assetUrl ? <img src={assetUrl} alt="Verified ATLAS Creator output" className="creator-output" /> : null}<h2>Preview</h2><p>{assetUrl ? 'Verified output from the configured self-hosted provider.' : 'A verified result will appear here. ATLAS does not insert fabricated output.'}</p><dl><div><dt>Provider</dt><dd>{providerLabel}</dd></div><div><dt>Mode</dt><dd>Zero cost</dd></div><div><dt>Storage</dt><dd>Persistence gate pending</dd></div><div><dt>Audit</dt><dd>Organization request context enabled</dd></div></dl></aside>
     </div>
   </section>;
 }
