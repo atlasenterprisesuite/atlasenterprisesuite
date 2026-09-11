@@ -215,7 +215,7 @@ export function AtlasAssistant() {
           onSpeechPreference={voice.setSpeechEnabled}
         />
       ) : (
-        <AtlasAssistantLauncher state={state} onOpen={openAssistant} />
+        <AtlasAssistantLauncher state={state} textCapability={textCapability} onOpen={openAssistant} />
       )}
     </div>
   );
