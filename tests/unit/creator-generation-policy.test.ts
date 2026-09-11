@@ -8,11 +8,13 @@ describe('ATLAS Creator generation bridge', () => {
     expect(existsSync(edgeFunctionPath)).toBe(true);
     if (!existsSync(edgeFunctionPath)) return;
     const source = readFileSync(edgeFunctionPath, 'utf8');
-    expect(source).toContain("ATLAS_FLUX_LOCAL_URL");
-    expect(source).toContain("flux-schnell-local");
-    expect(source).toContain("configuration-required");
-    expect(source).toContain("x-atlas-org-id");
-    expect(source).toContain("resolveIntelligenceContext");
+    expect(source).toContain('ATLAS_FLUX_LOCAL_URL');
+    expect(source).toContain('ATLAS_FLUX_RUNTIME_TOKEN');
+    expect(source).toContain('x-atlas-runtime-token');
+    expect(source).toContain('flux-schnell-local');
+    expect(source).toContain('configuration-required');
+    expect(source).toContain('x-atlas-org-id');
+    expect(source).toContain('resolveIntelligenceContext');
   });
 
   it('contains no paid-provider fallback in the generation boundary', () => {
