@@ -7,10 +7,16 @@ import { defaultAccessibilityProfile } from '../../apps/web/src/services/accessi
 
 describe('AtlasAccessibility', () => {
   it('exposes a global launcher, contains keyboard focus and reports truthful provider readiness', () => {
+    const profile = {
+      ...defaultAccessibilityProfile('user-a'),
+      preferredInput: 'asl' as const,
+      preferredSignLanguage: 'vsl'
+    };
+
     render(
       <MemoryRouter>
         <AtlasAccessibility
-          initialProfile={defaultAccessibilityProfile('user-a')}
+          initialProfile={profile}
           onProfileChange={() => undefined}
           onActionTriggered={() => undefined}
         />
@@ -26,7 +32,8 @@ describe('AtlasAccessibility', () => {
     fireEvent.keyDown(dialog, { key: 'Tab' });
     expect(screen.getByRole('button', { name: /close accessibility communication center/i })).toHaveFocus();
 
-    expect(screen.getByText(/ASL recognition/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sign-language recognition/i)).toBeInTheDocument();
+    expect(screen.getByText(/vsl/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Not configured/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /communication settings/i })).toHaveAttribute('href', '/settings/accessibility/communication');
 
