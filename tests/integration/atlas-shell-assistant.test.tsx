@@ -42,14 +42,15 @@ describe('AtlasShell assistant integration', () => {
   it('shows the launcher after active organization resolution', async () => {
     mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    expect(await screen.findByRole('button', { name: 'Open ATLAS Assistant' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Open ATLAS Assistant/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Intelligence ready/ })).toBeInTheDocument();
   });
 
   it('stays hidden when the session has no active organization', async () => {
     mocks.getActiveAtlasOrganization.mockRejectedValue(new Error('no_active_organization'));
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
     await waitFor(() => expect(mocks.getActiveAtlasOrganization).toHaveBeenCalled());
-    expect(screen.queryByRole('button', { name: 'Open ATLAS Assistant' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Open ATLAS Assistant/ })).not.toBeInTheDocument();
   });
 
   it('opens the panel and sends text through the governed client', async () => {
@@ -61,7 +62,7 @@ describe('AtlasShell assistant integration', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Open ATLAS Assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant/ }));
     expect(screen.getByRole('region', { name: 'ATLAS Assistant' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/Intelligence ready/i)).toBeInTheDocument());
     const input = screen.getByLabelText('Message ATLAS Assistant');
@@ -77,19 +78,19 @@ describe('AtlasShell assistant integration', () => {
     expect(await screen.findByText('I can help with Finance.')).toBeInTheDocument();
   });
 
-  it('shows the greeting once per browser session', async () => {
+  it('shows the greeting once per browser session after Intelligence is verified', async () => {
     mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
     const first = render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open ATLAS Assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant/ }));
     expect(screen.getByText('ATLAS Assistant is ready. How can I help in this workspace?')).toBeInTheDocument();
     first.unmount();
 
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open ATLAS Assistant' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant/ }));
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
   });
 
-  it('surfaces an unverified provider instead of enabling text requests', async () => {
+  it('surfaces an unverified provider instead of enabling text requests or a ready greeting', async () => {
     mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
     mocks.getAssistantStatus.mockResolvedValue({
       ok: true,
@@ -103,8 +104,11 @@ describe('AtlasShell assistant integration', () => {
       capabilities: ['generation', 'reasoning']
     });
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open ATLAS Assistant' }));
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant/ });
+    expect(launcher).toHaveAccessibleName(/Intelligence configuration required/);
+    fireEvent.click(launcher);
     await waitFor(() => expect(screen.getByText(/Intelligence configuration required/i)).toBeInTheDocument());
     expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
+    expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
   });
 });
