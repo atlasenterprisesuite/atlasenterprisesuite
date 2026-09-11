@@ -1,0 +1,118 @@
+import { useState } from 'react';
+import {
+  loadAccessibilityProfile,
+  resolveAccessibilityUserId,
+  saveAccessibilityProfile
+} from '../../services/accessibilityProfile';
+import type {
+  AccessibilityInputMode,
+  AccessibilityOutputMode,
+  AccessibilityProfile,
+  HapticIntensity
+} from '../../types/accessibility';
+
+interface Props {
+  profile: AccessibilityProfile;
+  onUpdate: (updated: AccessibilityProfile) => void;
+}
+
+export function AccessibilityCommunicationSettings({ profile, onUpdate }: Props) {
+  return (
+    <div className="settings-section accessibility-settings-section">
+      <div className="settings-grid">
+        <label className="field" htmlFor="accessibility-preferred-input">
+          <span>Preferred input</span>
+          <select
+            id="accessibility-preferred-input"
+            value={profile.preferredInput}
+            onChange={(event) => onUpdate({ ...profile, preferredInput: event.target.value as AccessibilityInputMode })}
+          >
+            <option value="asl">Sign language (ASL)</option>
+            <option value="voice">Voice</option>
+            <option value="text">Text</option>
+            <option value="braille">Braille</option>
+            <option value="haptic">Haptic</option>
+          </select>
+        </label>
+
+        <label className="field" htmlFor="accessibility-preferred-output">
+          <span>Preferred output</span>
+          <select
+            id="accessibility-preferred-output"
+            value={profile.preferredOutput}
+            onChange={(event) => onUpdate({ ...profile, preferredOutput: event.target.value as AccessibilityOutputMode })}
+          >
+            <option value="text">Text</option>
+            <option value="asl_avatar">ASL avatar + text</option>
+            <option value="voice">Synthetic voice</option>
+            <option value="braille">Braille</option>
+          </select>
+        </label>
+
+        <label className="field" htmlFor="accessibility-text-size">
+          <span>Text size</span>
+          <select
+            id="accessibility-text-size"
+            value={String(profile.textSizeScale)}
+            onChange={(event) => onUpdate({ ...profile, textSizeScale: Number(event.target.value) })}
+          >
+            <option value="0.875">87.5%</option>
+            <option value="1">100%</option>
+            <option value="1.125">112.5%</option>
+            <option value="1.25">125%</option>
+            <option value="1.5">150%</option>
+            <option value="2">200%</option>
+          </select>
+        </label>
+
+        <label className="field" htmlFor="accessibility-haptic-intensity">
+          <span>Haptic intensity</span>
+          <select
+            id="accessibility-haptic-intensity"
+            value={profile.hapticIntensity}
+            onChange={(event) => onUpdate({ ...profile, hapticIntensity: event.target.value as HapticIntensity })}
+          >
+            <option value="off">Off</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="accessibility-toggle-list">
+        <label><input type="checkbox" checked={profile.captionsEnabled} onChange={(event) => onUpdate({ ...profile, captionsEnabled: event.target.checked })} />Always show captions</label>
+        <label><input type="checkbox" checked={profile.screenReaderOptimized} onChange={(event) => onUpdate({ ...profile, screenReaderOptimized: event.target.checked })} />Screen-reader optimized navigation</label>
+        <label><input type="checkbox" checked={profile.motionReduced} onChange={(event) => onUpdate({ ...profile, motionReduced: event.target.checked })} />Reduce motion</label>
+        <label><input type="checkbox" checked={profile.highContrast} onChange={(event) => onUpdate({ ...profile, highContrast: event.target.checked })} />High contrast</label>
+        <label><input type="checkbox" checked={profile.brailleMode} onChange={(event) => onUpdate({ ...profile, brailleMode: event.target.checked })} />Prefer Braille-compatible output</label>
+      </div>
+
+      <div className="notice accessibility-settings-notice">
+        <strong>Provider boundaries</strong>
+        <p>ASL recognition and avatar rendering require configured providers before ATLAS can represent them as active.</p>
+        <p>Braille hardware support requires a compatible detected device and validation; selecting a preference does not claim a device is connected.</p>
+      </div>
+    </div>
+  );
+}
+
+export function AccessibilityCommunicationSettingsPage() {
+  const userId = resolveAccessibilityUserId();
+  const [profile, setProfile] = useState(() => loadAccessibilityProfile(userId));
+
+  const updateProfile = (updated: AccessibilityProfile) => {
+    setProfile(saveAccessibilityProfile(updated));
+  };
+
+  return (
+    <section className="page-stack">
+      <header className="page-header">
+        <p className="eyebrow">Settings → Accessibility → Communication</p>
+        <h1>Accessibility Communication</h1>
+        <p>Choose how ATLAS should receive information, respond and present content. These are functional preferences; no medical diagnosis is required.</p>
+      </header>
+      <AccessibilityCommunicationSettings profile={profile} onUpdate={updateProfile} />
+    </section>
+  );
+}
