@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
 import { AtlasAssistantMessageList } from './AtlasAssistantMessageList';
+import './assistantVoice.css';
 
 type AtlasAssistantPanelProps = {
   messages: AtlasAssistantMessage[];
