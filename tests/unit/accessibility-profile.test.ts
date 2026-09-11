@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   defaultAccessibilityProfile,
   loadAccessibilityProfile,
+  mergeAccessibilityPreferences,
   saveAccessibilityProfile
 } from '../../apps/web/src/services/accessibilityProfile';
 
@@ -44,5 +45,14 @@ describe('accessibility profile persistence', () => {
   it('falls back safely when stored JSON is corrupt', () => {
     window.localStorage.setItem('atlas_accessibility_profile:v1:user-a', '{broken');
     expect(loadAccessibilityProfile('user-a')).toEqual(defaultAccessibilityProfile('user-a'));
+  });
+
+  it('merges accessibility settings without deleting unrelated account preferences', () => {
+    const profile = { ...defaultAccessibilityProfile('user-a'), captionsEnabled: true };
+    expect(mergeAccessibilityPreferences({ locale: 'en-US', theme: 'dark' }, profile)).toEqual({
+      locale: 'en-US',
+      theme: 'dark',
+      accessibilityCommunication: profile
+    });
   });
 });
