@@ -12,7 +12,7 @@ export class AtlasConfidenceEngine {
       throw new RangeError('Confidence score must be between 0 and 1.');
     }
 
-    if (score > 0.98) {
+    if (score >= 0.98) {
       return {
         level: 'high',
         actionRecommended: true,
