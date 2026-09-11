@@ -76,14 +76,22 @@ export const signLanguageRegistry: SignLanguageResearchEntry[] = [
   entry('BE', 'Belgium', 'French Belgian Sign Language', 'LSFB', 'sfb', 'recognized'),
   entry('FI', 'Finland', 'Finnish Sign Language', 'FinSL', 'fse', 'recognized'),
   entry('FI', 'Finland', 'Finland-Swedish Sign Language', 'FinSSL', 'fss', 'recognized'),
+  entry('NL', 'Netherlands', 'Sign Language of the Netherlands', 'NGT', 'dse', 'recognized'),
+  entry('SE', 'Sweden', 'Swedish Sign Language', 'STS', 'swl', 'recognized'),
+  entry('DK', 'Denmark', 'Danish Sign Language', 'DTS', 'dsl', 'recognized'),
+  entry('NO', 'Norway', 'Norwegian Sign Language', 'NTS', 'nsl', 'recognized'),
+  entry('PL', 'Poland', 'Polish Sign Language', 'PJM', 'pso', 'recognized'),
+  entry('RU', 'Russian Federation', 'Russian Sign Language', 'RSL', 'rsl', 'recognized'),
+  entry('UA', 'Ukraine', 'Ukrainian Sign Language', 'UkSL', 'ukl', 'recognized'),
+  entry('TR', 'Turkey', 'Turkish Sign Language', 'TİD', 'tsm', 'recognized'),
   entry('JP', 'Japan', 'Japanese Sign Language', 'JSL', 'jsl', 'recognized'),
   entry('KR', 'South Korea', 'Korean Sign Language', 'KSL', 'kvk', 'recognized'),
   entry('IN', 'India', 'Indian Sign Language', 'ISL', 'ins', 'recognized'),
+  entry('PH', 'Philippines', 'Filipino Sign Language', 'FSL', 'psp', 'recognized'),
+  entry('PK', 'Pakistan', 'Pakistan Sign Language', 'PSL', 'pks', 'not_listed_as_recognized'),
+  entry('ZA', 'South Africa', 'South African Sign Language', 'SASL', 'sfs', 'recognized'),
   entry('AU', 'Australia', 'Auslan', 'Auslan', 'asf', 'not_listed_as_recognized'),
-  entry('NZ', 'New Zealand', 'New Zealand Sign Language', 'NZSL', 'nzs', 'recognized'),
-  entry('PL', 'Poland', 'Polish Sign Language', 'PJM', 'pso', 'recognized'),
-  entry('NO', 'Norway', 'Norwegian Sign Language', 'NTS', 'nsl', 'recognized'),
-  entry('PK', 'Pakistan', 'Pakistan Sign Language', 'PSL', 'pks', 'not_listed_as_recognized')
+  entry('NZ', 'New Zealand', 'New Zealand Sign Language', 'NZSL', 'nzs', 'recognized')
 ];
 
 export function signLanguagesForCountry(countryCode: string): SignLanguageResearchEntry[] {
