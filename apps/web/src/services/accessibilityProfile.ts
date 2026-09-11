@@ -7,6 +7,7 @@ import type {
 import { getAtlasAccessToken } from '../lib/atlasSession';
 
 const STORAGE_PREFIX = 'atlas_accessibility_profile:v1:';
+export const ATLAS_ACCESSIBILITY_PROFILE_EVENT = 'atlas-accessibility-profile-changed';
 const INPUT_MODES: AccessibilityInputMode[] = ['asl', 'voice', 'text', 'braille', 'haptic'];
 const OUTPUT_MODES: AccessibilityOutputMode[] = ['text', 'asl_avatar', 'voice', 'braille'];
 const HAPTIC_LEVELS: HapticIntensity[] = ['off', 'low', 'medium', 'high'];
@@ -82,6 +83,7 @@ export function saveAccessibilityProfile(profile: AccessibilityProfile): Accessi
   const normalized = normalizedProfile(profile.userId, profile);
   if (storageAvailable()) {
     window.localStorage.setItem(profileStorageKey(profile.userId), JSON.stringify(normalized));
+    window.dispatchEvent(new CustomEvent<AccessibilityProfile>(ATLAS_ACCESSIBILITY_PROFILE_EVENT, { detail: normalized }));
   }
   return normalized;
 }
