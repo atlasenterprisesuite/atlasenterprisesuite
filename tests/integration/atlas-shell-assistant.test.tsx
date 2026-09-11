@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getActiveAtlasOrganization: vi.fn(),
+  getAssistantStatus: vi.fn(),
   sendAssistantMessage: vi.fn()
 }));
 
@@ -13,6 +14,7 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => ({
 }));
 
 vi.mock('../../apps/web/src/assistant/client', () => ({
+  getAssistantStatus: mocks.getAssistantStatus,
   sendAssistantMessage: mocks.sendAssistantMessage
 }));
 
@@ -23,6 +25,17 @@ describe('AtlasShell assistant integration', () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     mocks.getActiveAtlasOrganization.mockReset();
+    mocks.getAssistantStatus.mockReset().mockResolvedValue({
+      ok: true,
+      authenticated: true,
+      provider: 'openai',
+      provider_state: 'verified_for_request',
+      model: 'gpt-6-astra',
+      storage_state: 'configured',
+      organization: 'org-1',
+      role: 'owner',
+      capabilities: ['generation', 'reasoning']
+    });
     mocks.sendAssistantMessage.mockReset();
   });
 
@@ -50,6 +63,7 @@ describe('AtlasShell assistant integration', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open ATLAS Assistant' }));
     expect(screen.getByRole('region', { name: 'ATLAS Assistant' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Intelligence ready/i)).toBeInTheDocument());
     const input = screen.getByLabelText('Message ATLAS Assistant');
     fireEvent.change(input, { target: { value: 'Help me with finance' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -73,5 +87,24 @@ describe('AtlasShell assistant integration', () => {
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'Open ATLAS Assistant' }));
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
+  });
+
+  it('surfaces an unverified provider instead of enabling text requests', async () => {
+    mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
+    mocks.getAssistantStatus.mockResolvedValue({
+      ok: true,
+      authenticated: true,
+      provider: 'openai',
+      provider_state: 'not_configured',
+      model: 'gpt-6-astra',
+      storage_state: 'configured',
+      organization: 'org-1',
+      role: 'owner',
+      capabilities: ['generation', 'reasoning']
+    });
+    render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open ATLAS Assistant' }));
+    await waitFor(() => expect(screen.getByText(/Intelligence configuration required/i)).toBeInTheDocument());
+    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
   });
 });
