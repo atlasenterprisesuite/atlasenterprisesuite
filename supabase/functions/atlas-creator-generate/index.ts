@@ -1,4 +1,4 @@
-import { resolveIntelligenceContext } from '../atlas-copilot/atlas-intelligence-auth.mjs';
+import { resolveIntelligenceContext } from '../_shared/atlas-intelligence-auth.mjs';
 
 const PROVIDER_ID = 'flux-schnell-local';
 const DEFAULT_ORIGIN = 'https://www.atlasenterprisesuite.com';
