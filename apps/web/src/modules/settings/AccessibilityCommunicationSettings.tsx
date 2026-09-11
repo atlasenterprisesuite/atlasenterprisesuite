@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   loadAccessibilityProfile,
   loadAccessibilityProfileRemote,
@@ -13,6 +13,7 @@ import type {
   AccessibilityProfile,
   HapticIntensity
 } from '../../types/accessibility';
+import { signLanguageRegistry } from '../../../../../data/accessibility/sign-languages';
 
 interface Props {
   profile: AccessibilityProfile;
@@ -20,6 +21,20 @@ interface Props {
 }
 
 export function AccessibilityCommunicationSettings({ profile, onUpdate }: Props) {
+  const signLanguageOptions = useMemo(() => {
+    const unique = new Map<string, { iso639_3: string; languageName: string; acronym: string }>();
+    for (const language of signLanguageRegistry) {
+      if (!unique.has(language.iso639_3)) {
+        unique.set(language.iso639_3, {
+          iso639_3: language.iso639_3,
+          languageName: language.languageName,
+          acronym: language.acronym
+        });
+      }
+    }
+    return [...unique.values()].sort((a, b) => a.languageName.localeCompare(b.languageName));
+  }, []);
+
   return (
     <div className="settings-section accessibility-settings-section">
       <div className="settings-grid">
@@ -30,7 +45,7 @@ export function AccessibilityCommunicationSettings({ profile, onUpdate }: Props)
             value={profile.preferredInput}
             onChange={(event) => onUpdate({ ...profile, preferredInput: event.target.value as AccessibilityInputMode })}
           >
-            <option value="asl">Sign language (ASL)</option>
+            <option value="asl">Sign language</option>
             <option value="voice">Voice</option>
             <option value="text">Text</option>
             <option value="braille">Braille</option>
@@ -46,10 +61,28 @@ export function AccessibilityCommunicationSettings({ profile, onUpdate }: Props)
             onChange={(event) => onUpdate({ ...profile, preferredOutput: event.target.value as AccessibilityOutputMode })}
           >
             <option value="text">Text</option>
-            <option value="asl_avatar">ASL avatar + text</option>
+            <option value="asl_avatar">Sign-language avatar + text</option>
             <option value="voice">Synthetic voice</option>
             <option value="braille">Braille</option>
           </select>
+        </label>
+
+        <label className="field" htmlFor="accessibility-preferred-sign-language">
+          <span>Preferred sign language</span>
+          <select
+            id="accessibility-preferred-sign-language"
+            value={profile.preferredSignLanguage ?? ''}
+            onChange={(event) => onUpdate({ ...profile, preferredSignLanguage: event.target.value || null })}
+            aria-describedby="accessibility-sign-language-help"
+          >
+            <option value="">Not selected</option>
+            {signLanguageOptions.map((language) => (
+              <option key={language.iso639_3} value={language.iso639_3}>
+                {language.languageName} ({language.acronym}) · {language.iso639_3}
+              </option>
+            ))}
+          </select>
+          <small id="accessibility-sign-language-help">ATLAS never infers this choice from your country or spoken language.</small>
         </label>
 
         <label className="field" htmlFor="accessibility-text-size">
@@ -93,7 +126,7 @@ export function AccessibilityCommunicationSettings({ profile, onUpdate }: Props)
 
       <div className="notice accessibility-settings-notice">
         <strong>Provider boundaries</strong>
-        <p>ASL recognition and avatar rendering require configured providers before ATLAS can represent them as active.</p>
+        <p>Sign-language recognition and avatar rendering require a provider validated for the specific selected language before ATLAS can represent them as active.</p>
         <p>Braille hardware support requires a compatible detected device and validation; selecting a preference does not claim a device is connected.</p>
       </div>
     </div>
