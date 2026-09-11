@@ -3,6 +3,8 @@ import { resolveIntelligenceContext } from '../_shared/atlas-intelligence-auth.m
 const PROVIDER_ID = 'flux-schnell-local';
 const DEFAULT_ORIGIN = 'https://www.atlasenterprisesuite.com';
 
+type CreatorRuntimeState = 'ready' | 'configuration-required' | 'resource-blocked' | 'failed';
+
 function corsHeaders(req: Request) {
   const allowed = (Deno.env.get('ATLAS_ALLOWED_ORIGIN') || DEFAULT_ORIGIN).trim();
   const requested = req.headers.get('origin') || '';
@@ -23,7 +25,7 @@ function json(req: Request, data: unknown, status = 200) {
 function safeBaseUrl(value: string) {
   const raw = value.trim().replace(/\/+$/, '');
   const parsed = new URL(raw);
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw Object.assign(new Error('invalid_local_provider_url'), { status: 503 });
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw Object.assign(new Error('invalid_local_provider_url'), { status: 503, creatorState: 'configuration-required' });
   return parsed.toString().replace(/\/$/, '');
 }
 
@@ -73,6 +75,22 @@ function runtimeHeaders(runtimeToken: string, extra: Record<string, string> = {}
   };
 }
 
+async function runtimeFailure(response: Response, fallbackState: CreatorRuntimeState = 'failed') {
+  let body: any = null;
+  try { body = await response.json(); } catch { body = null; }
+  const detail = body?.detail;
+  const candidate = String(detail?.state || body?.state || '').trim();
+  const detailCode = typeof detail === 'string' ? detail : '';
+  let state: CreatorRuntimeState = fallbackState;
+
+  if (candidate === 'configuration-required' || candidate === 'resource-blocked' || candidate === 'failed') state = candidate;
+  else if (response.status === 401 || response.status === 403 || detailCode === 'runtime_auth_not_configured') state = 'configuration-required';
+  else if (response.status === 503) state = 'resource-blocked';
+
+  const message = String(detail?.message || body?.message || detailCode || (state === 'resource-blocked' ? 'The self-hosted FLUX runtime cannot execute this request.' : 'The self-hosted FLUX runtime request failed.'));
+  return { state, message };
+}
+
 async function probeFlux(baseUrl: string, runtimeToken: string) {
   let response: Response;
   try {
@@ -82,26 +100,25 @@ async function probeFlux(baseUrl: string, runtimeToken: string) {
       signal: AbortSignal.timeout(5000)
     });
   } catch {
-    return { ready: false, state: 'resource-blocked', message: 'The self-hosted FLUX runtime could not be reached.' };
+    return { ready: false, state: 'resource-blocked' as const, message: 'The self-hosted FLUX runtime could not be reached.' };
   }
 
-  if (response.status === 401 || response.status === 403) {
-    return { ready: false, state: 'configuration-required', message: 'The FLUX runtime service credential was rejected.' };
-  }
   if (!response.ok) {
-    return { ready: false, state: 'resource-blocked', message: `The self-hosted FLUX runtime returned HTTP ${response.status}.` };
+    const failure = await runtimeFailure(response, 'resource-blocked');
+    return { ready: false, state: failure.state, message: failure.message };
   }
 
   try {
     const body = await response.json();
     if (body?.ready === false) {
-      return { ready: false, state: 'resource-blocked', message: String(body?.message || 'The local runtime reports insufficient resources.') };
+      const state = body?.state === 'configuration-required' ? 'configuration-required' : 'resource-blocked';
+      return { ready: false, state, message: String(body?.message || 'The local runtime reports insufficient resources.') };
     }
   } catch {
-    return { ready: false, state: 'resource-blocked', message: 'The self-hosted FLUX runtime returned an invalid health response.' };
+    return { ready: false, state: 'resource-blocked' as const, message: 'The self-hosted FLUX runtime returned an invalid health response.' };
   }
 
-  return { ready: true, state: 'ready', message: 'Self-hosted FLUX runtime verified for this request.' };
+  return { ready: true, state: 'ready' as const, message: 'Self-hosted FLUX runtime verified for this request.' };
 }
 
 async function generateFlux(baseUrl: string, runtimeToken: string, input: ReturnType<typeof validateRequest>, organizationId: string, userId: string) {
@@ -118,11 +135,12 @@ async function generateFlux(baseUrl: string, runtimeToken: string, input: Return
     signal: AbortSignal.timeout(120000)
   });
 
-  if (response.status === 401 || response.status === 403) {
-    throw Object.assign(new Error('local_provider_auth_failed'), { status: 503 });
-  }
   if (!response.ok) {
-    throw Object.assign(new Error('local_provider_failed'), { status: 502, providerStatus: response.status });
+    const failure = await runtimeFailure(response);
+    throw Object.assign(new Error(failure.message), {
+      status: response.status === 401 || response.status === 403 ? 503 : response.status,
+      creatorState: failure.state
+    });
   }
 
   const result = await response.json();
@@ -188,8 +206,14 @@ Deno.serve(async (req: Request) => {
     });
   } catch (error: any) {
     const status = Number(error?.status || 500);
+    const state = String(error?.creatorState || 'failed');
     const code = String(error?.code || error?.message || 'internal_error');
-    console.error('atlas_creator_generation_failed', { code });
-    return json(req, { ok: false, providerId: PROVIDER_ID, state: 'failed', error: code }, status);
+    console.error('atlas_creator_generation_failed', { code, state });
+    return json(req, {
+      ok: false,
+      providerId: PROVIDER_ID,
+      state,
+      ...(state === 'failed' ? { error: code } : { message: code })
+    }, status);
   }
 });
