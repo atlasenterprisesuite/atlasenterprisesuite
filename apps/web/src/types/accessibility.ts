@@ -7,6 +7,8 @@ export type AccessibilityProfile = {
   userId: string;
   preferredInput: AccessibilityInputMode;
   preferredOutput: AccessibilityOutputMode;
+  /** ISO 639-3 code for the user's explicitly selected sign language. Never inferred from country or spoken language. */
+  preferredSignLanguage: string | null;
   captionsEnabled: boolean;
   brailleMode: boolean;
   hapticIntensity: HapticIntensity;
