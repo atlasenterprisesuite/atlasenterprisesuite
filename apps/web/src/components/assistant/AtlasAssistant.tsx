@@ -101,14 +101,14 @@ export function AtlasAssistant() {
   }, [refreshAuthorization]);
 
   useEffect(() => {
-    if (!authorized || readGreetingSeen()) return;
+    if (!authorized || textCapability !== 'ready' || readGreetingSeen()) return;
     markGreetingSeen();
     setMessages((current) => current.length ? current : [{
       id: nextId('assistant'),
       role: 'assistant',
       text: GREETING
     }]);
-  }, [authorized, nextId]);
+  }, [authorized, nextId, textCapability]);
 
   if (!authorized) return null;
 
