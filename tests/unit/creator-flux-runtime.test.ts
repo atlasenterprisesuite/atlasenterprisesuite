@@ -16,6 +16,15 @@ describe('ATLAS self-hosted FLUX runtime', () => {
     expect(source).toContain('resource-blocked');
   });
 
+  it('serializes GPU work and returns a compact web image payload', () => {
+    if (!existsSync(runtimePath)) return;
+    const source = readFileSync(runtimePath, 'utf8');
+    expect(source).toContain('_generation_lock = asyncio.Lock()');
+    expect(source).toContain('async with _generation_lock');
+    expect(source).toContain('format="WEBP"');
+    expect(source).toContain('image/webp');
+  });
+
   it('does not require a paid generation API key', () => {
     if (!existsSync(runtimePath)) return;
     const source = readFileSync(runtimePath, 'utf8');
