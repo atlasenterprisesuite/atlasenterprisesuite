@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AtlasConfidenceEngine } from '../services/AtlasConfidenceEngine';
 import type {
@@ -55,6 +55,8 @@ export function AtlasAccessibility({
   recognitionInput
 }: AtlasAccessibilityProps) {
   const dialogTitleId = useId();
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const [profile, setProfile] = useState<AccessibilityProfile>(initialProfile);
   const [isOpen, setIsOpen] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -104,10 +106,16 @@ export function AtlasAccessibility({
     });
   }, [recognitionInput, onActionTriggered]);
 
+  const closeAccessibilityCenter = () => {
+    setIsOpen(false);
+    launcherRef.current?.focus();
+  };
+
   useEffect(() => {
     if (!isOpen) return;
+    dialogRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === 'Escape') closeAccessibilityCenter();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -159,6 +167,7 @@ export function AtlasAccessibility({
   return (
     <div className="atlas-accessibility-layer" data-testid="atlas-accessibility-layer">
       <button
+        ref={launcherRef}
         type="button"
         className="atlas-accessibility-launcher"
         onClick={() => setIsOpen(true)}
@@ -170,9 +179,11 @@ export function AtlasAccessibility({
 
       {isOpen && (
         <div className="atlas-accessibility-backdrop" onMouseDown={(event) => {
-          if (event.currentTarget === event.target) setIsOpen(false);
+          if (event.currentTarget === event.target) closeAccessibilityCenter();
         }}>
           <section
+            ref={dialogRef}
+            tabIndex={-1}
             className="atlas-accessibility-dialog"
             role="dialog"
             aria-modal="true"
@@ -184,7 +195,7 @@ export function AtlasAccessibility({
                 <h2 id={dialogTitleId}>Accessibility Communication Center</h2>
                 <p>Communication adapts to functional preferences without requiring a medical diagnosis.</p>
               </div>
-              <button type="button" className="icon-button" onClick={() => setIsOpen(false)} aria-label="Close accessibility communication center">×</button>
+              <button type="button" className="icon-button" onClick={closeAccessibilityCenter} aria-label="Close accessibility communication center">×</button>
             </div>
 
             <div className="accessibility-mode-summary">
