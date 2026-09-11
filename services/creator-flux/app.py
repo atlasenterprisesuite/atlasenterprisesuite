@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import hmac
 import io
 import os
 import secrets
@@ -8,13 +9,14 @@ from typing import Literal
 
 import torch
 from diffusers import FluxPipeline
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 MODEL_ID = os.getenv("ATLAS_FLUX_MODEL_ID", "black-forest-labs/FLUX.1-schnell")
 ALLOW_CPU = os.getenv("ATLAS_ALLOW_CPU_FLUX", "false").lower() == "true"
 CPU_OFFLOAD = os.getenv("ATLAS_FLUX_CPU_OFFLOAD", "true").lower() == "true"
 LOCAL_FILES_ONLY = os.getenv("ATLAS_FLUX_LOCAL_FILES_ONLY", "false").lower() == "true"
+RUNTIME_TOKEN = os.getenv("ATLAS_FLUX_RUNTIME_TOKEN", "").strip()
 
 app = FastAPI(title="ATLAS Creator FLUX Runtime", version="1.0.0")
 _pipeline: FluxPipeline | None = None
@@ -28,6 +30,14 @@ class GenerationRequest(BaseModel):
     organization_id: str
     requested_by: str
     seed: int | None = None
+
+
+def authorize_runtime(x_atlas_runtime_token: str | None = Header(default=None, alias="x-atlas-runtime-token")) -> None:
+    if not RUNTIME_TOKEN:
+        raise HTTPException(status_code=503, detail="runtime_auth_not_configured")
+    supplied = (x_atlas_runtime_token or "").strip()
+    if not supplied or not hmac.compare_digest(supplied, RUNTIME_TOKEN):
+        raise HTTPException(status_code=401, detail="runtime_auth_required")
 
 
 def runtime_device() -> Literal["cuda", "cpu"]:
@@ -109,7 +119,8 @@ def generate_image(request: GenerationRequest) -> dict:
 
 
 @app.get("/health")
-def health():
+def health(x_atlas_runtime_token: str | None = Header(default=None, alias="x-atlas-runtime-token")):
+    authorize_runtime(x_atlas_runtime_token)
     ready, state = readiness()
     device = runtime_device()
     details = {
@@ -128,7 +139,8 @@ def health():
 
 
 @app.post("/generate")
-async def generate(request: GenerationRequest):
+async def generate(request: GenerationRequest, x_atlas_runtime_token: str | None = Header(default=None, alias="x-atlas-runtime-token")):
+    authorize_runtime(x_atlas_runtime_token)
     ready, state = readiness()
     if not ready:
         raise HTTPException(
