@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('ATLAS Inclusive Communication validation contract', () => {
-  it('runs an automated WCAG 2.2 AA axe gate against core routes', () => {
+  it('runs an automated WCAG 2.2 AA axe gate plus accessibility best practices against core routes', () => {
     const workflow = readFileSync('.github/workflows/accessibility-validation.yml', 'utf8');
     expect(workflow).toContain('@axe-core/cli@4.13.0');
     expect(workflow).toContain('wcag22aa');
+    expect(workflow).toContain('best-practice');
     expect(workflow).toContain('--exit');
     expect(workflow).toContain('/settings/accessibility/communication');
     expect(workflow).toContain('/finance');
