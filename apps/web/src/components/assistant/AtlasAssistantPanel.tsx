@@ -8,6 +8,8 @@ type AtlasAssistantPanelProps = {
   state: AtlasAssistantUiState;
   error: string;
   moduleLabel: string;
+  textCapability: AtlasCapabilityState;
+  providerLabel: string;
   microphoneCapability: AtlasCapabilityState;
   microphoneActive: boolean;
   speechCapability: AtlasCapabilityState;
@@ -31,6 +33,8 @@ export function AtlasAssistantPanel({
   state,
   error,
   moduleLabel,
+  textCapability,
+  providerLabel,
   microphoneCapability,
   microphoneActive,
   speechCapability,
@@ -42,13 +46,14 @@ export function AtlasAssistantPanel({
 }: AtlasAssistantPanelProps) {
   const [input, setInput] = useState('');
   const busy = state === 'thinking' || state === 'speaking';
+  const textReady = textCapability === 'ready';
   const microphoneUnavailable = microphoneCapability === 'unavailable';
   const speechUnavailable = speechCapability !== 'ready';
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = input.trim();
-    if (!value || busy || microphoneActive) return;
+    if (!value || busy || microphoneActive || !textReady) return;
     setInput('');
     await onSubmit(value);
   }
@@ -61,7 +66,7 @@ export function AtlasAssistantPanel({
           <div>
             <span className="eyebrow">ATLAS Assistant</span>
             <strong>{moduleLabel}</strong>
-            <small role="status" aria-live="polite">{stateLabel(state)}</small>
+            <small role="status" aria-live="polite">{stateLabel(state)} · Intelligence {providerLabel}</small>
           </div>
         </div>
         <button type="button" className="atlas-assistant-close" aria-label="Close ATLAS Assistant" onClick={onClose}>×</button>
@@ -98,11 +103,11 @@ export function AtlasAssistantPanel({
           id="atlas-assistant-input"
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={microphoneActive ? 'Stop microphone capture to type' : 'Ask ATLAS…'}
+          placeholder={!textReady ? `Intelligence ${providerLabel}` : microphoneActive ? 'Stop microphone capture to type' : 'Ask ATLAS…'}
           rows={2}
-          disabled={busy || microphoneActive}
+          disabled={busy || microphoneActive || !textReady}
         />
-        <button type="submit" disabled={busy || microphoneActive || !input.trim()}>{state === 'thinking' ? 'Thinking…' : 'Send'}</button>
+        <button type="submit" disabled={busy || microphoneActive || !textReady || !input.trim()}>{state === 'thinking' ? 'Thinking…' : 'Send'}</button>
       </form>
     </section>
   );
