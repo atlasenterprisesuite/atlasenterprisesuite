@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AtlasConfidenceEngine } from '../services/AtlasConfidenceEngine';
 import type {
@@ -129,7 +129,7 @@ export function AtlasAccessibility({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const keepFocusInsideDialog = (event: React.KeyboardEvent<HTMLElement>) => {
+  const keepFocusInsideDialog = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Tab' || !dialogRef.current) return;
     const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
     if (focusable.length === 0) {
