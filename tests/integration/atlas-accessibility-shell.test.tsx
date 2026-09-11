@@ -6,7 +6,7 @@ import { AtlasAccessibility } from '../../apps/web/src/components/AtlasAccessibi
 import { defaultAccessibilityProfile } from '../../apps/web/src/services/accessibilityProfile';
 
 describe('AtlasAccessibility', () => {
-  it('exposes a global launcher, manages dialog focus and reports truthful provider readiness', () => {
+  it('exposes a global launcher, contains keyboard focus and reports truthful provider readiness', () => {
     render(
       <MemoryRouter>
         <AtlasAccessibility
@@ -22,6 +22,10 @@ describe('AtlasAccessibility', () => {
     const dialog = screen.getByRole('dialog', { name: /accessibility communication center/i });
     expect(dialog).toBeInTheDocument();
     expect(dialog).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(screen.getByRole('button', { name: /close accessibility communication center/i })).toHaveFocus();
+
     expect(screen.getByText(/ASL recognition/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Not configured/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /communication settings/i })).toHaveAttribute('href', '/settings/accessibility/communication');
