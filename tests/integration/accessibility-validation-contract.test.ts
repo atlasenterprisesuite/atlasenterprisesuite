@@ -12,14 +12,26 @@ describe('ATLAS Inclusive Communication validation contract', () => {
     expect(workflow).toContain('/health');
   });
 
-  it('keeps manual assistive-tech, hardware, and human validation as explicit gates', () => {
+  it('runs confidence, profile, device-capability, language-registry, and UI tests in the focused gate', () => {
+    const workflow = readFileSync('.github/workflows/accessibility-validation.yml', 'utf8');
+    expect(workflow).toContain('accessibility-confidence.test.ts');
+    expect(workflow).toContain('accessibility-profile.test.ts');
+    expect(workflow).toContain('accessibility-device-capabilities.test.ts');
+    expect(workflow).toContain('sign-language-registry.test.ts');
+    expect(workflow).toContain('atlas-accessibility-shell.test.tsx');
+    expect(workflow).toContain('accessibility-settings-route.test.tsx');
+  });
+
+  it('keeps manual assistive-tech, hardware, language-specific, and human validation as explicit gates', () => {
     const plan = readFileSync('docs/validation/atlas-inclusive-communication-validation.md', 'utf8');
     expect(plan).toContain('VoiceOver');
     expect(plan).toContain('TalkBack');
     expect(plan).toContain('NVDA');
     expect(plan).toContain('JAWS');
     expect(plan).toContain('Braille');
+    expect(plan).toContain('DeafBlind');
     expect(plan).toContain('Nothing About Us Without Us');
+    expect(plan).toContain('preferredSignLanguage');
     expect(plan).toContain('BLOCKED_EXTERNAL');
   });
 });
