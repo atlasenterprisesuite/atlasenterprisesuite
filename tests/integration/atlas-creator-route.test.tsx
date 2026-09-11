@@ -9,10 +9,17 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => ({
     providerId: 'flux-schnell-local',
     state: 'configuration-required',
     message: 'ATLAS_FLUX_LOCAL_URL is not configured. No paid fallback was attempted.'
+  })),
+  getCreatorProviderReadiness: vi.fn(async () => ({
+    ok: true,
+    providerId: 'flux-schnell-local',
+    state: 'ready',
+    message: 'Self-hosted FLUX runtime verified.',
+    zeroCostMode: true
   }))
 }));
 
-import { generateCreatorAsset } from '../../apps/web/src/lib/atlasSession';
+import { generateCreatorAsset, getCreatorProviderReadiness } from '../../apps/web/src/lib/atlasSession';
 import { CreatorHome, CreatorProviders, CreatorWorkspace } from '../../apps/web/src/modules/creator/CreatorStudioPage';
 
 describe('ATLAS Creator', () => {
@@ -45,11 +52,13 @@ describe('ATLAS Creator', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('ATLAS_FLUX_LOCAL_URL is not configured');
   });
 
-  it('reports truthful zero-cost provider readiness and privacy boundaries', () => {
+  it('loads real zero-cost provider readiness and privacy boundaries', async () => {
     render(<MemoryRouter><CreatorProviders /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: 'FLUX.1 Schnell (Local)' })).toBeInTheDocument();
     expect(screen.getByText('zero cost')).toBeInTheDocument();
     expect(screen.getByText(/self-hosted image generation/i)).toBeInTheDocument();
+    await waitFor(() => expect(getCreatorProviderReadiness).toHaveBeenCalled());
+    expect(await screen.findByText('ready')).toBeInTheDocument();
     expect(screen.getByText(/must never be used as silent tracking/i)).toBeInTheDocument();
   });
 });
