@@ -6,6 +6,7 @@ import {
   detectSpeechOutputCapability,
   requestMicrophoneCapture,
   speakAssistantText,
+  stopAssistantSpeech,
   stopMicrophoneCapture
 } from './voice';
 
@@ -26,12 +27,14 @@ export function useAssistantVoice() {
       cancelled = true;
       stopMicrophoneCapture(streamRef.current);
       streamRef.current = null;
+      stopAssistantSpeech();
     };
   }, []);
 
   const setSpeechEnabled = useCallback((enabled: boolean) => {
     writeSpeechPreference(enabled);
     setSpeechEnabledState(enabled);
+    if (!enabled) stopAssistantSpeech();
   }, []);
 
   const startMicrophone = useCallback(async () => {
@@ -46,6 +49,10 @@ export function useAssistantVoice() {
     stopMicrophoneCapture(streamRef.current);
     streamRef.current = null;
     setMicrophoneActive(false);
+  }, []);
+
+  const stopSpeech = useCallback(() => {
+    stopAssistantSpeech();
   }, []);
 
   const speak = useCallback(async (text: string) => {
@@ -63,6 +70,7 @@ export function useAssistantVoice() {
     setSpeechEnabled,
     startMicrophone,
     stopMicrophone,
+    stopSpeech,
     speak
   };
 }
