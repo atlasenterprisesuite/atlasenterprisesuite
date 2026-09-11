@@ -3,23 +3,16 @@ import type { AtlasAssistantUiState, AtlasCapabilityState } from '../../assistan
 type AtlasAssistantLauncherProps = {
   state: AtlasAssistantUiState;
   textCapability: AtlasCapabilityState;
+  providerLabel: string;
   onOpen: () => void;
 };
 
-export function AtlasAssistantLauncher({ state, textCapability, onOpen }: AtlasAssistantLauncherProps) {
-  const capabilityLabel = textCapability === 'ready'
-    ? 'ready'
-    : textCapability === 'configuration-required'
-      ? 'configuration required'
-      : textCapability === 'permission-required'
-        ? 'permission required'
-        : 'unavailable';
-
+export function AtlasAssistantLauncher({ state, textCapability, providerLabel, onOpen }: AtlasAssistantLauncherProps) {
   return (
     <button
       type="button"
       className={`atlas-assistant-launcher state-${state} capability-${textCapability}`}
-      aria-label={`Open ATLAS Assistant, Intelligence ${capabilityLabel}`}
+      aria-label={`Open ATLAS Assistant, Intelligence ${providerLabel}`}
       onClick={onOpen}
     >
       <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
