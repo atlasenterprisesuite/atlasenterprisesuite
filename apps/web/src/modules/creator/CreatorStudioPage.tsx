@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { creatorProviders } from './providerRegistry';
 import './creator.css';
 
 type MediaKind = 'image' | 'video' | 'music' | 'voice';
-type ProviderState = 'ready' | 'configuration-required' | 'unavailable';
 
 const tools = [
   { kind: 'image' as MediaKind, title: 'Image Lab', description: 'Create and refine campaign imagery from a governed prompt.', route: '/studio/create?type=image' },
@@ -12,17 +12,10 @@ const tools = [
   { kind: 'voice' as MediaKind, title: 'Voice & Agents', description: 'Continue to the identity-gated ATLAS Voice workspace.', route: '/studio/voice' }
 ];
 
-const providers: { name: string; capability: string; state: ProviderState }[] = [
-  { name: 'OpenAI', capability: 'Images and multimodal intelligence', state: 'configuration-required' },
-  { name: 'Google AI', capability: 'Multimodal models', state: 'configuration-required' },
-  { name: 'Suno', capability: 'Music generation', state: 'configuration-required' },
-  { name: 'Visual location provider', capability: 'Location estimation with consent', state: 'configuration-required' }
-];
-
 export function CreatorHome() {
   return <section className="creator-page">
     <header className="creator-hero"><div><p className="eyebrow">ATLAS Studio</p><h1>Create beyond the prompt.</h1><p>One governed workspace for imagery, video, sound and voice—connected to ATLAS Identity and organization context.</p></div><Link className="creator-primary" to="/studio/create">Start creating</Link></header>
-    <div className="creator-status"><span className="pulse-dot" /><div><strong>Workspace ready</strong><small>External generation providers require authorized configuration.</small></div></div>
+    <div className="creator-status"><span className="pulse-dot" /><div><strong>Zero-Cost Mode</strong><small>Self-hosted engines are preferred. Metered providers are never used automatically.</small></div></div>
     <div className="creator-grid">{tools.map(tool => <Link className="creator-tool" to={tool.route} key={tool.kind}><span className={'creator-orb '+tool.kind} aria-hidden="true" /><small>{tool.kind}</small><h2>{tool.title}</h2><p>{tool.description}</p><span className="creator-link">Open workspace →</span></Link>)}</div>
     <section className="creator-section"><div className="section-heading"><div><p className="eyebrow">Inspiration</p><h2>Creative feed</h2></div><Link to="/studio/library">View library</Link></div><div className="creator-empty"><strong>No organization media yet</strong><span>Generated and uploaded assets will appear here after they are saved through an authorized storage connection.</span></div></section>
   </section>;
@@ -38,7 +31,7 @@ export function CreatorWorkspace() {
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!canSubmit) { setNotice('Describe the result in at least 8 characters.'); return; }
-    setNotice('Generation is not submitted: configure and authorize a compatible provider first.');
+    setNotice('Generation is not submitted: configure and authorize a compatible self-hosted provider first.');
   }
   return <section className="creator-page">
     <nav className="creator-breadcrumb" aria-label="Breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Create</span></nav>
@@ -51,7 +44,7 @@ export function CreatorWorkspace() {
         <button className="creator-primary" type="submit" disabled={!canSubmit}>Generate {kind}</button>
         {notice && <p className="creator-notice" role="status">{notice}</p>}
       </form>
-      <aside className="creator-preview"><div className={'creator-preview-orb '+kind} /><h2>Preview</h2><p>A verified result will appear here. ATLAS does not insert fabricated output.</p><dl><div><dt>Provider</dt><dd>Not configured</dd></div><div><dt>Storage</dt><dd>Supabase connection required</dd></div><div><dt>Audit</dt><dd>Enabled on submission</dd></div></dl></aside>
+      <aside className="creator-preview"><div className={'creator-preview-orb '+kind} /><h2>Preview</h2><p>A verified result will appear here. ATLAS does not insert fabricated output.</p><dl><div><dt>Provider</dt><dd>Not configured</dd></div><div><dt>Mode</dt><dd>Zero cost</dd></div><div><dt>Storage</dt><dd>Supabase connection required</dd></div><div><dt>Audit</dt><dd>Enabled on submission</dd></div></dl></aside>
     </div>
   </section>;
 }
@@ -63,5 +56,5 @@ export function CreatorLibrary() {
 }
 
 export function CreatorProviders() {
-  return <section className="creator-page"><nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Providers</span></nav><header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Provider readiness</h1><p>Capability states reflect verified configuration only.</p></div></header><div className="provider-list">{providers.map(provider=><article key={provider.name}><div><h2>{provider.name}</h2><p>{provider.capability}</p></div><span className="provider-state">{provider.state.replace('-', ' ')}</span></article>)}</div><div className="creator-privacy"><strong>Visual location intelligence</strong><p>Location estimation must be explicitly initiated by an authorized user, requires consent, exposes confidence and limitations, and must never be used as silent tracking.</p></div></section>;
+  return <section className="creator-page"><nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Providers</span></nav><header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Provider readiness</h1><p>Capability states reflect verified configuration only. Zero-cost self-hosted engines are preferred by ATLAS Auto.</p></div></header><div className="provider-list">{creatorProviders.map(provider=><article key={provider.id}><div><h2>{provider.name}</h2><p>{provider.capabilityLabel}</p><small>{provider.billingClass.replace('-', ' ')}</small></div><span className="provider-state">{provider.state.replaceAll('-', ' ')}</span></article>)}</div><div className="creator-privacy"><strong>Visual location intelligence</strong><p>Location estimation must be explicitly initiated by an authorized user, requires consent, exposes confidence and limitations, and must never be used as silent tracking.</p></div></section>;
 }
