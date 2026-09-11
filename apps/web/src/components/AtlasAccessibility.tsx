@@ -9,6 +9,7 @@ import type {
   AccessibilityRecognitionInput,
   HapticIntensity
 } from '../types/accessibility';
+import { signLanguageRegistry } from '../../../../data/accessibility/sign-languages';
 
 interface AtlasAccessibilityProps {
   initialProfile: AccessibilityProfile;
@@ -21,8 +22,8 @@ interface AtlasAccessibilityProps {
 type RecognitionState = 'idle' | 'ready' | 'confirmation' | 'blocked';
 
 const CAPABILITY_LABELS: Array<[keyof AccessibilityCapabilities, string]> = [
-  ['aslRecognition', 'ASL recognition'],
-  ['aslAvatar', 'ASL avatar'],
+  ['aslRecognition', 'Sign-language recognition'],
+  ['aslAvatar', 'Sign-language avatar'],
   ['liveCaptions', 'Live captions'],
   ['brailleHardware', 'Braille hardware'],
   ['haptics', 'Haptics'],
@@ -76,6 +77,11 @@ export function AtlasAccessibility({
     () => ({ ...defaultCapabilities(), ...(capabilityOverrides || {}) }),
     [capabilityOverrides]
   );
+  const selectedSignLanguage = useMemo(() => (
+    profile.preferredSignLanguage
+      ? signLanguageRegistry.find((language) => language.iso639_3 === profile.preferredSignLanguage) ?? null
+      : null
+  ), [profile.preferredSignLanguage]);
 
   useEffect(() => {
     setProfile(initialProfile);
@@ -93,7 +99,8 @@ export function AtlasAccessibility({
       onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', {
         text: recognitionInput.text,
         confidence: recognitionInput.confidence,
-        sensitive: recognitionInput.sensitive
+        sensitive: recognitionInput.sensitive,
+        signLanguage: profile.preferredSignLanguage
       });
       return;
     }
@@ -110,9 +117,10 @@ export function AtlasAccessibility({
       text: recognitionInput.text,
       confidence: recognitionInput.confidence,
       sensitive: false,
-      confirmed: false
+      confirmed: false,
+      signLanguage: profile.preferredSignLanguage
     });
-  }, [recognitionInput, onActionTriggered]);
+  }, [recognitionInput, onActionTriggered, profile.preferredSignLanguage]);
 
   const closeAccessibilityCenter = () => {
     setIsOpen(false);
@@ -180,7 +188,8 @@ export function AtlasAccessibility({
       text: pendingRecognition.text,
       confidence: pendingRecognition.confidence,
       sensitive: pendingRecognition.sensitive,
-      confirmed: true
+      confirmed: true,
+      signLanguage: profile.preferredSignLanguage
     };
     onActionTriggered('ACCESSIBILITY_CONFIRM_INTERPRETATION', payload);
     onActionTriggered('EXECUTE_ACCESSIBILITY_ACTION', payload);
@@ -193,6 +202,7 @@ export function AtlasAccessibility({
     if (!humanInterpreterAvailable) return;
     onActionTriggered('ACCESSIBILITY_ESCALATE_HUMAN', {
       userId: profile.userId,
+      signLanguage: profile.preferredSignLanguage,
       requestedAt: new Date().toISOString()
     });
   };
@@ -233,8 +243,9 @@ export function AtlasAccessibility({
             </div>
 
             <div className="accessibility-mode-summary">
-              <span><strong>Input</strong>{profile.preferredInput.toUpperCase()}</span>
-              <span><strong>Output</strong>{profile.preferredOutput.replace('_', ' ')}</span>
+              <span><strong>Input</strong>{profile.preferredInput === 'asl' ? 'Sign language' : profile.preferredInput}</span>
+              <span><strong>Output</strong>{profile.preferredOutput === 'asl_avatar' ? 'Sign-language avatar' : profile.preferredOutput.replace('_', ' ')}</span>
+              <span><strong>Sign language</strong>{selectedSignLanguage ? `${selectedSignLanguage.languageName} (${selectedSignLanguage.acronym}) · ${selectedSignLanguage.iso639_3}` : 'Not selected'}</span>
               <span><strong>Captions</strong>{profile.captionsEnabled ? 'Enabled' : 'Off'}</span>
             </div>
 
@@ -249,7 +260,7 @@ export function AtlasAccessibility({
                 ))}
               </div>
               {capabilities.aslAvatar !== 'available' && (
-                <p className="accessibility-boundary-note">ASL avatar rendering is not active until a verified renderer is configured.</p>
+                <p className="accessibility-boundary-note">Sign-language avatar rendering is not active until a renderer validated for the selected language is configured.</p>
               )}
             </div>
 
@@ -288,7 +299,7 @@ export function AtlasAccessibility({
                 </select>
               </label>
               <button type="button" onClick={requestHumanInterpreter} disabled={!humanInterpreterAvailable}>Request human interpreter</button>
-              <Link className="text-link" to="/settings/accessibility/communication" onClick={() => setIsOpen(false)}>Communication Settings</Link>
+              <Link className="text-link" to="/settings/accessibility/communication" onClick={closeAccessibilityCenter}>Communication Settings</Link>
             </div>
 
             {!humanInterpreterAvailable && (
