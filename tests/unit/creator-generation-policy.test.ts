@@ -17,6 +17,14 @@ describe('ATLAS Creator generation bridge', () => {
     expect(source).toContain('resolveIntelligenceContext');
   });
 
+  it('preserves runtime resource and configuration states instead of flattening them', () => {
+    if (!existsSync(edgeFunctionPath)) return;
+    const source = readFileSync(edgeFunctionPath, 'utf8');
+    expect(source).toContain('runtimeFailure');
+    expect(source).toContain('resource-blocked');
+    expect(source).toContain('configuration-required');
+  });
+
   it('contains no paid-provider fallback in the generation boundary', () => {
     if (!existsSync(edgeFunctionPath)) return;
     const source = readFileSync(edgeFunctionPath, 'utf8');
