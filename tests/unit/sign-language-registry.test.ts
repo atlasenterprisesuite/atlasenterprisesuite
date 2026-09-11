@@ -12,8 +12,25 @@ describe('ATLAS sign-language rollout registry', () => {
     expect(signLanguagesForCountry('FI').map((entry) => entry.iso639_3).sort()).toEqual(['fse', 'fss']);
   });
 
+  it('includes researched sign-language identifiers across additional regions', () => {
+    const expectedByCountry: Record<string, string> = {
+      NL: 'dse',
+      RU: 'rsl',
+      SE: 'swl',
+      DK: 'dsl',
+      TR: 'tsm',
+      UA: 'ukl',
+      PH: 'psp',
+      ZA: 'sfs'
+    };
+
+    for (const [country, code] of Object.entries(expectedByCountry)) {
+      expect(signLanguagesForCountry(country).some((entry) => entry.iso639_3 === code)).toBe(true);
+    }
+  });
+
   it('keeps researched languages disabled for model claims until community validation exists', () => {
-    expect(signLanguageRegistry.length).toBeGreaterThanOrEqual(20);
+    expect(signLanguageRegistry.length).toBeGreaterThanOrEqual(38);
     expect(signLanguageRegistry.every((entry) => entry.productStatus === 'research_only')).toBe(true);
     expect(signLanguageRegistry.every((entry) => entry.deafCommunityValidated === false)).toBe(true);
   });
