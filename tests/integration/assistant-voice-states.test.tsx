@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getAssistantStatus: vi.fn(),
   startMicrophone: vi.fn(),
   stopMicrophone: vi.fn(),
+  stopSpeech: vi.fn(),
   speak: vi.fn(),
   setSpeechEnabled: vi.fn()
 }));
@@ -30,6 +31,7 @@ vi.mock('../../apps/web/src/assistant/useAssistantVoice', () => ({
     setSpeechEnabled: mocks.setSpeechEnabled,
     startMicrophone: mocks.startMicrophone,
     stopMicrophone: mocks.stopMicrophone,
+    stopSpeech: mocks.stopSpeech,
     speak: mocks.speak
   })
 }));
@@ -54,6 +56,7 @@ describe('ATLAS Assistant voice state integration', () => {
     });
     mocks.startMicrophone.mockReset();
     mocks.stopMicrophone.mockReset();
+    mocks.stopSpeech.mockReset();
     mocks.speak.mockReset();
     mocks.setSpeechEnabled.mockReset();
   });
