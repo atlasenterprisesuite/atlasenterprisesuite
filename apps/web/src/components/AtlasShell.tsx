@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { AtlasAssistant } from './assistant/AtlasAssistant';
 
 const navItems = [
   { to: '/', label: 'Home' },
@@ -40,6 +41,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <div className="topbar-meta"><span>tenant-demo / org-demo</span><span className="badge">READ ONLY</span></div>
         </header>
         <main>{children}</main>
+        <AtlasAssistant />
       </div>
     </div>
   );
