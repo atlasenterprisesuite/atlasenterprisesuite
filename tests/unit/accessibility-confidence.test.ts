@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { AtlasConfidenceEngine } from '../../apps/web/src/services/AtlasConfidenceEngine';
 
 describe('AtlasConfidenceEngine', () => {
-  it('allows autonomous execution only above 98 percent', () => {
+  it('allows autonomous execution at or above 98 percent', () => {
+    expect(AtlasConfidenceEngine.evaluate(0.98)).toEqual({
+      level: 'high',
+      actionRecommended: true,
+      requiresConfirmation: false
+    });
     expect(AtlasConfidenceEngine.evaluate(0.99)).toEqual({
       level: 'high',
       actionRecommended: true,
@@ -10,8 +15,8 @@ describe('AtlasConfidenceEngine', () => {
     });
   });
 
-  it('requires confirmation at 98 percent and throughout the medium band', () => {
-    expect(AtlasConfidenceEngine.evaluate(0.98)).toMatchObject({ level: 'medium', actionRecommended: true, requiresConfirmation: true });
+  it('requires confirmation from 74 percent through below 98 percent', () => {
+    expect(AtlasConfidenceEngine.evaluate(0.979999)).toMatchObject({ level: 'medium', actionRecommended: true, requiresConfirmation: true });
     expect(AtlasConfidenceEngine.evaluate(0.74)).toMatchObject({ level: 'medium', actionRecommended: true, requiresConfirmation: true });
   });
 
