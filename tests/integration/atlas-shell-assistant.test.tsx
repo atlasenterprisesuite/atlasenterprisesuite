@@ -39,11 +39,10 @@ describe('AtlasShell assistant integration', () => {
     mocks.sendAssistantMessage.mockReset();
   });
 
-  it('shows the launcher after active organization resolution', async () => {
+  it('shows the launcher after active organization and Intelligence readiness resolve', async () => {
     mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    expect(await screen.findByRole('button', { name: /Open ATLAS Assistant/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Intelligence ready/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence ready/ })).toBeInTheDocument();
   });
 
   it('stays hidden when the session has no active organization', async () => {
@@ -58,7 +57,7 @@ describe('AtlasShell assistant integration', () => {
     mocks.getAssistantStatus.mockRejectedValue(new Error('authentication_required'));
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
     await waitFor(() => expect(mocks.getAssistantStatus).toHaveBeenCalled());
-    expect(screen.queryByRole('button', { name: /Open ATLAS Assistant/ })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Open ATLAS Assistant/ })).not.toBeInTheDocument());
   });
 
   it('opens the panel and sends text through the governed client', async () => {
@@ -70,9 +69,9 @@ describe('AtlasShell assistant integration', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Intelligence ready/ }));
     expect(screen.getByRole('region', { name: 'ATLAS Assistant' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText(/Intelligence ready/i)).toBeInTheDocument());
+    expect(screen.getByText(/Intelligence ready/i)).toBeInTheDocument();
     const input = screen.getByLabelText('Message ATLAS Assistant');
     fireEvent.change(input, { target: { value: 'Help me with finance' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -89,12 +88,12 @@ describe('AtlasShell assistant integration', () => {
   it('shows the greeting once per browser session after Intelligence is verified', async () => {
     mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
     const first = render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant/ }));
-    expect(screen.getByText('ATLAS Assistant is ready. How can I help in this workspace?')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Intelligence ready/ }));
+    expect(await screen.findByText('ATLAS Assistant is ready. How can I help in this workspace?')).toBeInTheDocument();
     first.unmount();
 
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Intelligence ready/ }));
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
   });
 
@@ -112,10 +111,9 @@ describe('AtlasShell assistant integration', () => {
       capabilities: ['generation', 'reasoning']
     });
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant/ });
-    expect(launcher).toHaveAccessibleName(/Intelligence configuration required/);
+    const launcher = await screen.findByRole('button', { name: /Intelligence configuration required/ });
     fireEvent.click(launcher);
-    await waitFor(() => expect(screen.getByText(/Intelligence configuration required/i)).toBeInTheDocument());
+    expect(screen.getByText(/Intelligence configuration required/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
   });
@@ -124,10 +122,9 @@ describe('AtlasShell assistant integration', () => {
     mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'member' });
     mocks.getAssistantStatus.mockRejectedValue(new Error('permission_denied'));
     render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
-    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant/ });
-    expect(launcher).toHaveAccessibleName(/Intelligence permission required/);
+    const launcher = await screen.findByRole('button', { name: /Intelligence permission required/ });
     fireEvent.click(launcher);
-    await waitFor(() => expect(screen.getByText(/Intelligence permission required/i)).toBeInTheDocument());
+    expect(screen.getByText(/Intelligence permission required/i)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('does not include permission to use Intelligence');
     expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
   });
