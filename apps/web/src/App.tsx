@@ -6,6 +6,7 @@ import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
+import { AccountingWorkspacePage } from './modules/finance/accounting/AccountingWorkspacePage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
@@ -35,7 +36,7 @@ function EnterpriseHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance and Health now share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
-        <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
+        <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations with live organization-scoped data.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
       </div>
@@ -49,8 +50,8 @@ function FinanceHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Finance" title="Finance" description="Governed finance operations with Accounting as the first enterprise domain." />
       <div className="module-grid">
-        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
-        <div className="module-card disabled" aria-disabled="true"><span>Accounting</span><strong>Remaining accounting routes</strong><p>Not represented as active until their approved implementation milestones pass verification.</p></div>
+        <Link className="module-card enabled" to="/finance/accounting/dashboard"><span>Accounting</span><strong>Accounting Command Center</strong><p>GL, journals, AR, bank/cash, reconciliation, assets, close, reports and audit.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable + AI</strong><p>Vendor bills, aging, balances and authenticated ATLAS Accounting intelligence.</p></Link>
       </div>
     </section>
   );
@@ -59,8 +60,11 @@ function FinanceHome() {
 function AccountingHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Accounts Payable is the active accounting slice in this release candidate." />
-      <Link className="module-card enabled single-card" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Open Accounts Payable</strong><p>Enter the working AP module.</p></Link>
+      <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Governed accounting workspaces backed by the authenticated organization and RLS-scoped accounting data." />
+      <div className="module-grid">
+        <Link className="module-card enabled" to="/finance/accounting/dashboard"><span>Command</span><strong>Open Accounting</strong><p>Enter the live Accounting Command Center and complete route graph.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable + AI</strong><p>Open the existing live AP workspace.</p></Link>
+      </div>
     </section>
   );
 }
@@ -229,7 +233,19 @@ export function App() {
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
+        <Route path="/finance/accounting/dashboard" element={<AccountingWorkspacePage section="dashboard" />} />
+        <Route path="/finance/accounting/chart-of-accounts" element={<AccountingWorkspacePage section="chart-of-accounts" />} />
+        <Route path="/finance/accounting/general-ledger" element={<AccountingWorkspacePage section="general-ledger" />} />
+        <Route path="/finance/accounting/journal-entries" element={<AccountingWorkspacePage section="journal-entries" />} />
+        <Route path="/finance/accounting/accounts-receivable" element={<AccountingWorkspacePage section="accounts-receivable" />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
+        <Route path="/finance/accounting/bank-cash" element={<AccountingWorkspacePage section="bank-cash" />} />
+        <Route path="/finance/accounting/reconciliation" element={<AccountingWorkspacePage section="reconciliation" />} />
+        <Route path="/finance/accounting/fixed-assets" element={<AccountingWorkspacePage section="fixed-assets" />} />
+        <Route path="/finance/accounting/period-close" element={<AccountingWorkspacePage section="period-close" />} />
+        <Route path="/finance/accounting/reports" element={<AccountingWorkspacePage section="reports" />} />
+        <Route path="/finance/accounting/audit-trail" element={<AccountingWorkspacePage section="audit-trail" />} />
+        <Route path="/finance/accounting/settings" element={<AccountingWorkspacePage section="settings" />} />
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
