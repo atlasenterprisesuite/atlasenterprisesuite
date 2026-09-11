@@ -29,6 +29,14 @@ const CAPABILITY_LABELS: Array<[keyof AccessibilityCapabilities, string]> = [
   ['humanInterpreter', 'Human interpreter']
 ];
 
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  'a[href]',
+  'select:not([disabled])',
+  'input:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(',');
+
 function defaultCapabilities(): AccessibilityCapabilities {
   const hasVibration = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
   return {
@@ -121,6 +129,31 @@ export function AtlasAccessibility({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
+  const keepFocusInsideDialog = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Tab' || !dialogRef.current) return;
+    const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialogRef.current.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+
+    if (event.shiftKey && (active === first || active === dialogRef.current)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === dialogRef.current) {
+      event.preventDefault();
+      first.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   const updateProfile = (updated: AccessibilityProfile) => {
     setProfile(updated);
     onProfileChange(updated);
@@ -188,6 +221,7 @@ export function AtlasAccessibility({
             role="dialog"
             aria-modal="true"
             aria-labelledby={dialogTitleId}
+            onKeyDown={keepFocusInsideDialog}
           >
             <div className="atlas-accessibility-heading">
               <div>
@@ -220,7 +254,7 @@ export function AtlasAccessibility({
             </div>
 
             <div className="accessibility-transcript" aria-live="polite" aria-atomic="true">
-              <div className="card-heading">
+              <div className="accessibility-transcript-heading">
                 <h3>Interpretation</h3>
                 {confidence !== null && <span className="status-chip neutral">{Math.round(confidence * 100)}% confidence</span>}
               </div>
