@@ -17,6 +17,14 @@ export type CreatorGenerationRequest = {
   visibility: 'Private' | 'Organization';
 };
 
+export type CreatorProviderReadiness = {
+  ok: boolean;
+  providerId: string;
+  state: 'ready' | 'configuration-required' | 'resource-blocked' | 'unavailable' | 'failed';
+  message?: string;
+  zeroCostMode?: boolean;
+};
+
 export type CreatorGenerationResult = {
   ok: boolean;
   providerId: string;
@@ -197,6 +205,15 @@ export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
   const data = await parseResponse(response);
   if (!Array.isArray(data) || !data[0]?.org_id) throw new Error('no_active_organization');
   return { id: String(data[0].org_id), role: String(data[0].role || 'member') };
+}
+
+export async function getCreatorProviderReadiness(): Promise<CreatorProviderReadiness> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedFetch('/functions/v1/atlas-creator-generate?api=readiness', {
+    method: 'GET',
+    headers: { 'x-atlas-org-id': organization.id }
+  });
+  return parseStructuredResponse(response) as Promise<CreatorProviderReadiness>;
 }
 
 export async function generateCreatorAsset(input: CreatorGenerationRequest): Promise<CreatorGenerationResult> {
