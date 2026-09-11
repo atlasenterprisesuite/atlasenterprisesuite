@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { generateCreatorAsset } from '../../lib/atlasSession';
-import { creatorProviders } from './providerRegistry';
+import { generateCreatorAsset, getCreatorProviderReadiness } from '../../lib/atlasSession';
+import { creatorProviders, type CreatorProviderState } from './providerRegistry';
 import './creator.css';
 
 type MediaKind = 'image' | 'video' | 'music' | 'voice';
@@ -85,6 +85,32 @@ export function CreatorLibrary() {
   return <section className="creator-page"><nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Library</span></nav><header className="creator-hero compact"><div><p className="eyebrow">Projects & assets</p><h1>Creator Library</h1><p>Searchable organization media with provenance, versions and permission-aware visibility.</p></div></header><label className="creator-search"><span>Search library</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search projects and assets" /></label><div className="creator-empty"><strong>{results.length} assets</strong><span>No authorized assets are available in this organization.</span></div></section>;
 }
 
+function normalizeProviderState(state: string): CreatorProviderState {
+  if (state === 'ready' || state === 'configuration-required' || state === 'resource-blocked' || state === 'unavailable') return state;
+  return 'unavailable';
+}
+
 export function CreatorProviders() {
-  return <section className="creator-page"><nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Providers</span></nav><header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Provider readiness</h1><p>Capability states reflect verified configuration only. Zero-cost self-hosted engines are preferred by ATLAS Auto.</p></div></header><div className="provider-list">{creatorProviders.map(provider=><article key={provider.id}><div><h2>{provider.name}</h2><p>{provider.capabilityLabel}</p><small>{provider.billingClass.replace('-', ' ')}</small></div><span className="provider-state">{provider.state.replaceAll('-', ' ')}</span></article>)}</div><div className="creator-privacy"><strong>Visual location intelligence</strong><p>Location estimation must be explicitly initiated by an authorized user, requires consent, exposes confidence and limitations, and must never be used as silent tracking.</p></div></section>;
+  const [runtimeState, setRuntimeState] = useState<CreatorProviderState>('configuration-required');
+  const [runtimeReason, setRuntimeReason] = useState('Checking authenticated self-hosted runtime readiness…');
+
+  useEffect(() => {
+    let active = true;
+    getCreatorProviderReadiness()
+      .then(result => {
+        if (!active) return;
+        setRuntimeState(normalizeProviderState(result.state));
+        setRuntimeReason(result.message || 'Provider readiness returned without additional detail.');
+      })
+      .catch(error => {
+        if (!active) return;
+        setRuntimeState('unavailable');
+        setRuntimeReason(error instanceof Error ? error.message : 'Provider readiness could not be verified.');
+      });
+    return () => { active = false; };
+  }, []);
+
+  const providers = creatorProviders.map(provider => provider.id === 'flux-schnell-local' ? { ...provider, state: runtimeState, reason: runtimeReason } : provider);
+
+  return <section className="creator-page"><nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Providers</span></nav><header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Provider readiness</h1><p>Capability states reflect verified configuration only. Zero-cost self-hosted engines are preferred by ATLAS Auto.</p></div></header><div className="provider-list">{providers.map(provider=><article key={provider.id}><div><h2>{provider.name}</h2><p>{provider.capabilityLabel}</p><small>{provider.billingClass.replace(/-/g, ' ')}</small>{provider.reason ? <small>{provider.reason}</small> : null}</div><span className="provider-state">{provider.state.replace(/-/g, ' ')}</span></article>)}</div><div className="creator-privacy"><strong>Visual location intelligence</strong><p>Location estimation must be explicitly initiated by an authorized user, requires consent, exposes confidence and limitations, and must never be used as silent tracking.</p></div></section>;
 }
