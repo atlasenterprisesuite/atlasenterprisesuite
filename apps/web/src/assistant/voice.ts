@@ -38,6 +38,11 @@ export function stopMicrophoneCapture(stream: MediaStream | null): void {
   for (const track of stream?.getTracks() || []) track.stop();
 }
 
+export function stopAssistantSpeech(): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+}
+
 export function speakAssistantText(text: string): Promise<void> {
   if (detectSpeechOutputCapability() !== 'ready') return Promise.reject(new Error('speech_unavailable'));
   const value = text.trim();
@@ -47,7 +52,7 @@ export function speakAssistantText(text: string): Promise<void> {
     const utterance = new SpeechSynthesisUtterance(value);
     utterance.onend = () => resolve();
     utterance.onerror = () => reject(new Error('speech_unavailable'));
-    window.speechSynthesis.cancel();
+    stopAssistantSpeech();
     window.speechSynthesis.speak(utterance);
   });
 }
