@@ -9,7 +9,7 @@ function corsHeaders(req: Request) {
   return {
     'access-control-allow-origin': requested === allowed ? requested : allowed,
     'access-control-allow-headers': 'authorization, content-type, x-atlas-org-id, x-atlas-session-id',
-    'access-control-allow-methods': 'POST, OPTIONS',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
     'cache-control': 'no-store',
     'content-type': 'application/json; charset=utf-8',
     'x-content-type-options': 'nosniff'
@@ -133,9 +133,33 @@ async function generateFlux(baseUrl: string, runtimeToken: string, input: Return
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
-  if (req.method !== 'POST') return json(req, { ok: false, state: 'failed', error: 'method_not_allowed' }, 405);
+  const url = new URL(req.url);
 
   try {
+    if (req.method === 'GET' && url.searchParams.get('api') === 'readiness') {
+      await resolveAtlasContext(req);
+      const runtime = runtimeConfig();
+      if (!runtime) {
+        return json(req, {
+          ok: true,
+          providerId: PROVIDER_ID,
+          state: 'configuration-required',
+          zeroCostMode: true,
+          message: 'Self-hosted FLUX runtime configuration is incomplete.'
+        });
+      }
+      const probe = await probeFlux(runtime.baseUrl, runtime.runtimeToken);
+      return json(req, {
+        ok: true,
+        providerId: PROVIDER_ID,
+        state: probe.state,
+        zeroCostMode: true,
+        message: probe.message
+      });
+    }
+
+    if (req.method !== 'POST') return json(req, { ok: false, state: 'failed', error: 'method_not_allowed' }, 405);
+
     const body = validateRequest(await parseBody(req));
     const resolved = await resolveAtlasContext(req);
     const runtime = runtimeConfig();
