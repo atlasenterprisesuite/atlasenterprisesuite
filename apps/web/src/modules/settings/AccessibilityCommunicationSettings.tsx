@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   loadAccessibilityProfile,
+  loadAccessibilityProfileRemote,
   resolveAccessibilityUserId,
-  saveAccessibilityProfile
+  saveAccessibilityProfile,
+  syncAccessibilityProfileRemote
 } from '../../services/accessibilityProfile';
+import type { AccessibilitySyncStatus } from '../../services/accessibilityProfile';
 import type {
   AccessibilityInputMode,
   AccessibilityOutputMode,
@@ -97,12 +100,42 @@ export function AccessibilityCommunicationSettings({ profile, onUpdate }: Props)
   );
 }
 
+function syncStatusText(status: AccessibilitySyncStatus | 'loading' | 'saving') {
+  if (status === 'synced') return 'Synced to your ATLAS account.';
+  if (status === 'failed') return 'Saved locally; ATLAS account sync is currently unavailable.';
+  if (status === 'saving') return 'Saving accessibility preferences…';
+  if (status === 'loading') return 'Checking your ATLAS accessibility preferences…';
+  return 'Saved on this device. Sign in to synchronize across ATLAS sessions.';
+}
+
 export function AccessibilityCommunicationSettingsPage() {
   const userId = resolveAccessibilityUserId();
   const [profile, setProfile] = useState(() => loadAccessibilityProfile(userId));
+  const [syncStatus, setSyncStatus] = useState<AccessibilitySyncStatus | 'loading' | 'saving'>('loading');
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAccessibilityProfileRemote(userId)
+      .then((remoteProfile) => {
+        if (cancelled) return;
+        if (remoteProfile) {
+          setProfile(saveAccessibilityProfile(remoteProfile));
+          setSyncStatus('synced');
+        } else {
+          setSyncStatus('local-only');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSyncStatus('failed');
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const updateProfile = (updated: AccessibilityProfile) => {
-    setProfile(saveAccessibilityProfile(updated));
+    const normalized = saveAccessibilityProfile(updated);
+    setProfile(normalized);
+    setSyncStatus('saving');
+    void syncAccessibilityProfileRemote(normalized).then(setSyncStatus);
   };
 
   return (
@@ -112,6 +145,7 @@ export function AccessibilityCommunicationSettingsPage() {
         <h1>Accessibility Communication</h1>
         <p>Choose how ATLAS should receive information, respond and present content. These are functional preferences; no medical diagnosis is required.</p>
       </header>
+      <div className="notice" role="status" aria-live="polite">{syncStatusText(syncStatus)}</div>
       <AccessibilityCommunicationSettings profile={profile} onUpdate={updateProfile} />
     </section>
   );
