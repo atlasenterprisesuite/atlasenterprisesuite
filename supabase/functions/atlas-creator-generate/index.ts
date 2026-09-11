@@ -23,7 +23,7 @@ function json(req: Request, data: unknown, status = 200) {
 function safeBaseUrl(value: string) {
   const raw = value.trim().replace(/\/+$/, '');
   const parsed = new URL(raw);
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('invalid_local_provider_url');
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw Object.assign(new Error('invalid_local_provider_url'), { status: 503 });
   return parsed.toString().replace(/\/$/, '');
 }
 
@@ -58,18 +58,36 @@ async function resolveAtlasContext(req: Request) {
   return resolveIntelligenceContext({ request: req, supabaseUrl, publishableKey, fetchFn: fetch });
 }
 
-async function probeFlux(baseUrl: string) {
+function runtimeConfig() {
+  const localUrl = Deno.env.get('ATLAS_FLUX_LOCAL_URL') || '';
+  const runtimeToken = Deno.env.get('ATLAS_FLUX_RUNTIME_TOKEN') || '';
+  if (!localUrl.trim() || !runtimeToken.trim()) return null;
+  return { baseUrl: safeBaseUrl(localUrl), runtimeToken: runtimeToken.trim() };
+}
+
+function runtimeHeaders(runtimeToken: string, extra: Record<string, string> = {}) {
+  return {
+    'accept': 'application/json',
+    'x-atlas-runtime-token': runtimeToken,
+    ...extra
+  };
+}
+
+async function probeFlux(baseUrl: string, runtimeToken: string) {
   let response: Response;
   try {
     response = await fetch(`${baseUrl}/health`, {
       method: 'GET',
-      headers: { 'accept': 'application/json' },
+      headers: runtimeHeaders(runtimeToken),
       signal: AbortSignal.timeout(5000)
     });
   } catch {
     return { ready: false, state: 'resource-blocked', message: 'The self-hosted FLUX runtime could not be reached.' };
   }
 
+  if (response.status === 401 || response.status === 403) {
+    return { ready: false, state: 'configuration-required', message: 'The FLUX runtime service credential was rejected.' };
+  }
   if (!response.ok) {
     return { ready: false, state: 'resource-blocked', message: `The self-hosted FLUX runtime returned HTTP ${response.status}.` };
   }
@@ -80,16 +98,16 @@ async function probeFlux(baseUrl: string) {
       return { ready: false, state: 'resource-blocked', message: String(body?.message || 'The local runtime reports insufficient resources.') };
     }
   } catch {
-    // A successful health response without JSON is still a valid reachability probe.
+    return { ready: false, state: 'resource-blocked', message: 'The self-hosted FLUX runtime returned an invalid health response.' };
   }
 
   return { ready: true, state: 'ready', message: 'Self-hosted FLUX runtime verified for this request.' };
 }
 
-async function generateFlux(baseUrl: string, input: ReturnType<typeof validateRequest>, organizationId: string, userId: string) {
+async function generateFlux(baseUrl: string, runtimeToken: string, input: ReturnType<typeof validateRequest>, organizationId: string, userId: string) {
   const response = await fetch(`${baseUrl}/generate`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'accept': 'application/json' },
+    headers: runtimeHeaders(runtimeToken, { 'content-type': 'application/json' }),
     body: JSON.stringify({
       model: 'FLUX.1-schnell',
       prompt: input.prompt,
@@ -100,6 +118,9 @@ async function generateFlux(baseUrl: string, input: ReturnType<typeof validateRe
     signal: AbortSignal.timeout(120000)
   });
 
+  if (response.status === 401 || response.status === 403) {
+    throw Object.assign(new Error('local_provider_auth_failed'), { status: 503 });
+  }
   if (!response.ok) {
     throw Object.assign(new Error('local_provider_failed'), { status: 502, providerStatus: response.status });
   }
@@ -117,24 +138,23 @@ Deno.serve(async (req: Request) => {
   try {
     const body = validateRequest(await parseBody(req));
     const resolved = await resolveAtlasContext(req);
-    const localUrl = Deno.env.get('ATLAS_FLUX_LOCAL_URL') || '';
+    const runtime = runtimeConfig();
 
-    if (!localUrl.trim()) {
+    if (!runtime) {
       return json(req, {
         ok: false,
         providerId: PROVIDER_ID,
         state: 'configuration-required',
-        message: 'ATLAS_FLUX_LOCAL_URL is not configured. No paid fallback was attempted.'
+        message: 'ATLAS_FLUX_LOCAL_URL and ATLAS_FLUX_RUNTIME_TOKEN must be configured. No paid fallback was attempted.'
       }, 503);
     }
 
-    const baseUrl = safeBaseUrl(localUrl);
-    const probe = await probeFlux(baseUrl);
+    const probe = await probeFlux(runtime.baseUrl, runtime.runtimeToken);
     if (!probe.ready) {
       return json(req, { ok: false, providerId: PROVIDER_ID, ...probe }, 503);
     }
 
-    const asset = await generateFlux(baseUrl, body, resolved.context.organization_id, resolved.context.user_id);
+    const asset = await generateFlux(runtime.baseUrl, runtime.runtimeToken, body, resolved.context.organization_id, resolved.context.user_id);
     return json(req, {
       ok: true,
       providerId: PROVIDER_ID,
