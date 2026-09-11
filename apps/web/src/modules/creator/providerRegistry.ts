@@ -63,3 +63,26 @@ export const creatorProviders: CreatorProvider[] = [
     state: 'configuration-required'
   }
 ];
+
+export function eligibleProviders(
+  capability: CreatorCapability,
+  zeroCostMode = true,
+  providers: CreatorProvider[] = creatorProviders
+): CreatorProvider[] {
+  return providers.filter(provider => {
+    if (!provider.capabilities.includes(capability)) return false;
+    if (provider.state !== 'ready') return false;
+    if (!provider.commercialUse) return false;
+    if (zeroCostMode && provider.billingClass !== 'zero-cost') return false;
+    return true;
+  });
+}
+
+export function selectAtlasAutoProvider(
+  capability: CreatorCapability,
+  zeroCostMode = true,
+  providers: CreatorProvider[] = creatorProviders
+): CreatorProvider | null {
+  const eligible = eligibleProviders(capability, zeroCostMode, providers);
+  return eligible.find(provider => provider.execution === 'self-hosted') ?? eligible[0] ?? null;
+}
