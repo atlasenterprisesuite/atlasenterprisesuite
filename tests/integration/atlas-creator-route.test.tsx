@@ -1,7 +1,18 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../apps/web/src/lib/atlasSession', () => ({
+  generateCreatorAsset: vi.fn(async () => ({
+    ok: false,
+    providerId: 'flux-schnell-local',
+    state: 'configuration-required',
+    message: 'ATLAS_FLUX_LOCAL_URL is not configured. No paid fallback was attempted.'
+  }))
+}));
+
+import { generateCreatorAsset } from '../../apps/web/src/lib/atlasSession';
 import { CreatorHome, CreatorProviders, CreatorWorkspace } from '../../apps/web/src/modules/creator/CreatorStudioPage';
 
 describe('ATLAS Creator', () => {
@@ -17,6 +28,21 @@ describe('ATLAS Creator', () => {
     render(<MemoryRouter><CreatorWorkspace /></MemoryRouter>);
     expect(screen.getByText('Not configured')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate image' })).toBeDisabled();
+  });
+
+  it('submits a real zero-cost generation request instead of a static notice', async () => {
+    render(<MemoryRouter><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Creative brief'), { target: { value: 'Create an ATLAS payroll campaign visual' } });
+    const button = screen.getByRole('button', { name: 'Generate image' });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+
+    await waitFor(() => expect(generateCreatorAsset).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'image',
+      prompt: 'Create an ATLAS payroll campaign visual',
+      visibility: 'Private'
+    })));
+    expect(await screen.findByRole('status')).toHaveTextContent('ATLAS_FLUX_LOCAL_URL is not configured');
   });
 
   it('reports truthful zero-cost provider readiness and privacy boundaries', () => {
