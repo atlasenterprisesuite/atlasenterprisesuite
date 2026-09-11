@@ -11,11 +11,12 @@ describe('accessibility profile persistence', () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => vi.unstubAllGlobals());
 
-  it('creates privacy-preserving functional defaults', () => {
+  it('creates privacy-preserving functional defaults without inferring a sign language', () => {
     expect(defaultAccessibilityProfile('user-a')).toEqual({
       userId: 'user-a',
       preferredInput: 'text',
       preferredOutput: 'text',
+      preferredSignLanguage: null,
       captionsEnabled: false,
       brailleMode: false,
       hapticIntensity: 'off',
@@ -26,11 +27,12 @@ describe('accessibility profile persistence', () => {
     });
   });
 
-  it('round-trips a profile for the same user', () => {
+  it('round-trips an explicitly selected sign language for the same user', () => {
     const profile = {
       ...defaultAccessibilityProfile('user-a'),
       preferredInput: 'asl' as const,
       preferredOutput: 'asl_avatar' as const,
+      preferredSignLanguage: 'ase',
       captionsEnabled: true,
       highContrast: true
     };
