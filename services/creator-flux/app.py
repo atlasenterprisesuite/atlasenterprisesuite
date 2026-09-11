@@ -21,6 +21,7 @@ RUNTIME_TOKEN = os.getenv("ATLAS_FLUX_RUNTIME_TOKEN", "").strip()
 app = FastAPI(title="ATLAS Creator FLUX Runtime", version="1.0.0")
 _pipeline: FluxPipeline | None = None
 _pipeline_lock = threading.Lock()
+_generation_lock = asyncio.Lock()
 
 
 class GenerationRequest(BaseModel):
@@ -106,11 +107,11 @@ def generate_image(request: GenerationRequest) -> dict:
     ).images[0]
 
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG", optimize=True)
+    image.save(buffer, format="WEBP", quality=90, method=4)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {
-        "url": f"data:image/png;base64,{encoded}",
-        "mimeType": "image/png",
+        "url": f"data:image/webp;base64,{encoded}",
+        "mimeType": "image/webp",
         "width": width,
         "height": height,
         "seed": seed,
@@ -156,7 +157,8 @@ async def generate(request: GenerationRequest, x_atlas_runtime_token: str | None
         raise HTTPException(status_code=400, detail="unsupported_model")
 
     try:
-        asset = await asyncio.to_thread(generate_image, request)
+        async with _generation_lock:
+            asset = await asyncio.to_thread(generate_image, request)
         return {
             "ok": True,
             "provider": "flux-schnell-local",
