@@ -10,6 +10,5 @@ export * from './journalWrites';
 export * from './periodClose';
 export * from './reports';
 export * from './repository';
-export * from './supabaseRepository';
 export * from './types';
 export * from './validation';
