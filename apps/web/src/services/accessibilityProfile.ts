@@ -4,13 +4,19 @@ import type {
   AccessibilityProfile,
   HapticIntensity
 } from '../types/accessibility';
-import { getAtlasAccessToken } from '../lib/atlasSession';
+import { atlasAuthorizedJson, getAtlasAccessToken } from '../lib/atlasSession';
 
 const STORAGE_PREFIX = 'atlas_accessibility_profile:v1:';
 export const ATLAS_ACCESSIBILITY_PROFILE_EVENT = 'atlas-accessibility-profile-changed';
 const INPUT_MODES: AccessibilityInputMode[] = ['asl', 'voice', 'text', 'braille', 'haptic'];
 const OUTPUT_MODES: AccessibilityOutputMode[] = ['text', 'asl_avatar', 'voice', 'braille'];
 const HAPTIC_LEVELS: HapticIntensity[] = ['off', 'low', 'medium', 'high'];
+
+type AtlasUserPreferencesRow = {
+  preferences?: unknown;
+};
+
+export type AccessibilitySyncStatus = 'synced' | 'local-only' | 'failed';
 
 export function defaultAccessibilityProfile(userId: string): AccessibilityProfile {
   return {
@@ -37,6 +43,12 @@ function profileStorageKey(userId: string) {
 
 function booleanValue(value: unknown, fallback: boolean) {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
 function normalizedProfile(userId: string, raw: unknown): AccessibilityProfile {
@@ -88,6 +100,16 @@ export function saveAccessibilityProfile(profile: AccessibilityProfile): Accessi
   return normalized;
 }
 
+export function mergeAccessibilityPreferences(
+  existingPreferences: Record<string, unknown>,
+  profile: AccessibilityProfile
+): Record<string, unknown> {
+  return {
+    ...existingPreferences,
+    accessibilityCommunication: normalizedProfile(profile.userId, profile)
+  };
+}
+
 function decodeJwtSubject(token: string): string | null {
   const payload = token.split('.')[1];
   if (!payload || typeof atob !== 'function') return null;
@@ -103,4 +125,43 @@ function decodeJwtSubject(token: string): string | null {
 
 export function resolveAccessibilityUserId(): string {
   return decodeJwtSubject(getAtlasAccessToken()) || 'local-user';
+}
+
+export async function loadAccessibilityProfileRemote(userId: string): Promise<AccessibilityProfile | null> {
+  if (!getAtlasAccessToken() || userId === 'local-user') return null;
+  const userFilter = encodeURIComponent(`eq.${userId}`);
+  const rows = await atlasAuthorizedJson<AtlasUserPreferencesRow[]>(
+    `/rest/v1/atlas_user_preferences?user_id=${userFilter}&select=preferences&limit=1`,
+    { method: 'GET' }
+  );
+  const preferences = objectValue(rows?.[0]?.preferences);
+  if (!('accessibilityCommunication' in preferences)) return null;
+  return normalizedProfile(userId, preferences.accessibilityCommunication);
+}
+
+export async function syncAccessibilityProfileRemote(profile: AccessibilityProfile): Promise<AccessibilitySyncStatus> {
+  if (!getAtlasAccessToken() || profile.userId === 'local-user') return 'local-only';
+
+  try {
+    const userFilter = encodeURIComponent(`eq.${profile.userId}`);
+    const rows = await atlasAuthorizedJson<AtlasUserPreferencesRow[]>(
+      `/rest/v1/atlas_user_preferences?user_id=${userFilter}&select=preferences&limit=1`,
+      { method: 'GET' }
+    );
+    const currentPreferences = objectValue(rows?.[0]?.preferences);
+    const preferences = mergeAccessibilityPreferences(currentPreferences, profile);
+
+    await atlasAuthorizedJson<Record<string, unknown>>('/rest/v1/atlas_user_preferences?on_conflict=user_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        user_id: profile.userId,
+        preferences,
+        updated_at: new Date().toISOString()
+      })
+    });
+    return 'synced';
+  } catch {
+    return 'failed';
+  }
 }
