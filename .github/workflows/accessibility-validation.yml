@@ -52,7 +52,7 @@ jobs:
           done
           cat /tmp/atlas-accessibility-preview.log
           exit 1
-      - name: Axe WCAG A and AA scan
+      - name: Axe WCAG A and AA plus best-practice scan
         shell: bash
         run: |
           routes=(
@@ -65,7 +65,7 @@ jobs:
             echo "Auditing ${route}"
             npx --yes @axe-core/cli@4.13.0 \
               "http://127.0.0.1:4173${route}" \
-              --tags wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22a,wcag22aa \
+              --tags wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22a,wcag22aa,best-practice \
               --chrome-options="no-sandbox,disable-setuid-sandbox,disable-dev-shm-usage" \
               --exit \
               --verbose
