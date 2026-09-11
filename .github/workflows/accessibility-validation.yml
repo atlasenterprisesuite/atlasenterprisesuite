@@ -75,6 +75,7 @@ jobs:
           npx vitest run
           tests/unit/accessibility-confidence.test.ts
           tests/unit/accessibility-profile.test.ts
+          tests/unit/accessibility-device-capabilities.test.ts
           tests/unit/sign-language-registry.test.ts
           tests/integration/atlas-accessibility-shell.test.tsx
           tests/integration/accessibility-settings-route.test.tsx
