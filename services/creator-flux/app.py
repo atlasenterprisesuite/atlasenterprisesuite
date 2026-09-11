@@ -151,10 +151,6 @@ async def generate(request: GenerationRequest):
             "state": "completed",
             "asset": asset,
         }
-    except RuntimeError as error:
-        if str(error) == "resource-blocked":
-            raise HTTPException(status_code=503, detail={"state": state, "message": str(error)}) from error
-        raise HTTPException(status_code=500, detail="generation_runtime_error") from error
     except torch.cuda.OutOfMemoryError as error:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -162,5 +158,9 @@ async def generate(request: GenerationRequest):
             status_code=503,
             detail={"state": "resource-blocked", "message": "Insufficient GPU memory for this generation."},
         ) from error
+    except RuntimeError as error:
+        if str(error) == "resource-blocked":
+            raise HTTPException(status_code=503, detail={"state": state, "message": str(error)}) from error
+        raise HTTPException(status_code=500, detail="generation_runtime_error") from error
     except Exception as error:
         raise HTTPException(status_code=502, detail="generation_failed") from error
