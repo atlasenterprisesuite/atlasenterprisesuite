@@ -1,13 +1,16 @@
 import { NavLink } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AtlasAccessibility } from './AtlasAccessibility';
 import {
   ATLAS_ACCESSIBILITY_PROFILE_EVENT,
   loadAccessibilityProfile,
+  loadAccessibilityProfileRemote,
   resolveAccessibilityUserId,
-  saveAccessibilityProfile
+  saveAccessibilityProfile,
+  syncAccessibilityProfileRemote
 } from '../services/accessibilityProfile';
+import { ATLAS_SESSION_EVENT } from '../lib/atlasSession';
 import type { AccessibilityAction, AccessibilityProfile } from '../types/accessibility';
 
 const navItems = [
@@ -33,15 +36,36 @@ export function AtlasShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(ATLAS_ACCESSIBILITY_PROFILE_EVENT, handleProfileChange);
   }, [accessibilityProfile.userId]);
 
-  const updateAccessibilityProfile = (updated: AccessibilityProfile) => {
-    setAccessibilityProfile(saveAccessibilityProfile(updated));
-  };
+  useEffect(() => {
+    const handleSessionChange = () => {
+      const userId = resolveAccessibilityUserId();
+      setAccessibilityProfile(loadAccessibilityProfile(userId));
+    };
+    window.addEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
+    return () => window.removeEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
+  }, []);
 
-  const dispatchAccessibilityAction = (action: AccessibilityAction, payload?: Record<string, unknown>) => {
+  useEffect(() => {
+    let cancelled = false;
+    void loadAccessibilityProfileRemote(accessibilityProfile.userId)
+      .then((remoteProfile) => {
+        if (!cancelled && remoteProfile) setAccessibilityProfile(saveAccessibilityProfile(remoteProfile));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [accessibilityProfile.userId]);
+
+  const updateAccessibilityProfile = useCallback((updated: AccessibilityProfile) => {
+    const normalized = saveAccessibilityProfile(updated);
+    setAccessibilityProfile(normalized);
+    void syncAccessibilityProfileRemote(normalized);
+  }, []);
+
+  const dispatchAccessibilityAction = useCallback((action: AccessibilityAction, payload?: Record<string, unknown>) => {
     window.dispatchEvent(new CustomEvent('atlas-accessibility-action', {
       detail: { action, payload: payload || {} }
     }));
-  };
+  }, []);
 
   const shellClassName = [
     'atlas-shell',
