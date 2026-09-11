@@ -27,6 +27,35 @@ const ACCOUNTING_REST_TABLES = new Set<AccountingTable>([
   'audit_logs'
 ]);
 
+export type AtlasAccountingRpcName =
+  | 'create_balanced_journal_entry'
+  | 'reverse_posted_journal_entry'
+  | 'create_chart_account'
+  | 'update_chart_account'
+  | 'record_invoice_payment'
+  | 'set_accounting_bill_approval_state'
+  | 'start_accounting_reconciliation'
+  | 'resolve_accounting_reconciliation_item'
+  | 'close_accounting_reconciliation'
+  | 'create_accounting_fixed_asset'
+  | 'close_accounting_period'
+  | 'set_accounting_settings';
+
+const ACCOUNTING_RPC_NAMES = new Set<AtlasAccountingRpcName>([
+  'create_balanced_journal_entry',
+  'reverse_posted_journal_entry',
+  'create_chart_account',
+  'update_chart_account',
+  'record_invoice_payment',
+  'set_accounting_bill_approval_state',
+  'start_accounting_reconciliation',
+  'resolve_accounting_reconciliation_item',
+  'close_accounting_reconciliation',
+  'create_accounting_fixed_asset',
+  'close_accounting_period',
+  'set_accounting_settings'
+]);
+
 export type AtlasOrganization = {
   id: string;
   role: string;
@@ -201,6 +230,18 @@ export async function atlasRestSelect<T>(
   const data = await parseResponse(response);
   if (!Array.isArray(data)) throw new Error(`Accounting query returned an invalid payload for ${table}`);
   return data as T[];
+}
+
+export async function atlasAccountingRpc<T>(
+  functionName: AtlasAccountingRpcName,
+  args: Record<string, unknown>,
+): Promise<T> {
+  if (!ACCOUNTING_RPC_NAMES.has(functionName)) throw new Error('accounting_rpc_not_allowed');
+  const response = await authorizedFetch(`/rest/v1/rpc/${functionName}`, {
+    method: 'POST',
+    body: JSON.stringify(args)
+  });
+  return parseResponse(response) as Promise<T>;
 }
 
 export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
