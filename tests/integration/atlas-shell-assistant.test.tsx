@@ -53,6 +53,14 @@ describe('AtlasShell assistant integration', () => {
     expect(screen.queryByRole('button', { name: /Open ATLAS Assistant/ })).not.toBeInTheDocument();
   });
 
+  it('hides the authenticated assistant if Intelligence discovers an expired session', async () => {
+    mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
+    mocks.getAssistantStatus.mockRejectedValue(new Error('authentication_required'));
+    render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
+    await waitFor(() => expect(mocks.getAssistantStatus).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /Open ATLAS Assistant/ })).not.toBeInTheDocument();
+  });
+
   it('opens the panel and sends text through the governed client', async () => {
     mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'owner' });
     mocks.sendAssistantMessage.mockResolvedValue({ ok: true, text: 'I can help with Finance.', conversation_id: 'conv-1' });
@@ -110,5 +118,17 @@ describe('AtlasShell assistant integration', () => {
     await waitFor(() => expect(screen.getByText(/Intelligence configuration required/i)).toBeInTheDocument());
     expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
+  });
+
+  it('surfaces Intelligence permission denial without pretending the provider is ready', async () => {
+    mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-1', role: 'member' });
+    mocks.getAssistantStatus.mockRejectedValue(new Error('permission_denied'));
+    render(<MemoryRouter><AtlasShell><div>Workspace</div></AtlasShell></MemoryRouter>);
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant/ });
+    expect(launcher).toHaveAccessibleName(/Intelligence permission required/);
+    fireEvent.click(launcher);
+    await waitFor(() => expect(screen.getByText(/Intelligence permission required/i)).toBeInTheDocument());
+    expect(screen.getByRole('alert')).toHaveTextContent('does not include permission to use Intelligence');
+    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
   });
 });
