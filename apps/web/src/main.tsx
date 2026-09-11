@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import './styles.css';
 import './health.css';
+import './accessibility.css';
 import './modules/finance/accounting/payables-ai.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

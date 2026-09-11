@@ -9,6 +9,7 @@ import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { AccessibilityCommunicationSettingsPage } from './modules/settings/AccessibilityCommunicationSettings';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -233,6 +234,7 @@ export function App() {
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
+        <Route path="/settings/accessibility/communication" element={<AccessibilityCommunicationSettingsPage />} />
         <Route path={labBase} element={<LabLayout />}>
           <Route index element={<LabOverview />} />
           <Route path="diseases" element={<DiseasesPage />} />
