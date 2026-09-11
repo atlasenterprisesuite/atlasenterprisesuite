@@ -1,13 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   defaultAccessibilityProfile,
   loadAccessibilityProfile,
   mergeAccessibilityPreferences,
-  saveAccessibilityProfile
+  saveAccessibilityProfile,
+  syncAccessibilityProfileRemote
 } from '../../apps/web/src/services/accessibilityProfile';
 
 describe('accessibility profile persistence', () => {
   beforeEach(() => window.localStorage.clear());
+  afterEach(() => vi.unstubAllGlobals());
 
   it('creates privacy-preserving functional defaults', () => {
     expect(defaultAccessibilityProfile('user-a')).toEqual({
@@ -53,6 +55,37 @@ describe('accessibility profile persistence', () => {
       locale: 'en-US',
       theme: 'dark',
       accessibilityCommunication: profile
+    });
+  });
+
+  it('upserts through the existing RLS preference row without dropping its organization or unrelated preferences', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const defaultOrgId = '22222222-2222-4222-8222-222222222222';
+    const profile = { ...defaultAccessibilityProfile(userId), captionsEnabled: true };
+    window.localStorage.setItem('atlas_access_token', 'test-access-token');
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{
+        default_org_id: defaultOrgId,
+        preferences: { locale: 'en-US', theme: 'dark' }
+      }]), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response('', { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(syncAccessibilityProfileRemote(profile)).resolves.toBe('synced');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [postUrl, postInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(postUrl).toContain('/rest/v1/atlas_user_preferences?on_conflict=user_id');
+    expect(postInit.method).toBe('POST');
+    expect(JSON.parse(String(postInit.body))).toEqual({
+      user_id: userId,
+      default_org_id: defaultOrgId,
+      preferences: {
+        locale: 'en-US',
+        theme: 'dark',
+        accessibilityCommunication: profile
+      }
     });
   });
 });
