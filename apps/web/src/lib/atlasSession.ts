@@ -10,6 +10,22 @@ export type AtlasOrganization = {
   role: string;
 };
 
+export type CreatorGenerationRequest = {
+  kind: 'image' | 'video' | 'music' | 'voice';
+  prompt: string;
+  format: string;
+  visibility: 'Private' | 'Organization';
+};
+
+export type CreatorGenerationResult = {
+  ok: boolean;
+  providerId: string;
+  state: 'configuration-required' | 'resource-blocked' | 'queued' | 'completed' | 'failed';
+  message?: string;
+  error?: string;
+  asset?: Record<string, unknown>;
+};
+
 export type AccountingInsight = {
   ok: boolean;
   cached: boolean;
@@ -113,6 +129,18 @@ async function parseResponse(response: Response) {
   return data;
 }
 
+async function parseStructuredResponse(response: Response) {
+  const text = await response.text();
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { error: text || 'invalid_response' };
+  }
+  if (!response.ok && !data?.state) throw new Error(data?.message || data?.error || `Request failed (${response.status})`);
+  return data;
+}
+
 export async function signInAtlas(email: string, password: string) {
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
@@ -169,6 +197,16 @@ export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
   const data = await parseResponse(response);
   if (!Array.isArray(data) || !data[0]?.org_id) throw new Error('no_active_organization');
   return { id: String(data[0].org_id), role: String(data[0].role || 'member') };
+}
+
+export async function generateCreatorAsset(input: CreatorGenerationRequest): Promise<CreatorGenerationResult> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedFetch('/functions/v1/atlas-creator-generate', {
+    method: 'POST',
+    headers: { 'x-atlas-org-id': organization.id },
+    body: JSON.stringify({ ...input, zeroCostMode: true })
+  });
+  return parseStructuredResponse(response) as Promise<CreatorGenerationResult>;
 }
 
 export async function getAccountingInsight(forceRefresh = false): Promise<AccountingInsight> {
