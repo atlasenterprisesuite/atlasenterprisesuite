@@ -24,6 +24,7 @@ export function defaultAccessibilityProfile(userId: string): AccessibilityProfil
     userId,
     preferredInput: 'text',
     preferredOutput: 'text',
+    preferredSignLanguage: null,
     captionsEnabled: false,
     brailleMode: false,
     hapticIntensity: 'off',
@@ -44,6 +45,12 @@ function profileStorageKey(userId: string) {
 
 function booleanValue(value: unknown, fallback: boolean) {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function signLanguageCodeValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return /^[a-z]{3}$/.test(normalized) ? normalized : null;
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
@@ -68,6 +75,7 @@ function normalizedProfile(userId: string, raw: unknown): AccessibilityProfile {
     preferredOutput: OUTPUT_MODES.includes(candidate.preferredOutput as AccessibilityOutputMode)
       ? candidate.preferredOutput as AccessibilityOutputMode
       : defaults.preferredOutput,
+    preferredSignLanguage: signLanguageCodeValue(candidate.preferredSignLanguage),
     captionsEnabled: booleanValue(candidate.captionsEnabled, defaults.captionsEnabled),
     brailleMode: booleanValue(candidate.brailleMode, defaults.brailleMode),
     hapticIntensity: HAPTIC_LEVELS.includes(candidate.hapticIntensity as HapticIntensity)
