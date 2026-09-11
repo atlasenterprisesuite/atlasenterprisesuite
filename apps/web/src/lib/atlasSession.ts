@@ -1,9 +1,31 @@
+import type { AccountingTable } from '../../../../packages/accounting/src';
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 
 const ACCESS_TOKEN_KEY = 'atlas_access_token';
 const REFRESH_TOKEN_KEY = 'atlas_refresh_token';
 export const ATLAS_SESSION_EVENT = 'atlas-session-changed';
+
+const ACCOUNTING_REST_TABLES = new Set<AccountingTable>([
+  'chart_of_accounts',
+  'journal_entries',
+  'journal_lines',
+  'customers',
+  'vendors',
+  'invoices',
+  'payments',
+  'accounting_bills',
+  'accounting_bank_accounts',
+  'accounting_transactions',
+  'accounting_reconciliation_sessions',
+  'accounting_reconciliation_items',
+  'accounting_fixed_assets',
+  'accounting_periods',
+  'accounting_close_tasks',
+  'organization_settings',
+  'audit_logs'
+]);
 
 export type AtlasOrganization = {
   id: string;
@@ -160,6 +182,25 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
     response = await request(token);
   }
   return response;
+}
+
+export async function atlasRestSelect<T>(
+  table: AccountingTable,
+  columns: string,
+  organizationId: string,
+): Promise<T[]> {
+  const orgId = organizationId.trim();
+  if (!orgId) throw new Error('organizationId is required');
+  if (!ACCOUNTING_REST_TABLES.has(table)) throw new Error('accounting_table_not_allowed');
+
+  const orgFilter = encodeURIComponent(`eq.${orgId}`);
+  const select = encodeURIComponent(columns);
+  const response = await authorizedFetch(`/rest/v1/${table}?org_id=${orgFilter}&select=${select}`, {
+    method: 'GET'
+  });
+  const data = await parseResponse(response);
+  if (!Array.isArray(data)) throw new Error(`Accounting query returned an invalid payload for ${table}`);
+  return data as T[];
 }
 
 export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
