@@ -25,7 +25,7 @@ function stateLabel(state: AtlasAssistantUiState) {
   if (state === 'listening') return 'Listening';
   if (state === 'speaking') return 'Speaking';
   if (state === 'error') return 'Needs attention';
-  return 'Ready';
+  return 'Idle';
 }
 
 export function AtlasAssistantPanel({
@@ -83,7 +83,7 @@ export function AtlasAssistantPanel({
           disabled={microphoneUnavailable || state === 'thinking' || state === 'speaking'}
           aria-pressed={microphoneActive}
         >
-          {microphoneUnavailable ? 'Microphone unavailable' : microphoneActive ? 'Stop microphone' : 'Enable microphone'}
+          {microphoneUnavailable ? 'Microphone unavailable' : microphoneActive ? 'Stop microphone' : 'Enable microphone capture'}
         </button>
         <label>
           <input
@@ -94,7 +94,7 @@ export function AtlasAssistantPanel({
           />
           <span>{speechUnavailable ? 'Speech unavailable' : 'Speak replies'}</span>
         </label>
-        {microphoneActive ? <small role="status">Microphone capture is active. Voice transcription is not connected in this web milestone.</small> : null}
+        <small>{microphoneActive ? 'Microphone capture is active. Voice transcription is not connected in this web milestone.' : 'Microphone capture does not imply voice transcription; transcription is not connected in this web milestone.'}</small>
       </div>
 
       <form className="atlas-assistant-compose" onSubmit={handleSubmit}>
