@@ -17,10 +17,23 @@ function readableModule(moduleName: string) {
   return moduleName.split('.').map((part) => part.replace(/-/g, ' ')).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' · ');
 }
 
+function errorCode(cause: unknown) {
+  return cause instanceof Error ? cause.message : String(cause || 'assistant_request_failed');
+}
+
+function identityFailure(cause: unknown) {
+  const code = errorCode(cause);
+  return code === 'authentication_required'
+    || code === 'session_expired'
+    || code === 'no_active_organization'
+    || code === 'active_organization_required'
+    || code === 'organization_membership_required';
+}
+
 function errorMessage(cause: unknown) {
-  const code = cause instanceof Error ? cause.message : String(cause || 'assistant_request_failed');
+  const code = errorCode(cause);
   if (code === 'authentication_required' || code === 'session_expired') return 'Your ATLAS session expired. Sign in again to continue.';
-  if (code === 'no_active_organization' || code === 'active_organization_required') return 'ATLAS could not resolve an active organization for this session.';
+  if (code === 'no_active_organization' || code === 'active_organization_required' || code === 'organization_membership_required') return 'ATLAS could not resolve an active organization for this session.';
   if (code === 'permission_denied') return 'Your ATLAS role does not include permission to use Intelligence.';
   if (code === 'provider_not_configured') return 'ATLAS Intelligence is not configured for this environment.';
   if (code === 'provider_rate_limited') return 'ATLAS Intelligence is temporarily rate limited. Try again shortly.';
@@ -70,7 +83,14 @@ export function AtlasAssistant() {
       setProviderLabel(mapped.label);
       setProviderError(mapped.message);
     } catch (cause) {
+      if (identityFailure(cause)) throw cause;
       const message = errorMessage(cause);
+      if (errorCode(cause) === 'permission_denied') {
+        setTextCapability('permission-required');
+        setProviderLabel('permission required');
+        setProviderError(message);
+        return;
+      }
       setTextCapability('unavailable');
       setProviderLabel('unavailable');
       setProviderError(message);
@@ -84,14 +104,16 @@ export function AtlasAssistant() {
       await refreshProviderStatus();
     } catch {
       voice.stopMicrophone();
+      voice.stopSpeech();
       setAuthorized(false);
       setOpen(false);
       setState('closed');
       setProviderLabel('checking');
       setTextCapability('configuration-required');
       setProviderError('');
+      setError('');
     }
-  }, [refreshProviderStatus, voice.stopMicrophone]);
+  }, [refreshProviderStatus, voice.stopMicrophone, voice.stopSpeech]);
 
   useEffect(() => {
     void refreshAuthorization();
@@ -152,7 +174,11 @@ export function AtlasAssistant() {
     } catch (cause) {
       setError(errorMessage(cause));
       setState('error');
-      void refreshProviderStatus();
+      if (identityFailure(cause)) {
+        void refreshAuthorization();
+      } else {
+        void refreshProviderStatus();
+      }
     }
   }
 
@@ -190,6 +216,7 @@ export function AtlasAssistant() {
 
   function closeAssistant() {
     voice.stopMicrophone();
+    voice.stopSpeech();
     setOpen(false);
     setState('closed');
     setError('');
@@ -215,7 +242,7 @@ export function AtlasAssistant() {
           onSpeechPreference={voice.setSpeechEnabled}
         />
       ) : (
-        <AtlasAssistantLauncher state={state} textCapability={textCapability} onOpen={openAssistant} />
+        <AtlasAssistantLauncher state={state} textCapability={textCapability} providerLabel={providerLabel} onOpen={openAssistant} />
       )}
     </div>
   );
