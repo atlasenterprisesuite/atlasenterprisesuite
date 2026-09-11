@@ -13,6 +13,7 @@ const OUTPUT_MODES: AccessibilityOutputMode[] = ['text', 'asl_avatar', 'voice', 
 const HAPTIC_LEVELS: HapticIntensity[] = ['off', 'low', 'medium', 'high'];
 
 type AtlasUserPreferencesRow = {
+  default_org_id?: string | null;
   preferences?: unknown;
 };
 
@@ -145,10 +146,11 @@ export async function syncAccessibilityProfileRemote(profile: AccessibilityProfi
   try {
     const userFilter = encodeURIComponent(`eq.${profile.userId}`);
     const rows = await atlasAuthorizedJson<AtlasUserPreferencesRow[]>(
-      `/rest/v1/atlas_user_preferences?user_id=${userFilter}&select=preferences&limit=1`,
+      `/rest/v1/atlas_user_preferences?user_id=${userFilter}&select=preferences,default_org_id&limit=1`,
       { method: 'GET' }
     );
-    const currentPreferences = objectValue(rows?.[0]?.preferences);
+    const currentRow = rows?.[0];
+    const currentPreferences = objectValue(currentRow?.preferences);
     const preferences = mergeAccessibilityPreferences(currentPreferences, profile);
 
     await atlasAuthorizedJson<Record<string, unknown>>('/rest/v1/atlas_user_preferences?on_conflict=user_id', {
@@ -156,6 +158,7 @@ export async function syncAccessibilityProfileRemote(profile: AccessibilityProfi
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({
         user_id: profile.userId,
+        default_org_id: currentRow?.default_org_id ?? null,
         preferences,
         updated_at: new Date().toISOString()
       })
