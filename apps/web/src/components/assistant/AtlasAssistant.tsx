@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { sendAssistantMessage } from '../../assistant/client';
+import { getAssistantStatus, sendAssistantMessage } from '../../assistant/client';
 import { resolveAssistantModule } from '../../assistant/routeContext';
 import { markGreetingSeen, readGreetingSeen } from '../../assistant/storage';
-import type { AtlasAssistantMessage, AtlasAssistantUiState } from '../../assistant/types';
+import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
 import { useAssistantVoice } from '../../assistant/useAssistantVoice';
 import { ATLAS_SESSION_EVENT, getActiveAtlasOrganization } from '../../lib/atlasSession';
 import { AtlasAssistantLauncher } from './AtlasAssistantLauncher';
@@ -31,12 +31,23 @@ function errorMessage(cause: unknown) {
   return 'ATLAS Assistant could not complete that request.';
 }
 
+function providerCapability(state: string): { capability: AtlasCapabilityState; label: string; message: string } {
+  if (state === 'verified_for_request') return { capability: 'ready', label: 'ready', message: '' };
+  if (state === 'not_configured' || state === 'configured_unverified') {
+    return { capability: 'configuration-required', label: 'configuration required', message: 'ATLAS Intelligence is not verified for requests in this environment.' };
+  }
+  return { capability: 'unavailable', label: 'unavailable', message: 'ATLAS Intelligence is temporarily unavailable.' };
+}
+
 export function AtlasAssistant() {
   const location = useLocation();
   const [authorized, setAuthorized] = useState(false);
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<AtlasAssistantUiState>('closed');
   const [error, setError] = useState('');
+  const [providerError, setProviderError] = useState('');
+  const [textCapability, setTextCapability] = useState<AtlasCapabilityState>('configuration-required');
+  const [providerLabel, setProviderLabel] = useState('checking');
   const [messages, setMessages] = useState<AtlasAssistantMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const sequence = useRef(0);
@@ -49,17 +60,38 @@ export function AtlasAssistant() {
     return `${role}-${sequence.current}`;
   }, []);
 
+  const refreshProviderStatus = useCallback(async () => {
+    setProviderLabel('checking');
+    setTextCapability('configuration-required');
+    try {
+      const status = await getAssistantStatus();
+      const mapped = providerCapability(status.provider_state);
+      setTextCapability(mapped.capability);
+      setProviderLabel(mapped.label);
+      setProviderError(mapped.message);
+    } catch (cause) {
+      const message = errorMessage(cause);
+      setTextCapability('unavailable');
+      setProviderLabel('unavailable');
+      setProviderError(message);
+    }
+  }, []);
+
   const refreshAuthorization = useCallback(async () => {
     try {
       await getActiveAtlasOrganization();
       setAuthorized(true);
+      await refreshProviderStatus();
     } catch {
       voice.stopMicrophone();
       setAuthorized(false);
       setOpen(false);
       setState('closed');
+      setProviderLabel('checking');
+      setTextCapability('configuration-required');
+      setProviderError('');
     }
-  }, [voice.stopMicrophone]);
+  }, [refreshProviderStatus, voice.stopMicrophone]);
 
   useEffect(() => {
     void refreshAuthorization();
@@ -81,6 +113,11 @@ export function AtlasAssistant() {
   if (!authorized) return null;
 
   async function submit(message: string) {
+    if (textCapability !== 'ready') {
+      setError(providerError || 'ATLAS Intelligence is not ready for requests.');
+      setState('error');
+      return;
+    }
     if (voice.microphoneActive) voice.stopMicrophone();
     setError('');
     setState('thinking');
@@ -115,11 +152,12 @@ export function AtlasAssistant() {
     } catch (cause) {
       setError(errorMessage(cause));
       setState('error');
+      void refreshProviderStatus();
     }
   }
 
   async function toggleMicrophone() {
-    setError('');
+    setError(providerError);
     if (voice.microphoneActive) {
       voice.stopMicrophone();
       setState('idle');
@@ -137,7 +175,7 @@ export function AtlasAssistant() {
 
   function openAssistant() {
     setOpen(true);
-    setError('');
+    setError(providerError);
     setState(voice.microphoneActive ? 'listening' : 'idle');
 
     if (!greetingSpoken.current && voice.speechEnabled && voice.speechCapability === 'ready' && messages.some((message) => message.role === 'assistant' && message.text === GREETING)) {
@@ -165,6 +203,8 @@ export function AtlasAssistant() {
           state={state}
           error={error}
           moduleLabel={readableModule(moduleName)}
+          textCapability={textCapability}
+          providerLabel={providerLabel}
           microphoneCapability={voice.microphoneCapability}
           microphoneActive={voice.microphoneActive}
           speechCapability={voice.speechCapability}
