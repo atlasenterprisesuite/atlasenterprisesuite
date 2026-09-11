@@ -36,7 +36,9 @@ The initial production-safe milestone provides the universal accessibility shell
 - `highContrast`
 - `textSizeScale`
 
-The browser stores a local preference snapshot keyed by the authenticated user id when available, otherwise a neutral local profile id. A later Supabase-backed profile may synchronize the same contract once a dedicated table and RLS policy are deployed. This milestone must not fabricate server persistence when it is unavailable.
+When an ATLAS session is authenticated, the existing Supabase `public.atlas_user_preferences` table is the account-level source of truth. Accessibility preferences are namespaced under `preferences.accessibilityCommunication` so unrelated user preferences are preserved. The existing table already uses `user_id` as its primary key and RLS restricts SELECT/INSERT/UPDATE to the authenticated user. No duplicate accessibility table is introduced.
+
+The browser also stores a versioned local snapshot keyed by user id. That local copy is a cache/offline fallback and is the only persistence used when no authenticated ATLAS session exists.
 
 ### Capability state
 
@@ -66,10 +68,13 @@ Global route: `/settings/accessibility/communication`.
 
 The route edits functional preferences without asking the user to declare a disability or diagnosis. Controls must be labeled, keyboard-operable and compatible with screen readers. Unsupported device-dependent choices remain visible with an unavailable/not-configured explanation instead of pretending activation succeeded.
 
+The page saves optimistically to the local cache and synchronizes through the authenticated Supabase REST/RLS boundary when a session exists. The UI reports whether preferences are synchronized, local-only, saving or temporarily unable to sync.
+
 ### Action boundary
 
 `AtlasAccessibility` emits typed accessibility actions rather than logging to the console:
 
+- `EXECUTE_ACCESSIBILITY_ACTION`
 - `ACCESSIBILITY_PROFILE_UPDATED`
 - `ACCESSIBILITY_CONFIRM_INTERPRETATION`
 - `ACCESSIBILITY_INTERPRETATION_BLOCKED`
@@ -99,7 +104,8 @@ A captions surface appears only when captions are enabled. It must not claim to 
 - The component must never claim a human interpreter is connected when no provider exists.
 - Braille and haptic capabilities must be capability-checked.
 - Sensitive actions remain subject to module-level authorization, regardless of confidence score.
-- Confidence values and interpretation text are transient UI state unless a future audited persistence contract is explicitly introduced.
+- Accessibility profile data is limited to functional preferences and stored through the existing user-preferences RLS boundary when authenticated.
+- Confidence values and interpretation text remain transient UI state and are not persisted by this milestone.
 
 ## Testing
 
@@ -107,12 +113,13 @@ Required tests cover:
 
 1. Confidence thresholds and invalid scores.
 2. Profile defaults and local persistence.
-3. Global launcher/modal rendering across the shell.
-4. Medium-confidence interpretation requiring confirmation.
-5. Low-confidence interpretation blocking execution and exposing escalation.
-6. Settings route renders and updates preferences.
-7. Unsupported capabilities render truthful states.
-8. Existing Finance/Health/Studio routes remain reachable.
+3. Preservation of unrelated `atlas_user_preferences.preferences` keys when accessibility settings are merged.
+4. Global launcher/modal rendering across the shell.
+5. Medium-confidence interpretation requiring confirmation.
+6. Low-confidence interpretation blocking execution and exposing escalation.
+7. Settings route renders and updates preferences.
+8. Unsupported capabilities render truthful states.
+9. Existing Finance/Health/Studio routes remain reachable.
 
 ## Out of scope for this milestone
 
