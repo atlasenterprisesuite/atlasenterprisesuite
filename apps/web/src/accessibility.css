@@ -52,7 +52,7 @@
 }
 
 .atlas-accessibility-heading,
-.card-heading {
+.accessibility-transcript-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -69,7 +69,7 @@
   color: #cbd5e1;
 }
 
-.icon-button {
+.atlas-accessibility-dialog .icon-button {
   min-width: 44px;
   min-height: 44px;
   border: 1px solid rgba(148, 163, 184, 0.3);
@@ -179,7 +179,7 @@
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.32);
 }
 
-.settings-grid {
+.accessibility-settings-section .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
@@ -227,7 +227,7 @@
   }
   .accessibility-mode-summary,
   .accessibility-capability-grid,
-  .settings-grid { grid-template-columns: 1fr; }
+  .accessibility-settings-section .settings-grid { grid-template-columns: 1fr; }
   .atlas-accessibility-launcher {
     right: 12px;
     bottom: 12px;
