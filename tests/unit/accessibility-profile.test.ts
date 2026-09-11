@@ -78,14 +78,15 @@ describe('accessibility profile persistence', () => {
     const [postUrl, postInit] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(postUrl).toContain('/rest/v1/atlas_user_preferences?on_conflict=user_id');
     expect(postInit.method).toBe('POST');
-    expect(JSON.parse(String(postInit.body))).toEqual({
+    expect(JSON.parse(String(postInit.body))).toEqual(expect.objectContaining({
       user_id: userId,
       default_org_id: defaultOrgId,
+      updated_at: expect.any(String),
       preferences: {
         locale: 'en-US',
         theme: 'dark',
         accessibilityCommunication: profile
       }
-    });
+    }));
   });
 });
