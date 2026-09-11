@@ -15,7 +15,7 @@ export type SignLanguageResearchEntry = {
 };
 
 const WFD_RECOGNITION = 'https://wfdeaf.org/the-legal-recognition-of-national-sign-languages/';
-const COMPENDIUM = 'https://www.sign-lang.uni-hamburg.de/lr/compendium/language/';
+const COMPENDIUM_LANGUAGE_INDEX = 'https://www.sign-lang.uni-hamburg.de/lr/compendium/language/index.html';
 
 function entry(
   countryCode: string,
@@ -35,10 +35,7 @@ function entry(
     productStatus: 'research_only',
     deafCommunityValidated: false,
     verifiedAt: '2026-09-11',
-    sources: [
-      `${COMPENDIUM}${iso639_3}.html`,
-      WFD_RECOGNITION
-    ]
+    sources: [COMPENDIUM_LANGUAGE_INDEX, WFD_RECOGNITION]
   };
 }
 
@@ -46,8 +43,12 @@ function entry(
  * Provenance-controlled seed for ATLAS Inclusive Communication.
  *
  * This is NOT a list of languages ATLAS can translate today. Every entry stays
- * research_only until a real provider/model, linguistic review, and Deaf-community
- * validation exist for the specific language and regional varieties.
+ * research_only until a real provider/model, language-specific linguistic review,
+ * and Deaf-community validation exist for the specific language and regional varieties.
+ *
+ * The two seed sources are registry-level sources whose URLs were verified directly.
+ * Individual language/provider evidence must be added before any productStatus can
+ * advance beyond research_only; do not manufacture per-language source URLs.
  *
  * Country is only a discovery dimension. ATLAS must never infer a user's sign
  * language from country, locale, or spoken language without explicit preference.
