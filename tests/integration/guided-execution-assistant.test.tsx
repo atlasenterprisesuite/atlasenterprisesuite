@@ -42,4 +42,45 @@ describe('Guided Execution Assistant panel', () => {
     expect(onSelectStep).toHaveBeenCalledWith('step-2');
     expect(screen.getByRole('status')).toHaveTextContent(/approval-1/i);
   });
+
+  it('surfaces a failed current step without retrying it', () => {
+    const state = makeGuidedState({
+      taskStatus: 'failed',
+      currentStepId: 'step-2',
+      stepStatuses: ['completed', 'failed', 'blocked']
+    });
+    render(<ExecutionAssistantPanel state={state} onSelectStep={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('status')).toHaveTextContent(/failed/i);
+  });
+
+  it('keeps the unavailable AWS adapter visible as a blocker', () => {
+    const state = makeGuidedState({
+      taskStatus: 'blocked',
+      blockedReason: 'AWS execution adapter not enabled',
+      currentActionType: 'launch_ec2',
+      stepStatuses: ['completed', 'blocked', 'blocked']
+    });
+    render(<ExecutionAssistantPanel state={state} onSelectStep={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('status')).toHaveTextContent(/AWS execution adapter not enabled/i);
+  });
+
+  it('reports only the persisted next action', () => {
+    render(<ExecutionAssistantPanel state={makeGuidedState()} onSelectStep={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'What is next?' }));
+    expect(screen.getByRole('status')).toHaveTextContent(/Verify Cloudflare/i);
+  });
+
+  it('reports completed workflows with no next provider action', () => {
+    const state = makeGuidedState({
+      workflowStatus: 'completed',
+      taskStatus: 'completed',
+      currentStepId: 'step-3',
+      stepStatuses: ['completed', 'completed', 'completed']
+    });
+    render(<ExecutionAssistantPanel state={state} onSelectStep={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'What is next?' }));
+    expect(screen.getByRole('status')).toHaveTextContent(/no persisted next action/i);
+  });
 });

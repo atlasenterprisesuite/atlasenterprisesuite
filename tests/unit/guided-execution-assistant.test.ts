@@ -87,4 +87,11 @@ describe('Guided Execution Assistant resolver', () => {
       executesExternalAction: false
     });
   });
+
+  it('never marks any supported command as an external action', () => {
+    const state = makeGuidedState();
+    for (const command of ['continue', 'resume', 'what is next', 'where did we stop', 'deploy it now']) {
+      expect(resolveExecutionAssistantCommand(command, state).executesExternalAction).toBe(false);
+    }
+  });
 });
