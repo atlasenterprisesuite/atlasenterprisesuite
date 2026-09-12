@@ -16,10 +16,20 @@ function normalize(value: unknown, ancestors: WeakSet<object> = new WeakSet()): 
   if (ancestors.has(value)) return invalidJson();
   ancestors.add(value);
   try {
-    if (Array.isArray(value)) return value.map((item) => normalize(item, ancestors));
+    if (Array.isArray(value)) {
+      if (Object.getOwnPropertySymbols(value).length > 0) return invalidJson();
+      const ownNames = Object.getOwnPropertyNames(value);
+      if (ownNames.length !== value.length + 1) return invalidJson();
+      for (let index = 0; index < value.length; index += 1) {
+        if (!Object.prototype.hasOwnProperty.call(value, index)) return invalidJson();
+      }
+      return value.map((item) => normalize(item, ancestors));
+    }
 
     const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) return invalidJson();
+    if (Object.getOwnPropertySymbols(value).length > 0) return invalidJson();
+    if (Object.getOwnPropertyNames(value).length !== Object.keys(value).length) return invalidJson();
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
         .sort(([a], [b]) => compareCodeUnits(a, b))
