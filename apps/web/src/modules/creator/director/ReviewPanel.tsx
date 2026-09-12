@@ -1,4 +1,5 @@
 import { compileProviderRequest } from '../../../../../../packages/creator/compiler';
+import { evaluateNativeRenderGate } from '../../../../../../packages/creator/native_policy';
 import { hasCreatorPermission } from '../../../../../../packages/creator/permissions';
 import type {
   CreatorPermission,
@@ -13,11 +14,20 @@ type ReviewPanelProps = {
   providers: ProviderReadiness[];
   permissions: CreatorPermission[];
   validation: ValidationResult;
+  dirty: boolean;
   submitting: boolean;
+  nativeSubmitting: boolean;
+  nativeReadinessState: 'loading' | 'ready' | 'error';
+  nativeReadinessError: string;
   onSubmit: () => void;
+  onNativeSubmit: () => void;
 };
 
-export function ReviewPanel({ spec, providers, permissions, validation, submitting, onSubmit }: ReviewPanelProps) {
+export function ReviewPanel({
+  spec, providers, permissions, validation, dirty, submitting,
+  nativeSubmitting, nativeReadinessState, nativeReadinessError,
+  onSubmit, onNativeSubmit
+}: ReviewPanelProps) {
   const selectedProvider = spec.providerPreference
     ? providers.find(provider => provider.providerId === spec.providerPreference) || null
     : null;
@@ -32,7 +42,16 @@ export function ReviewPanel({ spec, providers, permissions, validation, submitti
     hasCreatorPermission(permissions, 'creator.generate') &&
     selectedProvider?.connectionState === 'ready' &&
     validation.status !== 'blocking' &&
+    !dirty &&
     !submitting;
+  const nativeGate = evaluateNativeRenderGate({
+    permissions,
+    dirty,
+    validationStatus: validation.status,
+    aspectRatio: spec.aspectRatio === 'adaptive' ? '9:16' : spec.aspectRatio,
+    audioEnabled: spec.audioEnabled
+  });
+  const canNativeGenerate = nativeGate.allowed && nativeReadinessState === 'ready' && !nativeSubmitting;
 
   return <div className="director-review-stack">
     <section className={`director-review-card ${validation.status}`} aria-label="Final validation status">
@@ -42,7 +61,18 @@ export function ReviewPanel({ spec, providers, permissions, validation, submitti
         : validation.issues.map(issue => <p key={`${issue.code}-${issue.targetId || 'root'}`}><strong>{issue.code}</strong> — {issue.message}</p>)}
     </section>
 
-    {!compiled || !selectedProvider ? <div className="director-inline-empty">Select a provider to compile a provider request.</div> : <>
+    <section className="director-review-card" aria-label="ATLAS Native Composer">
+      <div className="director-card-heading"><strong>ATLAS Native Composer</strong><span>{nativeReadinessState}</span></div>
+      <p><strong>Zero-cost</strong> · self-hosted · local narration · burned captions · audio mix.</p>
+      <p>No automatic fallback to paid media providers.</p>
+      {nativeReadinessState === 'error' && <p><strong>Runtime:</strong> {nativeReadinessError || 'native_composer_unavailable'}</p>}
+      {nativeGate.reasons.length > 0 && <ul>{nativeGate.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}
+      <button className="director-action generate" type="button" disabled={!canNativeGenerate} onClick={onNativeSubmit}>
+        {nativeSubmitting ? 'Rendering with ATLAS Native…' : 'Generate with ATLAS Native · $0'}
+      </button>
+    </section>
+
+    {!compiled || !selectedProvider ? <div className="director-inline-empty">External provider generation is optional. Select one only when a verified provider is intentionally required.</div> : <>
       <section className="director-review-card" aria-label="Provider compatibility">
         <div className="director-card-heading"><strong>{selectedProvider.displayName}</strong><span>{selectedProvider.connectionState}</span></div>
         <p>Last verified: {selectedProvider.lastVerifiedAt ? new Date(selectedProvider.lastVerifiedAt).toLocaleString() : 'Never verified'}</p>
@@ -73,8 +103,8 @@ export function ReviewPanel({ spec, providers, permissions, validation, submitti
     </>}
 
     <button className="director-action generate" type="button" disabled={!canGenerate} onClick={onSubmit}>
-      {submitting ? 'Submitting…' : 'Generate video'}
+      {submitting ? 'Submitting…' : 'Generate with verified external provider'}
     </button>
-    <p className="director-context-note">Generation requires creator.generate permission, passing deterministic validation, and a server-verified ready provider.</p>
+    <p className="director-context-note">Both render paths require creator.generate permission, a saved current version, and passing deterministic validation. External providers additionally require server-verified readiness.</p>
   </div>;
 }
