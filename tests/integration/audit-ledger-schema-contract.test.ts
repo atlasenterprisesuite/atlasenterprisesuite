@@ -15,6 +15,7 @@ describe('ATLAS Audit Ledger schema contract', () => {
     expect(sql).toContain("payload_digest ~ '^[a-f0-9]{64}$'");
     expect(sql).toContain("previous_state_hash = 'GENESIS_BLOCK'");
     expect(sql).toContain('digest_version integer not null check (digest_version = 1)');
+    expect(sql).toContain("jsonb_typeof(metadata) = 'object'");
     expect(sql).toContain('octet_length(metadata::text) <= 16384');
   });
 
