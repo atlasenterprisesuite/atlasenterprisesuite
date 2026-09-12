@@ -30,6 +30,11 @@ describe('ATLAS Audit Ledger canonical hashing', () => {
       .toBe('{"a":{"c":3,"d":4},"b":2,"list":[2,1]}');
   });
 
+  it('uses locale-independent UTF-16 code-unit key ordering', () => {
+    expect(canonicalizeJson({ 'ä': 1, z: 2, A: 3, a: 4 }))
+      .toBe('{"A":3,"a":4,"z":2,"ä":1}');
+  });
+
   it('produces the same SHA-256 digest for semantically identical object-key order', async () => {
     const event = fixtureEvent();
     const reordered = {
