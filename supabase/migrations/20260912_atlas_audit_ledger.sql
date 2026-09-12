@@ -14,6 +14,7 @@ create table if not exists public.audit_ledger_events (
   nonce uuid not null,
   digest_version integer not null check (digest_version = 1),
   created_at timestamptz not null,
+  check (jsonb_typeof(metadata) = 'object'),
   check (octet_length(metadata::text) <= 16384)
 );
 
