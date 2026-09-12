@@ -16,8 +16,6 @@ import {
   type AccountingBudgetLedger,
 } from '../../../lib/atlasSession';
 
-const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-
 const accountingLinks = [
   ['dashboard', 'Command Center'],
   ['chart-of-accounts', 'Chart of Accounts'],
@@ -35,8 +33,13 @@ const accountingLinks = [
   ['settings', 'Settings'],
 ] as const;
 
-function money(value: number) {
-  return currency.format(Number(value || 0));
+function formatMoney(value: number, currencyCode: string) {
+  const code = currencyCode.trim().toUpperCase() || 'USD';
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(Number(value || 0));
+  } catch {
+    return `${code} ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(Number(value || 0))}`;
+  }
 }
 
 function parseDimension(value: string): Record<string, unknown> {
@@ -45,6 +48,13 @@ function parseDimension(value: string): Record<string, unknown> {
   const parsed = JSON.parse(normalized);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Dimension must be a JSON object');
   return parsed as Record<string, unknown>;
+}
+
+function dimensionLabel(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '—';
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) return '—';
+  return entries.map(([key, item]) => `${key}: ${String(item)}`).join(' · ');
 }
 
 export function AccountingBudgetPage() {
@@ -110,6 +120,8 @@ export function AccountingBudgetPage() {
     actual: acc.actual + row.actual,
     variance: acc.variance + row.variance,
   }), { budget: 0, actual: 0, variance: 0 }), [varianceRows]);
+  const selectedCurrency = selectedBudget?.baseCurrency || 'USD';
+  const hasDimensions = varianceRows.some((row) => row.dimension && typeof row.dimension === 'object' && !Array.isArray(row.dimension) && Object.keys(row.dimension as Record<string, unknown>).length > 0);
 
   async function createBudget(event: FormEvent) {
     event.preventDefault();
@@ -202,13 +214,14 @@ export function AccountingBudgetPage() {
           {selectedBudget ? (
             <>
               <div className="metric-grid">
-                <article><span>Budget</span><strong>{money(totals.budget)}</strong><small>{selectedBudget.baseCurrency} · {selectedLines.length} line(s)</small></article>
-                <article><span>Actual</span><strong>{money(totals.actual)}</strong><small>Posted journals only</small></article>
-                <article><span>Variance</span><strong>{money(totals.variance)}</strong><small>Actual minus budget</small></article>
+                <article><span>Budget</span><strong>{formatMoney(totals.budget, selectedCurrency)}</strong><small>{selectedCurrency} · {selectedLines.length} line(s)</small></article>
+                <article><span>Actual</span><strong>{formatMoney(totals.actual, selectedCurrency)}</strong><small>Posted journals only</small></article>
+                <article><span>Variance</span><strong>{formatMoney(totals.variance, selectedCurrency)}</strong><small>Actual minus budget</small></article>
                 <article><span>Status</span><strong>{selectedBudget.status}</strong><small>FY{selectedBudget.fiscalYear} · version {selectedBudget.version}</small></article>
               </div>
               {orphanLines > 0 && <div className="notice strong">{orphanLines} budget line(s) reference an account not present in the current Chart of Accounts and are excluded from variance calculations.</div>}
-              <div className="workspace-card table-wrap"><table><thead><tr><th>Account</th><th>Type</th><th>Budget</th><th>Actual</th><th>Variance</th><th>Variance %</th></tr></thead><tbody>{varianceRows.map((row) => <tr key={row.accountId}><td><strong>{row.accountNumber}</strong><small>{row.accountName}</small></td><td>{row.accountType}</td><td className="money">{money(row.budget)}</td><td className="money">{money(row.actual)}</td><td className="money">{money(row.variance)}</td><td>{row.variancePct === null ? '—' : `${row.variancePct}%`}</td></tr>)}</tbody></table>{varianceRows.length === 0 && <div className="empty-state"><strong>No budget lines</strong><span>Add an account-period line to calculate Budget vs Actual.</span></div>}</div>
+              {hasDimensions && <div className="notice strong">Dimensions are preserved on budget lines. Current actuals are still account-level because posted journal lines do not yet carry matching dimension fields; ATLAS does not claim dimension-level actuals until that ledger integration exists.</div>}
+              <div className="workspace-card table-wrap"><table><thead><tr><th>Period</th><th>Account</th><th>Type</th><th>Dimensions</th><th>Budget</th><th>Actual</th><th>Variance</th><th>Variance %</th></tr></thead><tbody>{varianceRows.map((row) => <tr key={row.budgetLineId}><td><strong>{row.periodStart}</strong><small>to {row.periodEnd}</small></td><td><strong>{row.accountNumber}</strong><small>{row.accountName}</small></td><td>{row.accountType}</td><td><small>{dimensionLabel(row.dimension)}</small></td><td className="money">{formatMoney(row.budget, selectedCurrency)}</td><td className="money">{formatMoney(row.actual, selectedCurrency)}</td><td className="money">{formatMoney(row.variance, selectedCurrency)}</td><td>{row.variancePct === null ? '—' : `${row.variancePct}%`}</td></tr>)}</tbody></table>{varianceRows.length === 0 && <div className="empty-state"><strong>No budget lines</strong><span>Add an account-period line to calculate Budget vs Actual.</span></div>}</div>
 
               <div className="workspace-card toolbar">
                 <button className="link-button" type="button" disabled={busy || selectedBudget.status !== 'draft'} onClick={() => void changeStatus('approved')}>Approve budget</button>
