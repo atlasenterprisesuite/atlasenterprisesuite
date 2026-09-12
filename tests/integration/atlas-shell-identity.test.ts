@@ -15,16 +15,17 @@ describe('ATLAS shell live organization identity', () => {
     expect(source).not.toContain('Demo adapter');
   });
 
-  it('loads the active organization display name through the authenticated session', () => {
+  it('loads shell organization metadata without changing the accounting organization contract', () => {
     const source = readFileSync(sessionPath, 'utf8');
-    expect(source).toContain('name: string');
-    expect(source).toContain('/rest/v1/organizations?');
-    expect(source).toContain('select=id,name,legal_name,active');
+    expect(source).toContain('export type AtlasShellOrganization');
+    expect(source).toContain('getActiveAtlasShellOrganization');
+    expect(source).toContain('organizations!organization_members_org_id_fkey(id,name,legal_name,active)');
+    expect(source).toContain('return { id: String(data[0].org_id), role: String(data[0].role || \'member\') };');
   });
 
   it('binds the shell header to live session identity and reacts to session changes', () => {
     const source = readFileSync(shellPath, 'utf8');
-    expect(source).toContain('getActiveAtlasOrganization');
+    expect(source).toContain('getActiveAtlasShellOrganization');
     expect(source).toContain('ATLAS_SESSION_EVENT');
     expect(source).toContain('organization.name');
     expect(source).toContain('organization.role');
