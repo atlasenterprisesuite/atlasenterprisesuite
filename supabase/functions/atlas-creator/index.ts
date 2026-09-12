@@ -2,7 +2,7 @@ import { requireCreatorPermission } from '../../../packages/creator/permissions.
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
 import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts';
-import { creatorError, creatorErrorResponse } from './_shared/errors.ts';
+import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
 import {
   getProduction,
   listAssets,
@@ -109,7 +109,7 @@ async function handleAssets(req: Request, url: URL) {
   return json({ ok: true, assets: await listAssets(ctx.orgId, productionId) });
 }
 
-async function handleSubmit(req: Request) {
+async function handleSubmit(req: Request): Promise<never> {
   const ctx = await creatorContext(req, 'creator.generate');
   const body = await bodyJson(req);
   const productionId = productionIdFrom(new URL(req.url), body);
@@ -146,9 +146,11 @@ async function route(req: Request) {
 }
 
 Deno.serve(async (req: Request) => {
+  const origin = req.headers.get('origin');
+  if (req.method === 'OPTIONS') return optionsResponse(origin);
   try {
-    return await route(req);
+    return withCors(await route(req), origin);
   } catch (error) {
-    return creatorErrorResponse(error);
+    return withCors(creatorErrorResponse(error), origin);
   }
 });
