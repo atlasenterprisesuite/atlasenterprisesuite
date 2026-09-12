@@ -7,6 +7,7 @@ import { ResearchBadge } from './components/ResearchBadge';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { AccountingBudgetPage } from './modules/finance/accounting/AccountingBudgetPage';
+import { AccountingConsolidationPage } from './modules/finance/accounting/AccountingConsolidationPage';
 import { AccountingForecastPage } from './modules/finance/accounting/AccountingForecastPage';
 import { AccountingWorkspacePage } from './modules/finance/accounting/AccountingWorkspacePage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
@@ -68,6 +69,7 @@ function AccountingHome() {
         <Link className="module-card enabled" to="/finance/accounting/dashboard"><span>Command</span><strong>Open Accounting</strong><p>Enter the live Accounting Command Center and complete route graph.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/budgeting"><span>Planning</span><strong>Budgeting</strong><p>Create versioned account-period budgets and compare them with posted ledger actuals.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/forecast"><span>Planning</span><strong>Cash Flow Forecast</strong><p>Inspect organization-scoped forecast snapshots and scenario assumptions.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/consolidation"><span>Enterprise</span><strong>Intercompany & Consolidation</strong><p>Match entity ledgers, post consolidation-only eliminations and report in group currency.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable + AI</strong><p>Open the existing live AP workspace.</p></Link>
       </div>
     </section>
@@ -103,7 +105,7 @@ function FrontiersHome() {
     <section className="page-stack">
       <PageHeader eyebrow="Research & Innovation" title="Health Frontiers" description="A structured research workspace for persistent disease mechanisms, escape routes, repair and durable surveillance concepts." />
       <ResearchBadge />
-      <Link className="feature-card link-card accent" to={labBase}><p className="eyebrow">Research program</p><h2>Disease Reconstruction Lab</h2><p>Model what surviving biological states may be sufficient to reconstruct disease, then challenge those connections with evidence.</p><span className="action-link">Enter laboratory</span></Link>
+      <Link className="feature-card link-card accent" to={labBase}><p className="eyebrow">Core laboratory</p><h2>Disease Reconstruction Lab</h2><p>Model what surviving biological states may be sufficient to reconstruct disease, then challenge those connections with evidence.</p><span className="action-link">Enter laboratory</span></Link>
     </section>
   );
 }
@@ -252,6 +254,7 @@ export function App() {
         <Route path="/finance/accounting/fixed-assets" element={<AccountingWorkspacePage section="fixed-assets" />} />
         <Route path="/finance/accounting/budgeting" element={<AccountingBudgetPage />} />
         <Route path="/finance/accounting/forecast" element={<AccountingForecastPage />} />
+        <Route path="/finance/accounting/consolidation" element={<AccountingConsolidationPage />} />
         <Route path="/finance/accounting/period-close" element={<AccountingWorkspacePage section="period-close" />} />
         <Route path="/finance/accounting/reports" element={<AccountingWorkspacePage section="reports" />} />
         <Route path="/finance/accounting/audit-trail" element={<AccountingWorkspacePage section="audit-trail" />} />
