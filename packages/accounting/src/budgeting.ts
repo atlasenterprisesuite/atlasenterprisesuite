@@ -1,5 +1,51 @@
 import type { AccountRecord, JournalRecord } from './types';
 
+export type AccountingBudgetRow = {
+  id: string;
+  org_id: string | null;
+  entity_id: string | null;
+  name: string;
+  fiscal_year: number;
+  version: number;
+  scenario: string;
+  status: string;
+  base_currency: string;
+  created_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type AccountingBudgetRecord = {
+  id: string;
+  organizationId: string | null;
+  entityId: string | null;
+  name: string;
+  fiscalYear: number;
+  version: number;
+  scenario: string;
+  status: string;
+  baseCurrency: string;
+  createdBy: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type BudgetLineRow = {
+  id: string;
+  org_id: string | null;
+  budget_id: string;
+  account_id: string;
+  period_start: string;
+  period_end: string;
+  amount: number;
+  dimension: unknown;
+  note: string | null;
+};
+
 export type BudgetLineRecord = {
   id: string;
   organizationId: string | null;
@@ -22,6 +68,39 @@ export type BudgetVarianceRow = {
   variance: number;
   variancePct: number | null;
 };
+
+export function mapAccountingBudget(row: AccountingBudgetRow): AccountingBudgetRecord {
+  return {
+    id: row.id,
+    organizationId: row.org_id,
+    entityId: row.entity_id,
+    name: row.name,
+    fiscalYear: Number(row.fiscal_year),
+    version: Number(row.version),
+    scenario: row.scenario,
+    status: row.status,
+    baseCurrency: row.base_currency,
+    createdBy: row.created_by,
+    approvedBy: row.approved_by,
+    approvedAt: row.approved_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapBudgetLine(row: BudgetLineRow): BudgetLineRecord {
+  return {
+    id: row.id,
+    organizationId: row.org_id,
+    budgetId: row.budget_id,
+    accountId: row.account_id,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    amount: Number(row.amount),
+    dimension: row.dimension,
+    note: row.note,
+  };
+}
 
 function cents(value: number) {
   return Math.round(Number(value) * 100);
