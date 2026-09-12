@@ -166,7 +166,7 @@ async function refreshAtlasSession() {
   return data?.access_token || '';
 }
 
-async function authorizedFetch(path: string, init: RequestInit = {}) {
+export async function authorizedAtlasFetch(path: string, init: RequestInit = {}) {
   let token = getAtlasAccessToken();
   if (!token) throw new Error('authentication_required');
 
@@ -188,7 +188,7 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
 }
 
 export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
-  const response = await authorizedFetch('/rest/v1/organization_members?select=org_id,role,status,organizations!organization_members_org_id_fkey(id,name,legal_name,active)&status=eq.active&limit=1', {
+  const response = await authorizedAtlasFetch('/rest/v1/organization_members?select=org_id,role,status,organizations!organization_members_org_id_fkey(id,name,legal_name,active)&status=eq.active&limit=1', {
     method: 'GET'
   });
   const data = await parseResponse(response);
@@ -214,7 +214,7 @@ export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
 
 export async function getAccountingInsight(forceRefresh = false): Promise<AccountingInsight> {
   const organization = await getActiveAtlasOrganization();
-  const response = await authorizedFetch('/functions/v1/atlas-accounting-insights', {
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-accounting-insights', {
     method: 'POST',
     body: JSON.stringify({ org_id: organization.id, force_refresh: forceRefresh })
   });
@@ -225,8 +225,8 @@ export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
   const organization = await getActiveAtlasOrganization();
   const orgFilter = encodeURIComponent(`eq.${organization.id}`);
   const [billsResponse, vendorsResponse] = await Promise.all([
-    authorizedFetch(`/rest/v1/accounting_bills?org_id=${orgFilter}&select=id,org_id,vendor_id,bill_number,bill_date,due_date,amount,balance_due,approval_state,match_state,status,created_at,updated_at&order=bill_date.desc,bill_number.asc`, { method: 'GET' }),
-    authorizedFetch(`/rest/v1/vendors?org_id=${orgFilter}&select=id,name,email,phone,status&order=name.asc`, { method: 'GET' })
+    authorizedAtlasFetch(`/rest/v1/accounting_bills?org_id=${orgFilter}&select=id,org_id,vendor_id,bill_number,bill_date,due_date,amount,balance_due,approval_state,match_state,status,created_at,updated_at&order=bill_date.desc,bill_number.asc`, { method: 'GET' }),
+    authorizedAtlasFetch(`/rest/v1/vendors?org_id=${orgFilter}&select=id,name,email,phone,status&order=name.asc`, { method: 'GET' })
   ]);
 
   const rawBills = await parseResponse(billsResponse) as any[];
