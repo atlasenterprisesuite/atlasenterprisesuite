@@ -8,8 +8,8 @@ const accounts: AccountRecord[] = [
 ];
 
 const budgets: BudgetLineRecord[] = [
-  { id: 'b-sales', organizationId: 'org-1', budgetId: 'budget-1', accountId: 'sales', periodStart: '2026-09-01', periodEnd: '2026-09-30', amount: 10000, dimension: {}, note: null },
-  { id: 'b-rent', organizationId: 'org-1', budgetId: 'budget-1', accountId: 'rent', periodStart: '2026-09-01', periodEnd: '2026-09-30', amount: 3000, dimension: {}, note: null },
+  { id: 'b-sales', organizationId: 'org-1', budgetId: 'budget-1', accountId: 'sales', periodStart: '2026-09-01', periodEnd: '2026-09-30', amount: 10000, dimension: { department: 'Sales' }, note: null },
+  { id: 'b-rent', organizationId: 'org-1', budgetId: 'budget-1', accountId: 'rent', periodStart: '2026-09-01', periodEnd: '2026-09-30', amount: 3000, dimension: { department: 'Operations' }, note: null },
 ];
 
 const journals: JournalRecord[] = [
@@ -34,14 +34,16 @@ const journals: JournalRecord[] = [
 ];
 
 describe('budgetVsActual', () => {
-  test('normalizes revenue and expense signs and excludes non-posted journals', () => {
+  test('normalizes revenue and expense signs, keeps line context and excludes non-posted journals', () => {
     expect(budgetVsActual(accounts, budgets, journals)).toEqual([
       {
-        accountId: 'sales', accountNumber: '4000', accountName: 'Sales', accountType: 'revenue',
+        budgetLineId: 'b-sales', accountId: 'sales', accountNumber: '4000', accountName: 'Sales', accountType: 'revenue',
+        periodStart: '2026-09-01', periodEnd: '2026-09-30', dimension: { department: 'Sales' },
         budget: 10000, actual: 9000, variance: -1000, variancePct: -10,
       },
       {
-        accountId: 'rent', accountNumber: '6100', accountName: 'Rent', accountType: 'expense',
+        budgetLineId: 'b-rent', accountId: 'rent', accountNumber: '6100', accountName: 'Rent', accountType: 'expense',
+        periodStart: '2026-09-01', periodEnd: '2026-09-30', dimension: { department: 'Operations' },
         budget: 3000, actual: 3200, variance: 200, variancePct: 6.67,
       },
     ]);
