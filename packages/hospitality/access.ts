@@ -1,26 +1,19 @@
-export type HospitalityPermission =
-  | 'hospitality.access.read'
-  | 'hospitality.access.issue'
-  | 'hospitality.access.revoke'
-  | 'hospitality.access.admin'
-  | 'audit.read';
+import { hasHospitalityPermission } from './permissions';
+import type {
+  HospitalityActorContext,
+  HospitalityPermission,
+  HospitalityProviderState,
+  RoomAccessRequest
+} from './types';
 
-export type AccessProviderState = 'not_configured' | 'ready' | 'degraded' | 'offline';
+export type {
+  HospitalityActorContext,
+  HospitalityPermission,
+  HospitalityProviderState,
+  RoomAccessRequest
+} from './types';
 
-export type HospitalityActorContext = {
-  organizationId: string;
-  userId: string;
-  permissions: readonly HospitalityPermission[];
-};
-
-export type RoomAccessRequest = {
-  propertyId: string;
-  roomId: string;
-  assignmentReference: string;
-  startsAt: string;
-  expiresAt: string;
-  reason: 'guest_checkin' | 'replacement' | 'staff_authorized';
-};
+export type AccessProviderState = HospitalityProviderState;
 
 export type RoomAccessDecision = {
   allowed: boolean;
@@ -41,21 +34,14 @@ export type RoomAccessAuditEvent = {
 
 export interface AuthorizedRoomAccessProvider {
   readonly providerId: string;
-  readonly state: AccessProviderState;
+  readonly state: HospitalityProviderState;
   issueCredential(input: RoomAccessRequest): Promise<{ providerCredentialId: string }>;
   revokeCredential(providerCredentialId: string): Promise<void>;
 }
 
-export function hasHospitalityPermission(
-  context: HospitalityActorContext,
-  permission: HospitalityPermission
-) {
-  return context.permissions.includes('hospitality.access.admin') || context.permissions.includes(permission);
-}
-
 export function evaluateRoomAccessRequest(
   context: HospitalityActorContext,
-  providerState: AccessProviderState,
+  providerState: HospitalityProviderState,
   request: RoomAccessRequest
 ): RoomAccessDecision {
   const reasons: string[] = [];
