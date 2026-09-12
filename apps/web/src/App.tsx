@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
@@ -12,6 +12,7 @@ import { AccountingWorkspacePage } from './modules/finance/accounting/Accounting
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -102,7 +103,7 @@ function FrontiersHome() {
     <section className="page-stack">
       <PageHeader eyebrow="Research & Innovation" title="Health Frontiers" description="A structured research workspace for persistent disease mechanisms, escape routes, repair and durable surveillance concepts." />
       <ResearchBadge />
-      <Link className="feature-card link-card accent" to={labBase}><p className="eyebrow">Core laboratory</p><h2>Disease Reconstruction Lab</h2><p>Model what surviving biological states may be sufficient to reconstruct disease, then challenge those connections with evidence.</p><span className="action-link">Enter laboratory</span></Link>
+      <Link className="feature-card link-card accent" to={labBase}><p className="eyebrow">Research program</p><h2>Disease Reconstruction Lab</h2><p>Model what surviving biological states may be sufficient to reconstruct disease, then challenge those connections with evidence.</p><span className="action-link">Enter laboratory</span></Link>
     </section>
   );
 }
@@ -225,6 +226,9 @@ function NotFound() {
 }
 
 export function App() {
+  const location = useLocation();
+  if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
+
   return (
     <AtlasShell>
       <Routes>
