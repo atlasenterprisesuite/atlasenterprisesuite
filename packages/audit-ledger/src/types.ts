@@ -44,5 +44,14 @@ export interface AuditChainVerification {
 
 export interface AuditLedgerStore {
   readHead(scope: AuditLedgerScope): Promise<AuditLedgerHead | null>;
+  readChain(scope: AuditLedgerScope): Promise<AuditLedgerEvent[]>;
   append(event: AuditLedgerEvent): Promise<AuditLedgerEvent>;
+}
+
+export interface AuditLedgerService {
+  recordEvent(event: AuditEventPayload): Promise<{ eventId: string; digest: string }>;
+  verifyChainIntegrity(
+    scope: AuditLedgerScope,
+    options?: { allowEmpty?: boolean }
+  ): Promise<AuditChainVerification>;
 }
