@@ -6,6 +6,7 @@ export * from './arApWrites';
 export * from './assets';
 export * from './bankCashWrites';
 export * from './budgeting';
+export * from './consolidation';
 export * from './forecast';
 export * from './fx';
 export * from './generalLedger';
