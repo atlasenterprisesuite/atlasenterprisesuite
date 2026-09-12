@@ -1,0 +1,18 @@
+.ride-page { min-width: 0; }
+
+.ride-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ride-subnav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.ride-subnav-link.active { font-weight: 700; }
