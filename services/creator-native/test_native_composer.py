@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from native_composer import validate_request, render_video
+from native_composer import build_captions, validate_request, render_video
 
 
 class NativeComposerTests(unittest.TestCase):
@@ -19,6 +19,13 @@ class NativeComposerTests(unittest.TestCase):
                 'aspectRatio': '9:16',
                 'provider': 'heygen'
             })
+
+    def test_builds_local_captions_when_none_are_supplied(self):
+        captions = build_captions([], 'Uno dos tres cuatro cinco seis siete ocho nueve diez.', 8.0)
+        self.assertGreaterEqual(len(captions), 2)
+        self.assertEqual(captions[0]['start'], 0.0)
+        self.assertAlmostEqual(captions[-1]['end'], 8.0)
+        self.assertTrue(all(item['text'].strip() for item in captions))
 
     def test_renders_vertical_mp4_with_h264_and_aac(self):
         with tempfile.TemporaryDirectory() as tmp:
