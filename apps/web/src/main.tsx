@@ -7,6 +7,7 @@ import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { AtlasVoicePage } from './modules/voice/AtlasVoicePage';
 import './styles.css';
 import './health.css';
+import './neuroplasticity.css';
 import './modules/finance/accounting/payables-ai.css';
 import './modules/hospitality/hospitality.css';
 

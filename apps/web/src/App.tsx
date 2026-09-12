@@ -5,6 +5,7 @@ import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { GuidedExecutionPage } from './execution/GuidedExecutionPage';
+import { resolveAtlasExtension } from './extensions/resolveAtlasExtension';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
@@ -43,7 +44,8 @@ function EnterpriseHome() {
         <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
         <Link className="module-card enabled" to="/payroll"><span>People • Pay • Progress</span><strong>ATLAS Payroll</strong><p>Governed payroll workspace with real configuration boundaries and no fabricated metrics.</p></Link>
-        <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
+        <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tooling with explicit evidence boundaries.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
@@ -94,6 +96,7 @@ function HealthHome() {
       <ResearchBadge />
       <div className="module-grid">
         <Link className="module-card enabled" to="/health/research"><span>Research & Innovation</span><strong>Health Frontiers</strong><p>Evidence registry, Neural Graph, falsification and transparent reconstruction models.</p></Link>
+        <Link className="module-card enabled" to="/health/wellbeing/neuroplasticity"><span>Wellbeing</span><strong>Neuroplasticity Program</strong><p>Build safe learning-readiness habits with visible non-clinical boundaries.</p></Link>
         <div className="module-card disabled" aria-disabled="true"><span>Clinical systems</span><strong>Not configured</strong><p>No EHR, FHIR, HL7 or patient workflow is represented as connected.</p></div>
         <div className="module-card disabled" aria-disabled="true"><span>Hospital operations</span><strong>No live connection</strong><p>No fabricated census, bed, staffing, pharmacy or facility metric is shown.</p></div>
       </div>
@@ -241,6 +244,8 @@ function NotFound() {
 export function App() {
   const location = useLocation();
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
+  const extension = resolveAtlasExtension(location.pathname);
+  if (extension) return <AtlasShell>{extension}</AtlasShell>;
 
   return (
     <AtlasShell>
