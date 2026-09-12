@@ -25,6 +25,7 @@ export type RideComplianceReadiness = {
 export type RideProfilePhotoResponse = {
   ok: true;
   requirement: ComplianceRequirement | null;
+  submission: ComplianceSubmission | null;
   permissions: CompliancePermission[];
 };
 
@@ -109,11 +110,7 @@ async function requestWithRetry<T>(
   return parseResponse<T>(response);
 }
 
-function jsonRequest<T>(
-  api: string,
-  params: Record<string, string | undefined> = {},
-  init: RequestInit = {}
-) {
+function jsonRequest<T>(api: string, params: Record<string, string | undefined> = {}, init: RequestInit = {}) {
   return requestWithRetry<T>(api, params, init, true);
 }
 
@@ -128,10 +125,7 @@ export function getRideProfilePhotoRequirement() {
 export function submitRideProfilePhoto(file: File) {
   const form = new FormData();
   form.append('photo', file);
-  return requestWithRetry<RideSubmissionResponse>('submit-profile-photo', {}, {
-    method: 'POST',
-    body: form
-  }, false);
+  return requestWithRetry<RideSubmissionResponse>('submit-profile-photo', {}, { method: 'POST', body: form }, false);
 }
 
 export function getRideComplianceTimeline(requirementId: string) {
