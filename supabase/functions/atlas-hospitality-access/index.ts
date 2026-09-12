@@ -2,7 +2,7 @@ import { evaluateRoomAccessRequest } from '../../../packages/hospitality/access.
 import { requireHospitalityPermission } from '../../../packages/hospitality/permissions.ts';
 import type { HospitalityCapability, RoomAccessReason } from '../../../packages/hospitality/types.ts';
 import { resolveContext } from './_shared/context.ts';
-import { errorResponse, hospitalityError, json } from './_shared/errors.ts';
+import { errorResponse, hospitalityError, json, optionsResponse, withCors } from './_shared/errors.ts';
 import { providerFor } from './_shared/provider-registry.ts';
 import {
   insertCredentialReference,
@@ -379,21 +379,24 @@ async function audit(req: Request, url: URL) {
 }
 
 Deno.serve(async (req: Request) => {
+  const origin = req.headers.get('origin');
+  if (req.method === 'OPTIONS') return optionsResponse(origin);
+
   const url = new URL(req.url);
   const operation = url.searchParams.get('api') as Operation | null;
 
   try {
     if (!operation || !OPERATIONS.includes(operation)) throw hospitalityError('not_found', 404);
-    if (req.method === 'GET' && operation === 'readiness') return await readiness(req, url);
-    if (req.method === 'GET' && operation === 'providers') return await providers(req, url);
-    if (req.method === 'GET' && operation === 'rooms') return await rooms(req, url);
-    if (req.method === 'GET' && operation === 'credentials') return await credentials(req, url);
-    if (req.method === 'POST' && operation === 'issue') return await issue(req, url);
-    if (req.method === 'POST' && operation === 'revoke') return await revoke(req, url);
-    if (req.method === 'GET' && operation === 'credential-status') return await credentialStatus(req, url);
-    if (req.method === 'GET' && operation === 'audit') return await audit(req, url);
+    if (req.method === 'GET' && operation === 'readiness') return withCors(await readiness(req, url), origin);
+    if (req.method === 'GET' && operation === 'providers') return withCors(await providers(req, url), origin);
+    if (req.method === 'GET' && operation === 'rooms') return withCors(await rooms(req, url), origin);
+    if (req.method === 'GET' && operation === 'credentials') return withCors(await credentials(req, url), origin);
+    if (req.method === 'POST' && operation === 'issue') return withCors(await issue(req, url), origin);
+    if (req.method === 'POST' && operation === 'revoke') return withCors(await revoke(req, url), origin);
+    if (req.method === 'GET' && operation === 'credential-status') return withCors(await credentialStatus(req, url), origin);
+    if (req.method === 'GET' && operation === 'audit') return withCors(await audit(req, url), origin);
     throw hospitalityError('method_not_allowed', 405);
   } catch (error) {
-    return errorResponse(error);
+    return withCors(errorResponse(error), origin);
   }
 });
