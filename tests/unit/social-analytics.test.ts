@@ -7,6 +7,12 @@ describe('social analytics', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('rejects blank numeric fields instead of coercing them to zero', () => {
+    const result = parseSocialMetrics('instagram,2026-09-10T14:00:00Z,reel,Hook,,10,2,1');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.join(' ')).toMatch(/reach/i);
+  });
+
   it('derives rankings from supplied metrics only', () => {
     const parsed = parseSocialMetrics([
       'instagram,2026-09-10T14:00:00Z,reel,Strong hook,1000,150,20,10',
