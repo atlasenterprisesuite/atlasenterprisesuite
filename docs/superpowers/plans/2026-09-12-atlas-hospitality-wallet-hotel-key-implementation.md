@@ -8,6 +8,33 @@
 
 **Execution branch:** `feat/hospitality-wallet-hotel-key`
 
+## Worktree bootstrap — mandatory before Task 1
+
+The approved spec and plans live on `design/hospitality-wallet-hotel-key`. Preserve those commits and reconcile the latest production work before implementation:
+
+```bash
+git fetch origin
+git worktree add -b feat/hospitality-wallet-hotel-key ../atlas-hospitality-wallet origin/design/hospitality-wallet-hotel-key
+cd ../atlas-hospitality-wallet
+git merge --no-edit origin/main
+```
+
+If the merge reports conflicts, resolve them by preserving the approved Wallet Hotel Key documents **and** the current canonical `main` implementation; run the baseline gate before changing behavior. Do not use `git reset --hard`, force-reset, or force-push to make the conflict disappear.
+
+This bootstrap rule overrides any shorter branch-creation wording inside the detailed subplans.
+
+Baseline before Task 1:
+
+```bash
+npm ci
+npm run typecheck
+npm run test:unit
+npm run test:integration
+npm run build
+```
+
+If baseline is red, stop feature work and classify the failure as pre-existing vs merge-introduced before proceeding.
+
 ## Mandatory execution order
 
 ### Milestone A — Core domain, persistence, policy, idempotency
@@ -95,6 +122,7 @@ Only Milestone C may transition an eligible stay into provider-backed Wallet cre
 13. Checkout/cancellation does not mark local credentials revoked until provider evidence exists or a reviewed reconciliation outcome is recorded.
 14. If provider issuance succeeds but persistence/audit fails, stop automatic retry and mark `reconciliation_required`.
 15. Remote door unlock remains absent from types, APIs, UI, and adapters.
+16. Where a PMS lacks a verified event/webhook path, `syncReservations` remains a fail-closed capability until a governed scheduler/auth path is explicitly reviewed; do not invent a universal privileged sync endpoint.
 
 ## Task execution protocol
 
@@ -117,7 +145,7 @@ read spec + current task
 → continue automatically
 ```
 
-Do not batch unrelated tasks into one commit. Do not force-reset/force-push approved work. Reconcile current `main` before starting the feature worktree and preserve all already-merged Hospitality fixes.
+Do not batch unrelated tasks into one commit. Do not force-reset/force-push approved work.
 
 ## Final repository verification gate
 
