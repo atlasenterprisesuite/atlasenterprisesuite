@@ -1,0 +1,21 @@
+.voice-page { max-width: 1180px; }
+.voice-status-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; font-size: .85rem; opacity: .88; }
+.voice-state { border: 1px solid currentColor; border-radius: 999px; padding: .35rem .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.voice-console { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.voice-panel { min-height: 250px; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 1.25rem; background: rgba(8,18,36,.58); }
+.voice-transcript { margin-top: .75rem; min-height: 88px; padding: 1rem; border-radius: 14px; background: rgba(255,255,255,.055); font-size: 1.08rem; line-height: 1.55; }
+.voice-transcript.interim { opacity: .62; font-style: italic; }
+.voice-panel dl { display: grid; gap: .4rem; margin: 1rem 0 0; }
+.voice-panel dl div { display: grid; grid-template-columns: 90px 1fr; gap: .75rem; }
+.voice-panel dt { opacity: .6; }
+.voice-panel dd { margin: 0; overflow-wrap: anywhere; }
+.voice-help { opacity: .68; line-height: 1.5; }
+.voice-controls { display: flex; flex-wrap: wrap; gap: .7rem; }
+.voice-controls button { border: 1px solid rgba(255,255,255,.18); border-radius: 12px; padding: .75rem 1rem; background: rgba(255,255,255,.07); color: inherit; cursor: pointer; }
+.voice-controls button:disabled { opacity: .4; cursor: not-allowed; }
+.voice-controls .voice-primary { background: rgba(62,140,255,.22); border-color: rgba(102,166,255,.5); }
+.voice-message { padding: .9rem 1rem; border-left: 3px solid currentColor; background: rgba(255,255,255,.04); }
+.voice-rules { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; }
+.voice-rules strong { margin-right: .3rem; }
+.voice-rules span { border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: .35rem .65rem; font-size: .8rem; opacity: .82; }
+@media (max-width: 800px) { .voice-console { grid-template-columns: 1fr; } .voice-panel { min-height: 200px; } }

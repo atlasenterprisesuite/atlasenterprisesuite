@@ -44,49 +44,78 @@ export async function getProduction(orgId: string, productionId: string) {
 
 export async function saveProduction(ctx: CreatorContext, spec: ProductionSpec, expectedVersion?: number) {
   const sb = adminClient();
-  const baseRow = {
-    organization_id: ctx.orgId,
-    title: spec.title,
-    brief: spec.brief,
-    status: spec.status,
-    duration_seconds: spec.durationSeconds,
-    aspect_ratio: spec.aspectRatio,
-    resolution_preference: spec.resolutionPreference,
-    audio_enabled: spec.audioEnabled,
-    production_spec_json: spec,
-    updated_at: new Date().toISOString()
-  };
-
   const { data: existing, error: existingError } = await sb
     .from('creator_productions')
-    .select('id,version')
+    .select('id,version,created_by,status')
     .eq('organization_id', ctx.orgId)
     .eq('id', spec.id)
     .maybeSingle();
   if (existingError) throw creatorError('persistence_failed', 500);
 
+  const trustedSpec: ProductionSpec = {
+    ...spec,
+    organizationId: ctx.orgId,
+    createdByUserId: existing ? String(existing.created_by) : ctx.userId,
+    status: 'draft'
+  };
+  const baseRow = {
+    organization_id: ctx.orgId,
+    title: trustedSpec.title,
+    brief: trustedSpec.brief,
+    status: 'draft',
+    duration_seconds: trustedSpec.durationSeconds,
+    aspect_ratio: trustedSpec.aspectRatio,
+    resolution_preference: trustedSpec.resolutionPreference,
+    audio_enabled: trustedSpec.audioEnabled,
+    production_spec_json: trustedSpec,
+    updated_at: new Date().toISOString()
+  };
+
   if (!existing) {
     const { data, error } = await sb
       .from('creator_productions')
-      .insert({ ...baseRow, id: spec.id, created_by: ctx.userId, version: 1 })
+      .insert({ ...baseRow, id: trustedSpec.id, created_by: ctx.userId, version: 1 })
       .select('*')
       .single();
     if (error || !data) throw creatorError('persistence_failed', 500);
     return data;
   }
 
-  const version = expectedVersion ?? spec.version;
+  const version = expectedVersion ?? trustedSpec.version;
   const { data, error } = await sb
     .from('creator_productions')
     .update({ ...baseRow, version: version + 1 })
     .eq('organization_id', ctx.orgId)
-    .eq('id', spec.id)
+    .eq('id', trustedSpec.id)
     .eq('version', version)
     .select('*')
     .maybeSingle();
   if (error) throw creatorError('persistence_failed', 500);
   if (!data) throw creatorError('version_conflict', 409);
   return data;
+}
+
+function nullableNumber(value: unknown) {
+  return value === null || (typeof value === 'number' && Number.isFinite(value));
+}
+
+function isProviderCapabilityShape(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  return Array.isArray(item.modes)
+    && Array.isArray(item.aspectRatios)
+    && Array.isArray(item.resolutions)
+    && typeof item.audioSupport === 'boolean'
+    && typeof item.imageReferenceSupport === 'boolean'
+    && typeof item.videoReferenceSupport === 'boolean'
+    && typeof item.audioReferenceSupport === 'boolean'
+    && typeof item.startFrameSupport === 'boolean'
+    && typeof item.endFrameSupport === 'boolean'
+    && nullableNumber(item.minDurationSeconds)
+    && nullableNumber(item.maxDurationSeconds)
+    && nullableNumber(item.maxImageReferences)
+    && nullableNumber(item.maxVideoReferences)
+    && nullableNumber(item.maxAudioReferences);
 }
 
 export async function listProviderReadiness(orgId: string): Promise<ProviderReadiness[]> {
@@ -112,10 +141,12 @@ export async function listProviderReadiness(orgId: string): Promise<ProviderRead
 
     const lastVerifiedAt = row.last_verified_at ? String(row.last_verified_at) : null;
     const persistedState = String(row.state || 'unconfigured');
-    const connectionState = persistedState === 'ready' && !lastVerifiedAt
+    const capabilityValid = isProviderCapabilityShape(row.capability_json);
+    let connectionState = persistedState === 'ready' && !lastVerifiedAt
       ? 'configured-unverified'
       : persistedState;
-    const capability = row.capability_json && typeof row.capability_json === 'object'
+    if (connectionState === 'ready' && !capabilityValid) connectionState = 'configured-unverified';
+    const capability = capabilityValid
       ? {
           ...(row.capability_json as Record<string, unknown>),
           providerId,
