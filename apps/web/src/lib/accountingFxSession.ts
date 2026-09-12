@@ -75,7 +75,7 @@ export async function getAccountingFxWorkspace(): Promise<AccountingFxWorkspace>
   const organization = await getActiveAtlasOrganization();
   const orgFilter = encodeURIComponent(`eq.${organization.id}`);
   const entitySelect = encodeURIComponent('id,org_id,code,legal_name,jurisdiction,functional_currency,reporting_currency,active');
-  const rateSelect = encodeURIComponent('id,org_id,entity_id,rate_date,base_currency,quote_currency,rate,source_name,source_reference,evidence_state,created_by,created_at');
+  const rateSelect = encodeURIComponent('id,org_id,entity_id,rate_date,base_currency,quote_currency,rate,source_type,source_name,source_reference,evidence_state,created_by,created_at');
 
   const [entityResponse, rateResponse] = await Promise.all([
     authenticatedFxFetch(`/rest/v1/accounting_entities?org_id=${orgFilter}&select=${entitySelect}&order=code.asc`, { method: 'GET' }),
