@@ -11,6 +11,7 @@ import { digestApprovalPayload } from '../../../packages/execution/src/approvals
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const MAX_REQUEST_BYTES = 64 * 1024;
 
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
@@ -607,6 +608,10 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
   if (!req.headers.get('authorization')) return json(req, { ok: false, error: 'authentication_required' }, 401);
+  const declaredLength = Number(req.headers.get('content-length') || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
+    return json(req, { ok: false, error: 'payload_too_large' }, 413);
+  }
 
   let body: JsonObject;
   try {
@@ -614,6 +619,8 @@ Deno.serve(async (req: Request) => {
   } catch {
     return json(req, { ok: false, error: 'invalid_json' }, 400);
   }
+  const bodyBytes = new TextEncoder().encode(JSON.stringify(body)).byteLength;
+  if (bodyBytes > MAX_REQUEST_BYTES) return json(req, { ok: false, error: 'payload_too_large' }, 413);
 
   const operation = clean(body.operation, 80);
   if (!SUPPORTED_OPERATIONS.has(operation)) return json(req, { ok: false, error: 'unsupported_operation' }, 400);
