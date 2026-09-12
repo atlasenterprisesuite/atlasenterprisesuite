@@ -74,10 +74,13 @@ export function parseSocialMetrics(input: string): MetricParseResult {
     if (!format) errors.push(`Row ${rowNumber}: format is required.`);
     if (!hook) errors.push(`Row ${rowNumber}: hook is required.`);
 
-    const numericValues = [reachRaw, engagementsRaw, commentsRaw, sharesRaw].map(Number);
+    const numericRawValues = [reachRaw, engagementsRaw, commentsRaw, sharesRaw];
+    const numericValues = numericRawValues.map(Number);
     const numericLabels = ['reach', 'engagements', 'comments', 'shares'];
     numericValues.forEach((value, numericIndex) => {
-      if (!Number.isFinite(value) || value < 0) errors.push(`Row ${rowNumber}: ${numericLabels[numericIndex]} must be a finite non-negative number.`);
+      if (numericRawValues[numericIndex] === '' || !Number.isFinite(value) || value < 0) {
+        errors.push(`Row ${rowNumber}: ${numericLabels[numericIndex]} must be a finite non-negative number.`);
+      }
     });
 
     if (errors.some((error) => error.startsWith(`Row ${rowNumber}:`))) return;
