@@ -17,7 +17,7 @@
 - Execution mode is a routing preference, not authorization.
 - Autonomous Mode never bypasses permission, approval, budget, execution-envelope, regulated-domain or provider-capability policy.
 - A changed action payload invalidates stale approval through the existing payload digest mechanism.
-- Default external paid-provider budget is `$0`.
+- An absent/null paid-provider budget has effective value `$0`; only an explicit nonnegative persisted amount increases it.
 - No provider call occurs from the pure router or policy package.
 - No production mutation in automated tests.
 - TDD + independent spec and quality review for every task.
@@ -32,11 +32,11 @@
 - `supabase/functions/atlas-execution/index.ts` — `evaluate_work_step` operation.
 - `apps/web/src/work/ExecutionConfiguration.tsx` — user-visible mode/autonomy/runtime/budget summary.
 - `apps/web/src/execution/StepDetailPanel.tsx` — display resolved execution decision without becoming authority.
-- `tests/unit/work-routing.test.ts` — router matrix.
-- `tests/unit/work-policy.test.ts` — autonomy/budget/approval matrix.
-- `tests/unit/browser-envelope.test.ts` — allow/deny constraints.
-- `tests/unit/atlas-execution-work-policy-edge.test.ts` — server reauthorization contract.
-- `tests/integration/work-policy-visibility.test.tsx` — UI displays server decision truthfully.
+- `tests/unit/work-routing.test.ts`.
+- `tests/unit/work-policy.test.ts`.
+- `tests/unit/browser-envelope.test.ts`.
+- `tests/unit/atlas-execution-work-policy-edge.test.ts`.
+- `tests/integration/work-policy-visibility.test.tsx`.
 
 ---
 
@@ -84,8 +84,6 @@ npx vitest run tests/unit/work-routing.test.ts
 
 - [ ] **Step 3: Implement deterministic routing**
 
-Define:
-
 ```ts
 export type ProviderExecutionCapability = { available: boolean; authorized: boolean; reason?: string };
 export type ExecutionRouteDecision = {
@@ -95,17 +93,12 @@ export type ExecutionRouteDecision = {
 };
 ```
 
-Rules: API mode requires authorized API; Browser mode requires authorized browser + runtime; Hybrid chooses authorized API first, then authorized browser runtime; otherwise blocked. No implicit paid provider fallback.
+Rules: API mode requires authorized API; Browser mode requires authorized browser + runtime; Hybrid chooses authorized API first, then authorized browser runtime; otherwise blocked. No implicit paid-provider fallback.
 
-- [ ] **Step 4: Verify GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/work-routing.test.ts
-```
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add packages/execution/src/work-routing.ts packages/execution/src/index.ts tests/unit/work-routing.test.ts
 git commit -m "feat: add sovereign execution route selection"
 ```
@@ -152,9 +145,9 @@ it('denies a nameserver change even on an allowed domain', () => {
 npx vitest run tests/unit/browser-envelope.test.ts
 ```
 
-- [ ] **Step 3: Implement fail-closed envelope checks**
+- [ ] **Step 3: Implement fail-closed checks**
 
-Normalize hostnames to lowercase, allow exact domain or subdomain match only, deny expired envelopes, evaluate denied actions before allowed actions, and return `{ allowed, reason }` without executing anything.
+Normalize hostnames lowercase; allow exact domain or a dot-delimited subdomain only; deny expired envelopes; evaluate `deniedActions` before `allowedActions`; require matching workflow/step scope supplied by caller context; return `{ allowed, reason }` without executing anything.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
@@ -183,22 +176,20 @@ import { expect, it } from 'vitest';
 import { evaluateWorkActionPolicy } from '../../packages/execution/src/work-policy';
 
 it('requires approval for DNS writes in guided mode', () => {
-  const result = evaluateWorkActionPolicy({
+  expect(evaluateWorkActionPolicy({
     autonomyLevel: 'guided', sensitivity: 'high', reversible: true,
     mutation: true, paidCost: 0, budgetLimit: 0,
     permissionsSatisfied: true, envelopeAllowed: true, regulated: false
-  });
-  expect(result.outcome).toBe('require_approval');
+  }).outcome).toBe('require_approval');
 });
 
-it('denies paid execution above budget even in autonomous mode', () => {
+it('treats null budget as zero and denies spend in autonomous mode', () => {
   const result = evaluateWorkActionPolicy({
     autonomyLevel: 'autonomous', sensitivity: 'low', reversible: true,
-    mutation: true, paidCost: 1, budgetLimit: 0,
+    mutation: true, paidCost: 1, budgetLimit: null,
     permissionsSatisfied: true, envelopeAllowed: true, regulated: false
   });
-  expect(result.outcome).toBe('deny');
-  expect(result.reason).toBe('budget_exceeded');
+  expect(result).toMatchObject({ outcome: 'deny', reason: 'budget_exceeded' });
 });
 ```
 
@@ -208,9 +199,13 @@ it('denies paid execution above budget even in autonomous mode', () => {
 npx vitest run tests/unit/work-policy.test.ts
 ```
 
-- [ ] **Step 3: Implement decision order**
+- [ ] **Step 3: Implement exact decision order**
 
-Decision order must be exact: missing permission -> deny; envelope denied -> deny; paid cost above budget -> deny; regulated mutation -> require approval; destructive/irreversible mutation -> require approval; Manual mutation -> require approval; Guided high/critical mutation -> require approval; Autonomous inside granted policy -> allow; read-only action with permissions -> allow. Return a machine-readable reason for every non-allow outcome.
+```ts
+const effectiveBudget = input.budgetLimit ?? 0;
+```
+
+Then: missing permission -> deny `permission_required`; envelope denied -> deny `execution_envelope_denied`; `paidCost > effectiveBudget` -> deny `budget_exceeded`; regulated mutation -> require approval; destructive/irreversible mutation -> require approval; Manual mutation -> require approval; Guided high/critical mutation -> require approval; Autonomous inside granted policy -> allow; read-only permitted action -> allow. Every decision returns a machine-readable reason, including allow.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
@@ -230,12 +225,12 @@ git commit -m "feat: add Work autonomy budget and approval policy"
 - Test: `tests/unit/atlas-execution-work-policy-edge.test.ts`
 
 **Interfaces:**
-- Consumes current workflow/task/step rows, authenticated `RequestContext`, Work context, routing and policy functions.
+- Consumes current workflow/task/step rows, authenticated context, Work context, routing and policy functions.
 - Produces operation `evaluate_work_step` returning safe route/policy decision only.
 
 - [ ] **Step 1: Write failing server tests**
 
-Assert the operation requires `execution.read`; loads workflow/task/current step scoped to `context.orgId`; derives Work metadata from `workflow.context`; never accepts `permissionsSatisfied`, approval outcome, provider authorization or budget truth directly from the browser request.
+Assert operation requires `execution.read`; loads workflow/task/current step scoped to `context.orgId`; derives Work metadata from `workflow.context`; never accepts `permissionsSatisfied`, approval outcome, provider authorization or budget truth from browser request.
 
 - [ ] **Step 2: Verify RED**
 
@@ -245,13 +240,13 @@ npx vitest run tests/unit/atlas-execution-work-policy-edge.test.ts
 
 - [ ] **Step 3: Implement server evaluation**
 
-Request shape is limited to:
+Request is only:
 
 ```ts
 { operation: 'evaluate_work_step', organization_id: string, task_id: string }
 ```
 
-Server loads task + step + workflow. For this plan, provider capabilities come from server-owned safe metadata attached to the step under `action_payload.capabilities` only after whitelisting booleans; connection secrets are never returned. Permission satisfaction derives from authenticated context. Budget derives from parsed Work context. Return:
+Server loads task + current step + workflow. For this slice, provider capabilities may come only from server-owned step metadata after boolean/capability-name whitelisting; browser-supplied provider capability is ignored. Permission satisfaction derives from authenticated context; budget derives from parsed Work context. Return:
 
 ```ts
 {
@@ -262,38 +257,34 @@ Server loads task + step + workflow. For this plan, provider capabilities come f
 }
 ```
 
-- [ ] **Step 4: Verify GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/atlas-execution-work-policy-edge.test.ts
 npm run typecheck
-```
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add supabase/functions/atlas-execution/work-policy.ts supabase/functions/atlas-execution/index.ts tests/unit/atlas-execution-work-policy-edge.test.ts
 git commit -m "feat: evaluate Work execution policy server side"
 ```
 
 ---
 
-### Task 5: Surface execution configuration and server decision without granting authority to UI
+### Task 5: Surface configuration and server decision without granting UI authority
 
 **Files:**
 - Create: `apps/web/src/work/ExecutionConfiguration.tsx`
 - Modify: `apps/web/src/work/WorkComposerPage.tsx`
 - Modify: `apps/web/src/execution/api.ts`
 - Modify: `apps/web/src/execution/StepDetailPanel.tsx`
+- Modify: `apps/web/src/execution/GuidedExecutionPage.tsx`
 - Test: `tests/integration/work-policy-visibility.test.tsx`
 
 **Interfaces:**
 - Consumes `evaluate_work_step` response.
-- Produces transparent user-visible mode/autonomy/runtime/budget and resolved route/policy state.
+- Produces transparent mode/autonomy/runtime/budget and resolved route/policy state.
 
 - [ ] **Step 1: Write failing integration test**
 
-Mock a server decision `{ route: { state: 'ready', mechanism: 'api', reason: 'authorized_api_available' }, policy: { outcome: 'require_approval', reason: 'guided_high_risk_mutation' }, approvalRequired: true }`. Assert Guided Execution displays `API`, `Approval required`, and never renders an `Execute without approval` control.
+Mock server decision `{ route:{state:'ready',mechanism:'api',reason:'authorized_api_available'}, policy:{outcome:'require_approval',reason:'guided_high_risk_mutation'}, approvalRequired:true }`. Assert Guided Execution displays `API`, `Approval required`, and never an `Execute without approval` control.
 
 - [ ] **Step 2: Verify RED**
 
@@ -301,16 +292,16 @@ Mock a server decision `{ route: { state: 'ready', mechanism: 'api', reason: 'au
 npx vitest run tests/integration/work-policy-visibility.test.tsx
 ```
 
-- [ ] **Step 3: Implement API helper and display components**
+- [ ] **Step 3: Implement API helper and display wiring**
 
-Add `evaluateWorkStep(taskId)` to `apps/web/src/execution/api.ts` using existing authenticated `executionPost`. Display server decisions as informational state. Existing ApprovalCard/StepActionBar remains the only mutation path.
+Add `evaluateWorkStep(taskId)` inside `apps/web/src/execution/api.ts` using its existing private `executionPost`; `GuidedExecutionPage` loads the decision for the selected current task and passes it to `StepDetailPanel`. The result is informational only; existing ApprovalCard/StepActionBar remains the mutation surface.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/integration/work-policy-visibility.test.tsx
 npm run typecheck
-git add apps/web/src/work/ExecutionConfiguration.tsx apps/web/src/work/WorkComposerPage.tsx apps/web/src/execution/api.ts apps/web/src/execution/StepDetailPanel.tsx tests/integration/work-policy-visibility.test.tsx
+git add apps/web/src/work/ExecutionConfiguration.tsx apps/web/src/work/WorkComposerPage.tsx apps/web/src/execution/api.ts apps/web/src/execution/StepDetailPanel.tsx apps/web/src/execution/GuidedExecutionPage.tsx tests/integration/work-policy-visibility.test.tsx
 git commit -m "feat: expose truthful Work routing and policy decisions"
 ```
 
@@ -334,8 +325,8 @@ npm run build
 
 - [ ] **Step 3: Independent spec review**
 
-Reject the slice if UI can self-authorize, Autonomous bypasses any hard boundary, API/browser fallback invents capability, budget can become positive without explicit persisted authorization, or any second workflow/approval state appears.
+Reject if UI can self-authorize; Autonomous bypasses hard boundary; API/browser fallback invents capability; null/missing budget permits spend; or any second workflow/approval state appears.
 
 - [ ] **Step 4: Independent quality review**
 
-Review exhaustive route/policy matrix, fail-closed defaults, naming consistency and duplication. Fix findings and rerun focused + full verification before the runtime/browser/connections plan.
+Review route/policy matrix, fail-closed defaults, naming consistency and duplication. Fix findings and rerun focused + full verification before runtime/browser/connections.
