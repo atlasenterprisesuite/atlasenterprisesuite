@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createEmptyProductionSpec } from '../../../../../../packages/creator/defaults';
+import { evaluateNativeRenderGate } from '../../../../../../packages/creator/native_policy';
 import type { CreatorReadinessResponse, ProviderReadiness, ValidationIssue } from '../../../../../../packages/creator/types';
 import { validateProductionSpec } from '../../../../../../packages/creator/validator';
-import { getCreatorReadiness, listCreatorProviders, saveCreatorProduction, submitCreatorProduction } from '../../../lib/creatorApi';
+import {
+  getCreatorReadiness,
+  getNativeCreatorReadiness,
+  listCreatorProviders,
+  saveCreatorProduction,
+  submitCreatorProduction,
+  submitNativeCreatorProduction
+} from '../../../lib/creatorApi';
 import { createDirectorState, directorReducer } from './directorState';
 import { CreativeBriefEditor, EnvironmentEditor, SubjectEditor } from './BriefSubjectEnvironment';
 import { SceneShotEditor } from './SceneShotEditor';
@@ -17,7 +25,6 @@ export const DIRECTOR_STEPS = [
   'Continuity', 'Visual Style', 'Camera & Motion', 'Audio',
   'Provider & Cost', 'Review & Generate'
 ] as const;
-
 
 const ISSUE_STEP: Record<ValidationIssue['section'], number> = {
   brief: 0, subjects: 1, environment: 2, shots: 3, continuity: 4,
@@ -33,8 +40,8 @@ const STEP_HELP: Record<(typeof DIRECTOR_STEPS)[number], string> = {
   'Visual Style': 'Describe the governed cinematic and surface treatment.',
   'Camera & Motion': 'Set camera, lens, movement and physicality constraints.',
   Audio: 'Plan music, ambience, effects, dialogue and synchronization.',
-  'Provider & Cost': 'Evaluate only server-verified provider capabilities and cost evidence.',
-  'Review & Generate': 'Validate the full production before any provider submission.'
+  'Provider & Cost': 'Evaluate server-verified external capabilities while keeping ATLAS Native as the zero-cost internal path.',
+  'Review & Generate': 'Validate the full production before any internal render or external generation.'
 };
 
 export function DirectorWorkspace() {
@@ -42,9 +49,12 @@ export function DirectorWorkspace() {
   const [activeStep, setActiveStep] = useState(0);
   const [readiness, setReadiness] = useState<CreatorReadinessResponse | null>(null);
   const [readinessState, setReadinessState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [nativeReadinessState, setNativeReadinessState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [nativeReadinessError, setNativeReadinessError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [nativeSubmitting, setNativeSubmitting] = useState(false);
   const [providers, setProviders] = useState<ProviderReadiness[]>([]);
   const [providerState, setProviderState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [providerError, setProviderError] = useState('');
@@ -62,6 +72,22 @@ export function DirectorWorkspace() {
         setReadiness(null);
         setReadinessState('error');
         setNotice(error instanceof Error ? error.message : 'readiness_failed');
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getNativeCreatorReadiness()
+      .then(value => {
+        if (!active) return;
+        setNativeReadinessState(value.native?.state === 'ready' ? 'ready' : 'error');
+        setNativeReadinessError(value.native?.state === 'ready' ? '' : String(value.native?.state || 'native_composer_unavailable'));
+      })
+      .catch(error => {
+        if (!active) return;
+        setNativeReadinessState('error');
+        setNativeReadinessError(error instanceof Error ? error.message : 'native_composer_unavailable');
       });
     return () => { active = false; };
   }, []);
@@ -95,6 +121,13 @@ export function DirectorWorkspace() {
     () => validateProductionSpec(state.spec, selectedProvider?.capability || undefined),
     [state.spec, selectedProvider]
   );
+  const nativeGate = useMemo(() => evaluateNativeRenderGate({
+    permissions,
+    dirty: state.dirty,
+    validationStatus: validation.status,
+    aspectRatio: state.spec.aspectRatio === 'adaptive' ? '9:16' : state.spec.aspectRatio,
+    audioEnabled: state.spec.audioEnabled
+  }), [permissions, state.dirty, state.spec.aspectRatio, state.spec.audioEnabled, validation.status]);
   const providerSummary = useMemo(() => {
     if (readinessState === 'loading') return 'Checking server readiness…';
     if (readinessState === 'error') return 'Provider readiness unavailable.';
@@ -113,12 +146,23 @@ export function DirectorWorkspace() {
     if (activeStep === 6) return <CameraMotionEditor {...props} />;
     if (activeStep === 7) return <AudioEditor {...props} />;
     if (activeStep === 8) return <ProviderGate providers={providers} spec={state.spec} dispatch={dispatch} loading={providerState === 'loading'} error={providerError} />;
-    return <ReviewPanel spec={state.spec} providers={providers} permissions={permissions} validation={validation} submitting={submitting} onSubmit={submitProduction} />;
+    return <ReviewPanel
+      spec={state.spec}
+      providers={providers}
+      permissions={permissions}
+      validation={validation}
+      dirty={state.dirty}
+      submitting={submitting}
+      nativeSubmitting={nativeSubmitting}
+      nativeReadinessState={nativeReadinessState}
+      nativeReadinessError={nativeReadinessError}
+      onSubmit={submitProduction}
+      onNativeSubmit={submitNativeProduction}
+    />;
   }
 
-
   async function submitProduction() {
-    if (!state.spec.providerPreference || submitting) return;
+    if (!state.spec.providerPreference || submitting || state.dirty) return;
     setSubmitting(true);
     setNotice('Submitting production…');
     try {
@@ -129,6 +173,21 @@ export function DirectorWorkspace() {
       setNotice(value.message === 'provider_adapter_not_configured' ? 'provider_adapter_not_configured' : value.message || 'submit_failed');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function submitNativeProduction() {
+    if (nativeSubmitting || nativeReadinessState !== 'ready' || !nativeGate.allowed) return;
+    setNativeSubmitting(true);
+    setNotice('Rendering with ATLAS Native Composer…');
+    try {
+      await submitNativeCreatorProduction(state.spec.id, state.spec.version);
+      setNotice('ATLAS Native render completed and was stored in Creator Library.');
+    } catch (error) {
+      const value = error as Error & { status?: number };
+      setNotice(value.status === 409 ? 'version_conflict' : value.message || 'native_render_failed');
+    } finally {
+      setNativeSubmitting(false);
     }
   }
 
@@ -153,7 +212,7 @@ export function DirectorWorkspace() {
       <Link to="/studio">ATLAS Studio</Link><span>/</span><span>Video Lab</span><span>/</span><span>Director</span>
     </nav>
     <header className="director-header">
-      <div><p className="eyebrow">Video Lab</p><h1>ATLAS Director</h1><p>Convert a creative brief into a governed, continuity-safe production specification before any external generation is allowed.</p></div>
+      <div><p className="eyebrow">Video Lab</p><h1>ATLAS Director</h1><p>Convert a creative brief into a governed production specification, then render internally at zero cost when ATLAS Native is verified ready.</p></div>
       <div className="director-header-actions">
         <span className={`director-readiness ${readinessState}`} role="status">{providerSummary}</span>
         <button className="director-action" type="button" onClick={saveDraft} disabled={!canWrite || saving}>Save draft</button>
@@ -189,12 +248,13 @@ export function DirectorWorkspace() {
       <aside className="director-context" aria-label="Director context">
         <div className="director-context-card"><span>Draft state</span><strong>{state.dirty ? 'Unsaved changes' : 'Saved / unchanged'}</strong></div>
         <div className="director-context-card"><span>Version</span><strong>{state.spec.version}</strong></div>
-        <div className="director-context-card"><span>Provider</span><strong>{state.spec.providerPreference || 'Not selected'}</strong></div>
+        <div className="director-context-card"><span>ATLAS Native</span><strong>{nativeReadinessState}</strong></div>
+        <div className="director-context-card"><span>External provider</span><strong>{state.spec.providerPreference || 'Not selected'}</strong></div>
         <section className={`director-validation ${validation.status}`} aria-label="Production validation">
           <div className="director-card-heading"><strong>Validation: {validation.status}</strong><span>{validation.issues.length} issue{validation.issues.length === 1 ? '' : 's'}</span></div>
           {validation.issues.slice(0, 8).map(issue => <div className={`director-issue ${issue.severity}`} key={`${issue.code}-${issue.targetId || 'root'}`}><div><strong>{issue.code}</strong><span>{issue.message}</span></div><button type="button" className="director-text-action" onClick={() => setActiveStep(ISSUE_STEP[issue.section])}>Go to section</button></div>)}
         </section>
-        <p className="director-context-note">Generation stays disabled until validation, permission and server-verified provider gates pass.</p>
+        <p className="director-context-note">Native render stays disabled until the current saved version, permission, validation and runtime readiness gates pass.</p>
         {notice && <p className="director-notice" role="status">{notice}</p>}
       </aside>
     </div>
