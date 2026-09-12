@@ -59,10 +59,14 @@ export type BudgetLineRecord = {
 };
 
 export type BudgetVarianceRow = {
+  budgetLineId: string;
   accountId: string;
   accountNumber: string;
   accountName: string;
   accountType: string;
+  periodStart: string;
+  periodEnd: string;
+  dimension: unknown;
   budget: number;
   actual: number;
   variance: number;
@@ -147,10 +151,14 @@ export function budgetVsActual(
       : Math.round((varianceCents / Math.abs(budgetCents)) * 10000) / 100;
 
     return {
+      budgetLineId: budgetLine.id,
       accountId: account.id,
       accountNumber: account.accountNumber,
       accountName: account.name,
       accountType: account.accountType,
+      periodStart: budgetLine.periodStart,
+      periodEnd: budgetLine.periodEnd,
+      dimension: budgetLine.dimension,
       budget: money(budgetCents),
       actual: money(actualCents),
       variance: money(varianceCents),
