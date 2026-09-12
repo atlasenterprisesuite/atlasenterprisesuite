@@ -1,0 +1,47 @@
+name: ATLAS AI Council Consensus Workflow CI
+
+on:
+  push:
+    branches: ["feature/atlas-ai-council-consensus-v1"]
+  pull_request:
+    branches: ["feature/atlas-ai-council-discussions-v1"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-ai-council-consensus-workflow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: AI Council deterministic workflow tests
+        run: >-
+          npx vitest run
+          tests/unit/ai-council-core.test.ts
+          tests/unit/ai-council-provider-adapters.test.ts
+          tests/unit/github-discussions-adapter.test.ts
+          tests/unit/ai-council-discussion-ingress.test.ts
+          tests/unit/ai-council-consensus-workflow.test.ts
+
+  no-provider-output-as-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require deterministic consensus implementation
+        shell: bash
+        run: |
+          grep -q "evaluateCouncilConsensus" packages/ai-council-orchestration/src/index.ts
+          grep -q "consensus.decided" packages/ai-council-orchestration/src/index.ts
+          echo "Deterministic consensus and audit hooks are present."
