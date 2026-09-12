@@ -29,6 +29,16 @@ describe('ATLAS Audit Ledger execution boundary', () => {
     expect(edge).not.toContain('body.tenant_id');
   });
 
+  it('keeps secret and provider credential sources out of ledger metadata construction', async () => {
+    const { edge } = await sources();
+    const start = edge.indexOf('async function appendAudit');
+    const end = edge.indexOf('function reviewedAction');
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    const appendAuditBlock = edge.slice(start, end);
+    expect(appendAuditBlock).not.toMatch(/SERVICE_ROLE_KEY|SUPABASE_ANON_KEY|authorization|password|recovery|private.?key|access.?token|api.?key|body\./i);
+  });
+
   it('preserves the fail-closed evidence verification guard', async () => {
     const { edge } = await sources();
     expect(edge).toContain('verified_evidence_resolver_required');
