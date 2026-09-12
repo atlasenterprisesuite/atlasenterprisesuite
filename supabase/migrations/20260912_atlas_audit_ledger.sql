@@ -56,3 +56,112 @@ grant select on public.audit_ledger_events to authenticated;
 
 comment on table public.audit_ledger_events is
   'ATLAS cryptographic audit ledger. Rows are immutable and contain only bounded non-secret event metadata.';
+
+create or replace function public.append_audit_ledger_event(
+  p_event_id uuid,
+  p_org_id uuid,
+  p_tenant_id text,
+  p_workflow_id uuid,
+  p_task_id uuid,
+  p_actor_id uuid,
+  p_action_type text,
+  p_payload_digest text,
+  p_previous_state_hash text,
+  p_metadata jsonb,
+  p_nonce uuid,
+  p_digest_version integer,
+  p_created_at timestamptz
+)
+returns public.audit_ledger_events
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_head public.audit_ledger_events%rowtype;
+  v_inserted public.audit_ledger_events%rowtype;
+begin
+  perform pg_advisory_xact_lock(
+    hashtextextended(p_org_id::text || ':' || p_workflow_id::text, 0)
+  );
+
+  if not exists (
+    select 1
+    from public.execution_workflows w
+    where w.id = p_workflow_id
+      and w.org_id = p_org_id
+      and w.tenant_id = p_tenant_id
+  ) then
+    raise exception 'audit_ledger_invalid_scope';
+  end if;
+
+  if not exists (
+    select 1
+    from public.execution_tasks t
+    where t.id = p_task_id
+      and t.workflow_id = p_workflow_id
+      and t.org_id = p_org_id
+      and t.tenant_id = p_tenant_id
+  ) then
+    raise exception 'audit_ledger_invalid_scope';
+  end if;
+
+  select *
+  into v_head
+  from public.audit_ledger_events
+  where org_id = p_org_id
+    and workflow_id = p_workflow_id
+  order by created_at desc, event_id desc
+  limit 1;
+
+  if p_previous_state_hash <> coalesce(v_head.payload_digest, 'GENESIS_BLOCK') then
+    raise exception 'audit_ledger_stale_head';
+  end if;
+
+  if v_head.event_id is not null and p_created_at <= v_head.created_at then
+    raise exception 'audit_ledger_stale_head';
+  end if;
+
+  insert into public.audit_ledger_events (
+    event_id,
+    org_id,
+    tenant_id,
+    workflow_id,
+    task_id,
+    actor_id,
+    action_type,
+    payload_digest,
+    previous_state_hash,
+    metadata,
+    nonce,
+    digest_version,
+    created_at
+  ) values (
+    p_event_id,
+    p_org_id,
+    p_tenant_id,
+    p_workflow_id,
+    p_task_id,
+    p_actor_id,
+    p_action_type,
+    p_payload_digest,
+    p_previous_state_hash,
+    p_metadata,
+    p_nonce,
+    p_digest_version,
+    p_created_at
+  )
+  returning * into v_inserted;
+
+  return v_inserted;
+end;
+$$;
+
+revoke all on function public.append_audit_ledger_event(
+  uuid, uuid, text, uuid, uuid, uuid, text, text, text, jsonb, uuid, integer, timestamptz
+) from public;
+revoke all on function public.append_audit_ledger_event(
+  uuid, uuid, text, uuid, uuid, uuid, text, text, text, jsonb, uuid, integer, timestamptz
+) from authenticated;
+grant execute on function public.append_audit_ledger_event(
+  uuid, uuid, text, uuid, uuid, uuid, text, text, text, jsonb, uuid, integer, timestamptz
+) to service_role;
