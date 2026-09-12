@@ -5,7 +5,17 @@ create table if not exists public.audit_ledger_events (
   workflow_id uuid not null references public.execution_workflows(id) on delete restrict,
   task_id uuid not null references public.execution_tasks(id) on delete restrict,
   actor_id uuid not null,
-  action_type text not null check (length(trim(action_type)) > 0),
+  action_type text not null check (
+    action_type in (
+      'TASK_STARTED',
+      'GATE_EVALUATED',
+      'EVIDENCE_RECORDED',
+      'TASK_FAILED',
+      'TASK_COMPLETED',
+      'WORKFLOW_BLOCKED'
+    )
+    or action_type ~ '^execution\.[a-z0-9_.-]{1,100}$'
+  ),
   payload_digest text not null check (payload_digest ~ '^[a-f0-9]{64}$'),
   previous_state_hash text not null check (
     previous_state_hash = 'GENESIS_BLOCK' or previous_state_hash ~ '^[a-f0-9]{64}$'
@@ -84,6 +94,20 @@ begin
   perform pg_advisory_xact_lock(
     hashtextextended(p_org_id::text || ':' || p_workflow_id::text, 0)
   );
+
+  if not (
+    p_action_type in (
+      'TASK_STARTED',
+      'GATE_EVALUATED',
+      'EVIDENCE_RECORDED',
+      'TASK_FAILED',
+      'TASK_COMPLETED',
+      'WORKFLOW_BLOCKED'
+    )
+    or p_action_type ~ '^execution\.[a-z0-9_.-]{1,100}$'
+  ) then
+    raise exception 'audit_ledger_invalid_action_type';
+  end if;
 
   if not exists (
     select 1
