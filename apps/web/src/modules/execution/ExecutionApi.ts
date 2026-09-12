@@ -66,9 +66,10 @@ function headers(token: string, organizationId: string) {
   };
 }
 
-async function callExecution<T>(api: string, init: RequestInit = {}): Promise<T> {
+async function callExecution<T>(api: string, init: RequestInit = {}, params: Record<string, string> = {}): Promise<T> {
   const { organization, token } = await executionContext();
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/atlas-execution?api=${encodeURIComponent(api)}`, {
+  const query = new URLSearchParams({ api, ...params });
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/atlas-execution?${query.toString()}`, {
     ...init,
     headers: { ...headers(token, organization.id), ...(init.headers || {}) }
   });
@@ -103,8 +104,9 @@ export const executionApi: ExecutionApiClient = {
 
   async getWorkflow(taskId) {
     const result = await callExecution<{ ok: true; workflow: AtlasWorkflowRecord }>(
-      `workflow&task_id=${encodeURIComponent(taskId)}`,
-      { method: 'GET' }
+      'workflow',
+      { method: 'GET' },
+      { task_id: taskId }
     );
     return result.workflow;
   }
