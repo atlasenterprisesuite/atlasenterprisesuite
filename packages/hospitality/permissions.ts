@@ -1,4 +1,4 @@
-import type { HospitalityActorContext, HospitalityPermission } from './types';
+import type { HospitalityActorContext, HospitalityPermission } from './types.ts';
 
 export function hasHospitalityPermission(
   context: HospitalityActorContext,
