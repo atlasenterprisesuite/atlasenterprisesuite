@@ -4,43 +4,43 @@
 
 **Goal:** Deliver the first evidence-backed ATLAS Work workflow for `Verify atlasenterprisesuite.com with OpenAI`, using Hybrid execution, Guided autonomy, a `$0` paid-provider budget, exact-payload DNS approval, public DNS verification, OpenAI browser verification, and tenant-safe evidence/audit semantics.
 
-**Architecture:** The pilot is an ATLAS Manager-owned Work template that persists ordinary execution workflow/task/step rows. DNS mutation is performed through an authorized DNS API adapter when available or a constrained browser-runtime job otherwise. OpenAI verification is browser-driven because no supported public domain-verification API is assumed. Completion requires independent public DNS evidence plus observed OpenAI `verified` state; a provider write response alone cannot complete the task.
+**Architecture:** The pilot is an ATLAS Manager-owned Work template that persists ordinary execution workflow/task/step rows. DNS mutation uses an authorized DNS API adapter when available or a constrained browser-runtime job otherwise. OpenAI verification is browser-driven because no supported public domain-verification API is assumed. Completion requires independent public DNS evidence plus observed OpenAI `verified` state; a provider write response alone cannot complete the task.
 
-**Tech Stack:** TypeScript 5.7, Supabase Edge Functions/Postgres, browser-runtime job protocol from the Runtime plan, public DNS-over-HTTPS read verification, Vitest 3.2, Testing Library 16.
+**Tech Stack:** TypeScript 5.7, Supabase Edge Functions/Postgres, browser-runtime job protocol, public DNS-over-HTTPS read verification, Vitest 3.2, Testing Library 16.
 
 **Spec:** `docs/superpowers/specs/2026-09-12-atlas-work-sovereign-design.md`
 
 ## Global Constraints
 
 - Target branch: `feat/atlas-work-sovereign` after the first three Work plans pass review.
-- Owner module is `manager`; execution mode default `hybrid`; autonomy default `guided`; paid-provider budget default `$0`.
+- Owner module `manager`; execution mode `hybrid`; autonomy `guided`; paid-provider budget `$0` by default.
 - The workflow may add only the exact approved TXT record. It must not delete DNS records, change nameservers, modify MX, or alter unrelated A/CNAME/TXT records.
-- The active OpenAI verification value is observed from the authorized OpenAI surface at runtime; do not hard-code a token from screenshots, chat text, fixtures or documentation.
-- Never persist the OpenAI verification token in ordinary screenshots or logs. Persist a redacted digest/reference and the public-DNS verification result; the exact value may live only in the current step action payload/server execution boundary as required to perform the authorized action.
-- Automated tests use fakes/fixtures and must never modify production DNS or click a live OpenAI account.
+- The active OpenAI verification value is observed from the authorized OpenAI surface at runtime; do not hard-code a value from screenshots, chat, fixtures or docs.
+- The exact verification value may exist only in the server-side current action payload/runtime action required to perform the approved mutation. It must not appear in ordinary UI state, screenshots retained as evidence, logs or audit text.
+- Automated tests use fakes/fixtures and never modify production DNS or click a live OpenAI account.
 - Production validation requires an exact Approval Center decision bound to the current DNS action payload.
 - MFA/CAPTCHA/reauthentication hands control to the authorized human and resumes from canonical state afterward.
-- Completion requires: exact TXT at correct hostname, public DNS visibility, OpenAI `verified`, persisted evidence, and audit.
+- Completion requires exact TXT at correct hostname, public DNS visibility, OpenAI `verified`, persisted verified evidence and audit.
 
 ## File Map
 
-- `packages/execution/src/state-machine.ts` — add explicit step transition guard.
-- `packages/execution/src/dns-verification.ts` — normalize TXT answers and verify exact expected value.
+- `packages/execution/src/state-machine.ts` — explicit step transition guard.
+- `packages/execution/src/dns-verification.ts` — TXT normalization/exact-match semantics.
 - `packages/execution/src/work-templates.ts` — typed Work template registry and OpenAI-domain template.
 - `packages/execution/src/index.ts` — exports.
-- `supabase/functions/atlas-execution/openai-domain.ts` — pilot workflow builder, step executor and verification coordinator.
-- `supabase/functions/atlas-execution/dns-public.ts` — public DNS-over-HTTPS verifier with bounded polling.
+- `supabase/functions/atlas-execution/openai-domain.ts` — pilot workflow builder, step executor, evidence and workflow completion coordinator.
+- `supabase/functions/atlas-execution/dns-public.ts` — bounded Cloudflare DNS-over-HTTPS TXT verifier.
 - `supabase/functions/atlas-execution/index.ts` — `create_work_template`, `execute_work_step`, `resume_work_step` operations.
 - `apps/web/src/work/WorkTemplatesPage.tsx` — real template list and launch path.
-- `apps/web/src/work/WorkTeamPage.tsx` — organization-scoped Work role/permission visibility using existing membership state.
+- `apps/web/src/work/WorkTeamPage.tsx` — organization-scoped Work role/permission visibility using existing membership/session state.
 - `apps/web/src/work/WorkRoutes.tsx` — `/work/templates`, `/work/team`.
-- `tests/unit/execution-step-state-machine.test.ts` — step transitions.
-- `tests/unit/dns-verification.test.ts` — TXT parsing and exact-match semantics.
-- `tests/unit/openai-domain-template.test.ts` — exact steps, envelopes and evidence requirements.
-- `tests/unit/openai-domain-edge.test.ts` — no hard-coded token, exact approval, resume/reconcile rules.
-- `tests/integration/work-templates.test.tsx` — template launch UI.
-- `tests/integration/work-tenant-isolation.test.tsx` — cross-org failure behavior.
-- `tests/integration/openai-domain-guided-flow.test.tsx` — end-to-end fake workflow through approval/evidence/completion.
+- `tests/unit/execution-step-state-machine.test.ts`.
+- `tests/unit/dns-verification.test.ts`.
+- `tests/unit/openai-domain-template.test.ts`.
+- `tests/unit/openai-domain-edge.test.ts`.
+- `tests/integration/work-templates.test.tsx`.
+- `tests/integration/work-tenant-isolation.test.tsx`.
+- `tests/integration/openai-domain-guided-flow.test.tsx`.
 
 ---
 
@@ -68,7 +68,7 @@ it('does not allow completed steps to run again', () => {
   expect(canTransitionStep('completed', 'running')).toBe(false);
 });
 
-it('allows waiting approval and blocker recovery', () => {
+it('allows approval and blocker recovery', () => {
   expect(canTransitionStep('ready', 'awaiting_approval')).toBe(true);
   expect(canTransitionStep('awaiting_approval', 'ready')).toBe(true);
   expect(canTransitionStep('blocked', 'ready')).toBe(true);
@@ -81,9 +81,9 @@ it('allows waiting approval and blocker recovery', () => {
 npx vitest run tests/unit/execution-step-state-machine.test.ts
 ```
 
-- [ ] **Step 3: Implement fail-closed step transitions**
+- [ ] **Step 3: Implement fail-closed transitions**
 
-Use an exhaustive `Record<StepStatus, readonly StepStatus[]>` with terminal `completed` and `cancelled`. Permit `failed -> ready|cancelled`, `running -> blocked|failed|completed|cancelled`, and no `pending -> completed` shortcut.
+Use an exhaustive `Record<StepStatus, readonly StepStatus[]>`. Terminal: `completed`, `cancelled`. Allow `pending -> ready|blocked|cancelled`; `ready -> running|blocked|awaiting_approval|cancelled`; `running -> blocked|failed|completed|cancelled`; `awaiting_approval -> ready|blocked|cancelled`; `blocked -> ready|cancelled`; `failed -> ready|cancelled`. Do not allow `pending -> completed`.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
@@ -121,9 +121,9 @@ it('requires exact value equality', () => {
 });
 ```
 
-- [ ] **Step 2: Verify RED, implement, verify GREEN**
+- [ ] **Step 2: Verify RED, implement, verify GREEN and commit**
 
-TXT normalization removes DNS presentation quotes and joins adjacent quoted chunks only; it must not lowercase, trim internal characters or otherwise rewrite the verification value.
+TXT normalization removes DNS presentation quotes and joins adjacent quoted chunks only; it must not lowercase or otherwise rewrite the value.
 
 ```bash
 npx vitest run tests/unit/dns-verification.test.ts
@@ -141,11 +141,11 @@ git commit -m "feat: add exact DNS TXT verification primitives"
 - Test: `tests/unit/openai-domain-template.test.ts`
 
 **Interfaces:**
-- Produces `WorkTemplateDefinition`, `WORK_TEMPLATES`, `getWorkTemplate(id)` and template id `manager.openai_domain_verification`.
+- Produces `WorkTemplateDefinition`, `WORK_TEMPLATES`, `getWorkTemplate(id)` and `manager.openai_domain_verification`.
 
 - [ ] **Step 1: Write the failing template test**
 
-Assert the template owner is `manager`, defaults Hybrid/Guided/Auto/0, target domain input is required, and step action types are exactly:
+Assert owner `manager`, defaults Hybrid/Guided/Auto/0, required input `domain`, and action types exactly:
 
 ```ts
 [
@@ -163,7 +163,7 @@ Assert the template owner is `manager`, defaults Hybrid/Guided/Auto/0, target do
 ]
 ```
 
-Assert `create_dns_txt` requires `execution.write`, evidence kind `dns_txt_write`, and approval sensitivity `high`. Assert no step contains a literal verification token.
+Assert `create_dns_txt` requires `execution.write`, sensitivity `high`, and evidence `dns_txt_write`; `verify_public_dns_txt` requires `dns_public_txt`; `verify_openai_domain_state` requires `openai_domain_verified`; no template contains a literal verification value.
 
 - [ ] **Step 2: Verify RED**
 
@@ -171,9 +171,9 @@ Assert `create_dns_txt` requires `execution.write`, evidence kind `dns_txt_write
 npx vitest run tests/unit/openai-domain-template.test.ts
 ```
 
-- [ ] **Step 3: Implement the template registry**
+- [ ] **Step 3: Implement registry**
 
-Each template step includes title, actionType, completionCriteria, evidenceRequirement, permissionsRequired and safe envelope hints. The OpenAI browser domain allowlist is `['openai.com','chatgpt.com']`; the DNS provider domain is resolved at runtime and added only after authoritative-provider discovery.
+Each step has title, actionType, completionCriteria, evidenceRequirement, permissionsRequired and safe envelope hints. OpenAI browser allowlist is `['openai.com','chatgpt.com']`. DNS provider domain is not predeclared; it is resolved at runtime and added to the mutation envelope only after authoritative-provider discovery.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
@@ -185,7 +185,7 @@ git commit -m "feat: add OpenAI domain verification Work template"
 
 ---
 
-### Task 4: Build server-side pilot workflow creation and public DNS verifier
+### Task 4: Build pilot workflow creation and bounded public DNS verification
 
 **Files:**
 - Create: `supabase/functions/atlas-execution/openai-domain.ts`
@@ -194,11 +194,11 @@ git commit -m "feat: add OpenAI domain verification Work template"
 - Test: `tests/unit/openai-domain-edge.test.ts`
 
 **Interfaces:**
-- Produces `create_work_template` operation and helper `verifyPublicTxt({ hostname, expectedValue, fetchImpl, attempts, delayMs })`.
+- Produces `create_work_template` and `verifyPublicTxt({ hostname, expectedValue, fetchImpl, attempts, delayMs })`.
 
 - [ ] **Step 1: Write failing source/behavior tests**
 
-Assert `create_work_template` requires `execution.write`, accepts only known template id + inputs, builds ordinary execution workflow/task/step rows, stores `context.work` defaults, and does not accept caller-provided step arrays. Assert `dns-public.ts` performs DNS-over-HTTPS GET for TXT and uses `verifyDnsTxt`; tests inject fake `fetchImpl` and do not use network.
+Assert `create_work_template` requires `execution.write`, accepts only known template id + typed inputs, builds ordinary execution workflow/task/step rows, stores safe `context.work`, and rejects caller-provided step arrays. Assert DNS tests inject `fetchImpl` and never use network.
 
 - [ ] **Step 2: Verify RED**
 
@@ -208,11 +208,18 @@ npx vitest run tests/unit/openai-domain-edge.test.ts
 
 - [ ] **Step 3: Implement template creation**
 
-For `manager.openai_domain_verification`, validate target domain exactly and create one workflow + one Manager task + template steps. Initial current step is the first step; workflow/task status becomes `now`; first step becomes `ready`; later steps remain `pending`. Store no verification token at creation.
+For template `manager.openai_domain_verification`, require `domain === 'atlasenterprisesuite.com'` for this first production pilot fixture; generic domain support can be added later through the same typed template input after tests. Create one workflow, one Manager task and all template steps. Set workflow/task `now`, first step `ready`, later steps `pending`, current task/step ids accordingly. Store no verification value at creation.
 
-- [ ] **Step 4: Implement bounded public-DNS polling**
+- [ ] **Step 4: Implement exact DNS-over-HTTPS read path**
 
-Default testable helper uses `attempts = 12`, `delayMs = 5000` only in runtime; callers may set attempts/delay in tests. Response must return `{ verified, answers, attemptsUsed }`. Timeout returns `verified:false`; it is not a thrown server failure.
+Use:
+
+```ts
+const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=TXT`;
+const response = await fetchImpl(url, { headers: { accept: 'application/dns-json' } });
+```
+
+Parse `Answer[].data` strings and call `verifyDnsTxt`. Runtime defaults: `attempts = 12`, `delayMs = 5000`; tests pass `attempts=1`, `delayMs=0`. Return `{ verified, answers, attemptsUsed }`. Propagation timeout returns `verified:false`, not a thrown server error. HTTP/non-JSON resolver failure returns a typed `dns_resolver_unavailable` error.
 
 - [ ] **Step 5: Verify GREEN and commit**
 
@@ -225,7 +232,7 @@ git commit -m "feat: create OpenAI domain pilot workflows"
 
 ---
 
-### Task 5: Add `execute_work_step` / `resume_work_step` with exact approval, runtime dispatch and reconciliation
+### Task 5: Add `execute_work_step` and `resume_work_step` with exact approval and reconciliation
 
 **Files:**
 - Modify: `supabase/functions/atlas-execution/openai-domain.ts`
@@ -233,28 +240,45 @@ git commit -m "feat: create OpenAI domain pilot workflows"
 - Test: `tests/unit/openai-domain-edge.test.ts`
 
 **Interfaces:**
-- Consumes Work routing/policy, runtime queue, step transitions, Approval Center and DNS verifier.
-- Produces operations `execute_work_step`, `resume_work_step`.
+- Consumes Work router/policy, runtime queue, step transitions, Approval Center, DNS verifier.
+- Produces `execute_work_step`, `resume_work_step`.
 
 - [ ] **Step 1: Add failing tests for sensitive mutation**
 
-For `prepare_dns_txt_mutation`, the active OpenAI token must already have been observed by an authorized browser job and stored only in the server-side current step action payload. `create_dns_txt` must call server policy; Guided + high-risk DNS mutation returns `awaiting_approval` until an existing approval digest matches the exact current task/version/action payload. Test that changing hostname or TXT value after approval causes `approval_binding_mismatch` and blocks execution.
+The active OpenAI requirement must first be observed by an authorized browser job. `prepare_dns_txt_mutation` stores only the exact hostname/type/value needed in the server-side `create_dns_txt` step action payload. `create_dns_txt` evaluates policy; Guided + high sensitivity transitions to `awaiting_approval`. Approval must be bound to the exact current task version + current step action payload. Changing hostname or value after approval must cause `approval_binding_mismatch` on approval use.
 
-- [ ] **Step 2: Add failing tests for execution mechanism**
+- [ ] **Step 2: Add failing tests for mechanism selection**
 
-When an authorized DNS API capability exists, `execute_work_step` dispatches through the DNS adapter port. When it does not and an eligible browser runtime exists, it enqueues `create_dns_txt` with an envelope that permits only the resolved DNS provider domain and the `create_dns_txt` action. With neither capability it sets step/task blocked with `dns_execution_capability_missing`.
+If an authorized DNS API capability exists, dispatch through a `DnsMutationPort`. If not, but an eligible browser runtime exists, enqueue `create_dns_txt` with an envelope allowing only the resolved DNS provider domain and action `create_dns_txt`. With neither capability, transition to blocked reason `dns_execution_capability_missing`.
+
+Define the port explicitly:
+
+```ts
+export type DnsMutationPort = {
+  readTxt(input: { domain: string; name: string }): Promise<string[]>;
+  createTxt(input: { domain: string; name: string; value: string }): Promise<{ providerRecordId: string }>;
+};
+```
+
+A concrete API adapter is considered available only when an authorized connection resolver can construct this port; otherwise route to browser or block. Do not fake API availability.
 
 - [ ] **Step 3: Add failing resume/reconcile tests**
 
-If a runtime job times out after the mutation, `resume_work_step` first performs provider readback/public DNS lookup. If the exact TXT already exists, it does not enqueue another create action; it proceeds to verification. If absent, it may retry according to policy.
+If a runtime/API response is uncertain after mutation, `resume_work_step` first calls provider readback when available and public DNS verification. Exact record present => do not create again; absent => retry only after current policy/approval is revalidated.
 
-- [ ] **Step 4: Implement the step executor**
+- [ ] **Step 4: Implement executor**
 
-For every operation: load org-scoped workflow/task/step; assert step transition; evaluate server policy immediately before mutation; require current approval where needed; route to API or browser; transition to `running`; on human barrier transition to `blocked` or `awaiting_approval` with truthful reason; never mark completed until that step's completion criteria and required evidence are satisfied.
+Every operation loads org-scoped workflow/task/step, checks current state, evaluates policy immediately before mutation, checks current approval where required, selects mechanism, transitions step to `running`, dispatches action, and records audit. Human barriers become `blocked`/`awaiting_approval`; no sensitive action executes before approval.
 
 - [ ] **Step 5: Implement browser-specific OpenAI actions**
 
-`observe_openai_verification_requirement`, `open_openai_domain_verification`, `click_openai_check`, and `verify_openai_domain_state` dispatch through runtime jobs. The final verification result accepted from the runtime is a sanitized structured result `{ domain, state: 'verified'|'not_verified', observedAt }`; screenshots are optional non-secret references, not the authority.
+`observe_openai_verification_requirement`, `open_openai_domain_verification`, `click_openai_check`, `verify_openai_domain_state` dispatch through runtime jobs. Final accepted structured result:
+
+```ts
+{ domain: 'atlasenterprisesuite.com', state: 'verified' | 'not_verified', observedAt: string }
+```
+
+Screenshots may be optional redacted references but never authority.
 
 - [ ] **Step 6: Verify GREEN and commit**
 
@@ -267,18 +291,18 @@ git commit -m "feat: execute and resume OpenAI domain pilot safely"
 
 ---
 
-### Task 6: Persist verified evidence and enforce completion semantics
+### Task 6: Persist trusted verified evidence and complete task/workflow canonically
 
 **Files:**
 - Modify: `supabase/functions/atlas-execution/openai-domain.ts`
 - Test: `tests/integration/openai-domain-guided-flow.test.tsx`
 
 **Interfaces:**
-- Produces verified evidence kinds `dns_txt_write`, `dns_public_txt`, `openai_domain_verified` and final task completion only through `evaluateTaskCompletion`.
+- Produces verified evidence `dns_txt_write`, `dns_public_txt`, `openai_domain_verified`; `completePilotTaskIfEligible`; `completeWorkWorkflowIfEligible`.
 
 - [ ] **Step 1: Write failing guided-flow test**
 
-Drive a fully fake server/runtime/provider flow: observe token -> inspect DNS -> request approval -> approve -> write TXT -> provider readback -> public DNS exact match -> OpenAI Check -> OpenAI state `verified` -> evidence -> completed. Assert before the final `openai_domain_verified` evidence, completion returns `completion_requirements_not_met`.
+Drive fake flow: observe requirement -> inspect DNS -> approval request -> approve -> write TXT -> provider readback -> public DNS exact match -> OpenAI Check -> OpenAI `verified` -> evidence -> completed. Before `openai_domain_verified`, task completion must return `completion_requirements_not_met`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -286,25 +310,27 @@ Drive a fully fake server/runtime/provider flow: observe token -> inspect DNS ->
 npx vitest run tests/integration/openai-domain-guided-flow.test.tsx
 ```
 
-- [ ] **Step 3: Implement evidence recording**
+- [ ] **Step 3: Implement trusted verifier evidence**
 
-Evidence references must avoid the raw token. Use references such as:
+Trusted server helpers may insert `verified:true`; ordinary caller-facing `record_evidence` continues rejecting caller-supplied verified evidence. Evidence references never contain raw verification value. Use SHA-256 `valueDigest`:
 
 ```ts
 {
   kind: 'dns_public_txt',
-  reference: JSON.stringify({ hostname, valueDigest, resolver: 'public-doh', observedAt }),
+  reference: JSON.stringify({ hostname, valueDigest, resolver: 'cloudflare-doh', observedAt }),
   verified: true
 }
 ```
 
-The server itself marks these trusted verifier-generated records `verified:true`; ordinary `record_evidence` continues refusing caller-supplied verified evidence.
+- [ ] **Step 4: Gate task completion through the existing canonical evaluator**
 
-- [ ] **Step 4: Gate final completion**
+`completePilotTaskIfEligible` loads steps/evidence/approvals/dependencies and calls existing `evaluateTaskCompletion`. Only when eligible may it transition task to `completed` using `canTransitionTask`; otherwise return exact reasons.
 
-Only after every required step is completed/cancelled, all evidence requirements are verified, dependencies resolved and approvals satisfied may the task transition to `completed`. Then update workflow completion state using the canonical workflow rules already present after reconciliation; do not create a parallel Work completion flag.
+- [ ] **Step 5: Define workflow completion explicitly instead of assuming an existing workflow state helper**
 
-- [ ] **Step 5: Verify GREEN and commit**
+`completeWorkWorkflowIfEligible(admin, context, workflowId)` loads all tasks for the workflow. It may mark `execution_workflows.status='completed'`, set `completed_at`, clear `current_task_id`, and append `execution.workflow.completed` audit only when every task status is `completed` or `cancelled` and at least one task exists. Update must be scoped by workflow id + org id and current nonterminal status. This helper is not a second state machine; it derives workflow completion from canonical task truth.
+
+- [ ] **Step 6: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/integration/openai-domain-guided-flow.test.tsx
@@ -331,11 +357,11 @@ git commit -m "feat: verify OpenAI domain workflow completion with evidence"
 
 - [ ] **Step 1: Write failing template UI test**
 
-Assert the template card identifies owner `ATLAS Manager`, default `Hybrid · Guided · $0`, required input `Domain`, and launching with `atlasenterprisesuite.com` calls `create_work_template` then navigates to `/execution/:workflowId`.
+Template card identifies owner `ATLAS Manager`, defaults `Hybrid · Guided · $0`, required input `Domain`; launch with `atlasenterprisesuite.com` calls `create_work_template` and navigates to `/execution/:workflowId`.
 
 - [ ] **Step 2: Write failing tenant-isolation test**
 
-Mock authenticated org A and server data containing org B rows; normalization/list code must not render them. Edge-function source tests must assert every pilot workflow/task/step/job/evidence query includes `.eq('org_id', context.orgId)` or equivalent server-scoped relation.
+Mock org A and malicious/incorrect response containing org B; client normalizer drops rows whose `organizationId` differs from active org. Edge source/behavior tests require every pilot workflow/task/step/job/evidence query to include org scope and server membership context.
 
 - [ ] **Step 3: Verify RED**
 
@@ -345,7 +371,7 @@ npx vitest run tests/integration/work-templates.test.tsx tests/integration/work-
 
 - [ ] **Step 4: Implement pages**
 
-Templates page reads the known safe registry exposed through a small client-side metadata export or a safe `list_work_templates` server operation; launching is always server-side. Team page shows current organization membership role and derived execution permissions from existing session data; it does not invent team mutation controls unless an existing membership mutation API is available.
+Templates page may render static safe template metadata from `WORK_TEMPLATES`; launch is server-side. Team page shows current organization identity, current user's role, and derived execution permissions using existing authenticated session data. Do not add fake team-management mutations.
 
 - [ ] **Step 5: Verify GREEN and commit**
 
@@ -395,12 +421,12 @@ npm run build
 
 - [ ] **Step 3: Final independent spec review**
 
-Verify all 15 acceptance criteria in the design spec, especially no parallel workflow system, all three modes/autonomy/runtime kinds, secret boundaries, `$0` default budget, resumability, independent verification and exact OpenAI-domain pilot semantics.
+Verify all 15 acceptance criteria: no parallel workflow system, all three execution modes/autonomy/runtime kinds, secret boundaries, `$0` default, resumability, independent verification and exact OpenAI-domain semantics.
 
 - [ ] **Step 4: Final independent security/quality review**
 
-Review RLS, org scoping, approval digest binding, runtime leases, stale runtime rejection, token sanitization, no hard-coded OpenAI token, DNS scope, browser envelope, idempotent resume and mobile/accessibility regressions. Fix and rerun all verification.
+Review RLS/org scoping, approval digest binding, runtime leases, stale runtime rejection, sanitization, no hard-coded OpenAI value, DNS mutation scope, envelope, idempotent resume and responsive/accessibility regressions. Fix and rerun all verification.
 
 - [ ] **Step 5: Prepare production pilot; do not auto-run from CI**
 
-Production pilot prerequisites must all be real and verified: authorized OpenAI browser session, authoritative DNS provider resolved, either an authorized DNS API connection or healthy authorized browser runtime, exact DNS mutation approval, and `$0` paid-provider cost. If any prerequisite is missing, surface it as a blocker. Do not claim the domain is verified until OpenAI reports `verified` and evidence is persisted.
+Prerequisites must all be real: authorized OpenAI browser session; authoritative DNS provider resolved; authorized DNS API port or healthy browser runtime; exact DNS mutation approval; `$0` paid-provider cost. Missing prerequisite becomes a blocker. Do not claim the domain verified until OpenAI reports `verified` and required evidence is persisted.
