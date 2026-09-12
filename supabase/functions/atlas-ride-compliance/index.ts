@@ -62,7 +62,7 @@ async function profilePhoto(req: Request) {
       eventType: 'requirement.viewed'
     });
   }
-  return json({ ok: true, requirement });
+  return json({ ok: true, requirement, permissions: ctx.permissions });
 }
 
 async function submitProfilePhoto(req: Request) {
