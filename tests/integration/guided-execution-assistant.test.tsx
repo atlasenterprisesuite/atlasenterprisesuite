@@ -83,4 +83,38 @@ describe('Guided Execution Assistant panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'What is next?' }));
     expect(screen.getByRole('status')).toHaveTextContent(/no persisted next action/i);
   });
+
+  it('updates from a new canonical state without Assistant persistence', () => {
+    const blocked = makeGuidedState({
+      taskStatus: 'blocked',
+      blockedReason: 'cloudflare_not_verified',
+      stepStatuses: ['completed', 'blocked', 'blocked']
+    });
+    const completed = makeGuidedState({
+      workflowStatus: 'completed',
+      taskStatus: 'completed',
+      currentStepId: 'step-3',
+      stepStatuses: ['completed', 'completed', 'completed']
+    });
+
+    const { rerender } = render(<ExecutionAssistantPanel state={blocked} onSelectStep={vi.fn()} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/cloudflare_not_verified/i);
+
+    rerender(<ExecutionAssistantPanel state={completed} onSelectStep={vi.fn()} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/workflow completed/i);
+  });
+
+  it('uses native keyboard-focusable controls and a polite live status region', () => {
+    render(<ExecutionAssistantPanel state={makeGuidedState()} onSelectStep={vi.fn()} />);
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+
+    for (const name of ['Continue', 'What is next?', 'Where did we stop?']) {
+      const button = screen.getByRole('button', { name });
+      expect(button.tagName).toBe('BUTTON');
+      expect(button).toHaveAttribute('type', 'button');
+      button.focus();
+      expect(document.activeElement).toBe(button);
+    }
+  });
 });
