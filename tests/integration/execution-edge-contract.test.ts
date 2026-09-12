@@ -59,6 +59,14 @@ describe('ATLAS Universal Execution Edge contract', () => {
     expect(source).toContain('parent_task_workflow_mismatch');
   });
 
+  it('bounds authenticated JSON request bodies before execution work', async () => {
+    const source = await edgeSource();
+    expect(source).toContain('MAX_REQUEST_BYTES');
+    expect(source).toContain('payload_too_large');
+    expect(source).toContain("req.headers.get('content-length')");
+    expect(source).toContain('new TextEncoder().encode(JSON.stringify(body)).byteLength');
+  });
+
   it('uses runtime-neutral UUID generation for correlation and audit lineage', async () => {
     const source = await edgeSource();
     expect(source).toContain('crypto.randomUUID()');
