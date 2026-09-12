@@ -15,6 +15,7 @@ describe('ATLAS Accounting workspace routes', () => {
     ['/finance/accounting/fixed-assets', 'Fixed Assets'],
     ['/finance/accounting/budgeting', 'Budgeting'],
     ['/finance/accounting/forecast', 'Cash Flow Forecast'],
+    ['/finance/accounting/consolidation', 'Intercompany & Consolidation'],
     ['/finance/accounting/period-close', 'Period Close'],
     ['/finance/accounting/reports', 'Financial Reports'],
     ['/finance/accounting/audit-trail', 'Audit Trail'],
