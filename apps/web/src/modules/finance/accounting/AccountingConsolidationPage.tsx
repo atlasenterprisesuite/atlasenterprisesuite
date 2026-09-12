@@ -121,14 +121,14 @@ export function AccountingConsolidationPage() {
   useEffect(() => { void loadWorkspace(); }, [loadWorkspace]);
 
   const selectedGroup = workspace?.groups.find((group) => group.id === selectedGroupId) || null;
-  const groupMembers = workspace?.members.filter((member) => member.groupId === selectedGroupId) || [];
-  const groupMatches = workspace?.matches.filter((match) => match.groupId === selectedGroupId) || [];
-  const groupAdjustments = workspace?.adjustments.filter((adjustment) => adjustment.groupId === selectedGroupId) || [];
+  const groupMembers = useMemo(() => workspace?.members.filter((member) => member.groupId === selectedGroupId) || [], [workspace, selectedGroupId]);
+  const groupMatches = useMemo(() => workspace?.matches.filter((match) => match.groupId === selectedGroupId) || [], [workspace, selectedGroupId]);
+  const groupAdjustments = useMemo(() => workspace?.adjustments.filter((adjustment) => adjustment.groupId === selectedGroupId) || [], [workspace, selectedGroupId]);
   const entityMap = useMemo(() => new Map((workspace?.entities || []).map((entity) => [entity.id, entity])), [workspace]);
   const matchedCandidates = useMemo(() => candidates.filter((candidate) => candidate.latestMatchId), [candidates]);
   const openCandidates = useMemo(() => candidates.filter((candidate) => !candidate.latestMatchId), [candidates]);
-  const exceptionCount = groupMatches.filter((match) => match.status === 'exception').length;
-  const matchedForElimination = groupMatches.filter((match) => match.status === 'matched');
+  const exceptionCount = useMemo(() => groupMatches.filter((match) => match.status === 'exception').length, [groupMatches]);
+  const matchedForElimination = useMemo(() => groupMatches.filter((match) => match.status === 'matched'), [groupMatches]);
 
   const refreshGroupData = useCallback(async (groupId: string) => {
     if (!groupId) {
