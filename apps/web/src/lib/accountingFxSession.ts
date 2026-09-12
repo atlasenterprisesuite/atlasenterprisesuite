@@ -8,8 +8,8 @@ import {
 } from '../../../../packages/accounting/src';
 import { getActiveAtlasOrganization, getAtlasAccessToken, type AtlasOrganization } from './atlasSession';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
+const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 
 export type AccountingFxWorkspace = {
   source: 'supabase_rls_live';
