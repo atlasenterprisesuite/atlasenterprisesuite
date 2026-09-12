@@ -8,6 +8,7 @@ import {
 } from './api';
 import type { ApprovalDecision } from './ApprovalCard';
 import { AuditTimeline } from './AuditTimeline';
+import { ExecutionAssistantPanel } from './ExecutionAssistantPanel';
 import { ExecutionBreadcrumbs } from './ExecutionBreadcrumbs';
 import { humanizeExecutionValue } from './ExecutionStepRow';
 import { StepActionBar } from './StepActionBar';
@@ -159,6 +160,11 @@ export function GuidedExecutionPage() {
     }
   };
 
+  const selectAssistantStep = (stepId: string) => {
+    setActionError(null);
+    setSelectedStepId(stepId);
+  };
+
   return (
     <section className="page-stack execution-page">
       <ExecutionBreadcrumbs workflow={data.workflow} />
@@ -209,6 +215,7 @@ export function GuidedExecutionPage() {
           <button type="button" className="execution-action" disabled={busy} onClick={reload}>Refresh workflow</button>
         </aside>
       </div>
+      <ExecutionAssistantPanel state={data} onSelectStep={selectAssistantStep} />
       <AuditTimeline events={audit} error={auditError} />
     </section>
   );
