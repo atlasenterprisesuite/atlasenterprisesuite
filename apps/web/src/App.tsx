@@ -1,10 +1,17 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
+import { GuidedExecutionPage } from './execution/GuidedExecutionPage';
+import { IdentityPage } from './identity/IdentityPage';
+import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
+import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
+import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -29,10 +36,12 @@ function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: s
 function EnterpriseHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance and Health now share one shell, route graph, permission boundary and verification pipeline." />
+      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
+        <Link className="module-card enabled" to="/payroll"><span>People • Pay • Progress</span><strong>ATLAS Payroll</strong><p>Governed payroll workspace with real configuration boundaries and no fabricated metrics.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research tooling with explicit demo-data and evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
     </section>
@@ -212,13 +221,24 @@ function NotFound() {
 }
 
 export function App() {
+  const location = useLocation();
+  if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
+
   return (
     <AtlasShell>
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
+        <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
+        <Route path="/studio/create" element={<RequireAtlasIdentity><CreatorWorkspace /></RequireAtlasIdentity>} />
+        <Route path="/studio/library" element={<RequireAtlasIdentity><CreatorLibrary /></RequireAtlasIdentity>} />
+        <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
+        <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
+        <Route path="/payroll/*" element={<PayrollRoutes />} />
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />

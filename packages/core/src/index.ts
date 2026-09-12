@@ -133,13 +133,14 @@ async function importGoogleOAuthStateKey(secret: string): Promise<CryptoKey> {
 export function sameScope(a: TenantScope, b: TenantScope) {
   return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
 }
+export * from './scope';
+export * from './permissions';
+export * from './audit';
+export * from './integrations';
+export * from './endpoints';
 
-export function hasPermission(
-  granted: readonly AccountingPermission[],
-  required: AccountingPermission
-) {
-  return granted.includes(required) || granted.includes('accounting.admin');
-}
+import type { TenantScope } from './scope';
+import type { AtlasPermission } from './permissions';
 
 export function hasIntegrationPermission(
   granted: readonly string[],
@@ -317,6 +318,6 @@ export function integrationConnectionKey(input: {
 export const demoAtlasContext = {
   scope: { tenantId: 'tenant-demo', organizationId: 'org-demo' } satisfies TenantScope,
   actorId: 'demo-user',
-  permissions: ['accounting.read'] as AccountingPermission[],
+  permissions: ['accounting.read'] as AtlasPermission[],
   environment: 'demo' as const
 };

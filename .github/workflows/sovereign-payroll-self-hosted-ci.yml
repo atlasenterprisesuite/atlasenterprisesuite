@@ -1,0 +1,35 @@
+name: Sovereign Payroll Self-Hosted CI
+
+on:
+  push:
+    branches:
+      - feat/atlas-payroll-core-commercial
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Sovereign unit tests
+        run: npx vitest run tests/unit/orchestrator-task-protocol.test.ts tests/unit/orchestrator-governance.test.ts tests/unit/orchestrator-persistence.test.ts tests/unit/orchestrator-agent-registry.test.ts tests/unit/orchestrator-core.test.ts tests/unit/orchestrator-mcp.test.ts
+      - name: Sovereign runtime integration test
+        run: npx vitest run tests/integration/orchestrator-runtime.test.ts
+      - name: Full unit suite
+        run: npm run test:unit
+      - name: Full integration suite
+        run: npm run test:integration
+      - name: Production build
+        run: npm run build

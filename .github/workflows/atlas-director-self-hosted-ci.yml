@@ -1,0 +1,37 @@
+name: ATLAS Director Self-Hosted Verification
+
+on:
+  push:
+    branches:
+      - ci/atlas-director-self-hosted-verify
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Director focused unit tests
+        run: npx vitest run tests/unit/atlas-director-domain.test.ts tests/unit/atlas-director-validator.test.ts tests/unit/atlas-director-compiler.test.ts tests/unit/creator-api.test.ts
+      - name: Director focused integration tests
+        run: npx vitest run tests/integration/atlas-creator-route.test.tsx tests/integration/atlas-director-edge-contract.test.ts tests/integration/atlas-director-schema-contract.test.ts
+      - name: Full unit tests
+        run: npm run test:unit
+      - name: Full integration tests
+        run: npm run test:integration
+      - name: Full test suite
+        run: npm test
+      - name: Production build
+        run: npm run build
