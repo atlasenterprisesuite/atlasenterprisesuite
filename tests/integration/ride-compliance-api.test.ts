@@ -26,6 +26,7 @@ describe('ATLAS Ride compliance browser API', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({
       ok: true,
       requirement: null,
+      submission: null,
       permissions: ['ride.compliance.read']
     }));
 
@@ -76,12 +77,21 @@ describe('ATLAS Ride compliance browser API', () => {
     expect(JSON.parse(String(init?.body))).toEqual({ submission_id: 'sub-1', reason: 'Too dark' });
   });
 
-  it('preserves server errors instead of converting them to success', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ok: false, error: 'state_conflict' }, 409));
+  it.each([
+    [403, 'authorization_denied'],
+    [409, 'state_conflict'],
+    [500, 'internal_error']
+  ])('preserves HTTP %s as an error', async (status, code) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ok: false, error: code }, status));
     await expect(approveRideComplianceSubmission('sub-1')).rejects.toMatchObject({
-      message: 'state_conflict',
-      status: 409,
-      code: 'state_conflict'
+      message: code,
+      status,
+      code
     });
+  });
+
+  it('does not convert a failed 401 refresh into success', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ok: false, error: 'invalid_session' }, 401));
+    await expect(getRideProfilePhotoRequirement()).rejects.toThrow(/session_expired|invalid_session/);
   });
 });
