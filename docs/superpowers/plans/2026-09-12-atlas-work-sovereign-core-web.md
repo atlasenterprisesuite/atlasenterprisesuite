@@ -50,7 +50,7 @@ Expected: merges preserve both foundations and baseline verification passes. Res
 - `packages/execution/src/work-intent.ts` — deterministic first-slice intent normalization and preview builder.
 - `packages/execution/src/index.ts` — re-export Work contracts.
 - `supabase/functions/atlas-execution/work.ts` — authenticated Work workflow create/list server helpers.
-- `supabase/functions/atlas-execution/index.ts` — wire `create_workflow_plan` and `list_workflows` operations.
+- `supabase/functions/atlas-execution/index.ts` — validate requests and wire `create_workflow_plan` / `list_workflows`.
 - `apps/web/src/work/types.ts` — UI-safe Work list and draft types.
 - `apps/web/src/work/api.ts` — authenticated Work API client and response normalization.
 - `apps/web/src/work/view-model.ts` — pure filtering and state-summary selectors.
@@ -83,13 +83,12 @@ Expected: merges preserve both foundations and baseline verification passes. Res
 - Test: `tests/unit/work-types.test.ts`
 
 **Interfaces:**
-- Consumes: `ExecutionScope`, `ExecutionStatus` from `packages/execution/src/types.ts`.
 - Produces: `WorkExecutionMode`, `WorkAutonomyLevel`, `WorkRuntimePreference`, `AtlasWorkContext`, `parseAtlasWorkContext(value)`.
 
 - [ ] **Step 1: Write the failing contract test**
 
 ```ts
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { parseAtlasWorkContext } from '../../packages/execution/src/work-types';
 
 it('normalizes safe Work metadata and drops unexpected secret-like keys', () => {
@@ -103,6 +102,11 @@ it('normalizes safe Work metadata and drops unexpected secret-like keys', () => 
     budgetLimit: 0, connectionRefs: ['conn-cloudflare']
   });
 });
+
+it('preserves an explicit null budget and defaults malformed budgets to zero', () => {
+  expect(parseAtlasWorkContext({ work: { budgetLimit: null } }).budgetLimit).toBeNull();
+  expect(parseAtlasWorkContext({ work: { budgetLimit: 'bad' } }).budgetLimit).toBe(0);
+});
 ```
 
 - [ ] **Step 2: Verify RED**
@@ -114,8 +118,6 @@ npx vitest run tests/unit/work-types.test.ts
 Expected: FAIL because Work contracts do not exist.
 
 - [ ] **Step 3: Implement the contracts**
-
-Create `packages/execution/src/work-types.ts` with:
 
 ```ts
 export const WORK_EXECUTION_MODES = ['api', 'browser', 'hybrid'] as const;
@@ -141,12 +143,13 @@ export function parseAtlasWorkContext(value: unknown): AtlasWorkContext {
   const executionMode = WORK_EXECUTION_MODES.includes(raw.executionMode as WorkExecutionMode) ? raw.executionMode as WorkExecutionMode : 'hybrid';
   const autonomyLevel = WORK_AUTONOMY_LEVELS.includes(raw.autonomyLevel as WorkAutonomyLevel) ? raw.autonomyLevel as WorkAutonomyLevel : 'guided';
   const runtimePreference = WORK_RUNTIME_PREFERENCES.includes(raw.runtimePreference as WorkRuntimePreference) ? raw.runtimePreference as WorkRuntimePreference : 'auto';
-  const budget = raw.budgetLimit === null ? null : Number(raw.budgetLimit);
+  const numericBudget = Number(raw.budgetLimit);
+  const budgetLimit = raw.budgetLimit === null ? null : Number.isFinite(numericBudget) && numericBudget >= 0 ? numericBudget : 0;
   return {
     executionMode,
     autonomyLevel,
     runtimePreference,
-    budgetLimit: Number.isFinite(budget) && budget >= 0 ? budget : 0,
+    budgetLimit,
     connectionRefs: Array.isArray(raw.connectionRefs) ? [...new Set(raw.connectionRefs.map(String).filter(Boolean))].slice(0, 20) : []
   };
 }
@@ -154,17 +157,10 @@ export function parseAtlasWorkContext(value: unknown): AtlasWorkContext {
 
 Export `./work-types` from `packages/execution/src/index.ts`.
 
-- [ ] **Step 4: Verify GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/work-types.test.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add packages/execution/src/work-types.ts packages/execution/src/index.ts tests/unit/work-types.test.ts
 git commit -m "feat: add ATLAS Work execution metadata contracts"
 ```
@@ -214,19 +210,12 @@ Expected: FAIL because the compiler does not exist.
 
 - [ ] **Step 3: Implement the first-slice compiler**
 
-`compileWorkIntent` must trim the intent to 2,000 characters, require an explicit `ownerModule` for v1, default to Hybrid + Guided + Auto + `$0`, and return one initial task whose success criteria are reviewable but non-executing. For the exact OpenAI-domain phrase, return the known safe criteria: DNS TXT exists, public DNS returns the expected value, OpenAI reports verified, evidence persisted. For every other intent, return generic criteria `['requested outcome exists', 'result independently verified', 'evidence persisted']` rather than inventing domain-specific actions.
+`compileWorkIntent` trims the intent to 2,000 characters, requires an explicit `ownerModule` for v1, defaults to Hybrid + Guided + Auto + `$0`, and returns a review-only `WorkPlanPreview`. For the exact OpenAI-domain phrase, success criteria are: DNS TXT exists, public DNS returns the expected value, OpenAI reports verified, evidence persisted. For every other intent, use `['requested outcome exists', 'result independently verified', 'evidence persisted']`; do not invent domain-specific actions.
 
-- [ ] **Step 4: Verify GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/work-intent.test.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add packages/execution/src/work-intent.ts packages/execution/src/index.ts tests/unit/work-intent.test.ts
 git commit -m "feat: add safe ATLAS Work intent preview compiler"
 ```
@@ -241,19 +230,12 @@ git commit -m "feat: add safe ATLAS Work intent preview compiler"
 - Test: `tests/unit/atlas-execution-work-edge.test.ts`
 
 **Interfaces:**
-- Consumes: existing `resolveContext`, `requireExecutionPermission`, execution tables and audit helper.
-- Produces server operations `create_workflow_plan` and `list_workflows`.
+- Consumes: validated owner module/intent/Work context from `index.ts`, existing execution tables and audit helper.
+- Produces: `createWorkWorkflowPlan(input)`, `listWorkWorkflows(input)`, server operations `create_workflow_plan` and `list_workflows`.
 
 - [ ] **Step 1: Write failing server-contract tests**
 
-Create tests that assert:
-
-```ts
-expect(SUPPORTED_OPERATIONS).toContain('create_workflow_plan');
-expect(SUPPORTED_OPERATIONS).toContain('list_workflows');
-```
-
-and source-level guards that `create_workflow_plan` requires `execution.write`, inserts into `execution_workflows`, `execution_tasks`, and `execution_steps`, and writes `execution.workflow.created` audit evidence without persisting raw secret fields.
+Assert the supported operation set contains `create_workflow_plan` and `list_workflows`; creation requires `execution.write`, listing requires `execution.read`; creation writes ordinary `execution_workflows`, `execution_tasks`, `execution_steps` and an `execution.workflow.created` audit event; no raw secret field is persisted.
 
 - [ ] **Step 2: Verify RED**
 
@@ -261,11 +243,9 @@ and source-level guards that `create_workflow_plan` requires `execution.write`, 
 npx vitest run tests/unit/atlas-execution-work-edge.test.ts
 ```
 
-Expected: FAIL because the operations do not exist.
+- [ ] **Step 3: Validate the request in `index.ts` and call the focused helper**
 
-- [ ] **Step 3: Implement `create_workflow_plan`**
-
-Create `work.ts` with an exported helper receiving `{ admin, context, requestId, body, appendAudit }`. Validate:
+Keep the existing request helpers in `index.ts`. Validate before calling `work.ts`:
 
 ```ts
 const ownerModule = requiredText(body.owner_module, 'owner_module_required', 80);
@@ -273,26 +253,38 @@ const intent = requiredText(body.intent, 'work_intent_required', 2000);
 const work = parseAtlasWorkContext({ work: body.work });
 ```
 
-Insert an `execution_workflows` row with `workflow_type: 'work.sovereign'`, `owner_module`, `status: 'draft'`, `current_module: ownerModule`, `created_by_user_id: context.userId`, and `context: { work, intent }`. Insert one initial task and one `plan_review` step with no provider secret payload. If a child insert fails, delete the just-created workflow by id and org before surfacing `persistence_error`, relying on existing FK cleanup where configured.
+Call `createWorkWorkflowPlan({ admin, context, requestId, ownerModule, intent, work, appendAudit })`; do not import private `index.ts` validators into `work.ts`.
+
+- [ ] **Step 4: Implement creation with a real current step and explicit compensation**
+
+Insert workflow with `workflow_type: 'work.sovereign'`, `status: 'now'`, `current_module: ownerModule`, `context: { work, intent }`. Insert one task with status `now`, then one ready step:
+
+```ts
+{
+  module: ownerModule,
+  action_type: 'prepare_execution_plan',
+  action_payload: {},
+  status: 'ready',
+  completion_criteria: ['executable work plan compiled'],
+  permissions_required: ['execution.write'],
+  evidence_requirement: ['work_plan_compiled']
+}
+```
+
+Update task `current_step_id` to the step id and workflow `current_task_id` to the task id. On failure after workflow creation, explicitly delete any inserted step rows, then task rows, then the workflow row for the same org before surfacing `persistence_error`; do not assume cascade behavior.
 
 Return `{ ok: true, workflow_id, task_id }` with HTTP 201.
 
-- [ ] **Step 4: Implement `list_workflows`**
+- [ ] **Step 5: Implement `list_workflows`**
 
-Require `execution.read`; query `execution_workflows` for `org_id = context.orgId` and `workflow_type = 'work.sovereign'`, newest first, limit 100. Return only workflow fields plus safe `context.work` metadata; never return task action payloads.
+Require `execution.read`; query `execution_workflows` for `org_id = context.orgId` and `workflow_type = 'work.sovereign'`, newest first, limit 100. Return workflow fields plus parsed safe `context.work`; never return task action payloads.
 
-- [ ] **Step 5: Wire operations into `index.ts`**
-
-Add both names to `SUPPORTED_OPERATIONS` and dispatch after `resolveContext`. Keep request-size, CORS and authentication behavior unchanged.
-
-- [ ] **Step 6: Verify GREEN**
+- [ ] **Step 6: Wire operations and verify GREEN**
 
 ```bash
 npx vitest run tests/unit/atlas-execution-work-edge.test.ts
 npm run typecheck
 ```
-
-Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
@@ -319,7 +311,7 @@ git commit -m "feat: add authenticated ATLAS Work workflow operations"
 
 - [ ] **Step 1: Write failing API tests**
 
-Assert `normalizeWorkWorkflow` whitelists only id, owner module, status, timestamps and parsed Work context, and that a raw context containing `token` does not survive serialization.
+Assert `normalizeWorkWorkflow` whitelists only id, owner module, status, timestamps and parsed Work context, and that raw context containing `token` does not survive serialization.
 
 - [ ] **Step 2: Write failing view-model tests**
 
@@ -333,7 +325,7 @@ npx vitest run tests/unit/work-api.test.ts tests/unit/work-view-model.test.ts
 
 - [ ] **Step 4: Implement API and normalization**
 
-Follow the existing `apps/web/src/execution/api.ts` transport pattern. `createWorkWorkflow` must POST:
+Follow `apps/web/src/execution/api.ts`. `createWorkWorkflow` posts:
 
 ```ts
 {
@@ -352,17 +344,15 @@ Follow the existing `apps/web/src/execution/api.ts` transport pattern. `createWo
 
 `listWorkflows()` posts `{ operation: 'list_workflows' }`.
 
-- [ ] **Step 5: Implement pure filters**
+- [ ] **Step 5: Implement pure filters and verify GREEN**
 
 `workflowsByView` accepts `'active' | 'history' | 'approvals' | 'all'` and derives views only from canonical status.
-
-- [ ] **Step 6: Verify GREEN**
 
 ```bash
 npx vitest run tests/unit/work-api.test.ts tests/unit/work-view-model.test.ts
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/work tests/fixtures/workSovereign.ts tests/unit/work-api.test.ts tests/unit/work-view-model.test.ts
@@ -386,7 +376,7 @@ git commit -m "feat: add ATLAS Work web data boundary"
 
 - [ ] **Step 1: Write the failing launch test**
 
-Render `/work/new`, type `Verify atlasenterprisesuite.com with OpenAI`, select owner module `manager`, verify preview displays `Hybrid`, `Guided`, `Auto`, `$0`, and success criteria before any create call. Click `Create workflow`, mock a response `{ workflowId: 'wf-184' }`, and assert navigation to `/execution/wf-184`.
+Render `/work/new`, type `Verify atlasenterprisesuite.com with OpenAI`, select owner module `manager`, verify preview displays `Hybrid`, `Guided`, `Auto`, `$0`, and success criteria before any create call. Click `Create workflow`, mock `{ workflowId: 'wf-184' }`, and assert navigation to `/execution/wf-184`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -396,19 +386,17 @@ npx vitest run tests/integration/work-launch.test.tsx
 
 - [ ] **Step 3: Implement the composer**
 
-Use controlled fields for intent, owner module, execution mode, autonomy, runtime preference and budget. Default to Hybrid/Guided/Auto/0. The first button is `Review plan`; only after a valid preview exists render `Create workflow`. Changing any launch field invalidates the existing preview.
+Use controlled fields for intent, owner module, execution mode, autonomy, runtime preference and budget. Default to Hybrid/Guided/Auto/0. First button is `Review plan`; only after a valid preview exists render `Create workflow`. Changing any launch field invalidates the existing preview.
 
-- [ ] **Step 4: Implement the Command Center**
+- [ ] **Step 4: Implement Command Center and verify GREEN**
 
-Load current organization workflows, render the composer CTA, active queue, approvals count and recent completed items. Each workflow card links to `/execution/${workflow.id}`; do not build a second detailed execution page.
-
-- [ ] **Step 5: Verify GREEN**
+Load current-organization workflows, render composer CTA, active queue, approvals count and recent completed items. Each workflow links to `/execution/${workflow.id}`.
 
 ```bash
 npx vitest run tests/integration/work-launch.test.tsx
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/work tests/integration/work-launch.test.tsx
@@ -430,12 +418,11 @@ git commit -m "feat: add ATLAS Work command center and composer"
 - Test: `tests/integration/work-regression.test.tsx`
 
 **Interfaces:**
-- Consumes: Work components from Tasks 4-5 and existing `RequireAtlasIdentity` shell.
 - Produces routes `/work`, `/work/new`, `/work/active`, `/work/approvals`, `/work/history`.
 
 - [ ] **Step 1: Write failing route tests**
 
-Assert authenticated navigation exposes a first-level `Work` item; `/work` renders Command Center; `/work/active`, `/work/approvals`, and `/work/history` render canonical filtered list views; unauthenticated behavior remains governed by the existing identity boundary.
+Assert authenticated navigation exposes a first-level `Work` item; `/work` renders Command Center; `/work/active`, `/work/approvals`, `/work/history` render canonical filtered views; unauthenticated behavior remains governed by the existing identity boundary.
 
 - [ ] **Step 2: Verify RED**
 
@@ -443,19 +430,15 @@ Assert authenticated navigation exposes a first-level `Work` item; `/work` rende
 npx vitest run tests/integration/work-route.test.tsx tests/integration/work-regression.test.tsx
 ```
 
-- [ ] **Step 3: Implement `WorkRoutes`**
+- [ ] **Step 3: Implement `WorkRoutes` and shell integration**
 
-Use nested React Router routes under `/work/*`. Unknown Work subroutes navigate to `/work` instead of rendering a blank page.
+Use nested React Router routes under `/work/*`. Unknown Work subroutes navigate to `/work`. Add `{ to: '/work', label: 'Work' }` immediately after Home in `AtlasShell.tsx`. Keep `/execution/:workflowId` unchanged in the authenticated shell.
 
-- [ ] **Step 4: Update shell and app route graph**
+- [ ] **Step 4: Add responsive styles**
 
-Add `{ to: '/work', label: 'Work' }` immediately after Home in `AtlasShell.tsx`. Add the Work route inside the same authenticated shell that contains Guided Execution; do not move `/execution/:workflowId`.
+`work.css` supports desktop, tablet and mobile; single-column composer below 760px; visible focus states; readable status chips; disabled/loading/success/error states; no fixed-width overflow.
 
-- [ ] **Step 5: Add responsive styles**
-
-`work.css` must support desktop, tablet and mobile with a single-column composer below 760px, visible focus states, readable status chips, disabled/loading/success/error states, and no fixed-width overflow.
-
-- [ ] **Step 6: Verify GREEN and adjacent routes**
+- [ ] **Step 5: Verify GREEN and adjacent routes**
 
 ```bash
 npx vitest run tests/integration/work-route.test.tsx tests/integration/work-regression.test.tsx
@@ -463,7 +446,7 @@ npm run typecheck
 npm run build
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/work apps/web/src/App.tsx apps/web/src/components/AtlasShell.tsx apps/web/src/main.tsx tests/integration/work-route.test.tsx tests/integration/work-regression.test.tsx
@@ -474,16 +457,11 @@ git commit -m "feat: integrate ATLAS Work into the enterprise shell"
 
 ### Task 7: Core Web verification and review gate
 
-**Files:**
-- No new implementation files unless review finds a defect.
-
 - [ ] **Step 1: Run focused Work suite**
 
 ```bash
 npx vitest run tests/unit/work-types.test.ts tests/unit/work-intent.test.ts tests/unit/work-api.test.ts tests/unit/work-view-model.test.ts tests/integration/work-launch.test.tsx tests/integration/work-route.test.tsx tests/integration/work-regression.test.tsx
 ```
-
-Expected: PASS.
 
 - [ ] **Step 2: Run repository verification**
 
@@ -493,12 +471,10 @@ npm test
 npm run build
 ```
 
-Expected: PASS.
-
 - [ ] **Step 3: Independent spec review**
 
-Reviewer checks that Work launches canonical workflows, detailed execution remains `/execution/:workflowId`, tenant context comes from the authenticated organization, no secret crosses the UI boundary, and no second workflow state machine or persistence store was introduced.
+Reviewer checks Work launches canonical workflows, detailed execution remains `/execution/:workflowId`, tenant context comes from authenticated organization, no secret crosses UI, and no second workflow state machine/persistence store exists.
 
 - [ ] **Step 4: Independent quality review**
 
-Reviewer checks error/loading/empty states, accessibility, mobile layout, duplicate logic, type safety and regression risk. Fix findings and rerun focused + full verification before proceeding to the router/policy plan.
+Reviewer checks error/loading/empty states, accessibility, mobile layout, duplicate logic, type safety and regression risk. Fix findings and rerun focused + full verification before the router/policy plan.
