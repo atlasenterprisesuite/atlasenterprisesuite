@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
 import {
   decideExecutionApproval,
+  loadGuidedExecutionAudit,
   loadGuidedExecutionState,
   requestExecutionApproval
 } from '../../apps/web/src/execution/api';
@@ -15,6 +16,7 @@ vi.mock('../../apps/web/src/execution/api', async () => {
   return {
     ...actual,
     loadGuidedExecutionState: vi.fn(),
+    loadGuidedExecutionAudit: vi.fn(),
     requestExecutionApproval: vi.fn(),
     decideExecutionApproval: vi.fn()
   };
@@ -29,6 +31,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   localStorage.setItem('atlas_access_token', 'test-token');
+  vi.mocked(loadGuidedExecutionAudit).mockResolvedValue([]);
 });
 
 describe('Guided Execution approvals', () => {
