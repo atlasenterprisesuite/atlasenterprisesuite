@@ -68,6 +68,8 @@ export type AtlasWorkflowStep = {
   inputRefs: string[];
   resultRefs: string[];
   evidenceRequirements: AtlasEvidenceRequirement[];
+  blockedReason: string | null;
+  nextAction: string | null;
   createdAt: string;
   updatedAt: string;
 };
