@@ -98,6 +98,16 @@ describe('ATLAS Audit Ledger recording service', () => {
     expect(store.appendAttempts).toBe(0);
   });
 
+  it('rejects invalid action types before reading or appending', async () => {
+    const store = new MemoryStore();
+    const service = new AuditLedgerServiceImpl(store);
+    await expect(service.recordEvent({
+      ...payload,
+      actionType: 'execution.Invalid Action' as any
+    })).rejects.toThrow('audit_ledger_invalid_action_type');
+    expect(store.appendAttempts).toBe(0);
+  });
+
   it('verifies the persisted chain through the service contract', async () => {
     const store = new MemoryStore();
     const service = new AuditLedgerServiceImpl(store);
