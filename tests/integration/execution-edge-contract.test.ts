@@ -51,6 +51,14 @@ describe('ATLAS Universal Execution Edge contract', () => {
     expect(source).toContain('evaluateTaskCompletion');
   });
 
+  it('does not let generic execution.write self-verify evidence', async () => {
+    const source = await edgeSource();
+    expect(source).toContain('verified_evidence_resolver_required');
+    expect(source).toContain('if (body.verified === true)');
+    expect(source).toContain('verified: false');
+    expect(source).not.toContain('verified: body.verified === true');
+  });
+
   it('inherits tenant scope from persisted workflow/task records and validates parent lineage', async () => {
     const source = await edgeSource();
     expect(source).toContain('tenant_id: String(workflow.tenant_id)');
