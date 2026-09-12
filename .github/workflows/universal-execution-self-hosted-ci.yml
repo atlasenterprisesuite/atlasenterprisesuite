@@ -1,0 +1,65 @@
+name: Universal Execution Self-Hosted Verification
+
+on:
+  push:
+    branches:
+      - feat/universal-execution-engine
+    paths:
+      - 'packages/execution/**'
+      - 'supabase/migrations/20260912_universal_execution_engine.sql'
+      - 'supabase/functions/atlas-execution/**'
+      - 'tests/unit/execution-*.test.ts'
+      - 'tests/integration/execution-*.test.ts'
+      - '.github/workflows/universal-execution-self-hosted-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: universal-execution-self-hosted
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Locked install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Execution-focused tests
+        run: >-
+          npx vitest run
+          tests/unit/execution-types.test.ts
+          tests/unit/execution-state-machine.test.ts
+          tests/unit/execution-progress.test.ts
+          tests/unit/execution-approval-evidence.test.ts
+          tests/unit/execution-engine.test.ts
+          tests/integration/execution-schema-contract.test.ts
+          tests/integration/execution-edge-contract.test.ts
+          tests/integration/execution-cross-module-workflow.test.ts
+      - name: Full test suite
+        run: npm test
+      - name: Production web build
+        run: npm run build
+      - name: Branch safety scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check origin/main...HEAD
+          if git diff origin/main...HEAD -- packages/execution supabase/migrations/20260912_universal_execution_engine.sql supabase/functions/atlas-execution tests | grep -E '^\+.*(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,})'; then
+            echo 'Potential committed secret detected in feature diff.' >&2
+            exit 1
+          fi
+          if git diff origin/main...HEAD -- supabase/migrations/20260912_universal_execution_engine.sql | grep -E '^\+.*grant (insert|update|delete|all) on public\.execution_' -i; then
+            echo 'Direct authenticated mutation grant detected.' >&2
+            exit 1
+          fi
+          echo 'Branch safety scan passed.'
