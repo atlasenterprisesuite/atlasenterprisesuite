@@ -7,10 +7,12 @@ import {
 } from '../../../packages/execution/src/types.ts';
 import { canTransitionTask, evaluateTaskCompletion } from '../../../packages/execution/src/state-machine.ts';
 import { digestApprovalPayload } from '../../../packages/execution/src/approvals.ts';
+import { ManagerReadinessError, syncManagerReadiness } from './manager-readiness.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const ATLAS_PLATFORM_TENANT_ID = Deno.env.get('ATLAS_PLATFORM_TENANT_ID') || '';
 const MAX_REQUEST_BYTES = 64 * 1024;
 
 const ALLOWED_ORIGINS = new Set([
@@ -22,11 +24,13 @@ const ALLOWED_ORIGINS = new Set([
 
 const SUPPORTED_OPERATIONS = new Set([
   'get_state',
+  'get_audit',
   'create_task',
   'transition_task',
   'record_evidence',
   'request_approval',
-  'decide_approval'
+  'decide_approval',
+  'sync_manager_readiness'
 ]);
 
 const EXECUTION_PERMISSION_SET = new Set<ExecutionPermission>([
@@ -305,6 +309,21 @@ async function getState(req: Request, body: JsonObject, context: RequestContext)
     evidence: evidence.data || [],
     approvals: approvals.data || []
   });
+}
+
+async function getAudit(req: Request, body: JsonObject, context: RequestContext) {
+  requireExecutionPermission(context, 'execution.audit');
+  const workflowId = requiredText(body.workflow_id, 'workflow_id_required', 80);
+  const admin = adminClient();
+  await loadWorkflow(admin, context.orgId, workflowId);
+  const { data, error } = await admin
+    .from('execution_audit_events')
+    .select('id,actor_user_id,task_id,workflow_id,module,action,previous_state,resulting_state,evidence_ids,correlation_id,created_at')
+    .eq('org_id', context.orgId)
+    .eq('workflow_id', workflowId)
+    .order('created_at', { ascending: true });
+  if (error) throw new EdgeError('persistence_error', 500);
+  return json(req, { ok: true, audit: data || [] });
 }
 
 async function createTask(req: Request, body: JsonObject, context: RequestContext, requestId: string) {
@@ -605,6 +624,27 @@ async function decideApproval(req: Request, body: JsonObject, context: RequestCo
   return json(req, { ok: true, approval: decided });
 }
 
+async function syncReadiness(req: Request, context: RequestContext, requestId: string) {
+  requireExecutionPermission(context, 'execution.write');
+  const admin = adminClient();
+  try {
+    const result = await syncManagerReadiness({
+      req,
+      context: { userId: context.userId, orgId: context.orgId },
+      requestId,
+      admin,
+      supabaseUrl: SUPABASE_URL,
+      publishableKey: PUBLISHABLE_KEY,
+      platformTenantId: ATLAS_PLATFORM_TENANT_ID,
+      appendAudit: (input) => appendAudit(admin, input)
+    });
+    return json(req, { ok: true, ...result });
+  } catch (error) {
+    if (error instanceof ManagerReadinessError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
@@ -632,11 +672,13 @@ Deno.serve(async (req: Request) => {
     const context = await resolveContext(req, orgId);
     const requestId = correlationId(req, body);
     if (operation === 'get_state') return await getState(req, body, context);
+    if (operation === 'get_audit') return await getAudit(req, body, context);
     if (operation === 'create_task') return await createTask(req, body, context, requestId);
     if (operation === 'transition_task') return await transitionTask(req, body, context, requestId);
     if (operation === 'record_evidence') return await recordEvidence(req, body, context, requestId);
     if (operation === 'request_approval') return await requestApproval(req, body, context, requestId);
     if (operation === 'decide_approval') return await decideApproval(req, body, context, requestId);
+    if (operation === 'sync_manager_readiness') return await syncReadiness(req, context, requestId);
     return json(req, { ok: false, error: 'unsupported_operation' }, 400);
   } catch (error) {
     if (error instanceof EdgeError) return json(req, { ok: false, error: error.code }, error.status);
