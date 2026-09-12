@@ -7,6 +7,7 @@ export * from './assets';
 export * from './bankCashWrites';
 export * from './budgeting';
 export * from './forecast';
+export * from './fx';
 export * from './generalLedger';
 export * from './journalWrites';
 export * from './periodClose';
