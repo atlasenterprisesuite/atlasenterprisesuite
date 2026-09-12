@@ -6,7 +6,7 @@ const workflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8')
 
 describe('Cloudflare Workers Static Assets deployment contract', () => {
   it('serves the Vite SPA build as Workers static assets', () => {
-    expect(wrangler).toContain('"name": "atlas-enterprise-suite"');
+    expect(wrangler).toContain('"name": "atlas-enterprise-suite-web"');
     expect(wrangler).toContain('"directory": "./apps/web/dist"');
     expect(wrangler).toContain('"not_found_handling": "single-page-application"');
   });
