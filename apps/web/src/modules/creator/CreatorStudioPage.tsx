@@ -1,22 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { CreatorAsset, ProductionSummary, ProviderReadiness } from '../../../../../packages/creator/types';
+import { listCreatorAssets, listCreatorProductions, listCreatorProviders } from '../../lib/creatorApi';
+import { DirectorWorkspace } from './director/DirectorWorkspace';
 import './creator.css';
 
 type MediaKind = 'image' | 'video' | 'music' | 'voice';
-type ProviderState = 'ready' | 'configuration-required' | 'unavailable';
 
 const tools = [
   { kind: 'image' as MediaKind, title: 'Image Lab', description: 'Create and refine campaign imagery from a governed prompt.', route: '/studio/create?type=image' },
   { kind: 'video' as MediaKind, title: 'Video Lab', description: 'Plan clips, storyboards and motion generations with provider-aware controls.', route: '/studio/create?type=video' },
   { kind: 'music' as MediaKind, title: 'Music Lab', description: 'Turn a creative brief into a song request without claiming unconfigured generation.', route: '/studio/create?type=music' },
   { kind: 'voice' as MediaKind, title: 'Voice & Agents', description: 'Continue to the identity-gated ATLAS Voice workspace.', route: '/studio/voice' }
-];
-
-const providers: { name: string; capability: string; state: ProviderState }[] = [
-  { name: 'OpenAI', capability: 'Images and multimodal intelligence', state: 'configuration-required' },
-  { name: 'Google AI', capability: 'Multimodal models', state: 'configuration-required' },
-  { name: 'Suno', capability: 'Music generation', state: 'configuration-required' },
-  { name: 'Visual location provider', capability: 'Location estimation with consent', state: 'configuration-required' }
 ];
 
 export function CreatorHome() {
@@ -29,12 +24,13 @@ export function CreatorHome() {
 }
 
 export function CreatorWorkspace() {
-  const params = new URLSearchParams(window.location.search);
-  const initial = params.get('type');
+  const [searchParams] = useSearchParams();
+  const initial = searchParams.get('type');
   const [kind, setKind] = useState<MediaKind>(initial === 'video' || initial === 'music' || initial === 'voice' ? initial : 'image');
   const [prompt, setPrompt] = useState('');
   const [notice, setNotice] = useState('');
   const canSubmit = prompt.trim().length >= 8;
+  if (kind === 'video') return <DirectorWorkspace />;
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!canSubmit) { setNotice('Describe the result in at least 8 characters.'); return; }
@@ -57,11 +53,84 @@ export function CreatorWorkspace() {
 }
 
 export function CreatorLibrary() {
-  const [query,setQuery]=useState('');
-  const results=useMemo(()=>[].filter(()=>query),[query]);
-  return <section className="creator-page"><nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Library</span></nav><header className="creator-hero compact"><div><p className="eyebrow">Projects & assets</p><h1>Creator Library</h1><p>Searchable organization media with provenance, versions and permission-aware visibility.</p></div></header><label className="creator-search"><span>Search library</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search projects and assets" /></label><div className="creator-empty"><strong>{results.length} assets</strong><span>No authorized assets are available in this organization.</span></div></section>;
+  const [query, setQuery] = useState('');
+  const [productions, setProductions] = useState<ProductionSummary[]>([]);
+  const [assets, setAssets] = useState<CreatorAsset[]>([]);
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([listCreatorProductions(), listCreatorAssets()])
+      .then(([productionRows, assetRows]) => {
+        if (!active) return;
+        setProductions(productionRows);
+        setAssets(assetRows);
+        setState('ready');
+      })
+      .catch(value => {
+        if (!active) return;
+        setProductions([]);
+        setAssets([]);
+        setState('error');
+        setError(value instanceof Error ? value.message : 'library_failed');
+      });
+    return () => { active = false; };
+  }, []);
+
+  const normalized = query.trim().toLowerCase();
+  const filteredProductions = useMemo(() => productions.filter(production => !normalized || [production.title, production.brief, production.status].some(value => String(value).toLowerCase().includes(normalized))), [productions, normalized]);
+  const filteredAssets = useMemo(() => assets.filter(asset => !normalized || [asset.providerId, asset.mediaType, asset.mimeType, asset.storagePath, JSON.stringify(asset.provenance)].some(value => String(value || '').toLowerCase().includes(normalized))), [assets, normalized]);
+
+  return <section className="creator-page">
+    <nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Library</span></nav>
+    <header className="creator-hero compact"><div><p className="eyebrow">Projects & assets</p><h1>Creator Library</h1><p>Searchable organization media with provenance, versions and permission-aware visibility.</p></div></header>
+    <label className="creator-search"><span>Search library</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search projects and assets" /></label>
+    {state === 'loading' && <div className="creator-empty" role="status"><strong>Loading Creator Library…</strong><span>Reading authorized organization productions and assets.</span></div>}
+    {state === 'error' && <div className="creator-empty" role="status"><strong>Library unavailable</strong><span>{error}</span></div>}
+    {state === 'ready' && filteredProductions.length === 0 && filteredAssets.length === 0 && <div className="creator-empty"><strong>0 results</strong><span>No authorized Creator productions or assets match this organization/search.</span></div>}
+    {state === 'ready' && (filteredProductions.length > 0 || filteredAssets.length > 0) && <div className="creator-library-grid">
+      {filteredProductions.map(production => <article className="creator-library-card" key={`production-${production.id}`}>
+        <p className="eyebrow">Production · {production.status}</p><h2>{production.title || 'Untitled production'}</h2><p>{production.brief || 'No creative brief saved.'}</p>
+        <dl><div><dt>Version</dt><dd>{production.version}</dd></div><div><dt>Updated</dt><dd>{production.updatedAt || 'Unknown'}</dd></div><div><dt>Output</dt><dd>{production.durationSeconds}s · {production.aspectRatio} · {production.resolutionPreference}</dd></div></dl>
+      </article>)}
+      {filteredAssets.map(asset => <article className="creator-library-card" key={`asset-${asset.id}`}>
+        <p className="eyebrow">Asset · {asset.mediaType}</p><h2>{asset.providerId || 'Provider not recorded'}</h2><p>{asset.mimeType || 'Media type not reported'}</p>
+        <dl><div><dt>Production</dt><dd>{asset.productionId}</dd></div><div><dt>Updated</dt><dd>{asset.updatedAt || 'Unknown'}</dd></div><div><dt>Provenance</dt><dd><code>{JSON.stringify(asset.provenance)}</code></dd></div></dl>
+      </article>)}
+    </div>}
+  </section>;
 }
 
 export function CreatorProviders() {
-  return <section className="creator-page"><nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Providers</span></nav><header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Provider readiness</h1><p>Capability states reflect verified configuration only.</p></div></header><div className="provider-list">{providers.map(provider=><article key={provider.name}><div><h2>{provider.name}</h2><p>{provider.capability}</p></div><span className="provider-state">{provider.state.replace('-', ' ')}</span></article>)}</div><div className="creator-privacy"><strong>Visual location intelligence</strong><p>Location estimation must be explicitly initiated by an authorized user, requires consent, exposes confidence and limitations, and must never be used as silent tracking.</p></div></section>;
+  const [providerRows, setProviderRows] = useState<ProviderReadiness[]>([]);
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    listCreatorProviders()
+      .then(value => {
+        if (!active) return;
+        setProviderRows(value);
+        setState('ready');
+      })
+      .catch(value => {
+        if (!active) return;
+        setProviderRows([]);
+        setState('error');
+        setError(value instanceof Error ? value.message : 'providers_failed');
+      });
+    return () => { active = false; };
+  }, []);
+
+  return <section className="creator-page">
+    <nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Providers</span></nav>
+    <header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Provider readiness</h1><p>Capability states reflect verified server configuration only.</p></div></header>
+    {state === 'loading' && <div className="creator-empty" role="status"><strong>Loading provider readiness…</strong><span>Waiting for the authenticated ATLAS Creator service.</span></div>}
+    {state === 'error' && <div className="creator-empty" role="status"><strong>Provider readiness unavailable</strong><span>{error}</span></div>}
+    {state === 'ready' && providerRows.length === 0 && <div className="creator-empty"><strong>No video providers configured</strong><span>ATLAS will not infer readiness from browser plugins or placeholder provider names.</span></div>}
+    {state === 'ready' && providerRows.length > 0 && <div className="provider-list">{providerRows.map(provider => <article key={provider.providerId}><div><h2>{provider.displayName}</h2><p>{provider.capability ? `${provider.capability.modes.join(', ') || 'No modes reported'} · ${provider.capability.resolutions.join(', ') || 'No resolutions reported'}` : 'Capability contract unavailable until verified configuration.'}</p><small>Last verified: {provider.lastVerifiedAt ? new Date(provider.lastVerifiedAt).toLocaleString() : 'Never verified'}</small></div><span className="provider-state">{provider.connectionState}</span></article>)}</div>}
+    <div className="creator-privacy"><strong>Visual location intelligence</strong><p>Location estimation must be explicitly initiated by an authorized user, requires consent, exposes confidence and limitations, and must never be used as silent tracking.</p></div>
+  </section>;
 }

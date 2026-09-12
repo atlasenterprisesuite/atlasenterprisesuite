@@ -10,6 +10,7 @@ const navItems = [
   { to: '/', label: 'Home' },
   { to: '/finance', label: 'Finance' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
+  { to: '/payroll', label: 'Payroll' },
   { to: '/health', label: 'Health' },
   { to: '/hospitality/access', label: 'Hospitality' },
   { to: '/studio', label: 'Creator' }
