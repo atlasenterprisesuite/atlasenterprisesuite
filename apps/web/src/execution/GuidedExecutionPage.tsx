@@ -2,16 +2,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   decideExecutionApproval,
+  loadGuidedExecutionAudit,
   loadGuidedExecutionState,
   requestExecutionApproval
 } from './api';
 import type { ApprovalDecision } from './ApprovalCard';
+import { AuditTimeline } from './AuditTimeline';
 import { ExecutionBreadcrumbs } from './ExecutionBreadcrumbs';
 import { humanizeExecutionValue } from './ExecutionStepRow';
 import { StepActionBar } from './StepActionBar';
 import { StepDetailPanel } from './StepDetailPanel';
 import { TaskGroup } from './TaskGroup';
-import type { GuidedApproval, GuidedExecutionState } from './types';
+import type { GuidedApproval, GuidedAuditEvent, GuidedExecutionState } from './types';
 import { activeTask, deriveStepAction } from './view-model';
 import { WorkflowHeader } from './WorkflowHeader';
 
@@ -25,6 +27,8 @@ function focusSection(id: string) {
 export function GuidedExecutionPage() {
   const { workflowId = '' } = useParams();
   const [data, setData] = useState<GuidedExecutionState | null>(null);
+  const [audit, setAudit] = useState<GuidedAuditEvent[] | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -36,6 +40,24 @@ export function GuidedExecutionPage() {
     const currentTask = next.tasks.find((task) => task.id === next.workflow.currentTaskId) ?? next.tasks[0];
     setSelectedStepId(currentTask?.currentStepId ?? null);
   }, []);
+
+  const refreshAudit = useCallback(async () => {
+    if (!workflowId) return;
+    try {
+      const events = await loadGuidedExecutionAudit(workflowId);
+      setAudit(events);
+      setAuditError(null);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'audit_unavailable';
+      if (message === 'permission_required') {
+        setAudit(null);
+        setAuditError(null);
+      } else {
+        setAudit(null);
+        setAuditError(message);
+      }
+    }
+  }, [workflowId]);
 
   const reload = useCallback(async () => {
     if (!workflowId) {
@@ -50,18 +72,21 @@ export function GuidedExecutionPage() {
     try {
       adoptState(await loadGuidedExecutionState(workflowId));
       setActionError(null);
+      void refreshAudit();
     } catch (caught) {
       setData(null);
       setError(caught instanceof Error ? caught.message : 'execution_unavailable');
     } finally {
       setLoading(false);
     }
-  }, [adoptState, workflowId]);
+  }, [adoptState, refreshAudit, workflowId]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
+    setAudit(null);
+    setAuditError(null);
 
     if (!workflowId) {
       setData(null);
@@ -74,6 +99,7 @@ export function GuidedExecutionPage() {
       .then((next) => {
         if (!active) return;
         adoptState(next);
+        void refreshAudit();
       })
       .catch((caught) => {
         if (!active) return;
@@ -85,7 +111,7 @@ export function GuidedExecutionPage() {
       });
 
     return () => { active = false; };
-  }, [adoptState, workflowId]);
+  }, [adoptState, refreshAudit, workflowId]);
 
   if (loading) return <section aria-busy="true"><h1>Loading execution workflow</h1></section>;
   if (error === 'workflow_not_found') return <section><h1>Workflow not found</h1><p>The workflow is unavailable in the active organization.</p></section>;
@@ -183,6 +209,7 @@ export function GuidedExecutionPage() {
           <button type="button" className="execution-action" disabled={busy} onClick={reload}>Refresh workflow</button>
         </aside>
       </div>
+      <AuditTimeline events={audit} error={auditError} />
     </section>
   );
 }

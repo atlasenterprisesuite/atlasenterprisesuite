@@ -5,6 +5,7 @@ import { App } from './App';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import './styles.css';
 import './health.css';
+import './execution/execution.css';
 import './modules/finance/accounting/payables-ai.css';
 import './modules/hospitality/hospitality.css';
 
