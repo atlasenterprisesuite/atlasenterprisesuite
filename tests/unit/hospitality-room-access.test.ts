@@ -5,6 +5,10 @@ import {
   type HospitalityActorContext,
   type RoomAccessRequest
 } from '../../packages/hospitality/access';
+import {
+  hasHospitalityPermission,
+  requireHospitalityPermission
+} from '../../packages/hospitality/permissions';
 
 const actor: HospitalityActorContext = {
   organizationId: 'org-1',
@@ -22,6 +26,29 @@ const request: RoomAccessRequest = {
 };
 
 describe('ATLAS Hospitality room access domain', () => {
+  it('grants an explicitly assigned Hospitality permission', () => {
+    expect(hasHospitalityPermission(actor, 'hospitality.access.issue')).toBe(true);
+  });
+
+  it('denies a Hospitality permission that was not assigned', () => {
+    const readOnlyActor: HospitalityActorContext = {
+      ...actor,
+      permissions: ['hospitality.access.read']
+    };
+    expect(hasHospitalityPermission(readOnlyActor, 'hospitality.access.issue')).toBe(false);
+    expect(() => requireHospitalityPermission(readOnlyActor, 'hospitality.access.issue'))
+      .toThrow('authorization_denied');
+  });
+
+  it('lets Hospitality admin satisfy specific Hospitality permissions', () => {
+    const adminActor: HospitalityActorContext = {
+      ...actor,
+      permissions: ['hospitality.access.admin']
+    };
+    expect(hasHospitalityPermission(adminActor, 'hospitality.access.configure')).toBe(true);
+    expect(hasHospitalityPermission(adminActor, 'hospitality.access.audit')).toBe(true);
+  });
+
   it('blocks issuance until an authorized provider is ready', () => {
     const decision = evaluateRoomAccessRequest(actor, 'not_configured', request);
     expect(decision.allowed).toBe(false);
