@@ -1,239 +1,219 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import { evaluateRoomAccessRequest } from '../../../packages/hospitality/access.ts';
+import { requireHospitalityPermission } from '../../../packages/hospitality/permissions.ts';
+import { resolveContext } from './_shared/context.ts';
+import { errorResponse, hospitalityError, json } from './_shared/errors.ts';
+import { providerFor } from './_shared/provider-registry.ts';
+import {
+  listCredentialReferences,
+  listHospitalityAudit,
+  listProviderInstances,
+  listRoomMappings,
+  loadProviderInstance,
+  loadRoomMapping,
+  writeHospitalityAudit
+} from './_shared/repository.ts';
 
-const URL = Deno.env.get('SUPABASE_URL') || '';
-const ANON = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const PROVIDER_ID = Deno.env.get('ATLAS_HOSPITALITY_PROVIDER_ID') || '';
-const PROVIDER_ENDPOINT = Deno.env.get('ATLAS_HOSPITALITY_PROVIDER_ENDPOINT') || '';
-const PROVIDER_TOKEN = Deno.env.get('ATLAS_HOSPITALITY_PROVIDER_TOKEN') || '';
-const VERSION = 1;
+const VERSION = 2;
+const OPERATIONS = [
+  'readiness',
+  'providers',
+  'rooms',
+  'credentials',
+  'issue',
+  'revoke',
+  'credential-status',
+  'audit'
+] as const;
 
-const headers = {
-  'content-type': 'application/json; charset=utf-8',
-  'cache-control': 'no-store',
-  'x-content-type-options': 'nosniff',
-  'referrer-policy': 'no-referrer'
-};
+type Operation = (typeof OPERATIONS)[number];
 
-const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers });
-const fail = (error: string, status = 400, details: Record<string, unknown> = {}) =>
-  json({ ok: false, error, ...details }, status);
 const clean = (value: unknown, max = 500) => String(value ?? '').trim().slice(0, max);
 
-function userClient(req: Request) {
-  const auth = req.headers.get('authorization') || '';
-  return createClient(URL, ANON, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: auth } }
-  });
+function propertyIdFrom(url: URL, body?: Record<string, unknown>) {
+  return clean(body?.property_id || url.searchParams.get('property_id'), 120);
 }
 
-function adminClient() {
-  if (!SERVICE_ROLE) throw new Error('server_secret_not_configured');
-  return createClient(URL, SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
-}
-
-async function context(req: Request) {
-  if (!URL || !ANON) throw new Error('supabase_runtime_not_configured');
-  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
-  if (!token) throw new Error('authentication_required');
-
-  const sb = userClient(req);
-  const { data, error } = await sb.auth.getUser(token);
-  if (error || !data.user) throw new Error('invalid_session');
-
-  const { data: members, error: memberError } = await sb
-    .from('organization_members')
-    .select('org_id,role,status')
-    .eq('user_id', data.user.id)
-    .eq('status', 'active')
-    .limit(1);
-
-  if (memberError || !members?.[0]) throw new Error('active_organization_required');
-
-  return {
-    sb,
-    user: data.user,
-    orgId: String(members[0].org_id),
-    role: String(members[0].role || 'member')
-  };
-}
-
-function providerState() {
-  if (!PROVIDER_ID || !PROVIDER_ENDPOINT || !PROVIDER_TOKEN) return 'not_configured' as const;
-  return 'configured_unverified' as const;
-}
-
-async function audit(
-  orgId: string,
-  userId: string,
-  action: string,
-  recordId: string | null,
-  payload: Record<string, unknown>
-) {
-  if (!SERVICE_ROLE) return;
-  await adminClient().from('audit_logs').insert({
-    org_id: orgId,
-    user_id: userId,
-    action,
-    table_name: 'hospitality_room_access',
-    record_id: recordId,
-    new_data: payload
-  });
-}
-
-function normalizeRequest(body: any) {
-  return {
-    property_id: clean(body?.property_id, 120),
-    room_id: clean(body?.room_id, 120),
-    assignment_reference: clean(body?.assignment_reference, 160),
-    starts_at: clean(body?.starts_at, 80),
-    expires_at: clean(body?.expires_at, 80),
-    reason: clean(body?.reason, 40)
-  };
-}
-
-function validateRequest(request: ReturnType<typeof normalizeRequest>) {
-  const errors: string[] = [];
-  if (!request.property_id) errors.push('property_required');
-  if (!request.room_id) errors.push('room_required');
-  if (!request.assignment_reference) errors.push('assignment_reference_required');
-  if (!['guest_checkin', 'replacement', 'staff_authorized'].includes(request.reason)) errors.push('invalid_reason');
-
-  const startsAt = Date.parse(request.starts_at);
-  const expiresAt = Date.parse(request.expires_at);
-  if (!Number.isFinite(startsAt)) errors.push('valid_start_required');
-  if (!Number.isFinite(expiresAt)) errors.push('valid_expiry_required');
-  if (Number.isFinite(startsAt) && Number.isFinite(expiresAt) && expiresAt <= startsAt) {
-    errors.push('expiry_must_follow_start');
+async function parseJson(req: Request) {
+  try {
+    const body = await req.json();
+    return body && typeof body === 'object' ? body as Record<string, unknown> : {};
+  } catch {
+    throw hospitalityError('invalid_json', 400);
   }
-  return errors;
 }
 
-async function readiness(req: Request) {
-  const ctx = await context(req);
+async function readiness(req: Request, url: URL) {
+  const ctx = await resolveContext(req);
+  const propertyId = propertyIdFrom(url);
+  const instances = await listProviderInstances(ctx.orgId, propertyId || undefined);
+
+  const providers = await Promise.all(instances.map(async (instance) => {
+    if (instance.state === 'not_configured' || instance.state === 'disabled') {
+      return {
+        id: instance.id,
+        property_id: instance.property_id,
+        provider_type: instance.provider_type,
+        display_name: instance.display_name,
+        state: instance.state,
+        blocker: instance.state === 'disabled' ? 'provider_disabled' : 'provider_not_configured',
+        capabilities: instance.capabilities,
+        checked_at: instance.last_verified_at
+      };
+    }
+
+    try {
+      const adapter = providerFor(instance);
+      const result = await adapter.readiness({
+        organizationId: ctx.orgId,
+        propertyId: instance.property_id,
+        userId: ctx.userId,
+        providerInstanceId: instance.id,
+        providerPropertyId: instance.provider_property_id || ''
+      });
+      return {
+        id: instance.id,
+        property_id: instance.property_id,
+        provider_type: instance.provider_type,
+        display_name: instance.display_name,
+        ...result
+      };
+    } catch (error) {
+      return {
+        id: instance.id,
+        property_id: instance.property_id,
+        provider_type: instance.provider_type,
+        display_name: instance.display_name,
+        state: 'configured_unverified',
+        blocker: error instanceof Error ? error.message : 'provider_not_ready',
+        capabilities: instance.capabilities,
+        checked_at: new Date().toISOString()
+      };
+    }
+  }));
+
   return json({
     ok: true,
     service: 'atlas-hospitality-access',
     version: VERSION,
     organization_id: ctx.orgId,
     role: ctx.role,
-    provider: {
-      id: PROVIDER_ID || null,
-      state: providerState()
-    },
-    issuance_enabled: false,
-    blocker: providerState() === 'not_configured'
-      ? 'authorized_provider_adapter_not_configured'
-      : 'provider_readiness_not_verified',
+    permissions: ctx.permissions,
+    providers,
+    issuance_enabled: providers.some((provider: any) => provider.state === 'ready'),
     checked_at: new Date().toISOString()
   });
 }
 
-async function issue(req: Request, body: any) {
-  const ctx = await context(req);
-  if (!['owner', 'admin', 'platform_admin'].includes(ctx.role)) {
-    return fail('hospitality_access_admin_required', 403);
+async function providers(req: Request, url: URL) {
+  const ctx = await resolveContext(req);
+  requireHospitalityPermission(ctx, 'hospitality.access.read');
+  const propertyId = propertyIdFrom(url);
+  const rows = await listProviderInstances(ctx.orgId, propertyId || undefined);
+  return json({ ok: true, providers: rows });
+}
+
+async function rooms(req: Request, url: URL) {
+  const ctx = await resolveContext(req);
+  requireHospitalityPermission(ctx, 'hospitality.access.read');
+  const propertyId = propertyIdFrom(url);
+  if (!propertyId) throw hospitalityError('property_required', 422);
+  return json({ ok: true, rooms: await listRoomMappings(ctx.orgId, propertyId) });
+}
+
+async function credentials(req: Request, url: URL) {
+  const ctx = await resolveContext(req);
+  requireHospitalityPermission(ctx, 'hospitality.access.read');
+  const propertyId = propertyIdFrom(url);
+  if (!propertyId) throw hospitalityError('property_required', 422);
+  return json({ ok: true, credentials: await listCredentialReferences(ctx.orgId, propertyId) });
+}
+
+async function issue(req: Request, url: URL) {
+  const ctx = await resolveContext(req);
+  requireHospitalityPermission(ctx, 'hospitality.access.issue');
+  const body = await parseJson(req);
+  const propertyId = propertyIdFrom(url, body);
+  const roomId = clean(body.room_id, 120);
+  const providerInstanceId = clean(body.provider_instance_id, 120);
+  if (!propertyId) throw hospitalityError('property_required', 422);
+  if (!providerInstanceId) throw hospitalityError('provider_not_configured', 422);
+
+  const instance = await loadProviderInstance(ctx.orgId, propertyId, providerInstanceId);
+  const request = {
+    propertyId,
+    roomId,
+    assignmentReference: clean(body.assignment_reference, 160),
+    startsAt: clean(body.starts_at, 80),
+    expiresAt: clean(body.expires_at, 80),
+    reason: clean(body.reason, 40) as 'guest_checkin' | 'replacement' | 'staff_authorized'
+  };
+  const decision = evaluateRoomAccessRequest(ctx, instance.state as any, request);
+  if (!decision.allowed) {
+    throw hospitalityError('invalid_room_access_request', 422, { errors: decision.reasons });
   }
 
-  const request = normalizeRequest(body);
-  const errors = validateRequest(request);
-  if (errors.length) return fail('invalid_room_access_request', 422, { errors });
-
-  if (providerState() !== 'configured_unverified') {
-    await audit(ctx.orgId, ctx.user.id, 'hospitality.room_access.issue_blocked', null, {
-      property_id: request.property_id,
-      room_id: request.room_id,
-      reason: request.reason,
-      blocker: 'authorized_provider_adapter_not_configured'
-    });
-    return fail('authorized_provider_adapter_not_configured', 503);
-  }
-
-  const upstream = await fetch(PROVIDER_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${PROVIDER_TOKEN}`,
-      'content-type': 'application/json',
-      'user-agent': 'ATLAS-Hospitality/1.0'
-    },
-    body: JSON.stringify({
-      organization_id: ctx.orgId,
-      requested_by: ctx.user.id,
-      provider_id: PROVIDER_ID,
-      operation: 'issue_room_credential',
-      request
-    })
-  }).catch(() => null);
-
-  if (!upstream) {
-    await audit(ctx.orgId, ctx.user.id, 'hospitality.room_access.issue_failed', null, {
-      property_id: request.property_id,
-      room_id: request.room_id,
-      provider_id: PROVIDER_ID,
-      failure: 'provider_unreachable'
-    });
-    return fail('provider_unreachable', 502);
-  }
-
-  const providerData = await upstream.json().catch(() => ({}));
-  if (!upstream.ok) {
-    await audit(ctx.orgId, ctx.user.id, 'hospitality.room_access.issue_failed', null, {
-      property_id: request.property_id,
-      room_id: request.room_id,
-      provider_id: PROVIDER_ID,
-      provider_status: upstream.status
-    });
-    return fail('provider_issue_failed', 502, { provider_status: upstream.status });
-  }
-
-  const credentialId = clean(providerData?.credential_id || providerData?.id, 200);
-  if (!credentialId) return fail('provider_response_missing_credential_id', 502);
-
-  await audit(ctx.orgId, ctx.user.id, 'hospitality.room_access.issued', credentialId, {
-    property_id: request.property_id,
-    room_id: request.room_id,
-    assignment_reference: request.assignment_reference,
-    starts_at: request.starts_at,
-    expires_at: request.expires_at,
-    reason: request.reason,
-    provider_id: PROVIDER_ID
+  await loadRoomMapping(ctx.orgId, propertyId, roomId, instance.id);
+  const adapter = providerFor(instance);
+  await writeHospitalityAudit(ctx.orgId, ctx.userId, 'hospitality.room_access.issue_requested', null, {
+    property_id: propertyId,
+    room_id: roomId,
+    provider_instance_id: instance.id,
+    assignment_reference: request.assignmentReference,
+    starts_at: request.startsAt,
+    expires_at: request.expiresAt,
+    reason: request.reason
   });
 
-  // ATLAS intentionally returns only the provider credential identifier.
-  // Raw key material, NFC/RFID payloads, master keys, secrets and encoder commands
-  // must remain inside the authorized provider adapter and never reach the browser.
-  return json({
-    ok: true,
-    credential_id: credentialId,
-    provider_id: PROVIDER_ID,
-    state: 'issued'
-  }, 201);
+  // Provider-specific issuance is intentionally fail-closed until the adapter
+  // for this configured property has passed its own readiness verification.
+  await adapter.issueCredential({
+    organizationId: ctx.orgId,
+    propertyId,
+    userId: ctx.userId,
+    providerInstanceId: instance.id,
+    providerPropertyId: instance.provider_property_id || ''
+  }, {
+    ...request,
+    providerRoomId: roomId,
+    credentialType: 'provider_reference'
+  } as any);
+
+  throw hospitalityError('provider_response_invalid', 502);
+}
+
+async function unavailableMutation(req: Request, operation: 'revoke' | 'credential-status') {
+  const ctx = await resolveContext(req);
+  requireHospitalityPermission(
+    ctx,
+    operation === 'revoke' ? 'hospitality.access.revoke' : 'hospitality.access.read'
+  );
+  throw hospitalityError('provider_not_ready', 503, { operation, blocker: 'credential_lifecycle_orchestration_pending' });
+}
+
+async function audit(req: Request, url: URL) {
+  const ctx = await resolveContext(req);
+  requireHospitalityPermission(ctx, 'hospitality.access.audit');
+  const propertyId = propertyIdFrom(url);
+  if (!propertyId) throw hospitalityError('property_required', 422);
+  return json({ ok: true, audit: await listHospitalityAudit(ctx.orgId, propertyId) });
 }
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
-  const api = url.searchParams.get('api');
+  const operation = url.searchParams.get('api') as Operation | null;
 
   try {
-    if (req.method === 'GET' && api === 'readiness') return await readiness(req);
-    if (req.method === 'POST' && api === 'issue') {
-      let body: any;
-      try {
-        body = await req.json();
-      } catch {
-        return fail('invalid_json', 400);
-      }
-      return await issue(req, body);
-    }
-    return fail('not_found', 404);
+    if (!operation || !OPERATIONS.includes(operation)) throw hospitalityError('not_found', 404);
+    if (req.method === 'GET' && operation === 'readiness') return await readiness(req, url);
+    if (req.method === 'GET' && operation === 'providers') return await providers(req, url);
+    if (req.method === 'GET' && operation === 'rooms') return await rooms(req, url);
+    if (req.method === 'GET' && operation === 'credentials') return await credentials(req, url);
+    if (req.method === 'POST' && operation === 'issue') return await issue(req, url);
+    if (req.method === 'POST' && operation === 'revoke') return await unavailableMutation(req, 'revoke');
+    if (req.method === 'GET' && operation === 'credential-status') return await unavailableMutation(req, 'credential-status');
+    if (req.method === 'GET' && operation === 'audit') return await audit(req, url);
+    throw hospitalityError('method_not_allowed', 405);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'internal_error';
-    const status = ['authentication_required', 'invalid_session'].includes(message)
-      ? 401
-      : message.includes('required')
-        ? 403
-        : 500;
-    return fail(message, status);
+    return errorResponse(error);
   }
 });
