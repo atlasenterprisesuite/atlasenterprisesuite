@@ -7,6 +7,9 @@ export const ATLAS_SESSION_EVENT = 'atlas-session-changed';
 
 export type AtlasOrganization = {
   id: string;
+  name: string;
+  legalName: string | null;
+  active: boolean;
   role: string;
 };
 
@@ -163,12 +166,29 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
 }
 
 export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
-  const response = await authorizedFetch('/rest/v1/organization_members?select=org_id,role,status&status=eq.active&limit=1', {
+  const membershipResponse = await authorizedFetch('/rest/v1/organization_members?select=org_id,role,status&status=eq.active&limit=1', {
     method: 'GET'
   });
-  const data = await parseResponse(response);
-  if (!Array.isArray(data) || !data[0]?.org_id) throw new Error('no_active_organization');
-  return { id: String(data[0].org_id), role: String(data[0].role || 'member') };
+  const memberships = await parseResponse(membershipResponse);
+  if (!Array.isArray(memberships) || !memberships[0]?.org_id) throw new Error('no_active_organization');
+
+  const membership = memberships[0];
+  const organizationId = String(membership.org_id);
+  const organizationFilter = encodeURIComponent(`eq.${organizationId}`);
+  const organizationResponse = await authorizedFetch(`/rest/v1/organizations?id=${organizationFilter}&select=id,name,legal_name,active&limit=1`, {
+    method: 'GET'
+  });
+  const organizations = await parseResponse(organizationResponse);
+  if (!Array.isArray(organizations) || !organizations[0]?.id) throw new Error('organization_not_found');
+
+  const organization = organizations[0];
+  return {
+    id: organizationId,
+    name: String(organization.name || organization.legal_name || 'ATLAS Organization'),
+    legalName: organization.legal_name ? String(organization.legal_name) : null,
+    active: Boolean(organization.active),
+    role: String(membership.role || 'member')
+  };
 }
 
 export async function getAccountingInsight(forceRefresh = false): Promise<AccountingInsight> {
