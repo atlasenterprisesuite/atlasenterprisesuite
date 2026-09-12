@@ -91,7 +91,16 @@ export function SocialCopilotPage() {
     setCaption('');
   }
 
-  const publishDisabled = platform.connectionStatus !== 'ready' || media.length === 0 || mediaErrors.length > 0;
+  const providerReady = platform.connectionStatus === 'ready';
+  const publishExecutionReady = false;
+  const publishDisabled = !providerReady || !publishExecutionReady || media.length === 0 || mediaErrors.length > 0;
+  const providerStatusLabel = platform.connectionStatus.replace('_', ' ');
+  const publishGateTitle = providerReady ? 'Publishing action required' : 'Publishing connection required';
+  const publishGateMessage = platform.connectionStatus === 'unavailable'
+    ? `${platform.name} publishing is currently unavailable. Drafting and format validation remain available.`
+    : providerReady
+      ? `${platform.name} is connected, but an audited server-side publish action is not configured in this slice.`
+      : `${platform.name} credentials and organization authorization are not configured. Drafting and format validation remain available.`;
   const engagementReady = Boolean(topic.trim() && niche.trim() && audience.trim());
 
   return (
@@ -156,7 +165,7 @@ export function SocialCopilotPage() {
 
       {tab === 'publish' && (
         <section className="social-panel" aria-label="Prepare social publishing">
-          <div className="social-panel-heading"><div><p className="eyebrow">Publishing preparation</p><h2>Validate a campaign before connection</h2></div><span className="social-state warning">not configured</span></div>
+          <div className="social-panel-heading"><div><p className="eyebrow">Publishing preparation</p><h2>Validate a campaign before connection</h2></div><span className={`social-state ${providerReady ? 'neutral' : 'warning'}`}>{providerStatusLabel}</span></div>
           <div className="platform-tabs" role="tablist" aria-label="Social platforms">
             {socialPlatforms.map((item) => <button key={item.id} type="button" role="tab" aria-selected={item.id === platformId} className={item.id === platformId ? 'active' : ''} onClick={() => selectPlatform(item.id)}>{item.name}</button>)}
           </div>
@@ -168,7 +177,7 @@ export function SocialCopilotPage() {
               {media.length > 0 && <div className="media-queue">{media.map((item, index) => <article key={`${item.file.name}-${index}`}>{item.url ? item.file.type.startsWith('video/') ? <video src={item.url} muted controls /> : <img src={item.url} alt={item.file.name} /> : null}<div><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(2)} MB</small></div><button type="button" onClick={() => removeMedia(index)}>Remove</button></article>)}</div>}
               {mediaErrors.length > 0 && <div className="social-errors" role="alert">{mediaErrors.map((error) => <span key={error}>{error}</span>)}</div>}
               <div className="social-actions"><button className="social-secondary" type="button" onClick={clearPublishDraft}>Clear draft</button><button className="creator-primary" type="button" disabled={publishDisabled}>Publish to {platform.name}</button></div>
-              <div className="connection-gate"><strong>Publishing connection required</strong><span>{platform.name} credentials and organization authorization are not configured. Drafting and format validation remain available.</span></div>
+              <div className="connection-gate"><strong>{publishGateTitle}</strong><span>{publishGateMessage}</span></div>
             </div>
             <aside className="social-preview"><div><p className="eyebrow">Preview</p><h3>{format.label}</h3><span>{format.width} × {format.height}px · {format.aspectRatio}</span></div><div className="social-frame" style={{ aspectRatio: format.aspectRatio.replace(':', ' / ') }}>{media[0]?.url ? media[0].file.type.startsWith('video/') ? <video src={media[0].url} muted controls /> : <img src={media[0].url} alt="Selected social creative" /> : <div><strong>No media selected</strong><span>Your first compatible asset will appear here.</span></div>}</div>{caption && <p className="preview-caption">{caption}</p>}</aside>
           </div>
