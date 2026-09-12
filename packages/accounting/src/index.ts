@@ -5,6 +5,7 @@ export * from './aging';
 export * from './arApWrites';
 export * from './assets';
 export * from './bankCashWrites';
+export * from './budgeting';
 export * from './forecast';
 export * from './generalLedger';
 export * from './journalWrites';
