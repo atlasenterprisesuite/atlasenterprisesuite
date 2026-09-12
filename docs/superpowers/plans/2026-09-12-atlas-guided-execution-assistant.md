@@ -4,7 +4,7 @@
 
 **Goal:** Make ATLAS Assistant read the exact same persisted Guided Execution state and answer/handle `continue`, `resume`, `what is next?`, and `where did we stop?` without creating a second conversational workflow truth or bypassing execution permissions.
 
-**Architecture:** Add a pure assistant projection over `GuidedExecutionState`, then a small contextual Assistant panel inside Guided Execution. Commands resolve to a summary, target task/step, blocker, approval requirement, or navigation intent. This slice does not add arbitrary model/tool execution; external mutations remain owned by module/provider adapters and the execution server boundary.
+**Architecture:** Add a pure Assistant projection over `GuidedExecutionState`, then a contextual Assistant panel inside Guided Execution. Commands resolve to a summary, target task/step, blocker, approval requirement, failure, completion, or navigation intent. This slice does not add arbitrary model/tool execution; external mutations remain owned by module/provider adapters and the execution server boundary.
 
 **Tech Stack:** TypeScript 5.7, React 18.3, Vitest 3.2, Testing Library, existing Guided Execution API/read model.
 
@@ -12,20 +12,22 @@
 
 ## Global Constraints
 
-- Execute after the Core Web plan; the Manager pilot may run before or after this plan, but both must consume the same `GuidedExecutionState` contract.
-- Assistant state is derived from the canonical execution response; do not persist a separate chat progress object.
-- `continue` and `resume` never mean implicit permission or approval.
+- Execute after `2026-09-12-atlas-guided-execution-core-web.md` is complete and reviewed.
+- Reuse `tests/fixtures/guidedExecution.ts`; do not create incompatible duplicate fixture vocabulary.
+- Assistant state is derived from the exact `GuidedExecutionState` already loaded by the page; do not persist a separate chat progress object.
+- `continue` and `resume` never mean implicit permission, approval, provider connectivity, or external execution.
 - This plan does not execute payments, payroll, accounting posts, tax filing, health actions, security changes, infrastructure mutations, AWS actions, or paid provider calls.
-- If a step requires a module/provider adapter that is not available, Assistant returns that dependency truthfully rather than simulating execution.
+- If a step requires an unavailable module/provider adapter, Assistant surfaces the dependency truthfully rather than simulating execution.
 - No merge or deploy in this plan.
 
 ## File Map
 
-- `apps/web/src/execution/assistant.ts` — pure command/summary resolver.
-- `apps/web/src/execution/ExecutionAssistantPanel.tsx` — contextual UI consuming the same state as the page.
-- `apps/web/src/execution/GuidedExecutionPage.tsx` — pass canonical state/selection callbacks to Assistant panel.
+- `apps/web/src/execution/assistant.ts` — pure snapshot and command resolver.
+- `apps/web/src/execution/ExecutionAssistantPanel.tsx` — contextual UI consuming the same state as Guided Execution.
+- `apps/web/src/execution/GuidedExecutionPage.tsx` — passes canonical state and the existing selected-step callback.
+- `tests/fixtures/guidedExecution.ts` — existing fixture builder from Core Web plan.
 - `tests/unit/guided-execution-assistant.test.ts` — deterministic command resolution.
-- `tests/integration/guided-execution-assistant.test.tsx` — UI selection/approval/blocker behavior.
+- `tests/integration/guided-execution-assistant.test.tsx` — UI selection, blocker, approval, failure, completion, accessibility.
 
 ---
 
@@ -36,31 +38,38 @@
 - Test: `tests/unit/guided-execution-assistant.test.ts`
 
 **Interfaces:**
-- Consumes: `GuidedExecutionState`, selectors from `view-model.ts`.
+- Consumes: `GuidedExecutionState`, `activeTask`, `activeStep`, `deriveStepAction`, `makeGuidedState`.
 - Produces: `buildExecutionAssistantSnapshot(state)`, `resolveExecutionAssistantCommand(command, state)`.
 
-- [ ] **Step 1: Write failing command tests**
+- [ ] **Step 1: Write failing command tests using the shared fixture vocabulary**
 
 ```ts
 import { describe, expect, it } from 'vitest';
+import { makeApproval, makeGuidedState } from '../fixtures/guidedExecution';
 import { buildExecutionAssistantSnapshot, resolveExecutionAssistantCommand } from '../../apps/web/src/execution/assistant';
 
-describe('Guided Execution Assistant', () => {
-  it('reports the persisted blocker instead of inventing a next execution', () => {
-    const state = makeGuidedState({ currentStatus: 'blocked', blockedReason: 'cloudflare_not_verified' });
-    const snapshot = buildExecutionAssistantSnapshot(state);
-    expect(snapshot.status).toBe('blocked');
-    expect(snapshot.blockedReason).toBe('cloudflare_not_verified');
-  });
+it('reports the persisted blocker instead of inventing a next execution', () => {
+  const state = makeGuidedState({ taskStatus: 'blocked', blockedReason: 'cloudflare_not_verified', stepStatuses: ['completed', 'blocked', 'blocked'] });
+  const snapshot = buildExecutionAssistantSnapshot(state);
+  expect(snapshot.status).toBe('blocked');
+  expect(snapshot.blockedReason).toBe('cloudflare_not_verified');
+});
 
-  it('resolves continue to the current permitted step without executing it', () => {
-    const state = makeGuidedState({ currentStepId: 'step-2', stepStatus: 'ready' });
-    expect(resolveExecutionAssistantCommand('continue', state)).toEqual(expect.objectContaining({
-      kind: 'focus_step',
-      stepId: 'step-2',
-      executesExternalAction: false
-    }));
+it('resolves continue to the canonical current step without executing it', () => {
+  const state = makeGuidedState({ currentStepId: 'step-2', stepStatuses: ['completed', 'ready', 'blocked'] });
+  expect(resolveExecutionAssistantCommand('continue', state)).toEqual(expect.objectContaining({
+    kind: 'focus_step', stepId: 'step-2', executesExternalAction: false
+  }));
+});
+
+it('surfaces a pending approval before any continuation', () => {
+  const state = makeGuidedState({
+    taskStatus: 'awaiting_approval',
+    approvals: [makeApproval({ status: 'pending' })]
   });
+  expect(resolveExecutionAssistantCommand('resume', state)).toEqual(expect.objectContaining({
+    kind: 'show_approval', approvalId: 'approval-1', executesExternalAction: false
+  }));
 });
 ```
 
@@ -87,11 +96,9 @@ export type ExecutionAssistantSnapshot = {
 };
 ```
 
-Populate exclusively from the passed `GuidedExecutionState` and pure selectors.
+Populate every field exclusively from the passed `GuidedExecutionState` and Core Web pure selectors. Never read localStorage/sessionStorage or maintain Assistant-specific workflow state.
 
-- [ ] **Step 4: Implement command normalization**
-
-Normalize lowercase trimmed commands into four supported intents:
+- [ ] **Step 4: Implement three command families with deterministic precedence**
 
 ```ts
 const CONTINUE = new Set(['continue', 'continua', 'continuar', 'resume', 'reanudar']);
@@ -99,20 +106,30 @@ const NEXT = new Set(['what is next', "what's next", 'que sigue', 'qué sigue'])
 const STOPPED = new Set(['where did we stop', 'donde paramos', 'dónde paramos']);
 ```
 
-Resolution order for `continue/resume`:
+Normalize input with `trim().toLowerCase()`. For `continue/resume`, resolve in this order:
 
 ```text
-awaiting approval -> show_approval
-blocked -> show_blocker
-failed -> show_failure
-current ready/running step -> focus_step
-completed workflow -> completed
+pending approval / task awaiting_approval -> show_approval
+active task blocked -> show_blocker
+active step failed -> show_failure
+workflow completed -> completed
+active step ready/running -> focus_step
 otherwise -> show_next_action
 ```
 
-Every result includes `executesExternalAction: false` in this slice.
+Every command result in this plan includes `executesExternalAction: false`.
 
-- [ ] **Step 5: Run tests and commit**
+- [ ] **Step 5: Handle unsupported phrases truthfully**
+
+Return:
+
+```ts
+{ kind: 'unsupported', message: 'This execution command is not supported in the current workflow.', executesExternalAction: false }
+```
+
+Do not send unsupported text to a model or provider in this slice.
+
+- [ ] **Step 6: Run tests and commit**
 
 ```bash
 npx vitest run tests/unit/guided-execution-assistant.test.ts
@@ -130,20 +147,22 @@ git commit -m "feat: derive Assistant state from execution workflows"
 - Test: `tests/integration/guided-execution-assistant.test.tsx`
 
 **Interfaces:**
-- Consumes: snapshot/resolver from Task 1; selected-step callback from Guided Execution page.
-- Produces: visible operational summary and command buttons that navigate within the same workflow state.
+- Consumes: Task 1 resolver; exact page `data`; existing `setSelectedStepId` callback.
+- Produces: visible operational summary and navigation-only command controls.
 
 - [ ] **Step 1: Write failing panel tests**
 
 ```tsx
 it('uses the same blocked state shown by the workflow', () => {
-  render(<ExecutionAssistantPanel state={makeGuidedState({ blockedReason: 'cloudflare_not_verified' })} onSelectStep={vi.fn()} />);
+  const state = makeGuidedState({ taskStatus: 'blocked', blockedReason: 'cloudflare_not_verified', stepStatuses: ['completed', 'blocked', 'blocked'] });
+  render(<ExecutionAssistantPanel state={state} onSelectStep={vi.fn()} />);
   expect(screen.getByText(/cloudflare_not_verified/i)).toBeInTheDocument();
 });
 
 it('Continue selects the canonical current step', () => {
   const onSelectStep = vi.fn();
-  render(<ExecutionAssistantPanel state={makeGuidedState({ currentStepId: 'step-2' })} onSelectStep={onSelectStep} />);
+  const state = makeGuidedState({ currentStepId: 'step-2', stepStatuses: ['completed', 'ready', 'blocked'] });
+  render(<ExecutionAssistantPanel state={state} onSelectStep={onSelectStep} />);
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   expect(onSelectStep).toHaveBeenCalledWith('step-2');
 });
@@ -155,15 +174,13 @@ it('Continue selects the canonical current step', () => {
 npx vitest run tests/integration/guided-execution-assistant.test.tsx
 ```
 
-- [ ] **Step 3: Implement the panel**
-
-Render:
+- [ ] **Step 3: Implement the panel with native controls**
 
 ```tsx
 <aside className="execution-assistant" aria-label="ATLAS Assistant">
   <p className="eyebrow">ATLAS Assistant</p>
   <h2>Execution companion</h2>
-  <p role="status">{summary}</p>
+  <p role="status" aria-live="polite">{summary}</p>
   <div className="execution-assistant-actions">
     <button type="button" onClick={() => runCommand('continue')}>Continue</button>
     <button type="button" onClick={() => runCommand('what is next')}>What is next?</button>
@@ -172,13 +189,13 @@ Render:
 </aside>
 ```
 
-For `show_approval`, select the step associated with the pending approval. For `show_blocker` and `show_failure`, select the current step and announce the canonical reason. Do not call a provider or transition endpoint from these buttons.
+For `show_approval`, select the step belonging to the pending approval's task/current step. For `show_blocker`/`show_failure`, select the canonical current step and announce the stored reason/status. For `completed`, keep the current selection and announce that no next action exists. These buttons never call transition/provider endpoints.
 
-- [ ] **Step 4: Wire it to the same page state**
+- [ ] **Step 4: Wire the exact same page state**
 
-`GuidedExecutionPage` passes its exact `data` object and existing `setSelectedStepId` callback. Do not clone workflow truth into an Assistant-specific React store.
+`GuidedExecutionPage` passes `data` directly and the existing selected-step callback. Do not clone `data` into a second Assistant store or save it elsewhere.
 
-- [ ] **Step 5: Run integration tests and commit**
+- [ ] **Step 5: Run tests and commit**
 
 ```bash
 npx vitest run tests/integration/guided-execution-assistant.test.tsx tests/integration/guided-execution-route.test.tsx
@@ -188,41 +205,45 @@ git commit -m "feat: add Guided Execution Assistant companion"
 
 ---
 
-### Task 3: Prove approval, blocker, failure, completed, and next-action semantics
+### Task 3: Prove blocker, approval, failure, completion, next-action, and unavailable-adapter semantics
 
 **Files:**
 - Modify: `tests/unit/guided-execution-assistant.test.ts`
 - Modify: `tests/integration/guided-execution-assistant.test.tsx`
-- Modify production code only if a test exposes a defect.
+- Modify production code only if a failing test exposes a defect.
 
 **Interfaces:**
 - Consumes: Tasks 1–2.
 - Produces: complete deterministic behavior for the approved command set.
 
-- [ ] **Step 1: Add an approval case**
+- [ ] **Step 1: Add completed workflow case**
 
 ```ts
-expect(resolveExecutionAssistantCommand('continue', makeGuidedState({ status: 'awaiting_approval' })))
-  .toEqual(expect.objectContaining({ kind: 'show_approval', executesExternalAction: false }));
+const completed = makeGuidedState({ workflowStatus: 'completed', taskStatus: 'completed', stepStatuses: ['completed', 'completed', 'completed'], currentStepId: 'step-3' });
+expect(resolveExecutionAssistantCommand('what is next', completed))
+  .toEqual(expect.objectContaining({ kind: 'completed', nextAction: null, executesExternalAction: false }));
 ```
 
-- [ ] **Step 2: Add a completed case**
+- [ ] **Step 2: Add failure case**
 
 ```ts
-expect(resolveExecutionAssistantCommand('what is next', makeGuidedState({ workflowStatus: 'completed' })))
-  .toEqual(expect.objectContaining({ kind: 'completed', nextAction: null }));
+const failed = makeGuidedState({ taskStatus: 'failed', stepStatuses: ['completed', 'failed', 'blocked'], currentStepId: 'step-2' });
+expect(resolveExecutionAssistantCommand('continue', failed))
+  .toEqual(expect.objectContaining({ kind: 'show_failure', stepId: 'step-2', executesExternalAction: false }));
 ```
 
-- [ ] **Step 3: Add a failure case**
+- [ ] **Step 3: Add unavailable-adapter case**
 
 ```ts
-expect(resolveExecutionAssistantCommand('continue', makeGuidedState({ stepStatus: 'failed' })))
-  .toEqual(expect.objectContaining({ kind: 'show_failure', executesExternalAction: false }));
+const aws = makeGuidedState({ currentActionType: 'launch_ec2', taskStatus: 'blocked', blockedReason: 'AWS execution adapter not enabled', stepStatuses: ['completed', 'blocked', 'blocked'] });
+const result = resolveExecutionAssistantCommand('continue', aws);
+expect(result).toEqual(expect.objectContaining({ kind: 'show_blocker', executesExternalAction: false }));
+expect(JSON.stringify(result)).toContain('AWS execution adapter not enabled');
 ```
 
-- [ ] **Step 4: Add a no-adapter case**
+- [ ] **Step 4: Add `where did we stop?` and next-action cases**
 
-For an action such as `launch_ec2`, assert the Assistant message says the execution adapter is unavailable/blocked and never returns an executable external action.
+Assert STOPPED returns current task title/current action/current step ID. Assert NEXT returns the persisted `task.nextAction` or `completed` when none exists and workflow is complete; it must not synthesize a next provider action.
 
 - [ ] **Step 5: Run tests and commit**
 
@@ -234,7 +255,7 @@ git commit -m "test: verify Assistant execution semantics"
 
 ---
 
-### Task 4: Verify accessibility, same-source state, and full repository integrity
+### Task 4: Verify same-source updates, keyboard accessibility, and full repository integrity
 
 **Files:**
 - Modify: `tests/integration/guided-execution-assistant.test.tsx`
@@ -242,15 +263,15 @@ git commit -m "test: verify Assistant execution semantics"
 
 **Interfaces:**
 - Consumes: complete Assistant integration.
-- Produces: final proof that Assistant and Guided Execution share canonical state.
+- Produces: final evidence that Assistant and Guided Execution share canonical state.
 
-- [ ] **Step 1: Prove same-source updates**
+- [ ] **Step 1: Prove same-source reload updates Assistant**
 
-Rerender the panel with a reloaded canonical state changing `blocked` -> `completed`; assert the Assistant summary changes from blocker to completed without any Assistant-specific persistence write.
+Render blocked state, then rerender the panel with a new `GuidedExecutionState` from `makeGuidedState({ workflowStatus:'completed', taskStatus:'completed', stepStatuses:['completed','completed','completed'], currentStepId:'step-3' })`. Assert the summary changes from blocker to completed without any Assistant persistence call.
 
-- [ ] **Step 2: Prove keyboard operation and state announcement**
+- [ ] **Step 2: Prove keyboard operation and announcements**
 
-Tab through `Continue`, `What is next?`, and `Where did we stop?`; assert native buttons and `role=status` output. No mouse-only handler is permitted.
+Use `userEvent.tab()`/keyboard activation across Continue, What is next?, and Where did we stop?. Assert native buttons, visible focus through existing CSS, and `role="status" aria-live="polite"` output. No mouse-only handler is permitted.
 
 - [ ] **Step 3: Run Guided Execution + Assistant test set**
 
@@ -275,4 +296,4 @@ git commit -m "test: verify Guided Execution Assistant integration"
 
 ## Completion Gate
 
-This plan is complete when ATLAS Assistant can truthfully answer where the workflow stopped, what comes next, and what `continue/resume` means from the exact persisted execution state; it surfaces blockers, approvals, failures and completion correctly; it selects/navigates to the canonical step; it never treats conversation as authorization; and it performs no external provider mutation in this slice.
+Assistant integration is ready for review only when ATLAS Assistant truthfully answers where the workflow stopped, what comes next, and what `continue/resume` means from the exact persisted execution state; it surfaces blockers, pending approvals, failures, completion and unavailable adapters correctly; it selects/navigates to the canonical step; unsupported commands remain bounded; conversation never becomes authorization; full typecheck/test/build passes; and no external provider mutation, paid action, merge, or deploy occurs.
