@@ -1,4 +1,9 @@
-import type { AccountingTable } from '../../../../packages/accounting/src';
+import {
+  mapForecastSnapshot,
+  type AccountingTable,
+  type ForecastSnapshotRecord,
+  type ForecastSnapshotRow,
+} from '../../../../packages/accounting/src';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
@@ -260,6 +265,18 @@ export async function getAccountingInsight(forceRefresh = false): Promise<Accoun
     body: JSON.stringify({ org_id: organization.id, force_refresh: forceRefresh })
   });
   return parseResponse(response) as Promise<AccountingInsight>;
+}
+
+export async function getAccountingForecastSnapshots(): Promise<ForecastSnapshotRecord[]> {
+  const organization = await getActiveAtlasOrganization();
+  const orgFilter = encodeURIComponent(`eq.${organization.id}`);
+  const select = encodeURIComponent('id,org_id,entity_id,as_of_date,horizon_weeks,scenario,forecast,assumptions,created_by,created_at');
+  const response = await authorizedFetch(`/rest/v1/accounting_forecast_snapshots?org_id=${orgFilter}&select=${select}&order=as_of_date.desc,created_at.desc`, {
+    method: 'GET'
+  });
+  const data = await parseResponse(response);
+  if (!Array.isArray(data)) throw new Error('Accounting forecast query returned an invalid payload');
+  return (data as ForecastSnapshotRow[]).map(mapForecastSnapshot);
 }
 
 export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
