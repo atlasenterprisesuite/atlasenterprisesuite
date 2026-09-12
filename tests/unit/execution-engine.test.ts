@@ -46,4 +46,40 @@ describe('ATLAS ExecutionEngine', () => {
     expect((await store.listEvidence('task-1')).map((item) => item.reference)).toContain('payroll-77');
     expect((await store.getTask('task-1'))?.nextAction).toBe('Review benefits enrollment');
   });
+
+  it('records an attempted adapter execution failure as failed rather than blocked', async () => {
+    const failingAdapter: ExecutionModuleAdapter = {
+      ...payrollAdapter,
+      execute: async () => ({ ok: false, result: {}, errorCode: 'provider_rejected' })
+    };
+    const store = MemoryExecutionStore.seeded();
+    const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([failingAdapter]));
+
+    const result = await engine.continueTask('task-1', {
+      userId: 'user-1',
+      scope: { tenantId: 'tenant-1', organizationId: 'org-1' },
+      permissions: ['payroll.write']
+    });
+
+    expect(result).toEqual({ state: 'failed', reason: 'provider_rejected' });
+    expect((await store.listSteps('task-1'))[0]?.status).toBe('failed');
+  });
+
+  it('records failed post-execution verification as failed rather than blocked', async () => {
+    const verificationFailingAdapter: ExecutionModuleAdapter = {
+      ...payrollAdapter,
+      verify: async () => ({ ok: false, evidence: [], reason: 'provider_result_unverified' })
+    };
+    const store = MemoryExecutionStore.seeded();
+    const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([verificationFailingAdapter]));
+
+    const result = await engine.continueTask('task-1', {
+      userId: 'user-1',
+      scope: { tenantId: 'tenant-1', organizationId: 'org-1' },
+      permissions: ['payroll.write']
+    });
+
+    expect(result).toEqual({ state: 'failed', reason: 'provider_result_unverified' });
+    expect((await store.listSteps('task-1'))[0]?.status).toBe('failed');
+  });
 });

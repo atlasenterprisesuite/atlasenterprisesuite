@@ -6,6 +6,7 @@ import type { ExecutionStore } from './store';
 
 export type ContinueTaskResult =
   | { state: 'blocked'; reason: string }
+  | { state: 'failed'; reason: string }
   | { state: 'completed_step'; stepId: string }
   | { state: 'no_action'; reason: string };
 
@@ -33,10 +34,16 @@ export class ExecutionEngine {
     if (!authorization.ok) return { state: 'blocked', reason: authorization.reason ?? 'authorization_failed' };
 
     const execution = await adapter.execute(step);
-    if (!execution.ok) return { state: 'blocked', reason: execution.errorCode ?? 'execution_failed' };
+    if (!execution.ok) {
+      await this.store.saveStep({ ...step, status: 'failed' });
+      return { state: 'failed', reason: execution.errorCode ?? 'execution_failed' };
+    }
 
     const verification = await adapter.verify(step, execution);
-    if (!verification.ok) return { state: 'blocked', reason: verification.reason ?? 'verification_failed' };
+    if (!verification.ok) {
+      await this.store.saveStep({ ...step, status: 'failed' });
+      return { state: 'failed', reason: verification.reason ?? 'verification_failed' };
+    }
 
     const completedAt = new Date().toISOString();
     await this.store.saveStep({ ...step, status: 'completed', completedAt });
