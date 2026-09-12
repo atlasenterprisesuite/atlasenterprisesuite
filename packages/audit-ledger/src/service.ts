@@ -1,6 +1,7 @@
 import { assertBoundedMetadata } from './canonicalize';
 import { buildAuditLedgerDigest } from './digest';
 import { verifyAuditChain } from './verify';
+import { assertValidAuditActionType } from './types';
 import type {
   AuditChainVerification,
   AuditEventPayload,
@@ -36,6 +37,7 @@ export class AuditLedgerServiceImpl implements AuditLedgerService {
   constructor(private readonly store: AuditLedgerStore) {}
 
   async recordEvent(payload: AuditEventPayload): Promise<{ eventId: string; digest: string }> {
+    assertValidAuditActionType(payload.actionType);
     assertBoundedMetadata(payload.metadata);
     const scope = scopeFrom(payload);
 
