@@ -4,7 +4,7 @@
 
 **Goal:** Add a cryptographically chained, append-only, tenant-aware ATLAS Audit Ledger that seals Universal Execution Engine audit events without weakening RBAC, tenancy, or domain authorization.
 
-**Architecture:** `packages/audit-ledger` owns runtime-neutral event types, deterministic canonicalization, SHA-256 hashing, verification, and a storage-neutral service. Supabase owns the immutable relational ledger and serialized append RPC. The existing `atlas-execution` server-side audit boundary emits the operational audit row first and then a cryptographic ledger seal from already-authorized persisted context; ledger failures fail closed.
+**Architecture:** `packages/audit-ledger` owns runtime-neutral event types, deterministic canonicalization, SHA-256 hashing, verification, and a storage-neutral service. Supabase owns the immutable relational ledger and serialized append RPC. The existing `atlas-execution` server-side audit boundary emits the operational audit row and cryptographic ledger seal from already-authorized persisted context; any ledger failure fails closed.
 
 **Tech Stack:** TypeScript 5.7+, Web Crypto, Vitest 3.2.6, Supabase/PostgreSQL, Deno Edge Functions, npm workspaces.
 
@@ -12,40 +12,39 @@
 
 ## Global Constraints
 
-- Use global Web Crypto only; do not import `node:crypto` in `packages/audit-ledger`.
-- `metadata` is non-secret bounded JSON with a maximum serialized size of 16 KiB.
+- Use global Web Crypto only; never import `node:crypto` in `packages/audit-ledger`.
+- `metadata` is non-secret bounded JSON with a maximum serialized UTF-8 size of 16 KiB.
 - Tenant and organization scope come from persisted execution records, never arbitrary client fields.
-- `execution.admin` never substitutes for Payroll, Accounting, Health, or other domain permissions.
+- `execution.admin` never substitutes for Payroll, Accounting, Health, or another domain permission.
 - `audit_ledger_events` is strictly immutable: every `UPDATE` and `DELETE` must fail, including service-role attempts.
 - Authenticated users receive organization-scoped read access only; no direct authenticated insert/update/delete grants.
-- Append operations serialize per `(org_id, workflow_id)` and reject stale heads.
-- Digest version 1 includes every persisted hash-participating field and uses recursively sorted object keys while preserving array order.
+- Appends serialize per `(org_id, workflow_id)` and reject stale heads.
+- Digest version 1 hashes every persisted hash-participating field, recursively sorts object keys, and preserves array order.
 - Empty-chain verification defaults to invalid unless the caller explicitly sets `allowEmpty: true`.
+- Every current `atlas-execution` sensitive audit event must have non-null `workflowId` and `taskId`; `appendAudit` throws `audit_ledger_lineage_required` before writing either audit record if lineage is missing.
 - Do not merge, deploy, apply migrations to production, or spend provider credits without explicit user approval.
-
----
 
 ## File Map
 
 - `packages/audit-ledger/package.json` — workspace package metadata.
-- `packages/audit-ledger/src/types.ts` — ledger contracts, error/result types, storage interface.
-- `packages/audit-ledger/src/canonicalize.ts` — deterministic recursive JSON canonicalization and metadata-size enforcement.
-- `packages/audit-ledger/src/digest.ts` — Web Crypto SHA-256 envelope hashing.
-- `packages/audit-ledger/src/verify.ts` — chain integrity verification and first-invalid-event diagnostics.
+- `packages/audit-ledger/src/types.ts` — event/result/store contracts.
+- `packages/audit-ledger/src/canonicalize.ts` — recursive canonicalization and 16 KiB metadata guard.
+- `packages/audit-ledger/src/digest.ts` — Web Crypto SHA-256 hashing.
+- `packages/audit-ledger/src/verify.ts` — chain verification and diagnostics.
 - `packages/audit-ledger/src/service.ts` — storage-neutral record/retry service.
 - `packages/audit-ledger/src/index.ts` — public exports.
-- `supabase/migrations/20260912_atlas_audit_ledger.sql` — table, constraints, RLS, immutability trigger, serialized append RPC.
-- `supabase/functions/_shared/audit-ledger-store.ts` — Supabase adapter implementing the package storage contract.
-- `supabase/functions/atlas-execution/index.ts` — existing operational audit boundary integration.
-- `tests/unit/audit-ledger-canonicalization.test.ts` — canonicalization, metadata bounds, hashing.
-- `tests/unit/audit-ledger-verification.test.ts` — chain verification and tamper detection.
-- `tests/unit/audit-ledger-service.test.ts` — append/retry behavior against an in-memory store.
-- `tests/integration/audit-ledger-schema-contract.test.ts` — SQL schema, RLS, immutable trigger, grants, append RPC contract.
+- `supabase/migrations/20260912_atlas_audit_ledger.sql` — table, constraints, RLS, immutable trigger, append RPC.
+- `supabase/functions/_shared/audit-ledger-store.ts` — Supabase store adapter.
+- `supabase/functions/atlas-execution/index.ts` — integration at the existing audit boundary.
+- `tests/unit/audit-ledger-canonicalization.test.ts` — canonicalization/hash tests.
+- `tests/unit/audit-ledger-verification.test.ts` — tamper/link tests.
+- `tests/unit/audit-ledger-service.test.ts` — retry/service tests.
+- `tests/integration/audit-ledger-schema-contract.test.ts` — SQL security/append contract.
 - `tests/integration/audit-ledger-execution-boundary.test.ts` — Edge integration/security contract.
 
 ---
 
-### Task 1: Package scaffold, canonical event types, and deterministic digest
+### Task 1: Package scaffold, types, canonicalization, and SHA-256 digest
 
 **Files:**
 - Create: `packages/audit-ledger/package.json`
@@ -58,90 +57,63 @@
 **Interfaces:**
 - Produces: `AuditEventPayload`, `AuditLedgerEvent`, `AuditLedgerHead`, `AuditLedgerStore`, `AuditChainVerification`, `canonicalizeJson(value)`, `assertBoundedMetadata(metadata)`, `buildAuditLedgerDigest(event)`.
 
-- [ ] **Step 1: Write the failing canonicalization/hash test**
+- [ ] **Step 1: Write failing tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
 import { canonicalizeJson, buildAuditLedgerDigest } from '../../packages/audit-ledger/src/index';
 
-it('canonicalizes object keys but preserves array order', () => {
+it('sorts object keys recursively and preserves array order', () => {
   expect(canonicalizeJson({ b: 2, a: { d: 4, c: 3 }, list: [2, 1] }))
     .toBe('{"a":{"c":3,"d":4},"b":2,"list":[2,1]}');
 });
 
-it('produces a stable 64-char SHA-256 digest for the same persisted envelope', async () => {
+it('produces a stable lowercase SHA-256 digest', async () => {
   const event = fixtureEvent();
-  expect(await buildAuditLedgerDigest(event)).toBe(await buildAuditLedgerDigest({ ...event }));
-  expect(await buildAuditLedgerDigest(event)).toMatch(/^[a-f0-9]{64}$/);
+  const first = await buildAuditLedgerDigest(event);
+  expect(first).toBe(await buildAuditLedgerDigest({ ...event }));
+  expect(first).toMatch(/^[a-f0-9]{64}$/);
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Verify RED**
 
-Run:
 ```bash
 npx vitest run tests/unit/audit-ledger-canonicalization.test.ts
 ```
-Expected: FAIL because `packages/audit-ledger` does not yet exist.
+Expected: FAIL because the package does not exist.
 
-- [ ] **Step 3: Add the package and canonical types**
+- [ ] **Step 3: Add package metadata and canonical types**
 
-`packages/audit-ledger/package.json`:
+`package.json`:
 ```json
-{
-  "name": "@atlas/audit-ledger",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module"
-}
+{"name":"@atlas/audit-ledger","private":true,"version":"0.1.0","type":"module"}
 ```
 
-`types.ts` must define at minimum:
+`AuditLedgerEvent` must contain `eventId`, `organizationId`, `tenantId`, `workflowId`, `taskId`, `actorId`, `actionType`, `metadata`, `previousStateHash`, `nonce`, `digestVersion: 1`, `createdAt`, and `payloadDigest`.
+
+`AuditActionType` must include:
 ```ts
-export type AuditActionType =
-  | 'TASK_STARTED'
-  | 'GATE_EVALUATED'
-  | 'EVIDENCE_RECORDED'
-  | 'TASK_FAILED'
-  | 'TASK_COMPLETED'
-  | 'WORKFLOW_BLOCKED'
-  | `execution.${string}`;
-
-export interface AuditLedgerEvent {
-  eventId: string;
-  organizationId: string;
-  tenantId: string;
-  workflowId: string;
-  taskId: string;
-  actorId: string;
-  actionType: AuditActionType;
-  metadata: Record<string, unknown>;
-  previousStateHash: string;
-  nonce: string;
-  digestVersion: 1;
-  createdAt: string;
-  payloadDigest: string;
-}
+'TASK_STARTED' | 'GATE_EVALUATED' | 'EVIDENCE_RECORDED' |
+'TASK_FAILED' | 'TASK_COMPLETED' | 'WORKFLOW_BLOCKED' | `execution.${string}`
 ```
 
-- [ ] **Step 4: Implement deterministic canonicalization and Web Crypto hashing**
+- [ ] **Step 4: Implement minimal canonicalization and hashing**
 
-`canonicalizeJson` recursively sorts object keys, preserves array order, and serializes with `JSON.stringify`. `assertBoundedMetadata` rejects serialized UTF-8 metadata larger than `16 * 1024` bytes with `audit_ledger_metadata_too_large`.
+`assertBoundedMetadata` measures `new TextEncoder().encode(canonicalizeJson(metadata)).byteLength` and throws `audit_ledger_metadata_too_large` above `16 * 1024` bytes.
 
-`buildAuditLedgerDigest` must hash the canonical envelope excluding only `payloadDigest`:
+`buildAuditLedgerDigest` canonicalizes the complete persisted envelope excluding only `payloadDigest`, then runs:
 ```ts
-const bytes = new TextEncoder().encode(canonicalizeJson(envelope));
-const digest = await crypto.subtle.digest('SHA-256', bytes);
+const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(serialized));
 ```
 
-- [ ] **Step 5: Run GREEN and runtime-neutral scan**
+- [ ] **Step 5: Verify GREEN and runtime neutrality**
 
-Run:
 ```bash
 npx vitest run tests/unit/audit-ledger-canonicalization.test.ts
-grep -R "node:crypto" packages/audit-ledger && exit 1 || true
+! grep -R "node:crypto" packages/audit-ledger
 ```
-Expected: PASS; grep returns no package match.
+Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
@@ -163,10 +135,10 @@ git commit -m "feat: add audit ledger canonical hashing"
 - Consumes: `AuditLedgerEvent`, `buildAuditLedgerDigest`.
 - Produces: `verifyAuditChain(events, options?): Promise<AuditChainVerification>`.
 
-- [ ] **Step 1: Write failing tests for valid, broken-link, and tampered-content chains**
+- [ ] **Step 1: Write failing verification tests**
 
 ```ts
-it('rejects metadata tampering even when previous links still match', async () => {
+it('detects tampered metadata even when links are unchanged', async () => {
   const chain = await makeValidChain(3);
   chain[1] = { ...chain[1], metadata: { changed: true } };
   const result = await verifyAuditChain(chain);
@@ -175,13 +147,15 @@ it('rejects metadata tampering even when previous links still match', async () =
   expect(result.reason).toBe('audit_ledger_invalid_digest');
 });
 
-it('treats empty chains as invalid unless explicitly allowed', async () => {
+it('rejects an empty chain unless allowEmpty is true', async () => {
   expect((await verifyAuditChain([])).valid).toBe(false);
   expect((await verifyAuditChain([], { allowEmpty: true })).valid).toBe(true);
 });
 ```
 
-- [ ] **Step 2: Run RED**
+Also test broken `previousStateHash` and first-invalid-event reporting.
+
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/unit/audit-ledger-verification.test.ts
@@ -190,45 +164,34 @@ Expected: FAIL because verifier is absent.
 
 - [ ] **Step 3: Implement verifier**
 
-Order events by `createdAt`, then `eventId`. For each event:
-1. require `GENESIS_BLOCK` for the first event, otherwise require previous row digest;
-2. recompute the event digest from persisted fields;
-3. compare with `payloadDigest`;
-4. return immediately at first failure.
+Sort by `createdAt`, then `eventId`. Require `GENESIS_BLOCK` on the first row, previous digest thereafter, recompute each digest from persisted fields, and stop at the first invalid event.
 
-Return shape:
+Return:
 ```ts
 { valid: boolean; eventCount: number; firstInvalidEventId?: string; reason?: string }
 ```
 
-- [ ] **Step 4: Run GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/audit-ledger-verification.test.ts
-```
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add packages/audit-ledger/src/verify.ts packages/audit-ledger/src/index.ts tests/unit/audit-ledger-verification.test.ts
+git add packages/audit-ledger/src tests/unit/audit-ledger-verification.test.ts
 git commit -m "feat: verify audit ledger chain integrity"
 ```
 
 ---
 
-### Task 3: Supabase immutable ledger schema and tenant-aware RLS
+### Task 3: Immutable Supabase schema and organization-scoped read policy
 
 **Files:**
 - Create: `supabase/migrations/20260912_atlas_audit_ledger.sql`
 - Test: `tests/integration/audit-ledger-schema-contract.test.ts`
 
 **Interfaces:**
-- Produces: `public.audit_ledger_events`, immutability trigger, read-only authenticated RLS policies.
+- Produces: `public.audit_ledger_events`, strict update/delete trigger, RLS read policy.
 
-- [ ] **Step 1: Write the failing schema contract test**
+- [ ] **Step 1: Write failing schema test**
 
-The test must assert the migration contains:
 ```ts
 expect(sql).toContain('create table if not exists public.audit_ledger_events');
 expect(sql).toContain('tenant_id text not null');
@@ -236,19 +199,19 @@ expect(sql).toContain('before update or delete on public.audit_ledger_events');
 expect(sql).toContain('enable row level security');
 expect(sql).toContain('grant select on public.audit_ledger_events to authenticated');
 expect(sql).not.toMatch(/grant\s+(insert|update|delete|all).*audit_ledger_events.*authenticated/i);
-expect(sql).toContain("octet_length(metadata::text) <= 16384");
+expect(sql).toContain('octet_length(metadata::text) <= 16384');
 ```
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/integration/audit-ledger-schema-contract.test.ts
 ```
 Expected: FAIL because migration is absent.
 
-- [ ] **Step 3: Implement table, indexes, strict trigger, and RLS**
+- [ ] **Step 3: Implement table, indexes, trigger, and RLS**
 
-Required table columns:
+Core columns:
 ```sql
 event_id uuid primary key,
 org_id uuid not null references public.organizations(id) on delete restrict,
@@ -266,22 +229,12 @@ created_at timestamptz not null,
 check (octet_length(metadata::text) <= 16384)
 ```
 
-Create indexes on `(org_id, workflow_id, created_at, event_id)` and `(org_id, created_at)`.
+Create indexes on `(org_id, workflow_id, created_at, event_id)` and `(org_id, created_at)`. Create `enforce_audit_ledger_immutability()` that raises on every `UPDATE` or `DELETE`. Enable RLS; active `organization_members` may select only. Revoke all from `authenticated`, then grant select only.
 
-Create `enforce_audit_ledger_immutability()` that always raises on `UPDATE` or `DELETE`, then bind it as a `BEFORE UPDATE OR DELETE` trigger.
-
-RLS select policy must require active `organization_members` membership for `org_id`. Revoke all from `authenticated`, then grant only select.
-
-- [ ] **Step 4: Run GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/integration/audit-ledger-schema-contract.test.ts
-```
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add supabase/migrations/20260912_atlas_audit_ledger.sql tests/integration/audit-ledger-schema-contract.test.ts
 git commit -m "feat: add immutable audit ledger schema"
 ```
@@ -295,11 +248,10 @@ git commit -m "feat: add immutable audit ledger schema"
 - Modify: `tests/integration/audit-ledger-schema-contract.test.ts`
 
 **Interfaces:**
-- Produces: `public.append_audit_ledger_event(...)` RPC returning the inserted ledger row.
+- Produces: `public.append_audit_ledger_event(...)`.
 
-- [ ] **Step 1: Extend the failing contract test**
+- [ ] **Step 1: Extend failing SQL contract tests**
 
-Assert SQL contains:
 ```ts
 expect(sql).toContain('create or replace function public.append_audit_ledger_event');
 expect(sql).toContain('pg_advisory_xact_lock');
@@ -307,46 +259,37 @@ expect(sql).toContain('audit_ledger_stale_head');
 expect(sql).toContain('audit_ledger_invalid_scope');
 ```
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/integration/audit-ledger-schema-contract.test.ts
 ```
 Expected: FAIL because RPC is absent.
 
-- [ ] **Step 3: Implement append RPC**
+- [ ] **Step 3: Implement the RPC**
 
-RPC behavior, in one transaction:
+In one transaction the function must:
 1. acquire `pg_advisory_xact_lock(hashtextextended(p_org_id::text || ':' || p_workflow_id::text, 0));`
-2. verify the workflow exists with the same `org_id` and `tenant_id`;
-3. verify the task exists under that workflow with the same `org_id` and `tenant_id`;
-4. read the current head ordered by `created_at desc, event_id desc`;
-5. require `p_previous_state_hash = coalesce(head.payload_digest, 'GENESIS_BLOCK')`;
+2. verify workflow matches `org_id` and `tenant_id`;
+3. verify task belongs to that workflow and same scope;
+4. read head ordered `created_at desc, event_id desc`;
+5. require expected previous hash to equal head digest or `GENESIS_BLOCK`;
 6. require `p_created_at > head.created_at` when a head exists;
-7. insert exactly one row;
-8. return it.
+7. insert exactly one row and return it.
 
-Raise machine-readable exception text `audit_ledger_invalid_scope` for lineage mismatch and `audit_ledger_stale_head` for head/timestamp conflicts.
+Raise `audit_ledger_invalid_scope` for lineage mismatch and `audit_ledger_stale_head` for head/timestamp conflict. Revoke execute from `public` and `authenticated`; service-role invocation remains server-side.
 
-Do not grant execute to `authenticated`; server-side service-role use only.
-
-- [ ] **Step 4: Run GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/integration/audit-ledger-schema-contract.test.ts
-```
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add supabase/migrations/20260912_atlas_audit_ledger.sql tests/integration/audit-ledger-schema-contract.test.ts
 git commit -m "feat: serialize audit ledger appends"
 ```
 
 ---
 
-### Task 5: Storage-neutral service and bounded stale-head retry
+### Task 5: Storage-neutral recording service with bounded stale-head retry
 
 **Files:**
 - Create: `packages/audit-ledger/src/service.ts`
@@ -355,52 +298,32 @@ git commit -m "feat: serialize audit ledger appends"
 - Test: `tests/unit/audit-ledger-service.test.ts`
 
 **Interfaces:**
-- Consumes: canonicalization/digest from Tasks 1-2.
 - Produces: `AuditLedgerServiceImpl`, `AuditLedgerStore.readHead(scope)`, `AuditLedgerStore.append(event)`, `recordEvent(event)`.
 
-- [ ] **Step 1: Write the failing service tests**
+- [ ] **Step 1: Write failing service tests**
 
-Cover:
-- first event uses `GENESIS_BLOCK`;
-- stale head causes a bounded retry;
-- metadata >16 KiB is rejected before persistence;
-- retry rebuilds `previousStateHash`, `createdAt`, nonce, and digest.
+Test genesis, metadata rejection, stale-head retry, and regeneration of `previousStateHash`, timestamp, nonce, and digest.
 
-Example assertion:
 ```ts
 expect(store.appendAttempts).toBe(2);
 expect(result.digest).toMatch(/^[a-f0-9]{64}$/);
 ```
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/unit/audit-ledger-service.test.ts
 ```
 Expected: FAIL because service is absent.
 
-- [ ] **Step 3: Implement the service**
+- [ ] **Step 3: Implement service**
 
-`recordEvent` must:
-1. validate metadata size;
-2. read the chain head;
-3. choose `createdAt = max(now, head.createdAt + 1ms)`;
-4. generate `eventId` and `nonce` with `crypto.randomUUID()`;
-5. compute digest;
-6. call store append;
-7. on `audit_ledger_stale_head`, retry up to 3 total attempts with a fresh head/envelope;
-8. surface all other failures unchanged as audit-ledger errors.
+`recordEvent` must validate metadata, read head, choose `createdAt` strictly later than the head (`Math.max(Date.now(), Date.parse(head.createdAt) + 1)`), generate `eventId` and `nonce` with `crypto.randomUUID()`, compute digest, append, and retry only `audit_ledger_stale_head` up to 3 total attempts.
 
-- [ ] **Step 4: Run GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/audit-ledger-service.test.ts
-```
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add packages/audit-ledger/src tests/unit/audit-ledger-service.test.ts
 git commit -m "feat: add audit ledger recording service"
 ```
@@ -415,36 +338,38 @@ git commit -m "feat: add audit ledger recording service"
 - Create: `tests/integration/audit-ledger-execution-boundary.test.ts`
 
 **Interfaces:**
-- Consumes: `AuditLedgerStore`, `AuditLedgerServiceImpl`, existing `appendAudit` authorized context.
-- Produces: server-side Supabase adapter and dual operational+cryptographic audit emission.
+- Consumes: `AuditLedgerStore`, `AuditLedgerServiceImpl`, existing `appendAudit` context.
+- Produces: `SupabaseAuditLedgerStore` and dual operational/cryptographic audit emission.
 
-- [ ] **Step 1: Write the failing Edge boundary contract test**
+- [ ] **Step 1: Write failing Edge boundary test**
 
-Assert the Edge source/shared adapter:
 ```ts
 expect(edge).toContain('AuditLedgerServiceImpl');
 expect(edge).toContain('append_audit_ledger_event');
+expect(edge).toContain('audit_ledger_lineage_required');
 expect(edge).toContain('audit_ledger_persistence_failed');
 expect(edge).not.toContain('body.tenant_id');
 expect(edge).not.toContain('body.verified === true');
 ```
 
-Also assert ledger metadata is built from persisted/authorized task context plus bounded correlation/evidence references.
+The test must also prove ledger metadata is constructed only from authorized persisted context plus bounded correlation/evidence references.
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/integration/audit-ledger-execution-boundary.test.ts
 ```
-Expected: FAIL because the ledger adapter is not integrated.
+Expected: FAIL because integration is absent.
 
 - [ ] **Step 3: Implement `SupabaseAuditLedgerStore`**
 
-The adapter uses the already-created server-side Supabase admin client. `readHead` queries `audit_ledger_events` by `org_id/workflow_id`, ordered `created_at desc,event_id desc`, selecting only head fields. `append` calls RPC `append_audit_ledger_event` with all persisted envelope fields and maps stale-head/scope database errors to package error codes.
+`readHead` queries `audit_ledger_events` scoped by `org_id/workflow_id`, ordered `created_at desc,event_id desc`. `append` invokes `append_audit_ledger_event` with the complete envelope and maps stale-head/scope database errors to package error codes.
 
-- [ ] **Step 4: Integrate the existing `appendAudit` boundary**
+- [ ] **Step 4: Integrate `appendAudit` fail-closed**
 
-After the operational `execution_audit_events` insert succeeds, construct ledger metadata from:
+At the start of `appendAudit`, require non-null `taskId` and `workflowId`; otherwise throw `audit_ledger_lineage_required` before inserting `execution_audit_events`.
+
+Then insert the existing operational audit row. After it succeeds, construct ledger metadata exactly from:
 ```ts
 {
   module: input.module,
@@ -455,16 +380,14 @@ After the operational `execution_audit_events` insert succeeds, construct ledger
 }
 ```
 
-Call `AuditLedgerServiceImpl.recordEvent` with `orgId`, persisted `tenantId`, `workflowId`, `taskId`, authenticated actor, and the operational action. Do not use arbitrary request body tenancy. If the ledger append fails, throw generic `audit_ledger_persistence_failed` without exposing Supabase/service-role internals.
+Call `AuditLedgerServiceImpl.recordEvent` with `orgId`, persisted `tenantId`, persisted workflow/task IDs, authenticated actor, and the operational action. Any ledger error becomes generic `audit_ledger_persistence_failed`; never expose service-role/Supabase internals.
 
-For audit events with a null workflow or task, keep the existing operational audit row but do not fabricate UUID lineage; either require both IDs for cryptographic sealing or reject the sensitive mutation before calling the ledger path. Lock this behavior in the test.
-
-- [ ] **Step 5: Run GREEN and Edge typecheck**
+- [ ] **Step 5: Verify GREEN and Edge type safety**
 
 ```bash
 npx vitest run tests/integration/audit-ledger-execution-boundary.test.ts tests/integration/execution-edge-contract.test.ts
 ```
-Then run the repository's existing Deno/TypeScript Edge check if available; otherwise use the established local stub TypeScript harness for `supabase/functions/atlas-execution/index.ts` and report that limitation explicitly.
+Run the repository's Edge/Deno typecheck if present. If unavailable, run the same local TypeScript+Deno/Supabase stub harness previously used for `atlas-execution` and record that limitation explicitly.
 
 - [ ] **Step 6: Commit**
 
@@ -475,34 +398,28 @@ git commit -m "feat: seal execution audits in cryptographic ledger"
 
 ---
 
-### Task 7: Cross-check security invariants and regression coverage
+### Task 7: Security regression suite
 
 **Files:**
-- Modify as needed only when a failing regression proves a defect:
-  - `tests/integration/audit-ledger-schema-contract.test.ts`
-  - `tests/integration/audit-ledger-execution-boundary.test.ts`
-  - `tests/integration/execution-edge-contract.test.ts`
-  - `tests/unit/audit-ledger-*.test.ts`
-  - implementation files directly responsible for a failing invariant
+- Modify tests and only the implementation file responsible for any failing invariant.
 
 **Interfaces:**
-- Produces: locked regression evidence for tenancy, immutability, stale-head handling, fail-closed verification, and secret exclusion.
+- Produces: regression coverage for scope isolation, immutability, concurrency, fail-closed evidence, and secret exclusion.
 
-- [ ] **Step 1: Add regression assertions**
+- [ ] **Step 1: Add explicit regression assertions**
 
-Required invariants:
-- another organization's workflow/task pair is rejected;
+Required cases:
+- workflow/task from another organization is rejected;
 - same workflow with mismatched tenant is rejected;
-- `UPDATE` and `DELETE` are blocked by trigger text contract;
-- direct authenticated mutation grants are absent;
-- same-head concurrent append contract is serialized by advisory lock;
-- tampered metadata fails digest verification;
-- generic `record_evidence` still rejects `verified: true`;
-- no `SUPABASE_SERVICE_ROLE_KEY`, access token, API key, password, recovery code, or private-key value is persisted in ledger metadata construction.
+- SQL trigger blocks both update and delete;
+- authenticated mutation grants are absent;
+- advisory lock/stale-head contract is present;
+- metadata tampering fails recomputed digest;
+- generic `record_evidence` still rejects client `verified: true`;
+- ledger metadata construction contains no secret/provider credential source.
 
-- [ ] **Step 2: Run focused RED/GREEN loop for each discovered defect**
+- [ ] **Step 2: Run focused suite**
 
-Run:
 ```bash
 npx vitest run \
   tests/unit/audit-ledger-canonicalization.test.ts \
@@ -512,9 +429,9 @@ npx vitest run \
   tests/integration/audit-ledger-execution-boundary.test.ts \
   tests/integration/execution-edge-contract.test.ts
 ```
-Expected: PASS after any required minimal fixes.
+Expected: PASS after minimal test-first fixes.
 
-- [ ] **Step 3: Commit only if code/tests changed**
+- [ ] **Step 3: Commit if changes were required**
 
 ```bash
 git add packages/audit-ledger supabase tests
@@ -523,15 +440,15 @@ git commit -m "test: harden audit ledger security invariants"
 
 ---
 
-### Task 8: Final repository verification and review handoff
+### Task 8: Final verification and review handoff
 
 **Files:**
-- No implementation files unless a verification failure requires a minimal fix with its own RED/GREEN cycle.
+- No implementation changes unless a failing verification receives its own RED/GREEN fix.
 
 **Interfaces:**
-- Produces: evidence-backed merge-readiness status; does not merge or deploy.
+- Produces: evidence-backed merge-readiness status without merge or deploy.
 
-- [ ] **Step 1: Run focused package and integration tests**
+- [ ] **Step 1: Run focused Audit Ledger + Universal Execution tests**
 
 ```bash
 npx vitest run \
@@ -551,7 +468,7 @@ npx vitest run \
 ```
 Expected: PASS.
 
-- [ ] **Step 2: Run full repository gates**
+- [ ] **Step 2: Run complete repository gates**
 
 ```bash
 npm ci
@@ -561,9 +478,9 @@ npm run test:integration
 npm run build
 git diff --check feat/universal-execution-engine...HEAD
 ```
-Expected: all commands PASS. If runner/network/dependency infrastructure prevents a command, record it as BLOCKED; never convert it to PASS.
+Expected: PASS. If runner/network/dependency infrastructure prevents a command, report BLOCKED rather than PASS.
 
-- [ ] **Step 3: Run secret and grant scans**
+- [ ] **Step 3: Run secret/grant scans**
 
 ```bash
 git diff feat/universal-execution-engine...HEAD -- packages/audit-ledger supabase tests | \
@@ -576,18 +493,8 @@ Expected: no matches.
 
 - [ ] **Step 4: Perform final branch review**
 
-Review `feat/universal-execution-engine...HEAD` against the spec for:
-- spec coverage;
-- tenancy/RBAC boundaries;
-- true digest recomputation;
-- serialized append semantics;
-- strict SQL immutability;
-- fail-closed audit behavior;
-- absence of shadow business truth;
-- no unrelated files.
+Review `feat/universal-execution-engine...HEAD` for complete spec coverage, tenancy/RBAC, digest recomputation, serialized append semantics, SQL immutability, fail-closed audit behavior, absence of shadow business truth, and unrelated files. Any Critical/Important finding requires a test-first fix.
 
-Any Critical/Important finding requires a test-first fix before completion.
+- [ ] **Step 5: Record exact final status**
 
-- [ ] **Step 5: Record final status without merge/deploy**
-
-Report exact HEAD SHA, focused test evidence, full-gate results, any blocked infrastructure condition, and outstanding review findings. Do not create a production deployment, apply the migration, merge branches, or trigger paid-provider work without explicit user approval.
+Report HEAD SHA, focused test evidence, full-gate evidence, blocked infrastructure conditions, and review findings. Do not merge, deploy, apply the migration, create production traffic changes, or trigger paid-provider work without explicit user approval.
