@@ -233,39 +233,47 @@ export async function finalizeProfilePhotoSubmission(
   return { submission: mapSubmission(submissionRow), requirement: mapRequirement(requirementRow) };
 }
 
+type AtomicReviewTarget = 'under_review' | 'approved' | 'rejected';
+
+async function transitionReviewState(
+  ctx: RideComplianceContext,
+  submissionId: string,
+  targetStatus: AtomicReviewTarget,
+  reason?: string
+) {
+  const { error } = await ctx.storageAdmin.rpc('atlas_ride_compliance_review_transition', {
+    p_submission_id: submissionId,
+    p_organization_id: ctx.organizationId,
+    p_actor_user_id: ctx.userId,
+    p_target_status: targetStatus,
+    p_reason: reason ?? null
+  });
+
+  if (!error) return;
+  const message = String(error.message || '');
+  for (const code of ['authorization_denied', 'requirement_not_found', 'rejection_reason_required', 'state_conflict']) {
+    if (message.includes(code)) throw new Error(code);
+  }
+  throw new Error('state_conflict');
+}
+
 export async function markSubmissionUnderReview(
   ctx: RideComplianceContext,
   submissionId: string
 ): Promise<ComplianceSubmission> {
   const current = await getSubmission(ctx, submissionId);
-  if (current.status === 'under_review') return current;
-  if (!canTransitionSubmission(current.status, 'under_review')) throw new Error('state_conflict');
   const requirement = await loadRequirement(ctx, current.requirementId);
-  if (requirement.status !== 'under_review' && !canTransitionRequirement(requirement.status, 'under_review')) throw new Error('state_conflict');
-  const now = new Date().toISOString();
 
-  const { data, error } = await ctx.storageAdmin
-    .from('compliance_submissions')
-    .update({ status: 'under_review', updated_at: now })
-    .eq('id', submissionId)
-    .eq('organization_id', ctx.organizationId)
-    .eq('status', current.status)
-    .select(SUBMISSION_SELECT)
-    .maybeSingle();
-  if (error || !data) throw new Error('state_conflict');
-
-  if (requirement.status !== 'under_review') {
-    const { data: requirementRow, error: requirementError } = await ctx.storageAdmin
-      .from('compliance_requirements')
-      .update({ status: 'under_review', updated_at: now })
-      .eq('id', requirement.id)
-      .eq('organization_id', ctx.organizationId)
-      .eq('status', requirement.status)
-      .select('id')
-      .maybeSingle();
-    if (requirementError || !requirementRow) throw new Error('state_conflict');
+  if (current.status === 'under_review') {
+    if (requirement.status !== 'under_review') throw new Error('state_conflict');
+    return current;
   }
-  return mapSubmission(data);
+
+  if (!canTransitionSubmission(current.status, 'under_review')) throw new Error('state_conflict');
+  if (!canTransitionRequirement(requirement.status, 'under_review')) throw new Error('state_conflict');
+
+  await transitionReviewState(ctx, submissionId, 'under_review');
+  return getSubmission(ctx, submissionId);
 }
 
 export async function approveSubmission(
@@ -276,28 +284,11 @@ export async function approveSubmission(
   if (!canTransitionSubmission(current.status, 'approved')) throw new Error('state_conflict');
   const requirement = await loadRequirement(ctx, current.requirementId);
   if (!canTransitionRequirement(requirement.status, 'approved')) throw new Error('state_conflict');
-  const now = new Date().toISOString();
 
-  const { data: submissionRow, error: submissionError } = await ctx.storageAdmin
-    .from('compliance_submissions')
-    .update({ status: 'approved', reviewed_at: now, reviewed_by: ctx.userId, decision_reason: null, updated_at: now })
-    .eq('id', submissionId)
-    .eq('organization_id', ctx.organizationId)
-    .eq('status', current.status)
-    .select(SUBMISSION_SELECT)
-    .maybeSingle();
-  if (submissionError || !submissionRow) throw new Error('state_conflict');
-
-  const { data: requirementRow, error: requirementError } = await ctx.storageAdmin
-    .from('compliance_requirements')
-    .update({ status: 'approved', updated_at: now })
-    .eq('id', requirement.id)
-    .eq('organization_id', ctx.organizationId)
-    .eq('status', requirement.status)
-    .select(REQUIREMENT_SELECT)
-    .maybeSingle();
-  if (requirementError || !requirementRow) throw new Error('state_conflict');
-  return { submission: mapSubmission(submissionRow), requirement: mapRequirement(requirementRow) };
+  await transitionReviewState(ctx, submissionId, 'approved');
+  const submission = await getSubmission(ctx, submissionId);
+  const updatedRequirement = await loadRequirement(ctx, requirement.id);
+  return { submission, requirement: updatedRequirement };
 }
 
 export async function rejectSubmission(
@@ -310,28 +301,11 @@ export async function rejectSubmission(
   if (!canTransitionSubmission(current.status, 'rejected')) throw new Error('state_conflict');
   const requirement = await loadRequirement(ctx, current.requirementId);
   if (!canTransitionRequirement(requirement.status, 'rejected')) throw new Error('state_conflict');
-  const now = new Date().toISOString();
 
-  const { data: submissionRow, error: submissionError } = await ctx.storageAdmin
-    .from('compliance_submissions')
-    .update({ status: 'rejected', reviewed_at: now, reviewed_by: ctx.userId, decision_reason: decisionReason, updated_at: now })
-    .eq('id', submissionId)
-    .eq('organization_id', ctx.organizationId)
-    .eq('status', current.status)
-    .select(SUBMISSION_SELECT)
-    .maybeSingle();
-  if (submissionError || !submissionRow) throw new Error('state_conflict');
-
-  const { data: requirementRow, error: requirementError } = await ctx.storageAdmin
-    .from('compliance_requirements')
-    .update({ status: 'rejected', reason_text: decisionReason, updated_at: now })
-    .eq('id', requirement.id)
-    .eq('organization_id', ctx.organizationId)
-    .eq('status', requirement.status)
-    .select(REQUIREMENT_SELECT)
-    .maybeSingle();
-  if (requirementError || !requirementRow) throw new Error('state_conflict');
-  return { submission: mapSubmission(submissionRow), requirement: mapRequirement(requirementRow) };
+  await transitionReviewState(ctx, submissionId, 'rejected', decisionReason);
+  const submission = await getSubmission(ctx, submissionId);
+  const updatedRequirement = await loadRequirement(ctx, requirement.id);
+  return { submission, requirement: updatedRequirement };
 }
 
 function safeMetadata(metadata: Record<string, unknown>) {
