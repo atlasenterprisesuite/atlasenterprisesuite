@@ -40,12 +40,19 @@ describe('ATLAS Audit Ledger schema contract', () => {
     expect(sql).toContain("raise exception 'audit_ledger_immutable'");
   });
 
-  it('gives authenticated users organization-scoped read-only access', async () => {
+  it('gives authenticated users organization-scoped read-only access with tenant/workflow/task lineage checks', async () => {
     const sql = (await migrationSource()).toLowerCase();
     expect(sql).toContain('alter table public.audit_ledger_events enable row level security');
     expect(sql).toContain("om.status = 'active'");
     expect(sql).toContain('om.org_id = audit_ledger_events.org_id');
     expect(sql).toContain('om.user_id = (select auth.uid())');
+    expect(sql).toContain('w.id = audit_ledger_events.workflow_id');
+    expect(sql).toContain('w.org_id = audit_ledger_events.org_id');
+    expect(sql).toContain('w.tenant_id = audit_ledger_events.tenant_id');
+    expect(sql).toContain('t.id = audit_ledger_events.task_id');
+    expect(sql).toContain('t.workflow_id = audit_ledger_events.workflow_id');
+    expect(sql).toContain('t.org_id = audit_ledger_events.org_id');
+    expect(sql).toContain('t.tenant_id = audit_ledger_events.tenant_id');
     expect(sql).toContain('revoke all on public.audit_ledger_events from authenticated');
     expect(sql).toContain('grant select on public.audit_ledger_events to authenticated');
     expect(sql).not.toMatch(/grant\s+(insert|update|delete|all)\s+on\s+public\.audit_ledger_events\s+to\s+authenticated/i);
