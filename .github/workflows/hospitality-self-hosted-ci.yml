@@ -12,7 +12,7 @@ permissions:
 jobs:
   verify:
     runs-on: self-hosted
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Runtime
@@ -24,7 +24,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Hospitality unit tests
-        run: npx vitest run tests/unit/hospitality-room-access.test.ts
+        run: npx vitest run tests/unit/hospitality-room-access.test.ts tests/unit/hospitality-provider-registry.test.ts tests/unit/hospitality-provider-adapters.test.ts
+      - name: Hospitality integration tests
+        run: npx vitest run tests/integration/hospitality-schema-contract.test.ts tests/integration/hospitality-edge-contract.test.ts tests/integration/hospitality-routes.test.tsx tests/integration/hospitality-security-contract.test.ts
       - name: Unit tests
         run: npm run test:unit
       - name: Integration tests
