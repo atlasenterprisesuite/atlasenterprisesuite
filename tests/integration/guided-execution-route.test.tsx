@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -32,6 +32,12 @@ describe('Guided Execution route', () => {
     render(<MemoryRouter initialEntries={['/execution/wf-1']}><App /></MemoryRouter>);
 
     expect(await screen.findByRole('heading', { name: 'Verify infrastructure readiness' })).toBeInTheDocument();
+    expect(screen.getByText('1 of 3 steps completed')).toBeInTheDocument();
+    const toggle = screen.getByRole('button', { name: /Task 1 — Verify infrastructure readiness/i });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const step = screen.getByRole('button', { name: /Verify Cloudflare/i });
+    fireEvent.click(step);
+    expect(step).toHaveAttribute('aria-current', 'step');
     expect(loadGuidedExecutionState).toHaveBeenCalledWith('wf-1');
   });
 
