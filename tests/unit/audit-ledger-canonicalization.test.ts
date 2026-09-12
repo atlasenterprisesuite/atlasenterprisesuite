@@ -59,10 +59,18 @@ describe('ATLAS Audit Ledger canonical hashing', () => {
       .toThrow('audit_ledger_metadata_too_large');
   });
 
+  it('requires metadata to be a JSON object at the application boundary', () => {
+    expect(() => assertBoundedMetadata([] as any)).toThrow('audit_ledger_invalid_json');
+    expect(() => assertBoundedMetadata(null as any)).toThrow('audit_ledger_invalid_json');
+  });
+
   it('fails closed instead of silently dropping non-JSON values', () => {
     expect(() => canonicalizeJson({ unsafe: undefined })).toThrow('audit_ledger_invalid_json');
     expect(() => canonicalizeJson({ unsafe: Number.NaN })).toThrow('audit_ledger_invalid_json');
     expect(() => canonicalizeJson({ unsafe: BigInt(1) })).toThrow('audit_ledger_invalid_json');
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    expect(() => canonicalizeJson(cyclic)).toThrow('audit_ledger_invalid_json');
   });
 
   it('uses global Web Crypto without a node:crypto dependency', () => {
