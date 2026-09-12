@@ -63,6 +63,8 @@ Required fields:
 - `digestVersion` / `digest_version` — initially `1`;
 - `createdAt` / `created_at` — timestamp chosen before hashing and persisted unchanged.
 
+`metadata` must be JSON-compatible and must serialize to no more than 16 KiB before persistence. Non-JSON values are rejected instead of coerced.
+
 No API key, password, access token, recovery code, private certificate, raw provider credential, or secret-bearing payload may be written to the ledger.
 
 ## 5. Action Types
@@ -76,9 +78,9 @@ The initial shared type includes the source document actions:
 - `TASK_COMPLETED`;
 - `WORKFLOW_BLOCKED`.
 
-To integrate safely with the current execution audit boundary without discarding existing action detail, the package also supports a bounded generic execution action string under a namespaced form such as `execution.task.transitioned`, `execution.approval.requested`, or `execution.evidence.recorded`.
+To integrate safely with the current execution audit boundary without discarding existing action detail, the package also supports a bounded namespaced execution action matching `execution.[a-z0-9_.-]{1,100}`, such as `execution.task.transitioned`, `execution.approval.requested`, or `execution.evidence.recorded`.
 
-The source-document enum is preserved as the minimum guaranteed vocabulary; namespaced execution actions are the repository compatibility extension.
+The source-document enum is preserved as the minimum guaranteed vocabulary; namespaced execution actions are the repository compatibility extension. Any action outside the source enum or the namespaced execution pattern is rejected.
 
 ## 6. Cryptographic Construction
 
@@ -118,13 +120,17 @@ The illustrative PDF service reads the last event and then inserts a new event. 
 The repository implementation must therefore add a server-side append RPC/function that serializes ledger appends for each `(org_id, workflow_id)` chain. The function must:
 
 1. acquire a transaction-scoped advisory lock derived from organization + workflow;
-2. read the current chain head after acquiring the lock;
-3. require the caller-provided `previous_state_hash` to match the current head, or `GENESIS_BLOCK` for an empty chain;
-4. reject stale heads with a machine-readable conflict;
-5. insert exactly one immutable event;
-6. commit atomically.
+2. load the workflow by `workflow_id + org_id` and require its persisted `tenant_id` to equal the append `tenant_id`;
+3. load the task by `task_id + workflow_id + org_id` and require its persisted `tenant_id` to equal the append `tenant_id`;
+4. read the current chain head after acquiring the lock;
+5. require the caller-provided `previous_state_hash` to match the current head, or `GENESIS_BLOCK` for an empty chain;
+6. reject stale heads with a machine-readable conflict;
+7. insert exactly one immutable event;
+8. commit atomically.
 
-The TypeScript service retries a stale-head conflict by re-reading the new head, rebuilding the envelope, recomputing the digest, and attempting the append again within a small bounded retry count.
+Foreign keys are necessary but not sufficient for tenant isolation; the RPC performs the composite lineage checks above so a valid UUID from another workflow or organization cannot be attached to the chain.
+
+The TypeScript service retries a stale-head conflict by re-reading the new head, rebuilding the envelope, recomputing the digest, and attempting the append again within a maximum of three total append attempts.
 
 ## 8. Supabase Schema and Immutability
 
@@ -135,9 +141,12 @@ Required database constraints:
 - UUID primary key on `event_id`;
 - non-null organization, tenant, workflow, task, actor, action, digest, previous hash, nonce, digest version, and timestamp;
 - digest regex `^[a-f0-9]{64}$`;
+- `digest_version = 1` for this slice;
+- action type limited to the source enum or `execution.[a-z0-9_.-]{1,100}`;
 - non-empty text checks where appropriate;
-- indexes covering `(org_id, workflow_id, created_at)` and `(org_id, created_at)`;
-- foreign keys to execution workflow/task records where compatibility and migration order permit without creating cross-tenant ambiguity.
+- metadata serialized-size enforcement consistent with the 16 KiB application limit where practical in PostgreSQL;
+- indexes covering `(org_id, workflow_id, created_at, event_id)` and `(org_id, created_at)`;
+- foreign keys to `execution_workflows` and `execution_tasks` where compatible with migration order, with RPC-level composite scope validation remaining authoritative.
 
 ### 8.1 Strict immutability
 
@@ -192,7 +201,7 @@ For each event ordered deterministically by `created_at`, then `event_id`:
 4. compare recomputed digest with `payload_digest`;
 5. stop at the first invalid event and return a diagnostic result.
 
-An empty chain returns a valid result with zero events only when the caller explicitly allows empty chains; otherwise it returns an invalid/no-events diagnostic. Tests will lock the chosen public behavior.
+Default behavior for an empty chain is `{ valid: false, eventCount: 0, reason: 'audit_ledger_no_events' }`. Callers may pass `allowEmpty: true`; only in that case does an empty chain return `{ valid: true, eventCount: 0 }`.
 
 ## 11. Universal Execution Engine Integration
 
@@ -217,7 +226,10 @@ Machine-readable failures include at minimum:
 - `audit_ledger_persistence_failed`;
 - `audit_ledger_integrity_failed`;
 - `audit_ledger_invalid_digest`;
-- `audit_ledger_invalid_scope`.
+- `audit_ledger_invalid_scope`;
+- `audit_ledger_metadata_too_large`;
+- `audit_ledger_invalid_action_type`;
+- `audit_ledger_no_events`.
 
 The service must not silently skip ledger writes for sensitive execution events.
 
@@ -232,10 +244,14 @@ Implementation follows TDD.
 - SHA-256 output is stable for an identical envelope;
 - changing any persisted hashed field changes the digest;
 - genesis event uses `GENESIS_BLOCK`;
+- metadata above 16 KiB is rejected;
+- invalid/non-JSON metadata is rejected;
+- invalid action types are rejected;
 - runtime-neutral implementation contains no `node:crypto` dependency;
 - chain verifier detects broken previous links;
 - chain verifier detects metadata tampering even if links still appear continuous;
-- chain verifier reports the first invalid event.
+- chain verifier reports the first invalid event;
+- empty-chain behavior follows `allowEmpty` exactly.
 
 ### Integration/contract tests
 
@@ -244,6 +260,7 @@ Implementation follows TDD.
 - RLS is enabled;
 - authenticated access is read-only and organization-scoped;
 - append RPC serializes by organization/workflow and rejects a stale head;
+- append RPC rejects task/workflow/org/tenant lineage mismatch;
 - no direct authenticated mutation grant exists;
 - execution audit boundary invokes the ledger service/server append path;
 - tenant scope is inherited from persisted execution records;
@@ -284,9 +301,11 @@ Repository hardening adds the following explicitly rather than silently changing
 2. `nonce`, `digest_version`, and persisted pre-hash timestamp so the digest can be recomputed later;
 3. deterministic canonicalization rather than raw `JSON.stringify` property insertion order;
 4. a serialized append RPC to prevent concurrent chain forks;
-5. RLS and authenticated read-only grants;
-6. diagnostic integrity results rather than only a boolean;
-7. digest recomputation during verification, not link checking alone.
+5. composite workflow/task/org/tenant validation inside the append RPC;
+6. RLS and authenticated read-only grants;
+7. diagnostic integrity results rather than only a boolean;
+8. digest recomputation during verification, not link checking alone;
+9. an explicit 16 KiB metadata ceiling and namespaced action-type constraint.
 
 The PDF contains `create extension if not exists "uuid-ossp";` while the shown table uses `gen_random_uuid()`. The current ATLAS migrations already use `gen_random_uuid()`. The implementation will not introduce `uuid-ossp` solely for this ledger unless repository/database validation proves it is required.
 
@@ -298,6 +317,7 @@ This architecture slice is complete when:
 - its Web Crypto digest/canonicalization behavior is covered by tests;
 - Supabase schema provides strict update/delete immutability and tenant-aware RLS;
 - concurrent append attempts cannot create two valid children from one chain head;
+- task/workflow/org/tenant lineage cannot be mixed across chains;
 - chain verification detects both broken linkage and altered hashed content;
 - Universal Execution Engine audit emission produces a corresponding ledger seal without bypassing RBAC or domain authorization;
 - focused local tests/typechecks pass;
