@@ -13,6 +13,7 @@ const navItems = [
   { to: '/payroll', label: 'Payroll' },
   { to: '/health', label: 'Health' },
   { to: '/hospitality/access', label: 'Hospitality' },
+  { to: '/ride', label: 'Ride' },
   { to: '/studio', label: 'Creator' }
 ];
 
