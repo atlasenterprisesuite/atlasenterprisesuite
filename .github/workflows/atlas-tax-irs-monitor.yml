@@ -1,0 +1,55 @@
+name: ATLAS Tax IRS Monitor
+
+on:
+  schedule:
+    - cron: "17 11 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: atlas-tax-irs-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Restore prior IRS source fingerprints
+        uses: actions/cache/restore@v4
+        with:
+          path: .atlas-state/tax/irs-monitor
+          key: atlas-tax-irs-monitor-${{ github.run_id }}
+          restore-keys: |
+            atlas-tax-irs-monitor-
+      - name: Inspect official IRS sources
+        id: monitor
+        run: node packages/tax-irs-monitor/src/cli.mjs
+      - name: Save IRS source fingerprints
+        uses: actions/cache/save@v4
+        with:
+          path: .atlas-state/tax/irs-monitor
+          key: atlas-tax-irs-monitor-${{ github.run_id }}
+      - name: Upload auditable monitor result
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-tax-irs-monitor-${{ github.run_id }}
+          path: .atlas-state/tax/irs-monitor
+          retention-days: 90
+      - name: Open material-change review issue
+        if: steps.monitor.outputs.material_change_count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "ATLAS Tax: material IRS change detected" \
+            --body-file .atlas-state/tax/irs-monitor/alert.md
