@@ -30,6 +30,7 @@ describe('ATLAS Audit Ledger schema contract', () => {
       'WORKFLOW_BLOCKED'
     ]) expect(sql).toContain(`'${action}'`);
     expect(sql).toContain("^execution\\.[a-z0-9_.-]{1,100}$");
+    expect(sql).toContain("raise exception 'audit_ledger_invalid_action_type'");
   });
 
   it('enforces update/delete immutability at the database engine', async () => {
