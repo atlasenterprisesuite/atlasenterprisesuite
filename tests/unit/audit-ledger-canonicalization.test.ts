@@ -52,4 +52,10 @@ describe('ATLAS Audit Ledger canonical hashing', () => {
     expect(() => assertBoundedMetadata({ data: 'x'.repeat(17 * 1024) }))
       .toThrow('audit_ledger_metadata_too_large');
   });
+
+  it('fails closed instead of silently dropping non-JSON values', () => {
+    expect(() => canonicalizeJson({ unsafe: undefined })).toThrow('audit_ledger_invalid_json');
+    expect(() => canonicalizeJson({ unsafe: Number.NaN })).toThrow('audit_ledger_invalid_json');
+    expect(() => canonicalizeJson({ unsafe: BigInt(1) })).toThrow('audit_ledger_invalid_json');
+  });
 });
