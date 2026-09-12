@@ -8,6 +8,7 @@ const navItems = [
   { to: '/finance/accounting/dashboard', label: 'Accounting' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables + AI' },
   { to: '/health', label: 'Health' },
+  { to: '/hospitality/access', label: 'Hospitality' },
   { to: '/studio', label: 'Creator' }
 ];
 
@@ -41,13 +42,13 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="environment-card">
           <span className="pulse-dot" />
-          <div><strong>{authenticated ? 'Supabase RLS session' : 'Identity required'}</strong><small>{authenticated ? 'Live data remains organization-scoped' : 'No live accounting data is exposed'}</small></div>
+          <div><strong>{authenticated ? 'Supabase RLS session' : 'Identity required'}</strong><small>{authenticated ? 'Live data remains organization-scoped' : 'No live governed data is exposed'}</small></div>
         </div>
       </aside>
       <div className="atlas-workspace">
         <header className="topbar">
           <div><span className="eyebrow">Organization</span><strong>{authenticated ? 'Authenticated ATLAS scope' : 'No active identity'}</strong></div>
-          <div className="topbar-meta"><span>Accounting · Finance</span><span className="badge">{authenticated ? 'RLS LIVE' : 'GATED'}</span></div>
+          <div className="topbar-meta"><span>ATLAS Enterprise Suite</span><span className="badge">{authenticated ? 'RLS LIVE' : 'GATED'}</span></div>
         </header>
         <main>{children}</main>
       </div>
