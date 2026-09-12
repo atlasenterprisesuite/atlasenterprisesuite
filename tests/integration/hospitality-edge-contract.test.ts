@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
 const edgePath = resolve(root, 'supabase/functions/atlas-hospitality-access/index.ts');
+const repositoryPath = resolve(root, 'supabase/functions/atlas-hospitality-access/_shared/repository.ts');
 const sharedFiles = [
   '_shared/context.ts',
   '_shared/repository.ts',
@@ -42,6 +43,30 @@ describe('ATLAS Hospitality Edge Function contract', () => {
     ]) {
       expect(source).toContain(`'${operation}'`);
     }
+  });
+
+  it('uses verified room mapping and explicit provider capabilities for issuance', () => {
+    const source = readFileSync(edgePath, 'utf8');
+    expect(source).toContain('loadRoomMapping');
+    expect(source).toContain('provider_room_id');
+    expect(source).toContain("'credential.issue'");
+    expect(source).toContain('insertCredentialReference');
+    expect(source).not.toContain('credential_lifecycle_orchestration_pending');
+  });
+
+  it('implements revocation against the stored provider credential reference', () => {
+    const source = readFileSync(edgePath, 'utf8');
+    expect(source).toContain('loadCredentialReference');
+    expect(source).toContain("'credential.revoke'");
+    expect(source).toContain('updateCredentialReferenceStatus');
+    expect(source).toContain('provider_credential_id');
+    expect(source).not.toContain('unavailableMutation');
+  });
+
+  it('keeps all persistence helpers organization/property scoped', () => {
+    const source = readFileSync(repositoryPath, 'utf8');
+    expect(source).toContain(".eq('org_id', orgId)");
+    expect(source).toContain(".eq('property_id', propertyId)");
   });
 
   it('does not return raw credential or provider secret material', () => {
