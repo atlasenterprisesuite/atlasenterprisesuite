@@ -1,17 +1,7 @@
-import { existsSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-
-const providersRoot = resolve(process.cwd(), 'supabase/functions/atlas-hospitality-access/providers');
-const saltoPath = resolve(providersRoot, 'salto.ts');
-const vingcardPath = resolve(providersRoot, 'vingcard.ts');
-const dormakabaPath = resolve(providersRoot, 'dormakaba.ts');
-
-async function loadModule(path: string) {
-  expect(existsSync(path)).toBe(true);
-  return import(/* @vite-ignore */ pathToFileURL(path).href);
-}
+import { createDormakabaAdapter } from '../../supabase/functions/atlas-hospitality-access/providers/dormakaba';
+import { createSaltoAdapter } from '../../supabase/functions/atlas-hospitality-access/providers/salto';
+import { createVingcardAdapter } from '../../supabase/functions/atlas-hospitality-access/providers/vingcard';
 
 const context = {
   organizationId: 'org-1',
@@ -34,7 +24,6 @@ const issueRequest = {
 
 describe('ATLAS Hospitality SALTO adapters', () => {
   it('verifies SALTO Space connectivity without claiming issuance is complete', async () => {
-    const { createSaltoAdapter } = await loadModule(saltoPath);
     const calls: string[] = [];
     const fakeFetch = async (url: string) => {
       calls.push(url);
@@ -55,7 +44,6 @@ describe('ATLAS Hospitality SALTO adapters', () => {
   });
 
   it('fails SALTO Space issuance closed until the exact vendor request schema is verified', async () => {
-    const { createSaltoAdapter } = await loadModule(saltoPath);
     const adapter = createSaltoAdapter({
       providerType: 'salto_space_hospitality',
       baseUrl: 'https://space.example.test',
@@ -67,7 +55,6 @@ describe('ATLAS Hospitality SALTO adapters', () => {
   });
 
   it('verifies a configured SALTO KS site but blocks room-key semantics that are not mapped', async () => {
-    const { createSaltoAdapter } = await loadModule(saltoPath);
     const fakeFetch = async () => new Response(JSON.stringify([{ id: 'site-1' }]), {
       status: 200,
       headers: { 'content-type': 'application/json' }
@@ -86,7 +73,6 @@ describe('ATLAS Hospitality SALTO adapters', () => {
   });
 
   it('normalizes unreachable SALTO providers to offline without exposing secrets', async () => {
-    const { createSaltoAdapter } = await loadModule(saltoPath);
     const adapter = createSaltoAdapter({
       providerType: 'salto_ks',
       baseUrl: 'https://ks.example.test',
@@ -102,7 +88,6 @@ describe('ATLAS Hospitality SALTO adapters', () => {
 
 describe('ATLAS Hospitality Vingcard adapter', () => {
   it('fails closed when the property has no official VConnect/Vostio/Visionline interface', async () => {
-    const { createVingcardAdapter } = await loadModule(vingcardPath);
     const adapter = createVingcardAdapter({
       providerType: 'vingcard_vconnect',
       officialInterfaceConfigured: false
@@ -117,7 +102,6 @@ describe('ATLAS Hospitality Vingcard adapter', () => {
 
 describe('ATLAS Hospitality dormakaba/Saflok adapter', () => {
   it('fails closed when the property has no official Ambiance/PMS interface', async () => {
-    const { createDormakabaAdapter } = await loadModule(dormakabaPath);
     const adapter = createDormakabaAdapter({
       providerType: 'dormakaba_ambiance_cloud',
       officialInterfaceConfigured: false
