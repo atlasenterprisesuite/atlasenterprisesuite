@@ -9,6 +9,7 @@ import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { SocialCopilotPage } from './modules/creator/social/SocialCopilotPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
@@ -230,6 +231,7 @@ export function App() {
         <Route path="/studio/create" element={<RequireAtlasIdentity><CreatorWorkspace /></RequireAtlasIdentity>} />
         <Route path="/studio/library" element={<RequireAtlasIdentity><CreatorLibrary /></RequireAtlasIdentity>} />
         <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
+        <Route path="/studio/social" element={<RequireAtlasIdentity><SocialCopilotPage /></RequireAtlasIdentity>} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
