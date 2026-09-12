@@ -8,11 +8,11 @@ Target branch: `feat/hospitality-wallet-hotel-key`
 
 ## 1. Objective
 
-Extend ATLAS Hospitality from provider-aware room-access orchestration into a governed hotel digital-key platform that can consume an authorized hotel reservation/check-in source, validate room assignment and guest eligibility, issue a provider-backed mobile room credential, and deliver a supported Apple Wallet or Google Wallet provisioning flow without exposing lock secrets or bypassing vendor controls.
+Extend ATLAS Hospitality from provider-aware room-access orchestration into a governed hotel digital-key platform that consumes an authorized hotel reservation/check-in source, validates room assignment and guest eligibility, issues a provider-backed mobile room credential, and delivers a supported Apple Wallet or Google Wallet provisioning flow without exposing lock secrets or bypassing vendor controls.
 
 ATLAS is the orchestration, authorization, tenancy, audit, policy, readiness, and guest-delivery layer. The PMS remains the source of truth for reservation/check-in state. The access-control vendor remains the source of truth for physical lock capability and credential cryptography. Apple Wallet and Google Wallet remain the credential containers and provisioning ecosystems.
 
-The system must never manufacture, clone, reverse engineer, or locally derive hotel lock credentials. It must use only official PMS APIs/webhooks and official access-provider or wallet integrations authorized for the property.
+The system must never manufacture, clone, reverse engineer, or locally derive hotel lock credentials. It uses only official PMS APIs/webhooks and official access-provider or wallet integrations authorized for the property.
 
 ## 2. Product outcome
 
@@ -21,14 +21,14 @@ For an authorized hotel property, a guest who becomes eligible for digital acces
 1. A reservation/check-in event enters ATLAS from an approved PMS connector.
 2. ATLAS verifies organization, property, reservation, guest eligibility, room assignment, stay window, and provider readiness.
 3. ATLAS resolves the property's configured access provider and wallet capabilities.
-4. The access provider creates or authorizes the room credential using its official API/SDK/service.
-5. ATLAS creates a time-limited wallet-provisioning session/reference.
+4. The access provider creates or authorizes the room credential through its official API/SDK/service.
+5. ATLAS creates a short-lived wallet-provisioning session/reference.
 6. The guest receives an `Add to Apple Wallet` or `Add to Google Wallet` action when supported.
-7. The guest completes the wallet platform's required user-consent/provisioning step.
+7. The guest completes the wallet platform's required user-consent/device provisioning step.
 8. ATLAS records the resulting credential reference and lifecycle state.
 9. Room changes, checkout, cancellation, security revocation, or provider invalidation revoke or replace the credential through the official provider lifecycle.
 
-ATLAS may automate eligibility, orchestration, creation, delivery, revocation, and audit. It must not claim that a credential has been silently installed into a user's wallet when the wallet platform requires explicit user action or device-side provisioning.
+ATLAS may automate eligibility, orchestration, creation, delivery, revocation, and audit. It must not claim that a credential has been silently installed into a user's wallet when the wallet platform requires explicit user action.
 
 ## 3. Scope
 
@@ -37,18 +37,16 @@ ATLAS may automate eligibility, orchestration, creation, delivery, revocation, a
 - normalized PMS connector model for Oracle OPERA Cloud/OHIP, Mews, Cloudbeds, Infor HMS, and future certified PMS providers;
 - normalized stay/reservation/check-in/room-assignment event model;
 - automatic digital-key eligibility evaluation;
-- property-level mapping between PMS property/room identifiers and ATLAS property/room identifiers;
+- PMS property/room to ATLAS property/room mappings;
 - access-provider selection per property;
 - Apple Wallet and Google Wallet capability modeling;
 - provider-backed wallet credential issuance where official vendor contracts support it;
-- wallet provisioning-session generation and delivery;
-- guest-facing `Add to Wallet` actions;
-- room-change replacement flow;
-- checkout/cancellation/revocation flow;
-- organization/property/room/reservation scope enforcement;
+- wallet provisioning-session generation and guest delivery;
+- room-change replacement;
+- checkout/cancellation/revocation;
 - RBAC/permissions, audit, readiness, evidence, retries, idempotency, and fail-closed behavior;
-- responsive ATLAS Hospitality UI for configuration, readiness, reservations, keys, wallet delivery, and audit;
-- deterministic sandbox/mock testing plus vendor-authorized production verification.
+- responsive admin and guest wallet-delivery UI;
+- deterministic mocks/sandboxes plus vendor-authorized production verification.
 
 ### 3.2 Explicitly out of scope
 
@@ -57,130 +55,106 @@ ATLAS may automate eligibility, orchestration, creation, delivery, revocation, a
 - credential cloning, replay, emulation, or master-key generation;
 - reverse engineering Vingcard, dormakaba/Saflok, SALTO, Apple, Google, or PMS proprietary protocols;
 - storing wallet private keys, vendor cryptographic seeds, encoder secrets, facility codes, master keys, or raw credential material in browser state or business tables;
-- silently installing a credential into Apple Wallet or Google Wallet without the wallet platform's required user interaction;
+- silently installing a credential into Apple Wallet or Google Wallet without required user interaction;
 - marking a provider `ready` because configuration values merely exist;
 - assuming every hotel uses the same PMS or lock vendor;
-- broadening this milestone into payments, loyalty, housekeeping, or remote-unlock automation.
+- payments, loyalty, housekeeping automation, or remote-unlock automation.
 
 ## 4. Supported hotel software strategy
 
-ATLAS must support multiple PMS families rather than assume a single U.S. hotel standard. Initial first-class connector targets are:
+ATLAS supports multiple PMS families rather than assuming a single U.S. hotel standard.
 
 ### 4.1 Oracle OPERA Cloud / OHIP
 
-Use Oracle Hospitality Integration Platform (OHIP) and its published Hospitality REST APIs. OPERA Cloud has documented external-room-key workflows and is a priority connector for enterprise and branded hotel environments.
+Use Oracle Hospitality Integration Platform (OHIP) and published Hospitality REST APIs. OPERA Cloud has documented external-room-key workflows and is the first implementation target.
 
-ATLAS must treat OHIP application registration, API subscriptions, property identifiers, event subscriptions, and any room-key-specific entitlement as external prerequisites. No Oracle connector becomes production-ready without authorized customer/partner access and a successful non-destructive verification against the intended property.
+Application registration, API subscriptions, property identifiers, event subscriptions, and room-key entitlements remain external prerequisites. No Oracle connector becomes production-ready without authorized access and a successful non-destructive property-level verification.
 
 ### 4.2 Mews
 
-Use Mews Open API / Connector API and supported webhooks/events for reservation and operational changes. Partner/certification requirements remain provider-controlled.
-
-ATLAS should normalize Mews reservation/customer/space information into the same internal stay and room-assignment model used by other PMS connectors.
+Use Mews Open API / Connector API and supported operational event mechanisms. Normalize Mews reservation/customer/space data into the same ATLAS stay and room-assignment model.
 
 ### 4.3 Cloudbeds
 
-Use Cloudbeds PMS APIs and approved integration credentials to read reservation, guest, room, and property state. Cloudbeds credential/Marketplace approval requirements remain external prerequisites.
+Use Cloudbeds PMS APIs and approved integration credentials for reservation, guest reference, room, and property state. Marketplace/partner approval requirements remain external prerequisites.
 
 ### 4.4 Infor HMS
 
-Use supported Infor HMS integration interfaces/web services made available to the authorized hotel. ATLAS must not invent undocumented interfaces. If the hotel's Infor deployment exposes only a certified bridge rather than a direct API contract, the connector remains `configured_unverified` until that bridge is authorized and tested.
+Use supported Infor HMS integration interfaces/web services made available to the authorized hotel. ATLAS does not invent undocumented interfaces. If the property exposes only a certified bridge, the connector remains `configured_unverified` until that bridge is authorized and tested.
 
 ### 4.5 Generic certified PMS
 
-Future PMS providers implement the normalized PMS connector contract. A generic connector may not report `ready` without an explicit provider identity, property mapping, documented authentication method, event/polling contract, and successful verification.
+Future PMS providers implement the same normalized connector contract. A generic connector cannot report `ready` without documented authentication, property mapping, event/polling behavior, and successful verification.
 
 ## 5. Access-control and wallet strategy
 
-ATLAS uses a hybrid model: direct official integrations for major access-control families plus a certified-aggregator fallback where a property uses another supported vendor.
+ATLAS uses a hybrid model: direct official integrations for major access-control families plus a certified-aggregator fallback where required.
 
 ### 5.1 Vingcard
 
-Primary targets:
+Targets include Vostio, Visionline through an approved interface, VConnect/certified integration paths, and Apple Wallet/Google Wallet capability where the property's installed hardware, firmware, configuration, and entitlement support it.
 
-- Vostio;
-- Visionline when supported through an approved interface;
-- VConnect or another certified integration path authorized for the property;
-- Apple Wallet and Google Wallet room-key capability when the installed Vingcard system, lock firmware, property configuration, and commercial entitlement support it.
-
-ATLAS does not assume wallet support merely because the property uses Vingcard. Wallet capability is a verified property/provider capability.
+Wallet support is verified per property; it is never inferred from the Vingcard brand alone.
 
 ### 5.2 dormakaba / Saflok
 
-Primary targets:
-
-- Ambiance Cloud;
-- approved Ambiance PMS/mobile-access integration;
-- Apple Wallet and Google Wallet room-key support when the installed locks/readers, firmware, Ambiance configuration, and property entitlement support it.
+Targets include Ambiance Cloud, approved PMS/mobile-access integration, and Apple Wallet/Google Wallet hotel-key capability where installed locks/readers, firmware, Ambiance configuration, and entitlement support it.
 
 ### 5.3 SALTO
 
-Primary target for guest wallet keys:
-
-- SALTO Space Hospitality API for supported Apple Wallet guest room keys;
-- SALTO WalletHub provisioning flow as defined by SALTO;
-- SALTO KS remains a separate access-control integration and must not be treated as equivalent to the Space Hospitality Wallet contract.
-
-SALTO Space wallet support remains limited by the exact official vendor API contract and installed-property prerequisites. ATLAS must preserve those boundaries rather than generalize unsupported behavior.
+Primary guest-wallet target is SALTO Space Hospitality API with WalletHub for supported Apple Wallet guest room keys. SALTO KS remains a separate access-control integration and is not treated as equivalent to the Space Hospitality Wallet contract.
 
 ### 5.4 Certified aggregator fallback
 
-A provider such as an approved hospitality mobile-key aggregator may be represented through the generic certified adapter only when:
-
-- the property authorizes it;
-- the aggregator officially supports the installed lock system;
-- the integration exposes documented server-side APIs or SDKs;
-- ATLAS can verify property and room scope;
-- wallet issuance/revocation is auditable;
-- no raw credential material is exposed to ATLAS browser clients.
+A certified mobile-key aggregator may be represented through the generic provider adapter only when the property authorizes it, it officially supports the installed lock system, it exposes documented server-side integration, property/room scope can be verified, and wallet issuance/revocation is auditable.
 
 ## 6. Architectural principles
 
 1. PMS, ATLAS, access provider, and wallet are separate trust domains.
-2. PMS is authoritative for reservation/check-in/checkout/room assignment unless the hotel explicitly configures another source of truth.
+2. PMS is authoritative for reservation/check-in/checkout/room assignment unless the property explicitly configures another approved source of truth.
 3. The access provider is authoritative for lock compatibility and credential lifecycle.
-4. Wallet platform state is authoritative for wallet provisioning completion where observable.
+4. Wallet state is authoritative for wallet provisioning completion where observable.
 5. ATLAS never stores or exposes raw physical-key cryptographic material.
 6. Every operation is organization- and property-scoped.
-7. Room access is denied unless a verified mapping exists.
-8. Automatic issuance requires explicit property-level opt-in and an enabled automation policy.
+7. Room access is denied unless the exact room mapping is verified.
+8. Automatic issuance requires explicit property-level opt-in and a versioned automation policy.
 9. All automatic actions are idempotent and auditable.
 10. Provider failures fail closed.
-11. Wallet delivery is capability-driven, never inferred only from device user-agent strings.
-12. A provider can be `ready` for room mapping but not `ready` for wallet issuance; capability readiness is granular.
-13. One property's PMS/access credentials can never be reused for another property.
-14. Browser clients receive normalized references, statuses, and provisioning actions only.
-15. Unsupported hardware or wallet combinations remain visibly unavailable rather than simulated.
+11. Wallet delivery is capability-driven, not inferred only from user-agent strings.
+12. Readiness is capability-specific, not one global green state.
+13. One property's credentials can never be reused for another property.
+14. Browser clients receive only normalized references, statuses, and approved provisioning actions.
+15. Unsupported hardware/platform combinations remain visibly unavailable.
 
 ## 7. High-level architecture
 
 ```text
 PMS / Stay Source
-  OPERA | Mews | Cloudbeds | Infor | Certified PMS
-             |
-             v
-ATLAS PMS Connector Layer
-  auth + webhook/polling + normalization + idempotency
-             |
-             v
-ATLAS Stay / Assignment Model
-  reservation -> eligibility -> room assignment -> validity window
-             |
-             v
+ OPERA | Mews | Cloudbeds | Infor | Certified PMS
+            |
+            v
+atlas-hospitality-pms-ingest
+ provider auth/signature + replay protection + idempotency
+            |
+            v
+ATLAS PMS Connector + Stay Projection
+ reservation -> check-in -> room assignment -> eligibility
+            |
+            v
 ATLAS Wallet Credential Orchestrator
-  policy + permissions + property mapping + readiness + audit
-             |
-        +----+----+
-        |         |
-        v         v
+ policy + permissions + mapping + readiness + audit
+            |
+       +----+----+
+       |         |
+       v         v
 Access Provider   Wallet Delivery
 Vingcard          Apple Wallet
 Dormakaba         Google Wallet
-SALTO             provider-specific provisioning handoff
+SALTO             provider-approved handoff
 Certified provider
-        |
-        v
-Hotel locks / readers / elevators / approved amenities
+       |
+       v
+Hotel locks/readers/elevators/approved amenities
 ```
 
 ## 8. Normalized domain model
@@ -201,12 +175,11 @@ Hotel locks / readers / elevators / approved amenities
 - `last_verified_at`
 - `last_sync_at`
 - `last_error_code`
-- `created_at`
-- `updated_at`
+- timestamps
 
-Secrets remain outside the business table in the approved server-side secret mechanism.
+Secrets stay in the approved server-side secret mechanism, never in this business table.
 
-### 8.2 Stay / reservation projection
+### 8.2 Stay projection
 
 `HospitalityStay`
 
@@ -225,7 +198,7 @@ Secrets remain outside the business table in the approved server-side secret mec
 - `source_version`
 - `last_synced_at`
 
-PII stored by ATLAS should be minimized. The credential subsystem should rely on references wherever possible rather than duplicate full guest profiles.
+Guest PII is minimized. Credential logic should use opaque references rather than duplicate full guest profiles.
 
 ### 8.3 Room assignment
 
@@ -246,27 +219,16 @@ PII stored by ATLAS should be minimized. The credential subsystem should rely on
 
 ### 8.4 Wallet credential reference
 
-Extend or supersede the existing `HospitalityCredentialReference` with wallet-aware metadata:
+Extend `HospitalityCredentialReference` with:
 
-- `id`
-- `org_id`
-- `property_id`
 - `stay_id`
 - `room_assignment_id`
-- `provider_instance_id`
-- `provider_credential_id`
 - `wallet_platform`: `apple_wallet | google_wallet | provider_app | none`
 - `wallet_state`: `not_requested | eligible | provisioning_ready | provisioned | revoked | expired | failed | unknown`
 - `credential_type`: `wallet_mobile_key | mobile_key | rfid_reference`
-- `starts_at`
-- `expires_at`
-- `status`
-- `issued_by`
-- `issued_at`
-- `revoked_at`
-- `provider_status_code`
+- existing provider/stay validity/status/audit fields
 
-No raw wallet authorization blob, decrypted provision token, key bytes, or private cryptographic material is stored in this business record.
+No raw wallet authorization blob, decrypted provision token, key bytes, or private cryptographic material is stored in the business record.
 
 ### 8.5 Provisioning session
 
@@ -282,9 +244,47 @@ No raw wallet authorization blob, decrypted provision token, key bytes, or priva
 - `state`
 - `expires_at`
 - `consumed_at`
-- `created_at`
+- timestamps
 
-The session contains only references and opaque provider-safe material needed to complete the supported wallet handoff. Sensitive transient values must be encrypted/server-side and short-lived, or generated just-in-time without durable persistence when the provider contract permits.
+Sensitive transient provider values are encrypted server-side and short-lived, or generated just-in-time without durable persistence where the provider contract permits.
+
+### 8.6 Integration event ledger
+
+`HospitalityIntegrationEvent`
+
+- `id`
+- `org_id`
+- `property_id`
+- `pms_provider_instance_id`
+- `source_event_id`
+- `event_type`
+- `idempotency_key`
+- `received_at`
+- `processed_at`
+- `status`
+- `attempt_count`
+- `last_error_code`
+- `correlation_id`
+
+This table is required. It is the canonical idempotency/replay ledger for PMS ingestion. Raw vendor payloads are not stored unless a future retention design explicitly approves a minimized/encrypted evidence field.
+
+### 8.7 Automation policy
+
+`HospitalityAutomationPolicy`
+
+- `id`
+- `org_id`
+- `property_id`
+- `version`
+- `auto_wallet_key_on_checkin`
+- allowed platforms and access scopes
+- activation/expiry rules
+- replacement/retry/manual-review settings
+- `enabled`
+- `created_by`
+- timestamps
+
+This table is required because automatic issuance must be explicit, versioned, auditable, and property-scoped.
 
 ## 9. Normalized PMS connector contract
 
@@ -297,7 +297,7 @@ interface HospitalityPmsConnector {
   syncReservations?(context: PmsProviderContext, cursor?: string): Promise<PmsSyncResult>;
   getReservation?(context: PmsProviderContext, reservationId: string): Promise<NormalizedStay>;
   verifyRoomAssignment?(context: PmsProviderContext, reservationId: string): Promise<NormalizedRoomAssignment>;
-  handleWebhook?(context: PmsProviderContext, event: unknown): Promise<NormalizedPmsEvent[]>;
+  normalizeWebhook?(context: PmsProviderContext, event: unknown): Promise<NormalizedPmsEvent[]>;
 }
 ```
 
@@ -312,11 +312,11 @@ Initial PMS capabilities:
 - `room.change.events`
 - `property.read`
 
-Connectors must normalize vendor events into ATLAS events rather than leaking vendor-specific payloads across the rest of the domain.
+Vendor payloads are normalized at the connector boundary and do not leak into the rest of the domain.
 
 ## 10. Wallet and access capabilities
 
-Extend the Hospitality capability vocabulary with:
+Extend Hospitality capabilities with:
 
 - `wallet.apple.issue`
 - `wallet.apple.provision`
@@ -330,13 +330,13 @@ Extend the Hospitality capability vocabulary with:
 - `room.assignment.change.consume`
 - `credential.replace`
 
-Existing capabilities such as `credential.issue`, `credential.revoke`, `credential.status`, `room.mapping.verify`, and `mobile_key.issue` remain valid.
+Existing `credential.issue`, `credential.revoke`, `credential.status`, `room.mapping.verify`, and `mobile_key.issue` remain valid.
 
-Capability reporting is per provider instance and property. A provider must not advertise Apple/Google wallet capability unless the exact property configuration has been verified.
+Capability reporting is per provider instance and property. Apple/Google readiness must be separately verified.
 
 ## 11. Permissions
 
-Extend ATLAS Hospitality permissions with:
+Add:
 
 - `hospitality.pms.read`
 - `hospitality.pms.configure`
@@ -348,29 +348,29 @@ Extend ATLAS Hospitality permissions with:
 - `hospitality.wallet.audit`
 - `hospitality.wallet.automation.manage`
 
-Automatic issuance executes as a governed service action under an explicit property automation policy, not as an anonymous system bypass. The audit record must identify the automation policy, source event, property, stay, and resulting provider operation.
+Automatic issuance executes as a governed service action under the active property automation policy. Audit records identify policy version, source event, property, stay, decision, and provider outcome.
 
 ## 12. Automatic issuance policy
 
 A property may enable `auto_wallet_key_on_checkin` only if all gates pass:
 
-1. PMS provider instance is `ready` for check-in and room-assignment data.
-2. Access provider instance is `ready` for the chosen wallet capability.
-3. ATLAS property mapping is verified.
-4. ATLAS room mapping is verified.
-5. Stay is active and eligible.
+1. PMS instance is `ready` for check-in and room-assignment data.
+2. Access provider is `ready` for the selected wallet capability.
+3. Property mapping is verified.
+4. Room mapping is verified.
+5. Stay is eligible and inside the allowed time window.
 6. Check-in is confirmed by the authoritative source.
-7. A current room assignment exists.
-8. Credential validity is bounded by the stay window and property policy.
-9. No active credential already exists for the same stay/assignment/platform unless replacement is required.
-10. Property automation policy is enabled and versioned.
-11. Required guest delivery/contact channel is available or the credential remains `provisioning_ready` without pretending delivery occurred.
+7. Current room assignment exists.
+8. Key validity is bounded by stay/policy limits.
+9. No equivalent active credential exists unless replacement is required.
+10. Automation policy is enabled and versioned.
+11. A supported delivery path exists or state remains `provisioning_ready` without claiming delivery.
 
-If any gate fails, ATLAS records the blocker and does not issue.
+Any failed gate blocks issuance and records a normalized blocker.
 
-## 13. Event model and lifecycle
+## 13. Event model and idempotency
 
-Normalized event types:
+Normalized events:
 
 - `reservation.created`
 - `reservation.updated`
@@ -388,81 +388,73 @@ Normalized event types:
 - `wallet.credential.expired`
 - `wallet.credential.failed`
 
-Every event requires an idempotency key composed from provider/source event identity plus organization/property scope. Duplicate PMS webhooks must not generate duplicate room credentials.
+Every inbound PMS event is written to `hospitality_integration_events` using a deterministic idempotency key built from organization, property, provider instance, and source event identity/version. Duplicate or replayed events cannot generate duplicate credentials.
 
-## 14. Check-in flow
+## 14. PMS webhook ingress boundary
 
-1. PMS connector receives or retrieves a check-in event.
-2. Connector authenticates and resolves the configured property.
-3. Event is normalized and deduplicated.
-4. ATLAS updates the stay projection.
-5. ATLAS resolves current room assignment.
-6. Eligibility policy evaluates check-in, stay window, mapping, provider readiness, permissions, and property policy.
-7. If not eligible, ATLAS persists the blocker and stops.
-8. If eligible, ATLAS calls the access-provider adapter for the wallet/mobile-key capability.
-9. Provider creates the credential/reference.
-10. ATLAS stores only normalized credential metadata.
-11. ATLAS generates a short-lived wallet provisioning session or provider-supported handoff.
-12. Guest delivery surface becomes available.
-13. Audit records source event, policy decision, provider request outcome, and provisioning state.
+External PMS webhooks use a dedicated Supabase Edge Function: `atlas-hospitality-pms-ingest`.
 
-## 15. Apple Wallet flow
+It is separate from `atlas-hospitality-access` because provider webhooks are not browser-user JWT requests. The function validates the exact vendor's documented signature/token scheme before processing.
 
-Apple Wallet support is provider-specific. ATLAS must not implement a generic home-grown Apple room-key credential format.
+Requirements:
 
-For a provider such as SALTO Space Hospitality:
+- provider-specific signature/token validation;
+- replay protection using vendor event IDs/timestamps/nonces where available;
+- server-side mapping from endpoint/provider configuration to organization/property;
+- no trust in org/property identifiers supplied only by event body;
+- required integration-event idempotency ledger;
+- correlation IDs;
+- bounded retry/dead-letter state;
+- no shared universal webhook secret across properties;
+- no user-session JWT as a substitute for vendor webhook authentication.
 
-1. ATLAS requests the provider-backed room key through the official Hospitality API.
-2. ATLAS obtains the provider-supported provisioning token/reference server-side.
-3. ATLAS constructs or requests the Apple provisioning handoff exactly as the vendor/Apple contract requires.
-4. Browser/app presents the authorized `Add to Apple Wallet` action.
-5. Device-side Apple Wallet provisioning completes under Apple's rules.
-6. ATLAS records observable completion/status when supported.
+Where a PMS lacks suitable webhooks, a governed scheduled sync uses the same connector normalization and idempotency ledger.
 
-For Vingcard or dormakaba, ATLAS uses their authorized Apple Wallet integration path rather than trying to reuse the SALTO-specific flow.
+## 15. Check-in flow
 
-## 16. Google Wallet flow
+1. `atlas-hospitality-pms-ingest` validates and records the PMS event, or a governed sync retrieves it.
+2. Connector normalizes the event.
+3. ATLAS updates stay and room assignment.
+4. Eligibility policy evaluates mapping, readiness, check-in, validity, and automation policy.
+5. Ineligible states persist the blocker and stop.
+6. Eligible state calls the access-provider adapter for the specific wallet/mobile-key capability.
+7. Provider creates the credential/reference.
+8. ATLAS stores normalized reference metadata only.
+9. ATLAS creates a short-lived wallet provisioning session.
+10. Guest delivery becomes available.
+11. Audit records source event, policy decision, provider result, and provisioning state.
 
-Google Hotel Key is a restricted-access wallet program. Production digitization must remain disabled until the required Google agreements/onboarding and access-provider integration prerequisites are complete.
+## 16. Apple Wallet flow
 
-Flow:
+Apple Wallet support is provider-specific; ATLAS does not invent a generic hotel-room credential format.
 
-1. ATLAS verifies provider/property Google Wallet capability.
-2. Access provider creates/authorizes the hotel-key credential through its supported Google Wallet integration.
-3. ATLAS creates a short-lived provisioning/delivery session.
-4. Guest is presented the authorized Google Wallet add/provision action.
-5. Device-side provisioning completes according to Google's hotel-key APIs and provider contract.
-6. ATLAS records safe normalized lifecycle state.
+For SALTO Space Hospitality, ATLAS follows the official Space/WalletHub provisioning contract: create the provider-backed room key, obtain the provider-supported provisioning token/reference server-side, create the Apple handoff exactly as required, and present the authorized add-to-wallet action. Vingcard and dormakaba use their own authorized Apple Wallet paths rather than reusing SALTO-specific semantics.
 
-ATLAS must not treat ordinary Google Wallet generic passes as equivalent to NFC Hotel Key credentials.
+## 17. Google Wallet flow
 
-## 17. Room-change flow
+Google Hotel Key is a restricted hotel-key program, not a generic Wallet pass. Production digitization remains disabled until required Google agreements/onboarding and access-provider prerequisites are complete.
 
-A room change is a security-sensitive replacement operation:
+ATLAS verifies property capability, requests the credential through the supported access-provider path, creates a short-lived provisioning session, presents the authorized Google Wallet action, and records safe normalized lifecycle state.
 
-1. PMS emits or ATLAS detects a verified room-assignment change.
-2. ATLAS resolves the old active credential(s).
-3. New room mapping must be verified before replacement.
-4. ATLAS requests the new provider credential.
-5. Only after the replacement reaches an acceptable provider state does ATLAS revoke/invalidate the old room credential according to provider-safe sequencing.
-6. If replacement fails, ATLAS records an operational blocker and does not falsely report success.
-7. Audit records both old and new room assignments and credential references.
+## 18. Room-change flow
 
-Provider-specific atomic replacement APIs should be preferred when available.
+1. PMS reports a verified room change.
+2. ATLAS resolves active credential(s) for the old assignment.
+3. New room mapping is verified.
+4. ATLAS creates the replacement credential.
+5. After the replacement reaches the provider-defined acceptable state, ATLAS revokes/invalidates the old room credential using provider-safe sequencing.
+6. Failure leaves an explicit operational blocker; ATLAS never reports a partial replacement as complete.
+7. Audit records old/new room assignments and credential references.
 
-## 18. Checkout and cancellation
+Provider atomic replacement APIs are preferred where available.
 
-On verified checkout or reservation cancellation:
+## 19. Checkout and cancellation
 
-- active guest room credentials are revoked or invalidated through the official provider lifecycle;
-- provisioning sessions are invalidated;
-- local ATLAS references move to the normalized revoked/expired state only after evidence from the provider or an explicit reconciled terminal state;
-- failures remain visible for staff follow-up;
-- no credential secret is logged.
+Verified checkout/cancellation triggers provider-backed revocation/invalidation of active guest room credentials and provisioning sessions. ATLAS moves local references to terminal state only with provider evidence or an explicitly reconciled terminal outcome. Failures remain visible for staff follow-up.
 
-## 19. Readiness model
+## 20. Readiness model
 
-PMS and access providers use the existing states:
+PMS/access instances use:
 
 - `not_configured`
 - `configured_unverified`
@@ -471,19 +463,15 @@ PMS and access providers use the existing states:
 - `offline`
 - `disabled`
 
-Readiness becomes capability-specific. Example:
+Capability readiness is separate. Example: room mapping may be `ready` while Google Wallet remains `configured_unverified`. The UI never collapses capability differences into one misleading `Connected` state.
 
-- Vingcard property: room mapping `ready`, mobile key `ready`, Apple Wallet `ready`, Google Wallet `configured_unverified`;
-- SALTO Space property: Apple Wallet `ready`, Google Wallet `not_supported`;
-- Infor HMS connector: reservation sync `ready`, webhooks `configured_unverified`.
+## 21. API boundaries
 
-The UI must never collapse these differences into one misleading green `Connected` state.
+`atlas-hospitality-access` remains the authenticated browser/admin/guest backend boundary with `verify_jwt=true`.
 
-## 20. API boundary
+`atlas-hospitality-pms-ingest` is the dedicated vendor webhook ingress boundary. It uses vendor-specific server-side authentication and must not accept anonymous events without successful provider validation.
 
-The existing `atlas-hospitality-access` Edge Function remains the primary authenticated Hospitality backend boundary unless implementation review proves that a dedicated PMS ingestion webhook function is required.
-
-Likely internal separation:
+Internal modules should separate:
 
 - `pms/registry.ts`
 - `pms/opera.ts`
@@ -496,91 +484,53 @@ Likely internal separation:
 - `automation/policies.ts`
 - `stays/repository.ts`
 - `provisioning/repository.ts`
+- `events/repository.ts`
 - existing `providers/*`
-- shared auth/context/audit/error normalization
+- shared context/audit/errors
 
-Public browser operations should expose normalized APIs such as:
-
-- `GET readiness`
-- `GET pms-providers`
-- `GET stays`
-- `GET wallet-credentials`
-- `POST wallet-provisioning-session`
-- `POST wallet-revoke`
-- `POST wallet-retry`
-- `GET audit`
-
-Provider secrets and raw vendor responses are never returned.
-
-## 21. Webhook boundary
-
-PMS webhooks, where available, require a separate unauthenticated-by-user but strongly authenticated provider ingress boundary. That boundary must validate the vendor's documented signature/authentication method before accepting any event.
-
-Requirements:
-
-- provider-specific signature/token validation;
-- replay protection when the vendor exposes timestamps/nonces/event IDs;
-- organization/property resolution from server-side configuration, never from trusted client input alone;
-- idempotency;
-- safe raw-event retention policy, preferably minimized/redacted;
-- dead-letter/retry behavior;
-- audit correlation ID;
-- no shared universal webhook secret across properties.
-
-If a PMS lacks suitable webhooks, use governed polling with cursors and rate-limit awareness.
+Browser API operations expose normalized statuses/actions only; secrets and raw provider responses are never returned.
 
 ## 22. Data persistence and RLS
 
-Existing Hospitality tables remain authoritative for provider instances, room mappings, and credential references. Add or extend tables only where the data has a distinct lifecycle:
+Required persistence:
 
+- existing `hospitality_provider_instances`
+- existing `hospitality_room_mappings`
+- existing `hospitality_credential_references`, extended for wallet/stay fields
 - `hospitality_pms_provider_instances`
 - `hospitality_stays`
 - `hospitality_room_assignments`
 - `hospitality_wallet_provisioning_sessions`
-- extensions to `hospitality_credential_references`
 - `hospitality_automation_policies`
-- `hospitality_integration_events` if the shared ATLAS event/audit system is insufficient for idempotency/evidence
+- `hospitality_integration_events`
 
-All tables require `org_id`, property scoping where applicable, RLS, timestamps, and non-secret business data only.
+All applicable rows carry `org_id` and `property_id`. RLS and backend checks enforce tenant/property isolation. Business tables contain no raw secrets or key material.
 
 ## 23. Guest delivery
 
-Supported delivery surfaces may include:
+Supported delivery surfaces can include an authenticated ATLAS guest web flow, the hotel's existing guest app through a provider-approved flow, a secure SMS/email link from the authorized communications stack, or front-desk QR/link handoff when the provider/wallet platform permits it.
 
-- authenticated ATLAS guest web flow;
-- hotel's existing guest app through a provider-supported deep link/SDK flow;
-- secure SMS/email link generated by the hotel's authorized communications stack;
-- front-desk QR or link handoff when approved by the vendor/wallet platform.
+Delivery links are short-lived, single-purpose, non-enumerable, credential-scoped, and revocable. They do not contain reusable lock secrets.
 
-A delivery link must be short-lived, single-purpose, non-enumerable, scoped to one credential/provisioning session, and revocable. The link must not itself contain reusable lock secrets.
-
-The UI must distinguish:
-
-- eligible;
-- credential issued;
-- wallet provisioning ready;
-- wallet added/provisioned when observable;
-- failed;
-- expired/revoked.
+UI states distinguish: eligible, credential issued, provisioning ready, provisioned where observable, failed, expired, revoked.
 
 ## 24. Security and privacy boundaries
 
-- Never expose PMS client secrets or access-provider secrets to browser code.
+- PMS/access secrets stay server-side.
 - Never log authorization headers, API keys, private certificates, raw provision tokens, authorization blobs, credential keys, or NFC data.
-- Minimize guest PII in Hospitality credential tables.
-- Use opaque reservation/guest references where possible.
-- Enforce RLS and backend organization/property checks.
-- Automatic issuance requires an enabled, versioned property policy.
-- Delivery sessions expire quickly and are one-purpose.
-- All state-changing operations are auditable.
-- Cross-property credential issuance is denied even inside the same organization unless the exact mapped property is authorized.
-- Provider readiness probes must be non-destructive.
-- Wallet/API onboarding restrictions are treated as security/contract gates, not development inconveniences to bypass.
-- Remote unlock remains a separate privileged future capability.
+- Minimize guest PII and prefer opaque references.
+- RLS plus backend organization/property checks are mandatory.
+- Automatic issuance requires a versioned property policy.
+- Provisioning sessions are short-lived and one-purpose.
+- Every state-changing action is auditable.
+- Cross-property issuance is denied even within one organization unless exact scope is authorized.
+- Readiness probes are non-destructive.
+- Wallet/vendor onboarding restrictions are hard gates, not obstacles to bypass.
+- Remote unlock remains a separate future privileged design.
 
 ## 25. Error normalization
 
-Add normalized categories:
+Add:
 
 - `pms_not_configured`
 - `pms_not_ready`
@@ -602,190 +552,151 @@ Add normalized categories:
 - `automatic_issue_blocked`
 - `idempotency_conflict`
 
-Provider-specific safe codes may be attached as metadata without leaking sensitive response bodies.
+Safe provider codes may be attached as metadata; sensitive bodies/headers are redacted.
 
 ## 26. UI design
 
-Extend the existing Hospitality navigation without creating a parallel shell.
-
-Recommended surfaces:
+Extend existing Hospitality navigation:
 
 - `Overview` — readiness and blockers;
-- `PMS` — configured PMS connectors, sync/webhook status;
-- `Providers` — Vingcard/dormakaba/SALTO/certified access providers;
-- `Rooms` — PMS room ↔ ATLAS room ↔ access-provider room mappings;
-- `Stays` — normalized active stays/check-in/room assignment state;
-- `Wallet Keys` — credential lifecycle and guest provisioning status;
-- `Automation` — property policy for automatic wallet-key issuance/revocation;
-- `Audit` — event/decision/provider evidence.
+- `PMS` — connectors, sync/webhook status;
+- `Providers` — access providers and wallet capabilities;
+- `Rooms` — PMS ↔ ATLAS ↔ access-provider mappings;
+- `Stays` — normalized active stays and assignments;
+- `Wallet Keys` — credential/provisioning lifecycle;
+- `Automation` — property policy;
+- `Audit` — source events, decisions, provider evidence.
 
-Guest delivery should be separate from administrator configuration. An admin screen must never expose provider secrets or raw provisioning material.
+Guest delivery is separate from admin configuration. Admin pages never display provider secrets or raw provisioning material.
 
 ## 27. Automation policy UI
 
-Property administrators with `hospitality.wallet.automation.manage` can configure:
+Users with `hospitality.wallet.automation.manage` can configure:
 
-- automatic issuance enabled/disabled;
+- automatic issuance on/off;
 - eligible stay statuses;
-- key activation lead time;
-- maximum expiry after scheduled checkout;
-- allowed wallet platforms;
-- allowed access zones/amenities as supported by provider;
-- replacement behavior on room change;
-- retry policy;
-- manual-review mode;
+- activation lead time;
+- expiry rules;
+- allowed wallet platforms/access scopes;
+- room-change replacement behavior;
+- retry/manual-review settings;
 - emergency kill switch.
 
-Policy changes are versioned and audited. Disabling automation does not silently revoke already-issued credentials unless the administrator explicitly selects a supported revocation action.
+Policy changes are versioned and audited. Disabling automation does not silently revoke existing credentials unless an explicit supported revocation action is selected.
 
 ## 28. Testing strategy
 
 ### Unit
 
 - PMS normalization;
-- event idempotency;
-- eligibility rules;
-- validity windows;
+- event idempotency/replay;
+- eligibility and validity rules;
 - capability-based wallet selection;
-- policy evaluation;
+- automation policy evaluation;
 - room-change replacement state machine;
-- checkout/cancellation revocation logic;
+- checkout revocation logic;
 - secret-redaction contracts.
 
 ### Integration
 
-- OPERA/Mews/Cloudbeds/Infor connector contracts through deterministic documented mocks or vendor sandboxes;
+- OPERA/Mews/Cloudbeds/Infor connector contracts with documented mocks or sandboxes;
 - valid/invalid webhook signatures;
 - duplicate event handling;
 - cross-org/property denial;
-- wallet issuance blocked when provider is not ready;
-- provisioning session expiry;
+- wallet issuance blocked when provider not ready;
+- provisioning expiry;
 - Apple/Google capability divergence;
-- room-change replacement;
-- checkout revocation;
-- persistence/audit failure handling;
-- CORS/JWT/browser boundaries for guest/admin flows.
+- room change and checkout lifecycle;
+- persistence/audit failure behavior;
+- CORS/JWT/browser boundaries.
 
 ### UI
 
-- PMS/provider/wallet readiness states;
+- truthful PMS/provider/wallet readiness;
 - automation disabled by default;
-- issue action hidden/disabled without permission;
-- add-to-wallet CTA shown only when a provisioning session is truly ready;
-- mobile Safari and Android Chrome responsive behavior;
-- no demo or simulated production labels;
-- no raw IDs where a safe human-readable label exists.
+- permission-based issue/revoke/configure actions;
+- add-to-wallet CTA only when provisioning is truly ready;
+- mobile Safari and Android Chrome;
+- no simulated production labels;
+- human-readable labels instead of raw IDs where available.
 
 ### Production verification
 
-A property/provider/platform combination is `production_ready` only after an authorized controlled test proves:
-
-1. PMS check-in or approved stay event received;
-2. correct room assignment normalized;
-3. correct provider/property/room mapping resolved;
-4. credential issued through official provider path;
-5. wallet provisioning action generated;
-6. credential successfully added/provisioned on a supported test device where allowed;
-7. door/approved access point works under the vendor-supported test procedure;
-8. checkout/revocation invalidates the credential;
-9. audit evidence is complete;
-10. no secret/credential material appears in browser logs, server logs, database business tables, or Git.
+A property/provider/platform combination is production-ready only after an authorized controlled test proves PMS event receipt, correct room assignment, correct mapping, official provider credential issuance, wallet provisioning action, device provisioning where permitted, supported physical access, checkout/revocation, complete audit evidence, and absence of secret leakage.
 
 ## 29. Rollout order
 
-1. Extend domain types/capabilities for PMS, stays, wallet platforms, and automation.
-2. Add schema/RLS for PMS instances, stays, room assignments, provisioning sessions, and automation policies.
-3. Implement normalized PMS connector registry and event/idempotency layer.
-4. Implement OPERA Cloud/OHIP connector first because Oracle publishes mature hospitality integration APIs and external room-key workflows.
-5. Implement Mews and Cloudbeds connectors.
-6. Implement Infor HMS connector only against an authorized documented interface for the target property.
-7. Extend access-provider adapters with property-specific wallet capabilities.
-8. Implement SALTO Space Apple Wallet flow against official Hospitality API requirements.
-9. Implement Vingcard Apple/Google wallet flows only with authorized integration credentials/docs for the target property.
-10. Implement dormakaba Apple/Google wallet flows only with authorized integration credentials/docs for the target property.
-11. Implement generic certified provider fallback.
-12. Add Wallet Credential Orchestrator and automatic issuance policy engine.
-13. Add Hospitality admin UI and guest wallet-delivery flow.
-14. Run full TDD/unit/integration/typecheck/build/security/mobile verification.
-15. Perform controlled provider-specific production validation property by property.
+1. Extend domain capabilities/types for PMS, stays, wallet platforms, automation.
+2. Add schema/RLS for PMS instances, stays, assignments, provisioning, policies, and integration-event ledger.
+3. Implement `atlas-hospitality-pms-ingest` with vendor authentication, replay protection, and idempotency.
+4. Implement PMS connector registry.
+5. Implement OPERA Cloud/OHIP first.
+6. Implement Mews and Cloudbeds.
+7. Implement Infor HMS only against an authorized documented interface.
+8. Extend access-provider adapters with property-specific wallet capabilities.
+9. Implement SALTO Space Apple Wallet flow against official Hospitality API requirements.
+10. Implement Vingcard Apple/Google wallet flows only with authorized credentials/docs.
+11. Implement dormakaba Apple/Google wallet flows only with authorized credentials/docs.
+12. Add generic certified provider fallback.
+13. Implement Wallet Credential Orchestrator and automation policy engine.
+14. Add admin and guest wallet-delivery UI.
+15. Run TDD/unit/integration/typecheck/build/security/mobile verification.
+16. Perform controlled production validation property by property.
 
 ## 30. External prerequisites and blockers
 
-Implementation can build the normalized architecture, schema, policies, event model, UI, mocks, and fail-closed adapters without live hotel credentials.
+Architecture/schema/policies/UI/mocks can be implemented without live hotel credentials. Real issuance remains blocked per property until applicable PMS API access, property IDs/events, access-provider credentials, compatible locks/firmware, wallet/mobile-key entitlement, Apple/provider onboarding, Google Hotel Key agreements/API access, authorized test environment, and property authorization are available.
 
-Real production issuance remains blocked per property until the relevant external requirements are satisfied, including as applicable:
-
-- PMS customer/partner API access;
-- PMS property IDs and authorized event subscriptions;
-- access-provider credentials and property/system identifiers;
-- compatible lock hardware/firmware;
-- mobile-key/wallet licensing or commercial entitlement;
-- Apple Wallet provider-specific onboarding/authorization;
-- Google Hotel Key NDA/API terms/access when required;
-- vendor sandbox or controlled production test capability;
-- property authorization to issue guest digital credentials.
-
-ATLAS must surface the exact blocker instead of simulating readiness.
+ATLAS surfaces the exact blocker instead of simulating readiness.
 
 ## 31. Migration from current ATLAS Hospitality
 
-The existing multi-provider room-access subsystem remains the foundation.
+Preserve the existing multi-provider foundation:
 
-Preserve:
-
-- `atlas-hospitality-access` authenticated backend boundary;
+- `atlas-hospitality-access`;
 - provider registry;
-- Vingcard, dormakaba, SALTO, and generic provider types;
-- provider readiness states;
-- organization/property scoped provider instances;
+- Vingcard/dormakaba/SALTO/generic provider types;
+- readiness states;
+- organization/property-scoped provider instances;
 - room mappings;
 - credential references;
 - explicit Hospitality permissions;
-- fail-closed provider behavior;
+- fail-closed behavior;
 - existing `/hospitality/access/*` surfaces.
 
-Extend rather than replace:
-
-- `HospitalityCapability`;
-- `HospitalityCredentialReference`;
-- provider adapters;
-- readiness response;
-- audit events;
-- UI navigation and operational dashboard.
-
-Add PMS ingestion and wallet orchestration as new bounded subsystems behind the existing Hospitality boundary.
+Extend, do not replace, domain capabilities, credential references, provider adapters, readiness, audit, and UI. PMS ingestion and wallet orchestration are new bounded subsystems behind the Hospitality architecture.
 
 ## 32. Definition of done
 
-This milestone is complete only when:
+Complete only when:
 
-- PMS connector abstraction exists and OPERA/Mews/Cloudbeds/Infor provider types are represented;
-- PMS events normalize into organization/property-scoped stay and room-assignment state;
+- PMS connector abstraction represents OPERA/Mews/Cloudbeds/Infor;
+- vendor ingress is authenticated and replay-safe;
+- PMS events normalize into scoped stay/room assignment state;
 - duplicate events cannot issue duplicate credentials;
-- access-provider wallet capabilities are explicit and property-verified;
+- wallet capabilities are explicit and property-verified;
 - Apple Wallet and Google Wallet are modeled separately;
-- automatic issuance is disabled by default and controlled by versioned property policy;
-- credential issuance requires verified check-in/stay eligibility and verified room mapping;
-- wallet provisioning uses only official provider/platform contracts;
-- guest consent/device provisioning requirements are truthfully represented;
-- room changes replace/revoke credentials safely;
-- checkout/cancellation revokes credentials through the provider lifecycle;
-- no raw lock/wallet secret material is exposed to the browser or persisted in business tables;
-- RLS and backend checks enforce organization/property isolation;
-- all automated decisions and provider actions are auditable;
+- automatic issuance is disabled by default and controlled by versioned policy;
+- issuance requires verified eligibility and room mapping;
+- provisioning uses only official provider/platform contracts;
+- guest consent/device provisioning requirements are truthful;
+- room changes and checkout safely replace/revoke credentials;
+- raw lock/wallet secrets never reach browser or business tables;
+- RLS/backend checks enforce organization/property isolation;
+- automated decisions/actions are auditable;
 - unit/integration/UI/security/mobile tests pass;
-- unsupported vendor/platform combinations fail closed;
-- at least one authorized provider/PMS/wallet combination is verified end-to-end on a controlled hotel property before ATLAS marks that combination production-ready.
+- unsupported combinations fail closed;
+- at least one authorized PMS + access provider + wallet combination is verified end-to-end on a controlled hotel property before ATLAS marks that combination production-ready.
 
 ## 33. Official integration references used for design
 
 - Oracle Hospitality Integration Platform / OHIP and external room-key workflows.
 - Mews Open API / Connector API.
 - Cloudbeds PMS API developer platform.
-- Infor HMS official product and integration documentation.
+- Infor HMS official product/integration documentation.
 - Vingcard mobile wallet hotel-key solutions.
 - dormakaba room key in Apple Wallet and Hotel Key in Google Wallet.
 - SALTO Space Hospitality API and WalletHub provisioning flow.
 - Google Wallet Hotel Key onboarding/API documentation.
 
-Vendor documentation and commercial/API contracts remain authoritative. If an implementation detail in this design conflicts with a current vendor contract, the provider contract wins and the ATLAS adapter must be updated through a reviewed change rather than bypassed.
+Vendor documentation and commercial/API contracts remain authoritative. If an implementation detail conflicts with a current vendor contract, the provider contract wins and the ATLAS adapter must be revised through a reviewed change rather than bypassed.
