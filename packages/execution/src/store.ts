@@ -71,6 +71,14 @@ export class MemoryExecutionStore implements ExecutionStore {
     return store;
   }
 
+  putTask(task: ExecutionTask) {
+    this.tasks.set(task.id, clone(task));
+  }
+
+  putStep(step: ExecutionStep) {
+    this.steps.set(step.id, clone(step));
+  }
+
   async getTask(taskId: string) {
     const task = this.tasks.get(taskId);
     return task ? clone(task) : null;
