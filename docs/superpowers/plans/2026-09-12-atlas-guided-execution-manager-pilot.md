@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Prove Guided Execution with a real, read-only ATLAS Manager workflow that verifies the required GitHub -> Supabase -> Cloudflare -> Production path, records evidence, persists/resumes state, and performs no paid or destructive provider mutation.
+**Goal:** Prove Guided Execution with a real, read-only ATLAS Manager workflow that verifies the required GitHub -> Supabase -> Cloudflare -> Production path, records provider-specific evidence, persists/resumes state, and performs no paid or destructive provider mutation.
 
-**Architecture:** Extend the authenticated `atlas-execution` Edge Function with one bounded operation, `sync_manager_readiness`, that calls the existing authenticated `atlas-infra-status` function using the same user session. Normalize those real readiness results into one persisted execution workflow, tasks, steps, evidence, and audit events. The web launcher starts/resumes the persisted workflow then navigates to the generic `/execution/:workflowId` surface from the Core Web plan.
+**Architecture:** Extend the authenticated `atlas-execution` Edge Function with one bounded operation, `sync_manager_readiness`, that calls the existing authenticated `atlas-infra-status` function using the same user session. Consume its current response contract (`provider_status` entries with `{ state, required }`) rather than duplicating provider probes. Project those real facts into one persisted execution workflow, one task, four required steps, provider-specific evidence, and immutable audit events. The web launcher starts/resumes the persisted workflow then navigates to the generic `/execution/:workflowId` surface.
 
 **Tech Stack:** Supabase Edge Functions (Deno + `@supabase/supabase-js@2`), PostgreSQL/RLS, Web Crypto SHA-256, TypeScript, React Router, Vitest.
 
@@ -12,27 +12,31 @@
 
 ## Global Constraints
 
-- Execute only after `2026-09-12-atlas-guided-execution-core-web.md` is complete and reviewed.
+- Execute only after `2026-09-12-atlas-guided-execution-core-web.md` is complete and independently reviewed.
 - Reuse `atlas-infra-status`; do not duplicate GitHub, Supabase, Cloudflare, production, or optional Vercel probe logic.
-- `sync_manager_readiness` is read-only with respect to external providers; its only mutations are ATLAS execution workflow/evidence/audit persistence.
+- `sync_manager_readiness` is read-only with respect to external providers; its only mutations are ATLAS execution workflow/step/evidence/audit persistence.
 - The incoming user must pass both execution authorization and the existing ATLAS Manager infrastructure-admin authorization enforced by `atlas-infra-status`.
-- `ATLAS_PLATFORM_TENANT_ID` is a server-side non-secret identifier required to create the platform-owned readiness workflow. If absent, return `platform_tenant_not_configured`; never invent a tenant ID.
-- Vercel remains optional and must not reduce required-path completion.
+- `ATLAS_PLATFORM_TENANT_ID` is a server-side non-secret identifier used only when creating a new platform readiness workflow. If no active readiness workflow exists and this identifier is absent, return `platform_tenant_not_configured`; never substitute organization ID or invent a tenant.
+- Existing active readiness workflows keep their persisted `tenant_id`; do not rewrite it from environment changes.
+- Vercel remains optional and is informational only; it never enters the required-step denominator.
 - No AWS calls, EC2 resources, provider charges, DNS changes, deployments, secret changes, repair execution, or production mutation.
 - No merge or deploy in this plan.
-- Every sync writes auditable provenance and never stores provider tokens or raw secret-bearing responses.
+- Every sync preserves audit provenance and never stores provider tokens, request authorization headers, or raw secret-bearing provider responses.
+- Task status transitions must respect the existing `@atlas/execution` state machine. A blocked readiness task may not jump directly to `completed`.
+- Completion must use provider-specific verified evidence so one provider's evidence cannot satisfy another provider's step.
 
 ## File Map
 
 - `supabase/migrations/20260912_manager_readiness_execution.sql` — one-active-readiness-workflow invariant and query index.
-- `supabase/functions/atlas-execution/manager-readiness.ts` — read-only status fetch, normalization, persistence, evidence digesting.
-- `supabase/functions/atlas-execution/index.ts` — register/dispatch `sync_manager_readiness`.
+- `supabase/functions/atlas-execution/manager-readiness.ts` — response-contract validation, pure projection, evidence digest helpers, sync orchestration dependencies.
+- `supabase/functions/atlas-execution/index.ts` — register/dispatch `sync_manager_readiness` and pass existing auth/admin/audit helpers.
 - `apps/web/src/execution/api.ts` — `syncManagerReadiness()` client.
 - `apps/web/src/execution/ManagerReadinessLauncher.tsx` — authenticated start/resume launcher.
 - `apps/web/src/App.tsx` — `/execution/manager/readiness` launcher route.
-- `tests/unit/manager-readiness-projection.test.ts` — provider-state -> step/task mapping.
-- `tests/integration/manager-readiness-edge-contract.test.ts` — auth, no paid mutation, persistence contract.
-- `tests/integration/manager-readiness-route.test.tsx` — launcher -> workflow navigation.
+- `tests/unit/manager-readiness-projection.test.ts` — current infra-status contract -> step/task mapping.
+- `tests/integration/manager-readiness-edge-contract.test.ts` — auth, state-machine, evidence, no-paid-mutation source contract.
+- `tests/integration/manager-readiness-route.test.tsx` — launcher -> persisted workflow navigation.
+- `tests/integration/manager-readiness-no-mutation.test.ts` — external read-only guarantee.
 
 ---
 
@@ -43,22 +47,20 @@
 - Test: `tests/integration/manager-readiness-edge-contract.test.ts`
 
 **Interfaces:**
-- Consumes: `execution_workflows` from the Universal Execution Foundation.
-- Produces: a partial unique index for one active `manager.infrastructure_readiness` workflow per organization.
+- Consumes: `execution_workflows` from Universal Execution Foundation.
+- Produces: one active `manager.infrastructure_readiness` workflow per organization; completed/cancelled/discarded workflows remain historical.
 
-- [ ] **Step 1: Write a failing schema contract test**
+- [ ] **Step 1: Write the failing schema contract test**
 
 ```ts
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-describe('ATLAS Manager readiness execution schema', () => {
-  it('allows only one active readiness workflow per organization', () => {
-    const sql = readFileSync('supabase/migrations/20260912_manager_readiness_execution.sql', 'utf8');
-    expect(sql).toContain('manager.infrastructure_readiness');
-    expect(sql).toContain('create unique index');
-    expect(sql).toContain("status not in ('completed','cancelled','discarded')");
-  });
+it('permits only one active readiness workflow per organization', () => {
+  const sql = readFileSync('supabase/migrations/20260912_manager_readiness_execution.sql', 'utf8');
+  expect(sql).toContain('manager.infrastructure_readiness');
+  expect(sql).toContain('create unique index');
+  expect(sql).toContain("status not in ('completed','cancelled','discarded')");
 });
 ```
 
@@ -81,54 +83,54 @@ on public.execution_workflows (org_id, updated_at desc)
 where workflow_type = 'manager.infrastructure_readiness';
 ```
 
-- [ ] **Step 4: Run schema test**
+- [ ] **Step 4: Run schema test and commit**
 
 ```bash
 npx vitest run tests/integration/manager-readiness-edge-contract.test.ts
-```
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add supabase/migrations/20260912_manager_readiness_execution.sql tests/integration/manager-readiness-edge-contract.test.ts
 git commit -m "feat: constrain manager readiness workflows"
 ```
 
 ---
 
-### Task 2: Build a pure readiness projection from real infrastructure status
+### Task 2: Validate the existing `atlas-infra-status` response and build a pure readiness projection
 
 **Files:**
 - Create: `supabase/functions/atlas-execution/manager-readiness.ts`
 - Test: `tests/unit/manager-readiness-projection.test.ts`
 
 **Interfaces:**
-- Consumes: normalized result from `atlas-infra-status` containing required provider states and blockers.
-- Produces: `projectManagerReadiness(status)` returning task status, fixed step definitions, evidence descriptors, and next action.
+- Consumes: current `atlas-infra-status` response field `provider_status` where providers contain `{ state: string, required: boolean }`.
+- Produces: `normalizeManagerInfraStatus(raw)` and `projectManagerReadiness(status)`.
 
-- [ ] **Step 1: Write failing projection tests**
+- [ ] **Step 1: Write failing response-contract tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { projectManagerReadiness } from '../../supabase/functions/atlas-execution/manager-readiness';
+import { normalizeManagerInfraStatus, projectManagerReadiness } from '../../supabase/functions/atlas-execution/manager-readiness';
 
-describe('manager readiness projection', () => {
-  it('completes only required providers that are actually ready', () => {
-    const result = projectManagerReadiness({
-      status: 'partial',
-      providers: {
-        github: { status: 'ready', required: true },
-        supabase: { status: 'ready', required: true },
-        cloudflare: { status: 'not_verified', required: true },
-        production: { status: 'ready', required: true },
-        vercel: { status: 'not_configured', required: false }
-      },
-      blockers: [{ provider: 'cloudflare', reason: 'not_verified' }]
-    });
-    expect(result.taskStatus).toBe('blocked');
-    expect(result.steps.find((step) => step.key === 'cloudflare')?.status).toBe('blocked');
-    expect(result.steps.find((step) => step.key === 'vercel')?.required).toBe(false);
-  });
+const raw = {
+  ok: true,
+  provider_status: {
+    github: { state: 'ready', required: true },
+    supabase: { state: 'ready', required: true },
+    cloudflare: { state: 'authorization_error', required: true },
+    production: { state: 'ready', required: true },
+    vercel: { state: 'optional_provider_unconfigured', required: false }
+  },
+  blockers: [{ stage: 'cloudflare', code: 'authorization_error', detail: 'Cloudflare is not verified.' }]
+};
+
+it('uses provider_status.state from the existing infra-status contract', () => {
+  const projected = projectManagerReadiness(normalizeManagerInfraStatus(raw));
+  expect(projected.taskStatus).toBe('blocked');
+  expect(projected.steps.find((step) => step.key === 'cloudflare')?.status).toBe('blocked');
+  expect(projected.optionalProviders.vercel.state).toBe('optional_provider_unconfigured');
+});
+
+it('fails closed when a required provider entry is missing', () => {
+  expect(() => normalizeManagerInfraStatus({ ok: true, provider_status: {} }))
+    .toThrow('infra_status_contract_invalid');
 });
 ```
 
@@ -138,47 +140,42 @@ describe('manager readiness projection', () => {
 npx vitest run tests/unit/manager-readiness-projection.test.ts
 ```
 
-- [ ] **Step 3: Implement fixed provider projection**
+- [ ] **Step 3: Implement strict normalization**
 
-Use exactly these required steps and sequence:
+Required provider names are exactly `github`, `supabase`, `cloudflare`, `production`. Each must exist with non-empty string `state` and `required === true`. `vercel` may exist and must be treated as optional regardless of its readiness state. If the response violates these invariants, throw `infra_status_contract_invalid` rather than inventing provider state.
+
+- [ ] **Step 4: Implement fixed required steps**
 
 ```ts
-const REQUIRED_STEPS = [
-  { key: 'github', sequence: 1, title: 'Verify canonical GitHub state' },
-  { key: 'supabase', sequence: 2, title: 'Verify Supabase control plane' },
-  { key: 'cloudflare', sequence: 3, title: 'Verify Cloudflare public edge' },
-  { key: 'production', sequence: 4, title: 'Verify public production route' }
+export const REQUIRED_MANAGER_STEPS = [
+  { key: 'github', sequence: 1, actionType: 'verify_github', title: 'Verify canonical GitHub state', evidenceKind: 'infra_verification.github' },
+  { key: 'supabase', sequence: 2, actionType: 'verify_supabase', title: 'Verify Supabase control plane', evidenceKind: 'infra_verification.supabase' },
+  { key: 'cloudflare', sequence: 3, actionType: 'verify_cloudflare', title: 'Verify Cloudflare public edge', evidenceKind: 'infra_verification.cloudflare' },
+  { key: 'production', sequence: 4, actionType: 'verify_production', title: 'Verify public production route', evidenceKind: 'infra_verification.production' }
 ] as const;
 ```
 
-Map provider state to step state:
+Map each required provider:
 
 ```ts
-function stepStatus(provider: { status: string; required: boolean }) {
-  if (!provider.required) return 'completed' as const;
-  if (['ready', 'verified', 'connected'].includes(provider.status)) return 'completed' as const;
-  return 'blocked' as const;
-}
+const status = provider.state === 'ready' ? 'completed' : 'blocked';
 ```
 
-Do not treat optional Vercel as a required step. Include its state only as informational evidence.
+Do not treat `verified`/`connected` aliases as ready because the shared current infrastructure evaluator defines readiness specifically as `state === 'ready'`.
 
-- [ ] **Step 4: Run projection tests**
+Task projection is `completed` only when all four required steps are completed; otherwise `blocked`. `nextAction` is the title of the first blocked required step or `null` when complete. `blockedReason` comes from the matching blocker code when available, otherwise the provider's exact state.
+
+- [ ] **Step 5: Run tests and commit**
 
 ```bash
 npx vitest run tests/unit/manager-readiness-projection.test.ts
-```
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add supabase/functions/atlas-execution/manager-readiness.ts tests/unit/manager-readiness-projection.test.ts
-git commit -m "feat: project manager readiness into execution state"
+git commit -m "feat: project manager readiness from infra status"
 ```
 
 ---
 
-### Task 3: Add the authenticated `sync_manager_readiness` server operation
+### Task 3: Add authenticated `sync_manager_readiness` without bypassing execution transitions
 
 **Files:**
 - Modify: `supabase/functions/atlas-execution/index.ts`
@@ -186,20 +183,19 @@ git commit -m "feat: project manager readiness into execution state"
 - Test: `tests/integration/manager-readiness-edge-contract.test.ts`
 
 **Interfaces:**
-- Consumes: current request authorization, `ATLAS_PLATFORM_TENANT_ID`, `atlas-infra-status`, projection from Task 2.
-- Produces: `{ ok: true, workflow_id, state }` after persisting canonical workflow/task/steps/evidence/audit.
+- Consumes: resolved execution context, same user Authorization header, `ATLAS_PLATFORM_TENANT_ID`, `atlas-infra-status`, `canTransitionTask`, `evaluateTaskCompletion`, existing `appendAudit` callback.
+- Produces: `{ ok: true, workflow_id, state }` after idempotent persistence.
 
-- [ ] **Step 1: Extend the Edge contract test**
-
-Assert source contains:
+- [ ] **Step 1: Extend failing Edge source-contract assertions**
 
 ```ts
 expect(edgeSource).toContain("'sync_manager_readiness'");
-expect(edgeSource).toContain("/functions/v1/atlas-infra-status");
-expect(edgeSource).toContain('ATLAS_PLATFORM_TENANT_ID');
-expect(edgeSource).not.toContain('ec2.amazonaws.com');
-expect(edgeSource).not.toContain('RunInstances');
-expect(edgeSource).not.toContain('TerminateInstances');
+expect(managerSource).toContain('/functions/v1/atlas-infra-status');
+expect(managerSource).toContain('ATLAS_PLATFORM_TENANT_ID');
+expect(managerSource).toContain('evaluateTaskCompletion');
+expect(managerSource).not.toContain('ec2.amazonaws.com');
+expect(managerSource).not.toContain('RunInstances');
+expect(managerSource).not.toContain('TerminateInstances');
 ```
 
 - [ ] **Step 2: Run and verify RED**
@@ -208,103 +204,96 @@ expect(edgeSource).not.toContain('TerminateInstances');
 npx vitest run tests/integration/manager-readiness-edge-contract.test.ts
 ```
 
-- [ ] **Step 3: Register the operation**
+- [ ] **Step 3: Register and dispatch the operation**
 
-Add `sync_manager_readiness` to `SUPPORTED_OPERATIONS` and dispatch it after `resolveContext`.
+Add `sync_manager_readiness` to `SUPPORTED_OPERATIONS`. Keep `resolveContext(req, orgId)` in `index.ts`, then call the manager module with an explicit dependency object containing `req`, `context`, `requestId`, `admin`, Supabase URL/publishable key, and an audit callback wrapping the existing `appendAudit`. Do not export service-role credentials or duplicate the general auth resolver.
 
-- [ ] **Step 4: Fetch readiness using the same user authorization**
-
-In `manager-readiness.ts`:
+- [ ] **Step 4: Call `atlas-infra-status` with the same user authorization**
 
 ```ts
 const response = await fetch(`${supabaseUrl}/functions/v1/atlas-infra-status`, {
   method: 'GET',
   headers: {
     apikey: publishableKey,
-    authorization: request.headers.get('authorization') || ''
+    authorization: req.headers.get('authorization') || ''
   }
 });
 if (!response.ok) throw new ManagerReadinessError(`infra_status_${response.status}`, response.status);
-const status = await response.json();
+const status = normalizeManagerInfraStatus(await response.json());
 ```
 
-This preserves the existing `atlas-infra-status` owner/admin/platform-admin check instead of recreating it.
+This preserves the existing `atlas-infra-status` owner/admin/platform-admin check.
 
-- [ ] **Step 5: Fail closed when platform tenant context is absent**
+- [ ] **Step 5: Find the active workflow before requiring creation context**
+
+Query the latest active `manager.infrastructure_readiness` workflow for `context.orgId`. If found, use its persisted `tenant_id`. Only when none exists read:
 
 ```ts
 const tenantId = Deno.env.get('ATLAS_PLATFORM_TENANT_ID')?.trim() || '';
 if (!tenantId) throw new ManagerReadinessError('platform_tenant_not_configured', 503);
 ```
 
-Do not substitute organization ID or a hard-coded tenant.
-
-- [ ] **Step 6: Find-or-create the active workflow and one readiness task**
-
-Persist:
+Create a workflow initially as `now` with:
 
 ```ts
-workflow_type: 'manager.infrastructure_readiness'
-owner_module: 'manager'
-current_module: 'manager'
-context: { source: 'atlas-infra-status', mutation_policy: 'read_only' }
+workflow_type: 'manager.infrastructure_readiness',
+owner_module: 'manager',
+current_module: 'manager',
+context: { source: 'atlas-infra-status', mutation_policy: 'read_only', return_path: '/' }
 ```
 
-Task:
+On a partial-unique-index race, reload the active workflow instead of creating a duplicate.
+
+- [ ] **Step 6: Find-or-create one readiness task in legal `now` state**
+
+Use:
 
 ```ts
-title: 'Verify infrastructure readiness'
-intent: 'Verify the active ATLAS production path using existing read-only probes'
-goal: 'Produce evidence-backed readiness for GitHub, Supabase, Cloudflare, and public production'
+title: 'Verify infrastructure readiness',
+intent: 'Verify the active ATLAS production path using existing read-only probes',
+goal: 'Produce evidence-backed readiness for GitHub, Supabase, Cloudflare, and public production',
 permissions_required: ['execution.read']
 ```
 
-On the partial unique-index race, reload the active workflow rather than creating a second one.
+If an existing active task is `blocked`, first perform and audit the legal `blocked -> now` transition before recalculating. Never jump `blocked -> completed`.
 
-- [ ] **Step 7: Replace readiness steps transactionally at the server boundary**
+- [ ] **Step 7: Upsert four fixed steps idempotently**
 
-For the single readiness task, upsert four fixed sequence steps by `(task_id, sequence)` with action types:
+Upsert by `(task_id, sequence)`. For each required provider set `status` to `completed` only when its state is exactly `ready`; otherwise `blocked`. Set its single evidence requirement to the provider-specific `evidenceKind` from Task 2. Set `current_step_id` to the first blocked step; when all are ready, set it to the final completed step.
 
-```text
-verify_github
-verify_supabase
-verify_cloudflare
-verify_production
-```
+Do not describe this multi-call Supabase sequence as a database transaction. The sync is idempotent: if a persistence call fails, return an error and the next sync reconciles the same fixed rows rather than fabricating completion.
 
-Set only `completed` or `blocked` from the live projection. Set `current_step_id` to the first blocked required step, or the final completed step when all pass. Set task/workflow `completed` only when all four required steps are completed.
+- [ ] **Step 8: Gate final task completion through existing evaluation**
 
-- [ ] **Step 8: Run Edge contract tests**
+After evidence from Task 4 is present, call `evaluateTaskCompletion` with all four steps, their provider-specific evidence, approvals (none required for this read-only pilot), and unresolved dependencies. If not eligible, task/workflow become or remain `blocked`. If eligible, ensure task is `now`, verify `canTransitionTask('now','completed')`, then write `completed`. Mirror workflow state only after task state succeeds.
+
+- [ ] **Step 9: Run Edge contract tests and commit**
 
 ```bash
 npx vitest run tests/unit/manager-readiness-projection.test.ts tests/integration/manager-readiness-edge-contract.test.ts
-```
-
-- [ ] **Step 9: Commit**
-
-```bash
-git add supabase/functions/atlas-execution/index.ts supabase/functions/atlas-execution/manager-readiness.ts tests/unit/manager-readiness-projection.test.ts tests/integration/manager-readiness-edge-contract.test.ts
+git add supabase/functions/atlas-execution/index.ts supabase/functions/atlas-execution/manager-readiness.ts tests/integration/manager-readiness-edge-contract.test.ts
 git commit -m "feat: sync read-only manager readiness workflow"
 ```
 
 ---
 
-### Task 4: Record digest-based evidence and immutable audit provenance
+### Task 4: Record provider-specific digest evidence and immutable audit provenance
 
 **Files:**
 - Modify: `supabase/functions/atlas-execution/manager-readiness.ts`
 - Test: `tests/integration/manager-readiness-edge-contract.test.ts`
 
 **Interfaces:**
-- Consumes: live status projection and persisted task/steps.
-- Produces: idempotent evidence references and one sync audit event per request correlation ID.
+- Consumes: normalized live provider facts and persisted fixed steps.
+- Produces: one provider-specific evidence kind/reference per observed provider state and sync audit provenance.
 
-- [ ] **Step 1: Add failing evidence contract assertions**
+- [ ] **Step 1: Add failing evidence assertions**
 
 ```ts
 expect(source).toContain('crypto.subtle.digest');
-expect(source).toContain("kind: 'infra_verification'");
-expect(source).toContain("action: 'execution.manager.readiness_synced'");
+expect(source).toContain('infra_verification.github');
+expect(source).toContain('infra_verification.cloudflare');
+expect(source).toContain('execution.manager.readiness_synced');
 expect(source).not.toContain('CLOUDFLARE_API_TOKEN');
 expect(source).not.toContain('GITHUB_TOKEN');
 ```
@@ -315,38 +304,32 @@ expect(source).not.toContain('GITHUB_TOKEN');
 npx vitest run tests/integration/manager-readiness-edge-contract.test.ts
 ```
 
-- [ ] **Step 3: Compute a stable SHA-256 digest from redacted status facts**
+- [ ] **Step 3: Build redacted SHA-256 evidence references**
 
-Digest only:
+For one sync timestamp `checkedAt`, digest only:
 
 ```ts
-const digestInput = JSON.stringify({
-  provider: step.key,
-  status: provider.status,
-  required: provider.required,
-  checkedAt
-});
+const digestInput = JSON.stringify({ provider: step.key, state: provider.state, required: true, checkedAt });
 const digestBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(digestInput));
 const digest = [...new Uint8Array(digestBuffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+const reference = `atlas-infra-status:${step.key}:${digest}`;
 ```
 
-Evidence reference:
+Persist evidence with `kind=step.evidenceKind` and `verified = provider.state === 'ready'`. A blocked observation is still evidence of the observed state, but it is not verified completion evidence.
 
-```ts
-`atlas-infra-status:${step.key}:${digest}`
-```
+- [ ] **Step 4: Avoid exact duplicate evidence**
 
-Never persist provider tokens, request headers, or raw provider responses in execution evidence.
+Before insert, query exact `(org_id, task_id, step_id, kind, reference)`. Repeated later syncs may intentionally create new timestamped evidence; exact duplicate requests do not.
 
-- [ ] **Step 4: Avoid duplicate evidence for the same step/digest**
+- [ ] **Step 5: Re-evaluate completion only after all evidence writes finish**
 
-Before insert, query by `org_id`, `task_id`, `step_id`, `kind='infra_verification'`, and exact reference. Insert only when absent.
+Call the completion gate described in Task 3 after evidence persistence. This sequencing prevents a ready step set from being marked completed before its required evidence exists.
 
-- [ ] **Step 5: Append audit**
+- [ ] **Step 6: Append immutable audit provenance**
 
-Use existing `appendAudit` with action `execution.manager.readiness_synced`, previous/resulting task state, evidence IDs written/observed, and the request correlation ID.
+Use the callback supplied from `index.ts` to append `execution.manager.readiness_synced` with workflow/task IDs, previous/resulting task state, evidence IDs observed/written, and the request correlation ID. If a legal `blocked -> now -> completed` recovery occurred, retain enough audit entries to reconstruct both transitions; do not compress them into a false direct `blocked -> completed` event.
 
-- [ ] **Step 6: Run tests and commit**
+- [ ] **Step 7: Run tests and commit**
 
 ```bash
 npx vitest run tests/integration/manager-readiness-edge-contract.test.ts
@@ -356,7 +339,7 @@ git commit -m "feat: record manager readiness evidence"
 
 ---
 
-### Task 5: Add the web start/resume launcher and navigate to the generic Guided Execution route
+### Task 5: Add the web start/resume launcher and navigate to generic Guided Execution
 
 **Files:**
 - Modify: `apps/web/src/execution/api.ts`
@@ -365,18 +348,27 @@ git commit -m "feat: record manager readiness evidence"
 - Test: `tests/integration/manager-readiness-route.test.tsx`
 
 **Interfaces:**
-- Consumes: `sync_manager_readiness` server operation.
+- Consumes: `sync_manager_readiness`.
 - Produces: `/execution/manager/readiness` -> `/execution/:workflowId` navigation.
 
-- [ ] **Step 1: Write failing launcher test**
+- [ ] **Step 1: Write a failing launcher test with an explicit location probe**
+
+In the test file define:
 
 ```tsx
-it('syncs the real readiness workflow then navigates to its persisted workflow id', async () => {
-  vi.mocked(syncManagerReadiness).mockResolvedValue({ workflowId: 'wf-manager-1' });
-  render(<MemoryRouter initialEntries={['/execution/manager/readiness']}><App /></MemoryRouter>);
-  expect(await screen.findByText('Verifying infrastructure readiness')).toBeInTheDocument();
-  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/execution/wf-manager-1'));
-});
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname}</output>;
+}
+```
+
+Then:
+
+```tsx
+vi.mocked(syncManagerReadiness).mockResolvedValue({ workflowId: 'wf-manager-1' });
+render(<MemoryRouter initialEntries={['/execution/manager/readiness']}><App /><LocationProbe /></MemoryRouter>);
+expect(await screen.findByText('Verifying infrastructure readiness')).toBeInTheDocument();
+await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/execution/wf-manager-1'));
 ```
 
 - [ ] **Step 2: Run and verify RED**
@@ -385,17 +377,14 @@ it('syncs the real readiness workflow then navigates to its persisted workflow i
 npx vitest run tests/integration/manager-readiness-route.test.tsx
 ```
 
-- [ ] **Step 3: Add `syncManagerReadiness()`**
+- [ ] **Step 3: Implement `syncManagerReadiness()`**
 
 ```ts
 export async function syncManagerReadiness() {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-execution', {
     method: 'POST',
-    body: JSON.stringify({
-      operation: 'sync_manager_readiness',
-      organization_id: organization.id
-    })
+    body: JSON.stringify({ operation: 'sync_manager_readiness', organization_id: organization.id })
   });
   const data = await parseExecutionResponse(response);
   if (!data.workflow_id) throw new Error('manager_readiness_workflow_missing');
@@ -405,18 +394,17 @@ export async function syncManagerReadiness() {
 
 - [ ] **Step 4: Implement launcher**
 
-On mount call `syncManagerReadiness()`. While waiting, render `aria-busy=true` and `Verifying infrastructure readiness`. On success navigate with `replace: true`. On failure render the exact truthful dependency (`platform_tenant_not_configured`, `infrastructure_admin_required`, provider/status failure) and a Retry button.
+On mount call `syncManagerReadiness()`. While waiting render `aria-busy="true"` and `Verifying infrastructure readiness`. On success navigate with `{ replace: true }`. On failure show the exact error (`platform_tenant_not_configured`, `infrastructure_admin_required`, `infra_status_*`, `infra_status_contract_invalid`) plus Retry. Do not translate a provider error into a fake successful workflow.
 
-- [ ] **Step 5: Add protected route before the dynamic workflow route**
+- [ ] **Step 5: Add protected launcher route before the dynamic workflow route**
 
 ```tsx
-<Route
-  path="/execution/manager/readiness"
-  element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>}
-/>
+<Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
 ```
 
-- [ ] **Step 6: Run route tests and commit**
+React Router ranking should prefer the static route, but keep the declaration adjacent to `/execution/:workflowId` for maintainability.
+
+- [ ] **Step 6: Run tests and commit**
 
 ```bash
 npx vitest run tests/integration/manager-readiness-route.test.tsx tests/integration/guided-execution-route.test.tsx
@@ -426,7 +414,7 @@ git commit -m "feat: launch manager readiness Guided Execution"
 
 ---
 
-### Task 6: Verify the pilot cannot mutate providers or create false readiness
+### Task 6: Prove optional-provider semantics, failure truthfulness, and zero provider mutation
 
 **Files:**
 - Modify: `tests/unit/manager-readiness-projection.test.ts`
@@ -434,39 +422,36 @@ git commit -m "feat: launch manager readiness Guided Execution"
 - Create: `tests/integration/manager-readiness-no-mutation.test.ts`
 
 **Interfaces:**
-- Consumes: complete manager pilot.
-- Produces: safety evidence that only read-only status probing plus internal execution persistence occur.
+- Consumes: complete Manager pilot.
+- Produces: safety and correctness evidence.
 
-- [ ] **Step 1: Assert optional providers never enter the completion denominator**
+- [ ] **Step 1: Prove optional Vercel never blocks completion**
 
-```ts
-it('does not block completion on optional Vercel state', () => {
-  const result = projectManagerReadiness(makeStatus({ requiredReady: true, vercel: 'not_configured' }));
-  expect(result.taskStatus).toBe('completed');
-});
-```
+Provide all four required `provider_status.*.state='ready'` and Vercel `state='optional_provider_unconfigured', required=false`; expect projected task status `completed`.
 
-- [ ] **Step 2: Assert external methods are read-only**
+- [ ] **Step 2: Prove a required provider failure remains blocked**
 
-Read `atlas-infra-status` and manager readiness source files and assert there is no AWS API host, EC2 SDK call, Cloudflare mutation method, GitHub mutation endpoint, deployment trigger, or Vercel deployment call introduced by this feature. The readiness call itself must be GET.
+Set `cloudflare.state='authorization_error'` or `production.state='public_site_unreachable'`; expect corresponding step and task `blocked`, with no eligible completion.
 
-- [ ] **Step 3: Assert incomplete evidence cannot become completed**
+- [ ] **Step 3: Prove the feature adds no provider mutation calls**
 
-Feed a `cloudflare.status='authorization_error'` or `production.status='public_site_unreachable'` projection and assert workflow/task state is `blocked`, not `completed`.
+Read `manager-readiness.ts`, `atlas-execution/index.ts`, and the migration. Assert this feature contains no AWS host/EC2 actions, Cloudflare mutation endpoint/method, GitHub write endpoint, Vercel deploy call, deployment trigger, DNS write, secret mutation, or repair execution. The only external readiness request in `manager-readiness.ts` must target `/functions/v1/atlas-infra-status` using `GET`.
 
-- [ ] **Step 4: Run pilot test set**
+- [ ] **Step 4: Run the pilot test set**
 
 ```bash
 npx vitest run tests/unit/manager-readiness-projection.test.ts tests/integration/manager-readiness-edge-contract.test.ts tests/integration/manager-readiness-route.test.tsx tests/integration/manager-readiness-no-mutation.test.ts
 ```
 
-- [ ] **Step 5: Run full verification**
+- [ ] **Step 5: Run full repository verification**
 
 ```bash
 npm run typecheck
 npm test
 npm run build
 ```
+
+Expected: all PASS. Do not call production or paid-provider endpoints during this verification.
 
 - [ ] **Step 6: Commit**
 
@@ -477,4 +462,4 @@ git commit -m "test: prove manager readiness is read-only"
 
 ## Completion Gate
 
-The manager pilot is complete only when a permitted user can start/resume the same persisted readiness workflow, every required provider step reflects real `atlas-infra-status` evidence, blocked providers remain blocked, optional Vercel does not reduce readiness, refresh returns the same workflow, audit/evidence provenance exists, and no provider mutation/paid call/production deployment occurs.
+The Manager pilot is ready for review only when a permitted infrastructure admin can start/resume the same active readiness workflow; current `atlas-infra-status.provider_status` facts drive the four required steps; each step has its own evidence kind; blockers remain blocked; recovery follows legal state transitions; optional Vercel never reduces required-path completion; refresh/start-resume preserves canonical workflow identity while active; audit/evidence provenance exists; full verification passes; and no AWS/provider mutation, paid call, merge, or deploy occurred.
