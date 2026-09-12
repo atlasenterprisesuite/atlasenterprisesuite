@@ -7,3 +7,4 @@ export * from './evidence';
 export * from './adapter';
 export * from './store';
 export * from './engine';
+export * from './work-types';
