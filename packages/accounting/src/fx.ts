@@ -28,7 +28,8 @@ export type AccountingFxRateRow = {
   base_currency: string;
   quote_currency: string;
   rate: number;
-  source: string;
+  source_type: string;
+  source_name: string;
   source_reference: string | null;
   evidence_state: string;
   created_by: string | null;
@@ -43,7 +44,8 @@ export type AccountingFxRateRecord = {
   baseCurrency: string;
   quoteCurrency: string;
   rate: number;
-  source: string;
+  sourceType: string;
+  sourceName: string;
   sourceReference: string | null;
   evidenceState: string;
   createdBy: string | null;
@@ -109,7 +111,8 @@ export function mapAccountingFxRate(row: AccountingFxRateRow): AccountingFxRateR
     baseCurrency: row.base_currency,
     quoteCurrency: row.quote_currency,
     rate: Number(row.rate),
-    source: row.source,
+    sourceType: row.source_type,
+    sourceName: row.source_name,
     sourceReference: row.source_reference,
     evidenceState: row.evidence_state,
     createdBy: row.created_by,
