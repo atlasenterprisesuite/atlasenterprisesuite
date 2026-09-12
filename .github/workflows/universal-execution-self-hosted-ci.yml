@@ -1,0 +1,38 @@
+name: Universal Execution Self-Hosted CI
+
+on:
+  push:
+    branches:
+      - feat/atlas-universal-execution-core
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: universal-execution-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Universal Execution Core Verification
+    runs-on: self-hosted
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Locked install
+        run: npm ci
+      - name: Dependency security gate
+        run: npm audit --audit-level=high
+      - name: TypeScript contract
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Integration tests
+        run: npm run test:integration
+      - name: Production build
+        run: npm run build

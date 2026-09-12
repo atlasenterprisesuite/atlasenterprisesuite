@@ -11,15 +11,43 @@ export type AccountingPermission =
   | 'accounting.admin'
   | 'audit.read';
 
+export type AtlasPermission =
+  | AccountingPermission
+  | 'workflow.read'
+  | 'workflow.manage'
+  | 'workflow.approve'
+  | 'workflow.admin'
+  | 'agent.execute'
+  | 'provider.read'
+  | 'provider.manage'
+  | 'evidence.read'
+  | 'evidence.write'
+  | 'usage.read'
+  | 'usage.manage'
+  | 'creator.generate'
+  | 'creator.publish'
+  | 'tax.prepare'
+  | 'tax.review'
+  | 'tax.file'
+  | 'pay.card.add'
+  | 'pay.card.manage'
+  | 'weather.read';
+
 export function sameScope(a: TenantScope, b: TenantScope) {
   return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
 }
 
+export function permissionDomain(permission: AtlasPermission): string {
+  return permission.split('.', 1)[0];
+}
+
 export function hasPermission(
-  granted: readonly AccountingPermission[],
-  required: AccountingPermission
+  granted: readonly AtlasPermission[],
+  required: AtlasPermission
 ) {
-  return granted.includes(required) || granted.includes('accounting.admin');
+  if (granted.includes(required)) return true;
+  const domainAdmin = `${permissionDomain(required)}.admin`;
+  return granted.some((permission) => permission === domainAdmin);
 }
 
 export const demoAtlasContext = {
