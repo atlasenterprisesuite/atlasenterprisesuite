@@ -7,6 +7,8 @@ import {
 } from '../../../packages/execution/src/types.ts';
 import { canTransitionTask, evaluateTaskCompletion } from '../../../packages/execution/src/state-machine.ts';
 import { digestApprovalPayload } from '../../../packages/execution/src/approvals.ts';
+import { AuditLedgerServiceImpl } from '../../../packages/audit-ledger/src/service.ts';
+import { SupabaseAuditLedgerStore } from '../_shared/audit-ledger-store.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
@@ -209,6 +211,8 @@ async function appendAudit(
     correlationId: string;
   }
 ) {
+  if (!input.taskId || !input.workflowId) throw new EdgeError('audit_ledger_lineage_required', 500);
+
   const { error } = await admin.from('execution_audit_events').insert({
     org_id: input.orgId,
     tenant_id: input.tenantId,
@@ -223,6 +227,27 @@ async function appendAudit(
     correlation_id: input.correlationId
   });
   if (error) throw new EdgeError('audit_write_failed', 500);
+
+  try {
+    const ledger = new AuditLedgerServiceImpl(new SupabaseAuditLedgerStore(admin));
+    await ledger.recordEvent({
+      organizationId: input.orgId,
+      tenantId: input.tenantId,
+      workflowId: input.workflowId,
+      taskId: input.taskId,
+      actorId: input.actorUserId,
+      actionType: input.action as `execution.${string}`,
+      metadata: {
+        module: input.module,
+        previousState: input.previousState,
+        resultingState: input.resultingState,
+        evidenceIds: input.evidenceIds || [],
+        correlationId: input.correlationId
+      }
+    });
+  } catch {
+    throw new EdgeError('audit_ledger_persistence_failed', 500);
+  }
 }
 
 function reviewedAction(task: Record<string, unknown>, step: Record<string, unknown>) {
