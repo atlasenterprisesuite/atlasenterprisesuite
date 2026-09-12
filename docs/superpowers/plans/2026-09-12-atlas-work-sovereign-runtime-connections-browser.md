@@ -16,10 +16,10 @@
 - No secret values in runtime, connection-reference, workflow, job, evidence or audit rows.
 - `execution_connection_refs.external_ref` is an opaque pointer to the real authorized provider/session/vault substrate; it is not a token or credential.
 - Runtime auth tokens are shown only once at enrollment, stored only as SHA-256 hashes server-side, and never returned by list/read operations.
-- Local and self-hosted runtimes must heartbeat; stale runtimes are ineligible for new jobs.
+- Local and self-hosted runtimes must heartbeat; stale runtimes are ineligible for new mutation jobs.
 - Cloud Ephemeral is a normalized runtime kind; this plan must not purchase or provision paid browser capacity.
 - Browser executor enforces the envelope before dispatch and the runtime must enforce it again before the action.
-- Jobs are resumable and leased; an expired lease may be reclaimed only after provider state reconciliation by the owning workflow step.
+- Jobs are resumable and leased; an expired lease is not blindly replayed. The owning workflow must first reconcile provider state before a replacement mutation job may be queued.
 - No unrestricted desktop control.
 - No production DNS mutation in CI.
 
@@ -30,17 +30,18 @@
 - `packages/execution/src/work-runtime.ts` — runtime/job types, runtime selection and health rules.
 - `packages/execution/src/browser-executor.ts` — sanitized browser action/result protocol.
 - `packages/execution/src/index.ts` — exports.
-- `supabase/functions/atlas-execution/work-runtime.ts` — server enrollment, heartbeat, list, queue, claim, complete helpers.
+- `supabase/functions/atlas-execution/work-runtime.ts` — runtime enrollment/authentication, heartbeat, list, queue, claim and complete helpers.
 - `supabase/functions/atlas-execution/work-connections.ts` — tenant-scoped connection-ref create/list/revoke helpers.
-- `supabase/functions/atlas-execution/index.ts` — operation dispatch.
+- `supabase/functions/atlas-execution/index.ts` — operation dispatch with separate user-session and runtime-token authentication paths.
 - `apps/web/src/work/WorkConnectionsPage.tsx` — real normalized connection metadata and empty/configured state.
 - `apps/web/src/work/WorkRuntimesPage.tsx` — registered runtime status/heartbeat/capabilities.
 - `apps/web/src/work/WorkPoliciesPage.tsx` — current policy defaults and `$0` budget behavior; no fake provider state.
 - `apps/web/src/work/WorkRoutes.tsx` — routes.
+- `tests/unit/work-runtime-migration.test.ts` — table/RLS/secret-boundary schema contract.
 - `tests/unit/work-connections.test.ts` — secret-free metadata contracts.
 - `tests/unit/work-runtime.test.ts` — broker selection and stale-runtime behavior.
 - `tests/unit/browser-executor.test.ts` — envelope and sanitizer contracts.
-- `tests/unit/atlas-execution-runtime-edge.test.ts` — enrollment/job protocol source contracts.
+- `tests/unit/atlas-execution-runtime-edge.test.ts` — enrollment/auth/job protocol contracts.
 - `tests/integration/work-runtime-pages.test.tsx` — actual loaded/empty/error states.
 
 ---
@@ -56,7 +57,7 @@
 
 - [ ] **Step 1: Write the failing migration contract test**
 
-Read the migration as text and assert all three tables exist, every table includes `org_id` and `tenant_id`, `execution_runtime_registrations` contains `auth_token_hash` but no `auth_token`, connection refs contain `external_ref` but none of `secret`, `password`, `token_value`, `cookie`, and runtime jobs include `execution_envelope`, `action`, `sanitized_result`, `lease_id`, `lease_expires_at`.
+Read the migration as text and assert all three tables exist, every table includes `org_id` and `tenant_id`, `execution_runtime_registrations` contains `auth_token_hash` but no plaintext token column, connection refs contain `external_ref` but none of `secret`, `password`, `token_value`, `cookie`, and runtime jobs include `execution_envelope`, `action`, `sanitized_result`, `lease_id`, `lease_expires_at`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -64,9 +65,7 @@ Read the migration as text and assert all three tables exist, every table includ
 npx vitest run tests/unit/work-runtime-migration.test.ts
 ```
 
-- [ ] **Step 3: Implement the migration**
-
-Create enums with CHECK constraints rather than Postgres enum types for easier migration compatibility:
+- [ ] **Step 3: Implement the tables**
 
 ```sql
 create table if not exists execution_connection_refs (
@@ -116,11 +115,47 @@ create table if not exists execution_runtime_jobs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create index if not exists idx_execution_connection_refs_org_status on execution_connection_refs(org_id,status);
+create index if not exists idx_execution_runtimes_org_seen on execution_runtime_registrations(org_id,last_seen_at);
+create index if not exists idx_execution_runtime_jobs_org_state on execution_runtime_jobs(org_id,state,created_at);
 ```
 
-Add indexes on `(org_id,status)`, `(org_id,last_seen_at)`, `(org_id,state,created_at)`. Enable RLS on all three tables. Policies must require active membership in `organization_members` for the matching `org_id`; browser clients receive SELECT only. Mutations occur through the authenticated Edge Function/service boundary.
+- [ ] **Step 4: Add explicit member-read RLS and deny direct browser writes**
 
-- [ ] **Step 4: Verify GREEN and commit**
+```sql
+alter table execution_connection_refs enable row level security;
+alter table execution_runtime_registrations enable row level security;
+alter table execution_runtime_jobs enable row level security;
+
+create policy execution_connection_refs_member_read on execution_connection_refs
+for select to authenticated using (
+  exists (
+    select 1 from organization_members m
+    where m.user_id = auth.uid() and m.org_id = execution_connection_refs.org_id and m.status = 'active'
+  )
+);
+
+create policy execution_runtime_registrations_member_read on execution_runtime_registrations
+for select to authenticated using (
+  exists (
+    select 1 from organization_members m
+    where m.user_id = auth.uid() and m.org_id = execution_runtime_registrations.org_id and m.status = 'active'
+  )
+);
+
+create policy execution_runtime_jobs_member_read on execution_runtime_jobs
+for select to authenticated using (
+  exists (
+    select 1 from organization_members m
+    where m.user_id = auth.uid() and m.org_id = execution_runtime_jobs.org_id and m.status = 'active'
+  )
+);
+```
+
+Do not create INSERT/UPDATE/DELETE policies for `authenticated`; mutations use the existing service-role Edge boundary after server authorization.
+
+- [ ] **Step 5: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/work-runtime-migration.test.ts
@@ -161,9 +196,9 @@ it('rejects revoked references', () => {
 });
 ```
 
-- [ ] **Step 2: Verify RED, implement, verify GREEN**
+- [ ] **Step 2: Verify RED, implement, verify GREEN and commit**
 
-`WorkConnectionRef` exposes only id/provider/mechanism/status/capabilities. It deliberately has no secret field. Provider matching is case-insensitive; capability matching is exact.
+`WorkConnectionRef` exposes only id/provider/mechanism/status/capabilities. It deliberately has no secret or externalRef field in ordinary application-facing types. Provider matching is case-insensitive; capability matching is exact.
 
 ```bash
 npx vitest run tests/unit/work-connections.test.ts
@@ -230,7 +265,7 @@ npx vitest run tests/unit/browser-executor.test.ts
 
 - [ ] **Step 3: Implement protocol**
 
-Supported first-slice action types are `navigate`, `read_text`, `click`, `type`, `submit`, `create_dns_txt`, `click_openai_check`. `prepareBrowserJob` calls `evaluateBrowserAction` before returning a job payload. It does not contain credentials.
+Supported first-slice action types are `navigate`, `read_text`, `click`, `type`, `submit`, `create_dns_txt`, `click_openai_check`. `prepareBrowserJob` calls `evaluateBrowserAction` before returning a job payload. It contains no credentials.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
@@ -251,11 +286,11 @@ git commit -m "feat: add constrained browser execution protocol"
 - Test: `tests/unit/atlas-execution-runtime-edge.test.ts`
 
 **Interfaces:**
-- Produces operations `list_work_connections`, `register_work_connection_ref`, `revoke_work_connection_ref`, `list_work_runtimes`, `enroll_work_runtime`, `heartbeat_work_runtime`, `enqueue_work_runtime_job`, `claim_work_runtime_job`, `complete_work_runtime_job`.
+- Produces user-session operations `list_work_connections`, `register_work_connection_ref`, `revoke_work_connection_ref`, `list_work_runtimes`, `enroll_work_runtime`, `enqueue_work_runtime_job`; runtime-token operations `heartbeat_work_runtime`, `claim_work_runtime_job`, `complete_work_runtime_job`.
 
 - [ ] **Step 1: Write failing server tests**
 
-Assert every user-facing operation resolves membership and org scope. `register_work_connection_ref` accepts an opaque `external_ref` and rejects request keys matching secret-like names. `enroll_work_runtime` requires `execution.admin`, generates 32 random bytes, returns the token only in that 201 response, and persists `sha256(token)` only. List operations never select `auth_token_hash` or `external_ref` unless the caller has `execution.admin`; ordinary Work list returns connection id/provider/mechanism/status/capabilities only.
+Assert every user-session operation resolves Supabase membership and org scope. `register_work_connection_ref` accepts an opaque `external_ref` and rejects request keys matching `/token|secret|password|cookie|authorization|recovery/i`. `enroll_work_runtime` requires `execution.admin`, generates 32 random bytes, returns the runtime token only in that 201 response, and persists `sha256(token)` only. List operations never return `auth_token_hash`; ordinary connection lists never return `external_ref`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -263,15 +298,33 @@ Assert every user-facing operation resolves membership and org scope. `register_
 npx vitest run tests/unit/atlas-execution-runtime-edge.test.ts
 ```
 
-- [ ] **Step 3: Implement enrollment and heartbeat**
+- [ ] **Step 3: Implement separate authentication dispatch in `index.ts`**
 
-Runtime enrollment input: `{ kind, label, capabilities }`. Heartbeat runtime authentication uses headers `x-atlas-runtime-id` and `x-atlas-runtime-token`; hash the supplied token and constant-time compare to the stored hash. A valid heartbeat updates `last_seen_at` and sets status `online` unless revoked.
+Keep `Authorization: Bearer ...` mandatory for every non-OPTIONS request. Define:
 
-- [ ] **Step 4: Implement job queue lease protocol**
+```ts
+const RUNTIME_OPERATIONS = new Set([
+  'heartbeat_work_runtime',
+  'claim_work_runtime_job',
+  'complete_work_runtime_job'
+]);
+```
 
-`enqueue_work_runtime_job` is a user-session operation requiring `execution.write` and a server-evaluated ready route/policy. `claim_work_runtime_job` is runtime-authenticated, atomically moves one eligible queued job for the runtime kind to `claimed`, sets a random `lease_id` and `lease_expires_at = now() + interval '5 minutes'`. `complete_work_runtime_job` requires the matching runtime id + lease id, sanitizes result, and sets `completed`, `waiting_human`, or `failed`.
+If operation is in `RUNTIME_OPERATIONS`, require header `x-atlas-runtime-id`, pass the bearer token to `resolveRuntimeContext`, and do **not** call Supabase `auth.getUser` for that request. All other operations continue through existing `resolveContext` and user JWT membership checks.
 
-- [ ] **Step 5: Verify GREEN and commit**
+- [ ] **Step 4: Implement runtime enrollment/authentication**
+
+Enrollment input is `{ kind, label, capabilities }`. Generate one-time token with `crypto.getRandomValues(new Uint8Array(32))`, encode base64url, hash with `crypto.subtle.digest('SHA-256', bytes(token))`, persist hex digest. `resolveRuntimeContext(runtimeId, bearerToken)` loads the registration by id, hashes supplied bearer token, constant-time compares digest bytes, rejects revoked records, and returns runtime org/tenant/kind/capabilities.
+
+- [ ] **Step 5: Implement heartbeat**
+
+A valid runtime heartbeat updates `last_seen_at = now()` and status `online` unless revoked. It cannot change org, tenant, runtime kind or capabilities.
+
+- [ ] **Step 6: Implement job queue lease protocol**
+
+`enqueue_work_runtime_job` is user-authenticated, requires `execution.write`, and only accepts a server-produced ready route/policy decision for the current org-scoped workflow/task/step. `claim_work_runtime_job` is runtime-authenticated and uses a single database update conditioned on `state='queued'`, matching `runtime_kind`, and eligible org/tenant. It sets runtime id, `state='claimed'`, random `lease_id`, `lease_expires_at = now() + interval '5 minutes'` and returns one job. `complete_work_runtime_job` requires matching runtime id + lease id and non-expired lease, sanitizes result, then sets only `completed`, `waiting_human` or `failed`.
+
+- [ ] **Step 7: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/atlas-execution-runtime-edge.test.ts
@@ -294,12 +347,11 @@ git commit -m "feat: add Work runtime and connection broker endpoints"
 - Test: `tests/integration/work-runtime-pages.test.tsx`
 
 **Interfaces:**
-- Consumes list operations from Task 5.
 - Produces `/work/connections`, `/work/runtimes`, `/work/policies`.
 
 - [ ] **Step 1: Write failing page tests**
 
-Connections page must render provider/mechanism/status/capabilities and a truthful empty state `No authorized Work connections are registered for this organization.` Runtimes page shows kind/status/last heartbeat/capabilities and never shows runtime auth token/hash. Policies page shows default execution mode Hybrid, autonomy Guided, runtime Auto, paid-provider budget `$0` unless persisted workflow/organization policy says otherwise.
+Connections page renders provider/mechanism/status/capabilities and truthful empty state `No authorized Work connections are registered for this organization.` Runtimes page shows kind/status/last heartbeat/capabilities and never runtime auth token/hash. Policies page shows default execution mode Hybrid, autonomy Guided, runtime Auto, paid-provider budget `$0` unless persisted policy says otherwise.
 
 - [ ] **Step 2: Verify RED**
 
@@ -309,7 +361,7 @@ npx vitest run tests/integration/work-runtime-pages.test.tsx
 
 - [ ] **Step 3: Implement API normalization and pages**
 
-Whitelist response fields. Do not add credential-entry forms. Admin connection-ref registration may accept only provider, mechanism, opaque external reference and capabilities; secret creation remains in the real provider/vault flow outside this page.
+Whitelist response fields. Do not add credential-entry forms. Admin connection-ref registration accepts only provider, mechanism, opaque external reference and capabilities; the actual provider/vault/session authorization occurs in its real authorized subsystem.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
@@ -340,8 +392,8 @@ npm run build
 
 - [ ] **Step 3: Independent security/spec review**
 
-Reject if any secret value can persist in these tables/logs/UI, a runtime can cross org scope, a stale/revoked runtime receives a new job, envelope checks occur only in the UI, a job can complete with the wrong lease, or Cloud Ephemeral provisioning incurs cost.
+Reject if any secret value can persist in these rows/logs/UI; runtime auth is routed through Supabase user authentication; a runtime can cross org scope; stale/revoked runtime receives a new job; envelope checks occur only in UI; a job completes with wrong/expired lease; or Cloud Ephemeral provisioning incurs cost.
 
 - [ ] **Step 4: Independent quality review**
 
-Review lease/retry semantics, race resistance, sanitization recursion, RLS, empty/error states and mobile pages. Fix findings and rerun focused + full verification before the OpenAI-domain pilot.
+Review lease/retry semantics, constant-time token comparison, race resistance, sanitization recursion, RLS, empty/error states and mobile pages. Fix findings and rerun focused + full verification before the OpenAI-domain pilot.
