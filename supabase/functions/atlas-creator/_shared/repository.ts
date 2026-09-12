@@ -20,6 +20,78 @@ function adminClient() {
   });
 }
 
+export type ProductionSpecInput = Partial<ProductionSpec>;
+
+function sanitizeProductionSpec(
+  input: ProductionSpecInput,
+  orgId: string,
+  userId: string,
+  existingCreatedBy?: string
+): ProductionSpec {
+  return {
+    id: input.id || crypto.randomUUID(),
+    organizationId: orgId,
+    createdByUserId: existingCreatedBy || userId,
+    title: String(input.title || ''),
+    brief: String(input.brief || ''),
+    status: 'draft',
+    durationSeconds: typeof input.durationSeconds === 'number' ? input.durationSeconds : 0,
+    aspectRatio: input.aspectRatio || 'adaptive',
+    resolutionPreference: input.resolutionPreference || 'adaptive',
+    audioEnabled: Boolean(input.audioEnabled),
+    subjects: Array.isArray(input.subjects) ? input.subjects : [],
+    environment: input.environment || {
+      locationDescription: '',
+      timeOfDay: '',
+      lightingEnvironment: '',
+      weatherOrAtmosphere: '',
+      backgroundConstraints: [],
+      referenceAssetIds: []
+    },
+    scenes: Array.isArray(input.scenes) ? input.scenes : [],
+    continuityRules: Array.isArray(input.continuityRules) ? input.continuityRules : [],
+    visualStyle: input.visualStyle || {
+      photorealismLevel: '',
+      cinematicStyle: '',
+      textureStyle: '',
+      colorPalette: '',
+      contrastStyle: '',
+      filmLook: '',
+      grain: '',
+      halation: '',
+      surfaceDetail: '',
+      lightingStyle: ''
+    },
+    cameraDefaults: input.cameraDefaults || {
+      framing: '',
+      angle: '',
+      position: '',
+      lens: '',
+      focalLengthMm: null,
+      depthOfField: '',
+      movement: '',
+      movementSpeed: '',
+      focusTarget: '',
+      orientationRule: ''
+    },
+    motionRules: Array.isArray(input.motionRules) ? input.motionRules : [],
+    audioPlan: input.audioPlan || {
+      musicDescription: '',
+      ambientSound: '',
+      soundEffects: [],
+      dialogue: [],
+      voiceReferenceAssetIds: [],
+      syncRules: []
+    },
+    negativeConstraints: Array.isArray(input.negativeConstraints) ? input.negativeConstraints : [],
+    providerPreference: input.providerPreference || null,
+    providerOverrides: typeof input.providerOverrides === 'object' && input.providerOverrides ? input.providerOverrides : {},
+    createdAt: input.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: typeof input.version === 'number' ? input.version : 1
+  };
+}
+
 export async function listProductions(orgId: string) {
   const { data, error } = await adminClient()
     .from('creator_productions')
@@ -42,7 +114,7 @@ export async function getProduction(orgId: string, productionId: string) {
   return data;
 }
 
-export async function saveProduction(ctx: CreatorContext, spec: ProductionSpec, expectedVersion?: number) {
+export async function saveProduction(ctx: CreatorContext, spec: ProductionSpecInput, expectedVersion?: number) {
   const sb = adminClient();
   const { data: existing, error: existingError } = await sb
     .from('creator_productions')
@@ -52,12 +124,13 @@ export async function saveProduction(ctx: CreatorContext, spec: ProductionSpec, 
     .maybeSingle();
   if (existingError) throw creatorError('persistence_failed', 500);
 
-  const trustedSpec: ProductionSpec = {
-    ...spec,
-    organizationId: ctx.orgId,
-    createdByUserId: existing ? String(existing.created_by) : ctx.userId,
-    status: 'draft'
-  };
+  const trustedSpec = sanitizeProductionSpec(
+    spec,
+    ctx.orgId,
+    ctx.userId,
+    existing ? String(existing.created_by) : undefined
+  );
+
   const baseRow = {
     organization_id: ctx.orgId,
     title: trustedSpec.title,
