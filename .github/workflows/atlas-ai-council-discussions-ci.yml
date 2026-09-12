@@ -1,0 +1,48 @@
+name: ATLAS AI Council Discussions CI
+
+on:
+  push:
+    branches: ["feature/atlas-ai-council-discussions-v1"]
+  pull_request:
+    branches: ["feature/atlas-ai-council-providers-v1"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-ai-council-discussions-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: AI Council core and provider tests
+        run: >-
+          npx vitest run
+          tests/unit/ai-council-core.test.ts
+          tests/unit/ai-council-provider-adapters.test.ts
+          tests/unit/github-discussions-adapter.test.ts
+          tests/unit/ai-council-discussion-ingress.test.ts
+
+  security-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject committed provider or webhook secrets
+        shell: bash
+        run: |
+          if git grep -nE '(OPENAI_API_KEY|GEMINI_API_KEY|GITHUB_TOKEN|WEBHOOK_SECRET)[[:space:]]*=[[:space:]]*[^$<{]' -- ':!*.md' ':!*.test.ts'; then
+            echo "Potential hard-coded secret detected."
+            exit 1
+          fi
+          echo "No hard-coded AI Council provider/webhook secret assignment detected."
