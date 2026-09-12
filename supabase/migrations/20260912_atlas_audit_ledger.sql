@@ -60,6 +60,21 @@ using (
       and om.user_id = (select auth.uid())
       and om.status = 'active'
   )
+  and exists (
+    select 1
+    from public.execution_workflows w
+    where w.id = audit_ledger_events.workflow_id
+      and w.org_id = audit_ledger_events.org_id
+      and w.tenant_id = audit_ledger_events.tenant_id
+  )
+  and exists (
+    select 1
+    from public.execution_tasks t
+    where t.id = audit_ledger_events.task_id
+      and t.workflow_id = audit_ledger_events.workflow_id
+      and t.org_id = audit_ledger_events.org_id
+      and t.tenant_id = audit_ledger_events.tenant_id
+  )
 );
 
 revoke all on public.audit_ledger_events from authenticated;
