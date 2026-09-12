@@ -39,6 +39,27 @@ describe('ATLAS People employee contracts', () => {
     });
   });
 
+  it('normalizes optional department and job title values', () => {
+    const result = validateEmployeeMutation({
+      scope: { tenantId: 'tenant-a', organizationId: 'org-a' },
+      fullName: '  Ada Rivera  ',
+      department: '  Finance  ',
+      jobTitle: '  Payroll Specialist  ',
+      status: 'active',
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        scope: { tenantId: 'tenant-a', organizationId: 'org-a' },
+        fullName: 'Ada Rivera',
+        department: 'Finance',
+        jobTitle: 'Payroll Specialist',
+        status: 'active',
+      },
+    });
+  });
+
   it('rejects an empty employee name', () => {
     const result = validateEmployeeMutation({
       scope: { tenantId: 'tenant-a', organizationId: 'org-a' },

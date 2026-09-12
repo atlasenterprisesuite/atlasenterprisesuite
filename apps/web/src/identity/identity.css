@@ -1,0 +1,117 @@
+.atlas-identity {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(59, 130, 246, 0.16), transparent 34%),
+    radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.12), transparent 30%),
+    #061426;
+  color: #f8fafc;
+}
+
+.atlas-identity__card {
+  width: min(100%, 520px);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 24px;
+  padding: clamp(24px, 5vw, 42px);
+  background: rgba(8, 24, 45, 0.9);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(18px);
+}
+
+.atlas-identity__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.atlas-identity__brand span {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.atlas-identity__brand small,
+.atlas-identity__eyebrow {
+  color: #94a3b8;
+}
+
+.atlas-identity__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.atlas-identity h1 {
+  margin: 0 0 14px;
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.atlas-identity p {
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+.atlas-identity__form {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.atlas-identity__form label {
+  display: grid;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.atlas-identity__form input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  padding: 13px 14px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #f8fafc;
+  font: inherit;
+}
+
+.atlas-identity__form input:focus {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.atlas-identity__submit,
+.atlas-identity__secondary {
+  border: 0;
+  border-radius: 12px;
+  padding: 13px 18px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.atlas-identity__submit {
+  background: #e2e8f0;
+  color: #071425;
+}
+
+.atlas-identity__secondary {
+  margin-top: 18px;
+  background: rgba(148, 163, 184, 0.14);
+  color: #f8fafc;
+}
+
+.atlas-identity__submit:disabled,
+.atlas-identity__secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.atlas-identity__error {
+  margin: 0;
+  color: #fecaca !important;
+}

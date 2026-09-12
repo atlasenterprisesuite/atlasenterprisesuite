@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AtlasPermission } from '../../../../../packages/core/src';
-import type { AtlasIdentitySource, AtlasIdentityState } from '../../app/AtlasContext';
+import type { AtlasIdentityState, AtlasInteractiveIdentitySource } from '../../app/AtlasContext';
 
 type RolePermissionRow = { permission_code: string };
 type OrganizationPermissionOverrideRow = { permission_code: string; allowed: boolean };
@@ -17,9 +17,23 @@ export function mergeAtlasPermissions(baseRows: readonly RolePermissionRow[], ov
   return [...permissions].sort();
 }
 
-export function mapAtlasIdentityContext(userId: string, row: IdentityContextRow): AtlasIdentityState {
-  if (!row.tenant_id || !row.organization_id) return { status: 'error', message: 'ATLAS identity context is missing tenant scope.' };
-  return { status: 'ready', userId, tenantId: row.tenant_id, tenantName: row.tenant_name, organizationId: row.organization_id, organizationName: row.organization_name, role: row.role, permissions: [...new Set((row.permissions ?? []).filter(Boolean))].sort() as AtlasPermission[] };
+export function mapAtlasIdentityContext(userId: string, row: IdentityContextRow): AtlasIdentityState;
+export function mapAtlasIdentityContext(userId: string, userEmail: string, row: IdentityContextRow): AtlasIdentityState;
+export function mapAtlasIdentityContext(userId: string, emailOrRow: string | IdentityContextRow, maybeRow?: IdentityContextRow): AtlasIdentityState {
+  const userEmail = typeof emailOrRow === 'string' ? emailOrRow : '';
+  const row = typeof emailOrRow === 'string' ? maybeRow : emailOrRow;
+  if (!row || !row.tenant_id || !row.organization_id) return { status: 'error', message: 'ATLAS identity context is missing tenant scope.' };
+  return {
+    status: 'ready',
+    userId,
+    ...(userEmail ? { userEmail } : {}),
+    tenantId: row.tenant_id,
+    tenantName: row.tenant_name,
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    role: row.role,
+    permissions: [...new Set((row.permissions ?? []).filter(Boolean))].sort() as AtlasPermission[],
+  };
 }
 
 async function resolveIdentity(client: SupabaseClient | null): Promise<AtlasIdentityState> {
@@ -34,9 +48,27 @@ async function resolveIdentity(client: SupabaseClient | null): Promise<AtlasIden
   const rows = (data ?? []) as IdentityContextRow[];
   if (rows.length === 0) return { status: 'organization_required', userId: userData.user.id };
   if (rows.length !== 1) return { status: 'error', message: 'ATLAS identity context is ambiguous.' };
-  return mapAtlasIdentityContext(userData.user.id, rows[0]);
+  return mapAtlasIdentityContext(userData.user.id, userData.user.email ?? '', rows[0]);
 }
 
-export function createAtlasIdentitySource(client: SupabaseClient | null): AtlasIdentitySource {
-  return { resolve: () => resolveIdentity(client), subscribe: client ? (listener) => { const { data } = client.auth.onAuthStateChange(() => listener()); return () => data.subscription.unsubscribe(); } : undefined };
+export function createAtlasIdentitySource(client: SupabaseClient | null): AtlasInteractiveIdentitySource {
+  return {
+    resolve: () => resolveIdentity(client),
+    async signIn(email, password) {
+      if (!client) throw new Error('configuration_required');
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    },
+    async signOut() {
+      if (!client) return;
+      const { error } = await client.auth.signOut();
+      if (error) throw error;
+    },
+    subscribe: client
+      ? (listener) => {
+          const { data } = client.auth.onAuthStateChange(() => listener());
+          return () => data.subscription.unsubscribe();
+        }
+      : undefined,
+  };
 }

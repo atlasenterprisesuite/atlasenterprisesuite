@@ -1,6 +1,9 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AtlasShell } from '../AtlasShell';
 import { RouteErrorPage } from '../errors/RouteErrorPage';
+import { ModuleGatewayPage } from '../modules/ModuleGatewayPage';
+import { ModuleRouteGate } from '../modules/ModuleRouteGate';
+import { IdentityPage } from '../../identity/IdentityPage';
 import { AccountingPage } from '../../modules/accounting/AccountingPage';
 import { BankCashPage } from '../../modules/accounting/BankCashPage';
 import { ChartOfAccountsPage } from '../../modules/accounting/ChartOfAccountsPage';
@@ -14,6 +17,7 @@ import { FinanceHome } from '../../modules/finance/FinanceHome';
 import { HealthRoutes } from '../../modules/health/HealthRoutes';
 import { EnterpriseHome } from '../../modules/home/EnterpriseHome';
 import { PeopleCompensationRoute } from '../../modules/people/PeopleCompensationRoute';
+import { PeopleEmployeesRoute } from '../../modules/people/PeopleEmployeesRoute';
 import { PeopleHome } from '../../modules/people/PeopleHome';
 import { PeoplePayrollRoute } from '../../modules/people/PeoplePayrollRoute';
 import { PeopleRecruitingRoute } from '../../modules/people/PeopleRecruitingRoute';
@@ -32,8 +36,31 @@ import { SpatialRoute } from '../../spatial/SpatialRoute';
 export function AppRouter() {
   return (
     <Routes>
+      <Route path="/identity" element={<IdentityPage />} />
+
       <Route element={<AtlasShell />}>
         <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/app" element={<EnterpriseHome />} />
+
+        <Route path="/app/hr" element={<ModuleRouteGate moduleId="hr"><Navigate to="/people" replace /></ModuleRouteGate>} />
+        <Route path="/app/payroll" element={<ModuleRouteGate moduleId="payroll"><Navigate to="/people/payroll" replace /></ModuleRouteGate>} />
+        <Route path="/app/finance" element={<ModuleRouteGate moduleId="finance"><Navigate to="/finance" replace /></ModuleRouteGate>} />
+        <Route path="/app/erp" element={<ModuleRouteGate moduleId="erp"><Navigate to="/operations" replace /></ModuleRouteGate>} />
+        <Route path="/app/pay-wallet" element={<ModuleGatewayPage moduleId="pay-wallet" />} />
+        <Route path="/app/health/*" element={<ModuleRouteGate moduleId="health"><Navigate to="/health" replace /></ModuleRouteGate>} />
+        <Route path="/app/education" element={<ModuleGatewayPage moduleId="education" />} />
+        <Route path="/app/analytics" element={<ModuleGatewayPage moduleId="analytics" />} />
+        <Route path="/app/connect" element={<ModuleGatewayPage moduleId="connect" />} />
+        <Route path="/app/documents" element={<ModuleGatewayPage moduleId="documents" />} />
+        <Route path="/app/knowledge" element={<ModuleGatewayPage moduleId="knowledge" />} />
+        <Route path="/app/security" element={<ModuleGatewayPage moduleId="security" />} />
+        <Route path="/app/identity" element={<ModuleGatewayPage moduleId="identity" />} />
+        <Route path="/app/projects" element={<ModuleGatewayPage moduleId="projects" />} />
+        <Route path="/app/studio" element={<ModuleGatewayPage moduleId="studio" />} />
+        <Route path="/app/workbench" element={<ModuleGatewayPage moduleId="workbench" />} />
+        <Route path="/app/ride" element={<ModuleGatewayPage moduleId="ride" />} />
+        <Route path="/app/global" element={<ModuleGatewayPage moduleId="global" />} />
+
         <Route path="/spatial" element={<SpatialRoute />} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingPage />} />
@@ -45,6 +72,7 @@ export function AppRouter() {
         <Route path="/finance/accounting/bank-cash" element={<BankCashPage />} />
         <Route path="/finance/accounting/reconciliation" element={<ReconciliationPage />} />
         <Route path="/people" element={<PeopleHome />} />
+        <Route path="/people/employees" element={<PeopleEmployeesRoute />} />
         <Route path="/people/time" element={<PeopleTimeRoute />} />
         <Route path="/people/payroll" element={<PeoplePayrollRoute />} />
         <Route path="/people/compensation" element={<PeopleCompensationRoute />} />

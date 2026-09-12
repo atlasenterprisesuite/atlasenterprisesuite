@@ -6,6 +6,8 @@ export function PeopleHome() {
   const identity = useAtlasContext();
   if (identity.status !== 'ready') return null;
 
+  const canSeeEmployees = ['hr.read', 'hr.write']
+    .some((permission) => hasPermission(identity.permissions, permission));
   const canSeeTime = ['hr.read', 'hr.write', 'payroll.self']
     .some((permission) => hasPermission(identity.permissions, permission));
   const canSeePayroll = hasPermission(identity.permissions, 'payroll.read');
@@ -13,7 +15,7 @@ export function PeopleHome() {
   const canSeeRecruiting = hasPermission(identity.permissions, 'hr.read');
   const canSeeSelfService = hasPermission(identity.permissions, 'payroll.self');
 
-  if (!canSeeTime && !canSeePayroll && !canSeeCompensation && !canSeeRecruiting && !canSeeSelfService) {
+  if (!canSeeEmployees && !canSeeTime && !canSeePayroll && !canSeeCompensation && !canSeeRecruiting && !canSeeSelfService) {
     return (
       <main className="atlas-page atlas-module-page">
         <p className="atlas-eyebrow">People / Access</p>
@@ -31,6 +33,12 @@ export function PeopleHome() {
         Governed employee, time, payroll, compensation, recruiting and self-service workflows scoped to the current organization and ATLAS identity permissions.
       </p>
       <div className="atlas-card-grid">
+        {canSeeEmployees && (
+          <Link className="atlas-module-card" to="/people/employees">
+            <strong>Employees</strong>
+            <span>Search and maintain organization employee records through governed HR workflows.</span>
+          </Link>
+        )}
         {canSeeTime && (
           <Link className="atlas-module-card" to="/people/time">
             <strong>Time &amp; Attendance</strong>
