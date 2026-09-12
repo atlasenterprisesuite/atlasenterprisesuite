@@ -8,7 +8,7 @@ import type {
 
 type SupabaseLike = {
   from(table: string): any;
-  rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown; error: any }>;
+  rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: any }>;
 };
 
 function mapEvent(row: any): AuditLedgerEvent {
