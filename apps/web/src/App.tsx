@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
@@ -9,6 +9,7 @@ import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -217,6 +218,9 @@ function NotFound() {
 }
 
 export function App() {
+  const location = useLocation();
+  if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
+
   return (
     <AtlasShell>
       <Routes>
