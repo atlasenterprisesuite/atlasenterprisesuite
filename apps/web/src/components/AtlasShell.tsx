@@ -2,8 +2,8 @@ import { NavLink } from 'react-router-dom';
 import { type ReactNode, useEffect, useState } from 'react';
 import {
   ATLAS_SESSION_EVENT,
-  getActiveAtlasOrganization,
-  type AtlasOrganization
+  getCachedAtlasShellOrganization,
+  type AtlasShellOrganization
 } from '../lib/atlasSession';
 
 const navItems = [
@@ -16,28 +16,15 @@ const navItems = [
 ];
 
 export function AtlasShell({ children }: { children: ReactNode }) {
-  const [organization, setOrganization] = useState<AtlasOrganization | null>(null);
+  const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
 
   useEffect(() => {
-    let cancelled = false;
-
-    const loadOrganization = async () => {
-      try {
-        const activeOrganization = await getActiveAtlasOrganization();
-        if (!cancelled) setOrganization(activeOrganization);
-      } catch {
-        if (!cancelled) setOrganization(null);
-      }
-    };
-
     const handleSessionChange = () => {
-      void loadOrganization();
+      setOrganization(getCachedAtlasShellOrganization());
     };
 
-    void loadOrganization();
     window.addEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     return () => {
-      cancelled = true;
       window.removeEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     };
   }, []);
