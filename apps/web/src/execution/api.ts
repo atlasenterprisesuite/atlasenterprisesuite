@@ -1,6 +1,7 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSession';
 import type {
   GuidedApproval,
+  GuidedAuditEvent,
   GuidedDependency,
   GuidedEvidence,
   GuidedExecutionState,
@@ -58,77 +59,63 @@ function normalizeWorkflow(rawValue: unknown): GuidedWorkflow {
 
 function normalizeTask(raw: RawRecord): GuidedTask {
   return {
-    id: String(raw.id || ''),
-    workflowId: String(raw.workflow_id || ''),
-    module: String(raw.module || ''),
-    title: String(raw.title || ''),
-    goal: String(raw.goal || ''),
-    status: String(raw.status || 'draft') as GuidedTask['status'],
-    priority: String(raw.priority || 'normal') as GuidedTask['priority'],
-    currentStepId: nullableString(raw.current_step_id),
-    nextAction: nullableString(raw.next_action),
-    blockedReason: nullableString(raw.blocked_reason),
+    id: String(raw.id || ''), workflowId: String(raw.workflow_id || ''), module: String(raw.module || ''),
+    title: String(raw.title || ''), goal: String(raw.goal || ''), status: String(raw.status || 'draft') as GuidedTask['status'],
+    priority: String(raw.priority || 'normal') as GuidedTask['priority'], currentStepId: nullableString(raw.current_step_id),
+    nextAction: nullableString(raw.next_action), blockedReason: nullableString(raw.blocked_reason),
     permissionsRequired: strings(raw.permissions_required)
   };
 }
 
 function normalizeStep(raw: RawRecord): GuidedStep {
   return {
-    id: String(raw.id || ''),
-    taskId: String(raw.task_id || ''),
-    sequence: Number.isFinite(Number(raw.sequence)) ? Number(raw.sequence) : 0,
-    module: String(raw.module || ''),
-    actionType: String(raw.action_type || ''),
-    status: String(raw.status || 'pending') as GuidedStep['status'],
-    completionCriteria: strings(raw.completion_criteria),
-    permissionsRequired: strings(raw.permissions_required),
-    evidenceRequirement: strings(raw.evidence_requirement),
-    startedAt: nullableString(raw.started_at),
-    completedAt: nullableString(raw.completed_at)
+    id: String(raw.id || ''), taskId: String(raw.task_id || ''), sequence: Number.isFinite(Number(raw.sequence)) ? Number(raw.sequence) : 0,
+    module: String(raw.module || ''), actionType: String(raw.action_type || ''), status: String(raw.status || 'pending') as GuidedStep['status'],
+    completionCriteria: strings(raw.completion_criteria), permissionsRequired: strings(raw.permissions_required),
+    evidenceRequirement: strings(raw.evidence_requirement), startedAt: nullableString(raw.started_at), completedAt: nullableString(raw.completed_at)
   };
 }
 
 function normalizeDependency(raw: RawRecord): GuidedDependency {
   return {
-    id: String(raw.id || ''),
-    taskId: String(raw.task_id || ''),
-    stepId: nullableString(raw.step_id),
-    dependsOnTaskId: nullableString(raw.depends_on_task_id),
-    dependsOnStepId: nullableString(raw.depends_on_step_id),
-    resolvedAt: nullableString(raw.resolved_at)
+    id: String(raw.id || ''), taskId: String(raw.task_id || ''), stepId: nullableString(raw.step_id),
+    dependsOnTaskId: nullableString(raw.depends_on_task_id), dependsOnStepId: nullableString(raw.depends_on_step_id), resolvedAt: nullableString(raw.resolved_at)
   };
 }
 
 function normalizeEvidence(raw: RawRecord): GuidedEvidence {
   return {
-    id: String(raw.id || ''),
-    taskId: String(raw.task_id || ''),
-    stepId: nullableString(raw.step_id),
-    kind: String(raw.kind || ''),
-    reference: String(raw.reference || ''),
-    verified: raw.verified === true,
-    createdAt: String(raw.created_at || '')
+    id: String(raw.id || ''), taskId: String(raw.task_id || ''), stepId: nullableString(raw.step_id), kind: String(raw.kind || ''),
+    reference: String(raw.reference || ''), verified: raw.verified === true, createdAt: String(raw.created_at || '')
   };
 }
 
 function normalizeApproval(raw: RawRecord): GuidedApproval {
   const risk = String(raw.risk_level || 'medium');
   return {
-    id: String(raw.id || ''),
-    taskId: String(raw.task_id || ''),
-    workflowId: String(raw.workflow_id || ''),
-    module: String(raw.module || ''),
-    approvalType: String(raw.approval_type || ''),
-    requiredPermission: String(raw.required_permission || ''),
+    id: String(raw.id || ''), taskId: String(raw.task_id || ''), workflowId: String(raw.workflow_id || ''), module: String(raw.module || ''),
+    approvalType: String(raw.approval_type || ''), requiredPermission: String(raw.required_permission || ''),
     riskLevel: (['low', 'medium', 'high', 'critical'].includes(risk) ? risk : 'medium') as GuidedApproval['riskLevel'],
-    summary: String(raw.summary || ''),
-    payloadVersion: Number.isFinite(Number(raw.payload_version)) ? Number(raw.payload_version) : 0,
-    payloadDigest: String(raw.payload_digest || ''),
-    status: String(raw.status || 'pending') as GuidedApproval['status'],
-    decidedBy: nullableString(raw.decided_by),
-    decisionReason: nullableString(raw.decision_reason),
-    createdAt: String(raw.created_at || ''),
-    decidedAt: nullableString(raw.decided_at)
+    summary: String(raw.summary || ''), payloadVersion: Number.isFinite(Number(raw.payload_version)) ? Number(raw.payload_version) : 0,
+    payloadDigest: String(raw.payload_digest || ''), status: String(raw.status || 'pending') as GuidedApproval['status'],
+    decidedBy: nullableString(raw.decided_by), decisionReason: nullableString(raw.decision_reason),
+    createdAt: String(raw.created_at || ''), decidedAt: nullableString(raw.decided_at)
+  };
+}
+
+function normalizeAuditEvent(raw: RawRecord): GuidedAuditEvent {
+  return {
+    id: String(raw.id || ''),
+    actorUserId: String(raw.actor_user_id || ''),
+    taskId: nullableString(raw.task_id),
+    workflowId: nullableString(raw.workflow_id),
+    module: String(raw.module || ''),
+    action: String(raw.action || ''),
+    previousState: nullableString(raw.previous_state),
+    resultingState: nullableString(raw.resulting_state),
+    evidenceIds: strings(raw.evidence_ids),
+    correlationId: nullableString(raw.correlation_id),
+    createdAt: String(raw.created_at || '')
   };
 }
 
@@ -144,6 +131,10 @@ export function normalizeExecutionState(rawValue: unknown): GuidedExecutionState
   };
 }
 
+export function normalizeExecutionAudit(rawValue: unknown): GuidedAuditEvent[] {
+  return rows(record(rawValue).audit).map(normalizeAuditEvent);
+}
+
 async function executionPost(body: Record<string, unknown>) {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-execution', {
@@ -157,6 +148,10 @@ export async function loadGuidedExecutionState(workflowId: string): Promise<Guid
   return normalizeExecutionState(await executionPost({ operation: 'get_state', workflow_id: workflowId }));
 }
 
+export async function loadGuidedExecutionAudit(workflowId: string): Promise<GuidedAuditEvent[]> {
+  return normalizeExecutionAudit(await executionPost({ operation: 'get_audit', workflow_id: workflowId }));
+}
+
 export type RequestExecutionApprovalInput = {
   taskId: string;
   approvalType: string;
@@ -167,12 +162,8 @@ export type RequestExecutionApprovalInput = {
 
 export async function requestExecutionApproval(input: RequestExecutionApprovalInput) {
   return executionPost({
-    operation: 'request_approval',
-    task_id: input.taskId,
-    approval_type: input.approvalType,
-    required_permission: input.requiredPermission,
-    risk_level: input.riskLevel,
-    summary: input.summary
+    operation: 'request_approval', task_id: input.taskId, approval_type: input.approvalType,
+    required_permission: input.requiredPermission, risk_level: input.riskLevel, summary: input.summary
   });
 }
 
@@ -184,9 +175,12 @@ export type DecideExecutionApprovalInput = {
 
 export async function decideExecutionApproval(input: DecideExecutionApprovalInput) {
   return executionPost({
-    operation: 'decide_approval',
-    approval_id: input.approvalId,
-    decision: input.decision,
-    decision_reason: input.reason || ''
+    operation: 'decide_approval', approval_id: input.approvalId, decision: input.decision, decision_reason: input.reason || ''
   });
+}
+
+export async function syncManagerReadiness() {
+  const data = await executionPost({ operation: 'sync_manager_readiness' });
+  if (!data.workflow_id) throw new Error('manager_readiness_workflow_missing');
+  return { workflowId: String(data.workflow_id) };
 }
