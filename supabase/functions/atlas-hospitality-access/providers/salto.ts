@@ -66,7 +66,8 @@ class SaltoAdapter implements HospitalityAccessAdapter {
   }
 
   async readiness(_context: ProviderContext): Promise<ProviderReadiness> {
-    if (!this.config.baseUrl || !this.config.bearerToken) {
+    const config = this.config;
+    if (!config.baseUrl || !config.bearerToken) {
       return {
         state: 'configured_unverified',
         blocker: 'salto_configuration_required',
@@ -76,8 +77,8 @@ class SaltoAdapter implements HospitalityAccessAdapter {
     }
 
     try {
-      if (this.config.providerType === 'salto_space_hospitality') {
-        if (!this.config.probeRoomId) {
+      if (config.providerType === 'salto_space_hospitality') {
+        if (!config.probeRoomId) {
           return {
             state: 'configured_unverified',
             blocker: 'salto_space_probe_room_required',
@@ -87,8 +88,8 @@ class SaltoAdapter implements HospitalityAccessAdapter {
         }
 
         const response = await this.fetchImpl(
-          `${this.config.baseUrl}/v1/rooms/${encodeURIComponent(this.config.probeRoomId)}/keys`,
-          { method: 'GET', headers: authHeaders(this.config) }
+          `${config.baseUrl}/v1/rooms/${encodeURIComponent(config.probeRoomId)}/keys`,
+          { method: 'GET', headers: authHeaders(config) }
         );
 
         if (response.status === 401 || response.status === 403) {
@@ -120,7 +121,7 @@ class SaltoAdapter implements HospitalityAccessAdapter {
         };
       }
 
-      if (!this.config.siteId) {
+      if (!config.siteId) {
         return {
           state: 'configured_unverified',
           blocker: 'salto_ks_site_required',
@@ -129,9 +130,9 @@ class SaltoAdapter implements HospitalityAccessAdapter {
         };
       }
 
-      const response = await this.fetchImpl(`${this.config.baseUrl}/v1.2/sites`, {
+      const response = await this.fetchImpl(`${config.baseUrl}/v1.2/sites`, {
         method: 'GET',
-        headers: authHeaders(this.config)
+        headers: authHeaders(config)
       });
 
       if (response.status === 401 || response.status === 403) {
@@ -161,7 +162,7 @@ class SaltoAdapter implements HospitalityAccessAdapter {
           : Array.isArray(payload?.value)
             ? payload.value
             : [];
-      const siteVisible = sites.some((site: any) => String(site?.id || site?.site_id || '') === this.config.siteId);
+      const siteVisible = sites.some((site: any) => String(site?.id || site?.site_id || '') === config.siteId);
 
       return {
         state: 'degraded',
