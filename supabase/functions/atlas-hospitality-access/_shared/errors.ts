@@ -60,7 +60,7 @@ export function normalizeError(error: unknown) {
   return { code: 'internal_error', status: 500, details: {} };
 }
 
-export function corsHeaders(origin: string | null) {
+export function corsHeaders(origin: string | null): Record<string, string> {
   if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
   return {
     'access-control-allow-origin': origin,
