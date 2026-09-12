@@ -6,6 +6,7 @@ import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
+import { AccountingBudgetPage } from './modules/finance/accounting/AccountingBudgetPage';
 import { AccountingForecastPage } from './modules/finance/accounting/AccountingForecastPage';
 import { AccountingWorkspacePage } from './modules/finance/accounting/AccountingWorkspacePage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
@@ -64,6 +65,7 @@ function AccountingHome() {
       <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Governed accounting workspaces backed by the authenticated organization and RLS-scoped accounting data." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance/accounting/dashboard"><span>Command</span><strong>Open Accounting</strong><p>Enter the live Accounting Command Center and complete route graph.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/budgeting"><span>Planning</span><strong>Budgeting</strong><p>Create versioned account-period budgets and compare them with posted ledger actuals.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/forecast"><span>Planning</span><strong>Cash Flow Forecast</strong><p>Inspect organization-scoped forecast snapshots and scenario assumptions.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable + AI</strong><p>Open the existing live AP workspace.</p></Link>
       </div>
@@ -244,6 +246,7 @@ export function App() {
         <Route path="/finance/accounting/bank-cash" element={<AccountingWorkspacePage section="bank-cash" />} />
         <Route path="/finance/accounting/reconciliation" element={<AccountingWorkspacePage section="reconciliation" />} />
         <Route path="/finance/accounting/fixed-assets" element={<AccountingWorkspacePage section="fixed-assets" />} />
+        <Route path="/finance/accounting/budgeting" element={<AccountingBudgetPage />} />
         <Route path="/finance/accounting/forecast" element={<AccountingForecastPage />} />
         <Route path="/finance/accounting/period-close" element={<AccountingWorkspacePage section="period-close" />} />
         <Route path="/finance/accounting/reports" element={<AccountingWorkspacePage section="reports" />} />
