@@ -144,15 +144,49 @@ export function normalizeExecutionState(rawValue: unknown): GuidedExecutionState
   };
 }
 
-export async function loadGuidedExecutionState(workflowId: string): Promise<GuidedExecutionState> {
+async function executionPost(body: Record<string, unknown>) {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-execution', {
     method: 'POST',
-    body: JSON.stringify({
-      operation: 'get_state',
-      organization_id: organization.id,
-      workflow_id: workflowId
-    })
+    body: JSON.stringify({ ...body, organization_id: organization.id })
   });
-  return normalizeExecutionState(await parseExecutionResponse(response));
+  return parseExecutionResponse(response);
+}
+
+export async function loadGuidedExecutionState(workflowId: string): Promise<GuidedExecutionState> {
+  return normalizeExecutionState(await executionPost({ operation: 'get_state', workflow_id: workflowId }));
+}
+
+export type RequestExecutionApprovalInput = {
+  taskId: string;
+  approvalType: string;
+  requiredPermission: string;
+  riskLevel: GuidedApproval['riskLevel'];
+  summary: string;
+};
+
+export async function requestExecutionApproval(input: RequestExecutionApprovalInput) {
+  return executionPost({
+    operation: 'request_approval',
+    task_id: input.taskId,
+    approval_type: input.approvalType,
+    required_permission: input.requiredPermission,
+    risk_level: input.riskLevel,
+    summary: input.summary
+  });
+}
+
+export type DecideExecutionApprovalInput = {
+  approvalId: string;
+  decision: 'approved' | 'rejected';
+  reason?: string;
+};
+
+export async function decideExecutionApproval(input: DecideExecutionApprovalInput) {
+  return executionPost({
+    operation: 'decide_approval',
+    approval_id: input.approvalId,
+    decision: input.decision,
+    decision_reason: input.reason || ''
+  });
 }

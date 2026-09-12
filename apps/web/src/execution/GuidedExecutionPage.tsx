@@ -1,17 +1,34 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { loadGuidedExecutionState } from './api';
+import {
+  decideExecutionApproval,
+  loadGuidedExecutionState,
+  requestExecutionApproval
+} from './api';
+import type { ApprovalDecision } from './ApprovalCard';
 import { ExecutionBreadcrumbs } from './ExecutionBreadcrumbs';
+import { humanizeExecutionValue } from './ExecutionStepRow';
+import { StepActionBar } from './StepActionBar';
+import { StepDetailPanel } from './StepDetailPanel';
 import { TaskGroup } from './TaskGroup';
-import type { GuidedExecutionState } from './types';
-import { activeTask } from './view-model';
+import type { GuidedApproval, GuidedExecutionState } from './types';
+import { activeTask, deriveStepAction } from './view-model';
 import { WorkflowHeader } from './WorkflowHeader';
+
+function focusSection(id: string) {
+  const element = typeof document === 'undefined' ? null : document.getElementById(id);
+  if (!element) return;
+  element.scrollIntoView?.({ block: 'nearest' });
+  if (element instanceof HTMLElement) element.focus({ preventScroll: true });
+}
 
 export function GuidedExecutionPage() {
   const { workflowId = '' } = useParams();
   const [data, setData] = useState<GuidedExecutionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
 
   const adoptState = useCallback((next: GuidedExecutionState) => {
@@ -32,6 +49,7 @@ export function GuidedExecutionPage() {
     setError(null);
     try {
       adoptState(await loadGuidedExecutionState(workflowId));
+      setActionError(null);
     } catch (caught) {
       setData(null);
       setError(caught instanceof Error ? caught.message : 'execution_unavailable');
@@ -76,11 +94,50 @@ export function GuidedExecutionPage() {
 
   const currentTask = activeTask(data);
   const selectedStep = data.steps.find((step) => step.id === selectedStepId) ?? null;
+  const selectedTask = selectedStep ? data.tasks.find((task) => task.id === selectedStep.taskId) ?? null : null;
+  const stepAction = selectedStep ? deriveStepAction(data, selectedStep.id) : null;
+
+  const requestApproval = async () => {
+    if (!selectedStep || !selectedTask || selectedTask.currentStepId !== selectedStep.id) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await requestExecutionApproval({
+        taskId: selectedTask.id,
+        approvalType: 'execution_review',
+        requiredPermission: 'execution.approve',
+        riskLevel: selectedTask.priority === 'critical' ? 'critical' : selectedTask.priority === 'high' ? 'high' : 'medium',
+        summary: `Review ${selectedTask.title}: ${humanizeExecutionValue(selectedStep.actionType)}`
+      });
+      await reload();
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'approval_request_failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const decideApproval = async (approval: GuidedApproval, decision: ApprovalDecision, reason: string) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await decideExecutionApproval({ approvalId: approval.id, decision, reason });
+      await reload();
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'approval_decision_failed';
+      setActionError(message === 'approval_binding_mismatch'
+        ? 'approval_binding_mismatch — reload the workflow and request a new approval for the current action.'
+        : message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <section className="page-stack execution-page">
       <ExecutionBreadcrumbs workflow={data.workflow} />
       <WorkflowHeader state={data} task={currentTask} />
+      {actionError ? <div className="execution-action-error" role="alert">{actionError}</div> : null}
       <div className="execution-layout">
         <div className="execution-task-list" aria-label="Execution tasks">
           {data.tasks.length === 0 ? <div className="empty-state"><strong>No tasks</strong><span>This workflow has no persisted tasks.</span></div> : data.tasks.map((task, index) => (
@@ -91,19 +148,39 @@ export function GuidedExecutionPage() {
               steps={data.steps.filter((step) => step.taskId === task.id).sort((a, b) => a.sequence - b.sequence)}
               selectedStepId={selectedStepId}
               current={task.id === currentTask?.id}
-              onSelectStep={setSelectedStepId}
+              onSelectStep={(stepId) => {
+                setActionError(null);
+                setSelectedStepId(stepId);
+              }}
             />
           ))}
         </div>
         <aside className="execution-selection" aria-label="Selected execution step">
-          {selectedStep ? (
+          {selectedStep && selectedTask ? (
             <>
-              <p className="eyebrow">Selected step</p>
-              <h2>{selectedStep.actionType.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())}</h2>
-              <p>Status: {selectedStep.status.replaceAll('_', ' ')}</p>
+              <StepDetailPanel
+                step={selectedStep}
+                task={selectedTask}
+                dependencies={data.dependencies}
+                evidence={data.evidence}
+                approvals={data.approvals}
+                busy={busy}
+                onDecideApproval={decideApproval}
+              />
+              {stepAction ? (
+                <StepActionBar
+                  action={stepAction}
+                  currentStep={selectedTask.currentStepId === selectedStep.id}
+                  busy={busy}
+                  onRefresh={reload}
+                  onRequestApproval={requestApproval}
+                  onFocusApprovals={() => focusSection('execution-approvals-title')}
+                  onFocusEvidence={() => focusSection('execution-evidence-title')}
+                />
+              ) : null}
             </>
           ) : <p>Select a persisted step to inspect its execution details.</p>}
-          <button type="button" className="execution-action" onClick={reload}>Refresh workflow</button>
+          <button type="button" className="execution-action" disabled={busy} onClick={reload}>Refresh workflow</button>
         </aside>
       </div>
     </section>
