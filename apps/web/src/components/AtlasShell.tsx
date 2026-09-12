@@ -1,5 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+import {
+  ATLAS_SESSION_EVENT,
+  getCachedAtlasShellOrganization,
+  type AtlasShellOrganization
+} from '../lib/atlasSession';
 
 const navItems = [
   { to: '/', label: 'Home' },
@@ -11,6 +16,25 @@ const navItems = [
 ];
 
 export function AtlasShell({ children }: { children: ReactNode }) {
+  const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
+
+  useEffect(() => {
+    const handleSessionChange = () => {
+      setOrganization(getCachedAtlasShellOrganization());
+    };
+
+    window.addEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
+    return () => {
+      window.removeEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
+    };
+  }, []);
+
+  const organizationName = organization ? organization.name : 'ATLAS Organization';
+  const organizationContext = organization
+    ? organization.legalName || 'Authenticated organization'
+    : 'Verifying organization';
+  const roleLabel = organization ? organization.role.toUpperCase() : 'CHECKING';
+
   return (
     <div className="atlas-shell">
       <aside className="atlas-sidebar">
@@ -32,13 +56,16 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="environment-card">
           <span className="pulse-dot" />
-          <div><strong>Demo adapter</strong><small>No live financial rails</small></div>
+          <div>
+            <strong>{organization ? 'Live organization' : 'Identity pending'}</strong>
+            <small>{organization ? 'Supabase RLS active' : 'Waiting for authenticated context'}</small>
+          </div>
         </div>
       </aside>
       <div className="atlas-workspace">
         <header className="topbar">
-          <div><span className="eyebrow">Organization</span><strong>ATLAS Demo Organization</strong></div>
-          <div className="topbar-meta"><span>tenant-demo / org-demo</span><span className="badge">READ ONLY</span></div>
+          <div><span className="eyebrow">Organization</span><strong>{organizationName}</strong></div>
+          <div className="topbar-meta"><span>{organizationContext}</span><span className="badge">{roleLabel}</span></div>
         </header>
         <main>{children}</main>
       </div>
