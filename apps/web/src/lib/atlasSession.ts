@@ -1,6 +1,12 @@
 import {
+  mapAccountingBudget,
+  mapBudgetLine,
   mapForecastSnapshot,
+  type AccountingBudgetRecord,
+  type AccountingBudgetRow,
   type AccountingTable,
+  type BudgetLineRecord,
+  type BudgetLineRow,
   type ForecastSnapshotRecord,
   type ForecastSnapshotRow,
 } from '../../../../packages/accounting/src';
@@ -44,7 +50,10 @@ export type AtlasAccountingRpcName =
   | 'close_accounting_reconciliation'
   | 'create_accounting_fixed_asset'
   | 'close_accounting_period'
-  | 'set_accounting_settings';
+  | 'set_accounting_settings'
+  | 'create_accounting_budget'
+  | 'add_accounting_budget_line'
+  | 'set_accounting_budget_status';
 
 const ACCOUNTING_RPC_NAMES = new Set<AtlasAccountingRpcName>([
   'create_balanced_journal_entry',
@@ -58,7 +67,10 @@ const ACCOUNTING_RPC_NAMES = new Set<AtlasAccountingRpcName>([
   'close_accounting_reconciliation',
   'create_accounting_fixed_asset',
   'close_accounting_period',
-  'set_accounting_settings'
+  'set_accounting_settings',
+  'create_accounting_budget',
+  'add_accounting_budget_line',
+  'set_accounting_budget_status'
 ]);
 
 export type AtlasOrganization = {
@@ -116,6 +128,14 @@ export type LivePayablesLedger = {
   source: 'supabase_rls_live';
   organization: AtlasOrganization;
   bills: LivePayableBill[];
+  loaded_at: string;
+};
+
+export type AccountingBudgetLedger = {
+  source: 'supabase_rls_live';
+  organization: AtlasOrganization;
+  budgets: AccountingBudgetRecord[];
+  lines: BudgetLineRecord[];
   loaded_at: string;
 };
 
@@ -277,6 +297,77 @@ export async function getAccountingForecastSnapshots(): Promise<ForecastSnapshot
   const data = await parseResponse(response);
   if (!Array.isArray(data)) throw new Error('Accounting forecast query returned an invalid payload');
   return (data as ForecastSnapshotRow[]).map(mapForecastSnapshot);
+}
+
+export async function getAccountingBudgets(): Promise<AccountingBudgetLedger> {
+  const organization = await getActiveAtlasOrganization();
+  const orgFilter = encodeURIComponent(`eq.${organization.id}`);
+  const budgetSelect = encodeURIComponent('id,org_id,entity_id,name,fiscal_year,version,scenario,status,base_currency,created_by,approved_by,approved_at,created_at,updated_at');
+  const lineSelect = encodeURIComponent('id,org_id,budget_id,account_id,period_start,period_end,amount,dimension,note');
+  const [budgetResponse, lineResponse] = await Promise.all([
+    authorizedFetch(`/rest/v1/accounting_budgets?org_id=${orgFilter}&select=${budgetSelect}&order=fiscal_year.desc,version.desc,created_at.desc`, { method: 'GET' }),
+    authorizedFetch(`/rest/v1/accounting_budget_lines?org_id=${orgFilter}&select=${lineSelect}&order=period_start.asc,account_id.asc`, { method: 'GET' })
+  ]);
+  const rawBudgets = await parseResponse(budgetResponse);
+  const rawLines = await parseResponse(lineResponse);
+  if (!Array.isArray(rawBudgets) || !Array.isArray(rawLines)) throw new Error('Accounting budget query returned an invalid payload');
+  return {
+    source: 'supabase_rls_live',
+    organization,
+    budgets: (rawBudgets as AccountingBudgetRow[]).map(mapAccountingBudget),
+    lines: (rawLines as BudgetLineRow[]).map(mapBudgetLine),
+    loaded_at: new Date().toISOString(),
+  };
+}
+
+export async function createAccountingBudget(input: {
+  organizationId: string;
+  entityId: string | null;
+  name: string;
+  fiscalYear: number;
+  version: number;
+  scenario: string;
+  baseCurrency: string;
+}) {
+  return atlasAccountingRpc<string>('create_accounting_budget', {
+    organization_uuid: input.organizationId,
+    entity_uuid: input.entityId,
+    budget_name: input.name,
+    fiscal_year_value: input.fiscalYear,
+    version_value: input.version,
+    scenario_value: input.scenario,
+    base_currency_value: input.baseCurrency,
+  });
+}
+
+export async function addAccountingBudgetLine(input: {
+  organizationId: string;
+  budgetId: string;
+  accountId: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  dimension: Record<string, unknown>;
+  note: string | null;
+}) {
+  return atlasAccountingRpc<string>('add_accounting_budget_line', {
+    organization_uuid: input.organizationId,
+    budget_uuid: input.budgetId,
+    account_uuid: input.accountId,
+    period_start_date: input.periodStart,
+    period_end_date: input.periodEnd,
+    budget_amount: input.amount,
+    dimension_value: input.dimension,
+    note_value: input.note,
+  });
+}
+
+export async function setAccountingBudgetStatus(organizationId: string, budgetId: string, status: 'draft' | 'approved' | 'locked' | 'archived') {
+  return atlasAccountingRpc<string>('set_accounting_budget_status', {
+    organization_uuid: organizationId,
+    budget_uuid: budgetId,
+    status_value: status,
+  });
 }
 
 export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
