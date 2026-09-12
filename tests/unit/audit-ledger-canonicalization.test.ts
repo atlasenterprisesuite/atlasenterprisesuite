@@ -47,6 +47,19 @@ describe('ATLAS Audit Ledger canonical hashing', () => {
     expect(digest).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it('normalizes equivalent timestamptz representations before hashing', async () => {
+    const event = fixtureEvent();
+    expect(await buildAuditLedgerDigest(event)).toBe(await buildAuditLedgerDigest({
+      ...event,
+      createdAt: '2026-09-12T09:00:00.000-04:00'
+    }));
+  });
+
+  it('rejects an invalid persisted timestamp before hashing', async () => {
+    await expect(buildAuditLedgerDigest({ ...fixtureEvent(), createdAt: 'not-a-timestamp' }))
+      .rejects.toThrow('audit_ledger_invalid_timestamp');
+  });
+
   it('changes the digest when a persisted hashed field changes', async () => {
     const event = fixtureEvent();
     expect(await buildAuditLedgerDigest(event))
