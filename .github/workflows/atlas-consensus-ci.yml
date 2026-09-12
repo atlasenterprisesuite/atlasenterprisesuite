@@ -17,28 +17,28 @@ concurrency:
 jobs:
   product-ux:
     name: Opinion 1 - Product and UX
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
+    runs-on: self-hosted
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
       - run: npm ci
       - name: Integration and route contracts
         run: npm run test:integration
 
   architecture:
     name: Opinion 2 - Architecture and Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
+    runs-on: self-hosted
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
       - run: npm ci
       - name: TypeScript contract
         run: npm run typecheck
@@ -47,14 +47,14 @@ jobs:
 
   security:
     name: Opinion 3 - Security and Reliability
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
+    runs-on: self-hosted
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
       - name: Locked install + dependency security gate
         run: npm ci --audit --audit-level=high
       - name: Unit tests
@@ -62,7 +62,8 @@ jobs:
 
   consensus:
     name: ATLAS 3-of-3 Consensus
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    timeout-minutes: 10
     needs: [product-ux, architecture, security]
     if: ${{ always() }}
     steps:
