@@ -5,6 +5,11 @@ const headers = {
   'referrer-policy': 'no-referrer'
 };
 
+const ALLOWED_ORIGINS = new Set([
+  'https://atlasenterprisesuite.com',
+  'https://www.atlasenterprisesuite.com'
+]);
+
 const SAFE_DETAIL_KEYS = new Set([
   'provider_status',
   'provider_code',
@@ -53,6 +58,39 @@ export function normalizeError(error: unknown) {
     return { code: message, status: 503, details: {} };
   }
   return { code: 'internal_error', status: 500, details: {} };
+}
+
+export function corsHeaders(origin: string | null) {
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-headers': 'authorization, apikey, content-type',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
+    'access-control-max-age': '86400',
+    'vary': 'Origin'
+  };
+}
+
+export function optionsResponse(origin: string | null) {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      ...headers,
+      ...corsHeaders(origin)
+    }
+  });
+}
+
+export function withCors(response: Response, origin: string | null) {
+  const nextHeaders = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders(origin))) {
+    nextHeaders.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: nextHeaders
+  });
 }
 
 export function json(data: unknown, status = 200) {

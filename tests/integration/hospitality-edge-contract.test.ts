@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = process.cwd();
 const edgePath = resolve(root, 'supabase/functions/atlas-hospitality-access/index.ts');
 const repositoryPath = resolve(root, 'supabase/functions/atlas-hospitality-access/_shared/repository.ts');
+const errorsPath = resolve(root, 'supabase/functions/atlas-hospitality-access/_shared/errors.ts');
 const sharedFiles = [
   '_shared/context.ts',
   '_shared/repository.ts',
@@ -43,6 +44,18 @@ describe('ATLAS Hospitality Edge Function contract', () => {
     ]) {
       expect(source).toContain(`'${operation}'`);
     }
+  });
+
+  it('supports authenticated browser preflight from the ATLAS production origin', () => {
+    const edgeSource = readFileSync(edgePath, 'utf8');
+    const errorSource = readFileSync(errorsPath, 'utf8').toLowerCase();
+    expect(edgeSource).toContain("req.method === 'OPTIONS'");
+    expect(errorSource).toContain('access-control-allow-origin');
+    expect(errorSource).toContain('https://atlasenterprisesuite.com');
+    expect(errorSource).toContain('access-control-allow-headers');
+    expect(errorSource).toContain('authorization');
+    expect(errorSource).toContain('apikey');
+    expect(errorSource).toContain('access-control-allow-methods');
   });
 
   it('uses verified room mapping and explicit provider capabilities for issuance', () => {
