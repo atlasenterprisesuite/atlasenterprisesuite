@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
 const sql = readFileSync(resolve(root, 'supabase/migrations/20260912_ride_profile_photo_compliance.sql'), 'utf8');
-const atomicMigrationPath = resolve(root, 'supabase/migrations/20260912_ride_profile_photo_atomicity.sql');
+const atomicMigrationPath = resolve(root, 'supabase/migrations/20260912_ride_profile_photo_transaction_atomicity.sql');
 const repositorySource = readFileSync(resolve(root, 'supabase/functions/atlas-ride-compliance/_shared/repository.ts'), 'utf8');
 const edgeSource = readFileSync(resolve(root, 'supabase/functions/atlas-ride-compliance/index.ts'), 'utf8');
 
@@ -29,8 +29,14 @@ describe('ATLAS Ride compliance schema contract', () => {
     expect(sql).not.toMatch(/create policy[^;]+storage\.objects[^;]+to public/is);
   });
 
-  it('finalizes submission state and submitted audit atomically', () => {
+  it('loads transaction hardening after the base compliance migration', () => {
+    const baseName = '20260912_ride_profile_photo_compliance.sql';
+    const atomicName = '20260912_ride_profile_photo_transaction_atomicity.sql';
+    expect(atomicName.localeCompare(baseName)).toBeGreaterThan(0);
     expect(existsSync(atomicMigrationPath)).toBe(true);
+  });
+
+  it('finalizes submission state and submitted audit atomically', () => {
     const atomicSql = readFileSync(atomicMigrationPath, 'utf8');
     expect(atomicSql).toContain('atlas_ride_compliance_finalize_submission');
     expect(atomicSql).toContain("'submission.submitted'");
@@ -40,12 +46,12 @@ describe('ATLAS Ride compliance schema contract', () => {
     expect(edgeSource).not.toContain("eventType: 'submission.submitted'");
   });
 
-  it('transitions review state and review audit atomically', () => {
-    expect(existsSync(atomicMigrationPath)).toBe(true);
+  it('transitions review state and review audit atomically without self-review', () => {
     const atomicSql = readFileSync(atomicMigrationPath, 'utf8');
     expect(atomicSql).toContain('atlas_ride_compliance_review_transition');
     expect(atomicSql).toContain("p_target_status in ('under_review','approved','rejected')");
     expect(atomicSql).toContain("om.role in ('owner','admin','platform_admin')");
+    expect(atomicSql).toContain('v_submission.subject_user_id = p_actor_user_id');
     expect(atomicSql).toContain("'review.started'");
     expect(atomicSql).toContain("'review.approved'");
     expect(atomicSql).toContain("'review.rejected'");
