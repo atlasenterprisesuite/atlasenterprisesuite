@@ -6,6 +6,7 @@ import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import './styles.css';
 import './health.css';
 import './modules/finance/accounting/payables-ai.css';
+import './modules/finance/accounting/accounting-workspace.css';
 import './modules/hospitality/hospitality.css';
 
 function RootRouter() {

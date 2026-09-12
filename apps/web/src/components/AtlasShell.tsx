@@ -9,7 +9,8 @@ import {
 const navItems = [
   { to: '/', label: 'Home' },
   { to: '/finance', label: 'Finance' },
-  { to: '/finance/accounting/accounts-payable', label: 'Payables' },
+  { to: '/finance/accounting/dashboard', label: 'Accounting' },
+  { to: '/finance/accounting/accounts-payable', label: 'Payables + AI' },
   { to: '/health', label: 'Health' },
   { to: '/hospitality/access', label: 'Hospitality' },
   { to: '/studio', label: 'Creator' }

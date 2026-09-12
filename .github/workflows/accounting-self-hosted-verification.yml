@@ -1,0 +1,58 @@
+name: Accounting Self-Hosted Verification
+
+on:
+  push:
+    branches:
+      - feat/accounting-100-verification
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/web/src/**'
+      - 'packages/accounting/**'
+      - 'packages/core/**'
+      - 'tests/**'
+      - 'supabase/migrations/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/accounting-self-hosted-verification.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accounting-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify Accounting on self-hosted runner
+    runs-on: self-hosted
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Production build
+        run: npm run build
