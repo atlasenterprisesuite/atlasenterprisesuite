@@ -11,6 +11,32 @@ function enc(value) {
   return encodeURIComponent(String(value));
 }
 
+function sensitiveKey(key) {
+  const normalized = String(key || '').toLowerCase();
+  return normalized === 'authorization'
+    || normalized === 'service_role'
+    || normalized === 'service_role_key'
+    || normalized === 'access_token'
+    || normalized === 'refresh_token'
+    || normalized === 'cvv'
+    || normalized === 'cvc'
+    || normalized === 'pan'
+    || normalized === 'password'
+    || normalized.endsWith('_secret')
+    || normalized.endsWith('_token');
+}
+
+export function redactExecutionMetadata(value) {
+  if (Array.isArray(value)) return value.map(redactExecutionMetadata);
+  if (!value || typeof value !== 'object') return value;
+  const clean = {};
+  for (const [key, nested] of Object.entries(value)) {
+    if (sensitiveKey(key)) continue;
+    clean[key] = redactExecutionMetadata(nested);
+  }
+  return clean;
+}
+
 async function parse(response, code = 'storage_unavailable') {
   if (!response.ok) throw fail(code, response.status === 404 ? 404 : response.status >= 500 ? 502 : response.status);
   if (response.status === 204) return null;
@@ -80,7 +106,7 @@ export function createExecutionStore({ supabaseUrl, serviceRoleKey, fetchFn = fe
   async function updateWorkflow(context, taskId, patch) {
     const ctx = requireContext(context);
     const allowed = {};
-    for (const key of ['status', 'current_step', 'next_action', 'blocked_reason', 'completed_at', 'updated_at']) {
+    for (const key of ['status', 'current_step', 'next_action', 'blocked_reason', 'completed_at', 'updated_at', 'evidence_ids']) {
       if (Object.prototype.hasOwnProperty.call(patch, key)) allowed[key] = patch[key];
     }
     const response = await rest(`atlas_workflows?org_id=eq.${enc(ctx.organization_id)}&task_id=eq.${enc(taskId)}`, {
@@ -105,7 +131,7 @@ export function createExecutionStore({ supabaseUrl, serviceRoleKey, fetchFn = fe
       result_state: event.result_state || null,
       evidence_refs: Array.isArray(event.evidence_refs) ? event.evidence_refs : [],
       error_category: event.error_category || null,
-      metadata: event.metadata && typeof event.metadata === 'object' ? event.metadata : {}
+      metadata: redactExecutionMetadata(event.metadata && typeof event.metadata === 'object' ? event.metadata : {})
     };
     const response = await rest('atlas_workflow_events', { method: 'POST', body: JSON.stringify(row) });
     await parse(response);
