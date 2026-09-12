@@ -1,7 +1,7 @@
 # ATLAS Unified Intelligence — ChatGPT + Codex Design Specification
 
 Date: 2026-09-12
-Status: Approved architecture, pending implementation plan
+Status: Approved architecture; written spec pending final user review
 Repository: `atlasenterprisesuite/atlasenterprisesuite`
 Target branch: `feat/unified-atlas-intelligence`
 Owner layer: ATLAS Intelligence / Assistant
@@ -40,7 +40,7 @@ This feature must extend those boundaries. It must not create a second assistant
 
 ATLAS Assistant is the only user-facing intelligence identity.
 
-Internally, ATLAS Intelligence becomes a capability router with at least two execution planes:
+Internally, ATLAS Intelligence becomes a capability router with two governed execution planes.
 
 ### 3.1 Conversational Intelligence Plane
 
@@ -56,7 +56,7 @@ Responsibilities:
 - response synthesis;
 - deciding whether engineering execution is needed.
 
-The implementation should use the existing OpenAI provider adapter pattern already present in `atlas-copilot` rather than binding ATLAS to a consumer ChatGPT UI session.
+The implementation uses the existing OpenAI provider adapter pattern already present in `atlas-copilot`. It must not depend on controlling, scraping, or automating a consumer ChatGPT UI session.
 
 ### 3.2 Codex Engineering Plane
 
@@ -74,7 +74,19 @@ Responsibilities:
 
 Codex is a capability behind ATLAS Intelligence, not a separate visible assistant.
 
-The implementation must integrate through an adapter boundary compatible with the supported Codex programmatic runtime chosen at implementation time. The adapter must keep provider/runtime details out of the user-facing ATLAS contract.
+**Canonical production integration boundary: Codex App Server.**
+
+ATLAS will integrate the Codex harness through an `AtlasCodexAdapter` that speaks to Codex App Server through its client-oriented bidirectional protocol. Provider/runtime details stay behind this adapter and do not leak into the user-facing ATLAS contract.
+
+The Codex SDK may be used only as an optional local/test or transitional adapter where useful. It is not the canonical production interface and consumers must not depend on SDK-specific result shapes.
+
+### 3.3 Runtime Topology
+
+The intended topology is:
+
+`ATLAS CLIENT -> atlas-copilot -> Intelligence Gateway -> AtlasCodexAdapter -> Codex App Server -> controlled engineering workspace`
+
+Codex App Server must run in a controlled server/devbox/container environment with repository access appropriate to the authenticated ATLAS principal and policy. It must not run directly inside the browser.
 
 ## 4. Unified Capability Model
 
@@ -241,7 +253,7 @@ Every intelligence and Codex request inherits the authenticated ATLAS principal:
 
 The existing `intelligence.use` permission remains the entry permission for ATLAS Intelligence.
 
-Engineering operations require additional capability-specific permissions. Initial execution-layer permissions should distinguish at least:
+Engineering operations require additional capability-specific permissions. Initial execution-layer permissions are:
 
 - `intelligence.code.read`;
 - `intelligence.code.execute`;
@@ -282,7 +294,7 @@ The router must be able to distinguish:
 - cost permitted;
 - approval required.
 
-When Codex is unavailable because no supported runtime/workspace is configured, ATLAS must report a real blocker and preserve the task state. It must not claim that an engineering subagent is running.
+When Codex App Server is unavailable because no controlled runtime/workspace is configured, ATLAS must return `code_runtime_not_configured`, preserve the task state, and expose the missing runtime/workspace dependency. It must not claim that an engineering subagent is running.
 
 ## 13. Unified User Experience
 
@@ -370,6 +382,7 @@ Neither subsystem may create a competing task state machine.
 - Do not allow conversational intelligence to bypass Codex execution controls by directly performing equivalent external writes.
 - Maintain organization isolation in conversation, execution, telemetry, and audit records.
 - Redact sensitive provider errors before returning them to users.
+- Codex App Server must run in a controlled environment; browser clients never receive direct App Server credentials or process access.
 
 ## 18. Testing Strategy
 
@@ -386,7 +399,8 @@ Cover:
 - cost gating;
 - normalized Codex result states;
 - failure normalization;
-- truthful completion rules.
+- truthful completion rules;
+- App Server adapter protocol normalization.
 
 ### Integration tests
 
@@ -394,10 +408,10 @@ Cover:
 
 - one conversation spanning reasoning -> Codex task -> result -> response;
 - repository read-only task;
-- code execution task with fake/local adapter;
+- code execution task through a fake App Server transport;
 - tests failing -> execution state `failed` or `blocked`, never `completed`;
 - approval-required remote side effect;
-- Codex runtime unavailable;
+- Codex App Server unavailable;
 - provider telemetry/provenance persisted;
 - no cross-organization access;
 - compatibility with Universal Execution Engine task identifiers when available.
@@ -412,7 +426,7 @@ npm test
 npm run build
 ```
 
-Production runtime verification is a separate step and must not be inferred from local/unit tests.
+Production App Server verification is a separate step and must not be inferred from local/unit tests.
 
 ## 19. Definition of Done
 
@@ -421,14 +435,14 @@ The first implementation is complete when:
 1. ATLAS exposes one Assistant identity without a normal ChatGPT/Codex selector.
 2. Existing conversational requests continue through `atlas-copilot` without regression.
 3. Engineering requests are classified into Codex capabilities through the same Intelligence Gateway.
-4. A Codex adapter exists behind a stable ATLAS interface.
-5. The adapter can operate against a controlled test/local runtime without fabricating execution.
+4. `AtlasCodexAdapter` exists behind a stable ATLAS interface and uses Codex App Server as the canonical production boundary.
+5. The adapter can operate against a fake/local App Server transport without fabricating execution.
 6. Repository/worktree/test/review evidence is returned in structured form.
 7. Permissions, tenant boundaries, approval policy, and cost policy are enforced before engineering side effects.
 8. Mixed requests preserve one conversation lineage.
 9. Failed/unavailable Codex execution produces truthful blockers/errors.
 10. Unit/integration tests, typecheck, and build pass.
-11. No production deploy, merge, or paid provider action occurs merely to validate the architecture.
+11. No production deploy, merge, production App Server provisioning, or paid provider action occurs merely to validate the architecture.
 
 ## 20. Non-Goals for the First Slice
 
@@ -442,10 +456,11 @@ The first slice does not require:
 - a second user-facing Codex chat;
 - migrating unrelated ATLAS modules;
 - storing hidden chain-of-thought;
-- implementing Universal Execution Engine again inside Intelligence.
+- implementing Universal Execution Engine again inside Intelligence;
+- provisioning a paid production workspace merely to prove the adapter contract.
 
 ## 21. Canonical Principle
 
-**ATLAS has one intelligence identity. ChatGPT-style reasoning coordinates; Codex executes engineering work; ATLAS owns routing, permissions, continuity, approvals, evidence, and audit.**
+**ATLAS has one intelligence identity. ChatGPT-style reasoning coordinates; Codex executes engineering work through Codex App Server; ATLAS owns routing, permissions, continuity, approvals, evidence, and audit.**
 
 The user should experience one capable assistant, not a collection of disconnected agents.
