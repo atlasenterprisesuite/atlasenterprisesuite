@@ -428,6 +428,7 @@ async function recordEvidence(req: Request, body: JsonObject, context: RequestCo
   const stepId = clean(body.step_id, 80) || null;
   const kind = requiredText(body.kind, 'evidence_kind_required', 120);
   const reference = requiredText(body.reference, 'evidence_reference_required', 600);
+  if (body.verified === true) throw new EdgeError('verified_evidence_resolver_required', 409);
   const admin = adminClient();
   const task = await loadTask(admin, context.orgId, taskId);
 
@@ -450,7 +451,7 @@ async function recordEvidence(req: Request, body: JsonObject, context: RequestCo
     step_id: stepId,
     kind,
     reference,
-    verified: body.verified === true
+    verified: false
   }).select('*').single();
   if (error || !evidence) throw new EdgeError('persistence_error', 500);
 
