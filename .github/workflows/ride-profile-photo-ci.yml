@@ -1,0 +1,56 @@
+name: ATLAS Ride Profile Photo CI
+
+on:
+  push:
+    branches: ["feat/ride-profile-photo-compliance"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Ride unit test
+        run: |
+          if [ -f tests/unit/ride-compliance-domain.test.ts ]; then
+            npx vitest run tests/unit/ride-compliance-domain.test.ts
+          else
+            echo "Ride unit test not created yet"
+          fi
+      - name: Ride integration tests
+        run: |
+          files=(
+            tests/integration/ride-compliance-schema-contract.test.ts
+            tests/integration/ride-compliance-edge-contract.test.ts
+            tests/integration/ride-compliance-api.test.ts
+            tests/integration/ride-compliance-routes.test.tsx
+            tests/integration/ride-profile-photo-page.test.tsx
+          )
+          existing=()
+          for file in "${files[@]}"; do
+            [ -f "$file" ] && existing+=("$file")
+          done
+          if [ ${#existing[@]} -gt 0 ]; then
+            npx vitest run "${existing[@]}"
+          else
+            echo "Ride integration tests not created yet"
+          fi
+      - name: Full unit suite
+        run: npm run test:unit
+      - name: Full integration suite
+        run: npm run test:integration
+      - name: Production build
+        run: npm run build
