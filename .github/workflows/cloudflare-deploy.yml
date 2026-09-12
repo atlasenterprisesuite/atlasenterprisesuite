@@ -1,0 +1,112 @@
+name: ATLAS Cloudflare Worker Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "data/**"
+      - "supabase/functions/**"
+      - "wrangler.jsonc"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/cloudflare-deploy.yml"
+
+concurrency:
+  group: atlas-cloudflare-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate-deploy-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Security gate
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Production build
+        run: npm run build
+
+      - name: Validate Cloudflare authorization
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_API_TOKEN is not configured"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not configured"; exit 1; }
+
+      - name: Deploy Workers Static Assets
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config wrangler.jsonc 2>&1 | tee /tmp/wrangler-deploy.log
+          DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' /tmp/wrangler-deploy.log | tail -n 1 || true)"
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            echo "::error::Wrangler did not report a workers.dev deployment URL"
+            exit 1
+          fi
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+          echo "Cloudflare deployment URL: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify Cloudflare worker artifact
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/" > /dev/null
+          curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/finance/accounting/accounts-payable" > /dev/null
+          HEALTH="$(curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/healthz")"
+          echo "$HEALTH" | grep -q '"status": "ok"'
+          echo "$HEALTH" | grep -q '"evidence_scope": "static-frontend"\|"environment": "production-artifact"'
+          echo "Workers Static Assets smoke verification passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Custom-domain cutover remains a separate production gate." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record Cloudflare deployment evidence in ATLAS Manager
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          OIDC_RESPONSE="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-infrastructure-evidence")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value||''))")"
+          test -n "$OIDC_TOKEN" || { echo "::error::GitHub OIDC token was not issued"; exit 1; }
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=record" \
+            --data "$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,root_reachable:true,spa_route_reachable:true,healthz_static_frontend:true},metadata:{deployment_url:process.env.DEPLOYMENT_URL,production_domain_cutover:false}}))")" \
+            > /tmp/atlas-infra-evidence.json
+
+          echo "Cloudflare deployment evidence recorded in Supabase ATLAS Manager." >> "$GITHUB_STEP_SUMMARY"
