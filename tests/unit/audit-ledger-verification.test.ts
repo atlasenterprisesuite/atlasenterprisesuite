@@ -38,6 +38,16 @@ describe('ATLAS Audit Ledger chain verification', () => {
     expect(await verifyAuditChain([third, first, second])).toEqual({ valid: true, eventCount: 3 });
   });
 
+  it('orders equivalent database timestamp representations by actual instant', async () => {
+    const first = await makeEvent(1, 'GENESIS_BLOCK');
+    first.createdAt = '2026-09-12T12:30:00.000Z';
+    first.payloadDigest = await buildAuditLedgerDigest(first);
+    const second = await makeEvent(2, first.payloadDigest);
+    second.createdAt = '2026-09-12T09:00:00.000-04:00';
+    second.payloadDigest = await buildAuditLedgerDigest(second);
+    expect(await verifyAuditChain([second, first])).toEqual({ valid: true, eventCount: 2 });
+  });
+
   it('detects a broken previous-state link', async () => {
     const [first, second] = await makeValidChain();
     const result = await verifyAuditChain([first, { ...second, previousStateHash: 'bad-head' }]);
@@ -52,6 +62,17 @@ describe('ATLAS Audit Ledger chain verification', () => {
     expect(result.valid).toBe(false);
     expect(result.firstInvalidEventId).toBe(second.eventId);
     expect(result.reason).toBe('audit_ledger_invalid_digest');
+  });
+
+  it('returns a diagnostic result for an invalid persisted timestamp', async () => {
+    const first = await makeEvent(1, 'GENESIS_BLOCK');
+    const result = await verifyAuditChain([{ ...first, createdAt: 'not-a-timestamp' }]);
+    expect(result).toEqual({
+      valid: false,
+      eventCount: 1,
+      firstInvalidEventId: first.eventId,
+      reason: 'audit_ledger_invalid_timestamp'
+    });
   });
 
   it('treats empty chains as invalid unless explicitly allowed', async () => {
