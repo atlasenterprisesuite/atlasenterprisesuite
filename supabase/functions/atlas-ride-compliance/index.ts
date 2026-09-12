@@ -2,6 +2,7 @@ import { validateComplianceImageMetadata } from '../../../packages/compliance/fi
 import { requireCompliancePermission } from '../../../packages/compliance/permissions.ts';
 import { resolveContext } from './_shared/context.ts';
 import { errorResponse, json, optionsResponse, withCors } from './_shared/errors.ts';
+import { getLatestSubmissionForRequirement } from './_shared/queries.ts';
 import {
   approveSubmission,
   createProfilePhotoSubmission,
@@ -55,6 +56,7 @@ async function profilePhoto(req: Request) {
   const ctx = await resolveContext(req);
   requireCompliancePermission(ctx.permissions, 'ride.compliance.read');
   const requirement = await getProfilePhotoRequirement(ctx);
+  const submission = requirement ? await getLatestSubmissionForRequirement(ctx, requirement.id) : null;
   if (requirement) {
     await recordComplianceAudit(ctx, {
       subjectUserId: requirement.subjectUserId,
@@ -62,7 +64,7 @@ async function profilePhoto(req: Request) {
       eventType: 'requirement.viewed'
     });
   }
-  return json({ ok: true, requirement, permissions: ctx.permissions });
+  return json({ ok: true, requirement, submission, permissions: ctx.permissions });
 }
 
 async function submitProfilePhoto(req: Request) {
