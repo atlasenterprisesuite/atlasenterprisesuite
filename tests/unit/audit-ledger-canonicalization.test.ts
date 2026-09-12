@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   assertBoundedMetadata,
@@ -62,5 +63,11 @@ describe('ATLAS Audit Ledger canonical hashing', () => {
     expect(() => canonicalizeJson({ unsafe: undefined })).toThrow('audit_ledger_invalid_json');
     expect(() => canonicalizeJson({ unsafe: Number.NaN })).toThrow('audit_ledger_invalid_json');
     expect(() => canonicalizeJson({ unsafe: BigInt(1) })).toThrow('audit_ledger_invalid_json');
+  });
+
+  it('uses global Web Crypto without a node:crypto dependency', () => {
+    const source = readFileSync(new URL('../../packages/audit-ledger/src/digest.ts', import.meta.url), 'utf8');
+    expect(source).toContain("crypto.subtle.digest('SHA-256'");
+    expect(source).not.toContain('node:crypto');
   });
 });
