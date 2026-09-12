@@ -10,6 +10,7 @@ describe('ATLAS Creator', () => {
     expect(screen.getByRole('heading', { name: 'Create beyond the prompt.' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Image Lab/ })).toHaveAttribute('href', '/studio/create?type=image');
     expect(screen.getByRole('link', { name: /Voice & Agents/ })).toHaveAttribute('href', '/studio/voice');
+    expect(screen.getByRole('link', { name: /Social Copilot/ })).toHaveAttribute('href', '/studio/social');
   });
   it('does not present generation as live without provider configuration', () => {
     render(<MemoryRouter><CreatorWorkspace /></MemoryRouter>);
