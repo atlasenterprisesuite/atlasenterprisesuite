@@ -1,0 +1,80 @@
+name: Audit Ledger Self-Hosted Verification
+
+on:
+  push:
+    branches:
+      - feat/atlas-audit-ledger
+    paths:
+      - 'packages/audit-ledger/**'
+      - 'packages/execution/src/approvals.ts'
+      - 'supabase/functions/_shared/audit-ledger-store.ts'
+      - 'supabase/functions/atlas-execution/**'
+      - 'supabase/migrations/20260912_atlas_audit_ledger.sql'
+      - 'tests/unit/audit-ledger-*.test.ts'
+      - 'tests/unit/execution-approval-evidence.test.ts'
+      - 'tests/integration/audit-ledger-*.test.ts'
+      - 'package-lock.json'
+      - 'scripts/ci/sync-audit-workspace-lock.mjs'
+      - '.github/workflows/audit-ledger-self-hosted-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-ledger-self-hosted-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+
+      - name: Deterministic workspace lock sync
+        run: node scripts/ci/sync-audit-workspace-lock.mjs
+
+      - name: Persist workspace lock correction on feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='247a546e71f1e202aa828a52cad9f70186ee63b3'
+          actual="$(git hash-object package-lock.json)"
+          if [ "$actual" != "$expected" ]; then
+            echo "Unexpected package-lock blob: $actual" >&2
+            exit 1
+          fi
+          if ! git diff --quiet -- package-lock.json; then
+            git diff --check -- package-lock.json
+            git config user.name 'Atlas Enterprise Suite CI'
+            git config user.email 'atlashealthfrontiers@gmail.com'
+            git add package-lock.json
+            git commit -m 'chore: sync audit workspace lockfile'
+            git push origin HEAD:feat/atlas-audit-ledger
+          fi
+
+      - name: Locked install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Production web build
+        run: npm run build
+
+      - name: Branch diff check
+        run: git diff --check origin/main...HEAD
