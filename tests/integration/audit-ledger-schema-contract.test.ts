@@ -19,6 +19,19 @@ describe('ATLAS Audit Ledger schema contract', () => {
     expect(sql).toContain('octet_length(metadata::text) <= 16384');
   });
 
+  it('constrains actions to the source vocabulary or bounded execution namespace', async () => {
+    const sql = await migrationSource();
+    for (const action of [
+      'TASK_STARTED',
+      'GATE_EVALUATED',
+      'EVIDENCE_RECORDED',
+      'TASK_FAILED',
+      'TASK_COMPLETED',
+      'WORKFLOW_BLOCKED'
+    ]) expect(sql).toContain(`'${action}'`);
+    expect(sql).toContain("^execution\\.[a-z0-9_.-]{1,100}$");
+  });
+
   it('enforces update/delete immutability at the database engine', async () => {
     const sql = (await migrationSource()).toLowerCase();
     expect(sql).toContain('create or replace function public.enforce_audit_ledger_immutability');
