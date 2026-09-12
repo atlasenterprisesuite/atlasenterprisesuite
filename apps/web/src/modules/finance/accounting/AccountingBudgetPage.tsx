@@ -27,6 +27,7 @@ const accountingLinks = [
   ['fixed-assets', 'Fixed Assets'],
   ['budgeting', 'Budgeting'],
   ['forecast', 'Forecast'],
+  ['consolidation', 'Consolidation'],
   ['period-close', 'Period Close'],
   ['reports', 'Reports'],
   ['audit-trail', 'Audit Trail'],
