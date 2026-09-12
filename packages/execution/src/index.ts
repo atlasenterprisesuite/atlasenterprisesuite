@@ -4,3 +4,7 @@ export * from './dependency-graph';
 export * from './store';
 export * from './recovery';
 export * from './approvals';
+export * from './tools';
+export * from './providers';
+export * from './evidence';
+export * from './usage';
