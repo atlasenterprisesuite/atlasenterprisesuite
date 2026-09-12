@@ -11,14 +11,14 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: self-hosted
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
       - name: Install
         run: npm ci
       - name: Typecheck
