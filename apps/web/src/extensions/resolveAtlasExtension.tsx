@@ -1,7 +1,17 @@
 import { Link } from 'react-router-dom';
+import { ManagerReadinessLauncher } from '../execution/ManagerReadinessLauncher';
+import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/execution/manager/readiness') {
+    return (
+      <RequireAtlasIdentity>
+        <ManagerReadinessLauncher />
+      </RequireAtlasIdentity>
+    );
+  }
+
   if (pathname === '/health/wellbeing/neuroplasticity') {
     return <NeuroplasticityProgramPage entry="health" />;
   }
