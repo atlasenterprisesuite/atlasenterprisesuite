@@ -1,17 +1,17 @@
-import { hasHospitalityPermission } from './permissions.ts';
+import { hasHospitalityPermission } from './permissions';
 import type {
   HospitalityActorContext,
   HospitalityPermission,
   HospitalityProviderState,
   RoomAccessRequest
-} from './types.ts';
+} from './types';
 
 export type {
   HospitalityActorContext,
   HospitalityPermission,
   HospitalityProviderState,
   RoomAccessRequest
-} from './types.ts';
+} from './types';
 
 export type AccessProviderState = HospitalityProviderState;
 
