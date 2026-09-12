@@ -35,4 +35,26 @@ describe('ATLAS Audit Ledger schema contract', () => {
     expect(sql).toContain('grant select on public.audit_ledger_events to authenticated');
     expect(sql).not.toMatch(/grant\s+(insert|update|delete|all)\s+on\s+public\.audit_ledger_events\s+to\s+authenticated/i);
   });
+
+  it('serializes workflow appends and rejects stale or cross-scope heads', async () => {
+    const sql = (await migrationSource()).toLowerCase();
+    expect(sql).toContain('create or replace function public.append_audit_ledger_event');
+    expect(sql).toContain('pg_advisory_xact_lock');
+    expect(sql).toContain('audit_ledger_stale_head');
+    expect(sql).toContain('audit_ledger_invalid_scope');
+    expect(sql).toContain('w.org_id = p_org_id');
+    expect(sql).toContain('w.tenant_id = p_tenant_id');
+    expect(sql).toContain('t.workflow_id = p_workflow_id');
+    expect(sql).toContain('t.org_id = p_org_id');
+    expect(sql).toContain('t.tenant_id = p_tenant_id');
+  });
+
+  it('does not expose the append rpc through default public/authenticated execute', async () => {
+    const sql = (await migrationSource()).toLowerCase();
+    expect(sql).toContain('revoke all on function public.append_audit_ledger_event');
+    expect(sql).toContain('from public');
+    expect(sql).toContain('from authenticated');
+    expect(sql).toContain('grant execute on function public.append_audit_ledger_event');
+    expect(sql).toContain('to service_role');
+  });
 });
