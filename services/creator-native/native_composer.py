@@ -62,6 +62,28 @@ def _srt_timestamp(seconds: float) -> str:
     return f'{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}'
 
 
+def build_captions(captions: list[dict[str, Any]], script: str, duration: float) -> list[dict[str, Any]]:
+    explicit = [item for item in captions if str(item.get('text') or '').strip()]
+    if explicit:
+        return explicit
+    words = script.split()
+    if not words:
+        return []
+    chunk_size = 8
+    chunks = [' '.join(words[index:index + chunk_size]) for index in range(0, len(words), chunk_size)]
+    total_words = max(len(words), 1)
+    output: list[dict[str, Any]] = []
+    cursor = 0.0
+    consumed = 0
+    for index, text in enumerate(chunks):
+        count = len(text.split())
+        consumed += count
+        end = duration if index == len(chunks) - 1 else duration * consumed / total_words
+        output.append({'start': round(cursor, 3), 'end': round(end, 3), 'text': text})
+        cursor = end
+    return output
+
+
 def _write_srt(captions: list[dict[str, Any]], path: Path, duration: float) -> None:
     if not captions:
         return
@@ -103,7 +125,8 @@ def render_video(payload: dict[str, Any], output_path: str | Path) -> dict[str, 
             request['script'],
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         duration = _probe_duration(voice_path)
-        _write_srt(request['captions'], srt_path, duration)
+        captions = build_captions(request['captions'], request['script'], duration)
+        _write_srt(captions, srt_path, duration)
 
         video_filters = [
             f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='ATLAS  •  NATIVE COMPOSER':fontcolor=white@0.72:fontsize={max(24, width // 34)}:x=(w-text_w)/2:y={max(48, height // 20)}"
