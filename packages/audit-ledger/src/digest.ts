@@ -1,6 +1,12 @@
 import { canonicalizeJson } from './canonicalize';
 import type { AuditLedgerEvent } from './types';
 
+function canonicalizeTimestamp(value: string): string {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) throw new Error('audit_ledger_invalid_timestamp');
+  return new Date(timestamp).toISOString();
+}
+
 export async function buildAuditLedgerDigest(event: AuditLedgerEvent): Promise<string> {
   const envelope = {
     digestVersion: event.digestVersion,
@@ -14,7 +20,7 @@ export async function buildAuditLedgerDigest(event: AuditLedgerEvent): Promise<s
     metadata: event.metadata,
     previousStateHash: event.previousStateHash,
     nonce: event.nonce,
-    createdAt: event.createdAt
+    createdAt: canonicalizeTimestamp(event.createdAt)
   };
 
   const bytes = new TextEncoder().encode(canonicalizeJson(envelope));
