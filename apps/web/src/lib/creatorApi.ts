@@ -43,15 +43,9 @@ async function requestWithToken(url: string, init: RequestInit, token: string) {
   });
 }
 
-export async function creatorRequest<T>(
-  api: string,
-  params: Record<string, string | undefined> = {},
-  init: RequestInit = {}
-): Promise<T> {
+async function authenticatedRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
   let token = getAtlasAccessToken();
   if (!token) throw new Error('authentication_required');
-  const suffix = query({ api, ...params });
-  const url = `${SUPABASE_URL}/functions/v1/atlas-creator?${suffix}`;
   let response = await requestWithToken(url, init, token);
   if (response.status === 401) {
     await getActiveAtlasOrganization();
@@ -60,6 +54,20 @@ export async function creatorRequest<T>(
     response = await requestWithToken(url, init, token);
   }
   return parseResponse(response) as Promise<T>;
+}
+
+export async function creatorRequest<T>(
+  api: string,
+  params: Record<string, string | undefined> = {},
+  init: RequestInit = {}
+): Promise<T> {
+  const suffix = query({ api, ...params });
+  return authenticatedRequest<T>(`${SUPABASE_URL}/functions/v1/atlas-creator?${suffix}`, init);
+}
+
+export async function nativeCreatorRequest<T>(api: string, init: RequestInit = {}): Promise<T> {
+  const suffix = query({ api });
+  return authenticatedRequest<T>(`${SUPABASE_URL}/functions/v1/atlas-creator-native?${suffix}`, init);
 }
 
 function specFromWire(value: any): ProductionSpec {
@@ -148,5 +156,22 @@ export async function listCreatorAssets(productionId?: string) {
 export async function submitCreatorProduction(productionId: string, providerId: ProviderId) {
   return creatorRequest<{ ok: true; job: unknown }>('submit', {}, {
     method: 'POST', body: JSON.stringify({ production_id: productionId, provider_id: providerId })
+  });
+}
+
+export async function getNativeCreatorReadiness() {
+  return nativeCreatorRequest<{
+    ok: true;
+    renderer: 'atlas-native';
+    billing_class: 'zero-cost';
+    execution: 'self-hosted';
+    native: { state: string; capabilities?: string[] };
+  }>('readiness');
+}
+
+export async function submitNativeCreatorProduction(productionId: string, expectedVersion: number) {
+  return nativeCreatorRequest<{ ok: true; job: unknown; asset: unknown; billing_class: 'zero-cost'; renderer: 'atlas-native' }>('generate', {
+    method: 'POST',
+    body: JSON.stringify({ production_id: productionId, expected_version: expectedVersion })
   });
 }
