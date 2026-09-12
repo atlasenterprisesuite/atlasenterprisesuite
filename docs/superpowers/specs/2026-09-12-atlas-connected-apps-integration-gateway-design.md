@@ -1,165 +1,170 @@
 # ATLAS Connected Apps + Integration Gateway — Design Specification
 
 Date: 2026-09-12  
-Status: Approved design, implementation not started  
+Status: Design approved in chat; written spec awaiting user review  
 Repository: `atlasenterprisesuite/atlasenterprisesuite`  
 Target branch for eventual integration: `main`
 
 ## 1. Purpose
 
-ATLAS Enterprise Suite needs one secure, tenant-aware system for connecting external accounts and infrastructure providers to ATLAS without duplicating OAuth, credential handling, verification, RBAC, auditing, or provider-specific logic in each module.
+ATLAS Enterprise Suite needs one secure, tenant-aware system for connecting external accounts and infrastructure providers without duplicating OAuth, credential handling, verification, RBAC, audit, or provider-specific logic in every module.
 
 This specification defines **ATLAS Connected Apps + Integration Gateway** as the shared integration layer for user-authorized SaaS accounts and privileged infrastructure connections.
 
-The first end-to-end production-grade adapter is Microsoft. The architecture is multiprovider from the start and must support Google, GitHub, Cloudflare, Supabase, and future providers through a common contract.
+The first end-to-end adapter is Microsoft. The architecture is multiprovider from the start and must support Google, GitHub, Cloudflare, Supabase, and future providers through a common contract.
 
-The design is based on the product reference showing Microsoft notifying the user that ChatGPT had been connected to the user's Microsoft account. ATLAS must reproduce the operational intent of that experience as real software: visible connection status, permissions, verification, management, revocation, and audit history. The screenshot is a visual and functional reference, not an asset to embed.
+The Microsoft account screenshot supplied during design is a visual and functional reference for connection-management intent. It is not an asset to embed and is not, by itself, evidence that ATLAS has a usable provider connection.
 
-## 2. Design goals
+## 2. Goals
 
 The system must:
 
-1. provide a single Connected Apps administration surface;
-2. support both user OAuth connections and privileged infrastructure connections;
+1. provide one Connected Apps administration surface;
+2. support both user OAuth connectors and privileged infrastructure connectors;
 3. preserve tenant and organization isolation;
 4. enforce RBAC before viewing, using, modifying, or revoking a connection;
 5. keep provider credentials server-side and outside browser persistence;
 6. make every status truthful and evidence-based;
 7. expose provider capabilities through a shared Integration Gateway rather than direct token access;
-8. allow ATLAS Assistant and modules to request capabilities without receiving provider credentials;
+8. allow ATLAS Assistant and modules to request capabilities without receiving credentials;
 9. integrate sensitive changes with Approval Center when policy requires approval;
-10. emit metadata-only audit events for all material connection changes and uses;
-11. provide empty, degraded, expired, revoked, and error states instead of simulated success;
-12. remain compatible with the repository's existing React application, Supabase direction, shared tenancy concepts, and ATLAS Manager architecture.
+10. emit metadata-only audit events for material connection changes and privileged uses;
+11. render empty, degraded, expired, revoked, reconnect, and error states instead of simulated success;
+12. remain compatible with the repository's existing React app, Supabase direction, shared tenancy concepts, and ATLAS Manager architecture.
 
 ## 3. Non-goals
 
 This project does not:
 
-- create a parallel authentication system for ATLAS users;
-- make Microsoft, Google, GitHub, Cloudflare, or Supabase the source of truth for ATLAS tenancy or RBAC;
-- expose raw OAuth access tokens, refresh tokens, API keys, client secrets, private certificates, or recovery codes to the browser;
-- store provider passwords;
-- claim a provider is connected or healthy merely because environment variables or metadata exist;
-- implement every possible API offered by every provider in the first milestone;
-- bypass provider-hosted consent or administrative controls;
-- replace official Microsoft, Google, GitHub, Cloudflare, or Supabase account-management pages where provider-side administration is required;
-- allow ATLAS Assistant to silently expand OAuth scopes or create privileged infrastructure credentials.
+- replace ATLAS authentication, tenancy, or RBAC;
+- make an external provider the source of truth for ATLAS authorization;
+- expose access tokens, refresh tokens, API keys, client secrets, private certificates, recovery codes, or provider passwords to the browser;
+- claim a provider is healthy because a row, environment variable, or credential reference exists;
+- implement every provider API in the first milestone;
+- bypass provider-hosted consent or provider-side administrative controls;
+- allow ATLAS Assistant to silently expand scopes or create privileged credentials;
+- create a second parallel integration backend when an existing ATLAS service can be extended safely.
 
-## 4. Ownership and module classification
+## 4. Product ownership and routes
 
-### 4.1 Primary product owner
+### 4.1 Settings / Security
 
-**Settings / Security** owns the user-facing administration experience.
-
-Primary route hierarchy:
+Primary user-facing administration owner:
 
 `Settings -> Security -> Connected Apps`
 
-### 4.2 Shared integration owner
+Route family:
 
-**ATLAS Connect** owns the reusable provider catalog, Integration Gateway contracts, provider adapters, capability resolution, and provider-health semantics.
+- `/settings/security/connected-apps`
+- `/settings/security/connected-apps/:providerKey`
 
-### 4.3 Secondary consumers
+Provider detail tabs:
 
-The shared system can be consumed by:
+- Overview
+- Permissions
+- Used By
+- Activity
+- Security
 
-- ATLAS Assistant;
-- ATLAS Drive;
-- mail and calendar experiences;
-- ATLAS Manager;
-- Finance, Accounting, HR, CRM, Creator, Hospitality, and future modules;
-- automation and workflow systems;
-- Approval Center;
-- Audit Trail.
+### 4.2 ATLAS Connect
 
-### 4.4 Infrastructure administration
+ATLAS Connect owns the shared provider catalog, Integration Gateway contracts, adapters, capability resolution, and provider-health semantics.
 
-Privileged infrastructure providers appear through:
+Route family:
+
+- `/connect/providers`
+- `/connect/providers/:providerKey`
+
+### 4.3 ATLAS Manager
+
+Privileged infrastructure connections are administered through:
 
 `ATLAS Manager -> Infrastructure -> Connections`
 
-They reuse the same Integration Gateway but follow stricter infrastructure credential policy.
+Route family:
+
+- `/manager/infrastructure/connections`
+- `/manager/infrastructure/connections/:providerKey`
 
 ## 5. Architectural decision
 
-ATLAS will use a shared **Integration Gateway** instead of embedding OAuth or credentials inside each consuming module.
+ATLAS will use a shared **Integration Gateway**.
 
-High-level flow:
+General execution path:
 
-`User/Module -> Connected Apps or Capability Request -> Session -> Tenant/Organization -> RBAC -> Integration Grant -> Connection State -> Provider Adapter -> Provider API -> Result -> Audit`
+`User/Module -> Session -> Tenant/Organization -> RBAC -> Integration Grant -> Connection State -> Provider Adapter -> Provider API -> Result -> Audit`
 
-For interactive user authorization:
+Interactive authorization path:
 
-`Connected Apps -> Connect -> server-side authorization setup -> provider consent -> secure callback -> state/PKCE validation -> credential persistence boundary -> provider verification -> connection state update -> audit -> UI`
+`Connected Apps -> Connect -> server-side authorization setup -> provider consent -> secure callback -> state/PKCE validation -> protected credential boundary -> provider verification -> connection update -> audit -> UI`
 
-For infrastructure configuration:
+Infrastructure configuration path:
 
-`ATLAS Manager -> privileged authorization -> server-side credential submission -> protected storage -> provider verification -> environment-scoped connection state -> audit`
+`ATLAS Manager -> privileged authorization -> server-side secret submission -> protected storage -> provider verification -> environment-scoped connection -> audit`
 
-No consuming module is allowed to read or manipulate raw provider secrets.
+Consuming modules never receive raw provider credentials.
 
 ## 6. Connector classes
 
 ### 6.1 User OAuth connectors
 
-Initial user-oriented connectors:
+Initial providers:
 
-- Microsoft;
-- Google;
-- GitHub.
+- Microsoft
+- Google
+- GitHub
 
 Characteristics:
 
-- user or organization-linked authorization;
+- user- or organization-linked authorization;
 - provider-hosted consent;
-- authorization code flow with PKCE when supported;
+- authorization code flow and PKCE when supported;
 - explicit scopes;
 - refresh/expiration lifecycle when applicable;
 - reconnect and revoke operations;
-- user-facing identity metadata may be stored only in sanitized form;
-- capabilities are granted to ATLAS modules through Integration Grants.
+- sanitized identity metadata only;
+- capability use controlled through Integration Grants.
 
 ### 6.2 Infrastructure connectors
 
-Initial infrastructure connectors:
+Initial providers:
 
-- Cloudflare;
-- Supabase.
+- Cloudflare
+- Supabase
 
 Characteristics:
 
-- organization-owned rather than treated as a casual personal account;
+- organization-owned;
 - environment-scoped: `development`, `staging`, or `production`;
-- privileged configuration permission;
-- no secret reveal after initial save;
-- stronger audit requirements;
-- optional Approval Center requirement for production changes;
-- provider health verification through a real API call;
-- rotation and replacement workflows rather than generic personal-account reconnect semantics when appropriate.
+- privileged management permission;
+- no reveal-after-save behavior;
+- real provider verification;
+- rotation/replacement workflows;
+- stronger audit policy;
+- Approval Center integration for production changes when policy requires it.
 
-## 7. Shared provider contract
+## 7. Provider adapter contract
 
-Every provider adapter must implement a common contract conceptually equivalent to:
+Every provider adapter must implement a common conceptual contract:
 
 - `getProviderMetadata()`
 - `listSupportedCapabilities()`
-- `beginAuthorization()` when interactive authorization is supported
-- `handleAuthorizationCallback()` when callback-based authorization is supported
+- `beginAuthorization()` when applicable
+- `handleAuthorizationCallback()` when applicable
 - `verifyConnection()`
-- `refreshConnection()` when refresh is supported
-- `revokeConnection()` when revocation is supported
+- `refreshConnection()` when supported
+- `revokeConnection()` when supported
 - `executeCapability(request)`
 - `sanitizeIdentityMetadata()`
 - `mapProviderError(error)`
 
-Provider-specific logic must remain inside the adapter. Shared policy, tenancy, RBAC, audit, approval checks, and status semantics remain outside adapters.
+Provider-specific API behavior stays inside adapters. Tenant policy, RBAC, grants, approval checks, audit, and shared state semantics stay outside adapters.
 
 ## 8. Capability model
 
-Modules and ATLAS Assistant request named capabilities, not tokens.
+Modules and ATLAS Assistant request named capabilities, never tokens.
 
-Illustrative capabilities:
+Examples:
 
 - `microsoft.profile.read`
 - `microsoft.mail.read`
@@ -174,20 +179,28 @@ Illustrative capabilities:
 - `cloudflare.workers.read`
 - `supabase.project.read`
 
-A capability request is authorized only after all of the following are true:
+A capability executes only when all of these are true:
 
 1. ATLAS session is valid;
-2. tenant and organization context are resolved;
+2. tenant and organization are resolved;
 3. actor has the required ATLAS permission;
-4. connection belongs to the same tenant/organization scope;
-5. an Integration Grant authorizes the consuming module or actor;
-6. provider connection state allows execution;
-7. provider scopes or credential permissions satisfy the requested capability;
-8. Approval Center policy, when required, is satisfied.
+4. connection belongs to the same tenant/organization;
+5. an Integration Grant authorizes the actor, role, or module;
+6. connection state permits execution;
+7. provider scopes/credential permissions satisfy the capability;
+8. any required Approval Center decision is satisfied.
 
-## 9. Connection state machine
+## 9. Status model
 
-Connections use explicit, truthful states:
+### 9.1 Provider configuration state
+
+A provider can be `not_configured` when ATLAS does not yet have the required OAuth application registration, callback configuration, infrastructure secret-storage facility, or authorized provider configuration needed to begin a real connection.
+
+`not_configured` is a provider/configuration state, not evidence of a failed user connection.
+
+### 9.2 Connection lifecycle states
+
+Connections use:
 
 - `not_connected`
 - `authorizing`
@@ -199,46 +212,25 @@ Connections use explicit, truthful states:
 - `revoked`
 - `error`
 
-### 9.1 State rules
+Definitions:
 
-`not_connected`  
-No usable credential or authorization exists.
+- `not_connected`: no usable authorization exists for that connection scope.
+- `authorizing`: interactive authorization has started but has not produced a verified connection.
+- `connected_unverified`: credential material exists, but ATLAS has not completed a successful authenticated provider verification.
+- `verified`: ATLAS completed a real authenticated provider verification and recorded evidence/time of that check.
+- `degraded`: a previously usable connection exists, but health, scopes, or operations are partially failing.
+- `expired`: credential lifetime ended and automatic recovery is unavailable or pending.
+- `reconnect_required`: ATLAS cannot restore use automatically and user/admin authorization is required.
+- `revoked`: the provider or ATLAS explicitly revoked authorization.
+- `error`: a non-transient failure prevents normal operation and does not fit another state.
 
-`authorizing`  
-An interactive authorization flow has started but no verified connection exists yet.
-
-`connected_unverified`  
-Credential material has been received or configured but ATLAS has not yet completed a successful provider verification.
-
-`verified`  
-ATLAS has completed a real authenticated verification against the provider and the recorded scopes/capabilities are consistent with the connection.
-
-`degraded`  
-A previously usable connection exists but one or more health checks, scopes, or provider operations are failing.
-
-`expired`  
-Credential lifetime has ended and automatic refresh is unavailable or not yet attempted.
-
-`reconnect_required`  
-ATLAS cannot restore a usable connection automatically and needs user or administrator authorization.
-
-`revoked`  
-The provider or ATLAS has explicitly revoked the authorization.
-
-`error`  
-A non-transient integration failure prevents normal operation and does not fit another lifecycle state.
-
-### 9.2 Truthfulness rule
-
-The UI must never display `verified` solely because a row, environment variable, or credential reference exists. A successful authenticated verification is required.
+The UI must never show `verified` solely because metadata or a credential reference exists.
 
 ## 10. Data model
 
-The implementation should use Supabase migrations and preserve tenant/organization isolation. Exact SQL names may be adjusted during implementation to align with existing repository conventions, but the logical boundaries below are binding.
+The implementation should use Supabase migrations and preserve tenant/organization isolation. Exact SQL names may follow established repository conventions, but these logical boundaries are binding.
 
 ### 10.1 `integration_providers`
-
-Stores provider definitions and non-secret metadata.
 
 Required logical fields:
 
@@ -255,8 +247,6 @@ Required logical fields:
 
 ### 10.2 `integration_connections`
 
-Stores the sanitized connection record.
-
 Required logical fields:
 
 - `id`
@@ -267,7 +257,7 @@ Required logical fields:
 - `connector_class`
 - `environment` nullable for normal user connections and required for environment-scoped infrastructure connections
 - `status`
-- `external_subject_id` or equivalent provider identity reference when safe to retain
+- `external_subject_id` when safe to retain
 - `masked_identity`
 - `granted_scopes`
 - `credential_ref`
@@ -277,15 +267,13 @@ Required logical fields:
 - `revoked_at`
 - `last_error_code`
 - `last_error_at`
-- `metadata` restricted to sanitized non-secret provider information
+- sanitized `metadata`
 - `created_at`
 - `updated_at`
 
-### 10.3 `integration_credentials`
+### 10.3 Credential metadata boundary
 
-This is a logical security boundary, not permission to store plaintext secrets in a normal table.
-
-It must contain only the minimum metadata necessary to locate protected credentials, for example:
+ATLAS may persist only the minimum metadata needed to locate protected credentials, for example:
 
 - `id`
 - `connection_id`
@@ -294,11 +282,9 @@ It must contain only the minimum metadata necessary to locate protected credenti
 - `created_at`
 - `rotated_at`
 
-Raw provider secret material must be handled only by a server-side credential vault abstraction. The implementation plan must bind that abstraction to an existing authorized secret-storage mechanism if the repository already has one. If no suitable protected secret store exists, implementation must stop at the configuration boundary rather than persist raw secrets insecurely.
+Raw secret material must be handled only by a server-side credential-vault abstraction. The implementation plan must bind that abstraction to an existing authorized protected secret store if one exists. If no suitable protected store exists, implementation must stop at the real configuration boundary rather than persist plaintext secrets insecurely.
 
 ### 10.4 `integration_grants`
-
-Controls which actor, role, or module can consume a connection.
 
 Required logical fields:
 
@@ -316,9 +302,7 @@ Required logical fields:
 
 ### 10.5 `integration_events`
 
-Immutable metadata-only audit trail for integration lifecycle and material usage events.
-
-Required logical fields:
+Immutable metadata-only audit events contain:
 
 - `id`
 - `tenant_id`
@@ -335,16 +319,14 @@ Required logical fields:
 - `approval_id`
 - `correlation_id`
 - `outcome`
-- `provider_error_code` when safe and useful
+- safe provider error code when useful
 - `created_at`
 
-Audit events must never contain raw credentials or provider secrets.
+Audit events must never contain raw provider credentials.
 
-## 11. Tenancy and RBAC
+## 11. RBAC and tenancy
 
-The design extends the repository's shared tenancy concepts rather than creating module-specific tenant rules.
-
-Minimum product permissions:
+Minimum permissions:
 
 - `integrations.view`
 - `integrations.use`
@@ -353,140 +335,57 @@ Minimum product permissions:
 
 Semantics:
 
-`integrations.view`  
-View provider catalog, connection status, sanitized identity, scopes, usage metadata, and audit history allowed by policy.
+- `integrations.view`: view provider catalog, sanitized identity, states, scopes, usage metadata, and allowed audit history.
+- `integrations.use`: consume an authorized capability through the gateway when an Integration Grant also permits it.
+- `integrations.manage`: connect, reconnect, update allowed settings, or revoke normal user/provider connections.
+- `infrastructure.integrations.manage`: configure, rotate, replace, verify, or revoke privileged infrastructure connections.
 
-`integrations.use`  
-Consume an already-authorized capability through the Integration Gateway when an Integration Grant also permits the use.
+No query or operation may expose a connection from another tenant or organization. Tenant mismatch must fail without revealing whether the foreign connection exists.
 
-`integrations.manage`  
-Connect, reconnect, update allowed settings, or revoke normal user/provider connections.
+## 12. Connected Apps UI
 
-`infrastructure.integrations.manage`  
-Configure, rotate, replace, verify, or revoke privileged infrastructure connections.
+Each provider card shows only truthful non-secret data:
 
-No query or operation may return a connection from a different tenant or organization.
-
-## 12. Routes and navigation
-
-### 12.1 Connected Apps
-
-Primary route family:
-
-- `/settings/security/connected-apps`
-- `/settings/security/connected-apps/:providerKey`
-
-Provider detail contains:
-
-- Overview
-- Permissions
-- Used By
-- Activity
-- Security
-
-### 12.2 ATLAS Connect
-
-Provider catalog route family:
-
-- `/connect/providers`
-- `/connect/providers/:providerKey`
-
-This surface explains available providers and supported capabilities while delegating administrative state to the same underlying Integration Gateway.
-
-### 12.3 ATLAS Manager infrastructure
-
-Infrastructure route family:
-
-- `/manager/infrastructure/connections`
-- `/manager/infrastructure/connections/:providerKey`
-
-Cloudflare and Supabase are managed here when used as privileged infrastructure providers.
-
-## 13. Connected Apps UI
-
-### 13.1 Provider cards
-
-Each provider card shows only truthful, non-secret data:
-
-- provider logo/icon from approved assets;
+- approved provider icon/logo;
 - provider name;
-- connector class or category;
+- connector class/category;
 - masked connected identity when applicable;
-- current status;
+- current state;
 - connected date when applicable;
 - last verified timestamp when applicable;
 - concise capability summary;
 - primary action.
 
-### 13.2 Provider detail
+Provider detail:
 
-Overview shows:
+**Overview** — owner, organization, environment, sanitized identity, state, connected time, verification time, expiration, health, management actions.
 
-- connection owner;
-- organization;
-- environment when relevant;
-- sanitized account identity;
-- status;
-- connected time;
-- last verification;
-- expiration when known;
-- health summary;
-- allowed management actions.
+**Permissions** — provider scopes, mapped capabilities, missing capability requirements, and whether additional consent is required.
 
-Permissions shows:
+**Used By** — authorized modules, principals/roles where relevant, and active Integration Grants.
 
-- provider scopes;
-- mapped ATLAS capabilities;
-- missing capability requirements;
-- whether additional consent is needed.
+**Activity** — lifecycle audit events, verification results, reconnect/revoke events, and usage events when policy requires them.
 
-Used By shows:
+**Security** — connector class, environment, rotation metadata for infrastructure, provider-side management link/action, and RBAC-gated revoke/reconnect controls.
 
-- authorized modules;
-- approved principals or roles where relevant;
-- active Integration Grants.
+Desktop, tablet, and mobile must preserve the same functions. Narrow layouts may change tab/navigation presentation but may not hide capabilities merely due to viewport size.
 
-Activity shows:
+## 13. Microsoft — first complete adapter
 
-- connection lifecycle audit events;
-- verification results;
-- reconnect and revoke events;
-- capability-use events when audit policy requires them.
+Required lifecycle:
 
-Security shows:
+`Connect -> Microsoft consent -> callback -> state/PKCE validation -> protected credential persistence -> verify -> display -> execute authorized capability -> refresh -> reconnect -> revoke -> audit`
 
-- connection class;
-- environment;
-- credential rotation metadata for infrastructure connections;
-- provider-side management action when available;
-- revoke or reconnect controls gated by RBAC.
+User-visible metadata may include:
 
-### 13.3 Responsive behavior
-
-Desktop, tablet, and mobile must preserve the same functions. Detail tabs may become horizontally scrollable or a compact navigation control on narrow screens, but capabilities may not disappear merely due to viewport size.
-
-## 14. Microsoft adapter — first full milestone
-
-Microsoft is the first provider required to complete the entire lifecycle.
-
-Required flow:
-
-`Connect -> provider consent -> callback -> state/PKCE validation -> protected credential persistence -> verify -> display -> execute authorized capability -> refresh -> reconnect -> revoke -> audit`
-
-### 14.1 Microsoft user-visible data
-
-ATLAS may display:
-
-- masked account identity, for example `w***u@hotmail.com`;
+- masked identity such as `w***u@hotmail.com`;
 - connected date;
 - last verification time;
 - granted scopes;
 - mapped capabilities;
 - health state.
 
-Full account identifiers should be displayed only where ATLAS RBAC and privacy policy permit them.
-
-### 14.2 Microsoft actions
+Full external account identifiers are shown only when ATLAS RBAC/privacy policy permits them.
 
 Required actions:
 
@@ -497,60 +396,55 @@ Required actions:
 - `Manage at Microsoft`
 - `Revoke from ATLAS`
 
-`Manage at Microsoft` must direct users to the provider's official account/application management when a provider-side permission or consent operation cannot be performed safely inside ATLAS.
+`Manage at Microsoft` directs users to Microsoft's official management surface when provider-side consent or administration belongs there.
 
-## 15. Google and GitHub adapters
+## 14. Google and GitHub
 
-Google and GitHub must use the same provider contract and security boundaries.
-
-The initial implementation plan may stage their capabilities after the Microsoft end-to-end milestone, but the shared contracts, provider registry, status model, RBAC, database schema, Integration Grants, and UI must not be Microsoft-specific.
+Google and GitHub use the same gateway, state model, schema, policy, grants, audit, and UI contracts. They must not create provider-specific architecture forks.
 
 Google target capability families:
 
-- Gmail;
-- Calendar;
-- Drive;
-- Workspace identity where authorized.
+- Gmail
+- Calendar
+- Drive
+- Workspace identity when authorized
 
 GitHub target capability families:
 
-- repositories;
-- pull requests;
-- issues;
-- repository metadata;
-- explicitly authorized write actions in later milestones.
+- repositories
+- pull requests
+- issues
+- repository metadata
+- explicitly authorized write operations in later milestones
 
-## 16. Cloudflare and Supabase infrastructure profiles
+## 15. Cloudflare and Supabase infrastructure profiles
 
-Cloudflare and Supabase are represented as Infrastructure Connections when used for ATLAS platform operations.
+When used for ATLAS platform operations, Cloudflare and Supabase are Infrastructure Connections.
 
-Required characteristics:
+They require:
 
 - organization ownership;
 - explicit environment;
-- `infrastructure.integrations.manage` permission;
-- protected secret storage;
-- verification through a real provider operation;
+- `infrastructure.integrations.manage`;
+- protected server-side secret handling;
+- real provider verification;
 - no reveal-after-save behavior;
-- audit event for create, verify, rotate, replace, revoke, and failed verification;
-- Approval Center integration for production changes when policy requires it.
+- audit for create, verify, rotate, replace, revoke, and failed verification;
+- Approval Center integration for sensitive production changes when policy requires it.
 
-A configured infrastructure connection remains `connected_unverified` until ATLAS successfully verifies the credential against the provider.
+A configured infrastructure credential remains `connected_unverified` until ATLAS successfully verifies it.
 
-## 17. ATLAS Assistant integration
+## 16. ATLAS Assistant
 
-ATLAS Assistant is a consumer of Integration Gateway capabilities. It is not the owner of provider tokens.
+ATLAS Assistant is a consumer of capabilities, never the owner of provider tokens.
 
-Example intent:
+Example execution:
 
-`Find the Microsoft email I received about a newly connected application.`
+`Assistant intent -> capability selection -> session -> tenant -> RBAC -> Integration Grant -> provider state -> scope validation -> adapter -> provider result -> sanitized assistant result -> audit as required`
 
-Execution path:
+If execution is unavailable, the Assistant returns a structured blocked reason such as:
 
-`Assistant intent -> capability selection -> session -> tenant -> RBAC -> Integration Grant -> provider state -> scope validation -> provider adapter -> provider result -> sanitized assistant result -> audit as required`
-
-If the requested capability is unavailable, the Assistant must return a structured blocked state such as:
-
+- provider not configured;
 - provider not connected;
 - provider degraded;
 - reconnect required;
@@ -559,121 +453,96 @@ If the requested capability is unavailable, the Assistant must return a structur
 - missing provider scope;
 - approval required.
 
-The Assistant must never silently expand OAuth scopes, create infrastructure tokens, or bypass Approval Center.
+The Assistant must never silently expand scopes, create infrastructure credentials, or bypass Approval Center.
 
-## 18. Approval Center integration
+## 17. Approval Center
 
-Approval Center is required for sensitive operations when organizational policy says approval is necessary.
+Sensitive actions may require Approval Center according to organization policy.
 
-Potential approval-gated operations include:
+Examples:
 
 - expanding OAuth scopes;
-- granting a privileged module access to an existing connection;
+- granting a privileged module a connection;
 - connecting production infrastructure;
-- rotating or replacing production Cloudflare/Supabase credentials;
+- rotating/replacing production Cloudflare or Supabase credentials;
 - revoking an organization-shared connection;
 - enabling a high-privilege capability.
 
-Approval records must make the requested action intelligible:
+Approval records identify:
 
 - requester;
 - provider;
 - connection;
 - tenant/organization;
 - environment;
-- requested capability or scope change;
+- requested scope/capability change;
 - risk classification when available;
 - resulting action.
 
-Approval lifecycle:
+Lifecycle:
 
 `requested -> awaiting_approval -> approved/rejected -> executed -> verified`
 
 A rejected approval must not partially mutate provider state.
 
-## 19. Credential and secret handling
+## 18. Secret handling invariants
 
-Binding rules:
-
-1. no provider secret is persisted in browser LocalStorage or SessionStorage;
-2. no provider secret is embedded in URLs;
-3. no provider secret is emitted to frontend logs, analytics, browser error payloads, audit events, or UI state that survives the request;
-4. no provider secret is committed to Git;
-5. provider secrets are handled only by server-side code;
-6. UI receives only sanitized metadata and opaque connection identifiers;
+1. no provider secret in LocalStorage or SessionStorage;
+2. no provider secret in URLs;
+3. no provider secret in frontend logs, analytics, audit payloads, browser error payloads, or persisted client state;
+4. no provider secret committed to Git;
+5. provider secrets handled only by server-side code;
+6. browser receives sanitized metadata and opaque identifiers only;
 7. infrastructure secrets are never revealable after save;
-8. credential rotation creates an auditable lifecycle event without exposing the old or new secret;
-9. callback errors must sanitize provider payloads before returning them to the browser.
+8. rotation is auditable without exposing old/new secret values;
+9. callback/provider errors are sanitized before reaching the browser.
 
-## 20. Error handling
+## 19. Error behavior
 
-### 20.1 Provider outage
+- **Provider outage:** preserve the connection; record failure; use `degraded` only when evidence supports it.
+- **Expired credential:** attempt server-side refresh when supported; successful refresh must be followed by verification before returning to `verified`; otherwise use `reconnect_required` when user action is necessary.
+- **External revocation:** transition to `revoked`, block capability execution, and audit the event.
+- **Missing scope:** preserve the connection, deny only the affected capability, and offer explicit reauthorization only to an authorized manager.
+- **Tenant mismatch:** deny without leaking foreign connection existence.
 
-A provider outage does not automatically delete the connection. ATLAS records the failure and transitions to `degraded` when evidence supports that state.
+## 20. Audit requirements
 
-### 20.2 Expired credential
-
-If refresh is supported, ATLAS attempts server-side refresh. If refresh succeeds, the connection returns to `verified` after verification. If refresh fails in a way requiring user action, transition to `reconnect_required`.
-
-### 20.3 External revocation
-
-If the provider reports that authorization was revoked, transition to `revoked`, disable capability execution, and emit an audit event.
-
-### 20.4 Missing scope
-
-The connection remains intact, but the capability request is denied with a structured missing-scope result. ATLAS may offer an explicit reauthorization flow when the actor is permitted to manage the connection.
-
-### 20.5 Tenant mismatch
-
-Return an authorization failure without leaking whether the foreign connection exists.
-
-## 21. Audit requirements
-
-All material lifecycle changes must emit immutable metadata-only integration events.
-
-Minimum audited actions:
+Audit at minimum:
 
 - authorization started;
 - connection established;
-- verification succeeded;
-- verification failed;
-- refresh succeeded;
-- refresh failed;
+- verification succeeded/failed;
+- refresh succeeded/failed;
 - scopes changed;
-- Integration Grant created;
-- Integration Grant revoked;
-- reconnect started;
-- reconnect completed;
-- revoke requested;
-- revoke completed;
-- infrastructure credential created;
-- infrastructure credential rotated;
-- infrastructure credential replaced;
-- privileged capability used when policy requires usage auditing;
+- Integration Grant created/revoked;
+- reconnect started/completed;
+- revoke requested/completed;
+- infrastructure credential created/rotated/replaced;
+- privileged capability used when policy requires usage audit;
 - provider-reported revocation;
-- approval requested, approved, rejected, or executed.
+- approval requested/approved/rejected/executed.
 
-Audit payloads must include correlation identifiers that allow a UI action, gateway request, provider call, approval, and resulting state transition to be traced without storing provider secrets.
+Correlation IDs must allow a UI action, gateway request, provider call, approval, and resulting state transition to be traced without storing secrets.
 
-## 22. Implementation boundaries
+## 21. Implementation boundaries
 
-The implementation must follow the repository's existing architecture before introducing new packages or services.
+Implementation must inspect and extend existing ATLAS architecture before creating new services or packages.
 
 Likely responsibility boundaries:
 
-### Web application
+### Web
 
-- Connected Apps routes;
-- provider cards and detail UI;
+- routes;
+- Connected Apps UI;
 - responsive states;
 - explicit management actions;
 - no raw credential handling.
 
 ### Shared core
 
-- shared tenant/organization scope contracts;
+- tenant/organization scope contracts;
 - integration permission definitions;
-- status and capability types;
+- status/capability types;
 - provider-independent policy helpers;
 - audit metadata contracts.
 
@@ -681,17 +550,17 @@ Likely responsibility boundaries:
 
 - provider registry;
 - capability authorization;
-- Integration Grant checks;
-- connection-state enforcement;
-- provider adapter dispatch;
-- standardized error/result mapping;
+- grant checks;
+- state enforcement;
+- provider dispatch;
+- standardized result/error mapping;
 - audit correlation.
 
 ### Supabase
 
 - migrations for provider, connection, grants, and audit metadata;
-- RLS or equivalent tenant/organization enforcement consistent with existing project patterns;
-- server-side functions for authorization callbacks, verification, refresh, revoke, and infrastructure credential submission where appropriate.
+- RLS or equivalent tenant/organization enforcement consistent with repository patterns;
+- server-side functions for callbacks, verification, refresh, revoke, and infrastructure credential submission where appropriate.
 
 ### Credential vault abstraction
 
@@ -700,11 +569,11 @@ Likely responsibility boundaries:
 - rotation metadata;
 - no browser access.
 
-The implementation plan must inspect the repository before selecting exact file paths and must prefer extending existing shared infrastructure over creating parallel systems.
+Exact file paths are determined during implementation planning after repository inspection.
 
-## 23. Reusable UI components
+## 22. Reusable units
 
-Expected reusable units include:
+Expected UI units:
 
 - `ConnectedAppsPage`
 - `ProviderCard`
@@ -715,7 +584,7 @@ Expected reusable units include:
 - `IntegrationActivity`
 - `ProviderSecurityPanel`
 
-Expected non-UI units include:
+Expected non-UI units:
 
 - `IntegrationGateway`
 - `ProviderRegistry`
@@ -725,11 +594,11 @@ Expected non-UI units include:
 - `CredentialVaultAdapter`
 - `IntegrationAudit`
 
-Names may be adjusted to existing repository conventions, but responsibilities should remain isolated and testable.
+Names may follow repository conventions, but responsibilities must remain isolated and testable.
 
-## 24. Required UI states
+## 23. Required UI states
 
-All relevant controls must implement real states for:
+Controls and pages implement real states for:
 
 - idle;
 - hover;
@@ -739,7 +608,7 @@ All relevant controls must implement real states for:
 - disabled;
 - empty;
 - authorizing;
-- connected but unverified;
+- connected/unverified;
 - verified;
 - degraded;
 - reconnect required;
@@ -747,48 +616,48 @@ All relevant controls must implement real states for:
 - error;
 - success.
 
-No button may exist solely to log to the console, use `href="#"`, or simulate a completed provider action.
+No functional control may exist solely to log to the console, use `href="#"`, or simulate a provider action.
 
-## 25. Test strategy
+## 24. Test strategy
 
-Implementation must use TDD for new behavior and include unit, integration, and route-level coverage as appropriate.
+New behavior uses TDD and appropriate unit, integration, and route-level coverage.
 
 Required scenarios:
 
 1. tenant A cannot view tenant B connection;
 2. tenant A cannot execute tenant B capability;
 3. actor without `integrations.view` cannot view connection metadata;
-4. actor with view permission but without manage permission cannot connect, reconnect, or revoke;
-5. invalid OAuth state is rejected;
+4. actor with view but without manage cannot connect, reconnect, or revoke;
+5. invalid OAuth `state` is rejected;
 6. invalid PKCE verifier is rejected when PKCE applies;
-7. successful callback creates only a sanitized connection record plus protected credential reference;
-8. cancelled provider consent returns a safe cancelled/error state;
+7. successful callback creates only sanitized connection metadata plus protected credential reference;
+8. cancelled consent returns a safe cancelled/error state;
 9. missing provider scope blocks only the affected capability;
 10. expired credential triggers refresh when supported;
-11. successful refresh re-verifies the connection;
+11. successful refresh re-verifies before `verified`;
 12. failed refresh can transition to `reconnect_required`;
-13. provider outage produces `degraded` behavior without deleting authorization;
-14. external provider revocation produces `revoked`;
-15. revoke from ATLAS disables further capability execution;
+13. provider outage can produce `degraded` without deleting authorization;
+14. external revocation produces `revoked`;
+15. revoke from ATLAS disables capability execution;
 16. raw secrets are absent from frontend responses;
 17. raw secrets are absent from audit events;
-18. audit event is created for material lifecycle operations;
+18. material lifecycle operations emit audit events;
 19. Approval Center is enforced when policy requires it;
 20. rejected approval does not mutate provider authorization;
-21. ATLAS Assistant is blocked without required capability or grant;
-22. ATLAS Assistant succeeds through the gateway when capability, scope, state, grant, and permissions are valid;
-23. Connected Apps renders appropriate empty state;
-24. desktop route works;
-25. tablet layout works;
-26. mobile layout works;
-27. provider detail tabs/navigation remain usable on mobile;
+21. ATLAS Assistant is blocked without required permission, grant, scope, or healthy state;
+22. ATLAS Assistant succeeds through the gateway when all checks pass;
+23. Connected Apps renders a real empty state;
+24. desktop route/layout works;
+25. tablet route/layout works;
+26. mobile route/layout works;
+27. provider detail navigation remains usable on mobile;
 28. `verified` is impossible without recorded successful verification evidence;
-29. infrastructure connection cannot be managed with normal `integrations.manage` alone;
-30. environment-scoped infrastructure connection cannot cross development/staging/production boundaries.
+29. infrastructure connection cannot be managed with ordinary `integrations.manage` alone;
+30. infrastructure connection cannot cross development/staging/production scope.
 
-## 26. Validation requirements
+## 25. Validation
 
-Before the feature can be declared complete, run the repository's required validation commands:
+Before declaring the feature complete:
 
 ```bash
 npm run typecheck
@@ -798,24 +667,22 @@ npm run build
 
 Also verify:
 
-- affected routes do not return 404/500;
-- provider management navigation reaches final actions;
-- callback and revoke flows behave correctly;
+- affected routes have no 404/500 failures;
+- provider-management navigation reaches final actions;
+- callback/revoke flows work;
 - authentication and RBAC boundaries hold;
-- no provider secret is introduced into source control;
-- empty, loading, degraded, reconnect, revoked, error, and success states work;
-- responsive behavior is checked for desktop, tablet, and mobile;
-- no adjacent ATLAS module is regressed.
+- no provider secret entered source control;
+- empty/loading/degraded/reconnect/revoked/error/success states work;
+- desktop/tablet/mobile behavior is checked;
+- adjacent ATLAS modules are not regressed.
 
-## 27. Milestone sequence
+## 26. Milestones
 
-### Milestone 1 — Shared integration foundation
+### Milestone 1 — Shared foundation
 
-Deliver:
-
-- shared provider registry;
-- shared state model;
-- shared capability and permission contracts;
+- provider registry;
+- status model;
+- capability/permission contracts;
 - Integration Gateway skeleton;
 - tenant-aware connection/grant/audit persistence;
 - Connected Apps shell;
@@ -823,15 +690,13 @@ Deliver:
 
 ### Milestone 2 — Microsoft end-to-end
 
-Deliver:
-
 - connect;
 - callback;
-- state/PKCE validation where applicable;
+- state/PKCE validation;
 - protected credential persistence;
 - verify;
-- permission/scopes display;
-- capability execution;
+- scope/capability display;
+- one authorized capability execution;
 - refresh;
 - reconnect;
 - revoke;
@@ -840,66 +705,64 @@ Deliver:
 
 ### Milestone 3 — Google and GitHub
 
-Reuse the same contracts for Google and GitHub without introducing provider-specific architecture forks.
+Reuse the same contracts without architecture forks.
 
-### Milestone 4 — Infrastructure connections
+### Milestone 4 — Infrastructure profiles
 
-Deliver Cloudflare and Supabase infrastructure profiles with environment scoping, stronger permission requirements, protected secret submission, verification, rotation metadata, and Approval Center integration as required.
+Deliver Cloudflare and Supabase with environment scoping, stronger permission requirements, protected secret submission, verification, rotation metadata, and policy-driven Approval Center integration.
 
-## 28. Acceptance criteria
+## 27. Acceptance criteria
 
-The first operational acceptance gate is satisfied only when an authorized ATLAS user can complete this real workflow:
+The first operational acceptance gate is satisfied only when an authorized user can complete this real workflow:
 
-`ATLAS -> Settings -> Security -> Connected Apps -> Microsoft -> Connect -> Microsoft consent -> return to ATLAS -> verified provider check -> inspect permissions -> execute one authorized Microsoft capability -> inspect audit trail -> revoke -> confirm further capability use is blocked`
+`ATLAS -> Settings -> Security -> Connected Apps -> Microsoft -> Connect -> Microsoft consent -> return to ATLAS -> authenticated provider verification -> inspect permissions -> execute one authorized Microsoft capability -> inspect audit trail -> revoke -> confirm further capability use is blocked`
 
-The workflow must satisfy all of the following:
+The workflow must demonstrate:
 
-- correct tenant and organization isolation;
-- no secret exposure to the browser;
+- tenant/organization isolation;
+- no browser secret exposure;
 - no fake `verified` state;
 - provider scopes mapped to ATLAS capabilities;
-- RBAC enforced for view/use/manage;
-- Integration Grants enforced for module/assistant consumption;
-- audit events recorded;
-- provider errors mapped to safe ATLAS states;
-- mobile, tablet, and desktop usability;
-- required typecheck, tests, and build pass.
+- RBAC for view/use/manage;
+- Integration Grants for module/assistant consumption;
+- audit events;
+- safe provider error mapping;
+- desktop/tablet/mobile usability;
+- passing typecheck, tests, and build.
 
-Google and GitHub are accepted only when they reuse the same gateway and policy model. Cloudflare and Supabase are accepted only when infrastructure credentials remain server-side, environment-scoped, RBAC-protected, and truthfully verified.
+Google and GitHub are accepted only when they reuse the same gateway/policy model. Cloudflare and Supabase are accepted only when infrastructure credentials remain server-side, environment-scoped, RBAC-protected, and truthfully verified.
 
-## 29. Security invariants
-
-These invariants are non-negotiable:
+## 28. Security invariants
 
 1. tenant boundaries are enforced server-side;
 2. provider credentials never become client-readable application data;
 3. ATLAS Assistant never receives raw provider credentials;
-4. provider adapters cannot bypass Integration Gateway policy;
-5. `verified` requires actual provider verification evidence;
+4. provider adapters cannot bypass gateway policy;
+5. `verified` requires real provider verification evidence;
 6. infrastructure connections require infrastructure-level permission;
 7. approval-gated actions cannot execute before approval;
 8. audit data never contains raw secrets;
-9. missing provider capability fails closed;
-10. a provider outage cannot silently downgrade authorization checks.
+9. missing capability fails closed;
+10. provider outages do not weaken authorization checks.
 
-## 30. Production behavior
+## 29. Production dependency boundary
 
-Production deployment is not part of the design-approval step. When implementation reaches deployment, it must use the existing ATLAS pipeline and existing authorized provider configuration.
+Production deployment is not part of design approval.
 
-If a real provider credential, OAuth app registration, callback configuration, secret-storage facility, or production permission is missing, implementation must stop at that real dependency boundary, mark the integration as `not_configured` or the appropriate non-live state, and state exactly what remains. It must not simulate a successful production connection.
+If a real OAuth app registration, callback configuration, provider credential, secret-storage facility, or production permission is missing, implementation must stop at that dependency boundary and show `not_configured` or the appropriate non-live state. ATLAS must not simulate a successful connection.
 
-## 31. Definition of done
+## 30. Definition of done
 
-The Connected Apps + Integration Gateway project is done only when:
+Connected Apps + Integration Gateway is done only when:
 
-- shared integration architecture is implemented without duplicating existing ATLAS infrastructure;
+- the shared architecture is implemented without unnecessary duplication;
 - Microsoft passes the end-to-end acceptance workflow;
 - provider states are truthful;
-- tenant and organization isolation are verified;
+- tenant/organization isolation is verified;
 - permissions and Integration Grants are verified;
-- secret handling invariants are verified;
+- secret-handling invariants are verified;
 - audit and approval behavior are verified;
 - desktop/tablet/mobile behavior is verified;
 - `npm run typecheck`, `npm test`, and `npm run build` pass;
 - no production credential is committed or exposed;
-- implementation evidence supports the claimed status.
+- implementation evidence supports every completion claim.
