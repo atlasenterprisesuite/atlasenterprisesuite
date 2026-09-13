@@ -5,6 +5,7 @@ import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { GuidedExecutionPage } from './execution/GuidedExecutionPage';
+import { ManagerReadinessLauncher } from './execution/ManagerReadinessLauncher';
 import { resolveAtlasExtension } from './extensions/resolveAtlasExtension';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
@@ -252,6 +253,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
         <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
         <Route path="/studio/create" element={<RequireAtlasIdentity><CreatorWorkspace /></RequireAtlasIdentity>} />
