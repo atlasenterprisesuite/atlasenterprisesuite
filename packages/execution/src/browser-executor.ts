@@ -60,3 +60,23 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
     }
   };
 }
+
+export class FakeBrowserRuntimeAdapter {
+  private readonly queue = new Map<BrowserActionType, BrowserActionResult[]>();
+
+  enqueue(actionType: BrowserActionType, result: BrowserActionResult) {
+    const current = this.queue.get(actionType) || [];
+    current.push({ state: result.state, result: sanitizeBrowserResult(result.result) });
+    this.queue.set(actionType, current);
+    return this;
+  }
+
+  async execute(input: { executionEnvelope: BrowserExecutionEnvelope; action: BrowserAction }): Promise<BrowserActionResult> {
+    prepareBrowserJob(input.executionEnvelope, input.action);
+    const queue = this.queue.get(input.action.type) || [];
+    const next = queue.shift();
+    if (!next) return { state: 'failed', result: { error: 'fake_browser_result_missing' } };
+    this.queue.set(input.action.type, queue);
+    return { state: next.state, result: sanitizeBrowserResult(next.result) };
+  }
+}
