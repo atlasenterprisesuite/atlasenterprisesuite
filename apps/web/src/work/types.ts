@@ -8,6 +8,7 @@ import type { ExecutionStatus } from '../../../../packages/execution/src/types';
 
 export type WorkWorkflow = {
   id: string;
+  organizationId: string;
   ownerModule: string;
   status: ExecutionStatus;
   currentTaskId: string | null;
