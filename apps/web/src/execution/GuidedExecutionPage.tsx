@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   decideExecutionApproval,
+  evaluateWorkStep,
   loadGuidedExecutionAudit,
   loadGuidedExecutionState,
-  requestExecutionApproval
+  requestExecutionApproval,
+  type WorkStepExecutionDecision
 } from './api';
 import type { ApprovalDecision } from './ApprovalCard';
 import { AuditTimeline } from './AuditTimeline';
@@ -35,6 +37,7 @@ export function GuidedExecutionPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [executionDecision, setExecutionDecision] = useState<WorkStepExecutionDecision | null>(null);
 
   const adoptState = useCallback((next: GuidedExecutionState) => {
     setData(next);
@@ -113,6 +116,25 @@ export function GuidedExecutionPage() {
 
     return () => { active = false; };
   }, [adoptState, refreshAudit, workflowId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!data || !selectedStepId) {
+      setExecutionDecision(null);
+      return () => { active = false; };
+    }
+    const step = data.steps.find((item) => item.id === selectedStepId);
+    const task = step ? data.tasks.find((item) => item.id === step.taskId) : null;
+    if (!step || !task || task.currentStepId !== step.id) {
+      setExecutionDecision(null);
+      return () => { active = false; };
+    }
+    setExecutionDecision(null);
+    void evaluateWorkStep(task.id)
+      .then((decision) => { if (active) setExecutionDecision(decision); })
+      .catch(() => { if (active) setExecutionDecision(null); });
+    return () => { active = false; };
+  }, [data, selectedStepId]);
 
   if (loading) return <section aria-busy="true"><h1>Loading execution workflow</h1></section>;
   if (error === 'workflow_not_found') return <section><h1>Workflow not found</h1><p>The workflow is unavailable in the active organization.</p></section>;
@@ -196,6 +218,7 @@ export function GuidedExecutionPage() {
                 dependencies={data.dependencies}
                 evidence={data.evidence}
                 approvals={data.approvals}
+                executionDecision={executionDecision}
                 busy={busy}
                 onDecideApproval={decideApproval}
               />
