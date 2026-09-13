@@ -10,3 +10,4 @@ export * from './engine';
 export * from './work-types';
 export * from './work-intent';
 export * from './work-routing';
+export * from './browser-envelope';
