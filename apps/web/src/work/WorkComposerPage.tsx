@@ -3,25 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { compileWorkIntent, type WorkPlanPreview } from '../../../../packages/execution/src/work-intent';
 import type { WorkAutonomyLevel, WorkExecutionMode, WorkRuntimePreference } from '../../../../packages/execution/src/work-types';
 import { createWorkWorkflow } from './api';
-
-const executionModeLabels: Record<WorkExecutionMode, string> = {
-  api: 'API',
-  browser: 'Browser',
-  hybrid: 'Hybrid'
-};
-
-const autonomyLabels: Record<WorkAutonomyLevel, string> = {
-  manual: 'Manual',
-  guided: 'Guided',
-  autonomous: 'Autonomous'
-};
-
-const runtimeLabels: Record<WorkRuntimePreference, string> = {
-  auto: 'Auto',
-  local: 'Local',
-  self_hosted: 'Self-hosted',
-  cloud_ephemeral: 'Cloud ephemeral'
-};
+import { ExecutionConfiguration } from './ExecutionConfiguration';
 
 export function WorkComposerPage() {
   const navigate = useNavigate();
@@ -160,12 +142,12 @@ export function WorkComposerPage() {
         <section className="work-preview execution-panel" aria-labelledby="work-preview-title">
           <p className="eyebrow">Review before launch</p>
           <h2 id="work-preview-title">Plan preview</h2>
-          <dl className="work-preview-facts">
-            <div><dt>Mode</dt><dd>{executionModeLabels[preview.executionMode]}</dd></div>
-            <div><dt>Autonomy</dt><dd>{autonomyLabels[preview.autonomyLevel]}</dd></div>
-            <div><dt>Runtime</dt><dd>{runtimeLabels[preview.runtimePreference]}</dd></div>
-            <div><dt>Budget</dt><dd>{preview.budgetLimit === null ? 'Not authorized' : `$${preview.budgetLimit}`}</dd></div>
-          </dl>
+          <ExecutionConfiguration
+            executionMode={preview.executionMode}
+            autonomyLevel={preview.autonomyLevel}
+            runtimePreference={preview.runtimePreference}
+            budgetLimit={preview.budgetLimit}
+          />
           <h3>Success criteria</h3>
           <ul>{preview.successCriteria.map((criterion) => <li key={criterion}>{criterion}</li>)}</ul>
           <p className="notice">This is a draft preview. No provider action has been executed.</p>
