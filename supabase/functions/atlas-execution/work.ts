@@ -169,7 +169,7 @@ export async function createWorkWorkflowPlan(input: CreateWorkWorkflowPlanInput)
 export async function listWorkWorkflows(input: ListWorkWorkflowsInput) {
   const { data, error } = await input.admin
     .from('execution_workflows')
-    .select('id,owner_module,status,current_task_id,current_module,context,created_at,updated_at,completed_at')
+    .select('id,org_id,owner_module,status,current_task_id,current_module,context,created_at,updated_at,completed_at')
     .eq('org_id', input.context.orgId)
     .eq('workflow_type', 'work.sovereign')
     .order('created_at', { ascending: false })
@@ -179,6 +179,7 @@ export async function listWorkWorkflows(input: ListWorkWorkflowsInput) {
 
   return (data || []).map((row: any) => ({
     id: String(row.id),
+    organization_id: String(row.org_id),
     owner_module: String(row.owner_module),
     status: String(row.status),
     current_task_id: row.current_task_id ? String(row.current_task_id) : null,
