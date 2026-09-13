@@ -26,5 +26,5 @@ jobs:
           npm --version
       - name: Install
         run: npm ci
-      - name: Hospitality core hierarchy contract
-        run: npx vitest run tests/unit/hospitality-core-types.test.ts
+      - name: Hospitality core contracts
+        run: npx vitest run tests/unit/hospitality-core-types.test.ts tests/unit/hospitality-scope.test.ts
