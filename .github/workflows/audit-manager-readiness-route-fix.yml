@@ -1,0 +1,62 @@
+name: ATLAS Audit Manager Readiness Route Fix
+
+on:
+  push:
+    branches:
+      - audit/atlas-production-runner-closure-2026-09-13
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify RED target exists before patch
+        run: |
+          grep -F "path=\"/execution/:workflowId\"" apps/web/src/App.tsx
+          test -f apps/web/src/execution/ManagerReadinessLauncher.tsx
+          npx vitest run tests/integration/manager-readiness-route.test.tsx || true
+
+      - name: Register Manager Readiness route
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('apps/web/src/App.tsx')
+          text = path.read_text()
+          import_line = "import { ManagerReadinessLauncher } from './execution/ManagerReadinessLauncher';\n"
+          anchor_import = "import { GuidedExecutionPage } from './execution/GuidedExecutionPage';\n"
+          route_line = "        <Route path=\"/execution/manager/readiness\" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />\n"
+          anchor_route = "        <Route path=\"/execution/:workflowId\" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />\n"
+          if import_line not in text:
+              if anchor_import not in text:
+                  raise SystemExit('guided_execution_import_anchor_missing')
+              text = text.replace(anchor_import, anchor_import + import_line, 1)
+          if route_line not in text:
+              if anchor_route not in text:
+                  raise SystemExit('guided_execution_route_anchor_missing')
+              text = text.replace(anchor_route, route_line + anchor_route, 1)
+          path.write_text(text)
+          PY
+
+      - name: Verify focused GREEN
+        run: npx vitest run tests/integration/manager-readiness-route.test.tsx
+
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/audit-manager-readiness-route-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/App.tsx .github/workflows/audit-manager-readiness-route-fix.yml
+          git commit -m "fix: restore Manager Readiness route"
+          git push origin HEAD:audit/atlas-production-runner-closure-2026-09-13
