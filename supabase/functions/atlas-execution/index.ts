@@ -7,7 +7,9 @@ import {
 } from '../../../packages/execution/src/types.ts';
 import { canTransitionTask, evaluateTaskCompletion } from '../../../packages/execution/src/state-machine.ts';
 import { digestApprovalPayload } from '../../../packages/execution/src/approvals.ts';
+import { parseAtlasWorkContext } from '../../../packages/execution/src/work-types.ts';
 import { ManagerReadinessError, syncManagerReadiness } from './manager-readiness.ts';
+import { createWorkWorkflowPlan, listWorkWorkflows, WorkExecutionError } from './work.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
@@ -30,6 +32,8 @@ const SUPPORTED_OPERATIONS = new Set([
   'record_evidence',
   'request_approval',
   'decide_approval',
+  'create_workflow_plan',
+  'list_workflows',
   'sync_manager_readiness'
 ]);
 
@@ -624,6 +628,45 @@ async function decideApproval(req: Request, body: JsonObject, context: RequestCo
   return json(req, { ok: true, approval: decided });
 }
 
+async function createWorkPlan(req: Request, body: JsonObject, context: RequestContext, requestId: string) {
+  requireExecutionPermission(context, 'execution.write');
+  const ownerModule = requiredText(body.owner_module, 'owner_module_required', 80);
+  const intent = requiredText(body.intent, 'work_intent_required', 2000);
+  const work = parseAtlasWorkContext({ work: body.work });
+  const admin = adminClient();
+
+  try {
+    const result = await createWorkWorkflowPlan({
+      admin,
+      context: { userId: context.userId, orgId: context.orgId },
+      requestId,
+      ownerModule,
+      intent,
+      work,
+      appendAudit: (input) => appendAudit(admin, input)
+    });
+    return json(req, { ok: true, workflow_id: result.workflowId, task_id: result.taskId }, 201);
+  } catch (error) {
+    if (error instanceof WorkExecutionError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
+async function listWorkflows(req: Request, context: RequestContext) {
+  requireExecutionPermission(context, 'execution.read');
+  const admin = adminClient();
+  try {
+    const workflows = await listWorkWorkflows({
+      admin,
+      context: { userId: context.userId, orgId: context.orgId }
+    });
+    return json(req, { ok: true, workflows });
+  } catch (error) {
+    if (error instanceof WorkExecutionError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
 async function syncReadiness(req: Request, context: RequestContext, requestId: string) {
   requireExecutionPermission(context, 'execution.write');
   const admin = adminClient();
@@ -678,6 +721,8 @@ Deno.serve(async (req: Request) => {
     if (operation === 'record_evidence') return await recordEvidence(req, body, context, requestId);
     if (operation === 'request_approval') return await requestApproval(req, body, context, requestId);
     if (operation === 'decide_approval') return await decideApproval(req, body, context, requestId);
+    if (operation === 'create_workflow_plan') return await createWorkPlan(req, body, context, requestId);
+    if (operation === 'list_workflows') return await listWorkflows(req, context);
     if (operation === 'sync_manager_readiness') return await syncReadiness(req, context, requestId);
     return json(req, { ok: false, error: 'unsupported_operation' }, 400);
   } catch (error) {
