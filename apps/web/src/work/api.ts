@@ -14,6 +14,10 @@ function rows(value: unknown): RawRecord[] {
     : [];
 }
 
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String).filter(Boolean).slice(0, 40) : [];
+}
+
 function nullableString(value: unknown): string | null {
   return value === null || value === undefined || value === '' ? null : String(value);
 }
@@ -82,4 +86,81 @@ export async function createWorkWorkflow(input: CreateWorkWorkflowInput) {
     workflowId: String(data.workflow_id),
     taskId: data.task_id ? String(data.task_id) : null
   };
+}
+
+export type WorkConnectionSummary = {
+  id: string;
+  provider: string;
+  mechanism: 'oauth' | 'session' | 'vault';
+  status: 'active' | 'revoked' | 'expired' | 'error';
+  capabilities: string[];
+};
+
+export type WorkRuntimeSummary = {
+  id: string;
+  kind: 'local' | 'self_hosted' | 'cloud_ephemeral';
+  label: string;
+  status: 'online' | 'offline' | 'degraded' | 'revoked';
+  capabilities: string[];
+  lastSeenAt: string | null;
+};
+
+function normalizeConnection(value: unknown): WorkConnectionSummary | null {
+  const raw = record(value);
+  const mechanism = String(raw.mechanism || '');
+  const status = String(raw.status || '');
+  if (!raw.id || !raw.provider || !['oauth', 'session', 'vault'].includes(mechanism) || !['active', 'revoked', 'expired', 'error'].includes(status)) return null;
+  return {
+    id: String(raw.id),
+    provider: String(raw.provider),
+    mechanism: mechanism as WorkConnectionSummary['mechanism'],
+    status: status as WorkConnectionSummary['status'],
+    capabilities: strings(raw.capabilities)
+  };
+}
+
+function normalizeRuntime(value: unknown): WorkRuntimeSummary | null {
+  const raw = record(value);
+  const kind = String(raw.kind || '');
+  const status = String(raw.status || '');
+  if (!raw.id || !['local', 'self_hosted', 'cloud_ephemeral'].includes(kind) || !['online', 'offline', 'degraded', 'revoked'].includes(status)) return null;
+  return {
+    id: String(raw.id),
+    kind: kind as WorkRuntimeSummary['kind'],
+    label: String(raw.label || 'ATLAS runtime'),
+    status: status as WorkRuntimeSummary['status'],
+    capabilities: strings(raw.capabilities),
+    lastSeenAt: nullableString(raw.last_seen_at ?? raw.lastSeenAt)
+  };
+}
+
+export async function listWorkConnections(): Promise<WorkConnectionSummary[]> {
+  const data = await workPost({ operation: 'list_work_connections' });
+  return rows(data.connections).map(normalizeConnection).filter((item): item is WorkConnectionSummary => Boolean(item));
+}
+
+export async function listWorkRuntimes(): Promise<WorkRuntimeSummary[]> {
+  const data = await workPost({ operation: 'list_work_runtimes' });
+  return rows(data.runtimes).map(normalizeRuntime).filter((item): item is WorkRuntimeSummary => Boolean(item));
+}
+
+export async function registerWorkConnectionRef(input: { provider: string; mechanism: WorkConnectionSummary['mechanism']; externalRef: string; capabilities: string[] }) {
+  const data = await workPost({
+    operation: 'register_work_connection_ref',
+    provider: input.provider,
+    mechanism: input.mechanism,
+    external_ref: input.externalRef,
+    capabilities: input.capabilities
+  });
+  const normalized = normalizeConnection(data.connection);
+  if (!normalized) throw new Error('work_connection_response_invalid');
+  return normalized;
+}
+
+export async function revokeWorkConnectionRef(connectionId: string) {
+  return workPost({ operation: 'revoke_work_connection_ref', connection_id: connectionId });
+}
+
+export async function enrollWorkRuntime(input: { kind: WorkRuntimeSummary['kind']; label: string; capabilities: string[] }) {
+  return workPost({ operation: 'enroll_work_runtime', kind: input.kind, label: input.label, capabilities: input.capabilities });
 }
