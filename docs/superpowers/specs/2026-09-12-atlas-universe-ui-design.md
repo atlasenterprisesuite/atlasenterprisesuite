@@ -19,7 +19,8 @@ Treat the attached approved references as visual-product specifications:
 A. futuristic ATLAS module blueprint;
 B. blue/orange gravitational energy portal;
 C. globally connected node network;
-D. approved ATLAS Assistant/avatar direction.
+D. approved ATLAS Assistant/avatar direction;
+E. approved celestial-system ruling: the suite is one universe and every module must be represented as a complete navigable celestial system, not a decorative space-themed card.
 
 Never place those screenshots directly into the interface as substitutes for software.
 
@@ -49,6 +50,76 @@ Executable Action
 Audit / Evidence
 ```
 
+## Celestial information architecture
+
+The cosmic model is a navigation and product-structure metaphor. It must communicate hierarchy, context, state, and relationships without replacing explicit enterprise labels or authorization controls.
+
+The approved hierarchy is:
+
+```text
+ATLAS Universe = the complete Enterprise Suite
+ATLAS Core = gravitational / intelligence center
+Domain families = galaxies, galactic arms, or large constellations
+Module = a complete celestial system
+Submodule = planet, major moon, orbital station, or system zone
+Section = moon, ring, orbit, station deck, or local node
+Record = satellite / object inside the current system
+Workflow = trajectory / mission path between system objects
+Dependency = orbital linkage
+Integration = bridge, relay, or wormhole-style data connection
+Approval = controlled gate / checkpoint
+Alert = flare / beacon, always paired with text and semantic state
+```
+
+A user must be able to move through the hierarchy as real software:
+
+```text
+Universe → Galaxy/Domain → Module System → Planet/Submodule → Section → Record → Action
+```
+
+Every level must support a clear return path through breadcrumbs, sidebar, module switcher, Galaxy Navigator, or ATLAS Assistant.
+
+The astronomy is ATLAS-original product language. Do not present invented celestial names or visual archetypes as real astrophysical facts. Real astronomical names may be used only when intentionally selected as inspiration and clearly treated as design references.
+
+### Module-scale rule
+
+Every top-level ATLAS module must have its own complete spatial identity. A module may visually present as a galaxy, star system, planetary system, nebula, constellation, or station network, but it must contain its actual submodules and functionality inside that system rather than acting as a single decorative icon.
+
+Examples:
+
+- Finance: treasury/capital star system with Accounting, budgets, forecasting, banking, and approvals as orbiting worlds/zones.
+- Accounting: ledger constellation / ring system with GL, AP, AR, reconciliation, journal entries, close, and reports.
+- Payroll: people/pay binary-star system with employees, time, pay runs, deductions, benefits, tax/compliance, and reports.
+- HR: people constellation with recruiting, onboarding, benefits, performance, learning, and employee lifecycle.
+- Health: connected-care nebula/system with patient, research, hospital, wellbeing, records, and clinical integrations only when actually configured.
+- Ride: mobility star system with driver, rider, fleet, routes, safety, compliance, and telemetry.
+- CRM: relationship cluster with contacts, companies, leads, deals, activities, and campaigns.
+- Sales: growth/quasar system with pipeline, proposals, orders, forecasting, and revenue operations.
+- Inventory: supply-belt system with products, warehouses, locations, counts, movements, and replenishment.
+- Purchasing: trade-route system with requisitions, purchase orders, vendors, receiving, and controls.
+- Accounts Payable: outbound settlement orbit.
+- Accounts Receivable: inbound receivables orbit.
+- Tax: compliance orbital system with filing, research, calculations, notices, and jurisdictions.
+- POS: commerce station network.
+- Projects: project/dependency nebula with plans, tasks, milestones, resources, risks, and delivery.
+- Analytics: observatory/intelligence galaxy with dashboards, drill-down, forecasts, alerts, and cross-module insight.
+- Insurance: magnetosphere/shield system with policies, claims, risk, coverage, and compliance.
+- Telecom: communications/pulsar constellation with devices, connectivity, voice/data, and network operations.
+- Creator Studio: stellar-nursery/media nebula with image, video, music, voice, publishing, and asset workflows.
+- Learning: knowledge galaxy with courses, practice, assessments, credentials, and accessibility.
+- Security: zero-trust fortress system with identity, access, roles, threats, audit, policy, and compliance.
+- ATLAS Pay: settlement/wormhole network with send, receive, approvals, cards, reconciliation, and risk controls.
+- CleanScan 3D: scanning/sensor satellite array.
+- ATLAS Drive: secure storage cloud/nebula with files, sharing, versions, and governance.
+- ATLAS Voice: waveform/pulsar system with voice assistant, commands, multilingual interaction, and voice workflows.
+- ATLAS Connect: inter-system bridge network for messages, meetings, teams, and collaboration.
+- GPS 4D: navigation constellation with real-time tracking, mapping, route intelligence, and coverage.
+- Hospitality: property/resort-world system with guest, reservations, access, property operations, and services.
+- Venezuela: regional Earth-linked system for its approved business/community/development capabilities.
+- ATLAS OS: the operating-system command system that connects identity, devices, applications, files, assistant, and system controls.
+
+These mappings are visual/navigation semantics only. They never fabricate underlying module capabilities, data, connectivity, or authorization.
+
 ## Shared shell
 
 Create or evolve a shared shell containing:
@@ -73,6 +144,21 @@ Do not duplicate any existing equivalent.
 Represent modules through a data-driven registry.
 
 ```ts
+export type AtlasCelestialScale =
+  | 'galaxy'
+  | 'star_system'
+  | 'planetary_system'
+  | 'nebula'
+  | 'constellation'
+  | 'station_network';
+
+export type AtlasCelestialModel = {
+  scale: AtlasCelestialScale;
+  systemName: string;
+  archetype: string;
+  navigationModel: 'orbital' | 'constellation' | 'network';
+};
+
 export type AtlasUniverseModule = {
   id: string;
   name: string;
@@ -84,6 +170,7 @@ export type AtlasUniverseModule = {
   requiredPermissions: string[];
   featureFlag?: string;
   visualTheme: AtlasModuleVisualTheme;
+  celestial: AtlasCelestialModel;
 };
 
 export type AtlasModuleVisualTheme = {
@@ -107,6 +194,8 @@ export type AtlasModuleVisualTheme = {
     | 'general';
 };
 ```
+
+`systemName` must be stable and unique inside the registry. `archetype` describes visual behavior, not an astrophysical assertion. `navigationModel` controls presentation only and must not alter route or authorization semantics.
 
 Do not use this registry as an authorization source. Authorization remains authoritative in ATLAS RBAC/backend boundaries.
 
@@ -163,13 +252,15 @@ Home becomes the ATLAS Universe portal with these functional areas:
 
 Data must come from real existing APIs/state. No invented KPI values.
 
+The home visualization must show the ATLAS Core as the central anchor and group module systems into meaningful domain galaxies/arms without implying unavailable functionality is active.
+
 ## Galaxy Navigator
 
-Desktop: interactive spatial constellation.
+Desktop: interactive spatial constellation/universe with domain galaxies and module systems.
 
-Tablet: reduced spatial visualization.
+Tablet: reduced spatial visualization preserving system hierarchy.
 
-Mobile: orbit/list hybrid.
+Mobile: orbit/list hybrid that exposes the same information without shrinking the desktop scene.
 
 Required behaviors:
 
@@ -183,6 +274,10 @@ Required behaviors:
 - permission restriction
 - disabled/configuration state
 - route navigation
+- enter/exit module system
+- breadcrumb return to Universe
+
+Selecting an active module should visually transition from the global Universe into that module's celestial system, but the actual route transition must remain standard React Router navigation and must work with motion disabled.
 
 Module visual state must never imply authorization.
 
@@ -194,6 +289,7 @@ Assistant context should receive, where authorized:
 
 - current route
 - active module
+- active celestial system
 - organization
 - user role
 - permissions
@@ -236,6 +332,9 @@ Approved:
 - canvas
 - WebGL when justified
 - GPU-friendly transforms
+- orbital paths
+- stars/nebulae as progressive decoration
+- module-specific celestial environments derived from registry metadata
 
 Avoid:
 
@@ -243,6 +342,7 @@ Avoid:
 - continuous high-cost filters
 - unbounded animations
 - video backgrounds required for basic operation
+- making enterprise text unreadable over cosmic imagery
 
 Provide static/reduced-motion equivalents.
 
@@ -259,6 +359,9 @@ Every module should support a shared conceptual frame:
 - `ModuleInsights`
 - `ModuleAssistantContext`
 - `ModuleStatus`
+- `ModuleCelestialSystem`
+
+`ModuleCelestialSystem` is a presentation/navigation layer over real routes and submodules. It must not replace functional pages, tables, forms, records, or workflows.
 
 Do not flatten module-specific capabilities. Preserve the more complete existing implementation.
 
@@ -284,6 +387,8 @@ Separate:
 - navigation search
 - record search
 - assistant natural-language command
+
+Search results may expose celestial labels as secondary UI text, but the canonical module name and route remain primary.
 
 Do not fake universal semantic search if no backend exists.
 
@@ -318,8 +423,9 @@ WCAG-oriented implementation. Required:
 - focus restoration
 - reduced motion
 - contrast
-- no information conveyed by glow/color alone
+- no information conveyed by glow/color/orbit alone
 - minimum practical touch targets
+- every planet/system/station visual must have a normal text label and semantic role
 
 ## Motion system
 
@@ -330,6 +436,8 @@ Motion states:
 - focus
 - selected
 - navigation
+- system-entry
+- system-exit
 - assistant-listening
 - assistant-thinking
 - executing
@@ -342,11 +450,11 @@ Every animated state requires a reduced-motion fallback.
 
 ## Responsive targets
 
-Desktop: full sidebar + galaxy + assistant.
+Desktop: full sidebar + universe/galaxy + assistant.
 
-Tablet: collapsible sidebar + simplified galaxy.
+Tablet: collapsible sidebar + simplified system map.
 
-Mobile: compact header + module navigator + optional bottom navigation + assistant drawer.
+Mobile: compact header + orbit/list hybrid + assistant drawer.
 
 Do not simply scale down desktop.
 
@@ -359,12 +467,15 @@ The visual layer must remain secondary to application responsiveness.
 - memoize expensive visual maps
 - pause animation when hidden/offscreen
 - avoid unnecessary re-render loops
+- do not load every module's heavy celestial scene at initial boot
+- render detailed module-system scenes only when entering that module
 
 ## Test plan
 
 Unit tests:
 
 - module registry
+- celestial metadata completeness and uniqueness
 - route mapping
 - visual state mapping
 - permission display state
@@ -374,7 +485,8 @@ Unit tests:
 
 Integration tests:
 
-- home -> galaxy -> module
+- home -> galaxy/domain -> module system
+- module system -> section -> record
 - module -> section -> record
 - permission-restricted module
 - organization change
@@ -394,6 +506,7 @@ Accessibility checks:
 - keyboard
 - focus
 - labels
+- semantic alternatives for spatial navigation
 - reduced motion
 
 ## Final validation
@@ -409,15 +522,15 @@ No completion claim without passing evidence.
 
 ## Implementation order
 
-Phase A: shared visual tokens + Universe shell.
+Phase A: shared visual tokens + Universe shell + celestial registry contract.
 
-Phase B: Galaxy Navigator + registry.
+Phase B: Galaxy Navigator + domain galaxies + module-system navigation.
 
 Phase C: global search + Assistant contextual integration.
 
-Phase D: migrate key modules: Finance, Accounting, Payroll, HR, Health, Ride.
+Phase D: migrate key module systems: Finance, Accounting, Payroll, HR, Health, Ride.
 
-Phase E: migrate remaining modules.
+Phase E: migrate remaining module systems.
 
 Phase F: responsive/accessibility/performance hardening.
 
@@ -436,7 +549,7 @@ Phase G: production verification.
 
 ## Definition of done
 
-The feature is done only when ATLAS Enterprise Suite actually operates using the new interconnected Universe interface, all represented navigation/actions are functional or honestly unavailable, existing module functionality remains intact, tenancy/RBAC remain enforced, no fake data exists, responsive/accessibility requirements pass, and the canonical validation commands succeed.
+The feature is done only when ATLAS Enterprise Suite actually operates using the new interconnected Universe interface; each top-level module is represented as a complete navigable celestial system rather than a decorative card; users can move Universe -> domain galaxy -> module system -> functional submodule/record/action; all represented navigation/actions are functional or honestly unavailable; existing module functionality remains intact; tenancy/RBAC remain enforced; no fake data exists; responsive/accessibility requirements pass; and the canonical validation commands succeed.
 
 The images are inspiration/specification.
 
