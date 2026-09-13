@@ -15,3 +15,5 @@ export * from './work-policy';
 export * from './work-connections';
 export * from './work-runtime';
 export * from './browser-executor';
+export * from './dns-verification';
+export * from './work-templates';
