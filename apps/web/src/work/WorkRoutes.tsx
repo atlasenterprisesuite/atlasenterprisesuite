@@ -1,7 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { WorkCommandCenter } from './WorkCommandCenter';
 import { WorkComposerPage } from './WorkComposerPage';
+import { WorkConnectionsPage } from './WorkConnectionsPage';
 import { WorkListPage } from './WorkListPage';
+import { WorkPoliciesPage } from './WorkPoliciesPage';
+import { WorkRuntimesPage } from './WorkRuntimesPage';
 
 export function WorkRoutes() {
   return (
@@ -11,6 +14,9 @@ export function WorkRoutes() {
       <Route path="/work/active" element={<WorkListPage view="active" />} />
       <Route path="/work/approvals" element={<WorkListPage view="approvals" />} />
       <Route path="/work/history" element={<WorkListPage view="history" />} />
+      <Route path="/work/connections" element={<WorkConnectionsPage />} />
+      <Route path="/work/runtimes" element={<WorkRuntimesPage />} />
+      <Route path="/work/policies" element={<WorkPoliciesPage />} />
       <Route path="/work/*" element={<Navigate to="/work" replace />} />
     </Routes>
   );
