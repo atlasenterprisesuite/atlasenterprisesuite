@@ -1,3 +1,4 @@
+import React from 'react';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render, screen } from '@testing-library/react';
