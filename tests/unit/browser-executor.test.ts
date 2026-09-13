@@ -1,10 +1,10 @@
 import { expect, it } from 'vitest';
-import { prepareBrowserJob, sanitizeBrowserResult } from '../../packages/execution/src/browser-executor';
+import { FakeBrowserRuntimeAdapter, prepareBrowserJob, sanitizeBrowserResult } from '../../packages/execution/src/browser-executor';
 
 const envelope = {
   workflowId: 'wf-1', stepId: 'step-1', tenantId: 'tenant-1', organizationId: 'org-1',
   allowedDomains: ['openai.com'], allowedActions: ['navigate'], deniedActions: ['purchase'],
-  autonomyLevel: 'guided' as const, expiresAt: '2026-09-12T22:00:00Z'
+  autonomyLevel: 'guided' as const, expiresAt: '2099-09-12T22:00:00Z'
 };
 
 it('rejects an action outside the execution envelope', () => {
@@ -29,4 +29,11 @@ it('prepares a credential-free allowed job', () => {
   const job = prepareBrowserJob(envelope, { type: 'navigate', domain: 'openai.com', target: '/gpts/editor' }, '2026-09-12T21:00:00Z');
   expect(job.action.type).toBe('navigate');
   expect(JSON.stringify(job)).not.toMatch(/authorization|cookie/i);
+});
+
+it('runs deterministic fake browser outcomes without touching a provider', async () => {
+  const fake = new FakeBrowserRuntimeAdapter()
+    .enqueue('navigate', { state: 'completed', result: { page: 'domain-verification', cookie: 'drop' } });
+  const result = await fake.execute({ executionEnvelope: envelope, action: { type: 'navigate', domain: 'openai.com' } });
+  expect(result).toEqual({ state: 'completed', result: { page: 'domain-verification' } });
 });
