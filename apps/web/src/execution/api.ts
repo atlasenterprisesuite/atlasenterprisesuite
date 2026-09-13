@@ -179,6 +179,26 @@ export async function decideExecutionApproval(input: DecideExecutionApprovalInpu
   });
 }
 
+export type WorkStepExecutionDecision = {
+  route: { state: 'ready' | 'blocked'; mechanism: 'api' | 'browser' | null; reason: string };
+  policy: { outcome: 'allow' | 'require_approval' | 'deny'; reason: string };
+  approvalRequired: boolean;
+};
+
+export async function evaluateWorkStep(taskId: string): Promise<WorkStepExecutionDecision> {
+  const data = await executionPost({ operation: 'evaluate_work_step', task_id: taskId });
+  const route = record(data.route);
+  const policy = record(data.policy);
+  const mechanism = route.mechanism === 'api' || route.mechanism === 'browser' ? route.mechanism : null;
+  const routeState = route.state === 'ready' ? 'ready' : 'blocked';
+  const policyOutcome = policy.outcome === 'allow' || policy.outcome === 'require_approval' ? policy.outcome : 'deny';
+  return {
+    route: { state: routeState, mechanism, reason: String(route.reason || 'execution_route_unavailable') },
+    policy: { outcome: policyOutcome, reason: String(policy.reason || 'policy_unavailable') },
+    approvalRequired: data.approvalRequired === true
+  };
+}
+
 export async function syncManagerReadiness() {
   const data = await executionPost({ operation: 'sync_manager_readiness' });
   if (!data.workflow_id) throw new Error('manager_readiness_workflow_missing');
