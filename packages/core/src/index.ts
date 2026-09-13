@@ -139,7 +139,6 @@ export * from './audit';
 export * from './integrations';
 export * from './endpoints';
 
-import type { TenantScope } from './scope';
 import type { AtlasPermission } from './permissions';
 
 export function hasIntegrationPermission(
