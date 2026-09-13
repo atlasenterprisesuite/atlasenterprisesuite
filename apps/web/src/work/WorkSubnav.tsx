@@ -6,9 +6,11 @@ const items = [
   { to: '/work/active', label: 'Active' },
   { to: '/work/approvals', label: 'Approvals' },
   { to: '/work/history', label: 'History' },
+  { to: '/work/templates', label: 'Templates' },
   { to: '/work/connections', label: 'Connections' },
   { to: '/work/runtimes', label: 'Runtimes' },
-  { to: '/work/policies', label: 'Policies' }
+  { to: '/work/policies', label: 'Policies' },
+  { to: '/work/team', label: 'Team' }
 ];
 
 export function WorkSubnav() {
