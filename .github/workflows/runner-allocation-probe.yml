@@ -1,4 +1,4 @@
-name: Runner Allocation Probe
+name: ATLAS Hosted Verification Probe
 
 on:
   push:
@@ -7,25 +7,80 @@ on:
 permissions:
   contents: read
 
-jobs:
-  slim:
-    name: Probe ubuntu-slim
-    runs-on: ubuntu-slim
-    timeout-minutes: 5
-    steps:
-      - name: Runner acquired
-        run: |
-          echo "runner-ready"
-          uname -a
-          node --version || true
+concurrency:
+  group: atlas-hosted-probe-${{ github.ref }}
+  cancel-in-progress: true
 
-  standard:
-    name: Probe ubuntu-24.04
+jobs:
+  install:
+    name: npm ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/atlas-native-command-surface
+      - name: Runtime
+        run: |
+          echo "target-ref=feat/atlas-native-command-surface"
+          git rev-parse HEAD
+          node --version
+          npm --version
+      - name: Locked install
+        run: npm ci
+
+  architecture:
+    name: Typecheck and Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/atlas-native-command-surface
+      - name: Locked install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/atlas-native-command-surface
+      - name: Locked install
+        run: npm ci
+      - name: Unit tests
+        run: npm run test:unit
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/atlas-native-command-surface
+      - name: Locked install
+        run: npm ci
+      - name: Integration tests
+        run: npm run test:integration
+
+  verification:
+    name: Hosted Verification Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    needs: [install, architecture, unit, integration]
+    if: ${{ always() }}
     steps:
-      - name: Runner acquired
+      - name: Require all hosted gates
         run: |
-          echo "runner-ready"
-          uname -a
-          node --version || true
+          test "${{ needs.install.result }}" = "success"
+          test "${{ needs.architecture.result }}" = "success"
+          test "${{ needs.unit.result }}" = "success"
+          test "${{ needs.integration.result }}" = "success"
+          echo "ATLAS hosted verification: all gates passed." >> "$GITHUB_STEP_SUMMARY"
