@@ -1,3 +1,106 @@
+export const HOSPITALITY_PROPERTY_TYPES = [
+  'hotel',
+  'resort',
+  'restaurant',
+  'mixed_use',
+  'cafe',
+  'bar'
+] as const;
+
+export type HospitalityPropertyType = (typeof HOSPITALITY_PROPERTY_TYPES)[number];
+
+export const HOSPITALITY_OUTLET_TYPES = [
+  'restaurant',
+  'bar',
+  'cafe',
+  'spa',
+  'shop',
+  'front_desk',
+  'banquet',
+  'room_service'
+] as const;
+
+export type HospitalityOutletType = (typeof HOSPITALITY_OUTLET_TYPES)[number];
+
+export const HOSPITALITY_SPACE_TYPES = [
+  'guest_room',
+  'table',
+  'meeting_room',
+  'event_space',
+  'kitchen_station',
+  'bar_station',
+  'pool_cabana',
+  'service_area'
+] as const;
+
+export type HospitalitySpaceType = (typeof HOSPITALITY_SPACE_TYPES)[number];
+
+export const HOSPITALITY_OPERATIONAL_UNIT_TYPES = [
+  'front_desk',
+  'housekeeping',
+  'food_and_beverage',
+  'maintenance',
+  'security',
+  'banquets',
+  'revenue_management',
+  'management'
+] as const;
+
+export type HospitalityOperationalUnitType = (typeof HOSPITALITY_OPERATIONAL_UNIT_TYPES)[number];
+export type HospitalityEntityStatus = 'active' | 'inactive';
+
+export type HospitalityBrand = {
+  id: string;
+  organizationId: string;
+  name: string;
+  status: HospitalityEntityStatus;
+};
+
+export type HospitalityProperty = {
+  id: string;
+  organizationId: string;
+  brandId?: string | null;
+  name: string;
+  type: HospitalityPropertyType;
+  status: HospitalityEntityStatus;
+  timeZone: string;
+};
+
+export type HospitalityOutlet = {
+  id: string;
+  organizationId: string;
+  propertyId: string;
+  name: string;
+  type: HospitalityOutletType;
+  status: HospitalityEntityStatus;
+};
+
+export type HospitalitySpace = {
+  id: string;
+  organizationId: string;
+  propertyId: string;
+  outletId?: string | null;
+  name: string;
+  type: HospitalitySpaceType;
+  status: HospitalityEntityStatus;
+};
+
+export type HospitalityOperationalUnit = {
+  id: string;
+  organizationId: string;
+  propertyId: string;
+  outletId?: string | null;
+  name: string;
+  type: HospitalityOperationalUnitType;
+  status: HospitalityEntityStatus;
+};
+
+export type HospitalityPropertyContext = {
+  organizationId: string;
+  propertyId: string;
+  outletId?: string | null;
+};
+
 export type HospitalityPermission =
   | 'hospitality.access.read'
   | 'hospitality.access.issue'
