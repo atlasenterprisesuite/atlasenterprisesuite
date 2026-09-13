@@ -22,11 +22,21 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Install locked dependencies
+        run: npm ci
+
       - name: Verify RED target exists before patch
         run: |
           grep -F "path=\"/execution/:workflowId\"" apps/web/src/App.tsx
           test -f apps/web/src/execution/ManagerReadinessLauncher.tsx
-          npx vitest run tests/integration/manager-readiness-route.test.tsx || true
+          set +e
+          npx vitest run tests/integration/manager-readiness-route.test.tsx
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Expected Manager Readiness route regression to be RED before patch, but test passed."
+            exit 1
+          fi
 
       - name: Register Manager Readiness route
         run: |
