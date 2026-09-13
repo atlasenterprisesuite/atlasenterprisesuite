@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: atlas-audit-exact-sha-verification
@@ -40,7 +41,26 @@ jobs:
         run: npm run test:unit
 
       - name: Integration tests
-        run: npm run test:integration
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          npm run test:integration 2>&1 | tee /tmp/atlas-integration.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '<!-- atlas-audit-integration-failure -->'
+              echo '### ATLAS exact-SHA integration failure'
+              echo
+              echo "SHA: \`$GITHUB_SHA\`"
+              echo
+              echo '\`\`\`text'
+              tail -n 180 /tmp/atlas-integration.log
+              echo '\`\`\`'
+            } > /tmp/atlas-integration-comment.md
+            gh pr comment 113 --body-file /tmp/atlas-integration-comment.md
+          fi
+          exit "$status"
 
       - name: Production build
         run: npm run build
