@@ -138,3 +138,51 @@ Keep changes focused and understandable.
 ## Codex working principle
 
 Do not repeatedly diagnose the same problem without advancing it. When permissions and evidence allow, inspect, implement, test, and continue. Stop only for a genuine authorization/security boundary, missing credential or external dependency, irreversible/destructive action requiring approval, or a technical blocker that cannot be resolved from the repository and available tools.
+
+## Sovereign AI three-agent baseline
+
+The required ATLAS engineering collaboration baseline is:
+
+- **ChatGPT / OpenAI — Architect + Orchestrator.** Own task decomposition, architecture, evidence correlation, governed state transitions, and the human-facing control loop. The consumer ChatGPT session is not an undocumented runtime API.
+- **Codex — Engineer + QA.** Implement code, run tests, perform focused review, prepare commits/PRs, and work in isolated branches/worktrees. Codex cannot approve or deploy its own production release.
+- **Gemini — Independent Reviewer + Research.** Use the existing governed ATLAS intelligence gateway for explicit reviewer/research calls. Gemini has no direct repository or production mutation authority.
+
+GitHub Copilot is optional. Do not block ATLAS implementation because Copilot is unavailable.
+
+For runtime intelligence, reuse `supabase/functions/atlas-copilot/`. Do not create a second AI bus. Provider routing must be explicit and auditable, and provider/model/status fields must describe the provider that actually executed the request.
+
+## TDD and evidence discipline
+
+For production behavior changes use RED -> GREEN -> REFACTOR:
+
+1. write a focused failing test;
+2. execute it and confirm it fails because the behavior is missing;
+3. implement the minimum change;
+4. re-run the focused test;
+5. run the relevant broader suite;
+6. refactor only while tests stay green.
+
+Never claim TDD evidence if a runner failed before the test step executed.
+
+Before claiming implementation complete, run the applicable repository gates, including when relevant:
+
+```bash
+npm ci
+npm audit --audit-level=high
+npm run test:unit
+npm run test:integration
+npm run typecheck
+npm run build
+```
+
+If GitHub Actions exits before steps run, report CI as **blocked**, not code-failed and not passed. Local tests do not replace required CI or live runtime verification.
+
+Never label a provider, integration, deployment, route, or service `connected`, `verified`, `ready`, `live`, or `production` without fresh evidence.
+
+## Release authority
+
+The expected collaboration flow is:
+
+`ChatGPT plan -> Codex implement/test -> Gemini independent review -> Codex fix -> ATLAS QA / 3-of-3 CI -> human approval -> deploy -> post-deploy verification`
+
+No agent may merge or deploy solely because its own work passed local tests. Production changes require the existing ATLAS human approval gate. Preserve tenant/org isolation, RBAC, audit trails, Supabase persistence, and approval-gated repair/deployment controls.
