@@ -1,0 +1,51 @@
+name: ATLAS Audit Exact-SHA Verification
+
+on:
+  push:
+    branches:
+      - audit/atlas-production-runner-closure-2026-09-13
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-audit-exact-sha-verification
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact audit SHA
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Locked install
+        run: npm ci
+
+      - name: Dependency security gate
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Production build
+        run: npm run build
+
+      - name: Record verified SHA
+        run: |
+          echo "Verified SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Install, dependency audit, typecheck, unit, integration, and production build all passed." >> "$GITHUB_STEP_SUMMARY"
