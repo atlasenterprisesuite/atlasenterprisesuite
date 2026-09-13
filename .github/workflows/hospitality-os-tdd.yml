@@ -1,0 +1,28 @@
+name: ATLAS Hospitality OS TDD
+
+on:
+  push:
+    branches: ["feat/hospitality-os-core"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hospitality-os-tdd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    name: Hospitality Core focused TDD
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install
+        run: npm ci
+      - name: Hospitality core hierarchy contract
+        run: npx vitest run tests/unit/hospitality-core-types.test.ts
