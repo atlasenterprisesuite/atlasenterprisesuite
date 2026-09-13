@@ -17,7 +17,7 @@ concurrency:
 jobs:
   product-ux:
     name: Opinion 1 - Product and UX
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
 
   architecture:
     name: Opinion 2 - Architecture and Build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
 
   security:
     name: Opinion 3 - Security and Reliability
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
 
   consensus:
     name: ATLAS 3-of-3 Consensus
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [product-ux, architecture, security]
     if: ${{ always() }}
