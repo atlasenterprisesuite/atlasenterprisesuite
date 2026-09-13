@@ -42,6 +42,7 @@ export function normalizeWorkWorkflow(rawValue: unknown): WorkWorkflow {
 
   return {
     id: String(raw.id || ''),
+    organizationId: String(raw.organization_id ?? raw.org_id ?? raw.organizationId ?? ''),
     ownerModule,
     status: String(raw.status || 'draft') as WorkWorkflow['status'],
     currentTaskId: nullableString(raw.current_task_id ?? raw.currentTaskId),
@@ -53,18 +54,24 @@ export function normalizeWorkWorkflow(rawValue: unknown): WorkWorkflow {
   };
 }
 
-async function workPost(body: Record<string, unknown>) {
+async function scopedWorkPost(body: Record<string, unknown>) {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-execution', {
     method: 'POST',
     body: JSON.stringify({ ...body, organization_id: organization.id })
   });
-  return parseWorkResponse(response);
+  return { data: await parseWorkResponse(response), organizationId: organization.id };
+}
+
+async function workPost(body: Record<string, unknown>) {
+  return (await scopedWorkPost(body)).data;
 }
 
 export async function listWorkflows(): Promise<WorkWorkflow[]> {
-  const data = await workPost({ operation: 'list_workflows' });
-  return rows(record(data).workflows).map(normalizeWorkWorkflow);
+  const { data, organizationId } = await scopedWorkPost({ operation: 'list_workflows' });
+  return rows(record(data).workflows)
+    .filter((row) => String(row.organization_id ?? row.org_id ?? '') === organizationId)
+    .map(normalizeWorkWorkflow);
 }
 
 export async function createWorkWorkflow(input: CreateWorkWorkflowInput) {
@@ -86,6 +93,12 @@ export async function createWorkWorkflow(input: CreateWorkWorkflowInput) {
     workflowId: String(data.workflow_id),
     taskId: data.task_id ? String(data.task_id) : null
   };
+}
+
+export async function createWorkTemplate(templateId: string, inputs: Record<string, string>) {
+  const data = await workPost({ operation: 'create_work_template', template_id: templateId, inputs });
+  if (!data.workflow_id) throw new Error('work_template_workflow_missing');
+  return { workflowId: String(data.workflow_id), taskId: data.task_id ? String(data.task_id) : null };
 }
 
 export type WorkConnectionSummary = {
