@@ -34,11 +34,44 @@ const requiredIds = [
   'venezuela'
 ] as const;
 
+const celestialScales = new Set([
+  'galaxy',
+  'star_system',
+  'planetary_system',
+  'nebula',
+  'constellation',
+  'station_network'
+]);
+
+const navigationModels = new Set(['orbital', 'constellation', 'network']);
+
 describe('ATLAS Universe registry', () => {
   it('contains every approved universe module exactly once', () => {
     const ids = atlasUniverseModules.map((module) => module.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual(expect.arrayContaining([...requiredIds]));
+  });
+
+  it('gives every module a complete celestial-system identity', () => {
+    const systemNames = atlasUniverseModules.map((module) => module.celestial.systemName);
+
+    expect(new Set(systemNames).size).toBe(systemNames.length);
+    expect(
+      atlasUniverseModules.every(
+        (module) =>
+          celestialScales.has(module.celestial.scale) &&
+          navigationModels.has(module.celestial.navigationModel) &&
+          module.celestial.systemName.trim().length > 0 &&
+          module.celestial.archetype.trim().length > 0
+      )
+    ).toBe(true);
+  });
+
+  it('maps key modules to system-scale visual identities rather than flat cards', () => {
+    expect(getUniverseModule('finance')?.celestial.navigationModel).toBe('orbital');
+    expect(getUniverseModule('health')?.celestial.scale).toBe('nebula');
+    expect(getUniverseModule('atlas-connect')?.celestial.navigationModel).toBe('network');
+    expect(getUniverseModule('gps-4d')?.celestial.scale).toBe('constellation');
   });
 
   it('marks only verified canonical routes active', () => {
