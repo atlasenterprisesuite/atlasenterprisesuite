@@ -5,16 +5,7 @@ import {
   getCachedAtlasShellOrganization,
   type AtlasShellOrganization
 } from '../lib/atlasSession';
-
-const navItems = [
-  { to: '/', label: 'Home' },
-  { to: '/finance', label: 'Finance' },
-  { to: '/finance/accounting/accounts-payable', label: 'Payables' },
-  { to: '/payroll', label: 'Payroll' },
-  { to: '/health', label: 'Health' },
-  { to: '/hospitality/access', label: 'Hospitality' },
-  { to: '/studio', label: 'Creator' }
-];
+import { atlasNavigation } from '../navigation/atlasNavigation';
 
 export function AtlasShell({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
@@ -44,15 +35,24 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <div><span>ATLAS</span><small>Enterprise Suite</small></div>
         </div>
         <nav aria-label="ATLAS modules">
-          {navItems.map((item) => (
+          {atlasNavigation.map((item) => item.availability === 'implemented' && item.route ? (
             <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
+              key={item.id}
+              to={item.route}
+              end={item.route === '/'}
               className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
             >
               {item.label}
             </NavLink>
+          ) : (
+            <span
+              key={item.id}
+              className="nav-item nav-item-catalog"
+              aria-disabled="true"
+              title={`${item.label} is in the ATLAS catalog and is not yet an active route`}
+            >
+              {item.label}
+            </span>
           ))}
         </nav>
         <div className="environment-card">

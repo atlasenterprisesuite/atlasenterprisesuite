@@ -1,7 +1,18 @@
 import { Link } from 'react-router-dom';
+import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
+import { BlueprintsPage } from '../modules/blueprints/BlueprintsPage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
+import { OrchestratorPage } from '../modules/orchestrator/OrchestratorPage';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/blueprints') {
+    return <RequireAtlasIdentity><BlueprintsPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/orchestrator') {
+    return <RequireAtlasIdentity><OrchestratorPage /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/health/wellbeing/neuroplasticity') {
     return <NeuroplasticityProgramPage entry="health" />;
   }

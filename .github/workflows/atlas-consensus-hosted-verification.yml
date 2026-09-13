@@ -1,0 +1,81 @@
+name: ATLAS Hosted Verification
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-hosted-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    name: npm ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Locked install
+        run: npm ci
+
+  typecheck-build:
+    name: Typecheck and Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Locked install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locked install
+        run: npm ci
+      - name: Unit tests
+        run: npm run test:unit
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locked install
+        run: npm ci
+      - name: Integration tests
+        run: npm run test:integration
+
+  verification:
+    name: Hosted Verification Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [install, typecheck-build, unit, integration]
+    if: ${{ always() }}
+    steps:
+      - name: Require all hosted gates
+        run: |
+          test "${{ needs.install.result }}" = "success"
+          test "${{ needs.typecheck-build.result }}" = "success"
+          test "${{ needs.unit.result }}" = "success"
+          test "${{ needs.integration.result }}" = "success"
+          echo "ATLAS hosted verification: all gates passed." >> "$GITHUB_STEP_SUMMARY"
