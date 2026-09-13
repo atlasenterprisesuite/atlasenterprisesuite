@@ -11,3 +11,4 @@ export * from './work-types';
 export * from './work-intent';
 export * from './work-routing';
 export * from './browser-envelope';
+export * from './work-policy';
