@@ -1,6 +1,7 @@
 import { parseAtlasWorkContext } from '../../../packages/execution/src/work-types.ts';
 import { selectExecutionRoute } from '../../../packages/execution/src/work-routing.ts';
 import { evaluateWorkActionPolicy, type WorkActionSensitivity } from '../../../packages/execution/src/work-policy.ts';
+import { runtimeIsHealthy } from '../../../packages/execution/src/work-runtime.ts';
 
 export class WorkPolicyResolutionError extends Error {
   constructor(readonly code: string, readonly status = 500) {
@@ -40,6 +41,52 @@ function sensitivity(value: unknown): WorkActionSensitivity {
     : 'high';
 }
 
+function browserProvider(actionType: string, payload: Record<string, any>) {
+  if (['observe_openai_verification_requirement', 'open_openai_domain_verification', 'click_openai_check', 'verify_openai_domain_state'].includes(actionType)) {
+    return { providers: ['openai', 'chatgpt'], domain: 'chatgpt.com' };
+  }
+  if (actionType === 'create_dns_txt') {
+    const provider = String(payload.provider || '').trim().toLowerCase();
+    const domain = String(payload.browser_domain || '').trim().toLowerCase();
+    return provider && domain ? { providers: [provider], domain } : null;
+  }
+  return null;
+}
+
+async function liveBrowserCapability(admin: any, context: ServerContext, actionType: string, payload: Record<string, any>) {
+  const requirement = browserProvider(actionType, payload);
+  if (!requirement) return { available: false, authorized: false, runtimeAvailable: false, envelopeAllowed: false };
+
+  const [connectionsResult, runtimesResult] = await Promise.all([
+    admin.from('execution_connection_refs')
+      .select('id,provider,status')
+      .eq('org_id', context.orgId)
+      .eq('tenant_id', context.orgId)
+      .eq('status', 'active')
+      .in('provider', requirement.providers),
+    admin.from('execution_runtime_registrations')
+      .select('id,kind,status,capabilities,last_seen_at')
+      .eq('org_id', context.orgId)
+      .eq('tenant_id', context.orgId)
+      .eq('status', 'online')
+  ]);
+  if (connectionsResult.error || runtimesResult.error) throw new WorkPolicyResolutionError('persistence_error', 500);
+  const authorized = Boolean(connectionsResult.data?.length);
+  const runtimeAvailable = (runtimesResult.data || []).some((runtime: any) => runtimeIsHealthy({
+    id: String(runtime.id),
+    kind: runtime.kind,
+    status: runtime.status,
+    capabilities: Array.isArray(runtime.capabilities) ? runtime.capabilities.map(String) : [],
+    lastSeenAt: runtime.last_seen_at ? String(runtime.last_seen_at) : null
+  }) && Array.isArray(runtime.capabilities) && runtime.capabilities.map(String).includes('browser'));
+  return {
+    available: true,
+    authorized,
+    runtimeAvailable,
+    envelopeAllowed: authorized && runtimeAvailable && Boolean(requirement.domain)
+  };
+}
+
 export async function evaluateWorkStepServer({ admin, context, taskId }: EvaluateDeps) {
   const { data: task, error: taskError } = await admin
     .from('execution_tasks')
@@ -52,14 +99,12 @@ export async function evaluateWorkStepServer({ admin, context, taskId }: Evaluat
   if (!task.current_step_id) throw new WorkPolicyResolutionError('current_action_required', 409);
 
   const [{ data: workflow, error: workflowError }, { data: step, error: stepError }] = await Promise.all([
-    admin
-      .from('execution_workflows')
+    admin.from('execution_workflows')
       .select('id,org_id,context')
       .eq('id', String(task.workflow_id))
       .eq('org_id', context.orgId)
       .maybeSingle(),
-    admin
-      .from('execution_steps')
+    admin.from('execution_steps')
       .select('id,org_id,task_id,action_type,action_payload,permissions_required')
       .eq('id', String(task.current_step_id))
       .eq('task_id', taskId)
@@ -74,6 +119,7 @@ export async function evaluateWorkStepServer({ admin, context, taskId }: Evaluat
   const work = parseAtlasWorkContext({ work: workflowContext.work });
   const payload = record(step.action_payload);
   const execution = record(payload.execution_capabilities);
+  const liveBrowser = await liveBrowserCapability(admin, context, String(step.action_type), payload);
 
   const route = selectExecutionRoute({
     requestedMode: work.executionMode,
@@ -83,11 +129,11 @@ export async function evaluateWorkStepServer({ admin, context, taskId }: Evaluat
       reason: typeof execution.api_reason === 'string' ? execution.api_reason.slice(0, 160) : undefined
     },
     browserCapability: {
-      available: bool(execution.browser_available),
-      authorized: bool(execution.browser_authorized),
-      reason: typeof execution.browser_reason === 'string' ? execution.browser_reason.slice(0, 160) : undefined
+      available: liveBrowser.available || bool(execution.browser_available),
+      authorized: liveBrowser.authorized,
+      reason: liveBrowser.authorized ? 'authorized_connection_available' : 'authorized_connection_missing'
     },
-    runtimeAvailable: bool(execution.runtime_available)
+    runtimeAvailable: liveBrowser.runtimeAvailable
   });
 
   if (route.state === 'blocked') {
@@ -105,9 +151,7 @@ export async function evaluateWorkStepServer({ admin, context, taskId }: Evaluat
     context.permissions.includes(permission) || context.permissions.includes('execution.admin')
   );
   const mutation = bool(execution.mutation);
-  const envelopeAllowed = route.mechanism === 'browser'
-    ? bool(execution.browser_envelope_allowed)
-    : true;
+  const envelopeAllowed = route.mechanism === 'browser' ? liveBrowser.envelopeAllowed : true;
 
   const policy = evaluateWorkActionPolicy({
     autonomyLevel: work.autonomyLevel,
