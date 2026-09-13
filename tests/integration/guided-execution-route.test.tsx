@@ -3,12 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
-import { loadGuidedExecutionState } from '../../apps/web/src/execution/api';
+import { loadGuidedExecutionAudit, loadGuidedExecutionState } from '../../apps/web/src/execution/api';
 import { makeGuidedState } from '../fixtures/guidedExecution';
 
 vi.mock('../../apps/web/src/execution/api', async () => {
   const actual = await vi.importActual<typeof import('../../apps/web/src/execution/api')>('../../apps/web/src/execution/api');
-  return { ...actual, loadGuidedExecutionState: vi.fn() };
+  return { ...actual, loadGuidedExecutionState: vi.fn(), loadGuidedExecutionAudit: vi.fn() };
 });
 
 vi.mock('../../apps/web/src/lib/atlasSession', async () => {
@@ -22,6 +22,7 @@ vi.mock('../../apps/web/src/lib/atlasSession', async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  vi.mocked(loadGuidedExecutionAudit).mockResolvedValue([]);
 });
 
 describe('Guided Execution route', () => {
@@ -39,6 +40,20 @@ describe('Guided Execution route', () => {
     fireEvent.click(step);
     expect(step).toHaveAttribute('aria-current', 'step');
     expect(loadGuidedExecutionState).toHaveBeenCalledWith('wf-1');
+  });
+
+  it('reloads canonical state on remount instead of restoring browser-local execution position', async () => {
+    localStorage.setItem('atlas_access_token', 'test-token');
+    vi.mocked(loadGuidedExecutionState).mockResolvedValue(makeGuidedState({ currentStepId: 'step-2' }));
+
+    const first = render(<MemoryRouter initialEntries={['/execution/wf-1']}><App /></MemoryRouter>);
+    expect(await screen.findByRole('button', { name: /Verify Cloudflare/i })).toHaveAttribute('aria-current', 'step');
+    first.unmount();
+
+    render(<MemoryRouter initialEntries={['/execution/wf-1']}><App /></MemoryRouter>);
+    expect(await screen.findByRole('button', { name: /Verify Cloudflare/i })).toHaveAttribute('aria-current', 'step');
+    expect(loadGuidedExecutionState).toHaveBeenCalledTimes(2);
+    expect(sessionStorage.length).toBe(0);
   });
 
   it('renders a truthful workflow-not-found state', async () => {
