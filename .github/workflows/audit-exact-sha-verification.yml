@@ -48,14 +48,21 @@ jobs:
           npm run test:integration 2>&1 | tee /tmp/atlas-integration.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
+            sed -E 's/\x1B\[[0-9;]*[mK]//g' /tmp/atlas-integration.log > /tmp/atlas-integration-clean.log
             {
               echo '<!-- atlas-audit-integration-failure -->'
               echo '### ATLAS exact-SHA integration failure'
               echo
               echo "SHA: \`$GITHUB_SHA\`"
               echo
+              echo '**Failure index**'
               echo '\`\`\`text'
-              tail -n 180 /tmp/atlas-integration.log
+              grep -E 'FAIL .*tests/integration/|ReferenceError|AssertionError|Test Files|Tests ' /tmp/atlas-integration-clean.log | head -n 160 || true
+              echo '\`\`\`'
+              echo
+              echo '**Tail**'
+              echo '\`\`\`text'
+              tail -n 80 /tmp/atlas-integration-clean.log
               echo '\`\`\`'
             } > /tmp/atlas-integration-comment.md
             gh pr comment 113 --body-file /tmp/atlas-integration-comment.md
