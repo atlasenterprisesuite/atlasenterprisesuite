@@ -21,6 +21,13 @@ export class ExecutionEngine {
     if (!task) return { state: 'no_action', reason: 'task_not_found' };
     assertSameScope(task.scope, actor.scope);
 
+    const missingTaskPermission = task.permissionsRequired.find(
+      (permission) => !actor.permissions.includes(permission)
+    );
+    if (missingTaskPermission) {
+      return { state: 'blocked', reason: `missing_task_permission:${missingTaskPermission}` };
+    }
+
     const steps = await this.store.listSteps(taskId);
     const completed = new Set(steps.filter((step) => step.status === 'completed').map((step) => step.id));
     const step = resolveCurrentStep(steps, completed);
@@ -46,7 +53,8 @@ export class ExecutionEngine {
     }
 
     const completedAt = new Date().toISOString();
-    await this.store.saveStep({ ...step, status: 'completed', completedAt });
+    const completedStep = { ...step, status: 'completed' as const, completedAt };
+    await this.store.saveStep(completedStep);
     for (const item of verification.evidence) {
       await this.store.appendEvidence({
         id: crypto.randomUUID(),
@@ -60,7 +68,20 @@ export class ExecutionEngine {
     }
 
     const nextAction = await adapter.suggestNext(step, execution);
-    await this.store.saveTask({ ...task, nextAction, updatedAt: completedAt, version: task.version + 1 });
+    const updatedSteps = steps.map((candidate) => candidate.id === step.id ? completedStep : candidate);
+    const completedAfterExecution = new Set(completed);
+    completedAfterExecution.add(step.id);
+    const nextStep = resolveCurrentStep(updatedSteps, completedAfterExecution);
+
+    await this.store.saveTask({
+      ...task,
+      status: nextStep ? task.status : 'completed',
+      currentStepId: nextStep?.id ?? null,
+      nextAction,
+      completedAt: nextStep ? task.completedAt : completedAt,
+      updatedAt: completedAt,
+      version: task.version + 1
+    });
     return { state: 'completed_step', stepId: step.id };
   }
 }
