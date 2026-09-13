@@ -5,6 +5,7 @@ describe('ATLAS Work web API', () => {
   it('whitelists workflow fields and drops secret-like raw context data', () => {
     const workflow = normalizeWorkWorkflow({
       id: 'wf-1',
+      organization_id: 'org-1',
       owner_module: 'manager',
       status: 'now',
       current_task_id: 'task-1',
@@ -24,8 +25,9 @@ describe('ATLAS Work web API', () => {
 
     expect(Object.keys(workflow).sort()).toEqual([
       'completedAt', 'createdAt', 'currentModule', 'currentTaskId', 'id',
-      'ownerModule', 'status', 'updatedAt', 'work'
+      'organizationId', 'ownerModule', 'status', 'updatedAt', 'work'
     ]);
+    expect(workflow.organizationId).toBe('org-1');
     expect(workflow.work).toEqual({
       executionMode: 'hybrid', autonomyLevel: 'guided', runtimePreference: 'auto',
       budgetLimit: 0, connectionRefs: ['conn-cloudflare']
