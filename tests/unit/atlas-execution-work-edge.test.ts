@@ -18,6 +18,7 @@ describe('ATLAS Work execution Edge contract', () => {
     expect(workSource).toContain("from('execution_steps').insert");
     expect(workSource).toContain("workflow_type: 'work.sovereign'");
     expect(workSource).toContain("action_type: 'prepare_execution_plan'");
+    expect(workSource).toContain("action_payload: {}");
     expect(workSource).toContain("action: 'execution.workflow.created'");
   });
 
@@ -31,10 +32,10 @@ describe('ATLAS Work execution Edge contract', () => {
     expect(workSource).not.toContain('secret:');
   });
 
-  it('lists only Work workflows scoped to the active organization', () => {
-    expect(workSource).toContain(".eq('org_id', context.orgId)");
+  it('lists only Work workflow fields scoped to the active organization', () => {
+    expect(workSource).toContain(".select('id,owner_module,status,current_task_id,current_module,context,created_at,updated_at,completed_at')");
+    expect(workSource).toContain(".eq('org_id', input.context.orgId)");
     expect(workSource).toContain(".eq('workflow_type', 'work.sovereign')");
     expect(workSource).toContain('.limit(100)');
-    expect(workSource).not.toContain('action_payload');
   });
 });
