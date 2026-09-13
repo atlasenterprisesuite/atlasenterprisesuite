@@ -3,6 +3,8 @@ name: ATLAS Hospitality OS TDD
 on:
   push:
     branches: ["feat/hospitality-os-core"]
+  pull_request:
+    branches: ["main"]
 
 permissions:
   contents: read
