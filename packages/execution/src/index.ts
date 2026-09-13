@@ -9,3 +9,4 @@ export * from './store';
 export * from './engine';
 export * from './work-types';
 export * from './work-intent';
+export * from './work-routing';
