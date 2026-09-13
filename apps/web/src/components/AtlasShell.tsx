@@ -8,6 +8,7 @@ import {
 
 const navItems = [
   { to: '/', label: 'Home' },
+  { to: '/work', label: 'Work' },
   { to: '/finance', label: 'Finance' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
   { to: '/payroll', label: 'Payroll' },

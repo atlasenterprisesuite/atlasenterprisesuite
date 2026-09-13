@@ -2,8 +2,17 @@ import { Link } from 'react-router-dom';
 import { ManagerReadinessLauncher } from '../execution/ManagerReadinessLauncher';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
+import { WorkRoutes } from '../work/WorkRoutes';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname.startsWith('/work')) {
+    return (
+      <RequireAtlasIdentity>
+        <WorkRoutes />
+      </RequireAtlasIdentity>
+    );
+  }
+
   if (pathname === '/execution/manager/readiness') {
     return (
       <RequireAtlasIdentity>
