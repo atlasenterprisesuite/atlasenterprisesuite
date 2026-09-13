@@ -6,6 +6,8 @@ export type GuidedTaskGroup = {
 };
 
 export type StepAction =
+  | { kind: 'execute'; label: 'Execute step'; executable: true }
+  | { kind: 'resume'; label: 'Resume step'; executable: true }
   | { kind: 'refresh'; label: 'Refresh state'; executable: true }
   | { kind: 'request_approval'; label: 'Request approval'; executable: true }
   | { kind: 'review_approval'; label: 'Review approval'; executable: true }
@@ -86,19 +88,21 @@ export function deriveStepAction(state: GuidedExecutionState, stepId: string): S
   if (!step) return { kind: 'unavailable', label: 'Action unavailable', executable: false };
 
   if (state.workflow.status === 'completed') return { kind: 'done', label: 'Done', executable: false };
-  if (step.status === 'blocked' || step.status === 'failed' || stepBlockers(state, stepId).length > 0) {
-    return { kind: 'blocked', label: 'Resolve blocker', executable: false };
-  }
-
+  const pilot = state.workflow.workflowType === 'manager.openai_domain_verification';
   const pendingApproval = pendingApprovalFor(state, step);
   if (pendingApproval) return { kind: 'review_approval', label: 'Review approval', executable: true };
   if (approvalRequired(step)) return { kind: 'request_approval', label: 'Request approval', executable: true };
-  if (step.status === 'completed' && hasEvidenceFor(state, step)) {
-    return { kind: 'view_evidence', label: 'View evidence', executable: true };
+
+  if (pilot) {
+    if (step.status === 'ready') return { kind: 'execute', label: 'Execute step', executable: true };
+    if (['running', 'blocked', 'failed'].includes(step.status)) return { kind: 'resume', label: 'Resume step', executable: true };
   }
+
+  if (step.status === 'blocked' || step.status === 'failed' || stepBlockers(state, stepId).length > 0) {
+    return { kind: 'blocked', label: 'Resolve blocker', executable: false };
+  }
+  if (step.status === 'completed' && hasEvidenceFor(state, step)) return { kind: 'view_evidence', label: 'View evidence', executable: true };
   if (step.status === 'completed') return { kind: 'done', label: 'Done', executable: false };
-  if (step.status === 'ready' || step.status === 'running') {
-    return { kind: 'refresh', label: 'Refresh state', executable: true };
-  }
+  if (step.status === 'ready' || step.status === 'running') return { kind: 'refresh', label: 'Refresh state', executable: true };
   return { kind: 'unavailable', label: 'Action unavailable', executable: false };
 }
