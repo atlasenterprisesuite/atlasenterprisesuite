@@ -5,7 +5,10 @@ const items = [
   { to: '/work/new', label: 'New work' },
   { to: '/work/active', label: 'Active' },
   { to: '/work/approvals', label: 'Approvals' },
-  { to: '/work/history', label: 'History' }
+  { to: '/work/history', label: 'History' },
+  { to: '/work/connections', label: 'Connections' },
+  { to: '/work/runtimes', label: 'Runtimes' },
+  { to: '/work/policies', label: 'Policies' }
 ];
 
 export function WorkSubnav() {
