@@ -39,4 +39,27 @@ describe('OpenAI domain pilot Edge contract', () => {
     await expect(verifyPublicTxt({ hostname: 'atlasenterprisesuite.com', expectedValue: 'x', fetchImpl: fetchImpl as any, attempts: 1, delayMs: 0 }))
       .resolves.toMatchObject({ verified: false, attemptsUsed: 1 });
   });
+
+  it('binds sensitive DNS mutation to the exact approved action payload', () => {
+    expect(edgeSource).toContain("'execute_work_step'");
+    expect(edgeSource).toContain("'resume_work_step'");
+    expect(pilotSource).toContain('digestApprovalPayload');
+    expect(pilotSource).toContain('approval_binding_mismatch');
+    expect(pilotSource).toContain("action_type: 'create_dns_txt'");
+    expect(pilotSource).toContain("status: 'awaiting_approval'");
+  });
+
+  it('routes DNS mutation only through a real API port or constrained browser job', () => {
+    expect(pilotSource).toContain('DnsMutationPort');
+    expect(pilotSource).toContain('dns_execution_capability_missing');
+    expect(pilotSource).toContain('enqueueWorkRuntimeJob');
+    expect(pilotSource).toContain("allowedActions: ['create_dns_txt']");
+  });
+
+  it('reconciles provider/public DNS state before mutation retry', () => {
+    expect(pilotSource).toContain('resumeOpenAiDomainStep');
+    expect(pilotSource).toContain('readTxt');
+    expect(pilotSource).toContain('verifyPublicTxt');
+    expect(pilotSource).toContain('dns_record_already_present');
+  });
 });
