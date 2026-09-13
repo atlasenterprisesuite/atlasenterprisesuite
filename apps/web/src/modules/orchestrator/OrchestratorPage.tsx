@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { IncidentIntake } from './IncidentIntake';
 import { probeOrchestrator, type OrchestratorProbeResult } from './orchestratorClient';
 import './orchestrator.css';
 
@@ -43,6 +44,8 @@ export function OrchestratorPage() {
           </article>
         ))}
       </div>
+
+      <IncidentIntake />
 
       <div className="notice">
         No AI agent is root. Destructive, financial, permission-changing, audit/security-boundary and irreversible actions require governed approval.
