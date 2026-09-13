@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import {
+  HOSPITALITY_OUTLET_TYPES,
+  HOSPITALITY_PROPERTY_TYPES,
+  HOSPITALITY_SPACE_TYPES
+} from '../../packages/hospitality/types';
 import type {
   HospitalityBrand,
   HospitalityOutlet,
@@ -9,6 +14,12 @@ import type {
 } from '../../packages/hospitality/types';
 
 describe('Hospitality Core hierarchy', () => {
+  it('exports the canonical property, outlet, and space vocabularies', () => {
+    expect(HOSPITALITY_PROPERTY_TYPES).toEqual(expect.arrayContaining(['hotel', 'resort', 'restaurant']));
+    expect(HOSPITALITY_OUTLET_TYPES).toEqual(expect.arrayContaining(['restaurant', 'bar', 'cafe']));
+    expect(HOSPITALITY_SPACE_TYPES).toEqual(expect.arrayContaining(['guest_room', 'table', 'meeting_room']));
+  });
+
   it('requires organization and property identity across property-scoped contracts', () => {
     const brand: HospitalityBrand = {
       id: 'brand-1',
