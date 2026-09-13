@@ -94,14 +94,13 @@ for select to authenticated using (
   )
 );
 
+-- Raw support tables remain Edge/service-role only. RLS is still enabled as defense in depth,
+-- but authenticated browser clients receive no table grants because these rows contain
+-- opaque substrate references, runtime token hashes, or transient job payloads.
 revoke all on public.execution_connection_refs from authenticated;
 revoke all on public.execution_runtime_registrations from authenticated;
 revoke all on public.execution_runtime_jobs from authenticated;
 
-grant select on public.execution_connection_refs to authenticated;
-grant select on public.execution_runtime_registrations to authenticated;
-grant select on public.execution_runtime_jobs to authenticated;
-
-comment on table public.execution_connection_refs is 'Opaque authorized connection references. Provider credential material lives outside execution support tables.';
-comment on table public.execution_runtime_registrations is 'ATLAS Work runtime registrations. Authentication material is represented only by a SHA-256 hash.';
-comment on table public.execution_runtime_jobs is 'Leased, resumable runtime work constrained by a persisted execution envelope and sanitized result.';
+comment on table public.execution_connection_refs is 'Opaque authorized connection references. Provider credential material lives outside execution support tables; ordinary clients read normalized metadata through atlas-execution.';
+comment on table public.execution_runtime_registrations is 'ATLAS Work runtime registrations. Authentication material is represented only by a SHA-256 hash and is never exposed by ordinary reads.';
+comment on table public.execution_runtime_jobs is 'Leased, resumable runtime work constrained by a persisted execution envelope. Raw job rows are service-role/runtime only because an action may transiently contain a server-observed verification value.';
