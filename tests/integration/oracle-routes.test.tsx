@@ -3,22 +3,18 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const getOracleStatus = vi.fn();
-const getOracleDeck = vi.fn();
-const listOracleReadings = vi.fn();
-const getOracleReading = vi.fn();
-const createOracleReading = vi.fn();
-const saveOracleNote = vi.fn();
-const setOracleFavorite = vi.fn();
+const mocks = vi.hoisted(() => ({
+  getOracleStatus: vi.fn(),
+  getOracleDeck: vi.fn(),
+  listOracleReadings: vi.fn(),
+  getOracleReading: vi.fn(),
+  createOracleReading: vi.fn(),
+  saveOracleNote: vi.fn(),
+  setOracleFavorite: vi.fn()
+}));
 
 vi.mock('../../apps/web/src/lib/oracleApi', () => ({
-  getOracleStatus,
-  getOracleDeck,
-  listOracleReadings,
-  getOracleReading,
-  createOracleReading,
-  saveOracleNote,
-  setOracleFavorite
+  ...mocks
 }));
 
 import { OracleRoutes } from '../../apps/web/src/modules/oracle/OracleRoutes';
@@ -44,14 +40,14 @@ const deck = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  getOracleStatus.mockResolvedValue({ ok: true, entitled: true, deck });
-  listOracleReadings.mockResolvedValue({ ok: true, readings: [] });
-  getOracleDeck.mockResolvedValue({
+  mocks.getOracleStatus.mockResolvedValue({ ok: true, entitled: true, deck });
+  mocks.listOracleReadings.mockResolvedValue({ ok: true, readings: [] });
+  mocks.getOracleDeck.mockResolvedValue({
     ok: true,
     deck,
     cards: [{ id: 'c1', slug: 'confia', title: 'CONFÍA', short_message: 'Confía.', long_message: 'Confía en el proceso.', category: 'trust', position: 1 }]
   });
-  getOracleReading.mockResolvedValue({
+  mocks.getOracleReading.mockResolvedValue({
     ok: true,
     reading: { id: 'r1', reading_type: 'daily', created_at: '2026-09-14T20:00:00Z' },
     cards: [{ card_id: 'c1', spread_position: 'energy', sequence: 0, oracle_cards: { id: 'c1', slug: 'confia', title: 'CONFÍA', short_message: 'Confía.', long_message: 'Confía en el proceso.', category: 'trust' } }],
@@ -89,7 +85,7 @@ describe('ATLAS Private Oracle routes', () => {
 
   it('never renders Oracle before the entitlement gate resolves', async () => {
     let resolveStatus: (value: unknown) => void = () => undefined;
-    getOracleStatus.mockImplementation(() => new Promise((resolve) => { resolveStatus = resolve; }));
+    mocks.getOracleStatus.mockImplementation(() => new Promise((resolve) => { resolveStatus = resolve; }));
     renderOracle();
     expect(screen.getByText(/checking private oracle access/i)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'ATLAS Mystic Oracle' })).toBeNull();
