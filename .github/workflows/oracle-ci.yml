@@ -1,0 +1,36 @@
+name: ATLAS Private Oracle CI
+
+on:
+  push:
+    branches: ["feat/atlas-private-oracle"]
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/web/src/modules/oracle/**"
+      - "apps/web/src/lib/oracleApi.ts"
+      - "packages/oracle/**"
+      - "supabase/functions/atlas-oracle/**"
+      - "supabase/functions/atlas-copilot/index.ts"
+      - "supabase/migrations/20260914_private_oracle.sql"
+      - "tests/unit/oracle-*.test.ts"
+      - "tests/integration/oracle-*.test.tsx"
+      - ".github/workflows/oracle-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run typecheck
+      - run: npm run test:integration
+      - run: npm run build

@@ -1,7 +1,13 @@
 import { Link } from 'react-router-dom';
+import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
+import { OracleRoutes } from '../modules/oracle/OracleRoutes';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname.startsWith('/assistant/oracle')) {
+    return <RequireAtlasIdentity><OracleRoutes /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/health/wellbeing/neuroplasticity') {
     return <NeuroplasticityProgramPage entry="health" />;
   }
