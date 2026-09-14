@@ -38,16 +38,19 @@
 - `supabase/migrations/20260913_hospitality_nfc_ble_hybrid.sql` — extend provider type constraint and credential-reference lifecycle columns safely.
 - `supabase/functions/atlas-hospitality-access/providers/onity.ts` — dedicated fail-closed Onity DirectKey adapter.
 - `supabase/functions/atlas-hospitality-access/_shared/provider-registry.ts` — register Onity and normalize runtime configuration selection.
-- `supabase/functions/atlas-hospitality-access/_shared/repository.ts` and/or shared Hospitality repository — read/write normalized hybrid lifecycle metadata without raw credential material.
+- `supabase/functions/atlas-hospitality-access/_shared/repository.ts` — preserve access-provider repository behavior and map normalized hybrid reference reads.
+- `supabase/functions/_shared/hospitality/repository.ts` — shared Wallet/PMS credential lifecycle persistence produced by the prerequisite plan.
+- `supabase/functions/_shared/hospitality/wallet-orchestrator.ts` — provider-safe hybrid replacement/revocation orchestration produced by the prerequisite plan and extended here.
 - `supabase/functions/atlas-hospitality-access/index.ts` — expose normalized hybrid readiness/reference state only.
 - `apps/web/src/lib/hospitalityApi.ts` — typed hybrid metadata from authenticated API.
 - `apps/web/src/modules/hospitality/RoomAccessPage.tsx` — hybrid access overview.
 - `apps/web/src/modules/hospitality/ProvidersPage.tsx` — Onity readiness truth states.
-- `apps/web/src/modules/hospitality/CredentialsPage.tsx` or existing Wallet credential page from the prerequisite plan — show NFC/BLE/platform/lifecycle metadata.
+- `apps/web/src/modules/hospitality/WalletKeysPage.tsx` — existing Wallet credential page from the prerequisite plan, extended to show NFC/BLE/platform/lifecycle metadata.
 - `tests/unit/hospitality-hybrid-access.test.ts`
 - `tests/unit/hospitality-onity-adapter.test.ts`
 - `tests/integration/hospitality-hybrid-schema-contract.test.ts`
 - `tests/integration/hospitality-hybrid-api-contract.test.ts`
+- `tests/integration/hospitality-hybrid-lifecycle.test.ts`
 - `tests/integration/hospitality-hybrid-ui-contract.test.tsx`
 - `tests/integration/hospitality-security-contract.test.ts` — extend forbidden-material assertions.
 - `docs/hospitality/providers/ONITY_DIRECTKEY.md` — verified-contract/readiness evidence and explicit external blockers.
@@ -307,7 +310,7 @@ provisioning_state in (
 )
 ```
 
-If the prerequisite Wallet migration defines `hospitality_stays`, add a foreign key from `stay_id` to `hospitality_stays(id)` using an idempotent `DO $$ ... $$` constraint check. If the table is absent, fail the migration rather than silently creating an incompatible local stay table.
+The prerequisite Wallet Hotel Key migration creates `public.hospitality_stays`; add a foreign key from `stay_id` to `hospitality_stays(id)` using an idempotent `DO $$ ... $$` constraint-existence check. If `hospitality_stays` is absent, fail the migration rather than creating a second stay model.
 
 Replace the provider-type check constraint using the existing provider vocabulary plus `onity_directkey`. Preserve every existing provider value.
 
@@ -482,7 +485,7 @@ git commit -m "feat(hospitality): add fail closed Onity DirectKey provider"
 
 **Files:**
 - Modify: `supabase/functions/atlas-hospitality-access/_shared/repository.ts`
-- Modify shared Hospitality repository from the Wallet prerequisite plan if it owns credential references.
+- Modify: `supabase/functions/_shared/hospitality/repository.ts`
 - Modify: `supabase/functions/atlas-hospitality-access/index.ts`
 - Modify: `apps/web/src/lib/hospitalityApi.ts`
 - Create: `tests/integration/hospitality-hybrid-api-contract.test.ts`
@@ -528,9 +531,9 @@ npx vitest run tests/integration/hospitality-hybrid-api-contract.test.ts
 
 - [ ] **Step 3: Extend repository mapping**
 
-Map database snake_case fields to the exact `HybridCredentialReference` shape. Repository writes accept normalized references/state only; no generic `payload` argument is added.
+Map database snake_case fields to the exact `HybridCredentialReference` shape in `supabase/functions/_shared/hospitality/repository.ts`. Keep `supabase/functions/atlas-hospitality-access/_shared/repository.ts` as the existing provider/access facade and delegate shared lifecycle persistence rather than duplicating write logic.
 
-Add explicit functions:
+Add explicit shared functions:
 
 ```ts
 listHybridCredentialReferences(...)
@@ -559,7 +562,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add supabase/functions/atlas-hospitality-access apps/web/src/lib/hospitalityApi.ts tests/integration/hospitality-hybrid-api-contract.test.ts tests/integration/hospitality-security-contract.test.ts
+git add supabase/functions/atlas-hospitality-access supabase/functions/_shared/hospitality/repository.ts apps/web/src/lib/hospitalityApi.ts tests/integration/hospitality-hybrid-api-contract.test.ts tests/integration/hospitality-security-contract.test.ts
 git commit -m "feat(hospitality): expose normalized hybrid credential lifecycle"
 ```
 
@@ -568,7 +571,7 @@ git commit -m "feat(hospitality): expose normalized hybrid credential lifecycle"
 ### Task 5: Add provider-safe room-change, checkout, and reconciliation behavior
 
 **Files:**
-- Modify or create the Wallet/hospitality orchestration file owning credential lifecycle from the prerequisite plan.
+- Modify: `supabase/functions/_shared/hospitality/wallet-orchestrator.ts`
 - Modify: `packages/hospitality/hybrid-access.ts`
 - Create: `tests/integration/hospitality-hybrid-lifecycle.test.ts`
 
@@ -626,7 +629,7 @@ npx vitest run tests/integration/hospitality-hybrid-lifecycle.test.ts
 
 - [ ] **Step 3: Implement provider-safe replacement sequence**
 
-Use the active provider adapter selected from the verified provider instance. If an adapter later exposes an official atomic replacement operation, that operation may replace the two-step provider sequence through a reviewed capability addition; do not infer atomicity today.
+Extend `supabase/functions/_shared/hospitality/wallet-orchestrator.ts` so the verified provider adapter issues the replacement only after the new assignment/room mapping passes existing eligibility checks. If a future adapter exposes a documented atomic replacement operation, that capability is added in a separate reviewed change; do not infer atomicity here.
 
 - [ ] **Step 4: Implement checkout/cancellation revoke semantics**
 
@@ -648,7 +651,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/hospitality/hybrid-access.ts supabase/functions tests/integration/hospitality-hybrid-lifecycle.test.ts tests/integration/hospitality-security-contract.test.ts
+git add packages/hospitality/hybrid-access.ts supabase/functions/_shared/hospitality/wallet-orchestrator.ts tests/integration/hospitality-hybrid-lifecycle.test.ts tests/integration/hospitality-security-contract.test.ts
 git commit -m "feat(hospitality): govern hybrid credential lifecycle"
 ```
 
@@ -659,8 +662,8 @@ git commit -m "feat(hospitality): govern hybrid credential lifecycle"
 **Files:**
 - Modify: `apps/web/src/modules/hospitality/RoomAccessPage.tsx`
 - Modify: `apps/web/src/modules/hospitality/ProvidersPage.tsx`
-- Modify existing Wallet/Credentials page produced by the prerequisite plan; if that page is named `WalletKeysPage.tsx`, extend it rather than creating a competing credential page.
-- Modify: `apps/web/src/modules/hospitality/HospitalityRoutes.tsx` only if the prerequisite page requires route registration.
+- Modify: `apps/web/src/modules/hospitality/WalletKeysPage.tsx`
+- Modify: `apps/web/src/modules/hospitality/HospitalityRoutes.tsx`
 - Create: `tests/integration/hospitality-hybrid-ui-contract.test.tsx`
 
 **Interfaces:**
@@ -693,7 +696,7 @@ Use existing ATLAS Hospitality styles. Do not create a separate visual applicati
 
 - [ ] **Step 4: Implement Onity external-gate messaging**
 
-For `onity_directkey + configured_unverified`, show a concise configuration blocker such as:
+For `onity_directkey + configured_unverified`, show:
 
 ```text
 Onity DirectKey detected/configured, but official property integration is not verified. Digital-key issuance remains blocked.
@@ -728,14 +731,13 @@ git commit -m "feat(hospitality): surface hybrid access readiness"
 **Files:**
 - Modify: `tests/integration/hospitality-security-contract.test.ts`
 - Create: `docs/hospitality/NFC_BLE_HYBRID_READINESS.md`
-- Modify provider/readiness docs only where the new matrix is referenced.
 
 **Interfaces:**
 - Readiness classifications are exactly `implementation_verified`, `external_gates_pending`, `production_ready`.
 
 - [ ] **Step 1: Add forbidden-material regression assertions**
 
-Scan source/migration/browser response fixtures for prohibited persistence/interface names:
+Scan executable migrations and API DTOs for prohibited persistence/interface names:
 
 ```ts
 const forbidden = [
@@ -749,7 +751,7 @@ const forbidden = [
 ];
 ```
 
-The test must distinguish legitimate documentation statements such as “must not store” from executable schema/API fields; inspect migrations and API DTOs directly rather than regex-scanning all documentation.
+Do not treat documentation sentences such as “must not store” as failures; inspect executable schema/API surfaces directly.
 
 - [ ] **Step 2: Verify service audit identity semantics**
 
@@ -795,7 +797,7 @@ git commit -m "test(hospitality): harden hybrid access security readiness"
 
 **Files:**
 - No production mutations.
-- Update only test/readiness documentation if the review finds evidence wording that is inaccurate.
+- Update only `docs/hospitality/NFC_BLE_HYBRID_READINESS.md` if final evidence requires correction.
 
 **Interfaces:**
 - Final report separates implementation state from external provider/property readiness.
