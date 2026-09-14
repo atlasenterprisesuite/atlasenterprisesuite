@@ -29,7 +29,8 @@ describe('Guided Execution accessibility', () => {
     render(<MemoryRouter initialEntries={['/execution/wf-1']}><App /></MemoryRouter>);
 
     const disclosure = await screen.findByRole('button', { name: /Task 1 — Verify infrastructure readiness/i });
-    expect(screen.getByRole('status')).toHaveTextContent('Now');
+    const workflowStatus = screen.getByText('Workflow status').closest('[role="status"]');
+    expect(workflowStatus).toHaveTextContent('Now');
     expect(disclosure).toHaveAttribute('aria-expanded', 'true');
     const current = screen.getByRole('button', { name: /Verify Cloudflare/i });
     expect(current).toHaveAttribute('aria-current', 'step');
