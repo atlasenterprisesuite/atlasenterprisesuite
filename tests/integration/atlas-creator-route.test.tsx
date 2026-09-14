@@ -22,7 +22,7 @@ describe('ATLAS Creator', () => {
     expect(screen.getByRole('heading', { name: 'ATLAS Director' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Production steps' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Generate video' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Review & Generate$/ })).toBeInTheDocument();
   });
   it('exposes accessible Director navigation and creative brief controls', () => {
     render(<MemoryRouter initialEntries={['/studio/create?type=video']}><CreatorWorkspace /></MemoryRouter>);
@@ -44,7 +44,7 @@ describe('ATLAS Creator', () => {
 
   it('adds and reorders shots with accessible controls', () => {
     render(<MemoryRouter initialEntries={['/studio/create?type=video']}><CreatorWorkspace /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Stages & Shots' }));
+    fireEvent.click(screen.getByRole('button', { name: /Stages & Shots$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Add scene' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add shot' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add shot' }));
@@ -66,12 +66,12 @@ describe('ATLAS Creator', () => {
       }
     ]);
     render(<MemoryRouter initialEntries={['/studio/create?type=video']}><CreatorWorkspace /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Provider & Cost' }));
+    fireEvent.click(screen.getByRole('button', { name: /Provider & Cost$/ }));
     expect(await screen.findByText('unconfigured')).toBeInTheDocument();
     expect(screen.getByText('Cost estimate unavailable until provider configuration is verified.')).toBeInTheDocument();
   });
 
-  it('keeps Generate video disabled in review for an unconfigured provider', async () => {
+  it('keeps external generation disabled in review for an unconfigured provider', async () => {
     vi.spyOn(creatorApi, 'listCreatorProviders').mockResolvedValue([
       {
         providerId: 'seedance', displayName: 'Seedance',
@@ -80,11 +80,11 @@ describe('ATLAS Creator', () => {
       }
     ]);
     render(<MemoryRouter initialEntries={['/studio/create?type=video']}><CreatorWorkspace /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Provider & Cost' }));
+    fireEvent.click(screen.getByRole('button', { name: /Provider & Cost$/ }));
     await screen.findByText('unconfigured');
     fireEvent.click(screen.getByRole('button', { name: 'Seedance' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Review & Generate' }));
-    expect(screen.getByRole('button', { name: 'Generate video' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Review & Generate$/ }));
+    expect(screen.getByRole('button', { name: 'Generate with verified external provider' })).toBeDisabled();
   });
 
   it('does not present generation as live without provider configuration', () => {
@@ -101,7 +101,7 @@ describe('ATLAS Creator', () => {
     ]);
     render(<MemoryRouter><CreatorProviders /></MemoryRouter>);
     expect(await screen.findByText('unconfigured')).toBeInTheDocument();
-    expect(screen.getByText('Never verified')).toBeInTheDocument();
+    expect(screen.getByText(/Never verified/)).toBeInTheDocument();
     expect(screen.getByText(/must never be used as silent tracking/i)).toBeInTheDocument();
   });
 });

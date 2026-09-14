@@ -15,7 +15,7 @@ describe('ATLAS Payroll visual foundation', () => {
     expect(screen.getByRole('heading', { name: 'ATLAS PAYROLL' })).toBeInTheDocument();
     expect(screen.getByText('People • Pay • Progress')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Payroll Overview/i })).toHaveAttribute('href', '/payroll/overview');
-    expect(screen.getByRole('link', { name: /^People/i })).toHaveAttribute('href', '/payroll/people');
+    expect(screen.getByRole('link', { name: /Workforce People/i })).toHaveAttribute('href', '/payroll/people');
     expect(screen.getByRole('link', { name: /Time & Earnings/i })).toHaveAttribute('href', '/payroll/time-earnings');
     expect(screen.getByRole('link', { name: /Pay Runs/i })).toHaveAttribute('href', '/payroll/pay-runs');
   });

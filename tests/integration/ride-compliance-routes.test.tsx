@@ -1,6 +1,7 @@
+import React from 'react';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { ComplianceHomePage } from '../../apps/web/src/modules/ride/ComplianceHomePage';
@@ -29,16 +30,19 @@ describe('ATLAS Ride compliance routes', () => {
   it('links Ride to Driver / Partner', () => {
     render(<MemoryRouter><RideHomePage /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: /atlas ride/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /driver.*partner/i })).toHaveAttribute('href', '/ride/driver');
+    const rideNav = screen.getByRole('navigation', { name: /atlas ride/i });
+    expect(within(rideNav).getByRole('link', { name: /driver.*partner/i })).toHaveAttribute('href', '/ride/driver');
   });
 
   it('links Driver / Partner to compliance and documents to profile photo', () => {
     const { unmount } = render(<MemoryRouter><DriverHomePage /></MemoryRouter>);
-    expect(screen.getByRole('link', { name: /compliance/i })).toHaveAttribute('href', '/ride/driver/compliance');
+    const driverNav = screen.getByRole('navigation', { name: /atlas ride/i });
+    expect(within(driverNav).getByRole('link', { name: /^compliance$/i })).toHaveAttribute('href', '/ride/driver/compliance');
     unmount();
 
     const compliance = render(<MemoryRouter><ComplianceHomePage /></MemoryRouter>);
-    expect(screen.getByRole('link', { name: /documents.*credentials/i })).toHaveAttribute('href', '/ride/driver/compliance/documents');
+    const complianceNav = screen.getByRole('navigation', { name: /atlas ride/i });
+    expect(within(complianceNav).getByRole('link', { name: /documents.*credentials/i })).toHaveAttribute('href', '/ride/driver/compliance/documents');
     compliance.unmount();
 
     render(<MemoryRouter><DocumentsPage /></MemoryRouter>);

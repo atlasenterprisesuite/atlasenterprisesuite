@@ -28,8 +28,9 @@ describe('Guided Execution accessibility', () => {
     vi.mocked(loadGuidedExecutionState).mockResolvedValue(makeGuidedState());
     render(<MemoryRouter initialEntries={['/execution/wf-1']}><App /></MemoryRouter>);
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Now');
-    const disclosure = screen.getByRole('button', { name: /Task 1 — Verify infrastructure readiness/i });
+    const disclosure = await screen.findByRole('button', { name: /Task 1 — Verify infrastructure readiness/i });
+    const workflowStatus = screen.getByText('Workflow status').closest('[role="status"]');
+    expect(workflowStatus).toHaveTextContent('Now');
     expect(disclosure).toHaveAttribute('aria-expanded', 'true');
     const current = screen.getByRole('button', { name: /Verify Cloudflare/i });
     expect(current).toHaveAttribute('aria-current', 'step');

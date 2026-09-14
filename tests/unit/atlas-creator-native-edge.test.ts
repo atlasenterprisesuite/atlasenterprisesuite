@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const source = readFileSync(new URL('../../supabase/functions/atlas-creator-native/index.ts', import.meta.url), 'utf8');
+const source = readFileSync(
+  resolve(process.cwd(), 'supabase/functions/atlas-creator-native/index.ts'),
+  'utf8'
+);
 
 describe('atlas-creator-native edge contract', () => {
   it('stays versioned, zero-cost, permission-gated and audited', () => {
