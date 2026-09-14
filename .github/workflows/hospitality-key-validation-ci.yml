@@ -1,0 +1,44 @@
+name: Hospitality Key Validation CI
+
+on:
+  push:
+    branches:
+      - feat/hospitality-us-ops-key-validation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hospitality-key-validation-ci
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Hospitality unit tests
+        run: npx vitest run tests/unit/hospitality-room-access.test.ts tests/unit/hospitality-provider-registry.test.ts tests/unit/hospitality-provider-adapters.test.ts
+      - name: Hospitality integration tests
+        run: npx vitest run tests/integration/hospitality-schema-contract.test.ts tests/integration/hospitality-edge-contract.test.ts tests/integration/hospitality-routes.test.tsx tests/integration/hospitality-security-contract.test.ts
+      - name: Full unit suite
+        run: npm run test:unit
+      - name: Full integration suite
+        run: npm run test:integration
+      - name: Production build
+        run: npm run build
