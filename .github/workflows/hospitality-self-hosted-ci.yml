@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/hospitality-room-access
+      - feat/hospitality-us-ops-key-validation
   workflow_dispatch:
 
 permissions:
