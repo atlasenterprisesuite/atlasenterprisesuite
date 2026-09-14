@@ -25,7 +25,7 @@ The feature must not be implemented inside ATLAS Health. It is a reflective/pers
 
 ## 3. Access model
 
-Phase 1 access is controlled by a dedicated entitlement, for example:
+Phase 1 access is controlled by the dedicated entitlement:
 
 `atlas.oracle.private`
 
@@ -165,7 +165,7 @@ The system must label the result as symbolic/reflection-oriented. It must not cl
 
 ## 7. Card selection and interpretation
 
-Card selection should be deterministic-per-reading once generated and persisted, so reopening a reading does not redraw cards.
+At creation time, cards are selected using application randomness from the verified active deck and persisted immediately. Reopening a reading must return the persisted card set and must never redraw silently.
 
 A reading request creates one persisted reading and its associated selected cards. Interpretation can be generated from:
 
@@ -213,7 +213,7 @@ Oracle home with:
 
 ### `/assistant/oracle/readings/:readingId`
 
-Persisted reading detail with cards, interpretation, timestamp, private note, favorite controls, and delete/archive behavior if supported by current ATLAS patterns.
+Persisted reading detail with cards, interpretation, timestamp, private note, and favorite controls.
 
 ### `/assistant/oracle/deck`
 
@@ -241,7 +241,7 @@ ATLAS Assistant should recognize explicit intents such as:
 
 Assistant actions must route through the same application service used by the UI rather than duplicating reading logic.
 
-Suggested service boundary:
+Canonical service boundary:
 
 `OracleReadingService`
 
@@ -277,7 +277,7 @@ For high-stakes user prompts, ATLAS should separate reflective language from fac
 
 ## 13. Future public rollout
 
-Phase 2 may expose the module to additional users through a public entitlement such as:
+Phase 2 may expose the module to additional users through the separate entitlement:
 
 `atlas.oracle.enabled`
 
@@ -350,6 +350,7 @@ Phase 1 does not include:
 - organization-wide access
 - social sharing by default
 - automated push notifications
+- deletion/archival workflows
 - health/clinical interpretation
 - claims of predictive accuracy
 
