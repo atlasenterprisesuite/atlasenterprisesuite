@@ -23,9 +23,9 @@ export function OracleRoutes() {
         </header>
 
         <Routes>
-          <Route index element={<OracleHomePage />} />
-          <Route path="deck" element={<OracleDeckPage />} />
-          <Route path="readings/:readingId" element={<OracleReadingPage />} />
+          <Route path="/assistant/oracle" element={<OracleHomePage />} />
+          <Route path="/assistant/oracle/deck" element={<OracleDeckPage />} />
+          <Route path="/assistant/oracle/readings/:readingId" element={<OracleReadingPage />} />
           <Route path="*" element={<Navigate to="/assistant/oracle" replace />} />
         </Routes>
       </section>
