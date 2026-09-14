@@ -85,7 +85,7 @@ create table if not exists public.oracle_favorites (
   unique (user_id, card_id)
 );
 
-create or replace function public.has_oracle_entitlement(entitlement_key text default 'atlas.oracle.private')
+create or replace function public.has_oracle_entitlement(entitlement_key_value text default 'atlas.oracle.private')
 returns boolean
 language sql
 stable
@@ -96,7 +96,7 @@ as $$
     select 1
     from public.oracle_entitlements e
     where e.user_id = (select auth.uid())
-      and e.entitlement_key = has_oracle_entitlement.entitlement_key
+      and e.entitlement_key = entitlement_key_value
   );
 $$;
 
