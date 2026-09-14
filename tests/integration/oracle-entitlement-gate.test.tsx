@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ getOracleStatus: vi.fn() }));
@@ -28,8 +28,14 @@ describe('RequireOracleEntitlement', () => {
   });
 
   it('shows a retryable error without rendering private content', async () => {
-    mocks.getOracleStatus.mockRejectedValue(new Error('network_error'));
+    let rejectStatus: (cause: Error) => void = () => undefined;
+    mocks.getOracleStatus.mockImplementation(() => new Promise((_resolve, reject) => {
+      rejectStatus = reject;
+    }));
     render(<RequireOracleEntitlement><div>Private Oracle</div></RequireOracleEntitlement>);
+    await act(async () => {
+      rejectStatus(new Error('network_error'));
+    });
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not verify private oracle access/i);
     expect(screen.queryByText('Private Oracle')).toBeNull();
   });
