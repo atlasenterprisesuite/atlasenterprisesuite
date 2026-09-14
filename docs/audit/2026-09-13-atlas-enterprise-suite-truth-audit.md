@@ -1,205 +1,280 @@
 # ATLAS Enterprise Suite — End-to-End Truth Audit and Closure Register
 
 Date: 2026-09-13
-Auditor scope: accessible ATLAS continuity records, current canonical GitHub repository, current GitHub Actions evidence, authoritative Supabase project, release-control evidence, current production domain reachability, and active implementation backlog.
+Updated with closure evidence: 2026-09-14 UTC
+Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`
+Authoritative Supabase project: `atlas-core` (`ggmanzcgtlrvqfoccgsh`)
 
 ## Audit standard
 
 This audit uses the ATLAS status vocabulary as a control: IDEA / DESIGNED / IMPLEMENTED / TESTED / DEPLOYED / VERIFIED IN PRODUCTION / BLOCKED / EXTERNAL DEPENDENCY / LOCAL-DEMO DATA. No item is promoted to a stronger state without current evidence.
 
-This is not a claim that every historical private chat transcript is directly readable from this execution context. Historical decisions are audited through the accessible ATLAS handoffs, reports, plans, repository history, current branches/PRs, backend evidence, and production probes. Current repository/provider evidence overrides older narrative state.
+Historical claims are subordinate to current repository, workflow, database, provider, and production evidence. This report is intentionally updated when later evidence disproves an earlier operational assumption.
 
 ## Executive verdict
 
-ATLAS is a real, substantial software and backend system, but it is not yet acceptable to describe the complete Enterprise Suite as fully production-ready.
+ATLAS is a real, substantial software and backend system. The core repository and authoritative backend are materially operational, but the complete Enterprise Suite is not yet commercially production-ready.
 
-The platform has a canonical repository, a production-stable branch, an active authoritative Supabase backend, real identity/governance/release/observability/intelligence functions, multiple implemented business modules, and Cloudflare deployment infrastructure. The principal readiness failure is not lack of work; it is incomplete convergence between current `main`, the highly divergent A-Z integration branch, open module branches, CI/deployment verification, production-domain policy, and security hardening.
+The primary remaining readiness work is controlled convergence plus a small set of genuine external/human gates: Cloudflare deployment credentials, privileged MFA enrollment, GitHub administrative branch protection, Supabase leaked-password protection when plan-supported, and separation of the public commercial surface from the protected Enterprise App.
 
-The correct completion strategy is controlled convergence, not a mass merge.
+The correct completion strategy remains controlled convergence, not a mass merge.
 
-## Repository Truth Report
+## Repository truth
 
 - Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`
-- Production-stable branch: `main`
-- Audited main HEAD at start: `ea8c347e9421033bee1c39fd279c392fbe2aaad6`
-- A-Z integration branch: `release/atlas-a-z`
-- A-Z divergence at audit: 626 commits ahead of `main`, 387 commits behind `main`; status `diverged`
+- Canonical branch: `main`
+- Audited `main` HEAD at audit start: `ea8c347e9421033bee1c39fd279c392fbe2aaad6`
+- Audit P0 closure merged through PR #113
+- Blocker recovery runbook merged through PR #114
+- RLS init-plan optimization merged through PR #115
+- Current `main` after PR #115: `0070f800725873cf85ae828715cd780274039a9f`
 - Primary backend/control plane: Supabase `atlas-core` (`ggmanzcgtlrvqfoccgsh`)
-- Secondary active project: `atlas-core-v2` (`qawxltbplsxcjvwxdkes`), explicitly non-authoritative until reconciled and cut over
+- Secondary project `atlas-core-v2` remains non-authoritative until explicitly reconciled and cut over
 - Edge target: Cloudflare Workers / Static Assets
-- Worker name in current source: `atlas-enterprise-suite-web`
-- Public domains declared by architecture: `atlasenterprisesuite.com`, `www.atlasenterprisesuite.com`
-- Current public verification result: blocked by Cloudflare Access service-token requirement
-- Current release-control subsystem: operational according to current Supabase runtime verification
-- Current observability subsystem: operational according to current Supabase runtime verification
-- Current ATLAS Copilot/OpenAI request verification: passed according to current Supabase runtime verification
-- Current identity-security verification: blocked (`privileged_mfa_incomplete`)
-- Current governance verification: passed with provider state `needs_attention`
+- Worker name: `atlas-enterprise-suite-web`
+- Public domains: `atlasenterprisesuite.com`, `www.atlasenterprisesuite.com`
 
-## What is already materially implemented
+## Verified closure evidence
 
-### Platform / control plane
+### CI and build pipeline — corrected finding
 
-Current production backend contains active functions for identity/auth, permissions, governance, observability, release control, runtime verification, platform controls, repair/control-plane functions, intelligence/copilot, Creator, Hospitality, Ride, and infrastructure evidence.
+The original audit incorrectly attributed failed production workflows to unavailable GitHub-hosted `ubuntu-latest` runners and proposed moving the production workflows to `self-hosted`.
 
-The release-control data model exists in production (`atlas_releases`, `atlas_deployments`, `atlas_deployment_gates`, `atlas_runtime_verification_runs`) and contains a promoted production baseline from 2026-09-08/09. Required gates recorded for that baseline passed; GitHub CI was non-required/pending at that historical baseline.
+Fresh execution evidence disproved that assumption. GitHub-hosted Ubuntu 24.04 runners execute the canonical ATLAS verification and production-readiness workflows successfully with Node 22. A self-hosted runner is not a prerequisite unless a workflow explicitly requests one.
 
-### Web application on current main
+PR #113 exact-head verification on SHA `f6050eac6227809a2bf8fda8387e16b684f70589` passed:
 
-Current main implements one React/Vite application with the ATLAS shell, identity route, Universal/Guided Execution route, Business/Social Publisher, Finance, Accounts Payable, Automotive Sales reporting, Payroll, Learning/Neuroplasticity, Health Research, Creator/Studio/Voice, Hospitality routing, plus extension-backed routes.
+- locked install
+- dependency security gate
+- typecheck
+- unit tests
+- integration tests
+- production build
+- exact SHA recording
 
-Current source deliberately labels demo/research data and explicitly avoids claiming unavailable clinical/provider connections.
+PR #113 then merged to `main` as `b55da37762964d0ef12842f1014df51aa2a385e9`.
 
-### Shared packages
+The resulting `ATLAS Build + Production Readiness Gate` on that exact `main` SHA also passed install, security, typecheck, unit, integration and production build.
 
-Current main already contains shared packages including accounting, agent registry, AI core, ATLAS MCP, compliance, core governance primitives, Creator, governance, Health, Hospitality, Learning, Ride, Social, Task Protocol and IRS monitoring.
+Status: **TESTED / main build readiness VERIFIED**.
 
-## Critical findings
+### Cloudflare deployment — real blocker isolated
 
-### P0 — CI/deployment runner inconsistency
+The Cloudflare workflow reached `Validate Cloudflare authorization` after all code gates passed. It failed because GitHub Actions received empty values for:
 
-At audit start, the latest `main` production-readiness and Cloudflare-deploy workflows both failed before running steps because they still requested `ubuntu-latest`. Other verified workflows had already been moved to `self-hosted` and were executing successfully on the available Ubuntu 24.04 / Node 22 runner.
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
 
-Audit remediation branch changes both production workflows to `runs-on: self-hosted` so the exact production gates can execute again.
+Deployment, worker smoke verification, and ATLAS Manager evidence recording were therefore skipped.
 
-Acceptance: exact branch SHA must pass full ATLAS Consensus (install/security, typecheck, unit, integration, build), then main must pass production readiness and Cloudflare deploy/worker smoke verification after merge.
+This is a credentials/configuration blocker, not a runner or application-build failure.
 
-### P0 — Public production verification is blocked
+Status: **BLOCKED — human credential configuration required**.
 
-The current production verifier repeatedly reports:
+### Public production surface
 
-- `infrastructure-public`
-- target `atlas-enterprise-suite-web`
-- status `blocked`
-- provider state `access_service_token_required`
-- error `cloudflare_access_service_token_required`
+Anonymous access to `www.atlasenterprisesuite.com` redirects to Cloudflare Access. The protected application boundary is therefore functioning, but the commercial website is not yet anonymously reachable.
 
-Anonymous access to `www.atlasenterprisesuite.com` redirects to Cloudflare Access. This conflicts with the commercial completion requirement for a publicly reachable website unless the intended architecture deliberately separates public marketing from the protected enterprise application.
+Required target architecture:
 
-Required architecture decision for final commercial readiness: preserve Zero Trust for the authenticated application while exposing a public marketing/contact/legal surface, or explicitly classify the whole domain as private and provide a separate public site/domain/path.
+- public: Home, Product/Modules, Contact, Demo, Terms, Privacy, onboarding entry;
+- protected: authenticated tenant data, RBAC, audit, Approval Center, privileged ATLAS Assistant actions and Enterprise App modules.
 
-### P0 — Identity security is not green
+Status: **BLOCKED / architecture-policy configuration pending**.
 
-The production verifier repeatedly reports identity security as `blocked`, provider `supabase-auth`, provider state `needs_hardening`, error `privileged_mfa_incomplete`.
+### Supabase owner bootstrap AAL2
 
-Supabase security advisors additionally report leaked-password protection disabled.
+Canonical migration:
 
-Completion requires privileged-account MFA policy/evidence and enabling leaked-password protection.
+`supabase/migrations/20260913_harden_atlas_bootstrap_owner_aal2.sql`
 
-### P0/P1 — SECURITY DEFINER exposure requires explicit review
+The migration was applied to authoritative production and registered as `harden_atlas_bootstrap_owner_aal2`.
 
-Supabase security advisors currently report 13 `SECURITY DEFINER` RPC functions executable by `authenticated`, including organization/bootstrap/invitation/member/permission functions. Some may intentionally use SECURITY DEFINER with internal permission checks; advisor presence is not proof of a vulnerability. They must nevertheless be individually reviewed and either:
+Fresh `pg_get_functiondef` confirms that `public.atlas_bootstrap_owner` now requires AAL2 and raises `mfa_aal2_required` otherwise.
 
-1. retain SECURITY DEFINER with a documented permission/tenant guard and tests;
-2. revoke inappropriate `authenticated` EXECUTE grants; or
-3. migrate to SECURITY INVOKER/private schema where appropriate.
+Status: **DEPLOYED + VERIFIED IN PRODUCTION**.
 
-No commercial-complete security claim should be made until this review is evidence-backed.
+### Privileged MFA enrollment
 
-### P0/P1 — A-Z branch is not mergeable as a bulk closure
+Fresh production evidence shows one enabled platform administrator and zero enabled platform administrators with verified MFA.
 
-`release/atlas-a-z` is 626 commits ahead and 387 behind `main`. It contains substantial accounting, people, revenue, release-control, spatial, telecom, Forge, migration and shell work, but it also predates many later main changes.
+The database now enforces AAL2 correctly, but a human administrator must enroll and verify an MFA factor.
 
-Do not merge the branch wholesale. Create a reconciliation matrix and cherry-pick/re-implement verified capabilities module by module into current main, preserving stronger recent functionality.
+Status: **BLOCKED — human identity action required**.
 
-### P1 — Web module registry/navigation is fragmented
+### SECURITY DEFINER review
 
-Current `App.tsx` is a large route hub. `AtlasShell` contains a manually maintained nav list, while `/learning` is resolved through an extension resolver and other implemented packages/modules are not uniformly surfaced through a single canonical module catalog.
+Supabase Security Advisor reports 13 authenticated-executable `SECURITY DEFINER` RPCs. They were individually inspected rather than changed merely to silence the linter.
 
-Completion requires one module registry that drives route availability, shell navigation, entitlement/RBAC metadata, module status, and truthful empty/disabled states. This is also the safest basis for the approved ATLAS Universe UI.
+Verified guard patterns include combinations of:
 
-### P1 — Commercial public-site gate remains incomplete
+- `auth.uid()` authentication
+- `auth.jwt()` / AAL2 for privileged mutations
+- active organization membership
+- `has_identity_permission` role/permission checks
+- platform-admin checks for bootstrap/provisioning
+- confirmed-email and token-ownership checks for invitation acceptance
+- fixed `search_path`
 
-The historical ATLAS completion definition requires public website, module pages, truthful status descriptions, contact/demo flow, terms/privacy and enterprise onboarding. Current protected app routing is not equivalent to a public commercial website.
+The three identity read RPCs delegate authorization to `has_identity_permission`, which validates active membership for `auth.uid()` and required role permissions. `accept_identity_invitation` validates authenticated identity, confirmed email, token integrity/status/expiry, exact email ownership, active organization, duplicate membership and audit state.
 
-Terms/Privacy work may exist in documents, but production navigation, public availability, final company/legal naming, contact/demo capture and onboarding must be verified on the deployed public surface.
+Current evidence does not justify mass conversion to `SECURITY INVOKER` or blanket `REVOKE EXECUTE`.
 
-### P1 — Current production artifact is not proven to equal current main
+Status: **REVIEWED / intentional guarded exposure documented; continue regression review when functions change**.
 
-Legacy `atlas_release_registry` still records `enterprise-web-2026-08-22` version `2026.08.22.1`. The newer release-control subsystem has a promoted `2026.09.08.baseline.1` described as `supabase-native:current-production`, but the latest current-main Cloudflare deployment workflow failed before steps.
+### Leaked-password protection
 
-Therefore the exact current main SHA is not yet proven as the production web artifact.
+Supabase Security Advisor still reports leaked-password protection disabled. The available Supabase connector does not expose the Auth-setting mutation, and the feature is plan-dependent.
 
-Acceptance: successful deployment must record exact `GITHUB_SHA`, worker artifact reachability, SPA-route smoke tests, `/healthz`, and ATLAS Manager evidence; then custom domain must independently verify the same release.
+Status: **BLOCKED / Dashboard-plan dependent**.
 
-### P1 — Open PR backlog represents unfinished product surface
+### RLS init-plan performance warnings
 
-Significant open PRs/drafts still cover Hospitality OS core/wallet/key, Work Soberano, Universe UI, Universal Execution Core documentation, zero-cost Creator, Ride post-merge hardening, Intelligence federation, Inclusive Communication, Assistant avatar/voice, Decision Compass, Cloudflare diagnostics, Personal Voice, WhatsApp Connect, Telecom, Health and other verticals.
+The original audit recorded six `auth_rls_initplan` warnings. PR #115 introduced the source-controlled migration:
 
-These must be classified as: superseded, reconcile-to-main, finish-and-merge, or external-dependency. Leaving all of them indefinitely open makes project state non-auditable.
+`supabase/migrations/20260914004900_optimize_auth_rls_initplan_v1.sql`
 
-### P1/P2 — Database performance debt
+The migration preserves policy names, roles, tenant conditions and accounting write guards while replacing direct repeated `auth.uid()` evaluation with `(select auth.uid())`.
 
-Current Supabase performance advisors report 27 unindexed foreign keys and 6 RLS init-plan warnings. The many `unused_index` findings are informational and should not be mass-deleted without real workload evidence.
+After merge and production migration, fresh `pg_policies` evidence confirms the optimized expressions and a fresh Performance Advisor no longer reports `auth_rls_initplan`.
 
-Prioritize missing FK indexes and RLS init-plan corrections that affect tenant, identity and accounting hot paths. Do not remove unused indexes merely to silence an advisor.
+Status: **DEPLOYED + VERIFIED IN PRODUCTION — 6 → 0 warnings**.
 
-## Completion definition used by this audit
+### Remaining database performance debt
 
-ATLAS commercial v1 is considered complete only when all of these groups are green with current evidence:
+Fresh Performance Advisor still reports:
 
-1. Platform: canonical runtime, Auth, tenant/company, RBAC, audit, responsive shell, dashboard/navigation, settings, notifications/search, backup/recovery, observability.
-2. Core Business: CRM/revenue, Accounting AP/AR/GL, Inventory, Purchasing, Sales, HR, Payroll foundation, POS foundation, Projects/Work and reporting.
-3. Data: no fake metrics, demo data labeled, reproducible migration strategy, import/export where required, tenant isolation tests.
-4. Operations: full tests, release pipeline, rollback, production verification, security review and documentation.
-5. Commercial: public website/module pages, truthful feature status, contact/demo, Terms/Privacy and onboarding.
+- 27 unindexed foreign keys
+- 232 unused-index informational findings
 
-Verticals such as Health, Ride, Hospitality, Education, Telecom and advanced Creator/Voice can continue to deepen after this commercial platform gate, provided their current status is represented truthfully.
+Do not mass-create or mass-delete indexes. Missing FK indexes require table-size/workload/query analysis. Unused-index findings require workload evidence because counters can be young or reset and many indexes are intentional integrity/query-path support.
 
-## Closure program — ordered execution
+Status: **P1/P2 — analysis required before mutation**.
 
-### Wave 0 — Restore evidence pipeline (in progress on this audit branch)
+### GitHub `main` protection
 
-- move `production-deploy.yml` to the verified self-hosted runner;
-- move `cloudflare-deploy.yml` to the verified self-hosted runner;
-- run exact-SHA Consensus verification;
-- merge only after green evidence;
-- verify main production gate and Cloudflare worker artifact;
-- verify/record custom-domain state separately.
+`main` currently reports `protected: false` and required status checks off. The readable repository ruleset named `Copilot` only enables Copilot code review; it does not require PR-only changes or canonical CI status checks.
 
-### Wave 1 — Security closure
+The installed GitHub integration lacks repository administration access to branch-protection endpoints and receives HTTP 403 for the protection resource.
 
-- privileged MFA readiness;
-- leaked-password protection;
-- review 13 exposed SECURITY DEFINER RPCs;
-- correct required grants/guards and add regression tests;
-- rerun Supabase security advisors until critical production blockers are resolved.
+Status: **BLOCKED — repository-admin action required**.
 
-### Wave 2 — Canonical convergence
+## Materially implemented platform surface
 
-- build A-Z reconciliation inventory from branch diff;
-- classify each A-Z capability against current main;
-- recover missing Accounting/People/Revenue/Inventory/Purchasing/POS/Projects capabilities selectively;
-- retire or close superseded PRs after evidence is preserved;
-- keep one canonical implementation per capability.
+Current `main` contains one React/Vite ATLAS application with shared identity, shell, execution, business and vertical capabilities. Current production backend contains active identity/auth, permissions, governance, observability, release control, runtime verification, platform controls, intelligence/copilot, accounting and other domain functions.
 
-### Wave 3 — Product-shell convergence
+Current source deliberately distinguishes demo/research/external-gated states and must continue to avoid presenting unavailable provider connections as live.
 
-- introduce canonical module registry;
-- unify navigation, route metadata, RBAC/module availability and statuses;
-- integrate approved ATLAS Universe UI as a shell layer, not a parallel app;
-- ensure desktop/tablet/mobile and accessibility paths.
+## A-Z convergence
 
-### Wave 4 — Commercial/public surface
+`release/atlas-a-z` remains historical integration work, not a branch to bulk merge. Capabilities must be reconciled module by module against current `main`, preserving stronger recent implementations and retiring duplicates only after evidence is preserved.
 
-- separate public website from protected enterprise app when needed;
-- expose product/module pages, legal pages, contact/demo and onboarding truthfully;
-- verify apex/www DNS/TLS, redirect policy, Cloudflare Access scope and public smoke tests.
+Priority commercial core remains:
 
-### Wave 5 — Operational hardening
+- CRM / revenue
+- Accounting GL / AP / AR
+- Inventory
+- Purchasing
+- Sales
+- People / HR
+- Payroll foundation
+- POS foundation
+- Projects / Work
+- cross-module reporting
 
-- fix material FK/RLS performance advisories;
-- validate backup/restore evidence;
-- run clean migration/recovery rehearsal in a safe non-production environment when authorized/cost-approved;
-- verify rollback and release-control evidence;
-- establish recurring production smoke/security checks.
+## Module registry and ATLAS Universe
 
-## Non-blocking / external-dependency classification
+Navigation and routing remain fragmented across explicit routes, manual navigation and extension-backed resolution. The next product-shell convergence should introduce one canonical module registry that drives:
 
-Third-party banking, payments, telecom hardware, social publishing, hotel lock/PMS providers, medical systems, maps, carrier networks and similar capabilities must remain adapter-gated until authorized credentials/provider agreements/hardware exist. These are not reasons to fabricate `live` status and do not block the core platform if the UI exposes truthful configuration states.
+- route availability
+- navigation
+- entitlement/RBAC metadata
+- module readiness/status
+- ATLAS Assistant context
+- search/discovery
+- ATLAS Universe visualization
+
+The approved Universe UI must be a shell over the canonical application, not a parallel app.
+
+## Commercial completion gate
+
+ATLAS commercial v1 is complete only when these groups are current-evidence green:
+
+1. **Platform:** canonical runtime, Auth, tenant/company, RBAC, audit, responsive shell, navigation, settings, notifications/search, backup/recovery and observability.
+2. **Core Business:** CRM/revenue, Accounting AP/AR/GL, Inventory, Purchasing, Sales, HR, Payroll foundation, POS foundation, Projects/Work and reporting.
+3. **Data:** no fake metrics/providers, explicit demo labels, reproducible migrations, required import/export and tenant-isolation evidence.
+4. **Operations:** full tests, release pipeline, rollback, production verification, security review and documentation.
+5. **Commercial:** anonymous public website/module pages, truthful statuses, Contact/Demo, Terms/Privacy and onboarding.
+
+Advanced Health, Ride, Hospitality, Education, Telecom and Creator/Voice can deepen after the core commercial gate while external dependencies remain truthfully labeled.
+
+## Ordered closure program
+
+### Wave 0 — evidence pipeline
+
+Completed for repository/build evidence through PR #113. Remaining Cloudflare deployment execution is blocked specifically by missing GitHub Actions Cloudflare credentials.
+
+### Wave 1 — security
+
+Completed:
+
+- AAL2 guard on owner bootstrap deployed and verified
+- SECURITY DEFINER functions individually reviewed
+
+Remaining:
+
+- human MFA enrollment/verification
+- leaked-password protection when supported
+- repository-admin protection of `main`
+
+### Wave 2 — canonical convergence
+
+- reconcile A-Z capabilities individually
+- consolidate duplicate Intelligence, Ride, Hospitality and execution lines
+- retire superseded branches/PRs only after evidence preservation
+- keep one canonical implementation per capability
+
+### Wave 3 — product shell
+
+- canonical module registry
+- Universe shell integration
+- responsive/accessibility verification
+- truthful module readiness states
+
+### Wave 4 — public commercial surface
+
+- separate anonymous commercial routes from protected Enterprise App
+- Contact/Demo/Terms/Privacy/onboarding
+- apex/www DNS/TLS and Access scope verification
+- production smoke tests
+
+### Wave 5 — operational hardening
+
+- analyze and address material FK index gaps
+- backup/restore rehearsal
+- rollback evidence
+- recurring production smoke/security checks
+
+## Persistent blocker recovery record
+
+Canonical recovery procedures are maintained in:
+
+`docs/runbooks/atlas-blocker-recovery-runbook.md`
+
+Every recurring incident should update that runbook with symptom, root cause, exact recovery procedure and required evidence.
+
+## Current blockers that require external/human intervention
+
+- configure GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+- enroll and verify MFA for the privileged platform administrator
+- configure `main` branch/ruleset protection with repository-admin privileges
+- enable Supabase leaked-password protection if supported by the project plan
+- adjust Cloudflare Access scope so the commercial public surface is anonymous while the Enterprise App remains protected
+
+These blockers must not stop independent source, database analysis, tests, documentation and convergence work that can safely continue.
 
 ## Auditor conclusion
 
-The shortest path to a trustworthy ATLAS is not to add more disconnected features. It is to converge the substantial work already present into one release authority, restore exact-SHA CI/deploy evidence, close identity/security gates, reconcile the divergent A-Z work, and separate the protected enterprise workspace from the public commercial surface.
+The audit no longer identifies GitHub-hosted runner availability as the production blocker. The evidence pipeline is functioning on GitHub-hosted Ubuntu runners, repository/build gates are green, owner bootstrap AAL2 is enforced in production, the SECURITY DEFINER family has been evidence-reviewed, and the six RLS init-plan warnings have been closed in production.
 
-This audit branch begins that closure by repairing the two production workflows that were still pinned to the unavailable hosted runner. The report must be updated with final SHA/check/deploy evidence after the branch gates execute.
+The shortest path to a trustworthy ATLAS now is: configure the real Cloudflare deployment credentials, complete human identity/admin security gates, separate the public and protected surfaces, converge the remaining business capabilities, and then execute exact-SHA production deployment and certification without overstating external-gated modules.
