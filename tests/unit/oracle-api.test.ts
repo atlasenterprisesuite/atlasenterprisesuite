@@ -51,15 +51,17 @@ describe('oracleApi', () => {
   });
 
   it('uses owned endpoints for history, detail, notes and favorites', async () => {
-    mocks.authorizedAtlasFetch.mockResolvedValue(response({ ok: true, readings: [] }));
+    mocks.authorizedAtlasFetch.mockResolvedValueOnce(response({ ok: true, readings: [] }));
     await listOracleReadings();
     expect(mocks.authorizedAtlasFetch).toHaveBeenLastCalledWith('/functions/v1/atlas-oracle?api=readings', { method: 'GET' });
 
-    mocks.authorizedAtlasFetch.mockResolvedValue(response({ ok: true, reading: { id: 'r1' } }));
+    mocks.authorizedAtlasFetch.mockResolvedValueOnce(response({ ok: true, reading: { id: 'r1' } }));
     await getOracleReading('r1');
     expect(mocks.authorizedAtlasFetch).toHaveBeenLastCalledWith('/functions/v1/atlas-oracle?api=reading&id=r1', { method: 'GET' });
 
-    mocks.authorizedAtlasFetch.mockResolvedValue(response({ ok: true }));
+    mocks.authorizedAtlasFetch
+      .mockResolvedValueOnce(response({ ok: true, note: { id: 'n1', note: 'private note' } }))
+      .mockResolvedValueOnce(response({ ok: true, favorite: true }));
     await saveOracleNote('r1', 'private note');
     await setOracleFavorite('c1', true);
     expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-oracle?api=note', expect.objectContaining({ method: 'POST' }));
