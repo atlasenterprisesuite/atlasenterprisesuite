@@ -2,44 +2,43 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Enforce the ATLAS Guardian Doctrine inside the canonical Universal Execution Engine and `atlas-execution` server contract so permissions, approvals, verification, evidence, tenant scope, and audit cannot be bypassed or represented optimistically.
+**Goal:** Enforce the ATLAS Guardian Doctrine inside the canonical Universal Execution Engine and `atlas-execution` server contract so permissions, approvals, tenant scope, verification, evidence, and audit fail closed.
 
-**Architecture:** Harden the existing `@atlas/execution` engine instead of adding a second policy or workflow system. A small pure Guardian preflight helper binds the current task/step payload to existing approvals; `ExecutionEngine` consumes that helper, the existing adapter authorization/verification interfaces, the existing evidence helper, and the existing audit store. The Supabase Edge function reuses the same reviewed-action payload contract so browser and in-memory/server execution cannot drift.
+**Architecture:** Extend the existing `packages/execution` contracts only. Add one pure Guardian preflight that evaluates canonical task/step permissions and approval binding; wire it into `ExecutionEngine`; reuse the existing `missingEvidence`, approval digest, adapter authorization, and audit contracts. The Supabase Edge function must reuse the same reviewed-action payload rather than maintain a duplicate binding definition.
 
-**Tech Stack:** TypeScript 5.7, Vitest 3.2, existing `packages/execution`, Supabase Edge Functions/Deno, existing approval digest/evidence/audit contracts.
+**Tech Stack:** TypeScript 5.7, Vitest 3.2, Supabase Edge Functions/Deno, existing `packages/execution`.
 
 **Spec:** `docs/superpowers/specs/2026-09-13-atlas-guardian-doctrine-design.md`
 
 ## Global Constraints
 
-- Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`.
-- Implementation branch: `feat/atlas-guardian-doctrine` created from current `main` at execution time in an isolated worktree.
-- Do not create a second workflow engine, approval center, audit store, tenant model, or shadow policy system.
-- Preserve the existing `ExecutionStatus`, `StepStatus`, payload-digest approval binding, completion gate, and module ownership unless a failing test proves a contract must be strengthened.
-- Treat `execution.approve` in `step.permissionsRequired` as an approval requirement, not as a requirement that the executor also be the approver.
-- All other task/step permissions must be satisfied by the executing actor before adapter resolution or provider execution.
-- Cross-tenant or cross-organization execution must fail closed with `execution_scope_mismatch`.
-- An approved action is valid only for the exact current task version and reviewed action payload.
-- A step with non-empty `evidenceRequirement` cannot be marked completed unless matching verification evidence is present and `verified === true`.
-- Attempted execution, request acceptance, or adapter success without verification is not completion.
-- Every material blocked, failed, and completed engine outcome added by this plan must emit the existing `ExecutionAuditEvent` shape.
-- Budget, provider-capability, autonomy, and browser-envelope enforcement remain owned by the already-approved `docs/superpowers/plans/2026-09-12-atlas-work-sovereign-router-policy.md`; do not duplicate those controls here.
-- No production deploy or provider mutation is part of this plan.
+- Repository: `atlasenterprisesuite/atlasenterprisesuite`.
+- Execution branch: `feat/atlas-guardian-doctrine`, created from current `main` in an isolated worktree.
+- No second workflow engine, policy store, Approval Center, tenant model, audit store, or evidence store.
+- `execution.approve` in `ExecutionStep.permissionsRequired` means approval is required; the executor does not need to be the approver.
+- Every other task/step permission must be held by the executor before adapter resolution.
+- Cross-tenant or cross-organization execution throws `execution_scope_mismatch` before adapter resolution.
+- Approved actions bind to current `task.version` plus exact task/workflow/module/step/actionType/actionPayload.
+- Required evidence must be present and verified before a step can be marked completed.
+- Blocked, failed, and completed material outcomes added here emit `ExecutionAuditEvent` records.
+- Budget, provider-capability, autonomy, and browser-envelope policy remain owned by `docs/superpowers/plans/2026-09-12-atlas-work-sovereign-router-policy.md`.
+- No merge or production deploy in this plan.
 
 ## File Map
 
-- `packages/execution/src/guardian.ts` — pure reviewed-action binding and fail-closed Guardian preflight over canonical task/step/approval state.
-- `packages/execution/src/index.ts` — export Guardian preflight contract.
-- `packages/execution/src/store.ts` — Memory store test helpers for approvals/audit inspection; production interface remains canonical.
-- `packages/execution/src/engine.ts` — consume Guardian preflight, enforce step permissions/evidence, and emit audit events.
-- `supabase/functions/atlas-execution/index.ts` — reuse shared Guardian reviewed-action payload when requesting/deciding approvals.
-- `tests/unit/guardian-preflight.test.ts` — scope, permission, approval, and stale-binding matrix.
-- `tests/unit/execution-engine-guardian.test.ts` — engine mutation/verification/audit guarantees.
-- `tests/unit/atlas-execution-guardian-contract.test.ts` — server contract regression for org scoping, shared approval binding, completion gate, and audit.
+- `packages/execution/src/guardian.ts` — reviewed-action binding + Guardian preflight.
+- `packages/execution/src/index.ts` — exports.
+- `packages/execution/src/store.ts` — in-memory approval/audit test helpers.
+- `packages/execution/src/engine.ts` — preflight, evidence gate, audit.
+- `supabase/functions/atlas-execution/normalize.ts` — persisted row -> canonical execution types.
+- `supabase/functions/atlas-execution/index.ts` — shared Guardian reviewed-action binding.
+- `tests/unit/guardian-preflight.test.ts` — preflight matrix.
+- `tests/unit/execution-engine-guardian.test.ts` — engine invariants.
+- `tests/unit/atlas-execution-guardian-contract.test.ts` — Edge contract regression.
 
 ---
 
-### Task 1: Add the canonical Guardian preflight contract
+### Task 1: Add canonical Guardian preflight
 
 **Files:**
 - Create: `packages/execution/src/guardian.ts`
@@ -48,9 +47,9 @@
 
 **Interfaces:**
 - Consumes: `ExecutionActor`, `ExecutionTask`, `ExecutionStep`, `ExecutionApproval`, `assertSameScope`, `digestApprovalPayload`, `approvalMatchesPayload`.
-- Produces: `GuardianPreflightDecision`, `guardianReviewedAction(task, step)`, `evaluateGuardianPreflight(input)`.
+- Produces: `GuardianPreflightDecision`, `guardianReviewedAction`, `evaluateGuardianPreflight`.
 
-- [ ] **Step 1: Write the failing Guardian preflight tests**
+- [ ] **Step 1: Write failing tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -69,7 +68,7 @@ const actor = (permissions: readonly string[]): ExecutionActor => ({
   permissions
 });
 
-async function approvedBinding() {
+async function approvedFixture() {
   const store = MemoryExecutionStore.seeded();
   const task = (await store.getTask('task-1'))!;
   const step = (await store.listSteps(task.id))[0];
@@ -91,34 +90,37 @@ async function approvedBinding() {
 
 describe('Guardian preflight', () => {
   it('fails closed across tenant scope', async () => {
-    const { task, step } = await approvedBinding();
-    const wrongScope = { ...actor(['payroll.write']), scope: { tenantId: 'tenant-2', organizationId: 'org-1' } };
-    await expect(evaluateGuardianPreflight({ actor: wrongScope, task, step, approvals: [] }))
+    const { task, step } = await approvedFixture();
+    const wrong: ExecutionActor = {
+      ...actor(['payroll.write']),
+      scope: { tenantId: 'tenant-2', organizationId: 'org-1' }
+    };
+    await expect(evaluateGuardianPreflight({ actor: wrong, task, step, approvals: [] }))
       .rejects.toThrow('execution_scope_mismatch');
   });
 
-  it('blocks a missing domain step permission before execution', async () => {
-    const { task, step } = await approvedBinding();
+  it('blocks a missing step permission', async () => {
+    const { task, step } = await approvedFixture();
     task.status = 'now';
     step.permissionsRequired = ['payroll.write'];
     await expect(evaluateGuardianPreflight({ actor: actor([]), task, step, approvals: [] }))
       .resolves.toEqual({ allowed: false, reason: 'missing_step_permission:payroll.write' });
   });
 
-  it('requires approval without requiring the executor to hold execution.approve', async () => {
-    const { task, step } = await approvedBinding();
+  it('requires approval without requiring executor execution.approve permission', async () => {
+    const { task, step } = await approvedFixture();
     await expect(evaluateGuardianPreflight({ actor: actor(['payroll.write']), task, step, approvals: [] }))
       .resolves.toEqual({ allowed: false, reason: 'approval_required' });
   });
 
   it('accepts an exact approved binding', async () => {
-    const { task, step, approval } = await approvedBinding();
+    const { task, step, approval } = await approvedFixture();
     await expect(evaluateGuardianPreflight({ actor: actor(['payroll.write']), task, step, approvals: [approval] }))
       .resolves.toEqual({ allowed: true, reason: 'guardian_preflight_passed', approvalId: 'approval-1' });
   });
 
-  it('rejects a stale approval after action payload change', async () => {
-    const { task, step, approval } = await approvedBinding();
+  it('rejects a stale binding after payload mutation', async () => {
+    const { task, step, approval } = await approvedFixture();
     step.actionPayload = { employeeId: 'employee-99' };
     await expect(evaluateGuardianPreflight({ actor: actor(['payroll.write']), task, step, approvals: [approval] }))
       .resolves.toEqual({ allowed: false, reason: 'approval_binding_mismatch' });
@@ -126,15 +128,15 @@ describe('Guardian preflight', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and verify RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/unit/guardian-preflight.test.ts
 ```
 
-Expected: FAIL because `guardian.ts` exports do not exist.
+Expected: FAIL because Guardian exports do not exist.
 
-- [ ] **Step 3: Implement the minimal shared preflight**
+- [ ] **Step 3: Implement `guardian.ts`**
 
 ```ts
 import { approvalMatchesPayload, digestApprovalPayload } from './approvals';
@@ -176,10 +178,10 @@ export async function evaluateGuardianPreflight(input: {
     }
   }
 
-  const approvalRequired = input.task.status === 'awaiting_approval'
+  const requiresApproval = input.task.status === 'awaiting_approval'
     || input.step.status === 'awaiting_approval'
     || input.step.permissionsRequired.includes('execution.approve');
-  if (!approvalRequired) {
+  if (!requiresApproval) {
     return { allowed: true, reason: 'guardian_preflight_passed', approvalId: null };
   }
 
@@ -187,28 +189,30 @@ export async function evaluateGuardianPreflight(input: {
     payloadVersion: input.task.version,
     payload: guardianReviewedAction(input.task, input.step)
   });
-  const approved = input.approvals.find((approval) =>
-    approval.taskId === input.task.id
-    && approval.workflowId === input.task.workflowId
-    && approval.module === input.step.module
-    && approvalMatchesPayload(approval, input.task.version, digest)
+  const approval = input.approvals.find((candidate) =>
+    candidate.taskId === input.task.id
+    && candidate.workflowId === input.task.workflowId
+    && candidate.module === input.step.module
+    && approvalMatchesPayload(candidate, input.task.version, digest)
   );
-  if (approved) return { allowed: true, reason: 'guardian_preflight_passed', approvalId: approved.id };
+  if (approval) {
+    return { allowed: true, reason: 'guardian_preflight_passed', approvalId: approval.id };
+  }
 
-  const staleApproved = input.approvals.some((approval) =>
-    approval.taskId === input.task.id && approval.status === 'approved'
+  const stale = input.approvals.some((candidate) =>
+    candidate.taskId === input.task.id && candidate.status === 'approved'
   );
-  return { allowed: false, reason: staleApproved ? 'approval_binding_mismatch' : 'approval_required' };
+  return { allowed: false, reason: stale ? 'approval_binding_mismatch' : 'approval_required' };
 }
 ```
 
-Export it from `packages/execution/src/index.ts` with:
+Add to `packages/execution/src/index.ts`:
 
 ```ts
 export * from './guardian';
 ```
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [ ] **Step 4: Verify GREEN**
 
 ```bash
 npx vitest run tests/unit/guardian-preflight.test.ts
@@ -225,7 +229,7 @@ git commit -m "feat: add canonical Guardian execution preflight"
 
 ---
 
-### Task 2: Wire Guardian preflight and auditable outcomes into ExecutionEngine
+### Task 2: Enforce Guardian preflight, evidence, and audit in `ExecutionEngine`
 
 **Files:**
 - Modify: `packages/execution/src/store.ts`
@@ -233,10 +237,10 @@ git commit -m "feat: add canonical Guardian execution preflight"
 - Create: `tests/unit/execution-engine-guardian.test.ts`
 
 **Interfaces:**
-- Consumes: `evaluateGuardianPreflight`, existing adapter registry/store.
-- Produces: engine-level blocked/failure/completion audit records and deterministic approval recovery.
+- Consumes: `evaluateGuardianPreflight`, `missingEvidence`, existing adapter/store interfaces.
+- Produces: fail-closed engine behavior and audit evidence.
 
-- [ ] **Step 1: Write failing engine tests for preflight ordering and audit**
+- [ ] **Step 1: Write failing engine tests**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -254,44 +258,94 @@ const actor: ExecutionActor = {
   permissions: ['payroll.write']
 };
 
-function adapter(execute = vi.fn(async () => ({ ok: true, result: {} }))): ExecutionModuleAdapter {
+function adapter(input: {
+  execute?: ExecutionModuleAdapter['execute'];
+  verify?: ExecutionModuleAdapter['verify'];
+} = {}): ExecutionModuleAdapter {
   return {
-    module: 'payroll', canHandle: () => true,
+    module: 'payroll',
+    canHandle: () => true,
     validate: async () => ({ ok: true, errors: [] }),
     authorize: async () => ({ ok: true, reason: null }),
-    execute,
-    verify: async () => ({ ok: true, evidence: [] }),
+    execute: input.execute ?? (async () => ({ ok: true, result: {} })),
+    verify: input.verify ?? (async () => ({
+      ok: true,
+      evidence: [{ kind: 'payroll_record', reference: 'payroll://42', verified: true }]
+    })),
     suggestNext: async () => null
   };
 }
 
-it('blocks a missing step permission before adapter execution and audits the block', async () => {
-  const store = MemoryExecutionStore.seeded();
-  const step = (await store.listSteps('task-1'))[0];
-  step.permissionsRequired = ['payroll.write', 'payroll.submit'];
-  store.putStep(step);
-  const execute = vi.fn(async () => ({ ok: true, result: {} }));
-  const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([adapter(execute)]));
+describe('ExecutionEngine Guardian enforcement', () => {
+  it('blocks missing step permission before execute and audits the block', async () => {
+    const store = MemoryExecutionStore.seeded();
+    const step = (await store.listSteps('task-1'))[0];
+    step.permissionsRequired = ['payroll.write', 'payroll.submit'];
+    store.putStep(step);
+    const execute = vi.fn(async () => ({ ok: true, result: {} }));
+    const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([adapter({ execute })]));
 
-  await expect(engine.continueTask('task-1', actor)).resolves.toEqual({
-    state: 'blocked', reason: 'missing_step_permission:payroll.submit'
+    await expect(engine.continueTask('task-1', actor)).resolves.toEqual({
+      state: 'blocked', reason: 'missing_step_permission:payroll.submit'
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect((await store.listAuditEvents('task-1')).at(-1)?.action).toBe('execution.guardian.blocked');
   });
-  expect(execute).not.toHaveBeenCalled();
-  expect((await store.listAuditEvents('task-1')).at(-1)?.action).toBe('execution.guardian.blocked');
+
+  it('fails closed before adapter resolution across tenant scope', async () => {
+    const store = MemoryExecutionStore.seeded();
+    const execute = vi.fn(async () => ({ ok: true, result: {} }));
+    const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([adapter({ execute })]));
+    const wrongActor = { ...actor, scope: { tenantId: 'tenant-2', organizationId: 'org-1' } };
+
+    await expect(engine.continueTask('task-1', wrongActor)).rejects.toThrow('execution_scope_mismatch');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('does not complete when required evidence is missing', async () => {
+    const store = MemoryExecutionStore.seeded();
+    const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([adapter({
+      verify: async () => ({ ok: true, evidence: [] })
+    })]));
+
+    await expect(engine.continueTask('task-1', actor)).resolves.toEqual({
+      state: 'failed', reason: 'required_evidence_missing:payroll_record'
+    });
+    expect((await store.listSteps('task-1'))[0].status).toBe('failed');
+    expect((await store.getTask('task-1'))?.status).not.toBe('completed');
+  });
+
+  it('completes with verified evidence and records evidence ids in audit', async () => {
+    const store = MemoryExecutionStore.seeded();
+    const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([adapter()]));
+
+    await expect(engine.continueTask('task-1', actor)).resolves.toEqual({
+      state: 'completed_step', stepId: 'step-1'
+    });
+    const evidence = await store.listEvidence('task-1');
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]).toMatchObject({ kind: 'payroll_record', verified: true });
+    const audit = await store.listAuditEvents('task-1');
+    expect(audit.at(-1)).toMatchObject({
+      actorUserId: 'executor-1', workflowId: 'workflow-1', module: 'payroll',
+      action: 'execution.step.completed', resultingState: 'completed'
+    });
+    expect(audit.at(-1)?.evidenceIds).toEqual([evidence[0].id]);
+  });
 });
 ```
 
-Add a second test where task status is `awaiting_approval`; without an approved binding `execute` is not called and the result is `{ state:'blocked', reason:'approval_required' }`.
-
-- [ ] **Step 2: Run the focused test and verify RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/unit/execution-engine-guardian.test.ts
 ```
 
-Expected: FAIL because `MemoryExecutionStore.listAuditEvents`, `putApproval`, and engine Guardian wiring do not exist.
+Expected: FAIL because audit helpers and Guardian/evidence wiring are absent.
 
-- [ ] **Step 3: Add MemoryExecutionStore helpers without changing the ExecutionStore interface**
+- [ ] **Step 3: Add deterministic in-memory helpers**
+
+In `MemoryExecutionStore`:
 
 ```ts
 putApproval(approval: ExecutionApproval) {
@@ -305,48 +359,81 @@ async listAuditEvents(taskId?: string) {
 }
 ```
 
-These helpers are deterministic in-memory utilities; adapters and production persistence continue to depend only on the existing `ExecutionStore` interface.
+Do not add these methods to `ExecutionStore`; they are test/diagnostic helpers only.
 
-- [ ] **Step 4: Evaluate Guardian preflight before adapter resolution**
+- [ ] **Step 4: Replace engine task-only permission check with Guardian preflight**
 
-In `ExecutionEngine.continueTask`, after loading the current step and before `registry.resolve(...)`:
+Add imports:
+
+```ts
+import { evaluateGuardianPreflight } from './guardian';
+import { missingEvidence } from './evidence';
+```
+
+After resolving the current step and before `registry.resolve`:
 
 ```ts
 const approvals = await this.store.listApprovals(taskId);
 const guardian = await evaluateGuardianPreflight({ actor, task, step, approvals });
 if (!guardian.allowed) {
+  const createdAt = new Date().toISOString();
   await this.store.appendAudit({
     id: crypto.randomUUID(), scope: task.scope, actorUserId: actor.userId,
     taskId: task.id, workflowId: task.workflowId, module: step.module,
     action: 'execution.guardian.blocked', previousState: task.status,
-    resultingState: 'blocked', evidenceIds: [], correlationId: null,
-    createdAt: new Date().toISOString()
+    resultingState: 'blocked', evidenceIds: [], correlationId: null, createdAt
   });
   return { state: 'blocked', reason: guardian.reason };
 }
 ```
 
-Remove the old task-permission loop from `engine.ts`; the Guardian helper now owns task + step permission evaluation once.
+Delete the existing task-only permission loop so permission evaluation occurs once.
 
-- [ ] **Step 5: Audit adapter authorization/execution/verification failures**
+- [ ] **Step 5: Enforce required evidence before completion**
 
-For each current return path after preflight, append one event before returning:
+Immediately after successful `adapter.verify`:
 
 ```ts
+const missing = missingEvidence(step.evidenceRequirement, verification.evidence);
+if (missing.length > 0) {
+  const createdAt = new Date().toISOString();
+  await this.store.saveStep({ ...step, status: 'failed' });
+  await this.store.appendAudit({
+    id: crypto.randomUUID(), scope: task.scope, actorUserId: actor.userId,
+    taskId: task.id, workflowId: task.workflowId, module: step.module,
+    action: 'execution.step.verification_failed', previousState: step.status,
+    resultingState: 'failed', evidenceIds: [], correlationId: null, createdAt
+  });
+  return { state: 'failed', reason: `required_evidence_missing:${missing[0]}` };
+}
+```
+
+- [ ] **Step 6: Persist evidence first, then audit successful completion**
+
+Replace the existing direct evidence loop with:
+
+```ts
+const persistedEvidence = verification.evidence.map((item) => ({
+  id: crypto.randomUUID(), taskId, stepId: step.id,
+  kind: item.kind, reference: item.reference, verified: item.verified,
+  createdAt: completedAt
+}));
+for (const item of persistedEvidence) await this.store.appendEvidence(item);
+
 await this.store.appendAudit({
   id: crypto.randomUUID(), scope: task.scope, actorUserId: actor.userId,
   taskId: task.id, workflowId: task.workflowId, module: step.module,
-  action: 'execution.step.failed', previousState: step.status,
-  resultingState: 'failed', evidenceIds: [], correlationId: null,
-  createdAt: new Date().toISOString()
+  action: 'execution.step.completed', previousState: step.status,
+  resultingState: 'completed', evidenceIds: persistedEvidence.map((item) => item.id),
+  correlationId: null, createdAt: completedAt
 });
 ```
 
-Use `execution.guardian.blocked` for validation/authorization denial and `execution.step.failed` for provider execution or verification failure. Do not claim provider execution occurred when preflight blocked it.
+For adapter validation/authorization denial append `execution.guardian.blocked`; for provider execute/verify failure append `execution.step.failed` before returning.
 
-- [ ] **Step 6: Restore task state after a satisfied approval**
+- [ ] **Step 7: Normalize post-approval task status**
 
-When a valid approved binding permits execution and another step remains, persist task status as `now` instead of leaving it stuck in `awaiting_approval`:
+When another step remains:
 
 ```ts
 const nextTaskStatus = nextStep
@@ -354,116 +441,41 @@ const nextTaskStatus = nextStep
   : 'completed';
 ```
 
-- [ ] **Step 7: Run tests and commit**
+Use `status: nextTaskStatus` in `saveTask`.
+
+- [ ] **Step 8: Verify GREEN and regressions**
 
 ```bash
-npx vitest run tests/unit/guardian-preflight.test.ts tests/unit/execution-engine-guardian.test.ts tests/unit/execution-engine-regressions.test.ts
+npx vitest run \
+  tests/unit/execution-engine-guardian.test.ts \
+  tests/unit/execution-engine-regressions.test.ts \
+  tests/unit/guardian-preflight.test.ts \
+  tests/unit/execution-state-machine.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 9: Commit**
+
+```bash
 git add packages/execution/src/store.ts packages/execution/src/engine.ts tests/unit/execution-engine-guardian.test.ts
-git commit -m "feat: enforce Guardian preflight in execution engine"
+git commit -m "feat: enforce Guardian invariants in execution engine"
 ```
 
 ---
 
-### Task 3: Enforce verified evidence before engine completion
+### Task 3: Share Guardian approval binding with the Edge function
 
 **Files:**
-- Modify: `packages/execution/src/engine.ts`
-- Modify: `tests/unit/execution-engine-guardian.test.ts`
-
-**Interfaces:**
-- Consumes: existing `missingEvidence(requiredKinds, evidence)`.
-- Produces: no `completed_step` result for a step whose required evidence is missing or unverified.
-
-- [ ] **Step 1: Add failing evidence tests**
-
-```ts
-it('does not complete a step when required verification evidence is missing', async () => {
-  const store = MemoryExecutionStore.seeded();
-  const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([{
-    module: 'payroll', canHandle: () => true,
-    validate: async () => ({ ok: true, errors: [] }),
-    authorize: async () => ({ ok: true, reason: null }),
-    execute: async () => ({ ok: true, result: {} }),
-    verify: async () => ({ ok: true, evidence: [] }),
-    suggestNext: async () => null
-  }]));
-
-  await expect(engine.continueTask('task-1', actor)).resolves.toEqual({
-    state: 'failed', reason: 'required_evidence_missing:payroll_record'
-  });
-  expect((await store.listSteps('task-1'))[0].status).toBe('failed');
-  expect((await store.getTask('task-1'))?.status).not.toBe('completed');
-});
-
-it('completes only when required evidence is verified', async () => {
-  // Same adapter, but verify returns [{ kind:'payroll_record', reference:'payroll://enrollment/42', verified:true }].
-  // Expect completed_step and persisted verified evidence.
-});
-```
-
-- [ ] **Step 2: Verify RED**
-
-```bash
-npx vitest run tests/unit/execution-engine-guardian.test.ts
-```
-
-Expected: first test fails because current engine completes after `verification.ok === true` even with missing required evidence.
-
-- [ ] **Step 3: Gate completion with the existing evidence helper**
-
-After `adapter.verify(...)` succeeds and before persisting `completedStep`:
-
-```ts
-const missing = missingEvidence(step.evidenceRequirement, verification.evidence);
-if (missing.length > 0) {
-  await this.store.saveStep({ ...step, status: 'failed' });
-  await this.store.appendAudit({
-    id: crypto.randomUUID(), scope: task.scope, actorUserId: actor.userId,
-    taskId: task.id, workflowId: task.workflowId, module: step.module,
-    action: 'execution.step.verification_failed', previousState: step.status,
-    resultingState: 'failed', evidenceIds: [], correlationId: null,
-    createdAt: new Date().toISOString()
-  });
-  return { state: 'failed', reason: `required_evidence_missing:${missing[0]}` };
-}
-```
-
-Do not append provider-returned evidence until this gate has passed; this avoids persisting an apparently successful completion package when the adapter failed its required-evidence contract.
-
-- [ ] **Step 4: Audit successful completion with exact evidence IDs**
-
-Build evidence rows first, append them, then append:
-
-```ts
-{
-  action: 'execution.step.completed',
-  previousState: step.status,
-  resultingState: 'completed',
-  evidenceIds: persistedEvidence.map((item) => item.id)
-}
-```
-
-- [ ] **Step 5: Verify GREEN and commit**
-
-```bash
-npx vitest run tests/unit/execution-engine-guardian.test.ts tests/unit/execution-engine-regressions.test.ts tests/unit/execution-state-machine.test.ts
-git add packages/execution/src/engine.ts tests/unit/execution-engine-guardian.test.ts
-git commit -m "fix: require verified evidence before execution completion"
-```
-
----
-
-### Task 4: Make Supabase approval binding reuse the shared Guardian action payload
-
-**Files:**
+- Create: `supabase/functions/atlas-execution/normalize.ts`
 - Modify: `supabase/functions/atlas-execution/index.ts`
 - Create: `tests/unit/atlas-execution-guardian-contract.test.ts`
 
 **Interfaces:**
-- Consumes: `guardianReviewedAction` from `packages/execution/src/guardian.ts`.
-- Produces: one reviewed-action payload definition for engine and Edge approval binding.
+- Consumes: `guardianReviewedAction`, persisted task/step rows.
+- Produces: `normalizeExecutionTaskRow`, `normalizeExecutionStepRow`; Edge approval request/decision use the canonical reviewed-action payload.
 
-- [ ] **Step 1: Write the failing server-contract regression test**
+- [ ] **Step 1: Write the failing Edge contract test**
 
 ```ts
 import { readFileSync } from 'node:fs';
@@ -472,23 +484,27 @@ import { describe, expect, it } from 'vitest';
 const source = readFileSync('supabase/functions/atlas-execution/index.ts', 'utf8');
 
 describe('atlas-execution Guardian contract', () => {
-  it('reuses the shared reviewed-action payload', () => {
+  it('uses shared Guardian approval binding', () => {
     expect(source).toContain("guardianReviewedAction");
+    expect(source).toContain("normalizeExecutionTaskRow");
+    expect(source).toContain("normalizeExecutionStepRow");
     expect(source).not.toContain('function reviewedAction(');
   });
 
-  it('keeps organization scope on workflow, task, approval and step reads', () => {
-    expect(source.match(/\.eq\('org_id', (?:orgId|context\.orgId)\)/g)?.length ?? 0).toBeGreaterThanOrEqual(8);
-  });
-
-  it('keeps stale approval and completion evidence fail-closed guards', () => {
+  it('retains fail-closed completion and approval guards', () => {
     expect(source).toContain('approval_binding_mismatch');
     expect(source).toContain('completion_requirements_not_met');
     expect(source).toContain('verified_evidence_resolver_required');
   });
 
-  it('audits approval decisions', () => {
+  it('keeps material approval audit events', () => {
+    expect(source).toContain('execution.approval.requested');
     expect(source).toContain('execution.approval.${decision}');
+  });
+
+  it('scopes canonical reads by organization', () => {
+    const matches = source.match(/\.eq\('org_id', (?:orgId|context\.orgId)\)/g) ?? [];
+    expect(matches.length).toBeGreaterThanOrEqual(8);
   });
 });
 ```
@@ -499,51 +515,91 @@ describe('atlas-execution Guardian contract', () => {
 npx vitest run tests/unit/atlas-execution-guardian-contract.test.ts
 ```
 
-Expected: FAIL because Edge currently defines its own `reviewedAction` helper.
+Expected: FAIL because Edge still defines local `reviewedAction`.
 
-- [ ] **Step 3: Replace the duplicate helper with the shared contract**
+- [ ] **Step 3: Create exact row normalizers**
 
-Import:
+Create `supabase/functions/atlas-execution/normalize.ts`:
+
+```ts
+import type {
+  ExecutionPriority,
+  ExecutionStatus,
+  ExecutionStep,
+  ExecutionTask,
+  StepStatus
+} from '../../../packages/execution/src/types.ts';
+
+export function normalizeExecutionTaskRow(row: Record<string, unknown>, orgId: string): ExecutionTask {
+  return {
+    id: String(row.id),
+    scope: { tenantId: String(row.tenant_id), organizationId: orgId },
+    module: String(row.module),
+    ownerUserId: row.owner_user_id ? String(row.owner_user_id) : null,
+    title: String(row.title || ''), intent: String(row.intent || ''), goal: String(row.goal || ''),
+    status: String(row.status) as ExecutionStatus,
+    priority: String(row.priority || 'normal') as ExecutionPriority,
+    currentStepId: row.current_step_id ? String(row.current_step_id) : null,
+    nextAction: row.next_action ? String(row.next_action) : null,
+    blockedReason: row.blocked_reason ? String(row.blocked_reason) : null,
+    permissionsRequired: Array.isArray(row.permissions_required) ? row.permissions_required.map(String) : [],
+    source: row.source_type && row.source_id ? { type: String(row.source_type), id: String(row.source_id) } : null,
+    parentTaskId: row.parent_task_id ? String(row.parent_task_id) : null,
+    workflowId: String(row.workflow_id), version: Number(row.version),
+    createdAt: String(row.created_at || ''), updatedAt: String(row.updated_at || ''),
+    completedAt: row.completed_at ? String(row.completed_at) : null
+  };
+}
+
+export function normalizeExecutionStepRow(row: Record<string, unknown>, taskId: string): ExecutionStep {
+  return {
+    id: String(row.id), taskId, sequence: Number(row.sequence || 0), module: String(row.module),
+    actionType: String(row.action_type),
+    actionPayload: row.action_payload && typeof row.action_payload === 'object'
+      ? row.action_payload as Record<string, unknown> : {},
+    status: String(row.status) as StepStatus,
+    completionCriteria: Array.isArray(row.completion_criteria) ? row.completion_criteria.map(String) : [],
+    permissionsRequired: Array.isArray(row.permissions_required) ? row.permissions_required.map(String) : [],
+    dependencyIds: [],
+    evidenceRequirement: Array.isArray(row.evidence_requirement) ? row.evidence_requirement.map(String) : [],
+    startedAt: row.started_at ? String(row.started_at) : null,
+    completedAt: row.completed_at ? String(row.completed_at) : null
+  };
+}
+```
+
+- [ ] **Step 4: Replace local `reviewedAction` in Edge**
+
+Add imports:
 
 ```ts
 import { guardianReviewedAction } from '../../../packages/execution/src/guardian.ts';
+import { normalizeExecutionStepRow, normalizeExecutionTaskRow } from './normalize.ts';
 ```
 
-At both request and decision digest sites, map persisted snake-case rows once into the canonical shape needed by `guardianReviewedAction`:
+Delete the local `reviewedAction` function. In `requestApproval`:
 
 ```ts
 const reviewedPayload = guardianReviewedAction(
-  {
-    id: String(task.id), workflowId: String(task.workflow_id),
-    scope: { tenantId: String(task.tenant_id), organizationId: context.orgId },
-    module: String(task.module), ownerUserId: task.owner_user_id ? String(task.owner_user_id) : null,
-    title: String(task.title || ''), intent: String(task.intent || ''), goal: String(task.goal || ''),
-    status: String(task.status) as ExecutionStatus, priority: String(task.priority || 'normal') as any,
-    currentStepId: task.current_step_id ? String(task.current_step_id) : null,
-    nextAction: task.next_action ? String(task.next_action) : null,
-    blockedReason: task.blocked_reason ? String(task.blocked_reason) : null,
-    permissionsRequired: Array.isArray(task.permissions_required) ? task.permissions_required.map(String) : [],
-    source: null, parentTaskId: task.parent_task_id ? String(task.parent_task_id) : null,
-    version: Number(task.version), createdAt: String(task.created_at || ''), updatedAt: String(task.updated_at || ''),
-    completedAt: task.completed_at ? String(task.completed_at) : null
-  },
-  {
-    id: String(step.id), taskId: String(task.id), sequence: Number(step.sequence || 0), module: String(step.module),
-    actionType: String(step.action_type),
-    actionPayload: step.action_payload && typeof step.action_payload === 'object' ? step.action_payload as Record<string, unknown> : {},
-    status: String(step.status) as any,
-    completionCriteria: Array.isArray(step.completion_criteria) ? step.completion_criteria.map(String) : [],
-    permissionsRequired: Array.isArray(step.permissions_required) ? step.permissions_required.map(String) : [],
-    dependencyIds: [], evidenceRequirement: Array.isArray(step.evidence_requirement) ? step.evidence_requirement.map(String) : [],
-    startedAt: step.started_at ? String(step.started_at) : null,
-    completedAt: step.completed_at ? String(step.completed_at) : null
-  }
+  normalizeExecutionTaskRow(task as Record<string, unknown>, context.orgId),
+  normalizeExecutionStepRow(step as Record<string, unknown>, String(task.id))
 );
+const payloadDigest = await digestApprovalPayload({ payloadVersion: bindingVersion, payload: reviewedPayload });
 ```
 
-If this mapping makes `index.ts` materially less readable, extract only this row-normalization into `supabase/functions/atlas-execution/normalize.ts`; do not create a second Guardian policy implementation.
+In `decideApproval`:
 
-- [ ] **Step 4: Re-run the server contract and package tests**
+```ts
+const currentDigest = await digestApprovalPayload({
+  payloadVersion: currentVersion,
+  payload: guardianReviewedAction(
+    normalizeExecutionTaskRow(task as Record<string, unknown>, context.orgId),
+    normalizeExecutionStepRow(step as Record<string, unknown>, String(task.id))
+  )
+});
+```
+
+- [ ] **Step 5: Verify GREEN**
 
 ```bash
 npx vitest run tests/unit/atlas-execution-guardian-contract.test.ts tests/unit/guardian-preflight.test.ts
@@ -552,88 +608,21 @@ npm run typecheck
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add supabase/functions/atlas-execution/index.ts supabase/functions/atlas-execution/normalize.ts tests/unit/atlas-execution-guardian-contract.test.ts packages/execution/src/guardian.ts
-git commit -m "refactor: share Guardian approval binding contract"
-```
-
-If `normalize.ts` was not needed, omit it from `git add`.
-
----
-
-### Task 5: Prove fail-closed scope, approval, evidence, and audit behavior together
-
-**Files:**
-- Modify: `tests/unit/execution-engine-guardian.test.ts`
-- Modify: `tests/unit/atlas-execution-guardian-contract.test.ts`
-
-**Interfaces:**
-- Produces: acceptance-level regression evidence for the Guardian core.
-
-- [ ] **Step 1: Add a cross-scope engine regression**
-
-```ts
-it('never resolves or executes an adapter across tenant scope', async () => {
-  const store = MemoryExecutionStore.seeded();
-  const execute = vi.fn(async () => ({ ok: true, result: {} }));
-  const engine = new ExecutionEngine(store, new ExecutionAdapterRegistry([adapter(execute)]));
-  const wrongActor = { ...actor, scope: { tenantId: 'other-tenant', organizationId: 'org-1' } };
-
-  await expect(engine.continueTask('task-1', wrongActor)).rejects.toThrow('execution_scope_mismatch');
-  expect(execute).not.toHaveBeenCalled();
-});
-```
-
-- [ ] **Step 2: Add stale-approval execution regression**
-
-Create a valid approved binding, then change the current step payload before `continueTask`; expect `{ state:'blocked', reason:'approval_binding_mismatch' }` and `execute` not called.
-
-- [ ] **Step 3: Add audit completeness assertions**
-
-For one successful step assert the final audit event contains:
-
-```ts
-expect(event).toMatchObject({
-  actorUserId: 'executor-1',
-  taskId: 'task-1',
-  workflowId: 'workflow-1',
-  module: 'payroll',
-  action: 'execution.step.completed',
-  resultingState: 'completed'
-});
-expect(event?.evidenceIds).toHaveLength(1);
-```
-
-- [ ] **Step 4: Run the Guardian core focused suite**
-
-```bash
-npx vitest run \
-  tests/unit/guardian-preflight.test.ts \
-  tests/unit/execution-engine-guardian.test.ts \
-  tests/unit/execution-engine-regressions.test.ts \
-  tests/unit/atlas-execution-guardian-contract.test.ts \
-  tests/unit/execution-state-machine.test.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit regression evidence**
-
-```bash
-git add tests/unit/execution-engine-guardian.test.ts tests/unit/atlas-execution-guardian-contract.test.ts
-git commit -m "test: prove Guardian core fail-closed invariants"
+git add supabase/functions/atlas-execution/normalize.ts supabase/functions/atlas-execution/index.ts tests/unit/atlas-execution-guardian-contract.test.ts
+git commit -m "refactor: share Guardian approval binding with edge execution"
 ```
 
 ---
 
-### Task 6: Final core verification
+### Task 4: Final core verification
 
 **Files:**
-- No production file changes expected.
+- No production file changes.
 
-- [ ] **Step 1: Install exact locked dependencies**
+- [ ] **Step 1: Exact dependency install**
 
 ```bash
 npm ci
@@ -641,15 +630,15 @@ npm ci
 
 Expected: exit 0.
 
-- [ ] **Step 2: Run security audit at the repository's production threshold**
+- [ ] **Step 2: Security threshold**
 
 ```bash
 npm audit --audit-level=high
 ```
 
-Expected: exit 0 for high-or-greater vulnerabilities.
+Expected: exit 0.
 
-- [ ] **Step 3: Run typecheck**
+- [ ] **Step 3: Typecheck**
 
 ```bash
 npm run typecheck
@@ -657,7 +646,7 @@ npm run typecheck
 
 Expected: exit 0.
 
-- [ ] **Step 4: Run unit tests**
+- [ ] **Step 4: Unit tests**
 
 ```bash
 npm run test:unit
@@ -665,7 +654,7 @@ npm run test:unit
 
 Expected: exit 0.
 
-- [ ] **Step 5: Run integration tests**
+- [ ] **Step 5: Integration tests**
 
 ```bash
 npm run test:integration
@@ -673,7 +662,7 @@ npm run test:integration
 
 Expected: exit 0.
 
-- [ ] **Step 6: Run production build**
+- [ ] **Step 6: Production build**
 
 ```bash
 npm run build
@@ -681,11 +670,11 @@ npm run build
 
 Expected: exit 0.
 
-- [ ] **Step 7: Record the exact verified commit SHA**
+- [ ] **Step 7: Record exact verified SHA**
 
 ```bash
 git rev-parse HEAD
 git status --short
 ```
 
-Expected: clean worktree. Do not claim Guardian core completion unless all commands above ran successfully on this exact SHA.
+Expected: SHA printed and clean worktree. Do not claim core Guardian integration unless every command above passed on that SHA.
