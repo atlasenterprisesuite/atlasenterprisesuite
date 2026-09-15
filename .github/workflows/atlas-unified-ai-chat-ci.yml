@@ -5,10 +5,14 @@ on:
   push:
     branches:
       - feat/atlas-unified-ai-chat
+      - fix/atlas-unified-ai-chat-web-ui
   pull_request:
     branches: [main]
     paths:
       - 'supabase/functions/atlas-copilot/**'
+      - 'apps/web/src/modules/intelligence/**'
+      - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
+      - 'apps/web/src/components/AtlasShell.tsx'
       - 'tests/unit/atlas-unified-ai-chat-*.test.ts'
       - 'packages/creator/studio_orchestration.ts'
       - 'tests/unit/atlas-studio-orchestration.test.ts'
