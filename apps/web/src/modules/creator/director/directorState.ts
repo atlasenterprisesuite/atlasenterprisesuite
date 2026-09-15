@@ -90,7 +90,7 @@ export function directorReducer(state: DirectorState, action: DirectorAction): D
       return changed(state, mapScene(spec, action.sceneId, scene => ({
         ...scene,
         shots: normalizeShotOrder([...scene.shots, action.shot])
-      }));
+      })));
     case 'shot.update':
       return changed(state, mapScene(spec, action.sceneId, scene => ({
         ...scene,
