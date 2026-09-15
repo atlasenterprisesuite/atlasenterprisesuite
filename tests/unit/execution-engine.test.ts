@@ -28,7 +28,7 @@ describe('ATLAS ExecutionEngine', () => {
       permissions: []
     });
 
-    expect(result).toEqual({ state: 'blocked', reason: 'payroll.write_required' });
+    expect(result).toEqual({ state: 'blocked', reason: 'missing_task_permission:payroll.write' });
   });
 
   it('executes, verifies, stores evidence, and advances the next action', async () => {
