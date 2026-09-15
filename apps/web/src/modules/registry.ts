@@ -124,6 +124,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'galaxy',
+    title: 'ATLAS Galaxy',
+    navLabel: 'Galaxy',
+    area: 'Platform',
+    route: '/galaxy',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Spatial navigation and truthful module-state overview.',
+    showInNavigation: true
+  },
+  {
     id: 'execution',
     title: 'Universal Execution',
     navLabel: 'Execution',

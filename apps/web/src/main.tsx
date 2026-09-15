@@ -10,6 +10,7 @@ import './styles.css';
 import './health.css';
 import './neuroplasticity.css';
 import './modules/finance/accounting/payables-ai.css';
+import './modules/galaxy/galaxy.css';
 import './modules/hospitality/hospitality.css';
 import './modules/ride/ride.css';
 
