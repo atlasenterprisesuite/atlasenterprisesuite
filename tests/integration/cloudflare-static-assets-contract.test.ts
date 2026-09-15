@@ -31,6 +31,15 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('export DEPLOYMENT_PROBE');
   });
 
+  it('treats Cloudflare Access redirect or explicit denial as a fail-closed production perimeter', () => {
+    expect(workflow).toContain('302|303)');
+    expect(workflow).toContain('401|403)');
+    expect(workflow).toContain('SERVER_HEADER=');
+    expect(workflow).toContain('server: cloudflare');
+    expect(workflow).toContain('winder-aranguren.cloudflareaccess.com/cdn-cgi/access/login/');
+    expect(workflow).toContain('Cloudflare production perimeter fails closed.');
+  });
+
   it('verifies the deployed Access gateway fails closed for anonymous requests', () => {
     expect(workflow).toContain('ROOT_STATUS=');
     expect(workflow).toContain('SPA_STATUS=');

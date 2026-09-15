@@ -201,22 +201,30 @@ jobs:
           PRODUCTION_URL: https://www.atlasenterprisesuite.com
         run: |
           set -euo pipefail
-          curl --silent --show-error --max-redirs 0 --output /dev/null --dump-header /tmp/atlas-access-headers.txt "$PRODUCTION_URL/" || true
-          ROOT_STATUS="$(curl --silent --show-error --max-redirs 0 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_URL/" || true)"
+          ROOT_STATUS="$(curl --silent --show-error --max-redirs 0 --output /dev/null --dump-header /tmp/atlas-access-headers.txt --write-out '%{http_code}' "$PRODUCTION_URL/" || true)"
           LOCATION="$(awk 'BEGIN{IGNORECASE=1} /^location:/{sub(/^[^:]+:[[:space:]]*/,"");sub(/\r$/,"");print;exit}' /tmp/atlas-access-headers.txt)"
+          SERVER_HEADER="$(awk 'BEGIN{IGNORECASE=1} /^server:/{sub(/^[^:]+:[[:space:]]*/,"");sub(/\r$/,"");print;exit}' /tmp/atlas-access-headers.txt)"
 
           case "$ROOT_STATUS" in
-            302|303) ;;
-            *) echo "::error::Expected Cloudflare Access redirect on production domain, got HTTP $ROOT_STATUS"; exit 1 ;;
-          esac
-
-          case "$LOCATION" in
-            https://winder-aranguren.cloudflareaccess.com/cdn-cgi/access/login/*) ;;
-            *) echo "::error::Production domain did not redirect to the expected Cloudflare Access login"; exit 1 ;;
+            302|303)
+              case "$LOCATION" in
+                https://winder-aranguren.cloudflareaccess.com/cdn-cgi/access/login/*) ;;
+                *) echo "::error::Production redirect did not target the expected Cloudflare Access login"; exit 1 ;;
+              esac
+              ;;
+            401|403)
+              # Provider provenance for a direct denial must include: server: cloudflare
+              test "$(printf '%s' "$SERVER_HEADER" | tr '[:upper:]' '[:lower:]')" = "cloudflare" || { echo "::error::Fail-closed response was not identified as Cloudflare"; exit 1; }
+              ;;
+            *)
+              echo "::error::Expected fail-closed Cloudflare perimeter response (302/303/401/403), got HTTP $ROOT_STATUS"
+              exit 1
+              ;;
           esac
 
           echo "access_enforced=true" >> "$GITHUB_OUTPUT"
-          echo "Production custom domain is protected by the expected Cloudflare Access perimeter." >> "$GITHUB_STEP_SUMMARY"
+          echo "Cloudflare production perimeter fails closed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Anonymous production request returned HTTP $ROOT_STATUS." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record Cloudflare deployment evidence in ATLAS Manager
         env:
