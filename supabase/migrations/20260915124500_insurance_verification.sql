@@ -65,6 +65,110 @@ create table if not exists public.insurance_verification_audit (
   )
 );
 
+create or replace function public.increment_insurance_verification_attempt(
+  p_challenge_id uuid,
+  p_org_id uuid,
+  p_user_id uuid
+)
+returns integer
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  update public.insurance_verification_challenges
+  set
+    attempt_count = least(attempt_count + 1, 5),
+    updated_at = now()
+  where id = p_challenge_id
+    and org_id = p_org_id
+    and user_id = p_user_id
+    and consumed_at is null
+    and expires_at > now()
+    and attempt_count < 5
+  returning attempt_count;
+$$;
+
+create or replace function public.finalize_insurance_verification_grant(
+  p_challenge_id uuid,
+  p_org_id uuid,
+  p_user_id uuid,
+  p_verified_at timestamptz,
+  p_expires_at timestamptz
+)
+returns table (
+  scope text,
+  resource_id text,
+  verified_at timestamptz,
+  expires_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_scope text;
+  v_resource_id text;
+begin
+  update public.insurance_verification_challenges as c
+  set
+    consumed_at = p_verified_at,
+    updated_at = p_verified_at
+  where c.id = p_challenge_id
+    and c.org_id = p_org_id
+    and c.user_id = p_user_id
+    and c.consumed_at is null
+    and c.expires_at > p_verified_at
+    and c.attempt_count < 5
+  returning c.scope, c.resource_id into v_scope, v_resource_id;
+
+  if not found then
+    return;
+  end if;
+
+  insert into public.insurance_verification_grants (
+    org_id,
+    user_id,
+    scope,
+    resource_id,
+    verified_at,
+    expires_at,
+    challenge_id
+  ) values (
+    p_org_id,
+    p_user_id,
+    v_scope,
+    v_resource_id,
+    p_verified_at,
+    p_expires_at,
+    p_challenge_id
+  );
+
+  insert into public.insurance_verification_audit (
+    org_id,
+    user_id,
+    challenge_id,
+    scope,
+    resource_id,
+    action
+  ) values (
+    p_org_id,
+    p_user_id,
+    p_challenge_id,
+    v_scope,
+    v_resource_id,
+    'verify_success'
+  );
+
+  return query
+    select v_scope, v_resource_id, p_verified_at, p_expires_at;
+end;
+$$;
+
+revoke all on function public.increment_insurance_verification_attempt(uuid, uuid, uuid) from public, anon, authenticated;
+revoke all on function public.finalize_insurance_verification_grant(uuid, uuid, uuid, timestamptz, timestamptz) from public, anon, authenticated;
+grant execute on function public.increment_insurance_verification_attempt(uuid, uuid, uuid) to service_role;
+grant execute on function public.finalize_insurance_verification_grant(uuid, uuid, uuid, timestamptz, timestamptz) to service_role;
+
 create index if not exists insurance_verification_challenges_active_idx
   on public.insurance_verification_challenges (org_id, user_id, scope, resource_id, expires_at desc)
   where consumed_at is null;

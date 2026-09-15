@@ -81,21 +81,13 @@ export async function loadChallenge(admin: SupabaseClient, orgId: string, userId
   return data as ChallengeRecord;
 }
 
-export async function registerFailedAttempt(admin: SupabaseClient, challenge: ChallengeRecord, nextCount: number) {
-  const now = new Date().toISOString();
-  const { data, error } = await admin
-    .from('insurance_verification_challenges')
-    .update({ attempt_count: nextCount, updated_at: now })
-    .eq('id', challenge.id)
-    .eq('org_id', challenge.org_id)
-    .eq('user_id', challenge.user_id)
-    .eq('attempt_count', challenge.attempt_count)
-    .is('consumed_at', null)
-    .lt('attempt_count', OTP_MAX_ATTEMPTS)
-    .select(CHALLENGE_FIELDS)
-    .maybeSingle();
+export async function registerFailedAttempt(admin: SupabaseClient, challenge: ChallengeRecord) {
+  const { error } = await admin.rpc('increment_insurance_verification_attempt', {
+    p_challenge_id: challenge.id,
+    p_org_id: challenge.org_id,
+    p_user_id: challenge.user_id
+  });
   if (error) throw insuranceError('persistence_failed', 500);
-  if (data) return data as ChallengeRecord;
   return loadChallenge(admin, challenge.org_id, challenge.user_id, challenge.id);
 }
 
@@ -153,45 +145,30 @@ export async function restoreChallengeRotation(admin: SupabaseClient, before: Ch
 export async function consumeChallengeAndCreateGrant(admin: SupabaseClient, challenge: ChallengeRecord) {
   const verifiedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + VERIFICATION_GRANT_TTL_SECONDS * 1000).toISOString();
-  const { data: consumed, error: consumeError } = await admin
-    .from('insurance_verification_challenges')
-    .update({ consumed_at: verifiedAt, updated_at: verifiedAt })
-    .eq('id', challenge.id)
-    .eq('org_id', challenge.org_id)
-    .eq('user_id', challenge.user_id)
-    .is('consumed_at', null)
-    .lt('attempt_count', OTP_MAX_ATTEMPTS)
-    .select('id')
-    .maybeSingle();
-  if (consumeError) throw insuranceError('persistence_failed', 500);
-  if (!consumed) throw insuranceError('challenge_consumed', 409);
+  const { data, error } = await admin.rpc('finalize_insurance_verification_grant', {
+    p_challenge_id: challenge.id,
+    p_org_id: challenge.org_id,
+    p_user_id: challenge.user_id,
+    p_verified_at: verifiedAt,
+    p_expires_at: expiresAt
+  });
 
-  const { data: grant, error: grantError } = await admin
-    .from('insurance_verification_grants')
-    .insert({
-      org_id: challenge.org_id,
-      user_id: challenge.user_id,
-      scope: challenge.scope,
-      resource_id: challenge.resource_id,
-      verified_at: verifiedAt,
-      expires_at: expiresAt,
-      challenge_id: challenge.id
-    })
-    .select('scope,resource_id,verified_at,expires_at')
-    .single();
-
-  if (grantError || !grant) {
-    await admin
-      .from('insurance_verification_challenges')
-      .update({ consumed_at: null, updated_at: new Date().toISOString() })
-      .eq('id', challenge.id)
-      .eq('org_id', challenge.org_id)
-      .eq('user_id', challenge.user_id)
-      .eq('consumed_at', verifiedAt);
-    throw insuranceError('persistence_failed', 500);
+  if (error) throw insuranceError('persistence_failed', 500);
+  const grant = Array.isArray(data) ? data[0] : data;
+  if (grant) {
+    return grant as {
+      scope: ChallengeRecord['scope'];
+      resource_id: string | null;
+      verified_at: string;
+      expires_at: string;
+    };
   }
 
-  return grant as { scope: ChallengeRecord['scope']; resource_id: string | null; verified_at: string; expires_at: string };
+  const latest = await loadChallenge(admin, challenge.org_id, challenge.user_id, challenge.id);
+  if (latest.consumed_at) throw insuranceError('challenge_consumed', 409);
+  if (Number(latest.attempt_count) >= OTP_MAX_ATTEMPTS) throw insuranceError('challenge_locked', 423);
+  if (new Date(latest.expires_at).getTime() <= Date.now()) throw insuranceError('challenge_expired', 410);
+  throw insuranceError('persistence_failed', 500);
 }
 
 export async function writeInsuranceAudit(admin: SupabaseClient, input: {

@@ -1,7 +1,6 @@
 import {
   canResend,
   challengeState,
-  nextAttemptState,
   OTP_RESEND_COOLDOWN_SECONDS,
   OTP_TTL_SECONDS
 } from '../../../packages/insurance/verification.ts';
@@ -154,31 +153,21 @@ async function verify(ctx: InsuranceRequestContext, body: Record<string, unknown
   const valid = await verifyVerificationCode(challenge.id, code, challenge.code_hash);
 
   if (!valid) {
-    const next = nextAttemptState(challenge.attempt_count);
-    const updated = await registerFailedAttempt(ctx.admin, challenge, next.attemptCount);
-    const locked = Number(updated.attempt_count) >= 5;
+    const updated = await registerFailedAttempt(ctx.admin, challenge);
+    ensureUsableChallenge(updated);
     await writeInsuranceAudit(ctx.admin, {
       orgId: ctx.orgId,
       userId: ctx.userId,
       challengeId: challenge.id,
       scope: challenge.scope,
       resourceId: challenge.resource_id,
-      action: locked ? 'lockout' : 'verify_failure',
-      errorCode: locked ? 'challenge_locked' : 'invalid_code'
+      action: 'verify_failure',
+      errorCode: 'invalid_code'
     });
-    if (locked) throw insuranceError('challenge_locked', 423);
     throw insuranceError('invalid_code', 422);
   }
 
   const grant = await consumeChallengeAndCreateGrant(ctx.admin, challenge);
-  await writeInsuranceAudit(ctx.admin, {
-    orgId: ctx.orgId,
-    userId: ctx.userId,
-    challengeId: challenge.id,
-    scope: challenge.scope,
-    resourceId: challenge.resource_id,
-    action: 'verify_success'
-  });
   return { ok: true as const, grant };
 }
 
