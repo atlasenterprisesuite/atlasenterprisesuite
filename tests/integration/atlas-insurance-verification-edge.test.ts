@@ -2,11 +2,23 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = resolve(process.cwd(), 'supabase/migrations/20260915124500_insurance_verification.sql');
+const root = process.cwd();
+const migrationPath = resolve(root, 'supabase/migrations/20260915124500_insurance_verification.sql');
+const functionRoot = resolve(root, 'supabase/functions/atlas-insurance-verification');
+const indexPath = resolve(functionRoot, 'index.ts');
+const contextPath = resolve(functionRoot, '_shared/context.ts');
+const cryptoPath = resolve(functionRoot, '_shared/crypto.ts');
+const repositoryPath = resolve(functionRoot, '_shared/repository.ts');
+const deliveryPath = resolve(functionRoot, '_shared/delivery.ts');
+const errorsPath = resolve(functionRoot, '_shared/errors.ts');
+
+function source(path: string) {
+  expect(existsSync(path)).toBe(true);
+  return readFileSync(path, 'utf8');
+}
 
 function migrationSql() {
-  expect(existsSync(migrationPath)).toBe(true);
-  return readFileSync(migrationPath, 'utf8').toLowerCase();
+  return source(migrationPath).toLowerCase();
 }
 
 describe('ATLAS Insurance verification persistence contract', () => {
@@ -65,5 +77,73 @@ describe('ATLAS Insurance verification persistence contract', () => {
     expect(sql).toContain('resend_count <= 3');
     expect(sql).toContain('insurance_verification_challenges_active_idx');
     expect(sql).toContain('insurance_verification_grants_active_idx');
+  });
+});
+
+describe('ATLAS Insurance verification Edge Function contract', () => {
+  it('defines one authenticated issue, verify, and resend endpoint', () => {
+    const index = source(indexPath);
+    expect(index).toContain("operation === 'issue'");
+    expect(index).toContain("operation === 'verify'");
+    expect(index).toContain("operation === 'resend'");
+    expect(index).toContain('resolveInsuranceContext');
+  });
+
+  it('derives the actor and active organization from authenticated Supabase context', () => {
+    const context = source(contextPath);
+    expect(context).toContain('auth.getUser');
+    expect(context).toContain('organization_members');
+    expect(context).toContain("status', 'active'");
+    expect(context).toContain('SUPABASE_SERVICE_ROLE_KEY');
+  });
+
+  it('uses server-only cryptography and a constant-time digest comparison', () => {
+    const crypto = source(cryptoPath);
+    expect(crypto).toContain('ATLAS_INSURANCE_OTP_SECRET');
+    expect(crypto).toContain('crypto.getRandomValues');
+    expect(crypto).toContain("name: 'HMAC'");
+    expect(crypto).toContain("hash: 'SHA-256'");
+    expect(crypto).toContain('constantTimeEqual');
+  });
+
+  it('stores only code hashes and keeps verification lifecycle server-controlled', () => {
+    const repository = source(repositoryPath);
+    expect(repository).toContain('insurance_verification_challenges');
+    expect(repository).toContain('insurance_verification_grants');
+    expect(repository).toContain('insurance_verification_audit');
+    expect(repository).toContain('code_hash');
+    expect(repository).not.toMatch(/\.insert\([^)]*\bcode\s*:/s);
+  });
+
+  it('fails truthfully when no authorized delivery provider is configured', () => {
+    const delivery = source(deliveryPath);
+    expect(delivery).toContain('delivery_not_configured');
+    expect(delivery).not.toContain('console.log(code)');
+    expect(delivery).not.toContain('console.log(input.code)');
+  });
+
+  it('exposes the approved stable error contract without returning OTP material', () => {
+    const errors = source(errorsPath);
+    const index = source(indexPath);
+    for (const code of [
+      'authentication_required',
+      'no_active_organization',
+      'invalid_scope',
+      'invalid_resource',
+      'invalid_code_format',
+      'invalid_code',
+      'challenge_expired',
+      'challenge_consumed',
+      'challenge_locked',
+      'resend_cooldown',
+      'resend_limit_reached',
+      'delivery_not_configured',
+      'delivery_failed',
+      'verification_required'
+    ]) {
+      expect(errors).toContain(code);
+    }
+    expect(index).not.toMatch(/code_hash\s*:/);
+    expect(index).not.toMatch(/\bcode\s*:\s*code\b/);
   });
 });
