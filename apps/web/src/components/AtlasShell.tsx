@@ -18,7 +18,8 @@ const navItems = [
   { to: '/hospitality', label: 'Hospitality' },
   { to: '/ride', label: 'Ride' },
   { to: '/studio', label: 'Creator' },
-  { to: '/execution/manager/readiness', label: 'Execution' }
+  { to: '/execution/manager/readiness', label: 'Execution' },
+  { to: '/settings/security/connected-apps', label: 'Settings' }
 ];
 
 export function AtlasShell({ children }: { children: ReactNode }) {

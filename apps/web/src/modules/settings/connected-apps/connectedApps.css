@@ -1,0 +1,185 @@
+.connected-apps-page {
+  width: min(1120px, 100%);
+}
+
+.connected-apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.connected-app-card,
+.connected-app-tab-panel {
+  border: 1px solid rgba(125, 155, 210, 0.2);
+  border-radius: 16px;
+  background: rgba(8, 20, 40, 0.72);
+  padding: 1rem;
+}
+
+.connected-app-card-heading,
+.provider-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.connected-app-card h2,
+.provider-detail-header h1 {
+  margin: 0.25rem 0;
+}
+
+.connected-app-kind {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.72;
+}
+
+.connected-app-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  border: 1px solid rgba(125, 155, 210, 0.28);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-verified {
+  border-color: rgba(95, 205, 165, 0.55);
+}
+
+.status-connected_unverified,
+.status-reconnect_required,
+.status-degraded,
+.status-expired {
+  border-color: rgba(235, 185, 80, 0.55);
+}
+
+.status-revoked,
+.status-error {
+  border-color: rgba(235, 95, 95, 0.55);
+}
+
+.connected-app-identity {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.connected-app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.connected-app-actions button,
+.connected-app-link {
+  border: 1px solid rgba(125, 155, 210, 0.34);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  background: rgba(20, 48, 85, 0.7);
+  color: inherit;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.connected-app-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.connected-app-actions .danger-action {
+  border-color: rgba(235, 95, 95, 0.45);
+}
+
+.connected-apps-alert,
+.connected-apps-loading {
+  border: 1px solid rgba(125, 155, 210, 0.24);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.connected-apps-alert {
+  border-color: rgba(235, 95, 95, 0.45);
+}
+
+.connected-app-tabs {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.connected-app-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(125, 155, 210, 0.25);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+}
+
+.connected-app-tabs button.active {
+  background: rgba(28, 72, 126, 0.78);
+  border-color: rgba(125, 155, 210, 0.58);
+}
+
+.connected-app-detail-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.connected-app-detail-list div {
+  border: 1px solid rgba(125, 155, 210, 0.16);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.connected-app-detail-list dt {
+  opacity: 0.7;
+  font-size: 0.8rem;
+}
+
+.connected-app-detail-list dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.connected-app-scope-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.security-boundary-copy p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .connected-app-card-heading,
+  .provider-detail-header {
+    flex-direction: column;
+  }
+
+  .connected-app-actions {
+    align-items: stretch;
+  }
+
+  .connected-app-actions > * {
+    width: 100%;
+    text-align: center;
+  }
+
+  .connected-app-tabs {
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
+  }
+}

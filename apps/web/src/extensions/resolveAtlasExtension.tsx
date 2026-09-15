@@ -10,6 +10,7 @@ import {
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
+import { ConnectedAppsRoutes } from '../modules/settings/connected-apps/ConnectedAppsRoutes';
 
 export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/') {
@@ -32,6 +33,14 @@ export function resolveAtlasExtension(pathname: string) {
     return (
       <RequireAtlasIdentity>
         <CrmRoutes />
+      </RequireAtlasIdentity>
+    );
+  }
+
+  if (pathname === '/settings/security/connected-apps' || pathname.startsWith('/settings/security/connected-apps/')) {
+    return (
+      <RequireAtlasIdentity>
+        <ConnectedAppsRoutes />
       </RequireAtlasIdentity>
     );
   }
