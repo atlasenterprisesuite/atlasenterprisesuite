@@ -1,3 +1,5 @@
+import type { MotionCompositionSpec } from './motion/types';
+
 export type ProductionStatus =
   | 'draft' | 'validating' | 'blocked' | 'ready'
   | 'submitting' | 'generating' | 'completed' | 'failed';
@@ -146,6 +148,7 @@ export type ProductionSpec = {
   visualStyle: VisualStyleSpec;
   cameraDefaults: CameraSpec;
   motionRules: MotionRule[];
+  motionComposition: MotionCompositionSpec | null;
   audioPlan: AudioPlan;
   negativeConstraints: NegativeConstraint[];
   providerPreference: ProviderId | null;
