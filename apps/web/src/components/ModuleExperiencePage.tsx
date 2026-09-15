@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import './module-experience.css';
 
 export type ModuleExperienceCard = {
   label: string;
