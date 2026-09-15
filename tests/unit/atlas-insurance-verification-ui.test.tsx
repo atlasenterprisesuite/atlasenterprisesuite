@@ -71,7 +71,7 @@ describe('ATLAS Insurance verification experience', () => {
     );
 
     expect(await screen.findByText(/code sent to/i)).toHaveTextContent('w***@example.com');
-    const input = screen.getByLabelText(/verification code/i);
+    const input = screen.getByRole('textbox', { name: /^verification code$/i });
     const submit = screen.getByRole('button', { name: /continue/i });
 
     expect(submit).toBeDisabled();
