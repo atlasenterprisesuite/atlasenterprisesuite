@@ -47,18 +47,22 @@ describe('ATLAS OS Settings P1', () => {
     expect(DEFAULT_ORGANIZATION_OS_POLICY.deviceActionsMode).toBe('confirm');
   });
 
-  it('persists user and organization settings with tenant RLS and server-derived identity', () => {
+  it('reuses canonical user preferences, organization settings and audit rails', () => {
     const sql = source('supabase/migrations/20260915100000_os_settings_p1.sql').toLowerCase();
-    expect(sql).toContain('create table if not exists public.os_user_settings');
-    expect(sql).toContain('create table if not exists public.os_organization_settings');
-    expect(sql).toContain('create table if not exists public.os_settings_audit');
-    expect(sql).toContain('enable row level security');
+    expect(sql).toContain('alter table public.atlas_user_preferences');
+    expect(sql).toContain('alter table public.organization_settings');
+    expect(sql).toContain('insert into public.audit_logs');
+    expect(sql).not.toContain('create table if not exists public.os_user_settings');
+    expect(sql).not.toContain('create table if not exists public.os_organization_settings');
+    expect(sql).not.toContain('create table if not exists public.os_settings_audit');
     expect(sql).toContain('auth.uid()');
     expect(sql).toContain('organization_members');
     expect(sql).toContain('get_os_settings');
     expect(sql).toContain('update_os_settings');
     expect(sql).toContain('version_conflict');
     expect(sql).toContain("role in ('owner', 'admin')");
+    expect(sql).toContain("preferences -> 'os'");
+    expect(sql).toContain("settings -> 'os'");
   });
 
   it('does not accept organization id from the browser settings write contract', () => {
