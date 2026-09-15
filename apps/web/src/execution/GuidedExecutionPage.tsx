@@ -3,9 +3,11 @@ import { useParams } from 'react-router-dom';
 import {
   decideExecutionApproval,
   evaluateWorkStep,
+  executeWorkStep,
   loadGuidedExecutionAudit,
   loadGuidedExecutionState,
   requestExecutionApproval,
+  resumeWorkStep,
   type WorkStepExecutionDecision
 } from './api';
 import type { ApprovalDecision } from './ApprovalCard';
@@ -182,6 +184,24 @@ export function GuidedExecutionPage() {
     }
   };
 
+  const runWorkStep = async (operation: 'execute' | 'resume') => {
+    if (!selectedStep || !selectedTask || selectedTask.currentStepId !== selectedStep.id || busy) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      if (operation === 'execute') await executeWorkStep(selectedTask.id);
+      else await resumeWorkStep(selectedTask.id);
+      await reload();
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : `${operation}_work_step_failed`;
+      setActionError(message === 'approval_binding_mismatch'
+        ? 'approval_binding_mismatch — the approved action changed; request a new approval for the current payload.'
+        : message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const selectAssistantStep = (stepId: string) => {
     setActionError(null);
     setSelectedStepId(stepId);
@@ -228,6 +248,8 @@ export function GuidedExecutionPage() {
                   currentStep={selectedTask.currentStepId === selectedStep.id}
                   busy={busy}
                   onRefresh={reload}
+                  onExecuteStep={() => runWorkStep('execute')}
+                  onResumeStep={() => runWorkStep('resume')}
                   onRequestApproval={requestApproval}
                   onFocusApprovals={() => focusSection('execution-approvals-title')}
                   onFocusEvidence={() => focusSection('execution-evidence-title')}
