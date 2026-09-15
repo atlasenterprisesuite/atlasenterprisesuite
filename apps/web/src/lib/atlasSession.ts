@@ -16,6 +16,24 @@ export type AtlasShellOrganization = AtlasOrganization & {
   active: boolean;
 };
 
+export type AtlasMfaFactor = {
+  id: string;
+  status: string;
+  factorType: string;
+  friendlyName: string | null;
+};
+
+export type AtlasMfaState = {
+  currentLevel: 'aal1' | 'aal2';
+  verifiedTotpFactors: AtlasMfaFactor[];
+};
+
+export type AtlasTotpEnrollment = {
+  factorId: string;
+  qrCode: string;
+  secret: string;
+};
+
 let cachedAtlasShellOrganization: AtlasShellOrganization | null = null;
 
 export type AccountingInsight = {
@@ -138,6 +156,34 @@ async function parseResponse(response: Response) {
   return data;
 }
 
+function readAtlasAal(accessToken: string): 'aal1' | 'aal2' {
+  try {
+    const payload = accessToken.split('.')[1];
+    if (!payload) return 'aal1';
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const claims = JSON.parse(globalThis.atob(padded));
+    return claims?.aal === 'aal2' ? 'aal2' : 'aal1';
+  } catch {
+    return 'aal1';
+  }
+}
+
+function normalizeMfaFactors(data: any): AtlasMfaFactor[] {
+  const raw = Array.isArray(data?.totp)
+    ? data.totp
+    : Array.isArray(data?.all)
+      ? data.all.filter((factor: any) => (factor?.factor_type || factor?.type) === 'totp')
+      : [];
+
+  return raw.map((factor: any) => ({
+    id: String(factor?.id || ''),
+    status: String(factor?.status || ''),
+    factorType: String(factor?.factor_type || factor?.type || 'totp'),
+    friendlyName: factor?.friendly_name ? String(factor.friendly_name) : null
+  })).filter((factor: AtlasMfaFactor) => Boolean(factor.id));
+}
+
 export async function signInAtlas(email: string, password: string) {
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
@@ -185,6 +231,62 @@ export async function authorizedAtlasFetch(path: string, init: RequestInit = {})
     response = await request(token);
   }
   return response;
+}
+
+export async function getAtlasMfaState(): Promise<AtlasMfaState> {
+  const accessToken = getAtlasAccessToken();
+  if (!accessToken) throw new Error('authentication_required');
+
+  const response = await authorizedAtlasFetch('/auth/v1/factors', { method: 'GET' });
+  const data = await parseResponse(response);
+  const verifiedTotpFactors = normalizeMfaFactors(data).filter((factor) => factor.status === 'verified');
+
+  return {
+    currentLevel: readAtlasAal(getAtlasAccessToken() || accessToken),
+    verifiedTotpFactors
+  };
+}
+
+export async function enrollAtlasTotp(): Promise<AtlasTotpEnrollment> {
+  const response = await authorizedAtlasFetch('/auth/v1/factors', {
+    method: 'POST',
+    body: JSON.stringify({
+      factor_type: 'totp',
+      friendly_name: 'ATLAS Authenticator'
+    })
+  });
+  const data = await parseResponse(response);
+  const factorId = String(data?.id || '');
+  const qrCode = String(data?.totp?.qr_code || '');
+  const secret = String(data?.totp?.secret || '');
+  if (!factorId || !qrCode || !secret) throw new Error('mfa_enrollment_incomplete');
+  return { factorId, qrCode, secret };
+}
+
+export async function verifyAtlasMfa(factorId: string, code: string): Promise<void> {
+  if (!factorId) throw new Error('mfa_factor_required');
+  if (!/^\d{6}$/.test(code)) throw new Error('mfa_code_invalid');
+
+  const factorPath = `/auth/v1/factors/${encodeURIComponent(factorId)}`;
+  const challengeResponse = await authorizedAtlasFetch(`${factorPath}/challenge`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  const challenge = await parseResponse(challengeResponse);
+  const challengeId = String(challenge?.id || '');
+  if (!challengeId) throw new Error('mfa_challenge_incomplete');
+
+  const verifyResponse = await authorizedAtlasFetch(`${factorPath}/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ challenge_id: challengeId, code })
+  });
+  const session = await parseResponse(verifyResponse);
+  persistSession(session);
+
+  if (readAtlasAal(getAtlasAccessToken()) !== 'aal2') {
+    const refreshed = await refreshAtlasSession();
+    if (!refreshed || readAtlasAal(refreshed) !== 'aal2') throw new Error('mfa_aal2_not_established');
+  }
 }
 
 export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
