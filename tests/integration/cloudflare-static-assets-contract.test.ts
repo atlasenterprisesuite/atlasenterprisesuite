@@ -19,6 +19,16 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('wrangler@4 deploy');
   });
 
+  it('verifies the deployed Access gateway fails closed for anonymous requests', () => {
+    expect(workflow).toContain('ROOT_STATUS=');
+    expect(workflow).toContain('SPA_STATUS=');
+    expect(workflow).toContain('HEALTH_STATUS=');
+    expect(workflow).toContain('test "$ROOT_STATUS" = "401"');
+    expect(workflow).toContain('test "$SPA_STATUS" = "401"');
+    expect(workflow).toContain('test "$HEALTH_STATUS" = "401"');
+    expect(workflow).toContain('Access gateway smoke verification passed.');
+  });
+
   it('keeps custom-domain cutover separate from the initial worker deploy', () => {
     expect(wrangler).not.toContain('custom_domain');
     expect(workflow).toContain('workers.dev');
