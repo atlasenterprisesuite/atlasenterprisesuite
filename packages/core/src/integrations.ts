@@ -1,4 +1,4 @@
-export type IntegrationProvider = 'google' | 'hubspot';
+export type IntegrationProvider = 'google' | 'hubspot' | 'microsoft';
 
 export type IntegrationConnectionState =
   | 'unconfigured'
