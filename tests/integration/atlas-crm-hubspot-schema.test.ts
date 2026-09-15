@@ -20,17 +20,43 @@ describe('ATLAS CRM HubSpot schema contract', () => {
     }
   });
 
-  it('extends OAuth state support to HubSpot without rewriting the historical migration', () => {
-    expect(sql).toMatch(/alter table public\.atlas_oauth_states[\s\S]*drop constraint if exists atlas_oauth_states_provider_check/i);
-    expect(sql).toMatch(/provider in \('google', 'hubspot'\)/i);
+  it('bootstraps the OAuth state registry when historical Google schema is absent', () => {
+    expect(sql).toMatch(/create table if not exists public\.atlas_oauth_states/i);
+    expect(sql).toMatch(/provider text not null[\s\S]*provider in \('google', 'hubspot'\)/i);
+    expect(sql).toMatch(/constraint atlas_oauth_states_provider_nonce_unique unique \(provider, nonce_hash\)/i);
   });
 
-  it('creates the four organization-scoped P0 persistence tables', () => {
-    expect(sql).toContain('atlas_integration_connections');
+  it('keeps OAuth state support compatible with both Google and HubSpot', () => {
+    expect(sql).toMatch(/alter table public\.atlas_oauth_states[\s\S]*drop constraint if exists atlas_oauth_states_provider_check/i);
+    expect(sql).toMatch(/provider in \('google', 'hubspot'\)/i);
+    expect(sql).toContain("'integrations.manage'");
+  });
+
+  it('extends the canonical shared integration registry instead of assuming a new table shape', () => {
+    for (const column of [
+      'provider_account_id',
+      'provider_account_label',
+      'granted_scopes',
+      'credential_ref',
+      'last_verified_at',
+      'last_success_at',
+      'last_error_code',
+      'last_error_at',
+      'connected_by',
+      'connected_at',
+      'revoked_at'
+    ]) {
+      expect(sql).toMatch(
+        new RegExp(`alter table public\\.atlas_integration_connections[\\s\\S]*add column if not exists ${column}\\b`, 'i')
+      );
+    }
+    expect(sql).not.toMatch(/constraint atlas_integration_connections_org_provider_key unique \(org_id, provider\)/i);
+  });
+
+  it('creates the remaining organization-scoped P0 persistence tables', () => {
     expect(sql).toContain('atlas_integration_credentials');
     expect(sql).toContain('atlas_external_object_links');
     expect(sql).toContain('atlas_integration_sync_runs');
-    expect(sql).toMatch(/unique \(org_id, provider\)/i);
     expect(sql).toMatch(/unique \([\s\S]*org_id,[\s\S]*provider,[\s\S]*provider_account_id,[\s\S]*provider_object_type,[\s\S]*provider_object_id[\s\S]*\)/i);
   });
 
