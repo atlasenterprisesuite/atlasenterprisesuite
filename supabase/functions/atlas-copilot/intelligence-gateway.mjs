@@ -1,4 +1,5 @@
 import {normalizeAgentContext} from './agentic-core.mjs';
+import {evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
 
 export const INTELLIGENCE_CAPABILITIES=Object.freeze(['generation','reasoning']);
 export const REASONING_PROFILES=Object.freeze({fast:Object.freeze({id:'fast'}),balanced:Object.freeze({id:'balanced'}),deep:Object.freeze({id:'deep'})});
@@ -50,15 +51,24 @@ export function createIntelligenceRouter({providers=[]}={}){
   });
 }
 
-export function normalizeIntelligenceError(error){if(error?.code)return {code:error.code,status:Number(error.status)||500,trace_id:error.trace_id||null};if(Number(error?.status)===429)return {code:'provider_rate_limited',status:429,trace_id:null};if(Number(error?.status)>=500)return {code:'provider_unavailable',status:502,trace_id:null};return {code:'internal_error',status:500,trace_id:null};}
+export function normalizeIntelligenceError(error){
+  if(error?.code)return {code:error.code,status:Number(error.status)||500,trace_id:error.trace_id||null};
+  if(Number(error?.status)===429)return {code:'provider_rate_limited',status:429,trace_id:null};
+  if(Number(error?.status)>=500)return {code:'provider_unavailable',status:502,trace_id:null};
+  return {code:'internal_error',status:500,trace_id:null};
+}
 
-export function createIntelligenceGateway({router,provider,store,clock=Date.now}={}){
-  if(!router||!provider||!store)throw new TypeError('gateway_dependencies_required');
+export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
+  if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
+  const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:true,allow_council:false,zero_cost_providers:[]};
   return Object.freeze({async execute({context,request}){
     const principal=normalizeAgentContext(context);
     if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
     const normalized=normalizeIntelligenceRequest(request);
     const route=router.route(normalized);
+    const costDecision=evaluateIntelligenceCostPolicy({mode:route.mode,providers:route.providers,policy:effectiveCostPolicy});
+    if(costDecision.decision==='deny')throw fail(costDecision.reason||'cost_policy_denied',403,{cost_decision:costDecision});
+    if(costDecision.decision==='approval_required')throw fail('cost_approval_required',409,{cost_decision:costDecision});
     const trace_id=crypto.randomUUID();
     const started=clock();
     let conversation,telemetry;
@@ -69,11 +79,22 @@ export function createIntelligenceGateway({router,provider,store,clock=Date.now}
       const messages=await store.listMessages({context:principal,conversation_id:conversation.id,limit:50});
       const history=messages.map(m=>({role:m.role,content:m.content?.text??m.content}));
       if(normalized.legacy_context)history.push({role:'user',content:`Current ATLAS context:\n${normalized.legacy_context}`});
-      const result=await provider.execute({context:principal,route,instructions:'You are ATLAS Assistant. Preserve tenant boundaries, permissions, auditability, truthful execution states, and user intent. Never expose secrets or private chain-of-thought.',input:history,max_output_tokens:3000});
+      const instructions='You are ATLAS Assistant. Preserve tenant boundaries, permissions, auditability, truthful execution states, and user intent. Never expose secrets or private chain-of-thought.';
+      let result;
+      if(route.mode==='council'){
+        if(!council)throw fail('capability_unavailable',503,{mode:'council'});
+        result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000});
+      }else{
+        const adapter=registry?.get(route.providers[0])||provider;
+        if(!adapter)throw fail('provider_not_configured',503,{provider:route.providers[0]});
+        result=await adapter.execute({context:principal,route,instructions,input:history,max_output_tokens:3000});
+      }
+      const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
-      await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing:{mode:route.mode,providers:route.providers,profile:route.profile,fallback_used:route.fallback_used}},provenance:result.provenance||[],trace_id});
-      await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:result.usage||{},latency_ms:latency});
-      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:route.providers,model:result.model,mode:route.mode,profile:route.profile,fallback_used:route.fallback_used,capabilities_used:result.capabilities_used||route.capabilities,tools_used:[],sources:result.provenance||[],usage:result.usage||{},latency,execution_state:'completed'};
+      const routing={mode:route.mode,providers:route.providers,profile:route.profile,fallback_used:route.fallback_used,reason:route.reason};
+      await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
+      await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:{...(result.usage||{}),atlas_routing:routing},latency_ms:latency});
+      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:route.providers,model:result.model,mode:route.mode,profile:route.profile,fallback_used:route.fallback_used,capabilities_used:result.capabilities_used||route.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,execution_state:'completed'};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});
