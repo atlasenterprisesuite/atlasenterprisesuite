@@ -113,6 +113,10 @@ function microsoftAdapter() {
   });
 }
 
+function providerManagementUrl(provider: string) {
+  return provider === 'microsoft' ? 'https://account.live.com/consent/Manage' : null;
+}
+
 function safeConnection(row: IntegrationConnectionRow) {
   return {
     id: row.id,
@@ -126,7 +130,8 @@ function safeConnection(row: IntegrationConnectionRow) {
     connected_at: row.connected_at,
     last_verified_at: row.last_verified_at,
     revoked_at: row.revoked_at,
-    last_error_code: row.last_error_code
+    last_error_code: row.last_error_code,
+    provider_management_url: providerManagementUrl(row.provider)
   };
 }
 
@@ -243,6 +248,7 @@ async function handleVerify(req: Request, context: IntegrationRequestContext, bo
       updated_by: context.userId,
       updated_at: new Date().toISOString()
     });
+    if (!updated) throw integrationError('connection_update_failed', 500);
     await writeIntegrationEvent(context, {
       provider,
       connectionId: row.id,
@@ -253,7 +259,7 @@ async function handleVerify(req: Request, context: IntegrationRequestContext, bo
       module: 'settings',
       outcome: 'succeeded'
     });
-    return json(req, { ok: true, connection: safeConnection(updated || { ...row, state: 'verified', provider_account_label: identity.maskedIdentity, granted_scopes: identity.scopes, last_verified_at: identity.verifiedAt }) });
+    return json(req, { ok: true, connection: safeConnection(updated) });
   } catch (error) {
     const mapped = adapter.mapError(error);
     const nextState = mapped.code === 'microsoft_reconnect_required' ? 'reconnect_required' : 'degraded';
@@ -445,7 +451,7 @@ async function refreshMicrosoftCredential(
       accessToken: fresh.accessToken,
       refreshToken: fresh.refreshToken || tokens.refreshToken,
       tokenType: fresh.tokenType || 'Bearer',
-      scopes: fresh.scopes,
+      scopes: fresh.scopes.length ? fresh.scopes : tokens.scopes,
       expiresAt: fresh.expiresAt
     };
     const identity = await adapter.verify({ accessToken: merged.accessToken, scopes: merged.scopes });
@@ -491,12 +497,12 @@ async function refreshMicrosoftCredential(
     });
     return { row: updated, tokens: merged };
   } catch (error) {
-    if (error instanceof IntegrationEdgeError) throw error;
     const mapped = adapter.mapError(error);
-    if (mapped.status === 401 || mapped.code === 'microsoft_reconnect_required') {
+    if (mapped.status === 401 || mapped.code === 'microsoft_reconnect_required' || mapped.code === 'microsoft_authorization_failed') {
       await markReconnectRequired(context, row, 'reconnect_required', module);
       throw integrationError('reconnect_required', 409);
     }
+    if (error instanceof IntegrationEdgeError && !mapped.code.startsWith('microsoft_')) throw error;
     throw integrationError(mapped.code, mapped.status);
   }
 }
@@ -581,10 +587,6 @@ async function handleRevoke(req: Request, context: IntegrationRequestContext, bo
   const row = await getConnectionOrThrow(context, provider);
   const adapter = microsoftAdapter();
   const metadata = adapter.revokeLocalAuthorization();
-
-  if (row.credential_ref) {
-    await deleteCredentialRecord(context.organizationId, { id: row.credential_ref, provider });
-  }
   const revokedAt = new Date().toISOString();
   const updated = await updateConnection(context, row.id, {
     state: 'revoked',
@@ -597,6 +599,10 @@ async function handleRevoke(req: Request, context: IntegrationRequestContext, bo
     updated_by: context.userId,
     updated_at: revokedAt
   });
+  if (!updated) throw integrationError('connection_update_failed', 500);
+  if (row.credential_ref) {
+    await deleteCredentialRecord(context.organizationId, { id: row.credential_ref, provider }).catch(() => undefined);
+  }
   await writeIntegrationEvent(context, {
     provider,
     connectionId: row.id,
@@ -608,7 +614,7 @@ async function handleRevoke(req: Request, context: IntegrationRequestContext, bo
   });
   return json(req, {
     ok: true,
-    connection: safeConnection(updated || { ...row, state: 'revoked', credential_ref: null, revoked_at: revokedAt }),
+    connection: safeConnection(updated),
     provider_management_url: metadata.providerManagementUrl
   });
 }
