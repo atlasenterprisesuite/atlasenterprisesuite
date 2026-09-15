@@ -40,7 +40,8 @@ const verifiedConnection: integrationsApi.BrowserIntegrationConnection = {
   scopes: ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
   connectorClass: 'user_oauth',
   environment: null,
-  lastErrorCode: null
+  lastErrorCode: null,
+  providerManagementUrl: 'https://account.live.com/consent/Manage'
 };
 
 function renderConnectedApps(path = '/settings/security/connected-apps') {
@@ -102,7 +103,7 @@ describe('ATLAS Connected Apps settings experience', () => {
     expect(screen.queryByText('Verified')).not.toBeInTheDocument();
   });
 
-  it('renders verified Microsoft detail with masked identity and all governed tabs', async () => {
+  it('renders verified Microsoft detail with masked identity, provider management, and governed tabs', async () => {
     getConnection.mockResolvedValue(verifiedConnection);
 
     renderConnectedApps('/settings/security/connected-apps/microsoft');
@@ -110,6 +111,7 @@ describe('ATLAS Connected Apps settings experience', () => {
     expect(await screen.findByRole('heading', { name: 'Microsoft' })).toBeInTheDocument();
     expect(screen.getByText('Verified', { selector: '.connected-app-status' })).toBeInTheDocument();
     expect(screen.getByText('w***u@hotmail.com')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Manage at Microsoft' })).toHaveAttribute('href', 'https://account.live.com/consent/Manage');
     for (const tab of ['Overview', 'Permissions', 'Used By', 'Activity', 'Security']) {
       expect(screen.getByRole('tab', { name: tab })).toBeInTheDocument();
     }
@@ -160,12 +162,18 @@ describe('ATLAS Connected Apps settings experience', () => {
       state: 'verified',
       provider_account_label: 'w***u@hotmail.com',
       granted_scopes: ['User.Read'],
+      provider_management_url: 'https://account.live.com/consent/Manage',
       access_token: 'secret-access-token',
       refresh_token: 'secret-refresh-token',
       metadata: { client_secret: 'do-not-render' }
     });
 
-    expect(normalized).toMatchObject({ providerKey: 'microsoft', status: 'verified', maskedIdentity: 'w***u@hotmail.com' });
+    expect(normalized).toMatchObject({
+      providerKey: 'microsoft',
+      status: 'verified',
+      maskedIdentity: 'w***u@hotmail.com',
+      providerManagementUrl: 'https://account.live.com/consent/Manage'
+    });
     expect(JSON.stringify(normalized)).not.toContain('secret-access-token');
     expect(JSON.stringify(normalized)).not.toContain('secret-refresh-token');
     expect(JSON.stringify(normalized)).not.toContain('do-not-render');
