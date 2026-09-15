@@ -6,18 +6,20 @@ import { DirectorWorkspace } from './director/DirectorWorkspace';
 import './creator.css';
 
 type MediaKind = 'image' | 'video' | 'music' | 'voice';
+type ToolKind = MediaKind | 'content';
 
-const tools = [
-  { kind: 'image' as MediaKind, title: 'Image Lab', description: 'Create and refine campaign imagery from a governed prompt.', route: '/studio/create?type=image' },
-  { kind: 'video' as MediaKind, title: 'Video Lab', description: 'Plan clips, storyboards and motion generations with provider-aware controls.', route: '/studio/create?type=video' },
-  { kind: 'music' as MediaKind, title: 'Music Lab', description: 'Turn a creative brief into a song request without claiming unconfigured generation.', route: '/studio/create?type=music' },
-  { kind: 'voice' as MediaKind, title: 'Voice & Agents', description: 'Continue to the identity-gated ATLAS Voice workspace.', route: '/studio/voice' }
+const tools: Array<{ kind: ToolKind; title: string; description: string; route: string }> = [
+  { kind: 'content', title: 'Content Intelligence', description: 'Turn creator context into audience insights, ranked ideas, hooks, structured drafts, channel variants and governed handoffs.', route: '/studio/content' },
+  { kind: 'image', title: 'Image Lab', description: 'Create and refine campaign imagery from a governed prompt.', route: '/studio/create?type=image' },
+  { kind: 'video', title: 'Video Lab', description: 'Plan clips, storyboards and motion generations with provider-aware controls.', route: '/studio/create?type=video' },
+  { kind: 'music', title: 'Music Lab', description: 'Turn a creative brief into a song request without claiming unconfigured generation.', route: '/studio/create?type=music' },
+  { kind: 'voice', title: 'Voice & Agents', description: 'Continue to the identity-gated ATLAS Voice workspace.', route: '/studio/voice' }
 ];
 
 export function CreatorHome() {
   return <section className="creator-page">
-    <header className="creator-hero"><div><p className="eyebrow">ATLAS Studio</p><h1>Create beyond the prompt.</h1><p>One governed workspace for imagery, video, sound and voice—connected to ATLAS Identity and organization context.</p></div><Link className="creator-primary" to="/studio/create">Start creating</Link></header>
-    <div className="creator-status"><span className="pulse-dot" /><div><strong>Workspace ready</strong><small>External generation providers require authorized configuration.</small></div></div>
+    <header className="creator-hero"><div><p className="eyebrow">ATLAS Studio</p><h1>Create beyond the prompt.</h1><p>One governed workspace for content intelligence, imagery, video, sound and voice—connected to ATLAS Identity and organization context.</p></div><Link className="creator-primary" to="/studio/content">Start with Content Intelligence</Link></header>
+    <div className="creator-status"><span className="pulse-dot" /><div><strong>Workspace ready</strong><small>Local planning is available without paid providers; external generation still requires authorized configuration.</small></div></div>
     <div className="creator-grid">{tools.map(tool => <Link className="creator-tool" to={tool.route} key={tool.kind}><span className={'creator-orb '+tool.kind} aria-hidden="true" /><small>{tool.kind}</small><h2>{tool.title}</h2><p>{tool.description}</p><span className="creator-link">Open workspace →</span></Link>)}</div>
     <section className="creator-section"><div className="section-heading"><div><p className="eyebrow">Inspiration</p><h2>Creative feed</h2></div><Link to="/studio/library">View library</Link></div><div className="creator-empty"><strong>No organization media yet</strong><span>Generated and uploaded assets will appear here after they are saved through an authorized storage connection.</span></div></section>
   </section>;

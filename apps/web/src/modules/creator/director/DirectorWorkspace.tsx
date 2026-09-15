@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { createEmptyProductionSpec } from '../../../../../../packages/creator/defaults';
 import { evaluateNativeRenderGate } from '../../../../../../packages/creator/native_policy';
 import type { CreatorReadinessResponse, ProviderReadiness, ValidationIssue } from '../../../../../../packages/creator/types';
@@ -19,6 +19,28 @@ import { AudioEditor, CameraMotionEditor, ContinuityEditor, VisualStyleEditor } 
 import { ProviderGate } from './ProviderGate';
 import { ReviewPanel } from './ReviewPanel';
 import './director.css';
+
+type AtlasContentHandoff = {
+  title?: string;
+  brief?: string;
+  narration?: string;
+};
+
+type AtlasDirectorLocationState = {
+  atlasContentHandoff?: AtlasContentHandoff;
+};
+
+function createInitialDirectorSpec(handoff?: AtlasContentHandoff) {
+  const spec = createEmptyProductionSpec();
+  if (!handoff) return spec;
+
+  if (handoff.title?.trim()) spec.title = handoff.title.trim();
+  if (handoff.brief?.trim()) spec.brief = handoff.brief.trim();
+  if (handoff.narration?.trim()) {
+    spec.audioPlan = { ...spec.audioPlan, dialogue: [handoff.narration] };
+  }
+  return spec;
+}
 
 export const DIRECTOR_STEPS = [
   'Creative Brief', 'Subject / Entity', 'Environment', 'Stages & Shots',
@@ -45,7 +67,13 @@ const STEP_HELP: Record<(typeof DIRECTOR_STEPS)[number], string> = {
 };
 
 export function DirectorWorkspace() {
-  const [state, dispatch] = useReducer(directorReducer, createDirectorState(createEmptyProductionSpec()));
+  const location = useLocation();
+  const handoff = (location.state as AtlasDirectorLocationState | null)?.atlasContentHandoff;
+  const [state, dispatch] = useReducer(
+    directorReducer,
+    handoff,
+    initialHandoff => createDirectorState(createInitialDirectorSpec(initialHandoff))
+  );
   const [activeStep, setActiveStep] = useState(0);
   const [readiness, setReadiness] = useState<CreatorReadinessResponse | null>(null);
   const [readinessState, setReadinessState] = useState<'loading' | 'ready' | 'error'>('loading');

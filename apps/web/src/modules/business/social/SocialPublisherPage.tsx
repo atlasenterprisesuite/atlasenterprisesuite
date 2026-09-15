@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   getPlatform,
   socialPlatforms,
@@ -9,11 +10,23 @@ import './social.css';
 
 type MediaPreview = { file: File; url: string };
 
+type AtlasPublisherLocationState = {
+  atlasContentHandoff?: {
+    caption?: string;
+    platform?: PlatformId;
+  };
+};
+
 export function SocialPublisherPage() {
-  const [platformId, setPlatformId] = useState<PlatformId>('instagram');
+  const location = useLocation();
+  const handoff = (location.state as AtlasPublisherLocationState | null)?.atlasContentHandoff;
+  const handoffPlatform = handoff?.platform && socialPlatforms.some(item => item.id === handoff.platform)
+    ? handoff.platform
+    : 'instagram';
+  const [platformId, setPlatformId] = useState<PlatformId>(handoffPlatform);
   const platform = getPlatform(platformId);
-  const [formatId, setFormatId] = useState(platform.formats[0].id);
-  const [caption, setCaption] = useState('');
+  const [formatId, setFormatId] = useState(() => getPlatform(handoffPlatform).formats[0].id);
+  const [caption, setCaption] = useState(() => String(handoff?.caption || ''));
   const [media, setMedia] = useState<MediaPreview[]>([]);
   const format = platform.formats.find((item) => item.id === formatId) ?? platform.formats[0];
   const errors = useMemo(() => validateMedia(media.map((item) => item.file), format), [media, format]);
