@@ -1,5 +1,6 @@
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
+import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import {
   AccountingExperiencePage,
@@ -41,6 +42,14 @@ export function resolveAtlasExtension(pathname: string) {
     return (
       <RequireAtlasIdentity>
         <CrmRoutes />
+      </RequireAtlasIdentity>
+    );
+  }
+
+  if (pathname === '/connect' || pathname.startsWith('/connect/')) {
+    return (
+      <RequireAtlasIdentity>
+        <ConnectRoutes />
       </RequireAtlasIdentity>
     );
   }
