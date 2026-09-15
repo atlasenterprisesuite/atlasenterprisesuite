@@ -1,4 +1,5 @@
 import { getActiveAtlasOrganization, getAtlasAccessToken } from './atlasSession';
+import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence';
 import type {
   CreatorAsset,
   CreatorReadinessResponse,
@@ -10,6 +11,11 @@ import type {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
+
+export type ContentWorkspaceRecord = ContentWorkspaceState & {
+  organizationId: string;
+  createdByUserId: string;
+};
 
 function query(params: Record<string, string | undefined>) {
   const search = new URLSearchParams();
@@ -122,6 +128,30 @@ function assetFromWire(value: any): CreatorAsset {
   } as CreatorAsset;
 }
 
+function contentWorkspaceFromWire(value: any): ContentWorkspaceRecord {
+  const state = (value?.state_json ?? value?.stateJson ?? {}) as Partial<ContentWorkspaceState>;
+  return {
+    ...(state as ContentWorkspaceState),
+    id: String(value?.id ?? state.id ?? ''),
+    title: String(value?.title ?? state.title ?? 'Untitled content workspace'),
+    profile: state.profile ?? { niche: '', objective: '', tone: '', platforms: [], audience: '', language: 'English' },
+    audienceSeed: String(state.audienceSeed ?? ''),
+    audience: state.audience ?? null,
+    ideas: state.ideas ?? [],
+    hooks: state.hooks ?? [],
+    selectedIdeaId: state.selectedIdeaId ?? null,
+    selectedHookId: state.selectedHookId ?? null,
+    draft: state.draft ?? null,
+    variants: state.variants ?? [],
+    review: state.review ?? null,
+    version: Number(value?.version ?? state.version ?? 0),
+    createdAt: String(value?.created_at ?? state.createdAt ?? ''),
+    updatedAt: String(value?.updated_at ?? state.updatedAt ?? ''),
+    organizationId: String(value?.organization_id ?? value?.organizationId ?? ''),
+    createdByUserId: String(value?.created_by ?? value?.createdByUserId ?? '')
+  };
+}
+
 export const getCreatorReadiness = () => creatorRequest<CreatorReadinessResponse>('readiness');
 
 export async function listCreatorProviders() {
@@ -144,6 +174,24 @@ export async function saveCreatorProduction(spec: ProductionSpec, expectedVersio
     method: 'POST', body: JSON.stringify({ spec, expected_version: expectedVersion })
   });
   return specFromWire(data.production);
+}
+
+export async function listContentWorkspaces() {
+  const data = await creatorRequest<{ ok: true; workspaces: unknown[] }>('content-workspaces');
+  return data.workspaces.map(contentWorkspaceFromWire);
+}
+
+export async function getContentWorkspace(id: string) {
+  const data = await creatorRequest<{ ok: true; workspace: unknown }>('content-workspace', { id });
+  return contentWorkspaceFromWire(data.workspace);
+}
+
+export async function saveContentWorkspace(workspace: ContentWorkspaceState, expectedVersion: number) {
+  const data = await creatorRequest<{ ok: true; workspace: unknown }>('content-save', {}, {
+    method: 'POST',
+    body: JSON.stringify({ workspace, expected_version: expectedVersion })
+  });
+  return contentWorkspaceFromWire(data.workspace);
 }
 
 export async function listCreatorAssets(productionId?: string) {
