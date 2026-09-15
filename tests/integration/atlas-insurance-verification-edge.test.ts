@@ -119,10 +119,12 @@ describe('ATLAS Insurance verification Edge Function contract', () => {
   });
 
   it('stores only code hashes and keeps verification lifecycle server-controlled', () => {
+    const sql = migrationSql();
     const repository = source(repositoryPath);
     expect(repository).toContain('insurance_verification_challenges');
-    expect(repository).toContain('insurance_verification_grants');
-    expect(repository).toContain('insurance_verification_audit');
+    expect(repository).toContain(".rpc('finalize_insurance_verification_grant'");
+    expect(sql).toContain('insert into public.insurance_verification_grants');
+    expect(sql).toContain('insert into public.insurance_verification_audit');
     expect(repository).toContain('code_hash');
     expect(repository).not.toMatch(/\.insert\([^)]*\bcode\s*:/s);
   });
