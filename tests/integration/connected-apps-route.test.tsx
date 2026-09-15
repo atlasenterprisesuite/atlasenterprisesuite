@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -16,12 +16,32 @@ vi.mock('../../apps/web/src/lib/integrationsApi', async (importOriginal) => {
     beginIntegrationAuthorization: vi.fn(),
     verifyIntegration: vi.fn(),
     executeIntegrationCapability: vi.fn(),
-    revokeIntegration: vi.fn()
+    revokeIntegration: vi.fn(),
+    listIntegrationGrants: vi.fn(),
+    grantIntegrationCapability: vi.fn(),
+    revokeIntegrationGrant: vi.fn(),
+    listIntegrationActivity: vi.fn()
   };
 });
 
 const listConnections = vi.mocked(integrationsApi.listIntegrationConnections);
 const getConnection = vi.mocked(integrationsApi.getIntegrationConnection);
+const listGrants = vi.mocked(integrationsApi.listIntegrationGrants);
+const listActivity = vi.mocked(integrationsApi.listIntegrationActivity);
+
+const verifiedConnection: integrationsApi.BrowserIntegrationConnection = {
+  id: 'connection-1',
+  providerKey: 'microsoft',
+  status: 'verified',
+  maskedIdentity: 'w***u@hotmail.com',
+  connectedAt: '2026-09-15T16:00:00.000Z',
+  lastVerifiedAt: '2026-09-15T16:10:00.000Z',
+  expiresAt: '2026-09-15T17:10:00.000Z',
+  scopes: ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
+  connectorClass: 'user_oauth',
+  environment: null,
+  lastErrorCode: null
+};
 
 function renderConnectedApps(path = '/settings/security/connected-apps') {
   return render(
@@ -36,8 +56,12 @@ describe('ATLAS Connected Apps settings experience', () => {
     window.localStorage.clear();
     listConnections.mockReset();
     getConnection.mockReset();
+    listGrants.mockReset();
+    listActivity.mockReset();
     listConnections.mockResolvedValue([]);
     getConnection.mockResolvedValue(null);
+    listGrants.mockResolvedValue([]);
+    listActivity.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -70,21 +94,7 @@ describe('ATLAS Connected Apps settings experience', () => {
   });
 
   it('never labels connected_unverified as Verified', async () => {
-    listConnections.mockResolvedValue([
-      {
-        id: 'connection-1',
-        providerKey: 'microsoft',
-        status: 'connected_unverified',
-        maskedIdentity: 'w***u@hotmail.com',
-        connectedAt: '2026-09-15T16:00:00.000Z',
-        lastVerifiedAt: null,
-        expiresAt: null,
-        scopes: ['User.Read'],
-        connectorClass: 'user_oauth',
-        environment: null,
-        lastErrorCode: null
-      }
-    ]);
+    listConnections.mockResolvedValue([{ ...verifiedConnection, status: 'connected_unverified', lastVerifiedAt: null }]);
 
     renderConnectedApps();
 
@@ -93,19 +103,7 @@ describe('ATLAS Connected Apps settings experience', () => {
   });
 
   it('renders verified Microsoft detail with masked identity and all governed tabs', async () => {
-    getConnection.mockResolvedValue({
-      id: 'connection-1',
-      providerKey: 'microsoft',
-      status: 'verified',
-      maskedIdentity: 'w***u@hotmail.com',
-      connectedAt: '2026-09-15T16:00:00.000Z',
-      lastVerifiedAt: '2026-09-15T16:10:00.000Z',
-      expiresAt: '2026-09-15T17:10:00.000Z',
-      scopes: ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
-      connectorClass: 'user_oauth',
-      environment: null,
-      lastErrorCode: null
-    });
+    getConnection.mockResolvedValue(verifiedConnection);
 
     renderConnectedApps('/settings/security/connected-apps/microsoft');
 
@@ -115,6 +113,44 @@ describe('ATLAS Connected Apps settings experience', () => {
     for (const tab of ['Overview', 'Permissions', 'Used By', 'Activity', 'Security']) {
       expect(screen.getByRole('tab', { name: tab })).toBeInTheDocument();
     }
+  });
+
+  it('loads real Used By grants and Activity records from the gateway', async () => {
+    getConnection.mockResolvedValue(verifiedConnection);
+    listGrants.mockResolvedValue([
+      {
+        id: 'grant-1',
+        principalType: 'user',
+        principalId: 'user-1',
+        module: 'settings',
+        capability: 'microsoft.profile.read',
+        grantedAt: '2026-09-15T16:20:00.000Z'
+      }
+    ]);
+    listActivity.mockResolvedValue([
+      {
+        id: 'event-1',
+        action: 'grant_created',
+        outcome: 'succeeded',
+        module: 'settings',
+        statusBefore: null,
+        statusAfter: null,
+        capability: 'microsoft.profile.read',
+        createdAt: '2026-09-15T16:21:00.000Z'
+      }
+    ]);
+
+    renderConnectedApps('/settings/security/connected-apps/microsoft');
+    expect(await screen.findByRole('heading', { name: 'Microsoft' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Used By' }));
+    expect(await screen.findByText('microsoft.profile.read')).toBeInTheDocument();
+    expect(screen.getByText('settings')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Revoke grant microsoft.profile.read' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Activity' }));
+    expect(await screen.findByText('grant_created')).toBeInTheDocument();
+    expect(screen.getByText('succeeded')).toBeInTheDocument();
   });
 
   it('allow-lists browser DTO fields and discards malicious token-shaped response keys', () => {
