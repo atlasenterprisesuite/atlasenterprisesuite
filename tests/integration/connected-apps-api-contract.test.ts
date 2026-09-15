@@ -32,11 +32,13 @@ describe('Connected Apps OAuth contract', () => {
     expect(oauth).toContain('org_id');
   });
 
-  it('never redirects provider code, tokens, client secret, or PKCE verifier back to the browser', () => {
+  it('redirects with sanitized OAuth status only and never returns provider secrets', () => {
     const oauth = source(oauthPath);
-    expect(oauth).toContain("oauth=success");
-    expect(oauth).toContain("oauth=cancelled");
-    expect(oauth).toContain("oauth=error");
+    expect(oauth).toContain("status: 'success' | 'cancelled' | 'error'");
+    expect(oauth).toContain("target.searchParams.set('oauth', status)");
+    expect(oauth).toContain("redirectTo(returnTo, 'success')");
+    expect(oauth).toContain("'cancelled'");
+    expect(oauth).toContain("redirectTo(returnTo, 'error'");
     expect(oauth).not.toMatch(/searchParams\.set\(['"](?:code|access_token|refresh_token|client_secret|code_verifier)['"]/i);
   });
 
