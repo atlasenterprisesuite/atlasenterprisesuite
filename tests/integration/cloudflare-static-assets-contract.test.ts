@@ -19,15 +19,18 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('wrangler@4 deploy');
   });
 
-  it('accepts the official Cloudflare GitHub App deployment when direct credentials are unavailable', () => {
+  it('uses the official Cloudflare GitHub App as the primary deployment path', () => {
     expect(workflow).toContain('checks: read');
     expect(workflow).toContain('Workers Builds: atlas-enterprise-suite-web');
     expect(workflow).toContain('/commits/${GITHUB_SHA}/check-runs');
     expect(workflow).toContain('cloudflare_native_build_verified');
     expect(workflow).toContain('cloudflare-native-github-app');
+    expect(workflow).toContain('DIRECT_DEPLOY_REQUESTED');
+    expect(workflow).toContain("vars.CLOUDFLARE_DIRECT_DEPLOY == 'true'");
+    expect(workflow).toContain('if [ "$DIRECT_DEPLOY_REQUESTED" = "true" ]');
   });
 
-  it('resolves an invalid configured account ID only when the token exposes exactly one accessible account', () => {
+  it('resolves an invalid configured account ID only when explicit direct deploy is selected', () => {
     expect(workflow).toContain('Resolve Cloudflare account ID');
     expect(workflow).toContain('https://api.cloudflare.com/client/v4/accounts');
     expect(workflow).toContain('::add-mask::$RESOLVED_ACCOUNT_ID');
