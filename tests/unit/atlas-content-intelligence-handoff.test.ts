@@ -25,7 +25,7 @@ describe('ATLAS Content Intelligence governed handoffs', () => {
     expect(publisher).toContain('useLocation');
     expect(publisher).toContain('atlasContentHandoff');
     expect(publisher).toContain('socialPlatforms.some');
-    expect(publisher).toContain('handoff.caption');
+    expect(publisher).toContain('handoff?.caption');
     expect(publisher).toContain("platform.connectionStatus === 'not_configured'");
     expect(publisher).toContain('media.length === 0');
     expect(publisher).toContain('errors.length > 0');
