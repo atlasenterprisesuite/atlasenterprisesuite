@@ -10,6 +10,10 @@ import {
   SupabaseHubSpotConnectionStore,
   type HubSpotConnectionStore
 } from '../_shared/hubspot-connection-store.ts';
+import {
+  executeHubSpotCrmOperation,
+  type HubSpotCrmReadAdapter
+} from '../_shared/hubspot-crm-operations.ts';
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.atlasenterprisesuite.com',
@@ -34,6 +38,7 @@ export type AtlasCrmHubSpotDependencies = {
   fetchImpl?: typeof fetch;
   env?: (name: string) => string | undefined;
   connectionStore?: HubSpotConnectionStore;
+  crmAdapter?: HubSpotCrmReadAdapter;
   lifecycle?: Partial<
     Pick<
       HubSpotLifecycleDependencies,
@@ -362,10 +367,19 @@ export async function handleAtlasCrmHubSpotRequest(
     return lifecycleError(req, deps, error);
   }
 
-  return json(req, deps, 501, {
-    error: 'CRM read operation is not implemented yet',
-    operation: body.operation
+  const result = await executeHubSpotCrmOperation({
+    operation: body.operation,
+    organizationId: body.organizationId,
+    actorUserId: userId,
+    body,
+    deps: {
+      store: connectionStore,
+      lifecycle: lifecycleDeps,
+      adapter: deps.crmAdapter,
+      now: deps.lifecycle?.now
+    }
   });
+  return json(req, deps, result.status, result.body);
 }
 
 const deno = (globalThis as unknown as {

@@ -37,7 +37,6 @@ export type HubSpotCredentialRow = {
 };
 
 export type HubSpotStoredCredentialInput = Omit<HubSpotCredentialRow, 'id'>;
-
 export type HubSpotConnectionUpsert = Omit<HubSpotConnectionRow, 'id'>;
 
 export type HubSpotEvidenceInput = {
@@ -54,6 +53,19 @@ export type HubSpotEvidenceInput = {
   completed_at?: string | null;
   error_code?: string | null;
   evidence_ref?: string | null;
+};
+
+export type HubSpotExternalObjectLinkInput = {
+  org_id: string;
+  provider: 'hubspot';
+  provider_account_id: string;
+  provider_object_type: string;
+  provider_object_id: string;
+  atlas_object_type?: string | null;
+  atlas_object_id?: string | null;
+  last_seen_at: string;
+  source_updated_at?: string | null;
+  source_fingerprint?: string | null;
 };
 
 export interface HubSpotConnectionStore {
@@ -77,6 +89,7 @@ export interface HubSpotConnectionStore {
     patch: Partial<Omit<HubSpotConnectionRow, 'id' | 'org_id' | 'provider'>>
   ): Promise<HubSpotConnectionRow | null>;
   recordEvidence(input: HubSpotEvidenceInput): Promise<void>;
+  upsertObjectLinks?(inputs: readonly HubSpotExternalObjectLinkInput[]): Promise<void>;
 }
 
 type ServiceFetch = typeof fetch;
@@ -96,11 +109,7 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
   private readonly serviceRoleKey: string;
   private readonly fetchImpl: ServiceFetch;
 
-  constructor(input: {
-    supabaseUrl: string;
-    serviceRoleKey: string;
-    fetchImpl?: ServiceFetch;
-  }) {
+  constructor(input: { supabaseUrl: string; serviceRoleKey: string; fetchImpl?: ServiceFetch }) {
     this.restRoot = `${required(input.supabaseUrl, 'Supabase URL').replace(/\/$/, '')}/rest/v1`;
     this.serviceRoleKey = required(input.serviceRoleKey, 'Supabase service role key');
     this.fetchImpl = input.fetchImpl ?? fetch;
@@ -121,9 +130,7 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
     } catch {
       throw new Error('ATLAS integration storage is unavailable');
     }
-    if (!response.ok) {
-      throw new Error(`ATLAS integration storage request failed (${response.status})`);
-    }
+    if (!response.ok) throw new Error(`ATLAS integration storage request failed (${response.status})`);
     return response;
   }
 
@@ -166,14 +173,11 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
   }
 
   async consumeOAuthState(id: string, consumedAt: string): Promise<boolean> {
-    const response = await this.request(
-      `atlas_oauth_states?id=eq.${filter(id)}&consumed_at=is.null`,
-      {
-        method: 'PATCH',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({ consumed_at: consumedAt })
-      }
-    );
+    const response = await this.request(`atlas_oauth_states?id=eq.${filter(id)}&consumed_at=is.null`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ consumed_at: consumedAt })
+    });
     return (await this.rows<HubSpotOAuthStateRow>(response)).length === 1;
   }
 
@@ -188,11 +192,7 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
     return row;
   }
 
-  async updateCredential(
-    id: string,
-    organizationId: string,
-    input: HubSpotStoredCredentialInput
-  ): Promise<boolean> {
+  async updateCredential(id: string, organizationId: string, input: HubSpotStoredCredentialInput): Promise<boolean> {
     const response = await this.request(
       `atlas_integration_credentials?id=eq.${filter(id)}&org_id=eq.${filter(organizationId)}&provider=eq.hubspot`,
       {
@@ -219,14 +219,11 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
   }
 
   async upsertConnection(input: HubSpotConnectionUpsert): Promise<HubSpotConnectionRow> {
-    const response = await this.request(
-      'atlas_integration_connections?on_conflict=org_id,provider',
-      {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify(input)
-      }
-    );
+    const response = await this.request('atlas_integration_connections?on_conflict=org_id,provider', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(input)
+    });
     const row = (await this.rows<HubSpotConnectionRow>(response))[0];
     if (!row?.id) throw new Error('ATLAS integration connection upsert returned no row');
     return row;
@@ -258,10 +255,19 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
     await this.request('atlas_integration_sync_runs', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        records_observed: 0,
-        ...input
-      })
+      body: JSON.stringify({ records_observed: 0, ...input })
     });
+  }
+
+  async upsertObjectLinks(inputs: readonly HubSpotExternalObjectLinkInput[]): Promise<void> {
+    if (inputs.length === 0) return;
+    await this.request(
+      'atlas_external_object_links?on_conflict=org_id,provider,provider_account_id,provider_object_type,provider_object_id',
+      {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(inputs)
+      }
+    );
   }
 }
