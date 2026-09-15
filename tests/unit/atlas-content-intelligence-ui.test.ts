@@ -10,10 +10,11 @@ const pagePath = 'apps/web/src/modules/creator/content/ContentIntelligencePage.t
 
 describe('ATLAS Content Intelligence workspace UI', () => {
   it('registers the governed /studio/content route and Studio entry point', () => {
-    const app = source('apps/web/src/App.tsx');
+    const resolver = source('apps/web/src/extensions/resolveAtlasExtension.tsx');
     const studio = source('apps/web/src/modules/creator/CreatorStudioPage.tsx');
-    expect(app).toContain("./modules/creator/content/ContentIntelligencePage");
-    expect(app).toContain('path="/studio/content"');
+    expect(resolver).toContain("../modules/creator/content/ContentIntelligencePage");
+    expect(resolver).toContain("pathname === '/studio/content'");
+    expect(resolver).toContain('RequireAtlasIdentity');
     expect(studio).toContain("route: '/studio/content'");
     expect(studio).toContain("title: 'Content Intelligence'");
   });
