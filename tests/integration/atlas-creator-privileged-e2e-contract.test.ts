@@ -23,6 +23,12 @@ describe('ATLAS Creator privileged E2E verifier contract', () => {
     expect(source).not.toContain('provider_adapter');
   });
 
+  it('revokes temporary privilege and credentials after every run', () => {
+    expect(source).toContain("role:'staff'");
+    expect(source).toContain('/auth/v1/logout?scope=global');
+    expect(source).toContain('finally');
+  });
+
   it('never returns credentials or bearer tokens', () => {
     expect(source).not.toMatch(/return\s+json\([^\n]*(password|accessToken|access_token|refresh_token)/);
     expect(source).toContain("generation_enabled===false");
