@@ -67,13 +67,13 @@ async function makeToken(
   return `${signingInput}.${Buffer.from(signature).toString('base64url')}`;
 }
 
-function stubJwks(): ReturnType<typeof vi.fn> {
+function stubJwks(kid = 'atlas-test-key'): ReturnType<typeof vi.fn> {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
     if (url !== JWKS_URL) {
       throw new Error(`Unexpected fetch: ${url}`);
     }
-    return Response.json({ keys: [publicJwk] });
+    return Response.json({ keys: [{ ...publicJwk, kid }] });
   });
 
   vi.stubGlobal('fetch', fetchMock);
@@ -139,7 +139,7 @@ describe('Cloudflare Access Worker gateway contract', () => {
   });
 
   it('serves static assets only after signature and claims validation succeed', async () => {
-    const fetchMock = stubJwks();
+    stubJwks();
     const token = await makeToken();
     const { env, assetFetch } = createEnv();
     const request = new Request('https://atlas.example/app', {
@@ -150,8 +150,34 @@ describe('Cloudflare Access Worker gateway contract', () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('ATLAS asset');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(assetFetch).toHaveBeenCalledOnce();
     expect(assetFetch).toHaveBeenCalledWith(request);
+  });
+
+  it('reuses a recently validated signing key instead of fetching JWKS for every asset', async () => {
+    const cacheKid = 'atlas-cache-key';
+    const fetchMock = stubJwks(cacheKid);
+    const token = await makeToken({}, { kid: cacheKid });
+    const first = createEnv();
+    const second = createEnv();
+
+    const firstResponse = await worker.fetch(
+      new Request('https://atlas.example/assets/app.js', {
+        headers: { 'CF-Access-Jwt-Assertion': token }
+      }),
+      first.env
+    );
+    const secondResponse = await worker.fetch(
+      new Request('https://atlas.example/assets/app.css', {
+        headers: { 'CF-Access-Jwt-Assertion': token }
+      }),
+      second.env
+    );
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(first.assetFetch).toHaveBeenCalledOnce();
+    expect(second.assetFetch).toHaveBeenCalledOnce();
   });
 });
