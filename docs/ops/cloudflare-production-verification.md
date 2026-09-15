@@ -1,29 +1,35 @@
 # ATLAS Cloudflare production verification
 
-This document separates the production deployment evidence states so ATLAS does not confuse provider deployment success with public-edge HTTP accessibility.
+This document separates provider deployment evidence from public-edge HTTP accessibility so ATLAS does not confuse Cloudflare bot mitigation with an application failure.
 
 ## Evidence states
 
 | State | Meaning | Deployment claim allowed? | Required action |
 | --- | --- | --- | --- |
-| `passed` | Cloudflare provider build succeeded and public routes returned HTTP 200 from GitHub Actions. | Yes: production HTTP verified. | Keep monitoring. |
-| `blocked_by_edge_challenge` | Cloudflare provider build succeeded, but the public hostname returned `403` with `cf-mitigated: challenge` to the GitHub Actions verifier. | Partial only: provider deployment verified; public HTTP proof blocked by edge policy. | Configure a scoped Cloudflare bypass or token factory for the production verifier. |
-| `failed` | Provider build failed, app tests failed, or public hostname returned a non-classified failure. | No. | Inspect workflow logs and repair app or infrastructure. |
+| `passed` | Cloudflare provider build succeeded and either the GitHub runner received HTTP 200 on all public shell routes or the scoped ATLAS authorized runtime verifier confirmed those routes while preserving the protected deployment path. | Yes: production HTTP verified. | Keep monitoring. |
+| `blocked_by_edge_challenge` | Cloudflare provider build succeeded, the GitHub runner received `403` with `cf-mitigated: challenge`, and the authorized ATLAS runtime verifier did not independently confirm the required routes. | Partial only: provider deployment verified; production HTTP proof incomplete. | Inspect edge policy or verifier health. |
+| `failed` | Provider build failed, application gates failed, or a route returned a non-classified failure. | No. | Repair application or infrastructure. |
 
-## Why this matters
+## Verification model
 
-A Cloudflare browser challenge can block automated GitHub runners while the site is still accessible to a normal browser. The workflow must not report that the application is broken unless the response is a real app/deploy failure.
+ATLAS deliberately keeps two independent signals:
+
+1. **GitHub external probe** — detects what an untrusted automation runner sees at the public edge.
+2. **ATLAS authorized runtime verifier** — a Supabase-hosted verification plane callable only by a GitHub OIDC token scoped to this repository, `main`, and `.github/workflows/cloudflare-deploy.yml`.
+
+When Cloudflare challenges the GitHub runner, the workflow does not weaken zone-wide security. It requests a short-lived GitHub OIDC token with audience `atlas-production-http-verifier` and asks `atlas-cloudflare-production-http-verify` to verify:
+
+- `/` returns HTTP 200;
+- `/identity?app=/finance` returns HTTP 200;
+- `/finance` returns HTTP 200;
+- `/deployment.json` remains protected with HTTP 302, 401, or 403.
+
+The verifier returns no credentials or provider secrets. Module authorization remains enforced by ATLAS Identity plus backend bearer/RBAC/RLS controls.
 
 ## ATLAS rule
 
-ATLAS can only say `production HTTP verified` when all public shell probes return HTTP 200 or a scoped, authorized verification bypass confirms the routes. If the edge returns a Cloudflare challenge, ATLAS records the result honestly as `blocked_by_edge_challenge` and continues preserving build evidence.
+ATLAS may report `production HTTP verified` only when the public shell receives HTTP 200 from the GitHub probe **or** the scoped authorized runtime verifier confirms the required routes and protected deployment boundary. A Cloudflare challenge against generic automation is retained as separate evidence (`github_edge_challenge_detected`) rather than treated as an application outage.
 
-## Pending Cloudflare configuration
+## Security posture
 
-To remove the challenge state, configure one of these controlled options:
-
-1. A narrowly scoped Cloudflare WAF rule that bypasses browser challenge only for the GitHub Actions production verifier signal.
-2. `CLOUDFLARE_TOKEN_FACTORY_TOKEN` so the workflow can create and revoke a temporary verification token.
-3. A Cloudflare Access service token wired only to the production verification route checks.
-
-Do not store Cloudflare API tokens as GitHub Actions Variables. Use encrypted GitHub Actions Secrets only.
+Do not disable Cloudflare security globally merely to make CI probes green. Browser Integrity Check remains independent, Security Level remains an edge control, and any future WAF exception must be narrowly scoped. Cloudflare API tokens must remain encrypted secrets, never Actions Variables.
