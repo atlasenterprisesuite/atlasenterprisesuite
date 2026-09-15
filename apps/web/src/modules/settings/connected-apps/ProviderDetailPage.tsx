@@ -94,6 +94,7 @@ export function ProviderDetailPage() {
 
   const canVerify = Boolean(connection && connection.status !== 'revoked');
   const canReconnect = Boolean(connection);
+  const managementUrl = connection?.providerManagementUrl || providerManagementUrl;
   const scopeSummary = useMemo(() => connection?.scopes || [], [connection]);
   const profileGrant = useMemo(() => grants.find((grant) => grant.module === 'settings' && grant.capability === PROFILE_CAPABILITY) || null, [grants]);
 
@@ -192,7 +193,7 @@ export function ProviderDetailPage() {
         {canReconnect ? <button type="button" onClick={connectOrReconnect} disabled={Boolean(busy)}>{busy === 'authorize' ? 'Opening Microsoft…' : 'Reconnect'}</button> : null}
         {canVerify ? <button type="button" onClick={verifyNow} disabled={Boolean(busy)}>{busy === 'verify' ? 'Verifying…' : 'Verify now'}</button> : null}
         {connection && connection.status !== 'revoked' ? <button type="button" className="danger-action" onClick={revokeNow} disabled={Boolean(busy)}>{busy === 'revoke' ? 'Revoking…' : 'Revoke from ATLAS'}</button> : null}
-        {providerManagementUrl ? <a className="connected-app-link" href={providerManagementUrl} rel="noreferrer">Manage at Microsoft</a> : null}
+        {managementUrl ? <a className="connected-app-link" href={managementUrl} target="_blank" rel="noreferrer">Manage at Microsoft</a> : null}
         <Link className="connected-app-link" to="/settings/security/connected-apps">All providers</Link>
       </div>
 
