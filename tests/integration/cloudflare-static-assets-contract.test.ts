@@ -27,6 +27,10 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('cloudflare-native-github-app');
   });
 
+  it('exports the deployment probe before constructing ATLAS Manager evidence', () => {
+    expect(workflow).toContain('export DEPLOYMENT_PROBE');
+  });
+
   it('verifies the deployed Access gateway fails closed for anonymous requests', () => {
     expect(workflow).toContain('ROOT_STATUS=');
     expect(workflow).toContain('SPA_STATUS=');
