@@ -107,7 +107,20 @@ export type HospitalityPermission =
   | 'hospitality.access.revoke'
   | 'hospitality.access.configure'
   | 'hospitality.access.audit'
-  | 'hospitality.access.admin';
+  | 'hospitality.access.admin'
+  | 'hospitality.property.read'
+  | 'hospitality.property.manage'
+  | 'hospitality.reservation.read'
+  | 'hospitality.reservation.manage'
+  | 'hospitality.frontdesk.checkin'
+  | 'hospitality.frontdesk.checkout'
+  | 'hospitality.housekeeping.manage'
+  | 'hospitality.maintenance.manage'
+  | 'hospitality.restaurant.order.read'
+  | 'hospitality.restaurant.order.manage'
+  | 'hospitality.restaurant.refund'
+  | 'hospitality.audit.read'
+  | 'hospitality.audit.admin';
 
 export const PROVIDER_STATES = [
   'not_configured',
