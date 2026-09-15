@@ -1,8 +1,18 @@
 export type ProviderName = 'github' | 'supabase' | 'cloudflare' | 'production' | 'vercel';
+export type ProviderIncidentScope = 'dashboard' | 'edge' | 'mixed' | 'unknown';
+
+export type ProviderIncident = {
+  source: 'cloudflare_status';
+  active: boolean;
+  scope: ProviderIncidentScope;
+  impact: string;
+  name?: string;
+};
 
 export type ProviderSnapshot = {
   state: string;
   required: boolean;
+  incident?: ProviderIncident | null;
 };
 
 export type InfrastructureBlocker = {
@@ -11,10 +21,19 @@ export type InfrastructureBlocker = {
   nextAction: string;
 };
 
+export type InfrastructureDiagnostic = {
+  provider: ProviderName;
+  cause: 'provider' | 'atlas_or_unknown';
+  scope: ProviderIncidentScope | 'production';
+  blocking: boolean;
+  summary: string;
+};
+
 export type InfrastructureEvaluation = {
   status: 'ready' | 'partial';
   providers: Record<ProviderName, ProviderSnapshot>;
   blockers: InfrastructureBlocker[];
+  diagnostics: InfrastructureDiagnostic[];
   requiredPath: ProviderName[];
 };
 
@@ -24,6 +43,20 @@ const OPTIONAL_UNCONFIGURED_STATES = new Set([
   'project_not_configured',
   'authorization_missing'
 ]);
+
+export function classifyCloudflareIncidentScope(values: string[]): ProviderIncidentScope {
+  const text = values.join(' ').toLowerCase();
+  const dashboardAffected = /\bdashboard\b|control plane|dash\.cloudflare\.com/.test(text);
+  const edgeAffected =
+    /\bworkers?\b|\bcdn\b|\bcache\b|\bdns\b|\bnetwork\b|\brouting\b|\btraffic\b|\bedge\b|\bpages\b|load balancing|\bssl\b|\btls\b/.test(
+      text
+    );
+
+  if (dashboardAffected && edgeAffected) return 'mixed';
+  if (dashboardAffected) return 'dashboard';
+  if (edgeAffected) return 'edge';
+  return 'unknown';
+}
 
 export function evaluateInfrastructure(
   input: Record<ProviderName, ProviderSnapshot>
@@ -45,10 +78,70 @@ export function evaluateInfrastructure(
       nextAction: `verify_or_repair_${provider}`
     }));
 
+  const diagnostics: InfrastructureDiagnostic[] = [];
+  const cloudflareIncident = providers.cloudflare.incident;
+  const productionReady = providers.production.state === 'ready';
+
+  if (cloudflareIncident?.active && cloudflareIncident.scope === 'dashboard') {
+    diagnostics.push({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'dashboard',
+      blocking: false,
+      summary: productionReady
+        ? 'Cloudflare has an active dashboard incident, but ATLAS production is reachable.'
+        : 'Cloudflare reports a dashboard incident; it does not by itself explain the ATLAS production outage.'
+    });
+  }
+
+  if (
+    cloudflareIncident?.active &&
+    productionReady &&
+    (cloudflareIncident.scope === 'edge' || cloudflareIncident.scope === 'mixed')
+  ) {
+    diagnostics.push({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: cloudflareIncident.scope,
+      blocking: false,
+      summary:
+        cloudflareIncident.scope === 'edge'
+          ? 'Cloudflare reports an active edge incident, but ATLAS production is reachable.'
+          : 'Cloudflare reports an active dashboard and edge incident, but ATLAS production is reachable.'
+    });
+  }
+
+  const matchingCloudflareEdgeIncident = Boolean(
+    cloudflareIncident?.active &&
+      (cloudflareIncident.scope === 'edge' || cloudflareIncident.scope === 'mixed')
+  );
+
+  if (!productionReady && matchingCloudflareEdgeIncident) {
+    diagnostics.push({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: cloudflareIncident!.scope,
+      blocking: true,
+      summary:
+        cloudflareIncident!.scope === 'edge'
+          ? 'ATLAS production is unreachable while Cloudflare reports an active edge incident.'
+          : 'ATLAS production is unreachable while Cloudflare reports an active incident affecting dashboard and edge services.'
+    });
+  } else if (!productionReady) {
+    diagnostics.push({
+      provider: 'production',
+      cause: 'atlas_or_unknown',
+      scope: 'production',
+      blocking: true,
+      summary: 'ATLAS production is unreachable and no matching Cloudflare provider incident is active.'
+    });
+  }
+
   return {
     status: blockers.length === 0 ? 'ready' : 'partial',
     providers,
     blockers,
+    diagnostics,
     requiredPath
   };
 }

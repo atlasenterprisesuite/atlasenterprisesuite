@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateInfrastructure } from '../../supabase/functions/_shared/infrastructure-readiness';
+import * as readiness from '../../supabase/functions/_shared/infrastructure-readiness';
+
+const { evaluateInfrastructure } = readiness;
 
 describe('ATLAS Manager infrastructure readiness', () => {
   it('does not block when optional Vercel is unconfigured', () => {
@@ -66,5 +68,125 @@ describe('ATLAS Manager infrastructure readiness', () => {
     expect(result.status).toBe('ready');
     expect(result.blockers).toEqual([]);
     expect(result.providers.vercel.state).toBe('authorization_error');
+  });
+
+  it('classifies a dashboard-only Cloudflare incident as provider-side without blocking healthy ATLAS production', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: {
+        state: 'ready',
+        required: true,
+        incident: {
+          source: 'cloudflare_status',
+          active: true,
+          scope: 'dashboard',
+          impact: 'minor',
+          name: 'Intermittent issues accessing the Dashboard on Firefox and Safari'
+        }
+      },
+      production: { state: 'ready', required: true },
+      vercel: { state: 'not_configured', required: false }
+    } as any);
+
+    expect(result.status).toBe('ready');
+    expect(result.blockers).toEqual([]);
+    expect((result as any).diagnostics).toContainEqual({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'dashboard',
+      blocking: false,
+      summary: 'Cloudflare has an active dashboard incident, but ATLAS production is reachable.'
+    });
+  });
+
+  it('attributes a production outage to Cloudflare when an active edge incident overlaps it', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: {
+        state: 'ready',
+        required: true,
+        incident: {
+          source: 'cloudflare_status',
+          active: true,
+          scope: 'edge',
+          impact: 'major',
+          name: 'Network connectivity issues'
+        }
+      },
+      production: { state: 'public_site_unreachable', required: true },
+      vercel: { state: 'not_configured', required: false }
+    });
+
+    expect(result.status).toBe('partial');
+    expect(result.diagnostics).toContainEqual({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'edge',
+      blocking: true,
+      summary: 'ATLAS production is unreachable while Cloudflare reports an active edge incident.'
+    });
+  });
+
+  it('does not blame Cloudflare for an ATLAS production outage when no provider incident is active', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: { state: 'ready', required: true },
+      production: { state: 'public_site_unreachable', required: true },
+      vercel: { state: 'not_configured', required: false }
+    });
+
+    expect(result.status).toBe('partial');
+    expect(result.diagnostics).toContainEqual({
+      provider: 'production',
+      cause: 'atlas_or_unknown',
+      scope: 'production',
+      blocking: true,
+      summary: 'ATLAS production is unreachable and no matching Cloudflare provider incident is active.'
+    });
+  });
+
+  it('keeps an active Cloudflare edge incident non-blocking while ATLAS production is healthy', () => {
+    const result = evaluateInfrastructure({
+      github: { state: 'ready', required: true },
+      supabase: { state: 'ready', required: true },
+      cloudflare: {
+        state: 'ready',
+        required: true,
+        incident: {
+          source: 'cloudflare_status',
+          active: true,
+          scope: 'edge',
+          impact: 'minor',
+          name: 'Cloudflare Workers degraded performance'
+        }
+      },
+      production: { state: 'ready', required: true },
+      vercel: { state: 'not_configured', required: false }
+    });
+
+    expect(result.status).toBe('ready');
+    expect(result.diagnostics).toContainEqual({
+      provider: 'cloudflare',
+      cause: 'provider',
+      scope: 'edge',
+      blocking: false,
+      summary: 'Cloudflare reports an active edge incident, but ATLAS production is reachable.'
+    });
+  });
+
+  it('classifies Cloudflare incident scope from incident and component names', () => {
+    const classify = (readiness as any).classifyCloudflareIncidentScope;
+
+    expect(classify?.(['Intermittent issues accessing the Dashboard on Firefox and Safari'])).toBe(
+      'dashboard'
+    );
+    expect(classify?.(['Cloudflare Workers', 'CDN/Cache', 'Network connectivity issues'])).toBe(
+      'edge'
+    );
+    expect(classify?.(['Cloudflare Dashboard', 'Workers'])).toBe('mixed');
+    expect(classify?.(['Investigating an issue with a third-party dependency'])).toBe('unknown');
   });
 });

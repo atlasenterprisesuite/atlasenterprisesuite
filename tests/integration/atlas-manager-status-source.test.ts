@@ -26,4 +26,11 @@ describe('atlas-infra-status Supabase-first source contract', () => {
     expect(source).toContain("['owner', 'admin', 'platform_admin']");
     expect(source).toContain("infrastructure_admin_required");
   });
+
+  it('checks Cloudflare public incidents separately from ATLAS production reachability', () => {
+    expect(source).toContain('https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json');
+    expect(source).toContain('classifyCloudflareIncidentScope');
+    expect(source).toContain('incident: cloudflare.provider_incident');
+    expect(source).toContain('diagnostics: normalized.diagnostics');
+  });
 });
