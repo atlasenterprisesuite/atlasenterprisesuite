@@ -93,12 +93,57 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_API_TOKEN is not configured as an Actions Secret"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not configured as an Actions Secret or Variable"; exit 1; }
 
+      - name: Resolve Cloudflare account ID
+        if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
+        id: cloudflare_account
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CONFIGURED_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACCOUNTS_JSON="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+
+          RESOLVED_ACCOUNT_ID="$(printf '%s' "$ACCOUNTS_JSON" | node -e '
+            let s="";
+            process.stdin.on("data",d=>s+=d).on("end",()=>{
+              const j=JSON.parse(s);
+              if (!j.success) process.exit(2);
+              const accounts=Array.isArray(j.result)?j.result:[];
+              const configured=process.env.CONFIGURED_ACCOUNT_ID;
+              const match=accounts.find(a=>a && a.id===configured);
+              if (match) {
+                process.stdout.write(match.id);
+                return;
+              }
+              if (accounts.length===1 && accounts[0] && accounts[0].id) {
+                process.stdout.write(accounts[0].id);
+                return;
+              }
+              process.exit(3);
+            });
+          ')" || {
+            STATUS=$?
+            if [ "$STATUS" = "3" ]; then
+              echo "::error::Expected exactly one accessible Cloudflare account when the configured account ID is invalid"
+            else
+              echo "::error::Unable to resolve a Cloudflare account from the configured API token"
+            fi
+            exit 1
+          }
+
+          test -n "$RESOLVED_ACCOUNT_ID" || { echo "::error::Cloudflare account resolution returned an empty ID"; exit 1; }
+          echo "::add-mask::$RESOLVED_ACCOUNT_ID"
+          echo "account_id=$RESOLVED_ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
       - name: Deploy Workers Static Assets
         if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.cloudflare_account.outputs.account_id }}
         run: |
           set -euo pipefail
           npx --yes wrangler@4 deploy --config wrangler.jsonc 2>&1 | tee /tmp/wrangler-deploy.log
