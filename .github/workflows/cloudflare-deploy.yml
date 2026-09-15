@@ -58,12 +58,14 @@ jobs:
       - name: Select Cloudflare deployment verification mode
         id: deployment_mode
         env:
+          DIRECT_DEPLOY_REQUESTED: ${{ vars.CLOUDFLARE_DIRECT_DEPLOY == 'true' }}
           TOKEN_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
           TOKEN_VARIABLE_PRESENT: ${{ vars.CLOUDFLARE_API_TOKEN != '' }}
           ACCOUNT_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
           ACCOUNT_VARIABLE_PRESENT: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
         run: |
           set -euo pipefail
+          echo "Direct Wrangler deployment explicitly requested: $DIRECT_DEPLOY_REQUESTED"
           echo "Cloudflare API token secret configured: $TOKEN_SECRET_PRESENT"
           echo "Cloudflare API token variable configured: $TOKEN_VARIABLE_PRESENT"
           echo "Cloudflare account ID secret configured: $ACCOUNT_SECRET_PRESENT"
@@ -74,7 +76,7 @@ jobs:
             exit 1
           fi
 
-          if [ "$TOKEN_SECRET_PRESENT" = "true" ] && { [ "$ACCOUNT_SECRET_PRESENT" = "true" ] || [ "$ACCOUNT_VARIABLE_PRESENT" = "true" ]; }; then
+          if [ "$DIRECT_DEPLOY_REQUESTED" = "true" ]; then
             MODE="direct-wrangler"
           else
             MODE="cloudflare-native-github-app"
