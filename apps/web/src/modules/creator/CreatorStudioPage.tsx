@@ -8,6 +8,16 @@ import './creator.css';
 
 type MediaKind = 'image' | 'video' | 'music' | 'voice';
 
+export const studioEntryPoints = [
+  { title: 'Content Intelligence', route: '/studio/content' },
+  { title: 'Image Lab', route: '/studio/create?type=image' },
+  { title: 'ATLAS Director', route: '/studio/create?type=video' },
+  { title: 'Music Lab', route: '/studio/create?type=music' },
+  { title: 'Voice & Agents', route: '/studio/voice' },
+  { title: 'Creator Library', route: '/studio/library' },
+  { title: 'Provider readiness', route: '/studio/providers' }
+] as const;
+
 export function CreatorHome() {
   return <CreatorExperiencePage />;
 }
