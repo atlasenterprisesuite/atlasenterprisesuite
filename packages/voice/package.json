@@ -2,5 +2,6 @@
   "name": "@atlas/voice",
   "private": true,
   "version": "0.1.0",
+  "description": "ATLAS personal voice domain governance primitives",
   "type": "module"
 }
