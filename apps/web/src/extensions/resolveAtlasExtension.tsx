@@ -9,11 +9,16 @@ import {
 } from '../modules/experience/AtlasModuleExperiences';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
+import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
 export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/') {
     return <EnterpriseExperiencePage />;
+  }
+
+  if (pathname === '/assistant') {
+    return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/business') {
