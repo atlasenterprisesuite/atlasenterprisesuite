@@ -1,8 +1,5 @@
-import { getActiveAtlasOrganization, getAtlasAccessToken } from '../lib/atlasSession';
+import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSession';
 import { resolveAssistantModule } from './routeContext';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
-const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 
 export type AssistantProviderState =
   | 'verified_for_request'
@@ -10,16 +7,30 @@ export type AssistantProviderState =
   | 'not_configured'
   | 'unavailable';
 
+export type AssistantProviderReadiness = {
+  id: string;
+  state: 'verified' | 'configuration-required' | 'rate-limited' | 'unavailable';
+  configured: boolean;
+  verified: boolean;
+  model: string | null;
+  capabilities: string[];
+  profiles: string[];
+  error: string | null;
+};
+
 export type AssistantStatusResponse = {
   ok: boolean;
   authenticated: boolean;
   provider: string;
   provider_state: AssistantProviderState;
-  model: string;
+  model: string | null;
   storage_state: string;
   organization: string;
   role: string | null;
   capabilities: string[];
+  providers?: AssistantProviderReadiness[];
+  modes?: string[];
+  api?: string;
 };
 
 export type AssistantChatResponse = {
@@ -28,17 +39,9 @@ export type AssistantChatResponse = {
   conversation_id?: string | null;
   trace_id?: string | null;
   provider_state?: AssistantProviderState;
+  provider?: string;
   model?: string;
 };
-
-function copilotHeaders(token: string, organizationId: string) {
-  return {
-    apikey: PUBLISHABLE_KEY,
-    authorization: `Bearer ${token}`,
-    'content-type': 'application/json',
-    'x-atlas-org-id': organizationId
-  };
-}
 
 async function parseCopilotResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
@@ -54,18 +57,29 @@ async function parseCopilotResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
-async function assistantSessionContext() {
-  const organization = await getActiveAtlasOrganization();
-  const token = getAtlasAccessToken();
-  if (!token) throw new Error('authentication_required');
-  return { organization, token };
+async function assistantOrganization() {
+  return getActiveAtlasOrganization();
+}
+
+export function hasVerifiedAssistantProvider(status: AssistantStatusResponse): boolean {
+  if (Array.isArray(status.providers)) {
+    return status.providers.some((provider) => provider.verified === true && provider.state === 'verified');
+  }
+  return status.provider_state === 'verified_for_request';
+}
+
+export function assistantProviderSummary(status: AssistantStatusResponse): string {
+  const verified = status.providers?.filter((provider) => provider.verified).map((provider) => provider.id) || [];
+  if (verified.length) return verified.join(', ');
+  if (status.provider_state === 'verified_for_request') return status.provider || 'verified provider';
+  return 'no verified provider';
 }
 
 export async function getAssistantStatus(): Promise<AssistantStatusResponse> {
-  const { organization, token } = await assistantSessionContext();
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/atlas-copilot?api=status`, {
+  const organization = await assistantOrganization();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=status', {
     method: 'GET',
-    headers: copilotHeaders(token, organization.id)
+    headers: { 'x-atlas-org-id': organization.id }
   });
   return parseCopilotResponse<AssistantStatusResponse>(response);
 }
@@ -79,14 +93,15 @@ export async function sendAssistantMessage(input: {
   const message = input.message.trim();
   if (!message) throw new Error('assistant_message_required');
 
-  const { organization, token } = await assistantSessionContext();
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/atlas-copilot?api=chat`, {
+  const organization = await assistantOrganization();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=chat', {
     method: 'POST',
-    headers: copilotHeaders(token, organization.id),
+    headers: { 'x-atlas-org-id': organization.id },
     body: JSON.stringify({
       organization_id: organization.id,
       module: resolveAssistantModule(input.pathname),
       intent: 'balanced',
+      mode: 'auto',
       message,
       conversation_id: input.conversationId || null,
       capabilities_requested: ['generation'],
