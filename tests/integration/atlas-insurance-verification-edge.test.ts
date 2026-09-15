@@ -78,6 +78,18 @@ describe('ATLAS Insurance verification persistence contract', () => {
     expect(sql).toContain('insurance_verification_challenges_active_idx');
     expect(sql).toContain('insurance_verification_grants_active_idx');
   });
+
+  it('uses service-role-only atomic database functions for attempt increments and grant finalization', () => {
+    const sql = migrationSql();
+    const repository = source(repositoryPath);
+    expect(sql).toContain('create or replace function public.increment_insurance_verification_attempt');
+    expect(sql).toContain('create or replace function public.finalize_insurance_verification_grant');
+    expect(sql).toContain('grant execute on function public.increment_insurance_verification_attempt');
+    expect(sql).toContain('grant execute on function public.finalize_insurance_verification_grant');
+    expect(sql).toContain('to service_role');
+    expect(repository).toContain(".rpc('increment_insurance_verification_attempt'");
+    expect(repository).toContain(".rpc('finalize_insurance_verification_grant'");
+  });
 });
 
 describe('ATLAS Insurance verification Edge Function contract', () => {
