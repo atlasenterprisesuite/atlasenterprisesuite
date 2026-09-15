@@ -9,7 +9,7 @@ import { AtlasVoicePage } from './modules/voice/AtlasVoicePage';
 import './styles.css';
 import './health.css';
 import './neuroplasticity.css';
-import './modules/finance/accounting/paayables-ai.css';
+import './modules/finance/accounting/payables-ai.css';
 import './modules/hospitality/hospitality.css';
 import './modules/ride/ride.css';
 
