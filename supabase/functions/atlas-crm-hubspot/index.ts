@@ -1,9 +1,22 @@
+import {
+  HubSpotLifecycleError,
+  completeHubSpotConnection,
+  disconnectHubSpotConnection,
+  getHubSpotConnectionStatus,
+  prepareHubSpotConnection,
+  type HubSpotLifecycleDependencies
+} from '../_shared/hubspot-connection-lifecycle.ts';
+import {
+  SupabaseHubSpotConnectionStore,
+  type HubSpotConnectionStore
+} from '../_shared/hubspot-connection-store.ts';
+
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.atlasenterprisesuite.com',
   'https://atlasenterprisesuite.com'
 ] as const;
 
-const KNOWN_OPERATIONS = [
+const OPERATIONS = [
   'oauth.prepare',
   'oauth.callback',
   'connection.status',
@@ -15,24 +28,25 @@ const KNOWN_OPERATIONS = [
   'crm.refresh'
 ] as const;
 
-export type AtlasCrmHubSpotOperation = (typeof KNOWN_OPERATIONS)[number];
+export type AtlasCrmHubSpotOperation = (typeof OPERATIONS)[number];
 
 export type AtlasCrmHubSpotDependencies = {
   fetchImpl?: typeof fetch;
   env?: (name: string) => string | undefined;
+  connectionStore?: HubSpotConnectionStore;
+  lifecycle?: Partial<
+    Pick<
+      HubSpotLifecycleDependencies,
+      'oauth' | 'adapter' | 'now' | 'randomBytes' | 'credentialKey' | 'keyVersion'
+    >
+  >;
 };
 
-type AtlasAuthenticatedContext = {
-  token: string;
-  userId: string;
-  organizationId: string;
-};
+type AuthContext = { token: string; userId: string; organizationId: string };
 
-type PermissionRequirement = readonly string[];
-
-const OPERATION_PERMISSIONS: Record<
+const PERMISSIONS: Record<
   Exclude<AtlasCrmHubSpotOperation, 'oauth.callback'>,
-  PermissionRequirement
+  readonly string[]
 > = {
   'oauth.prepare': ['integrations.admin', 'integrations.manage'],
   'connection.status': ['integrations.read', 'integrations.admin', 'integrations.manage'],
@@ -46,9 +60,9 @@ const OPERATION_PERMISSIONS: Record<
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 
-function envValue(name: string, deps: AtlasCrmHubSpotDependencies): string {
-  const fromDependency = deps.env?.(name);
-  if (fromDependency !== undefined) return fromDependency.trim();
+function env(name: string, deps: AtlasCrmHubSpotDependencies): string {
+  const injected = deps.env?.(name);
+  if (injected !== undefined) return injected.trim();
   const deno = (globalThis as unknown as {
     Deno?: { env?: { get(name: string): string | undefined } };
   }).Deno;
@@ -56,40 +70,32 @@ function envValue(name: string, deps: AtlasCrmHubSpotDependencies): string {
 }
 
 function publishableKey(deps: AtlasCrmHubSpotDependencies): string {
-  const modern = envValue('SUPABASE_PUBLISHABLE_KEYS', deps);
+  const modern = env('SUPABASE_PUBLISHABLE_KEYS', deps);
   if (modern) {
     try {
       const parsed = JSON.parse(modern) as Record<string, unknown>;
-      if (typeof parsed.default === 'string' && parsed.default.trim()) {
-        return parsed.default.trim();
-      }
+      if (typeof parsed.default === 'string' && parsed.default.trim()) return parsed.default.trim();
     } catch {
-      // Fall through to the legacy key.
+      // Fall back to the legacy anon key.
     }
   }
-  return envValue('SUPABASE_ANON_KEY', deps);
+  return env('SUPABASE_ANON_KEY', deps);
 }
 
-function configuredOrigins(deps: AtlasCrmHubSpotDependencies): Set<string> {
-  const configured = envValue('ATLAS_ALLOWED_ORIGINS', deps);
-  return new Set(
+function cors(req: Request, deps: AtlasCrmHubSpotDependencies): HeadersInit | null {
+  const origin = req.headers.get('Origin');
+  if (!origin) return {};
+  const configured = env('ATLAS_ALLOWED_ORIGINS', deps);
+  const allowed = new Set(
     (configured ? configured.split(',') : [...DEFAULT_ALLOWED_ORIGINS])
       .map((value) => value.trim())
       .filter(Boolean)
   );
-}
-
-function corsHeaders(
-  req: Request,
-  deps: AtlasCrmHubSpotDependencies
-): HeadersInit | null {
-  const origin = req.headers.get('Origin');
-  if (!origin) return {};
-  if (!configuredOrigins(deps).has(origin)) return null;
+  if (!allowed.has(origin)) return null;
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Max-Age': '600',
     Vary: 'Origin'
   };
@@ -103,52 +109,41 @@ function json(
 ): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...JSON_HEADERS, ...(corsHeaders(req, deps) ?? {}) }
+    headers: { ...JSON_HEADERS, ...(cors(req, deps) ?? {}) }
   });
 }
 
-function bearerToken(req: Request): string | null {
-  const authorization = req.headers.get('Authorization') ?? '';
-  if (!authorization.startsWith('Bearer ')) return null;
-  const token = authorization.slice('Bearer '.length).trim();
-  return token || null;
+function bearer(req: Request): string | null {
+  const value = req.headers.get('Authorization') ?? '';
+  if (!value.startsWith('Bearer ')) return null;
+  return value.slice(7).trim() || null;
 }
 
 function isUuid(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-  );
+  return typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function isOperation(value: unknown): value is AtlasCrmHubSpotOperation {
-  return typeof value === 'string' &&
-    (KNOWN_OPERATIONS as readonly string[]).includes(value);
+  return typeof value === 'string' && (OPERATIONS as readonly string[]).includes(value);
 }
 
-async function authenticate(
+async function authenticatedUser(
   token: string,
   deps: AtlasCrmHubSpotDependencies
 ): Promise<string | null> {
-  const supabaseUrl = envValue('SUPABASE_URL', deps);
+  const supabaseUrl = env('SUPABASE_URL', deps);
   const apiKey = publishableKey(deps);
   if (!supabaseUrl || !apiKey) return null;
-
-  const fetchImpl = deps.fetchImpl ?? fetch;
   let response: Response;
   try {
-    response = await fetchImpl(`${supabaseUrl}/auth/v1/user`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        apikey: apiKey
-      }
+    response = await (deps.fetchImpl ?? fetch)(`${supabaseUrl}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: apiKey }
     });
   } catch {
     return null;
   }
   if (!response.ok) return null;
-
   try {
     const body = (await response.json()) as { id?: unknown };
     return typeof body.id === 'string' && body.id.trim() ? body.id : null;
@@ -158,41 +153,35 @@ async function authenticate(
 }
 
 async function hasPermission(
-  context: AtlasAuthenticatedContext,
+  context: AuthContext,
   permission: string,
   deps: AtlasCrmHubSpotDependencies
 ): Promise<boolean> {
-  const supabaseUrl = envValue('SUPABASE_URL', deps);
+  const supabaseUrl = env('SUPABASE_URL', deps);
   const apiKey = publishableKey(deps);
   if (!supabaseUrl || !apiKey) return false;
-  const fetchImpl = deps.fetchImpl ?? fetch;
-
-  let response: Response;
   try {
-    response = await fetchImpl(`${supabaseUrl}/rest/v1/rpc/has_identity_permission`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${context.token}`,
-        apikey: apiKey,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ o: context.organizationId, p: permission })
-    });
-  } catch {
-    return false;
-  }
-  if (!response.ok) return false;
-
-  try {
-    return (await response.json()) === true;
+    const response = await (deps.fetchImpl ?? fetch)(
+      `${supabaseUrl}/rest/v1/rpc/has_identity_permission`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${context.token}`,
+          apikey: apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ o: context.organizationId, p: permission })
+      }
+    );
+    return response.ok && (await response.json()) === true;
   } catch {
     return false;
   }
 }
 
 async function hasAnyPermission(
-  context: AtlasAuthenticatedContext,
-  permissions: PermissionRequirement,
+  context: AuthContext,
+  permissions: readonly string[],
   deps: AtlasCrmHubSpotDependencies
 ): Promise<boolean> {
   for (const permission of permissions) {
@@ -201,24 +190,114 @@ async function hasAnyPermission(
   return false;
 }
 
+function store(deps: AtlasCrmHubSpotDependencies): HubSpotConnectionStore | null {
+  if (deps.connectionStore) return deps.connectionStore;
+  const supabaseUrl = env('SUPABASE_URL', deps);
+  const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY', deps);
+  if (!supabaseUrl || !serviceRoleKey) return null;
+  return new SupabaseHubSpotConnectionStore({
+    supabaseUrl,
+    serviceRoleKey,
+    fetchImpl: deps.fetchImpl
+  });
+}
+
+function lifecycle(
+  connectionStore: HubSpotConnectionStore,
+  deps: AtlasCrmHubSpotDependencies
+): HubSpotLifecycleDependencies {
+  return {
+    store: connectionStore,
+    clientId: env('HUBSPOT_CLIENT_ID', deps),
+    clientSecret: env('HUBSPOT_CLIENT_SECRET', deps),
+    redirectUri: env('HUBSPOT_REDIRECT_URI', deps),
+    credentialKey:
+      deps.lifecycle?.credentialKey ?? env('ATLAS_INTEGRATION_CREDENTIAL_KEY', deps),
+    keyVersion:
+      deps.lifecycle?.keyVersion ?? (env('ATLAS_INTEGRATION_CREDENTIAL_KEY_VERSION', deps) || 'v1'),
+    fetchImpl: deps.fetchImpl,
+    ...(deps.lifecycle?.oauth ? { oauth: deps.lifecycle.oauth } : {}),
+    ...(deps.lifecycle?.adapter ? { adapter: deps.lifecycle.adapter } : {}),
+    ...(deps.lifecycle?.now ? { now: deps.lifecycle.now } : {}),
+    ...(deps.lifecycle?.randomBytes ? { randomBytes: deps.lifecycle.randomBytes } : {})
+  };
+}
+
+function hubSpotConfigured(deps: AtlasCrmHubSpotDependencies): boolean {
+  return Boolean(
+    env('HUBSPOT_CLIENT_ID', deps) &&
+      env('HUBSPOT_CLIENT_SECRET', deps) &&
+      env('HUBSPOT_REDIRECT_URI', deps) &&
+      (deps.lifecycle?.credentialKey || env('ATLAS_INTEGRATION_CREDENTIAL_KEY', deps))
+  );
+}
+
+function lifecycleError(
+  req: Request,
+  deps: AtlasCrmHubSpotDependencies,
+  error: unknown
+): Response {
+  if (error instanceof HubSpotLifecycleError) {
+    return json(req, deps, error.status, {
+      error: 'HubSpot connection lifecycle failed',
+      code: error.code
+    });
+  }
+  return json(req, deps, 500, { error: 'HubSpot connection operation failed' });
+}
+
+async function callback(
+  req: Request,
+  deps: AtlasCrmHubSpotDependencies,
+  state: unknown,
+  code: unknown
+): Promise<Response> {
+  if (typeof state !== 'string' || !state.trim()) {
+    return json(req, deps, 400, { error: 'OAuth state is required' });
+  }
+  if (typeof code !== 'string' || !code.trim()) {
+    return json(req, deps, 400, { error: 'OAuth authorization code is required' });
+  }
+  const connectionStore = store(deps);
+  if (!connectionStore) {
+    return json(req, deps, 503, { error: 'ATLAS integration storage is not configured' });
+  }
+  if (!hubSpotConfigured(deps)) {
+    return json(req, deps, 503, { error: 'HubSpot integration is not configured' });
+  }
+  try {
+    const connection = await completeHubSpotConnection({
+      state,
+      code,
+      deps: lifecycle(connectionStore, deps)
+    });
+    return json(req, deps, 200, { connection });
+  } catch (error) {
+    return lifecycleError(req, deps, error);
+  }
+}
+
 export async function handleAtlasCrmHubSpotRequest(
   req: Request,
   deps: AtlasCrmHubSpotDependencies = {}
 ): Promise<Response> {
-  const cors = corsHeaders(req, deps);
-  if (cors === null) {
+  const corsHeaders = cors(req, deps);
+  if (corsHeaders === null) {
     return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
       status: 403,
       headers: JSON_HEADERS
     });
   }
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: cors });
-  }
-  if (req.method !== 'POST') {
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    if (url.searchParams.has('code') || url.searchParams.has('state')) {
+      return callback(req, deps, url.searchParams.get('state'), url.searchParams.get('code'));
+    }
     return json(req, deps, 405, { error: 'Method not allowed' });
   }
+  if (req.method !== 'POST') return json(req, deps, 405, { error: 'Method not allowed' });
 
   let body: Record<string, unknown>;
   try {
@@ -226,39 +305,65 @@ export async function handleAtlasCrmHubSpotRequest(
   } catch {
     return json(req, deps, 400, { error: 'Invalid JSON body' });
   }
+  if (!isOperation(body.operation)) return json(req, deps, 400, { error: 'Unknown operation' });
+  if (body.operation === 'oauth.callback') return callback(req, deps, body.state, body.code);
 
-  if (!isOperation(body.operation)) {
-    return json(req, deps, 400, { error: 'Unknown operation' });
-  }
-
-  if (body.operation === 'oauth.callback') {
-    return json(req, deps, 501, {
-      error: 'HubSpot OAuth callback lifecycle is not implemented yet'
-    });
-  }
-
-  const token = bearerToken(req);
+  const token = bearer(req);
   if (!token) return json(req, deps, 401, { error: 'Authentication required' });
-
   if (!isUuid(body.organizationId)) {
     return json(req, deps, 400, { error: 'Valid organizationId is required' });
   }
 
-  const userId = await authenticate(token, deps);
+  const userId = await authenticatedUser(token, deps);
   if (!userId) return json(req, deps, 401, { error: 'Invalid or expired ATLAS session' });
-
-  const context: AtlasAuthenticatedContext = {
-    token,
-    userId,
-    organizationId: body.organizationId
-  };
-  const permissions = OPERATION_PERMISSIONS[body.operation];
-  if (!(await hasAnyPermission(context, permissions, deps))) {
+  const auth: AuthContext = { token, userId, organizationId: body.organizationId };
+  if (!(await hasAnyPermission(auth, PERMISSIONS[body.operation], deps))) {
     return json(req, deps, 403, { error: 'Permission denied' });
   }
 
+  const connectionStore = store(deps);
+  if (!connectionStore) {
+    return json(req, deps, 503, { error: 'ATLAS integration storage is not configured' });
+  }
+  const lifecycleDeps = lifecycle(connectionStore, deps);
+
+  try {
+    if (body.operation === 'oauth.prepare') {
+      if (!hubSpotConfigured(deps)) {
+        return json(req, deps, 503, { error: 'HubSpot integration is not configured' });
+      }
+      return json(req, deps, 200, {
+        provider: 'hubspot',
+        ...(await prepareHubSpotConnection({
+          organizationId: body.organizationId,
+          userId,
+          deps: lifecycleDeps
+        }))
+      });
+    }
+    if (body.operation === 'connection.status') {
+      return json(req, deps, 200, {
+        connection: await getHubSpotConnectionStatus({
+          organizationId: body.organizationId,
+          deps: lifecycleDeps
+        })
+      });
+    }
+    if (body.operation === 'connection.disconnect') {
+      return json(req, deps, 200, {
+        connection: await disconnectHubSpotConnection({
+          organizationId: body.organizationId,
+          actorUserId: userId,
+          deps: lifecycleDeps
+        })
+      });
+    }
+  } catch (error) {
+    return lifecycleError(req, deps, error);
+  }
+
   return json(req, deps, 501, {
-    error: 'Operation lifecycle is not implemented yet',
+    error: 'CRM read operation is not implemented yet',
     operation: body.operation
   });
 }
@@ -267,6 +372,4 @@ const deno = (globalThis as unknown as {
   Deno?: { serve(handler: (req: Request) => Response | Promise<Response>): void };
 }).Deno;
 
-if (deno?.serve) {
-  deno.serve((req) => handleAtlasCrmHubSpotRequest(req));
-}
+if (deno?.serve) deno.serve((req) => handleAtlasCrmHubSpotRequest(req));
