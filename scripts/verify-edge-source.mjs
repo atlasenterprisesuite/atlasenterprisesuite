@@ -15,6 +15,7 @@ if (!existsSync(migrationsRoot)) fail('supabase/migrations is missing');
 
 if (existsSync(functionsRoot)) {
   const functionDirs = readdirSync(functionsRoot)
+    .filter((name) => !name.startsWith('_'))
     .map((name) => join(functionsRoot, name))
     .filter((path) => statSync(path).isDirectory());
 
