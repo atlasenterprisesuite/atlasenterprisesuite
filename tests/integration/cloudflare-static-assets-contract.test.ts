@@ -32,7 +32,8 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
   });
 
   it('treats Cloudflare Access redirect or explicit denial as a fail-closed production perimeter', () => {
-    expect(workflow).toContain('302|303|401|403');
+    expect(workflow).toContain('302|303)');
+    expect(workflow).toContain('401|403)');
     expect(workflow).toContain('SERVER_HEADER=');
     expect(workflow).toContain('server: cloudflare');
     expect(workflow).toContain('winder-aranguren.cloudflareaccess.com/cdn-cgi/access/login/');
