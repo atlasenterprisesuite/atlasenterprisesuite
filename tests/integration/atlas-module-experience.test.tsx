@@ -14,6 +14,27 @@ vi.mock('../../apps/web/src/lib/atlasSession', async () => {
   };
 });
 
+vi.mock('../../apps/web/src/modules/business/crm/crmApi', () => ({
+  CrmApiError: class MockCrmApiError extends Error {},
+  crmApi: vi.fn(async (operation: string) => {
+    if (operation === 'connection.status') {
+      return {
+        connection: {
+          provider: 'hubspot',
+          state: 'connected',
+          providerAccountId: '123456789',
+          providerAccountLabel: 'HubSpot Test',
+          grantedScopes: ['crm.objects.contacts.read'],
+          lastVerifiedAt: '2026-09-15T12:00:00Z',
+          lastSuccessAt: '2026-09-15T12:00:00Z',
+          safeErrorCode: null
+        }
+      };
+    }
+    return {};
+  })
+}));
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('atlas_access_token', 'test-token');
@@ -64,5 +85,22 @@ describe('ATLAS ASTRA-derived module experience', () => {
     render(<MemoryRouter initialEntries={['/finance']}><App /></MemoryRouter>);
     expect(screen.getByRole('link', { name: /accounts payable/i })).toHaveAttribute('href', '/finance/accounting/accounts-payable');
     expect(screen.getByRole('link', { name: /automotive sales/i })).toHaveAttribute('href', '/finance/accounting/reports/automotive-sales');
+  });
+
+  it('applies the module experience to CRM without replacing provider-backed workspaces', async () => {
+    render(<MemoryRouter initialEntries={['/crm']}><App /></MemoryRouter>);
+    const main = screen.getByRole('main');
+    expect(await within(main).findByText('Customer intelligence, relationship context and governed provider data.')).toBeInTheDocument();
+    expect(main.querySelector('.module-experience-page')).toBeTruthy();
+    for (const [name, href] of [
+      ['Contacts', '/crm/contacts'],
+      ['Accounts', '/crm/companies'],
+      ['Opportunities', '/crm/deals'],
+      ['Service Cases', '/crm/service'],
+      ['Activities', '/crm/activities'],
+      ['Integrations', '/crm/integrations']
+    ]) {
+      expect(within(main).getByRole('link', { name: new RegExp(name, 'i') })).toHaveAttribute('href', href);
+    }
   });
 });
