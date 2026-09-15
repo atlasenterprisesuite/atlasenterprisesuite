@@ -96,7 +96,7 @@ export function CreatorExperiencePage() {
       narrative="One governed creative operating system for content, media, voice and provider-aware execution."
       actions={[
         { label: 'Start with Content Intelligence', to: '/studio/content' },
-        { label: 'Open Creator Library', to: '/studio/library', variant: 'secondary' }
+        { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' }
       ]}
       sections={creatorSections}
       statusNote="External generation remains unavailable until verified provider readiness, organization authorization and the required storage boundary are present. Local planning remains available without fabricating provider output."
