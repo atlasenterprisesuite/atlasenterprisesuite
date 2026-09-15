@@ -9,6 +9,7 @@ on:
       - "packages/**"
       - "data/**"
       - "supabase/functions/**"
+      - "worker/**"
       - "wrangler.jsonc"
       - "package.json"
       - "package-lock.json"
@@ -154,24 +155,26 @@ jobs:
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "Cloudflare deployment URL: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify Cloudflare worker artifact
+      - name: Verify public Worker web shell
         if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
+        id: direct_edge
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
           ROOT_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/")"
-          SPA_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/finance/accounting/accounts-payable")"
-          HEALTH_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/healthz")"
+          IDENTITY_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/identity?app=%2Ffinance")"
+          MODULE_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/finance")"
 
-          test "$ROOT_STATUS" = "401" || { echo "::error::Expected anonymous root request to be denied with 401, got $ROOT_STATUS"; exit 1; }
-          test "$SPA_STATUS" = "401" || { echo "::error::Expected anonymous SPA request to be denied with 401, got $SPA_STATUS"; exit 1; }
-          test "$HEALTH_STATUS" = "401" || { echo "::error::Expected anonymous health request to be denied with 401, got $HEALTH_STATUS"; exit 1; }
+          test "$ROOT_STATUS" = "200" || { echo "::error::Expected public root HTTP 200, got $ROOT_STATUS"; exit 1; }
+          test "$IDENTITY_STATUS" = "200" || { echo "::error::Expected public ATLAS Identity HTTP 200, got $IDENTITY_STATUS"; exit 1; }
+          test "$MODULE_STATUS" = "200" || { echo "::error::Expected module SPA shell HTTP 200, got $MODULE_STATUS"; exit 1; }
 
-          echo "Access gateway smoke verification passed." >> "$GITHUB_STEP_SUMMARY"
-          echo "Anonymous root, SPA route, and healthz requests were denied with 401 as expected." >> "$GITHUB_STEP_SUMMARY"
-          echo "Authenticated asset delivery is covered by the RS256 Access gateway contract tests." >> "$GITHUB_STEP_SUMMARY"
-          echo "Custom-domain cutover remains a separate production gate." >> "$GITHUB_STEP_SUMMARY"
+          echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "Public ATLAS Worker web shell verified." >> "$GITHUB_STEP_SUMMARY"
+          echo "Module authorization remains enforced by ATLAS Identity and authenticated backend boundaries." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify official Cloudflare Workers GitHub App deployment
         if: steps.deployment_mode.outputs.mode == 'cloudflare-native-github-app'
@@ -239,48 +242,42 @@ jobs:
           echo "cloudflare_native_build_verified=true" >> "$GITHUB_OUTPUT"
           echo "Official Cloudflare Workers GitHub App deployment verified for $GITHUB_SHA (Version $VERSION_ID)." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify production Cloudflare Access perimeter
+      - name: Verify public ATLAS production web shell
         if: steps.deployment_mode.outputs.mode == 'cloudflare-native-github-app'
         id: native_edge
         env:
           PRODUCTION_URL: https://www.atlasenterprisesuite.com
         run: |
           set -euo pipefail
-          ROOT_STATUS="$(curl --silent --show-error --max-redirs 0 --output /dev/null --dump-header /tmp/atlas-access-headers.txt --write-out '%{http_code}' "$PRODUCTION_URL/" || true)"
-          LOCATION="$(awk 'BEGIN{IGNORECASE=1} /^location:/{sub(/^[^:]+:[[:space:]]*/,"");sub(/\r$/,"");print;exit}' /tmp/atlas-access-headers.txt)"
-          SERVER_HEADER="$(awk 'BEGIN{IGNORECASE=1} /^server:/{sub(/^[^:]+:[[:space:]]*/,"");sub(/\r$/,"");print;exit}' /tmp/atlas-access-headers.txt)"
+          ROOT_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --max-redirs 0 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_URL/" || true)"
+          IDENTITY_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --max-redirs 0 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_URL/identity?app=%2Ffinance" || true)"
+          MODULE_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --max-redirs 0 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_URL/finance" || true)"
 
-          case "$ROOT_STATUS" in
-            302|303)
-              case "$LOCATION" in
-                https://winder-aranguren.cloudflareaccess.com/cdn-cgi/access/login/*) ;;
-                *) echo "::error::Production redirect did not target the expected Cloudflare Access login"; exit 1 ;;
-              esac
-              ;;
-            401|403)
-              # Provider provenance for a direct denial must include: server: cloudflare
-              test "$(printf '%s' "$SERVER_HEADER" | tr '[:upper:]' '[:lower:]')" = "cloudflare" || { echo "::error::Fail-closed response was not identified as Cloudflare"; exit 1; }
-              ;;
-            *)
-              echo "::error::Expected fail-closed Cloudflare perimeter response (302/303/401/403), got HTTP $ROOT_STATUS"
-              exit 1
-              ;;
-          esac
+          test "$ROOT_STATUS" = "200" || { echo "::error::Public home must return HTTP 200; got $ROOT_STATUS. Remove or narrow any hostname-wide Access policy."; exit 1; }
+          test "$IDENTITY_STATUS" = "200" || { echo "::error::ATLAS Identity must be publicly reachable; got $IDENTITY_STATUS."; exit 1; }
+          test "$MODULE_STATUS" = "200" || { echo "::error::Module SPA shell must be reachable so ATLAS Identity can request credentials; got $MODULE_STATUS."; exit 1; }
 
-          echo "access_enforced=true" >> "$GITHUB_OUTPUT"
-          echo "Cloudflare production perimeter fails closed." >> "$GITHUB_STEP_SUMMARY"
-          echo "Anonymous production request returned HTTP $ROOT_STATUS." >> "$GITHUB_STEP_SUMMARY"
+          echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "Public ATLAS web shell verified." >> "$GITHUB_STEP_SUMMARY"
+          echo "Credential enforcement is delegated to ATLAS Identity plus backend bearer/RBAC/RLS controls." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record Cloudflare deployment evidence in ATLAS Manager
         env:
           DEPLOYMENT_MODE: ${{ steps.deployment_mode.outputs.mode }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          DIRECT_HOME_REACHABLE: ${{ steps.direct_edge.outputs.public_home_reachable }}
+          DIRECT_IDENTITY_REACHABLE: ${{ steps.direct_edge.outputs.identity_route_reachable }}
+          DIRECT_MODULE_SHELL_REACHABLE: ${{ steps.direct_edge.outputs.module_spa_shell_reachable }}
           NATIVE_CHECK_ID: ${{ steps.native.outputs.check_id }}
           NATIVE_DETAILS_URL: ${{ steps.native.outputs.details_url }}
           NATIVE_VERSION_ID: ${{ steps.native.outputs.version_id }}
           NATIVE_BUILD_ID: ${{ steps.native.outputs.build_id }}
           NATIVE_VERIFIED: ${{ steps.native.outputs.cloudflare_native_build_verified }}
-          CUSTOM_DOMAIN_ACCESS_ENFORCED: ${{ steps.native_edge.outputs.access_enforced }}
+          PUBLIC_HOME_REACHABLE: ${{ steps.native_edge.outputs.public_home_reachable }}
+          IDENTITY_ROUTE_REACHABLE: ${{ steps.native_edge.outputs.identity_route_reachable }}
+          MODULE_SPA_SHELL_REACHABLE: ${{ steps.native_edge.outputs.module_spa_shell_reachable }}
         run: |
           set -euo pipefail
           DEPLOYMENT_PROBE="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('apps/web/public/deployment.json','utf8'));process.stdout.write(String(j.deployment_probe||''))")"
@@ -294,11 +291,16 @@ jobs:
           test -n "$OIDC_TOKEN" || { echo "::error::GitHub OIDC token was not issued"; exit 1; }
 
           if [ "$DEPLOYMENT_MODE" = "direct-wrangler" ]; then
-            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,access_gateway_fail_closed:true,anonymous_root_denied:true,anonymous_spa_route_denied:true,anonymous_healthz_denied:true,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'direct-wrangler',deployment_url:process.env.DEPLOYMENT_URL,anonymous_expected_status:401,production_domain_cutover:false}}))")"
+            test "$DIRECT_HOME_REACHABLE" = "true" || { echo "::error::Direct public home verification missing"; exit 1; }
+            test "$DIRECT_IDENTITY_REACHABLE" = "true" || { echo "::error::Direct Identity verification missing"; exit 1; }
+            test "$DIRECT_MODULE_SHELL_REACHABLE" = "true" || { echo "::error::Direct module shell verification missing"; exit 1; }
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'direct-wrangler',deployment_url:process.env.DEPLOYMENT_URL,module_authorization_boundary:'atlas-identity',production_domain_cutover:false}}))")"
           else
             test "$NATIVE_VERIFIED" = "true" || { echo "::error::Native Cloudflare deployment was not verified"; exit 1; }
-            test "$CUSTOM_DOMAIN_ACCESS_ENFORCED" = "true" || { echo "::error::Production Cloudflare Access perimeter was not verified"; exit 1; }
-            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{cloudflare_native_build_verified:true,cloudflare_check_run_id:process.env.NATIVE_CHECK_ID,cloudflare_version_id:process.env.NATIVE_VERSION_ID,cloudflare_build_id:process.env.NATIVE_BUILD_ID||null,custom_domain_access_enforced:true,worker_access_contract_tested:true,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'cloudflare-native-github-app',provider_check_details_url:process.env.NATIVE_DETAILS_URL,production_domain:'https://www.atlasenterprisesuite.com',evidence_semantics:'official_provider_check_plus_oidc_plus_access_perimeter'}}))")"
+            test "$PUBLIC_HOME_REACHABLE" = "true" || { echo "::error::Public production home was not verified"; exit 1; }
+            test "$IDENTITY_ROUTE_REACHABLE" = "true" || { echo "::error::Public ATLAS Identity route was not verified"; exit 1; }
+            test "$MODULE_SPA_SHELL_REACHABLE" = "true" || { echo "::error::Production module SPA shell was not verified"; exit 1; }
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{cloudflare_native_build_verified:true,cloudflare_check_run_id:process.env.NATIVE_CHECK_ID,cloudflare_version_id:process.env.NATIVE_VERSION_ID,cloudflare_build_id:process.env.NATIVE_BUILD_ID||null,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'cloudflare-native-github-app',provider_check_details_url:process.env.NATIVE_DETAILS_URL,production_domain:'https://www.atlasenterprisesuite.com',module_authorization_boundary:'atlas-identity',evidence_semantics:'official_provider_check_plus_oidc_plus_public_web_shell'}}))")"
           fi
 
           curl --fail --silent --show-error \

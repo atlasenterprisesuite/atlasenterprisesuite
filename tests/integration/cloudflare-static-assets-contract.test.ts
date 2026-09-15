@@ -39,26 +39,26 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('export DEPLOYMENT_PROBE');
   });
 
-  it('treats Cloudflare Access redirect or explicit denial as a fail-closed production perimeter', () => {
-    expect(workflow).toContain('302|303)');
-    expect(workflow).toContain('401|403)');
-    expect(workflow).toContain('SERVER_HEADER=');
-    expect(workflow).toContain('server: cloudflare');
-    expect(workflow).toContain('winder-aranguren.cloudflareaccess.com/cdn-cgi/access/login/');
-    expect(workflow).toContain('Cloudflare production perimeter fails closed.');
-  });
-
-  it('verifies the deployed Access gateway fails closed for anonymous requests', () => {
+  it('verifies the public custom domain serves the website and Identity shell anonymously', () => {
+    expect(workflow).toContain('PRODUCTION_URL: https://www.atlasenterprisesuite.com');
     expect(workflow).toContain('ROOT_STATUS=');
-    expect(workflow).toContain('SPA_STATUS=');
-    expect(workflow).toContain('HEALTH_STATUS=');
-    expect(workflow).toContain('test "$ROOT_STATUS" = "401"');
-    expect(workflow).toContain('test "$SPA_STATUS" = "401"');
-    expect(workflow).toContain('test "$HEALTH_STATUS" = "401"');
-    expect(workflow).toContain('Access gateway smoke verification passed.');
+    expect(workflow).toContain('IDENTITY_STATUS=');
+    expect(workflow).toContain('MODULE_STATUS=');
+    expect(workflow).toContain('test "$ROOT_STATUS" = "200"');
+    expect(workflow).toContain('test "$IDENTITY_STATUS" = "200"');
+    expect(workflow).toContain('test "$MODULE_STATUS" = "200"');
+    expect(workflow).toContain('Public ATLAS web shell verified.');
   });
 
-  it('keeps custom-domain cutover separate from the initial worker deploy', () => {
+  it('records that module authorization is enforced by tested ATLAS Identity rather than edge-wide Access', () => {
+    expect(workflow).toContain('public_home_reachable:true');
+    expect(workflow).toContain('identity_route_reachable:true');
+    expect(workflow).toContain('module_spa_shell_reachable:true');
+    expect(workflow).toContain('module_authorization_boundary:\'atlas-identity\'');
+    expect(workflow).not.toContain('access_gateway_fail_closed:true');
+  });
+
+  it('keeps custom-domain routing separate from the worker artifact declaration', () => {
     expect(wrangler).not.toContain('custom_domain');
     expect(workflow).toContain('workers.dev');
   });
