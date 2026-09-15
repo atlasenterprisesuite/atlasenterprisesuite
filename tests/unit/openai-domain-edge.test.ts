@@ -10,7 +10,8 @@ describe('OpenAI domain pilot Edge contract', () => {
     expect(edgeSource).toContain("'create_work_template'");
     expect(edgeSource).toContain("requireExecutionPermission(context, 'execution.write')");
     expect(pilotSource).toContain("'manager.openai_domain_verification'");
-    expect(pilotSource).toContain("domain !== 'atlasenterprisesuite.com'");
+    expect(pilotSource).toContain("const OPENAI_DOMAIN = 'atlasenterprisesuite.com'");
+    expect(pilotSource).toContain('domain !== OPENAI_DOMAIN');
     expect(pilotSource).not.toContain('body.steps');
     expect(pilotSource).not.toContain('openai-domain-verification=');
   });
