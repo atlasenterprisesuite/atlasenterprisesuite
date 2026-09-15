@@ -132,10 +132,7 @@ export function FinanceExperiencePage() {
       title="Finance"
       description="Governed financial operations inside the shared ATLAS organization and permission model."
       narrative="Finance intelligence, execution and control."
-      actions={[
-        { label: 'Open Accounting', to: '/finance/accounting' },
-        { label: 'Open Accounts Payable', to: '/finance/accounting/accounts-payable', variant: 'secondary' }
-      ]}
+      actions={[{ label: 'Open Accounting', to: '/finance/accounting' }]}
       sections={financeSections}
       statusNote="No revenue, cash, banking or forecasting value is presented as live unless it comes from an authorized configured source."
     />
