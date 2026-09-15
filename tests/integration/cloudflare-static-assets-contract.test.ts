@@ -19,6 +19,18 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('wrangler@4 deploy');
   });
 
+  it('accepts the official Cloudflare GitHub App deployment when direct credentials are unavailable', () => {
+    expect(workflow).toContain('checks: read');
+    expect(workflow).toContain('Workers Builds: atlas-enterprise-suite-web');
+    expect(workflow).toContain('/commits/${GITHUB_SHA}/check-runs');
+    expect(workflow).toContain('cloudflare_native_build_verified');
+    expect(workflow).toContain('cloudflare-native-github-app');
+  });
+
+  it('exports the deployment probe before constructing ATLAS Manager evidence', () => {
+    expect(workflow).toContain('export DEPLOYMENT_PROBE');
+  });
+
   it('verifies the deployed Access gateway fails closed for anonymous requests', () => {
     expect(workflow).toContain('ROOT_STATUS=');
     expect(workflow).toContain('SPA_STATUS=');
