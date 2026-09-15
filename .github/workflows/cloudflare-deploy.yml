@@ -20,6 +20,7 @@ concurrency:
 
 permissions:
   contents: read
+  checks: read
   id-token: write
 
 jobs:
@@ -53,7 +54,8 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Diagnose Cloudflare credential scope
+      - name: Select Cloudflare deployment verification mode
+        id: deployment_mode
         env:
           TOKEN_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
           TOKEN_VARIABLE_PRESENT: ${{ vars.CLOUDFLARE_API_TOKEN != '' }}
@@ -65,12 +67,23 @@ jobs:
           echo "Cloudflare API token variable configured: $TOKEN_VARIABLE_PRESENT"
           echo "Cloudflare account ID secret configured: $ACCOUNT_SECRET_PRESENT"
           echo "Cloudflare account ID variable configured: $ACCOUNT_VARIABLE_PRESENT"
+
           if [ "$TOKEN_VARIABLE_PRESENT" = "true" ] && [ "$TOKEN_SECRET_PRESENT" != "true" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN is configured as an Actions Variable. Move it to an Actions Secret."
+            echo "::error::CLOUDFLARE_API_TOKEN must never be stored as an Actions Variable; use an Actions Secret."
             exit 1
           fi
 
-      - name: Validate Cloudflare authorization
+          if [ "$TOKEN_SECRET_PRESENT" = "true" ] && { [ "$ACCOUNT_SECRET_PRESENT" = "true" ] || [ "$ACCOUNT_VARIABLE_PRESENT" = "true" ]; }; then
+            MODE="direct-wrangler"
+          else
+            MODE="cloudflare-native-github-app"
+          fi
+
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Cloudflare deployment verification mode: $MODE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate direct Cloudflare authorization
+        if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
@@ -80,6 +93,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not configured as an Actions Secret or Variable"; exit 1; }
 
       - name: Deploy Workers Static Assets
+        if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -96,6 +110,7 @@ jobs:
           echo "Cloudflare deployment URL: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify Cloudflare worker artifact
+        if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: |
@@ -113,23 +128,131 @@ jobs:
           echo "Authenticated asset delivery is covered by the RS256 Access gateway contract tests." >> "$GITHUB_STEP_SUMMARY"
           echo "Custom-domain cutover remains a separate production gate." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Record Cloudflare deployment evidence in ATLAS Manager
+      - name: Verify official Cloudflare Workers GitHub App deployment
+        if: steps.deployment_mode.outputs.mode == 'cloudflare-native-github-app'
+        id: native
         env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          GITHUB_TOKEN: ${{ github.token }}
+          CHECK_NAME: "Workers Builds: atlas-enterprise-suite-web"
         run: |
           set -euo pipefail
+          API_URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs"
+          CHECK_JSON=""
+
+          for ATTEMPT in $(seq 1 60); do
+            RESPONSE="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$API_URL")"
+
+            CHECK_JSON="$(printf '%s' "$RESPONSE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);const c=(j.check_runs||[]).find(x=>x.name===process.env.CHECK_NAME&&x.app&&x.app.slug==='cloudflare-workers-and-pages');if(c)process.stdout.write(JSON.stringify(c));})")"
+
+            if [ -z "$CHECK_JSON" ]; then
+              echo "Waiting for official Cloudflare check run ($ATTEMPT/60)..."
+              sleep 5
+              continue
+            fi
+
+            CHECK_STATUS="$(printf '%s' "$CHECK_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(JSON.parse(s).status||'')))")"
+            CHECK_CONCLUSION="$(printf '%s' "$CHECK_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(JSON.parse(s).conclusion||'')))")"
+
+            if [ "$CHECK_STATUS" != "completed" ]; then
+              echo "Official Cloudflare check is $CHECK_STATUS ($ATTEMPT/60)..."
+              sleep 5
+              continue
+            fi
+
+            if [ "$CHECK_CONCLUSION" != "success" ]; then
+              echo "::error::Official Cloudflare Workers GitHub App deployment concluded $CHECK_CONCLUSION for $GITHUB_SHA"
+              exit 1
+            fi
+
+            break
+          done
+
+          test -n "$CHECK_JSON" || { echo "::error::Official Cloudflare Workers GitHub App check was not found for $GITHUB_SHA"; exit 1; }
+
+          CHECK_STATUS="$(printf '%s' "$CHECK_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(JSON.parse(s).status||'')))")"
+          CHECK_CONCLUSION="$(printf '%s' "$CHECK_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(JSON.parse(s).conclusion||'')))")"
+          test "$CHECK_STATUS" = "completed" || { echo "::error::Official Cloudflare check did not complete before timeout"; exit 1; }
+          test "$CHECK_CONCLUSION" = "success" || { echo "::error::Official Cloudflare check is not successful"; exit 1; }
+
+          CHECK_ID="$(printf '%s' "$CHECK_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(JSON.parse(s).id||'')))")"
+          DETAILS_URL="$(printf '%s' "$CHECK_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(JSON.parse(s).details_url||'')))")"
+          SUMMARY="$(printf '%s' "$CHECK_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String((JSON.parse(s).output||{}).summary||'')))")"
+          VERSION_ID="$(printf '%s' "$SUMMARY" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=s.match(/Version ID:\s*([A-Za-z0-9-]+)/);if(m)process.stdout.write(m[1]);})")"
+          BUILD_ID="$(printf '%s' "$SUMMARY" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=s.match(/Build ID:\s*\[?([A-Za-z0-9-]+)\]?/);if(m)process.stdout.write(m[1]);})")"
+
+          test -n "$CHECK_ID" || { echo "::error::Official Cloudflare check id is missing"; exit 1; }
+          test -n "$VERSION_ID" || { echo "::error::Official Cloudflare Version ID is missing from the provider check"; exit 1; }
+
+          echo "check_id=$CHECK_ID" >> "$GITHUB_OUTPUT"
+          echo "details_url=$DETAILS_URL" >> "$GITHUB_OUTPUT"
+          echo "version_id=$VERSION_ID" >> "$GITHUB_OUTPUT"
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "cloudflare_native_build_verified=true" >> "$GITHUB_OUTPUT"
+          echo "Official Cloudflare Workers GitHub App deployment verified for $GITHUB_SHA (Version $VERSION_ID)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify production Cloudflare Access perimeter
+        if: steps.deployment_mode.outputs.mode == 'cloudflare-native-github-app'
+        id: native_edge
+        env:
+          PRODUCTION_URL: https://www.atlasenterprisesuite.com
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --max-redirs 0 --output /dev/null --dump-header /tmp/atlas-access-headers.txt "$PRODUCTION_URL/" || true
+          ROOT_STATUS="$(curl --silent --show-error --max-redirs 0 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_URL/" || true)"
+          LOCATION="$(awk 'BEGIN{IGNORECASE=1} /^location:/{sub(/^[^:]+:[[:space:]]*/,"");sub(/\r$/,"");print;exit}' /tmp/atlas-access-headers.txt)"
+
+          case "$ROOT_STATUS" in
+            302|303) ;;
+            *) echo "::error::Expected Cloudflare Access redirect on production domain, got HTTP $ROOT_STATUS"; exit 1 ;;
+          esac
+
+          case "$LOCATION" in
+            https://winder-aranguren.cloudflareaccess.com/cdn-cgi/access/login/*) ;;
+            *) echo "::error::Production domain did not redirect to the expected Cloudflare Access login"; exit 1 ;;
+          esac
+
+          echo "access_enforced=true" >> "$GITHUB_OUTPUT"
+          echo "Production custom domain is protected by the expected Cloudflare Access perimeter." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record Cloudflare deployment evidence in ATLAS Manager
+        env:
+          DEPLOYMENT_MODE: ${{ steps.deployment_mode.outputs.mode }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          NATIVE_CHECK_ID: ${{ steps.native.outputs.check_id }}
+          NATIVE_DETAILS_URL: ${{ steps.native.outputs.details_url }}
+          NATIVE_VERSION_ID: ${{ steps.native.outputs.version_id }}
+          NATIVE_BUILD_ID: ${{ steps.native.outputs.build_id }}
+          NATIVE_VERIFIED: ${{ steps.native.outputs.cloudflare_native_build_verified }}
+          CUSTOM_DOMAIN_ACCESS_ENFORCED: ${{ steps.native_edge.outputs.access_enforced }}
+        run: |
+          set -euo pipefail
+          DEPLOYMENT_PROBE="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('apps/web/public/deployment.json','utf8'));process.stdout.write(String(j.deployment_probe||''))")"
+          test -n "$DEPLOYMENT_PROBE" || { echo "::error::deployment.json does not contain deployment_probe"; exit 1; }
+
           OIDC_RESPONSE="$(curl --fail --silent --show-error \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-infrastructure-evidence")"
           OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value||''))")"
           test -n "$OIDC_TOKEN" || { echo "::error::GitHub OIDC token was not issued"; exit 1; }
 
+          if [ "$DEPLOYMENT_MODE" = "direct-wrangler" ]; then
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,access_gateway_fail_closed:true,anonymous_root_denied:true,anonymous_spa_route_denied:true,anonymous_healthz_denied:true,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'direct-wrangler',deployment_url:process.env.DEPLOYMENT_URL,anonymous_expected_status:401,production_domain_cutover:false}}))")"
+          else
+            test "$NATIVE_VERIFIED" = "true" || { echo "::error::Native Cloudflare deployment was not verified"; exit 1; }
+            test "$CUSTOM_DOMAIN_ACCESS_ENFORCED" = "true" || { echo "::error::Production Cloudflare Access perimeter was not verified"; exit 1; }
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{cloudflare_native_build_verified:true,cloudflare_check_run_id:process.env.NATIVE_CHECK_ID,cloudflare_version_id:process.env.NATIVE_VERSION_ID,cloudflare_build_id:process.env.NATIVE_BUILD_ID||null,custom_domain_access_enforced:true,worker_access_contract_tested:true,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'cloudflare-native-github-app',provider_check_details_url:process.env.NATIVE_DETAILS_URL,production_domain:'https://www.atlasenterprisesuite.com',evidence_semantics:'official_provider_check_plus_oidc_plus_access_perimeter'}}))")"
+          fi
+
           curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer $OIDC_TOKEN" \
             -H "Content-Type: application/json" \
             "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=record" \
-            --data "$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,access_gateway_fail_closed:true,anonymous_root_denied:true,anonymous_spa_route_denied:true,anonymous_healthz_denied:true},metadata:{deployment_url:process.env.DEPLOYMENT_URL,anonymous_expected_status:401,production_domain_cutover:false}}))")" \
+            --data "$EVIDENCE_JSON" \
             > /tmp/atlas-infra-evidence.json
 
           echo "Cloudflare deployment evidence recorded in Supabase ATLAS Manager." >> "$GITHUB_STEP_SUMMARY"
