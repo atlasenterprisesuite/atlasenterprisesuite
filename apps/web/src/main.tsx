@@ -8,6 +8,8 @@ import { RideRoutes } from './modules/ride/RideRoutes';
 import { AtlasVoicePage } from './modules/voice/AtlasVoicePage';
 import './styles.css';
 import './health.css';
+import './execution/execution.css';
+import './work/work.css';
 import './neuroplasticity.css';
 import './modules/finance/accounting/payables-ai.css';
 import './modules/hospitality/hospitality.css';
