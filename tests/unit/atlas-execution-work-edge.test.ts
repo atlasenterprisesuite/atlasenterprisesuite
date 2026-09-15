@@ -33,7 +33,7 @@ describe('ATLAS Work execution Edge contract', () => {
   });
 
   it('lists only Work workflow fields scoped to the active organization', () => {
-    expect(workSource).toContain(".select('id,owner_module,status,current_task_id,current_module,context,created_at,updated_at,completed_at')");
+    expect(workSource).toContain(".select('id,org_id,owner_module,status,current_task_id,current_module,context,created_at,updated_at,completed_at')");
     expect(workSource).toContain(".eq('org_id', input.context.orgId)");
     expect(workSource).toContain(".eq('workflow_type', 'work.sovereign')");
     expect(workSource).toContain('.limit(100)');
