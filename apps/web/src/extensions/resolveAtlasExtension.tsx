@@ -2,9 +2,14 @@ import { Link } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
+import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/assistant') {
+    return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/crm' || pathname.startsWith('/crm/')) {
     return (
       <RequireAtlasIdentity>
