@@ -53,20 +53,37 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Diagnose Cloudflare credential scope
+        env:
+          TOKEN_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          TOKEN_VARIABLE_PRESENT: ${{ vars.CLOUDFLARE_API_TOKEN != '' }}
+          ACCOUNT_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+          ACCOUNT_VARIABLE_PRESENT: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          set -euo pipefail
+          echo "Cloudflare API token secret configured: $TOKEN_SECRET_PRESENT"
+          echo "Cloudflare API token variable configured: $TOKEN_VARIABLE_PRESENT"
+          echo "Cloudflare account ID secret configured: $ACCOUNT_SECRET_PRESENT"
+          echo "Cloudflare account ID variable configured: $ACCOUNT_VARIABLE_PRESENT"
+          if [ "$TOKEN_VARIABLE_PRESENT" = "true" ] && [ "$TOKEN_SECRET_PRESENT" != "true" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is configured as an Actions Variable. Move it to an Actions Secret."
+            exit 1
+          fi
+
       - name: Validate Cloudflare authorization
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_API_TOKEN is not configured"; exit 1; }
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not configured"; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_API_TOKEN is not configured as an Actions Secret"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not configured as an Actions Secret or Variable"; exit 1; }
 
       - name: Deploy Workers Static Assets
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           npx --yes wrangler@4 deploy --config wrangler.jsonc 2>&1 | tee /tmp/wrangler-deploy.log
