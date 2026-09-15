@@ -29,4 +29,25 @@ describe('ATLAS native render policy', () => {
     expect(gate.billingClass).toBe('zero-cost');
     expect(gate.humanApprovalRequired).toBe(true);
   });
+
+  it('blocks motion compositions when the native runtime does not advertise motion-composition-v1', () => {
+    const gate = evaluateNativeRenderGate({
+      permissions: ['creator.generate'], dirty: false, validationStatus: 'pass',
+      aspectRatio: '16:9', audioEnabled: true,
+      motionCompositionPresent: true,
+      nativeCapabilities: ['video-render-v1']
+    });
+    expect(gate.allowed).toBe(false);
+    expect(gate.reasons).toContain('native_motion_capability_required');
+  });
+
+  it('allows motion rendering only when the exact capability is verified', () => {
+    const gate = evaluateNativeRenderGate({
+      permissions: ['creator.generate'], dirty: false, validationStatus: 'pass',
+      aspectRatio: '16:9', audioEnabled: true,
+      motionCompositionPresent: true,
+      nativeCapabilities: ['video-render-v1', 'motion-composition-v1']
+    });
+    expect(gate.allowed).toBe(true);
+  });
 });
