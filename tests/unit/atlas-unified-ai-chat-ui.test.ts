@@ -1,36 +1,39 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { renderAtlasCopilotPage } from '../../supabase/functions/atlas-copilot/ui.mjs';
+
+function source(path: string) {
+  return readFileSync(resolve(process.cwd(), path), 'utf8');
+}
+
+const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+const api = source('apps/web/src/modules/intelligence/intelligenceApi.ts');
 
 describe('ATLAS Unified AI Chat UI', () => {
-  const html = renderAtlasCopilotPage({
-    supabaseUrl: 'https://example.supabase.co',
-    publishableKey: 'publishable',
-    selfPath: '/functions/v1/atlas-copilot',
-    livePath: '/functions/v1/atlas-live',
-    repairPath: '/functions/v1/atlas-repair-bridge',
-    version: 5,
-  });
-
   it('offers all unified routing modes and reasoning profiles', () => {
     for (const value of ['auto', 'openai', 'gemini', 'codex-sovereign', 'council']) {
-      expect(html).toContain(`value="${value}"`);
+      expect(page).toContain(`value: '${value}'`);
     }
-    for (const value of ['fast', 'balanced', 'deep']) expect(html).toContain(`value="${value}"`);
+    for (const value of ['fast', 'balanced', 'deep']) expect(page).toContain(`value: '${value}'`);
   });
 
-  it('submits the selected mode with each chat request', () => {
-    expect(html).toContain("mode=$('mode').value");
-    expect(html).toContain('mode,capabilities_requested');
+  it('submits the selected mode and profile with each chat request', () => {
+    expect(page).toContain('sendIntelligenceMessage({ message, conversationId, mode, profile })');
+    expect(api).toContain('mode: input.mode');
+    expect(api).toContain('intent: input.profile');
   });
 
   it('provides ChatGPT only as an external optional link', () => {
-    expect(html).toContain('https://chatgpt.com');
-    expect(html).toContain('target="_blank"');
-    expect(html).toContain('rel="noopener noreferrer"');
+    expect(page).toContain('https://chatgpt.com');
+    expect(page).toContain('target="_blank"');
+    expect(page).toContain('rel="noopener noreferrer"');
+    expect(page).toContain('not the ChatGPT website');
   });
 
   it('does not advertise the fictional GPT-6 Astra identifier', () => {
-    expect(html).not.toContain('GPT-6 Astra');
-    expect(html).not.toContain('gpt-6-astra');
+    expect(page).not.toContain('GPT-6 Astra');
+    expect(page).not.toContain('gpt-6-astra');
+    expect(api).not.toContain('GPT-6 Astra');
+    expect(api).not.toContain('gpt-6-astra');
   });
 });
