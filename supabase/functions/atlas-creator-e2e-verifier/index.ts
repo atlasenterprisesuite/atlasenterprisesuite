@@ -108,9 +108,10 @@ async function prepareIdentity() {
   );
   if (profile.error) throw fail('profile_failed', 500);
 
-  const lookup = await admin.from('organizations').select('id').eq('name', ORG_NAME).limit(1);
+  const lookup = await admin.from('organizations').select('id,created_by').eq('name', ORG_NAME).limit(1);
   if (lookup.error) throw fail('org_lookup_failed', 500);
-  let orgId = lookup.data?.[0]?.id as string | undefined;
+  const existingOrg = lookup.data?.[0];
+  let orgId = existingOrg?.id as string | undefined;
   if (!orgId) {
     const created = await admin.from('organizations').insert({
       name: ORG_NAME,
@@ -122,6 +123,9 @@ async function prepareIdentity() {
     if (created.error || !created.data?.id) throw fail('org_create_failed', 500);
     orgId = String(created.data.id);
   } else {
+    if (String(existingOrg?.created_by || '') !== user.id) {
+      throw fail('synthetic_org_ownership_mismatch', 409);
+    }
     const updated = await admin.from('organizations').update({ active: true }).eq('id', orgId);
     if (updated.error) throw fail('org_update_failed', 500);
   }
