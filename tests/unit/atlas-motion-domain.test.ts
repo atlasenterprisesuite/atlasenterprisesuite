@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { createEmptyProductionSpec } from '../../packages/creator/defaults';
 import { createEmptyMotionComposition } from '../../packages/creator/motion/defaults';
 import { validateMotionComposition } from '../../packages/creator/motion/validator';
 import { evaluateTrack } from '../../packages/creator/motion/evaluator';
 import { parseMotionExpression, evaluateMotionExpression } from '../../packages/creator/motion/expression';
+import { validateProductionSpec } from '../../packages/creator/validator';
 
 describe('ATLAS Motion Designer domain', () => {
   it('creates a deterministic editable composition default', () => {
@@ -36,5 +38,20 @@ describe('ATLAS Motion Designer domain', () => {
     expect(evaluateMotionExpression(ast, { time: 0, properties: {} })).toBe(1);
     expect(() => parseMotionExpression('Function("return 1")()')).toThrow();
     expect(() => parseMotionExpression('globalThis.process')).toThrow();
+  });
+
+  it('promotes blocking motion validation into the production review gate', () => {
+    const production = createEmptyProductionSpec({ id: 'production-1', now: '2026-09-15T00:00:00.000Z' });
+    production.brief = 'Motion production';
+    production.durationSeconds = 5;
+    const motion = createEmptyMotionComposition({ id: 'motion-1', durationSeconds: 5 });
+    motion.layers = [{
+      id: 'layer-1', name: 'Invalid', kind: 'shape', sceneId: null, parentLayerId: null,
+      startSecond: 0, endSecond: 6, visible: true, locked: false, transform: {}, tracks: [], effects: [], expression: null
+    }];
+    production.motionComposition = motion;
+    const result = validateProductionSpec(production);
+    expect(result.status).toBe('blocking');
+    expect(result.issues.map(issue => issue.code)).toContain('motion.layer_out_of_range');
   });
 });
