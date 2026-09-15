@@ -14,6 +14,26 @@ export type BrowserIntegrationConnection = {
   lastErrorCode: string | null;
 };
 
+export type BrowserIntegrationGrant = {
+  id: string;
+  principalType: 'user' | 'role' | 'module';
+  principalId: string;
+  module: string;
+  capability: string;
+  grantedAt: string | null;
+};
+
+export type BrowserIntegrationActivity = {
+  id: string;
+  action: string;
+  outcome: string;
+  module: string | null;
+  statusBefore: string | null;
+  statusAfter: string | null;
+  capability: string | null;
+  createdAt: string | null;
+};
+
 type JsonRecord = Record<string, unknown>;
 
 function recordOf(value: unknown): JsonRecord {
@@ -50,6 +70,44 @@ export function normalizeIntegrationConnection(raw: unknown): BrowserIntegration
     connectorClass,
     environment: nullableText(row.environment),
     lastErrorCode: nullableText(row.last_error_code)
+  };
+}
+
+export function normalizeIntegrationGrant(raw: unknown): BrowserIntegrationGrant | null {
+  const row = recordOf(raw);
+  const principalType = text(row.principal_type);
+  if (!['user', 'role', 'module'].includes(principalType)) return null;
+  const id = text(row.id);
+  const capability = text(row.capability);
+  const module = text(row.module);
+  const principalId = text(row.principal_id);
+  if (!id || !capability || !module || !principalId) return null;
+  return {
+    id,
+    principalType: principalType as BrowserIntegrationGrant['principalType'],
+    principalId,
+    module,
+    capability,
+    grantedAt: nullableText(row.granted_at)
+  };
+}
+
+export function normalizeIntegrationActivity(raw: unknown): BrowserIntegrationActivity | null {
+  const row = recordOf(raw);
+  const id = text(row.id);
+  const action = text(row.action);
+  const outcome = text(row.outcome);
+  if (!id || !action || !outcome) return null;
+  const metadata = recordOf(row.metadata);
+  return {
+    id,
+    action,
+    outcome,
+    module: nullableText(row.module),
+    statusBefore: nullableText(row.status_before),
+    statusAfter: nullableText(row.status_after),
+    capability: nullableText(metadata.capability),
+    createdAt: nullableText(row.created_at)
   };
 }
 
@@ -128,6 +186,49 @@ export async function executeIntegrationCapability(
     body: JSON.stringify({ provider_key: providerKey.trim().toLowerCase(), capability, module })
   });
   return { capability: text(result.capability), data: recordOf(result.data) };
+}
+
+export async function listIntegrationGrants(providerKey: string): Promise<BrowserIntegrationGrant[]> {
+  const provider = encodeURIComponent(providerKey.trim().toLowerCase());
+  const data = await invokeIntegration(`atlas-integrations?action=grants&provider=${provider}`, { method: 'GET' });
+  const rows = Array.isArray(data.grants) ? data.grants : [];
+  return rows.map(normalizeIntegrationGrant).filter((row): row is BrowserIntegrationGrant => Boolean(row));
+}
+
+export async function grantIntegrationCapability(
+  providerKey: string,
+  capability: string,
+  module = 'settings'
+): Promise<BrowserIntegrationGrant> {
+  const data = await invokeIntegration('atlas-integrations?action=grant', {
+    method: 'POST',
+    body: JSON.stringify({
+      provider_key: providerKey.trim().toLowerCase(),
+      capability,
+      module,
+      principal_type: 'user'
+    })
+  });
+  const grant = normalizeIntegrationGrant(data.grant);
+  if (!grant) throw new Error('integration_grant_invalid');
+  return grant;
+}
+
+export async function revokeIntegrationGrant(providerKey: string, grantId: string): Promise<BrowserIntegrationGrant> {
+  const data = await invokeIntegration('atlas-integrations?action=revoke-grant', {
+    method: 'POST',
+    body: JSON.stringify({ provider_key: providerKey.trim().toLowerCase(), grant_id: grantId })
+  });
+  const grant = normalizeIntegrationGrant(data.grant);
+  if (!grant) throw new Error('integration_grant_invalid');
+  return grant;
+}
+
+export async function listIntegrationActivity(providerKey: string): Promise<BrowserIntegrationActivity[]> {
+  const provider = encodeURIComponent(providerKey.trim().toLowerCase());
+  const data = await invokeIntegration(`atlas-integrations?action=audit&provider=${provider}`, { method: 'GET' });
+  const rows = Array.isArray(data.events) ? data.events : [];
+  return rows.map(normalizeIntegrationActivity).filter((row): row is BrowserIntegrationActivity => Boolean(row));
 }
 
 export async function revokeIntegration(providerKey: string): Promise<{

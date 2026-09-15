@@ -78,7 +78,8 @@
 }
 
 .connected-app-actions button,
-.connected-app-link {
+.connected-app-link,
+.connected-app-tab-panel button {
   border: 1px solid rgba(125, 155, 210, 0.34);
   border-radius: 10px;
   padding: 0.65rem 0.9rem;
@@ -89,7 +90,8 @@
   cursor: pointer;
 }
 
-.connected-app-actions button:disabled {
+.connected-app-actions button:disabled,
+.connected-app-tab-panel button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -159,21 +161,50 @@
   padding-left: 1.25rem;
 }
 
+.connected-app-grant-list,
+.connected-app-activity-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.connected-app-related-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(125, 155, 210, 0.16);
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+.connected-app-related-row p {
+  margin: 0.25rem 0;
+}
+
+.connected-app-related-row small,
+.connected-app-related-row time {
+  opacity: 0.72;
+  overflow-wrap: anywhere;
+}
+
 .security-boundary-copy p {
   margin-bottom: 0;
 }
 
 @media (max-width: 760px) {
   .connected-app-card-heading,
-  .provider-detail-header {
+  .provider-detail-header,
+  .connected-app-related-row {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .connected-app-actions {
     align-items: stretch;
   }
 
-  .connected-app-actions > * {
+  .connected-app-actions > *,
+  .connected-app-related-row button {
     width: 100%;
     text-align: center;
   }
