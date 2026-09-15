@@ -1,3 +1,5 @@
+export type IntegrationProvider = 'google' | 'hubspot';
+
 export type IntegrationConnectionState =
   | 'unconfigured'
   | 'authorizing'
