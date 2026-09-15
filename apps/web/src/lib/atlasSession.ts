@@ -1,8 +1,8 @@
+import { clearSessionStorage, readAccessToken, readRefreshToken, writeSession } from './atlasSessionStorage';
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 
-const ACCESS_TOKEN_KEY = 'atlas_access_token';
-const REFRESH_TOKEN_KEY = 'atlas_refresh_token';
 export const ATLAS_SESSION_EVENT = 'atlas-session-changed';
 
 export type AtlasOrganization = {
@@ -71,10 +71,6 @@ export type LivePayablesLedger = {
   loaded_at: string;
 };
 
-function storageAvailable() {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-}
-
 function announceSessionChange() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(ATLAS_SESSION_EVENT));
 }
@@ -96,24 +92,19 @@ export function getCachedAtlasShellOrganization() {
 }
 
 export function getAtlasAccessToken() {
-  return storageAvailable() ? window.localStorage.getItem(ACCESS_TOKEN_KEY) || '' : '';
+  return readAccessToken();
 }
 
 function getAtlasRefreshToken() {
-  return storageAvailable() ? window.localStorage.getItem(REFRESH_TOKEN_KEY) || '' : '';
+  return readRefreshToken();
 }
 
 function persistSession(data: { access_token?: string; refresh_token?: string }) {
-  if (!storageAvailable() || !data.access_token) return;
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
-  if (data.refresh_token) window.localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
-  announceSessionChange();
+  if (writeSession(data)) announceSessionChange();
 }
 
 export function clearAtlasSession() {
-  if (!storageAvailable()) return;
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  clearSessionStorage();
   cachedAtlasShellOrganization = null;
   announceSessionChange();
 }
