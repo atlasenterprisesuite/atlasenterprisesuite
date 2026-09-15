@@ -23,15 +23,17 @@ export function normalizeIntelligenceRequest(input={}){
   return Object.freeze({module,intent,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
 }
 
-export function createIntelligenceRouter({providers=[]}={}){
+export function createIntelligenceRouter({providers=[],allowedProviders=[]}={}){
   const ordered=[...providers].filter(p=>INTELLIGENCE_PROVIDER_IDS.includes(p?.id));
+  const allowedSet=Array.isArray(allowedProviders)&&allowedProviders.length?new Set(allowedProviders.filter(id=>INTELLIGENCE_PROVIDER_IDS.includes(id))):null;
+  const allowed=provider=>!allowedSet||allowedSet.has(provider?.id);
   return Object.freeze({
     route({mode='auto',intent='balanced',capabilities_requested=['generation']}={}){
       if(!INTELLIGENCE_MODES.includes(mode))throw fail('invalid_input',400,{field:'mode'});
       if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
       const capabilities=[...capabilities_requested];
       if(mode==='council'){
-        const compatible=ordered.filter(p=>supports(p,intent,capabilities));
+        const compatible=ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
         if(compatible.length<2)throw fail('capability_unavailable',503,{mode:'council',minimum_providers:2});
         return Object.freeze({mode:'council',providers:compatible.map(p=>p.id),provider:compatible[0].id,profile:intent,capabilities,fallback_used:false,reason:'council_verified_capability_match'});
       }
@@ -41,9 +43,9 @@ export function createIntelligenceRouter({providers=[]}={}){
         if(!supports(selected,intent,capabilities))throw fail(selected.verified===true?'capability_unavailable':'provider_unavailable',503,{provider:mode});
         return Object.freeze({mode,providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:false,reason:'explicit_provider'});
       }
-      const configured=ordered.filter(p=>p?.configured===true);
+      const configured=ordered.filter(p=>allowed(p)&&p?.configured===true);
       if(!configured.length)throw fail('provider_not_configured',503);
-      const index=ordered.findIndex(p=>supports(p,intent,capabilities));
+      const index=ordered.findIndex(p=>allowed(p)&&supports(p,intent,capabilities));
       if(index<0)throw fail('capability_unavailable',503);
       const selected=ordered[index];
       return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:index>0,reason:index>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'});
