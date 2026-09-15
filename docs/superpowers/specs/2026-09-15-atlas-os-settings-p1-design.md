@@ -6,9 +6,9 @@ Implement `os.settings` as a real, identity-scoped ATLAS capability for personal
 
 ## Ownership and trust boundary
 
-ATLAS is the source of truth. The authenticated user is derived from `auth.uid()` inside PostgreSQL RPCs. The active organization is selected from an active `organization_members` row on the server. Browser requests never choose the tenant for a settings mutation.
+ATLAS is the source of truth. The authenticated user is derived from `auth.uid()` inside PostgreSQL RPCs. The active organization is selected server-side from an active `organization_members` row, preferring the user's canonical `atlas_user_preferences.default_org_id` when that membership is still active. Browser requests never choose the tenant for a settings mutation.
 
-Personal settings belong to `(org_id, user_id)`. Organization policy belongs to `org_id` and is writable only by `owner` or `admin`. All updates are version-checked and audited.
+Personal OS settings are stored as the `os` namespace inside the existing `atlas_user_preferences.preferences` JSON document. Organization OS policy is stored as the `os` namespace inside the existing `organization_settings.settings` JSON document and is writable by this RPC only when the active role is `owner` or `admin`. Both canonical settings rows gain an `os_settings_version` counter for optimistic concurrency. OS settings updates write into the existing `audit_logs` rail instead of creating another audit subsystem.
 
 ## Personal settings
 
@@ -32,7 +32,9 @@ Organization policy may only make the effective result stricter. It cannot manuf
 
 ## Persistence and concurrency
 
-`os_user_settings`, `os_organization_settings`, and `os_settings_audit` are protected by RLS. Authenticated browser roles receive read access only; writes go through `update_os_settings`, which derives identity, checks organization membership/role, normalizes settings, checks `expected_version`, persists atomically, increments the version, and records an audit event.
+The implementation reuses the existing RLS-protected `atlas_user_preferences` and `organization_settings` tables and the existing `audit_logs` table. The migration does not introduce parallel OS settings or OS audit tables.
+
+Writes go through `update_os_settings`, which derives identity, resolves active organization membership, normalizes settings, checks `expected_version`, changes only the nested `os` namespace while preserving other settings owned by other ATLAS modules, increments `os_settings_version`, and records `os.settings.update` in `audit_logs`.
 
 `get_os_settings` returns normalized personal and organization settings plus truthful native-adapter status. Until a real adapter writes independently verified evidence, Windows, macOS, iOS and Android delivery states remain `not_verified`.
 
