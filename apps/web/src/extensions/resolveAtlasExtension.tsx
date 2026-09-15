@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
+import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
 export function resolveAtlasExtension(pathname: string) {
@@ -10,6 +11,10 @@ export function resolveAtlasExtension(pathname: string) {
         <CrmRoutes />
       </RequireAtlasIdentity>
     );
+  }
+
+  if (pathname === '/studio/content') {
+    return <RequireAtlasIdentity><ContentIntelligencePage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/health/wellbeing/neuroplasticity') {
