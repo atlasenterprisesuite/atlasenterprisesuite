@@ -26,8 +26,8 @@ describe('ATLAS Unified AI Chat web surface', () => {
     if (!existsSync(resolve(process.cwd(), pagePath)) || !existsSync(resolve(process.cwd(), apiPath))) return;
     const page = source(pagePath);
     const api = source(apiPath);
-    for (const mode of ['auto', 'openai', 'gemini', 'codex-sovereign', 'council']) expect(page).toContain(`value="${mode}"`);
-    for (const profile of ['fast', 'balanced', 'deep']) expect(page).toContain(`value="${profile}"`);
+    for (const mode of ['auto', 'openai', 'gemini', 'codex-sovereign', 'council']) expect(page).toContain(`value: '${mode}'`);
+    for (const profile of ['fast', 'balanced', 'deep']) expect(page).toContain(`value: '${profile}'`);
     expect(page).toContain('loadIntelligenceStatus');
     expect(page).toContain('listIntelligenceConversations');
     expect(page).toContain('getIntelligenceConversation');
