@@ -25,6 +25,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   resend_cooldown: 'Please wait before requesting another verification code.',
   resend_limit_reached: 'The resend limit has been reached. Start a new verification challenge.',
   delivery_not_configured: 'Verification delivery is not configured for this ATLAS environment.',
+  verification_not_configured: 'Insurance verification security is not configured for this ATLAS environment.',
   delivery_failed: 'ATLAS could not deliver the verification code. Try again or contact your administrator.',
   verification_required: 'Verification is required before continuing.',
   insurance_verification_failed: 'ATLAS Insurance could not complete verification. Try again.'
