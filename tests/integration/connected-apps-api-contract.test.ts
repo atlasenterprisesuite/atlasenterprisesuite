@@ -47,6 +47,15 @@ describe('Connected Apps OAuth contract', () => {
     expect(migration).toContain('return_to');
     expect(migration).toMatch(/return_to[\s\S]*check/i);
   });
+
+  it('redirects success only after the verified state is durably persisted', () => {
+    const oauth = source(oauthPath);
+    expect(oauth).toContain('const verifiedConnection = await updateConnection');
+    expect(oauth).toContain("if (!verifiedConnection) throw integrationError('connection_update_failed', 500)");
+    expect(oauth.indexOf("if (!verifiedConnection) throw integrationError('connection_update_failed', 500)")).toBeLessThan(
+      oauth.indexOf("redirectTo(returnTo, 'success')")
+    );
+  });
 });
 
 describe('Connected Apps Integration Gateway contract', () => {
@@ -58,12 +67,14 @@ describe('Connected Apps Integration Gateway contract', () => {
     expect(gateway).toContain('resolveIntegrationContext');
   });
 
-  it('marks verified only after the Microsoft provider verification call succeeds', () => {
+  it('marks verified only after the Microsoft provider verification call succeeds and persistence succeeds', () => {
     const gateway = source(gatewayPath);
     const verifyCall = gateway.indexOf('adapter.verify');
     const verifiedUpdate = gateway.indexOf("state: 'verified'");
     expect(verifyCall).toBeGreaterThan(-1);
     expect(verifiedUpdate).toBeGreaterThan(verifyCall);
+    expect(gateway).toContain("if (!updated) throw integrationError('connection_update_failed', 500)");
+    expect(gateway).not.toContain("safeConnection(updated || { ...row, state: 'verified'");
   });
 
   it('evaluates shared capability policy before provider execution', () => {
@@ -92,19 +103,21 @@ describe('Connected Apps Integration Gateway contract', () => {
     expect(repository).toContain('atlas_integration_events');
   });
 
-  it('refreshes once and verifies before retrying a Microsoft capability after authorization failure', () => {
+  it('refreshes once, preserves scopes when Microsoft omits them, and verifies before retrying', () => {
     const gateway = source(gatewayPath);
     expect(gateway).toContain('refreshMicrosoftCredential');
     expect(gateway).toContain('adapter.refresh');
     expect(gateway).toContain('adapter.verify');
+    expect(gateway).toContain("fresh.scopes.length ? fresh.scopes : tokens.scopes");
     expect(gateway).toContain("state: 'reconnect_required'");
   });
 
-  it('revokes local credential use and keeps provider management URL as sanitized metadata', () => {
+  it('revokes local credential use and never reports revoked if persistence did not update', () => {
     const gateway = source(gatewayPath);
     expect(gateway).toContain("state: 'revoked'");
     expect(gateway).toContain('deleteCredentialRecord');
     expect(gateway).toContain('providerManagementUrl');
+    expect(gateway).not.toContain("safeConnection(updated || { ...row, state: 'revoked'");
   });
 
   it('repository supports one-time OAuth state and Microsoft connection upsert on canonical tables', () => {
