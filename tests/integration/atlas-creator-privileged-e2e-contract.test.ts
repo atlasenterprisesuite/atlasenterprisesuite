@@ -10,7 +10,8 @@ describe('ATLAS Creator privileged E2E verifier contract', () => {
     expect(source).toContain("ATLAS Creator E2E");
     expect(source).toContain("role:'owner'");
     expect(source).toContain('atlas_verify_runtime_invocation');
-    expect(source).toContain("purpose:'creator-privileged-production-e2e'");
+    expect(source).toContain("const PURPOSE = 'creator-privileged-production-e2e'");
+    expect(source).toContain('purpose: PURPOSE');
   });
 
   it('verifies save, read, audit and cleanup without generation', () => {
