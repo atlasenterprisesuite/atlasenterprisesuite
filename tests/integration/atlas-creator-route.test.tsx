@@ -7,11 +7,16 @@ import { CreatorHome, CreatorProviders, CreatorWorkspace } from '../../apps/web/
 
 describe('ATLAS Creator', () => {
   afterEach(() => vi.restoreAllMocks());
-  it('exposes working creator destinations', () => {
+  it('exposes a shared ASTRA-derived Studio home without replacing working creator routes', () => {
     render(<MemoryRouter><CreatorHome /></MemoryRouter>);
+    expect(document.querySelector('.module-experience-page')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Create beyond the prompt.' })).toBeInTheDocument();
+    expect(screen.getByText('One governed creative operating system for content, media, voice and provider-aware execution.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Image Lab/ })).toHaveAttribute('href', '/studio/create?type=image');
     expect(screen.getByRole('link', { name: /Voice & Agents/ })).toHaveAttribute('href', '/studio/voice');
+    expect(screen.getByRole('link', { name: /Creator Library/ })).toHaveAttribute('href', '/studio/library');
+    expect(screen.getByRole('link', { name: /Provider readiness/ })).toHaveAttribute('href', '/studio/providers');
+    expect(screen.getByText(/external generation remains unavailable until verified provider readiness/i)).toBeInTheDocument();
   });
   it('opens ATLAS Director for the video Creator route', () => {
     render(

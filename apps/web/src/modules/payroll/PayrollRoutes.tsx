@@ -1,4 +1,5 @@
 import { Link, Route, Routes } from 'react-router-dom';
+import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
 import './payroll.css';
 
 const payrollTiles = [
@@ -8,35 +9,40 @@ const payrollTiles = [
   { to: '/payroll/pay-runs', eyebrow: 'Execution', title: 'Pay Runs', description: 'Prepare and review payroll cycles.' }
 ] as const;
 
+const payrollSections: ModuleExperienceSection[] = [
+  {
+    eyebrow: 'Payroll architecture',
+    title: 'People, inputs and pay-run execution',
+    description: 'Payroll workspaces remain organization-scoped and expose only implemented routes while production records stay gated behind authorized data configuration.',
+    cards: payrollTiles.map((tile) => ({
+      label: tile.eyebrow,
+      title: tile.title,
+      description: tile.description,
+      to: tile.to
+    }))
+  },
+  {
+    eyebrow: 'Governance',
+    title: 'Controlled payroll before money movement',
+    description: 'ATLAS keeps payroll readiness, source state and approvals explicit before any operational value can be treated as production data.',
+    cards: [
+      { label: 'Tenant', title: 'Organization scoped', description: 'People, time and payroll execution remain inside the authenticated ATLAS organization.' },
+      { label: 'Inputs', title: 'Source-backed earnings', description: 'Hours, earnings and adjustments must originate from authorized tenant data sources.' },
+      { label: 'Execution', title: 'Governed pay runs', description: 'Preparation and review stay separated from irreversible money movement and external filing dependencies.' }
+    ]
+  }
+];
+
 function PayrollHome() {
   return (
-    <section className="payroll-page" aria-labelledby="payroll-title">
-      <div className="payroll-ambient" aria-hidden="true" />
-
-      <header className="payroll-hero">
-        <div>
-          <p className="payroll-kicker">ATLAS Enterprise Suite</p>
-          <h1 id="payroll-title">ATLAS PAYROLL</h1>
-          <p className="payroll-tagline">People • Pay • Progress</p>
-        </div>
-        <div className="payroll-orbit" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-      </header>
-
-      <nav className="payroll-tile-grid" aria-label="Payroll workspaces">
-        {payrollTiles.map((tile) => (
-          <Link key={tile.to} className="payroll-tile" to={tile.to}>
-            <span>{tile.eyebrow}</span>
-            <strong>{tile.title}</strong>
-            <p>{tile.description}</p>
-            <small>Open</small>
-          </Link>
-        ))}
-      </nav>
-
+    <ModuleExperiencePage
+      eyebrow="ATLAS Enterprise Suite"
+      title="ATLAS PAYROLL"
+      description="Payroll intelligence, governed inputs and controlled execution."
+      narrative="People • Pay • Progress"
+      sections={payrollSections}
+      statusNote="Production payroll metrics stay hidden until governed people, time, earnings and payroll data sources are configured for the active organization."
+    >
       <section className="payroll-console" aria-label="Payroll operations console">
         <div className="payroll-laptop-frame">
           <div className="payroll-laptop-bar" aria-hidden="true"><span /><span /><span /></div>
@@ -59,7 +65,7 @@ function PayrollHome() {
         </div>
         <div className="payroll-laptop-base" aria-hidden="true" />
       </section>
-    </section>
+    </ModuleExperiencePage>
   );
 }
 
