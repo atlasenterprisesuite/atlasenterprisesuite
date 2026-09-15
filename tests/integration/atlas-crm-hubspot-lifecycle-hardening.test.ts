@@ -16,6 +16,7 @@ import type {
 } from '../../supabase/functions/_shared/hubspot-connection-store';
 
 const orgId = '11111111-1111-4111-8111-111111111111';
+const providerAccountId = '123456789';
 const key = new Uint8Array(32).fill(11);
 
 class Store implements HubSpotConnectionStore {
@@ -81,12 +82,12 @@ function oauth(scopes: string[]): HubSpotLifecycleOAuth {
     async exchangeCode() {
       return {
         accessToken: 'fake-access', refreshToken: 'fake-refresh', tokenType: 'Bearer', expiresIn: 1800,
-        hubId: '247228429', userId: 'user', scopes
+        hubId: providerAccountId, userId: 'user', scopes
       };
     },
     async introspectToken() {
       return {
-        active: true, hubId: '247228429', userId: 'user', clientId: 'client', hubDomain: 'example.test',
+        active: true, hubId: providerAccountId, userId: 'user', clientId: 'client', hubDomain: 'example.test',
         scopes, tokenUse: 'access_token', tokenType: 'Bearer', expiresIn: 1700
       };
     },
@@ -107,7 +108,7 @@ function deps(store: Store, scopes: string[]): HubSpotLifecycleDependencies {
       async readiness() {
         return {
           ready: true,
-          account: { id: '247228429', label: 'HubSpot', accountType: 'STANDARD', timeZone: null, companyCurrency: null, dataHostingLocation: null },
+          account: { id: providerAccountId, label: 'HubSpot Test', accountType: 'STANDARD', timeZone: null, companyCurrency: null, dataHostingLocation: null },
           error: null
         };
       }
@@ -123,25 +124,24 @@ async function prepared(store: Store, lifecycle: HubSpotLifecycleDependencies) {
 }
 
 describe('HubSpot OAuth lifecycle hardening', () => {
-  it('rejects a replay without changing an established connected state', async () => {
+  it('stores only the OAuth state hash and claims the state one time', async () => {
     const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'tickets'];
     const store = new Store();
     const lifecycle = deps(store, scopes);
     const state = await prepared(store, lifecycle);
 
+    expect(JSON.stringify(store.state)).not.toContain(state);
     const first = await completeHubSpotConnection({ state, code: 'code-1', deps: lifecycle });
     expect(first.state).toBe('connected');
-    expect(store.connection?.state).toBe('connected');
-    expect(store.credential).not.toBeNull();
+    expect(store.state?.consumed_at).not.toBeNull();
 
     await expect(completeHubSpotConnection({ state, code: 'code-2', deps: lifecycle }))
       .rejects.toMatchObject({ code: 'oauth_state_consumed' });
     expect(store.connection?.state).toBe('connected');
     expect(store.connection?.credential_ref).toBe('credential-1');
-    expect(store.credential?.id).toBe('credential-1');
   });
 
-  it('refuses connected state when HubSpot does not grant every required P0 scope', async () => {
+  it('refuses connected state when required P0 scopes are missing', async () => {
     const store = new Store();
     const lifecycle = deps(store, ['oauth', 'crm.objects.contacts.read']);
     const state = await prepared(store, lifecycle);
@@ -150,5 +150,14 @@ describe('HubSpot OAuth lifecycle hardening', () => {
       .rejects.toMatchObject({ code: 'oauth_scope_mismatch' });
     expect(store.connection?.state).not.toBe('connected');
     expect(store.credential).toBeNull();
+  });
+
+  it('never returns provider access or refresh tokens in connection view', async () => {
+    const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'tickets'];
+    const store = new Store();
+    const lifecycle = deps(store, scopes);
+    const state = await prepared(store, lifecycle);
+    const view = await completeHubSpotConnection({ state, code: 'code-1', deps: lifecycle });
+    expect(JSON.stringify(view)).not.toMatch(/fake-access|fake-refresh/);
   });
 });
