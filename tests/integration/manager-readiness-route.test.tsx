@@ -53,7 +53,7 @@ describe('Manager readiness launcher', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Verifying infrastructure readiness' })).toBeInTheDocument();
-    expect(syncManagerReadiness).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(syncManagerReadiness).toHaveBeenCalledTimes(1));
 
     await act(async () => {
       resolveSync({ workflowId: 'wf-manager-1' });
