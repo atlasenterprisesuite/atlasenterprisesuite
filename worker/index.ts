@@ -2,6 +2,18 @@ const ACCESS_AUD = 'fccf9afb05c59c6e1edf08f1aab547f259627d6783f27dafbae366230e20
 const TEAM_ORIGIN = 'https://winder-aranguren.cloudflareaccess.com';
 const JWKS_URL = `${TEAM_ORIGIN}/cdn-cgi/access/certs`;
 const KEY_CACHE_TTL_MS = 5 * 60 * 1000;
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "connect-src 'self' https://ggmanzcgtlrvqfoccgsh.supabase.co",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: https:",
+  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self'",
+  "font-src 'self' data:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'"
+].join('; ');
 
 interface AssetsBinding {
   fetch(request: Request): Promise<Response> | Response;
@@ -161,6 +173,22 @@ async function verifyAccessAssertion(token: string): Promise<void> {
   }
 }
 
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), payment=(), usb=()');
+  headers.set('X-Frame-Options', 'DENY');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const token = request.headers.get('CF-Access-Jwt-Assertion');
@@ -175,6 +203,6 @@ export default {
       return new Response('Invalid Access identity', { status: 403 });
     }
 
-    return env.ASSETS.fetch(request);
+    return withSecurityHeaders(await env.ASSETS.fetch(request));
   }
 };
