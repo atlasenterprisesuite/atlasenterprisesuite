@@ -8,14 +8,17 @@ import {
 
 const navItems = [
   { to: '/', label: 'Home' },
+  { to: '/business', label: 'Business' },
   { to: '/finance', label: 'Finance' },
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
   { to: '/crm', label: 'CRM' },
   { to: '/payroll', label: 'Payroll' },
   { to: '/health', label: 'Health' },
-  { to: '/hospitality/access', label: 'Hospitality' },
+  { to: '/learning', label: 'Learning' },
+  { to: '/hospitality', label: 'Hospitality' },
   { to: '/ride', label: 'Ride' },
-  { to: '/studio', label: 'Creator' }
+  { to: '/studio', label: 'Creator' },
+  { to: '/execution/manager/readiness', label: 'Execution' }
 ];
 
 export function AtlasShell({ children }: { children: ReactNode }) {

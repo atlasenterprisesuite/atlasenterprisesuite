@@ -37,11 +37,14 @@ describe('ATLAS Ride compliance routes', () => {
     expect(atlasShellSource()).toContain("{ to: '/ride', label: 'Ride' }");
   });
 
-  it('links Ride to Driver / Partner', () => {
+  it('links Ride to Driver / Partner through the ASTRA-derived mobility experience', () => {
     render(<MemoryRouter><RideHomePage /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: /atlas ride/i })).toBeInTheDocument();
+    expect(document.querySelector('.module-experience-page')).toBeTruthy();
+    expect(screen.getByText('Driver readiness, compliance evidence and governed mobility operations.')).toBeInTheDocument();
     const rideNav = screen.getByRole('navigation', { name: /atlas ride/i });
     expect(within(rideNav).getByRole('link', { name: /driver.*partner/i })).toHaveAttribute('href', '/ride/driver');
+    expect(screen.getByText('Dispatch & Trips').closest('[aria-disabled="true"]')).toBeTruthy();
   });
 
   it('links Driver / Partner to compliance and documents to profile photo', () => {

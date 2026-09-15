@@ -1,0 +1,106 @@
+import React from 'react';
+import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { App } from '../../apps/web/src/App';
+import { ModuleExperiencePage } from '../../apps/web/src/components/ModuleExperiencePage';
+
+vi.mock('../../apps/web/src/lib/atlasSession', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/lib/atlasSession')>('../../apps/web/src/lib/atlasSession');
+  return {
+    ...actual,
+    getActiveAtlasOrganization: vi.fn(async () => ({ id: 'org-1', role: 'owner' })),
+    getCachedAtlasShellOrganization: vi.fn(() => ({ id: 'org-1', name: 'ATLAS Test Org', legalName: 'ATLAS Test Org LLC', role: 'owner' }))
+  };
+});
+
+vi.mock('../../apps/web/src/modules/business/crm/crmApi', () => ({
+  CrmApiError: class MockCrmApiError extends Error {},
+  crmApi: vi.fn(async (operation: string) => {
+    if (operation === 'connection.status') {
+      return {
+        connection: {
+          provider: 'hubspot',
+          state: 'connected',
+          providerAccountId: '123456789',
+          providerAccountLabel: 'HubSpot Test',
+          grantedScopes: ['crm.objects.contacts.read'],
+          lastVerifiedAt: '2026-09-15T12:00:00Z',
+          lastSuccessAt: '2026-09-15T12:00:00Z',
+          safeErrorCode: null
+        }
+      };
+    }
+    return {};
+  })
+}));
+
+beforeEach(() => {
+  localStorage.clear();
+  localStorage.setItem('atlas_access_token', 'test-token');
+});
+
+describe('ATLAS ASTRA-derived module experience', () => {
+  it('renders active destinations as links and gated capabilities as disabled cards', () => {
+    render(
+      <MemoryRouter>
+        <ModuleExperiencePage
+          eyebrow="ATLAS Test"
+          title="Sovereign Test Module"
+          description="A governed test surface."
+          sections={[
+            {
+              eyebrow: 'Architecture',
+              title: 'Core capabilities',
+              description: 'Truthful capability presentation.',
+              cards: [
+                { label: 'Live route', title: 'Working capability', description: 'Available now.', to: '/working' },
+                { label: 'Gated', title: 'Provider required', description: 'Requires authorization.', status: 'External authorization required' }
+              ]
+            }
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Sovereign Test Module' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /working capability/i })).toHaveAttribute('href', '/working');
+    expect(screen.queryByRole('link', { name: /provider required/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Provider required').closest('[aria-disabled="true"]')).toBeTruthy();
+  });
+
+  it.each([
+    ['/', 'ATLAS Enterprise Suite', 'One governed enterprise ecosystem', 'One operating system for governed enterprise work.'],
+    ['/finance', 'ATLAS Finance', 'Finance', 'Finance intelligence, execution and control.'],
+    ['/finance/accounting', 'ATLAS Accounting', 'Accounting', 'Accounting intelligence with governed execution.']
+  ])('applies the module experience at %s while preserving implemented destinations', (path, eyebrow, heading, narrative) => {
+    render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
+    const main = screen.getByRole('main');
+    expect(within(main).getByText(eyebrow)).toBeInTheDocument();
+    expect(within(main).getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(within(main).getByText(narrative)).toBeInTheDocument();
+  });
+
+  it('keeps Finance operational routes reachable from the new experience', () => {
+    render(<MemoryRouter initialEntries={['/finance']}><App /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: /accounts payable/i })).toHaveAttribute('href', '/finance/accounting/accounts-payable');
+    expect(screen.getByRole('link', { name: /automotive sales/i })).toHaveAttribute('href', '/finance/accounting/reports/automotive-sales');
+  });
+
+  it('applies the module experience to CRM without replacing provider-backed workspaces', async () => {
+    render(<MemoryRouter initialEntries={['/crm']}><App /></MemoryRouter>);
+    const main = screen.getByRole('main');
+    expect(await within(main).findByText('Customer intelligence, relationship context and governed provider data.')).toBeInTheDocument();
+    expect(main.querySelector('.module-experience-page')).toBeTruthy();
+    for (const [name, href] of [
+      ['Contacts', '/crm/contacts'],
+      ['Accounts', '/crm/companies'],
+      ['Opportunities', '/crm/deals'],
+      ['Service Cases', '/crm/service'],
+      ['Activities', '/crm/activities'],
+      ['Integrations', '/crm/integrations']
+    ]) {
+      expect(within(main).getByRole('link', { name: new RegExp(name, 'i') })).toHaveAttribute('href', href);
+    }
+  });
+});

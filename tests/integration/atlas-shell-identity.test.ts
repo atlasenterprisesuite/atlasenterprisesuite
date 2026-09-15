@@ -31,4 +31,22 @@ describe('ATLAS shell live organization identity', () => {
     expect(source).toContain('organization.role');
     expect(source).not.toContain('getActiveAtlasOrganization');
   });
+
+  it('keeps implemented top-level modules discoverable from the canonical shell', () => {
+    const source = readFileSync(shellPath, 'utf8');
+    for (const entry of [
+      "{ to: '/business', label: 'Business' }",
+      "{ to: '/finance', label: 'Finance' }",
+      "{ to: '/crm', label: 'CRM' }",
+      "{ to: '/payroll', label: 'Payroll' }",
+      "{ to: '/health', label: 'Health' }",
+      "{ to: '/learning', label: 'Learning' }",
+      "{ to: '/hospitality', label: 'Hospitality' }",
+      "{ to: '/ride', label: 'Ride' }",
+      "{ to: '/studio', label: 'Creator' }",
+      "{ to: '/execution/manager/readiness', label: 'Execution' }"
+    ]) {
+      expect(source).toContain(entry);
+    }
+  });
 });

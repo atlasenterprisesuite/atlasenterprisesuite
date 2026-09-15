@@ -5,6 +5,17 @@ import { describe, expect, it } from 'vitest';
 import { App } from '../../apps/web/src/App';
 
 describe('ATLAS Health governed routes', () => {
+  it('renders the ASTRA-derived Health home without pretending clinical integrations are live', () => {
+    render(<MemoryRouter initialEntries={['/health']}><App /></MemoryRouter>);
+    expect(screen.getByRole('heading', { name: 'Health' })).toBeInTheDocument();
+    expect(document.querySelector('.module-experience-page')).toBeTruthy();
+    expect(screen.getByText('Health intelligence, research and wellbeing with explicit evidence boundaries.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Health Frontiers/i })).toHaveAttribute('href', '/health/research');
+    expect(screen.getByRole('link', { name: /Neuroplasticity Program/i })).toHaveAttribute('href', '/health/wellbeing/neuroplasticity');
+    expect(screen.getByText('Clinical systems').closest('[aria-disabled="true"]')).toBeTruthy();
+    expect(screen.getByText('Hospital operations').closest('[aria-disabled="true"]')).toBeTruthy();
+  });
+
   it('renders Disease Reconstruction Lab overview with repository-backed counts', () => {
     render(<MemoryRouter initialEntries={['/health/research/frontiers/disease-reconstruction']}><App /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: 'Disease Reconstruction Lab' })).toBeInTheDocument();
