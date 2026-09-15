@@ -1,6 +1,7 @@
 name: ATLAS Unified AI Chat CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feat/atlas-unified-ai-chat
