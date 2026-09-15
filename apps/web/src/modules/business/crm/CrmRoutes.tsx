@@ -1,54 +1,17 @@
 import { Link, Route, Routes } from 'react-router-dom';
+import { CrmHomePage } from './CrmHomePage';
+import { CrmActivitiesPage, CrmObjectListPage } from './CrmObjectListPage';
+import { CrmRecordPage } from './CrmRecordPage';
+import './crm.css';
 
-const routes = [
-  { to: '/crm/contacts', title: 'Contacts', description: 'Provider-backed customer people records.' },
-  { to: '/crm/companies', title: 'Accounts', description: 'Provider-backed company and account records.' },
-  { to: '/crm/deals', title: 'Opportunities', description: 'Provider-backed deal and opportunity records.' },
-  { to: '/crm/service', title: 'Service Cases', description: 'Provider-backed ticket and service records.' },
-  { to: '/crm/activities', title: 'Activities', description: 'Tasks, calls, meetings, notes and email activity.' },
-  { to: '/crm/integrations', title: 'Integrations', description: 'CRM provider connection and readiness controls.' }
-] as const;
-
-function CrmHome() {
-  return (
-    <section className="page-stack" aria-labelledby="crm-title">
-      <header className="page-header">
-        <p className="eyebrow">ATLAS Business Suite</p>
-        <h1 id="crm-title">ATLAS CRM</h1>
-        <p>Governed customer operations using the authenticated ATLAS organization and provider-backed data only.</p>
-      </header>
-      <div className="module-grid">
-        {routes.map((item) => (
-          <Link key={item.to} className="module-card enabled" to={item.to}>
-            <span>CRM</span><strong>{item.title}</strong><p>{item.description}</p>
-          </Link>
-        ))}
-      </div>
-      <div className="notice">CRM records appear only after an authorized provider connection is verified.</div>
-    </section>
-  );
-}
-
-function CrmSection({ title, description }: { title: string; description: string }) {
-  return (
-    <section className="page-stack">
-      <header className="page-header">
-        <p className="eyebrow">ATLAS CRM</p>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </header>
-      <div className="empty-state">
-        <strong>Provider connection required</strong>
-        <span>This route is active; records remain unavailable until the organization has a verified CRM provider connection.</span>
-      </div>
-      <Link className="text-link" to="/crm">Back to CRM</Link>
-    </section>
-  );
-}
+const contactAssociations = ['company', 'deal'] as const;
+const companyAssociations = ['contact', 'deal', 'ticket'] as const;
+const dealAssociations = ['contact', 'company', 'ticket'] as const;
+const ticketAssociations = ['contact', 'company', 'deal'] as const;
 
 function CrmIntegrations() {
   return (
-    <section className="page-stack">
+    <section className="crm-page page-stack">
       <header className="page-header">
         <p className="eyebrow">ATLAS CRM</p>
         <h1>Integrations</h1>
@@ -63,21 +26,53 @@ function CrmIntegrations() {
   );
 }
 
+function HubSpotPlaceholder() {
+  return (
+    <section className="crm-page page-stack">
+      <header className="page-header">
+        <p className="eyebrow">ATLAS CRM · Integration</p>
+        <h1>HubSpot Integration</h1>
+        <p>Connection controls are governed by the ATLAS integration boundary.</p>
+      </header>
+      <div className="empty-state">
+        <strong>Connection controls loading in the next implementation slice</strong>
+        <span>No connected state is simulated on this route.</span>
+      </div>
+    </section>
+  );
+}
+
 export function CrmRoutes() {
   return (
     <Routes>
-      <Route path="/crm" element={<CrmHome />} />
-      <Route path="/crm/contacts" element={<CrmSection title="Contacts" description="Provider-backed contact records." />} />
-      <Route path="/crm/contacts/:providerId" element={<CrmSection title="Contact" description="Provider-backed contact details and associations." />} />
-      <Route path="/crm/companies" element={<CrmSection title="Accounts" description="Provider-backed company records." />} />
-      <Route path="/crm/companies/:providerId" element={<CrmSection title="Account" description="Provider-backed account details and associations." />} />
-      <Route path="/crm/deals" element={<CrmSection title="Opportunities" description="Provider-backed deal records." />} />
-      <Route path="/crm/deals/:providerId" element={<CrmSection title="Opportunity" description="Provider-backed opportunity details and associations." />} />
-      <Route path="/crm/service" element={<CrmSection title="Service Cases" description="Provider-backed ticket records." />} />
-      <Route path="/crm/service/:providerId" element={<CrmSection title="Service Case" description="Provider-backed service case details and associations." />} />
-      <Route path="/crm/activities" element={<CrmSection title="Activities" description="Provider-backed customer activity history." />} />
+      <Route path="/crm" element={<CrmHomePage />} />
+      <Route path="/crm/contacts" element={
+        <CrmObjectListPage objectType="contact" title="Contacts" description="Provider-backed contact records." detailBase="/crm/contacts" />
+      } />
+      <Route path="/crm/contacts/:providerId" element={
+        <CrmRecordPage objectType="contact" title="Contact" associationTargets={contactAssociations} />
+      } />
+      <Route path="/crm/companies" element={
+        <CrmObjectListPage objectType="company" title="Accounts" description="Provider-backed company records." detailBase="/crm/companies" />
+      } />
+      <Route path="/crm/companies/:providerId" element={
+        <CrmRecordPage objectType="company" title="Account" associationTargets={companyAssociations} />
+      } />
+      <Route path="/crm/deals" element={
+        <CrmObjectListPage objectType="deal" title="Opportunities" description="Provider-backed deal records." detailBase="/crm/deals" />
+      } />
+      <Route path="/crm/deals/:providerId" element={
+        <CrmRecordPage objectType="deal" title="Opportunity" associationTargets={dealAssociations} />
+      } />
+      <Route path="/crm/service" element={
+        <CrmObjectListPage objectType="ticket" title="Service Cases" description="Provider-backed ticket records." detailBase="/crm/service" />
+      } />
+      <Route path="/crm/service/:providerId" element={
+        <CrmRecordPage objectType="ticket" title="Service Case" associationTargets={ticketAssociations} />
+      } />
+      <Route path="/crm/activities" element={<CrmActivitiesPage />} />
       <Route path="/crm/integrations" element={<CrmIntegrations />} />
-      <Route path="/crm/integrations/hubspot" element={<CrmSection title="HubSpot Integration" description="Connection status and authorization controls." />} />
+      <Route path="/crm/integrations/hubspot" element={<HubSpotPlaceholder />} />
     </Routes>
   );
 }
