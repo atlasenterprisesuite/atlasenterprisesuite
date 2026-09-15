@@ -47,6 +47,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'connect',
+    title: 'ATLAS Connect',
+    navLabel: 'Connect',
+    area: 'Communications',
+    route: '/connect',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Governed communications and carrier-provider connections with truthful capability gates.',
+    showInNavigation: true
+  },
+  {
     id: 'payroll',
     title: 'ATLAS Payroll',
     navLabel: 'Payroll',
