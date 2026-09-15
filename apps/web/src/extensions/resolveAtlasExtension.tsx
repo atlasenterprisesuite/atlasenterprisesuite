@@ -2,9 +2,26 @@ import { Link } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
+import {
+  AccountingExperiencePage,
+  EnterpriseExperiencePage,
+  FinanceExperiencePage
+} from '../modules/experience/AtlasModuleExperiences';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/') {
+    return <EnterpriseExperiencePage />;
+  }
+
+  if (pathname === '/finance') {
+    return <FinanceExperiencePage />;
+  }
+
+  if (pathname === '/finance/accounting') {
+    return <AccountingExperiencePage />;
+  }
+
   if (pathname === '/crm' || pathname.startsWith('/crm/')) {
     return (
       <RequireAtlasIdentity>
