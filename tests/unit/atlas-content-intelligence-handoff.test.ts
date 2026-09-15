@@ -14,9 +14,10 @@ describe('ATLAS Content Intelligence governed handoffs', () => {
     expect(director).toContain('createEmptyProductionSpec');
     expect(director).toContain('handoff.title');
     expect(director).toContain('handoff.brief');
-    expect(director).toContain('narration: handoff.narration');
+    expect(director).toContain('dialogue: [handoff.narration]');
     expect(director).toContain('submitNativeCreatorProduction');
-    expect(director).toContain('canRender');
+    expect(director).toContain('nativeGate.allowed');
+    expect(director).toContain("nativeReadinessState !== 'ready'");
   });
 
   it('prefills Social Publisher from router state and preserves real connection/media gates', () => {
@@ -25,8 +26,8 @@ describe('ATLAS Content Intelligence governed handoffs', () => {
     expect(publisher).toContain('atlasContentHandoff');
     expect(publisher).toContain('socialPlatforms.some');
     expect(publisher).toContain('handoff.caption');
-    expect(publisher).toContain("connection.status !== 'ready'");
-    expect(publisher).toContain('duplicateBlocks.length > 0');
-    expect(publisher).toContain('!presence.valid');
+    expect(publisher).toContain("platform.connectionStatus === 'not_configured'");
+    expect(publisher).toContain('media.length === 0');
+    expect(publisher).toContain('errors.length > 0');
   });
 });
