@@ -52,7 +52,7 @@ describe('Connected Apps OAuth contract', () => {
 describe('Connected Apps Integration Gateway contract', () => {
   it('has an explicit operation allow-list and resolves authenticated ATLAS context', () => {
     const gateway = source(gatewayPath);
-    for (const action of ['connections', 'connection', 'verify', 'execute', 'revoke']) {
+    for (const action of ['connections', 'connection', 'verify', 'execute', 'revoke', 'grants', 'grant', 'revoke-grant', 'audit']) {
       expect(gateway).toContain(`'${action}'`);
     }
     expect(gateway).toContain('resolveIntegrationContext');
@@ -72,6 +72,32 @@ describe('Connected Apps Integration Gateway contract', () => {
     const execute = gateway.indexOf('adapter.executeCapability');
     expect(policy).toBeGreaterThan(-1);
     expect(execute).toBeGreaterThan(policy);
+  });
+
+  it('requires a real active grant and validates provider scopes before creating a grant', () => {
+    const gateway = source(gatewayPath);
+    expect(gateway).toContain('requiredProviderScopes');
+    expect(gateway).toContain('createIntegrationGrant');
+    expect(gateway).toContain('revokeIntegrationGrant');
+    expect(gateway).toContain("requirePermission(context, 'integrations.manage')");
+    expect(gateway).toContain('integration_provider_scope_missing');
+  });
+
+  it('exposes tenant-scoped grants and metadata-only activity through repository methods', () => {
+    const repository = source(repositoryPath);
+    for (const method of ['listGrants', 'createIntegrationGrant', 'revokeIntegrationGrant', 'listIntegrationEvents']) {
+      expect(repository).toContain(`function ${method}`);
+    }
+    expect(repository).toContain('atlas_integration_grants');
+    expect(repository).toContain('atlas_integration_events');
+  });
+
+  it('refreshes once and verifies before retrying a Microsoft capability after authorization failure', () => {
+    const gateway = source(gatewayPath);
+    expect(gateway).toContain('refreshMicrosoftCredential');
+    expect(gateway).toContain('adapter.refresh');
+    expect(gateway).toContain('adapter.verify');
+    expect(gateway).toContain("state: 'reconnect_required'");
   });
 
   it('revokes local credential use and keeps provider management URL as sanitized metadata', () => {
