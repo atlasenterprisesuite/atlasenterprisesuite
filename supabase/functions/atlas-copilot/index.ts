@@ -78,7 +78,7 @@ async function handleChat(req){
   if(!message)return json({ok:false,error:'invalid_input'},400);
   const legacy=String(body?.context||'').trim().slice(0,12000),intent=String(body?.intent||'balanced'),mode=String(body?.mode||'auto');
   const {registry,providers}=await readinessFor(rt,intent);
-  const router=createIntelligenceRouter({providers});
+  const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers});
   const council=createCouncilOrchestrator({registry});
   const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway()});
   const request=body?.context!==undefined&&body?.module===undefined
