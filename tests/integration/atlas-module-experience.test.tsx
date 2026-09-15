@@ -49,14 +49,15 @@ describe('ATLAS ASTRA-derived module experience', () => {
   });
 
   it.each([
-    ['/', 'ATLAS Enterprise Suite', 'One governed enterprise ecosystem'],
-    ['/finance', 'ATLAS Finance', 'Finance intelligence, execution and control'],
-    ['/finance/accounting', 'ATLAS Accounting', 'Accounting intelligence with governed execution']
-  ])('applies the module experience at %s while preserving implemented destinations', (path, eyebrow, heading) => {
+    ['/', 'ATLAS Enterprise Suite', 'One governed enterprise ecosystem', 'One operating system for governed enterprise work.'],
+    ['/finance', 'ATLAS Finance', 'Finance', 'Finance intelligence, execution and control.'],
+    ['/finance/accounting', 'ATLAS Accounting', 'Accounting', 'Accounting intelligence with governed execution.']
+  ])('applies the module experience at %s while preserving implemented destinations', (path, eyebrow, heading, narrative) => {
     render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
     const main = screen.getByRole('main');
     expect(within(main).getByText(eyebrow)).toBeInTheDocument();
     expect(within(main).getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(within(main).getByText(narrative)).toBeInTheDocument();
   });
 
   it('keeps Finance operational routes reachable from the new experience', () => {
