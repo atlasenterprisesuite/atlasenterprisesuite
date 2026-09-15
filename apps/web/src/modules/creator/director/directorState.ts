@@ -139,6 +139,15 @@ export function directorReducer(state: DirectorState, action: DirectorAction): D
     case 'provider.select':
       return changed(state, { ...spec, providerPreference: action.providerId });
     case 'save.succeeded':
-      return { spec: action.spec, dirty: false };
+      return {
+        spec: {
+          ...spec,
+          ...action.spec,
+          id: action.spec.id,
+          version: action.spec.version,
+          updatedAt: action.spec.updatedAt
+        },
+        dirty: false
+      };
   }
 }
