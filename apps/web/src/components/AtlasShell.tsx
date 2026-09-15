@@ -5,22 +5,7 @@ import {
   getCachedAtlasShellOrganization,
   type AtlasShellOrganization
 } from '../lib/atlasSession';
-
-const navItems = [
-  { to: '/', label: 'Home' },
-  { to: '/work', label: 'Work' },
-  { to: '/business', label: 'Business' },
-  { to: '/finance', label: 'Finance' },
-  { to: '/finance/accounting/accounts-payable', label: 'Payables' },
-  { to: '/crm', label: 'CRM' },
-  { to: '/payroll', label: 'Payroll' },
-  { to: '/health', label: 'Health' },
-  { to: '/learning', label: 'Learning' },
-  { to: '/hospitality', label: 'Hospitality' },
-  { to: '/ride', label: 'Ride' },
-  { to: '/studio', label: 'Creator' },
-  { to: '/execution/manager/readiness', label: 'Execution' }
-];
+import { ATLAS_NAV_ITEMS } from '../modules/registry';
 
 export function AtlasShell({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
@@ -50,7 +35,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <div><span>ATLAS</span><small>Enterprise Suite</small></div>
         </div>
         <nav aria-label="ATLAS modules">
-          {navItems.map((item) => (
+          {ATLAS_NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
