@@ -1,0 +1,49 @@
+# Node / package managers
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+
+# Build and test output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+credentials*.json
+service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local worktrees and scratch
+.worktrees/
+worktrees/
+.tmp/
+tmp/
+
+# Logs and local runtime artifacts
+*.log
+logs/
+.wrangler/
+.supabase/
