@@ -83,12 +83,17 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
-          curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/" > /dev/null
-          curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/finance/accounting/accounts-payable" > /dev/null
-          HEALTH="$(curl --retry 5 --retry-delay 3 --fail --silent --show-error "$DEPLOYMENT_URL/healthz")"
-          echo "$HEALTH" | grep -q '"status": "ok"'
-          echo "$HEALTH" | grep -q '"evidence_scope": "static-frontend"\|"environment": "production-artifact"'
-          echo "Workers Static Assets smoke verification passed." >> "$GITHUB_STEP_SUMMARY"
+          ROOT_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/")"
+          SPA_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/finance/accounting/accounts-payable")"
+          HEALTH_STATUS="$(curl --retry 5 --retry-delay 3 --silent --show-error --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL/healthz")"
+
+          test "$ROOT_STATUS" = "401" || { echo "::error::Expected anonymous root request to be denied with 401, got $ROOT_STATUS"; exit 1; }
+          test "$SPA_STATUS" = "401" || { echo "::error::Expected anonymous SPA request to be denied with 401, got $SPA_STATUS"; exit 1; }
+          test "$HEALTH_STATUS" = "401" || { echo "::error::Expected anonymous health request to be denied with 401, got $HEALTH_STATUS"; exit 1; }
+
+          echo "Access gateway smoke verification passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Anonymous root, SPA route, and healthz requests were denied with 401 as expected." >> "$GITHUB_STEP_SUMMARY"
+          echo "Authenticated asset delivery is covered by the RS256 Access gateway contract tests." >> "$GITHUB_STEP_SUMMARY"
           echo "Custom-domain cutover remains a separate production gate." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record Cloudflare deployment evidence in ATLAS Manager
@@ -107,7 +112,7 @@ jobs:
             -H "Authorization: Bearer $OIDC_TOKEN" \
             -H "Content-Type: application/json" \
             "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=record" \
-            --data "$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,root_reachable:true,spa_route_reachable:true,healthz_static_frontend:true},metadata:{deployment_url:process.env.DEPLOYMENT_URL,production_domain_cutover:false}}))")" \
+            --data "$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,access_gateway_fail_closed:true,anonymous_root_denied:true,anonymous_spa_route_denied:true,anonymous_healthz_denied:true},metadata:{deployment_url:process.env.DEPLOYMENT_URL,anonymous_expected_status:401,production_domain_cutover:false}}))")" \
             > /tmp/atlas-infra-evidence.json
 
           echo "Cloudflare deployment evidence recorded in Supabase ATLAS Manager." >> "$GITHUB_STEP_SUMMARY"
