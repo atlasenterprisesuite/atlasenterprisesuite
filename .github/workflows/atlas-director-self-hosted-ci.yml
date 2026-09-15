@@ -1,9 +1,9 @@
-name: ATLAS Director Self-Hosted Verification
+name: ATLAS Director GitHub Verification
 
 on:
   push:
     branches:
-      - ci/atlas-director-self-hosted-verify
+      - fix/creator-db-hardening
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
