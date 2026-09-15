@@ -12,6 +12,8 @@ import { RideHomePage } from '../../apps/web/src/modules/ride/RideHomePage';
 const root = process.cwd();
 const moduleRoot = resolve(root, 'apps/web/src/modules/ride');
 const routeSource = () => readFileSync(resolve(moduleRoot, 'RideRoutes.tsx'), 'utf8');
+const rootRouterSource = () => readFileSync(resolve(root, 'apps/web/src/main.tsx'), 'utf8');
+const atlasShellSource = () => readFileSync(resolve(root, 'apps/web/src/components/AtlasShell.tsx'), 'utf8');
 
 describe('ATLAS Ride compliance routes', () => {
   it('exposes every protected route in the approved hierarchy', () => {
@@ -25,6 +27,14 @@ describe('ATLAS Ride compliance routes', () => {
     ]) expect(source).toContain(`path="${route}"`);
     expect(source).toContain('AtlasShell');
     expect(source).toContain('RequireAtlasIdentity');
+  });
+
+  it('wires Ride into the root router and global ATLAS navigation', () => {
+    const rootSource = rootRouterSource();
+    expect(rootSource).toContain("import { RideRoutes } from './modules/ride/RideRoutes';");
+    expect(rootSource).toContain("location.pathname.startsWith('/ride')");
+    expect(rootSource).toContain("import './modules/ride/ride.css';");
+    expect(atlasShellSource()).toContain("{ to: '/ride', label: 'Ride' }");
   });
 
   it('links Ride to Driver / Partner', () => {

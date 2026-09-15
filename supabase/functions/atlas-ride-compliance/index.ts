@@ -106,12 +106,6 @@ async function submitProfilePhoto(req: Request) {
     });
 
     const finalized = await finalizeProfilePhotoSubmission(ctx, submission.id, uploaded);
-    await recordComplianceAudit(ctx, {
-      subjectUserId: ctx.userId,
-      requirementId: requirement.id,
-      submissionId: submission.id,
-      eventType: 'submission.submitted'
-    });
     return json({ ok: true, ...finalized }, 201);
   } catch (error) {
     if (uploaded?.path) {
@@ -132,14 +126,7 @@ async function maybeStartReview(ctx: Awaited<ReturnType<typeof resolveContext>>,
   if (submission.subjectUserId === ctx.userId) return submission;
   requireCompliancePermission(ctx.permissions, 'ride.compliance.review');
   if (submission.status !== 'submitted') return submission;
-  const reviewed = await markSubmissionUnderReview(ctx, submissionId);
-  await recordComplianceAudit(ctx, {
-    subjectUserId: reviewed.subjectUserId,
-    requirementId: reviewed.requirementId,
-    submissionId: reviewed.id,
-    eventType: 'review.started'
-  });
-  return reviewed;
+  return markSubmissionUnderReview(ctx, submissionId);
 }
 
 async function preview(req: Request, url: URL) {
@@ -168,12 +155,6 @@ async function approve(req: Request) {
   if (!submissionId) throw new Error('invalid_request');
   const staged = await maybeStartReview(ctx, submissionId);
   const result = await approveSubmission(ctx, staged.id);
-  await recordComplianceAudit(ctx, {
-    subjectUserId: result.submission.subjectUserId,
-    requirementId: result.requirement.id,
-    submissionId: result.submission.id,
-    eventType: 'review.approved'
-  });
   return json({ ok: true, ...result });
 }
 
@@ -186,13 +167,6 @@ async function reject(req: Request) {
   if (!submissionId) throw new Error('invalid_request');
   const staged = await maybeStartReview(ctx, submissionId);
   const result = await rejectSubmission(ctx, staged.id, reason);
-  await recordComplianceAudit(ctx, {
-    subjectUserId: result.submission.subjectUserId,
-    requirementId: result.requirement.id,
-    submissionId: result.submission.id,
-    eventType: 'review.rejected',
-    metadata: { reason: result.submission.decisionReason }
-  });
   return json({ ok: true, ...result });
 }
 
