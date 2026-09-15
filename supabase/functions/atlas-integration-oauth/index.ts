@@ -254,7 +254,7 @@ async function callback(req: Request, url: URL) {
     });
 
     const identity = await adapter.verify({ accessToken: tokens.accessToken, scopes: tokens.scopes });
-    await updateConnection(context, connection.id, {
+    const verifiedConnection = await updateConnection(context, connection.id, {
       state: 'verified',
       authorized: true,
       provider_verified: true,
@@ -267,6 +267,7 @@ async function callback(req: Request, url: URL) {
       updated_by: context.userId,
       updated_at: new Date().toISOString()
     });
+    if (!verifiedConnection) throw integrationError('connection_update_failed', 500);
 
     await writeIntegrationEvent(context, {
       provider: 'microsoft',
