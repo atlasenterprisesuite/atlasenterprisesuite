@@ -14,6 +14,12 @@ describe('ATLAS Creator privileged E2E verifier contract', () => {
     expect(source).toContain('purpose: PURPOSE');
   });
 
+  it('fails closed instead of claiming an existing synthetic org owned by another user', () => {
+    expect(source).toContain("select('id,created_by')");
+    expect(source).toContain('synthetic_org_ownership_mismatch');
+    expect(source).toContain('created_by');
+  });
+
   it('verifies save, read, audit and cleanup without generation', () => {
     expect(source).toContain("?api=readiness");
     expect(source).toContain("?api=save");
