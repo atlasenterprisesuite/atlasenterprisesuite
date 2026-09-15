@@ -64,6 +64,18 @@ describe('ATLAS Unified AI routing', () => {
     });
   });
 
+  it('selects only organization-allowed providers in auto mode', () => {
+    const router = createIntelligenceRouter({
+      providers: [provider('openai'), provider('gemini'), provider('codex-sovereign')],
+      allowedProviders: ['gemini'],
+    });
+    expect(router.route({ mode: 'auto', intent: 'balanced', capabilities_requested: ['generation'] })).toMatchObject({
+      mode: 'auto',
+      providers: ['gemini'],
+      fallback_used: true,
+    });
+  });
+
   it('requires at least two verified providers for council mode', () => {
     const router = createIntelligenceRouter({
       providers: [provider('openai'), provider('gemini', { verified: false })],
