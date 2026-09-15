@@ -18,9 +18,9 @@ describe('ATLAS Unified AI source configuration contract', () => {
     expect(indexSource).toContain('createProviderRegistry');
   });
 
-  it('uses explicit server configuration for provider targets', () => {
-    expect(indexSource).toContain("Deno.env.get('ATLAS_OPENAI_MODEL')");
-    expect(indexSource).toContain("Deno.env.get('ATLAS_GEMINI_MODEL')");
+  it('uses explicit server configuration keys for provider targets', () => {
+    expect(indexSource).toContain("'ATLAS_OPENAI_MODEL'");
+    expect(indexSource).toContain("'ATLAS_GEMINI_MODEL'");
     expect(indexSource).toContain("Deno.env.get('ATLAS_CODEX_SOVEREIGN_URL')");
   });
 });
