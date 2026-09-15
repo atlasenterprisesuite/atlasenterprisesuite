@@ -7,6 +7,7 @@ import {
   EnterpriseExperiencePage,
   FinanceExperiencePage
 } from '../modules/experience/AtlasModuleExperiences';
+import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
@@ -26,6 +27,14 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/finance/accounting') {
     return <AccountingExperiencePage />;
+  }
+
+  if (pathname === '/galaxy') {
+    return (
+      <RequireAtlasIdentity>
+        <AtlasGalaxyPage />
+      </RequireAtlasIdentity>
+    );
   }
 
   if (pathname === '/crm' || pathname.startsWith('/crm/')) {
