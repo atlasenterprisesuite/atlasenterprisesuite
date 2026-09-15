@@ -7,6 +7,15 @@ import { App } from '../../apps/web/src/App';
 describe('ATLAS Neuroplasticity routes', () => {
   beforeEach(() => window.localStorage.clear());
 
+  it('renders Learning through the shared ASTRA module experience with a real Practice Lab route', () => {
+    render(<MemoryRouter initialEntries={['/learning']}><App /></MemoryRouter>);
+    expect(screen.getByRole('heading', { name: 'Learning' })).toBeInTheDocument();
+    expect(document.querySelector('.module-experience-page')).toBeTruthy();
+    expect(screen.getByText('Practice, recovery and measurable progress under one governed learning context.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Neuroplasticity Program/i })).toHaveAttribute('href', '/learning/neuroplasticity');
+    expect(screen.getByText('Clinical diagnosis & treatment').closest('[aria-disabled="true"]')).toBeTruthy();
+  });
+
   it.each([
     ['/health/wellbeing/neuroplasticity', 'ATLAS Health · Wellbeing'],
     ['/learning/neuroplasticity', 'ATLAS Learning · Practice Lab']
