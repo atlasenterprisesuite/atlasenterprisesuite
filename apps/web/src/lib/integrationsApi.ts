@@ -12,6 +12,7 @@ export type BrowserIntegrationConnection = {
   connectorClass: 'user_oauth' | 'infrastructure';
   environment: string | null;
   lastErrorCode: string | null;
+  providerManagementUrl: string | null;
 };
 
 export type BrowserIntegrationGrant = {
@@ -49,6 +50,17 @@ function nullableText(value: unknown): string | null {
   return valueText || null;
 }
 
+function safeExternalUrl(value: unknown): string | null {
+  const candidate = nullableText(value);
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map((item) => text(item)).filter(Boolean))];
@@ -69,7 +81,8 @@ export function normalizeIntegrationConnection(raw: unknown): BrowserIntegration
     scopes: stringArray(row.scopes ?? row.granted_scopes),
     connectorClass,
     environment: nullableText(row.environment),
-    lastErrorCode: nullableText(row.last_error_code)
+    lastErrorCode: nullableText(row.last_error_code),
+    providerManagementUrl: safeExternalUrl(row.provider_management_url)
   };
 }
 
@@ -242,6 +255,6 @@ export async function revokeIntegration(providerKey: string): Promise<{
   if (!data.connection) throw new Error('integration_connection_missing');
   return {
     connection: normalizeIntegrationConnection(data.connection),
-    providerManagementUrl: nullableText(data.provider_management_url)
+    providerManagementUrl: safeExternalUrl(data.provider_management_url)
   };
 }
