@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { CrmConnectionView } from '../../../../../../packages/core/src/crm';
+import { ModuleExperiencePage, type ModuleExperienceSection } from '../../../components/ModuleExperiencePage';
 import { CrmApiError, crmApi } from './crmApi';
 
 const workspaces = [
@@ -11,6 +12,30 @@ const workspaces = [
   { to: '/crm/activities', title: 'Activities', description: 'Tasks, calls, meetings, notes and email activity.' },
   { to: '/crm/integrations', title: 'Integrations', description: 'Connection readiness and provider controls.' }
 ] as const;
+
+const crmSections: ModuleExperienceSection[] = [
+  {
+    eyebrow: 'Customer architecture',
+    title: 'Provider-backed customer operations',
+    description: 'CRM workspaces stay inside the authenticated ATLAS organization and read only from authorized provider-backed operations.',
+    cards: workspaces.map((workspace) => ({
+      label: 'CRM',
+      title: workspace.title,
+      description: workspace.description,
+      to: workspace.to
+    }))
+  },
+  {
+    eyebrow: 'Governance',
+    title: 'Connection truth before metrics',
+    description: 'ATLAS separates presentation from provider readiness so customer data and connection state remain source-backed.',
+    cards: [
+      { label: 'Identity', title: 'Organization scoped', description: 'CRM requests remain bound to the authenticated ATLAS organization context.' },
+      { label: 'Provider', title: 'Verified provider state', description: 'Connection readiness continues to come from the existing CRM connection-status operation.' },
+      { label: 'Evidence', title: 'No fabricated pipeline totals', description: 'Pipeline totals, revenue, counts and activity metrics stay hidden unless an authorized live provider response supplies them.' }
+    ]
+  }
+];
 
 const stateLabel: Record<CrmConnectionView['state'], string> = {
   unconfigured: 'Not configured',
@@ -47,23 +72,23 @@ export function CrmHomePage() {
   }, []);
 
   return (
-    <section className="crm-page page-stack" aria-labelledby="crm-title">
-      <header className="page-header crm-hero">
-        <div>
-          <p className="eyebrow">ATLAS Business Suite</p>
-          <h1 id="crm-title">ATLAS CRM</h1>
-          <p>Governed customer operations using the authenticated ATLAS organization and provider-backed data only.</p>
-        </div>
-        <div className="crm-connection-summary" aria-live="polite">
-          {loading ? (
-            <span className="crm-status neutral">Checking connection</span>
-          ) : error ? (
-            <span className="crm-status error">Status unavailable</span>
-          ) : connection ? (
-            <span className={`crm-status ${connection.state}`}>{stateLabel[connection.state]}</span>
-          ) : null}
-        </div>
-      </header>
+    <ModuleExperiencePage
+      eyebrow="ATLAS CRM"
+      title="ATLAS CRM"
+      description="Governed customer operations using the authenticated ATLAS organization and provider-backed data only."
+      narrative="Customer intelligence, relationship context and governed provider data."
+      sections={crmSections}
+      statusNote="No pipeline totals, revenue, customer counts or activity metrics are shown unless they come from an authorized live provider response."
+    >
+      <div className="crm-connection-summary" aria-live="polite">
+        {loading ? (
+          <span className="crm-status neutral">Checking connection</span>
+        ) : error ? (
+          <span className="crm-status error">Status unavailable</span>
+        ) : connection ? (
+          <span className={`crm-status ${connection.state}`}>{stateLabel[connection.state]}</span>
+        ) : null}
+      </div>
 
       {error ? <div className="crm-banner error" role="alert">{error}</div> : null}
       {connection && connection.state !== 'connected' ? (
@@ -93,16 +118,6 @@ export function CrmHomePage() {
           {connection.lastVerifiedAt ? <small>Verified {new Date(connection.lastVerifiedAt).toLocaleString()}</small> : null}
         </div>
       ) : null}
-
-      <nav className="module-grid" aria-label="CRM workspaces">
-        {workspaces.map((item) => (
-          <Link key={item.to} className="module-card enabled" to={item.to}>
-            <span>CRM</span><strong>{item.title}</strong><p>{item.description}</p>
-          </Link>
-        ))}
-      </nav>
-
-      <div className="notice">No pipeline totals, revenue, customer counts or activity metrics are shown unless they come from an authorized live provider response.</div>
-    </section>
+    </ModuleExperiencePage>
   );
 }
