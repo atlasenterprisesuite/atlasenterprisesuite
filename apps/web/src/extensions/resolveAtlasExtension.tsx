@@ -1,7 +1,13 @@
 import { Link } from 'react-router-dom';
+import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
+import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/studio/content') {
+    return <RequireAtlasIdentity><ContentIntelligencePage /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/health/wellbeing/neuroplasticity') {
     return <NeuroplasticityProgramPage entry="health" />;
   }
