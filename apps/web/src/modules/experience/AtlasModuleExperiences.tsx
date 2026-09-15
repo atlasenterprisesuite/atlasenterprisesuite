@@ -1,0 +1,160 @@
+import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+
+const enterpriseSections: ModuleExperienceSection[] = [
+  {
+    eyebrow: 'Architecture',
+    title: 'One suite, many governed operating systems',
+    description: 'ATLAS keeps enterprise functions inside one organization context, one navigation model and one governed execution boundary.',
+    cards: [
+      { label: 'Business', title: 'Business Suite', description: 'Growth operations and governed publishing workflows.', to: '/business' },
+      { label: 'Finance', title: 'Finance', description: 'Accounting and financial operations with live routes for current implemented capabilities.', to: '/finance' },
+      { label: 'Customer', title: 'CRM', description: 'Provider-backed customer, company, opportunity and service workflows.', to: '/crm' },
+      { label: 'People', title: 'Payroll', description: 'Governed payroll workspace using the authenticated ATLAS organization.', to: '/payroll' },
+      { label: 'Learning', title: 'Learning', description: 'Structured practice and neuroplasticity programs with visible safety boundaries.', to: '/learning' },
+      { label: 'Health', title: 'ATLAS Health', description: 'Governed research and wellbeing tooling with explicit evidence boundaries.', to: '/health' },
+      { label: 'Creative', title: 'Creator Studio', description: 'Image, video, voice and content intelligence workspaces.', to: '/studio' },
+      { label: 'Execution', title: 'Guided Execution', description: 'Launch governed workflows through the shared execution engine.', to: '/execution/manager/readiness' }
+    ]
+  },
+  {
+    eyebrow: 'Vertical systems',
+    title: 'Connected operational domains',
+    description: 'Vertical products remain part of the same ATLAS identity and organization instead of becoming isolated applications.',
+    cards: [
+      { label: 'Hospitality', title: 'Hospitality', description: 'Hotel and hospitality access, operations and governed integration surfaces.', to: '/hospitality/access' },
+      { label: 'Mobility', title: 'Ride', description: 'Driver, compliance and mobility operations with truthful provider boundaries.', to: '/ride' },
+      { label: 'People', title: 'HR & Time', description: 'Commercial HR, time and recruiting depth is still being reconciled into the canonical suite.', status: 'Canonical module depth in progress' },
+      { label: 'Commerce', title: 'Inventory & Purchasing', description: 'Required commercial workflows remain gated until their canonical routes and data contracts are complete.', status: 'Canonical module depth in progress' },
+      { label: 'Operations', title: 'POS & Projects', description: 'Shared execution concepts exist; complete commercial module surfaces are not yet represented as active routes.', status: 'Canonical module depth in progress' },
+      { label: 'Intelligence', title: 'Analytics', description: 'Reporting exists across modules, while the universal analytics hub remains a gated commercial capability.', status: 'Universal hub not yet active' }
+    ]
+  },
+  {
+    eyebrow: 'Sovereign trust',
+    title: 'Execution must remain verifiable',
+    description: 'ATLAS presents readiness truthfully: implemented routes are navigable, external dependencies remain explicit and unavailable capabilities are never disguised as live.',
+    cards: [
+      { label: 'Identity', title: 'Organization context', description: 'The shared shell carries authenticated organization and role context across modules.' },
+      { label: 'Governance', title: 'RBAC & audit', description: 'Sensitive operations remain subject to existing permission and audit boundaries.' },
+      { label: 'Evidence', title: 'No fabricated state', description: 'Metrics, provider connectivity and operational claims must come from authorized sources.' }
+    ]
+  }
+];
+
+const financeSections: ModuleExperienceSection[] = [
+  {
+    eyebrow: 'Financial architecture',
+    title: 'Accounting is the operational core',
+    description: 'Current finance routes expose implemented accounting workflows while broader commercial domains stay gated until their canonical contracts exist.',
+    cards: [
+      { label: 'Accounting', title: 'Accounting', description: 'Open the governed Accounting module landing surface.', to: '/finance/accounting' },
+      { label: 'Payables', title: 'Accounts Payable', description: 'Vendor bills, aging, balances, approvals and payment application state.', to: '/finance/accounting/accounts-payable' },
+      { label: 'Reporting', title: 'Automotive Sales', description: 'Vehicle, F&I, fixed operations, inventory and floorplan financial reporting.', to: '/finance/accounting/reports/automotive-sales' }
+    ]
+  },
+  {
+    eyebrow: 'Commercial expansion',
+    title: 'Finance depth without false readiness',
+    description: 'Capabilities without a complete canonical route remain visible as governed gates, not fake screens.',
+    cards: [
+      { label: 'Receivables', title: 'Accounts Receivable', description: 'AR remains incomplete in the current canonical commercial surface.', status: 'Reconciliation required' },
+      { label: 'Ledger', title: 'General Ledger & Close', description: 'Broader journal and close work exists but is not yet proven as one complete current workflow.', status: 'Canonical workflow incomplete' },
+      { label: 'Cash', title: 'Bank Reconciliation', description: 'Bank and cash reconciliation must be recovered into the current architecture before activation.', status: 'Canonical route not active' },
+      { label: 'Treasury', title: 'Treasury & Forecasting', description: 'No live treasury metrics or banking connection is represented without an authorized source.', status: 'Provider and product gates apply' }
+    ]
+  },
+  {
+    eyebrow: 'Control',
+    title: 'Financial truth is a product requirement',
+    description: 'ATLAS Finance keeps source state, approvals and organization boundaries visible instead of presenting invented totals or connectivity.',
+    cards: [
+      { label: 'Tenant', title: 'Organization scoped', description: 'Finance remains inside the authenticated ATLAS organization boundary.' },
+      { label: 'Approvals', title: 'Governed execution', description: 'Sensitive financial actions must respect existing permission and approval controls.' },
+      { label: 'Evidence', title: 'Source-backed reporting', description: 'Operational values are shown only when a real configured source provides them.' }
+    ]
+  }
+];
+
+const accountingSections: ModuleExperienceSection[] = [
+  {
+    eyebrow: 'Accounting architecture',
+    title: 'Working books, governed workflows',
+    description: 'The current Accounting surface links directly to the implemented operational slices and keeps unfinished commercial breadth explicit.',
+    cards: [
+      { label: 'Operations', title: 'Accounts Payable', description: 'Vendor obligations, aging, approvals and payment application state.', to: '/finance/accounting/accounts-payable' },
+      { label: 'Reports', title: 'Automotive Sales Financial Reporting', description: 'Departmental dealership reporting with F&I, fixed operations, inventory and floorplan controls.', to: '/finance/accounting/reports/automotive-sales' }
+    ]
+  },
+  {
+    eyebrow: 'Accounting engine',
+    title: 'Next canonical accounting capabilities',
+    description: 'These capabilities are required for commercial completeness but remain gated until implementation, data contracts and tests converge in the canonical route graph.',
+    cards: [
+      { label: 'AR', title: 'Accounts Receivable', description: 'Customer receivables and collections are not yet a complete canonical current-main workflow.', status: 'Incomplete canonical surface' },
+      { label: 'GL', title: 'General Ledger', description: 'Journal and ledger domain work requires final route and workflow reconciliation.', status: 'Reconciliation required' },
+      { label: 'Cash', title: 'Bank Reconciliation', description: 'Cash and bank matching remains gated until verified accounting capability is recovered into the current architecture.', status: 'Canonical route not active' },
+      { label: 'Close', title: 'Period Close', description: 'A complete governed close workflow is not yet proven in the canonical product surface.', status: 'Commercial workflow incomplete' }
+    ]
+  },
+  {
+    eyebrow: 'Governance',
+    title: 'Auditability before automation',
+    description: 'Accounting automation must preserve tenant scope, authorization, evidence and traceable state transitions.',
+    cards: [
+      { label: 'Controls', title: 'Permission boundary', description: 'Existing ATLAS identity and role controls remain the authorization source.' },
+      { label: 'Audit', title: 'Traceable actions', description: 'Sensitive operations continue to require auditable execution paths.' },
+      { label: 'Data', title: 'No invented balances', description: 'Financial values must originate from configured records and authorized integrations.' }
+    ]
+  }
+];
+
+export function EnterpriseExperiencePage() {
+  return (
+    <ModuleExperiencePage
+      eyebrow="ATLAS Enterprise Suite"
+      title="One governed enterprise ecosystem"
+      description="Finance, CRM, Payroll, Health, Creator and operational verticals share one shell, organization context and execution boundary."
+      narrative="One operating system for governed enterprise work."
+      actions={[
+        { label: 'Open Finance', to: '/finance' },
+        { label: 'Open CRM', to: '/crm', variant: 'secondary' }
+      ]}
+      sections={enterpriseSections}
+      statusNote="Only implemented ATLAS routes are active. Planned or incomplete commercial capabilities remain visibly gated until their code, data contracts, permissions and tests exist."
+    />
+  );
+}
+
+export function FinanceExperiencePage() {
+  return (
+    <ModuleExperiencePage
+      eyebrow="ATLAS Finance"
+      title="Finance"
+      description="Governed financial operations inside the shared ATLAS organization and permission model."
+      narrative="Finance intelligence, execution and control."
+      actions={[
+        { label: 'Open Accounting', to: '/finance/accounting' },
+        { label: 'Open Accounts Payable', to: '/finance/accounting/accounts-payable', variant: 'secondary' }
+      ]}
+      sections={financeSections}
+      statusNote="No revenue, cash, banking or forecasting value is presented as live unless it comes from an authorized configured source."
+    />
+  );
+}
+
+export function AccountingExperiencePage() {
+  return (
+    <ModuleExperiencePage
+      eyebrow="ATLAS Accounting"
+      title="Accounting"
+      description="Working accounting slices use the same governed tenant scope, permissions and reporting contracts as the rest of ATLAS."
+      narrative="Accounting intelligence with governed execution."
+      actions={[
+        { label: 'Accounts Payable', to: '/finance/accounting/accounts-payable' },
+        { label: 'Automotive Sales Report', to: '/finance/accounting/reports/automotive-sales', variant: 'secondary' }
+      ]}
+      sections={accountingSections}
+      statusNote="Inactive accounting capabilities are shown as readiness gates instead of links so ATLAS never implies a workflow exists before it is implemented and verified."
+    />
+  );
+}
