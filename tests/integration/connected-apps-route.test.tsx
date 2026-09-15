@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -110,7 +110,7 @@ describe('ATLAS Connected Apps settings experience', () => {
     renderConnectedApps('/settings/security/connected-apps/microsoft');
 
     expect(await screen.findByRole('heading', { name: 'Microsoft' })).toBeInTheDocument();
-    expect(screen.getByText('Verified')).toBeInTheDocument();
+    expect(screen.getByText('Verified', { selector: '.connected-app-status' })).toBeInTheDocument();
     expect(screen.getByText('w***u@hotmail.com')).toBeInTheDocument();
     for (const tab of ['Overview', 'Permissions', 'Used By', 'Activity', 'Security']) {
       expect(screen.getByRole('tab', { name: tab })).toBeInTheDocument();
