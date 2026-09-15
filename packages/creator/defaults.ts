@@ -38,6 +38,7 @@ export function createEmptyProductionSpec(options: {
     },
     cameraDefaults: emptyCamera(),
     motionRules: [],
+    motionComposition: null,
     audioPlan: {
       musicDescription: '', ambientSound: '', soundEffects: [], dialogue: [],
       voiceReferenceAssetIds: [], syncRules: []
