@@ -15,6 +15,11 @@ describe('atlas-infra-evidence provider-neutral contract', () => {
     expect(source).toContain("if (!ALLOWED_VERIFICATION_TYPES.has(verificationType))");
   });
 
+  it('accepts Cloudflare edge challenge as a distinct evidence status', () => {
+    expect(source).toContain("'blocked_by_edge_challenge'");
+    expect(source).toContain('statuses: [...ALLOWED_STATUSES]');
+  });
+
   it('allows only approved main-branch infrastructure workflows through OIDC', () => {
     expect(source).toContain(".github/workflows/production-deploy.yml@refs/heads/main");
     expect(source).toContain(".github/workflows/cloudflare-deploy.yml@refs/heads/main");
