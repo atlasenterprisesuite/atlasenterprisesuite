@@ -5,6 +5,7 @@ import {
   validateMedia,
   type PlatformId
 } from '../../../../../../packages/social/src/platforms';
+import './social.css';
 
 type MediaPreview = { file: File; url: string };
 
