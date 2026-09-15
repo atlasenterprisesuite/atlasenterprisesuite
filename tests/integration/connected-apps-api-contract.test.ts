@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 const oauthPath = 'supabase/functions/atlas-integration-oauth/index.ts';
 const gatewayPath = 'supabase/functions/atlas-integrations/index.ts';
 const repositoryPath = 'supabase/functions/_shared/integrations/repository.ts';
-const migrationPath = 'supabase/migrations/20260915161500_connected_apps_microsoft_foundation.sql';
+const oauthReturnMigrationPath = 'supabase/migrations/20260915163000_connected_apps_oauth_return_path.sql';
 
 function source(path: string) {
   return readFileSync(path, 'utf8');
@@ -41,7 +41,7 @@ describe('Connected Apps OAuth contract', () => {
   });
 
   it('stores only an internal safe return path in the OAuth state row', () => {
-    const migration = source(migrationPath);
+    const migration = source(oauthReturnMigrationPath);
     expect(migration).toContain('return_to');
     expect(migration).toMatch(/return_to[\s\S]*check/i);
   });
