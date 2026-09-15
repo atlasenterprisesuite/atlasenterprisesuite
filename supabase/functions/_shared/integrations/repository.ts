@@ -69,6 +69,8 @@ export type IntegrationConnectionRow = {
   state: string;
   connector_class: string;
   environment: string | null;
+  authorized?: boolean;
+  provider_verified?: boolean;
   provider_account_id: string | null;
   provider_account_label: string | null;
   granted_scopes: string[];
@@ -82,8 +84,9 @@ export type IntegrationConnectionRow = {
 
 const connectionSelect = [
   'id','org_id','provider','connection_name','state','connector_class','environment',
-  'provider_account_id','provider_account_label','granted_scopes','credential_ref',
-  'last_verified_at','last_error_code','connected_by','connected_at','revoked_at'
+  'authorized','provider_verified','provider_account_id','provider_account_label',
+  'granted_scopes','credential_ref','last_verified_at','last_error_code',
+  'connected_by','connected_at','revoked_at'
 ].join(',');
 
 export async function listConnections(
@@ -106,6 +109,59 @@ export async function loadConnection(
   if (selector.connectionName) path += `&connection_name=eq.${esc(selector.connectionName)}`;
   path += `&select=${connectionSelect}&limit=1`;
   return (await integrationAdminClient(deps).rows<IntegrationConnectionRow>(path))[0] || null;
+}
+
+export async function upsertMicrosoftConnection(
+  context: IntegrationRequestContext,
+  input: {
+    credentialRef: string;
+    state: 'connected_unverified' | 'verified';
+    providerVerified: boolean;
+    providerAccountId?: string | null;
+    providerAccountLabel?: string | null;
+    grantedScopes: string[];
+    verifiedAt?: string | null;
+  },
+  deps: AdminDeps = {}
+): Promise<IntegrationConnectionRow> {
+  const now = new Date().toISOString();
+  const rows = await integrationAdminClient(deps).rows<IntegrationConnectionRow>(
+    'atlas_integration_connections?on_conflict=org_id,provider,connection_name',
+    {
+      method: 'POST',
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify({
+        org_id: context.organizationId,
+        provider: 'microsoft',
+        connection_name: 'default',
+        auth_kind: 'oauth2',
+        authorized: true,
+        provider_verified: input.providerVerified,
+        state: input.state,
+        secret_ref: input.credentialRef,
+        metadata: {},
+        created_by: context.userId,
+        updated_by: context.userId,
+        connector_class: 'user_oauth',
+        environment: null,
+        provider_account_id: input.providerAccountId || null,
+        provider_account_label: input.providerAccountLabel || null,
+        granted_scopes: input.grantedScopes,
+        credential_ref: input.credentialRef,
+        last_verified_at: input.verifiedAt || null,
+        last_error_code: null,
+        last_error_at: null,
+        connected_by: context.userId,
+        connected_at: now,
+        revoked_at: null,
+        updated_at: now
+      })
+    }
+  );
+  if (!rows[0]?.id) throw integrationError('connection_store_failed', 500);
+  return rows[0];
 }
 
 export type IntegrationGrantRow = {
@@ -180,6 +236,77 @@ export async function deleteCredentialRecord(
   await integrationAdminClient(deps).request(
     `atlas_integration_credentials?id=eq.${esc(input.id)}&org_id=eq.${esc(organizationId)}&provider=eq.${esc(input.provider)}`,
     { method: 'DELETE', headers: { Prefer: 'return=minimal' } }
+  );
+}
+
+export type OAuthStateRow = {
+  id: string;
+  org_id: string;
+  user_id: string;
+  provider: string;
+  nonce_hash: string;
+  requested_permissions: string[];
+  expires_at: string;
+  consumed_at: string | null;
+  created_at: string;
+  code_verifier_credential_ref: string | null;
+  return_to: string | null;
+};
+
+export async function createOAuthState(
+  input: {
+    organizationId: string;
+    userId: string;
+    provider: 'microsoft';
+    nonceHash: string;
+    requestedPermissions: string[];
+    expiresAt: string;
+    codeVerifierCredentialRef: string;
+    returnTo: string;
+  },
+  deps: AdminDeps = {}
+): Promise<OAuthStateRow> {
+  const rows = await integrationAdminClient(deps).rows<OAuthStateRow>('atlas_oauth_states', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({
+      org_id: input.organizationId,
+      user_id: input.userId,
+      provider: input.provider,
+      nonce_hash: input.nonceHash,
+      requested_permissions: input.requestedPermissions,
+      expires_at: input.expiresAt,
+      consumed_at: null,
+      code_verifier_credential_ref: input.codeVerifierCredentialRef,
+      return_to: input.returnTo
+    })
+  });
+  if (!rows[0]?.id) throw integrationError('oauth_state_store_failed', 500);
+  return rows[0];
+}
+
+export async function findOAuthStateByHash(
+  provider: 'microsoft',
+  nonceHash: string,
+  deps: AdminDeps = {}
+): Promise<OAuthStateRow | null> {
+  const rows = await integrationAdminClient(deps).rows<OAuthStateRow>(
+    `atlas_oauth_states?provider=eq.${provider}&nonce_hash=eq.${esc(nonceHash)}&consumed_at=is.null&select=id,org_id,user_id,provider,nonce_hash,requested_permissions,expires_at,consumed_at,created_at,code_verifier_credential_ref,return_to&limit=1`
+  );
+  return rows[0] || null;
+}
+
+export async function consumeOAuthState(
+  id: string,
+  deps: AdminDeps = {}
+): Promise<void> {
+  await integrationAdminClient(deps).request(
+    `atlas_oauth_states?id=eq.${esc(id)}&consumed_at=is.null`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ consumed_at: new Date().toISOString() })
+    }
   );
 }
 
