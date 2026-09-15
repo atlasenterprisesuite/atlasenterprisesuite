@@ -112,12 +112,19 @@ describe('Connected Apps Integration Gateway contract', () => {
     expect(gateway).toContain("state: 'reconnect_required'");
   });
 
-  it('revokes local credential use and never reports revoked if persistence did not update', () => {
+  it('revokes local credential use only after revoked state is durably persisted', () => {
     const gateway = source(gatewayPath);
-    expect(gateway).toContain("state: 'revoked'");
-    expect(gateway).toContain('deleteCredentialRecord');
-    expect(gateway).toContain('providerManagementUrl');
-    expect(gateway).not.toContain("safeConnection(updated || { ...row, state: 'revoked'");
+    const revokeStart = gateway.indexOf('async function handleRevoke(');
+    expect(revokeStart).toBeGreaterThan(-1);
+    const revokeHandler = gateway.slice(revokeStart);
+    const persistRevoked = revokeHandler.indexOf("state: 'revoked'");
+    const requirePersistedUpdate = revokeHandler.indexOf("if (!updated) throw integrationError('connection_update_failed', 500)");
+    const deleteCredential = revokeHandler.indexOf('deleteCredentialRecord');
+    expect(persistRevoked).toBeGreaterThan(-1);
+    expect(requirePersistedUpdate).toBeGreaterThan(persistRevoked);
+    expect(deleteCredential).toBeGreaterThan(requirePersistedUpdate);
+    expect(revokeHandler).toContain('providerManagementUrl');
+    expect(revokeHandler).not.toContain("safeConnection(updated || { ...row, state: 'revoked'");
   });
 
   it('repository supports one-time OAuth state and Microsoft connection upsert on canonical tables', () => {
