@@ -1,6 +1,7 @@
 const ACCESS_AUD = 'fccf9afb05c59c6e1edf08f1aab547f259627d6783f27dafbae366230e203835';
 const TEAM_ORIGIN = 'https://winder-aranguren.cloudflareaccess.com';
 const JWKS_URL = `${TEAM_ORIGIN}/cdn-cgi/access/certs`;
+const KEY_CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface AssetsBinding {
   fetch(request: Request): Promise<Response> | Response;
@@ -25,6 +26,14 @@ interface JwtPayload {
 interface JwkSet {
   keys?: JsonWebKey[];
 }
+
+interface CachedKey {
+  key: CryptoKey;
+  expiresAt: number;
+}
+
+const keyCache = new Map<string, CachedKey>();
+const keyLoads = new Map<string, Promise<CryptoKey>>();
 
 function decodeBase64Url(value: string): Uint8Array {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -51,6 +60,67 @@ function audienceMatches(audience: unknown): boolean {
   return Array.isArray(audience) && audience.some((entry) => entry === ACCESS_AUD);
 }
 
+async function loadPublicKey(kid: string): Promise<CryptoKey> {
+  const jwksResponse = await fetch(JWKS_URL, {
+    headers: { accept: 'application/json' }
+  });
+  if (!jwksResponse.ok) {
+    throw new Error('Unable to load Access signing keys');
+  }
+
+  const jwks = (await jwksResponse.json()) as JwkSet;
+  const jwk = jwks.keys?.find(
+    (candidate) =>
+      candidate.kid === kid &&
+      candidate.kty === 'RSA' &&
+      (candidate.alg === undefined || candidate.alg === 'RS256') &&
+      (candidate.use === undefined || candidate.use === 'sig')
+  );
+
+  if (!jwk) {
+    throw new Error('Unknown signing key');
+  }
+
+  return crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256'
+    },
+    false,
+    ['verify']
+  );
+}
+
+async function getPublicKey(kid: string): Promise<CryptoKey> {
+  const now = Date.now();
+  const cached = keyCache.get(kid);
+  if (cached && now < cached.expiresAt) {
+    return cached.key;
+  }
+  if (cached) {
+    keyCache.delete(kid);
+  }
+
+  const existingLoad = keyLoads.get(kid);
+  if (existingLoad) {
+    return existingLoad;
+  }
+
+  const load = loadPublicKey(kid).then((key) => {
+    keyCache.set(kid, { key, expiresAt: Date.now() + KEY_CACHE_TTL_MS });
+    return key;
+  });
+  keyLoads.set(kid, load);
+
+  try {
+    return await load;
+  } finally {
+    keyLoads.delete(kid);
+  }
+}
+
 async function verifyAccessAssertion(token: string): Promise<void> {
   const segments = token.split('.');
   if (segments.length !== 3 || segments.some((segment) => segment.length === 0)) {
@@ -65,37 +135,7 @@ async function verifyAccessAssertion(token: string): Promise<void> {
     throw new Error('Unsupported JWT header');
   }
 
-  const jwksResponse = await fetch(JWKS_URL, {
-    headers: { accept: 'application/json' }
-  });
-  if (!jwksResponse.ok) {
-    throw new Error('Unable to load Access signing keys');
-  }
-
-  const jwks = (await jwksResponse.json()) as JwkSet;
-  const jwk = jwks.keys?.find(
-    (candidate) =>
-      candidate.kid === header.kid &&
-      candidate.kty === 'RSA' &&
-      (candidate.alg === undefined || candidate.alg === 'RS256') &&
-      (candidate.use === undefined || candidate.use === 'sig')
-  );
-
-  if (!jwk) {
-    throw new Error('Unknown signing key');
-  }
-
-  const publicKey = await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256'
-    },
-    false,
-    ['verify']
-  );
-
+  const publicKey = await getPublicKey(header.kid);
   const signingInput = new TextEncoder().encode(`${headerSegment}.${payloadSegment}`);
   const signature = decodeBase64Url(signatureSegment);
   const signatureValid = await crypto.subtle.verify(
