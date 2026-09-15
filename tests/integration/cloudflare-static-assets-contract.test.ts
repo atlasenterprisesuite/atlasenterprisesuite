@@ -27,6 +27,14 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('cloudflare-native-github-app');
   });
 
+  it('resolves an invalid configured account ID only when the token exposes exactly one accessible account', () => {
+    expect(workflow).toContain('Resolve Cloudflare account ID');
+    expect(workflow).toContain('https://api.cloudflare.com/client/v4/accounts');
+    expect(workflow).toContain('::add-mask::$RESOLVED_ACCOUNT_ID');
+    expect(workflow).toContain('steps.cloudflare_account.outputs.account_id');
+    expect(workflow).toContain('Expected exactly one accessible Cloudflare account');
+  });
+
   it('exports the deployment probe before constructing ATLAS Manager evidence', () => {
     expect(workflow).toContain('export DEPLOYMENT_PROBE');
   });
