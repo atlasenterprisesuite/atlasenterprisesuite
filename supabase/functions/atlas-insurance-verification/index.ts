@@ -113,20 +113,16 @@ async function issue(ctx: InsuranceRequestContext, body: Record<string, unknown>
   const code = generateVerificationCode();
   const codeHash = await hashVerificationCode(id, code);
   const now = new Date();
-  const target = maskEmail(ctx.email);
   const challenge = await createChallenge(ctx.admin, {
     id,
-    org_id: ctx.orgId,
-    user_id: ctx.userId,
+    orgId: ctx.orgId,
+    userId: ctx.userId,
     scope,
-    resource_id: resourceId,
-    code_hash: codeHash,
-    delivery_channel: 'email',
-    delivery_target_masked: target,
-    expires_at: new Date(now.getTime() + OTP_TTL_SECONDS * 1000).toISOString(),
-    attempt_count: 0,
-    resend_count: 0,
-    last_sent_at: now.toISOString()
+    resourceId,
+    codeHash,
+    deliveryTargetMasked: maskEmail(ctx.email),
+    expiresAt: new Date(now.getTime() + OTP_TTL_SECONDS * 1000).toISOString(),
+    lastSentAt: now.toISOString()
   });
 
   try {

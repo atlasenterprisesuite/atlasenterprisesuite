@@ -20,12 +20,37 @@ export type ChallengeRecord = {
   updated_at: string;
 };
 
+export type NewChallenge = {
+  id: string;
+  orgId: string;
+  userId: string;
+  scope: ChallengeRecord['scope'];
+  resourceId: string | null;
+  codeHash: string;
+  deliveryTargetMasked: string;
+  expiresAt: string;
+  lastSentAt: string;
+};
+
 const CHALLENGE_FIELDS = 'id,org_id,user_id,scope,resource_id,code_hash,delivery_channel,delivery_target_masked,expires_at,consumed_at,attempt_count,resend_count,last_sent_at,created_at,updated_at';
 
-export async function createChallenge(admin: SupabaseClient, row: Record<string, unknown>) {
+export async function createChallenge(admin: SupabaseClient, input: NewChallenge) {
   const { data, error } = await admin
     .from('insurance_verification_challenges')
-    .insert(row)
+    .insert({
+      id: input.id,
+      org_id: input.orgId,
+      user_id: input.userId,
+      scope: input.scope,
+      resource_id: input.resourceId,
+      code_hash: input.codeHash,
+      delivery_channel: 'email',
+      delivery_target_masked: input.deliveryTargetMasked,
+      expires_at: input.expiresAt,
+      attempt_count: 0,
+      resend_count: 0,
+      last_sent_at: input.lastSentAt
+    })
     .select(CHALLENGE_FIELDS)
     .single();
   if (error || !data) throw insuranceError('persistence_failed', 500);
