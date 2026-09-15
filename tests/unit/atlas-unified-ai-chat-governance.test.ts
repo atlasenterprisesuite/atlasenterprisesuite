@@ -113,6 +113,19 @@ describe('ATLAS Tool Gateway', () => {
     expect(evaluated.approval_required).toHaveLength(0);
   });
 
+  it('does not deduplicate distinct proposals that collide in the audit hash', () => {
+    const gateway = createToolGateway();
+    const evaluated = gateway.evaluate({
+      context: { permissions: [] },
+      proposals: [
+        { provider: 'openai', tool_name: 'tool_5aUgqoustr', arguments: {}, risk_class: 'read-only', required_permissions: [], side_effect: 'none', cost_class: 'none' },
+        { provider: 'gemini', tool_name: 'tool_aQo4cTYVPs', arguments: {}, risk_class: 'read-only', required_permissions: [], side_effect: 'none', cost_class: 'none' },
+      ],
+    });
+    expect(evaluated.accepted).toHaveLength(2);
+    expect(evaluated.accepted[0].proposal_hash).toBe(evaluated.accepted[1].proposal_hash);
+  });
+
   it('requires approval for mutations and denies missing permissions', () => {
     const gateway = createToolGateway();
     const evaluated = gateway.evaluate({
