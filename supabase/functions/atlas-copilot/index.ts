@@ -7,6 +7,7 @@ import {createCodexSovereignAdapter} from './codex-sovereign-adapter.mjs';
 import {createProviderRegistry} from './provider-registry.mjs';
 import {createCouncilOrchestrator} from './council-orchestrator.mjs';
 import {createToolGateway} from './tool-gateway.mjs';
+import {executeIntegrationCapability} from './integration-capability.mjs';
 import {renderAtlasCopilotPage} from './ui.mjs';
 
 const U='https://ggmanzcgtlrvqfoccgsh.supabase.co';
@@ -74,7 +75,20 @@ async function handleStatus(req){
 }
 async function handleChat(req){
   if(req.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
-  const body=await parseJson(req),resolved=await contextFor(req,body?.organization_id),rt=runtime(),store=storeFor(rt.serviceRoleKey),message=String(body?.message||'').trim();
+  const body=await parseJson(req),resolved=await contextFor(req,body?.organization_id);
+  if(body?.integration_capability!==undefined){
+    const capability=String(body.integration_capability||'').trim();
+    if(!capability)return json({ok:false,error:'invalid_input'},400);
+    const integration=await executeIntegrationCapability({
+      request:authRequest(req,resolved.context.organization_id),
+      organizationId:resolved.context.organization_id,
+      module:String(body?.module||'assistant'),
+      capability,
+      fetchFn:fetch
+    });
+    return json({ok:integration.ok,integration,execution:{repositoryMutation:false,providerModelInvoked:false,mode:'integration-capability'}});
+  }
+  const rt=runtime(),store=storeFor(rt.serviceRoleKey),message=String(body?.message||'').trim();
   if(!message)return json({ok:false,error:'invalid_input'},400);
   const legacy=String(body?.context||'').trim().slice(0,12000),intent=String(body?.intent||'balanced'),mode=String(body?.mode||'auto');
   const {registry,providers}=await readinessFor(rt,intent);
