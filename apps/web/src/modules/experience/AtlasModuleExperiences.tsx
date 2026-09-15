@@ -164,7 +164,7 @@ export function BusinessExperiencePage() {
       eyebrow="ATLAS Business Suite"
       title="Business Suite"
       description="Connected growth, customer, creative and publishing operations inside one governed organization."
-      narrative="Growth operations, customer workflows and governed publishing."
+      narrative="Growth operations, customer workflows and governed publishing under one enterprise context."
       actions={[
         { label: 'Open Social Publisher', to: '/business/growth/social-publisher' },
         { label: 'Open CRM', to: '/crm', variant: 'secondary' }
