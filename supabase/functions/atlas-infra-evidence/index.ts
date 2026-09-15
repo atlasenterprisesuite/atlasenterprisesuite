@@ -5,14 +5,19 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
 const OWNER = 'atlasenterprisesuite';
 const AUDIENCE = 'atlas-infrastructure-evidence';
-const VERSION = 2;
+const VERSION = 3;
 
 const ALLOWED_WORKFLOWS = new Set([
   `${REPO}/.github/workflows/production-deploy.yml@refs/heads/main`,
   `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`
 ]);
 const ALLOWED_PROVIDERS = new Set(['github', 'supabase', 'cloudflare', 'vercel']);
-const ALLOWED_STATUSES = new Set(['passed', 'failed', 'blocked']);
+const ALLOWED_STATUSES = new Set([
+  'passed',
+  'failed',
+  'blocked',
+  'blocked_by_edge_challenge'
+]);
 const ALLOWED_VERIFICATION_TYPES = new Set([
   'infrastructure-deployment',
   'infrastructure-control',
@@ -152,6 +157,7 @@ Deno.serve(async (req: Request) => {
       auth: 'github-oidc',
       evidence_store: 'atlas_runtime_verification_runs',
       providers: [...ALLOWED_PROVIDERS],
+      statuses: [...ALLOWED_STATUSES],
       verification_types: [...ALLOWED_VERIFICATION_TYPES]
     });
   }
