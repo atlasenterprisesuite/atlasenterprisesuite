@@ -8,7 +8,7 @@ This file defines the required GitHub administrative state for the canonical pro
 ## Required branch/ruleset controls
 
 - Changes to `main` require a pull request; direct push is not an approved release path.
-- Force push must be disabled.
+- Git force push must be disabled.
 - Branch deletion must be disabled.
 - Pull-request review conversations must be resolved before merge.
 - Required status checks must be current with the branch before merge.
