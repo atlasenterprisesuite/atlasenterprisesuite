@@ -1,3 +1,5 @@
+export type IntegrationProvider = 'google' | 'hubspot';
+
 export type IntegrationConnectionState =
   | 'unconfigured'
   | 'authorizing'
@@ -39,3 +41,5 @@ export function canReportConnected(input: {
 }) {
   return input.authorized && input.providerVerified;
 }
+
+export * from './crm';

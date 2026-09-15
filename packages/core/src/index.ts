@@ -1,18 +1,14 @@
-export type TenantScope = {
-  tenantId: string;
-  organizationId: string;
-};
+import type { AtlasPermission, IntegrationPermission as CoreIntegrationPermission } from './permissions';
+import type { IntegrationProvider } from './integrations';
+import type { TenantScope } from './scope';
 
-export type AccountingPermission =
-  | 'accounting.read'
-  | 'accounting.write'
-  | 'accounting.post'
-  | 'accounting.close'
-  | 'accounting.admin'
-  | 'audit.read';
+export * from './scope';
+export * from './permissions';
+export * from './audit';
+export * from './integrations';
+export * from './endpoints';
 
-export type IntegrationPermission =
-  | 'integrations.admin'
+export type GoogleIntegrationPermission =
   | 'google.gmail.read'
   | 'google.gmail.write'
   | 'google.calendar.read'
@@ -20,7 +16,7 @@ export type IntegrationPermission =
   | 'google.drive.read'
   | 'google.drive.write';
 
-export type IntegrationProvider = 'google';
+type GoogleOAuthPermission = 'integrations.admin' | GoogleIntegrationPermission;
 
 export type IntegrationConnectionStatus =
   | 'disconnected'
@@ -43,7 +39,7 @@ export type GoogleOAuthStatePayload = {
   expiresAt: number;
 };
 
-const GOOGLE_OAUTH_SCOPES: Record<IntegrationPermission, readonly string[]> = {
+const GOOGLE_OAUTH_SCOPES: Record<GoogleOAuthPermission, readonly string[]> = {
   'integrations.admin': [],
   'google.gmail.read': ['https://www.googleapis.com/auth/gmail.readonly'],
   'google.gmail.write': ['https://www.googleapis.com/auth/gmail.compose'],
@@ -105,7 +101,7 @@ function assertGoogleOAuthStatePayload(
       typeof permission !== 'string' ||
       permission === 'integrations.admin' ||
       !(permission in GOOGLE_OAUTH_SCOPES) ||
-      GOOGLE_OAUTH_SCOPES[permission as IntegrationPermission].length === 0
+      GOOGLE_OAUTH_SCOPES[permission as GoogleOAuthPermission].length === 0
     ) {
       throw new Error('Invalid Google OAuth state permission');
     }
@@ -130,22 +126,17 @@ async function importGoogleOAuthStateKey(secret: string): Promise<CryptoKey> {
   );
 }
 
-export function sameScope(a: TenantScope, b: TenantScope) {
-  return a.tenantId === b.tenantId && a.organizationId === b.organizationId;
-}
-export * from './scope';
-export * from './permissions';
-export * from './audit';
-export * from './integrations';
-export * from './endpoints';
-
-import type { AtlasPermission } from './permissions';
-
 export function hasIntegrationPermission(
   granted: readonly string[],
-  required: IntegrationPermission
+  required: CoreIntegrationPermission | GoogleIntegrationPermission
 ) {
-  return granted.includes(required) || granted.includes('integrations.admin');
+  if (required.startsWith('google.')) {
+    return granted.includes(required);
+  }
+  if (required.startsWith('integrations.')) {
+    return granted.includes(required) || granted.includes('integrations.admin');
+  }
+  return false;
 }
 
 export function googleOAuthScopesForPermissions(
@@ -156,7 +147,7 @@ export function googleOAuthScopesForPermissions(
   for (const permission of permissions) {
     if (!(permission in GOOGLE_OAUTH_SCOPES)) continue;
 
-    for (const scope of GOOGLE_OAUTH_SCOPES[permission as IntegrationPermission]) {
+    for (const scope of GOOGLE_OAUTH_SCOPES[permission as GoogleOAuthPermission]) {
       scopes.add(scope);
     }
   }
