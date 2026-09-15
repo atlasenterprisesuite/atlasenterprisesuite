@@ -94,6 +94,8 @@ export interface HubSpotConnectionStore {
 
 type ServiceFetch = typeof fetch;
 
+const HUBSPOT_CONNECTION_NAME = 'default';
+
 function required(value: string, label: string): string {
   const normalized = value.trim();
   if (!normalized) throw new Error(`${label} is required`);
@@ -102,6 +104,14 @@ function required(value: string, label: string): string {
 
 function filter(value: string): string {
   return encodeURIComponent(value);
+}
+
+function providerTruthForState(state: HubSpotConnectionRow['state'] | undefined) {
+  if (state === 'connected') return { authorized: true, provider_verified: true };
+  if (state === 'revoked' || state === 'expired') {
+    return { authorized: false, provider_verified: false };
+  }
+  return {};
 }
 
 export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
@@ -219,11 +229,22 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
   }
 
   async upsertConnection(input: HubSpotConnectionUpsert): Promise<HubSpotConnectionRow> {
-    const response = await this.request('atlas_integration_connections?on_conflict=org_id,provider', {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-      body: JSON.stringify(input)
-    });
+    const actorId = required(input.connected_by ?? '', 'HubSpot connection actor');
+    const response = await this.request(
+      'atlas_integration_connections?on_conflict=org_id,provider,connection_name',
+      {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify({
+          ...input,
+          connection_name: HUBSPOT_CONNECTION_NAME,
+          auth_kind: 'oauth2',
+          ...providerTruthForState(input.state),
+          created_by: actorId,
+          updated_by: actorId
+        })
+      }
+    );
     const row = (await this.rows<HubSpotConnectionRow>(response))[0];
     if (!row?.id) throw new Error('ATLAS integration connection upsert returned no row');
     return row;
@@ -231,7 +252,7 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
 
   async getConnection(organizationId: string): Promise<HubSpotConnectionRow | null> {
     const response = await this.request(
-      `atlas_integration_connections?org_id=eq.${filter(organizationId)}&provider=eq.hubspot&select=id,org_id,provider,state,provider_account_id,provider_account_label,granted_scopes,credential_ref,last_verified_at,last_success_at,last_error_code,last_error_at,connected_by,connected_at,revoked_at&limit=1`
+      `atlas_integration_connections?org_id=eq.${filter(organizationId)}&provider=eq.hubspot&connection_name=eq.${filter(HUBSPOT_CONNECTION_NAME)}&select=id,org_id,provider,state,provider_account_id,provider_account_label,granted_scopes,credential_ref,last_verified_at,last_success_at,last_error_code,last_error_at,connected_by,connected_at,revoked_at&limit=1`
     );
     return (await this.rows<HubSpotConnectionRow>(response))[0] ?? null;
   }
@@ -241,11 +262,11 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
     patch: Partial<Omit<HubSpotConnectionRow, 'id' | 'org_id' | 'provider'>>
   ): Promise<HubSpotConnectionRow | null> {
     const response = await this.request(
-      `atlas_integration_connections?org_id=eq.${filter(organizationId)}&provider=eq.hubspot`,
+      `atlas_integration_connections?org_id=eq.${filter(organizationId)}&provider=eq.hubspot&connection_name=eq.${filter(HUBSPOT_CONNECTION_NAME)}`,
       {
         method: 'PATCH',
         headers: { Prefer: 'return=representation' },
-        body: JSON.stringify(patch)
+        body: JSON.stringify({ ...patch, ...providerTruthForState(patch.state) })
       }
     );
     return (await this.rows<HubSpotConnectionRow>(response))[0] ?? null;
