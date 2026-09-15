@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getAssistantStatus, sendAssistantMessage } from '../../assistant/client';
+import {
+  assistantProviderSummary,
+  getAssistantStatus,
+  hasVerifiedAssistantProvider,
+  sendAssistantMessage,
+  type AssistantStatusResponse
+} from '../../assistant/client';
 import { resolveAssistantModule } from '../../assistant/routeContext';
 import { markGreetingSeen, readGreetingSeen } from '../../assistant/storage';
 import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
@@ -44,12 +50,22 @@ function errorMessage(cause: unknown) {
   return 'ATLAS Assistant could not complete that request.';
 }
 
-function providerCapability(state: string): { capability: AtlasCapabilityState; label: string; message: string } {
-  if (state === 'verified_for_request') return { capability: 'ready', label: 'ready', message: '' };
-  if (state === 'not_configured' || state === 'configured_unverified') {
-    return { capability: 'configuration-required', label: 'configuration required', message: 'ATLAS Intelligence is not verified for requests in this environment.' };
+function providerCapability(status: AssistantStatusResponse): { capability: AtlasCapabilityState; label: string; message: string } {
+  if (hasVerifiedAssistantProvider(status)) {
+    return { capability: 'ready', label: `${assistantProviderSummary(status)} ready`, message: '' };
   }
-  return { capability: 'unavailable', label: 'unavailable', message: 'ATLAS Intelligence is temporarily unavailable.' };
+
+  const states = status.providers?.map((provider) => provider.state) || [];
+  const configurationOnly = states.length > 0 && states.every((state) => state === 'configuration-required');
+  if (configurationOnly || status.provider_state === 'not_configured' || status.provider_state === 'configured_unverified') {
+    return {
+      capability: 'configuration-required',
+      label: 'configuration required',
+      message: 'ATLAS Intelligence has no verified provider for requests in this environment.'
+    };
+  }
+
+  return { capability: 'unavailable', label: 'unavailable', message: 'ATLAS Intelligence has no verified provider available right now.' };
 }
 
 export function AtlasAssistant() {
@@ -78,7 +94,7 @@ export function AtlasAssistant() {
     setTextCapability('configuration-required');
     try {
       const status = await getAssistantStatus();
-      const mapped = providerCapability(status.provider_state);
+      const mapped = providerCapability(status);
       setTextCapability(mapped.capability);
       setProviderLabel(mapped.label);
       setProviderError(mapped.message);
