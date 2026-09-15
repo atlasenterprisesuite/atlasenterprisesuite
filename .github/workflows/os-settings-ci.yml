@@ -1,0 +1,47 @@
+name: ATLAS OS Settings CI
+
+on:
+  push:
+    branches: ["feat/os-settings-p1"]
+    paths:
+      - "apps/web/src/modules/os/**"
+      - "apps/web/src/extensions/resolveAtlasExtension.tsx"
+      - "apps/web/src/components/AtlasShell.tsx"
+      - "packages/core/src/os-settings.ts"
+      - "supabase/migrations/20260915100000_os_settings_p1.sql"
+      - "tests/unit/os-settings-p1.test.ts"
+      - ".github/workflows/os-settings-ci.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/web/src/modules/os/**"
+      - "apps/web/src/extensions/resolveAtlasExtension.tsx"
+      - "apps/web/src/components/AtlasShell.tsx"
+      - "packages/core/src/os-settings.ts"
+      - "supabase/migrations/20260915100000_os_settings_p1.sql"
+      - "tests/unit/os-settings-p1.test.ts"
+      - ".github/workflows/os-settings-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run test:integration
+      - run: npm run build

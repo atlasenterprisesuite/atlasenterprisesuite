@@ -10,6 +10,7 @@ import {
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
+import { OsSettingsPage } from '../modules/os/OsSettingsPage';
 
 export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/') {
@@ -34,6 +35,10 @@ export function resolveAtlasExtension(pathname: string) {
         <CrmRoutes />
       </RequireAtlasIdentity>
     );
+  }
+
+  if (pathname === '/settings') {
+    return <RequireAtlasIdentity><OsSettingsPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/studio/content') {
