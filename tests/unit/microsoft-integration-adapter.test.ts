@@ -77,6 +77,21 @@ describe('Microsoft Connected Apps adapter', () => {
     })).rejects.toMatchObject({ code: 'capability_not_implemented', status: 409 });
   });
 
+  it('classifies refresh authorization failures as reauthorization-required HTTP semantics', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'invalid_grant'
+    }), { status: 401, headers: { 'content-type': 'application/json' } }));
+    const adapter = createMicrosoftAdapter({
+      clientId: 'client-id',
+      redirectUri: 'https://atlas.example.test/callback'
+    }, fetchFn);
+
+    await expect(adapter.refresh({
+      refreshToken: 'server-refresh-token',
+      capabilities: ['microsoft.profile.read']
+    })).rejects.toMatchObject({ code: 'microsoft_authorization_failed', status: 401 });
+  });
+
   it('maps provider/network failures without leaking token material', () => {
     const adapter = createMicrosoftAdapter({ clientId: 'client-id', redirectUri: 'https://atlas.example.test/callback' });
     const mapped = adapter.mapError(new Error('network failed with bearer super-secret-token'));
