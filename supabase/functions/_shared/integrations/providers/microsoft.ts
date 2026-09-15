@@ -102,10 +102,12 @@ export function createMicrosoftAdapter(config: MicrosoftConfig, fetchFn: typeof 
     let payload: any = {};
     try { payload = await response.json(); } catch { payload = {}; }
     if (!response.ok) {
+      const authorizationFailed = response.status === 401 || response.status === 403;
       const code = response.status === 429 ? 'microsoft_rate_limited'
-        : response.status === 401 || response.status === 403 ? 'microsoft_authorization_failed'
+        : authorizationFailed ? 'microsoft_authorization_failed'
         : 'microsoft_token_exchange_failed';
-      throw integrationError(code, response.status === 429 ? 429 : 502);
+      const status = response.status === 429 ? 429 : authorizationFailed ? 401 : 502;
+      throw integrationError(code, status);
     }
 
     const accessToken = String(payload?.access_token || '').trim();
