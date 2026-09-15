@@ -129,9 +129,7 @@ export async function upsertMicrosoftConnection(
     'atlas_integration_connections?on_conflict=org_id,provider,connection_name',
     {
       method: 'POST',
-      headers: {
-        Prefer: 'resolution=merge-duplicates,return=representation'
-      },
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
       body: JSON.stringify({
         org_id: context.organizationId,
         provider: 'microsoft',
@@ -177,19 +175,83 @@ export type IntegrationGrantRow = {
   revoked_at: string | null;
 };
 
+const grantSelect = [
+  'id','org_id','connection_id','principal_type','principal_id','module',
+  'capability','granted_by','granted_at','revoked_at'
+].join(',');
+
 export async function loadGrant(
   context: IntegrationRequestContext,
   input: { connectionId: string; module: string; capability: string },
   deps: AdminDeps = {}
 ): Promise<IntegrationGrantRow | null> {
   const rows = await integrationAdminClient(deps).rows<IntegrationGrantRow>(
-    `atlas_integration_grants?org_id=eq.${esc(context.organizationId)}&connection_id=eq.${esc(input.connectionId)}&module=eq.${esc(input.module)}&capability=eq.${esc(input.capability)}&revoked_at=is.null&select=*&order=granted_at.desc`
+    `atlas_integration_grants?org_id=eq.${esc(context.organizationId)}&connection_id=eq.${esc(input.connectionId)}&module=eq.${esc(input.module)}&capability=eq.${esc(input.capability)}&revoked_at=is.null&select=${grantSelect}&order=granted_at.desc`
   );
   return rows.find((grant) => {
     if (grant.principal_type === 'user') return grant.principal_id === context.userId;
     if (grant.principal_type === 'role') return grant.principal_id === context.role;
     return grant.principal_id === input.module;
   }) || null;
+}
+
+export async function listGrants(
+  context: IntegrationRequestContext,
+  connectionId: string,
+  deps: AdminDeps = {}
+): Promise<IntegrationGrantRow[]> {
+  return integrationAdminClient(deps).rows<IntegrationGrantRow>(
+    `atlas_integration_grants?org_id=eq.${esc(context.organizationId)}&connection_id=eq.${esc(connectionId)}&revoked_at=is.null&select=${grantSelect}&order=granted_at.desc`
+  );
+}
+
+export async function createIntegrationGrant(
+  context: IntegrationRequestContext,
+  input: {
+    connectionId: string;
+    principalType: 'user' | 'role' | 'module';
+    principalId: string;
+    module: string;
+    capability: string;
+  },
+  deps: AdminDeps = {}
+): Promise<IntegrationGrantRow> {
+  const rows = await integrationAdminClient(deps).rows<IntegrationGrantRow>(
+    'atlas_integration_grants?on_conflict=connection_id,principal_type,principal_id,module,capability',
+    {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({
+        org_id: context.organizationId,
+        connection_id: input.connectionId,
+        principal_type: input.principalType,
+        principal_id: input.principalId,
+        module: input.module,
+        capability: input.capability,
+        granted_by: context.userId,
+        granted_at: new Date().toISOString(),
+        revoked_at: null
+      })
+    }
+  );
+  if (!rows[0]?.id) throw integrationError('integration_grant_store_failed', 500);
+  return rows[0];
+}
+
+export async function revokeIntegrationGrant(
+  context: IntegrationRequestContext,
+  input: { grantId: string; connectionId: string },
+  deps: AdminDeps = {}
+): Promise<IntegrationGrantRow | null> {
+  const rows = await integrationAdminClient(deps).rows<IntegrationGrantRow>(
+    `atlas_integration_grants?id=eq.${esc(input.grantId)}&org_id=eq.${esc(context.organizationId)}&connection_id=eq.${esc(input.connectionId)}&revoked_at=is.null`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ revoked_at: new Date().toISOString() })
+    }
+  );
+  return rows[0] || null;
 }
 
 export type IntegrationCredentialRow = {
@@ -325,6 +387,42 @@ export async function updateConnection(
     }
   );
   return rows[0] || null;
+}
+
+export type IntegrationEventRow = {
+  id: string;
+  org_id: string;
+  actor_id: string | null;
+  provider: string;
+  connection_id: string | null;
+  action: string;
+  status_before: string | null;
+  status_after: string | null;
+  requested_scopes: string[];
+  module: string | null;
+  environment: string | null;
+  approval_id: string | null;
+  correlation_id: string;
+  outcome: string;
+  provider_error_code: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+const eventSelect = [
+  'id','org_id','actor_id','provider','connection_id','action','status_before','status_after',
+  'requested_scopes','module','environment','approval_id','correlation_id','outcome',
+  'provider_error_code','metadata','created_at'
+].join(',');
+
+export async function listIntegrationEvents(
+  context: IntegrationRequestContext,
+  connectionId: string,
+  deps: AdminDeps = {}
+): Promise<IntegrationEventRow[]> {
+  return integrationAdminClient(deps).rows<IntegrationEventRow>(
+    `atlas_integration_events?org_id=eq.${esc(context.organizationId)}&connection_id=eq.${esc(connectionId)}&select=${eventSelect}&order=created_at.desc&limit=100`
+  );
 }
 
 export async function insertIntegrationEvent(
