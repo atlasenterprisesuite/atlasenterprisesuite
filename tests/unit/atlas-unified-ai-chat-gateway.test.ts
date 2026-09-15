@@ -63,12 +63,20 @@ function makeGateway(costPolicy: any = { allowed_providers: ['openai', 'gemini',
   return { gateway: createIntelligenceGateway({ router, registry, council, store, costPolicy, toolGateway: createToolGateway() }), store };
 }
 
+const context = (request_id: string, permissions: string[]) => ({
+  organization_id: 'org-1',
+  user_id: 'user-1',
+  session_id: 'session-1',
+  request_id,
+  permissions,
+});
+
 describe('ATLAS Unified AI gateway', () => {
   it('keeps one conversation while switching from OpenAI to Gemini', async () => {
     const { gateway } = makeGateway();
-    const context = { organization_id: 'org-1', user_id: 'user-1', request_id: 'req-1', permissions: ['intelligence.use'] };
-    const first = await gateway.execute({ context, request: { message: 'First', mode: 'openai', intent: 'balanced' } });
-    const second = await gateway.execute({ context, request: { message: 'Second', conversation_id: first.conversation_id, mode: 'gemini', intent: 'balanced' } });
+    const principal = context('req-1', ['intelligence.use']);
+    const first = await gateway.execute({ context: principal, request: { message: 'First', mode: 'openai', intent: 'balanced' } });
+    const second = await gateway.execute({ context: principal, request: { message: 'Second', conversation_id: first.conversation_id, mode: 'gemini', intent: 'balanced' } });
     expect(second.conversation_id).toBe(first.conversation_id);
     expect(first.provider).toBe('openai');
     expect(second.provider).toBe('gemini');
@@ -85,7 +93,7 @@ describe('ATLAS Unified AI gateway', () => {
     const router = createIntelligenceRouter({ providers: [routeProviders[0]] });
     const store = fakeStore();
     const gateway = createIntelligenceGateway({ router, registry, store, costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] }, toolGateway: createToolGateway() });
-    const result = await gateway.execute({ context: { organization_id: 'org-1', user_id: 'user-1', request_id: 'req-2', permissions: ['intelligence.use', 'records.write'] }, request: { message: 'Update', mode: 'openai' } });
+    const result = await gateway.execute({ context: context('req-2', ['intelligence.use', 'records.write']), request: { message: 'Update', mode: 'openai' } });
     expect(result.tool_proposals.approval_required).toHaveLength(1);
     expect(result.tools_used).toEqual([]);
   });
@@ -93,7 +101,7 @@ describe('ATLAS Unified AI gateway', () => {
   it('requires cost approval when Council is not pre-authorized', async () => {
     const { gateway } = makeGateway({ allowed_providers: ['openai', 'gemini'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] });
     await expect(gateway.execute({
-      context: { organization_id: 'org-1', user_id: 'user-1', request_id: 'req-3', permissions: ['intelligence.use'] },
+      context: context('req-3', ['intelligence.use']),
       request: { message: 'Council', mode: 'council' },
     })).rejects.toMatchObject({ code: 'cost_approval_required' });
   });
