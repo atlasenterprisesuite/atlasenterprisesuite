@@ -99,7 +99,7 @@ describe('ATLAS Unified AI gateway', () => {
   });
 
   it('requires cost approval when Council is not pre-authorized', async () => {
-    const { gateway } = makeGateway({ allowed_providers: ['openai', 'gemini'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] });
+    const { gateway } = makeGateway({ allowed_providers: ['openai', 'gemini', 'codex-sovereign'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] });
     await expect(gateway.execute({
       context: context('req-3', ['intelligence.use']),
       request: { message: 'Council', mode: 'council' },
