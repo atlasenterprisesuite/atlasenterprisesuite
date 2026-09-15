@@ -44,7 +44,7 @@ describe('ATLAS Ride compliance schema contract', () => {
     expect(existsSync(atomicMigrationPath)).toBe(true);
     const atomicSql = readFileSync(atomicMigrationPath, 'utf8');
     expect(atomicSql).toContain('atlas_ride_compliance_review_transition');
-    expect(atomicSql).toContain("p_target_status in ('under_review','approved','rejected')");
+    expect(atomicSql).toContain("p_target_status not in ('under_review','approved','rejected')");
     expect(atomicSql).toContain("om.role in ('owner','admin','platform_admin')");
     expect(atomicSql).toContain("'review.started'");
     expect(atomicSql).toContain("'review.approved'");
