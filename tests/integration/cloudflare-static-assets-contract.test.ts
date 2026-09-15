@@ -31,10 +31,15 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('cloudflare-native-github-app');
   });
 
-  it('prefers the official Cloudflare GitHub App for main push deployments', () => {
+  it('prefers authorized direct Wrangler deployment whenever Cloudflare credentials are available', () => {
     expect(workflow).toContain('GITHUB_EVENT_NAME: ${{ github.event_name }}');
-    expect(workflow).toContain('if [ "$GITHUB_EVENT_NAME" = "push" ]; then');
-    expect(workflow).toContain('MODE="cloudflare-native-github-app"');
+    const credentialBranch = workflow.indexOf('if [ "$TOKEN_SECRET_PRESENT" = "true" ] && { [ "$ACCOUNT_SECRET_PRESENT" = "true" ] || [ "$ACCOUNT_VARIABLE_PRESENT" = "true" ]; }; then');
+    const directMode = workflow.indexOf('MODE="direct-wrangler"', credentialBranch);
+    const nativeFallback = workflow.indexOf('elif [ "$GITHUB_EVENT_NAME" = "push" ]; then', directMode);
+    expect(credentialBranch).toBeGreaterThan(-1);
+    expect(directMode).toBeGreaterThan(credentialBranch);
+    expect(nativeFallback).toBeGreaterThan(directMode);
+    expect(workflow.indexOf('MODE="cloudflare-native-github-app"', nativeFallback)).toBeGreaterThan(nativeFallback);
   });
 
   it('resolves an invalid configured account ID only when the token exposes exactly one accessible account', () => {
