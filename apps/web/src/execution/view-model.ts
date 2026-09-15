@@ -90,13 +90,19 @@ export function deriveStepAction(state: GuidedExecutionState, stepId: string): S
   if (state.workflow.status === 'completed') return { kind: 'done', label: 'Done', executable: false };
   const pilot = state.workflow.workflowType === 'manager.openai_domain_verification';
   const pendingApproval = pendingApprovalFor(state, step);
-  if (pendingApproval) return { kind: 'review_approval', label: 'Review approval', executable: true };
-  if (approvalRequired(step)) return { kind: 'request_approval', label: 'Request approval', executable: true };
 
   if (pilot) {
-    if (step.status === 'ready') return { kind: 'execute', label: 'Execute step', executable: true };
-    if (['running', 'blocked', 'failed'].includes(step.status)) return { kind: 'resume', label: 'Resume step', executable: true };
+    if (pendingApproval) return { kind: 'review_approval', label: 'Review approval', executable: true };
+    if (step.status === 'ready' || step.status === 'awaiting_approval') {
+      return { kind: 'execute', label: 'Execute step', executable: true };
+    }
+    if (['running', 'blocked', 'failed'].includes(step.status)) {
+      return { kind: 'resume', label: 'Resume step', executable: true };
+    }
   }
+
+  if (pendingApproval) return { kind: 'review_approval', label: 'Review approval', executable: true };
+  if (approvalRequired(step)) return { kind: 'request_approval', label: 'Request approval', executable: true };
 
   if (step.status === 'blocked' || step.status === 'failed' || stepBlockers(state, stepId).length > 0) {
     return { kind: 'blocked', label: 'Resolve blocker', executable: false };
