@@ -1,9 +1,9 @@
-name: ATLAS Director GitHub Verification
+name: ATLAS Director Self-Hosted Verification
 
 on:
   push:
     branches:
-      - test/creator-privileged-e2e
+      - ci/atlas-director-self-hosted-verify
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
       - name: Director focused unit tests
         run: npx vitest run tests/unit/atlas-director-domain.test.ts tests/unit/atlas-director-validator.test.ts tests/unit/atlas-director-compiler.test.ts tests/unit/creator-api.test.ts
       - name: Director focused integration tests
-        run: npx vitest run tests/integration/atlas-creator-route.test.tsx tests/integration/atlas-director-edge-contract.test.ts tests/integration/atlas-director-schema-contract.test.ts tests/integration/atlas-creator-privileged-e2e-contract.test.ts
+        run: npx vitest run tests/integration/atlas-creator-route.test.tsx tests/integration/atlas-director-edge-contract.test.ts tests/integration/atlas-director-schema-contract.test.ts
       - name: Full unit tests
         run: npm run test:unit
       - name: Full integration tests
