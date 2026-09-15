@@ -7,6 +7,7 @@ import {
   EnterpriseExperiencePage,
   FinanceExperiencePage
 } from '../modules/experience/AtlasModuleExperiences';
+import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
 export function resolveAtlasExtension(pathname: string) {
@@ -32,6 +33,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/studio/content') {
     return <RequireAtlasIdentity><ContentIntelligencePage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/health') {
+    return <HealthExperiencePage />;
   }
 
   if (pathname === '/health/wellbeing/neuroplasticity') {
