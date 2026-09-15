@@ -2,6 +2,7 @@ import { Link, Route, Routes } from 'react-router-dom';
 import { CrmHomePage } from './CrmHomePage';
 import { CrmActivitiesPage, CrmObjectListPage } from './CrmObjectListPage';
 import { CrmRecordPage } from './CrmRecordPage';
+import { HubSpotIntegrationPage } from './HubSpotIntegrationPage';
 import './crm.css';
 
 const contactAssociations = ['company', 'deal'] as const;
@@ -21,22 +22,6 @@ function CrmIntegrations() {
         <Link className="module-card enabled" to="/crm/integrations/hubspot">
           <span>Provider</span><strong>HubSpot</strong><p>OAuth connection, verification and governed disconnect controls.</p>
         </Link>
-      </div>
-    </section>
-  );
-}
-
-function HubSpotPlaceholder() {
-  return (
-    <section className="crm-page page-stack">
-      <header className="page-header">
-        <p className="eyebrow">ATLAS CRM · Integration</p>
-        <h1>HubSpot Integration</h1>
-        <p>Connection controls are governed by the ATLAS integration boundary.</p>
-      </header>
-      <div className="empty-state">
-        <strong>Connection controls loading in the next implementation slice</strong>
-        <span>No connected state is simulated on this route.</span>
       </div>
     </section>
   );
@@ -72,7 +57,7 @@ export function CrmRoutes() {
       } />
       <Route path="/crm/activities" element={<CrmActivitiesPage />} />
       <Route path="/crm/integrations" element={<CrmIntegrations />} />
-      <Route path="/crm/integrations/hubspot" element={<HubSpotPlaceholder />} />
+      <Route path="/crm/integrations/hubspot" element={<HubSpotIntegrationPage />} />
     </Routes>
   );
 }
