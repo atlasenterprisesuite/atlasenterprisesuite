@@ -7,7 +7,11 @@ const CREATOR = `${URL}/functions/v1/atlas-creator`;
 const EMAIL = 'atlas-creator-e2e@atlas.invalid';
 const ORG_NAME = 'ATLAS Creator E2E';
 const PURPOSE = 'creator-privileged-production-e2e';
-const VERSION = 1;
+const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
+const OWNER = 'atlasenterprisesuite';
+const OIDC_AUDIENCE = 'atlas-enterprise-suite-creator-e2e';
+const WORKFLOW_REF = `${REPO}/.github/workflows/verify-creator-production-e2e.yml@refs/heads/main`;
+const VERSION = 2;
 
 function headers(extra: Record<string, string> = {}) {
   return {
@@ -33,6 +37,92 @@ function randomPassword() {
   const bytes = new Uint8Array(36);
   crypto.getRandomValues(bytes);
   return [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
+}
+
+function b64u(value: string) {
+  let normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  while (normalized.length % 4) normalized += '=';
+  return Uint8Array.from(atob(normalized), character => character.charCodeAt(0));
+}
+
+function decodeJwtPart(value: string) {
+  return JSON.parse(new TextDecoder().decode(b64u(value)));
+}
+
+let jwksCache: { until: number; keys: JsonWebKey[] } | null = null;
+
+async function githubKeys() {
+  if (jwksCache && jwksCache.until > Date.now()) return jwksCache.keys;
+  const configuration = await fetch(
+    'https://token.actions.githubusercontent.com/.well-known/openid-configuration',
+    { cache: 'no-store' }
+  );
+  if (!configuration.ok) throw fail('github_oidc_configuration_unavailable', 503);
+  const configurationJson = await configuration.json();
+  const jwksUri = String(configurationJson?.jwks_uri || '');
+  if (!jwksUri.startsWith('https://token.actions.githubusercontent.com/')) {
+    throw fail('github_oidc_configuration_invalid', 503);
+  }
+  const jwksResponse = await fetch(jwksUri, { cache: 'no-store' });
+  if (!jwksResponse.ok) throw fail('github_oidc_keys_unavailable', 503);
+  const jwks = await jwksResponse.json();
+  const keys = Array.isArray(jwks?.keys) ? jwks.keys : [];
+  jwksCache = { until: Date.now() + 10 * 60 * 1000, keys };
+  return keys;
+}
+
+async function verifyGitHubOIDC(req: Request) {
+  const authorization = String(req.headers.get('authorization') || '');
+  const token = authorization.replace(/^Bearer\s+/i, '');
+  const parts = token.split('.');
+  if (parts.length !== 3) throw fail('github_oidc_required', 401);
+
+  let head: Record<string, unknown>;
+  let payload: Record<string, unknown>;
+  try {
+    head = decodeJwtPart(parts[0]);
+    payload = decodeJwtPart(parts[1]);
+  } catch {
+    throw fail('invalid_github_oidc', 401);
+  }
+
+  if (head.alg !== 'RS256' || typeof head.kid !== 'string' || !head.kid) {
+    throw fail('unsupported_github_oidc', 401);
+  }
+
+  const jwk = (await githubKeys()).find(key => key.kid === head.kid);
+  if (!jwk) throw fail('github_oidc_key_not_found', 401);
+
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  const valid = await crypto.subtle.verify(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    b64u(parts[2]),
+    new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
+  );
+
+  const now = Math.floor(Date.now() / 1000);
+  const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (
+    !valid ||
+    payload.iss !== 'https://token.actions.githubusercontent.com' ||
+    !audience.includes(OIDC_AUDIENCE) ||
+    Number(payload.exp || 0) <= now ||
+    Number(payload.nbf || 0) > now + 30
+  ) {
+    throw fail('github_oidc_verification_failed', 401);
+  }
+
+  if (payload.repository !== REPO) throw fail('github_oidc_scope_denied', 403);
+  if (payload.repository_owner !== OWNER) throw fail('github_oidc_scope_denied', 403);
+  if (payload.ref !== 'refs/heads/main') throw fail('github_oidc_scope_denied', 403);
+  if (payload.workflow_ref !== WORKFLOW_REF) throw fail('github_oidc_scope_denied', 403);
 }
 
 async function parseJson(response: Response) {
@@ -71,10 +161,13 @@ const admin = createClient(URL, SERVICE_ROLE, {
 
 async function authorize(req: Request) {
   const runtimeToken = String(req.headers.get('x-atlas-runtime-verifier-token') || '').trim();
-  if (!runtimeToken) throw fail('authentication_failed', 401);
-  const { data, error } = await admin.rpc('atlas_verify_runtime_invocation', { p_token: runtimeToken });
-  if (error) throw fail('verification_unavailable', 503);
-  if (data !== true) throw fail('permission_denied', 403);
+  if (runtimeToken) {
+    const { data, error } = await admin.rpc('atlas_verify_runtime_invocation', { p_token: runtimeToken });
+    if (error) throw fail('verification_unavailable', 503);
+    if (data !== true) throw fail('permission_denied', 403);
+    return;
+  }
+  await verifyGitHubOIDC(req);
 }
 
 async function prepareIdentity() {
@@ -328,7 +421,7 @@ Deno.serve(async (req: Request) => {
       ok: true,
       service: 'atlas-creator-e2e-verifier',
       version: VERSION,
-      auth: 'vault-backed-custom-token',
+      auth: 'runtime-token-or-github-oidc',
       target: 'atlas-creator',
       provider_calls: false
     });
