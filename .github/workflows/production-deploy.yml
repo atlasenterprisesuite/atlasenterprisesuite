@@ -5,10 +5,14 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "apps/web/**"
+      - "apps/**"
       - "packages/**"
       - "data/**"
+      - "services/**"
+      - "scripts/**"
       - "supabase/functions/**"
+      - "supabase/migrations/**"
+      - "worker/**"
       - "docs/architecture/ATLAS_MANAGER_SPEC.md"
       - "package.json"
       - "package-lock.json"
@@ -24,7 +28,7 @@ permissions:
 jobs:
   verify-build-readiness:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -33,36 +37,35 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Install native media verification dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          ffmpeg -version
+          ffprobe -version
+          espeak --version
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Security gate
-        run: npm audit --audit-level=high
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Integration tests
-        run: npm run test:integration
-
-      - name: Production build
-        run: npm run build
+      - name: Verify complete repository
+        run: npm run verify:all
 
       - name: Record Supabase-first readiness boundary
         run: |
           {
             echo "## ATLAS Supabase-first readiness gate"
             echo "- Canonical source validation: passed"
-            echo "- Security audit: passed"
+            echo "- Dependency security audit: passed"
             echo "- Typecheck: passed"
             echo "- Unit tests: passed"
             echo "- Integration tests: passed"
+            echo "- Supabase source/migration verification: passed"
+            echo "- Creator Native Python tests: passed"
             echo "- Vite production build: passed"
             echo "- Supabase ATLAS Manager: required control plane; runtime verified separately"
-            echo "- Vercel: optional; not part of this gate"
+            echo "- Vercel: optional legacy adapter; not part of this gate"
             echo "- Cloudflare production deployment: separate required stage; not claimed by this workflow"
             echo "- Public production verification: separate required stage; not claimed by this workflow"
           } >> "$GITHUB_STEP_SUMMARY"

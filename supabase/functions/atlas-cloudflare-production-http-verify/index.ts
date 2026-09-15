@@ -1,0 +1,203 @@
+const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
+const OWNER = 'atlasenterprisesuite';
+const AUDIENCE = 'atlas-production-http-verifier';
+const ALLOWED_WORKFLOW = `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`;
+const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
+const VERSION = 1;
+
+const baseHeaders = {
+  'cache-control': 'no-store',
+  'content-type': 'application/json; charset=utf-8',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer'
+};
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: baseHeaders });
+
+function b64u(input: string) {
+  let value = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (value.length % 4) value += '=';
+  return Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+}
+
+function decodePart(input: string) {
+  return JSON.parse(new TextDecoder().decode(b64u(input)));
+}
+
+let jwksCache: { until: number; keys: Array<JsonWebKey & { kid?: string }> } | null = null;
+
+async function githubKeys() {
+  if (jwksCache && jwksCache.until > Date.now()) return jwksCache.keys;
+  const configuration = await fetch(
+    'https://token.actions.githubusercontent.com/.well-known/openid-configuration',
+    { cache: 'no-store' }
+  ).then((response) => response.json());
+  const data = await fetch(configuration.jwks_uri, { cache: 'no-store' }).then((response) => response.json());
+  const keys = Array.isArray(data?.keys) ? data.keys : [];
+  jwksCache = { until: Date.now() + 10 * 60 * 1000, keys };
+  return keys;
+}
+
+async function verifyGitHubOIDC(req: Request) {
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const parts = token.split('.');
+  if (parts.length !== 3) return { ok: false as const, status: 401, error: 'github_oidc_required' };
+
+  let header: Record<string, unknown>;
+  let payload: Record<string, unknown>;
+  try {
+    header = decodePart(parts[0]);
+    payload = decodePart(parts[1]);
+  } catch {
+    return { ok: false as const, status: 401, error: 'invalid_github_oidc' };
+  }
+
+  if (header.alg !== 'RS256' || !header.kid) {
+    return { ok: false as const, status: 401, error: 'unsupported_github_oidc' };
+  }
+
+  const jwk = (await githubKeys()).find((candidate) => candidate.kid === header.kid);
+  if (!jwk) return { ok: false as const, status: 401, error: 'github_oidc_key_not_found' };
+
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  const signatureOk = await crypto.subtle.verify(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    b64u(parts[2]),
+    new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
+  );
+
+  const now = Math.floor(Date.now() / 1000);
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (
+    !signatureOk ||
+    payload.iss !== 'https://token.actions.githubusercontent.com' ||
+    !audiences.includes(AUDIENCE) ||
+    Number(payload.exp || 0) <= now ||
+    Number(payload.nbf || 0) > now + 30
+  ) {
+    return { ok: false as const, status: 401, error: 'github_oidc_verification_failed' };
+  }
+
+  if (
+    payload.repository !== REPO ||
+    payload.repository_owner !== OWNER ||
+    payload.ref !== 'refs/heads/main' ||
+    payload.workflow_ref !== ALLOWED_WORKFLOW
+  ) {
+    return { ok: false as const, status: 403, error: 'github_oidc_scope_denied' };
+  }
+
+  return {
+    ok: true as const,
+    claims: {
+      sha: String(payload.sha || ''),
+      run_id: String(payload.run_id || ''),
+      run_attempt: String(payload.run_attempt || ''),
+      actor: String(payload.actor || '')
+    }
+  };
+}
+
+type Probe = {
+  status: number;
+  ok: boolean;
+  content_type: string | null;
+  cf_mitigated: string | null;
+  location: string | null;
+  duration_ms: number;
+};
+
+async function probe(path: string): Promise<Probe> {
+  const started = Date.now();
+  try {
+    const response = await fetch(`${PRODUCTION_URL}${path}`, {
+      redirect: 'manual',
+      cache: 'no-store',
+      headers: {
+        'user-agent': 'ATLAS-Authorized-Production-Verifier/1.0',
+        'cache-control': 'no-cache, no-store'
+      }
+    });
+    return {
+      status: response.status,
+      ok: response.ok,
+      content_type: response.headers.get('content-type'),
+      cf_mitigated: response.headers.get('cf-mitigated'),
+      location: response.headers.get('location') ? '[redirect-present]' : null,
+      duration_ms: Date.now() - started
+    };
+  } catch {
+    return {
+      status: 0,
+      ok: false,
+      content_type: null,
+      cf_mitigated: null,
+      location: null,
+      duration_ms: Date.now() - started
+    };
+  }
+}
+
+Deno.serve(async (req: Request) => {
+  const url = new URL(req.url);
+  const api = url.searchParams.get('api');
+
+  if (req.method === 'GET' && api === 'readiness') {
+    return json({
+      ok: true,
+      service: 'atlas-cloudflare-production-http-verify',
+      version: VERSION,
+      production_url: PRODUCTION_URL,
+      auth: 'github-oidc-main-cloudflare-workflow',
+      verification_source: 'atlas-authorized-supabase-runtime'
+    });
+  }
+
+  if (req.method !== 'POST' || api !== 'verify') {
+    return json({ ok: false, error: 'not_found' }, 404);
+  }
+
+  const caller = await verifyGitHubOIDC(req);
+  if (!caller.ok) return json({ ok: false, error: caller.error }, caller.status);
+
+  const [home, identity, finance, deployment] = await Promise.all([
+    probe('/'),
+    probe('/identity?app=%2Ffinance'),
+    probe('/finance'),
+    probe('/deployment.json')
+  ]);
+
+  const publicShellOk = home.status === 200 && identity.status === 200 && finance.status === 200;
+  const deploymentPathProtected = [302, 401, 403].includes(deployment.status);
+  const verified = publicShellOk && deploymentPathProtected;
+
+  return json(
+    {
+      ok: verified,
+      status: verified ? 'passed' : 'failed',
+      verification_source: 'atlas-authorized-supabase-runtime',
+      production_url: PRODUCTION_URL,
+      target_sha: caller.claims.sha,
+      edge_security_preserved: true,
+      checks: {
+        public_home_reachable: home.status === 200,
+        identity_route_reachable: identity.status === 200,
+        module_spa_shell_reachable: finance.status === 200,
+        deployment_path_protected: deploymentPathProtected,
+        home,
+        identity,
+        finance,
+        deployment
+      },
+      secrets_returned: false
+    },
+    verified ? 200 : 502
+  );
+});

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = process.cwd();
 const shellPath = resolve(root, 'apps/web/src/components/AtlasShell.tsx');
 const sessionPath = resolve(root, 'apps/web/src/lib/atlasSession.ts');
+const registryPath = resolve(root, 'apps/web/src/modules/registry.ts');
 
 describe('ATLAS shell live organization identity', () => {
   it('does not render demo tenant identity in the production shell', () => {
@@ -32,21 +33,25 @@ describe('ATLAS shell live organization identity', () => {
     expect(source).not.toContain('getActiveAtlasOrganization');
   });
 
-  it('keeps implemented top-level modules discoverable from the canonical shell', () => {
-    const source = readFileSync(shellPath, 'utf8');
-    for (const entry of [
-      "{ to: '/business', label: 'Business' }",
-      "{ to: '/finance', label: 'Finance' }",
-      "{ to: '/crm', label: 'CRM' }",
-      "{ to: '/payroll', label: 'Payroll' }",
-      "{ to: '/health', label: 'Health' }",
-      "{ to: '/learning', label: 'Learning' }",
-      "{ to: '/hospitality', label: 'Hospitality' }",
-      "{ to: '/ride', label: 'Ride' }",
-      "{ to: '/studio', label: 'Creator' }",
-      "{ to: '/execution/manager/readiness', label: 'Execution' }"
+  it('keeps implemented top-level modules discoverable through the canonical module registry', () => {
+    const shell = readFileSync(shellPath, 'utf8');
+    const registry = readFileSync(registryPath, 'utf8');
+    expect(shell).toContain('ATLAS_NAV_ITEMS');
+
+    for (const [route, label] of [
+      ['/business', 'Business'],
+      ['/finance', 'Finance'],
+      ['/crm', 'CRM'],
+      ['/payroll', 'Payroll'],
+      ['/health', 'Health'],
+      ['/learning', 'Learning'],
+      ['/hospitality', 'Hospitality'],
+      ['/ride', 'Ride'],
+      ['/studio', 'Creator'],
+      ['/execution/manager/readiness', 'Execution']
     ]) {
-      expect(source).toContain(entry);
+      expect(registry).toContain(`route: '${route}'`);
+      expect(registry).toContain(`navLabel: '${label}'`);
     }
   });
 });

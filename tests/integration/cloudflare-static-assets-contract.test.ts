@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const wrangler = readFileSync('wrangler.jsonc', 'utf8');
 const workflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8');
+const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts?: Record<string, string> };
 
 describe('Cloudflare Workers Static Assets deployment contract', () => {
   it('serves the Vite SPA build as Workers static assets', () => {
@@ -11,11 +12,14 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(wrangler).toContain('"not_found_handling": "single-page-application"');
   });
 
-  it('deploys only after the repository validation gates', () => {
-    expect(workflow).toContain('npm run typecheck');
-    expect(workflow).toContain('npm run test:unit');
-    expect(workflow).toContain('npm run test:integration');
-    expect(workflow).toContain('npm run build');
+  it('deploys only after the shared repository validation gate', () => {
+    expect(workflow).toContain('npm run verify:all');
+    const verifyAll = pkg.scripts?.['verify:all'] || '';
+    expect(verifyAll).toContain('npm audit --audit-level=high');
+    expect(verifyAll).toContain('npm run typecheck');
+    expect(verifyAll).toContain('npm run test:unit');
+    expect(verifyAll).toContain('npm run test:integration');
+    expect(verifyAll).toContain('npm run build');
     expect(workflow).toContain('wrangler@4 deploy');
   });
 
@@ -47,12 +51,9 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
 
   it('verifies the public custom domain serves the website and Identity shell anonymously', () => {
     expect(workflow).toContain('PRODUCTION_URL: https://www.atlasenterprisesuite.com');
-    expect(workflow).toContain('ROOT_STATUS=');
-    expect(workflow).toContain('IDENTITY_STATUS=');
-    expect(workflow).toContain('MODULE_STATUS=');
-    expect(workflow).toContain('test "$ROOT_STATUS" = "200"');
-    expect(workflow).toContain('test "$IDENTITY_STATUS" = "200"');
-    expect(workflow).toContain('test "$MODULE_STATUS" = "200"');
+    expect(workflow).toContain('probe_route "Public home"');
+    expect(workflow).toContain('probe_route "ATLAS Identity"');
+    expect(workflow).toContain('probe_route "Module SPA shell"');
     expect(workflow).toContain('Public ATLAS web shell verified.');
   });
 

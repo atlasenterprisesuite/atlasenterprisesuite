@@ -1,0 +1,19 @@
+# Default repository owner
+* @atlasenterprisesuite
+
+# Security, identity, infrastructure and release controls
+/.github/workflows/ @atlasenterprisesuite
+/worker/ @atlasenterprisesuite
+/supabase/ @atlasenterprisesuite
+/docs/security/ @atlasenterprisesuite
+/docs/governance/ @atlasenterprisesuite
+/SECURITY.md @atlasenterprisesuite
+/AGENTS.md @atlasenterprisesuite
+
+# Canonical application/control plane
+/apps/web/ @atlasenterprisesuite
+/apps/atlas-orchestrator/ @atlasenterprisesuite
+/packages/core/ @atlasenterprisesuite
+/packages/governance/ @atlasenterprisesuite
+/packages/execution/ @atlasenterprisesuite
+/packages/ai-core/ @atlasenterprisesuite
