@@ -7,12 +7,9 @@ import {createCodexSovereignAdapter} from './codex-sovereign-adapter.mjs';
 import {createProviderRegistry} from './provider-registry.mjs';
 import {createCouncilOrchestrator} from './council-orchestrator.mjs';
 import {createToolGateway} from './tool-gateway.mjs';
-import {renderAtlasCopilotPage} from './ui.mjs';
 
 const U='https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
-const LIVE='/functions/v1/atlas-live';
-const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const VERSION=5;
 const PROVIDER_IDS=['openai','gemini','codex-sovereign'];
@@ -93,13 +90,12 @@ Deno.serve(async req=>{
   try{
     if(api==='readiness'){
       const rt=runtime(),{providers}=await readinessFor(rt,'balanced'),openai=providers.find(p=>p.id==='openai');
-      return json({ok:true,state:'ready',service:'atlas-copilot',version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','openai','gemini','codex-sovereign','council'],api:'unified-provider-router',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council},repositoryMutation:'github-actions-oidc-queue',repairBridge:REPAIR,checkedAt:new Date().toISOString()});
+      return json({ok:true,state:'ready',service:'atlas-copilot',version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','openai','gemini','codex-sovereign','council'],api:'unified-provider-router',frontend_path:'/assistant',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council},repositoryMutation:'github-actions-oidc-queue',repairBridge:REPAIR,checkedAt:new Date().toISOString()});
     }
     if(api==='status')return await handleStatus(req);
     if(api==='history')return await handleHistory(req);
     if(api==='conversation')return await handleConversation(req,url);
     if(api==='chat')return await handleChat(req);
-    const html=renderAtlasCopilotPage({supabaseUrl:U,publishableKey:K,selfPath:SELF,repairPath:REPAIR,livePath:LIVE,version:VERSION});
-    return new Response(html,{headers:headers({'content-type':'text/html; charset=utf-8','content-security-policy':`default-src 'self'; connect-src ${U}; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'`})});
+    return json({ok:true,state:'ready',service:'atlas-copilot',version:VERSION,api:'unified-provider-router',frontend_path:'/assistant',auth:'atlas-session-required-for-prompts',modes:['auto','openai','gemini','codex-sovereign','council']});
   }catch(error){console.error('atlas_ia_request_failed',{code:error?.code||'internal_error'});return safeError(error);}
 });
