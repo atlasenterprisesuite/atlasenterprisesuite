@@ -4,6 +4,7 @@ import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import {
   AccountingExperiencePage,
+  BusinessExperiencePage,
   EnterpriseExperiencePage,
   FinanceExperiencePage
 } from '../modules/experience/AtlasModuleExperiences';
@@ -13,6 +14,10 @@ import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityP
 export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/') {
     return <EnterpriseExperiencePage />;
+  }
+
+  if (pathname === '/business') {
+    return <BusinessExperiencePage />;
   }
 
   if (pathname === '/finance') {
