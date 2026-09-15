@@ -105,29 +105,18 @@ function normalizeApproval(raw: RawRecord): GuidedApproval {
 
 function normalizeAuditEvent(raw: RawRecord): GuidedAuditEvent {
   return {
-    id: String(raw.id || ''),
-    actorUserId: String(raw.actor_user_id || ''),
-    taskId: nullableString(raw.task_id),
-    workflowId: nullableString(raw.workflow_id),
-    module: String(raw.module || ''),
-    action: String(raw.action || ''),
-    previousState: nullableString(raw.previous_state),
-    resultingState: nullableString(raw.resulting_state),
-    evidenceIds: strings(raw.evidence_ids),
-    correlationId: nullableString(raw.correlation_id),
-    createdAt: String(raw.created_at || '')
+    id: String(raw.id || ''), actorUserId: String(raw.actor_user_id || ''), taskId: nullableString(raw.task_id),
+    workflowId: nullableString(raw.workflow_id), module: String(raw.module || ''), action: String(raw.action || ''),
+    previousState: nullableString(raw.previous_state), resultingState: nullableString(raw.resulting_state),
+    evidenceIds: strings(raw.evidence_ids), correlationId: nullableString(raw.correlation_id), createdAt: String(raw.created_at || '')
   };
 }
 
 export function normalizeExecutionState(rawValue: unknown): GuidedExecutionState {
   const raw = record(rawValue);
   return {
-    workflow: normalizeWorkflow(raw.workflow),
-    tasks: rows(raw.tasks).map(normalizeTask),
-    steps: rows(raw.steps).map(normalizeStep),
-    dependencies: rows(raw.dependencies).map(normalizeDependency),
-    evidence: rows(raw.evidence).map(normalizeEvidence),
-    approvals: rows(raw.approvals).map(normalizeApproval)
+    workflow: normalizeWorkflow(raw.workflow), tasks: rows(raw.tasks).map(normalizeTask), steps: rows(raw.steps).map(normalizeStep),
+    dependencies: rows(raw.dependencies).map(normalizeDependency), evidence: rows(raw.evidence).map(normalizeEvidence), approvals: rows(raw.approvals).map(normalizeApproval)
   };
 }
 
@@ -138,8 +127,7 @@ export function normalizeExecutionAudit(rawValue: unknown): GuidedAuditEvent[] {
 async function executionPost(body: Record<string, unknown>) {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-execution', {
-    method: 'POST',
-    body: JSON.stringify({ ...body, organization_id: organization.id })
+    method: 'POST', body: JSON.stringify({ ...body, organization_id: organization.id })
   });
   return parseExecutionResponse(response);
 }
@@ -153,11 +141,7 @@ export async function loadGuidedExecutionAudit(workflowId: string): Promise<Guid
 }
 
 export type RequestExecutionApprovalInput = {
-  taskId: string;
-  approvalType: string;
-  requiredPermission: string;
-  riskLevel: GuidedApproval['riskLevel'];
-  summary: string;
+  taskId: string; approvalType: string; requiredPermission: string; riskLevel: GuidedApproval['riskLevel']; summary: string;
 };
 
 export async function requestExecutionApproval(input: RequestExecutionApprovalInput) {
@@ -167,11 +151,7 @@ export async function requestExecutionApproval(input: RequestExecutionApprovalIn
   });
 }
 
-export type DecideExecutionApprovalInput = {
-  approvalId: string;
-  decision: 'approved' | 'rejected';
-  reason?: string;
-};
+export type DecideExecutionApprovalInput = { approvalId: string; decision: 'approved' | 'rejected'; reason?: string };
 
 export async function decideExecutionApproval(input: DecideExecutionApprovalInput) {
   return executionPost({
@@ -197,6 +177,14 @@ export async function evaluateWorkStep(taskId: string): Promise<WorkStepExecutio
     policy: { outcome: policyOutcome, reason: String(policy.reason || 'policy_unavailable') },
     approvalRequired: data.approvalRequired === true
   };
+}
+
+export async function executeWorkStep(taskId: string) {
+  return executionPost({ operation: 'execute_work_step', task_id: taskId });
+}
+
+export async function resumeWorkStep(taskId: string) {
+  return executionPost({ operation: 'resume_work_step', task_id: taskId });
 }
 
 export async function syncManagerReadiness() {
