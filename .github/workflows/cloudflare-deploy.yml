@@ -25,6 +25,7 @@ permissions:
 jobs:
   validate-deploy-verify:
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
