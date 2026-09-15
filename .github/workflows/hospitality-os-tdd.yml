@@ -27,4 +27,4 @@ jobs:
       - name: Install
         run: npm ci
       - name: Hospitality core contracts
-        run: npx vitest run tests/unit/hospitality-core-types.test.ts tests/unit/hospitality-scope.test.ts tests/unit/hospitality-permissions.test.ts
+        run: npx vitest run tests/unit/hospitality-core-types.test.ts tests/unit/hospitality-scope.test.ts tests/unit/hospitality-permissions.test.ts tests/unit/hospitality-core-events.test.ts
