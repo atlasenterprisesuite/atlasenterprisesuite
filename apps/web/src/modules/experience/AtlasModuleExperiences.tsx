@@ -41,6 +41,39 @@ const enterpriseSections: ModuleExperienceSection[] = [
   }
 ];
 
+const businessSections: ModuleExperienceSection[] = [
+  {
+    eyebrow: 'Growth architecture',
+    title: 'Growth operations, customer workflows and governed publishing',
+    description: 'Business Suite connects the implemented growth and customer surfaces without presenting external channel connectivity as active before authorization.',
+    cards: [
+      { label: 'Growth', title: 'Social Publisher', description: 'Prepare multi-platform publishing assets and preserve provider authorization gates.', to: '/business/growth/social-publisher' },
+      { label: 'Customer', title: 'CRM', description: 'Open provider-backed customer, company, opportunity and service workflows.', to: '/crm' },
+      { label: 'Creative', title: 'Creator Studio', description: 'Create and prepare governed content for downstream business workflows.', to: '/studio' }
+    ]
+  },
+  {
+    eyebrow: 'Channel governance',
+    title: 'External connections remain explicit',
+    description: 'ATLAS does not label a publishing channel connected unless the organization has authorized it and the provider state is verified.',
+    cards: [
+      { label: 'Connections', title: 'Channel connections', description: 'Social account authorization is required before direct publication can become available.', status: 'Authorization required' },
+      { label: 'Publishing', title: 'Direct publishing', description: 'Execution remains disabled when provider credentials or organization authorization are missing.', status: 'Connection gate enforced' },
+      { label: 'Audit', title: 'Governed handoff', description: 'Prepared content can move between ATLAS creative and publishing surfaces without bypassing connection gates.' }
+    ]
+  },
+  {
+    eyebrow: 'Commercial expansion',
+    title: 'Business depth without fabricated readiness',
+    description: 'Broader sales, commerce and operational functions remain gated until their canonical routes, data models and permission contracts are complete.',
+    cards: [
+      { label: 'Sales', title: 'Sales Operations', description: 'CRM is active; a separate universal sales operations hub is not yet represented as a complete canonical route.', status: 'Canonical depth in progress' },
+      { label: 'Commerce', title: 'POS & Inventory', description: 'Commercial commerce workflows remain gated until their canonical implementation is verified.', status: 'Canonical module depth in progress' },
+      { label: 'Analytics', title: 'Business Analytics', description: 'Module reporting exists, while a universal business analytics hub remains incomplete.', status: 'Universal hub not yet active' }
+    ]
+  }
+];
+
 const financeSections: ModuleExperienceSection[] = [
   {
     eyebrow: 'Financial architecture',
@@ -121,6 +154,23 @@ export function EnterpriseExperiencePage() {
       ]}
       sections={enterpriseSections}
       statusNote="Only implemented ATLAS routes are active. Planned or incomplete commercial capabilities remain visibly gated until their code, data contracts, permissions and tests exist."
+    />
+  );
+}
+
+export function BusinessExperiencePage() {
+  return (
+    <ModuleExperiencePage
+      eyebrow="ATLAS Business Suite"
+      title="Business Suite"
+      description="Connected growth, customer, creative and publishing operations inside one governed organization."
+      narrative="Growth operations, customer workflows and governed publishing."
+      actions={[
+        { label: 'Open Social Publisher', to: '/business/growth/social-publisher' },
+        { label: 'Open CRM', to: '/crm', variant: 'secondary' }
+      ]}
+      sections={businessSections}
+      statusNote="Channel connections remain unavailable until the organization authorizes the corresponding external accounts and provider readiness is verified."
     />
   );
 }
