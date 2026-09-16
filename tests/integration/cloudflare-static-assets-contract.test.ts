@@ -89,12 +89,12 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('export DEPLOYMENT_PROBE');
   });
 
-  it('verifies the public custom domain serves the website and Identity shell anonymously', () => {
+  it('verifies the public custom domain serves the website, Identity shell, and critical Network routes', () => {
     expect(workflow).toContain('PRODUCTION_URL: https://www.atlasenterprisesuite.com');
     expect(workflow).toContain('probe_route "Public home"');
     expect(workflow).toContain('probe_route "ATLAS Identity"');
     expect(workflow).toContain('probe_route "Module SPA shell"');
-    expect(workflow).toContain('Public ATLAS web shell verified.');
+    expect(workflow).toContain('Public ATLAS production domain and critical Network routes verified.');
   });
 
   it('records that module authorization is enforced by tested ATLAS Identity rather than edge-wide Access', () => {
