@@ -46,10 +46,10 @@ describe('ATLAS Health governed routes', () => {
     render(<MemoryRouter initialEntries={['/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel']}><App /></MemoryRouter>);
 
     expect(screen.getByRole('heading', { name: 'Jaque Mate + Sentinel' })).toBeInTheDocument();
-    expect(screen.getByText('SIMULATION — NOT CLINICAL EVIDENCE')).toBeInTheDocument();
+    expect(screen.getAllByText('SIMULATION — NOT CLINICAL EVIDENCE').length).toBeGreaterThan(0);
     expect(screen.getByText(/No automated clinical action/i)).toBeInTheDocument();
-    expect(screen.getByText(/Validated evidence/i)).toBeInTheDocument();
-    expect(screen.getByText(/Hypothesis/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Validated evidence/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Hypothesis/i).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText('Seed'), { target: { value: '40' } });
     fireEvent.change(screen.getByLabelText('State'), { target: { value: '60' } });
@@ -64,7 +64,7 @@ describe('ATLAS Health governed routes', () => {
   it('keeps the v2 alias on the same governed Jaque Mate + Sentinel surface', () => {
     render(<MemoryRouter initialEntries={['/health/jaque-mate/sentinel/v2']}><App /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: 'Jaque Mate + Sentinel' })).toBeInTheDocument();
-    expect(screen.getByText('SIMULATION — NOT CLINICAL EVIDENCE')).toBeInTheDocument();
+    expect(screen.getAllByText('SIMULATION — NOT CLINICAL EVIDENCE').length).toBeGreaterThan(0);
   });
 
   it('redirects the legacy Jaque Mate + Sentinel route to the governed v2 surface', () => {
