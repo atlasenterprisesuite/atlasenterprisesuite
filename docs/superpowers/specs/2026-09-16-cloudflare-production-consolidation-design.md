@@ -25,7 +25,7 @@ Repository verification is already green before the provider boundary: typecheck
 
 1. **One production principal.** ATLAS uses a single Cloudflare Account API Token for CI/CD deployment and control-plane operations that are explicitly included in its permission policy.
 2. **One mutable secret.** Only `CLOUDFLARE_API_TOKEN` is treated as a secret credential in GitHub production automation.
-3. **IDs are configuration, not credentials.** `CLOUDFLARE_ACCOUNT_ID` and, when required by zone-scoped operations, `CLOUDFLARE_ZONE_ID` are configuration values and should be represented as GitHub Environment Variables rather than duplicated Secrets.
+3. **IDs are configuration, not credentials.** `CLOUDFLARE_ACCOUNT_ID` and any future zone ID are configuration values rather than duplicate Secrets.
 4. **One deployment workflow.** `.github/workflows/cloudflare-deploy.yml` remains the canonical production deployment entry point.
 5. **Fail early.** Provider authorization is validated before expensive repository verification whenever doing so does not weaken the repository's security or correctness gates.
 6. **No secret proliferation.** The repository must reject or avoid alternate names such as `CF_API_TOKEN`, module-specific Worker tokens, per-feature Cloudflare tokens, or duplicated account credentials in CI.
@@ -36,15 +36,16 @@ Repository verification is already green before the provider boundary: typecheck
 
 ### GitHub Environment: `production`
 
-The Cloudflare contract is:
+The current Cloudflare contract is exactly:
 
 - Secret: `CLOUDFLARE_API_TOKEN`
 - Variable: `CLOUDFLARE_ACCOUNT_ID=1dd6dea2bb98459c66f610464354d686`
-- Variable: `CLOUDFLARE_ZONE_ID=<atlasenterprisesuite.com zone id>` only for zone-scoped automation that genuinely needs it
+
+No zone ID is required for the current Worker deployment because `wrangler.jsonc` uses `workers_dev: true` and does not manage a custom route. `CLOUDFLARE_ZONE_ID` must not be added to the canonical production contract until a separately approved zone-scoped automation feature requires it and the real zone identifier is retrieved from Cloudflare.
 
 `CLOUDFLARE_API_TOKEN` must never be stored as a GitHub Actions Variable, committed file, workflow literal, query parameter, artifact, log line, issue, pull-request body, or ATLAS database plaintext.
 
-The account ID and zone ID are identifiers, not authentication secrets. They may be masked in CI logs for cleanliness, but the design does not rely on secrecy for those identifiers.
+The account ID is an identifier, not an authentication secret. It may be masked in CI logs for cleanliness, but the design does not rely on secrecy for that identifier.
 
 ## Cloudflare principal policy
 
@@ -145,7 +146,7 @@ Adding a new ATLAS module, Worker route, frontend feature, or ordinary deploymen
 
 Cloudflare failures are classified into four categories:
 
-- **configuration:** missing/mismatched account or zone identifier;
+- **configuration:** missing/mismatched account identifier;
 - **authentication:** malformed, revoked, expired, or invalid token;
 - **authorization:** valid token/account but missing permission for the requested operation;
 - **provider/runtime:** Cloudflare API or Worker deployment error after authorization succeeds.
@@ -204,7 +205,7 @@ The design is complete when:
 
 1. one canonical Cloudflare production principal is documented and enforced;
 2. GitHub production automation needs only one Cloudflare secret credential;
-3. account/zone identifiers are treated as configuration rather than recurring secrets;
+3. the account identifier is treated as configuration rather than a recurring secret;
 4. authorization problems fail in a focused preflight before expensive verification;
 5. repository verification still blocks deployment on code/test failure;
 6. Wrangler remains the authoritative direct deployment path;
