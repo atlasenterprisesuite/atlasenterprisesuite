@@ -46,7 +46,7 @@ describe('ATLAS Network governance contract', () => {
     expect(sql).toContain('Authentication required');
     expect(sql).toContain("has_identity_permission(organization_uuid,'network.pricing.manage')");
     expect(sql).toContain("has_identity_permission(organization_uuid,'network.commissions.manage_rules')");
-    expect(sql).toContain("has_identity_permission(organization_uuid,'network.payouts.approve')");
+    expect(sql).toContain("has_identity_permission(current_batch.org_id,'network.payouts.approve')");
     expect(sql).toContain("has_identity_permission(organization_uuid,'network.compliance.manage')");
   });
 
