@@ -33,13 +33,13 @@ function task(taskId: string): AtlasTask {
   };
 }
 
-function queueItem(taskId: string, queueItemId = `NQ-${taskId}`): NightQueueItem {
+function queueItem(taskId: string, queueItemId = `NQ-${taskId}`, priority = 100): NightQueueItem {
   return {
     schemaVersion: 1, queueItemId, taskId, sourceThreadId: null, scope,
-    status: 'queued', priority: 100, attempt: 0, maxAttempts: 3,
+    status: 'queued', priority, attempt: 0, maxAttempts: 3,
     leaseOwner: null, leaseExpiresAt: null, heartbeatAt: null, checkpointId: null,
     archivePolicy: 'eligible_on_verified_completion', archiveEligible: false,
-    nextEligibleAt: null,
+    nextEligibleAt: null, attentionReason: null,
     createdAt: '2026-09-16T03:00:00.000Z', updatedAt: '2026-09-16T03:00:00.000Z',
   };
 }
@@ -77,10 +77,11 @@ describe('ATLAS Night Operations Supervisor', () => {
     const result = await supervisor.processNext(scope);
     expect(result?.status).toBe('completed_autonomous');
     expect(result?.archiveEligible).toBe(true);
+    expect(result?.attentionReason).toBeNull();
     expect(result?.checkpointId).toBeTruthy();
   });
 
-  it('records requires_attention instead of fabricating success', async () => {
+  it('records requires_attention and its exact reason instead of fabricating success', async () => {
     const { orchestrator, nightPersistence } = await setup();
     await orchestrator.createTask(task('ATL-2'), human);
     await nightPersistence.enqueueNightItem(queueItem('ATL-2'));
@@ -103,7 +104,32 @@ describe('ATLAS Night Operations Supervisor', () => {
 
     const result = await supervisor.processNext(scope);
     expect(result?.status).toBe('requires_attention');
+    expect(result?.attentionReason).toBe('human_approval_required');
     expect(result?.archiveEligible).toBe(false);
+  });
+
+  it('marks a broken item for attention and continues with the next eligible item', async () => {
+    const { orchestrator, nightPersistence } = await setup();
+    await nightPersistence.enqueueNightItem(queueItem('ATL-MISSING', 'NQ-MISSING', 200));
+    await orchestrator.createTask(task('ATL-4'), human);
+    await nightPersistence.enqueueNightItem(queueItem('ATL-4', 'NQ-ATL-4', 100));
+
+    const supervisor = new NightOperationsSupervisor({
+      orchestrator,
+      persistence: nightPersistence,
+      actor: worker,
+      workerId: 'night-worker-1',
+      clock: () => '2026-09-16T03:01:00.000Z',
+      execute: async () => ({
+        status: 'completed', stepKey: 'verify', completedOperations: ['verify'],
+        evidenceRefs: ['evidence:1'], lastSuccessfulOperation: 'verify', verificationPassed: true, openBlockers: 0,
+      }),
+    });
+
+    const results = await supervisor.runSession(scope, 10);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({ status: 'requires_attention', attentionReason: 'task_not_found' });
+    expect(results[1]).toMatchObject({ status: 'completed_autonomous', attentionReason: null });
   });
 
   it('fails closed when lease ownership is lost before final persistence', async () => {
