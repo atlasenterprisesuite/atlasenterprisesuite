@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { evaluateTensor } from '../../../../../packages/health/jaque-mate/tensor';
 import type { TensorEvaluation } from '../../../../../packages/health/jaque-mate/types';
 
 const SIMULATION_WATERMARK = 'SIMULATION — NOT CLINICAL EVIDENCE' as const;
+const LAB_ROOT = '/health/research/frontiers/disease-reconstruction';
 
 interface TensorFormState {
   seed: number;
@@ -66,6 +68,12 @@ export function JaqueMateSentinelPage() {
 
   return (
     <div className="page-stack">
+      <nav aria-label="Jaque Mate + Sentinel breadcrumb">
+        <Link className="text-link" to={LAB_ROOT}>Disease Reconstruction Lab</Link>
+        <span aria-hidden="true"> / </span>
+        <span aria-current="page">Jaque Mate + Sentinel</span>
+      </nav>
+
       <header className="page-header">
         <p className="eyebrow">ATLAS Health · Disease Reconstruction Lab</p>
         <h1>Jaque Mate + Sentinel</h1>
