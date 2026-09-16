@@ -4,6 +4,7 @@ import type { NightCheckpoint, NightQueueItem, NightSessionSummary } from '../..
 export interface NightOperationsPersistencePort {
   readonly durable: boolean;
   enqueueNightItem(item: NightQueueItem): Promise<void>;
+  listNightItems(scope: TenantScope): Promise<NightQueueItem[]>;
   claimNextNightItem(
     scope: TenantScope,
     workerId: string,
