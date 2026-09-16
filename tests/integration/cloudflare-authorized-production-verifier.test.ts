@@ -29,4 +29,30 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
   });
+
+  it('verifies the production domain after either deployment mode and covers critical ATLAS Network routes', () => {
+    const productionStep = workflow.match(
+      /- name: Verify public ATLAS production routes([\s\S]*?)- name: Verify production shell through authorized ATLAS runtime/
+    )?.[1] ?? '';
+
+    expect(productionStep).not.toBe('');
+    expect(productionStep).not.toContain('deployment_mode.outputs.mode');
+    expect(productionStep).toContain('https://www.atlasenterprisesuite.com');
+    expect(productionStep).toContain('--location');
+    expect(productionStep).toContain("%{url_effective}");
+    expect(workflow).toContain("if: steps.production_edge.outputs.edge_challenge_detected == 'true'");
+
+    const criticalRoutes = [
+      '/business/network',
+      '/business/network/pricing',
+      '/business/network/commissions',
+      '/business/network/payouts',
+      '/business/network/compliance'
+    ];
+
+    for (const route of criticalRoutes) {
+      expect(productionStep).toContain(route);
+      expect(verifier).toContain(`'${route}'`);
+    }
+  });
 });
