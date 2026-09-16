@@ -8,6 +8,7 @@ import type {
 import {
   type AtlasOrchestrator,
   type NightOperationsPersistencePort,
+  classifyNightFailure,
   computeRetryDelayMs,
   isArchiveEligible,
   makeNightIdempotencyKey,
@@ -51,12 +52,35 @@ export interface NightExecutionContext {
 
 export type NightExecutor = (context: NightExecutionContext) => Promise<NightExecutionResult>;
 
+type ErrorLike = Error & { code?: string; status?: number; statusCode?: number; retryAfterMs?: number };
+
 function addMs(iso: string, ms: number): string {
   return new Date(new Date(iso).getTime() + ms).toISOString();
 }
 
 function checkpointId(item: NightQueueItem, now: string): string {
   return `NCP-${item.queueItemId}-${new Date(now).getTime()}`;
+}
+
+function errorCause(error: unknown): string {
+  if (!(error instanceof Error)) return 'worker_error';
+  const typed = error as ErrorLike;
+  if (typed.code) return typed.code.toLowerCase();
+  const status = typed.status ?? typed.statusCode;
+  if (status) return `http_${status}`;
+  if (/task not found/i.test(error.message)) return 'task_not_found';
+  if (/authorization denied/i.test(error.message)) return 'authorization_denied';
+  if (/provider is not configured/i.test(error.message)) return 'provider_not_configured';
+  return 'worker_error';
+}
+
+function errorClassification(error: unknown): ReturnType<typeof classifyNightFailure> {
+  if (!(error instanceof Error)) return 'permanent';
+  const typed = error as ErrorLike;
+  return classifyNightFailure({
+    httpStatus: typed.status ?? typed.statusCode ?? null,
+    code: typed.code ?? null,
+  });
 }
 
 export class NightOperationsSupervisor {
@@ -78,6 +102,30 @@ export class NightOperationsSupervisor {
     return this.options.clock?.() ?? new Date().toISOString();
   }
 
+  private async recoverFromExecutionError(item: NightQueueItem, error: unknown): Promise<NightQueueItem> {
+    const now = this.now();
+    const classification = errorClassification(error);
+    const cause = errorCause(error);
+    const typed = error instanceof Error ? error as ErrorLike : null;
+    const exhausted = item.attempt >= item.maxAttempts;
+    const shouldRetry = classification === 'transient' && !exhausted;
+    const updated: NightQueueItem = {
+      ...item,
+      status: shouldRetry ? 'queued' : 'requires_attention',
+      archiveEligible: false,
+      attentionReason: cause,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      heartbeatAt: now,
+      nextEligibleAt: shouldRetry
+        ? addMs(now, computeRetryDelayMs({ attempt: item.attempt, retryAfterMs: typed?.retryAfterMs ?? null }))
+        : null,
+      updatedAt: now,
+    };
+    await this.options.persistence.saveNightItem(updated);
+    return updated;
+  }
+
   async processNext(scope: TenantScope): Promise<NightQueueItem | null> {
     const claimedAt = this.now();
     const item = await this.options.persistence.claimNextNightItem(
@@ -88,21 +136,27 @@ export class NightOperationsSupervisor {
     );
     if (!item) return null;
 
-    const task = await this.options.orchestrator.readTask(scope, item.taskId, this.options.actor);
-    const previousCheckpoint = await this.options.persistence.getLatestNightCheckpoint(scope, item.queueItemId);
-
-    const execution = await this.options.execute({
-      task,
-      item,
-      checkpoint: previousCheckpoint,
-      actor: this.options.actor,
-      makeIdempotencyKey: (operation, stepKey) => makeNightIdempotencyKey({
-        queueItemId: item.queueItemId,
-        taskId: item.taskId,
-        operation,
-        stepKey,
-      }),
-    });
+    let task: AtlasTask;
+    let previousCheckpoint: NightCheckpoint | null;
+    let execution: NightExecutionResult;
+    try {
+      task = await this.options.orchestrator.readTask(scope, item.taskId, this.options.actor);
+      previousCheckpoint = await this.options.persistence.getLatestNightCheckpoint(scope, item.queueItemId);
+      execution = await this.options.execute({
+        task,
+        item,
+        checkpoint: previousCheckpoint,
+        actor: this.options.actor,
+        makeIdempotencyKey: (operation, stepKey) => makeNightIdempotencyKey({
+          queueItemId: item.queueItemId,
+          taskId: item.taskId,
+          operation,
+          stepKey,
+        }),
+      });
+    } catch (error) {
+      return this.recoverFromExecutionError(item, error);
+    }
 
     const afterExecution = this.now();
     const checkpoint: NightCheckpoint = {
