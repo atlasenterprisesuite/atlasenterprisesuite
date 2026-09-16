@@ -88,7 +88,7 @@ describe('ATLAS Hospitality provider registry', () => {
     const adapter = providerFor(instance('onity'), {
       providerType: 'onity',
       officialInterfaceConfigured: false
-    } as any);
+    });
 
     const readiness = await adapter.readiness(context);
     expect(readiness.state).toBe('configured_unverified');
