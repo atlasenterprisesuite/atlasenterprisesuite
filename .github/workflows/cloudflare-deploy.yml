@@ -73,7 +73,7 @@ jobs:
             exit 1
           fi
 
-          ACCOUNT_TOKEN_HTTP="$(curl --silent --show-error --output /tmp/cloudflare-account-token.json --write-out '%{http_code}' \
+          ACCOUNT_TOKEN_HTTP="$(curl --silent --show-error --max-time 30 --output /tmp/cloudflare-account-token.json --write-out '%{http_code}' \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H 'Content-Type: application/json' \
             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/tokens/verify" || true)"
@@ -81,7 +81,7 @@ jobs:
           PRINCIPAL_TYPE="account"
 
           if [ "$ACCOUNT_TOKEN_HTTP" != "200" ] || [ "$ACCOUNT_TOKEN_ACTIVE" != "true" ]; then
-            USER_TOKEN_HTTP="$(curl --silent --show-error --output /tmp/cloudflare-user-token.json --write-out '%{http_code}' \
+            USER_TOKEN_HTTP="$(curl --silent --show-error --max-time 30 --output /tmp/cloudflare-user-token.json --write-out '%{http_code}' \
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
               -H 'Content-Type: application/json' \
               'https://api.cloudflare.com/client/v4/user/tokens/verify' || true)"
@@ -97,7 +97,7 @@ jobs:
             fi
           fi
 
-          WORKER_HTTP="$(curl --silent --show-error --output /tmp/cloudflare-worker.json --write-out '%{http_code}' \
+          WORKER_HTTP="$(curl --silent --show-error --max-time 30 --output /tmp/cloudflare-worker.json --write-out '%{http_code}' \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H 'Content-Type: application/json' \
             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/services/$WORKER_NAME" || true)"
@@ -126,7 +126,7 @@ jobs:
 
           case "$WORKER_HTTP" in
             200|404)
-              echo "Cloudflare preflight: token_valid=true principal_type=$PRINCIPAL_TYPE account_configured=true workers_authorized=true" >> "$GITHUB_STEP_SUMMARY"
+              echo "Cloudflare preflight: token_valid=true principal_type=$PRINCIPAL_TYPE account_configured=true worker_endpoint_reachable=true" >> "$GITHUB_STEP_SUMMARY"
               ;;
             *)
               echo "cloudflare_failure_category=provider" >> "$GITHUB_STEP_SUMMARY"
