@@ -3,6 +3,7 @@ import { getAgent } from '../../../packages/agent-registry/src';
 import { handleMcpRequest, type JsonRpcRequest } from '../../../packages/atlas-mcp/src';
 import type { AtlasActor } from '../../../packages/governance/src';
 import { createAtlasRuntime } from './runtime/container';
+import { resolveSupabaseBackendConfig } from './runtime/supabaseBackend';
 
 const tenantId = process.env.ATLAS_TENANT_ID;
 const organizationId = process.env.ATLAS_ORGANIZATION_ID;
@@ -18,7 +19,7 @@ const actor: AtlasActor = {
   scope: { tenantId, organizationId },
   permissions: [...definition.permissions]
 };
-const runtime = createAtlasRuntime();
+const runtime = createAtlasRuntime({ supabase: resolveSupabaseBackendConfig(process.env) });
 const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
 
 for await (const line of lines) {
