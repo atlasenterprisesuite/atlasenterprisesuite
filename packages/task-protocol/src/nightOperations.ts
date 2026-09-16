@@ -28,6 +28,7 @@ export interface NightQueueItem {
   archivePolicy: NightArchivePolicy;
   archiveEligible: boolean;
   nextEligibleAt: string | null;
+  attentionReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
