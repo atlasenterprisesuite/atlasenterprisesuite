@@ -31,19 +31,58 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('cloudflare-native-github-app');
   });
 
-  it('prefers direct Wrangler whenever secure Cloudflare credentials are available, including main pushes', () => {
-    expect(workflow).toContain('if [ "$TOKEN_SECRET_PRESENT" = "true" ] && { [ "$ACCOUNT_SECRET_PRESENT" = "true" ] || [ "$ACCOUNT_VARIABLE_PRESENT" = "true" ]; }; then');
+  it('uses exactly one Cloudflare credential source in production CI', () => {
+    expect(workflow).toContain('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
+    expect(workflow).not.toContain('vars.CLOUDFLARE_API_TOKEN');
+    expect(workflow).not.toContain('CF_API_TOKEN');
+    expect(workflow).not.toContain('CF_ACCOUNT_ID');
+  });
+
+  it('pins the non-secret Cloudflare account once in canonical Wrangler config', () => {
+    expect(wrangler).toContain('"account_id": "1dd6dea2bb98459c66f610464354d686"');
+    expect(workflow).not.toContain('secrets.CLOUDFLARE_ACCOUNT_ID');
+    expect(workflow).not.toContain('vars.CLOUDFLARE_ACCOUNT_ID');
+  });
+
+  it('fails Cloudflare authorization before expensive repository verification', () => {
+    const preflight = workflow.indexOf('Cloudflare authorization preflight');
+    const verify = workflow.indexOf('npm run verify:all');
+    const deploy = workflow.indexOf('wrangler@4 deploy');
+    expect(preflight).toBeGreaterThan(-1);
+    expect(verify).toBeGreaterThan(preflight);
+    expect(deploy).toBeGreaterThan(verify);
+  });
+
+  it('classifies provider failures without logging the token', () => {
+    expect(workflow).toContain('cloudflare_failure_category=configuration');
+    expect(workflow).toContain('cloudflare_failure_category=authentication');
+    expect(workflow).toContain('cloudflare_failure_category=authorization');
+    expect(workflow).toContain('cloudflare_failure_category=provider');
+    expect(workflow).not.toContain('echo "$CLOUDFLARE_API_TOKEN"');
+    expect(workflow).not.toContain('printf \'%s\' "$CLOUDFLARE_API_TOKEN"');
+  });
+
+  it('reports only what the non-mutating Worker preflight actually proves', () => {
+    expect(workflow).toContain('worker_endpoint_reachable=true');
+    expect(workflow).not.toContain('workers_authorized=true');
+  });
+
+  it('bounds Cloudflare preflight network calls', () => {
+    const preflight = workflow.slice(
+      workflow.indexOf('- name: Cloudflare authorization preflight'),
+      workflow.indexOf('- name: Install native media verification dependencies'),
+    );
+    expect(preflight).toContain('--max-time 30');
+  });
+
+  it('prefers direct Wrangler whenever the canonical token secret is available, including main pushes', () => {
     expect(workflow).toContain('MODE="direct-wrangler"');
     expect(workflow).toContain('else\n            MODE="cloudflare-native-github-app"');
     expect(workflow).not.toContain('if [ "$GITHUB_EVENT_NAME" = "push" ]; then\n            MODE="cloudflare-native-github-app"');
   });
 
-  it('uses the configured account ID directly without requiring account-list permission', () => {
-    expect(workflow).toContain('Use configured Cloudflare account ID');
-    expect(workflow).toContain('RESOLVED_ACCOUNT_ID="$CONFIGURED_ACCOUNT_ID"');
+  it('does not require Cloudflare account-list permission', () => {
     expect(workflow).not.toContain('https://api.cloudflare.com/client/v4/accounts?per_page=50');
-    expect(workflow).toContain('::add-mask::$RESOLVED_ACCOUNT_ID');
-    expect(workflow).toContain('steps.cloudflare_account.outputs.account_id');
   });
 
   it('exports the deployment probe before constructing ATLAS Manager evidence', () => {
