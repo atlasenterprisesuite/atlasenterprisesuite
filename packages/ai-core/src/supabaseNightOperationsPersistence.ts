@@ -245,6 +245,13 @@ export class SupabaseNightOperationsPersistence implements NightOperationsPersis
     await this.log({ scope: item.scope, queueItemId: item.queueItemId, taskId: item.taskId, eventType: 'night.queue.enqueued' });
   }
 
+  async listNightItems(scope: TenantScope): Promise<NightQueueItem[]> {
+    const rows = await this.rest.request<QueueRow[]>(
+      `/rest/v1/atlas_night_queue?select=*&tenant_id=${eq(scope.tenantId)}&org_id=${eq(scope.organizationId)}&order=priority.desc,created_at.asc`,
+    );
+    return rows.map(fromQueueRow);
+  }
+
   async claimNextNightItem(
     scope: TenantScope,
     workerId: string,
