@@ -84,6 +84,26 @@ describe('ATLAS Hospitality provider registry', () => {
     expect((await adapter.readiness(context)).blocker).toBe('official_provider_interface_required');
   });
 
+  it('selects the Onity adapter and fails closed until an official interface is configured', async () => {
+    const adapter = providerFor(instance('onity'), {
+      providerType: 'onity',
+      officialInterfaceConfigured: false
+    } as any);
+
+    const readiness = await adapter.readiness(context);
+    expect(readiness.state).toBe('configured_unverified');
+    expect(readiness.blocker).toBe('official_provider_interface_required');
+    await expect(adapter.issueCredential(context, {
+      propertyId: 'hotel-1',
+      roomId: '101',
+      assignmentReference: 'reservation-1',
+      startsAt: '2026-09-16T16:00:00.000Z',
+      expiresAt: '2026-09-17T16:00:00.000Z',
+      reason: 'guest_checkin',
+      providerRoomId: '101'
+    })).rejects.toThrow('provider_not_ready');
+  });
+
   it('fails closed for an unsupported provider type', () => {
     expect(() => providerFor(instance('unknown_vendor'))).toThrow('unsupported_provider_type');
   });
