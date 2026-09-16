@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const migrationPath = resolve(process.cwd(), 'supabase/migrations/20260911_hospitality_room_access.sql');
+const onityMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260916_hospitality_add_onity_provider.sql');
 
 describe('ATLAS Hospitality Supabase schema contract', () => {
   it('defines the three organization/property-scoped Hospitality tables', () => {
@@ -31,6 +32,15 @@ describe('ATLAS Hospitality Supabase schema contract', () => {
     for (const status of ['issued', 'revoked', 'expired', 'failed', 'unknown']) {
       expect(sql).toContain(`'${status}'`);
     }
+  });
+
+  it('adds Onity through a forward-only migration without rewriting the original migration', () => {
+    expect(existsSync(onityMigrationPath)).toBe(true);
+    const sql = readFileSync(onityMigrationPath, 'utf8').toLowerCase();
+    expect(sql).toContain('hospitality_provider_instances');
+    expect(sql).toContain("'onity'");
+    expect(sql).toContain('drop constraint');
+    expect(sql).toContain('add constraint');
   });
 
   it('does not define columns for raw provider secret material', () => {
