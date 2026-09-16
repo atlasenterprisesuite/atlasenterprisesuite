@@ -38,6 +38,104 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Select Cloudflare deployment verification mode
+        id: deployment_mode
+        env:
+          TOKEN_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          echo "Cloudflare API token secret configured: $TOKEN_SECRET_PRESENT"
+          if [ "$TOKEN_SECRET_PRESENT" = "true" ]; then
+            MODE="direct-wrangler"
+          else
+            MODE="cloudflare-native-github-app"
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Cloudflare deployment verification mode: $MODE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cloudflare authorization preflight
+        if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "cloudflare_failure_category=authentication" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Cloudflare production API token secret is empty."
+            exit 1
+          fi
+
+          ACCOUNT_ID="$(node -e "const fs=require('fs');const c=fs.readFileSync('wrangler.jsonc','utf8');const m=c.match(/\"account_id\"\s*:\s*\"([^\"]+)\"/);process.stdout.write(m?.[1]||'')")"
+          WORKER_NAME="$(node -e "const fs=require('fs');const c=fs.readFileSync('wrangler.jsonc','utf8');const m=c.match(/\"name\"\s*:\s*\"([^\"]+)\"/);process.stdout.write(m?.[1]||'')")"
+          if [ -z "$ACCOUNT_ID" ] || [ -z "$WORKER_NAME" ]; then
+            echo "cloudflare_failure_category=configuration" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::wrangler.jsonc must contain account_id and name."
+            exit 1
+          fi
+
+          ACCOUNT_TOKEN_HTTP="$(curl --silent --show-error --output /tmp/cloudflare-account-token.json --write-out '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/tokens/verify" || true)"
+          ACCOUNT_TOKEN_ACTIVE="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cloudflare-account-token.json','utf8'))}catch{};process.stdout.write(String(j.success===true&&j.result?.status==='active'))")"
+          PRINCIPAL_TYPE="account"
+
+          if [ "$ACCOUNT_TOKEN_HTTP" != "200" ] || [ "$ACCOUNT_TOKEN_ACTIVE" != "true" ]; then
+            USER_TOKEN_HTTP="$(curl --silent --show-error --output /tmp/cloudflare-user-token.json --write-out '%{http_code}' \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              'https://api.cloudflare.com/client/v4/user/tokens/verify' || true)"
+            USER_TOKEN_ACTIVE="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cloudflare-user-token.json','utf8'))}catch{};process.stdout.write(String(j.success===true&&j.result?.status==='active'))")"
+            if [ "$USER_TOKEN_HTTP" = "200" ] && [ "$USER_TOKEN_ACTIVE" = "true" ]; then
+              PRINCIPAL_TYPE="user"
+            else
+              PROVIDER_CODE="$(node -e "const fs=require('fs');for(const p of ['/tmp/cloudflare-account-token.json','/tmp/cloudflare-user-token.json']){try{const j=JSON.parse(fs.readFileSync(p,'utf8'));const c=j.errors?.[0]?.code;if(c){process.stdout.write(String(c));break}}catch{}}")"
+              echo "cloudflare_failure_category=authentication" >> "$GITHUB_STEP_SUMMARY"
+              echo "cloudflare_provider_code=${PROVIDER_CODE:-none}" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::Cloudflare rejected or did not confirm the production API token."
+              exit 1
+            fi
+          fi
+
+          WORKER_HTTP="$(curl --silent --show-error --output /tmp/cloudflare-worker.json --write-out '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/services/$WORKER_NAME" || true)"
+          PROVIDER_CODE="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cloudflare-worker.json','utf8'))}catch{};process.stdout.write(String(j.errors?.[0]?.code||''))")"
+
+          if [ "$PROVIDER_CODE" = "7003" ]; then
+            echo "cloudflare_failure_category=configuration" >> "$GITHUB_STEP_SUMMARY"
+            echo "cloudflare_provider_code=$PROVIDER_CODE" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Cloudflare account/Worker route configuration does not match the provider account."
+            exit 1
+          fi
+
+          if [ "$WORKER_HTTP" = "401" ] || [ "$PROVIDER_CODE" = "9109" ] || [ "$PROVIDER_CODE" = "6111" ]; then
+            echo "cloudflare_failure_category=authentication" >> "$GITHUB_STEP_SUMMARY"
+            echo "cloudflare_provider_code=${PROVIDER_CODE:-none}" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Cloudflare authentication failed during Worker authorization preflight."
+            exit 1
+          fi
+
+          if [ "$WORKER_HTTP" = "403" ] || [ "$PROVIDER_CODE" = "10000" ]; then
+            echo "cloudflare_failure_category=authorization" >> "$GITHUB_STEP_SUMMARY"
+            echo "cloudflare_provider_code=${PROVIDER_CODE:-none}" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Cloudflare token is valid but lacks the required Workers permission."
+            exit 1
+          fi
+
+          case "$WORKER_HTTP" in
+            200|404)
+              echo "Cloudflare preflight: token_valid=true principal_type=$PRINCIPAL_TYPE account_configured=true workers_authorized=true" >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            *)
+              echo "cloudflare_failure_category=provider" >> "$GITHUB_STEP_SUMMARY"
+              echo "cloudflare_provider_code=${PROVIDER_CODE:-none}" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::Unexpected Cloudflare Worker preflight response HTTP $WORKER_HTTP."
+              exit 1
+              ;;
+          esac
+
       - name: Install native media verification dependencies
         run: |
           sudo apt-get update
@@ -53,63 +151,11 @@ jobs:
       - name: Verify complete repository
         run: npm run verify:all
 
-      - name: Select Cloudflare deployment verification mode
-        id: deployment_mode
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          TOKEN_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-          TOKEN_VARIABLE_PRESENT: ${{ vars.CLOUDFLARE_API_TOKEN != '' }}
-          ACCOUNT_SECRET_PRESENT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
-          ACCOUNT_VARIABLE_PRESENT: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
-        run: |
-          set -euo pipefail
-          echo "Cloudflare API token secret configured: $TOKEN_SECRET_PRESENT"
-          echo "Cloudflare API token variable configured: $TOKEN_VARIABLE_PRESENT"
-          echo "Cloudflare account ID secret configured: $ACCOUNT_SECRET_PRESENT"
-          echo "Cloudflare account ID variable configured: $ACCOUNT_VARIABLE_PRESENT"
-
-          if [ "$TOKEN_VARIABLE_PRESENT" = "true" ] && [ "$TOKEN_SECRET_PRESENT" != "true" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN must never be stored as an Actions Variable; use an Actions Secret."
-            exit 1
-          fi
-
-          if [ "$TOKEN_SECRET_PRESENT" = "true" ] && { [ "$ACCOUNT_SECRET_PRESENT" = "true" ] || [ "$ACCOUNT_VARIABLE_PRESENT" = "true" ]; }; then
-            MODE="direct-wrangler"
-          else
-            MODE="cloudflare-native-github-app"
-          fi
-
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "Cloudflare deployment verification mode: $MODE" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Validate direct Cloudflare authorization
-        if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_API_TOKEN is not configured as an Actions Secret"; exit 1; }
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not configured as an Actions Secret or Variable"; exit 1; }
-
-      - name: Use configured Cloudflare account ID
-        if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
-        id: cloudflare_account
-        env:
-          CONFIGURED_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          RESOLVED_ACCOUNT_ID="$CONFIGURED_ACCOUNT_ID"
-          test -n "$RESOLVED_ACCOUNT_ID" || { echo "::error::Configured Cloudflare account ID is empty"; exit 1; }
-          echo "::add-mask::$RESOLVED_ACCOUNT_ID"
-          echo "account_id=$RESOLVED_ACCOUNT_ID" >> "$GITHUB_OUTPUT"
-
       - name: Deploy Workers Static Assets
         if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ steps.cloudflare_account.outputs.account_id }}
         run: |
           set -euo pipefail
           npx --yes wrangler@4 deploy --config wrangler.jsonc 2>&1 | tee /tmp/wrangler-deploy.log
