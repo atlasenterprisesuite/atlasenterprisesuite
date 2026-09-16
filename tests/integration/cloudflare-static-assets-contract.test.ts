@@ -62,6 +62,19 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).not.toContain('printf \'%s\' "$CLOUDFLARE_API_TOKEN"');
   });
 
+  it('reports only what the non-mutating Worker preflight actually proves', () => {
+    expect(workflow).toContain('worker_endpoint_reachable=true');
+    expect(workflow).not.toContain('workers_authorized=true');
+  });
+
+  it('bounds Cloudflare preflight network calls', () => {
+    const preflight = workflow.slice(
+      workflow.indexOf('- name: Cloudflare authorization preflight'),
+      workflow.indexOf('- name: Install native media verification dependencies'),
+    );
+    expect(preflight).toContain('--max-time 30');
+  });
+
   it('prefers direct Wrangler whenever the canonical token secret is available, including main pushes', () => {
     expect(workflow).toContain('MODE="direct-wrangler"');
     expect(workflow).toContain('else\n            MODE="cloudflare-native-github-app"');
