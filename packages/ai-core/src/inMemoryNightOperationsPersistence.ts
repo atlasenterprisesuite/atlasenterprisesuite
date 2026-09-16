@@ -26,6 +26,13 @@ export class InMemoryNightOperationsPersistence implements NightOperationsPersis
     this.items.set(item.queueItemId, clone(item));
   }
 
+  async listNightItems(scope: TenantScope): Promise<NightQueueItem[]> {
+    return [...this.items.values()]
+      .filter((item) => sameScope(item.scope, scope))
+      .sort((a, b) => b.priority - a.priority || a.createdAt.localeCompare(b.createdAt))
+      .map(clone);
+  }
+
   async claimNextNightItem(
     scope: TenantScope,
     workerId: string,
