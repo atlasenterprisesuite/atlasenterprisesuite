@@ -1,0 +1,44 @@
+name: ATLAS Network Lockfile Sync
+
+on:
+  push:
+    branches:
+      - feat/atlas-network
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/atlas-network
+      - name: Register Network workspace in lockfile
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'package-lock.json';
+          const lock = JSON.parse(fs.readFileSync(path, 'utf8'));
+          lock.packages['node_modules/@atlas/network'] = {
+            resolved: 'packages/network',
+            link: true
+          };
+          lock.packages['packages/network'] = {
+            name: '@atlas/network',
+            version: '0.1.0'
+          };
+          fs.writeFileSync(path, `${JSON.stringify(lock, null, 2)}\n`);
+          NODE
+      - name: Commit synchronized lockfile
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(network): register workspace in lockfile"
+          git push origin HEAD:feat/atlas-network
