@@ -1,6 +1,6 @@
 # ATLAS Blocker Recovery Runbook
 
-Last reviewed: 2026-09-13 / 2026-09-14 UTC
+Last reviewed: 2026-09-16 UTC
 Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`
 Canonical branch: `main`
 Authoritative Supabase project: `atlas-core` (`ggmanzcgtlrvqfoccgsh`)
@@ -93,35 +93,41 @@ A branch appears healthy based on earlier runs, but the current HEAD has changed
 
 ## 4. Cloudflare deployment authorization
 
-### Symptom
+### Canonical contract
 
-Build succeeds but `ATLAS Cloudflare Worker Deploy` fails at `Validate Cloudflare authorization`; deploy and smoke verification are skipped.
+- GitHub Environment: `production`
+- Secret credential: `CLOUDFLARE_API_TOKEN` only
+- Account ID: configured once in `wrangler.jsonc` as `account_id`
+- Worker: `atlas-enterprise-suite-web`
+- Do not create `CF_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` secrets, module-specific tokens, per-Worker tokens, or per-deploy tokens.
 
-### Known root cause
+The steady-state credential should be a durable Cloudflare Account API Token. During migration, the authorization preflight can recognize the existing user token or the target account-owned token through the same single `CLOUDFLARE_API_TOKEN` secret. This compatibility does not create a second credential namespace.
 
-GitHub Actions receives empty values for:
+### Failure classes
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-
-The workflow reads these specifically from GitHub Repository Actions Secrets.
+- `configuration`: Wrangler account/Worker configuration mismatch, including provider code `7003`.
+- `authentication`: malformed, revoked, expired, or invalid token, including provider codes `9109` or `6111`.
+- `authorization`: valid token/account but missing required Workers permission, commonly provider code `10000` or HTTP 403.
+- `provider`: unexpected Cloudflare API/runtime response after configuration, authentication, and authorization checks.
 
 ### Recovery procedure
 
-1. Configure both repository secrets under GitHub Actions secrets.
-2. Do not paste the API token into chat, logs, source control, issues, PR comments, or workflow output.
-3. Re-run the Cloudflare deployment workflow on the intended `main` SHA.
-4. Require successful Cloudflare authorization before Wrangler deploy.
-5. Verify the reported Workers deployment URL.
-6. Smoke test `/`, a representative SPA route, and `/healthz`.
-7. Record deployment evidence in ATLAS Manager/Supabase.
-8. Treat custom-domain cutover as a separate gate.
+1. Read `cloudflare_failure_category` and the non-sensitive provider code from the failed GitHub job.
+2. Do not rotate or create a new token merely because deployment failed.
+3. For `configuration`, verify the canonical `account_id` and Worker name in `wrangler.jsonc`.
+4. For `authentication`, repair or intentionally rotate the one canonical `production` secret `CLOUDFLARE_API_TOKEN`; never paste its value into chat, logs, source control, issues, PR comments, or workflow output.
+5. For `authorization`, expand the approved Workers permission of the same canonical Cloudflare principal; do not create a second token.
+6. For `provider`, preserve the provider response code and retry only after determining whether the failure is transient or configuration-related.
+7. Re-run the same failed Cloudflare deployment workflow on the exact intended `main` SHA.
+8. Require `verify:all`, successful Wrangler deploy, Worker HTTP probes, and ATLAS Manager evidence before marking production `DEPLOYED` or `VERIFIED IN PRODUCTION`.
+9. Treat DNS, Worker Routes, custom-domain mutation, and Cloudflare Access policy changes as separate approved infrastructure changes; they are not reasons to create another deployment token.
 
 ### Evidence required
 
-- authorization PASS
-- deploy PASS
-- worker artifact verification PASS
+- authorization preflight PASS
+- `verify:all` PASS
+- Wrangler deploy PASS
+- Worker/public shell probes PASS
 - ATLAS Manager evidence recording PASS
 
 ## 5. Cloudflare Access hiding the public site
@@ -320,9 +326,9 @@ For every blocker:
 
 ## Current known human-only / external blockers
 
-At the time of this runbook creation:
+At the time of this runbook review:
 
-- Cloudflare GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+- Cloudflare: the one canonical `CLOUDFLARE_API_TOKEN` must have the approved Workers authorization in the target account; ordinary deployments must not create additional tokens or secrets.
 - privileged platform-admin MFA enrollment/verification
 - GitHub administrative branch/ruleset protection for `main`
 - Supabase leaked-password protection if enabled by the current Supabase plan
