@@ -20,6 +20,7 @@ type QueueRow = {
   archive_policy: NightQueueItem['archivePolicy'];
   archive_eligible: boolean;
   next_eligible_at: string | null;
+  attention_reason: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -79,6 +80,7 @@ function toQueueRow(item: NightQueueItem): QueueRow {
     archive_policy: item.archivePolicy,
     archive_eligible: item.archiveEligible,
     next_eligible_at: item.nextEligibleAt,
+    attention_reason: item.attentionReason ?? null,
     created_at: item.createdAt,
     updated_at: item.updatedAt,
   };
@@ -102,6 +104,7 @@ function fromQueueRow(row: QueueRow): NightQueueItem {
     archivePolicy: row.archive_policy,
     archiveEligible: row.archive_eligible,
     nextEligibleAt: row.next_eligible_at,
+    attentionReason: row.attention_reason ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -306,7 +309,12 @@ export class SupabaseNightOperationsPersistence implements NightOperationsPersis
       queueItemId: item.queueItemId,
       taskId: item.taskId,
       eventType: 'night.queue.saved',
-      details: { status: item.status, archiveEligible: item.archiveEligible, checkpointId: item.checkpointId },
+      details: {
+        status: item.status,
+        archiveEligible: item.archiveEligible,
+        checkpointId: item.checkpointId,
+        attentionReason: item.attentionReason ?? null,
+      },
     });
   }
 
@@ -350,7 +358,12 @@ export class SupabaseNightOperationsPersistence implements NightOperationsPersis
     await this.log({
       scope: summary.scope,
       eventType: 'night.session.saved',
-      details: { sessionId: summary.sessionId, completedAutonomous: summary.completedAutonomous, requiresAttention: summary.requiresAttention },
+      details: {
+        sessionId: summary.sessionId,
+        completedAutonomous: summary.completedAutonomous,
+        requiresAttention: summary.requiresAttention,
+        blockerCategories: summary.blockerCategories,
+      },
     });
   }
 
