@@ -1,7 +1,7 @@
 # Cloudflare Production Consolidation Design
 
 **Date:** 2026-09-16  
-**Status:** Approved design, committed for written-spec review  
+**Status:** Approved design, implementation in progress  
 **Repository:** `atlasenterprisesuite/atlasenterprisesuite`
 
 ## Objective
@@ -23,9 +23,9 @@ Repository verification is already green before the provider boundary: typecheck
 
 ## Design principles
 
-1. **One production principal.** ATLAS uses a single Cloudflare Account API Token for CI/CD deployment and control-plane operations that are explicitly included in its permission policy.
+1. **One production principal.** ATLAS uses a single Cloudflare Account API Token for durable CI/CD deployment and control-plane operations that are explicitly included in its permission policy.
 2. **One mutable secret.** Only `CLOUDFLARE_API_TOKEN` is treated as a secret credential in GitHub production automation.
-3. **IDs are configuration, not credentials.** `CLOUDFLARE_ACCOUNT_ID` and any future zone ID are configuration values rather than duplicate Secrets.
+3. **IDs are configuration, not credentials.** The fixed Cloudflare account ID is stored exactly once in canonical `wrangler.jsonc` as `account_id`; it is not duplicated as a GitHub Secret or Actions Variable. Any future zone ID is configuration and is out of scope until a separately approved zone-scoped feature requires it.
 4. **One deployment workflow.** `.github/workflows/cloudflare-deploy.yml` remains the canonical production deployment entry point.
 5. **Fail early.** Provider authorization is validated before expensive repository verification whenever doing so does not weaken the repository's security or correctness gates.
 6. **No secret proliferation.** The repository must reject or avoid alternate names such as `CF_API_TOKEN`, module-specific Worker tokens, per-feature Cloudflare tokens, or duplicated account credentials in CI.
@@ -36,20 +36,28 @@ Repository verification is already green before the provider boundary: typecheck
 
 ### GitHub Environment: `production`
 
-The current Cloudflare contract is exactly:
+The Cloudflare credential contract is exactly:
 
 - Secret: `CLOUDFLARE_API_TOKEN`
-- Variable: `CLOUDFLARE_ACCOUNT_ID=1dd6dea2bb98459c66f610464354d686`
+
+The non-secret account configuration is canonical in `wrangler.jsonc`:
+
+- `account_id`: `1dd6dea2bb98459c66f610464354d686`
+- Worker `name`: `atlas-enterprise-suite-web`
+
+No `CLOUDFLARE_ACCOUNT_ID` Secret or Actions Variable is required by the production deployment workflow.
 
 No zone ID is required for the current Worker deployment because `wrangler.jsonc` uses `workers_dev: true` and does not manage a custom route. `CLOUDFLARE_ZONE_ID` must not be added to the canonical production contract until a separately approved zone-scoped automation feature requires it and the real zone identifier is retrieved from Cloudflare.
 
 `CLOUDFLARE_API_TOKEN` must never be stored as a GitHub Actions Variable, committed file, workflow literal, query parameter, artifact, log line, issue, pull-request body, or ATLAS database plaintext.
 
-The account ID is an identifier, not an authentication secret. It may be masked in CI logs for cleanliness, but the design does not rely on secrecy for that identifier.
+The account ID is an identifier, not an authentication secret. The design relies on its single canonical placement rather than secrecy.
 
 ## Cloudflare principal policy
 
-The single production principal should be an **Account API Token** owned by the ATLAS Cloudflare account rather than a short-lived personal workaround.
+The single production principal should be an **Account API Token** owned by the ATLAS Cloudflare account rather than a short-lived personal workaround. Cloudflare documents account-owned tokens as suitable durable service principals for CI/CD.
+
+For migration continuity, the authorization preflight may recognize either the currently configured user token or the target Account API Token through the same `CLOUDFLARE_API_TOKEN` secret. This is compatibility for one credential slot, not a second credential namespace. The steady state remains one account-owned production principal.
 
 For the current Worker deployment path, the principal must be able to create and update ATLAS Workers in the target account. The intended steady-state policy is therefore Workers product administration for the ATLAS account, sufficient for initial Worker creation and subsequent deployments without creating another token.
 
@@ -64,6 +72,7 @@ DNS administration is not part of this consolidation unless a separately approve
 `wrangler.jsonc` remains the canonical Worker definition for:
 
 - Worker name `atlas-enterprise-suite-web`
+- Cloudflare `account_id`
 - compatibility date
 - Worker entry point
 - static asset directory and binding
@@ -76,37 +85,38 @@ No second Wrangler configuration file will be introduced for the same production
 
 `.github/workflows/cloudflare-deploy.yml` remains the only production deployment workflow for the web Worker.
 
-The workflow will be simplified to prefer the stable direct-Wrangler path when the canonical credential contract is present. The Cloudflare native GitHub App may remain as a non-secret fallback/observability mechanism only if it does not create ambiguity about which path is authoritative.
+The workflow prefers the stable direct-Wrangler path when the canonical token Secret is present. The Cloudflare native GitHub App may remain as a non-secret fallback/observability mechanism only if it does not create ambiguity about which path is authoritative.
 
 The direct path is authoritative because it produces an explicit Wrangler deployment result, deployment URL, HTTP probes, and ATLAS Manager evidence.
 
 ### Preflight
 
-A focused Cloudflare preflight will validate before deployment:
+A focused Cloudflare preflight validates before expensive repository verification:
 
-1. the token secret exists;
-2. the token is not supplied through a GitHub Actions Variable;
-3. the account ID exists;
-4. Wrangler recognizes the token/account association;
-5. the token can perform the Worker operation required by the deployment path;
+1. the canonical token Secret exists when direct-Wrangler mode is selected;
+2. the workflow does not consume the token from a GitHub Actions Variable or alternate token namespace;
+3. `wrangler.jsonc` contains the canonical account ID and Worker name;
+4. Cloudflare recognizes the supplied token as an active account-owned or migration-compatible user token;
+5. the token/account can reach the Worker service operation required by the deployment path;
 6. failures are classified as configuration, authentication, authorization, or provider error without exposing credential material.
 
-The preflight must never print the token. It should produce concise diagnostics such as `token_valid`, `account_match`, `workers_authorized`, and a non-sensitive provider error code.
+The preflight must never print the token. It produces concise non-sensitive diagnostics such as `token_valid`, `principal_type`, `workers_authorized`, failure category, and provider error code when available.
 
 ### Repository verification and deploy ordering
 
-The final workflow should use this order:
+The final workflow uses this order:
 
 1. checkout/runtime setup;
-2. lightweight Cloudflare authorization preflight;
-3. locked dependency install;
-4. `npm run verify:all`;
-5. `wrangler deploy --config wrangler.jsonc`;
-6. public Worker shell probes;
-7. production shell/authorized-runtime probes when applicable;
-8. record provider-backed deployment evidence in ATLAS Manager.
+2. select Cloudflare deployment mode;
+3. lightweight Cloudflare authorization preflight for direct-Wrangler mode;
+4. locked dependency/native verification setup;
+5. `npm run verify:all`;
+6. `wrangler deploy --config wrangler.jsonc`;
+7. public Worker shell probes;
+8. production shell/authorized-runtime probes when applicable;
+9. record provider-backed deployment evidence in ATLAS Manager.
 
-A provider credential failure should therefore stop before the expensive full verification run. A repository failure must still stop before deployment.
+A provider credential failure therefore stops before the expensive full verification run. A repository failure must still stop before deployment.
 
 ## ATLAS Manager and backend integration
 
@@ -121,9 +131,10 @@ A future provider-secret synchronization mechanism may automate propagation from
 The implementation must reject or remove reliance on:
 
 - `CF_API_TOKEN` as an alternate CI source of truth;
+- `CLOUDFLARE_ACCOUNT_ID` as a GitHub Secret or Actions Variable for this Worker;
 - per-module Cloudflare tokens;
 - per-Worker duplicate tokens for ATLAS-owned Workers unless provider isolation is explicitly required by a later security design;
-- hard-coded account IDs inside multiple workflows/scripts when the GitHub production variable is available;
+- duplicated account IDs across workflows/scripts instead of the canonical `wrangler.jsonc` value;
 - plaintext Cloudflare tokens in repository files, artifacts, logs, issues, PRs, Supabase tables, or frontend code;
 - manual token rotation as a normal deployment step;
 - weakening Cloudflare Access or application authorization to make deployment checks pass.
@@ -146,21 +157,21 @@ Adding a new ATLAS module, Worker route, frontend feature, or ordinary deploymen
 
 Cloudflare failures are classified into four categories:
 
-- **configuration:** missing/mismatched account identifier;
-- **authentication:** malformed, revoked, expired, or invalid token;
-- **authorization:** valid token/account but missing permission for the requested operation;
+- **configuration:** missing/mismatched canonical account/Worker configuration, including provider code `7003`;
+- **authentication:** malformed, revoked, expired, or invalid token, including provider codes such as `9109` or `6111`;
+- **authorization:** valid token/account but missing permission for the requested Worker operation, including provider code `10000`/HTTP 403 where applicable;
 - **provider/runtime:** Cloudflare API or Worker deployment error after authorization succeeds.
 
-CI must report the category and provider error code when available, while masking credentials and avoiding raw sensitive response bodies.
+CI reports the category and provider error code when available, while masking credentials and avoiding raw sensitive response bodies.
 
 ## Tests
 
 The consolidation must add or update tests that verify:
 
-- the deploy workflow uses the canonical environment names;
-- the API token cannot come exclusively from an Actions Variable;
+- the deployment workflow uses the canonical `production` environment;
+- the API token is consumed only from `secrets.CLOUDFLARE_API_TOKEN`;
 - no alternate Cloudflare token names become CI sources of truth;
-- account configuration can be supplied as an Environment Variable;
+- account configuration is pinned once in `wrangler.jsonc` and not consumed from GitHub Secrets/Variables;
 - the preflight occurs before `verify:all`;
 - `verify:all` still occurs before `wrangler deploy`;
 - deployment still uses `wrangler.jsonc`;
@@ -180,7 +191,7 @@ Full regression gates remain:
 
 ## External provider boundary
 
-Repository automation cannot manufacture a Cloudflare credential value. The one-time provider-side requirement is that the canonical Account API Token exists in Cloudflare with the Workers authorization described above and that its value is stored in GitHub `production` as `CLOUDFLARE_API_TOKEN`.
+Repository automation cannot manufacture a Cloudflare credential value. The one-time provider-side requirement is that the canonical production principal exists in Cloudflare with the approved Workers authorization and that its value is stored in GitHub `production` as `CLOUDFLARE_API_TOKEN`.
 
 In the current chat environment, Cloudflare account-management actions and GitHub Secrets write APIs are not exposed. Therefore repository implementation can be completed up to that real security boundary, but creation/editing of the hidden credential itself requires either an authorized Cloudflare account-management connector/Work browser session or one explicit human security action.
 
@@ -205,7 +216,7 @@ The design is complete when:
 
 1. one canonical Cloudflare production principal is documented and enforced;
 2. GitHub production automation needs only one Cloudflare secret credential;
-3. the account identifier is treated as configuration rather than a recurring secret;
+3. the account identifier is pinned once as canonical non-secret Wrangler configuration rather than a recurring Secret/Variable;
 4. authorization problems fail in a focused preflight before expensive verification;
 5. repository verification still blocks deployment on code/test failure;
 6. Wrangler remains the authoritative direct deployment path;
