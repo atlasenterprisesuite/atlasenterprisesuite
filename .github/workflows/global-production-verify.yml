@@ -86,7 +86,7 @@ jobs:
           NODE
 
       - name: Verify through authorized ATLAS runtime after classified edge challenge
-        if: steps.direct.outputs.requires_authorized_fallback == 'true'
+        if: steps.direct.outputs.requires_authorized_fallback == 'true' && steps.policy.outputs.mode == 'fail-closed'
         id: authorized
         run: |
           set -euo pipefail
