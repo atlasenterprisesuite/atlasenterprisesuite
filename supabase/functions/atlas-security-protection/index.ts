@@ -1,6 +1,21 @@
 import { resolveSecurityContext } from './_shared/context.ts';
 import { SecurityProtectionError, securityErrorResponse } from './_shared/errors.ts';
 import {
+  authorizeProtectedAction,
+  cancelSecurityDelay,
+  getRecoveryStatus,
+  getSecurityDevice,
+  getSecuritySummary,
+  hasValidStepUpGrant,
+  listSecurityDelays,
+  listSecurityDevices,
+  recordRiskEvaluation,
+  revokeSecurityDevice,
+  revokeSecuritySession,
+  trustSecurityDevice
+} from './_shared/repository.ts';
+import { evaluateProtectedActionRisk } from './_shared/risk.ts';
+import {
   authenticationOptions,
   registrationOptions,
   verifyAuthentication,
@@ -13,11 +28,37 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:5173'
 ]);
 
-const WEBAUTHN_OPERATIONS = new Set([
+const OPERATIONS = new Set([
   'passkeys.registration.options',
   'passkeys.registration.verify',
   'passkeys.authentication.options',
-  'passkeys.authentication.verify'
+  'passkeys.authentication.verify',
+  'summary',
+  'devices.list',
+  'devices.trust',
+  'devices.revoke',
+  'sessions.revoke',
+  'risk.evaluate',
+  'protected_action.authorize',
+  'delays.list',
+  'delays.cancel',
+  'recovery.status'
+]);
+
+const PROTECTED_ACTIONS = new Set([
+  'account.password.change',
+  'account.recovery.change',
+  'account.passkey.remove',
+  'account.protection.disable',
+  'account.delete',
+  'admin.role.grant',
+  'admin.role.revoke',
+  'payout.destination.change',
+  'api_key.create_privileged',
+  'api_key.revoke_privileged',
+  'session.revoke_others',
+  'device.trust',
+  'device.revoke'
 ]);
 
 function corsHeaders(req: Request) {
@@ -44,6 +85,18 @@ function json(req: Request, body: unknown, status = 200) {
   });
 }
 
+function stringField(body: Record<string, unknown>, key: string, required = true): string {
+  const value = typeof body[key] === 'string' ? String(body[key]).trim() : '';
+  if (required && !value) throw new SecurityProtectionError('invalid_request', 400);
+  return value;
+}
+
+function protectedAction(body: Record<string, unknown>): string {
+  const actionCode = stringField(body, 'actionCode');
+  if (!PROTECTED_ACTIONS.has(actionCode)) throw new SecurityProtectionError('invalid_request', 400);
+  return actionCode;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { ok: false, error: 'invalid_request' }, 405);
@@ -53,7 +106,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null) as Record<string, unknown> | null;
     if (!body || typeof body.operation !== 'string') throw new SecurityProtectionError('invalid_request', 400);
     const operation = body.operation;
-    if (!WEBAUTHN_OPERATIONS.has(operation)) throw new SecurityProtectionError('invalid_operation', 400);
+    if (!OPERATIONS.has(operation)) throw new SecurityProtectionError('invalid_operation', 400);
 
     let data: unknown;
     switch (operation) {
@@ -62,21 +115,91 @@ Deno.serve(async (req: Request) => {
         break;
       case 'passkeys.registration.verify':
         data = await verifyRegistration(context, {
-          challengeId: String(body.challengeId || ''),
+          challengeId: stringField(body, 'challengeId'),
           response: body.response as never
         });
         break;
       case 'passkeys.authentication.options':
         data = await authenticationOptions(context, {
-          actionCode: String(body.actionCode || ''),
-          deviceId: body.deviceId ? String(body.deviceId) : null
+          actionCode: protectedAction(body),
+          deviceId: stringField(body, 'deviceId', false) || null
         });
         break;
       case 'passkeys.authentication.verify':
         data = await verifyAuthentication(context, {
-          challengeId: String(body.challengeId || ''),
+          challengeId: stringField(body, 'challengeId'),
           response: body.response as never
         });
+        break;
+      case 'summary':
+        data = await getSecuritySummary(context);
+        break;
+      case 'devices.list':
+        data = await listSecurityDevices(context);
+        break;
+      case 'devices.trust':
+        data = await trustSecurityDevice(
+          context,
+          stringField(body, 'deviceId'),
+          stringField(body, 'reason'),
+          stringField(body, 'grantId')
+        );
+        break;
+      case 'devices.revoke':
+        data = await revokeSecurityDevice(
+          context,
+          stringField(body, 'deviceId'),
+          stringField(body, 'reason'),
+          stringField(body, 'grantId')
+        );
+        break;
+      case 'sessions.revoke':
+        data = await revokeSecuritySession(context, {
+          targetSessionToken: stringField(body, 'targetSessionToken'),
+          reason: stringField(body, 'reason'),
+          grantId: stringField(body, 'grantId')
+        });
+        break;
+      case 'risk.evaluate': {
+        const actionCode = protectedAction(body);
+        const deviceId = stringField(body, 'deviceId');
+        const grantId = stringField(body, 'grantId', false) || null;
+        const device = await getSecurityDevice(context, deviceId);
+        const recovery = await getRecoveryStatus(context);
+        const passkeyVerified = await hasValidStepUpGrant(context, grantId, actionCode, deviceId);
+        const evaluation = evaluateProtectedActionRisk({
+          actionCode: actionCode as never,
+          device,
+          passkeyVerified,
+          evidence: {
+            recoveryHold: recovery.holdActive,
+            networkReputation: 'unknown',
+            locationConsistency: 'unknown',
+            simEvidence: 'unknown'
+          }
+        });
+        const riskEventId = await recordRiskEvaluation(context, actionCode, deviceId, evaluation);
+        data = { ...evaluation, riskEventId };
+        break;
+      }
+      case 'protected_action.authorize':
+        data = await authorizeProtectedAction(context, {
+          actionCode: protectedAction(body),
+          deviceId: stringField(body, 'deviceId'),
+          grantId: stringField(body, 'grantId', false) || null,
+          riskEventId: stringField(body, 'riskEventId'),
+          targetReference: stringField(body, 'targetReference', false) || null,
+          configuredDelaySeconds: typeof body.configuredDelaySeconds === 'number' ? body.configuredDelaySeconds : null
+        });
+        break;
+      case 'delays.list':
+        data = await listSecurityDelays(context);
+        break;
+      case 'delays.cancel':
+        data = await cancelSecurityDelay(context, stringField(body, 'delayId'), stringField(body, 'reason'));
+        break;
+      case 'recovery.status':
+        data = await getRecoveryStatus(context);
         break;
       default:
         throw new SecurityProtectionError('invalid_operation', 400);
