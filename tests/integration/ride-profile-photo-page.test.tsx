@@ -1,4 +1,6 @@
+import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProfilePhotoCompliancePage } from '../../apps/web/src/modules/ride/ProfilePhotoCompliancePage';
 import {
@@ -39,6 +41,14 @@ function response(overrides: Record<string, unknown> = {}) {
   return { ok: true, requirement: baseRequirement, submission: null, permissions: ['ride.compliance.read', 'ride.compliance.submit'], ...overrides } as any;
 }
 
+function renderProfilePhotoPage() {
+  return render(
+    <MemoryRouter>
+      <ProfilePhotoCompliancePage />
+    </MemoryRouter>
+  );
+}
+
 describe('ATLAS Ride profile-photo compliance page', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -47,14 +57,14 @@ describe('ATLAS Ride profile-photo compliance page', () => {
 
   it('renders a truthful no-action state', async () => {
     vi.mocked(getRideProfilePhotoRequirement).mockResolvedValue(response({ requirement: null }));
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
     expect(await screen.findByText(/no profile-photo action is currently required/i)).toBeInTheDocument();
     expect(screen.queryByText(/verified by ai|face matched/i)).not.toBeInTheDocument();
   });
 
   it('shows action required with an accessible governed image input', async () => {
     vi.mocked(getRideProfilePhotoRequirement).mockResolvedValue(response());
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
     expect(await screen.findByRole('heading', { name: /profile photo update required/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /take or choose photo/i })).toBeEnabled();
     expect(screen.getByLabelText(/profile photo/i)).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp');
@@ -66,7 +76,7 @@ describe('ATLAS Ride profile-photo compliance page', () => {
     const requirement = { ...baseRequirement, status: 'rejected', eligibilityEffect: 'block_new_activity', reasonText: 'Photo was not clear' };
     const rejection = { ...submitted, status: 'rejected', decisionReason: 'Photo was not clear', reviewedAt: '2026-09-12T12:10:00Z' };
     vi.mocked(getRideProfilePhotoRequirement).mockResolvedValue(response({ requirement, submission: rejection }));
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
     expect(await screen.findByText(/new ride activity is blocked/i)).toBeInTheDocument();
     expect(screen.getByText(/photo was not clear/i)).toBeInTheDocument();
     expect(screen.getByText(/rejected/i)).toBeInTheDocument();
@@ -74,7 +84,7 @@ describe('ATLAS Ride profile-photo compliance page', () => {
 
   it('does not expose reviewer controls without review permission', async () => {
     vi.mocked(getRideProfilePhotoRequirement).mockResolvedValue(response({ requirement: { ...baseRequirement, status: 'submitted' }, submission: submitted }));
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
     expect(await screen.findByText(/^submitted$/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /open review/i })).not.toBeInTheDocument();
   });
@@ -85,7 +95,7 @@ describe('ATLAS Ride profile-photo compliance page', () => {
       permissions: ['ride.compliance.read', 'ride.compliance.review']
     }));
     vi.mocked(getRideCompliancePreview).mockResolvedValue({ ok: true, signed_url: 'https://signed.example/photo', expires_in: 300 });
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
 
     const open = await screen.findByRole('button', { name: /open review/i });
     expect(getRideCompliancePreview).not.toHaveBeenCalled();
@@ -104,7 +114,7 @@ describe('ATLAS Ride profile-photo compliance page', () => {
       requirement: { ...baseRequirement, status: 'submitted' },
       submission: submitted
     });
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
     await screen.findByRole('button', { name: /take or choose photo/i });
 
     const file = new File(['jpeg'], 'profile.jpg', { type: 'image/jpeg' });
@@ -128,7 +138,7 @@ describe('ATLAS Ride profile-photo compliance page', () => {
 
   it('renders server failures as alerts', async () => {
     vi.mocked(getRideProfilePhotoRequirement).mockRejectedValue(new Error('backend_unavailable'));
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
     expect(await screen.findByRole('alert')).toHaveTextContent(/unable to load/i);
   });
 
@@ -148,7 +158,7 @@ describe('ATLAS Ride profile-photo compliance page', () => {
       requirement: { ...baseRequirement, status: 'rejected' },
       submission: { ...submitted, status: 'rejected', decisionReason: 'Too dark' }
     });
-    render(<ProfilePhotoCompliancePage />);
+    renderProfilePhotoPage();
     fireEvent.click(await screen.findByRole('button', { name: /open review/i }));
     await screen.findByAltText(/submitted profile photo/i);
     fireEvent.click(screen.getByRole('button', { name: /^approve$/i }));

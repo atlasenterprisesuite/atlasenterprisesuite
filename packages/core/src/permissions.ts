@@ -24,6 +24,11 @@ export type IntegrationPermission =
   | 'integrations.write'
   | 'integrations.admin';
 
+export type CrmPermission =
+  | 'crm.read'
+  | 'crm.sync'
+  | 'crm.admin';
+
 export type AgentPermission =
   | 'agents.read'
   | 'agents.write'
@@ -37,11 +42,12 @@ export type AtlasPermission =
   | AccountingPermission
   | VoicePermission
   | IntegrationPermission
+  | CrmPermission
   | AgentPermission
   | SecurityPermission
   | AuditPermission;
 
-export function hasPermission(
+export function hasAtlasPermission(
   granted: readonly AtlasPermission[],
   required: AtlasPermission
 ) {
@@ -49,6 +55,20 @@ export function hasPermission(
   const namespace = required.split('.')[0];
   const admin = `${namespace}.admin` as AtlasPermission;
   return granted.includes(admin);
+}
+
+export function hasPermission(
+  granted: readonly AtlasPermission[],
+  required: AtlasPermission
+) {
+  return hasAtlasPermission(granted, required);
+}
+
+export function hasLegacyIntegrationAdmin(granted: readonly string[]) {
+  return (
+    granted.includes('integrations.admin') ||
+    granted.includes('integrations.manage')
+  );
 }
 
 export type AuthorizationContext = {
@@ -67,7 +87,7 @@ export function authorize(
     return { ok: false, reason: 'scope_mismatch' };
   }
 
-  return hasPermission(actor.permissions, request.permission)
+  return hasAtlasPermission(actor.permissions, request.permission)
     ? { ok: true }
     : { ok: false, reason: 'permission_denied' };
 }

@@ -1,7 +1,81 @@
-import { Link } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
+import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
+import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
+import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
+import {
+  AccountingExperiencePage,
+  BusinessExperiencePage,
+  EnterpriseExperiencePage,
+  FinanceExperiencePage
+} from '../modules/experience/AtlasModuleExperiences';
+import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
+import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
+import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
+import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 
+const JAQUE_MATE_SENTINEL_CANONICAL = '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel';
+const JAQUE_MATE_SENTINEL_V2 = '/health/jaque-mate/sentinel/v2';
+const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
+
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/') {
+    return <EnterpriseExperiencePage />;
+  }
+
+  if (pathname === '/business') {
+    return <BusinessExperiencePage />;
+  }
+
+  if (pathname === '/finance') {
+    return <FinanceExperiencePage />;
+  }
+
+  if (pathname === '/finance/accounting') {
+    return <AccountingExperiencePage />;
+  }
+
+  if (pathname === '/galaxy') {
+    return (
+      <RequireAtlasIdentity>
+        <AtlasGalaxyPage />
+      </RequireAtlasIdentity>
+    );
+  }
+
+  if (pathname === '/crm' || pathname.startsWith('/crm/')) {
+    return (
+      <RequireAtlasIdentity>
+        <CrmRoutes />
+      </RequireAtlasIdentity>
+    );
+  }
+
+  if (pathname === '/connect' || pathname.startsWith('/connect/')) {
+    return (
+      <RequireAtlasIdentity>
+        <ConnectRoutes />
+      </RequireAtlasIdentity>
+    );
+  }
+
+  if (pathname === '/studio/content') {
+    return <RequireAtlasIdentity><ContentIntelligencePage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/health') {
+    return <HealthExperiencePage />;
+  }
+
+  if (pathname === JAQUE_MATE_SENTINEL_LEGACY) {
+    return <Navigate to={JAQUE_MATE_SENTINEL_V2} replace />;
+  }
+
+  if (pathname === JAQUE_MATE_SENTINEL_V2 || pathname === JAQUE_MATE_SENTINEL_CANONICAL) {
+    return <JaqueMateSentinelPage />;
+  }
+
   if (pathname === '/health/wellbeing/neuroplasticity') {
     return <NeuroplasticityProgramPage entry="health" />;
   }
@@ -11,21 +85,7 @@ export function resolveAtlasExtension(pathname: string) {
   }
 
   if (pathname === '/learning') {
-    return (
-      <section className="page-stack">
-        <header className="page-header">
-          <p className="eyebrow">ATLAS Learning</p>
-          <h1>Learning</h1>
-          <p>Turn goals into deliberate practice, active recall, spaced review and measurable activity progress.</p>
-        </header>
-        <Link className="feature-card link-card accent" to="/learning/neuroplasticity">
-          <p className="eyebrow">Practice Lab</p>
-          <h2>Neuroplasticity Program</h2>
-          <p>A cross-module program coordinated with ATLAS Health for readiness, recovery and safety.</p>
-          <span className="action-link">Build a daily plan</span>
-        </Link>
-      </section>
-    );
+    return <LearningExperiencePage />;
   }
 
   return null;

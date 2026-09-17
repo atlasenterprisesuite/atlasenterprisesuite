@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -40,7 +40,10 @@ beforeEach(() => {
 
 describe('Manager readiness launcher', () => {
   it('syncs then replaces the launcher with the canonical generic workflow route', async () => {
-    vi.mocked(syncManagerReadiness).mockResolvedValue({ workflowId: 'wf-manager-1' });
+    let resolveSync!: (value: { workflowId: string }) => void;
+    vi.mocked(syncManagerReadiness).mockImplementation(() => new Promise((resolve) => {
+      resolveSync = resolve;
+    }));
 
     render(
       <MemoryRouter initialEntries={['/execution/manager/readiness']}>
@@ -49,9 +52,14 @@ describe('Manager readiness launcher', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('heading', { name: 'Verifying infrastructure readiness' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Verifying infrastructure readiness' })).toBeInTheDocument();
+    await waitFor(() => expect(syncManagerReadiness).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      resolveSync({ workflowId: 'wf-manager-1' });
+    });
+
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/execution/wf-manager-1'));
-    expect(syncManagerReadiness).toHaveBeenCalledTimes(1);
   });
 
   it('shows the exact sync error and retries only when requested', async () => {

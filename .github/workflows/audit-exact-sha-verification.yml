@@ -1,0 +1,78 @@
+name: ATLAS Audit Exact-SHA Verification
+
+on:
+  push:
+    branches:
+      - audit/atlas-production-runner-closure-2026-09-13
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: atlas-audit-exact-sha-verification
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact audit SHA
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Locked install
+        run: npm ci
+
+      - name: Dependency security gate
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          npm run test:integration 2>&1 | tee /tmp/atlas-integration.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            sed -E 's/\x1B\[[0-9;]*[mK]//g' /tmp/atlas-integration.log > /tmp/atlas-integration-clean.log
+            {
+              echo '<!-- atlas-audit-integration-failure -->'
+              echo '### ATLAS exact-SHA integration failure'
+              echo
+              echo "SHA: \`$GITHUB_SHA\`"
+              echo
+              echo '**Failure index**'
+              echo '\`\`\`text'
+              grep -E 'FAIL .*tests/integration/|ReferenceError|AssertionError|Test Files|Tests ' /tmp/atlas-integration-clean.log | head -n 160 || true
+              echo '\`\`\`'
+              echo
+              echo '**Tail**'
+              echo '\`\`\`text'
+              tail -n 80 /tmp/atlas-integration-clean.log
+              echo '\`\`\`'
+            } > /tmp/atlas-integration-comment.md
+            gh pr comment 113 --body-file /tmp/atlas-integration-comment.md
+          fi
+          exit "$status"
+
+      - name: Production build
+        run: npm run build
+
+      - name: Record verified SHA
+        run: |
+          echo "Verified SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Install, dependency audit, typecheck, unit, integration, and production build all passed." >> "$GITHUB_STEP_SUMMARY"

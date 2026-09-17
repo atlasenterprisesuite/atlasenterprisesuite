@@ -9,6 +9,7 @@ const items = [
   ['Falsification', `${base}/falsification`],
   ['Vulnerability Engine', `${base}/vulnerability`],
   ['Curability Index', `${base}/curability`],
+  ['Jaque Mate + Sentinel', `${base}/jaque-mate-sentinel`],
   ['Research Updates', `${base}/updates`],
   ['Settings', `${base}/settings`]
 ] as const;
