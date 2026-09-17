@@ -84,7 +84,7 @@ function AccountingHome() {
   return (
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Working accounting slices share the same governed tenant scope and reporting contracts." />
-      <div className="module-grid compact">
+      <div className="module-grid">
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging and payment application state.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Reports</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed ops, inventory and floorplan controls.</p></Link>
       </div>
@@ -212,51 +212,36 @@ function EvidencePage() {
         <label className="field"><span>Evidence level</span><select value={level} onChange={(event) => setLevel(event.target.value as 'all' | EvidenceLevel)}><option value="all">All levels</option><option value="human">Human</option><option value="preclinical">Preclinical</option><option value="mechanistic">Mechanistic</option><option value="hypothesis">Hypothesis</option></select></label>
         <label className="field"><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value as 'all' | EvidenceStatus)}><option value="all">All statuses</option><option value="active">Active</option><option value="supported">Supported</option><option value="mixed">Mixed</option><option value="retracted">Retracted</option></select></label>
       </div>
-      {filtered.length === 0 ? <div className="empty-state"><strong>No evidence matches these filters</strong><span>Adjust filters or register governed evidence.</span></div> : <div className="evidence-list">{filtered.map((record) => <article key={record.id} className="evidence-card"><div className="card-heading"><span className="status-chip neutral">{evidenceLabel(record.evidenceLevel)}</span><span className="status-chip neutral">{record.status}</span></div><h3>{record.title}</h3><p>{record.finding}</p><dl><div><dt>Source</dt><dd>{record.sourceName}</dd></div><div><dt>Identifier</dt><dd>{record.sourceIdentifier}</dd></div><div><dt>Replication</dt><dd>{record.replicationStatus}</dd></div><div><dt>Limitations</dt><dd>{record.limitations}</dd></div></dl></article>)}</div>}
+      {filtered.length === 0 ? <div className="empty-state"><strong>No evidence matches these filters</strong><span>Adjust filters or register governed evidence.</span></div> : <div className="evidence-list">{filtered.map((record) => <article key={record.id} className="evidence-card"><div className="card-heading"><span className="status-chip neutral">{evidenceLabel(record.evidenceLevel)}</span><span className="status-chip neutral">{record.status}</span></div><h3>{record.title}</h3><p>{record.finding}</p><dl><div><dt>Source</dt><dd>{record.sourceName}</dd></div><div><dt>Identifier</dt><dd>{record.sourceIdentifier}</dd></div><div><dt>Replication</dt><dd>{record.replicationStatus}</dd></div></dl><details><summary>Limitations & safety</summary><ul>{record.limitations.map((item) => <li key={item}>{item}</li>)}{record.safetySignals.map((item) => <li key={item}>{item}</li>)}</ul></details></article>)}</div>}
     </div>
   );
 }
 
 function FalsificationPage() {
-  return (
-    <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Falsification Engine" description="Preserve what could break a model before a hypothesis can be promoted." />
-      <div className="falsification-grid">{falsificationRecords.map((item) => <article key={item.id} className="feature-card"><p className="eyebrow">{item.type}</p><h3>{item.title}</h3><p>{item.description}</p><dl><div><dt>Impact</dt><dd>{item.impact}</dd></div><div><dt>Question</dt><dd>{item.testableQuestion}</dd></div></dl></article>)}</div>
-    </div>
-  );
+  return <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Falsification Engine" description="Counterexamples, alternative explanations and escape routes remain visible." />{falsificationRecords.map((record) => <article key={record.id} className="feature-card wide"><div className="card-heading"><span className="status-chip warning">{record.resultingStatus}</span><small>{record.challengeType}</small></div><h3>{record.conclusion}</h3><div className="falsification-grid"><div><strong>Counterexample</strong><p>{record.counterexample}</p></div><div><strong>Escape route</strong><p>{record.escapeRoute}</p></div><div><strong>Mitigation</strong><p>{record.mitigationStrategy}</p></div></div></article>)}</div>;
 }
 
 function VulnerabilityPage() {
-  return (
-    <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Vulnerability Engine" description="A transparent research-only scoring model. Scores are demo analytical constructs, not treatment recommendations." />
-      <div className="vulnerability-list">{vulnerabilityProfiles.map((profile) => { const score = calculateVulnerability(profile); const disease = diseases.find((item) => item.id === profile.diseaseId); return <article key={profile.id} className="feature-card"><div className="card-heading"><span><p className="eyebrow">{disease?.category}</p><h3>{disease?.name}</h3></span><span className="score-ring">{score.score}</span></div><p>{score.interpretation}</p><div className="score-row"><span>Dependency <strong>{profile.dependency}</strong></span><span>Redundancy <strong>{profile.redundancy}</strong></span><span>Repair <strong>{profile.repairReserve}</strong></span><span>Escape <strong>{profile.escapeCapacity}</strong></span></div></article>; })}</div>
-    </div>
-  );
+  const [diseaseId, setDiseaseId] = useState(diseases[0].id);
+  const result = calculateVulnerability(vulnerabilityProfiles[diseaseId]);
+  return <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Reconstruction Vulnerability Engine" description="Transparent rule-based research model. Scores are synthetic demonstration outputs, not clinical risk scores." /><div className="notice">Research model only · formula {result.formulaVersion}</div><label className="field"><span>Disease workspace</span><select value={diseaseId} onChange={(event) => setDiseaseId(event.target.value)}>{diseases.map((disease) => <option key={disease.id} value={disease.id}>{disease.name}</option>)}</select></label><div className="risk-panel"><div className="risk-score"><strong>{result.reconstructionRisk}</strong><span>/100 demo reconstruction score</span></div><div className="contribution-list">{Object.entries(result.contributionsByFactor).map(([factor, contribution]) => <div key={factor}><span>{factor}</span><span>{Math.round(contribution)} pts</span></div>)}</div></div></div>;
 }
 
 function CurabilityPage() {
-  const [level, setLevel] = useState<'all' | CurabilityLevel>('all');
-  const visible = curabilityDefinitions.filter((definition) => level === 'all' || definition.level === level);
-  return (
-    <div className="page-stack">
-      <PageHeader eyebrow="Disease Reconstruction Lab" title="Curability Framework" description="Semantic discipline for research claims. This framework does not determine a person's clinical status." />
-      <label className="field"><span>Research classification</span><select value={level} onChange={(event) => setLevel(event.target.value as 'all' | CurabilityLevel)}><option value="all">All definitions</option>{curabilityDefinitions.map((definition) => <option key={definition.level} value={definition.level}>{definition.level}</option>)}</select></label>
-      <div className="module-grid">{visible.map((definition) => <article className="module-card enabled" key={definition.level}><span>{definition.level}</span><strong>{definition.label}</strong><p>{definition.description}</p></article>)}</div>
-    </div>
-  );
+  const levels = Object.entries(curabilityDefinitions) as [CurabilityLevel, string][];
+  return <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Curability Index" description="Research classification separating symptom control, modification, remission, reproducible cure, elimination and eradication." /><div className="notice strong">C5–C7 are evidence-gated. A hypothesis, preclinical model or isolated observation cannot promote a disease into a cure-level claim.</div><div className="curability-list">{levels.map(([level, definition]) => <article key={level}><strong>{level}</strong><span>{definition}</span></article>)}</div></div>;
 }
 
 function UpdatesPage() {
-  return <section className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Updates" description="No fabricated live literature feed is enabled. Connect an authorized evidence-ingestion provider before claiming real-time updates." /><div className="empty-state"><strong>No live update provider configured</strong><span>Repository demo evidence remains available in the Evidence Registry.</span></div></section>;
+  return <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Research Updates" description="This view reports only data actually registered in the repository." /><div className="empty-state"><strong>No updates</strong><span>Register governed research activity to populate this feed.</span></div></div>;
 }
 
 function SettingsPage() {
-  return <section className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Settings" description="Research settings will remain organization-scoped and evidence-aware." /><div className="empty-state"><strong>No external research provider configured</strong><span>Core repository data is local demo data until an authorized integration is attached.</span></div></section>;
+  return <div className="page-stack"><PageHeader eyebrow="Disease Reconstruction Lab" title="Settings" description="Environment and governance status for this implementation milestone." /><div className="empty-state"><strong>Read-only development foundation</strong><span>No production datastore or external clinical integration is configured.</span></div></div>;
 }
 
 function NotFound() {
-  return <section className="page-stack"><PageHeader eyebrow="ATLAS" title="Route not implemented" description="This path is not part of the implemented release candidate." /><Link className="action-link" to="/">Return to Enterprise Home</Link></section>;
+  return <section className="page-stack"><PageHeader eyebrow="Navigation" title="Route not found" description="This route is not part of the active ATLAS module graph." /><Link className="text-link" to="/">Return home</Link></section>;
 }
 
 export function App() {
@@ -284,7 +269,7 @@ export function App() {
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />} />
-        <Route path="/payroll/*" element={<RequireAtlasIdentity><PayrollRoutes /></RequireAtlasIdentity>} />
+        <Route path="/payroll/*" element={<PayrollRoutes />} />
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
