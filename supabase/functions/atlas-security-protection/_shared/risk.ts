@@ -1,4 +1,5 @@
 import { evaluateSecurityRisk } from '../../../../packages/security-protection/src/risk.ts';
+import { isProtectedActionCode } from '../../../../packages/security-protection/src/policy.ts';
 import type {
   DeviceSecurityStatus,
   OptionalRiskSignal,
@@ -10,7 +11,7 @@ export const RISK_DECISIONS = ['allow', 'step_up', 'delay', 'deny'] as const;
 
 type PersistedDevice = { status?: string | null } | null;
 
-type ServerRiskEvidence = {
+export type ServerRiskEvidence = {
   networkReputation?: OptionalRiskSignal;
   locationConsistency?: OptionalRiskSignal;
   simEvidence?: OptionalRiskSignal;
@@ -29,6 +30,12 @@ function normalizeSignal(value: OptionalRiskSignal | undefined): OptionalRiskSig
   return value === 'positive' || value === 'negative' ? value : 'unknown';
 }
 
+export function requireProtectedActionCode(value: unknown): ProtectedActionCode {
+  const actionCode = String(value || '');
+  if (!isProtectedActionCode(actionCode)) throw new Error('unsupported_protected_action');
+  return actionCode;
+}
+
 export function evaluateProtectedActionRisk(input: {
   actionCode: ProtectedActionCode;
   device: PersistedDevice;
@@ -43,7 +50,7 @@ export function evaluateProtectedActionRisk(input: {
   const simEvidence = normalizeSignal(evidence.simEvidence) || 'unknown';
 
   if (deviceStatus === 'revoked' || deviceStatus === 'compromised') {
-    return evaluateSecurityRisk({
+    const denied = evaluateSecurityRisk({
       action: input.actionCode,
       deviceStatus,
       passkeyVerified: input.passkeyVerified,
@@ -56,6 +63,8 @@ export function evaluateProtectedActionRisk(input: {
       simEvidence,
       configuredDelaySeconds: input.configuredDelaySeconds
     });
+    if (denied.decision !== 'deny') throw new Error('revoked_device_must_deny');
+    return denied;
   }
 
   return evaluateSecurityRisk({
