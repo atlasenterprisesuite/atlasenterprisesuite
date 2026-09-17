@@ -2,9 +2,10 @@ import { createServer } from 'node:http';
 import { handleMcpRequest, type JsonRpcRequest } from '../../../packages/atlas-mcp/src';
 import { createAtlasRuntime } from './runtime/container';
 import { resolveHttpActor } from './runtime/auth';
+import { resolvePersistence } from './runtime/persistence';
 import { readiness } from './runtime/readiness';
 
-const runtime = createAtlasRuntime();
+const runtime = createAtlasRuntime({ persistence: resolvePersistence(process.env) });
 const port = Number(process.env.ATLAS_MCP_PORT ?? 8788);
 const tenantId = process.env.ATLAS_TENANT_ID;
 const organizationId = process.env.ATLAS_ORGANIZATION_ID;
