@@ -23,6 +23,12 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain("verification_source: 'atlas-authorized-supabase-runtime'");
   });
 
+  it('attests the observed Worker commit without exposing the protected manifest path', () => {
+    expect(verifier).toContain("response.headers.get('x-atlas-commit-sha')");
+    expect(verifier).toContain('observed_commit_sha');
+    expect(verifier).toContain('home.atlas_commit_sha === caller.claims.sha');
+  });
+
   it('lets the workflow fall back to authorized runtime verification when GitHub is challenged', () => {
     expect(workflow).toContain('Verify production shell through authorized ATLAS runtime');
     expect(workflow).toContain('audience=atlas-production-http-verifier');
