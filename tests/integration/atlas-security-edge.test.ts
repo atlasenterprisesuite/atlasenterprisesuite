@@ -127,7 +127,7 @@ describe('ATLAS Device & Account Protection protected-action API contract', () =
     const repository = read('_shared/repository.ts');
     expect(repository).toMatch(/provider_status_value:\s*['"]requested['"]/i);
     expect(repository).toMatch(/auth\.admin\.signOut/i);
-    expect(repository).toMatch(/provider_status_value:\s*['"]provider_succeeded['"]/i);
+    expect(repository).toMatch(/auth\.admin\.signOut[\s\S]*['"]provider_succeeded['"]/i);
     expect(repository).toMatch(/provider_status_value:\s*['"]provider_failed['"]/i);
   });
 
