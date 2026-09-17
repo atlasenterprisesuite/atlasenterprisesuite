@@ -4,7 +4,7 @@ const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOW = `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 2;
+const VERSION = 3;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -113,6 +113,7 @@ type Probe = {
   ok: boolean;
   content_type: string | null;
   cf_mitigated: string | null;
+  atlas_commit_sha: string | null;
   location: string | null;
   duration_ms: number;
   redirect_count: number;
@@ -130,7 +131,7 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
         redirect: 'manual',
         cache: 'no-store',
         headers: {
-          'user-agent': 'ATLAS-Authorized-Production-Verifier/2.0',
+          'user-agent': 'ATLAS-Authorized-Production-Verifier/3.0',
           'cache-control': 'no-cache, no-store'
         }
       });
@@ -143,6 +144,7 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
             ok: false,
             content_type: response.headers.get('content-type'),
             cf_mitigated: response.headers.get('cf-mitigated'),
+            atlas_commit_sha: response.headers.get('x-atlas-commit-sha'),
             location: '[redirect-limit-exceeded]',
             duration_ms: Date.now() - started,
             redirect_count: redirectCount,
@@ -157,6 +159,7 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
             ok: false,
             content_type: response.headers.get('content-type'),
             cf_mitigated: response.headers.get('cf-mitigated'),
+            atlas_commit_sha: response.headers.get('x-atlas-commit-sha'),
             location: '[blocked-cross-origin-redirect]',
             duration_ms: Date.now() - started,
             redirect_count: redirectCount,
@@ -174,6 +177,7 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
         ok: response.ok,
         content_type: response.headers.get('content-type'),
         cf_mitigated: response.headers.get('cf-mitigated'),
+        atlas_commit_sha: response.headers.get('x-atlas-commit-sha'),
         location: location ? '[redirect-present]' : null,
         duration_ms: Date.now() - started,
         redirect_count: redirectCount,
@@ -186,6 +190,7 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
       ok: false,
       content_type: null,
       cf_mitigated: null,
+      atlas_commit_sha: null,
       location: null,
       duration_ms: Date.now() - started,
       redirect_count: redirectCount,
@@ -247,7 +252,16 @@ Deno.serve(async (req: Request) => {
     networkCompliance
   ].every((result) => result.status === 200);
   const deploymentPathProtected = [302, 401, 403].includes(deployment.status);
-  const verified = publicShellOk && criticalNetworkRoutesOk && deploymentPathProtected;
+  const productionCommitVerified = Boolean(caller.claims.sha) &&
+    home.atlas_commit_sha === caller.claims.sha &&
+    identity.atlas_commit_sha === caller.claims.sha &&
+    finance.atlas_commit_sha === caller.claims.sha &&
+    network.atlas_commit_sha === caller.claims.sha &&
+    networkPricing.atlas_commit_sha === caller.claims.sha &&
+    networkCommissions.atlas_commit_sha === caller.claims.sha &&
+    networkPayouts.atlas_commit_sha === caller.claims.sha &&
+    networkCompliance.atlas_commit_sha === caller.claims.sha;
+  const verified = publicShellOk && criticalNetworkRoutesOk && deploymentPathProtected && productionCommitVerified;
 
   return json(
     {
@@ -256,12 +270,14 @@ Deno.serve(async (req: Request) => {
       verification_source: 'atlas-authorized-supabase-runtime',
       production_url: PRODUCTION_URL,
       target_sha: caller.claims.sha,
+      observed_commit_sha: home.atlas_commit_sha,
       edge_security_preserved: true,
       checks: {
         public_home_reachable: home.status === 200,
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
+        production_commit_sha_verified: productionCommitVerified,
         network_route_reachable: network.status === 200,
         network_pricing_route_reachable: networkPricing.status === 200,
         network_commissions_route_reachable: networkCommissions.status === 200,
