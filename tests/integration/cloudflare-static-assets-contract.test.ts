@@ -31,30 +31,70 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('cloudflare-native-github-app');
   });
 
-  it('prefers the official Cloudflare GitHub App for main push deployments', () => {
-    expect(workflow).toContain('GITHUB_EVENT_NAME: ${{ github.event_name }}');
-    expect(workflow).toContain('if [ "$GITHUB_EVENT_NAME" = "push" ]; then');
-    expect(workflow).toContain('MODE="cloudflare-native-github-app"');
+  it('uses exactly one Cloudflare credential source in production CI', () => {
+    expect(workflow).toContain('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
+    expect(workflow).not.toContain('vars.CLOUDFLARE_API_TOKEN');
+    expect(workflow).not.toContain('CF_API_TOKEN');
+    expect(workflow).not.toContain('CF_ACCOUNT_ID');
   });
 
-  it('resolves an invalid configured account ID only when the token exposes exactly one accessible account', () => {
-    expect(workflow).toContain('Resolve Cloudflare account ID');
-    expect(workflow).toContain('https://api.cloudflare.com/client/v4/accounts');
-    expect(workflow).toContain('::add-mask::$RESOLVED_ACCOUNT_ID');
-    expect(workflow).toContain('steps.cloudflare_account.outputs.account_id');
-    expect(workflow).toContain('Expected exactly one accessible Cloudflare account');
+  it('pins the non-secret Cloudflare account once in canonical Wrangler config', () => {
+    expect(wrangler).toContain('"account_id": "1dd6dea2bb98459c66f610464354d686"');
+    expect(workflow).not.toContain('secrets.CLOUDFLARE_ACCOUNT_ID');
+    expect(workflow).not.toContain('vars.CLOUDFLARE_ACCOUNT_ID');
+  });
+
+  it('fails Cloudflare authorization before expensive repository verification', () => {
+    const preflight = workflow.indexOf('Cloudflare authorization preflight');
+    const verify = workflow.indexOf('npm run verify:all');
+    const deploy = workflow.indexOf('wrangler@4 deploy');
+    expect(preflight).toBeGreaterThan(-1);
+    expect(verify).toBeGreaterThan(preflight);
+    expect(deploy).toBeGreaterThan(verify);
+  });
+
+  it('classifies provider failures without logging the token', () => {
+    expect(workflow).toContain('cloudflare_failure_category=configuration');
+    expect(workflow).toContain('cloudflare_failure_category=authentication');
+    expect(workflow).toContain('cloudflare_failure_category=authorization');
+    expect(workflow).toContain('cloudflare_failure_category=provider');
+    expect(workflow).not.toContain('echo "$CLOUDFLARE_API_TOKEN"');
+    expect(workflow).not.toContain('printf \'%s\' "$CLOUDFLARE_API_TOKEN"');
+  });
+
+  it('reports only what the non-mutating Worker preflight actually proves', () => {
+    expect(workflow).toContain('worker_endpoint_reachable=true');
+    expect(workflow).not.toContain('workers_authorized=true');
+  });
+
+  it('bounds Cloudflare preflight network calls', () => {
+    const preflight = workflow.slice(
+      workflow.indexOf('- name: Cloudflare authorization preflight'),
+      workflow.indexOf('- name: Install native media verification dependencies'),
+    );
+    expect(preflight).toContain('--max-time 30');
+  });
+
+  it('prefers direct Wrangler whenever the canonical token secret is available, including main pushes', () => {
+    expect(workflow).toContain('MODE="direct-wrangler"');
+    expect(workflow).toContain('else\n            MODE="cloudflare-native-github-app"');
+    expect(workflow).not.toContain('if [ "$GITHUB_EVENT_NAME" = "push" ]; then\n            MODE="cloudflare-native-github-app"');
+  });
+
+  it('does not require Cloudflare account-list permission', () => {
+    expect(workflow).not.toContain('https://api.cloudflare.com/client/v4/accounts?per_page=50');
   });
 
   it('exports the deployment probe before constructing ATLAS Manager evidence', () => {
     expect(workflow).toContain('export DEPLOYMENT_PROBE');
   });
 
-  it('verifies the public custom domain serves the website and Identity shell anonymously', () => {
+  it('verifies the public custom domain serves the website, Identity shell, and critical Network routes', () => {
     expect(workflow).toContain('PRODUCTION_URL: https://www.atlasenterprisesuite.com');
     expect(workflow).toContain('probe_route "Public home"');
     expect(workflow).toContain('probe_route "ATLAS Identity"');
     expect(workflow).toContain('probe_route "Module SPA shell"');
-    expect(workflow).toContain('Public ATLAS web shell verified.');
+    expect(workflow).toContain('Public ATLAS production domain and critical Network routes verified.');
   });
 
   it('records that module authorization is enforced by tested ATLAS Identity rather than edge-wide Access', () => {

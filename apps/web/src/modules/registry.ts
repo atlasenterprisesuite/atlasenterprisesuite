@@ -47,6 +47,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'connect',
+    title: 'ATLAS Connect',
+    navLabel: 'Connect',
+    area: 'Communications',
+    route: '/connect',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Governed communications and carrier-provider connections with truthful capability gates.',
+    showInNavigation: true
+  },
+  {
     id: 'payroll',
     title: 'ATLAS Payroll',
     navLabel: 'Payroll',
@@ -121,6 +132,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed mobility and driver-compliance workflows.',
+    showInNavigation: true
+  },
+  {
+    id: 'galaxy',
+    title: 'ATLAS Galaxy',
+    navLabel: 'Galaxy',
+    area: 'Platform',
+    route: '/galaxy',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Spatial navigation and truthful module-state overview.',
     showInNavigation: true
   },
   {

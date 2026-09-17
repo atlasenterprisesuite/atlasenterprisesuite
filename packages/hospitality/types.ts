@@ -27,6 +27,7 @@ export type HospitalityProviderType =
   | 'dormakaba_ambiance_soap'
   | 'dormakaba_ambiance_rest'
   | 'dormakaba_pms_bridge'
+  | 'onity'
   | 'generic_certified';
 
 export type HospitalityCapability =

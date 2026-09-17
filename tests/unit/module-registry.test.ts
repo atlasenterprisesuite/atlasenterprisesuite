@@ -8,7 +8,7 @@ describe('ATLAS canonical module registry', () => {
   it('defines one typed registry for surfaced top-level modules', () => {
     expect(existsSync(path)).toBe(true);
     expect(source).toContain('export const ATLAS_MODULES');
-    for (const id of ['business', 'finance', 'payroll', 'learning', 'health', 'studio', 'hospitality', 'ride', 'voice']) {
+    for (const id of ['business', 'finance', 'crm', 'payroll', 'learning', 'health', 'studio', 'hospitality', 'ride', 'voice', 'galaxy']) {
       expect(source).toContain(`id: '${id}'`);
     }
   });

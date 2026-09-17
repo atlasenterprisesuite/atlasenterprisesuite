@@ -3,7 +3,10 @@ const OWNER = 'atlasenterprisesuite';
 const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOW = `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
-const VERSION = 1;
+const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
+const VERSION = 2;
+const MAX_REDIRECTS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 const baseHeaders = {
   'cache-control': 'no-store',
@@ -112,27 +115,71 @@ type Probe = {
   cf_mitigated: string | null;
   location: string | null;
   duration_ms: number;
+  redirect_count: number;
+  final_path: string | null;
 };
 
-async function probe(path: string): Promise<Probe> {
+async function probe(path: string, followRedirects = true): Promise<Probe> {
   const started = Date.now();
+  let target = new URL(path, PRODUCTION_URL);
+  let redirectCount = 0;
+
   try {
-    const response = await fetch(`${PRODUCTION_URL}${path}`, {
-      redirect: 'manual',
-      cache: 'no-store',
-      headers: {
-        'user-agent': 'ATLAS-Authorized-Production-Verifier/1.0',
-        'cache-control': 'no-cache, no-store'
+    while (true) {
+      const response = await fetch(target, {
+        redirect: 'manual',
+        cache: 'no-store',
+        headers: {
+          'user-agent': 'ATLAS-Authorized-Production-Verifier/2.0',
+          'cache-control': 'no-cache, no-store'
+        }
+      });
+      const location = response.headers.get('location');
+
+      if (followRedirects && REDIRECT_STATUSES.has(response.status) && location) {
+        if (redirectCount >= MAX_REDIRECTS) {
+          return {
+            status: response.status,
+            ok: false,
+            content_type: response.headers.get('content-type'),
+            cf_mitigated: response.headers.get('cf-mitigated'),
+            location: '[redirect-limit-exceeded]',
+            duration_ms: Date.now() - started,
+            redirect_count: redirectCount,
+            final_path: `${target.pathname}${target.search}`
+          };
+        }
+
+        const next = new URL(location, target);
+        if (next.protocol !== 'https:' || next.origin !== PRODUCTION_ORIGIN) {
+          return {
+            status: response.status,
+            ok: false,
+            content_type: response.headers.get('content-type'),
+            cf_mitigated: response.headers.get('cf-mitigated'),
+            location: '[blocked-cross-origin-redirect]',
+            duration_ms: Date.now() - started,
+            redirect_count: redirectCount,
+            final_path: `${target.pathname}${target.search}`
+          };
+        }
+
+        target = next;
+        redirectCount += 1;
+        continue;
       }
-    });
-    return {
-      status: response.status,
-      ok: response.ok,
-      content_type: response.headers.get('content-type'),
-      cf_mitigated: response.headers.get('cf-mitigated'),
-      location: response.headers.get('location') ? '[redirect-present]' : null,
-      duration_ms: Date.now() - started
-    };
+
+      return {
+        status: response.status,
+        ok: response.ok,
+        content_type: response.headers.get('content-type'),
+        cf_mitigated: response.headers.get('cf-mitigated'),
+        location: location ? '[redirect-present]' : null,
+        duration_ms: Date.now() - started,
+        redirect_count: redirectCount,
+        final_path: `${target.pathname}${target.search}`
+      };
+    }
   } catch {
     return {
       status: 0,
@@ -140,7 +187,9 @@ async function probe(path: string): Promise<Probe> {
       content_type: null,
       cf_mitigated: null,
       location: null,
-      duration_ms: Date.now() - started
+      duration_ms: Date.now() - started,
+      redirect_count: redirectCount,
+      final_path: null
     };
   }
 }
@@ -167,16 +216,38 @@ Deno.serve(async (req: Request) => {
   const caller = await verifyGitHubOIDC(req);
   if (!caller.ok) return json({ ok: false, error: caller.error }, caller.status);
 
-  const [home, identity, finance, deployment] = await Promise.all([
+  const [
+    home,
+    identity,
+    finance,
+    network,
+    networkPricing,
+    networkCommissions,
+    networkPayouts,
+    networkCompliance,
+    deployment
+  ] = await Promise.all([
     probe('/'),
     probe('/identity?app=%2Ffinance'),
     probe('/finance'),
-    probe('/deployment.json')
+    probe('/business/network'),
+    probe('/business/network/pricing'),
+    probe('/business/network/commissions'),
+    probe('/business/network/payouts'),
+    probe('/business/network/compliance'),
+    probe('/deployment.json', false)
   ]);
 
   const publicShellOk = home.status === 200 && identity.status === 200 && finance.status === 200;
+  const criticalNetworkRoutesOk = [
+    network,
+    networkPricing,
+    networkCommissions,
+    networkPayouts,
+    networkCompliance
+  ].every((result) => result.status === 200);
   const deploymentPathProtected = [302, 401, 403].includes(deployment.status);
-  const verified = publicShellOk && deploymentPathProtected;
+  const verified = publicShellOk && criticalNetworkRoutesOk && deploymentPathProtected;
 
   return json(
     {
@@ -190,10 +261,21 @@ Deno.serve(async (req: Request) => {
         public_home_reachable: home.status === 200,
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
+        critical_network_routes_reachable: criticalNetworkRoutesOk,
+        network_route_reachable: network.status === 200,
+        network_pricing_route_reachable: networkPricing.status === 200,
+        network_commissions_route_reachable: networkCommissions.status === 200,
+        network_payouts_route_reachable: networkPayouts.status === 200,
+        network_compliance_route_reachable: networkCompliance.status === 200,
         deployment_path_protected: deploymentPathProtected,
         home,
         identity,
         finance,
+        network,
+        network_pricing: networkPricing,
+        network_commissions: networkCommissions,
+        network_payouts: networkPayouts,
+        network_compliance: networkCompliance,
         deployment
       },
       secrets_returned: false
