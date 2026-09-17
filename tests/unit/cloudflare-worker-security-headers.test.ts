@@ -17,23 +17,26 @@ describe('Cloudflare public Worker security headers', () => {
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
+    expect(assetFetch).toHaveBeenCalledOnce();
     expect(assetFetch).toHaveBeenCalledWith(request);
   });
 
-  it('attests the bundled commit on normal Worker responses without exposing deployment.json', async () => {
-    const assetFetch = vi.fn(async (request: Request) => {
-      const url = new URL(request.url);
-      if (url.pathname === '/deployment.json') {
-        return new Response(JSON.stringify({ commit_sha: 'commit-abc123' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      return new Response('ATLAS asset', { status: 200 });
+  it('attests Cloudflare version metadata on normal Worker responses with one asset fetch', async () => {
+    const assetFetch = vi.fn(async () => new Response('ATLAS asset', { status: 200 }));
+    const request = new Request('https://atlas.example/finance');
+    const response = await worker.fetch(request, {
+      ASSETS: { fetch: assetFetch },
+      CF_VERSION_METADATA: {
+        id: 'version-123',
+        tag: 'commit-abc123',
+        timestamp: '2026-09-17T03:00:00.000Z',
+      },
     });
 
-    const response = await worker.fetch(new Request('https://atlas.example/finance'), { ASSETS: { fetch: assetFetch } });
-    expect(response.headers.get('X-Atlas-Commit-Sha')).toBe('commit-abc123');
+    expect(response.headers.get('X-Atlas-Version-Id')).toBe('version-123');
+    expect(response.headers.get('X-Atlas-Version-Tag')).toBe('commit-abc123');
+    expect(assetFetch).toHaveBeenCalledOnce();
+    expect(assetFetch).toHaveBeenCalledWith(request);
   });
 
   it('preserves the current public-shell authorization architecture', () => {
