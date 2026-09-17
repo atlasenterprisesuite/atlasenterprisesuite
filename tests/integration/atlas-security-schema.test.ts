@@ -97,8 +97,8 @@ describe('ATLAS Device & Account Protection schema contract', () => {
     expect(sql).toMatch(/security_action_delays[\s\S]*not_before timestamptz not null/i);
     expect(sql).toMatch(/security_action_delays[\s\S]*downstream_success_evidence jsonb/i);
 
-    expect(sql).toMatch(/revoke update, delete on public\.security_risk_events from anon, authenticated/i);
-    expect(sql).toMatch(/revoke update, delete on public\.security_recovery_events from anon, authenticated/i);
+    expect(sql).toMatch(/revoke insert, update, delete on public\.security_risk_events from anon, authenticated/i);
+    expect(sql).toMatch(/revoke insert, update, delete on public\.security_recovery_events from anon, authenticated/i);
   });
 
   it('registers the exact security permissions and owner/admin organization authority', () => {
