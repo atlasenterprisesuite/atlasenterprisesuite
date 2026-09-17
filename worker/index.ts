@@ -19,7 +19,7 @@ interface Env {
   ASSETS: AssetsBinding;
 }
 
-function withSecurityHeaders(response: Response): Response {
+function withSecurityHeaders(response: Response, commitSha: string | null): Response {
   const headers = new Headers(response.headers);
   headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
@@ -27,6 +27,7 @@ function withSecurityHeaders(response: Response): Response {
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   headers.set('Permissions-Policy', 'camera=(), geolocation=(), payment=(), usb=()');
   headers.set('X-Frame-Options', 'DENY');
+  if (commitSha) headers.set('X-Atlas-Commit-Sha', commitSha);
 
   return new Response(response.body, {
     status: response.status,
@@ -35,8 +36,28 @@ function withSecurityHeaders(response: Response): Response {
   });
 }
 
+async function readCommitSha(request: Request, env: Env): Promise<string | null> {
+  try {
+    const manifestUrl = new URL('/deployment.json', request.url);
+    const manifestResponse = await env.ASSETS.fetch(new Request(manifestUrl, {
+      method: 'GET',
+      headers: { accept: 'application/json', 'cache-control': 'no-cache, no-store' }
+    }));
+    if (!manifestResponse.ok) return null;
+    const manifest = await manifestResponse.json() as { commit_sha?: unknown };
+    const commitSha = typeof manifest.commit_sha === 'string' ? manifest.commit_sha.trim() : '';
+    return /^[A-Za-z0-9._-]{7,128}$/.test(commitSha) ? commitSha : null;
+  } catch {
+    return null;
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    return withSecurityHeaders(await env.ASSETS.fetch(request));
+    const [response, commitSha] = await Promise.all([
+      env.ASSETS.fetch(request),
+      readCommitSha(request, env)
+    ]);
+    return withSecurityHeaders(response, commitSha);
   }
 };
