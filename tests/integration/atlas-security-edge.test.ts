@@ -65,7 +65,7 @@ describe('ATLAS Device & Account Protection Edge/WebAuthn contract', () => {
     expect(webauthn).toMatch(/verification\.verified[\s\S]*updatePasskeyCounter/i);
   });
 
-  it('exposes only the approved WebAuthn operation router with stable errors', () => {
+  it('exposes the approved WebAuthn operation router with stable errors', () => {
     const source = read('index.ts');
     for (const operation of [
       'passkeys.registration.options',
@@ -80,5 +80,70 @@ describe('ATLAS Device & Account Protection Edge/WebAuthn contract', () => {
     expect(errors).toContain('webauthn_verification_failed');
     expect(errors).toContain('authentication_required');
     expect(errors).toContain('active_organization_required');
+  });
+});
+
+describe('ATLAS Device & Account Protection protected-action API contract', () => {
+  it('exposes the complete protected-security operation allowlist', () => {
+    const source = read('index.ts');
+    for (const operation of [
+      'summary',
+      'devices.list',
+      'devices.trust',
+      'devices.revoke',
+      'sessions.revoke',
+      'risk.evaluate',
+      'protected_action.authorize',
+      'delays.list',
+      'delays.cancel',
+      'recovery.status'
+    ]) {
+      expect(source).toContain(`'${operation}'`);
+    }
+  });
+
+  it('derives actor and tenant authority from authenticated context, never request body ids', () => {
+    const source = read('index.ts');
+    expect(source).not.toMatch(/body\.(userId|user_id|orgId|org_id|actorId|actor_id)/);
+    expect(source).toMatch(/resolveSecurityContext\(req\)/);
+  });
+
+  it('normalizes unavailable provider signals as unknown and denies revoked context', () => {
+    const source = read('_shared/risk.ts');
+    expect(source).toMatch(/networkReputation[^\n]*['"]unknown['"]/i);
+    expect(source).toMatch(/locationConsistency[^\n]*['"]unknown['"]/i);
+    expect(source).toMatch(/simEvidence[^\n]*['"]unknown['"]/i);
+    expect(source).toMatch(/status[\s\S]*revoked[\s\S]*decision[\s\S]*deny/i);
+  });
+
+  it('keeps device mutations grant-gated and tenant-scoped', () => {
+    const repository = read('_shared/repository.ts');
+    expect(repository).toMatch(/listSecurityDevices[\s\S]*org_id[\s\S]*user_id/i);
+    expect(repository).toMatch(/trustSecurityDevice[\s\S]*trust_security_device[\s\S]*grant_uuid/i);
+    expect(repository).toMatch(/revokeSecurityDevice[\s\S]*revoke_security_device[\s\S]*grant_uuid/i);
+  });
+
+  it('records session revocation truthfully around a real provider call', () => {
+    const repository = read('_shared/repository.ts');
+    expect(repository).toMatch(/provider_status_value:\s*['"]requested['"]/i);
+    expect(repository).toMatch(/auth\.admin\.signOut/i);
+    expect(repository).toMatch(/provider_status_value:\s*['"]provider_succeeded['"]/i);
+    expect(repository).toMatch(/provider_status_value:\s*['"]provider_failed['"]/i);
+  });
+
+  it('authorizes protected actions only through server risk evidence and guarded RPC', () => {
+    const source = read('_shared/risk.ts');
+    const repository = read('_shared/repository.ts');
+    expect(source).toMatch(/evaluateSecurityRisk/);
+    expect(repository).toMatch(/record_security_risk_event/i);
+    expect(repository).toMatch(/authorize_security_protected_action/i);
+    expect(source).toMatch(/allow[^\n]*step_up[^\n]*delay[^\n]*deny/i);
+  });
+
+  it('reads delays and recovery state from tenant-scoped persisted evidence', () => {
+    const repository = read('_shared/repository.ts');
+    expect(repository).toMatch(/listSecurityDelays[\s\S]*security_action_delays[\s\S]*org_id[\s\S]*user_id/i);
+    expect(repository).toMatch(/cancelSecurityDelay[\s\S]*transition_security_action_delay/i);
+    expect(repository).toMatch(/getRecoveryStatus[\s\S]*security_recovery_events[\s\S]*org_id[\s\S]*user_id/i);
   });
 });
