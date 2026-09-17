@@ -71,6 +71,13 @@ describe('ATLAS global production verification', () => {
     expect(workflow).toContain('fail-closed');
   });
 
+  it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
+    const workflow = read(workflowPath);
+    expect(workflow).toContain(
+      "steps.direct.outputs.requires_authorized_fallback == 'true' && steps.policy.outputs.mode == 'fail-closed'"
+    );
+  });
+
   it('keeps authorized runtime verification aligned with the shared Network route contract', () => {
     expect(existsSync(contractPath)).toBe(true);
     if (!existsSync(contractPath)) return;
