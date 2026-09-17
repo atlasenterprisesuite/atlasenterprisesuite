@@ -20,6 +20,22 @@ describe('Cloudflare public Worker security headers', () => {
     expect(assetFetch).toHaveBeenCalledWith(request);
   });
 
+  it('attests the bundled commit on normal Worker responses without exposing deployment.json', async () => {
+    const assetFetch = vi.fn(async (request: Request) => {
+      const url = new URL(request.url);
+      if (url.pathname === '/deployment.json') {
+        return new Response(JSON.stringify({ commit_sha: 'commit-abc123' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('ATLAS asset', { status: 200 });
+    });
+
+    const response = await worker.fetch(new Request('https://atlas.example/finance'), { ASSETS: { fetch: assetFetch } });
+    expect(response.headers.get('X-Atlas-Commit-Sha')).toBe('commit-abc123');
+  });
+
   it('preserves the current public-shell authorization architecture', () => {
     expect(source).not.toContain('CF-Access-Jwt-Assertion');
     expect(source).toContain('env.ASSETS.fetch(request)');
