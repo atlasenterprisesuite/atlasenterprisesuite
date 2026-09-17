@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHttpActor } from '../../apps/atlas-orchestrator/src/runtime/auth';
+import { resolvePersistence } from '../../apps/atlas-orchestrator/src/runtime/persistence';
 import { readiness } from '../../apps/atlas-orchestrator/src/runtime/readiness';
 
 const scope = { tenantId: 'tenant-a', organizationId: 'org-a' };
@@ -31,5 +32,27 @@ describe('ATLAS shared MCP runtime', () => {
   it('is not ready for production while persistence is non-durable', () => {
     expect(readiness({ durable: false })).toEqual({ ready: false, reason: 'persistence_not_durable' });
     expect(readiness({ durable: true })).toEqual({ ready: true, reason: null });
+  });
+
+  it('uses memory only when explicitly requested', () => {
+    const persistence = resolvePersistence({ ATLAS_PERSISTENCE_MODE: 'memory' });
+    expect(persistence.durable).toBe(false);
+  });
+
+  it('creates durable Supabase persistence only with complete server configuration', () => {
+    const persistence = resolvePersistence({
+      ATLAS_PERSISTENCE_MODE: 'supabase',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+    });
+    expect(persistence.durable).toBe(true);
+  });
+
+  it.each([
+    {},
+    { ATLAS_PERSISTENCE_MODE: 'supabase' },
+    { ATLAS_PERSISTENCE_MODE: 'supabase', SUPABASE_URL: 'https://example.supabase.co' },
+  ])('fails closed for ambiguous or incomplete production persistence: %o', (env) => {
+    expect(() => resolvePersistence(env)).toThrow(/ATLAS persistence/i);
   });
 });
