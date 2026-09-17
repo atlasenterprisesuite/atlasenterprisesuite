@@ -11,10 +11,10 @@ import {
   listSecurityDevices,
   recordRiskEvaluation,
   revokeSecurityDevice,
-  revokeSecuritySession,
   trustSecurityDevice
 } from './_shared/repository.ts';
 import { evaluateProtectedActionRisk } from './_shared/risk.ts';
+import { revokeOtherSecuritySessions } from './_shared/sessions.ts';
 import {
   authenticationOptions,
   registrationOptions,
@@ -154,8 +154,7 @@ Deno.serve(async (req: Request) => {
         );
         break;
       case 'sessions.revoke':
-        data = await revokeSecuritySession(context, {
-          targetSessionToken: stringField(body, 'targetSessionToken'),
+        data = await revokeOtherSecuritySessions(context, {
           reason: stringField(body, 'reason'),
           grantId: stringField(body, 'grantId')
         });
