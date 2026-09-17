@@ -118,6 +118,9 @@ describe('ATLAS CRM routing and provider-backed UI', () => {
     ['/crm/activities', 'Tasks'], ['/crm/integrations', 'Integrations'],
     ['/crm/integrations/hubspot', 'HubSpot Integration']
   ])('resolves %s to %s', (path, heading) => {
+    // This contract only verifies routing. Keep provider effects pending so
+    // async data updates do not leak beyond the synchronous route assertion.
+    crmApiMock.mockImplementation(() => new Promise(() => {}));
     render(<MemoryRouter initialEntries={[path]}><CrmRoutes /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
   });
