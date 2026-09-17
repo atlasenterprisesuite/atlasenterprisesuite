@@ -96,7 +96,8 @@ describe('ATLAS Device & Account Protection governance contract', () => {
   it('prevents clients from declaring delayed actions executed and requires downstream success evidence', () => {
     const sql = readMigration();
 
-    expect(sql).toMatch(/transition_security_action_delay[\s\S]*next_state = 'cancelled'[\s\S]*auth\.uid\(\)/i);
+    expect(sql).toMatch(/transition_security_action_delay[\s\S]*if not caller_is_service[\s\S]*auth\.uid\(\)/i);
+    expect(sql).toMatch(/transition_security_action_delay[\s\S]*next_state = 'cancelled'[\s\S]*current_delay\.state in \('pending','ready'\)/i);
     expect(sql).toMatch(/transition_security_action_delay[\s\S]*service_role/i);
     expect(sql).toMatch(/next_state = 'executed'[\s\S]*downstream_success_evidence_value is null[\s\S]*raise exception/i);
     expect(sql).toMatch(/'pending','ready'/i);
