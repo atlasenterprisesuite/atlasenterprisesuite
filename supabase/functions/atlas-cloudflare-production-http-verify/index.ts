@@ -1,10 +1,13 @@
 const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
 const OWNER = 'atlasenterprisesuite';
 const AUDIENCE = 'atlas-production-http-verifier';
-const ALLOWED_WORKFLOW = `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`;
+const ALLOWED_WORKFLOWS = new Set([
+  `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`,
+  `${REPO}/.github/workflows/global-production-verify.yml@refs/heads/main`
+]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 2;
+const VERSION = 3;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -88,11 +91,17 @@ async function verifyGitHubOIDC(req: Request) {
     return { ok: false as const, status: 401, error: 'github_oidc_verification_failed' };
   }
 
+  const workflowRef = String(payload.workflow_ref || '');
+  const jobWorkflowRef = String(payload.job_workflow_ref || '');
+  const workflowAllowed =
+    ALLOWED_WORKFLOWS.has(workflowRef) ||
+    ALLOWED_WORKFLOWS.has(jobWorkflowRef);
+
   if (
     payload.repository !== REPO ||
     payload.repository_owner !== OWNER ||
     payload.ref !== 'refs/heads/main' ||
-    payload.workflow_ref !== ALLOWED_WORKFLOW
+    !workflowAllowed
   ) {
     return { ok: false as const, status: 403, error: 'github_oidc_scope_denied' };
   }
@@ -103,7 +112,9 @@ async function verifyGitHubOIDC(req: Request) {
       sha: String(payload.sha || ''),
       run_id: String(payload.run_id || ''),
       run_attempt: String(payload.run_attempt || ''),
-      actor: String(payload.actor || '')
+      actor: String(payload.actor || ''),
+      workflow_ref: workflowRef,
+      job_workflow_ref: jobWorkflowRef
     }
   };
 }
@@ -130,7 +141,7 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
         redirect: 'manual',
         cache: 'no-store',
         headers: {
-          'user-agent': 'ATLAS-Authorized-Production-Verifier/2.0',
+          'user-agent': 'ATLAS-Authorized-Production-Verifier/3.0',
           'cache-control': 'no-cache, no-store'
         }
       });
@@ -204,7 +215,7 @@ Deno.serve(async (req: Request) => {
       service: 'atlas-cloudflare-production-http-verify',
       version: VERSION,
       production_url: PRODUCTION_URL,
-      auth: 'github-oidc-main-cloudflare-workflow',
+      auth: 'github-oidc-main-approved-production-workflows',
       verification_source: 'atlas-authorized-supabase-runtime'
     });
   }
