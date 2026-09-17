@@ -109,4 +109,17 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(wrangler).not.toContain('custom_domain');
     expect(workflow).toContain('workers.dev');
   });
+
+  it('attests that the production custom domain serves the exact workflow commit', () => {
+    expect(workflow).toContain('/deployment.json');
+    expect(workflow).toContain('DEPLOYED_COMMIT_SHA');
+    expect(workflow).toContain('GITHUB_SHA');
+    expect(workflow).toContain('production_commit_sha_verified=true');
+    expect(workflow).toContain('Production commit SHA verified');
+  });
+
+  it('records exact-version verification only from the production verification output', () => {
+    expect(workflow).toContain("production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true'");
+    expect(workflow).not.toContain('production_commit_sha_verified:true');
+  });
 });
