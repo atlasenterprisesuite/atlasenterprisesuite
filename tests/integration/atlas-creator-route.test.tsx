@@ -1,12 +1,22 @@
 import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as creatorApi from '../../apps/web/src/lib/creatorApi';
 import { CreatorHome, CreatorProviders, CreatorWorkspace } from '../../apps/web/src/modules/creator/CreatorStudioPage';
 
 describe('ATLAS Creator', () => {
+  beforeEach(() => {
+    // Synchronous interaction contracts do not depend on server readiness.
+    // Keep mount-time requests pending unless a test explicitly supplies data,
+    // preventing background React updates from escaping the test lifecycle.
+    vi.spyOn(creatorApi, 'getCreatorReadiness').mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(creatorApi, 'getNativeCreatorReadiness').mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(creatorApi, 'listCreatorProviders').mockImplementation(() => new Promise(() => {}));
+  });
+
   afterEach(() => vi.restoreAllMocks());
+
   it('exposes a shared ASTRA-derived Studio home without replacing working creator routes', () => {
     render(<MemoryRouter><CreatorHome /></MemoryRouter>);
     expect(document.querySelector('.module-experience-page')).toBeTruthy();
@@ -18,6 +28,7 @@ describe('ATLAS Creator', () => {
     expect(screen.getByRole('link', { name: /Provider readiness/ })).toHaveAttribute('href', '/studio/providers');
     expect(screen.getByText(/external generation remains unavailable until verified provider readiness/i)).toBeInTheDocument();
   });
+
   it('opens ATLAS Director for the video Creator route', () => {
     render(
       <MemoryRouter initialEntries={['/studio/create?type=video']}>
@@ -29,6 +40,7 @@ describe('ATLAS Creator', () => {
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Review & Generate$/ })).toBeInTheDocument();
   });
+
   it('exposes accessible Director navigation and creative brief controls', () => {
     render(<MemoryRouter initialEntries={['/studio/create?type=video']}><CreatorWorkspace /></MemoryRouter>);
     expect(screen.getByRole('navigation', { name: 'Production steps' })).toBeInTheDocument();
@@ -63,7 +75,7 @@ describe('ATLAS Creator', () => {
   });
 
   it('shows an unconfigured provider without inventing cost or readiness', async () => {
-    vi.spyOn(creatorApi, 'listCreatorProviders').mockResolvedValue([
+    vi.mocked(creatorApi.listCreatorProviders).mockResolvedValue([
       {
         providerId: 'seedance', displayName: 'Seedance',
         connectionState: 'unconfigured', capability: null,
@@ -77,7 +89,7 @@ describe('ATLAS Creator', () => {
   });
 
   it('keeps external generation disabled in review for an unconfigured provider', async () => {
-    vi.spyOn(creatorApi, 'listCreatorProviders').mockResolvedValue([
+    vi.mocked(creatorApi.listCreatorProviders).mockResolvedValue([
       {
         providerId: 'seedance', displayName: 'Seedance',
         connectionState: 'unconfigured', capability: null,
@@ -97,8 +109,9 @@ describe('ATLAS Creator', () => {
     expect(screen.getByText('Not configured')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate image' })).toBeDisabled();
   });
+
   it('reports truthful provider readiness and privacy boundaries', async () => {
-    vi.spyOn(creatorApi, 'listCreatorProviders').mockResolvedValue([
+    vi.mocked(creatorApi.listCreatorProviders).mockResolvedValue([
       {
         providerId: 'seedance', displayName: 'Seedance', connectionState: 'unconfigured',
         capability: null, estimatedCost: null, lastVerifiedAt: null
