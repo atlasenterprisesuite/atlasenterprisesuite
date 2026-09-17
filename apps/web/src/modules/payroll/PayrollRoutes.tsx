@@ -1,5 +1,6 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import './payroll.css';
 
 const payrollTiles = [
@@ -88,12 +89,14 @@ function PayrollSection({ title, description }: { title: string; description: st
 
 export function PayrollRoutes() {
   return (
-    <Routes>
-      <Route index element={<PayrollHome />} />
-      <Route path="overview" element={<PayrollSection title="Payroll Overview" description="Governed payroll status and configuration." />} />
-      <Route path="people" element={<PayrollSection title="People" description="Payroll-scoped worker records and eligibility." />} />
-      <Route path="time-earnings" element={<PayrollSection title="Time & Earnings" description="Governed time, earnings and adjustment inputs." />} />
-      <Route path="pay-runs" element={<PayrollSection title="Pay Runs" description="Prepare, review and approve payroll cycles." />} />
-    </Routes>
+    <RequireAtlasIdentity>
+      <Routes>
+        <Route index element={<PayrollHome />} />
+        <Route path="overview" element={<PayrollSection title="Payroll Overview" description="Governed payroll status and configuration." />} />
+        <Route path="people" element={<PayrollSection title="People" description="Payroll-scoped worker records and eligibility." />} />
+        <Route path="time-earnings" element={<PayrollSection title="Time & Earnings" description="Governed time, earnings and adjustment inputs." />} />
+        <Route path="pay-runs" element={<PayrollSection title="Pay Runs" description="Prepare, review and approve payroll cycles." />} />
+      </Routes>
+    </RequireAtlasIdentity>
   );
 }
