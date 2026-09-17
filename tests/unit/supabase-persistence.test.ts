@@ -116,7 +116,13 @@ describe('SupabasePersistence', () => {
     const { fetchImpl } = recorder([new Response('forbidden', { status: 403 })]);
     const persistence = new SupabasePersistence({ url: 'https://example.supabase.co', serviceRoleKey: 'very-secret-role', fetchImpl });
 
-    await expect(persistence.createTask(task)).rejects.toThrow('HTTP 403');
-    await expect(persistence.createTask(task)).rejects.not.toThrow('very-secret-role');
+    const error = await persistence.createTask(task).then(
+      () => null,
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(Error);
+    const message = error instanceof Error ? error.message : String(error);
+    expect(message).toContain('HTTP 403');
+    expect(message).not.toContain('very-secret-role');
   });
 });
