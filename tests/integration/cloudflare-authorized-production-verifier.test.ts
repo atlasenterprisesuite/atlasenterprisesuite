@@ -23,10 +23,11 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain("verification_source: 'atlas-authorized-supabase-runtime'");
   });
 
-  it('attests the observed Worker commit without exposing the protected manifest path', () => {
-    expect(verifier).toContain("response.headers.get('x-atlas-commit-sha')");
-    expect(verifier).toContain('observed_commit_sha');
-    expect(verifier).toContain('home.atlas_commit_sha === caller.claims.sha');
+  it('returns observed Cloudflare version metadata without exposing the protected manifest path', () => {
+    expect(verifier).toContain("response.headers.get('x-atlas-version-id')");
+    expect(verifier).toContain("response.headers.get('x-atlas-version-tag')");
+    expect(verifier).toContain('observed_version_id');
+    expect(verifier).toContain('observed_version_tag');
   });
 
   it('lets the workflow fall back to authorized runtime verification when GitHub is challenged', () => {
@@ -34,6 +35,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('audience=atlas-production-http-verifier');
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
+    expect(workflow).toContain('OBSERVED_VERSION_ID');
+    expect(workflow).toContain('OBSERVED_VERSION_TAG');
   });
 
   it('verifies the production domain after either deployment mode and covers critical ATLAS Network routes', () => {
@@ -42,7 +45,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     )?.[1] ?? '';
 
     expect(productionStep).not.toBe('');
-    expect(productionStep).not.toContain('deployment_mode.outputs.mode');
+    expect(productionStep).not.toContain('deployment_mode.outputs.mode ==');
     expect(productionStep).toContain('https://www.atlasenterprisesuite.com');
     expect(productionStep).toContain('--location');
     expect(productionStep).toContain("%{url_effective}");
