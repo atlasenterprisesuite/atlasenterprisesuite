@@ -51,7 +51,7 @@ function appRouteLine(source, routePrefix) {
 }
 
 function moduleHasAuthCoverage(module, sources) {
-  const { app, resolver, hospitality, ride } = sources;
+  const { app, resolver, hospitality, ride, payroll } = sources;
   switch (module.id) {
     case 'crm':
     case 'connect':
@@ -62,7 +62,7 @@ function moduleHasAuthCoverage(module, sources) {
     case 'ride':
       return ride.includes('RequireAtlasIdentity') && ride.includes(module.route);
     case 'payroll':
-      return appRouteLine(app, '/payroll').includes('RequireAtlasIdentity');
+      return payroll.includes('RequireAtlasIdentity') && payroll.includes('<Routes>');
     case 'studio':
       return appRouteLine(app, '/studio"').includes('RequireAtlasIdentity');
     case 'voice':
@@ -125,7 +125,7 @@ export function evaluateNeuralIntegrity() {
   const routesRepresented = modules.every((module) => routeSources.includes(module.route));
   const authCoverage = modules
     .filter((module) => module.requiresAuth)
-    .every((module) => moduleHasAuthCoverage(module, { app, resolver, hospitality, ride }));
+    .every((module) => moduleHasAuthCoverage(module, { app, resolver, hospitality, ride, payroll }));
   const nerves = routesRepresented && authCoverage;
 
   const worker = read('worker/index.ts');
