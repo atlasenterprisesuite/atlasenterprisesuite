@@ -11,7 +11,8 @@
     "test:integration": "vitest run tests/integration",
     "verify:edge": "node scripts/verify-edge-source.mjs",
     "verify:python": "node scripts/verify-python.mjs",
-    "verify:all": "npm audit --audit-level=high && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:python && npm run build",
+    "verify:neural": "node scripts/verify-neural-integrity.mjs",
+    "verify:all": "npm audit --audit-level=high && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:python && npm run verify:neural && npm run build",
     "verify:cloudflare": "npm run verify:all",
     "atlas:mcp:http": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/http.ts",
     "atlas:mcp:stdio": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/stdio.ts"
