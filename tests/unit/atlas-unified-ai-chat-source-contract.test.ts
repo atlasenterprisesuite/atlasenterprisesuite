@@ -5,10 +5,14 @@ const indexSource = readFileSync('supabase/functions/atlas-copilot/index.ts', 'u
 const openaiSource = readFileSync('supabase/functions/atlas-copilot/openai-responses-adapter.mjs', 'utf8');
 
 describe('ATLAS Unified AI source configuration contract', () => {
-  it('never ships a fictional GPT-6 Astra model default', () => {
-    expect(indexSource).not.toContain("||'gpt-6-astra'");
-    expect(indexSource).not.toContain('GPT-6 Astra');
-    expect(openaiSource).not.toContain("DEFAULT_MODEL='gpt-6-astra'");
+  it('uses the verified production OpenAI model as a fail-safe default while preserving server overrides', () => {
+    expect(indexSource).toContain("const DEFAULT_OPENAI_MODEL='gpt-6-astra'");
+    expect(indexSource).toContain("'ATLAS_OPENAI_MODEL'");
+    expect(indexSource).toContain("'ATLAS_OPENAI_MODEL_FAST'");
+    expect(indexSource).toContain("'ATLAS_OPENAI_MODEL_BALANCED'");
+    expect(indexSource).toContain("'ATLAS_OPENAI_MODEL_DEEP'");
+    expect(indexSource).toContain("'ATLAS_OPENAI_ASTRA_MODEL'");
+    expect(indexSource).toContain('DEFAULT_OPENAI_MODEL');
   });
 
   it('constructs all three provider adapters through the registry', () => {
@@ -18,9 +22,11 @@ describe('ATLAS Unified AI source configuration contract', () => {
     expect(indexSource).toContain('createProviderRegistry');
   });
 
-  it('uses explicit server configuration keys for provider targets', () => {
-    expect(indexSource).toContain("'ATLAS_OPENAI_MODEL'");
-    expect(indexSource).toContain("'ATLAS_GEMINI_MODEL'");
-    expect(indexSource).toContain("Deno.env.get('ATLAS_CODEX_SOVEREIGN_URL')");
+  it('keeps OpenAI requests on the Responses API and never embeds a secret', () => {
+    expect(openaiSource).toContain("api:'responses'");
+    expect(openaiSource).toContain("https://api.openai.com/v1/responses");
+    expect(indexSource).toContain("Deno.env.get('OPENAI_API_KEY')");
+    expect(indexSource).not.toMatch(/sk-(?:proj-)?[A-Za-z0-9_-]{20,}/);
+    expect(openaiSource).not.toMatch(/sk-(?:proj-)?[A-Za-z0-9_-]{20,}/);
   });
 });

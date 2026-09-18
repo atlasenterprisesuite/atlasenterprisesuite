@@ -16,10 +16,11 @@ const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const VERSION=5;
 const PROVIDER_IDS=['openai','gemini','codex-sovereign'];
+const DEFAULT_OPENAI_MODEL='gpt-6-astra';
 
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
-function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null){
-  const shared=clean(Deno.env.get(sharedName))||clean(legacySharedName?Deno.env.get(legacySharedName):null);
+function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null,defaultModel=null){
+  const shared=clean(Deno.env.get(sharedName))||clean(legacySharedName?Deno.env.get(legacySharedName):null)||clean(defaultModel);
   return {
     fast:clean(Deno.env.get(fastName))||shared,
     balanced:clean(Deno.env.get(balancedName))||shared,
@@ -36,7 +37,7 @@ function runtime(){
   const serviceRoleKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
   const openaiKey=Deno.env.get('OPENAI_API_KEY')||'';
   const geminiKey=Deno.env.get('GEMINI_API_KEY')||Deno.env.get('GOOGLE_AI_API_KEY')||'';
-  const openaiModels=profileModels('ATLAS_OPENAI_MODEL','ATLAS_OPENAI_MODEL_FAST','ATLAS_OPENAI_MODEL_BALANCED','ATLAS_OPENAI_MODEL_DEEP','ATLAS_OPENAI_ASTRA_MODEL');
+  const openaiModels=profileModels('ATLAS_OPENAI_MODEL','ATLAS_OPENAI_MODEL_FAST','ATLAS_OPENAI_MODEL_BALANCED','ATLAS_OPENAI_MODEL_DEEP','ATLAS_OPENAI_ASTRA_MODEL',DEFAULT_OPENAI_MODEL);
   const geminiModels=profileModels('ATLAS_GEMINI_MODEL','ATLAS_GEMINI_MODEL_FAST','ATLAS_GEMINI_MODEL_BALANCED','ATLAS_GEMINI_MODEL_DEEP');
   const codexEndpoint=clean(Deno.env.get('ATLAS_CODEX_SOVEREIGN_URL'));
   const codexToken=Deno.env.get('ATLAS_CODEX_SOVEREIGN_TOKEN')||'';
