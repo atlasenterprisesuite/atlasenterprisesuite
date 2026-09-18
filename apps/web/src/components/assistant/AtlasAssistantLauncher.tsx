@@ -15,7 +15,7 @@ export function AtlasAssistantLauncher({ state, textCapability, providerLabel, o
       aria-label={`Open ATLAS Assistant, Intelligence ${providerLabel}`}
       onClick={onOpen}
     >
-      <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
+      <img src="/atlas-avatar-particle.svg" alt="" />
       <span className="atlas-assistant-launcher-status" aria-hidden="true" />
     </button>
   );
