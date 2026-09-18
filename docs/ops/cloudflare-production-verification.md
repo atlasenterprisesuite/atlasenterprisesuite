@@ -30,6 +30,13 @@ The verifier returns no credentials or provider secrets. Module authorization re
 
 ATLAS may report `production HTTP verified` only when the public shell receives HTTP 200 from the GitHub probe **or** the scoped authorized runtime verifier confirms the required routes and protected deployment boundary. A Cloudflare challenge against generic automation is retained as separate evidence (`github_edge_challenge_detected`) rather than treated as an application outage.
 
+
+## Production version reconciliation
+
+The production verifier requires the Cloudflare `X-Atlas-Version-Tag` to match the exact `main` commit being verified. A migration-only, test-only, or other commit outside the normal Worker path filters can therefore make the application code and database healthy while leaving production tagged with the previous commit.
+
+When that happens, reconcile through the canonical `.github/workflows/cloudflare-deploy.yml` path before declaring the release verified. Do not weaken the exact-SHA gate and do not treat the mismatch as evidence of an application outage. The deployment must publish the current `main` SHA, then the global fail-closed verifier must pass against that same SHA.
+
 ## Security posture
 
 Do not disable Cloudflare security globally merely to make CI probes green. Browser Integrity Check remains independent, Security Level remains an edge control, and any future WAF exception must be narrowly scoped. Cloudflare API tokens must remain encrypted secrets, never Actions Variables.
