@@ -147,7 +147,7 @@ export function LocalNetworkAccessPanel() {
         hotel lock, POS, printer or other provider capability by itself.
       </div>
 
-      <div className="crm-form-grid">
+      <div className="filter-row">
         <label>
           Endpoint label
           <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Front desk bridge" />
@@ -162,7 +162,7 @@ export function LocalNetworkAccessPanel() {
         </label>
       </div>
 
-      <div className="crm-actions">
+      <div className="filter-row">
         <button
           type="button"
           onClick={() => void addEndpoint()}
@@ -184,7 +184,7 @@ export function LocalNetworkAccessPanel() {
               <span className={endpoint.enabled ? 'status-chip' : 'status-chip warning'}>
                 {endpoint.enabled ? 'Enabled' : 'Disabled'}
               </span>
-              <div className="crm-actions">
+              <div className="filter-row">
                 <button
                   type="button"
                   onClick={() => void probe(endpoint)}
