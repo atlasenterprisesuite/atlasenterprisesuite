@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHttpActor } from '../../apps/atlas-orchestrator/src/runtime/auth';
 import { resolvePersistence } from '../../apps/atlas-orchestrator/src/runtime/persistence';
-import { readiness } from '../../apps/atlas-orchestrator/src/runtime/readiness';
+import { readiness, verifyReadiness } from '../../apps/atlas-orchestrator/src/runtime/readiness';
+import { readFileSync } from 'node:fs';
 
 const scope = { tenantId: 'tenant-a', organizationId: 'org-a' };
 const secrets = {
@@ -39,7 +40,7 @@ describe('ATLAS shared MCP runtime', () => {
     expect(persistence.durable).toBe(false);
   });
 
-  it('creates durable Supabase persistence only with complete server configuration', () => {
+  it('creates durable Supabase persistence with a service-role credential', () => {
     const persistence = resolvePersistence({
       ATLAS_PERSISTENCE_MODE: 'supabase',
       SUPABASE_URL: 'https://example.supabase.co',
@@ -48,10 +49,46 @@ describe('ATLAS shared MCP runtime', () => {
     expect(persistence.durable).toBe(true);
   });
 
+  it('creates durable Supabase RPC persistence for managed hosts without exposing the service role', () => {
+    const persistence = resolvePersistence({
+      ATLAS_PERSISTENCE_MODE: 'supabase',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'publishable',
+      ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN: 'runtime-token',
+    });
+    expect(persistence.durable).toBe(true);
+  });
+
+  it('probes the durable backend before reporting runtime readiness', async () => {
+    const healthy = {
+      durable: true,
+      listEvents: async () => [],
+    } as any;
+    const unhealthy = {
+      durable: true,
+      listEvents: async () => { throw new Error('offline'); },
+    } as any;
+
+    await expect(verifyReadiness(healthy, scope)).resolves.toEqual({ ready: true, reason: null });
+    await expect(verifyReadiness(unhealthy, scope)).resolves.toEqual({ ready: false, reason: 'persistence_unreachable' });
+  });
+
+  it('binds the HTTP runtime to managed-host PORT on all interfaces', () => {
+    const source = readFileSync('apps/atlas-orchestrator/src/http.ts', 'utf8');
+    expect(source).toContain('process.env.PORT ?? process.env.ATLAS_MCP_PORT');
+    expect(source).toContain("server.listen(port, '0.0.0.0'");
+    expect(source).toContain('verifyReadiness(runtime.persistence, scope)');
+  });
+
   it.each([
     {},
     { ATLAS_PERSISTENCE_MODE: 'supabase' },
     { ATLAS_PERSISTENCE_MODE: 'supabase', SUPABASE_URL: 'https://example.supabase.co' },
+    {
+      ATLAS_PERSISTENCE_MODE: 'supabase',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'publishable',
+    },
   ])('fails closed for ambiguous or incomplete production persistence: %o', (env) => {
     expect(() => resolvePersistence(env)).toThrow(/ATLAS persistence/i);
   });

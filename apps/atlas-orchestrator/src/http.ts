@@ -3,10 +3,10 @@ import { handleMcpRequest, type JsonRpcRequest } from '../../../packages/atlas-m
 import { createAtlasRuntime } from './runtime/container';
 import { resolveHttpActor } from './runtime/auth';
 import { resolvePersistence } from './runtime/persistence';
-import { readiness } from './runtime/readiness';
+import { verifyReadiness } from './runtime/readiness';
 
 const runtime = createAtlasRuntime({ persistence: resolvePersistence(process.env) });
-const port = Number(process.env.ATLAS_MCP_PORT ?? 8788);
+const port = Number(process.env.PORT ?? process.env.ATLAS_MCP_PORT ?? 8788);
 const tenantId = process.env.ATLAS_TENANT_ID;
 const organizationId = process.env.ATLAS_ORGANIZATION_ID;
 
@@ -40,7 +40,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { status: 'ok', service: 'atlas-orchestrator', durable: runtime.persistence.durable });
     }
     if (req.method === 'GET' && req.url === '/readyz') {
-      const state = readiness(runtime.persistence);
+      const state = await verifyReadiness(runtime.persistence, scope);
       return json(res, state.ready ? 200 : 503, state);
     }
     if (req.method !== 'POST' || req.url !== '/mcp') {
@@ -62,7 +62,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, '127.0.0.1', () => {
-  console.error(`ATLAS MCP HTTP listening on http://127.0.0.1:${port}/mcp`);
+server.listen(port, '0.0.0.0', () => {
+  console.error(`ATLAS MCP HTTP listening on port ${port}`);
   if (!runtime.persistence.durable) console.error('ATLAS MCP readiness blocked: persistence_not_durable');
 });
