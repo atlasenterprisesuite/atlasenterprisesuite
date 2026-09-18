@@ -41,12 +41,13 @@ async function parseResponse(response: Response) {
 }
 
 async function requestWithToken(url: string, init: RequestInit, token: string) {
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
   return fetch(url, {
     ...init,
     headers: {
       apikey: PUBLISHABLE_KEY,
       authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
+      ...(!isFormData ? { 'content-type': 'application/json' } : {}),
       ...(init.headers || {})
     }
   });
@@ -284,4 +285,62 @@ export async function submitNativeCreatorProduction(productionId: string, expect
     method: 'POST',
     body: JSON.stringify({ production_id: productionId, expected_version: expectedVersion })
   });
+}
+
+
+export type CreatorRecordingReadiness = {
+  ok: true;
+  service: 'atlas-creator-recordings';
+  organization_id: string;
+  connected: boolean;
+  reason: string | null;
+  upload_allowed: boolean;
+  bucket: 'atlas-creator-recordings' | null;
+  checked_at: string;
+};
+
+export type CreatorRecording = {
+  id: string;
+  organization_id: string;
+  created_by: string;
+  language: 'es' | 'en';
+  storage_bucket: 'atlas-creator-recordings';
+  storage_path: string;
+  mime_type: string;
+  file_size_bytes: number;
+  duration_seconds: number | null;
+  source: 'teleprompter';
+  created_at: string;
+};
+
+export const getCreatorRecordingReadiness = () =>
+  creatorRequest<CreatorRecordingReadiness>('recording-readiness');
+
+export async function uploadCreatorRecording(
+  blob: Blob,
+  language: 'es' | 'en',
+  durationSeconds: number
+) {
+  const mimeType = String(blob.type || 'video/webm').split(';')[0] || 'video/webm';
+  const extension = mimeType === 'video/mp4' ? 'mp4' : mimeType === 'video/quicktime' ? 'mov' : 'webm';
+  const file = new File([blob], `atlas-teleprompter.${extension}`, { type: mimeType });
+  const form = new FormData();
+  form.append('recording', file);
+  form.append('language', language);
+  form.append('duration_seconds', String(Math.max(0, Math.round(durationSeconds))));
+  const data = await creatorRequest<{ ok: true; recording: CreatorRecording }>(
+    'recording-upload',
+    {},
+    { method: 'POST', body: form }
+  );
+  return data.recording;
+}
+
+export async function getCreatorRecordingDownload(recordingId: string) {
+  return creatorRequest<{
+    ok: true;
+    recording: CreatorRecording;
+    signed_url: string;
+    expires_in: number;
+  }>('recording-download', { recording_id: recordingId });
 }
