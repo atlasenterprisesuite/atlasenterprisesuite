@@ -1,0 +1,56 @@
+name: ATLAS Commerce CI
+
+on:
+  push:
+    branches: ["feat/atlas-commerce"]
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/web/src/modules/commerce/**"
+      - "packages/commerce/**"
+      - "supabase/functions/atlas-commerce/**"
+      - "supabase/functions/atlas-commerce-dispatch/**"
+      - "supabase/functions/atlas-cloudflare-production-http-verify/**"
+      - "supabase/migrations/*commerce*.sql"
+      - "tests/unit/*commerce*.test.*"
+      - "tests/integration/*commerce*.test.*"
+      - ".github/workflows/atlas-commerce-ci.yml"
+      - ".github/workflows/cloudflare-deploy.yml"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-commerce-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Commerce full repository gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install native verification dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Full ATLAS verification
+        run: npm run verify:all
+
+      - name: Commerce focused contracts
+        run: |
+          npx vitest run             tests/unit/commerce-domain.test.ts             tests/unit/commerce-pricing.test.ts             tests/unit/commerce-checkout.test.ts             tests/unit/commerce-order.test.ts             tests/unit/atlas-commerce-api.test.ts             tests/unit/commerce-integrations.test.ts             tests/unit/commerce-routes.test.tsx             tests/unit/commerce-storefront.test.tsx             tests/integration/commerce-schema.test.ts             tests/integration/commerce-order-commit.test.ts             tests/integration/commerce-release-gate.test.ts             tests/integration/cloudflare-authorized-production-verifier.test.ts
