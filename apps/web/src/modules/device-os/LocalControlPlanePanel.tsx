@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  createLocalAgentEnrollment,
+  bindLocalAgentMtls,\n  createLocalAgentEnrollment,
   enqueueLocalDeviceCommand,
   listLocalAgents,
   listLocalCommands,
   listLocalDevices,
-  revokeLocalAgent,
+  revokeLocalAgent,\n  revokeLocalAgentMtls,
   type AtlasLocalAgent,
   type AtlasLocalCommand,
   type AtlasLocalDevice
@@ -29,7 +29,7 @@ export function LocalControlPlanePanel() {
   const [agentName,setAgentName]=useState('');
   const [enrollmentCode,setEnrollmentCode]=useState<string|null>(null);
   const [enrollmentExpires,setEnrollmentExpires]=useState<string|null>(null);
-  const [status,setStatus]=useState('Loading Local Control Plane…');
+  const [status,setStatus]=useState('Loading Local Control Plane…');\n  const [mtlsAgentId,setMtlsAgentId]=useState('');\n  const [mtlsFingerprint,setMtlsFingerprint]=useState('');\n  const [mtlsSerial,setMtlsSerial]=useState('');\n  const [mtlsExpires,setMtlsExpires]=useState('');
   const [busy,setBusy]=useState(false);
 
   async function refresh() {
@@ -66,7 +66,7 @@ export function LocalControlPlanePanel() {
     try {
       const capability=device.capabilities.includes('health.check') ? 'health.check' : device.capabilities[0];
       if (!capability) throw new Error('device_has_no_declared_capabilities');
-      await enqueueLocalDeviceCommand({deviceId:device.id,capability,action:'status.read',riskLevel:'low'});
+      const result=await enqueueLocalDeviceCommand({deviceId:device.id,agentId:device.agent_id,capability,action:'status.read',riskLevel:'low'});\n      setStatus(result.realtime.delivered > 0 ? 'Command queued and realtime agent notified.' : 'Command queued. Realtime unavailable; polling fallback remains active.');
       await refresh();
     } catch(error) { setStatus(errorMessage(error)); }
     finally { setBusy(false); }
@@ -92,6 +92,29 @@ export function LocalControlPlanePanel() {
     </div> : null}
 
     <div className="notice" role="status">{status}</div>
+
+    <h3>mTLS certificate binding</h3>
+    <div className="filter-row">
+      <label>Agent
+        <select value={mtlsAgentId} onChange={e=>setMtlsAgentId(e.target.value)}>
+          <option value="">Select agent</option>
+          {agents.filter(agent=>agent.status!=='revoked').map(agent=><option key={agent.id} value={agent.id}>{agent.name}</option>)}
+        </select>
+      </label>
+      <label>SHA-256 fingerprint<input value={mtlsFingerprint} onChange={e=>setMtlsFingerprint(e.target.value.toLowerCase())} placeholder="64 hex characters" /></label>
+      <label>Certificate serial<input value={mtlsSerial} onChange={e=>setMtlsSerial(e.target.value)} /></label>
+      <label>Expires at<input type="datetime-local" value={mtlsExpires} onChange={e=>setMtlsExpires(e.target.value)} /></label>
+      <button type="button" disabled={busy||!mtlsAgentId||!/^[a-f0-9]{64}$/.test(mtlsFingerprint)||!mtlsSerial||!mtlsExpires} onClick={()=>void (async()=>{
+        setBusy(true);
+        try {
+          await bindLocalAgentMtls({agentId:mtlsAgentId,fingerprintSha256:mtlsFingerprint,serial:mtlsSerial,expiresAt:new Date(mtlsExpires).toISOString()});
+          setMtlsFingerprint(''); setMtlsSerial(''); setMtlsExpires('');
+          await refresh();
+          setStatus('mTLS certificate metadata bound. Realtime opens only when Cloudflare validates that exact certificate.');
+        } catch(error) { setStatus(errorMessage(error)); }
+        finally { setBusy(false); }
+      })()}>Bind mTLS certificate</button>
+    </div>
 
     <h3>Registered agents</h3>
     <div className="module-grid compact">
