@@ -14,6 +14,17 @@ const transitions: Record<ExecutionStatus, readonly ExecutionStatus[]> = {
   cancelled: []
 };
 
+const stepTransitions: Record<StepStatus, readonly StepStatus[]> = {
+  pending: ['ready', 'blocked', 'cancelled'],
+  ready: ['running', 'blocked', 'awaiting_approval', 'cancelled'],
+  running: ['blocked', 'failed', 'completed', 'cancelled'],
+  blocked: ['ready', 'cancelled'],
+  awaiting_approval: ['ready', 'blocked', 'cancelled'],
+  completed: [],
+  failed: ['ready', 'cancelled'],
+  cancelled: []
+};
+
 export function canTransitionTask(from: ExecutionStatus, to: ExecutionStatus) {
   return transitions[from].includes(to);
 }
@@ -21,6 +32,16 @@ export function canTransitionTask(from: ExecutionStatus, to: ExecutionStatus) {
 export function assertTaskTransition(from: ExecutionStatus, to: ExecutionStatus) {
   if (!canTransitionTask(from, to)) {
     throw new Error(`invalid_execution_transition:${from}->${to}`);
+  }
+}
+
+export function canTransitionStep(from: StepStatus, to: StepStatus) {
+  return stepTransitions[from].includes(to);
+}
+
+export function assertStepTransition(from: StepStatus, to: StepStatus) {
+  if (!canTransitionStep(from, to)) {
+    throw new Error(`invalid_execution_step_transition:${from}->${to}`);
   }
 }
 
