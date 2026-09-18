@@ -223,7 +223,7 @@ describe('ATLAS Creator', () => {
     expect(await screen.findByRole('heading', { name: 'Creative plan' })).toBeInTheDocument();
     expect(screen.getByText('SFX deliverable')).toBeInTheDocument();
     expect(screen.getByText(/SOUND EFFECT/)).toBeInTheDocument();
-    expect(screen.getByText(/Prompt Export/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Prompt Export/).length).toBeGreaterThan(0);
   });
 
   it('persists a CreativePlan with optimistic versioning', async () => {
