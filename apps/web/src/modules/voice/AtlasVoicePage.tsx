@@ -7,6 +7,7 @@ import {
   createInitialSnapshot,
   interruptSpeaking,
   setInterimTranscript,
+  transition,
   type TurnEngineSnapshot
 } from './turnEngine';
 import './voice.css';
@@ -52,7 +53,13 @@ function stateLabel(state: TurnEngineSnapshot['state']) {
   }[state];
 }
 
-export function AtlasVoicePage() {
+function avatarActionLabel(state: TurnEngineSnapshot['state']) {
+  if (state === 'listening') return 'Stop listening with ATLAS';
+  if (state === 'speaking') return 'Interrupt ATLAS and start listening';
+  return 'Start speaking with ATLAS';
+}
+
+export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
   const [snapshot, setSnapshot] = useState(() => createInitialSnapshot());
   const [message, setMessage] = useState('Press Start and speak. ATLAS will show exactly what it heard before a response is allowed.');
   const recognitionRef = useRef<RecognitionLike | null>(null);
@@ -114,19 +121,25 @@ export function AtlasVoicePage() {
 
   function startListening() {
     if (!recognitionRef.current) return;
-    if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+    if (window.speechSynthesis?.speaking) window.speechSynthesis.cancel();
     const next = snapshotRef.current.state === 'speaking'
       ? interruptSpeaking(snapshotRef.current)
       : beginTurn(snapshotRef.current);
     snapshotRef.current = next;
     setSnapshot(next);
-    setMessage('Opening microphone…');
+    setMessage('Opening microphone...');
     recognitionRef.current.start();
   }
 
   function stopListening() {
+    const current = snapshotRef.current;
+    if (current.state === 'listening') {
+      const next = transition(current, 'cancelled');
+      snapshotRef.current = next;
+      setSnapshot(next);
+    }
     recognitionRef.current?.stop();
-    setMessage('Microphone closed.');
+    setMessage('Microphone closed. Start a new turn whenever you are ready.');
   }
 
   function testResponse() {
@@ -169,18 +182,35 @@ export function AtlasVoicePage() {
     recognitionRef.current?.start();
   }
 
+  function activateAvatar() {
+    if (!supported) return;
+    if (snapshot.state === 'listening') {
+      stopListening();
+      return;
+    }
+    if (snapshot.state === 'speaking') {
+      interrupt();
+      return;
+    }
+    startListening();
+  }
+
   const turn = snapshot.activeTurn;
+  const avatarBusy = snapshot.state === 'transcribing' || snapshot.state === 'understanding' || snapshot.state === 'responding';
+  const visibleState = stateLabel(snapshot.state);
 
   return (
-    <section className="voice-page page-stack">
-      <header className="page-header">
-        <p className="eyebrow">ATLAS Voice</p>
-        <h1>Voice Turn Engine</h1>
-        <p>Speech is converted into a visible, guarded transcript before any AI response can execute.</p>
-      </header>
+    <section className={`voice-page page-stack${embedded ? ' voice-page-embedded' : ''}`}>
+      {!embedded && (
+        <header className="page-header">
+          <p className="eyebrow">ATLAS Voice</p>
+          <h1>Voice Turn Engine</h1>
+          <p>Speech is converted into a visible, guarded transcript before any AI response can execute.</p>
+        </header>
+      )}
 
       <div className="voice-status-row">
-        <span className={`voice-state voice-state-${snapshot.state}`}>{stateLabel(snapshot.state)}</span>
+        <span className={`voice-state voice-state-${snapshot.state}`}>{visibleState}</span>
         <span>Session {snapshot.sessionId.slice(0, 8)}</span>
         <span>Turn {snapshot.sequence}</span>
       </div>
@@ -189,27 +219,57 @@ export function AtlasVoicePage() {
         <div className="notice strong">This browser does not expose SpeechRecognition. The turn engine is available, but microphone transcription needs a configured STT provider or a supported browser.</div>
       )}
 
-      <div className="voice-console">
-        <article className="voice-panel transcript-panel">
-          <p className="eyebrow">What ATLAS heard</p>
-          <div className="voice-transcript final">{turn?.finalTranscript || 'No final transcript yet.'}</div>
-          {turn?.interimTranscript && !turn.finalTranscript && <div className="voice-transcript interim">{turn.interimTranscript}</div>}
-          <dl>
-            <div><dt>Turn ID</dt><dd>{turn?.id ?? '—'}</dd></div>
-            <div><dt>Confidence</dt><dd>{turn?.confidence !== undefined ? `${Math.round(turn.confidence * 100)}%` : '—'}</dd></div>
-            <div><dt>Source</dt><dd>{turn?.source ?? '—'}</dd></div>
-          </dl>
+      <div className="voice-stage-grid">
+        <article className="atlas-avatar-console" aria-label="ATLAS AI avatar console">
+          <button
+            type="button"
+            className={`atlas-avatar atlas-avatar-${snapshot.state}`}
+            data-state={snapshot.state}
+            aria-label={avatarActionLabel(snapshot.state)}
+            onClick={activateAvatar}
+            disabled={!supported || avatarBusy}
+          >
+            <span className="avatar-orbit avatar-orbit-one" aria-hidden="true" />
+            <span className="avatar-orbit avatar-orbit-two" aria-hidden="true" />
+            <span className="avatar-glow" aria-hidden="true" />
+            <img src="/atlas-avatar-particle.webp" alt="" draggable={false} />
+            <span className="avatar-scanline" aria-hidden="true" />
+            <span className="avatar-state-ring" aria-hidden="true" />
+          </button>
+
+          <div className="avatar-readout" role="status" aria-live="polite">
+            <span className={`avatar-live-dot avatar-live-dot-${snapshot.state}`} aria-hidden="true" />
+            <strong>ATLAS // {visibleState.toUpperCase()}</strong>
+            <small>{supported ? 'Tap the avatar to control the microphone.' : 'Voice recognition unavailable in this browser.'}</small>
+          </div>
+
+          <div className={`avatar-waveform avatar-waveform-${snapshot.state}`} aria-hidden="true">
+            {Array.from({ length: 14 }, (_, index) => <span key={index} />)}
+          </div>
         </article>
 
-        <article className="voice-panel response-panel">
-          <p className="eyebrow">ATLAS response</p>
-          <div className="voice-transcript final">{turn?.responseText || 'No response generated.'}</div>
-          <p className="voice-help">The current test response proves turn isolation and TTS gating. A live ChatGPT provider is intentionally not faked.</p>
-        </article>
+        <div className="voice-console">
+          <article className="voice-panel transcript-panel">
+            <p className="eyebrow">What ATLAS heard</p>
+            <div className="voice-transcript final">{turn?.finalTranscript || 'No final transcript yet.'}</div>
+            {turn?.interimTranscript && !turn.finalTranscript && <div className="voice-transcript interim">{turn.interimTranscript}</div>}
+            <dl>
+              <div><dt>Turn ID</dt><dd>{turn?.id ?? '-'}</dd></div>
+              <div><dt>Confidence</dt><dd>{turn?.confidence !== undefined ? `${Math.round(turn.confidence * 100)}%` : '-'}</dd></div>
+              <div><dt>Source</dt><dd>{turn?.source ?? '-'}</dd></div>
+            </dl>
+          </article>
+
+          <article className="voice-panel response-panel">
+            <p className="eyebrow">ATLAS response</p>
+            <div className="voice-transcript final">{turn?.responseText || 'No response generated.'}</div>
+            <p className="voice-help">The current test response proves turn isolation and TTS gating. A live ChatGPT provider is intentionally not faked.</p>
+          </article>
+        </div>
       </div>
 
       <div className="voice-controls">
-        <button type="button" className="voice-primary" onClick={startListening} disabled={!supported || snapshot.state === 'listening'}>Start speaking</button>
+        <button type="button" className="voice-primary" onClick={startListening} disabled={!supported || snapshot.state === 'listening' || avatarBusy}>Start speaking</button>
         <button type="button" onClick={stopListening} disabled={!supported || snapshot.state !== 'listening'}>Stop</button>
         <button type="button" onClick={testResponse} disabled={!turn?.finalTranscript}>Run guarded response</button>
         <button type="button" onClick={interrupt} disabled={!supported || snapshot.state !== 'speaking'}>Interrupt ATLAS</button>
