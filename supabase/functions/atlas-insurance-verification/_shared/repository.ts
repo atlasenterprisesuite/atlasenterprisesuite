@@ -34,6 +34,30 @@ export type NewChallenge = {
 
 const CHALLENGE_FIELDS = 'id,org_id,user_id,scope,resource_id,code_hash,delivery_channel,delivery_target_masked,expires_at,consumed_at,attempt_count,resend_count,last_sent_at,created_at,updated_at';
 
+export async function hashInsuranceVerificationCode(admin: SupabaseClient, challengeId: string, code: string) {
+  const { data, error } = await admin.rpc('hash_atlas_insurance_verification_code', {
+    p_challenge_id: challengeId,
+    p_code: code
+  });
+
+  if (error) {
+    const message = String(error.message || '');
+    if (message.includes('atlas_insurance_otp_secret_not_configured')) {
+      throw insuranceError('verification_not_configured', 503);
+    }
+    if (message.includes('invalid_code_format')) {
+      throw insuranceError('invalid_code_format', 422);
+    }
+    throw insuranceError('persistence_failed', 500);
+  }
+
+  const digest = typeof data === 'string' ? data : '';
+  if (!/^[0-9a-f]{64}$/i.test(digest)) {
+    throw insuranceError('persistence_failed', 500);
+  }
+  return digest;
+}
+
 export async function createChallenge(admin: SupabaseClient, input: NewChallenge) {
   const { data, error } = await admin
     .from('insurance_verification_challenges')
