@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   exportCreatorPrompt,
   listCreativeEngines,
+  listCreativePlans,
+  saveCreativePlan,
   listCreatorProviders
 } from '../../apps/web/src/lib/creatorApi';
 
@@ -94,4 +96,98 @@ describe('ATLAS Creator browser API', () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain('/functions/v1/atlas-creator?api=prompt-export');
     expect(String(fetchMock.mock.calls[0][0])).not.toContain('submit');
   });
+
+  it('lists CreativePlans through the authenticated creator edge route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      creative_plans: [{
+        id: '11111111-1111-4111-8111-111111111111',
+        organization_id: 'org-1',
+        created_by: 'user-1',
+        version: 2,
+        created_at: '2026-09-18T17:00:00.000Z',
+        updated_at: '2026-09-18T18:00:00.000Z',
+        plan_json: {
+          id: '11111111-1111-4111-8111-111111111111',
+          organizationId: 'org-1',
+          createdByUserId: 'user-1',
+          title: 'Launch',
+          sourceBrief: 'Launch ATLAS finance campaign',
+          normalizedObjective: 'Launch ATLAS finance campaign',
+          mediaKinds: ['image'],
+          targetDestinations: ['Web'],
+          audience: 'Finance leaders',
+          aspectRatio: '16:9',
+          language: 'English',
+          brandProfileId: null,
+          referenceAssetIds: [],
+          deliverables: [],
+          promptSet: [],
+          audioPlan: { voiceScript: '', musicBrief: '', soundEffectCues: [] },
+          accessibilityPlan: { captions: false, transcript: false, altText: true, audioDescription: false },
+          negativeConstraints: [],
+          enginePreference: { image: 'prompt-export' },
+          createdAt: '2026-09-18T17:00:00.000Z',
+          updatedAt: '2026-09-18T17:00:00.000Z',
+          version: 1
+        }
+      }]
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const plans = await listCreativePlans();
+
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/functions/v1/atlas-creator?api=creative-plans');
+    expect(plans[0].version).toBe(2);
+    expect(plans[0].organizationId).toBe('org-1');
+  });
+
+  it('saves CreativePlan with optimistic versioning through the creator edge route', async () => {
+    const plan = {
+      id: '11111111-1111-4111-8111-111111111111',
+      organizationId: 'org-1',
+      createdByUserId: 'user-1',
+      title: 'Launch',
+      sourceBrief: 'Launch ATLAS finance campaign',
+      normalizedObjective: 'Launch ATLAS finance campaign',
+      mediaKinds: ['image'] as const,
+      targetDestinations: ['Web'],
+      audience: 'Finance leaders',
+      aspectRatio: '16:9',
+      language: 'English',
+      brandProfileId: null,
+      referenceAssetIds: [],
+      deliverables: [],
+      promptSet: [],
+      audioPlan: { voiceScript: '', musicBrief: '', soundEffectCues: [] },
+      accessibilityPlan: { captions: false, transcript: false, altText: true, audioDescription: false },
+      negativeConstraints: [],
+      enginePreference: { image: 'prompt-export' },
+      createdAt: '2026-09-18T17:00:00.000Z',
+      updatedAt: '2026-09-18T17:00:00.000Z',
+      version: 1
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      creative_plan: {
+        id: plan.id,
+        organization_id: 'org-1',
+        created_by: 'user-1',
+        version: 1,
+        created_at: plan.createdAt,
+        updated_at: plan.updatedAt,
+        plan_json: plan
+      }
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const saved = await saveCreativePlan(plan, 0);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/functions/v1/atlas-creator?api=creative-plan-save');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body)).expected_version).toBe(0);
+    expect(saved.id).toBe(plan.id);
+  });
+
 });
