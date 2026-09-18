@@ -3,6 +3,16 @@ const PROFILES=Object.freeze(['fast','balanced','deep']);
 const PROMPT_CACHE_TTL='30m';
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function cleanModel(value){return typeof value==='string'&&value.trim()?value.trim():null;}
+function isAstra(model){return /^gpt-6-astra(?:$|-)/.test(String(model||''));}
+function withReasoningConfiguration(input,profile,model){
+  if(!isAstra(model)||profile==='fast'||!Array.isArray(input))return input;
+  const update={type:'configuration_update',reasoning:{effort:EFFORT[profile]||EFFORT.balanced}};
+  const next=[...input];
+  let index=-1;
+  for(let i=next.length-1;i>=0;i-=1){if(next[i]?.role==='user'){index=i;break;}}
+  if(index<0)next.push(update);else next.splice(index,0,update);
+  return next;
+}
 function outputText(data){const out=[];for(const item of data?.output||[])for(const part of item?.content||[])if(part?.type==='output_text'&&part?.text)out.push(String(part.text));return out.join('\n').trim();}
 async function sha256Hex(value){const bytes=new TextEncoder().encode(value);const digest=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 async function safetyId(context={}){const raw=`${context.organization_id||'org'}:${context.user_id||'user'}`;return `atlas_${(await sha256Hex(raw)).slice(0,32)}`;}
@@ -12,7 +22,7 @@ function errorForStatus(status){if(status===401||status===403)return fail('provi
 export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
   const resolved=Object.freeze({fast:cleanModel(models?.fast),balanced:cleanModel(models?.balanced),deep:cleanModel(models?.deep)});
   const configured=Boolean(apiKey)&&Object.values(resolved).some(Boolean);
-  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true}});
+  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false}});
   async function execute({context,route,instructions,input,max_output_tokens=3000}={}){
     const model=resolved[route?.profile];
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
@@ -20,8 +30,8 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
     const body={
       model,
       instructions,
-      input,
-      reasoning:{effort:EFFORT[route.profile]||EFFORT.balanced},
+      input:withReasoningConfiguration(input,route.profile,model),
+      reasoning:{effort:isAstra(model)?EFFORT.fast:(EFFORT[route.profile]||EFFORT.balanced)},
       max_output_tokens,
       store:false,
       prompt_cache_key:await promptCacheKey(context,route,model),
