@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
+import { AdvisoryOfficePage } from '../modules/advisory/AdvisoryOfficePage';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
@@ -22,6 +23,10 @@ const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
 export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/') {
     return <EnterpriseExperiencePage />;
+  }
+
+  if (pathname === '/advisory' || pathname === '/advisory/firms/aw-finance-advisory-solutions') {
+    return <RequireAtlasIdentity><AdvisoryOfficePage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/business') {
