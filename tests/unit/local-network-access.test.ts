@@ -54,7 +54,7 @@ describe('ATLAS Local Network Access', () => {
   });
 
   it('does not mislabel loopback as the local address space', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 204 }));
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
     await probeLocalNetworkEndpoint({
       origin: 'http://127.0.0.1:8787',
       address_space: 'loopback',
