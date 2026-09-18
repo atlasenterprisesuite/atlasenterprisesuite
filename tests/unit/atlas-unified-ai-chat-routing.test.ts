@@ -86,7 +86,7 @@ describe('ATLAS Unified AI routing', () => {
 
   it('returns all verified compatible providers in stable council order', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('openai'), provider('gemini'), provider('codex-sovereign')],
+      providers: [provider('openai'), provider('bedrock'), provider('gemini'), provider('codex-sovereign')],
     });
     expect(router.route({ mode: 'council', intent: 'deep', capabilities_requested: ['reasoning'] })).toMatchObject({
       mode: 'council',
