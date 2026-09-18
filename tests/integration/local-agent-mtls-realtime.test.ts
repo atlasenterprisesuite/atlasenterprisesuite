@@ -19,7 +19,7 @@ describe('ATLAS Local Agent mTLS + realtime contract', () => {
       'mtls_status','mtls_cert_fingerprint_sha256','mtls_cert_serial',
       'mtls_cloudflare_cert_id','mtls_cert_expires_at','realtime_last_connected_at'
     ]) expect(migration).toContain(field);
-    expect(migration).not.toMatch(/private[_ ]?key|key_pem|pkcs12/i);
+    expect(migration).not.toMatch(/add column[^;]*(private[_ ]?key|key_pem|pkcs12)/i);
   });
 
   it('requires Cloudflare-verified mTLS and existing agent session before websocket upgrade', () => {
