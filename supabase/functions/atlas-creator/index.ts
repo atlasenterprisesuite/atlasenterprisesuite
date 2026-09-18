@@ -1,4 +1,6 @@
 import { requireCreatorPermission } from '../../../packages/creator/permissions.ts';
+import { adaptProviderToCreativeEngine } from '../../../packages/creator/creative_engine.ts';
+import { compilePromptExport, PROMPT_EXPORT_ENGINE } from '../../../packages/creator/prompt_engine.ts';
 import type { ContentWorkspaceState } from '../../../packages/creator/content_intelligence.ts';
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
@@ -77,6 +79,43 @@ async function handleReadiness(req: Request) {
 async function handleProviders(req: Request) {
   const ctx = await creatorContext(req, 'creator.read');
   return json({ ok: true, providers: await listProviderReadiness(ctx.orgId) });
+}
+
+async function handleEngines(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const providers = await listProviderReadiness(ctx.orgId);
+  return json({
+    ok: true,
+    engines: [PROMPT_EXPORT_ENGINE, ...providers.map(adaptProviderToCreativeEngine)]
+  });
+}
+
+async function handlePromptExport(req: Request) {
+  const ctx = await creatorContext(req, 'creator.write');
+  const body = await bodyJson(req);
+  let promptPackage;
+  try {
+    promptPackage = compilePromptExport({
+      mediaKind: body.media_kind,
+      brief: String(body.brief || ''),
+      aspectRatio: body.aspect_ratio ? String(body.aspect_ratio) : undefined,
+      destination: body.destination ? String(body.destination) : undefined,
+      language: body.language ? String(body.language) : undefined,
+      negativeConstraints: Array.isArray(body.negative_constraints)
+        ? body.negative_constraints.map((value: unknown) => String(value))
+        : undefined
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'creative_brief_too_short') {
+      throw creatorError('creative_brief_too_short', 422);
+    }
+    throw error;
+  }
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.prompt.exported', null, {
+    media_kind: promptPackage.mediaKind,
+    engine_id: promptPackage.engineId
+  });
+  return json({ ok: true, prompt_package: promptPackage });
 }
 
 async function handleProductions(req: Request) {
@@ -175,6 +214,8 @@ async function route(req: Request) {
   const api = String(url.searchParams.get('api') || '').trim();
   if (api === 'readiness') return handleReadiness(req);
   if (api === 'providers') return handleProviders(req);
+  if (api === 'engines' && req.method === 'GET') return handleEngines(req);
+  if (api === 'prompt-export' && req.method === 'POST') return handlePromptExport(req);
   if (api === 'productions') return handleProductions(req);
   if (api === 'production') return handleProduction(req, url);
   if (api === 'save') return handleSave(req);
