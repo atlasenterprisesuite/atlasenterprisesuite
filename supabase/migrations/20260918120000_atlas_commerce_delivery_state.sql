@@ -3,6 +3,16 @@
 alter table public.commerce_integration_deliveries
   drop constraint if exists commerce_integration_deliveries_status_check;
 
+-- Migrate rows created by the initial core schema before enforcing the canonical states.
+update public.commerce_integration_deliveries
+set status = case status
+  when 'processing' then 'dispatched'
+  when 'delivered' then 'fulfilled'
+  when 'blocked' then 'failed'
+  else status
+end
+where status in ('processing','delivered','blocked');
+
 alter table public.commerce_integration_deliveries
   add constraint commerce_integration_deliveries_status_check
   check (status in (
@@ -15,14 +25,10 @@ alter table public.commerce_integration_deliveries
     'resolved'
   ));
 
-update public.commerce_integration_deliveries
-set status = case status
-  when 'processing' then 'dispatched'
-  when 'delivered' then 'fulfilled'
-  when 'blocked' then 'failed'
-  else status
-end
-where status in ('processing','delivered','blocked');
+-- One exception lifecycle per delivery keeps dispatcher retries idempotent.
+create unique index if not exists commerce_integration_exception_delivery_idx
+  on public.commerce_integration_exceptions (delivery_id)
+  where delivery_id is not null;
 
 create or replace function public.commerce_claim_integration_deliveries(
   p_limit integer default 25,
