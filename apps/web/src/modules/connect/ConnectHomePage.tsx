@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LocalDeviceModuleStatus } from '../device-os/LocalDeviceModuleStatus';
 
 export function ConnectHomePage() {
   return (
@@ -21,6 +22,8 @@ export function ConnectHomePage() {
           <p>Open the official Google Fi account portal and stage statement files without representing private carrier APIs as connected.</p>
         </Link>
       </div>
+
+      <LocalDeviceModuleStatus moduleId="connect" title="Local communications devices" />
 
       <div className="notice">ATLAS Connect does not store carrier or social-provider passwords. A provider is never shown as live or connected unless an authorized, verifiable integration exists.</div>
     </section>
