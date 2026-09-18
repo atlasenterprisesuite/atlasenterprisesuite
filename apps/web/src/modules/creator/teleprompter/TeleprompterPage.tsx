@@ -196,6 +196,7 @@ export function TeleprompterPage() {
   const studioRef = useRef<HTMLElement | null>(null);
   const autoCloudRef = useRef(autoCloud);
   const autoLocalRef = useRef(autoLocal);
+  const elapsedRef = useRef(0);
 
   const ui = copy[language];
   const script = scripts[language];
@@ -205,6 +206,7 @@ export function TeleprompterPage() {
 
   useEffect(() => { autoCloudRef.current = autoCloud; }, [autoCloud]);
   useEffect(() => { autoLocalRef.current = autoLocal; }, [autoLocal]);
+  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
 
   useEffect(() => {
     let active = true;
@@ -347,6 +349,7 @@ export function TeleprompterPage() {
     setRecordingId('');
     setCloudUrl('');
     setElapsed(0);
+    elapsedRef.current = 0;
     setState('countdown');
 
     for (let value = 3; value >= 1; value -= 1) {
@@ -370,7 +373,7 @@ export function TeleprompterPage() {
       });
       setState('stopped');
       if (autoLocalRef.current) triggerDownload(url, finalType);
-      if (autoCloudRef.current && cloudAllowed) void saveBlobToAtlas(blob, elapsed);
+      if (autoCloudRef.current && cloudAllowed) void saveBlobToAtlas(blob, elapsedRef.current);
     };
 
     recorderRef.current = recorder;
