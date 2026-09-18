@@ -8,11 +8,11 @@ describe('ATLAS Unified AI Chat UI', () => {
     selfPath: '/functions/v1/atlas-copilot',
     livePath: '/functions/v1/atlas-live',
     repairPath: '/functions/v1/atlas-repair-bridge',
-    version: 5,
+    version: 6,
   });
 
   it('offers all unified routing modes and reasoning profiles', () => {
-    for (const value of ['auto', 'openai', 'gemini', 'codex-sovereign', 'council']) {
+    for (const value of ['auto', 'openai', 'bedrock', 'gemini', 'codex-sovereign', 'council']) {
       expect(html).toContain(`value="${value}"`);
     }
     for (const value of ['fast', 'balanced', 'deep']) expect(html).toContain(`value="${value}"`);
@@ -29,7 +29,7 @@ describe('ATLAS Unified AI Chat UI', () => {
     expect(html).toContain('rel="noopener noreferrer"');
   });
 
-  it('does not advertise the fictional GPT-6 Astra identifier', () => {
+  it('does not expose internal model identifiers in the static HTML', () => {
     expect(html).not.toContain('GPT-6 Astra');
     expect(html).not.toContain('gpt-6-astra');
   });

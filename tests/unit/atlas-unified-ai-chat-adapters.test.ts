@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createOpenAIResponsesAdapter } from '../../supabase/functions/atlas-copilot/openai-responses-adapter.mjs';
+import { createAmazonBedrockResponsesAdapter } from '../../supabase/functions/atlas-copilot/amazon-bedrock-responses-adapter.mjs';
 import { createGeminiAdapter } from '../../supabase/functions/atlas-copilot/gemini-adapter.mjs';
 import { createCodexSovereignAdapter } from '../../supabase/functions/atlas-copilot/codex-sovereign-adapter.mjs';
 
@@ -22,6 +23,13 @@ describe('ATLAS Unified AI provider adapters', () => {
     const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
       expect(body.model).toBe('configured-openai-model');
+      expect(body.reasoning).toEqual({ effort: 'medium' });
+      expect(body.prompt_cache_options).toEqual({ ttl: '30m' });
+      expect(body.prompt_cache_key).toMatch(/^atlas_cache_[0-9a-f]{40}$/);
+      expect(body.store).toBe(false);
+      expect(body).not.toHaveProperty('temperature');
+      expect(body).not.toHaveProperty('top_p');
+      expect(body).not.toHaveProperty('top_logprobs');
       return new Response(JSON.stringify({
         id: 'resp_1',
         model: 'configured-openai-model',
@@ -37,6 +45,78 @@ describe('ATLAS Unified AI provider adapters', () => {
     const result = await adapter.execute({ context, route, instructions: 'ATLAS', input: [] });
     expect(result.text).toBe('ok');
     expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses configuration_update for Astra profile changes while keeping request-level reasoning stable', async () => {
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.reasoning).toEqual({ effort: 'low' });
+      const update = body.input.find((item: any) => item?.type === 'configuration_update');
+      expect(update).toEqual({ type: 'configuration_update', reasoning: { effort: 'high' } });
+      expect(body.input.at(-1)).toMatchObject({ role: 'user', content: 'hard problem' });
+      return new Response(JSON.stringify({
+        id: 'resp_astra',
+        model: 'gpt-6-astra',
+        output: [{ content: [{ type: 'output_text', text: 'astra-ok' }] }],
+        usage: {},
+      }), { status: 200 });
+    });
+    const adapter = createOpenAIResponsesAdapter({
+      apiKey: 'secret',
+      models: { deep: 'gpt-6-astra' },
+      fetchFn,
+    });
+    const result = await adapter.execute({
+      context,
+      route: { profile: 'deep', capabilities: ['reasoning'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'hard problem' }],
+    });
+    expect(result.text).toBe('astra-ok');
+  });
+
+  it('uses the recommended Bedrock Runtime Responses endpoint with Astra and no unsupported Astra-only controls', async () => {
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe('https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/responses');
+      const body = JSON.parse(String(init?.body));
+      expect(body.model).toBe('us.openai.gpt-6-astra');
+      expect(body.reasoning).toEqual({ effort: 'medium' });
+      expect(body.prompt_cache_options).toEqual({ ttl: '30m' });
+      expect(body.store).toBe(false);
+      expect(body).not.toHaveProperty('configuration_update');
+      expect(body).not.toHaveProperty('background');
+      return new Response(JSON.stringify({
+        id: 'resp_bedrock',
+        model: 'us.openai.gpt-6-astra',
+        output: [{ content: [{ type: 'output_text', text: 'bedrock-ok' }] }],
+        usage: {},
+      }), { status: 200 });
+    });
+    const adapter = createAmazonBedrockResponsesAdapter({
+      apiKey: 'bedrock-secret',
+      region: 'us-west-2',
+      endpoint: 'runtime',
+      models: { balanced: 'us.openai.gpt-6-astra' },
+      runtimeVerified: true,
+      fetchFn,
+    });
+    expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
+    expect((await adapter.execute({ route, instructions: 'ATLAS', input: [] })).text).toBe('bedrock-ok');
+  });
+
+  it('fails closed on Bedrock Runtime readiness until external verification evidence is configured', async () => {
+    const adapter = createAmazonBedrockResponsesAdapter({
+      apiKey: 'bedrock-secret',
+      region: 'us-west-2',
+      endpoint: 'runtime',
+      models: { balanced: 'us.openai.gpt-6-astra' },
+      runtimeVerified: false,
+    });
+    await expect(adapter.probe({ profile: 'balanced' })).resolves.toMatchObject({
+      configured: true,
+      verified: false,
+      error: 'provider_verification_required',
+    });
   });
 
   it('implements Gemini descriptor/probe/execute without a real provider call', async () => {
