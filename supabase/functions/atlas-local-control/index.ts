@@ -6,6 +6,10 @@ const MAX_REQUEST_BYTES = 64 * 1024;
 const SESSION_MINUTES = 60;
 const ROTATE_BEFORE_MINUTES = 15;
 const MTLS_FINGERPRINT = /^[a-f0-9]{64}$/;
+const GITHUB_REPO = 'atlasenterprisesuite/atlasenterprisesuite';
+const GITHUB_OWNER = 'atlasenterprisesuite';
+const MTLS_PROVISION_AUDIENCE = 'atlas-local-agent-mtls-provision';
+const MTLS_PROVISION_WORKFLOW = `${GITHUB_REPO}/.github/workflows/local-agent-mtls.yml@refs/heads/main`;
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
   'https://www.atlasenterprisesuite.com',
@@ -109,6 +113,139 @@ function requirePermission(context: UserContext, permission: string) {
   if (!context.permissions.includes(permission) && !context.permissions.includes('device.agent.admin')) {
     throw new EdgeError('permission_required', 403);
   }
+}
+
+function b64u(input: string) {
+  let value = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (value.length % 4) value += '=';
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+function decodeJwtPart(input: string) {
+  return JSON.parse(new TextDecoder().decode(b64u(input))) as Record<string, unknown>;
+}
+
+let githubJwksCache: { until: number; keys: Array<JsonWebKey & { kid?: string }> } | null = null;
+
+async function githubJwks() {
+  if (githubJwksCache && githubJwksCache.until > Date.now()) return githubJwksCache.keys;
+  const config = await fetch(
+    'https://token.actions.githubusercontent.com/.well-known/openid-configuration',
+    { cache: 'no-store' }
+  ).then((response) => response.json());
+  const data = await fetch(config.jwks_uri, { cache: 'no-store' }).then((response) => response.json());
+  const keys = Array.isArray(data?.keys) ? data.keys : [];
+  githubJwksCache = { until: Date.now() + 10 * 60 * 1000, keys };
+  return keys;
+}
+
+async function verifyMtlsProvisionOidc(req: Request) {
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new EdgeError('github_oidc_required', 401);
+
+  let header: Record<string, unknown>;
+  let payload: Record<string, unknown>;
+  try {
+    header = decodeJwtPart(parts[0]);
+    payload = decodeJwtPart(parts[1]);
+  } catch {
+    throw new EdgeError('invalid_github_oidc', 401);
+  }
+
+  if (header.alg !== 'RS256' || !header.kid) throw new EdgeError('unsupported_github_oidc', 401);
+  const jwk = (await githubJwks()).find((candidate) => candidate.kid === header.kid);
+  if (!jwk) throw new EdgeError('github_oidc_key_not_found', 401);
+
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  const signatureOk = await crypto.subtle.verify(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    b64u(parts[2]),
+    new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
+  );
+
+  const now = Math.floor(Date.now() / 1000);
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  const workflowRef = String(payload.workflow_ref || '');
+  const jobWorkflowRef = String(payload.job_workflow_ref || '');
+  if (
+    !signatureOk ||
+    payload.iss !== 'https://token.actions.githubusercontent.com' ||
+    !audiences.includes(MTLS_PROVISION_AUDIENCE) ||
+    Number(payload.exp || 0) <= now ||
+    Number(payload.nbf || 0) > now + 30
+  ) throw new EdgeError('github_oidc_verification_failed', 401);
+
+  if (
+    payload.repository !== GITHUB_REPO ||
+    payload.repository_owner !== GITHUB_OWNER ||
+    payload.ref !== 'refs/heads/main' ||
+    (workflowRef !== MTLS_PROVISION_WORKFLOW && jobWorkflowRef !== MTLS_PROVISION_WORKFLOW)
+  ) throw new EdgeError('github_oidc_scope_denied', 403);
+
+  return { sha: String(payload.sha || ''), runId: String(payload.run_id || '') };
+}
+
+async function mtlsProvisionCallback(req: Request) {
+  const github = await verifyMtlsProvisionOidc(req);
+  const body = record(await req.json());
+  const action = requiredText(body.action, 'mtls_action_required', 20);
+  const orgId = requiredText(body.organization_id, 'organization_id_required', 80);
+  const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
+  const admin = adminClient();
+  const now = new Date().toISOString();
+
+  if (action === 'issue') {
+    const fingerprint = requiredText(body.fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
+    const serial = requiredText(body.serial, 'mtls_serial_required', 160);
+    const certificateId = requiredText(body.certificate_id, 'mtls_certificate_id_required', 80);
+    const expiresAt = new Date(requiredText(body.expires_at, 'mtls_expiry_required', 80));
+    if (!MTLS_FINGERPRINT.test(fingerprint)) throw new EdgeError('invalid_mtls_fingerprint', 422);
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) throw new EdgeError('invalid_mtls_expiry', 422);
+
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'active',
+      mtls_cert_fingerprint_sha256: fingerprint,
+      mtls_cert_serial: serial,
+      mtls_cloudflare_cert_id: certificateId,
+      mtls_cert_expires_at: expiresAt.toISOString(),
+      updated_at: now
+    }).eq('id', agentId).eq('org_id', orgId).neq('status', 'revoked')
+      .select('id,org_id,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cloudflare_cert_id,mtls_cert_expires_at').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_not_found', 404);
+    await appendEvent(admin, {
+      orgId, agentId, eventType: 'agent.mtls.provider_issued', success: true,
+      safeDetail: { certificate_id: certificateId, fingerprint_sha256: fingerprint, serial, expires_at: expiresAt.toISOString(), github_run_id: github.runId }
+    });
+    return json(req, { ok: true, agent });
+  }
+
+  if (action === 'revoke') {
+    const certificateId = requiredText(body.certificate_id, 'mtls_certificate_id_required', 80);
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'revoked',
+      realtime_last_connected_at: null,
+      updated_at: now
+    }).eq('id', agentId).eq('org_id', orgId).eq('mtls_cloudflare_cert_id', certificateId)
+      .select('id,org_id,mtls_status').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_certificate_binding_not_found', 404);
+    await appendEvent(admin, {
+      orgId, agentId, eventType: 'agent.mtls.provider_revoked', severity: 'warning', success: true,
+      safeDetail: { certificate_id: certificateId, github_run_id: github.runId }
+    });
+    return json(req, { ok: true, agent });
+  }
+
+  throw new EdgeError('unsupported_mtls_action', 422);
 }
 
 function bytesToBase64Url(bytes: Uint8Array) {
@@ -239,7 +376,7 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
 
   if (operation === 'agents.list') {
     requirePermission(context, 'device.agent.read');
-    const { data, error } = await admin.from('atlas_local_agents').select('id,org_id,name,status,platform,agent_version,capabilities,modules,public_key_fingerprint,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cert_expires_at,realtime_last_connected_at,installer_version,last_seen_at,created_at,updated_at')
+    const { data, error } = await admin.from('atlas_local_agents').select('id,org_id,name,status,platform,agent_version,capabilities,modules,public_key_fingerprint,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cloudflare_cert_id,mtls_cert_expires_at,realtime_last_connected_at,installer_version,last_seen_at,created_at,updated_at')
       .eq('org_id', context.orgId).order('created_at');
     if (error) throw new EdgeError('persistence_error', 500);
     return json(req, { ok: true, agents: data || [] });
@@ -551,6 +688,18 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
+  const url = new URL(req.url);
+  if (url.searchParams.get('api') === 'mtls-provision-callback') {
+    if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
+    try {
+      return await mtlsProvisionCallback(req);
+    } catch (error) {
+      const status = error instanceof EdgeError ? error.status : 500;
+      const code = error instanceof EdgeError ? error.code : 'internal_error';
+      if (status >= 500) console.error('atlas_local_mtls_provision_failed', { code });
+      return json(req, { ok: false, error: code }, status);
+    }
+  }
   if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
   try {
     const length = Number(req.headers.get('content-length') || '0');
