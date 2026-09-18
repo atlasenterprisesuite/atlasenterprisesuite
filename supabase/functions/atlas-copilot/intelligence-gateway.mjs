@@ -24,9 +24,11 @@ export function normalizeIntelligenceRequest(input={}){
   return Object.freeze({module,intent,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
 }
 
-export function createIntelligenceRouter({providers=[],allowedProviders=[]}={}){
+export function createIntelligenceRouter({providers=[],allowedProviders=[],preferredProviders=[]}={}){
   const ordered=[...providers].filter(p=>INTELLIGENCE_PROVIDER_IDS.includes(p?.id));
   const allowedSet=Array.isArray(allowedProviders)&&allowedProviders.length?new Set(allowedProviders.filter(id=>INTELLIGENCE_PROVIDER_IDS.includes(id))):null;
+  const preferredSet=new Set(Array.isArray(preferredProviders)?preferredProviders.filter(id=>INTELLIGENCE_PROVIDER_IDS.includes(id)):[]);
+  const autoOrdered=[...ordered.filter(p=>preferredSet.has(p?.id)),...ordered.filter(p=>!preferredSet.has(p?.id))];
   const allowed=provider=>!allowedSet||allowedSet.has(provider?.id);
   return Object.freeze({
     route({mode='auto',intent='balanced',capabilities_requested=['generation']}={}){
@@ -44,12 +46,14 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[]}={}){
         if(!supports(selected,intent,capabilities))throw fail(selected.verified===true?'capability_unavailable':'provider_unavailable',503,{provider:mode});
         return Object.freeze({mode,providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:false,reason:'explicit_provider'});
       }
-      const configured=ordered.filter(p=>allowed(p)&&p?.configured===true);
+      const configured=autoOrdered.filter(p=>allowed(p)&&p?.configured===true);
       if(!configured.length)throw fail('provider_not_configured',503);
-      const index=ordered.findIndex(p=>allowed(p)&&supports(p,intent,capabilities));
+      const index=autoOrdered.findIndex(p=>allowed(p)&&supports(p,intent,capabilities));
       if(index<0)throw fail('capability_unavailable',503);
-      const selected=ordered[index];
-      return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:index>0,reason:index>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'});
+      const selected=autoOrdered[index];
+      const originalIndex=ordered.findIndex(p=>p?.id===selected.id);
+      const preferred=preferredSet.has(selected.id);
+      return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:originalIndex>0,reason:preferred?'auto_zero_cost_verified_provider':originalIndex>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'});
     },
   });
 }
@@ -63,7 +67,7 @@ export function normalizeIntelligenceError(error){
 
 export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
   if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
-  const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:true,allow_council:false,zero_cost_providers:[]};
+  const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:false,allow_council:false,zero_cost_providers:[],enforce_zero_cost:true};
   return Object.freeze({async execute({context,request}){
     const principal=normalizeAgentContext(context);
     if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
@@ -94,10 +98,10 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       }
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
-      const routing={mode:route.mode,providers:route.providers,profile:route.profile,fallback_used:route.fallback_used,reason:route.reason};
+      const routing={mode:route.mode,providers:route.providers,profile:route.profile,fallback_used:route.fallback_used,reason:route.reason,cost_decision:costDecision.reason,automatic_api_cost_usd:0};
       await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
       await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:{...(result.usage||{}),atlas_routing:routing},latency_ms:latency});
-      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:route.providers,model:result.model,mode:route.mode,profile:route.profile,fallback_used:route.fallback_used,capabilities_used:result.capabilities_used||route.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,execution_state:'completed'};
+      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:route.providers,model:result.model,mode:route.mode,profile:route.profile,fallback_used:route.fallback_used,capabilities_used:result.capabilities_used||route.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:0,execution_state:'completed'};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});
