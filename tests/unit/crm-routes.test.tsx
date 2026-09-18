@@ -55,6 +55,18 @@ function connection(state: string) {
 
 function defaultApi(operation: string, payload: Record<string, unknown> = {}) {
   if (operation === 'connection.status') return Promise.resolve({ connection: connected });
+  if (operation === 'connection.configuration') {
+    return Promise.resolve({
+      configured: true,
+      redirectUri: 'https://atlas-test.supabase.co/functions/v1/atlas-crm-hubspot'
+    });
+  }
+  if (operation === 'oauth.configure') {
+    return Promise.resolve({
+      configured: true,
+      redirectUri: 'https://atlas-test.supabase.co/functions/v1/atlas-crm-hubspot'
+    });
+  }
   if (operation === 'connection.disconnect') return Promise.resolve({ connection: connection('revoked') });
   if (operation === 'crm.refresh') return Promise.resolve({ connection: connected });
   if (operation === 'oauth.prepare') {
@@ -231,11 +243,40 @@ describe('HubSpot connection controls', () => {
     expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
   });
 
-  it('does not put provider credential fields in the integration page source', () => {
+  it('keeps provider credentials out of browser persistence', () => {
     expect(integrationPageSource).not.toContain('accessToken');
     expect(integrationPageSource).not.toContain('refreshToken');
     expect(integrationPageSource).not.toContain('localStorage');
     expect(integrationPageSource).not.toContain('sessionStorage');
+    expect(integrationPageSource).toContain('type="password"');
+    expect(integrationPageSource).toContain('autoComplete="new-password"');
+  });
+
+  it('offers secure OAuth setup only when backend configuration is absent', async () => {
+    crmApiMock.mockImplementation((operation, payload) => {
+      if (operation === 'connection.configuration') {
+        return Promise.resolve({
+          configured: false,
+          redirectUri: 'https://atlas-test.supabase.co/functions/v1/atlas-crm-hubspot'
+        });
+      }
+      return defaultApi(operation, payload);
+    });
+
+    render(<MemoryRouter initialEntries={['/crm/integrations/hubspot']}><CrmRoutes /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'HubSpot OAuth app setup' })).toBeInTheDocument();
+    expect(screen.getByText('https://atlas-test.supabase.co/functions/v1/atlas-crm-hubspot')).toBeInTheDocument();
+
+    const inputs = screen.getAllByRole('textbox');
+    fireEvent.change(inputs[0], { target: { value: 'client-id-1' } });
+    const secretInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+    fireEvent.change(secretInput, { target: { value: 'client-secret-123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save OAuth configuration' }));
+
+    await waitFor(() => expect(crmApiMock).toHaveBeenCalledWith('oauth.configure', {
+      clientId: 'client-id-1',
+      clientSecret: 'client-secret-123'
+    }));
   });
 
   it('disables Connect while authorization preparation is pending', async () => {
