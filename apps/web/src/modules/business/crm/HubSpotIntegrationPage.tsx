@@ -75,6 +75,7 @@ export function HubSpotIntegrationPage() {
         clientSecret: oauthClientSecret
       });
       setConfiguration(result);
+      setOauthClientId('');
       setOauthClientSecret('');
     } catch (caught) {
       setError(safeError(caught));
@@ -154,12 +155,16 @@ export function HubSpotIntegrationPage() {
         </dl>
       ) : null}
 
-      {!loading && configuration && !configuration.configured ? (
+      {!loading && configuration ? (
         <section className="crm-scope-panel" aria-labelledby="hubspot-oauth-app-setup">
-          <h2 id="hubspot-oauth-app-setup">HubSpot OAuth app setup</h2>
+          <h2 id="hubspot-oauth-app-setup">
+            {configuration.configured ? 'Replace HubSpot OAuth credentials' : 'HubSpot OAuth app setup'}
+          </h2>
           <p>
-            Enter the OAuth credentials from the HubSpot developer app. The secret is sent directly
-            to the ATLAS backend and stored encrypted in Supabase Vault; it is not saved in browser storage.
+            {configuration.configured
+              ? 'Enter the corrected Client ID and Client Secret to replace the current OAuth app credentials. Existing values are never displayed.'
+              : 'Enter the OAuth credentials from the HubSpot developer app.'}
+            {' '}The secret is sent directly to the ATLAS backend and stored encrypted in Supabase Vault; it is not saved in browser storage.
           </p>
           <dl className="crm-field-grid">
             <div><dt>Redirect URI</dt><dd><code>{configuration.redirectUri}</code></dd></div>
@@ -191,7 +196,11 @@ export function HubSpotIntegrationPage() {
               onClick={() => void configureOAuth()}
               disabled={action !== null || !oauthClientId.trim() || oauthClientSecret.trim().length < 8}
             >
-              {action === 'configuring' ? 'Saving securely…' : 'Save OAuth configuration'}
+              {action === 'configuring'
+                ? 'Saving securely…'
+                : configuration.configured
+                  ? 'Replace OAuth configuration'
+                  : 'Save OAuth configuration'}
             </button>
           </div>
         </section>
