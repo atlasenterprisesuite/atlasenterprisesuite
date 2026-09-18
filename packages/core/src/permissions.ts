@@ -29,6 +29,20 @@ export type CrmPermission =
   | 'crm.sync'
   | 'crm.admin';
 
+export type CommercePermission =
+  | 'commerce.read'
+  | 'commerce.catalog.read'
+  | 'commerce.catalog.manage'
+  | 'commerce.orders.read'
+  | 'commerce.orders.manage'
+  | 'commerce.promotions.manage'
+  | 'commerce.storefront.manage'
+  | 'commerce.fulfillment.manage'
+  | 'commerce.returns.manage'
+  | 'commerce.refund'
+  | 'commerce.analytics.read'
+  | 'commerce.admin';
+
 export type AgentPermission =
   | 'agents.read'
   | 'agents.write'
@@ -43,6 +57,7 @@ export type AtlasPermission =
   | VoicePermission
   | IntegrationPermission
   | CrmPermission
+  | CommercePermission
   | AgentPermission
   | SecurityPermission
   | AuditPermission;
