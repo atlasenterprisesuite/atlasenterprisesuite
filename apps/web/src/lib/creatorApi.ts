@@ -1,5 +1,6 @@
 import { getActiveAtlasOrganization, getAtlasAccessToken } from './atlasSession';
 import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence';
+import type { CreativePlan } from '../../../../packages/creator/creative_plan';
 import { adaptNativeReadiness, type CreativeEngineReadiness } from '../../../../packages/creator/creative_engine';
 import type { PromptExportPackage, PromptExportRequest } from '../../../../packages/creator/prompt_engine';
 import type {
@@ -130,6 +131,19 @@ function assetFromWire(value: any): CreatorAsset {
   } as CreatorAsset;
 }
 
+function creativePlanFromWire(value: any): CreativePlan {
+  const plan = (value?.plan_json ?? value) as CreativePlan;
+  return {
+    ...plan,
+    id: String(value?.id ?? plan.id),
+    organizationId: String(value?.organization_id ?? plan.organizationId ?? ''),
+    createdByUserId: String(value?.created_by ?? plan.createdByUserId ?? ''),
+    version: Number(value?.version ?? plan.version ?? 1),
+    createdAt: String(value?.created_at ?? plan.createdAt ?? ''),
+    updatedAt: String(value?.updated_at ?? plan.updatedAt ?? '')
+  };
+}
+
 function contentWorkspaceFromWire(value: any): ContentWorkspaceRecord {
   const state = (value?.state_json ?? value?.stateJson ?? {}) as Partial<ContentWorkspaceState>;
   return {
@@ -221,6 +235,25 @@ export async function saveContentWorkspace(workspace: ContentWorkspaceState, exp
     body: JSON.stringify({ workspace, expected_version: expectedVersion })
   });
   return contentWorkspaceFromWire(data.workspace);
+}
+
+
+export async function listCreativePlans() {
+  const data = await creatorRequest<{ ok: true; creative_plans: unknown[] }>('creative-plans');
+  return data.creative_plans.map(creativePlanFromWire);
+}
+
+export async function getCreativePlan(id: string) {
+  const data = await creatorRequest<{ ok: true; creative_plan: unknown }>('creative-plan', { id });
+  return creativePlanFromWire(data.creative_plan);
+}
+
+export async function saveCreativePlan(plan: CreativePlan, expectedVersion: number) {
+  const data = await creatorRequest<{ ok: true; creative_plan: unknown }>('creative-plan-save', {}, {
+    method: 'POST',
+    body: JSON.stringify({ creative_plan: plan, expected_version: expectedVersion })
+  });
+  return creativePlanFromWire(data.creative_plan);
 }
 
 export async function listCreatorAssets(productionId?: string) {
