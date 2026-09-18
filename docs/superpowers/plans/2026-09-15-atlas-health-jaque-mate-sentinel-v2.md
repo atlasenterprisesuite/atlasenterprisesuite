@@ -111,3 +111,23 @@
 - [ ] Open a pull request to `main` without merging it.
 - [ ] Require ATLAS Consensus CI to report Product/UX, Architecture/Build and Security/Reliability success before describing the branch as tested.
 - [ ] Do not merge or deploy without the repository-owner production checkpoint.
+
+
+### Task 6: Possible-cure candidate integration
+
+**Files:**
+- Create: `packages/health/jaque-mate/cure-candidate.ts`
+- Create: `supabase/migrations/20260918233500_health_cure_candidate_registry.sql`
+- Create: `tests/integration/health-jaque-mate-cure-candidate-migration.test.ts`
+- Modify: `apps/web/src/modules/health/JaqueMateSentinelPage.tsx`
+- Modify: `tests/unit/health-jaque-mate-sentinel.test.ts`
+- Modify: `tests/integration/health-routes.test.tsx`
+
+**Interfaces:**
+- Jaque Mate may integrate a finding as `POSSIBLE CURE — RESEARCH CANDIDATE`.
+- Simulation/hypothesis findings remain `RESEARCH_CANDIDATE`.
+- Findings linked to validated evidence may advance only to `HUMAN_REVIEW_REQUIRED`.
+- `confirmedCure` and `clinicalActionAllowed` remain permanently false inside this automated research pipeline.
+- The persistence layer is tenant-scoped and service-controlled; authenticated browser users receive read-only access through existing Sentinel read/audit permissions.
+- C5 is stored as a research target, not as a claim that a cure has been established.
+- External validation remains mandatory before any stronger classification outside the research-candidate registry.
