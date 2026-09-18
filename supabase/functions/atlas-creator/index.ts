@@ -1,8 +1,6 @@
 import { requireCreatorPermission } from '../../../packages/creator/permissions.ts';
 import { adaptProviderToCreativeEngine } from '../../../packages/creator/creative_engine.ts';
 import { compilePromptExport, PROMPT_EXPORT_ENGINE } from '../../../packages/creator/prompt_engine.ts';
-import { adaptProviderToCreativeEngine } from '../../../packages/creator/creative_engine.ts';
-import { compilePromptExport, PROMPT_EXPORT_ENGINE } from '../../../packages/creator/prompt_engine.ts';
 import type { ContentWorkspaceState } from '../../../packages/creator/content_intelligence.ts';
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
@@ -216,7 +214,7 @@ async function route(req: Request) {
   const api = String(url.searchParams.get('api') || '').trim();
   if (api === 'readiness') return handleReadiness(req);
   if (api === 'providers') return handleProviders(req);
-  if (api === 'engines') return handleEngines(req);
+  if (api === 'engines' && req.method === 'GET') return handleEngines(req);
   if (api === 'prompt-export' && req.method === 'POST') return handlePromptExport(req);
   if (api === 'productions') return handleProductions(req);
   if (api === 'production') return handleProduction(req, url);
