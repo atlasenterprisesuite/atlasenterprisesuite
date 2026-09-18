@@ -198,21 +198,29 @@ jobs:
           ROOT_VERSION="$(probe_worker '/' 'root')"
           IDENTITY_VERSION="$(probe_worker '/identity?app=%2Ffinance' 'identity')"
           MODULE_VERSION="$(probe_worker '/finance' 'finance')"
+          HEALTH_VERSION="$(probe_worker '/health' 'health')"
+          JAQUE_MATE_SENTINEL_VERSION="$(probe_worker '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel' 'jaque-mate-sentinel')"
           WEB_LAUNCH_VERSION="$(probe_worker '/studio/web-launch' 'web-launch')"
           COMMERCE_VERSION="$(probe_worker '/commerce' 'commerce')"
           DIRECT_VERSION_ID="${ROOT_VERSION%%|*}"
           DIRECT_VERSION_TAG="${ROOT_VERSION#*|}"
           test "${IDENTITY_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Identity served a different Cloudflare version"; exit 1; }
           test "${MODULE_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Finance served a different Cloudflare version"; exit 1; }
+          test "${HEALTH_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Health served a different Cloudflare version"; exit 1; }
+          test "${JAQUE_MATE_SENTINEL_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Jaque Mate + Sentinel served a different Cloudflare version"; exit 1; }
           test "${WEB_LAUNCH_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Web Launch served a different Cloudflare version"; exit 1; }
           test "${COMMERCE_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Commerce served a different Cloudflare version"; exit 1; }
           test "${IDENTITY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${MODULE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
+          test "${HEALTH_VERSION#*|}" = "$GITHUB_SHA" || exit 1
+          test "${JAQUE_MATE_SENTINEL_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${WEB_LAUNCH_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${COMMERCE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
           echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "health_route_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "jaque_mate_sentinel_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "studio_web_launch_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "commerce_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "version_id=$DIRECT_VERSION_ID" >> "$GITHUB_OUTPUT"
@@ -322,6 +330,8 @@ jobs:
           probe_route "Public home" "/" "public_home_reachable"
           probe_route "ATLAS Identity" "/identity?app=%2Ffinance" "identity_route_reachable"
           probe_route "Module SPA shell" "/finance" "module_spa_shell_reachable"
+          probe_route "ATLAS Health" "/health" "health_route_reachable"
+          probe_route "ATLAS Health Jaque Mate + Sentinel" "/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel" "jaque_mate_sentinel_route_reachable"
           probe_route "ATLAS Web Launch Lab" "/studio/web-launch" "studio_web_launch_route_reachable"
           probe_route "ATLAS Commerce" "/commerce" "commerce_route_reachable"
           probe_route "ATLAS Network" "/business/network" "network_route_reachable"
@@ -375,15 +385,19 @@ jobs:
           HOME_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.public_home_reachable===true))")"
           IDENTITY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.identity_route_reachable===true))")"
           MODULE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.module_spa_shell_reachable===true))")"
+          HEALTH_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.health_route_reachable===true))")"
+          JAQUE_MATE_SENTINEL_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.jaque_mate_sentinel_route_reachable===true))")"
           WEB_LAUNCH_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.studio_web_launch_route_reachable===true))")"
           COMMERCE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.commerce_route_reachable===true))")"
           NETWORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.critical_network_routes_reachable===true))")"
           DEPLOYMENT_PROTECTED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.deployment_path_protected===true))")"
-          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
+          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
             echo "verified=true" >> "$GITHUB_OUTPUT"
             echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
+            echo "health_route_reachable=true" >> "$GITHUB_OUTPUT"
+            echo "jaque_mate_sentinel_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "studio_web_launch_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "commerce_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "critical_network_routes_reachable=true" >> "$GITHUB_OUTPUT"
@@ -399,6 +413,8 @@ jobs:
             echo "public_home_reachable=false" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "module_spa_shell_reachable=false" >> "$GITHUB_OUTPUT"
+            echo "health_route_reachable=false" >> "$GITHUB_OUTPUT"
+            echo "jaque_mate_sentinel_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "studio_web_launch_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "commerce_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "critical_network_routes_reachable=false" >> "$GITHUB_OUTPUT"
@@ -415,6 +431,8 @@ jobs:
           DIRECT_HOME_REACHABLE: ${{ steps.direct_edge.outputs.public_home_reachable }}
           DIRECT_IDENTITY_REACHABLE: ${{ steps.direct_edge.outputs.identity_route_reachable }}
           DIRECT_MODULE_SHELL_REACHABLE: ${{ steps.direct_edge.outputs.module_spa_shell_reachable }}
+          DIRECT_HEALTH_REACHABLE: ${{ steps.direct_edge.outputs.health_route_reachable }}
+          DIRECT_JAQUE_MATE_SENTINEL_REACHABLE: ${{ steps.direct_edge.outputs.jaque_mate_sentinel_route_reachable }}
           DIRECT_WEB_LAUNCH_REACHABLE: ${{ steps.direct_edge.outputs.studio_web_launch_route_reachable }}
           DIRECT_COMMERCE_REACHABLE: ${{ steps.direct_edge.outputs.commerce_route_reachable }}
           DIRECT_VERSION_ID: ${{ steps.direct_edge.outputs.version_id }}
@@ -427,6 +445,8 @@ jobs:
           PUBLIC_HOME_REACHABLE: ${{ steps.production_edge.outputs.public_home_reachable }}
           IDENTITY_ROUTE_REACHABLE: ${{ steps.production_edge.outputs.identity_route_reachable }}
           MODULE_SPA_SHELL_REACHABLE: ${{ steps.production_edge.outputs.module_spa_shell_reachable }}
+          PUBLIC_HEALTH_REACHABLE: ${{ steps.production_edge.outputs.health_route_reachable }}
+          PUBLIC_JAQUE_MATE_SENTINEL_REACHABLE: ${{ steps.production_edge.outputs.jaque_mate_sentinel_route_reachable }}
           PUBLIC_WEB_LAUNCH_REACHABLE: ${{ steps.production_edge.outputs.studio_web_launch_route_reachable }}
           PUBLIC_COMMERCE_REACHABLE: ${{ steps.production_edge.outputs.commerce_route_reachable }}
           PUBLIC_DEPLOYMENT_PROTECTED: ${{ steps.production_edge.outputs.deployment_path_protected }}
@@ -439,6 +459,8 @@ jobs:
           AUTHORIZED_HOME_REACHABLE: ${{ steps.authorized_edge.outputs.public_home_reachable }}
           AUTHORIZED_IDENTITY_REACHABLE: ${{ steps.authorized_edge.outputs.identity_route_reachable }}
           AUTHORIZED_MODULE_SHELL_REACHABLE: ${{ steps.authorized_edge.outputs.module_spa_shell_reachable }}
+          AUTHORIZED_HEALTH_REACHABLE: ${{ steps.authorized_edge.outputs.health_route_reachable }}
+          AUTHORIZED_JAQUE_MATE_SENTINEL_REACHABLE: ${{ steps.authorized_edge.outputs.jaque_mate_sentinel_route_reachable }}
           AUTHORIZED_WEB_LAUNCH_REACHABLE: ${{ steps.authorized_edge.outputs.studio_web_launch_route_reachable }}
           AUTHORIZED_COMMERCE_REACHABLE: ${{ steps.authorized_edge.outputs.commerce_route_reachable }}
           AUTHORIZED_NETWORK_ROUTES_REACHABLE: ${{ steps.authorized_edge.outputs.critical_network_routes_reachable }}
@@ -454,6 +476,8 @@ jobs:
 
           if [ "${EDGE_CHALLENGE_DETECTED:-false}" = "true" ]; then
             test "${AUTHORIZED_EDGE_VERIFIED:-false}" = "true" || { echo "::error::Production verification was challenged and the authorized runtime did not verify it"; exit 1; }
+            test "${AUTHORIZED_HEALTH_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Health"; exit 1; }
+            test "${AUTHORIZED_JAQUE_MATE_SENTINEL_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Health Jaque Mate + Sentinel"; exit 1; }
             test "${AUTHORIZED_WEB_LAUNCH_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Web Launch"; exit 1; }
             test "${AUTHORIZED_COMMERCE_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Commerce"; exit 1; }
             test "${AUTHORIZED_NETWORK_ROUTES_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify critical ATLAS Network routes"; exit 1; }
@@ -466,6 +490,8 @@ jobs:
             test "$PUBLIC_HOME_REACHABLE" = "true" || { echo "::error::Public production home was not verified"; exit 1; }
             test "$IDENTITY_ROUTE_REACHABLE" = "true" || { echo "::error::Public ATLAS Identity route was not verified"; exit 1; }
             test "$MODULE_SPA_SHELL_REACHABLE" = "true" || { echo "::error::Production module SPA shell was not verified"; exit 1; }
+            test "$PUBLIC_HEALTH_REACHABLE" = "true" || { echo "::error::ATLAS Health production route was not verified"; exit 1; }
+            test "$PUBLIC_JAQUE_MATE_SENTINEL_REACHABLE" = "true" || { echo "::error::ATLAS Health Jaque Mate + Sentinel production route was not verified"; exit 1; }
             test "$PUBLIC_WEB_LAUNCH_REACHABLE" = "true" || { echo "::error::ATLAS Web Launch production route was not verified"; exit 1; }
             test "$PUBLIC_COMMERCE_REACHABLE" = "true" || { echo "::error::ATLAS Commerce production route was not verified"; exit 1; }
             test "$PUBLIC_DEPLOYMENT_PROTECTED" = "true" || { echo "::error::Production deployment path protection was not verified"; exit 1; }
@@ -491,14 +517,16 @@ jobs:
             test "$DIRECT_HOME_REACHABLE" = "true" || { echo "::error::Direct public home verification missing"; exit 1; }
             test "$DIRECT_IDENTITY_REACHABLE" = "true" || { echo "::error::Direct Identity verification missing"; exit 1; }
             test "$DIRECT_MODULE_SHELL_REACHABLE" = "true" || { echo "::error::Direct module shell verification missing"; exit 1; }
+            test "$DIRECT_HEALTH_REACHABLE" = "true" || { echo "::error::Direct Health route verification missing"; exit 1; }
+            test "$DIRECT_JAQUE_MATE_SENTINEL_REACHABLE" = "true" || { echo "::error::Direct Jaque Mate + Sentinel route verification missing"; exit 1; }
             test "$DIRECT_WEB_LAUNCH_REACHABLE" = "true" || { echo "::error::Direct Web Launch route verification missing"; exit 1; }
             test "$DIRECT_COMMERCE_REACHABLE" = "true" || { echo "::error::Direct Commerce route verification missing"; exit 1; }
             test -n "$DIRECT_VERSION_ID" || { echo "::error::Direct workers.dev Version ID evidence missing"; exit 1; }
             test "$DIRECT_VERSION_TAG" = "$GITHUB_SHA" || { echo "::error::Direct workers.dev Version Tag mismatch"; exit 1; }
-            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG},metadata:{deployment_mode:'direct-wrangler',deployment_url:process.env.DEPLOYMENT_URL,production_domain:'https://www.atlasenterprisesuite.com',production_domain_cutover:true,module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,health_route_reachable:true,jaque_mate_sentinel_route_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG},metadata:{deployment_mode:'direct-wrangler',deployment_url:process.env.DEPLOYMENT_URL,production_domain:'https://www.atlasenterprisesuite.com',production_domain_cutover:true,module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
           else
             test "$NATIVE_VERIFIED" = "true" || { echo "::error::Native Cloudflare deployment was not verified"; exit 1; }
-            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{cloudflare_native_build_verified:true,cloudflare_check_run_id:process.env.NATIVE_CHECK_ID,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG,cloudflare_provider_version_id:process.env.NATIVE_VERSION_ID,cloudflare_build_id:process.env.NATIVE_BUILD_ID||null,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'cloudflare-native-github-app',provider_check_details_url:process.env.NATIVE_DETAILS_URL,production_domain:'https://www.atlasenterprisesuite.com',module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{cloudflare_native_build_verified:true,cloudflare_check_run_id:process.env.NATIVE_CHECK_ID,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG,cloudflare_provider_version_id:process.env.NATIVE_VERSION_ID,cloudflare_build_id:process.env.NATIVE_BUILD_ID||null,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,health_route_reachable:true,jaque_mate_sentinel_route_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'cloudflare-native-github-app',provider_check_details_url:process.env.NATIVE_DETAILS_URL,production_domain:'https://www.atlasenterprisesuite.com',module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
           fi
 
           curl --fail --silent --show-error \
