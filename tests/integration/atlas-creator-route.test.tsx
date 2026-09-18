@@ -184,4 +184,76 @@ describe('ATLAS Creator', () => {
     expect(screen.getByText(/Never verified/)).toBeInTheDocument();
     expect(screen.getByText(/Local, self-hosted and external engines are shown ready only after their real readiness checks succeed/i)).toBeInTheDocument();
   });
+
+  it('exposes the seven unified creative media modes', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([]);
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+    for (const label of ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template']) {
+      expect(await screen.findByRole('tab', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it('builds a provider-neutral SFX CreativePlan with accessibility metadata', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'],
+      capabilityNotes: ['planning-only'],
+      lastVerifiedAt: null
+    }]);
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=sfx']}><CreatorWorkspace /></MemoryRouter>);
+
+    expect(await screen.findByRole('tab', { name: 'sfx' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Require captions')).toBeInTheDocument();
+    expect(screen.getByLabelText('Require transcript')).toBeInTheDocument();
+    expect(screen.getByLabelText('Require alt text')).toBeInTheDocument();
+    expect(screen.getByLabelText('Require audio description')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Creative brief'), {
+      target: { value: 'Create a precise futuristic interface confirmation sound for ATLAS.' }
+    });
+    fireEvent.change(screen.getByLabelText('Audience'), { target: { value: 'ATLAS users' } });
+    fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'Product UI' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create plan' }));
+
+    expect(await screen.findByRole('heading', { name: 'Creative plan' })).toBeInTheDocument();
+    expect(screen.getByText('SFX deliverable')).toBeInTheDocument();
+    expect(screen.getByText(/SOUND EFFECT/)).toBeInTheDocument();
+    expect(screen.getByText(/Prompt Export/)).toBeInTheDocument();
+  });
+
+  it('persists a CreativePlan with optimistic versioning', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'],
+      capabilityNotes: ['planning-only'],
+      lastVerifiedAt: null
+    }]);
+    const saveSpy = vi.spyOn(creatorApi, 'saveCreativePlan').mockImplementation(async (plan, expectedVersion) => ({
+      ...plan,
+      organizationId: 'org-1',
+      createdByUserId: 'user-1',
+      version: expectedVersion + 1
+    }));
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=graphic']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Creative brief'), {
+      target: { value: 'Create a reusable ATLAS finance announcement graphic for social channels.' }
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Create plan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+
+    expect(await screen.findByText('Plan saved · version 1')).toBeInTheDocument();
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(saveSpy.mock.calls[0][1]).toBe(0);
+  });
+
 });
