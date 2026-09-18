@@ -64,6 +64,18 @@ describe('ATLAS Unified AI routing', () => {
     });
   });
 
+  it('prefers an explicitly declared zero-cost provider before a paid primary in auto mode', () => {
+    const router = createIntelligenceRouter({
+      providers: [provider('openai'), provider('gemini'), provider('codex-sovereign')],
+      preferredProviders: ['codex-sovereign'],
+    });
+    expect(router.route({ mode: 'auto', intent: 'balanced', capabilities_requested: ['generation'] })).toMatchObject({
+      mode: 'auto',
+      providers: ['codex-sovereign'],
+      reason: 'auto_zero_cost_verified_provider',
+    });
+  });
+
   it('selects only organization-allowed providers in auto mode', () => {
     const router = createIntelligenceRouter({
       providers: [provider('openai'), provider('gemini'), provider('codex-sovereign')],
