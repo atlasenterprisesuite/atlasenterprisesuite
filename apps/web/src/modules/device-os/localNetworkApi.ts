@@ -77,10 +77,7 @@ export async function setLocalNetworkEndpointEnabled(
     `/rest/v1/atlas_local_network_endpoints?id=${id}&org_id=${org}`,
     {
       method: 'PATCH',
-      body: JSON.stringify({
-        enabled,
-        updated_by: undefined
-      })
+      body: JSON.stringify({ enabled })
     }
   );
   if (!response.ok) throw new Error(`local_network_endpoint_update_failed_${response.status}`);
