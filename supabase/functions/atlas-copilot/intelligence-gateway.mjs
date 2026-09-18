@@ -9,7 +9,16 @@ export const INTELLIGENCE_MODES=Object.freeze(['auto',...INTELLIGENCE_PROVIDER_I
 
 function fail(code,status=400,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function has(context,permission){return Array.isArray(context?.permissions)&&(context.permissions.includes(permission)||context.permissions.includes('*'));}
-function supports(provider,intent,capabilities){return provider?.configured===true&&provider?.verified===true&&capabilities.every(c=>provider.capabilities?.includes(c))&&provider.profiles?.includes(intent);}
+const PROVIDER_PRIORITY=Object.freeze({openai:40,bedrock:30,gemini:20,'codex-sovereign':10});
+function healthScore(provider){const n=Number(provider?.health?.health_score);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):100;}
+function circuitOpen(provider){return provider?.health?.circuit_state==='open';}
+function supports(provider,intent,capabilities){return provider?.configured===true&&provider?.verified===true&&!circuitOpen(provider)&&capabilities.every(c=>provider.capabilities?.includes(c))&&provider.profiles?.includes(intent);}
+function routeScore(provider,intent){
+  const latency=Number(provider?.health?.ewma_latency_ms)||0;
+  const latencyPenalty=intent==='fast'?Math.min(25,latency/400):Math.min(10,latency/1200);
+  return healthScore(provider)+(PROVIDER_PRIORITY[provider?.id]||0)-latencyPenalty;
+}
+function rankProviders(providers,intent){return [...providers].sort((a,b)=>routeScore(b,intent)-routeScore(a,intent)||INTELLIGENCE_PROVIDER_IDS.indexOf(a.id)-INTELLIGENCE_PROVIDER_IDS.indexOf(b.id));}
 
 export function normalizeIntelligenceRequest(input={}){
   const module=String(input.module||'atlas').trim()||'atlas';
@@ -34,7 +43,7 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[]}={}){
       if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
       const capabilities=[...capabilities_requested];
       if(mode==='council'){
-        const compatible=ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
+        const compatible=rankProviders(ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities)),intent);
         if(compatible.length<2)throw fail('capability_unavailable',503,{mode:'council',minimum_providers:2});
         return Object.freeze({mode:'council',providers:compatible.map(p=>p.id),provider:compatible[0].id,profile:intent,capabilities,fallback_used:false,reason:'council_verified_capability_match'});
       }
@@ -46,10 +55,12 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[]}={}){
       }
       const configured=ordered.filter(p=>allowed(p)&&p?.configured===true);
       if(!configured.length)throw fail('provider_not_configured',503);
-      const index=ordered.findIndex(p=>allowed(p)&&supports(p,intent,capabilities));
-      if(index<0)throw fail('capability_unavailable',503);
-      const selected=ordered[index];
-      return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:index>0,reason:index>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'});
+      const compatible=rankProviders(ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities)),intent);
+      if(!compatible.length)throw fail('capability_unavailable',503);
+      const selected=compatible[0];
+      const canonicalIndex=ordered.findIndex(p=>p.id===selected.id);
+      const routing_score=Math.round(routeScore(selected,intent)*100)/100;
+      return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:canonicalIndex>0,reason:canonicalIndex>0?'auto_health_routed_verified_provider':'auto_primary_verified_provider',routing_score});
     },
   });
 }
