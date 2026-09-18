@@ -252,7 +252,7 @@ describe('HubSpot connection controls', () => {
     expect(integrationPageSource).toContain('autoComplete="new-password"');
   });
 
-  it('offers secure OAuth setup only when backend configuration is absent', async () => {
+  it('offers secure OAuth setup when backend configuration is absent', async () => {
     crmApiMock.mockImplementation((operation, payload) => {
       if (operation === 'connection.configuration') {
         return Promise.resolve({
@@ -277,6 +277,24 @@ describe('HubSpot connection controls', () => {
       clientId: 'client-id-1',
       clientSecret: 'client-secret-123'
     }));
+  });
+
+  it('allows configured OAuth credentials to be securely replaced', async () => {
+    render(<MemoryRouter initialEntries={['/crm/integrations/hubspot']}><CrmRoutes /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Replace HubSpot OAuth credentials' })).toBeInTheDocument();
+
+    const textboxes = screen.getAllByRole('textbox');
+    fireEvent.change(textboxes[0], { target: { value: 'correct-client-id' } });
+    const secretInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+    fireEvent.change(secretInput, { target: { value: 'correct-client-secret' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Replace OAuth configuration' }));
+
+    await waitFor(() => expect(crmApiMock).toHaveBeenCalledWith('oauth.configure', {
+      clientId: 'correct-client-id',
+      clientSecret: 'correct-client-secret'
+    }));
+    expect(textboxes[0]).toHaveValue('');
+    expect(secretInput).toHaveValue('');
   });
 
   it('disables Connect while authorization preparation is pending', async () => {
