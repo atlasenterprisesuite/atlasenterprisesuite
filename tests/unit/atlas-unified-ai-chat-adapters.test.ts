@@ -22,6 +22,7 @@ describe('ATLAS Unified AI provider adapters', () => {
     const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
       expect(body.model).toBe('configured-openai-model');
+      expect(body.store).toBe(false);
       return new Response(JSON.stringify({
         id: 'resp_1',
         model: 'configured-openai-model',
@@ -37,6 +38,26 @@ describe('ATLAS Unified AI provider adapters', () => {
     const result = await adapter.execute({ context, route, instructions: 'ATLAS', input: [] });
     expect(result.text).toBe('ok');
     expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('enables OpenAI provider storage only when the governed caller explicitly passes store=true', async () => {
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.store).toBe(true);
+      return new Response(JSON.stringify({
+        id: 'resp_store',
+        model: 'configured-openai-model',
+        output: [{ content: [{ type: 'output_text', text: 'stored-ok' }] }],
+        usage: {},
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    const adapter = createOpenAIResponsesAdapter({
+      apiKey: 'secret',
+      models: { balanced: 'configured-openai-model' },
+      fetchFn,
+    });
+    const result = await adapter.execute({ context, route, instructions: 'ATLAS', input: [], store: true });
+    expect(result.text).toBe('stored-ok');
   });
 
   it('implements Gemini descriptor/probe/execute without a real provider call', async () => {

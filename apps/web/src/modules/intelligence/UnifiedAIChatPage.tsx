@@ -58,6 +58,7 @@ export function UnifiedAIChatPage() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [mode, setMode] = useState<AssistantMode>('auto');
   const [profile, setProfile] = useState<AssistantProfile>('balanced');
+  const [storeProviderResponse, setStoreProviderResponse] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
@@ -74,6 +75,8 @@ export function UnifiedAIChatPage() {
     : mode === 'council'
       ? verifiedProviders.length >= 2
       : selectedProvider?.verified === true && selectedProvider.state === 'verified';
+  const providerStorageMode = status?.ai_data_policy?.provider_call_logging_mode || 'disabled';
+  const perCallStorageAllowed = providerStorageMode === 'per_call';
 
   const currentConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === conversationId) || null,
@@ -99,6 +102,10 @@ export function UnifiedAIChatPage() {
   useEffect(() => {
     messageEnd.current?.scrollIntoView({ block: 'nearest' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!perCallStorageAllowed) setStoreProviderResponse(false);
+  }, [perCallStorageAllowed]);
 
   async function refreshStatus() {
     try {
@@ -154,7 +161,13 @@ export function UnifiedAIChatPage() {
     setError('');
 
     try {
-      const result = await sendAssistantWorkspaceMessage({ message, conversationId, mode, profile });
+      const result = await sendAssistantWorkspaceMessage({
+        message,
+        conversationId,
+        mode,
+        profile,
+        storeProviderResponse: perCallStorageAllowed && storeProviderResponse
+      });
       if (result.conversation_id) setConversationId(result.conversation_id);
       const providersUsed = Array.isArray(result.providers) && result.providers.length
         ? result.providers.join(' + ')
@@ -163,7 +176,7 @@ export function UnifiedAIChatPage() {
         key: `assistant-${Date.now()}`,
         role: 'assistant',
         text: result.output || result.text || '',
-        meta: `via ${providersUsed}${result.model ? ` · ${result.model}` : ''}`
+        meta: `via ${providersUsed}${result.model ? ` · ${result.model}` : ''} · provider storage ${result.provider_storage || 'disabled'}`
       }]);
       await Promise.all([refreshHistory(), refreshStatus()]);
     } catch (cause) {
@@ -201,6 +214,20 @@ export function UnifiedAIChatPage() {
             </select>
           </label>
         </div>
+        <label className="atlas-ai-storage-toggle">
+          <input
+            type="checkbox"
+            checked={storeProviderResponse}
+            onChange={(event) => setStoreProviderResponse(event.target.checked)}
+            disabled={!perCallStorageAllowed || busy}
+          />
+          <span>
+            <strong>Store this provider response</strong>
+            <small>{perCallStorageAllowed
+              ? 'Per-call policy is active. Sensitive modules remain locked to no-store.'
+              : `Organization policy: ${providerStorageMode.replace('_', ' ')}`}</small>
+          </span>
+        </label>
         <button type="button" onClick={refreshStatus}>Refresh provider status</button>
       </div>
 
@@ -277,6 +304,7 @@ export function UnifiedAIChatPage() {
             <div><dt>Organization</dt><dd>{status?.organization || 'Loading…'}</dd></div>
             <div><dt>Role</dt><dd>{status?.role || 'Loading…'}</dd></div>
             <div><dt>Storage</dt><dd>{status?.storage_state || 'Loading…'}</dd></div>
+            <div><dt>Provider storage policy</dt><dd>{providerStorageMode.replace('_', ' ')}</dd></div>
             <div><dt>Verified providers</dt><dd>{verifiedProviders.length}</dd></div>
             <div><dt>Council policy</dt><dd>{councilConfigured ? 'Pre-authorized' : 'Approval may be required'}</dd></div>
           </dl>

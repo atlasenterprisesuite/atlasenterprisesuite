@@ -201,6 +201,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'security',
+    title: 'ATLAS Security Center',
+    navLabel: 'Security',
+    area: 'Platform',
+    route: '/security',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Organization-scoped security, audit and AI data-governance controls with fail-closed sensitive-module policy.',
+    showInNavigation: true
+  },
+  {
     id: 'execution',
     title: 'Universal Execution',
     navLabel: 'Execution',

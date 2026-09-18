@@ -9,7 +9,7 @@ import {
 import './identity.css';
 
 const DEFAULT_TARGET = '/';
-const SUPPORTED_PREFIXES = ['/finance', '/health', '/studio', '/insurance'];
+const SUPPORTED_PREFIXES = ['/finance', '/health', '/studio', '/insurance', '/security'];
 
 export function resolveAtlasIdentityTarget(rawTarget: string | null) {
   if (!rawTarget) return DEFAULT_TARGET;

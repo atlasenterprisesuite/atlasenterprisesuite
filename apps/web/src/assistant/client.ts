@@ -21,6 +21,12 @@ export type AssistantProviderReadiness = {
   error: string | null;
 };
 
+export type AssistantAiDataPolicy = {
+  audit_logging_enabled: boolean;
+  provider_call_logging_mode: 'disabled' | 'per_call' | 'all' | 'selected_modules';
+  selected_modules: string[];
+};
+
 export type AssistantStatusResponse = {
   ok: boolean;
   authenticated: boolean;
@@ -28,6 +34,7 @@ export type AssistantStatusResponse = {
   provider_state: AssistantProviderState;
   model: string | null;
   storage_state: string;
+  ai_data_policy?: AssistantAiDataPolicy;
   organization: string;
   role: string | null;
   capabilities: string[];
@@ -76,6 +83,7 @@ export type AssistantChatResponse = {
   mode?: AssistantMode;
   profile?: AssistantProfile;
   fallback_used?: boolean;
+  provider_storage?: 'enabled' | 'disabled';
   contributions?: Array<{ provider: string; model: string | null; text: string }>;
 };
 
@@ -152,6 +160,7 @@ export async function sendAssistantWorkspaceMessage(input: {
   conversationId?: string | null;
   mode: AssistantMode;
   profile: AssistantProfile;
+  storeProviderResponse?: boolean;
 }): Promise<AssistantChatResponse> {
   const message = input.message.trim();
   if (!message) throw new Error('assistant_message_required');
@@ -167,6 +176,7 @@ export async function sendAssistantWorkspaceMessage(input: {
       mode: input.mode,
       message,
       conversation_id: input.conversationId || null,
+      store_provider_response: input.storeProviderResponse === true,
       capabilities_requested: ['generation', 'reasoning'],
       client_metadata: {
         modality: 'text',
@@ -197,6 +207,7 @@ export async function sendAssistantMessage(input: {
       mode: 'auto',
       message,
       conversation_id: input.conversationId || null,
+      store_provider_response: false,
       capabilities_requested: ['generation'],
       client_metadata: {
         modality: input.modality,
