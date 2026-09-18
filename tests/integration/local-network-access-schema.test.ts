@@ -17,14 +17,19 @@ describe('ATLAS Local Network Access schema contract', () => {
     expect(sql).toContain('atlas_local_network_endpoints');
     expect(sql).toContain('atlas_local_network_events');
     expect(sql).not.toMatch(/\bpayload\b/i);
-    expect(sql).not.toMatch(/\bcredential\b/i);
-    expect(sql).not.toMatch(/authorization_header/i);
+    expect(sql).not.toMatch(/\b(ciphertext|secret_ref|access_token|refresh_token|authorization_header)\b/i);
   });
 
   it('keeps endpoint administration tenant-scoped and permission-gated', () => {
     expect(sql).toMatch(/atlas_local_network_endpoints_insert[\s\S]*device\.local\.admin/i);
     expect(sql).toMatch(/atlas_local_network_endpoints_update[\s\S]*device\.local\.admin/i);
     expect(sql).toMatch(/atlas_local_network_endpoints_delete[\s\S]*device\.local\.admin/i);
+  });
+
+  it('sets update actor and timestamp in the database before policy evaluation', () => {
+    expect(sql).toMatch(/create or replace function public\.atlas_touch_local_network_endpoint/i);
+    expect(sql).toMatch(/new\.updated_by := auth\.uid\(\)/i);
+    expect(sql).toMatch(/new\.updated_at := now\(\)/i);
   });
 
   it('makes audit evidence append-only for authenticated clients', () => {
