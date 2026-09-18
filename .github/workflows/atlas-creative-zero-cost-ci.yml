@@ -24,5 +24,7 @@ jobs:
         run: npx vitest run tests/unit/creator-creative-engine.test.ts tests/unit/creator-prompt-engine.test.ts tests/unit/creator-api.test.ts
       - name: Creator edge contract
         run: npx vitest run tests/integration/atlas-director-edge-contract.test.ts
+      - name: Creator UI integration
+        run: npx vitest run tests/integration/atlas-creator-route.test.tsx
       - name: Typecheck
         run: npm run typecheck
