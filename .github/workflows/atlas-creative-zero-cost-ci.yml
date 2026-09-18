@@ -1,0 +1,26 @@
+name: ATLAS Creative Zero-Cost Verification
+
+on:
+  push:
+    branches:
+      - ci/atlas-creative-zero-cost-verify
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Focused Creative unit tests
+        run: npx vitest run tests/unit/creator-creative-engine.test.ts
+      - name: Typecheck
+        run: npm run typecheck
