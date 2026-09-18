@@ -126,4 +126,11 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain("production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true'");
     expect(workflow).not.toContain('production_commit_sha_verified:true');
   });
+  it('waits for the exact workers.dev version to propagate before failing', () => {
+    expect(workflow).toContain('Waiting for workers.dev to serve the deployed version');
+    expect(workflow).toContain('for ATTEMPT in $(seq 1 20)');
+    expect(workflow).toContain('sleep 3');
+    expect(workflow).toContain('workers.dev propagation timed out');
+  });
+
 });
