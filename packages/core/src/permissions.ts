@@ -37,6 +37,7 @@ export type AgentPermission =
 
 export type AdvisoryPermission =
   | 'advisory.read'
+  | 'advisory.manage'
   | 'advisory.write'
   | 'advisory.billing'
   | 'advisory.compliance'
@@ -62,7 +63,7 @@ export function hasAtlasPermission(
 ) {
   if (granted.includes(required)) return true;
   const namespace = required.split('.')[0];
-  const admin = `${namespace}.admin` as AtlasPermission;
+  const admin = (namespace + '.admin') as AtlasPermission;
   return granted.includes(admin);
 }
 

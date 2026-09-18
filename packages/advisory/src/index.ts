@@ -11,7 +11,7 @@ export type AdvisoryRole =
   | 'reviewer' | 'staff' | 'billing' | 'client' | 'client_delegate' | 'read_only_auditor';
 
 export type AdvisoryPermission =
-  | 'advisory.read' | 'advisory.write' | 'advisory.billing'
+  | 'advisory.read' | 'advisory.manage' | 'advisory.write' | 'advisory.billing'
   | 'advisory.compliance' | 'advisory.automations' | 'advisory.admin';
 
 export type EngagementStatus = 'lead' | 'open' | 'review' | 'billing' | 'closed';
@@ -36,10 +36,12 @@ export type LaunchPhase =
   | 'foundation' | 'brand' | 'website' | 'crm_sales'
   | 'brand_print_promo' | 'marketing' | 'launch' | 'review_30_day';
 
-export type LaunchEvidenceDimension =
-  | 'business_setup' | 'brand' | 'website' | 'contact_channels' | 'crm'
-  | 'payments' | 'accounting' | 'marketing' | 'compliance' | 'analytics';
+export const LAUNCH_READINESS_DIMENSIONS = [
+  'business_setup','brand','website','contact_channels','crm',
+  'payments','accounting','marketing','compliance','analytics'
+] as const;
 
+export type LaunchEvidenceDimension = typeof LAUNCH_READINESS_DIMENSIONS[number];
 export type ReadinessEvidence = Record<LaunchEvidenceDimension, boolean>;
 
 export const BUSINESS_LAUNCH_360 = {
