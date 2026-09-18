@@ -1,10 +1,13 @@
 const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
 const OWNER = 'atlasenterprisesuite';
 const AUDIENCE = 'atlas-production-http-verifier';
-const ALLOWED_WORKFLOW = `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`;
+const ALLOWED_WORKFLOWS = new Set([
+  `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`,
+  `${REPO}/.github/workflows/global-production-verify.yml@refs/heads/main`
+]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 3;
+const VERSION = 6;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -88,11 +91,17 @@ async function verifyGitHubOIDC(req: Request) {
     return { ok: false as const, status: 401, error: 'github_oidc_verification_failed' };
   }
 
+  const workflowRef = String(payload.workflow_ref || '');
+  const jobWorkflowRef = String(payload.job_workflow_ref || '');
+  const workflowAllowed =
+    ALLOWED_WORKFLOWS.has(workflowRef) ||
+    ALLOWED_WORKFLOWS.has(jobWorkflowRef);
+
   if (
     payload.repository !== REPO ||
     payload.repository_owner !== OWNER ||
     payload.ref !== 'refs/heads/main' ||
-    payload.workflow_ref !== ALLOWED_WORKFLOW
+    !workflowAllowed
   ) {
     return { ok: false as const, status: 403, error: 'github_oidc_scope_denied' };
   }
@@ -103,7 +112,9 @@ async function verifyGitHubOIDC(req: Request) {
       sha: String(payload.sha || ''),
       run_id: String(payload.run_id || ''),
       run_attempt: String(payload.run_attempt || ''),
-      actor: String(payload.actor || '')
+      actor: String(payload.actor || ''),
+      workflow_ref: workflowRef,
+      job_workflow_ref: jobWorkflowRef
     }
   };
 }
@@ -113,6 +124,8 @@ type Probe = {
   ok: boolean;
   content_type: string | null;
   cf_mitigated: string | null;
+  atlas_version_id: string | null;
+  atlas_version_tag: string | null;
   location: string | null;
   duration_ms: number;
   redirect_count: number;
@@ -130,11 +143,13 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
         redirect: 'manual',
         cache: 'no-store',
         headers: {
-          'user-agent': 'ATLAS-Authorized-Production-Verifier/2.0',
+          'user-agent': 'ATLAS-Authorized-Production-Verifier/5.0',
           'cache-control': 'no-cache, no-store'
         }
       });
       const location = response.headers.get('location');
+      const atlasVersionId = response.headers.get('x-atlas-version-id');
+      const atlasVersionTag = response.headers.get('x-atlas-version-tag');
 
       if (followRedirects && REDIRECT_STATUSES.has(response.status) && location) {
         if (redirectCount >= MAX_REDIRECTS) {
@@ -143,6 +158,8 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
             ok: false,
             content_type: response.headers.get('content-type'),
             cf_mitigated: response.headers.get('cf-mitigated'),
+            atlas_version_id: atlasVersionId,
+            atlas_version_tag: atlasVersionTag,
             location: '[redirect-limit-exceeded]',
             duration_ms: Date.now() - started,
             redirect_count: redirectCount,
@@ -157,6 +174,8 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
             ok: false,
             content_type: response.headers.get('content-type'),
             cf_mitigated: response.headers.get('cf-mitigated'),
+            atlas_version_id: atlasVersionId,
+            atlas_version_tag: atlasVersionTag,
             location: '[blocked-cross-origin-redirect]',
             duration_ms: Date.now() - started,
             redirect_count: redirectCount,
@@ -174,6 +193,8 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
         ok: response.ok,
         content_type: response.headers.get('content-type'),
         cf_mitigated: response.headers.get('cf-mitigated'),
+        atlas_version_id: atlasVersionId,
+        atlas_version_tag: atlasVersionTag,
         location: location ? '[redirect-present]' : null,
         duration_ms: Date.now() - started,
         redirect_count: redirectCount,
@@ -186,6 +207,8 @@ async function probe(path: string, followRedirects = true): Promise<Probe> {
       ok: false,
       content_type: null,
       cf_mitigated: null,
+      atlas_version_id: null,
+      atlas_version_tag: null,
       location: null,
       duration_ms: Date.now() - started,
       redirect_count: redirectCount,
@@ -204,7 +227,7 @@ Deno.serve(async (req: Request) => {
       service: 'atlas-cloudflare-production-http-verify',
       version: VERSION,
       production_url: PRODUCTION_URL,
-      auth: 'github-oidc-main-cloudflare-workflow',
+      auth: 'github-oidc-main-approved-production-workflows',
       verification_source: 'atlas-authorized-supabase-runtime'
     });
   }
@@ -242,6 +265,17 @@ Deno.serve(async (req: Request) => {
 
   const publicShellOk = home.status === 200 && identity.status === 200 && finance.status === 200;
   const commerceRouteOk = commerce.status === 200;
+  const routedProbes = [
+    home,
+    identity,
+    finance,
+    commerce,
+    network,
+    networkPricing,
+    networkCommissions,
+    networkPayouts,
+    networkCompliance
+  ];
   const criticalNetworkRoutesOk = [
     network,
     networkPricing,
@@ -250,7 +284,15 @@ Deno.serve(async (req: Request) => {
     networkCompliance
   ].every((result) => result.status === 200);
   const deploymentPathProtected = [302, 401, 403].includes(deployment.status);
-  const verified = publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && deploymentPathProtected;
+  const observedVersionId = home.atlas_version_id;
+  const observedVersionTag = home.atlas_version_tag;
+  const productionCommitVerified = Boolean(caller.claims.sha) &&
+    Boolean(observedVersionId) &&
+    observedVersionTag === caller.claims.sha &&
+    routedProbes.every((result) =>
+      result.atlas_version_id === observedVersionId && result.atlas_version_tag === caller.claims.sha
+    );
+  const verified = publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && deploymentPathProtected && productionCommitVerified;
 
   return json(
     {
@@ -259,6 +301,8 @@ Deno.serve(async (req: Request) => {
       verification_source: 'atlas-authorized-supabase-runtime',
       production_url: PRODUCTION_URL,
       target_sha: caller.claims.sha,
+      observed_version_id: observedVersionId,
+      observed_version_tag: observedVersionTag,
       edge_security_preserved: true,
       checks: {
         public_home_reachable: home.status === 200,
@@ -266,6 +310,7 @@ Deno.serve(async (req: Request) => {
         module_spa_shell_reachable: finance.status === 200,
         commerce_route_reachable: commerce.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
+        production_commit_sha_verified: productionCommitVerified,
         network_route_reachable: network.status === 200,
         network_pricing_route_reachable: networkPricing.status === 200,
         network_commissions_route_reachable: networkCommissions.status === 200,
