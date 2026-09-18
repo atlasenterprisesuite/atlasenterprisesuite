@@ -75,7 +75,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <div className="topbar-meta"><span>{organizationContext}</span><span className="badge">{roleLabel}</span></div>
         </header>
         <main>{children}</main>
-        <AtlasAssistant />
+        {organization ? <AtlasAssistant /> : null}
       </div>
     </div>
   );
