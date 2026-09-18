@@ -13,6 +13,7 @@ import { SocialPublisherPage } from './modules/business/social/SocialPublisherPa
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
+import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
@@ -247,6 +248,7 @@ function NotFound() {
 export function App() {
   const location = useLocation();
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
+  if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
   if (location.pathname.startsWith('/insurance')) return <InsuranceRoutes />;
   const extension = resolveAtlasExtension(location.pathname);
   if (extension) return <AtlasShell>{extension}</AtlasShell>;

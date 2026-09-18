@@ -66,3 +66,39 @@ export async function commerceApi<T = Record<string, unknown>>(
 
   return body as T;
 }
+
+
+const PUBLIC_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
+const PUBLIC_SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
+
+export type PublicCommerceApiOperation = 'storefront.catalog' | 'storefront.product';
+
+export async function publicCommerceApi<T = Record<string, unknown>>(
+  operation: PublicCommerceApiOperation,
+  payload: Record<string, unknown>
+): Promise<T> {
+  const response = await fetch(`${PUBLIC_SUPABASE_URL}/functions/v1/atlas-commerce`, {
+    method: 'POST',
+    headers: {
+      apikey: PUBLIC_SUPABASE_KEY,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ operation, ...payload })
+  });
+
+  const body = await parseBody(response);
+  if (!response.ok) {
+    const code = typeof body.code === 'string'
+      ? body.code
+      : typeof body.error === 'string'
+        ? body.error
+        : null;
+    throw new CommerceApiError({
+      message: code || `Commerce request failed (${response.status})`,
+      status: response.status,
+      code
+    });
+  }
+
+  return body as T;
+}
