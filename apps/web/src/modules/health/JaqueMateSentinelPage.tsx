@@ -146,6 +146,31 @@ export function JaqueMateSentinelPage() {
         )}
       </section>
 
+      <section className="feature-card wide" aria-labelledby="cure-candidate-heading">
+        <p className="eyebrow">Possible-cure registry</p>
+        <h2 id="cure-candidate-heading">Jaque Mate findings can be integrated into ATLAS as governed cure candidates</h2>
+        <div className="module-grid compact">
+          <article className="module-card enabled">
+            <span>Automatic integration</span>
+            <strong>POSSIBLE CURE — RESEARCH CANDIDATE</strong>
+            <p>When Jaque Mate identifies a possible cure architecture, an approved service pipeline can register it in ATLAS Health with its disease, rationale, evidence type and source reference.</p>
+          </article>
+          <article className="module-card enabled">
+            <span>Evidence gate</span>
+            <strong>Research candidate → human review</strong>
+            <p>Simulation and hypothesis output stays research-only. Validated evidence can advance a candidate to human review, but never directly to a confirmed-cure state.</p>
+          </article>
+          <article className="module-card enabled">
+            <span>Curability target</span>
+            <strong>C5 target, independently validated</strong>
+            <p>The registry can track a candidate against the C5 cure target while requiring external validation and keeping clinical action disabled.</p>
+          </article>
+        </div>
+        <div className="notice">
+          Candidate registry ingestion is service-controlled. A Jaque Mate result is a research lead until independent evidence supports a stronger classification.
+        </div>
+      </section>
+
       <section className="feature-card wide" aria-labelledby="config-heading">
         <p className="eyebrow">Sentinel configuration</p>
         <h2 id="config-heading">Production tuning remains unconfigured</h2>
