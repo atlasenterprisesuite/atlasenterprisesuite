@@ -22,6 +22,7 @@ function newCreativePlanId() {
 
 export const studioEntryPoints = [
   { title: 'Content Intelligence', route: '/studio/content' },
+  { title: 'Web Launch Lab', route: '/studio/web-launch' },
   { title: 'Image Lab', route: '/studio/create?type=image' },
   { title: 'ATLAS Director', route: '/studio/create?type=video' },
   { title: 'Music Lab', route: '/studio/create?type=music' },
