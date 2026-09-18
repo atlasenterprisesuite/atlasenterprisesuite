@@ -6,6 +6,7 @@ import {
   type AtlasShellOrganization
 } from '../lib/atlasSession';
 import { ATLAS_NAV_ITEMS } from '../modules/registry';
+import { AtlasAssistant } from './assistant/AtlasAssistant';
 
 export function AtlasShell({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
@@ -60,6 +61,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <div className="topbar-meta"><span>{organizationContext}</span><span className="badge">{roleLabel}</span></div>
         </header>
         <main>{children}</main>
+        {organization ? <AtlasAssistant /> : null}
       </div>
     </div>
   );
