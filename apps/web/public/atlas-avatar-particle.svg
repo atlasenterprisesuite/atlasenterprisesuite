@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-labelledby="title desc">
+  <title id="title">ATLAS particle avatar</title>
+  <desc id="desc">A cyan holographic humanoid made of luminous particles.</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="68%">
+      <stop offset="0" stop-color="#07385a"/>
+      <stop offset=".42" stop-color="#041a2d"/>
+      <stop offset="1" stop-color="#020812"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="46%" r="52%">
+      <stop offset="0" stop-color="#efffff"/>
+      <stop offset=".18" stop-color="#9ff7ff"/>
+      <stop offset=".48" stop-color="#2dd9ff"/>
+      <stop offset="1" stop-color="#1389e9" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="particleTone" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b9fbff"/>
+      <stop offset=".4" stop-color="#52e9ff"/>
+      <stop offset="1" stop-color="#278bff"/>
+    </linearGradient>
+    <pattern id="dotsA" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="4" r="2.2" fill="url(#particleTone)"/>
+      <circle cx="12" cy="10" r="1.25" fill="#8df5ff" opacity=".8"/>
+    </pattern>
+    <pattern id="dotsB" width="23" height="23" patternUnits="userSpaceOnUse" patternTransform="rotate(17)">
+      <circle cx="5" cy="6" r="1.6" fill="#44e5ff"/>
+      <circle cx="17" cy="15" r="2.5" fill="#2f9fff" opacity=".72"/>
+    </pattern>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="12" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+    <mask id="person">
+      <rect width="1000" height="1000" fill="black"/>
+      <ellipse cx="500" cy="355" rx="184" ry="226" fill="white"/>
+      <path d="M338 520c-35 48-45 104-41 154C204 694 124 738 72 824c-22 36-37 79-42 132h940c-5-53-20-96-42-132-52-86-132-130-225-150 4-50-6-106-41-154-40 51-96 82-162 82s-122-31-162-82z" fill="white"/>
+    </mask>
+    <clipPath id="face">
+      <ellipse cx="500" cy="355" rx="184" ry="226"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1000" height="1000" rx="96" fill="url(#bg)"/>
+  <circle cx="500" cy="430" r="345" fill="none" stroke="#45dfff" stroke-opacity=".14" stroke-width="2"/>
+  <circle cx="500" cy="430" r="285" fill="none" stroke="#7588ff" stroke-opacity=".1" stroke-width="1.5" stroke-dasharray="7 18"/>
+
+  <g opacity=".45">
+    <circle cx="135" cy="188" r="4" fill="#5eeaff"/><circle cx="225" cy="115" r="2.5" fill="#8df5ff"/>
+    <circle cx="801" cy="155" r="3.5" fill="#499cff"/><circle cx="879" cy="263" r="2.5" fill="#8df5ff"/>
+    <circle cx="110" cy="492" r="2.5" fill="#378cff"/><circle cx="908" cy="497" r="4" fill="#5eeaff"/>
+    <circle cx="153" cy="723" r="3" fill="#63e9ff"/><circle cx="854" cy="744" r="2.5" fill="#8f9fff"/>
+    <circle cx="262" cy="865" r="2" fill="#5eeaff"/><circle cx="741" cy="875" r="3" fill="#398cff"/>
+  </g>
+
+  <ellipse cx="500" cy="405" rx="245" ry="315" fill="#16d7ff" opacity=".07" filter="url(#soft)"/>
+  <g mask="url(#person)">
+    <rect x="20" y="80" width="960" height="900" fill="url(#dotsA)" opacity=".96"/>
+    <rect x="15" y="75" width="970" height="910" fill="url(#dotsB)" opacity=".78"/>
+    <rect x="230" y="90" width="540" height="690" fill="url(#core)" opacity=".78"/>
+  </g>
+
+  <g clip-path="url(#face)" opacity=".88" filter="url(#glow)">
+    <ellipse cx="500" cy="335" rx="125" ry="155" fill="none" stroke="#77efff" stroke-width="2" stroke-dasharray="2 10"/>
+    <path d="M406 337c30-18 58-22 86-8M508 329c30-14 58-10 87 7" fill="none" stroke="#d5ffff" stroke-width="4" stroke-linecap="round" opacity=".66"/>
+    <path d="M500 337c-9 46-14 83-4 112M453 469c30 17 65 18 96 0" fill="none" stroke="#8cf4ff" stroke-width="3" stroke-linecap="round" opacity=".48"/>
+  </g>
+
+  <circle cx="500" cy="310" r="48" fill="url(#core)" opacity=".9" filter="url(#glow)"/>
+  <circle cx="500" cy="310" r="8" fill="#eaffff" opacity=".98"/>
+
+  <g fill="#9cf6ff" opacity=".72">
+    <circle cx="311" cy="243" r="3"/><circle cx="329" cy="196" r="2"/><circle cx="372" cy="151" r="2.5"/>
+    <circle cx="688" cy="241" r="2.5"/><circle cx="670" cy="187" r="3"/><circle cx="626" cy="147" r="2"/>
+    <circle cx="282" cy="560" r="3"/><circle cx="230" cy="646" r="2.5"/><circle cx="187" cy="715" r="2"/>
+    <circle cx="718" cy="558" r="2.5"/><circle cx="770" cy="645" r="3"/><circle cx="814" cy="716" r="2"/>
+  </g>
+</svg>
