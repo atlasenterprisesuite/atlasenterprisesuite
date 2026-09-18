@@ -13,6 +13,7 @@ describe('ATLAS Creator', () => {
     vi.spyOn(creatorApi, 'getCreatorReadiness').mockImplementation(() => new Promise(() => {}));
     vi.spyOn(creatorApi, 'getNativeCreatorReadiness').mockImplementation(() => new Promise(() => {}));
     vi.spyOn(creatorApi, 'listCreatorProviders').mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(creatorApi, 'listCreativeEngines').mockImplementation(() => new Promise(() => {}));
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -104,22 +105,83 @@ describe('ATLAS Creator', () => {
     expect(screen.getByRole('button', { name: 'Generate with verified external provider' })).toBeDisabled();
   });
 
-  it('does not present generation as live without provider configuration', () => {
-    render(<MemoryRouter><CreatorWorkspace /></MemoryRouter>);
-    expect(screen.getByText('Not configured')).toBeInTheDocument();
+  it('offers prompt export without pretending that image generation is live', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'],
+      capabilityNotes: ['planning-only', 'no-media-generation'],
+      lastVerifiedAt: null
+    }]);
+    vi.spyOn(creatorApi, 'exportCreatorPrompt').mockResolvedValue({
+      status: 'prompt-ready',
+      engineId: 'prompt-export',
+      mediaKind: 'image',
+      prompt: 'MEDIA: image\nOBJECTIVE: Futuristic ATLAS finance hero image',
+      parameters: { language: 'English', negativeConstraints: [] },
+      adaptationNotes: ['No media was generated.']
+    });
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Creative brief'), {
+      target: { value: 'Futuristic ATLAS finance hero image' }
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Export prompt package' }));
+
+    expect(await screen.findByText(/MEDIA: image/)).toBeInTheDocument();
+    expect(screen.getByText(/No media was generated/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate image' })).toBeDisabled();
   });
 
-  it('reports truthful provider readiness and privacy boundaries', async () => {
-    vi.mocked(creatorApi.listCreatorProviders).mockResolvedValue([
+  it('shows prompt export and verified native readiness as distinct engine classes', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([
       {
-        providerId: 'seedance', displayName: 'Seedance', connectionState: 'unconfigured',
-        capability: null, estimatedCost: null, lastVerifiedAt: null
+        engineId: 'prompt-export',
+        displayName: 'Prompt Export',
+        executionClass: 'prompt-export-only',
+        connectionState: 'ready',
+        ready: true,
+        mediaKinds: ['image'],
+        capabilityNotes: ['planning-only'],
+        lastVerifiedAt: null
+      },
+      {
+        engineId: 'atlas-native',
+        displayName: 'ATLAS Native',
+        executionClass: 'self-hosted',
+        connectionState: 'ready',
+        ready: true,
+        mediaKinds: ['video'],
+        capabilityNotes: ['motion-composition-v1'],
+        lastVerifiedAt: '2026-09-15T12:00:00Z'
       }
     ]);
+
+    render(<MemoryRouter><CreatorProviders /></MemoryRouter>);
+    expect(await screen.findByText('Prompt Export')).toBeInTheDocument();
+    expect(screen.getByText('prompt-export-only')).toBeInTheDocument();
+    expect(screen.getByText('ATLAS Native')).toBeInTheDocument();
+    expect(screen.getByText('self-hosted')).toBeInTheDocument();
+  });
+
+  it('reports an unconfigured external engine without inventing readiness', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'provider:seedance',
+      displayName: 'Seedance',
+      executionClass: 'byo-provider',
+      connectionState: 'unconfigured',
+      ready: false,
+      mediaKinds: ['video'],
+      capabilityNotes: [],
+      lastVerifiedAt: null
+    }]);
+
     render(<MemoryRouter><CreatorProviders /></MemoryRouter>);
     expect(await screen.findByText('unconfigured')).toBeInTheDocument();
     expect(screen.getByText(/Never verified/)).toBeInTheDocument();
-    expect(screen.getByText(/must never be used as silent tracking/i)).toBeInTheDocument();
+    expect(screen.getByText(/Local, self-hosted and external engines are shown ready only after their real readiness checks succeed/i)).toBeInTheDocument();
   });
 });
