@@ -3,7 +3,7 @@ name: ATLAS Assistant Self-Hosted CI
 on:
   push:
     branches:
-      - feat/atlas-assistant-avatar-voice-mainline
+      - feat/atlas-assistant-sovereign-final
   pull_request:
     branches: ["main"]
     paths:
