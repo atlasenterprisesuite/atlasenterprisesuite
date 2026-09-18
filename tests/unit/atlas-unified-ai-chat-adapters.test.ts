@@ -47,6 +47,34 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
+  it('uses configuration_update for Astra profile changes while keeping request-level reasoning stable', async () => {
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.reasoning).toEqual({ effort: 'low' });
+      const update = body.input.find((item: any) => item?.type === 'configuration_update');
+      expect(update).toEqual({ type: 'configuration_update', reasoning: { effort: 'high' } });
+      expect(body.input.at(-1)).toMatchObject({ role: 'user', content: 'hard problem' });
+      return new Response(JSON.stringify({
+        id: 'resp_astra',
+        model: 'gpt-6-astra',
+        output: [{ content: [{ type: 'output_text', text: 'astra-ok' }] }],
+        usage: {},
+      }), { status: 200 });
+    });
+    const adapter = createOpenAIResponsesAdapter({
+      apiKey: 'secret',
+      models: { deep: 'gpt-6-astra' },
+      fetchFn,
+    });
+    const result = await adapter.execute({
+      context,
+      route: { profile: 'deep', capabilities: ['reasoning'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'hard problem' }],
+    });
+    expect(result.text).toBe('astra-ok');
+  });
+
   it('uses the recommended Bedrock Runtime Responses endpoint with Astra and no unsupported Astra-only controls', async () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
       expect(url).toBe('https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1/responses');
