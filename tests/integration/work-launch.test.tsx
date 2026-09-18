@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkComposerPage } from '../../apps/web/src/work/WorkComposerPage';
@@ -41,14 +41,19 @@ describe('ATLAS Work composer launch flow', () => {
     expect(createWorkWorkflow).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Review plan' }));
 
-    expect(screen.getByRole('heading', { name: 'Plan preview' })).toBeInTheDocument();
-    expect(screen.getByText('Hybrid')).toBeInTheDocument();
-    expect(screen.getByText('Guided')).toBeInTheDocument();
-    expect(screen.getByText('Auto')).toBeInTheDocument();
-    expect(screen.getByText('$0')).toBeInTheDocument();
-    expect(screen.getByText('DNS TXT exists')).toBeInTheDocument();
-    expect(screen.getByText('public DNS returns the expected value')).toBeInTheDocument();
-    expect(screen.getByText('OpenAI reports verified')).toBeInTheDocument();
+    const previewHeading = screen.getByRole('heading', { name: 'Plan preview' });
+    expect(previewHeading).toBeInTheDocument();
+    const preview = previewHeading.closest('section');
+    expect(preview).not.toBeNull();
+    const scopedPreview = within(preview as HTMLElement);
+
+    expect(scopedPreview.getByText('Hybrid')).toBeInTheDocument();
+    expect(scopedPreview.getByText('Guided')).toBeInTheDocument();
+    expect(scopedPreview.getByText('Auto')).toBeInTheDocument();
+    expect(scopedPreview.getByText('$0')).toBeInTheDocument();
+    expect(scopedPreview.getByText('DNS TXT exists')).toBeInTheDocument();
+    expect(scopedPreview.getByText('public DNS returns the expected value')).toBeInTheDocument();
+    expect(scopedPreview.getByText('OpenAI reports verified')).toBeInTheDocument();
     expect(createWorkWorkflow).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Create workflow' }));
