@@ -13,6 +13,7 @@ import './modules/finance/accounting/payables-ai.css';
 import './modules/galaxy/galaxy.css';
 import './modules/hospitality/hospitality.css';
 import './modules/ride/ride.css';
+import './modules/security/security.css';
 
 function RootRouter() {
   const location = useLocation();
