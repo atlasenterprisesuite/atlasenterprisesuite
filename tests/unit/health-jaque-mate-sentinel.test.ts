@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculateSurveillanceCost } from '../../packages/health/jaque-mate/cost';
+import { integratePossibleCureCandidate } from '../../packages/health/jaque-mate/cure-candidate';
 import { calculateSentinelFitness } from '../../packages/health/jaque-mate/fitness';
 import { evaluateResponseGate } from '../../packages/health/jaque-mate/gating';
 import { calculatePathologicalMemory } from '../../packages/health/jaque-mate/memory';
@@ -77,6 +78,66 @@ describe('ATLAS Health Jaque Mate + Sentinel', () => {
       expect(result.evidenceType).toBe('VALIDATED');
       expect(result.researchScore).toBe(50);
       expect(result.clinicalActionAllowed).toBe(false);
+    });
+  });
+
+  describe('Possible-cure candidate integration', () => {
+    it('registers simulation output only as a research candidate', () => {
+      const candidate = integratePossibleCureCandidate({
+        candidateKey: 'candidate-demo-001',
+        diseaseKey: 'demo-disease',
+        title: 'Demo eradication architecture',
+        researchSummary: 'Research-only candidate generated from a governed simulation.',
+        sourceReference: 'simulation:sim-001',
+        evidence: {
+          evidenceType: 'SIMULATION',
+          simulationId: 'sim-001',
+          watermark: 'SIMULATION — NOT CLINICAL EVIDENCE'
+        }
+      });
+
+      expect(candidate.researchLabel).toBe('POSSIBLE CURE — RESEARCH CANDIDATE');
+      expect(candidate.stage).toBe('RESEARCH_CANDIDATE');
+      expect(candidate.targetCurabilityLevel).toBe('C5');
+      expect(candidate.clinicalActionAllowed).toBe(false);
+      expect(candidate.confirmedCure).toBe(false);
+      expect(candidate.externalValidationRequired).toBe(true);
+    });
+
+    it('advances validated evidence only to human review, never to confirmed cure', () => {
+      const candidate = integratePossibleCureCandidate({
+        candidateKey: 'candidate-validated-001',
+        diseaseKey: 'demo-disease',
+        title: 'Validated-evidence candidate',
+        researchSummary: 'Candidate linked to validated evidence for independent review.',
+        sourceReference: 'lab:validated-001',
+        evidence: {
+          evidenceType: 'VALIDATED',
+          sourceIdentifier: 'lab:validated-001',
+          confirmedAt: '2026-09-18T23:30:00.000Z',
+          provenanceKind: 'LAB'
+        }
+      });
+
+      expect(candidate.stage).toBe('HUMAN_REVIEW_REQUIRED');
+      expect(candidate.sourceEvidenceType).toBe('VALIDATED');
+      expect(candidate.confirmedCure).toBe(false);
+      expect(candidate.clinicalActionAllowed).toBe(false);
+    });
+
+    it('rejects candidate integration without a traceable source reference', () => {
+      expect(() => integratePossibleCureCandidate({
+        candidateKey: 'candidate-invalid',
+        diseaseKey: 'demo-disease',
+        title: 'Invalid candidate',
+        researchSummary: 'Missing traceable source reference.',
+        sourceReference: '',
+        evidence: {
+          evidenceType: 'HYPOTHESIS',
+          hypothesisId: 'hyp-001',
+          authoredBy: 'research-demo'
+        }
+      })).toThrow('cure_candidate_source_reference_required');
     });
   });
 
