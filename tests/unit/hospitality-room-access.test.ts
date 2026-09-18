@@ -9,6 +9,7 @@ import {
   hasHospitalityPermission,
   requireHospitalityPermission
 } from '../../packages/hospitality/permissions';
+import type { HospitalityPermission } from '../../packages/hospitality/types';
 
 const actor: HospitalityActorContext = {
   organizationId: 'org-1',
@@ -47,6 +48,27 @@ describe('ATLAS Hospitality room access domain', () => {
     };
     expect(hasHospitalityPermission(adminActor, 'hospitality.access.configure')).toBe(true);
     expect(hasHospitalityPermission(adminActor, 'hospitality.access.audit')).toBe(true);
+  });
+
+  it('lets Hospitality admin satisfy every PMS and Wallet permission', () => {
+    const adminActor: HospitalityActorContext = {
+      ...actor,
+      permissions: ['hospitality.access.admin']
+    };
+    const permissions: HospitalityPermission[] = [
+      'hospitality.pms.read',
+      'hospitality.pms.configure',
+      'hospitality.pms.sync',
+      'hospitality.wallet.read',
+      'hospitality.wallet.issue',
+      'hospitality.wallet.revoke',
+      'hospitality.wallet.configure',
+      'hospitality.wallet.audit',
+      'hospitality.wallet.automation.manage'
+    ];
+    for (const permission of permissions) {
+      expect(hasHospitalityPermission(adminActor, permission)).toBe(true);
+    }
   });
 
   it('blocks issuance until an authorized provider is ready', () => {

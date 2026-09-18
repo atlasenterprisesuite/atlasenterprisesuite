@@ -1,6 +1,25 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import { hospitalityError } from './errors.ts';
 
+export {
+  findActiveWalletCredential,
+  insertIntegrationEventOnce,
+  insertWalletProvisioningSession,
+  listPmsProviderInstances,
+  listRoomAssignments,
+  listStays,
+  listWalletCredentials,
+  loadActiveRoomAssignment,
+  loadAutomationPolicy,
+  loadPmsProviderInstance,
+  loadStay,
+  markIntegrationEventFailed,
+  markIntegrationEventProcessed,
+  markIntegrationEventProcessing,
+  updateWalletProvisioningSession,
+  writeHospitalityServiceAudit
+} from '../../../_shared/hospitality/repository.ts';
+
 const URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 

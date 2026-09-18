@@ -4,7 +4,16 @@ export type HospitalityPermission =
   | 'hospitality.access.revoke'
   | 'hospitality.access.configure'
   | 'hospitality.access.audit'
-  | 'hospitality.access.admin';
+  | 'hospitality.access.admin'
+  | 'hospitality.pms.read'
+  | 'hospitality.pms.configure'
+  | 'hospitality.pms.sync'
+  | 'hospitality.wallet.read'
+  | 'hospitality.wallet.issue'
+  | 'hospitality.wallet.revoke'
+  | 'hospitality.wallet.configure'
+  | 'hospitality.wallet.audit'
+  | 'hospitality.wallet.automation.manage';
 
 export const PROVIDER_STATES = [
   'not_configured',
@@ -30,6 +39,76 @@ export type HospitalityProviderType =
   | 'onity'
   | 'generic_certified';
 
+export type HospitalityPmsProviderType =
+  | 'oracle_opera_cloud'
+  | 'mews'
+  | 'cloudbeds'
+  | 'infor_hms'
+  | 'generic_certified_pms';
+
+export type HospitalityPmsCapability =
+  | 'reservation.read'
+  | 'reservation.events'
+  | 'guest.reference.read'
+  | 'checkin.read'
+  | 'checkout.read'
+  | 'room.assignment.read'
+  | 'room.change.events'
+  | 'property.read';
+
+export type WalletPlatform = 'apple_wallet' | 'google_wallet' | 'provider_app' | 'none';
+
+export type WalletState =
+  | 'not_requested'
+  | 'eligible'
+  | 'provisioning_ready'
+  | 'provisioned'
+  | 'revoked'
+  | 'expired'
+  | 'failed'
+  | 'unknown';
+
+export type HospitalityStayStatus =
+  | 'reserved'
+  | 'checked_in'
+  | 'checked_out'
+  | 'cancelled'
+  | 'unknown';
+
+export type HospitalityIntegrationEventType =
+  | 'reservation.created'
+  | 'reservation.updated'
+  | 'reservation.cancelled'
+  | 'stay.checkin_confirmed'
+  | 'stay.checkout_confirmed'
+  | 'room.assigned'
+  | 'room.changed'
+  | 'room.unassigned'
+  | 'wallet.credential.requested'
+  | 'wallet.credential.issued'
+  | 'wallet.provisioning.ready'
+  | 'wallet.provisioning.completed'
+  | 'wallet.credential.revoked'
+  | 'wallet.credential.expired'
+  | 'wallet.credential.failed';
+
+export type HospitalityAutomationPolicySnapshot = {
+  id: string;
+  organizationId: string;
+  propertyId: string;
+  version: number;
+  enabled: boolean;
+  autoWalletKeyOnCheckin: boolean;
+  allowedPlatforms: Array<'apple_wallet' | 'google_wallet'>;
+  allowedAccessScopes: string[];
+  activationLeadMinutes: number;
+  credentialExpiryOffsetMinutes: number;
+  roomChangeMode: 'provider_safe_sequence';
+  maxRetryAttempts: number;
+  manualReviewOnFailure: boolean;
+  emergencyKillSwitch: boolean;
+};
+
 export type HospitalityCapability =
   | 'credential.issue'
   | 'credential.revoke'
@@ -38,7 +117,18 @@ export type HospitalityCapability =
   | 'room.mapping.verify'
   | 'mobile_key.issue'
   | 'rfid_reference.issue'
-  | 'audit.read';
+  | 'audit.read'
+  | 'wallet.apple.issue'
+  | 'wallet.apple.provision'
+  | 'wallet.google.issue'
+  | 'wallet.google.provision'
+  | 'wallet.revoke'
+  | 'wallet.status'
+  | 'reservation.checkin.consume'
+  | 'reservation.checkout.consume'
+  | 'room.assignment.sync'
+  | 'room.assignment.change.consume'
+  | 'credential.replace';
 
 export type HospitalityActorContext = {
   organizationId: string;
