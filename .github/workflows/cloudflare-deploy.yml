@@ -13,7 +13,9 @@ on:
       - "wrangler.jsonc"
       - "package.json"
       - "package-lock.json"
+      - "scripts/verify-global-production.mjs"
       - ".github/workflows/cloudflare-deploy.yml"
+      - ".github/workflows/global-production-verify.yml"
       - "docs/ops/**"
 
 concurrency:
