@@ -10,6 +10,7 @@ export type InsuranceRequestContext = {
   orgId: string;
   role: string;
   email: string;
+  accessToken: string;
   admin: ReturnType<typeof createClient>;
 };
 
@@ -59,6 +60,7 @@ export async function resolveInsuranceContext(req: Request): Promise<InsuranceRe
     orgId: String(memberships[0].org_id),
     role: String(memberships[0].role || 'member'),
     email: String(data.user.email || ''),
+    accessToken: token,
     admin: adminClient()
   };
 }
