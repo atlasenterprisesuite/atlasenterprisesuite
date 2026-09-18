@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getAssistantStatus, hasVerifiedAssistantProvider, sendAssistantMessage } from '../../assistant/client';
 import {
   acceptFinalTranscript,
   attachResponse,
@@ -10,6 +12,7 @@ import {
   transition,
   type TurnEngineSnapshot
 } from './turnEngine';
+import { resolveVoiceNavigationCommand } from './voiceActions';
 import './voice.css';
 
 type RecognitionEventLike = {
@@ -31,6 +34,7 @@ type RecognitionLike = {
 };
 
 type RecognitionConstructor = new () => RecognitionLike;
+type IntelligenceState = 'checking' | 'ready' | 'unavailable';
 
 declare global {
   interface Window {
@@ -45,7 +49,7 @@ function stateLabel(state: TurnEngineSnapshot['state']) {
     listening: 'Listening',
     transcribing: 'Transcribing',
     understanding: 'Understanding',
-    responding: 'Awaiting brain',
+    responding: 'Thinking',
     speaking: 'Speaking',
     completed: 'Completed',
     cancelled: 'Cancelled',
@@ -60,11 +64,16 @@ function avatarActionLabel(state: TurnEngineSnapshot['state']) {
 }
 
 export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [snapshot, setSnapshot] = useState(() => createInitialSnapshot());
-  const [message, setMessage] = useState('Press Start and speak. ATLAS will show exactly what it heard before a response is allowed.');
+  const [message, setMessage] = useState('Press Start and speak. ATLAS will show exactly what it heard before any action or AI response executes.');
+  const [intelligenceState, setIntelligenceState] = useState<IntelligenceState>('checking');
+  const [providerLabel, setProviderLabel] = useState('checking');
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const snapshotRef = useRef(snapshot);
-  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const submittedTurnIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     snapshotRef.current = snapshot;
@@ -72,6 +81,137 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
 
   const Recognition = useMemo(() => window.SpeechRecognition ?? window.webkitSpeechRecognition, []);
   const supported = Boolean(Recognition);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getAssistantStatus()
+      .then((status) => {
+        if (cancelled) return;
+        if (hasVerifiedAssistantProvider(status)) {
+          const verified = status.providers?.filter((provider) => provider.verified).map((provider) => provider.id) || [];
+          setIntelligenceState('ready');
+          setProviderLabel(verified.length ? verified.join(', ') : status.provider || 'verified provider');
+          return;
+        }
+        setIntelligenceState('unavailable');
+        setProviderLabel('provider not verified');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIntelligenceState('unavailable');
+        setProviderLabel('provider unavailable');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const completeSpeaking = useCallback((completionMessage: string, onComplete?: () => void) => {
+    const next = {
+      ...snapshotRef.current,
+      state: 'completed' as const,
+      activeTurn: snapshotRef.current.activeTurn
+        ? { ...snapshotRef.current.activeTurn, state: 'completed' as const }
+        : undefined
+    };
+    snapshotRef.current = next;
+    setSnapshot(next);
+    setMessage(completionMessage);
+    onComplete?.();
+  }, []);
+
+  const speakControlled = useCallback((text: string, onComplete?: () => void) => {
+    recognitionRef.current?.abort();
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      completeSpeaking('Response completed as text. Speech output is unavailable in this browser.', onComplete);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = navigator.language || 'es-US';
+    utterance.onend = () => completeSpeaking('Response completed. ATLAS is ready for the next turn.', onComplete);
+    utterance.onerror = () => completeSpeaking('Response is available as text, but speech playback failed.', onComplete);
+    window.speechSynthesis.speak(utterance);
+  }, [completeSpeaking]);
+
+  const processTurn = useCallback(async (turnId: string, transcript: string) => {
+    const current = snapshotRef.current;
+    if (current.activeTurn?.id !== turnId || current.state !== 'understanding') return;
+    if (submittedTurnIdRef.current === turnId) return;
+
+    const navigationAction = resolveVoiceNavigationCommand(transcript);
+    if (navigationAction) {
+      submittedTurnIdRef.current = turnId;
+      const responding = transition(current, 'responding');
+      const withResponse = attachResponse(responding, navigationAction.confirmation);
+      snapshotRef.current = withResponse;
+      setSnapshot(withResponse);
+      setMessage(`Safe local action verified. Opening ${navigationAction.label}.`);
+      speakControlled(navigationAction.confirmation, () => navigate(navigationAction.route));
+      return;
+    }
+
+    if (intelligenceState === 'checking') {
+      setMessage('ATLAS is verifying an Intelligence provider before sending this voice turn.');
+      return;
+    }
+
+    if (intelligenceState !== 'ready') {
+      const failed = {
+        ...current,
+        state: 'error' as const,
+        activeTurn: current.activeTurn ? { ...current.activeTurn, state: 'error' as const } : undefined
+      };
+      snapshotRef.current = failed;
+      setSnapshot(failed);
+      setMessage('No verified ATLAS Intelligence provider is available. The transcript was not sent.');
+      return;
+    }
+
+    submittedTurnIdRef.current = turnId;
+    const responding = transition(current, 'responding');
+    snapshotRef.current = responding;
+    setSnapshot(responding);
+    setMessage('Transcript accepted. ATLAS Intelligence is processing the turn.');
+
+    try {
+      const response = await sendAssistantMessage({
+        message: transcript,
+        pathname: location.pathname,
+        conversationId,
+        modality: 'voice'
+      });
+
+      if (snapshotRef.current.activeTurn?.id !== turnId) return;
+      if (response.conversation_id) setConversationId(response.conversation_id);
+
+      const withResponse = attachResponse(snapshotRef.current, response.text);
+      snapshotRef.current = withResponse;
+      setSnapshot(withResponse);
+      setMessage(`Response received from ${response.provider || providerLabel}. Speaking now.`);
+      speakControlled(response.text);
+    } catch (cause) {
+      if (snapshotRef.current.activeTurn?.id !== turnId) return;
+      const failed = {
+        ...snapshotRef.current,
+        state: 'error' as const,
+        activeTurn: snapshotRef.current.activeTurn
+          ? { ...snapshotRef.current.activeTurn, state: 'error' as const }
+          : undefined
+      };
+      snapshotRef.current = failed;
+      setSnapshot(failed);
+      setMessage(cause instanceof Error ? `ATLAS Intelligence error: ${cause.message}` : 'ATLAS Intelligence could not complete this voice turn.');
+    }
+  }, [conversationId, intelligenceState, location.pathname, navigate, providerLabel, speakControlled]);
+
+  useEffect(() => {
+    const turn = snapshot.activeTurn;
+    if (snapshot.state !== 'understanding' || !turn?.finalTranscript) return;
+    void processTurn(turn.id, turn.finalTranscript);
+  }, [processTurn, snapshot.activeTurn, snapshot.state]);
 
   useEffect(() => {
     if (!Recognition) return;
@@ -83,7 +223,15 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
     recognition.onstart = () => setMessage('Microphone open. Speak naturally.');
     recognition.onerror = (event) => {
       setMessage(`Speech recognition error: ${event.error}`);
-      setSnapshot((current) => ({ ...current, state: 'error' }));
+      const failed = {
+        ...snapshotRef.current,
+        state: 'error' as const,
+        activeTurn: snapshotRef.current.activeTurn
+          ? { ...snapshotRef.current.activeTurn, state: 'error' as const }
+          : undefined
+      };
+      snapshotRef.current = failed;
+      setSnapshot(failed);
     };
     recognition.onend = () => {
       if (snapshotRef.current.state === 'listening') {
@@ -110,9 +258,13 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
         const committed = commitTranscript(current, decision);
         snapshotRef.current = committed;
         setSnapshot(committed);
-        setMessage('Transcript accepted. It is now safe to send this turn to the ChatGPT brain.');
+        setMessage('Transcript accepted. ATLAS is deciding whether this is a safe local action or an Intelligence request.');
       }
-      if (interim) setSnapshot((current) => setInterimTranscript(current, interim));
+      if (interim) {
+        const next = setInterimTranscript(snapshotRef.current, interim);
+        snapshotRef.current = next;
+        setSnapshot(next);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -122,6 +274,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
   function startListening() {
     if (!recognitionRef.current) return;
     if (window.speechSynthesis?.speaking) window.speechSynthesis.cancel();
+    submittedTurnIdRef.current = null;
     const next = snapshotRef.current.state === 'speaking'
       ? interruptSpeaking(snapshotRef.current)
       : beginTurn(snapshotRef.current);
@@ -142,40 +295,12 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
     setMessage('Microphone closed. Start a new turn whenever you are ready.');
   }
 
-  function testResponse() {
-    const current = snapshotRef.current;
-    if (!current.activeTurn?.finalTranscript) {
-      setMessage('No accepted transcript exists for this turn.');
-      return;
-    }
-
-    const response = `I understood: ${current.activeTurn.finalTranscript}`;
-    try {
-      const next = attachResponse({ ...current, state: 'responding' }, response);
-      snapshotRef.current = next;
-      setSnapshot(next);
-      setMessage('Loop guard passed. Playing one controlled test response.');
-
-      recognitionRef.current?.abort();
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(response);
-      utterance.lang = navigator.language || 'es-US';
-      utterance.onend = () => {
-        setSnapshot((state) => ({ ...state, state: 'completed', activeTurn: state.activeTurn ? { ...state.activeTurn, state: 'completed' } : undefined }));
-        setMessage('Response completed. ATLAS is not listening to its own voice. Start the next turn when ready.');
-      };
-      speechRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Response guard blocked the output.');
-    }
-  }
-
   function interrupt() {
-    window.speechSynthesis.cancel();
+    window.speechSynthesis?.cancel();
     recognitionRef.current?.abort();
     const current = snapshotRef.current;
     const next = current.state === 'speaking' ? interruptSpeaking(current) : beginTurn(current);
+    submittedTurnIdRef.current = null;
     snapshotRef.current = next;
     setSnapshot(next);
     setMessage('ATLAS speech interrupted. New user turn opened.');
@@ -204,19 +329,20 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
       {!embedded && (
         <header className="page-header">
           <p className="eyebrow">ATLAS Voice</p>
-          <h1>Voice Turn Engine</h1>
-          <p>Speech is converted into a visible, guarded transcript before any AI response can execute.</p>
+          <h1>Voice Assistant</h1>
+          <p>Guarded speech turns can execute safe local navigation or use the verified ATLAS Intelligence backend for conversational responses.</p>
         </header>
       )}
 
       <div className="voice-status-row">
         <span className={`voice-state voice-state-${snapshot.state}`}>{visibleState}</span>
+        <span>Intelligence: {intelligenceState === 'ready' ? providerLabel : intelligenceState}</span>
         <span>Session {snapshot.sessionId.slice(0, 8)}</span>
         <span>Turn {snapshot.sequence}</span>
       </div>
 
       {!supported && (
-        <div className="notice strong">This browser does not expose SpeechRecognition. The turn engine is available, but microphone transcription needs a configured STT provider or a supported browser.</div>
+        <div className="notice strong">This browser does not expose SpeechRecognition. The turn engine and Intelligence backend remain available, but microphone transcription needs a configured STT provider or a supported browser.</div>
       )}
 
       <div className="voice-stage-grid">
@@ -263,7 +389,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
           <article className="voice-panel response-panel">
             <p className="eyebrow">ATLAS response</p>
             <div className="voice-transcript final">{turn?.responseText || 'No response generated.'}</div>
-            <p className="voice-help">The current test response proves turn isolation and TTS gating. A live ChatGPT provider is intentionally not faked.</p>
+            <p className="voice-help">Commands such as “ATLAS abre nómina” and “Hey ATLAS open Health” resolve locally to approved routes. Other turns use the authenticated ATLAS Intelligence provider only when verification passes.</p>
           </article>
         </div>
       </div>
@@ -271,7 +397,6 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
       <div className="voice-controls">
         <button type="button" className="voice-primary" onClick={startListening} disabled={!supported || snapshot.state === 'listening' || avatarBusy}>Start speaking</button>
         <button type="button" onClick={stopListening} disabled={!supported || snapshot.state !== 'listening'}>Stop</button>
-        <button type="button" onClick={testResponse} disabled={!turn?.finalTranscript}>Run guarded response</button>
         <button type="button" onClick={interrupt} disabled={!supported || snapshot.state !== 'speaking'}>Interrupt ATLAS</button>
       </div>
 
@@ -285,6 +410,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
         <span>ATLAS TTS excluded from user input</span>
         <span>barge-in opens a fresh turn</span>
         <span>low-confidence final transcripts are blocked</span>
+        <span>unverified AI providers fail closed</span>
       </div>
     </section>
   );
