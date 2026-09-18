@@ -72,7 +72,7 @@ export function normalizeIntelligenceError(error){
   return {code:'internal_error',status:500,trace_id:null};
 }
 
-export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
+export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,health=null,clock=Date.now}={}){
   if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
   const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:true,allow_council:false,zero_cost_providers:[]};
   return Object.freeze({async execute({context,request}){
@@ -95,6 +95,7 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       if(normalized.legacy_context)history.push({role:'user',content:`Current ATLAS context:\n${normalized.legacy_context}`});
       const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:route.mode,intent:normalized.intent});
       let result;
+      const providerStarted=clock();
       if(route.mode==='council'){
         if(!council)throw fail('capability_unavailable',503,{mode:'council'});
         result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000});
@@ -103,6 +104,11 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
         if(!adapter)throw fail('provider_not_configured',503,{provider:route.providers[0]});
         result=await adapter.execute({context:principal,route,instructions,input:history,max_output_tokens:3000});
       }
+      const providerLatency=Math.max(0,clock()-providerStarted);
+      if(route.mode==='council'){
+        for(const item of result.contributions||[])health?.recordSuccess?.(item.provider,{latency_ms:providerLatency});
+        for(const item of result.failures||[])health?.recordFailure?.(item.provider,{code:item.error||'provider_unavailable',latency_ms:providerLatency});
+      }else health?.recordSuccess?.(route.providers[0],{latency_ms:providerLatency});
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
       const routing={mode:route.mode,providers:route.providers,profile:route.profile,fallback_used:route.fallback_used,reason:route.reason};
@@ -111,6 +117,7 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:route.providers,model:result.model,mode:route.mode,profile:route.profile,fallback_used:route.fallback_used,capabilities_used:result.capabilities_used||route.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,execution_state:'completed'};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
+      if(route?.mode!=='council'&&route?.providers?.[0])health?.recordFailure?.(route.providers[0],{code:normalizedError.code,latency_ms:latency});
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});
       throw Object.assign(new Error(normalizedError.code),{...normalizedError,trace_id});
     }
