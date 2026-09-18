@@ -29,7 +29,7 @@ describe('ATLAS Work routes', () => {
 
     expect(await screen.findByRole('heading', { name: 'Work Command Center' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Work' })).toHaveAttribute('href', '/work');
-    expect(screen.getByText('Awaiting approval')).toBeInTheDocument();
+    expect(await screen.findByText('Awaiting approval')).toBeInTheDocument();
   });
 
   it.each([
@@ -41,7 +41,7 @@ describe('ATLAS Work routes', () => {
     render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
 
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
-    expect(screen.getAllByText(visibleStatus).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(visibleStatus)).length).toBeGreaterThan(0);
   });
 
   it('redirects unauthenticated Work access through the existing identity boundary', async () => {
