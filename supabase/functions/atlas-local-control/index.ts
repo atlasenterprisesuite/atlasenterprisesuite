@@ -5,6 +5,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const MAX_REQUEST_BYTES = 64 * 1024;
 const SESSION_MINUTES = 60;
 const ROTATE_BEFORE_MINUTES = 15;
+const MTLS_FINGERPRINT = /^[a-f0-9]{64}$/;
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
   'https://www.atlasenterprisesuite.com',
@@ -238,7 +239,7 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
 
   if (operation === 'agents.list') {
     requirePermission(context, 'device.agent.read');
-    const { data, error } = await admin.from('atlas_local_agents').select('id,org_id,name,status,platform,agent_version,capabilities,modules,public_key_fingerprint,last_seen_at,created_at,updated_at')
+    const { data, error } = await admin.from('atlas_local_agents').select('id,org_id,name,status,platform,agent_version,capabilities,modules,public_key_fingerprint,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cert_expires_at,realtime_last_connected_at,installer_version,last_seen_at,created_at,updated_at')
       .eq('org_id', context.orgId).order('created_at');
     if (error) throw new EdgeError('persistence_error', 500);
     return json(req, { ok: true, agents: data || [] });
@@ -260,6 +261,70 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     return json(req, { ok: true, commands: data || [] });
   }
 
+  if (operation === 'agents.mtls.bind') {
+    requirePermission(context, 'device.agent.admin');
+    const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
+    const fingerprint = requiredText(body.fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
+    if (!MTLS_FINGERPRINT.test(fingerprint)) throw new EdgeError('invalid_mtls_fingerprint', 422);
+    const serial = requiredText(body.serial, 'mtls_serial_required', 160);
+    const expiresAt = new Date(requiredText(body.expires_at, 'mtls_expiry_required', 80));
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+      throw new EdgeError('invalid_mtls_expiry', 422);
+    }
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'active',
+      mtls_cert_fingerprint_sha256: fingerprint,
+      mtls_cert_serial: serial,
+      mtls_cert_expires_at: expiresAt.toISOString(),
+      updated_at: new Date().toISOString()
+    }).eq('id', agentId).eq('org_id', context.orgId).neq('status', 'revoked')
+      .select('id,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cert_expires_at').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_not_found', 404);
+    await appendEvent(admin, { orgId: context.orgId, agentId, eventType: 'agent.mtls.bound', success: true, safeDetail: { fingerprint_sha256: fingerprint, serial, expires_at: expiresAt.toISOString() } });
+    return json(req, { ok: true, agent });
+  }
+
+  if (operation === 'agents.mtls.revoke') {
+    requirePermission(context, 'device.agent.admin');
+    const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'revoked',
+      realtime_last_connected_at: null,
+      updated_at: new Date().toISOString()
+    }).eq('id', agentId).eq('org_id', context.orgId)
+      .select('id,mtls_status').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_not_found', 404);
+    await appendEvent(admin, { orgId: context.orgId, agentId, eventType: 'agent.mtls.revoked', severity: 'warning', success: true });
+    return json(req, { ok: true, agent });
+  }
+
+  if (operation === 'bus.publish.authorize') {
+    requirePermission(context, 'device.agent.use');
+    const commandId = requiredText(body.command_id, 'command_id_required', 80);
+    const requestedAgentId = requiredText(body.agent_id, 'agent_id_required', 80);
+    const { data: command, error: commandError } = await admin.from('atlas_local_device_commands')
+      .select('id,device_id,status,capability,action,risk_level')
+      .eq('id', commandId).eq('org_id', context.orgId).maybeSingle();
+    if (commandError) throw new EdgeError('persistence_error', 500);
+    if (!command) throw new EdgeError('command_not_found', 404);
+    if (!['queued','claimed'].includes(String(command.status))) throw new EdgeError('command_not_realtime_eligible', 409);
+    const { data: device, error: deviceError } = await admin.from('atlas_local_devices')
+      .select('id,agent_id').eq('id', command.device_id).eq('org_id', context.orgId).maybeSingle();
+    if (deviceError) throw new EdgeError('persistence_error', 500);
+    if (!device || String(device.agent_id) !== requestedAgentId) throw new EdgeError('bus_target_mismatch', 403);
+    return json(req, {
+      ok: true,
+      bus: {
+        org_id: context.orgId,
+        agent_id: requestedAgentId,
+        event: 'command.ready',
+        command_id: String(command.id)
+      }
+    });
+  }
+
   if (operation === 'enrollment.create') {
     requirePermission(context, 'device.agent.admin');
     const agentName = requiredText(body.agent_name, 'agent_name_required', 120);
@@ -278,7 +343,7 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     requirePermission(context, 'device.agent.admin');
     const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
     const { data: agent, error } = await admin.from('atlas_local_agents').update({
-      status: 'revoked', updated_at: new Date().toISOString()
+      status: 'revoked', mtls_status: 'revoked', realtime_last_connected_at: null, updated_at: new Date().toISOString()
     }).eq('id', agentId).eq('org_id', context.orgId).select('id').maybeSingle();
     if (error) throw new EdgeError('persistence_error', 500);
     if (!agent) throw new EdgeError('agent_not_found', 404);
@@ -339,7 +404,7 @@ async function enrollAgent(req: Request, body: JsonObject) {
     platform: clean(body.platform, 120) || 'unknown',
     agent_version: clean(body.agent_version, 80) || 'unknown',
     capabilities: stringArray(body.capabilities), modules: stringArray(body.modules),
-    public_key_fingerprint: fingerprint, last_seen_at: now, created_by: String(enrollment.created_by), updated_at: now
+    public_key_fingerprint: fingerprint, installer_version: clean(body.installer_version, 80) || null, last_seen_at: now, created_by: String(enrollment.created_by), updated_at: now
   };
   const { data: agent, error: agentError } = await admin.from('atlas_local_agents')
     .upsert(row, { onConflict: 'org_id,name' }).select('*').single();
@@ -361,6 +426,29 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
   const agentId = String(context.agent.id);
   const orgId = String(context.agent.org_id);
   const now = new Date().toISOString();
+
+  if (operation === 'agent.bus.verify') {
+    const fingerprint = requiredText(body.mtls_cert_fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
+    const serial = requiredText(body.mtls_cert_serial, 'mtls_serial_required', 160);
+    if (body.mtls_cert_verified !== true || !MTLS_FINGERPRINT.test(fingerprint)) {
+      throw new EdgeError('mtls_required', 401);
+    }
+    if (String(context.agent.mtls_status) !== 'active') throw new EdgeError('mtls_not_active', 403);
+    if (String(context.agent.mtls_cert_fingerprint_sha256 || '').toLowerCase() !== fingerprint) {
+      throw new EdgeError('mtls_fingerprint_mismatch', 403);
+    }
+    if (String(context.agent.mtls_cert_serial || '') !== serial) throw new EdgeError('mtls_serial_mismatch', 403);
+    const expiresAt = new Date(String(context.agent.mtls_cert_expires_at || ''));
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+      await admin.from('atlas_local_agents').update({ mtls_status: 'expired', realtime_last_connected_at: null, updated_at: now })
+        .eq('id', agentId).eq('org_id', orgId);
+      throw new EdgeError('mtls_certificate_expired', 403);
+    }
+    await admin.from('atlas_local_agents').update({ realtime_last_connected_at: now, updated_at: now })
+      .eq('id', agentId).eq('org_id', orgId);
+    await appendEvent(admin, { orgId, agentId, eventType: 'agent.realtime.authorized', success: true, safeDetail: { fingerprint_sha256: fingerprint, serial } });
+    return json(req, { ok: true, bus: { org_id: orgId, agent_id: agentId } });
+  }
 
   if (operation === 'agent.heartbeat') {
     const capabilities = body.capabilities === undefined ? context.agent.capabilities : stringArray(body.capabilities);
