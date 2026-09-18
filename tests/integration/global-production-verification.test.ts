@@ -94,6 +94,7 @@ describe('ATLAS global production verification', () => {
     const authorizedVerifier = read(authorizedVerifierPath);
 
     expect(authorizedVerifier).toContain('ALLOWED_WORKFLOWS');
+    expect(authorizedVerifier).not.toContain('Set([\\n');
     expect(authorizedVerifier).toContain(
       '.github/workflows/cloudflare-deploy.yml@refs/heads/main'
     );
