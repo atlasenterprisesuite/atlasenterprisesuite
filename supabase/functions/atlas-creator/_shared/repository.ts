@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence.ts';
 import type { CreativePlan } from '../../../../packages/creator/creative_plan.ts';
+import type { WebLaunchBlueprint } from '../../../../packages/creator/web_launch.ts';
 import { providerLabel } from '../../../../packages/creator/providers.ts';
 import type {
   ProductionSpec,
@@ -170,6 +171,90 @@ export async function saveContentWorkspace(
   const { data, error } = await sb
     .from('creator_content_workspaces')
     .update({ ...baseRow, version: expectedVersion + 1 })
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .eq('version', expectedVersion)
+    .select('*')
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('version_conflict', 409);
+  return data;
+}
+
+
+export async function listWebLaunchBlueprints(orgId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_web_launch_blueprints')
+    .select('id,organization_id,created_by,title,state_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .order('updated_at', { ascending: false });
+  if (error) throw creatorError('persistence_failed', 500);
+  return data || [];
+}
+
+export async function getWebLaunchBlueprint(orgId: string, blueprintId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_web_launch_blueprints')
+    .select('id,organization_id,created_by,title,state_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .eq('id', blueprintId)
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('web_launch_blueprint_not_found', 404);
+  return data;
+}
+
+export async function saveWebLaunchBlueprint(
+  ctx: CreatorContext,
+  state: WebLaunchBlueprint,
+  expectedVersion: number
+) {
+  const id = String(state?.id || '').trim();
+  if (!id) throw creatorError('web_launch_blueprint_id_required', 422);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 0) {
+    throw creatorError('expected_version_required', 422);
+  }
+
+  const sb = adminClient();
+  const { data: existing, error: existingError } = await sb
+    .from('creator_web_launch_blueprints')
+    .select('id,version,created_by,created_at')
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .maybeSingle();
+  if (existingError) throw creatorError('persistence_failed', 500);
+
+  const now = new Date().toISOString();
+  const nextVersion = existing ? expectedVersion + 1 : 1;
+  const trustedState: WebLaunchBlueprint = {
+    ...state,
+    id,
+    title: String(state.title || 'Untitled web launch'),
+    version: nextVersion,
+    createdAt: existing ? String(existing.created_at || state.createdAt || now) : now,
+    updatedAt: now
+  };
+  const baseRow = {
+    organization_id: ctx.orgId,
+    title: trustedState.title,
+    state_json: trustedState,
+    updated_at: now
+  };
+
+  if (!existing) {
+    if (expectedVersion !== 0) throw creatorError('version_conflict', 409);
+    const { data, error } = await sb
+      .from('creator_web_launch_blueprints')
+      .insert({ ...baseRow, id, created_by: ctx.userId, version: 1, created_at: now })
+      .select('*')
+      .single();
+    if (error || !data) throw creatorError('persistence_failed', 500);
+    return data;
+  }
+
+  const { data, error } = await sb
+    .from('creator_web_launch_blueprints')
+    .update({ ...baseRow, version: nextVersion })
     .eq('organization_id', ctx.orgId)
     .eq('id', id)
     .eq('version', expectedVersion)
