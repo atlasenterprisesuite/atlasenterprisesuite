@@ -4,7 +4,7 @@ import { createCouncilOrchestrator } from '../../supabase/functions/atlas-copilo
 import { createToolGateway } from '../../supabase/functions/atlas-copilot/tool-gateway.mjs';
 import { evaluateIntelligenceCostPolicy } from '../../supabase/functions/atlas-copilot/cost-policy.mjs';
 
-function adapter(id: 'openai' | 'gemini' | 'codex-sovereign', options: {
+function adapter(id: 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign', options: {
   configured?: boolean;
   verified?: boolean;
   text?: string;
@@ -48,6 +48,7 @@ describe('ATLAS provider registry', () => {
     const registry = createProviderRegistry({
       providers: [
         adapter('openai'),
+        adapter('bedrock', { verified: false }),
         adapter('gemini', { configured: false, verified: false }),
         adapter('codex-sovereign', { verified: false }),
       ],
@@ -55,6 +56,7 @@ describe('ATLAS provider registry', () => {
     const readiness = await registry.readiness({ profile: 'balanced' });
     expect(readiness.map((item: any) => [item.id, item.state])).toEqual([
       ['openai', 'verified'],
+      ['bedrock', 'unavailable'],
       ['gemini', 'configuration-required'],
       ['codex-sovereign', 'unavailable'],
     ]);
