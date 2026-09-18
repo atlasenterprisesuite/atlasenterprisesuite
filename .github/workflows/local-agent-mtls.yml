@@ -197,13 +197,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$REQUEST_ACTION" = "issue" ]; then
-            CERTIFICATE_ID="$ISSUED_CERTIFICATE_ID"
+            export CERTIFICATE_ID="$ISSUED_CERTIFICATE_ID"
             node -e "console.log(JSON.stringify({action:'issue',organization_id:process.env.ORGANIZATION_ID,agent_id:process.env.AGENT_ID,certificate_id:process.env.CERTIFICATE_ID,fingerprint_sha256:process.env.FINGERPRINT_SHA256,serial:process.env.CERT_SERIAL,expires_at:process.env.CERT_EXPIRES_ON}))" > /tmp/atlas-binding.json
           else
-            CERTIFICATE_ID="$INPUT_CERTIFICATE_ID"
+            export CERTIFICATE_ID="$INPUT_CERTIFICATE_ID"
             node -e "console.log(JSON.stringify({action:'revoke',organization_id:process.env.ORGANIZATION_ID,agent_id:process.env.AGENT_ID,certificate_id:process.env.CERTIFICATE_ID}))" > /tmp/atlas-binding.json
           fi
-          export CERTIFICATE_ID
 
           STATUS=""
           for ATTEMPT in 1 2 3; do
