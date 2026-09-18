@@ -1,5 +1,6 @@
 import { getActiveAtlasOrganization, getAtlasAccessToken } from './atlasSession';
 import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence';
+import type { WebLaunchBlueprint } from '../../../../packages/creator/web_launch';
 import type { CreativePlan } from '../../../../packages/creator/creative_plan';
 import { adaptNativeReadiness, type CreativeEngineReadiness } from '../../../../packages/creator/creative_engine';
 import type { PromptExportPackage, PromptExportRequest } from '../../../../packages/creator/prompt_engine';
@@ -16,6 +17,11 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvq
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 
 export type ContentWorkspaceRecord = ContentWorkspaceState & {
+  organizationId: string;
+  createdByUserId: string;
+};
+
+export type WebLaunchBlueprintRecord = WebLaunchBlueprint & {
   organizationId: string;
   createdByUserId: string;
 };
@@ -132,6 +138,38 @@ function assetFromWire(value: any): CreatorAsset {
   } as CreatorAsset;
 }
 
+
+function webLaunchBlueprintFromWire(value: any): WebLaunchBlueprintRecord {
+  const state = (value?.state_json ?? value?.stateJson ?? {}) as Partial<WebLaunchBlueprint>;
+  return {
+    ...(state as WebLaunchBlueprint),
+    id: String(value?.id ?? state.id ?? ''),
+    title: String(value?.title ?? state.title ?? 'Untitled web launch'),
+    profile: state.profile ?? {
+      brand: '',
+      audience: '',
+      competitors: [],
+      promise: '',
+      proof: '',
+      primaryAction: '',
+      tone: '',
+      language: 'English'
+    },
+    masterPlan: state.masterPlan ?? null,
+    hero: state.hero ?? null,
+    motion: state.motion ?? null,
+    copy: state.copy ?? null,
+    construction: state.construction ?? null,
+    conversionAudit: state.conversionAudit ?? null,
+    launchPlan: state.launchPlan ?? null,
+    version: Number(value?.version ?? state.version ?? 0),
+    createdAt: String(value?.created_at ?? state.createdAt ?? ''),
+    updatedAt: String(value?.updated_at ?? state.updatedAt ?? ''),
+    organizationId: String(value?.organization_id ?? value?.organizationId ?? ''),
+    createdByUserId: String(value?.created_by ?? value?.createdByUserId ?? '')
+  };
+}
+
 function creativePlanFromWire(value: any): CreativePlan {
   const plan = (value?.plan_json ?? value) as CreativePlan;
   return {
@@ -238,6 +276,25 @@ export async function saveContentWorkspace(workspace: ContentWorkspaceState, exp
   return contentWorkspaceFromWire(data.workspace);
 }
 
+
+
+export async function listWebLaunchBlueprints() {
+  const data = await creatorRequest<{ ok: true; blueprints: unknown[] }>('web-launch-blueprints');
+  return data.blueprints.map(webLaunchBlueprintFromWire);
+}
+
+export async function getWebLaunchBlueprint(id: string) {
+  const data = await creatorRequest<{ ok: true; blueprint: unknown }>('web-launch-blueprint', { id });
+  return webLaunchBlueprintFromWire(data.blueprint);
+}
+
+export async function saveWebLaunchBlueprint(blueprint: WebLaunchBlueprint, expectedVersion: number) {
+  const data = await creatorRequest<{ ok: true; blueprint: unknown }>('web-launch-save', {}, {
+    method: 'POST',
+    body: JSON.stringify({ blueprint, expected_version: expectedVersion })
+  });
+  return webLaunchBlueprintFromWire(data.blueprint);
+}
 
 export async function listCreativePlans() {
   const data = await creatorRequest<{ ok: true; creative_plans: unknown[] }>('creative-plans');
