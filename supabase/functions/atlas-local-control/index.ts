@@ -1,6 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
-import { digestApprovalPayload } from '../../../packages/execution/src/approvals.ts';
-
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -127,6 +125,23 @@ function randomSecret(bytes = 32) {
 async function sha256(value: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+
+function sortApprovalValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortApprovalValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([a],[b]) => a.localeCompare(b))
+        .map(([key,item]) => [key, sortApprovalValue(item)])
+    );
+  }
+  return value;
+}
+
+async function digestApprovalPayload(value: unknown) {
+  return sha256(JSON.stringify(sortApprovalValue(value)));
 }
 
 async function appendEvent(admin: ReturnType<typeof createClient>, input: {
