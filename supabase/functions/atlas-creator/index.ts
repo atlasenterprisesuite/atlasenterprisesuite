@@ -3,6 +3,7 @@ import { adaptProviderToCreativeEngine } from '../../../packages/creator/creativ
 import { compilePromptExport, PROMPT_EXPORT_ENGINE } from '../../../packages/creator/prompt_engine.ts';
 import type { CreativePlan } from '../../../packages/creator/creative_plan.ts';
 import type { ContentWorkspaceState } from '../../../packages/creator/content_intelligence.ts';
+import type { WebLaunchBlueprint } from '../../../packages/creator/web_launch.ts';
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
 import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts';
@@ -15,19 +16,22 @@ import { creatorError, creatorErrorResponse, optionsResponse, withCors } from '.
 import {
   getContentWorkspace,
   getCreativePlan,
+  getWebLaunchBlueprint,
   getProduction,
   listAssets,
   listContentWorkspaces,
   listCreativePlans,
+  listWebLaunchBlueprints,
   listProductions,
   listProviderReadiness,
   saveContentWorkspace,
   saveCreativePlan,
+  saveWebLaunchBlueprint,
   saveProduction,
   writeCreatorAudit
 } from './_shared/repository.ts';
 
-const VERSION = '2026-09-18.1';
+const VERSION = '2026-09-18.2';
 const PROVIDER_IDS = new Set<ProviderId>(['seedance', 'veo', 'kling', 'wan', 'minimax']);
 
 function json(body: unknown, status = 200) {
@@ -65,6 +69,11 @@ function workspaceIdFrom(url: URL, body?: Record<string, any>) {
 
 function creativePlanIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.creative_plan_id || body?.creativePlanId || url.searchParams.get('creative_plan_id') || url.searchParams.get('id') || '').trim();
+}
+
+
+function webLaunchBlueprintIdFrom(url: URL, body?: Record<string, any>) {
+  return String(body?.blueprint_id || body?.blueprintId || url.searchParams.get('blueprint_id') || url.searchParams.get('id') || '').trim();
 }
 
 async function creatorContext(req: Request, permission: CreatorPermission) {
@@ -191,6 +200,37 @@ async function handleContentSave(req: Request) {
     version: saved.version
   });
   return json({ ok: true, workspace: saved });
+}
+
+
+async function handleWebLaunchBlueprints(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  return json({ ok: true, blueprints: await listWebLaunchBlueprints(ctx.orgId) });
+}
+
+async function handleWebLaunchBlueprint(req: Request, url: URL) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const blueprintId = webLaunchBlueprintIdFrom(url);
+  if (!blueprintId) throw creatorError('web_launch_blueprint_id_required', 422);
+  return json({ ok: true, blueprint: await getWebLaunchBlueprint(ctx.orgId, blueprintId) });
+}
+
+async function handleWebLaunchBlueprintSave(req: Request) {
+  const ctx = await creatorContext(req, 'creator.write');
+  const body = await bodyJson(req);
+  const blueprint = body.blueprint as WebLaunchBlueprint | undefined;
+  if (!blueprint || typeof blueprint !== 'object' || !blueprint.id) {
+    throw creatorError('web_launch_blueprint_required', 422);
+  }
+  const expectedVersion = Number.isInteger(body.expected_version)
+    ? Number(body.expected_version)
+    : Number(blueprint.version || 0);
+  const saved = await saveWebLaunchBlueprint(ctx, blueprint, expectedVersion);
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.web_launch.saved', String(saved.id), {
+    blueprint_id: saved.id,
+    version: saved.version
+  });
+  return json({ ok: true, blueprint: saved });
 }
 
 async function handleCreativePlans(req: Request) {
@@ -326,6 +366,9 @@ async function route(req: Request) {
   if (api === 'content-workspaces') return handleContentWorkspaces(req);
   if (api === 'content-workspace') return handleContentWorkspace(req, url);
   if (api === 'content-save') return handleContentSave(req);
+  if (api === 'web-launch-blueprints' && req.method === 'GET') return handleWebLaunchBlueprints(req);
+  if (api === 'web-launch-blueprint' && req.method === 'GET') return handleWebLaunchBlueprint(req, url);
+  if (api === 'web-launch-save' && req.method === 'POST') return handleWebLaunchBlueprintSave(req);
   if (api === 'creative-plans' && req.method === 'GET') return handleCreativePlans(req);
   if (api === 'creative-plan' && req.method === 'GET') return handleCreativePlan(req, url);
   if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
