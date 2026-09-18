@@ -73,6 +73,7 @@ jobs:
           npm run verify:production:global -- \
             --mode "$VERIFY_MODE" \
             --defer-edge-challenge \
+            --expected-sha "$GITHUB_SHA" \
             --json-output /tmp/atlas-global-production.json
 
           node - <<'NODE' >> "$GITHUB_OUTPUT"
@@ -83,6 +84,8 @@ jobs:
           console.log(`edge_challenge_detected=${result.edge_challenge_detected === true}`);
           console.log(`critical_network_routes_reachable=${result.checks?.critical_network_routes_reachable === true}`);
           console.log(`protected_routes_enforced=${result.checks?.protected_routes_enforced === true}`);
+          console.log(`production_commit_sha_verified=${result.checks?.production_commit_sha_verified === true}`);
+          console.log(`classified_root_challenge_accepted=${result.checks?.classified_root_challenge_accepted === true}`);
           NODE
 
       - name: Verify through authorized ATLAS runtime after classified edge challenge
