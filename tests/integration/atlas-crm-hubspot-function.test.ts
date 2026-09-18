@@ -77,12 +77,15 @@ async function invoke(input: {
   method?: string;
   origin?: string | null;
   deps?: AtlasCrmHubSpotDependencies;
+  query?: Record<string, string>;
 }) {
   const headers = new Headers({ 'Content-Type': 'application/json' });
   if (input.origin !== null) headers.set('Origin', input.origin ?? allowedOrigin);
   if (input.token) headers.set('Authorization', `Bearer ${input.token}`);
   const method = input.method ?? 'POST';
-  const request = new Request('https://atlas.test/functions/v1/atlas-crm-hubspot', {
+  const requestUrl = new URL('https://atlas.test/functions/v1/atlas-crm-hubspot');
+  for (const [key, value] of Object.entries(input.query ?? {})) requestUrl.searchParams.set(key, value);
+  const request = new Request(requestUrl, {
     method,
     headers,
     body: method === 'POST' ? JSON.stringify({
@@ -153,5 +156,18 @@ describe('ATLAS CRM HubSpot Edge Function security boundary', () => {
       deps: dependencies({ permissions: ['crm.read'] })
     });
     expect(denied.status).toBe(403);
+  });
+
+  it('returns browser OAuth callbacks to the canonical ATLAS CRM route', async () => {
+    const response = await invoke({
+      method: 'GET',
+      query: { state: 'invalid-state', code: 'authorization-code' },
+      deps: dependencies()
+    });
+    expect(response.status).toBe(303);
+    const location = response.headers.get('location');
+    expect(location).toContain('https://www.atlasenterprisesuite.com/crm/integrations/hubspot');
+    expect(location).toContain('oauth=error');
+    expect(location).toContain('code=oauth_state_invalid');
   });
 });
