@@ -53,7 +53,7 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[],prefe
       const selected=autoOrdered[index];
       const originalIndex=ordered.findIndex(p=>p?.id===selected.id);
       const preferred=preferredSet.has(selected.id);
-      return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:originalIndex>0,reason:preferred?'auto_zero_cost_verified_provider':originalIndex>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'});
+      return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:preferred?false:originalIndex>0,reason:preferred?'auto_zero_cost_verified_provider':originalIndex>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'});
     },
   });
 }
