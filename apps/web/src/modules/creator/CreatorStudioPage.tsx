@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { CreatorAsset, ProductionSummary, ProviderReadiness } from '../../../../../packages/creator/types';
-import { listCreatorAssets, listCreatorProductions, listCreatorProviders } from '../../lib/creatorApi';
+import type { CreatorAsset, ProductionSummary } from '../../../../../packages/creator/types';
+import type { CreativeEngineReadiness } from '../../../../../packages/creator/creative_engine';
+import type { PromptExportPackage } from '../../../../../packages/creator/prompt_engine';
+import { exportCreatorPrompt, listCreativeEngines, listCreatorAssets, listCreatorProductions } from '../../lib/creatorApi';
 import { CreatorExperiencePage } from '../experience/CreatorExperiencePage';
 import { DirectorWorkspace } from './director/DirectorWorkspace';
 import './creator.css';
@@ -28,25 +30,63 @@ export function CreatorWorkspace() {
   const [kind, setKind] = useState<MediaKind>(initial === 'video' || initial === 'music' || initial === 'voice' ? initial : 'image');
   const [prompt, setPrompt] = useState('');
   const [notice, setNotice] = useState('');
+  const [engines, setEngines] = useState<CreativeEngineReadiness[]>([]);
+  const [promptPackage, setPromptPackage] = useState<PromptExportPackage | null>(null);
+  const [exportState, setExportState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const canSubmit = prompt.trim().length >= 8;
+
+  useEffect(() => {
+    let active = true;
+    listCreativeEngines().then(value => { if (active) setEngines(value); }).catch(() => { if (active) setEngines([]); });
+    return () => { active = false; };
+  }, []);
+
   if (kind === 'video') return <DirectorWorkspace />;
+
+  const executable = engines.some(engine =>
+    engine.ready &&
+    engine.mediaKinds.includes(kind) &&
+    engine.executionClass !== 'prompt-export-only'
+  );
+  const promptExportReady = engines.some(engine => engine.engineId === 'prompt-export' && engine.ready && engine.mediaKinds.includes(kind));
+
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!canSubmit) { setNotice('Describe the result in at least 8 characters.'); return; }
-    setNotice('Generation is not submitted: configure and authorize a compatible provider first.');
+    if (!executable) setNotice('Generation is not submitted: no verified executable engine is ready for this media type.');
   }
+
+  async function exportPrompt() {
+    if (!canSubmit || !promptExportReady) return;
+    setExportState('running');
+    setNotice('');
+    try {
+      const exported = await exportCreatorPrompt({ mediaKind: kind, brief: prompt, language: 'English' });
+      setPromptPackage(exported);
+      setExportState('success');
+    } catch (error) {
+      setExportState('error');
+      setNotice(error instanceof Error ? error.message : 'prompt_export_failed');
+    }
+  }
+
   return <section className="creator-page">
     <nav className="creator-breadcrumb" aria-label="Breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Create</span></nav>
-    <header className="creator-hero compact"><div><p className="eyebrow">Creator workspace</p><h1>Bring an idea to life.</h1><p>Requests remain inside the organization boundary and are never reported as generated until a provider returns a verified result.</p></div></header>
+    <header className="creator-hero compact"><div><p className="eyebrow">Creator workspace</p><h1>Bring an idea to life.</h1><p>Requests remain inside the organization boundary and are never reported as generated until an engine returns a verified result.</p></div></header>
     <div className="creator-workbench">
       <form className="creator-composer" onSubmit={submit}>
-        <div className="creator-tabs" role="tablist">{(['image','video','music','voice'] as MediaKind[]).map(item => <button key={item} type="button" role="tab" aria-selected={kind===item} className={kind===item?'active':''} onClick={()=>{setKind(item);setNotice('')}}>{item}</button>)}</div>
-        <label><span>Creative brief</span><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder={'Describe the '+kind+' you want to create…'} rows={7} /></label>
+        <div className="creator-tabs" role="tablist">{(['image','video','music','voice'] as MediaKind[]).map(item => <button key={item} type="button" role="tab" aria-selected={kind===item} className={kind===item?'active':''} onClick={()=>{setKind(item);setNotice('');setPromptPackage(null)}}>{item}</button>)}</div>
+        <label><span>Creative brief</span><textarea aria-label="Creative brief" value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder={'Describe the '+kind+' you want to create…'} rows={7} /></label>
         <div className="creator-options"><label><span>Format</span><select><option>Adaptive</option><option>Square 1:1</option><option>Portrait 9:16</option><option>Landscape 16:9</option></select></label><label><span>Visibility</span><select><option>Private</option><option>Organization</option></select></label></div>
-        <button className="creator-primary" type="submit" disabled={!canSubmit}>Generate {kind}</button>
+        <button className="creator-primary" type="submit" disabled={!canSubmit || !executable}>Generate {kind}</button>
+        <button type="button" onClick={exportPrompt} disabled={!canSubmit || !promptExportReady || exportState === 'running'}>{exportState === 'running' ? 'Exporting…' : 'Export prompt package'}</button>
         {notice && <p className="creator-notice" role="status">{notice}</p>}
       </form>
-      <aside className="creator-preview"><div className={'creator-preview-orb '+kind} /><h2>Preview</h2><p>A verified result will appear here. ATLAS does not insert fabricated output.</p><dl><div><dt>Provider</dt><dd>Not configured</dd></div><div><dt>Storage</dt><dd>Supabase connection required</dd></div><div><dt>Audit</dt><dd>Enabled on submission</dd></div></dl></aside>
+      <aside className="creator-preview">
+        <div className={'creator-preview-orb '+kind} /><h2>Preview</h2>
+        {promptPackage ? <><pre>{promptPackage.prompt}</pre>{promptPackage.adaptationNotes.map(note => <p key={note}>{note}</p>)}</> : <p>A verified result will appear here. ATLAS does not insert fabricated output.</p>}
+        <dl><div><dt>Engine</dt><dd>{executable ? 'Verified engine available' : 'No executable engine verified'}</dd></div><div><dt>Prompt Export</dt><dd>{promptExportReady ? 'Ready · planning only' : 'Unavailable'}</dd></div><div><dt>Audit</dt><dd>Enabled</dd></div></dl>
+      </aside>
     </div>
   </section>;
 }
@@ -102,34 +142,26 @@ export function CreatorLibrary() {
 }
 
 export function CreatorProviders() {
-  const [providerRows, setProviderRows] = useState<ProviderReadiness[]>([]);
+  const [engineRows, setEngineRows] = useState<CreativeEngineReadiness[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
-    listCreatorProviders()
-      .then(value => {
-        if (!active) return;
-        setProviderRows(value);
-        setState('ready');
-      })
-      .catch(value => {
-        if (!active) return;
-        setProviderRows([]);
-        setState('error');
-        setError(value instanceof Error ? value.message : 'providers_failed');
-      });
+    listCreativeEngines()
+      .then(value => { if (!active) return; setEngineRows(value); setState('ready'); })
+      .catch(value => { if (!active) return; setEngineRows([]); setState('error'); setError(value instanceof Error ? value.message : 'engines_failed'); });
     return () => { active = false; };
   }, []);
 
   return <section className="creator-page">
     <nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Providers</span></nav>
-    <header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Provider readiness</h1><p>Capability states reflect verified server configuration only.</p></div></header>
-    {state === 'loading' && <div className="creator-empty" role="status"><strong>Loading provider readiness…</strong><span>Waiting for the authenticated ATLAS Creator service.</span></div>}
-    {state === 'error' && <div className="creator-empty" role="status"><strong>Provider readiness unavailable</strong><span>{error}</span></div>}
-    {state === 'ready' && providerRows.length === 0 && <div className="creator-empty"><strong>No video providers configured</strong><span>ATLAS will not infer readiness from browser plugins or placeholder provider names.</span></div>}
-    {state === 'ready' && providerRows.length > 0 && <div className="provider-list">{providerRows.map(provider => <article key={provider.providerId}><div><h2>{provider.displayName}</h2><p>{provider.capability ? `${provider.capability.modes.join(', ') || 'No modes reported'} · ${provider.capability.resolutions.join(', ') || 'No resolutions reported'}` : 'Capability contract unavailable until verified configuration.'}</p><small>Last verified: {provider.lastVerifiedAt ? new Date(provider.lastVerifiedAt).toLocaleString() : 'Never verified'}</small></div><span className="provider-state">{provider.connectionState}</span></article>)}</div>}
-    <div className="creator-privacy"><strong>Visual location intelligence</strong><p>Location estimation must be explicitly initiated by an authorized user, requires consent, exposes confidence and limitations, and must never be used as silent tracking.</p></div>
+    <header className="creator-hero compact"><div><p className="eyebrow">Governance</p><h1>Creative engine readiness</h1><p>Capability states reflect verified configuration only. Prompt Export is planning-only and does not claim generated media.</p></div></header>
+    {state === 'loading' && <div className="creator-empty" role="status"><strong>Loading creative engines…</strong><span>Waiting for authenticated ATLAS Creator services.</span></div>}
+    {state === 'error' && <div className="creator-empty" role="status"><strong>Creative engine readiness unavailable</strong><span>{error}</span></div>}
+    {state === 'ready' && engineRows.length === 0 && <div className="creator-empty"><strong>No creative engines available</strong><span>ATLAS will not infer readiness from placeholders.</span></div>}
+    {state === 'ready' && engineRows.length > 0 && <div className="provider-list">{engineRows.map(engine => <article key={engine.engineId}><div><h2>{engine.displayName}</h2><p>{engine.executionClass}</p><small>{engine.engineId === 'prompt-export' ? 'Planning only · no media generation' : `Last verified: ${engine.lastVerifiedAt ? new Date(engine.lastVerifiedAt).toLocaleString() : 'Never verified'}`}</small></div><span className="provider-state">{engine.connectionState}</span></article>)}</div>}
+    <div className="creator-privacy"><strong>Truthful readiness</strong><p>Local, self-hosted and external engines are shown ready only after their real readiness checks succeed.</p></div>
   </section>;
 }
+

@@ -1,5 +1,7 @@
 import { getActiveAtlasOrganization, getAtlasAccessToken } from './atlasSession';
 import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence';
+import { adaptNativeReadiness, type CreativeEngineReadiness } from '../../../../packages/creator/creative_engine';
+import type { PromptExportPackage, PromptExportRequest } from '../../../../packages/creator/prompt_engine';
 import type {
   CreatorAsset,
   CreatorReadinessResponse,
@@ -157,6 +159,33 @@ export const getCreatorReadiness = () => creatorRequest<CreatorReadinessResponse
 export async function listCreatorProviders() {
   const data = await creatorRequest<{ ok: true; providers: ProviderReadiness[] }>('providers');
   return data.providers;
+}
+
+export async function listCreativeEngines(): Promise<CreativeEngineReadiness[]> {
+  const data = await creatorRequest<{ ok: true; engines: CreativeEngineReadiness[] }>('engines');
+  const engines = data.engines.slice();
+  try {
+    const native = await getNativeCreatorReadiness();
+    engines.push(adaptNativeReadiness(native));
+  } catch {
+    // Native is optional. A failed probe is never converted into fake readiness.
+  }
+  return engines;
+}
+
+export async function exportCreatorPrompt(request: PromptExportRequest): Promise<PromptExportPackage> {
+  const data = await creatorRequest<{ ok: true; prompt_package: PromptExportPackage }>('prompt-export', {}, {
+    method: 'POST',
+    body: JSON.stringify({
+      media_kind: request.mediaKind,
+      brief: request.brief,
+      aspect_ratio: request.aspectRatio,
+      destination: request.destination,
+      language: request.language,
+      negative_constraints: request.negativeConstraints
+    })
+  });
+  return data.prompt_package;
 }
 
 export async function listCreatorProductions() {
