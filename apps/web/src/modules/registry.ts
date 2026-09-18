@@ -25,6 +25,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'advisory',
+    title: 'ATLAS Advisory Office',
+    navLabel: 'Advisory',
+    area: 'Business',
+    route: '/advisory',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Firm, client, engagement and Business Launch 360 operations with governed external boundaries.',
+    showInNavigation: true
+  },
+  {
     id: 'finance',
     title: 'Finance',
     navLabel: 'Finance',
