@@ -82,13 +82,13 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = public
-as $
+as $atlas_lna$
 begin
   new.updated_by := auth.uid();
   new.updated_at := now();
   return new;
 end;
-$;
+$atlas_lna$;
 
 drop trigger if exists atlas_local_network_endpoints_touch
   on public.atlas_local_network_endpoints;
