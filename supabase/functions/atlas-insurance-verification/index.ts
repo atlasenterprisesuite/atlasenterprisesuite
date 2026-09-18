@@ -6,13 +6,14 @@ import {
 } from '../../../packages/insurance/verification.ts';
 import type { InsuranceVerificationScope } from '../../../packages/insurance/types.ts';
 import { resolveInsuranceContext, type InsuranceRequestContext } from './_shared/context.ts';
-import { generateVerificationCode, hashVerificationCode, verifyVerificationCode } from './_shared/crypto.ts';
+import { constantTimeEqual, generateVerificationCode } from './_shared/crypto.ts';
 import { deliverVerificationCode, maskEmail } from './_shared/delivery.ts';
 import { errorResponse, insuranceError, normalizeInsuranceError, json, optionsResponse } from './_shared/errors.ts';
 import {
   consumeChallengeAndCreateGrant,
   createChallenge,
   deleteChallenge,
+  hashInsuranceVerificationCode,
   loadChallenge,
   registerFailedAttempt,
   restoreChallengeRotation,
@@ -110,7 +111,7 @@ async function issue(ctx: InsuranceRequestContext, body: Record<string, unknown>
   const { scope, resourceId } = parseScope(body);
   const id = crypto.randomUUID();
   const code = generateVerificationCode();
-  const codeHash = await hashVerificationCode(id, code);
+  const codeHash = await hashInsuranceVerificationCode(ctx.admin, id, code);
   const now = new Date();
   const challenge = await createChallenge(ctx.admin, {
     id,
@@ -150,7 +151,8 @@ async function verify(ctx: InsuranceRequestContext, body: Record<string, unknown
 
   const challenge = await loadChallenge(ctx.admin, ctx.orgId, ctx.userId, id);
   ensureUsableChallenge(challenge);
-  const valid = await verifyVerificationCode(challenge.id, code, challenge.code_hash);
+  const candidateHash = await hashInsuranceVerificationCode(ctx.admin, challenge.id, code);
+  const valid = constantTimeEqual(candidateHash, challenge.code_hash);
 
   if (!valid) {
     const updated = await registerFailedAttempt(ctx.admin, challenge);
@@ -186,7 +188,7 @@ async function resend(ctx: InsuranceRequestContext, body: Record<string, unknown
   }
 
   const code = generateVerificationCode();
-  const codeHash = await hashVerificationCode(challenge.id, code);
+  const codeHash = await hashInsuranceVerificationCode(ctx.admin, challenge.id, code);
   const now = new Date();
   const rotated = await rotateChallenge(ctx.admin, challenge, {
     codeHash,

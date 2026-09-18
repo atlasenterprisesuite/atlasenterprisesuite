@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
 const migrationPath = resolve(root, 'supabase/migrations/20260915124500_insurance_verification.sql');
+const vaultMigrationPath = resolve(root, 'supabase/migrations/20260918155000_atlas_insurance_otp_vault_secret.sql');
 const functionRoot = resolve(root, 'supabase/functions/atlas-insurance-verification');
 const indexPath = resolve(functionRoot, 'index.ts');
 const contextPath = resolve(functionRoot, '_shared/context.ts');
@@ -109,13 +110,16 @@ describe('ATLAS Insurance verification Edge Function contract', () => {
     expect(context).toContain('SUPABASE_SERVICE_ROLE_KEY');
   });
 
-  it('uses server-only cryptography and a constant-time digest comparison', () => {
+  it('uses server-only Vault-backed cryptography and a constant-time digest comparison', () => {
     const crypto = source(cryptoPath);
-    expect(crypto).toContain('ATLAS_INSURANCE_OTP_SECRET');
+    const vaultSql = source(vaultMigrationPath).toLowerCase();
     expect(crypto).toContain('crypto.getRandomValues');
-    expect(crypto).toContain("name: 'HMAC'");
-    expect(crypto).toContain("hash: 'SHA-256'");
     expect(crypto).toContain('constantTimeEqual');
+    expect(crypto).not.toContain('ATLAS_INSURANCE_OTP_SECRET');
+    expect(vaultSql).toContain('vault.decrypted_secrets');
+    expect(vaultSql).toContain('extensions.hmac');
+    expect(vaultSql).toContain('sha256');
+    expect(vaultSql).toContain('to service_role');
   });
 
   it('stores only code hashes and keeps verification lifecycle server-controlled', () => {
