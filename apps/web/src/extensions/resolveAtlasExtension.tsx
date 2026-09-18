@@ -6,6 +6,7 @@ import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
+import { WebLaunchPage } from '../modules/creator/web/WebLaunchPage';
 import {
   AccountingExperiencePage,
   BusinessExperiencePage,
@@ -65,6 +66,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/studio/content') {
     return <RequireAtlasIdentity><ContentIntelligencePage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/studio/web-launch') {
+    return <RequireAtlasIdentity><WebLaunchPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/health') return <HealthExperiencePage />;

@@ -23,7 +23,7 @@ describe('ATLAS global production verification', () => {
 
     expect(contract.production_origin).toBe('https://www.atlasenterprisesuite.com');
     expect(contract.default_mode).toBe('fail-closed');
-    expect(contract.public_routes).toEqual(['/', '/identity?app=%2Ffinance', '/finance', '/studio/teleprompter']);
+    expect(contract.public_routes).toEqual(['/', '/identity?app=%2Ffinance', '/finance', '/studio/teleprompter', '/studio/web-launch']);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
       '/business/network/pricing',

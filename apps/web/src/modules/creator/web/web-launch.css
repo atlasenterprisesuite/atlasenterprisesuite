@@ -1,0 +1,343 @@
+.web-launch-page {
+  --web-panel: rgba(8, 22, 42, 0.78);
+  --web-border: rgba(132, 194, 255, 0.2);
+}
+
+.web-launch-header,
+.web-launch-context,
+.web-launch-stage-panel,
+.web-launch-side-panel {
+  border: 1px solid var(--web-border);
+  background: var(--web-panel);
+}
+
+.web-launch-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(8, 27, 53, 0.96), rgba(7, 16, 33, 0.88));
+}
+
+.web-launch-header h1 {
+  margin: 6px 0 10px;
+  max-width: 760px;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.02;
+}
+
+.web-launch-header p {
+  max-width: 800px;
+  margin: 0;
+}
+
+.web-launch-header-actions {
+  min-width: 320px;
+  display: grid;
+  gap: 12px;
+}
+
+.web-launch-header-actions label,
+.web-launch-form-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.web-launch-header-actions label > span,
+.web-launch-form-grid label > span {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.68;
+}
+
+.web-launch-page input,
+.web-launch-page textarea,
+.web-launch-page select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--web-border);
+  border-radius: 12px;
+  background: rgba(6, 17, 34, 0.9);
+  color: inherit;
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.web-launch-page textarea {
+  resize: vertical;
+}
+
+.web-launch-header-actions > div,
+.web-launch-context-actions,
+.web-launch-stage-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.web-launch-notice {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--web-border);
+  border-radius: 14px;
+  background: rgba(8, 22, 42, 0.6);
+}
+
+.web-launch-notice.error {
+  border-color: rgba(255, 133, 133, 0.42);
+}
+
+.web-launch-context {
+  margin-top: 16px;
+  padding: 22px;
+  border-radius: 20px;
+}
+
+.web-launch-context-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.web-launch-context-heading h2,
+.web-launch-stage-heading h2,
+.web-launch-side-panel h2 {
+  margin: 4px 0 0;
+}
+
+.web-launch-context-heading > span {
+  white-space: nowrap;
+  opacity: 0.72;
+}
+
+.web-launch-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.web-launch-form-grid .span-2 {
+  grid-column: 1 / -1;
+}
+
+.web-launch-context-actions {
+  margin-top: 16px;
+  justify-content: space-between;
+}
+
+.web-launch-context-actions > span {
+  max-width: 560px;
+  font-size: 0.8rem;
+  opacity: 0.66;
+}
+
+.web-launch-stages {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.web-launch-stages button {
+  min-height: 88px;
+  border: 1px solid var(--web-border);
+  border-radius: 14px;
+  background: rgba(8, 22, 42, 0.65);
+  color: inherit;
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: 4px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.web-launch-stages button:hover,
+.web-launch-stages button.active {
+  border-color: rgba(104, 190, 255, 0.65);
+  background: rgba(16, 54, 92, 0.9);
+}
+
+.web-launch-stages button > span,
+.web-launch-stages button > small {
+  font-size: 0.68rem;
+  opacity: 0.58;
+}
+
+.web-launch-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+.web-launch-stage-panel,
+.web-launch-side-panel {
+  border-radius: 20px;
+}
+
+.web-launch-stage-panel {
+  min-height: 560px;
+  padding: clamp(18px, 3vw, 30px);
+}
+
+.web-launch-stage-heading {
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.web-launch-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.web-launch-result-grid article,
+.web-launch-empty {
+  border: 1px solid var(--web-border);
+  border-radius: 15px;
+  padding: 16px;
+  background: rgba(7, 19, 37, 0.66);
+}
+
+.web-launch-result-grid article p {
+  margin-top: 0;
+}
+
+.web-launch-result-grid ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.web-launch-result-grid li + li {
+  margin-top: 7px;
+}
+
+.web-launch-empty {
+  min-height: 180px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.web-launch-empty span {
+  max-width: 620px;
+  opacity: 0.7;
+}
+
+.web-launch-side-panel {
+  position: sticky;
+  top: 16px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.web-launch-side-panel > p {
+  margin: 0;
+  line-height: 1.55;
+  opacity: 0.72;
+}
+
+.web-launch-side-panel dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.web-launch-side-panel dl > div {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--web-border);
+}
+
+.web-launch-side-panel dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.58;
+}
+
+.web-launch-side-panel dd {
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .web-launch-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .web-launch-header-actions {
+    min-width: 0;
+  }
+
+  .web-launch-stages {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .web-launch-stages button {
+    min-width: 165px;
+  }
+
+  .web-launch-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .web-launch-side-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 680px) {
+  .web-launch-header,
+  .web-launch-context,
+  .web-launch-stage-panel,
+  .web-launch-side-panel {
+    border-radius: 16px;
+  }
+
+  .web-launch-header {
+    padding: 20px;
+  }
+
+  .web-launch-form-grid,
+  .web-launch-result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .web-launch-form-grid .span-2 {
+    grid-column: auto;
+  }
+
+  .web-launch-context-heading,
+  .web-launch-context-actions,
+  .web-launch-stage-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .web-launch-stages {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 8px 4px;
+    background: rgba(5, 13, 27, 0.96);
+  }
+
+  .web-launch-page button,
+  .web-launch-page a {
+    min-height: 44px;
+  }
+}

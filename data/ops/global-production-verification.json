@@ -1,12 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
     "/",
     "/identity?app=%2Ffinance",
     "/finance",
-    "/studio/teleprompter"
+    "/studio/teleprompter",
+    "/studio/web-launch"
   ],
   "critical_network_routes": [
     "/business/network",
