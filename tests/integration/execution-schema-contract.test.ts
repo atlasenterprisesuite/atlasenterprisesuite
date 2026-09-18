@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const migrationUrl = new URL('../../supabase/migrations/20260912_universal_execution_engine.sql', import.meta.url);
+const migrationPath = `${process.cwd()}/supabase/migrations/20260912_universal_execution_engine.sql`;
 
 async function migration() {
-  return readFile(migrationUrl, 'utf8');
+  return readFile(migrationPath, 'utf8');
 }
 
 const tables = [
