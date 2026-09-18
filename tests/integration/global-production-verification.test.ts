@@ -44,6 +44,11 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain("'fail-closed'");
     expect(verifier).toContain("'warning-only'");
     expect(verifier).toContain('--defer-edge-challenge');
+    expect(verifier).toContain('--expected-sha');
+    expect(verifier).toContain('x-atlas-version-id');
+    expect(verifier).toContain('x-atlas-version-tag');
+    expect(verifier).toContain('passed-edge-secured');
+    expect(verifier).toContain('classified_root_challenge_accepted');
     expect(verifier).toContain('AbortSignal.timeout');
     expect(verifier).toContain("redirect: 'manual'");
     expect(verifier).toContain('blocked-cross-origin-redirect');
@@ -66,6 +71,7 @@ describe('ATLAS global production verification', () => {
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('verify:production:global');
     expect(workflow).toContain('--defer-edge-challenge');
+    expect(workflow).toContain('--expected-sha "$GITHUB_SHA"');
     expect(workflow).toContain('audience=atlas-production-http-verifier');
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('fail-closed');
