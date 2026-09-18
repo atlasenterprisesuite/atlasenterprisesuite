@@ -41,6 +41,16 @@ describe('ATLAS Local Network Access schema contract', () => {
 });
 );
     expect(sql).toContain('$atlas_lna$;');
+    expect(sql).toMatch(/new\.org_id is distinct from old\.org_id/i);
+    expect(sql).toMatch(/new\.created_by is distinct from old\.created_by/i);
+  });
+
+  it('rejects cross-organization or origin-mismatched audit references', () => {
+    expect(sql).toMatch(/create or replace function public\.atlas_validate_local_network_event/i);
+    expect(sql).toMatch(/endpoint\.id = new\.endpoint_id/i);
+    expect(sql).toMatch(/endpoint\.org_id = new\.org_id/i);
+    expect(sql).toMatch(/endpoint\.origin = new\.origin/i);
+    expect(sql).toMatch(/before insert on public\.atlas_local_network_events/i);
   });
 
   it('makes audit evidence append-only for authenticated clients', () => {
