@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
+import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import {
@@ -20,53 +21,36 @@ const JAQUE_MATE_SENTINEL_V2 = '/health/jaque-mate/sentinel/v2';
 const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
 
 export function resolveAtlasExtension(pathname: string) {
-  if (pathname === '/') {
-    return <EnterpriseExperiencePage />;
-  }
-
-  if (pathname === '/business') {
-    return <BusinessExperiencePage />;
-  }
-
-  if (pathname === '/finance') {
-    return <FinanceExperiencePage />;
-  }
-
-  if (pathname === '/finance/accounting') {
-    return <AccountingExperiencePage />;
-  }
+  if (pathname === '/') return <EnterpriseExperiencePage />;
+  if (pathname === '/business') return <BusinessExperiencePage />;
+  if (pathname === '/finance') return <FinanceExperiencePage />;
+  if (pathname === '/finance/accounting') return <AccountingExperiencePage />;
 
   if (pathname === '/galaxy') {
-    return (
-      <RequireAtlasIdentity>
-        <AtlasGalaxyPage />
-      </RequireAtlasIdentity>
-    );
+    return <RequireAtlasIdentity><AtlasGalaxyPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/crm' || pathname.startsWith('/crm/')) {
+    return <RequireAtlasIdentity><CrmRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/commerce' || pathname.startsWith('/commerce/')) {
     return (
       <RequireAtlasIdentity>
-        <CrmRoutes />
+        <CommerceRoutes />
       </RequireAtlasIdentity>
     );
   }
 
   if (pathname === '/connect' || pathname.startsWith('/connect/')) {
-    return (
-      <RequireAtlasIdentity>
-        <ConnectRoutes />
-      </RequireAtlasIdentity>
-    );
+    return <RequireAtlasIdentity><ConnectRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/studio/content') {
     return <RequireAtlasIdentity><ContentIntelligencePage /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/health') {
-    return <HealthExperiencePage />;
-  }
+  if (pathname === '/health') return <HealthExperiencePage />;
 
   if (pathname === JAQUE_MATE_SENTINEL_LEGACY) {
     return <Navigate to={JAQUE_MATE_SENTINEL_V2} replace />;
@@ -84,9 +68,6 @@ export function resolveAtlasExtension(pathname: string) {
     return <NeuroplasticityProgramPage entry="learning" />;
   }
 
-  if (pathname === '/learning') {
-    return <LearningExperiencePage />;
-  }
-
+  if (pathname === '/learning') return <LearningExperiencePage />;
   return null;
 }

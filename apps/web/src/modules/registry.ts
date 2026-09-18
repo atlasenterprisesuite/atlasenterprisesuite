@@ -47,6 +47,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'commerce',
+    title: 'ATLAS Commerce',
+    navLabel: 'Commerce',
+    area: 'Business',
+    route: '/commerce',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed catalog, checkout and order operations with fail-closed providers.',
+    showInNavigation: true
+  },
+  {
     id: 'connect',
     title: 'ATLAS Connect',
     navLabel: 'Connect',
