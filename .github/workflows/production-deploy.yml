@@ -25,6 +25,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  ATLAS_PUBLIC_ORIGIN: https://www.atlasenterprisesuite.com
+
 jobs:
   verify-build-readiness:
     runs-on: ubuntu-latest
@@ -66,6 +69,66 @@ jobs:
             echo "- Vite production build: passed"
             echo "- Supabase ATLAS Manager: required control plane; runtime verified separately"
             echo "- Vercel: optional legacy adapter; not part of this gate"
-            echo "- Cloudflare production deployment: separate required stage; not claimed by this workflow"
-            echo "- Public production verification: separate required stage; not claimed by this workflow"
+            echo "- Cloudflare production deployment: separate required stage"
+            echo "- Public production verification: enforced below with fail-closed checks"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify-public-production:
+    name: Fail-closed public production verification
+    needs: verify-build-readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify ATLAS public domain and critical Network routes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          routes=(
+            "/"
+            "/dashboard"
+            "/accounting"
+            "/finance"
+            "/payroll"
+            "/hr"
+            "/security"
+            "/settings"
+          )
+
+          failed=0
+          for route in "${routes[@]}"; do
+            url="${ATLAS_PUBLIC_ORIGIN}${route}"
+            echo "::group::GET ${url}"
+
+            if ! response="$(curl               --silent               --show-error               --location               --max-time 30               --connect-timeout 10               --retry 2               --retry-delay 2               --output /dev/null               --write-out '%{http_code} %{url_effective}'               "${url}")"; then
+              echo "::error::Network failure for ${url}"
+              failed=1
+              echo "::endgroup::"
+              continue
+            fi
+
+            status="${response%% *}"
+            effective_url="${response#* }"
+            echo "HTTP ${status} -> ${effective_url}"
+
+            # Public pages may redirect to the authentication boundary. Treat any
+            # successful HTTP response below 400 as reachable; 4xx/5xx fail closed.
+            if [[ ! "${status}" =~ ^[123][0-9][0-9]$ ]]; then
+              echo "::error::Critical ATLAS route failed: ${url} returned HTTP ${status}"
+              failed=1
+            fi
+            echo "::endgroup::"
+          done
+
+          if (( failed != 0 )); then
+            echo "::error::ATLAS production verification FAILED. Deployment must not be considered verified."
+            exit 1
+          fi
+
+          {
+            echo "## ATLAS Global Production Verification"
+            echo "- Public origin: ${ATLAS_PUBLIC_ORIGIN}"
+            echo "- Critical routes: reachable"
+            echo "- Verification policy: FAIL CLOSED"
+            echo "- Result: PASS"
           } >> "$GITHUB_STEP_SUMMARY"
