@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -8,7 +8,8 @@
     "/finance",
     "/studio/teleprompter",
     "/studio/web-launch",
-    "/crm"
+    "/crm",
+    "/security"
   ],
   "critical_network_routes": [
     "/business/network",
