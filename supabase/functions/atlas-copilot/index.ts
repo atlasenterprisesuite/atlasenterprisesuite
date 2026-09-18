@@ -6,6 +6,7 @@ import {createAmazonBedrockResponsesAdapter} from './amazon-bedrock-responses-ad
 import {createGeminiAdapter} from './gemini-adapter.mjs';
 import {createCodexSovereignAdapter} from './codex-sovereign-adapter.mjs';
 import {createProviderRegistry} from './provider-registry.mjs';
+import {createProviderHealthController} from './provider-health.mjs';
 import {createCouncilOrchestrator} from './council-orchestrator.mjs';
 import {createToolGateway} from './tool-gateway.mjs';
 import {renderAtlasCopilotPage} from './ui.mjs';
@@ -22,6 +23,7 @@ const DEFAULT_BEDROCK_REGION='us-west-2';
 const DEFAULT_BEDROCK_ENDPOINT='runtime';
 const DEFAULT_BEDROCK_RUNTIME_MODEL='us.openai.gpt-6-astra';
 const DEFAULT_BEDROCK_MANTLE_MODEL='openai.gpt-6-astra';
+const PROVIDER_HEALTH=createProviderHealthController();
 
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
 function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null,defaultModel=null){
@@ -63,7 +65,7 @@ function runtime(){
   return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,costPolicy};
 }
 function registryFor(rt){
-  return createProviderRegistry({providers:[
+  return createProviderRegistry({health:PROVIDER_HEALTH,providers:[
     createOpenAIResponsesAdapter({apiKey:rt.openaiKey,models:rt.openaiModels,fetchFn:fetch}),
     createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,fetchFn:fetch}),
     createGeminiAdapter({apiKey:rt.geminiKey,models:rt.geminiModels,fetchFn:fetch}),
@@ -94,7 +96,7 @@ async function handleChat(req){
   const {registry,providers}=await readinessFor(rt,intent);
   const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers});
   const council=createCouncilOrchestrator({registry});
-  const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway()});
+  const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway(),health:PROVIDER_HEALTH});
   const request=body?.context!==undefined&&body?.module===undefined
     ?{module:'workbench',intent:'balanced',mode,message,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy)},legacy_context:legacy}
     :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{},legacy_context:legacy};
