@@ -32,7 +32,7 @@ describe('ATLAS functional avatar', () => {
 
     const avatar = screen.getByRole('button', { name: 'Start speaking with ATLAS' });
     expect(avatar).toHaveAttribute('data-state', 'idle');
-    expect(document.querySelector('img[src="/atlas-avatar-particle.webp"]')).toBeTruthy();
+    expect(document.querySelector('img[src="/atlas-avatar-particle.svg"]')).toBeTruthy();
 
     fireEvent.click(avatar);
 
