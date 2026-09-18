@@ -2,9 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   decideExecutionApproval,
+  evaluateWorkStep,
+  executeWorkStep,
   loadGuidedExecutionAudit,
   loadGuidedExecutionState,
-  requestExecutionApproval
+  requestExecutionApproval,
+  resumeWorkStep,
+  type WorkStepExecutionDecision
 } from './api';
 import type { ApprovalDecision } from './ApprovalCard';
 import { AuditTimeline } from './AuditTimeline';
@@ -35,6 +39,7 @@ export function GuidedExecutionPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [executionDecision, setExecutionDecision] = useState<WorkStepExecutionDecision | null>(null);
 
   const adoptState = useCallback((next: GuidedExecutionState) => {
     setData(next);
@@ -114,6 +119,25 @@ export function GuidedExecutionPage() {
     return () => { active = false; };
   }, [adoptState, refreshAudit, workflowId]);
 
+  useEffect(() => {
+    let active = true;
+    if (!data || !selectedStepId) {
+      setExecutionDecision(null);
+      return () => { active = false; };
+    }
+    const step = data.steps.find((item) => item.id === selectedStepId);
+    const task = step ? data.tasks.find((item) => item.id === step.taskId) : null;
+    if (!step || !task || task.currentStepId !== step.id) {
+      setExecutionDecision(null);
+      return () => { active = false; };
+    }
+    setExecutionDecision(null);
+    void evaluateWorkStep(task.id)
+      .then((decision) => { if (active) setExecutionDecision(decision); })
+      .catch(() => { if (active) setExecutionDecision(null); });
+    return () => { active = false; };
+  }, [data, selectedStepId]);
+
   if (loading) return <section aria-busy="true"><h1>Loading execution workflow</h1></section>;
   if (error === 'workflow_not_found') return <section><h1>Workflow not found</h1><p>The workflow is unavailable in the active organization.</p></section>;
   if (error) return <section role="alert"><h1>Execution unavailable</h1><p>{error}</p><button type="button" onClick={reload}>Retry</button></section>;
@@ -160,6 +184,24 @@ export function GuidedExecutionPage() {
     }
   };
 
+  const runWorkStep = async (operation: 'execute' | 'resume') => {
+    if (!selectedStep || !selectedTask || selectedTask.currentStepId !== selectedStep.id || busy) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      if (operation === 'execute') await executeWorkStep(selectedTask.id);
+      else await resumeWorkStep(selectedTask.id);
+      await reload();
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : `${operation}_work_step_failed`;
+      setActionError(message === 'approval_binding_mismatch'
+        ? 'approval_binding_mismatch — the approved action changed; request a new approval for the current payload.'
+        : message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const selectAssistantStep = (stepId: string) => {
     setActionError(null);
     setSelectedStepId(stepId);
@@ -196,6 +238,7 @@ export function GuidedExecutionPage() {
                 dependencies={data.dependencies}
                 evidence={data.evidence}
                 approvals={data.approvals}
+                executionDecision={executionDecision}
                 busy={busy}
                 onDecideApproval={decideApproval}
               />
@@ -205,6 +248,8 @@ export function GuidedExecutionPage() {
                   currentStep={selectedTask.currentStepId === selectedStep.id}
                   busy={busy}
                   onRefresh={reload}
+                  onExecuteStep={() => runWorkStep('execute')}
+                  onResumeStep={() => runWorkStep('resume')}
                   onRequestApproval={requestApproval}
                   onFocusApprovals={() => focusSection('execution-approvals-title')}
                   onFocusEvidence={() => focusSection('execution-evidence-title')}
