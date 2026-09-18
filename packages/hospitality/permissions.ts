@@ -1,10 +1,18 @@
 import type { HospitalityActorContext, HospitalityPermission } from './types';
 
+function isRoomAccessPermission(permission: HospitalityPermission) {
+  return permission.startsWith('hospitality.access.');
+}
+
 export function hasHospitalityPermission(
   context: HospitalityActorContext,
   permission: HospitalityPermission
 ) {
-  return context.permissions.includes('hospitality.access.admin') || context.permissions.includes(permission);
+  if (context.permissions.includes(permission)) {
+    return true;
+  }
+
+  return isRoomAccessPermission(permission) && context.permissions.includes('hospitality.access.admin');
 }
 
 export function requireHospitalityPermission(
