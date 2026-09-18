@@ -12,6 +12,7 @@ describe('ATLAS Assistant route context', () => {
     ['/learning/course/123', 'learning'],
     ['/hospitality/hotels', 'hospitality'],
     ['/ride/trips', 'ride'],
+    ['/voice/assistant', 'voice'],
     ['/studio/voice', 'studio.voice'],
     ['/execution/manager/readiness', 'execution.manager']
   ])('maps %s to %s', (pathname, expected) => {
