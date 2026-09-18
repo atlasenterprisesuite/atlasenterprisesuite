@@ -52,20 +52,35 @@ export function CrmRecordPage({
         setRecord(result.record);
 
         const associationResults = await Promise.allSettled(
-          associationTargets.map((targetObjectType) =>
-            crmApi<{ associations: CrmAssociationPage }>('crm.associations', {
-              objectType,
-              providerId,
-              targetObjectType
-            })
-          )
+          associationTargets.map(async (targetObjectType) => {
+            const pages: CrmAssociation[] = [];
+            const seenCursors = new Set<string>();
+            let cursor: string | null = null;
+            do {
+              const result = await crmApi<{ associations: CrmAssociationPage }>('crm.associations', {
+                objectType,
+                providerId,
+                targetObjectType,
+                cursor
+              });
+              pages.push(...result.associations.associations);
+              const nextCursor = result.associations.nextCursor;
+              if (!nextCursor) break;
+              if (seenCursors.has(nextCursor)) {
+                throw new Error('CRM association pagination returned a repeated cursor');
+              }
+              seenCursors.add(nextCursor);
+              cursor = nextCursor;
+            } while (true);
+            return pages;
+          })
         );
         if (!active) return;
         const normalized: CrmAssociation[] = [];
         let partial = false;
         for (const resultItem of associationResults) {
           if (resultItem.status === 'fulfilled') {
-            normalized.push(...resultItem.value.associations.associations);
+            normalized.push(...resultItem.value);
           } else {
             partial = true;
           }
