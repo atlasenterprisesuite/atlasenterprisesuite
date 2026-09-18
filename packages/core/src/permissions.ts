@@ -49,6 +49,15 @@ export type AgentPermission =
   | 'agents.publish'
   | 'agents.admin';
 
+export type AdvisoryPermission =
+  | 'advisory.read'
+  | 'advisory.manage'
+  | 'advisory.write'
+  | 'advisory.billing'
+  | 'advisory.compliance'
+  | 'advisory.automations'
+  | 'advisory.admin';
+
 export type SecurityPermission = 'security.admin';
 export type AuditPermission = 'audit.read';
 
@@ -59,6 +68,7 @@ export type AtlasPermission =
   | CrmPermission
   | CommercePermission
   | AgentPermission
+  | AdvisoryPermission
   | SecurityPermission
   | AuditPermission;
 
@@ -68,7 +78,7 @@ export function hasAtlasPermission(
 ) {
   if (granted.includes(required)) return true;
   const namespace = required.split('.')[0];
-  const admin = `${namespace}.admin` as AtlasPermission;
+  const admin = (namespace + '.admin') as AtlasPermission;
   return granted.includes(admin);
 }
 
