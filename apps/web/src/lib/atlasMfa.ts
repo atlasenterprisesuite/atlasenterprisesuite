@@ -52,7 +52,9 @@ export async function listAtlasTotpFactors(): Promise<AtlasMfaFactor[]> {
       : Array.isArray(data?.all)
         ? data.all
         : [];
-  return candidates.map(normalizeFactor).filter((factor): factor is AtlasMfaFactor => factor !== null);
+  return candidates
+    .map((candidate: unknown) => normalizeFactor(candidate))
+    .filter((factor: AtlasMfaFactor | null): factor is AtlasMfaFactor => factor !== null);
 }
 
 export async function unenrollAtlasMfaFactor(factorId: string) {
