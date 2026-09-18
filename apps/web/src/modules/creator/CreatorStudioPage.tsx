@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { CreatorAsset, ProductionSummary } from '../../../../../packages/creator/types';
-import type { CreativeEngineReadiness } from '../../../../../packages/creator/creative_engine';
-import type { PromptExportPackage } from '../../../../../packages/creator/prompt_engine';
-import { exportCreatorPrompt, listCreativeEngines, listCreatorAssets, listCreatorProductions } from '../../lib/creatorApi';
+import type { CreativeEngineReadiness, CreativeMediaKind } from '../../../../../packages/creator/creative_engine';
+import { buildCreativePlan, type CreativePlan } from '../../../../../packages/creator/creative_plan';
+import { compileSpecializedPrompt, type PromptExportPackage } from '../../../../../packages/creator/prompt_engine';
+import { exportCreatorPrompt, listCreativeEngines, listCreatorAssets, listCreatorProductions, saveCreativePlan } from '../../lib/creatorApi';
 import { CreatorExperiencePage } from '../experience/CreatorExperiencePage';
 import { DirectorWorkspace } from './director/DirectorWorkspace';
 import './creator.css';
 
-type MediaKind = 'image' | 'video' | 'music' | 'voice';
+const CREATIVE_MEDIA_KINDS: CreativeMediaKind[] = ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'];
+
+function initialMediaKind(value: string | null): CreativeMediaKind {
+  return CREATIVE_MEDIA_KINDS.includes(value as CreativeMediaKind) ? value as CreativeMediaKind : 'image';
+}
+
+function newCreativePlanId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return '00000000-0000-4000-8000-000000000001';
+}
 
 export const studioEntryPoints = [
   { title: 'Content Intelligence', route: '/studio/content' },
@@ -26,18 +36,35 @@ export function CreatorHome() {
 
 export function CreatorWorkspace() {
   const [searchParams] = useSearchParams();
-  const initial = searchParams.get('type');
-  const [kind, setKind] = useState<MediaKind>(initial === 'video' || initial === 'music' || initial === 'voice' ? initial : 'image');
+  const [kind, setKind] = useState<CreativeMediaKind>(() => initialMediaKind(searchParams.get('type')));
+  const [selectedKinds, setSelectedKinds] = useState<CreativeMediaKind[]>(() => [initialMediaKind(searchParams.get('type'))]);
+  const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
+  const [destination, setDestination] = useState('');
+  const [audience, setAudience] = useState('');
+  const [aspectRatio, setAspectRatio] = useState('adaptive');
+  const [language, setLanguage] = useState('English');
+  const [negativeConstraints, setNegativeConstraints] = useState('');
+  const [accessibility, setAccessibility] = useState({
+    captions: false,
+    transcript: false,
+    altText: true,
+    audioDescription: false
+  });
   const [notice, setNotice] = useState('');
   const [engines, setEngines] = useState<CreativeEngineReadiness[]>([]);
+  const [creativePlan, setCreativePlan] = useState<CreativePlan | null>(null);
+  const [persistedVersion, setPersistedVersion] = useState(0);
+  const [planState, setPlanState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [promptPackage, setPromptPackage] = useState<PromptExportPackage | null>(null);
   const [exportState, setExportState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const canSubmit = prompt.trim().length >= 8;
 
   useEffect(() => {
     let active = true;
-    listCreativeEngines().then(value => { if (active) setEngines(value); }).catch(() => { if (active) setEngines([]); });
+    listCreativeEngines()
+      .then(value => { if (active) setEngines(value); })
+      .catch(() => { if (active) setEngines([]); });
     return () => { active = false; };
   }, []);
 
@@ -48,12 +75,97 @@ export function CreatorWorkspace() {
     engine.mediaKinds.includes(kind) &&
     engine.executionClass !== 'prompt-export-only'
   );
-  const promptExportReady = engines.some(engine => engine.engineId === 'prompt-export' && engine.ready && engine.mediaKinds.includes(kind));
+  const promptExportReady = engines.some(engine =>
+    engine.engineId === 'prompt-export' &&
+    engine.ready &&
+    engine.mediaKinds.includes(kind)
+  );
+  const specializedPrompt = creativePlan?.mediaKinds.includes(kind)
+    ? compileSpecializedPrompt(creativePlan, kind)
+    : null;
+
+  function changeKind(next: CreativeMediaKind) {
+    setKind(next);
+    setSelectedKinds(current => current.includes(next) ? current : [...current, next]);
+    setNotice('');
+    setPromptPackage(null);
+  }
+
+  function toggleDeliverable(mediaKind: CreativeMediaKind) {
+    setSelectedKinds(current => {
+      if (current.includes(mediaKind)) {
+        if (current.length === 1 || mediaKind === kind) return current;
+        return current.filter(value => value !== mediaKind);
+      }
+      return [...current, mediaKind];
+    });
+  }
+
+  function createPlan() {
+    if (!canSubmit) {
+      setNotice('Describe the result in at least 8 characters.');
+      return;
+    }
+    const now = new Date().toISOString();
+    try {
+      const plan = buildCreativePlan({
+        title: title || `${kind.toUpperCase()} Creative Plan`,
+        brief: prompt,
+        mediaKinds: selectedKinds,
+        destinations: destination ? [destination] : [],
+        audience,
+        aspectRatio,
+        language,
+        accessibility,
+        negativeConstraints: negativeConstraints
+          .split('\n')
+          .map(value => value.trim())
+          .filter(Boolean)
+      }, engines, {
+        id: creativePlan?.id || newCreativePlanId(),
+        organizationId: creativePlan?.organizationId || '',
+        createdByUserId: creativePlan?.createdByUserId || '',
+        now,
+        version: persistedVersion || 1,
+        createdAt: creativePlan?.createdAt
+      });
+      setCreativePlan(plan);
+      setPlanState('idle');
+      setPromptPackage(null);
+      setNotice('Creative plan ready · no media generated.');
+    } catch (error) {
+      setPlanState('error');
+      setNotice(error instanceof Error ? error.message : 'creative_plan_failed');
+    }
+  }
+
+  async function persistPlan() {
+    if (!creativePlan) return;
+    setPlanState('saving');
+    setNotice('');
+    try {
+      const saved = await saveCreativePlan(creativePlan, persistedVersion);
+      setCreativePlan(saved);
+      setPersistedVersion(saved.version);
+      setPlanState('saved');
+      setNotice(`Plan saved · version ${saved.version}`);
+    } catch (error) {
+      setPlanState('error');
+      setNotice(error instanceof Error ? error.message : 'creative_plan_save_failed');
+    }
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSubmit) { setNotice('Describe the result in at least 8 characters.'); return; }
-    if (!executable) setNotice('Generation is not submitted: no verified executable engine is ready for this media type.');
+    if (!canSubmit) {
+      setNotice('Describe the result in at least 8 characters.');
+      return;
+    }
+    if (!executable) {
+      setNotice('Generation is not submitted: no verified executable engine is ready for this media type.');
+      return;
+    }
+    setNotice('A verified engine is available, but Phase 2 remains a planning workflow until its generation adapter is explicitly invoked.');
   }
 
   async function exportPrompt() {
@@ -61,7 +173,17 @@ export function CreatorWorkspace() {
     setExportState('running');
     setNotice('');
     try {
-      const exported = await exportCreatorPrompt({ mediaKind: kind, brief: prompt, language: 'English' });
+      const exported = await exportCreatorPrompt({
+        mediaKind: kind,
+        brief: specializedPrompt?.prompt || prompt,
+        aspectRatio,
+        destination: destination || undefined,
+        language,
+        negativeConstraints: negativeConstraints
+          .split('\n')
+          .map(value => value.trim())
+          .filter(Boolean)
+      });
       setPromptPackage(exported);
       setExportState('success');
     } catch (error) {
@@ -72,20 +194,69 @@ export function CreatorWorkspace() {
 
   return <section className="creator-page">
     <nav className="creator-breadcrumb" aria-label="Breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Create</span></nav>
-    <header className="creator-hero compact"><div><p className="eyebrow">Creator workspace</p><h1>Bring an idea to life.</h1><p>Requests remain inside the organization boundary and are never reported as generated until an engine returns a verified result.</p></div></header>
-    <div className="creator-workbench">
+    <header className="creator-hero compact"><div><p className="eyebrow">Unified Creator composer</p><h1>Plan once. Create everywhere.</h1><p>ATLAS turns one authorized brief into a provider-neutral CreativePlan, specialized prompts and zero-cost-first execution choices without fabricating output.</p></div></header>
+    <div className="creator-tabs" role="tablist" aria-label="Creative media modes">
+      {CREATIVE_MEDIA_KINDS.map(item => <button key={item} type="button" role="tab" aria-selected={kind===item} className={kind===item?'active':''} onClick={()=>changeKind(item)}>{item}</button>)}
+    </div>
+    <div className="creator-workbench creator-unified-workbench">
+      <aside className="creator-outline" aria-label="Creative plan deliverables">
+        <p className="eyebrow">Deliverables</p>
+        <h2>Media plan</h2>
+        <p>Select outputs generated from the same source brief. Video continues in ATLAS Director.</p>
+        <div className="creator-deliverables">
+          {CREATIVE_MEDIA_KINDS.map(item => <label key={item}>
+            <input type="checkbox" checked={selectedKinds.includes(item)} onChange={()=>toggleDeliverable(item)} disabled={item===kind} />
+            <span>{item}</span>
+          </label>)}
+        </div>
+        <div className="creator-engine-summary">
+          <strong>Zero-cost-first</strong>
+          <span>{engines.filter(engine => engine.ready).length} ready engine{engines.filter(engine => engine.ready).length === 1 ? '' : 's'}</span>
+        </div>
+      </aside>
       <form className="creator-composer" onSubmit={submit}>
-        <div className="creator-tabs" role="tablist">{(['image','video','music','voice'] as MediaKind[]).map(item => <button key={item} type="button" role="tab" aria-selected={kind===item} className={kind===item?'active':''} onClick={()=>{setKind(item);setNotice('');setPromptPackage(null)}}>{item}</button>)}</div>
+        <label><span>Plan title</span><input aria-label="Plan title" value={title} onChange={e=>setTitle(e.target.value)} placeholder="Campaign or production name" /></label>
         <label><span>Creative brief</span><textarea aria-label="Creative brief" value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder={'Describe the '+kind+' you want to create…'} rows={7} /></label>
-        <div className="creator-options"><label><span>Format</span><select><option>Adaptive</option><option>Square 1:1</option><option>Portrait 9:16</option><option>Landscape 16:9</option></select></label><label><span>Visibility</span><select><option>Private</option><option>Organization</option></select></label></div>
-        <button className="creator-primary" type="submit" disabled={!canSubmit || !executable}>Generate {kind}</button>
-        <button type="button" onClick={exportPrompt} disabled={!canSubmit || !promptExportReady || exportState === 'running'}>{exportState === 'running' ? 'Exporting…' : 'Export prompt package'}</button>
+        <div className="creator-options">
+          <label><span>Audience</span><input aria-label="Audience" value={audience} onChange={e=>setAudience(e.target.value)} placeholder="Who is this for?" /></label>
+          <label><span>Destination</span><input aria-label="Destination" value={destination} onChange={e=>setDestination(e.target.value)} placeholder="Web, Instagram, product UI…" /></label>
+          <label><span>Aspect ratio</span><select aria-label="Aspect ratio" value={aspectRatio} onChange={e=>setAspectRatio(e.target.value)}><option value="adaptive">Adaptive</option><option value="1:1">Square 1:1</option><option value="9:16">Portrait 9:16</option><option value="16:9">Landscape 16:9</option></select></label>
+          <label><span>Language</span><select aria-label="Language" value={language} onChange={e=>setLanguage(e.target.value)}><option>English</option><option>Spanish</option></select></label>
+        </div>
+        <fieldset className="creator-accessibility">
+          <legend>Accessibility</legend>
+          <label><input type="checkbox" checked={accessibility.captions} onChange={e=>setAccessibility(value=>({...value,captions:e.target.checked}))} /><span>Require captions</span></label>
+          <label><input type="checkbox" checked={accessibility.transcript} onChange={e=>setAccessibility(value=>({...value,transcript:e.target.checked}))} /><span>Require transcript</span></label>
+          <label><input type="checkbox" checked={accessibility.altText} onChange={e=>setAccessibility(value=>({...value,altText:e.target.checked}))} /><span>Require alt text</span></label>
+          <label><input type="checkbox" checked={accessibility.audioDescription} onChange={e=>setAccessibility(value=>({...value,audioDescription:e.target.checked}))} /><span>Require audio description</span></label>
+        </fieldset>
+        <label><span>Negative constraints</span><textarea aria-label="Negative constraints" value={negativeConstraints} onChange={e=>setNegativeConstraints(e.target.value)} placeholder="One constraint per line" rows={3} /></label>
+        <div className="creator-actions">
+          <button className="creator-primary" type="button" onClick={createPlan} disabled={!canSubmit}>Create plan</button>
+          <button type="button" onClick={persistPlan} disabled={!creativePlan || planState==='saving'}>{planState==='saving'?'Saving…':'Save plan'}</button>
+          <button type="submit" disabled={!canSubmit || !executable}>Generate {kind}</button>
+          <button type="button" onClick={exportPrompt} disabled={!canSubmit || !promptExportReady || exportState==='running'}>{exportState==='running'?'Exporting…':'Export prompt package'}</button>
+        </div>
         {notice && <p className="creator-notice" role="status">{notice}</p>}
       </form>
       <aside className="creator-preview">
-        <div className={'creator-preview-orb '+kind} /><h2>Preview</h2>
-        {promptPackage ? <><pre>{promptPackage.prompt}</pre>{promptPackage.adaptationNotes.map(note => <p key={note}>{note}</p>)}</> : <p>A verified result will appear here. ATLAS does not insert fabricated output.</p>}
-        <dl><div><dt>Engine</dt><dd>{executable ? 'Verified engine available' : 'No executable engine verified'}</dd></div><div><dt>Prompt Export</dt><dd>{promptExportReady ? 'Ready · planning only' : 'Unavailable'}</dd></div><div><dt>Audit</dt><dd>Enabled</dd></div></dl>
+        <div className={'creator-preview-orb '+kind} />
+        {creativePlan ? <>
+          <h2>Creative plan</h2>
+          <p>{creativePlan.normalizedObjective}</p>
+          <div className="creator-plan-deliverables">{creativePlan.deliverables.map(item => <span key={item.id}>{item.title}</span>)}</div>
+          {specializedPrompt && <><h3>{kind.toUpperCase()} prompt</h3><pre>{specializedPrompt.prompt}</pre><p>Engine: {specializedPrompt.providerOrEngineId === 'prompt-export' ? 'Prompt Export' : specializedPrompt.providerOrEngineId}</p></>}
+        </> : <>
+          <h2>Preview</h2>
+          <p>Create a plan to inspect deliverables and the specialized prompt. ATLAS does not insert fabricated output.</p>
+        </>}
+        {promptPackage && <div className="creator-export-preview"><h3>Prompt export</h3><pre>{promptPackage.prompt}</pre>{promptPackage.adaptationNotes.map(note => <p key={note}>{note}</p>)}</div>}
+        <dl>
+          <div><dt>Engine</dt><dd>{executable ? 'Verified executable ready' : 'No executable engine verified'}</dd></div>
+          <div><dt>Prompt Export</dt><dd>{promptExportReady ? 'Ready · planning only' : 'Unavailable'}</dd></div>
+          <div><dt>Plan version</dt><dd>{persistedVersion || 'Not saved'}</dd></div>
+          <div><dt>Audit</dt><dd>Enabled</dd></div>
+        </dl>
       </aside>
     </div>
   </section>;
