@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "production_origin": "https://www.atlasenterprisesuite.com",
+  "default_mode": "fail-closed",
+  "public_routes": [
+    "/",
+    "/identity?app=%2Ffinance",
+    "/finance"
+  ],
+  "critical_network_routes": [
+    "/business/network",
+    "/business/network/pricing",
+    "/business/network/commissions",
+    "/business/network/payouts",
+    "/business/network/compliance"
+  ],
+  "protected_routes": [
+    {
+      "path": "/deployment.json",
+      "allowed_statuses": [302, 401, 403]
+    }
+  ]
+}
