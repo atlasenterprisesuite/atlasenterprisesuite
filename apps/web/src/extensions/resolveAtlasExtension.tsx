@@ -4,6 +4,7 @@ import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
+import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import {
   AccountingExperiencePage,
@@ -16,17 +17,12 @@ import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
-import { WorkRoutes } from '../work/WorkRoutes';
 
 const JAQUE_MATE_SENTINEL_CANONICAL = '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel';
 const JAQUE_MATE_SENTINEL_V2 = '/health/jaque-mate/sentinel/v2';
 const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
 
 export function resolveAtlasExtension(pathname: string) {
-  if (pathname === '/work' || pathname.startsWith('/work/')) {
-    return <RequireAtlasIdentity><WorkRoutes /></RequireAtlasIdentity>;
-  }
-
   if (pathname === '/') return <EnterpriseExperiencePage />;
 
   if (pathname === '/advisory' || pathname.startsWith('/advisory/')) {
@@ -39,6 +35,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/galaxy') {
     return <RequireAtlasIdentity><AtlasGalaxyPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/device-os') {
+    return <RequireAtlasIdentity><DeviceOSPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/crm' || pathname.startsWith('/crm/')) {
