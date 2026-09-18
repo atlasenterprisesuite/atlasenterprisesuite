@@ -1,0 +1,44 @@
+name: ATLAS Assistant Self-Hosted CI
+
+on:
+  push:
+    branches:
+      - feat/atlas-assistant-avatar-voice-mainline
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/web/public/atlas-avatar-particle.svg"
+      - "apps/web/src/assistant/**"
+      - "apps/web/src/components/assistant/**"
+      - "apps/web/src/components/AtlasShell.tsx"
+      - "apps/web/src/modules/voice/**"
+      - "tests/unit/*assistant*.test.ts"
+      - "tests/integration/*assistant*.test.tsx"
+      - ".github/workflows/atlas-assistant-self-hosted-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-assistant-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Locked install
+        run: npm ci
+      - name: Assistant focused unit tests
+        run: npx vitest run tests/unit/assistant-capabilities.test.ts tests/unit/assistant-storage.test.ts tests/unit/assistant-voice.test.ts tests/unit/atlas-assistant-provider-readiness.test.ts tests/unit/atlas-assistant-route-context.test.ts tests/unit/atlas-assistant-client.test.ts
+      - name: Assistant focused integration tests
+        run: npx vitest run tests/integration/atlas-assistant-mainline.test.tsx
+      - name: Canonical Cloudflare verification gate
+        run: npm run verify:cloudflare
