@@ -37,4 +37,9 @@ describe('ATLAS Local Network Access schema contract', () => {
     expect(sql).not.toMatch(/grant[^;]*(update|delete)[^;]*atlas_local_network_events[^;]*authenticated/i);
     expect(sql).toMatch(/actor_user_id = auth\.uid\(\)/i);
   });
+
+  it('uses valid PL/pgSQL dollar quoting for the endpoint audit trigger', () => {
+    expect(sql).toMatch(/as \$\$\s*begin/i);
+    expect(sql).toMatch(/end;\s*\$\$;/i);
+  });
 });
