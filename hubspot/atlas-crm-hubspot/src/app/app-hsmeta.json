@@ -1,0 +1,31 @@
+{
+  "uid": "atlas_crm_hubspot",
+  "type": "app",
+  "config": {
+    "description": "ATLAS Enterprise Suite CRM integration for governed HubSpot OAuth connectivity and read-only CRM access.",
+    "name": "ATLAS CRM HubSpot",
+    "distribution": "marketplace",
+    "auth": {
+      "type": "oauth",
+      "redirectUrls": [
+        "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-crm-hubspot"
+      ],
+      "requiredScopes": [
+        "oauth",
+        "crm.objects.contacts.read",
+        "crm.objects.companies.read",
+        "crm.objects.deals.read",
+        "tickets"
+      ],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": [
+        "https://api.hubapi.com"
+      ],
+      "iframe": [],
+      "img": []
+    }
+  }
+}
