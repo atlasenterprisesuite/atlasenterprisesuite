@@ -20,7 +20,7 @@ Client Portal remains deny-by-default until authenticated client/delegate scope 
 
 ## Security
 
-RLS is enabled on every Advisory persistence table. Reads require Advisory permissions in the active organization. Mutations are executed through security-definer RPCs that validate auth.uid(), active organization membership, Advisory manage permission, firm ownership and resource scope before writing.
+RLS is enabled on every Advisory persistence table. Reads require both the appropriate Advisory permission in the active organization and an active membership in the target firm. Mutations are executed through security-definer RPCs that validate auth.uid(), active organization membership, Advisory manage permission, firm ownership and resource scope before writing.
 
 Audit events are append-only to authenticated users: browser users receive read access only when they hold Advisory admin or audit permissions.
 
