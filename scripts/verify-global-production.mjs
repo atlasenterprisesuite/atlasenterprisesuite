@@ -269,19 +269,14 @@ async function main() {
         Boolean(entry.atlas_version_id) &&
         entry.atlas_version_tag === args.expectedSha
     );
-  const edgeSecuredVerified =
+  const challengeDeferred =
     !directlyVerified &&
     args.deferEdgeChallenge &&
     challengeOnlyOnRoot &&
     criticalNetworkRoutesReachable &&
     protectedRoutesEnforced &&
     productionCommitShaVerified;
-  const verified = directlyVerified || edgeSecuredVerified;
-  const challengeDeferred =
-    !verified &&
-    args.deferEdgeChallenge &&
-    challengeFailures.length > 0 &&
-    nonChallengeFailures.length === 0;
+  const verified = directlyVerified;
 
   const result = {
     version: contract.version,
@@ -290,13 +285,11 @@ async function main() {
     ok: verified,
     status: directlyVerified
       ? 'passed'
-      : edgeSecuredVerified
-        ? 'passed-edge-secured'
-        : challengeDeferred
-          ? 'challenge-deferred'
-          : args.mode === 'warning-only'
-            ? 'warning'
-            : 'failed',
+      : challengeDeferred
+        ? 'challenge-deferred'
+        : args.mode === 'warning-only'
+          ? 'warning'
+          : 'failed',
     requires_authorized_fallback: challengeDeferred,
     edge_challenge_detected: challengeFailures.length > 0,
     checks: {
@@ -304,7 +297,7 @@ async function main() {
       critical_network_routes_reachable: criticalNetworkRoutesReachable,
       protected_routes_enforced: protectedRoutesEnforced,
       production_commit_sha_verified: productionCommitShaVerified,
-      classified_root_challenge_accepted: edgeSecuredVerified,
+      classified_root_challenge_deferred: challengeDeferred,
       required_routes: requiredResults,
       protected_routes: protectedResults
     },
