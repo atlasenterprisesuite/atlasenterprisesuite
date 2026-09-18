@@ -6,10 +6,12 @@ const workflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8')
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts?: Record<string, string> };
 
 describe('Cloudflare Workers Static Assets deployment contract', () => {
-  it('serves the Vite SPA build as Workers static assets', () => {
+  it('serves the Vite SPA build as Workers static assets with native version metadata', () => {
     expect(wrangler).toContain('"name": "atlas-enterprise-suite-web"');
     expect(wrangler).toContain('"directory": "./apps/web/dist"');
     expect(wrangler).toContain('"not_found_handling": "single-page-application"');
+    expect(wrangler).toContain('"version_metadata"');
+    expect(wrangler).toContain('"binding": "CF_VERSION_METADATA"');
   });
 
   it('deploys only after the shared repository validation gate', () => {
@@ -108,5 +110,20 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
   it('keeps custom-domain routing separate from the worker artifact declaration', () => {
     expect(wrangler).not.toContain('custom_domain');
     expect(workflow).toContain('workers.dev');
+  });
+
+  it('attests the exact deployed version using Cloudflare version metadata', () => {
+    expect(workflow).toContain('--tag "$GITHUB_SHA"');
+    expect(workflow).toContain('X-Atlas-Version-Id');
+    expect(workflow).toContain('X-Atlas-Version-Tag');
+    expect(workflow).toContain('NATIVE_VERSION_ID');
+    expect(workflow).toContain('GITHUB_SHA');
+    expect(workflow).toContain('production_commit_sha_verified=true');
+    expect(workflow).toContain('Production commit SHA verified');
+  });
+
+  it('records exact-version verification only from the production verification output', () => {
+    expect(workflow).toContain("production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true'");
+    expect(workflow).not.toContain('production_commit_sha_verified:true');
   });
 });
