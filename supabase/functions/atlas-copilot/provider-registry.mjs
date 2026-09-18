@@ -17,7 +17,7 @@ function safeDescriptor(adapter){
     prompt_cache:raw.prompt_cache&&typeof raw.prompt_cache==='object'?{...raw.prompt_cache}:undefined
   };
 }
-export function createProviderRegistry({providers=[]}={}){
+export function createProviderRegistry({providers=[],health=null}={}){
   const map=new Map();
   for(const adapter of providers){const d=safeDescriptor(adapter);if(ORDER.includes(d.id)&&!map.has(d.id))map.set(d.id,adapter);}
   const get=id=>map.get(id)||null;
@@ -28,6 +28,7 @@ export function createProviderRegistry({providers=[]}={}){
       if(!adapter){result.push({id,state:'configuration-required',configured:false,verified:false,model:null,capabilities:[],profiles:[],error:'provider_not_configured'});continue;}
       const descriptor=safeDescriptor(adapter);let probe;
       try{probe=await adapter.probe({profile});}catch(error){probe={configured:descriptor.configured,verified:false,provider:id,model:descriptor.model||descriptor.models?.[profile]||null,error:error?.code||'provider_unavailable'};}
+      const healthState=health?.snapshot?.(id)||{circuit_state:'closed',health_score:100,consecutive_failures:0,ewma_latency_ms:null,open_until:null,last_error:null,last_event_at:null};
       result.push({
         id,
         state:stateFor(probe),
@@ -42,7 +43,8 @@ export function createProviderRegistry({providers=[]}={}){
         region:descriptor.region,
         feature_support:descriptor.feature_support,
         prompt_cache:descriptor.prompt_cache,
-        error:probe?.error||null
+        error:probe?.error||null,
+        health:healthState
       });
     }
     return result;
