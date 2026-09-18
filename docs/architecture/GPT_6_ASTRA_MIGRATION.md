@@ -13,7 +13,7 @@ Migrated runtime surfaces:
 - `atlas-personal-intelligence` — authenticated personal intelligence uses `gpt-6-astra` with medium reasoning.
 - `atlas-sign-interpret` — image-input sign interpretation uses `gpt-6-astra` with low reasoning and strict structured output.
 - `atlas-openai-readiness` — non-inferential model availability probe for the configured OpenAI key.
-- `atlas-copilot` also supports an optional `bedrock` provider backed by the OpenAI-compatible Amazon Bedrock Responses API. Direct OpenAI remains first in Auto routing; verified Bedrock is the next infrastructure fallback before other provider families.
+- `atlas-copilot` also supports an optional `bedrock` provider backed by the OpenAI-compatible Amazon Bedrock Responses API. Auto routing first prefers providers that ATLAS administrators explicitly classify as zero-cost, then uses the normal verified-provider order. Paid providers are blocked by the default zero-cost guard.
 
 ## API contract
 
@@ -121,3 +121,22 @@ Direct OpenAI GPT-6 Astra can support async tool calling, mid-turn steering over
 Amazon Bedrock supports text/image/file inputs, structured output, function calling, streaming, reasoning effort, persisted reasoning on supported models, prompt caching, custom tools, client-side tool search, and computer use. Bedrock does not provide Astra async tool calling, mid-turn steering, reasoning updates, Programmatic Tool Calling, multi-agent orchestration, remote MCP servers, hosted file search, shell, or image-generation tools. Hosted web search is Mantle-only.
 
 ATLAS must never advertise an unavailable feature merely because the underlying model supports it on another endpoint.
+
+
+## Zero-cost execution policy
+
+ATLAS Intelligence defaults to zero automatic API spend. This is a governance control, not a claim that paid third-party APIs become free.
+
+Default behavior:
+
+- `ATLAS_AI_ENFORCE_ZERO_COST=true`
+- `ATLAS_AI_ALLOW_PAID_SINGLE=false`
+- `ATLAS_AI_ALLOW_COUNCIL=false`
+- `ATLAS_AI_ZERO_COST_PROVIDERS` is an explicit administrator allow-list of providers whose current execution path has no marginal API charge to ATLAS.
+- Auto routing prefers verified providers in that zero-cost list before any paid provider.
+- If strict zero-cost mode is active and the chosen route is not in the zero-cost list, execution is denied before model inference. Readiness probes may still use non-inferential provider metadata endpoints.
+- Status/readiness surfaces expose `automatic_paid_calls=false`, `automatic_api_cost_usd=0`, and whether at least one declared zero-cost provider is actually verified and ready.
+
+A provider must never be placed in `ATLAS_AI_ZERO_COST_PROVIDERS` merely because a separate consumer subscription exists. In particular, ChatGPT subscriptions and OpenAI API billing are separate products. A provider should be marked zero-cost only when ATLAS has an execution path with no marginal API charge (for example, an already-funded internal runtime or eligible local/self-hosted runtime), and that runtime has been verified.
+
+To intentionally permit paid API execution, an administrator must disable strict zero-cost mode and explicitly authorize the applicable paid policy. This prevents a code path, fallback, council run, or provider outage from silently creating usage charges.
