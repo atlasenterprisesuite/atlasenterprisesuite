@@ -14,7 +14,7 @@ const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
-const VERSION=5;
+const VERSION=6;
 const PROVIDER_IDS=['openai','gemini','codex-sovereign'];
 
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
@@ -68,9 +68,9 @@ async function parseJson(req){try{return await req.json()}catch{throw Object.ass
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
 async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
 async function handleStatus(req){
-  const rt=runtime(),resolved=await contextFor(req),{providers}=await readinessFor(rt,'balanced');
+  const rt=runtime(),resolved=await contextFor(req),{providers}=await readinessFor(rt,'balanced'),store=storeFor(rt.serviceRoleKey),dataPolicy=await store.getDataPolicy({context:resolved.context});
   const openai=providers.find(p=>p.id==='openai');
-  return json({ok:true,authenticated:true,provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','openai','gemini','codex-sovereign','council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning'],profiles:['fast','balanced','deep'],cost_policy:{allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers},repositoryMutation:'github-actions-oidc-queue'});
+  return json({ok:true,authenticated:true,provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','openai','gemini','codex-sovereign','council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',ai_data_policy:dataPolicy,organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning'],profiles:['fast','balanced','deep'],cost_policy:{allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers},repositoryMutation:'github-actions-oidc-queue'});
 }
 async function handleChat(req){
   if(req.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
@@ -81,9 +81,10 @@ async function handleChat(req){
   const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers});
   const council=createCouncilOrchestrator({registry});
   const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway()});
+  const storeProviderResponse=body?.store_provider_response===true?true:body?.store_provider_response===false?false:null;
   const request=body?.context!==undefined&&body?.module===undefined
-    ?{module:'workbench',intent:'balanced',mode,message,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy)},legacy_context:legacy}
-    :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{},legacy_context:legacy};
+    ?{module:'workbench',intent:'balanced',mode,message,store_provider_response:storeProviderResponse,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy)},legacy_context:legacy}
+    :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,store_provider_response:storeProviderResponse,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{},legacy_context:legacy};
   const result=await gateway.execute({context:resolved.context,request});
   return json({ok:true,...result,text:result.output,provider_state:'verified_for_request',provider_readiness:providers,execution:{repositoryMutation:false,repairQueue:'available',mode:'analysis'}});
 }
