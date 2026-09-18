@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = 'supabase/functions';
-const RESPONSES_CALL_PATTERN = /api[.]openai[.]com\\/v1\\/responses/;
+const RESPONSES_CALL_PATTERN = /api[.]openai[.]com[/]v1[/]responses/;
 const GOVERNED_ADAPTER = 'supabase/functions/atlas-copilot/openai-responses-adapter.mjs';
 
 function filesUnder(path: string): string[] {
