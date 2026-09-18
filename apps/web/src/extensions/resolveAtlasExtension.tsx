@@ -4,6 +4,7 @@ import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
+import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import {
   AccountingExperiencePage,
@@ -34,6 +35,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/galaxy') {
     return <RequireAtlasIdentity><AtlasGalaxyPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/device-os') {
+    return <RequireAtlasIdentity><DeviceOSPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/crm' || pathname.startsWith('/crm/')) {
