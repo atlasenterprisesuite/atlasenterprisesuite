@@ -80,6 +80,13 @@ describe('ATLAS shared MCP runtime', () => {
     expect(source).toContain('verifyReadiness(runtime.persistence, scope)');
   });
 
+  it('resolves extensionless TypeScript files and directory index imports on Node hosts', () => {
+    const loader = readFileSync('apps/atlas-orchestrator/atlas-ts-loader.mjs', 'utf8');
+    expect(loader).toContain("ERR_UNSUPPORTED_DIR_IMPORT");
+    expect(loader).toContain("${specifier}/index.ts");
+    expect(loader).toContain("${specifier}.ts");
+  });
+
   it.each([
     {},
     { ATLAS_PERSISTENCE_MODE: 'supabase' },
