@@ -30,10 +30,18 @@ function verifiedHubSpotAuthorizationUrl(value: unknown): string {
   return url.toString();
 }
 
+type HubSpotOAuthConfiguration = {
+  configured: boolean;
+  redirectUri: string;
+};
+
 export function HubSpotIntegrationPage() {
   const [connection, setConnection] = useState<CrmConnectionView | null>(null);
+  const [configuration, setConfiguration] = useState<HubSpotOAuthConfiguration | null>(null);
+  const [oauthClientId, setOauthClientId] = useState('');
+  const [oauthClientSecret, setOauthClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
-  const [action, setAction] = useState<'authorizing' | 'verifying' | 'disconnecting' | null>(null);
+  const [action, setAction] = useState<'configuring' | 'authorizing' | 'verifying' | 'disconnecting' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
@@ -41,8 +49,12 @@ export function HubSpotIntegrationPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await crmApi<{ connection: CrmConnectionView }>('connection.status');
-      setConnection(result.connection);
+      const [statusResult, configurationResult] = await Promise.all([
+        crmApi<{ connection: CrmConnectionView }>('connection.status'),
+        crmApi<HubSpotOAuthConfiguration>('connection.configuration')
+      ]);
+      setConnection(statusResult.connection);
+      setConfiguration(configurationResult);
     } catch (caught) {
       setError(safeError(caught));
     } finally {
@@ -53,6 +65,23 @@ export function HubSpotIntegrationPage() {
   useEffect(() => {
     void refreshStatus();
   }, [refreshStatus]);
+
+  const configureOAuth = async () => {
+    setAction('configuring');
+    setError(null);
+    try {
+      const result = await crmApi<HubSpotOAuthConfiguration>('oauth.configure', {
+        clientId: oauthClientId,
+        clientSecret: oauthClientSecret
+      });
+      setConfiguration(result);
+      setOauthClientSecret('');
+    } catch (caught) {
+      setError(safeError(caught));
+    } finally {
+      setAction(null);
+    }
+  };
 
   const connect = async () => {
     setAction('authorizing');
@@ -95,7 +124,7 @@ export function HubSpotIntegrationPage() {
   };
 
   const state = connection?.state ?? 'unconfigured';
-  const connectDisabled = loading || action !== null;
+  const connectDisabled = loading || action !== null || configuration?.configured !== true;
   const canDisconnect = connection && !['unconfigured', 'revoked'].includes(connection.state);
 
   return (
@@ -123,6 +152,49 @@ export function HubSpotIntegrationPage() {
           <div><dt>Last successful provider operation</dt><dd>{connection.lastSuccessAt ? new Date(connection.lastSuccessAt).toLocaleString() : 'None recorded'}</dd></div>
           <div><dt>Safe error code</dt><dd>{connection.safeErrorCode || 'None'}</dd></div>
         </dl>
+      ) : null}
+
+      {!loading && configuration && !configuration.configured ? (
+        <section className="crm-scope-panel" aria-labelledby="hubspot-oauth-app-setup">
+          <h2 id="hubspot-oauth-app-setup">HubSpot OAuth app setup</h2>
+          <p>
+            Enter the OAuth credentials from the HubSpot developer app. The secret is sent directly
+            to the ATLAS backend and stored encrypted in Supabase Vault; it is not saved in browser storage.
+          </p>
+          <dl className="crm-field-grid">
+            <div><dt>Redirect URI</dt><dd><code>{configuration.redirectUri}</code></dd></div>
+          </dl>
+          <div className="crm-form-grid">
+            <label>
+              Client ID
+              <input
+                value={oauthClientId}
+                onChange={(event) => setOauthClientId(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label>
+              Client Secret
+              <input
+                type="password"
+                value={oauthClientSecret}
+                onChange={(event) => setOauthClientSecret(event.target.value)}
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+            </label>
+          </div>
+          <div className="crm-actions">
+            <button
+              type="button"
+              onClick={() => void configureOAuth()}
+              disabled={action !== null || !oauthClientId.trim() || oauthClientSecret.trim().length < 8}
+            >
+              {action === 'configuring' ? 'Saving securely…' : 'Save OAuth configuration'}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {!loading && connection ? (
@@ -168,7 +240,10 @@ export function HubSpotIntegrationPage() {
         </div>
       ) : null}
 
-      <div className="notice">Provider access tokens, refresh tokens, client secrets and encryption keys are never rendered by this page.</div>
+      <div className="notice">
+        Provider access tokens, refresh tokens and encryption keys are never rendered by this page.
+        OAuth client secrets are accepted only through the masked setup field and are cleared after secure backend storage.
+      </div>
     </section>
   );
 }

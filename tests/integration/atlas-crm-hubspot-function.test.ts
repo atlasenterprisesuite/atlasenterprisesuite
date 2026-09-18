@@ -41,6 +41,9 @@ function dependencies(input: {
   permissions?: readonly string[];
   store?: HubSpotConnectionStore;
   onFetch?: (url: string, init?: RequestInit) => void;
+  oauthConfigured?: boolean;
+  serviceRole?: boolean;
+  secretWrites?: Array<Record<string, unknown>>;
 } = {}): AtlasCrmHubSpotDependencies {
   const granted = new Set(input.permissions ?? []);
   return {
@@ -49,9 +52,10 @@ function dependencies(input: {
     env: (name) => ({
       SUPABASE_URL: 'https://atlas-test.supabase.co',
       SUPABASE_ANON_KEY: 'fake-publishable-key',
-      HUBSPOT_CLIENT_ID: 'fake-client-id',
-      HUBSPOT_CLIENT_SECRET: 'fake-client-secret',
-      HUBSPOT_REDIRECT_URI: 'https://atlas.test/callback'
+      SUPABASE_SERVICE_ROLE_KEY: input.serviceRole ? 'fake-service-role' : '',
+      HUBSPOT_CLIENT_ID: input.oauthConfigured === false ? '' : 'fake-client-id',
+      HUBSPOT_CLIENT_SECRET: input.oauthConfigured === false ? '' : 'fake-client-secret',
+      HUBSPOT_REDIRECT_URI: input.oauthConfigured === false ? '' : 'https://atlas.test/callback'
     } as Record<string, string>)[name],
     fetchImpl: async (resource, init) => {
       const url = String(resource);
@@ -64,6 +68,14 @@ function dependencies(input: {
       if (url.endsWith('/rest/v1/rpc/has_identity_permission')) {
         const body = JSON.parse(String(init?.body)) as { p?: string };
         return new Response(JSON.stringify(granted.has(body.p ?? '')), { status: 200 });
+      }
+      if (url.endsWith('/rest/v1/rpc/atlas_get_server_secret')) {
+        return new Response('null', { status: 200 });
+      }
+      if (url.endsWith('/rest/v1/rpc/atlas_set_server_secret')) {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        input.secretWrites?.push(body);
+        return new Response('null', { status: 200 });
       }
       throw new Error(`Unexpected test fetch: ${url}`);
     }
@@ -78,6 +90,7 @@ async function invoke(input: {
   origin?: string | null;
   deps?: AtlasCrmHubSpotDependencies;
   query?: Record<string, string>;
+  payload?: Record<string, unknown>;
 }) {
   const headers = new Headers({ 'Content-Type': 'application/json' });
   if (input.origin !== null) headers.set('Origin', input.origin ?? allowedOrigin);
@@ -90,7 +103,8 @@ async function invoke(input: {
     headers,
     body: method === 'POST' ? JSON.stringify({
       operation: input.operation,
-      organizationId: input.organization ?? organizationId
+      organizationId: input.organization ?? organizationId,
+      ...(input.payload ?? {})
     }) : undefined
   });
   return handleAtlasCrmHubSpotRequest(request, input.deps ?? dependencies());
@@ -156,6 +170,48 @@ describe('ATLAS CRM HubSpot Edge Function security boundary', () => {
       deps: dependencies({ permissions: ['crm.read'] })
     });
     expect(denied.status).toBe(403);
+  });
+
+  it('stores OAuth app credentials only through service-role Vault RPCs', async () => {
+    const secretWrites: Array<Record<string, unknown>> = [];
+    const response = await invoke({
+      operation: 'oauth.configure',
+      token: validToken,
+      payload: {
+        clientId: 'hubspot-client-id',
+        clientSecret: 'hubspot-client-secret'
+      },
+      deps: dependencies({
+        permissions: ['integrations.admin'],
+        oauthConfigured: false,
+        serviceRole: true,
+        secretWrites
+      })
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      configured: true,
+      redirectUri: 'https://atlas-test.supabase.co/functions/v1/atlas-crm-hubspot'
+    });
+    expect(secretWrites.map((entry) => entry.p_name)).toEqual(expect.arrayContaining([
+      'hubspot_oauth_client_id',
+      'hubspot_oauth_client_secret',
+      'hubspot_oauth_redirect_uri',
+      'atlas_integration_credential_key'
+    ]));
+    expect(secretWrites.find((entry) => entry.p_name === 'hubspot_oauth_client_secret')?.p_secret)
+      .toBe('hubspot-client-secret');
+  });
+
+  it('rejects OAuth app configuration without integration admin permission', async () => {
+    const response = await invoke({
+      operation: 'oauth.configure',
+      token: validToken,
+      payload: { clientId: 'id', clientSecret: 'secret-value' },
+      deps: dependencies({ oauthConfigured: false, serviceRole: true, permissions: [] })
+    });
+    expect(response.status).toBe(403);
   });
 
   it('returns browser OAuth callbacks to the canonical ATLAS CRM route', async () => {

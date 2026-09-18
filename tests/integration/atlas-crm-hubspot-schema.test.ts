@@ -9,6 +9,10 @@ const crmPolicySql = readFileSync(
   'supabase/migrations/20260918191500_crm_integration_policy_consolidation.sql',
   'utf8'
 );
+const secureOAuthSql = readFileSync(
+  'supabase/migrations/20260918193000_crm_secure_oauth_config.sql',
+  'utf8'
+);
 
 describe('ATLAS CRM HubSpot schema contract', () => {
   it('registers canonical integration and CRM permissions', () => {
@@ -86,5 +90,14 @@ describe('ATLAS CRM HubSpot schema contract', () => {
     expect(crmPolicySql).toContain('drop policy if exists atlas_integration_connections_select');
     expect(crmPolicySql).toContain('drop policy if exists atlas_integration_connections_read');
     expect(crmPolicySql).toMatch(/create policy atlas_integration_connections_read[\s\S]*integrations\.read/i);
+  });
+
+  it('keeps OAuth app secrets behind service-role-only Vault RPCs', () => {
+    expect(secureOAuthSql).toContain('vault.decrypted_secrets');
+    expect(secureOAuthSql).toContain('vault.create_secret');
+    expect(secureOAuthSql).toContain('vault.update_secret');
+    expect(secureOAuthSql).toMatch(/revoke all on function public\.atlas_get_server_secret\(text\) from public, anon, authenticated/i);
+    expect(secureOAuthSql).toMatch(/grant execute on function public\.atlas_get_server_secret\(text\) to service_role/i);
+    expect(secureOAuthSql).toMatch(/grant execute on function public\.atlas_set_server_secret\(text, text, text\) to service_role/i);
   });
 });
