@@ -27,6 +27,7 @@ describe('ATLAS global production verification', () => {
       '/',
       '/identity?app=%2Ffinance',
       '/finance',
+      '/voice',
       '/health',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
       '/studio/teleprompter',
@@ -124,10 +125,12 @@ describe('ATLAS global production verification', () => {
       expect(authorizedVerifier, route).toContain(`'${route}'`);
     }
 
+    expect(authorizedVerifier).toContain("'/voice'");
     expect(authorizedVerifier).toContain("'/health'");
     expect(authorizedVerifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
+    expect(authorizedVerifier).toContain('voice_route_reachable');
     expect(authorizedVerifier).toContain('health_route_reachable');
     expect(authorizedVerifier).toContain('jaque_mate_sentinel_route_reachable');
   });

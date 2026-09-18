@@ -150,11 +150,11 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     title: 'ATLAS Voice',
     navLabel: 'Voice',
     area: 'Creative',
-    route: '/studio/voice',
+    route: '/voice',
     readiness: 'partial',
     requiresAuth: true,
-    description: 'Voice and agent workspace within ATLAS Studio.',
-    showInNavigation: false
+    description: 'Universal governed voice control, conversational intelligence and agent workspace across ATLAS.',
+    showInNavigation: true
   },
   {
     id: 'hospitality',
