@@ -5,6 +5,10 @@ const sql = readFileSync(
   'supabase/migrations/20260914170000_atlas_crm_hubspot_integration.sql',
   'utf8'
 );
+const crmPolicySql = readFileSync(
+  'supabase/migrations/20260918191500_crm_integration_policy_consolidation.sql',
+  'utf8'
+);
 
 describe('ATLAS CRM HubSpot schema contract', () => {
   it('registers canonical integration and CRM permissions', () => {
@@ -76,5 +80,11 @@ describe('ATLAS CRM HubSpot schema contract', () => {
   it('stores no CRM payload column in links or sync evidence tables', () => {
     expect(sql).not.toMatch(/atlas_external_object_links[\s\S]{0,1000}\bpayload\b/i);
     expect(sql).not.toMatch(/atlas_integration_sync_runs[\s\S]{0,800}\bpayload\b/i);
+  });
+
+  it('consolidates integration reads onto one canonical policy', () => {
+    expect(crmPolicySql).toContain('drop policy if exists atlas_integration_connections_select');
+    expect(crmPolicySql).toContain('drop policy if exists atlas_integration_connections_read');
+    expect(crmPolicySql).toMatch(/create policy atlas_integration_connections_read[\s\S]*integrations\.read/i);
   });
 });
