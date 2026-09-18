@@ -11,6 +11,7 @@ type AtlasAssistantPanelProps = {
   textCapability: AtlasCapabilityState;
   providerLabel: string;
   microphoneCapability: AtlasCapabilityState;
+  transcriptionCapability: AtlasCapabilityState;
   microphoneActive: boolean;
   speechCapability: AtlasCapabilityState;
   speechEnabled: boolean;
@@ -36,6 +37,7 @@ export function AtlasAssistantPanel({
   textCapability,
   providerLabel,
   microphoneCapability,
+  transcriptionCapability,
   microphoneActive,
   speechCapability,
   speechEnabled,
@@ -48,6 +50,7 @@ export function AtlasAssistantPanel({
   const busy = state === 'thinking' || state === 'speaking';
   const textReady = textCapability === 'ready';
   const microphoneUnavailable = microphoneCapability === 'unavailable';
+  const transcriptionUnavailable = transcriptionCapability !== 'ready';
   const speechUnavailable = speechCapability !== 'ready';
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -62,7 +65,7 @@ export function AtlasAssistantPanel({
     <section className="atlas-assistant-panel" aria-label="ATLAS Assistant">
       <header className="atlas-assistant-header">
         <div className="atlas-assistant-identity">
-          <img src="/atlas-avatar-particle.svg" alt="" />
+          <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
           <div>
             <span className="eyebrow">ATLAS Assistant</span>
             <strong>{moduleLabel}</strong>
@@ -80,10 +83,10 @@ export function AtlasAssistantPanel({
         <button
           type="button"
           onClick={() => void onToggleMicrophone()}
-          disabled={microphoneUnavailable || state === 'thinking' || state === 'speaking'}
+          disabled={microphoneUnavailable || transcriptionUnavailable || !textReady || state === 'thinking' || state === 'speaking'}
           aria-pressed={microphoneActive}
         >
-          {microphoneUnavailable ? 'Microphone unavailable' : microphoneActive ? 'Stop microphone' : 'Enable microphone capture'}
+          {microphoneUnavailable ? 'Microphone unavailable' : transcriptionUnavailable ? 'Voice transcription unavailable' : microphoneActive ? 'Cancel listening' : 'Speak to ATLAS'}
         </button>
         <label>
           <input
@@ -94,7 +97,7 @@ export function AtlasAssistantPanel({
           />
           <span>{speechUnavailable ? 'Speech unavailable' : 'Speak replies'}</span>
         </label>
-        <small>{microphoneActive ? 'Microphone capture is active. Voice transcription is not connected in this web milestone.' : 'Microphone capture does not imply voice transcription; transcription is not connected in this web milestone.'}</small>
+        <small>{transcriptionUnavailable ? 'This browser does not expose compatible speech recognition. Text mode remains available.' : microphoneActive ? 'ATLAS is listening for one user turn. Your final transcript will be sent to the governed assistant.' : 'Voice turns are transcribed in the browser, then sent through the same authenticated ATLAS Intelligence path as text.'}</small>
       </div>
 
       <form className="atlas-assistant-compose" onSubmit={handleSubmit}>
@@ -103,7 +106,7 @@ export function AtlasAssistantPanel({
           id="atlas-assistant-input"
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={!textReady ? `Intelligence ${providerLabel}` : microphoneActive ? 'Stop microphone capture to type' : 'Ask ATLAS…'}
+          placeholder={!textReady ? `Intelligence ${providerLabel}` : microphoneActive ? 'Finish or cancel the voice turn to type' : 'Ask ATLAS…'}
           rows={2}
           disabled={busy || microphoneActive || !textReady}
         />
