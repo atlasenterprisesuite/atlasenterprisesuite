@@ -24,6 +24,8 @@ describe('Advisory Office durable persistence contract', () => {
     expect(sql).toContain("'advisory.read'");
     expect(sql).toContain("'advisory.manage'");
     expect(sql).toContain('public.has_identity_permission');
+    expect(sql).toContain("('viewer','advisory.read')");
+    expect(sql).not.toContain("('member','advisory.read')");
   });
 
   it('bootstraps only AW Finance firm 001 and no invented clients or engagements', () => {
