@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 7;
+const VERSION = 8;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -245,6 +245,7 @@ Deno.serve(async (req: Request) => {
     finance,
     studioWebLaunch,
     commerce,
+    security,
     network,
     networkPricing,
     networkCommissions,
@@ -257,6 +258,7 @@ Deno.serve(async (req: Request) => {
     probe('/finance'),
     probe('/studio/web-launch'),
     probe('/commerce'),
+    probe('/security'),
     probe('/business/network'),
     probe('/business/network/pricing'),
     probe('/business/network/commissions'),
@@ -265,7 +267,7 @@ Deno.serve(async (req: Request) => {
     probe('/deployment.json', false)
   ]);
 
-  const publicShellOk = home.status === 200 && identity.status === 200 && finance.status === 200 && studioWebLaunch.status === 200;
+  const publicShellOk = home.status === 200 && identity.status === 200 && finance.status === 200 && studioWebLaunch.status === 200 && security.status === 200;
   const commerceRouteOk = commerce.status === 200;
   const routedProbes = [
     home,
@@ -273,6 +275,7 @@ Deno.serve(async (req: Request) => {
     finance,
     studioWebLaunch,
     commerce,
+    security,
     network,
     networkPricing,
     networkCommissions,
@@ -313,6 +316,7 @@ Deno.serve(async (req: Request) => {
         module_spa_shell_reachable: finance.status === 200,
         studio_web_launch_route_reachable: studioWebLaunch.status === 200,
         commerce_route_reachable: commerce.status === 200,
+        security_route_reachable: security.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         production_commit_sha_verified: productionCommitVerified,
         network_route_reachable: network.status === 200,
@@ -326,6 +330,7 @@ Deno.serve(async (req: Request) => {
         finance,
         studio_web_launch: studioWebLaunch,
         commerce,
+        security,
         network,
         network_pricing: networkPricing,
         network_commissions: networkCommissions,
