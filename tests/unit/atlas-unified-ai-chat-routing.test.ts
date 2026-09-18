@@ -5,7 +5,7 @@ import {
 } from '../../supabase/functions/atlas-copilot/intelligence-gateway.mjs';
 
 type Provider = {
-  id: 'openai' | 'gemini' | 'codex-sovereign';
+  id: 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign';
   configured: boolean;
   verified: boolean;
   capabilities: string[];
@@ -30,7 +30,7 @@ describe('ATLAS Unified AI routing', () => {
 
   it('routes an explicit provider without silent fallback', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('openai'), provider('gemini'), provider('codex-sovereign')],
+      providers: [provider('openai'), provider('bedrock'), provider('gemini'), provider('codex-sovereign')],
     });
     expect(router.route({ mode: 'gemini', intent: 'deep', capabilities_requested: ['reasoning'] })).toMatchObject({
       mode: 'gemini',
@@ -90,7 +90,7 @@ describe('ATLAS Unified AI routing', () => {
     });
     expect(router.route({ mode: 'council', intent: 'deep', capabilities_requested: ['reasoning'] })).toMatchObject({
       mode: 'council',
-      providers: ['openai', 'gemini', 'codex-sovereign'],
+      providers: ['openai', 'bedrock', 'gemini', 'codex-sovereign'],
       profile: 'deep',
       fallback_used: false,
     });
