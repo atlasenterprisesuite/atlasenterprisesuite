@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const edgeUrl = new URL('../../supabase/functions/atlas-execution/index.ts', import.meta.url);
+const edgePath = `${process.cwd()}/supabase/functions/atlas-execution/index.ts`;
 
 async function edgeSource() {
-  return readFile(edgeUrl, 'utf8');
+  return readFile(edgePath, 'utf8');
 }
 
 describe('ATLAS Universal Execution Edge contract', () => {
