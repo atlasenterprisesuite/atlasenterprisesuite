@@ -1,0 +1,172 @@
+name: ATLAS Global Production Verification
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: Verification policy. Production defaults to fail-closed.
+        required: false
+        type: string
+        default: fail-closed
+    outputs:
+      verified:
+        description: Whether the canonical ATLAS production contract was verified.
+        value: ${{ jobs.verify-production.outputs.verified }}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Verification policy
+        required: true
+        default: fail-closed
+        type: choice
+        options:
+          - fail-closed
+          - warning-only
+  deployment_status:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify-production:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      verified: ${{ steps.final.outputs.verified }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Select verification policy
+        id: policy
+        env:
+          REQUESTED_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          MODE="${REQUESTED_MODE:-fail-closed}"
+          if [ "$GITHUB_EVENT_NAME" = "deployment_status" ]; then
+            MODE="fail-closed"
+          fi
+          case "$MODE" in
+            fail-closed|warning-only) ;;
+            *) echo "::error::Unsupported verification mode: $MODE"; exit 1 ;;
+          esac
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "ATLAS global production verification policy: $MODE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify canonical ATLAS production contract
+        id: direct
+        env:
+          VERIFY_MODE: ${{ steps.policy.outputs.mode }}
+        run: |
+          set -euo pipefail
+          npm run verify:production:global -- \
+            --mode "$VERIFY_MODE" \
+            --defer-edge-challenge \
+            --expected-sha "$GITHUB_SHA" \
+            --json-output /tmp/atlas-global-production.json
+
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/atlas-global-production.json', 'utf8'));
+          console.log(`verified=${result.ok === true}`);
+          console.log(`requires_authorized_fallback=${result.requires_authorized_fallback === true}`);
+          console.log(`edge_challenge_detected=${result.edge_challenge_detected === true}`);
+          console.log(`critical_network_routes_reachable=${result.checks?.critical_network_routes_reachable === true}`);
+          console.log(`protected_routes_enforced=${result.checks?.protected_routes_enforced === true}`);
+          console.log(`production_commit_sha_verified=${result.checks?.production_commit_sha_verified === true}`);
+          console.log(`classified_root_challenge_accepted=${result.checks?.classified_root_challenge_accepted === true}`);
+          NODE
+
+      - name: Verify through authorized ATLAS runtime after classified edge challenge
+        if: steps.direct.outputs.requires_authorized_fallback == 'true' && steps.policy.outputs.mode == 'fail-closed'
+        id: authorized
+        run: |
+          set -euo pipefail
+          OIDC_RESPONSE="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-production-http-verifier")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value||''))")"
+          test -n "$OIDC_TOKEN" || { echo "::error::GitHub OIDC token was not issued for global production verification"; exit 1; }
+
+          HTTP_STATUS="$(curl --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" \
+            --output /tmp/atlas-authorized-global-production.json \
+            --write-out '%{http_code}' \
+            "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-cloudflare-production-http-verify?api=verify" || true)"
+
+          AUTHORIZED_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.ok===true))")"
+          TARGET_SHA="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.target_sha||''))")"
+          HOME_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.public_home_reachable===true))")"
+          IDENTITY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.identity_route_reachable===true))")"
+          MODULE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.module_spa_shell_reachable===true))")"
+          NETWORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.critical_network_routes_reachable===true))")"
+          DEPLOYMENT_PROTECTED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.deployment_path_protected===true))")"
+
+          if [ "$HTTP_STATUS" = "200" ] && \
+             [ "$AUTHORIZED_OK" = "true" ] && \
+             [ "$TARGET_SHA" = "$GITHUB_SHA" ] && \
+             [ "$HOME_OK" = "true" ] && \
+             [ "$IDENTITY_OK" = "true" ] && \
+             [ "$MODULE_OK" = "true" ] && \
+             [ "$NETWORK_OK" = "true" ] && \
+             [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+            echo "Authorized ATLAS runtime verified the canonical production domain and critical ATLAS Network routes while edge security remained active." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Authorized production verification failed (HTTP $HTTP_STATUS, target SHA ${TARGET_SHA:-none})"
+            exit 1
+          fi
+
+      - name: Enforce final global deployment gate
+        if: always()
+        id: final
+        env:
+          MODE: ${{ steps.policy.outputs.mode }}
+          DIRECT_OUTCOME: ${{ steps.direct.outcome }}
+          DIRECT_VERIFIED: ${{ steps.direct.outputs.verified }}
+          FALLBACK_REQUIRED: ${{ steps.direct.outputs.requires_authorized_fallback }}
+          AUTHORIZED_VERIFIED: ${{ steps.authorized.outputs.verified }}
+        run: |
+          set -euo pipefail
+
+          if [ "$DIRECT_OUTCOME" != "success" ]; then
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Direct ATLAS production verification did not complete successfully."
+            exit 1
+          fi
+
+          if [ "$DIRECT_VERIFIED" = "true" ]; then
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+            echo "ATLAS global production verification passed directly." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "$FALLBACK_REQUIRED" = "true" ] && [ "$AUTHORIZED_VERIFIED" = "true" ]; then
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+            echo "ATLAS global production verification passed through the authorized runtime fallback." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "$MODE" = "warning-only" ]; then
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ATLAS production verification reported a warning-only failure."
+            exit 0
+          fi
+
+          echo "verified=false" >> "$GITHUB_OUTPUT"
+          echo "::error::ATLAS production verification is fail-closed and the canonical production contract was not verified."
+          exit 1

@@ -1,6 +1,41 @@
-.voice-page { max-width: 1180px; }
+.voice-page { max-width: 1240px; }
+.voice-page-embedded { max-width: none; }
 .voice-status-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; font-size: .85rem; opacity: .88; }
 .voice-state { border: 1px solid currentColor; border-radius: 999px; padding: .35rem .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.voice-stage-grid { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 1rem; align-items: stretch; }
+.atlas-avatar-console { position: relative; min-height: 520px; overflow: hidden; border: 1px solid rgba(89, 211, 255, .2); border-radius: 24px; padding: 1rem; background: radial-gradient(circle at 50% 28%, rgba(29, 168, 224, .18), rgba(4, 12, 22, .92) 58%); box-shadow: inset 0 1px rgba(255,255,255,.04), 0 20px 80px rgba(0,0,0,.22); display: flex; flex-direction: column; justify-content: center; gap: 1rem; }
+.atlas-avatar { position: relative; width: min(100%, 330px); aspect-ratio: 1; margin: 0 auto; padding: 0; border: 0; border-radius: 50%; overflow: visible; background: transparent; color: inherit; cursor: pointer; isolation: isolate; }
+.atlas-avatar:disabled { cursor: wait; opacity: .9; }
+.atlas-avatar:focus-visible { outline: 2px solid #7de7ff; outline-offset: 8px; }
+.atlas-avatar img { width: 100%; height: 100%; display: block; border-radius: 50%; object-fit: cover; object-position: center; filter: saturate(1.08) contrast(1.08); box-shadow: 0 0 38px rgba(37, 190, 255, .22); transition: transform .35s ease, filter .35s ease, box-shadow .35s ease; }
+.atlas-avatar:not(:disabled):hover img { transform: scale(1.018); filter: saturate(1.18) contrast(1.1) brightness(1.04); }
+.avatar-glow, .avatar-state-ring, .avatar-orbit { position: absolute; inset: -5%; border-radius: 50%; pointer-events: none; }
+.avatar-glow { inset: 8%; z-index: -1; background: radial-gradient(circle, rgba(109, 238, 255, .2), rgba(22, 133, 255, .03) 55%, transparent 72%); filter: blur(22px); animation: avatar-breathe 4.5s ease-in-out infinite; }
+.avatar-state-ring { inset: -2%; z-index: 3; border: 1px solid rgba(101, 222, 255, .34); box-shadow: 0 0 24px rgba(44, 189, 255, .16), inset 0 0 24px rgba(44, 189, 255, .08); }
+.avatar-orbit { z-index: 2; border: 1px solid rgba(82, 200, 255, .17); }
+.avatar-orbit-one { animation: avatar-orbit 13s linear infinite; }
+.avatar-orbit-two { inset: -10%; border-style: dashed; border-color: rgba(128, 117, 255, .13); animation: avatar-orbit-reverse 19s linear infinite; }
+.avatar-scanline { position: absolute; z-index: 4; left: 8%; right: 8%; top: 15%; height: 1px; background: linear-gradient(90deg, transparent, rgba(142, 242, 255, .8), transparent); box-shadow: 0 0 12px rgba(79, 218, 255, .5); opacity: .55; animation: avatar-scan 4.4s ease-in-out infinite; pointer-events: none; }
+.atlas-avatar-listening .avatar-state-ring { border-color: rgba(90, 247, 255, .78); box-shadow: 0 0 38px rgba(52, 225, 255, .35), inset 0 0 34px rgba(52, 225, 255, .12); animation: avatar-listen-pulse 1.15s ease-in-out infinite; }
+.atlas-avatar-listening img { box-shadow: 0 0 52px rgba(46, 218, 255, .32); }
+.atlas-avatar-transcribing .avatar-scanline, .atlas-avatar-understanding .avatar-scanline { animation-duration: 1.35s; opacity: .95; }
+.atlas-avatar-understanding .avatar-orbit-one, .atlas-avatar-responding .avatar-orbit-one { animation-duration: 4.5s; }
+.atlas-avatar-speaking .avatar-state-ring { animation: avatar-speaking-pulse .7s ease-in-out infinite alternate; border-color: rgba(138, 118, 255, .72); }
+.atlas-avatar-speaking img { filter: saturate(1.2) brightness(1.08) contrast(1.08); box-shadow: 0 0 58px rgba(101, 103, 255, .32); }
+.atlas-avatar-completed .avatar-state-ring { border-color: rgba(88, 227, 177, .58); }
+.atlas-avatar-error .avatar-state-ring { border-color: rgba(255, 102, 122, .72); box-shadow: 0 0 30px rgba(255, 77, 99, .24); }
+.avatar-readout { display: grid; grid-template-columns: auto 1fr; column-gap: .65rem; align-items: center; width: min(100%, 330px); margin: 0 auto; padding: .75rem .9rem; border: 1px solid rgba(101, 222, 255, .2); border-radius: 14px; background: rgba(4, 16, 27, .74); backdrop-filter: blur(12px); }
+.avatar-readout strong { font-size: .8rem; letter-spacing: .14em; }
+.avatar-readout small { grid-column: 2; color: #7897aa; line-height: 1.35; margin-top: .2rem; }
+.avatar-live-dot { width: 9px; height: 9px; border-radius: 50%; background: #5fe1ff; box-shadow: 0 0 14px rgba(95, 225, 255, .65); }
+.avatar-live-dot-listening, .avatar-live-dot-speaking { animation: avatar-dot 1s ease-in-out infinite; }
+.avatar-live-dot-error { background: #ff667a; box-shadow: 0 0 14px rgba(255,102,122,.65); }
+.avatar-waveform { height: 38px; display: flex; align-items: center; justify-content: center; gap: 4px; opacity: .45; }
+.avatar-waveform span { display: block; width: 3px; height: 8px; border-radius: 99px; background: linear-gradient(180deg, #8cecff, #4aa4ff); transform-origin: center; }
+.avatar-waveform-listening span, .avatar-waveform-speaking span { animation: avatar-wave 1s ease-in-out infinite alternate; }
+.avatar-waveform span:nth-child(2n) { animation-delay: -.15s; }
+.avatar-waveform span:nth-child(3n) { animation-delay: -.32s; }
+.avatar-waveform span:nth-child(4n) { animation-delay: -.48s; }
 .voice-console { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .voice-panel { min-height: 250px; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 1.25rem; background: rgba(8,18,36,.58); }
 .voice-transcript { margin-top: .75rem; min-height: 88px; padding: 1rem; border-radius: 14px; background: rgba(255,255,255,.055); font-size: 1.08rem; line-height: 1.55; }
@@ -18,4 +53,15 @@
 .voice-rules { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; }
 .voice-rules strong { margin-right: .3rem; }
 .voice-rules span { border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: .35rem .65rem; font-size: .8rem; opacity: .82; }
-@media (max-width: 800px) { .voice-console { grid-template-columns: 1fr; } .voice-panel { min-height: 200px; } }
+@keyframes avatar-breathe { 0%,100% { transform: scale(.95); opacity: .55; } 50% { transform: scale(1.08); opacity: .95; } }
+@keyframes avatar-orbit { to { transform: rotate(360deg); } }
+@keyframes avatar-orbit-reverse { to { transform: rotate(-360deg); } }
+@keyframes avatar-scan { 0%,100% { transform: translateY(0); } 50% { transform: translateY(220px); } }
+@keyframes avatar-listen-pulse { 0%,100% { transform: scale(.985); opacity: .7; } 50% { transform: scale(1.03); opacity: 1; } }
+@keyframes avatar-speaking-pulse { from { transform: scale(.99); } to { transform: scale(1.035); } }
+@keyframes avatar-dot { 0%,100% { opacity: .55; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.22); } }
+@keyframes avatar-wave { from { height: 7px; opacity: .45; } to { height: 30px; opacity: 1; } }
+@media (max-width: 1100px) { .voice-stage-grid { grid-template-columns: 1fr; } .atlas-avatar-console { min-height: auto; } }
+@media (max-width: 800px) { .voice-console { grid-template-columns: 1fr; } .voice-panel { min-height: 200px; } .atlas-avatar { width: min(100%, 300px); } }
+@media (max-width: 520px) { .atlas-avatar-console { padding: .75rem; border-radius: 18px; } .atlas-avatar { width: min(100%, 270px); } .avatar-readout { padding: .65rem .7rem; } .voice-controls button { flex: 1 1 140px; } }
+@media (prefers-reduced-motion: reduce) { .avatar-glow, .avatar-orbit, .avatar-scanline, .avatar-state-ring, .avatar-live-dot, .avatar-waveform span { animation: none !important; } .atlas-avatar img { transition: none; } }

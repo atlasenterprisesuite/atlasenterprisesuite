@@ -11,6 +11,7 @@ import type {
 } from '../../../../packages/hospitality/types.ts';
 import { createDormakabaAdapter, type DormakabaAdapterConfig } from '../providers/dormakaba.ts';
 import { createGenericCertifiedAdapter, type GenericCertifiedAdapterConfig } from '../providers/generic.ts';
+import { createOnityAdapter, type OnityAdapterConfig } from '../providers/onity.ts';
 import { createSaltoAdapter, type SaltoAdapterConfig } from '../providers/salto.ts';
 import { createVingcardAdapter, type VingcardAdapterConfig } from '../providers/vingcard.ts';
 import { hospitalityError } from './errors.ts';
@@ -26,6 +27,7 @@ const KNOWN_PROVIDER_TYPES = new Set<HospitalityProviderType>([
   'dormakaba_ambiance_soap',
   'dormakaba_ambiance_rest',
   'dormakaba_pms_bridge',
+  'onity',
   'generic_certified'
 ]);
 
@@ -33,6 +35,7 @@ type ProviderRuntimeConfig =
   | SaltoAdapterConfig
   | VingcardAdapterConfig
   | DormakabaAdapterConfig
+  | OnityAdapterConfig
   | GenericCertifiedAdapterConfig;
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -128,6 +131,9 @@ export function providerFor(
   }
   if (providerType.startsWith('dormakaba_')) {
     return createDormakabaAdapter(config as DormakabaAdapterConfig);
+  }
+  if (providerType === 'onity') {
+    return createOnityAdapter(config as OnityAdapterConfig);
   }
   if (providerType === 'generic_certified') {
     return createGenericCertifiedAdapter(config as GenericCertifiedAdapterConfig);

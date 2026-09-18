@@ -20,12 +20,13 @@ describe('ATLAS Hospitality route and UI contract', () => {
     for (const page of pages) expect(existsSync(page)).toBe(true);
   });
 
-  it('exposes a governed Hospitality module home without replacing the operational access workspace', () => {
+  it('uses the Hospitality OS overview as the governed module home', () => {
     const source = readFileSync(routePath, 'utf8');
     const registry = readFileSync(moduleRegistryPath, 'utf8');
-    expect(source).toContain('HospitalityExperiencePage');
-    expect(source).toContain('<Route path="/hospitality" element={<HospitalityExperiencePage />} />');
-    expect(source).not.toContain('<Route path="/hospitality" element={<Navigate');
+    expect(source).toContain('HospitalityOverviewPage');
+    expect(source).toContain('<Route path="/hospitality" element={<Navigate to="/hospitality/overview" replace />} />');
+    expect(source).toContain('<Route path="/hospitality/overview" element={<HospitalityOverviewPage />} />');
+    expect(source).toContain('<Route path="/hospitality/properties" element={<PropertiesPage />} />');
     expect(registry).toContain("route: '/hospitality'");
     expect(registry).toContain("navLabel: 'Hospitality'");
     expect(registry).toContain('showInNavigation: true');

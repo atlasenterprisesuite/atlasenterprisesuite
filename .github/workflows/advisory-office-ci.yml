@@ -1,0 +1,30 @@
+name: Advisory Office CI
+on:
+  pull_request:
+    paths:
+      - 'packages/advisory/**'
+      - 'apps/web/src/modules/advisory/**'
+      - 'apps/web/src/lib/advisoryApi.ts'
+      - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
+      - 'apps/web/src/main.tsx'
+      - 'apps/web/src/modules/registry.ts'
+      - 'packages/core/src/permissions.ts'
+      - 'supabase/migrations/*advisory*'
+      - 'tests/unit/advisory-office.test.ts'
+      - 'tests/integration/advisory-*.test.ts'
+      - 'tests/integration/root-router-sanity.test.ts'
+      - '.github/workflows/advisory-office-ci.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx vitest run tests/unit/advisory-office.test.ts tests/integration/advisory-office-routes.test.ts tests/integration/advisory-office-persistence.test.ts tests/integration/advisory-firm-scope-rls.test.ts tests/integration/root-router-sanity.test.ts
+      - run: npm run build
