@@ -6,6 +6,11 @@ import type { ContentWorkspaceState } from '../../../packages/creator/content_in
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
 import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts';
+import {
+  createCreatorRecordingDownload,
+  creatorRecordingReadiness,
+  uploadCreatorRecording
+} from './_shared/recordings.ts';
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
 import {
   getContentWorkspace,
@@ -22,7 +27,7 @@ import {
   writeCreatorAudit
 } from './_shared/repository.ts';
 
-const VERSION = '2026-09-15.1';
+const VERSION = '2026-09-18.1';
 const PROVIDER_IDS = new Set<ProviderId>(['seedance', 'veo', 'kling', 'wan', 'minimax']);
 
 function json(body: unknown, status = 200) {
@@ -225,6 +230,66 @@ async function handleAssets(req: Request, url: URL) {
   return json({ ok: true, assets: await listAssets(ctx.orgId, productionId) });
 }
 
+async function handleRecordingReadiness(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const storage = await creatorRecordingReadiness();
+  const canUpload = ctx.permissions.includes('creator.admin') || ctx.permissions.includes('creator.write');
+  return json({
+    ok: true,
+    service: 'atlas-creator-recordings',
+    organization_id: ctx.orgId,
+    connected: storage.connected,
+    reason: storage.reason,
+    upload_allowed: canUpload,
+    bucket: storage.connected ? 'atlas-creator-recordings' : null,
+    checked_at: new Date().toISOString()
+  });
+}
+
+async function handleRecordingUpload(req: Request) {
+  const ctx = await creatorContext(req, 'creator.write');
+  const form = await req.formData().catch(() => { throw creatorError('invalid_form_data', 400); });
+  const files = form.getAll('recording').filter((value): value is File => value instanceof File);
+  if (files.length !== 1) throw creatorError('recording_required', 422);
+  const language = String(form.get('language') || '').trim();
+  if (language !== 'es' && language !== 'en') throw creatorError('recording_language_invalid', 422);
+  const durationRaw = String(form.get('duration_seconds') || '').trim();
+  const durationSeconds = durationRaw ? Number(durationRaw) : null;
+  if (durationSeconds !== null && (!Number.isFinite(durationSeconds) || durationSeconds < 0)) {
+    throw creatorError('recording_duration_invalid', 422);
+  }
+  const recording = await uploadCreatorRecording(ctx, {
+    file: files[0],
+    language,
+    durationSeconds
+  });
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.teleprompter.recording_saved', String(recording.id), {
+    recording_id: recording.id,
+    language,
+    mime_type: recording.mime_type,
+    file_size_bytes: recording.file_size_bytes,
+    duration_seconds: recording.duration_seconds
+  });
+  return json({ ok: true, recording }, 201);
+}
+
+async function handleRecordingDownload(req: Request, url: URL) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const recordingId = String(url.searchParams.get('recording_id') || '').trim();
+  if (!recordingId) throw creatorError('recording_id_required', 422);
+  const result = await createCreatorRecordingDownload(ctx, recordingId);
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.teleprompter.recording_downloaded', recordingId, {
+    recording_id: recordingId,
+    expires_in: result.expiresIn
+  });
+  return json({
+    ok: true,
+    recording: result.recording,
+    signed_url: result.signedUrl,
+    expires_in: result.expiresIn
+  });
+}
+
 async function handleSubmit(req: Request): Promise<never> {
   const ctx = await creatorContext(req, 'creator.generate');
   const body = await bodyJson(req);
@@ -265,6 +330,9 @@ async function route(req: Request) {
   if (api === 'creative-plan' && req.method === 'GET') return handleCreativePlan(req, url);
   if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
   if (api === 'assets') return handleAssets(req, url);
+  if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
+  if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
+  if (api === 'recording-download' && req.method === 'GET') return handleRecordingDownload(req, url);
   if (api === 'submit') return handleSubmit(req);
   return json({ ok: false, error: 'not_found' }, 404);
 }
