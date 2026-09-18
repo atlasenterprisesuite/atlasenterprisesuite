@@ -11,7 +11,7 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(edge).toContain('sha256(code)');
     expect(edge).toContain('SESSION_MINUTES = 60');
     expect(edge).toContain('ROTATE_BEFORE_MINUTES = 15');
-    expect(edge).toContain("delete process.env").toBe(false);
+    expect(edge).not.toContain('delete process.env');
   });
 
   it('fails closed for high-risk commands without canonical approval', () => {
