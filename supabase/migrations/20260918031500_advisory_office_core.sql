@@ -18,7 +18,7 @@ values
   ('owner','advisory.billing'), ('owner','advisory.compliance'), ('owner','advisory.automations'), ('owner','advisory.admin'),
   ('admin','advisory.read'), ('admin','advisory.manage'), ('admin','advisory.write'),
   ('admin','advisory.billing'), ('admin','advisory.compliance'), ('admin','advisory.automations'), ('admin','advisory.admin'),
-  ('member','advisory.read')
+  ('viewer','advisory.read')
 on conflict do nothing;
 
 create table if not exists public.advisory_firms (
