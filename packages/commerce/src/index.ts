@@ -4,3 +4,4 @@ export * from './pricing';
 export * from './cart';
 export * from './payment';
 export * from './checkout';
+export * from './order';
