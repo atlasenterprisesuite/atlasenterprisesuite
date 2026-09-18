@@ -14,17 +14,6 @@ export type AtlasModuleDefinition = {
 
 export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
   {
-    id: 'work',
-    title: 'ATLAS Work Soberano',
-    navLabel: 'Work',
-    area: 'Platform',
-    route: '/work',
-    readiness: 'implemented',
-    requiresAuth: true,
-    description: 'Governed sovereign work orchestration over the Universal Execution Engine.',
-    showInNavigation: true
-  },
-  {
     id: 'business',
     title: 'Business Suite',
     navLabel: 'Business',
@@ -176,6 +165,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'Spatial navigation and truthful module-state overview.',
+    showInNavigation: true
+  },
+  {
+    id: 'device-os',
+    title: 'ATLAS Device OS',
+    navLabel: 'Device OS',
+    area: 'Platform',
+    route: '/device-os',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed software control plane for ATLAS phones, desktops, wearables, smart spaces and mobility hardware.',
     showInNavigation: true
   },
   {
