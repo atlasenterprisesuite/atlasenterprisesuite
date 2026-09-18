@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { LocalNetworkAccessPanel } from './LocalNetworkAccessPanel';
 import {
   ATLAS_DEVICE_PROFILES,
   getAtlasDeviceProfile,
@@ -80,6 +81,8 @@ export function DeviceOSPage() {
         <article><strong>{ATLAS_DEVICE_PROFILES.length}</strong><span>device profiles</span></article>
         <article><strong>Zero Trust</strong><span>permission boundary</span></article>
       </div>
+
+      <LocalNetworkAccessPanel />
     </section>
   );
 }
