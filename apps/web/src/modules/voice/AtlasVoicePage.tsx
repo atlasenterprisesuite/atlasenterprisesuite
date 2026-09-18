@@ -232,7 +232,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
             <span className="avatar-orbit avatar-orbit-one" aria-hidden="true" />
             <span className="avatar-orbit avatar-orbit-two" aria-hidden="true" />
             <span className="avatar-glow" aria-hidden="true" />
-            <img src="/atlas-avatar-particle.webp" alt="" draggable={false} />
+            <img src="/atlas-avatar-particle.svg" alt="" draggable={false} />
             <span className="avatar-scanline" aria-hidden="true" />
             <span className="avatar-state-ring" aria-hidden="true" />
           </button>
