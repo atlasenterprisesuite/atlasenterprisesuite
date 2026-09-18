@@ -56,8 +56,10 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('--expected-sha');
     expect(verifier).toContain('x-atlas-version-id');
     expect(verifier).toContain('x-atlas-version-tag');
-    expect(verifier).toContain('passed-edge-secured');
-    expect(verifier).toContain('classified_root_challenge_accepted');
+    expect(verifier).not.toContain('passed-edge-secured');
+    expect(verifier).toContain('challenge-deferred');
+    expect(verifier).toContain('classified_root_challenge_deferred');
+    expect(verifier).toContain('const verified = directlyVerified;');
     expect(verifier).toContain('AbortSignal.timeout');
     expect(verifier).toContain("redirect: 'manual'");
     expect(verifier).toContain('blocked-cross-origin-redirect');
@@ -96,6 +98,17 @@ describe('ATLAS global production verification', () => {
     expect(workflow).toContain(
       "steps.direct.outputs.requires_authorized_fallback == 'true' && steps.policy.outputs.mode == 'fail-closed'"
     );
+  });
+
+  it('never treats a Cloudflare challenge on the public root as direct production success', () => {
+    const verifier = read(verifierPath);
+    const workflow = read(workflowPath);
+
+    expect(verifier).toContain('challengeOnlyOnRoot');
+    expect(verifier).toContain('const verified = directlyVerified;');
+    expect(verifier).toContain('requires_authorized_fallback: challengeDeferred');
+    expect(verifier).not.toContain('passed-edge-secured');
+    expect(workflow).toContain('Verify through authorized ATLAS runtime after classified edge challenge');
   });
 
   it('keeps authorized runtime verification aligned with the shared Network route contract', () => {

@@ -132,7 +132,7 @@ Repository tests must verify:
 3. `www.atlasenterprisesuite.com` is always verified after a production deployment before success is claimed.
 4. ATLAS Health and the canonical Jaque Mate + Sentinel route are required production checks.
 5. All five critical ATLAS Network routes are required.
-6. Cross-origin redirect, timeout, unexpected status, protected-route regression, or unresolved challenge blocks production verification.
+6. Cross-origin redirect, timeout, unexpected status, protected-route regression, or unresolved challenge blocks production verification. A Cloudflare challenge on the public root is never accepted as a direct PASS; in fail-closed mode it must be independently verified through the authorized runtime fallback or the deployment remains unverified.
 7. Cloudflare challenge fallback preserves edge security and uses narrowly scoped GitHub OIDC.
 8. Existing Cloudflare deployment evidence remains intact.
 9. No unprovisioned cloud region is represented as deployed or verified.
