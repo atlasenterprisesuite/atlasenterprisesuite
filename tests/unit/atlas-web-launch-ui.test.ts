@@ -32,10 +32,14 @@ describe('ATLAS Web Launch Lab UI and production gate', () => {
   it('includes the new route in both direct and authorized fail-closed production verification', () => {
     const contract = source('data/ops/global-production-verification.json');
     const verifier = source('supabase/functions/atlas-cloudflare-production-http-verify/index.ts');
+    const cloudflare = source('.github/workflows/cloudflare-deploy.yml');
     expect(contract).toContain('"default_mode": "fail-closed"');
     expect(contract).toContain('"/studio/web-launch"');
     expect(verifier).toContain("probe('/studio/web-launch')");
     expect(verifier).toContain('studio_web_launch_route_reachable');
+    expect(cloudflare).toContain("probe_worker '/studio/web-launch' 'web-launch'");
+    expect(cloudflare).toContain('probe_route "ATLAS Web Launch Lab" "/studio/web-launch" "studio_web_launch_route_reachable"');
+    expect(cloudflare).toContain('AUTHORIZED_WEB_LAUNCH_REACHABLE');
     for (const route of ['/business/network', '/business/network/pricing', '/business/network/commissions', '/business/network/payouts', '/business/network/compliance']) {
       expect(contract).toContain(route);
     }
