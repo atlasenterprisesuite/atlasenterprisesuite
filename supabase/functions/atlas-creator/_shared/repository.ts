@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence.ts';
+import type { CreativePlan } from '../../../../packages/creator/creative_plan.ts';
 import { providerLabel } from '../../../../packages/creator/providers.ts';
 import type {
   ProductionSpec,
@@ -169,6 +170,93 @@ export async function saveContentWorkspace(
   const { data, error } = await sb
     .from('creator_content_workspaces')
     .update({ ...baseRow, version: expectedVersion + 1 })
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .eq('version', expectedVersion)
+    .select('*')
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('version_conflict', 409);
+  return data;
+}
+
+export async function listCreativePlans(orgId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_creative_plans')
+    .select('id,organization_id,created_by,title,source_brief,media_kinds,plan_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .order('updated_at', { ascending: false });
+  if (error) throw creatorError('persistence_failed', 500);
+  return data || [];
+}
+
+export async function getCreativePlan(orgId: string, planId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_creative_plans')
+    .select('*')
+    .eq('organization_id', orgId)
+    .eq('id', planId)
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('creative_plan_not_found', 404);
+  return data;
+}
+
+export async function saveCreativePlan(
+  ctx: CreatorContext,
+  plan: CreativePlan,
+  expectedVersion: number
+) {
+  const id = String(plan?.id || '').trim();
+  if (!id) throw creatorError('creative_plan_id_required', 422);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 0) {
+    throw creatorError('expected_version_required', 422);
+  }
+
+  const sb = adminClient();
+  const { data: existing, error: existingError } = await sb
+    .from('creator_creative_plans')
+    .select('id,version,created_by,created_at')
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .maybeSingle();
+  if (existingError) throw creatorError('persistence_failed', 500);
+
+  const now = new Date().toISOString();
+  const nextVersion = existing ? expectedVersion + 1 : 1;
+  const trustedPlan: CreativePlan = {
+    ...plan,
+    id,
+    organizationId: ctx.orgId,
+    createdByUserId: existing ? String(existing.created_by) : ctx.userId,
+    version: nextVersion,
+    createdAt: existing ? String(existing.created_at || plan.createdAt || now) : now,
+    updatedAt: now
+  };
+
+  const baseRow = {
+    organization_id: ctx.orgId,
+    title: trustedPlan.title,
+    source_brief: trustedPlan.sourceBrief,
+    media_kinds: trustedPlan.mediaKinds,
+    plan_json: trustedPlan,
+    updated_at: now
+  };
+
+  if (!existing) {
+    if (expectedVersion !== 0) throw creatorError('version_conflict', 409);
+    const { data, error } = await sb
+      .from('creator_creative_plans')
+      .insert({ ...baseRow, id, created_by: ctx.userId, version: 1, created_at: now })
+      .select('*')
+      .single();
+    if (error || !data) throw creatorError('persistence_failed', 500);
+    return data;
+  }
+
+  const { data, error } = await sb
+    .from('creator_creative_plans')
+    .update({ ...baseRow, version: nextVersion })
     .eq('organization_id', ctx.orgId)
     .eq('id', id)
     .eq('version', expectedVersion)

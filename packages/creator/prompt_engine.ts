@@ -1,4 +1,5 @@
 import type { CreativeEngineReadiness, CreativeMediaKind } from './creative_engine';
+import type { CreativePlan, CreativePromptArtifact } from './creative_plan';
 
 export type PromptExportRequest = {
   mediaKind: CreativeMediaKind;
@@ -59,5 +60,19 @@ export function compilePromptExport(request: PromptExportRequest): PromptExportP
     adaptationNotes: [
       'No media was generated. Use this package with a compatible authorized engine.'
     ]
+  };
+}
+
+
+export function compileSpecializedPrompt(
+  plan: CreativePlan,
+  mediaKind: CreativeMediaKind
+): CreativePromptArtifact {
+  const artifact = plan.promptSet.find(item => item.mediaKind === mediaKind);
+  if (!artifact) throw new Error('creative_prompt_not_found');
+  return {
+    ...artifact,
+    parameters: { ...artifact.parameters },
+    adaptationNotes: [...artifact.adaptationNotes]
   };
 }
