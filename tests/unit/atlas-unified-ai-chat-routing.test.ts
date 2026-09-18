@@ -73,6 +73,7 @@ describe('ATLAS Unified AI routing', () => {
       mode: 'auto',
       providers: ['codex-sovereign'],
       reason: 'auto_zero_cost_verified_provider',
+      fallback_used: false,
     });
   });
 
