@@ -23,7 +23,16 @@ describe('ATLAS global production verification', () => {
 
     expect(contract.production_origin).toBe('https://www.atlasenterprisesuite.com');
     expect(contract.default_mode).toBe('fail-closed');
-    expect(contract.public_routes).toEqual(['/', '/identity?app=%2Ffinance', '/finance', '/studio/teleprompter', '/studio/web-launch', '/crm']);
+    expect(contract.public_routes).toEqual([
+      '/',
+      '/identity?app=%2Ffinance',
+      '/finance',
+      '/health',
+      '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
+      '/studio/teleprompter',
+      '/studio/web-launch',
+      '/crm'
+    ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
       '/business/network/pricing',
@@ -75,6 +84,11 @@ describe('ATLAS global production verification', () => {
     expect(workflow).toContain('audience=atlas-production-http-verifier');
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('fail-closed');
+
+    const cloudflareWorkflow = read('.github/workflows/cloudflare-deploy.yml');
+    expect(cloudflareWorkflow).toContain('global-production-verification:');
+    expect(cloudflareWorkflow).toContain('uses: ./.github/workflows/global-production-verify.yml');
+    expect(cloudflareWorkflow).toContain('mode: fail-closed');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
@@ -94,6 +108,13 @@ describe('ATLAS global production verification', () => {
     for (const route of contract.critical_network_routes) {
       expect(authorizedVerifier, route).toContain(`'${route}'`);
     }
+
+    expect(authorizedVerifier).toContain("'/health'");
+    expect(authorizedVerifier).toContain(
+      "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
+    );
+    expect(authorizedVerifier).toContain('health_route_reachable');
+    expect(authorizedVerifier).toContain('jaque_mate_sentinel_route_reachable');
   });
 
   it('authorizes only the canonical Cloudflare and global verification workflows through OIDC', () => {

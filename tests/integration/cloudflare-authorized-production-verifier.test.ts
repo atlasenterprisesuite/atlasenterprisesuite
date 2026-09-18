@@ -18,6 +18,12 @@ describe('Cloudflare authorized production HTTP verifier', () => {
   it('checks the public shell while preserving the protected deployment path', () => {
     expect(verifier).toContain("'/identity?app=%2Ffinance'");
     expect(verifier).toContain("'/finance'");
+    expect(verifier).toContain("'/health'");
+    expect(verifier).toContain(
+      "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
+    );
+    expect(verifier).toContain('health_route_reachable');
+    expect(verifier).toContain('jaque_mate_sentinel_route_reachable');
     expect(verifier).toContain("'/deployment.json'");
     expect(verifier).toContain("[302, 401, 403].includes(deployment.status)");
     expect(verifier).toContain("verification_source: 'atlas-authorized-supabase-runtime'");
@@ -63,5 +69,9 @@ describe('Cloudflare authorized production HTTP verifier', () => {
       expect(productionStep).toContain(route);
       expect(verifier).toContain(`'${route}'`);
     }
+
+    expect(workflow).toContain('global-production-verification:');
+    expect(workflow).toContain('uses: ./.github/workflows/global-production-verify.yml');
+    expect(workflow).toContain('mode: fail-closed');
   });
 });

@@ -21,6 +21,8 @@ Required public shell routes:
 - `/`
 - `/identity?app=%2Ffinance`
 - `/finance`
+- `/health`
+- `/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel`
 
 Critical ATLAS Network routes:
 
@@ -128,8 +130,9 @@ Repository tests must verify:
 1. Any deployment method can invoke one repository-owned production verification command or reusable workflow.
 2. `fail-closed` is the default.
 3. `www.atlasenterprisesuite.com` is always verified after a production deployment before success is claimed.
-4. All five critical ATLAS Network routes are required.
-5. Cross-origin redirect, timeout, unexpected status, protected-route regression, or unresolved challenge blocks production verification.
-6. Cloudflare challenge fallback preserves edge security and uses narrowly scoped GitHub OIDC.
-7. Existing Cloudflare deployment evidence remains intact.
-8. No unprovisioned cloud region is represented as deployed or verified.
+4. ATLAS Health and the canonical Jaque Mate + Sentinel route are required production checks.
+5. All five critical ATLAS Network routes are required.
+6. Cross-origin redirect, timeout, unexpected status, protected-route regression, or unresolved challenge blocks production verification.
+7. Cloudflare challenge fallback preserves edge security and uses narrowly scoped GitHub OIDC.
+8. Existing Cloudflare deployment evidence remains intact.
+9. No unprovisioned cloud region is represented as deployed or verified.

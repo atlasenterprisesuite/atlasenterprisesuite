@@ -509,3 +509,12 @@ jobs:
             --data "$EVIDENCE_JSON" \
             > /tmp/atlas-infra-evidence.json
           echo "Cloudflare deployment evidence recorded in Supabase ATLAS Manager." >> "$GITHUB_STEP_SUMMARY"
+
+  global-production-verification:
+    needs: validate-deploy-verify
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/global-production-verify.yml
+    with:
+      mode: fail-closed
