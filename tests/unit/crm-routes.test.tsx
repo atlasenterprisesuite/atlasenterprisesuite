@@ -180,6 +180,42 @@ describe('ATLAS CRM routing and provider-backed UI', () => {
     expect(screen.queryByText('Phone')).not.toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'company 301' })).toHaveAttribute('href', '/crm/companies/301');
   });
+
+  it('loads all association pages for a record', async () => {
+    crmApiMock.mockImplementation((operation, payload) => {
+      if (operation === 'crm.associations' && payload.targetObjectType === 'company') {
+        if (payload.cursor === 'assoc-next') {
+          return Promise.resolve({
+            associations: {
+              associations: [{
+                provider: 'hubspot', fromObjectType: payload.objectType, fromProviderId: payload.providerId,
+                toObjectType: 'company', toProviderId: '302', associationType: 'contact_to_company'
+              }],
+              nextCursor: null
+            }
+          });
+        }
+        return Promise.resolve({
+          associations: {
+            associations: [{
+              provider: 'hubspot', fromObjectType: payload.objectType, fromProviderId: payload.providerId,
+              toObjectType: 'company', toProviderId: '301', associationType: 'contact_to_company'
+            }],
+            nextCursor: 'assoc-next'
+          }
+        });
+      }
+      return defaultApi(operation, payload);
+    });
+
+    render(<MemoryRouter initialEntries={['/crm/contacts/101']}><CrmRoutes /></MemoryRouter>);
+    expect(await screen.findByRole('link', { name: 'company 301' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'company 302' })).toBeInTheDocument();
+    await waitFor(() => expect(crmApiMock).toHaveBeenCalledWith(
+      'crm.associations',
+      expect.objectContaining({ targetObjectType: 'company', cursor: 'assoc-next' })
+    ));
+  });
 });
 
 describe('HubSpot connection controls', () => {

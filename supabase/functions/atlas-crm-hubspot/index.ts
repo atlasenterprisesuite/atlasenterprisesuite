@@ -64,6 +64,7 @@ const PERMISSIONS: Record<
 };
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
+const CRM_INTEGRATION_RETURN_URL = 'https://www.atlasenterprisesuite.com/crm/integrations/hubspot';
 
 function env(name: string, deps: AtlasCrmHubSpotDependencies): string {
   const injected = deps.env?.(name);
@@ -298,7 +299,18 @@ export async function handleAtlasCrmHubSpotRequest(
   if (req.method === 'GET') {
     const url = new URL(req.url);
     if (url.searchParams.has('code') || url.searchParams.has('state')) {
-      return callback(req, deps, url.searchParams.get('state'), url.searchParams.get('code'));
+      const result = await callback(req, deps, url.searchParams.get('state'), url.searchParams.get('code'));
+      const returnUrl = new URL(CRM_INTEGRATION_RETURN_URL);
+      returnUrl.searchParams.set('oauth', result.ok ? 'connected' : 'error');
+      if (!result.ok) {
+        try {
+          const body = await result.clone().json() as { code?: unknown };
+          if (typeof body.code === 'string' && body.code) returnUrl.searchParams.set('code', body.code);
+        } catch {
+          // Keep the redirect free of provider payload details.
+        }
+      }
+      return Response.redirect(returnUrl.toString(), 303);
     }
     return json(req, deps, 405, { error: 'Method not allowed' });
   }
