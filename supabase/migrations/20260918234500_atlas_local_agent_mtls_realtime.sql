@@ -5,6 +5,7 @@ alter table public.atlas_local_agents
     check (mtls_status in ('unconfigured','pending','active','expired','revoked')),
   add column if not exists mtls_cert_fingerprint_sha256 text,
   add column if not exists mtls_cert_serial text,
+  add column if not exists mtls_cloudflare_cert_id text,
   add column if not exists mtls_cert_expires_at timestamptz,
   add column if not exists realtime_last_connected_at timestamptz,
   add column if not exists installer_version text;
@@ -30,5 +31,7 @@ comment on column public.atlas_local_agents.mtls_cert_fingerprint_sha256 is
   'SHA-256 fingerprint of the Cloudflare-validated client certificate bound to this agent. Public certificate metadata only; no private keys.';
 comment on column public.atlas_local_agents.mtls_cert_serial is
   'Client certificate serial returned by the trusted mTLS edge.';
+comment on column public.atlas_local_agents.mtls_cloudflare_cert_id is
+  'Cloudflare client-certificate identifier used for provider-side revocation; public certificate metadata only.';
 comment on column public.atlas_local_agents.realtime_last_connected_at is
   'Last successful mTLS realtime bus authorization; not a permanent online assertion.';
