@@ -23,6 +23,7 @@ export type InsuranceGrantResponse = {
     resource_id: string | null;
     verified_at: string;
     expires_at: string;
+    verification_method?: 'email_otp' | 'totp';
   };
 };
 
@@ -119,5 +120,17 @@ export function resendInsuranceChallenge(input: { challenge_id: string }) {
   return callInsuranceVerification<InsuranceChallengeResponse>({
     operation: 'resend',
     challenge_id: input.challenge_id
+  });
+}
+
+
+export function grantInsuranceMfa(input: {
+  scope: InsuranceVerificationScope;
+  resource_id?: string | null;
+}) {
+  return callInsuranceVerification<InsuranceGrantResponse>({
+    operation: 'grant_mfa',
+    scope: input.scope,
+    resource_id: input.resource_id ?? null
   });
 }
