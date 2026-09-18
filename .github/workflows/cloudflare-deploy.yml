@@ -178,15 +178,22 @@ jobs:
             local prefix="$2"
             local headers="/tmp/atlas-worker-${prefix}.headers"
             local status version_id version_tag
-            status="$(curl --retry 5 --retry-delay 3 --silent --show-error \
-              -H 'Cache-Control: no-cache, no-store' \
-              -D "$headers" --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL$path")"
-            test "$status" = "200" || { echo "::error::Expected workers.dev $path HTTP 200, got $status"; return 1; }
-            version_id="$(read_header "$headers" 'X-Atlas-Version-Id')"
-            version_tag="$(read_header "$headers" 'X-Atlas-Version-Tag')"
-            test -n "$version_id" || { echo "::error::workers.dev $path is missing X-Atlas-Version-Id"; return 1; }
-            test "$version_tag" = "$GITHUB_SHA" || { echo "::error::workers.dev $path version tag does not match $GITHUB_SHA"; return 1; }
-            printf '%s|%s\n' "$version_id" "$version_tag"
+            for ATTEMPT in $(seq 1 20); do
+              : > "$headers"
+              status="$(curl --silent --show-error --max-time 15 \
+                -H 'Cache-Control: no-cache, no-store' \
+                -D "$headers" --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL$path" || true)"
+              version_id="$(read_header "$headers" 'X-Atlas-Version-Id')"
+              version_tag="$(read_header "$headers" 'X-Atlas-Version-Tag')"
+              if [ "$status" = "200" ] && [ -n "$version_id" ] && [ "$version_tag" = "$GITHUB_SHA" ]; then
+                printf '%s|%s\n' "$version_id" "$version_tag"
+                return 0
+              fi
+              echo "Waiting for workers.dev to serve the deployed version (path=$path attempt=$ATTEMPT/20 status=${status:-none} version_id_present=$([ -n "$version_id" ] && echo true || echo false) tag_match=$([ "$version_tag" = "$GITHUB_SHA" ] && echo true || echo false))." >&2
+              sleep 3
+            done
+            echo "::error::workers.dev propagation timed out for $path before the exact deployed version became observable." >&2
+            return 1
           }
           ROOT_VERSION="$(probe_worker '/' 'root')"
           IDENTITY_VERSION="$(probe_worker '/identity?app=%2Ffinance' 'identity')"
