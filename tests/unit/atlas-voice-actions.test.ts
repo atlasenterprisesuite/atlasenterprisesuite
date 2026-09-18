@@ -9,6 +9,7 @@ describe('ATLAS Voice safe navigation actions', () => {
   it.each([
     ['ATLAS abre nómina', '/payroll'],
     ['Hey ATLAS open finance', '/finance'],
+    ['show me health', '/health'],
     ['go to health', '/health'],
     ['ATLAS CRM', '/crm'],
     ['ATLAS muéstrame contabilidad', '/finance/accounting']
