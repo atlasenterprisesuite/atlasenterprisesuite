@@ -168,6 +168,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'device-os',
+    title: 'ATLAS Device OS',
+    navLabel: 'Device OS',
+    area: 'Platform',
+    route: '/device-os',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed software control plane for ATLAS phones, desktops, wearables, smart spaces and mobility hardware.',
+    showInNavigation: true
+  },
+  {
     id: 'execution',
     title: 'Universal Execution',
     navLabel: 'Execution',
