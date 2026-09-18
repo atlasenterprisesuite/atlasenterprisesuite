@@ -7,7 +7,8 @@
     "/identity?app=%2Ffinance",
     "/finance",
     "/studio/teleprompter",
-    "/studio/web-launch"
+    "/studio/web-launch",
+    "/crm"
   ],
   "critical_network_routes": [
     "/business/network",
