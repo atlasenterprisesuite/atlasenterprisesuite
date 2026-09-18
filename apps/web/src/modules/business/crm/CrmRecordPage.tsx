@@ -57,14 +57,14 @@ export function CrmRecordPage({
             const seenCursors = new Set<string>();
             let cursor: string | null = null;
             do {
-              const result = await crmApi<{ associations: CrmAssociationPage }>('crm.associations', {
+              const result: { associations: CrmAssociationPage } = await crmApi<{ associations: CrmAssociationPage }>('crm.associations', {
                 objectType,
                 providerId,
                 targetObjectType,
                 cursor
               });
               pages.push(...result.associations.associations);
-              const nextCursor = result.associations.nextCursor;
+              const nextCursor: string | null = result.associations.nextCursor;
               if (!nextCursor) break;
               if (seenCursors.has(nextCursor)) {
                 throw new Error('CRM association pagination returned a repeated cursor');
