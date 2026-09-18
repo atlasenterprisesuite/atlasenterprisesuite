@@ -77,6 +77,25 @@ create index if not exists atlas_local_network_endpoints_org_enabled_idx
 create index if not exists atlas_local_network_events_org_created_idx
   on public.atlas_local_network_events (org_id, created_at desc);
 
+create or replace function public.atlas_touch_local_network_endpoint()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $
+begin
+  new.updated_by := auth.uid();
+  new.updated_at := now();
+  return new;
+end;
+$;
+
+drop trigger if exists atlas_local_network_endpoints_touch
+  on public.atlas_local_network_endpoints;
+create trigger atlas_local_network_endpoints_touch
+before update on public.atlas_local_network_endpoints
+for each row execute function public.atlas_touch_local_network_endpoint();
+
 alter table public.atlas_local_network_endpoints enable row level security;
 alter table public.atlas_local_network_events enable row level security;
 
@@ -117,10 +136,7 @@ create policy atlas_local_network_endpoints_update
   for update
   to authenticated
   using (public.has_identity_permission(org_id, 'device.local.admin'))
-  with check (
-    updated_by = auth.uid()
-    and public.has_identity_permission(org_id, 'device.local.admin')
-  );
+  with check (public.has_identity_permission(org_id, 'device.local.admin'));
 
 drop policy if exists atlas_local_network_endpoints_delete on public.atlas_local_network_endpoints;
 create policy atlas_local_network_endpoints_delete
