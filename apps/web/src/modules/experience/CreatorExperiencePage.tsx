@@ -35,6 +35,12 @@ const creatorSections: ModuleExperienceSection[] = [
         title: 'Voice & Agents',
         description: 'Continue into the identity-gated ATLAS Voice workspace.',
         to: '/studio/voice'
+      },
+      {
+        label: 'Presentation',
+        title: 'Smart Teleprompter',
+        description: 'Record with camera and microphone while the script follows your spoken pace, with authorized private recording storage.',
+        to: '/studio/teleprompter'
       }
     ]
   },
@@ -95,7 +101,8 @@ export function CreatorExperiencePage() {
       description="Content intelligence, imagery, video, sound and voice share one governed creative workspace connected to ATLAS Identity and organization context."
       narrative="One governed creative operating system for content, media, voice and provider-aware execution."
       actions={[
-        { label: 'Start with Content Intelligence', to: '/studio/content' },
+        { label: 'Open Smart Teleprompter', to: '/studio/teleprompter' },
+        { label: 'Start with Content Intelligence', to: '/studio/content', variant: 'secondary' },
         { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' }
       ]}
       sections={creatorSections}

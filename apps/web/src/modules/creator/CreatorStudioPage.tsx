@@ -26,6 +26,7 @@ export const studioEntryPoints = [
   { title: 'ATLAS Director', route: '/studio/create?type=video' },
   { title: 'Music Lab', route: '/studio/create?type=music' },
   { title: 'Voice & Agents', route: '/studio/voice' },
+  { title: 'Smart Teleprompter', route: '/studio/teleprompter' },
   { title: 'Creator Library', route: '/studio/library' },
   { title: 'Provider readiness', route: '/studio/providers' }
 ] as const;
