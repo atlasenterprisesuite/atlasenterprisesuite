@@ -30,6 +30,17 @@ describe('ATLAS Local Network Access schema contract', () => {
     expect(sql).toMatch(/create or replace function public\.atlas_touch_local_network_endpoint/i);
     expect(sql).toMatch(/new\.updated_by := auth\.uid\(\)/i);
     expect(sql).toMatch(/new\.updated_at := now\(\)/i);
+    expect(sql).toContain('as $atlas_lna
+  });
+
+  it('makes audit evidence append-only for authenticated clients', () => {
+    expect(sql).toMatch(/grant select, insert on public\.atlas_local_network_events to authenticated/i);
+    expect(sql).not.toMatch(/grant[^;]*(update|delete)[^;]*atlas_local_network_events[^;]*authenticated/i);
+    expect(sql).toMatch(/actor_user_id = auth\.uid\(\)/i);
+  });
+});
+);
+    expect(sql).toContain('$atlas_lna$;');
   });
 
   it('makes audit evidence append-only for authenticated clients', () => {
