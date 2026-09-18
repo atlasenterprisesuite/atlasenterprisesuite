@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 8;
+const VERSION = 9;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -243,6 +243,7 @@ Deno.serve(async (req: Request) => {
     home,
     identity,
     finance,
+    voice,
     health,
     jaqueMateSentinel,
     studioWebLaunch,
@@ -257,6 +258,7 @@ Deno.serve(async (req: Request) => {
     probe('/'),
     probe('/identity?app=%2Ffinance'),
     probe('/finance'),
+    probe('/voice'),
     probe('/health'),
     probe('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'),
     probe('/studio/web-launch'),
@@ -273,6 +275,7 @@ Deno.serve(async (req: Request) => {
     home.status === 200 &&
     identity.status === 200 &&
     finance.status === 200 &&
+    voice.status === 200 &&
     health.status === 200 &&
     jaqueMateSentinel.status === 200 &&
     studioWebLaunch.status === 200;
@@ -281,6 +284,7 @@ Deno.serve(async (req: Request) => {
     home,
     identity,
     finance,
+    voice,
     health,
     jaqueMateSentinel,
     studioWebLaunch,
@@ -323,6 +327,7 @@ Deno.serve(async (req: Request) => {
         public_home_reachable: home.status === 200,
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
+        voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
         jaque_mate_sentinel_route_reachable: jaqueMateSentinel.status === 200,
         studio_web_launch_route_reachable: studioWebLaunch.status === 200,
@@ -338,6 +343,7 @@ Deno.serve(async (req: Request) => {
         home,
         identity,
         finance,
+        voice,
         health,
         jaque_mate_sentinel: jaqueMateSentinel,
         studio_web_launch: studioWebLaunch,
