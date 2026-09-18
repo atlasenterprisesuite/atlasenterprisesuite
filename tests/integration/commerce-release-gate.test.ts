@@ -12,15 +12,15 @@ describe('ATLAS Commerce production release gate', () => {
     expect(verifier).toContain("probe('/commerce')");
     expect(verifier).toContain('commerce_route_reachable');
     expect(verifier).toContain('commerce.status === 200');
-    expect(verifier).toContain('publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && deploymentPathProtected');
+    expect(verifier).toContain('publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && deploymentPathProtected && productionCommitVerified');
   });
 
   it('requires /commerce in direct Worker verification', () => {
     const direct = workflow.match(
       /- name: Verify public Worker web shell([\s\S]*?)- name:/
     )?.[1] ?? '';
-    expect(direct).toContain('"$DEPLOYMENT_URL/commerce"');
-    expect(direct).toContain('COMMERCE_STATUS');
+    expect(direct).toContain("probe_worker '/commerce' 'commerce'");
+    expect(direct).toContain('COMMERCE_VERSION');
     expect(direct).toContain('commerce_route_reachable=true');
   });
 
