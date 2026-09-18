@@ -143,6 +143,14 @@ describe('ATLAS Tool Gateway', () => {
 });
 
 describe('ATLAS AI cost policy', () => {
+  it('fails closed when no provider is selected', () => {
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'auto',
+      providers: [],
+      policy: { enforce_zero_cost: true, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'no_provider_selected' });
+  });
+
   it('allows an explicitly permitted single paid provider', () => {
     expect(evaluateIntelligenceCostPolicy({
       mode: 'openai',
