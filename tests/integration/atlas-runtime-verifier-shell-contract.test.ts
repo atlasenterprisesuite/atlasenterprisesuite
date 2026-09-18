@@ -6,22 +6,34 @@ import { verifyAtlasCopilotShell } from '../../supabase/functions/_shared/runtim
 const verifierPath = resolve(process.cwd(), 'supabase/functions/atlas-runtime-verifier/index.ts');
 
 describe('ATLAS runtime verifier shell contract', () => {
-  it('accepts the current ATLAS Assistant HTML shell without relying on legacy display copy', () => {
+  it('accepts the ATLAS Assistant HTML shell both directly and after the Supabase text/plain rewrite', () => {
+    const body = '<!doctype html><html><head><title>ATLAS Assistant</title></head><body></body></html>';
+
     expect(verifyAtlasCopilotShell({
       status: 200,
       contentType: 'text/html; charset=utf-8',
-      body: '<title>ATLAS Assistant</title><h2>ATLAS Unified AI Chat</h2>'
+      body
+    })).toEqual({ ok: true, reason: null });
+
+    expect(verifyAtlasCopilotShell({
+      status: 200,
+      contentType: 'text/plain; charset=utf-8',
+      body
     })).toEqual({ ok: true, reason: null });
   });
 
-  it('rejects an unavailable or non-HTML shell', () => {
-    expect(verifyAtlasCopilotShell({ status: 503, contentType: 'text/html', body: 'ATLAS Assistant' })).toEqual({
+  it('fails closed for unavailable, non-HTML, or arbitrary text responses', () => {
+    expect(verifyAtlasCopilotShell({ status: 503, contentType: 'text/plain', body: '<!doctype html>' })).toEqual({
       ok: false,
       reason: 'http_status'
     });
     expect(verifyAtlasCopilotShell({ status: 200, contentType: 'application/json', body: '{}' })).toEqual({
       ok: false,
       reason: 'content_type'
+    });
+    expect(verifyAtlasCopilotShell({ status: 200, contentType: 'text/plain', body: 'not an html shell' })).toEqual({
+      ok: false,
+      reason: 'body_not_html'
     });
   });
 
