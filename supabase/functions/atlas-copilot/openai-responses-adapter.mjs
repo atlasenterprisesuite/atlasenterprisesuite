@@ -10,12 +10,12 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
   const resolved=Object.freeze({fast:cleanModel(models?.fast),balanced:cleanModel(models?.balanced),deep:cleanModel(models?.deep)});
   const configured=Boolean(apiKey)&&Object.values(resolved).some(Boolean);
   const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved}});
-  async function execute({context,route,instructions,input,max_output_tokens=3000}={}){
+  async function execute({context,route,instructions,input,max_output_tokens=3000,store=false}={}){
     const model=resolved[route?.profile];
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
     const headers={authorization:`Bearer ${apiKey}`,'content-type':'application/json','OpenAI-Safety-Identifier':await safetyId(context)};
     let response;
-    try{response=await fetchFn('https://api.openai.com/v1/responses',{method:'POST',headers,body:JSON.stringify({model,instructions,input,reasoning:{effort:EFFORT[route.profile]||EFFORT.balanced},max_output_tokens,store:false})});}catch{throw fail('provider_unavailable',502,{provider:'openai'});}
+    try{response=await fetchFn('https://api.openai.com/v1/responses',{method:'POST',headers,body:JSON.stringify({model,instructions,input,reasoning:{effort:EFFORT[route.profile]||EFFORT.balanced},max_output_tokens,store:store===true})});}catch{throw fail('provider_unavailable',502,{provider:'openai'});}
     if(!response.ok)throw errorForStatus(response.status);
     const data=await providerJson(response),text=outputText(data);
     if(!text)throw fail('internal_error',500,{provider:'openai'});
