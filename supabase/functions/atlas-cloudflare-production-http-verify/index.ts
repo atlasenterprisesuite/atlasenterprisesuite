@@ -1,7 +1,10 @@
 const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
 const OWNER = 'atlasenterprisesuite';
 const AUDIENCE = 'atlas-production-http-verifier';
-const ALLOWED_WORKFLOWS = new Set([\n  `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`,\n  `${REPO}/.github/workflows/global-production-verify.yml@refs/heads/main`\n]);
+const ALLOWED_WORKFLOWS = new Set([
+  `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`,
+  `${REPO}/.github/workflows/global-production-verify.yml@refs/heads/main`
+]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
 const VERSION = 5;
