@@ -18,6 +18,21 @@ describe('repository-wide verification contract', () => {
     expect(pkg.scripts?.['verify:all']).toContain('verify:python');
   });
 
+  it('keeps Cloudflare provider verification strict without requiring host-only native media binaries', () => {
+    const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
+    const cloudflare = pkg.scripts?.['verify:cloudflare'] ?? '';
+
+    expect(cloudflare).toContain('npm audit --audit-level=high');
+    expect(cloudflare).toContain('npm run typecheck');
+    expect(cloudflare).toContain('npm run test:unit');
+    expect(cloudflare).toContain('npm run test:integration');
+    expect(cloudflare).toContain('npm run verify:edge');
+    expect(cloudflare).toContain('npm run verify:neural');
+    expect(cloudflare).toContain('npm run build');
+    expect(cloudflare).not.toContain('verify:python');
+    expect(pkg.scripts?.['verify:all']).toContain('verify:python');
+  });
+
   it('uses the shared repository verification contract in production workflows', () => {
     for (const path of productionWorkflows) {
       expect(read(path), path).toContain('npm run verify:all');
