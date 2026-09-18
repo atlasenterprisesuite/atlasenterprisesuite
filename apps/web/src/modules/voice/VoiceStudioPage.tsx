@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AtlasVoicePage } from './AtlasVoicePage';
+import './voiceStudio.css';
 
 export function VoiceStudioPage() {
   return (
@@ -11,6 +12,14 @@ export function VoiceStudioPage() {
       </header>
 
       <div className="module-grid">
+        <article className="module-card enabled atlas-voice-assistant-card">
+          <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
+          <div>
+            <span>Assistant</span>
+            <strong>ATLAS Assistant</strong>
+            <p>The same authenticated assistant identity used across ATLAS. Provider, microphone, speech, and streaming states remain governed by verified runtime capabilities.</p>
+          </div>
+        </article>
         <article className="module-card enabled">
           <span>Access</span>
           <strong>ATLAS Identity verified</strong>
