@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = 'supabase/functions';
-const RESPONSES_ENDPOINT = 'https://api.openai.com/v1/responses';
+const RESPONSES_CALL_PATTERN = /api[.]openai[.]com\\/v1\\/responses/;
 const GOVERNED_ADAPTER = 'supabase/functions/atlas-copilot/openai-responses-adapter.mjs';
 
 function filesUnder(path: string): string[] {
@@ -17,7 +17,7 @@ describe('ATLAS OpenAI provider-storage contract', () => {
   it('requires every Responses API call to be fail-closed or governed', () => {
     const callers = filesUnder(ROOT)
       .filter((path) => /\.(ts|mjs|js)$/.test(path))
-      .filter((path) => readFileSync(path, 'utf8').includes(RESPONSES_ENDPOINT));
+      .filter((path) => RESPONSES_CALL_PATTERN.test(readFileSync(path, 'utf8')));
 
     expect(callers.length).toBeGreaterThan(0);
 
