@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 6;
+const VERSION = 7;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -243,6 +243,7 @@ Deno.serve(async (req: Request) => {
     home,
     identity,
     finance,
+    studioWebLaunch,
     commerce,
     network,
     networkPricing,
@@ -254,6 +255,7 @@ Deno.serve(async (req: Request) => {
     probe('/'),
     probe('/identity?app=%2Ffinance'),
     probe('/finance'),
+    probe('/studio/web-launch'),
     probe('/commerce'),
     probe('/business/network'),
     probe('/business/network/pricing'),
@@ -263,12 +265,13 @@ Deno.serve(async (req: Request) => {
     probe('/deployment.json', false)
   ]);
 
-  const publicShellOk = home.status === 200 && identity.status === 200 && finance.status === 200;
+  const publicShellOk = home.status === 200 && identity.status === 200 && finance.status === 200 && studioWebLaunch.status === 200;
   const commerceRouteOk = commerce.status === 200;
   const routedProbes = [
     home,
     identity,
     finance,
+    studioWebLaunch,
     commerce,
     network,
     networkPricing,
@@ -308,6 +311,7 @@ Deno.serve(async (req: Request) => {
         public_home_reachable: home.status === 200,
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
+        studio_web_launch_route_reachable: studioWebLaunch.status === 200,
         commerce_route_reachable: commerce.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         production_commit_sha_verified: productionCommitVerified,
@@ -320,6 +324,7 @@ Deno.serve(async (req: Request) => {
         home,
         identity,
         finance,
+        studio_web_launch: studioWebLaunch,
         commerce,
         network,
         network_pricing: networkPricing,
