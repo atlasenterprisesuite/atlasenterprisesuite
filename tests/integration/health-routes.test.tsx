@@ -50,6 +50,9 @@ describe('ATLAS Health governed routes', () => {
     expect(screen.getByText(/No automated clinical action/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Validated evidence/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Hypothesis/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: /Jaque Mate findings can be integrated into ATLAS as governed cure candidates/i })).toBeInTheDocument();
+    expect(screen.getByText('POSSIBLE CURE — RESEARCH CANDIDATE')).toBeInTheDocument();
+    expect(screen.getByText(/Validated evidence can advance a candidate to human review/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Seed'), { target: { value: '40' } });
     fireEvent.change(screen.getByLabelText('State'), { target: { value: '60' } });
