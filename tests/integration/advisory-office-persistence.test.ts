@@ -26,13 +26,15 @@ describe('Advisory Office durable persistence contract', () => {
     expect(sql).toContain('public.has_identity_permission');
   });
 
-  it('bootstraps only AW Finance firm 001 and no invented clients or revenue', () => {
+  it('bootstraps only AW Finance firm 001 and no invented clients or engagements', () => {
     const sql = read('supabase/migrations/20260918031500_advisory_office_core.sql');
-    expect(sql).toContain('advisory_bootstrap_default_firm');
-    expect(sql).toContain('aw-finance-advisory-solutions');
-    expect(sql).toContain("'001'");
-    expect(sql).not.toMatch(/insert\s+into\s+public\.advisory_clients/i);
-    expect(sql).not.toMatch(/insert\s+into\s+public\.advisory_engagements/i);
+    const bootstrapStart = sql.indexOf('create or replace function public.advisory_bootstrap_default_firm');
+    const clientCreateStart = sql.indexOf('create or replace function public.advisory_create_client');
+    const bootstrap = sql.slice(bootstrapStart, clientCreateStart);
+    expect(bootstrap).toContain('aw-finance-advisory-solutions');
+    expect(bootstrap).toContain("'001'");
+    expect(bootstrap).not.toMatch(/insert\s+into\s+public\.advisory_clients/i);
+    expect(bootstrap).not.toMatch(/insert\s+into\s+public\.advisory_engagements/i);
   });
 
   it('exposes authenticated CRUD through the existing ATLAS session boundary', () => {
@@ -47,7 +49,7 @@ describe('Advisory Office durable persistence contract', () => {
 
   it('routes all Advisory subpaths through the identity gate', () => {
     const resolver = read('apps/web/src/extensions/resolveAtlasExtension.tsx');
-    expect(resolver).toContain("pathname.startsWith('/advisory')");
+    expect(resolver).toContain("pathname.startsWith('/advisory/')");
     expect(resolver).toContain('AdvisoryRoutes');
     const routes = read('apps/web/src/modules/advisory/AdvisoryRoutes.tsx');
     for (const route of ['/advisory/clients','/advisory/engagements','/advisory/business-launch-360']) {

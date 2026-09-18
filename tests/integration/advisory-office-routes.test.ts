@@ -12,15 +12,17 @@ describe('Advisory Office canonical integration', () => {
     expect(registry).toMatch(/id: 'advisory'[\s\S]*requiresAuth: true/);
   });
 
-  it('routes Advisory through the canonical identity gate', () => {
+  it('routes Advisory and all subpaths through the canonical identity gate', () => {
     const resolver = readFileSync(resolve(root, 'apps/web/src/extensions/resolveAtlasExtension.tsx'), 'utf8');
     expect(resolver).toContain("pathname === '/advisory'");
-    expect(resolver).toContain('<RequireAtlasIdentity><AdvisoryOfficePage /></RequireAtlasIdentity>');
+    expect(resolver).toContain("pathname.startsWith('/advisory/')");
+    expect(resolver).toContain('<RequireAtlasIdentity><AdvisoryRoutes /></RequireAtlasIdentity>');
   });
 
   it('keeps persistence and provider execution truthfully gated in the UI', () => {
-    const page = readFileSync(resolve(root, 'apps/web/src/modules/advisory/AdvisoryOfficePage.tsx'), 'utf8');
-    expect(page).toContain('No client, revenue, invoice or readiness metric is fabricated');
-    expect(page).toContain('Provider authorization required');
+    const page = readFileSync(resolve(root, 'apps/web/src/modules/advisory/AdvisoryRoutes.tsx'), 'utf8');
+    expect(page).toMatch(/No demo clients are seeded|No clients yet/);
+    expect(page).toContain('Authorization required');
+    expect(page).toMatch(/not connected until real provider authorization is verified/i);
   });
 });
