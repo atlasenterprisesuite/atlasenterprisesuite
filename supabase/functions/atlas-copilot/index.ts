@@ -52,6 +52,7 @@ function runtime(){
   const bedrockDefaultModel=bedrockEndpoint==='mantle'?DEFAULT_BEDROCK_MANTLE_MODEL:DEFAULT_BEDROCK_RUNTIME_MODEL;
   const bedrockModels=profileModels('ATLAS_BEDROCK_MODEL','ATLAS_BEDROCK_MODEL_FAST','ATLAS_BEDROCK_MODEL_BALANCED','ATLAS_BEDROCK_MODEL_DEEP',null,bedrockDefaultModel);
   const bedrockRuntimeVerified=boolEnv('ATLAS_BEDROCK_RUNTIME_VERIFIED',false);
+  const bedrockActiveProbe=boolEnv('ATLAS_BEDROCK_ACTIVE_PROBE',false);
   const geminiModels=profileModels('ATLAS_GEMINI_MODEL','ATLAS_GEMINI_MODEL_FAST','ATLAS_GEMINI_MODEL_BALANCED','ATLAS_GEMINI_MODEL_DEEP');
   const codexEndpoint=clean(Deno.env.get('ATLAS_CODEX_SOVEREIGN_URL'));
   const codexToken=Deno.env.get('ATLAS_CODEX_SOVEREIGN_TOKEN')||'';
@@ -62,12 +63,12 @@ function runtime(){
     allow_paid_single:boolEnv('ATLAS_AI_ALLOW_PAID_SINGLE',true),
     allow_council:boolEnv('ATLAS_AI_ALLOW_COUNCIL',false),
   };
-  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,costPolicy};
+  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,bedrockActiveProbe,geminiModels,codexEndpoint,codexToken,codexModel,costPolicy};
 }
 function registryFor(rt){
   return createProviderRegistry({health:PROVIDER_HEALTH,providers:[
     createOpenAIResponsesAdapter({apiKey:rt.openaiKey,models:rt.openaiModels,fetchFn:fetch}),
-    createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,fetchFn:fetch}),
+    createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,activeProbe:rt.bedrockActiveProbe,fetchFn:fetch}),
     createGeminiAdapter({apiKey:rt.geminiKey,models:rt.geminiModels,fetchFn:fetch}),
     createCodexSovereignAdapter({endpoint:rt.codexEndpoint,token:rt.codexToken,model:rt.codexModel,fetchFn:fetch}),
   ]});
