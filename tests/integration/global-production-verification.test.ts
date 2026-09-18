@@ -91,6 +91,8 @@ describe('ATLAS global production verification', () => {
     expect(cloudflareWorkflow).toContain('global-production-verification:');
     expect(cloudflareWorkflow).toContain('uses: ./.github/workflows/global-production-verify.yml');
     expect(cloudflareWorkflow).toContain('mode: fail-closed');
+    expect(cloudflareWorkflow).toContain('- "scripts/verify-global-production.mjs"');
+    expect(cloudflareWorkflow).toContain('- ".github/workflows/global-production-verify.yml"');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
