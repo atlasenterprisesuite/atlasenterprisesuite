@@ -13,7 +13,7 @@ export function VoiceStudioPage() {
 
       <div className="module-grid">
         <article className="module-card enabled atlas-voice-assistant-card">
-          <img src="/atlas-avatar-particle.svg" alt="" />
+          <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
           <div>
             <span>Assistant</span>
             <strong>ATLAS Assistant</strong>
