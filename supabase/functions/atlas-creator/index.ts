@@ -1,6 +1,7 @@
 import { requireCreatorPermission } from '../../../packages/creator/permissions.ts';
 import { adaptProviderToCreativeEngine } from '../../../packages/creator/creative_engine.ts';
 import { compilePromptExport, PROMPT_EXPORT_ENGINE } from '../../../packages/creator/prompt_engine.ts';
+import type { CreativePlan } from '../../../packages/creator/creative_plan.ts';
 import type { ContentWorkspaceState } from '../../../packages/creator/content_intelligence.ts';
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
@@ -8,12 +9,15 @@ import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
 import {
   getContentWorkspace,
+  getCreativePlan,
   getProduction,
   listAssets,
   listContentWorkspaces,
+  listCreativePlans,
   listProductions,
   listProviderReadiness,
   saveContentWorkspace,
+  saveCreativePlan,
   saveProduction,
   writeCreatorAudit
 } from './_shared/repository.ts';
@@ -52,6 +56,10 @@ function productionIdFrom(url: URL, body?: Record<string, any>) {
 
 function workspaceIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.workspace_id || body?.workspaceId || url.searchParams.get('workspace_id') || url.searchParams.get('id') || '').trim();
+}
+
+function creativePlanIdFrom(url: URL, body?: Record<string, any>) {
+  return String(body?.creative_plan_id || body?.creativePlanId || url.searchParams.get('creative_plan_id') || url.searchParams.get('id') || '').trim();
 }
 
 async function creatorContext(req: Request, permission: CreatorPermission) {
@@ -180,6 +188,37 @@ async function handleContentSave(req: Request) {
   return json({ ok: true, workspace: saved });
 }
 
+async function handleCreativePlans(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  return json({ ok: true, creative_plans: await listCreativePlans(ctx.orgId) });
+}
+
+async function handleCreativePlan(req: Request, url: URL) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const planId = creativePlanIdFrom(url);
+  if (!planId) throw creatorError('creative_plan_id_required', 422);
+  return json({ ok: true, creative_plan: await getCreativePlan(ctx.orgId, planId) });
+}
+
+async function handleCreativePlanSave(req: Request) {
+  const ctx = await creatorContext(req, 'creator.write');
+  const body = await bodyJson(req);
+  const plan = body.creative_plan as CreativePlan | undefined;
+  if (!plan || typeof plan !== 'object' || !plan.id) {
+    throw creatorError('creative_plan_required', 422);
+  }
+  const expectedVersion = Number.isInteger(body.expected_version)
+    ? Number(body.expected_version)
+    : Number(plan.version || 0);
+  const saved = await saveCreativePlan(ctx, plan, expectedVersion);
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.plan.saved', String(saved.id), {
+    creative_plan_id: saved.id,
+    media_kinds: saved.media_kinds,
+    version: saved.version
+  });
+  return json({ ok: true, creative_plan: saved });
+}
+
 async function handleAssets(req: Request, url: URL) {
   const ctx = await creatorContext(req, 'creator.read');
   const productionId = productionIdFrom(url) || undefined;
@@ -222,6 +261,9 @@ async function route(req: Request) {
   if (api === 'content-workspaces') return handleContentWorkspaces(req);
   if (api === 'content-workspace') return handleContentWorkspace(req, url);
   if (api === 'content-save') return handleContentSave(req);
+  if (api === 'creative-plans' && req.method === 'GET') return handleCreativePlans(req);
+  if (api === 'creative-plan' && req.method === 'GET') return handleCreativePlan(req, url);
+  if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
   if (api === 'assets') return handleAssets(req, url);
   if (api === 'submit') return handleSubmit(req);
   return json({ ok: false, error: 'not_found' }, 404);
