@@ -21,6 +21,6 @@ jobs:
       - name: Install
         run: npm ci
       - name: Focused Creative unit tests
-        run: npx vitest run tests/unit/creator-creative-engine.test.ts
+        run: npx vitest run tests/unit/creator-creative-engine.test.ts tests/unit/creator-prompt-engine.test.ts
       - name: Typecheck
         run: npm run typecheck
