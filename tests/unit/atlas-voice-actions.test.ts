@@ -3,7 +3,7 @@ import { normalizeVoiceCommand, resolveVoiceNavigationCommand } from '../../apps
 
 describe('ATLAS Voice safe navigation actions', () => {
   it('normalizes accents and punctuation', () => {
-    expect(normalizeVoiceCommand('  ¡Muéstrame NÓMINA!  ')).toBe('¡muestrame nomina');
+    expect(normalizeVoiceCommand('  ¡Muéstrame NÓMINA!  ')).toBe('muestrame nomina');
   });
 
   it.each([
