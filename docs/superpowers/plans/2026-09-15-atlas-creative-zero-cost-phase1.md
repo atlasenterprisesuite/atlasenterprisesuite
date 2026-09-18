@@ -132,6 +132,8 @@ export type CreativeExecutionClass =
   | 'prompt-export-only'
   | 'paid-provider';
 
+export type CreativeEngineId = string;
+
 export type CreativeEngineConnectionState =
   | 'unconfigured'
   | 'configured-unverified'
@@ -141,7 +143,7 @@ export type CreativeEngineConnectionState =
   | 'error';
 
 export type CreativeEngineReadiness = {
-  engineId: string;
+  engineId: CreativeEngineId;
   displayName: string;
   executionClass: CreativeExecutionClass;
   connectionState: CreativeEngineConnectionState;
@@ -755,7 +757,22 @@ it('shows prompt export and verified native readiness as distinct engine classes
 });
 ```
 
-Retain all existing assertions that external providers remain unconfigured when appropriate and that ATLAS Director still opens for `?type=video`.
+Migrate the existing Provider-readiness integration test from `listCreatorProviders()` to `listCreativeEngines()`, because `CreatorProviders` changes data source in this task. Replace its mock with:
+
+```ts
+vi.spyOn(creatorApi, 'listCreativeEngines').mockResolvedValue([{
+  engineId: 'provider:seedance',
+  displayName: 'Seedance',
+  executionClass: 'byo-provider',
+  connectionState: 'unconfigured',
+  ready: false,
+  mediaKinds: ['video'],
+  capabilityNotes: [],
+  lastVerifiedAt: null
+}]);
+```
+
+Retain its assertions for `unconfigured` and `Never verified`, and retain all existing assertions that ATLAS Director still opens for `?type=video`.
 
 - [ ] **Step 2: Run the integration test and verify failure**
 
