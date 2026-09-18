@@ -1,14 +1,35 @@
 #!/usr/bin/env node
-const CONTROL_URL = String(process.env.ATLAS_LOCAL_CONTROL_URL || '').trim();
-const ENROLLMENT_CODE = String(process.env.ATLAS_AGENT_ENROLLMENT_CODE || '').trim();
-let sessionToken = String(process.env.ATLAS_AGENT_SESSION_TOKEN || '').trim();
-const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
-const VERSION = '0.1.0';
-const HEARTBEAT_MS = 30_000;
-const POLL_MS = 3_000;
+import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
+import {
+  consumeEnrollmentFile,
+  loadAgentState,
+  readEnrollmentCode,
+  readExplicitDevices,
+  readMtlsMaterial,
+  runtimeIdentity,
+  saveAgentState
+} from './lib/secure-state.mjs';
 
-if (!CONTROL_URL) throw new Error('ATLAS_LOCAL_CONTROL_URL is required');
-if (!ENROLLMENT_CODE && !sessionToken) throw new Error('Enrollment code or short-lived agent session token is required');
+const CONTROL_URL = String(
+  process.env.ATLAS_LOCAL_CONTROL_URL ||
+  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-local-control'
+).trim();
+const REALTIME_URL = String(
+  process.env.ATLAS_AGENT_REALTIME_URL ||
+  'wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect'
+).trim();
+const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
+const VERSION = '1.0.0';
+const HEARTBEAT_MS = 30_000;
+const FALLBACK_POLL_MS = 30_000;
+const REALTIME_RETRY_MAX_MS = 60_000;
+
+let state = await loadAgentState();
+let sessionToken = String(process.env.ATLAS_AGENT_SESSION_TOKEN || state.sessionToken || '').trim();
+let realtimeConnected = false;
+let realtimeClient = null;
+let realtimeRetryMs = 2_000;
+let draining = false;
 
 function localHostname(hostname) {
   const h = hostname.replace(/^\[/,'').replace(/\]$/,'').toLowerCase();
@@ -22,10 +43,8 @@ function localHostname(hostname) {
   return /^f[cd][0-9a-f]{2}:/i.test(h) || /^fe[89ab][0-9a-f]:/i.test(h);
 }
 
-function readDeviceConfig() {
-  const raw = String(process.env.ATLAS_LOCAL_DEVICES_JSON || '[]');
-  const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed)) throw new Error('ATLAS_LOCAL_DEVICES_JSON must be a JSON array');
+async function readDeviceConfig() {
+  const parsed = await readExplicitDevices();
   return parsed.slice(0,100).map((item,index)=>{
     const endpoint = new URL(String(item.endpoint || ''));
     if (!['http:','https:'].includes(endpoint.protocol) || !localHostname(endpoint.hostname) || endpoint.username || endpoint.password) {
@@ -43,35 +62,64 @@ function readDeviceConfig() {
   }).filter(d=>d.external_id && d.label);
 }
 
-const devices = readDeviceConfig();
+const devices = await readDeviceConfig();
 let deviceByServerId = new Map();
+
+async function persistSession(result = {}) {
+  if (result.session_token) sessionToken = String(result.session_token);
+  state = {
+    ...state,
+    sessionToken,
+    sessionExpiresAt: String(result.session_expires_at || state.sessionExpiresAt || ''),
+    updatedAt: new Date().toISOString()
+  };
+  await saveAgentState(state);
+}
 
 async function post(operation, body={}, agentAuth=true) {
   const headers = {'content-type':'application/json'};
-  if (agentAuth) headers['x-atlas-agent-token'] = sessionToken;
+  if (agentAuth) {
+    if (!sessionToken) throw new Error('agent_session_required');
+    headers['x-atlas-agent-token'] = sessionToken;
+  }
   const response = await fetch(CONTROL_URL, {
     method:'POST', headers,
     body:JSON.stringify({operation,...body}),
     signal:AbortSignal.timeout(15_000)
   });
   const result = await response.json().catch(()=>({}));
-  if (!response.ok || result.ok !== true) throw Object.assign(new Error(result.error || `local_control_http_${response.status}`), {status:response.status});
+  if (!response.ok || result.ok !== true) {
+    throw Object.assign(new Error(result.error || `local_control_http_${response.status}`), {status:response.status});
+  }
   return result;
 }
 
 async function enroll() {
   if (sessionToken) return;
-  const code = ENROLLMENT_CODE;
+  const enrollment = await readEnrollmentCode();
+  if (!enrollment) throw new Error('agent_reenrollment_required');
   const result = await post('agent.enroll', {
-    enrollment_code: code,
+    enrollment_code: enrollment.value,
     platform: PLATFORM,
     agent_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','http-health'],
+    installer_version: VERSION,
+    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health'],
     modules: ['device-os','connect','hospitality']
   }, false);
   sessionToken = String(result.session_token || '');
+  if (!sessionToken) throw new Error('enrollment_did_not_return_session');
+  state = {
+    ...state,
+    agentId: String(result.agent?.id || ''),
+    organizationId: String(result.agent?.org_id || ''),
+    sessionToken,
+    sessionExpiresAt: String(result.session_expires_at || ''),
+    enrolledAt: new Date().toISOString(),
+    runtime: runtimeIdentity()
+  };
+  await saveAgentState(state);
+  await consumeEnrollmentFile(enrollment.file);
   delete process.env.ATLAS_AGENT_ENROLLMENT_CODE;
-  if (!sessionToken) throw new Error('Enrollment did not return a session token');
 }
 
 async function syncDevices() {
@@ -85,10 +133,10 @@ async function heartbeat() {
   const result = await post('agent.heartbeat', {
     platform: PLATFORM,
     agent_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','http-health'],
+    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health'],
     modules: ['device-os','connect','hospitality']
   });
-  if (result.session_token) sessionToken = String(result.session_token);
+  if (result.session_token || result.session_expires_at) await persistSession(result);
 }
 
 async function execute(command) {
@@ -117,27 +165,99 @@ async function execute(command) {
   }
 }
 
-async function poll() {
+async function claimAndExecute() {
   const result = await post('agent.commands.claim');
-  if (!result.command) return;
+  if (!result.command) return false;
   const outcome = await execute(result.command);
   await post('agent.commands.complete', {
     command_id: result.command.id,
     success: outcome.success,
     ...(outcome.success ? {} : {error_code: outcome.error_code})
   });
+  return true;
+}
+
+async function drainCommands() {
+  if (draining) return;
+  draining = true;
+  try {
+    for (let count = 0; count < 20; count += 1) {
+      if (!await claimAndExecute()) break;
+    }
+  } finally {
+    draining = false;
+  }
+}
+
+async function realtimeLoop() {
+  while (true) {
+    const mtls = await readMtlsMaterial().catch(()=>null);
+    if (!mtls || !sessionToken) {
+      realtimeConnected = false;
+      await new Promise(resolve=>setTimeout(resolve, REALTIME_RETRY_MAX_MS));
+      continue;
+    }
+
+    try {
+      realtimeClient = await connectMtlsWebSocket({
+        url: REALTIME_URL,
+        certificate: mtls.certificate,
+        privateKey: mtls.privateKey,
+        headers: {'x-atlas-agent-token': sessionToken},
+        onMessage(message) {
+          try {
+            const event = JSON.parse(message);
+            if (event?.event === 'bus.ready') realtimeConnected = true;
+            if (event?.event === 'command.ready' && event.command_id) void drainCommands();
+          } catch {}
+        },
+        onClose() {
+          realtimeConnected = false;
+          realtimeClient = null;
+        }
+      });
+      realtimeConnected = true;
+      realtimeRetryMs = 2_000;
+      const pingTimer = setInterval(()=>realtimeClient?.ping(),20_000);
+      while (realtimeConnected) await new Promise(resolve=>setTimeout(resolve,1_000));
+      clearInterval(pingTimer);
+    } catch {
+      realtimeConnected = false;
+      realtimeClient = null;
+      await new Promise(resolve=>setTimeout(resolve,realtimeRetryMs));
+      realtimeRetryMs = Math.min(realtimeRetryMs * 2, REALTIME_RETRY_MAX_MS);
+    }
+  }
 }
 
 async function main() {
   await enroll();
   await syncDevices();
   await heartbeat();
-  setInterval(()=>heartbeat().catch(()=>{}), HEARTBEAT_MS);
-  while (true) {
-    try { await poll(); } catch {}
-    await new Promise(resolve=>setTimeout(resolve,POLL_MS));
-  }
+
+  setInterval(()=>heartbeat().catch((error)=>{
+    if (error?.status === 401) process.stderr.write('ATLAS Local Agent session expired; re-enrollment is required.\n');
+  }), HEARTBEAT_MS);
+
+  setInterval(()=>{
+    if (!realtimeConnected) void drainCommands().catch(()=>{});
+  }, FALLBACK_POLL_MS);
+
+  void realtimeLoop();
+  await drainCommands();
+
+  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only.\n`);
+  await new Promise(()=>{});
 }
+
+process.on('SIGTERM',()=>{
+  try { realtimeClient?.close(); } catch {}
+  process.exit(0);
+});
+process.on('SIGINT',()=>{
+  try { realtimeClient?.close(); } catch {}
+  process.exit(0);
+});
 
 main().catch((error)=>{
   process.stderr.write(`ATLAS Local Agent stopped: ${error?.message || 'runtime_error'}\n`);
