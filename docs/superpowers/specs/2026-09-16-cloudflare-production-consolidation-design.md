@@ -118,6 +118,12 @@ The final workflow uses this order:
 
 A provider credential failure therefore stops before the expensive full verification run. A repository failure must still stop before deployment.
 
+### Cloudflare native build image boundary
+
+The Cloudflare native GitHub App build image does not provide the host media toolchain required by Creator Native (`ffmpeg`, `ffprobe`, and `espeak`). The provider-side `npm run verify:cloudflare` contract therefore runs dependency audit, TypeScript, unit tests, integration tests, edge checks, neural-integrity checks, and the production build, but does not run `verify:python`.
+
+This is not a reduction of the production gate. `.github/workflows/cloudflare-deploy.yml` and `.github/workflows/production-deploy.yml` continue to install the native media toolchain and run the full `npm run verify:all`, including `verify:python`. Production is not considered verified until the repository gate, the Cloudflare deployment, and the final global fail-closed production verification all pass.
+
 ## ATLAS Manager and backend integration
 
 Existing Cloudflare status/control-plane code may read the canonical environment names, but it must not invent a second credential namespace.
@@ -177,7 +183,9 @@ The consolidation must add or update tests that verify:
 - deployment still uses `wrangler.jsonc`;
 - production probes remain after successful deploy;
 - no token value can be emitted into logs/evidence;
-- ATLAS Manager evidence remains provider-backed and non-secret.
+- ATLAS Manager evidence remains provider-backed and non-secret;
+- the Cloudflare provider-native verification script does not require host-only Creator Native media binaries;
+- the GitHub production workflows still require `verify:python` through `verify:all` after installing `ffmpeg`, `ffprobe`, and `espeak`.
 
 Full regression gates remain:
 

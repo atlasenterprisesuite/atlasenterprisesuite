@@ -1,7 +1,10 @@
 {
   "name": "atlas-enterprise-suite",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build && node scripts/write-deployment-manifest.mjs apps/web/dist/deployment.json",
@@ -14,7 +17,7 @@
     "verify:neural": "node scripts/verify-neural-integrity.mjs",
     "verify:production:global": "node scripts/verify-global-production.mjs",
     "verify:all": "npm audit --audit-level=high && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:python && npm run verify:neural && npm run build",
-    "verify:cloudflare": "npm run verify:all",
+    "verify:cloudflare": "npm audit --audit-level=high && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:neural && npm run build",
     "atlas:mcp:http": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/http.ts",
     "atlas:mcp:stdio": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/stdio.ts"
   },
