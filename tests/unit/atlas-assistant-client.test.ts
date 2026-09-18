@@ -10,7 +10,7 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => ({
   getActiveAtlasOrganization: mocks.getActiveAtlasOrganization
 }));
 
-import { getAssistantStatus, sendAssistantMessage } from '../../apps/web/src/assistant/client';
+import { getAssistantStatus, sendAssistantMessage, sendAssistantWorkspaceMessage } from '../../apps/web/src/assistant/client';
 
 describe('ATLAS Assistant governed copilot client', () => {
   beforeEach(() => {
@@ -39,6 +39,28 @@ describe('ATLAS Assistant governed copilot client', () => {
     });
   });
 
+  it('passes an explicit per-call provider storage request only through the governed workspace API', async () => {
+    mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      text: 'Stored by policy',
+      provider_storage: 'enabled'
+    }), { status: 200 }));
+
+    await sendAssistantWorkspaceMessage({
+      message: 'Evaluate this synthetic test case',
+      mode: 'openai',
+      profile: 'balanced',
+      storeProviderResponse: true
+    });
+
+    const [, init] = mocks.authorizedAtlasFetch.mock.calls[0];
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      organization_id: 'org-1',
+      module: 'assistant',
+      store_provider_response: true
+    });
+  });
+
   it('sends route context through the auto provider router without browser provider keys', async () => {
     mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
       ok: true,
@@ -59,6 +81,7 @@ describe('ATLAS Assistant governed copilot client', () => {
       intent: 'balanced',
       mode: 'auto',
       message: 'Review hospitality operations',
+      store_provider_response: false,
       capabilities_requested: ['generation'],
       client_metadata: { modality: 'text', surface: 'atlas-assistant' }
     });
