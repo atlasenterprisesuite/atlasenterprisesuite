@@ -52,11 +52,9 @@ function appRouteLine(source, routePrefix) {
 
 function moduleHasAuthCoverage(module, sources) {
   const { app, resolver, hospitality, ride, payroll } = sources;
+  if (resolverBlock(resolver, module.route).includes('RequireAtlasIdentity')) return true;
+
   switch (module.id) {
-    case 'crm':
-    case 'connect':
-    case 'galaxy':
-      return resolverBlock(resolver, module.route).includes('RequireAtlasIdentity');
     case 'hospitality':
       return hospitality.includes('RequireAtlasIdentity') && hospitality.includes(module.route);
     case 'ride':
