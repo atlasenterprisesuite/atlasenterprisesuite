@@ -10,6 +10,11 @@ export function ConnectHomePage() {
       </header>
 
       <div className="module-grid">
+        <Link className="module-card enabled" to="/connect/channel">
+          <span>Broadcast · Configured</span>
+          <strong>ATLAS Network</strong>
+          <p>Official bilingual ATLAS broadcast feed with notifications, reactions and governed handoff to Social Publisher.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/google-fi">
           <span>Wireless · External-gated</span>
           <strong>Google Fi Wireless</strong>
@@ -17,7 +22,7 @@ export function ConnectHomePage() {
         </Link>
       </div>
 
-      <div className="notice">ATLAS Connect does not store carrier passwords. A provider is never shown as live or connected unless an authorized, verifiable integration exists.</div>
+      <div className="notice">ATLAS Connect does not store carrier or social-provider passwords. A provider is never shown as live or connected unless an authorized, verifiable integration exists.</div>
     </section>
   );
 }
