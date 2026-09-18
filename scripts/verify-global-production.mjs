@@ -18,7 +18,8 @@ function parseArgs(argv) {
     mode: contract.default_mode,
     baseUrl: contract.production_origin,
     jsonOutput: null,
-    deferEdgeChallenge: false
+    deferEdgeChallenge: false,
+    expectedSha: null
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -27,9 +28,10 @@ function parseArgs(argv) {
     else if (current === '--base-url') args.baseUrl = argv[++index];
     else if (current === '--json-output') args.jsonOutput = argv[++index];
     else if (current === '--defer-edge-challenge') args.deferEdgeChallenge = true;
+    else if (current === '--expected-sha') args.expectedSha = String(argv[++index] || '').trim() || null;
     else if (current === '--help') {
       console.log(
-        'Usage: node scripts/verify-global-production.mjs [--mode fail-closed|warning-only] [--base-url https://host] [--json-output path] [--defer-edge-challenge]'
+        'Usage: node scripts/verify-global-production.mjs [--mode fail-closed|warning-only] [--base-url https://host] [--json-output path] [--defer-edge-challenge] [--expected-sha git-sha]'
       );
       process.exit(0);
     } else {
@@ -53,7 +55,7 @@ function parseArgs(argv) {
 
 const sleep = (milliseconds) => new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
 
-function routeResult({ path, status, ok, reason, target, redirects, cfMitigated, attempts }) {
+function routeResult({ path, status, ok, reason, target, redirects, cfMitigated, attempts, atlasVersionId = null, atlasVersionTag = null }) {
   return {
     path,
     status,
@@ -62,6 +64,8 @@ function routeResult({ path, status, ok, reason, target, redirects, cfMitigated,
     effective_url: target ? target.toString() : null,
     redirect_count: redirects,
     cf_mitigated: cfMitigated,
+    atlas_version_id: atlasVersionId,
+    atlas_version_tag: atlasVersionTag,
     attempts
   };
 }
@@ -121,6 +125,8 @@ async function probePublicRoute(baseOrigin, path) {
 
     const response = fetched.response;
     const cfMitigated = response.headers.get('cf-mitigated');
+    const atlasVersionId = response.headers.get('x-atlas-version-id');
+    const atlasVersionTag = response.headers.get('x-atlas-version-tag');
     if (response.status === 403 && String(cfMitigated || '').toLowerCase() === 'challenge') {
       return routeResult({
         path,
@@ -130,7 +136,9 @@ async function probePublicRoute(baseOrigin, path) {
         target,
         redirects,
         cfMitigated,
-        attempts
+        attempts,
+        atlasVersionId,
+        atlasVersionTag
       });
     }
 
@@ -176,7 +184,9 @@ async function probePublicRoute(baseOrigin, path) {
       target,
       redirects,
       cfMitigated,
-      attempts
+      attempts,
+      atlasVersionId,
+      atlasVersionTag
     });
   }
 }
@@ -209,7 +219,9 @@ async function probeProtectedRoute(baseOrigin, definition) {
     target,
     redirects: 0,
     cfMitigated: response.headers.get('cf-mitigated'),
-    attempts: fetched.attempts
+    attempts: fetched.attempts,
+    atlasVersionId: response.headers.get('x-atlas-version-id'),
+    atlasVersionTag: response.headers.get('x-atlas-version-tag')
   });
 }
 
@@ -237,7 +249,34 @@ async function main() {
   const failures = [...requiredResults, ...protectedResults].filter((result) => !result.ok);
   const challengeFailures = failures.filter((result) => result.reason === 'cloudflare-edge-challenge');
   const nonChallengeFailures = failures.filter((result) => result.reason !== 'cloudflare-edge-challenge');
-  const verified = failures.length === 0;
+  const publicResults = requiredResults.slice(0, contract.public_routes.length);
+  const criticalResults = requiredResults.slice(contract.public_routes.length);
+  const protectedRoutesEnforced = protectedResults.every((entry) => entry.ok);
+  const criticalNetworkRoutesReachable = criticalResults.every((entry) => entry.ok);
+  const directlyVerified = failures.length === 0;
+  const challengeOnlyOnRoot =
+    challengeFailures.length === 1 &&
+    challengeFailures[0].path === '/' &&
+    nonChallengeFailures.length === 0;
+  const versionEvidence = requiredResults.filter((entry) => entry.ok);
+  const versionIds = new Set(versionEvidence.map((entry) => entry.atlas_version_id).filter(Boolean));
+  const productionCommitShaVerified =
+    Boolean(args.expectedSha) &&
+    versionEvidence.length > 0 &&
+    versionIds.size === 1 &&
+    versionEvidence.every(
+      (entry) =>
+        Boolean(entry.atlas_version_id) &&
+        entry.atlas_version_tag === args.expectedSha
+    );
+  const edgeSecuredVerified =
+    !directlyVerified &&
+    args.deferEdgeChallenge &&
+    challengeOnlyOnRoot &&
+    criticalNetworkRoutesReachable &&
+    protectedRoutesEnforced &&
+    productionCommitShaVerified;
+  const verified = directlyVerified || edgeSecuredVerified;
   const challengeDeferred =
     !verified &&
     args.deferEdgeChallenge &&
@@ -249,23 +288,23 @@ async function main() {
     production_origin: args.baseUrl,
     mode: args.mode,
     ok: verified,
-    status: verified
+    status: directlyVerified
       ? 'passed'
-      : challengeDeferred
-        ? 'challenge-deferred'
-        : args.mode === 'warning-only'
-          ? 'warning'
-          : 'failed',
+      : edgeSecuredVerified
+        ? 'passed-edge-secured'
+        : challengeDeferred
+          ? 'challenge-deferred'
+          : args.mode === 'warning-only'
+            ? 'warning'
+            : 'failed',
     requires_authorized_fallback: challengeDeferred,
     edge_challenge_detected: challengeFailures.length > 0,
     checks: {
-      public_routes_reachable: requiredResults
-        .slice(0, contract.public_routes.length)
-        .every((entry) => entry.ok),
-      critical_network_routes_reachable: requiredResults
-        .slice(contract.public_routes.length)
-        .every((entry) => entry.ok),
-      protected_routes_enforced: protectedResults.every((entry) => entry.ok),
+      public_routes_reachable: publicResults.every((entry) => entry.ok),
+      critical_network_routes_reachable: criticalNetworkRoutesReachable,
+      protected_routes_enforced: protectedRoutesEnforced,
+      production_commit_sha_verified: productionCommitShaVerified,
+      classified_root_challenge_accepted: edgeSecuredVerified,
       required_routes: requiredResults,
       protected_routes: protectedResults
     },
