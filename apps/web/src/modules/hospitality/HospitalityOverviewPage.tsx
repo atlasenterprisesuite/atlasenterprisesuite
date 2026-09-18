@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { HospitalitySubnav } from './HospitalitySubnav';
+import { LocalDeviceModuleStatus } from '../device-os/LocalDeviceModuleStatus';
 import { getCachedHospitalityProperty } from './hospitalityContext';
 
 export function HospitalityOverviewPage() {
@@ -20,6 +21,8 @@ export function HospitalityOverviewPage() {
         <p>{selectedProperty ? `Property ${selectedProperty.propertyId} is selected for this browser context. Authorization remains server-enforced.` : 'Select a verified property when a property catalog source is connected. Local context never grants authorization.'}</p>
         <Link className="text-link" to="/hospitality/properties">View properties</Link>
       </div>
+
+      <LocalDeviceModuleStatus moduleId="hospitality" title="Property local devices" />
 
       <div className="hospitality-status-grid">
         <article className="feature-card">

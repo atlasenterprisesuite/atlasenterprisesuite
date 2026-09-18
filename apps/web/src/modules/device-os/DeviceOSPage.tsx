@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { LocalNetworkAccessPanel } from './LocalNetworkAccessPanel';
+import { LocalControlPlanePanel } from './LocalControlPlanePanel';
 import {
   ATLAS_DEVICE_PROFILES,
   getAtlasDeviceProfile,
@@ -83,6 +84,7 @@ export function DeviceOSPage() {
       </div>
 
       <LocalNetworkAccessPanel />
+      <LocalControlPlanePanel />
     </section>
   );
 }
