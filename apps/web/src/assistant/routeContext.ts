@@ -1,4 +1,5 @@
 export function resolveAssistantModule(pathname: string): string {
+  if (pathname.startsWith('/assistant')) return 'assistant';
   if (pathname.startsWith('/finance/accounting/accounts-payable')) return 'finance.accounting.accounts-payable';
   if (pathname.startsWith('/finance/accounting')) return 'finance.accounting';
   if (pathname.startsWith('/finance')) return 'finance';

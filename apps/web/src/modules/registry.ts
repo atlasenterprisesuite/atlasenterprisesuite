@@ -25,6 +25,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'assistant',
+    title: 'ATLAS Assistant',
+    navLabel: 'Assistant',
+    area: 'Intelligence',
+    route: '/assistant',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Governed multi-provider intelligence workspace with conversation history and verified provider readiness.',
+    showInNavigation: true
+  },
+  {
     id: 'business',
     title: 'Business Suite',
     navLabel: 'Business',
