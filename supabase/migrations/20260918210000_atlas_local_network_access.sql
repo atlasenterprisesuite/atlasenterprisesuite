@@ -84,7 +84,13 @@ security invoker
 set search_path = public
 as $atlas_lna$
 begin
-  new.updated_by := auth.uid();
+  if new.org_id is distinct from old.org_id then
+    raise exception 'Local network endpoint organization cannot be changed';
+  end if;
+  if new.created_by is distinct from old.created_by then
+    raise exception 'Local network endpoint creator cannot be changed';
+  end if;
+  new.updated_by := coalesce(auth.uid(), old.updated_by);
   new.updated_at := now();
   return new;
 end;
@@ -95,6 +101,32 @@ drop trigger if exists atlas_local_network_endpoints_touch
 create trigger atlas_local_network_endpoints_touch
 before update on public.atlas_local_network_endpoints
 for each row execute function public.atlas_touch_local_network_endpoint();
+
+create or replace function public.atlas_validate_local_network_event()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $atlas_lna$
+begin
+  if new.endpoint_id is not null and not exists (
+    select 1
+    from public.atlas_local_network_endpoints endpoint
+    where endpoint.id = new.endpoint_id
+      and endpoint.org_id = new.org_id
+      and endpoint.origin = new.origin
+  ) then
+    raise exception 'Local network audit endpoint scope mismatch';
+  end if;
+  return new;
+end;
+$atlas_lna$;
+
+drop trigger if exists atlas_local_network_events_validate
+  on public.atlas_local_network_events;
+create trigger atlas_local_network_events_validate
+before insert on public.atlas_local_network_events
+for each row execute function public.atlas_validate_local_network_event();
 
 alter table public.atlas_local_network_endpoints enable row level security;
 alter table public.atlas_local_network_events enable row level security;
