@@ -47,6 +47,9 @@ function errorMessage(cause: unknown) {
   if (code === 'microphone_permission_denied') return 'Microphone permission was denied. Text mode remains available.';
   if (code === 'microphone_unsupported' || code === 'microphone_unavailable') return 'Microphone capture is unavailable. Text mode remains available.';
   if (code === 'speech_unavailable') return 'Speech output is unavailable. The assistant reply remains available as text.';
+  if (code === 'voice_no_speech') return 'ATLAS did not hear a complete phrase. Try again.';
+  if (code === 'voice_transcription_unavailable') return 'Voice transcription is unavailable in this browser. Text mode remains available.';
+  if (code === 'voice_transcription_failed') return 'ATLAS could not transcribe that voice turn. Try again or use text.';
   return 'ATLAS Assistant could not complete that request.';
 }
 
@@ -146,11 +149,22 @@ export function AtlasAssistant() {
       role: 'assistant',
       text: GREETING
     }]);
-  }, [authorized, nextId, textCapability]);
+
+    if (!greetingSpoken.current && voice.speechEnabled && voice.speechCapability === 'ready') {
+      greetingSpoken.current = true;
+      setState('speaking');
+      void voice.speak(GREETING).then(() => {
+        setState(open ? 'idle' : 'closed');
+      }).catch((cause) => {
+        setError(errorMessage(cause));
+        setState(open ? 'error' : 'closed');
+      });
+    }
+  }, [authorized, nextId, open, textCapability, voice.speak, voice.speechCapability, voice.speechEnabled]);
 
   if (!authorized) return null;
 
-  async function submit(message: string) {
+  async function submit(message: string, modality: 'text' | 'voice' = 'text') {
     if (textCapability !== 'ready') {
       setError(providerError || 'ATLAS Intelligence is not ready for requests.');
       setState('error');
@@ -166,7 +180,7 @@ export function AtlasAssistant() {
         message,
         pathname: location.pathname,
         conversationId,
-        modality: 'text'
+        modality
       });
       if (response.conversation_id) setConversationId(response.conversation_id);
       setMessages((current) => [...current, {
@@ -206,8 +220,23 @@ export function AtlasAssistant() {
       return;
     }
 
+    if (textCapability !== 'ready') {
+      setError(providerError || 'ATLAS Intelligence is not ready for voice requests.');
+      setState('error');
+      return;
+    }
+
     try {
-      await voice.startMicrophone();
+      await voice.startVoiceTurn(
+        (transcript) => {
+          setState('thinking');
+          void submit(transcript, 'voice');
+        },
+        (cause) => {
+          setError(errorMessage(cause));
+          setState('error');
+        }
+      );
       setState('listening');
     } catch (cause) {
       setError(errorMessage(cause));
@@ -249,6 +278,7 @@ export function AtlasAssistant() {
           textCapability={textCapability}
           providerLabel={providerLabel}
           microphoneCapability={voice.microphoneCapability}
+          transcriptionCapability={voice.transcriptionCapability}
           microphoneActive={voice.microphoneActive}
           speechCapability={voice.speechCapability}
           speechEnabled={voice.speechEnabled}
