@@ -43,6 +43,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
+    expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');
+    expect(workflow).toContain('AUTHORIZED_JAQUE_MATE_SENTINEL_REACHABLE');
   });
 
   it('verifies the production domain after either deployment mode and covers critical ATLAS Network routes', () => {
@@ -69,6 +71,13 @@ describe('Cloudflare authorized production HTTP verifier', () => {
       expect(productionStep).toContain(route);
       expect(verifier).toContain(`'${route}'`);
     }
+
+    expect(productionStep).toContain('/health');
+    expect(productionStep).toContain('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel');
+    expect(workflow).toContain('health_route_reachable');
+    expect(workflow).toContain('jaque_mate_sentinel_route_reachable');
+    expect(workflow).toContain('Direct Health route verification missing');
+    expect(workflow).toContain('Direct Jaque Mate + Sentinel route verification missing');
 
     expect(workflow).toContain('global-production-verification:');
     expect(workflow).toContain('uses: ./.github/workflows/global-production-verify.yml');
