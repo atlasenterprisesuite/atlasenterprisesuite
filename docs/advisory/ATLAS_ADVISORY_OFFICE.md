@@ -1,33 +1,29 @@
 # ATLAS Advisory Office
 
-Status: implementation baseline
+Status: durable core implemented
 Canonical repository: atlasenterprisesuite/atlasenterprisesuite
-Branch: feat/advisory-office
+Firm #001: AW Finance Advisory Solutions
 
-## Architecture
+## Implemented
 
-ATLAS Advisory Office is a protected Business subsystem. AW Finance Advisory Solutions is Firm #001, not a separate platform.
+Advisory Office now has organization-scoped Supabase persistence for firms, firm memberships, clients, engagements, Business Launch 360 evidence and immutable-style audit events. Writes use authenticated RPCs that derive the active organization from ATLAS identity. Browser callers do not supply an organization ID to write operations.
 
-Hierarchy: Organization → Firm → Client → Engagement → Service/Task → Time/Expense → Invoice/Payment references.
+The protected routes include Overview, Clients, Engagements and Business Launch 360. Clients and engagements use real persisted records. Launch Readiness is calculated only from verified evidence across ten dimensions and verified evidence requires a non-empty reference.
 
-Advisory owns firm/client linkage, engagements, service catalog and launch workflow. CRM remains the prospect/opportunity boundary. Finance/Accounting remains the financial source of truth. Identity supplies organization scope and authentication. External document, e-sign, print, media, payment and publishing providers remain fail-closed until authorized and verified.
+AW Finance is bootstrapped as Firm #001 only inside the authenticated active organization. No clients, engagements, revenue, invoices or readiness evidence are seeded.
 
-## Business Launch 360
+## Architecture boundaries
 
-Phases: Foundation → Brand → Website → CRM & Sales → Brand, Print & Promotional Launch → Marketing → Launch → 30-Day Review.
+CRM remains the prospect/opportunity source of truth. Accounting remains the invoice/payment ledger. Tasks reuse the canonical ATLAS execution/work layer. External e-sign, calendar, document storage, print fulfillment, paid media, payment and publishing providers remain fail-closed until authorized and verified.
 
-Launch Readiness is evidence-based across business setup, brand, website, contact channels, CRM, payments, accounting, marketing, compliance and analytics. Each verified dimension contributes 10 points. Missing evidence never receives credit.
-
-Brand, Print & Promotional Launch covers approved brand assets, business cards, flyers/brochures, posters/banners, apparel/uniforms, stickers/labels, promotional items, QR assets, storefront/vehicle concepts and sales offer assets. Physical production requires proof approval before ordering. Ordered/fulfilled states require provider evidence or verified manual entry.
+Client Portal remains deny-by-default until authenticated client/delegate scope is implemented. Regulated professional claims are never inferred from the firm name or service catalog.
 
 ## Security
 
-All protected resources carry organizationId and firmId. Organization scope is derived from authenticated identity, never trusted from arbitrary client input. Client portal scope is deny-by-default. Billing and sensitive sharing require explicit permissions/approval.
+RLS is enabled on every Advisory persistence table. Reads require Advisory permissions in the active organization. Mutations are executed through security-definer RPCs that validate auth.uid(), active organization membership, Advisory manage permission, firm ownership and resource scope before writing.
 
-## Truthfulness
+Audit events are append-only to authenticated users: browser users receive read access only when they hold Advisory admin or audit permissions.
 
-No client, revenue, invoice, payment, readiness, provider-connected, printed, shipped or fulfilled state may be fabricated. Empty states are valid production states.
+## Release truth
 
-## Release gates
-
-Typecheck, unit tests, integration tests and production build must pass before merge. Deployment and production verification remain separate evidence gates.
+Code merge is not production verification. Typecheck, focused Advisory tests, repository-wide CI, CodeQL, build, deployment and public route verification remain independent evidence gates.
