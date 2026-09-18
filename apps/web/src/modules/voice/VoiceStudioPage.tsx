@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AtlasVoicePage } from './AtlasVoicePage';
 
 export function VoiceStudioPage() {
   return (
@@ -23,8 +24,10 @@ export function VoiceStudioPage() {
       </div>
 
       <div className="notice strong">
-        Voice generation, telephony, streaming, export, and native Personal Voice control are not represented as connected until a real provider or supported native bridge is verified.
+        External voice generation, telephony, streaming, export, and native Personal Voice control are not represented as connected until a real provider or supported native bridge is verified. Browser microphone recognition and guarded browser TTS remain available where the browser exposes those APIs.
       </div>
+
+      <AtlasVoicePage embedded />
 
       <Link className="text-link" to="/">Return to ATLAS home</Link>
     </section>

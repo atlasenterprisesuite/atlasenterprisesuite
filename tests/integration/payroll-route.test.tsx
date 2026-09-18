@@ -1,18 +1,34 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
 
+const membership = [{ org_id: 'org-1', role: 'owner', status: 'active' }];
+
+beforeEach(() => {
+  window.localStorage.setItem('atlas_access_token', 'payroll-test-token');
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(membership), {
+    status: 200,
+    headers: { 'content-type': 'application/json' }
+  })));
+});
+
+afterEach(() => {
+  window.localStorage.clear();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
 describe('ATLAS Payroll visual foundation', () => {
-  it('renders the approved Payroll identity and functional entry tiles', () => {
+  it('renders the approved Payroll identity and functional entry tiles behind ATLAS Identity', async () => {
     render(
       <MemoryRouter initialEntries={['/payroll']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('heading', { name: 'ATLAS PAYROLL' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'ATLAS PAYROLL' })).toBeInTheDocument();
     expect(screen.getByText('People • Pay • Progress')).toBeInTheDocument();
     expect(document.querySelector('.module-experience-page')).toBeTruthy();
     expect(screen.getByText('Payroll intelligence, governed inputs and controlled execution.')).toBeInTheDocument();
@@ -22,14 +38,14 @@ describe('ATLAS Payroll visual foundation', () => {
     expect(screen.getByRole('link', { name: /Pay Runs/i })).toHaveAttribute('href', '/payroll/pay-runs');
   });
 
-  it('renders an explicit configuration state instead of fabricated payroll metrics', () => {
+  it('renders an explicit configuration state instead of fabricated payroll metrics', async () => {
     render(
       <MemoryRouter initialEntries={['/payroll']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Payroll data is not configured/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Payroll data is not configured/i)).toBeInTheDocument();
     expect(screen.queryByText(/total payroll/i)).not.toBeInTheDocument();
   });
 
@@ -38,14 +54,14 @@ describe('ATLAS Payroll visual foundation', () => {
     ['/payroll/people', 'People'],
     ['/payroll/time-earnings', 'Time & Earnings'],
     ['/payroll/pay-runs', 'Pay Runs']
-  ])('keeps tile destination %s inside the real route graph', (path, heading) => {
+  ])('keeps tile destination %s inside the authenticated route graph', async (path, heading) => {
     render(
       <MemoryRouter initialEntries={[path]}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Back to Payroll/i })).toHaveAttribute('href', '/payroll');
   });
 });
