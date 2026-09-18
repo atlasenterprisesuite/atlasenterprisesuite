@@ -5,6 +5,8 @@ import {
 
 export type CrmApiOperation =
   | 'oauth.prepare'
+  | 'oauth.configure'
+  | 'connection.configuration'
   | 'connection.status'
   | 'connection.disconnect'
   | 'crm.list'
