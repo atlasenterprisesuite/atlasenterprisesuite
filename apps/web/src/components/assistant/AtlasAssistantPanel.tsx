@@ -62,7 +62,7 @@ export function AtlasAssistantPanel({
     <section className="atlas-assistant-panel" aria-label="ATLAS Assistant">
       <header className="atlas-assistant-header">
         <div className="atlas-assistant-identity">
-          <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
+          <img src="/atlas-avatar-particle.svg" alt="" />
           <div>
             <span className="eyebrow">ATLAS Assistant</span>
             <strong>{moduleLabel}</strong>
