@@ -14,7 +14,8 @@
     "verify:all": "npm audit --audit-level=high && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:python && npm run build",
     "verify:cloudflare": "npm run verify:all",
     "atlas:mcp:http": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/http.ts",
-    "atlas:mcp:stdio": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/stdio.ts"
+    "atlas:mcp:stdio": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/stdio.ts",
+    "atlas:night:run": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/night.ts"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

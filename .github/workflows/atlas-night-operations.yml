@@ -1,0 +1,48 @@
+name: ATLAS Night Operations
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Run even outside the configured New York night window'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-night-operations
+  cancel-in-progress: false
+
+jobs:
+  supervise:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.ATLAS_NIGHT_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      ATLAS_SUPABASE_URL: ${{ vars.ATLAS_SUPABASE_URL }}
+      ATLAS_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.ATLAS_SUPABASE_SERVICE_ROLE_KEY }}
+      ATLAS_TENANT_ID: ${{ vars.ATLAS_PLATFORM_TENANT_ID }}
+      ATLAS_ORGANIZATION_ID: ${{ vars.ATLAS_PLATFORM_ORGANIZATION_ID }}
+      ATLAS_NIGHT_WORKER_ID: github-actions-night-worker
+      ATLAS_NIGHT_MAX_ITEMS: ${{ vars.ATLAS_NIGHT_MAX_ITEMS || '1000' }}
+      ATLAS_NIGHT_FORCE_RUN: ${{ inputs.force_run && 'true' || 'false' }}
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@v4
+
+      - name: Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Locked install
+        run: npm ci
+
+      - name: Run governed night supervisor
+        run: npm run atlas:night:run
