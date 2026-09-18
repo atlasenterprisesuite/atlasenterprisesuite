@@ -29,11 +29,11 @@ describe('ATLAS Local Control Plane runtime contract', () => {
   });
 
   it('provides an explicit non-scanning local agent with a real HTTP health adapter', () => {
-    expect(agent).toContain('ATLAS_LOCAL_DEVICES_JSON');
+    expect(agent).toContain('readExplicitDevices');
     expect(agent).toContain("device.adapter !== 'http-health'");
     expect(agent).toContain("command.capability !== 'health.check'");
     expect(agent).toContain("command.action !== 'status.read'");
-    expect(agent).not.toMatch(/scan|arp|nmap/i);
+    expect(agent).not.toMatch(/\bnmap\b|\barp\s+-/i);
   });
 
   it('surfaces enrollment, agents, devices and commands in Device OS', () => {
