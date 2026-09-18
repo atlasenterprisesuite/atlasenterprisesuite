@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
+import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
@@ -22,6 +23,11 @@ const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
 
 export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/') return <EnterpriseExperiencePage />;
+
+  if (pathname === '/advisory' || pathname.startsWith('/advisory/')) {
+    return <RequireAtlasIdentity><AdvisoryRoutes /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/business') return <BusinessExperiencePage />;
   if (pathname === '/finance') return <FinanceExperiencePage />;
   if (pathname === '/finance/accounting') return <AccountingExperiencePage />;
@@ -35,11 +41,7 @@ export function resolveAtlasExtension(pathname: string) {
   }
 
   if (pathname === '/commerce' || pathname.startsWith('/commerce/')) {
-    return (
-      <RequireAtlasIdentity>
-        <CommerceRoutes />
-      </RequireAtlasIdentity>
-    );
+    return <RequireAtlasIdentity><CommerceRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/connect' || pathname.startsWith('/connect/')) {
@@ -51,23 +53,10 @@ export function resolveAtlasExtension(pathname: string) {
   }
 
   if (pathname === '/health') return <HealthExperiencePage />;
-
-  if (pathname === JAQUE_MATE_SENTINEL_LEGACY) {
-    return <Navigate to={JAQUE_MATE_SENTINEL_V2} replace />;
-  }
-
-  if (pathname === JAQUE_MATE_SENTINEL_V2 || pathname === JAQUE_MATE_SENTINEL_CANONICAL) {
-    return <JaqueMateSentinelPage />;
-  }
-
-  if (pathname === '/health/wellbeing/neuroplasticity') {
-    return <NeuroplasticityProgramPage entry="health" />;
-  }
-
-  if (pathname === '/learning/neuroplasticity') {
-    return <NeuroplasticityProgramPage entry="learning" />;
-  }
-
+  if (pathname === JAQUE_MATE_SENTINEL_LEGACY) return <Navigate to={JAQUE_MATE_SENTINEL_V2} replace />;
+  if (pathname === JAQUE_MATE_SENTINEL_V2 || pathname === JAQUE_MATE_SENTINEL_CANONICAL) return <JaqueMateSentinelPage />;
+  if (pathname === '/health/wellbeing/neuroplasticity') return <NeuroplasticityProgramPage entry="health" />;
+  if (pathname === '/learning/neuroplasticity') return <NeuroplasticityProgramPage entry="learning" />;
   if (pathname === '/learning') return <LearningExperiencePage />;
   return null;
 }
