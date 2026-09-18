@@ -14,17 +14,6 @@ export type AtlasModuleDefinition = {
 
 export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
   {
-    id: 'work',
-    title: 'ATLAS Work Soberano',
-    navLabel: 'Work',
-    area: 'Platform',
-    route: '/work',
-    readiness: 'implemented',
-    requiresAuth: true,
-    description: 'Governed sovereign work orchestration over the Universal Execution Engine.',
-    showInNavigation: true
-  },
-  {
     id: 'business',
     title: 'Business Suite',
     navLabel: 'Business',
@@ -33,6 +22,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: false,
     description: 'Growth, publishing and connected business operations.',
+    showInNavigation: true
+  },
+  {
+    id: 'advisory',
+    title: 'ATLAS Advisory Office',
+    navLabel: 'Advisory',
+    area: 'Business',
+    route: '/advisory',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Firm, client, engagement and Business Launch 360 operations with governed external boundaries.',
     showInNavigation: true
   },
   {
@@ -55,6 +55,28 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'external-gated',
     requiresAuth: true,
     description: 'Organization-scoped CRM with provider-backed integrations.',
+    showInNavigation: true
+  },
+  {
+    id: 'commerce',
+    title: 'ATLAS Commerce',
+    navLabel: 'Commerce',
+    area: 'Business',
+    route: '/commerce',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed catalog, checkout and order operations with fail-closed providers.',
+    showInNavigation: true
+  },
+  {
+    id: 'connect',
+    title: 'ATLAS Connect',
+    navLabel: 'Connect',
+    area: 'Communications',
+    route: '/connect',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Governed communications and carrier-provider connections with truthful capability gates.',
     showInNavigation: true
   },
   {
@@ -132,6 +154,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed mobility and driver-compliance workflows.',
+    showInNavigation: true
+  },
+  {
+    id: 'galaxy',
+    title: 'ATLAS Galaxy',
+    navLabel: 'Galaxy',
+    area: 'Platform',
+    route: '/galaxy',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Spatial navigation and truthful module-state overview.',
     showInNavigation: true
   },
   {
