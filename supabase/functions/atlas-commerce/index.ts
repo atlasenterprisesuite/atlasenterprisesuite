@@ -1,10 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import {
   CommercePaymentError,
-  UnavailablePaymentAdapter,
-  canonicalCheckoutFingerprint,
-  priceCart
-} from '../../../packages/commerce/src/index.ts';
+  UnavailablePaymentAdapter
+} from '../../../packages/commerce/src/payment.ts';
+import { canonicalCheckoutFingerprint } from '../../../packages/commerce/src/order.ts';
+import { priceCart } from '../../../packages/commerce/src/pricing.ts';
 import {
   commercePermissionsForRole,
   isPublicCommerceOperation,
