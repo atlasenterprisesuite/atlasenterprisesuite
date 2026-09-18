@@ -1,6 +1,6 @@
 # ATLAS GPT-6 Astra Migration
 
-Status: runtime migrated and verified on 2026-09-07.
+Status: direct OpenAI runtime migrated; advanced Astra + Amazon Bedrock integration updated 2026-09-18.
 
 ## Scope
 
@@ -13,6 +13,7 @@ Migrated runtime surfaces:
 - `atlas-personal-intelligence` — authenticated personal intelligence uses `gpt-6-astra` with medium reasoning.
 - `atlas-sign-interpret` — image-input sign interpretation uses `gpt-6-astra` with low reasoning and strict structured output.
 - `atlas-openai-readiness` — non-inferential model availability probe for the configured OpenAI key.
+- `atlas-copilot` also supports an optional `bedrock` provider backed by the OpenAI-compatible Amazon Bedrock Responses API. Direct OpenAI remains first in Auto routing; verified Bedrock is the next infrastructure fallback before other provider families.
 
 ## API contract
 
@@ -26,6 +27,9 @@ The migration follows the GPT-6 Astra model guidance:
 - Structured Outputs remain enabled where ATLAS requires machine-readable output
 - image input remains enabled for ATLAS Sign
 - `store: false` remains explicit on ATLAS inference calls
+- prompt caching uses `prompt_cache_options.ttl = "30m"` and an organization-isolated cache key on the direct OpenAI adapter
+- Astra profile changes use `configuration_update` input items while keeping the request-level reasoning prefix stable
+- unsupported parameters such as `temperature`, `top_p`, `top_logprobs`, and logprob output requests remain absent
 
 Official references:
 
@@ -78,3 +82,42 @@ If these are absent, the migrated routes use `gpt-6-astra`.
 ## Truth boundary
 
 A model appearing in OpenAI documentation is not sufficient evidence for ATLAS production readiness. ATLAS records readiness only after the configured project key can resolve the model and the active runtime reports the expected provider/model state. Public readiness endpoints do not expose the OpenAI secret and do not execute paid inference probes.
+
+
+## Amazon Bedrock provider
+
+ATLAS supports Amazon Bedrock as an optional, governed provider rather than silently replacing direct OpenAI.
+
+Defaults:
+
+- endpoint: `bedrock-runtime`
+- region: `us-west-2`
+- Runtime model/profile: `us.openai.gpt-6-astra`
+- Mantle model: `openai.gpt-6-astra`
+- API: OpenAI-compatible Responses
+- storage: `store: false`
+- reasoning profiles: low / medium / high
+- prompt caching: 30 minute TTL where accepted by the endpoint
+
+Environment variables:
+
+- `AWS_BEARER_TOKEN_BEDROCK` or `ATLAS_BEDROCK_API_KEY`
+- `ATLAS_BEDROCK_ENDPOINT=runtime|mantle`
+- `ATLAS_BEDROCK_REGION`
+- `ATLAS_BEDROCK_BASE_URL` for an explicit authorized endpoint override
+- `ATLAS_BEDROCK_MODEL`, `ATLAS_BEDROCK_MODEL_FAST`, `ATLAS_BEDROCK_MODEL_BALANCED`, `ATLAS_BEDROCK_MODEL_DEEP`
+- `ATLAS_BEDROCK_RUNTIME_VERIFIED=true` only after an external deployment/readiness check has verified the configured Runtime inference profile
+
+Bedrock Runtime does not expose the OpenAI-compatible Models API. Therefore ATLAS fails closed: a configured Runtime API key alone is reported as `configured-unverified`, and Auto routing will not use Bedrock until verification evidence has been supplied. Mantle can use its Models endpoint for non-inferential readiness verification.
+
+The Supabase Edge adapter uses a Bedrock API key because it is not running inside an AWS workload identity. Long-running ATLAS workers hosted inside AWS should prefer the standard AWS credential chain and SigV4 rather than static bearer credentials.
+
+## Capability boundary
+
+Direct OpenAI and Amazon Bedrock are intentionally not treated as capability-equivalent.
+
+Direct OpenAI GPT-6 Astra can support async tool calling, mid-turn steering over WebSocket, reasoning configuration updates, Programmatic Tool Calling, multi-agent orchestration, remote MCP, hosted tools, computer use, and prompt caching. The current ATLAS HTTP Copilot adapter enables prompt caching and reasoning configuration updates; other advanced capabilities remain disabled until their execution contracts are implemented.
+
+Amazon Bedrock supports text/image/file inputs, structured output, function calling, streaming, reasoning effort, persisted reasoning on supported models, prompt caching, custom tools, client-side tool search, and computer use. Bedrock does not provide Astra async tool calling, mid-turn steering, reasoning updates, Programmatic Tool Calling, multi-agent orchestration, remote MCP servers, hosted file search, shell, or image-generation tools. Hosted web search is Mantle-only.
+
+ATLAS must never advertise an unavailable feature merely because the underlying model supports it on another endpoint.
