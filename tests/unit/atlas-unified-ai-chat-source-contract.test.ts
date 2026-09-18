@@ -23,4 +23,10 @@ describe('ATLAS Unified AI source configuration contract', () => {
     expect(indexSource).toContain("'ATLAS_GEMINI_MODEL'");
     expect(indexSource).toContain("Deno.env.get('ATLAS_CODEX_SOVEREIGN_URL')");
   });
+
+  it('exposes the organization AI data policy and forwards per-call storage intent', () => {
+    expect(indexSource).toContain('ai_data_policy:dataPolicy');
+    expect(indexSource).toContain('store_provider_response:storeProviderResponse');
+    expect(openaiSource).toContain('store:store===true');
+  });
 });
