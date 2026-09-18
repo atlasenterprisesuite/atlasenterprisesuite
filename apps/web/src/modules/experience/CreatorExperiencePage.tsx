@@ -13,6 +13,12 @@ const creatorSections: ModuleExperienceSection[] = [
         to: '/studio/content'
       },
       {
+        label: 'Web',
+        title: 'Web Launch Lab',
+        description: 'Turn brand and audience context into a seven-stage website plan covering hero, motion, copy, implementation, conversion audit and launch verification.',
+        to: '/studio/web-launch'
+      },
+      {
         label: 'Image',
         title: 'Image Lab',
         description: 'Compose image requests while keeping provider authorization and verified result boundaries explicit.',
@@ -103,6 +109,7 @@ export function CreatorExperiencePage() {
       actions={[
         { label: 'Open Smart Teleprompter', to: '/studio/teleprompter' },
         { label: 'Start with Content Intelligence', to: '/studio/content', variant: 'secondary' },
+        { label: 'Plan a website launch', to: '/studio/web-launch', variant: 'secondary' },
         { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' }
       ]}
       sections={creatorSections}
