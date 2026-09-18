@@ -19,6 +19,7 @@ import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
+import { SecurityRoutes } from '../modules/security/SecurityRoutes';
 import { WorkRoutes } from '../work/WorkRoutes';
 
 const JAQUE_MATE_SENTINEL_CANONICAL = '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel';
@@ -70,6 +71,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/studio/web-launch') {
     return <RequireAtlasIdentity><WebLaunchPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/security' || pathname.startsWith('/security/')) {
+    return <RequireAtlasIdentity><SecurityRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/health') return <HealthExperiencePage />;
