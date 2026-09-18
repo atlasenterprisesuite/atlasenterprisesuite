@@ -14,6 +14,7 @@ import {
   executeHubSpotCrmOperation,
   type HubSpotCrmReadAdapter
 } from '../_shared/hubspot-crm-operations.ts';
+import { getServerSecret, setServerSecret } from '../_shared/server-secret-store.ts';
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.atlasenterprisesuite.com',
@@ -23,6 +24,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
 const OPERATIONS = [
   'oauth.prepare',
   'oauth.callback',
+  'oauth.configure',
+  'connection.configuration',
   'connection.status',
   'connection.disconnect',
   'crm.list',
@@ -54,6 +57,8 @@ const PERMISSIONS: Record<
   readonly string[]
 > = {
   'oauth.prepare': ['integrations.admin', 'integrations.manage'],
+  'oauth.configure': ['integrations.admin', 'integrations.manage'],
+  'connection.configuration': ['integrations.read', 'integrations.admin', 'integrations.manage'],
   'connection.status': ['integrations.read', 'integrations.admin', 'integrations.manage'],
   'connection.disconnect': ['integrations.admin', 'integrations.manage'],
   'crm.list': ['crm.read', 'crm.admin'],
@@ -65,6 +70,119 @@ const PERMISSIONS: Record<
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const CRM_INTEGRATION_RETURN_URL = 'https://www.atlasenterprisesuite.com/crm/integrations/hubspot';
+
+const SERVER_SECRET_NAMES = {
+  clientId: 'hubspot_oauth_client_id',
+  clientSecret: 'hubspot_oauth_client_secret',
+  redirectUri: 'hubspot_oauth_redirect_uri',
+  credentialKey: 'atlas_integration_credential_key'
+} as const;
+
+function base64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function generatedCredentialKey(): string {
+  return base64Url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+function canonicalRedirectUri(deps: AtlasCrmHubSpotDependencies): string {
+  const supabaseUrl = env('SUPABASE_URL', deps).replace(/\/$/, '');
+  return supabaseUrl ? `${supabaseUrl}/functions/v1/atlas-crm-hubspot` : '';
+}
+
+async function resolvedSecretDeps(
+  deps: AtlasCrmHubSpotDependencies
+): Promise<AtlasCrmHubSpotDependencies> {
+  const base = (name: string) => env(name, deps);
+  const supabaseUrl = base('SUPABASE_URL');
+  const serviceRoleKey = base('SUPABASE_SERVICE_ROLE_KEY');
+  const resolved = new Map<string, string>();
+
+  const mapping: Array<[string, string]> = [
+    ['HUBSPOT_CLIENT_ID', SERVER_SECRET_NAMES.clientId],
+    ['HUBSPOT_CLIENT_SECRET', SERVER_SECRET_NAMES.clientSecret],
+    ['HUBSPOT_REDIRECT_URI', SERVER_SECRET_NAMES.redirectUri],
+    ['ATLAS_INTEGRATION_CREDENTIAL_KEY', SERVER_SECRET_NAMES.credentialKey]
+  ];
+
+  for (const [envName, secretName] of mapping) {
+    const direct = base(envName);
+    if (direct) {
+      resolved.set(envName, direct);
+      continue;
+    }
+    if (!supabaseUrl || !serviceRoleKey) continue;
+    try {
+      const value = await getServerSecret({
+        supabaseUrl,
+        serviceRoleKey,
+        name: secretName,
+        fetchImpl: deps.fetchImpl
+      });
+      if (value) resolved.set(envName, value);
+    } catch {
+      // Configuration state remains fail-closed when Vault is unavailable.
+    }
+  }
+
+  if (!resolved.get('HUBSPOT_REDIRECT_URI')) {
+    const fallback = canonicalRedirectUri(deps);
+    if (fallback) resolved.set('HUBSPOT_REDIRECT_URI', fallback);
+  }
+
+  return {
+    ...deps,
+    env: (name) => resolved.get(name) ?? base(name)
+  };
+}
+
+async function configureHubSpotOAuth(input: {
+  clientId: unknown;
+  clientSecret: unknown;
+  deps: AtlasCrmHubSpotDependencies;
+}): Promise<{ configured: true; redirectUri: string }> {
+  if (typeof input.clientId !== 'string' || !input.clientId.trim()) {
+    throw new Error('HubSpot OAuth client ID is required');
+  }
+  if (typeof input.clientSecret !== 'string' || input.clientSecret.trim().length < 8) {
+    throw new Error('HubSpot OAuth client secret is required');
+  }
+
+  const supabaseUrl = env('SUPABASE_URL', input.deps);
+  const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY', input.deps);
+  const redirectUri = canonicalRedirectUri(input.deps);
+  if (!supabaseUrl || !serviceRoleKey || !redirectUri) {
+    throw new Error('ATLAS server secret storage is not configured');
+  }
+
+  const resolved = await resolvedSecretDeps(input.deps);
+  const existingKey = env('ATLAS_INTEGRATION_CREDENTIAL_KEY', resolved);
+  const credentialKey = existingKey || generatedCredentialKey();
+
+  const writes = [
+    [SERVER_SECRET_NAMES.clientId, input.clientId.trim(), 'HubSpot OAuth client ID'],
+    [SERVER_SECRET_NAMES.clientSecret, input.clientSecret.trim(), 'HubSpot OAuth client secret'],
+    [SERVER_SECRET_NAMES.redirectUri, redirectUri, 'ATLAS CRM HubSpot OAuth callback URI'],
+    [SERVER_SECRET_NAMES.credentialKey, credentialKey, 'ATLAS CRM credential encryption key']
+  ] as const;
+
+  for (const [name, secret, description] of writes) {
+    await setServerSecret({
+      supabaseUrl,
+      serviceRoleKey,
+      name,
+      secret,
+      description,
+      fetchImpl: input.deps.fetchImpl
+    });
+  }
+
+  return { configured: true, redirectUri };
+}
+
 
 function env(name: string, deps: AtlasCrmHubSpotDependencies): string {
   const injected = deps.env?.(name);
@@ -299,7 +417,8 @@ export async function handleAtlasCrmHubSpotRequest(
   if (req.method === 'GET') {
     const url = new URL(req.url);
     if (url.searchParams.has('code') || url.searchParams.has('state')) {
-      const result = await callback(req, deps, url.searchParams.get('state'), url.searchParams.get('code'));
+      const secretDeps = await resolvedSecretDeps(deps);
+      const result = await callback(req, secretDeps, url.searchParams.get('state'), url.searchParams.get('code'));
       const returnUrl = new URL(CRM_INTEGRATION_RETURN_URL);
       returnUrl.searchParams.set('oauth', result.ok ? 'connected' : 'error');
       if (!result.ok) {
@@ -323,7 +442,10 @@ export async function handleAtlasCrmHubSpotRequest(
     return json(req, deps, 400, { error: 'Invalid JSON body' });
   }
   if (!isOperation(body.operation)) return json(req, deps, 400, { error: 'Unknown operation' });
-  if (body.operation === 'oauth.callback') return callback(req, deps, body.state, body.code);
+  if (body.operation === 'oauth.callback') {
+    const secretDeps = await resolvedSecretDeps(deps);
+    return callback(req, secretDeps, body.state, body.code);
+  }
 
   const token = bearer(req);
   if (!token) return json(req, deps, 401, { error: 'Authentication required' });
@@ -338,15 +460,38 @@ export async function handleAtlasCrmHubSpotRequest(
     return json(req, deps, 403, { error: 'Permission denied' });
   }
 
-  const connectionStore = store(deps);
+  if (body.operation === 'oauth.configure') {
+    try {
+      return json(req, deps, 200, await configureHubSpotOAuth({
+        clientId: body.clientId,
+        clientSecret: body.clientSecret,
+        deps
+      }));
+    } catch (error) {
+      return json(req, deps, 400, {
+        error: error instanceof Error ? error.message : 'HubSpot OAuth configuration failed'
+      });
+    }
+  }
+
+  const secretDeps = await resolvedSecretDeps(deps);
+
+  if (body.operation === 'connection.configuration') {
+    return json(req, deps, 200, {
+      configured: hubSpotConfigured(secretDeps),
+      redirectUri: env('HUBSPOT_REDIRECT_URI', secretDeps) || canonicalRedirectUri(deps)
+    });
+  }
+
+  const connectionStore = store(secretDeps);
   if (!connectionStore) {
     return json(req, deps, 503, { error: 'ATLAS integration storage is not configured' });
   }
-  const lifecycleDeps = lifecycle(connectionStore, deps);
+  const lifecycleDeps = lifecycle(connectionStore, secretDeps);
 
   try {
     if (body.operation === 'oauth.prepare') {
-      if (!hubSpotConfigured(deps)) {
+      if (!hubSpotConfigured(secretDeps)) {
         return json(req, deps, 503, { error: 'HubSpot integration is not configured' });
       }
       return json(req, deps, 200, {
@@ -391,7 +536,7 @@ export async function handleAtlasCrmHubSpotRequest(
       now: deps.lifecycle?.now
     }
   });
-  return json(req, deps, result.status, result.body);
+  return json(req, secretDeps, result.status, result.body);
 }
 
 const deno = (globalThis as unknown as {
