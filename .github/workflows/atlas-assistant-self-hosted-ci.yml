@@ -1,13 +1,10 @@
 name: ATLAS Assistant Self-Hosted CI
 
 on:
-  push:
-    branches:
-      - feat/atlas-assistant-avatar-voice-mainline
   pull_request:
     branches: ["main"]
     paths:
-      - "apps/web/public/atlas/assistant/**"
+      - "apps/web/public/atlas-avatar-particle.svg"
       - "apps/web/src/assistant/**"
       - "apps/web/src/components/assistant/**"
       - "apps/web/src/components/AtlasShell.tsx"
