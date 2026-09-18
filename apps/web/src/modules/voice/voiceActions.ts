@@ -32,11 +32,11 @@ const TARGETS: VoiceTarget[] = [
 ];
 
 const ACTION_PREFIXES = [
-  'open ',
-  'go to ',
   'take me to ',
-  'show ',
   'show me ',
+  'go to ',
+  'open ',
+  'show ',
   'abre ',
   'abrir ',
   've a ',
