@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Validate CODEOWNERS security coverage
         shell: bash
@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE 'permissions:[[:space:]]*write-all' .github/workflows; then
+          if grep -RInE '^[[:space:]]*permissions:[[:space:]]*write-all[[:space:]]*(#.*)?$' .github/workflows; then
             echo "::error::permissions: write-all is prohibited in ATLAS workflows"
             exit 1
           fi
@@ -66,8 +66,8 @@ jobs:
           const fs = require('fs');
           const path = require('path');
           for (const file of fs.readdirSync('.github/workflows').filter((f) => /\.ya?ml$/i.test(f))) {
-            const text = fs.readFileSync(path.join('.github/workflows', file), 'utf8');
-            if (!/^permissions\s*:/m.test(text)) {
+            const workflow = fs.readFileSync(path.join('.github/workflows', file), 'utf8');
+            if (!/^permissions\s*:/m.test(workflow)) {
               console.log(`::warning::${file}: no top-level permissions declaration; harden incrementally`);
             }
           }
@@ -107,11 +107,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          REPO_JSON="$(curl --fail --silent --show-error \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPOSITORY")"
+          REPO_JSON="$(curl --fail --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$REPOSITORY")"
 
           OWNER_LOGIN="$(printf '%s' "$REPO_JSON" | jq -r '.owner.login')"
           OWNER_TYPE="$(printf '%s' "$REPO_JSON" | jq -r '.owner.type')"
@@ -129,11 +125,7 @@ jobs:
             exit 0
           fi
 
-          ORG_JSON="$(curl --fail --silent --show-error \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/orgs/$OWNER_LOGIN")"
+          ORG_JSON="$(curl --fail --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/orgs/$OWNER_LOGIN")"
 
           TWO_FACTOR="$(printf '%s' "$ORG_JSON" | jq -r 'if has("two_factor_requirement_enabled") then .two_factor_requirement_enabled else "unknown" end')"
           echo "- Organization 2FA requirement: `$TWO_FACTOR`" >> "$GITHUB_STEP_SUMMARY"
