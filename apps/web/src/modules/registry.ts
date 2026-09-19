@@ -157,6 +157,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'events',
+    title: 'ATLAS Events & Entertainment',
+    navLabel: 'Events',
+    area: 'Entertainment',
+    route: '/events',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed live entertainment operations across talent, venues, production, commerce and settlement.',
+    showInNavigation: true
+  },
+  {
     id: 'hospitality',
     title: 'ATLAS Hospitality',
     navLabel: 'Hospitality',

@@ -18,6 +18,7 @@ import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
+import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
@@ -249,6 +250,7 @@ function NotFound() {
 export function App() {
   const location = useLocation();
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
+  if (location.pathname.startsWith('/events')) return <EventsRoutes />;
   if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
   if (location.pathname.startsWith('/insurance')) return <InsuranceRoutes />;
   const extension = resolveAtlasExtension(location.pathname);
