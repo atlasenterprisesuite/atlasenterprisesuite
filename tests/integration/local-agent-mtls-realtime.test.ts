@@ -98,7 +98,8 @@ describe('ATLAS Local Agent mTLS + realtime contract', () => {
   it('rolls back a newly issued certificate if ATLAS binding sync fails', () => {
     expect(workflow).toContain('Issued certificates are revoked on rollback');
     expect(workflow).toContain('-X DELETE');
-    expect(edge).toContain('MTLS_PROVISION_WORKFLOW');
+    expect(edge).toContain('MTLS_PROVISION_WORKFLOWS');
+    expect(edge).toContain('GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner)');
     expect(edge).toContain('github_oidc_scope_denied');
   });
 });
