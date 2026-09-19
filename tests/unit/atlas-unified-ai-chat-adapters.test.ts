@@ -11,6 +11,10 @@ const route = { profile: 'balanced', capabilities: ['generation'] };
 describe('ATLAS Unified AI provider adapters', () => {
   it('runs ATLAS Local through a verified self-hosted Responses-compatible runtime', async () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.get('authorization')).toBe('Bearer local-secret');
+      expect(headers.get('CF-Access-Client-Id')).toBe('access-client');
+      expect(headers.get('CF-Access-Client-Secret')).toBe('access-secret');
       if (url.endsWith('/health')) return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
       expect(url).toBe('https://local-ai.example/v1/responses');
       const body = JSON.parse(String(init?.body));
@@ -27,10 +31,12 @@ describe('ATLAS Unified AI provider adapters', () => {
     const adapter = createAtlasLocalResponsesAdapter({
       baseUrl: 'https://local-ai.example',
       token: 'local-secret',
+      accessClientId: 'access-client',
+      accessClientSecret: 'access-secret',
       models: { balanced: 'local-model' },
       fetchFn,
     });
-    expect(adapter.descriptor()).toMatchObject({ id: 'atlas-local', configured: true, backend: 'self-hosted' });
+    expect(adapter.descriptor()).toMatchObject({ id: 'atlas-local', configured: true, backend: 'self-hosted', access_protected: true });
     expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
     expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('local-ok');
   });

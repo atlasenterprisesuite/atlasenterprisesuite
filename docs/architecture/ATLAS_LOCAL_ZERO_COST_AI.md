@@ -1,6 +1,6 @@
 # ATLAS Local Zero-Cost Intelligence
 
-Status: implementation integrated on 2026-09-18.
+Status: provider integrated; OIDC/Vault/Tunnel live-bootstrap implemented on 2026-09-18. Production verification remains fail-closed until the self-hosted machine completes the bootstrap.
 
 ## Goal
 
@@ -83,3 +83,53 @@ A local model is never advertised as supporting a capability that has not been v
 It means no automatic third-party AI API charge. It does not claim that electricity, hardware, storage, bandwidth, a reverse proxy/tunnel, or optional cloud hosting are free.
 
 Paid OpenAI, Bedrock or Gemini routes remain available for explicit future authorization, but strict zero-cost mode blocks them automatically.
+
+
+## Live bootstrap
+
+The remaining physical runtime boundary is automated by `.github/workflows/atlas-local-ai-bootstrap.yml`.
+
+The trusted path is:
+
+```text
+GitHub main workflow
+  -> GitHub OIDC
+  -> atlas-local-ai-bootstrap (Supabase)
+  -> ATLAS Vault
+  -> Cloudflare Tunnel + Access
+  -> self-hosted Linux host
+  -> llama.cpp on 127.0.0.1:8080
+  -> protected https://local-ai.atlasenterprisesuite.com
+  -> atlas-copilot
+```
+
+No inbound model port is opened. The host establishes an outbound Cloudflare Tunnel. External requests require both Cloudflare Access service authentication and the independent llama.cpp bearer token.
+
+The bootstrap chooses a conservative baseline model that can run on modest hardware:
+
+- model: `ggml-org/Qwen3.5-0.8B-GGUF:Q4_0`
+- license: Apache-2.0
+- runtime alias: `atlas-local-default`
+- context baseline: 8192
+- llama.cpp pin: `v0.4.1`
+
+This baseline exists to make the zero-cost path operational on CPU-class hardware. It does not prevent later replacement with a larger compatible GGUF model after real host RAM/GPU capacity is measured.
+
+### Verification gate
+
+ATLAS marks the provider `verified` only after all of the following succeed:
+
+1. the self-hosted service reports loopback health;
+2. the Cloudflare Tunnel service is active;
+3. the protected HTTPS endpoint passes Cloudflare Access;
+4. the runtime bearer token is accepted;
+5. a real `POST /v1/responses` inference returns the readiness marker;
+6. the local runtime registry records the successful verification.
+
+Installation, configured environment variables, or an existing tunnel alone are not sufficient to mark the provider live.
+
+### Secret boundary
+
+The runtime bearer token and Cloudflare Access service credentials are stored in Supabase Vault. GitHub does not contain persistent local-AI secrets. The main workflow receives bootstrap credentials only after GitHub OIDC verification, masks them immediately, stores them in a temporary mode-0600 file for installation, and deletes that file after use.
+
+The Cloudflare Tunnel connector token is written on the host to a restricted token file and is consumed with `cloudflared tunnel --token-file`, keeping it out of the process command line.

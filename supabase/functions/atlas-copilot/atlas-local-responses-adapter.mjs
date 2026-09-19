@@ -24,11 +24,15 @@ function errorForStatus(status){
   if(status>=500)return fail('provider_unavailable',502,{provider:'atlas-local'});
   return fail('provider_unavailable',502,{provider:'atlas-local'});
 }
-export function createAtlasLocalResponsesAdapter({baseUrl,token='',models,allowUnauthenticated=false,allowInsecure=false,fetchFn=fetch,timeoutMs=120000}={}){
+export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientId='',accessClientSecret='',models,allowUnauthenticated=false,allowInsecure=false,fetchFn=fetch,timeoutMs=120000}={}){
   const base=normalizeBase(baseUrl,{allowInsecure});
   const resolved=Object.freeze({fast:clean(models?.fast),balanced:clean(models?.balanced),deep:clean(models?.deep)});
   const configured=Boolean(base)&&Object.values(resolved).some(Boolean)&&Boolean(token||allowUnauthenticated);
-  const authHeaders=()=>token?{authorization:`Bearer ${token}`}:{};
+  const accessProtected=Boolean(clean(accessClientId)&&clean(accessClientSecret));
+  const authHeaders=()=>({
+    ...(token?{authorization:`Bearer ${token}`}:{}),
+    ...(accessProtected?{'CF-Access-Client-Id':String(accessClientId),'CF-Access-Client-Secret':String(accessClientSecret)}:{}),
+  });
   const descriptor=()=>({
     id:'atlas-local',
     configured,
@@ -38,6 +42,7 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',models,allowU
     api:'responses-compatible',
     backend:'self-hosted',
     endpoint:'atlas-local-runtime',
+    access_protected:accessProtected,
     models:{...resolved},
     feature_support:{
       local_inference:true,

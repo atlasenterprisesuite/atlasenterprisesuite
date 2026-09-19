@@ -1,0 +1,131 @@
+name: ATLAS Local AI Bootstrap
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "supabase/functions/atlas-copilot/**"
+      - "supabase/functions/atlas-local-ai-bootstrap/**"
+      - "supabase/migrations/20260919022000_atlas_local_ai_runtime_bootstrap.sql"
+      - "tools/local-agent/atlas-local-ai-runtime.mjs"
+      - "tools/local-agent/install-local-ai-linux.sh"
+      - ".github/workflows/atlas-local-ai-bootstrap.yml"
+      - "docs/architecture/ATLAS_LOCAL_ZERO_COST_AI.md"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: atlas-local-ai-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  provision-and-verify:
+    runs-on: self-hosted
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runtime prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v curl >/dev/null
+          command -v node >/dev/null
+          command -v sudo >/dev/null
+
+      - name: Issue zero-cost runtime bootstrap
+        id: issue
+        shell: bash
+        env:
+          BOOTSTRAP_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-local-ai-bootstrap
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl --silent --show-error --fail             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-local-ai-bootstrap")"
+          OIDC_TOKEN="$(node -e 'const j=JSON.parse(process.argv[1]);process.stdout.write(String(j.value||""))' "$OIDC_JSON")"
+          test -n "$OIDC_TOKEN"
+          echo "::add-mask::$OIDC_TOKEN"
+
+          RESPONSE_FILE="$RUNNER_TEMP/atlas-local-ai-issue.json"
+          HTTP_STATUS="$(curl --silent --show-error             --output "$RESPONSE_FILE"             --write-out '%{http_code}'             --request POST             -H "Authorization: Bearer $OIDC_TOKEN"             -H 'Content-Type: application/json'             "$BOOTSTRAP_URL?api=issue")"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            node -e 'const fs=require("fs");let j={};try{j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch{};console.error("ATLAS Local AI bootstrap failed:",j.error||"http_"+process.argv[2])' "$RESPONSE_FILE" "$HTTP_STATUS"
+            exit 1
+          fi
+
+          RUNTIME_TOKEN="$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.runtime_token||""))' "$RESPONSE_FILE")"
+          TUNNEL_TOKEN="$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.tunnel_token||""))' "$RESPONSE_FILE")"
+          MODEL_ALIAS="$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.model_alias||""))' "$RESPONSE_FILE")"
+          MODEL_REPO="$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.model_hf_repo||""))' "$RESPONSE_FILE")"
+          CONTEXT="$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.context_size||""))' "$RESPONSE_FILE")"
+
+          test -n "$RUNTIME_TOKEN"
+          test -n "$TUNNEL_TOKEN"
+          test -n "$MODEL_ALIAS"
+          test -n "$MODEL_REPO"
+          test -n "$CONTEXT"
+          echo "::add-mask::$RUNTIME_TOKEN"
+          echo "::add-mask::$TUNNEL_TOKEN"
+
+          BOOTSTRAP_ENV="$RUNNER_TEMP/atlas-local-ai-bootstrap.env"
+          umask 077
+          {
+            printf 'ATLAS_LOCAL_AI_TOKEN=%q\n' "$RUNTIME_TOKEN"
+            printf 'ATLAS_LOCAL_AI_TUNNEL_TOKEN=%q\n' "$TUNNEL_TOKEN"
+            printf 'ATLAS_LOCAL_AI_MODEL_ALIAS=%q\n' "$MODEL_ALIAS"
+            printf 'ATLAS_LOCAL_AI_HF_REPO=%q\n' "$MODEL_REPO"
+            printf 'ATLAS_LOCAL_AI_CONTEXT=%q\n' "$CONTEXT"
+          } > "$BOOTSTRAP_ENV"
+          chmod 600 "$BOOTSTRAP_ENV"
+          rm -f "$RESPONSE_FILE"
+
+          echo "bootstrap_env=$BOOTSTRAP_ENV" >> "$GITHUB_OUTPUT"
+          echo "ATLAS Local AI bootstrap credentials issued without logging secret values." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install persistent llama.cpp runtime and tunnel
+        shell: bash
+        env:
+          BOOTSTRAP_ENV: ${{ steps.issue.outputs.bootstrap_env }}
+        run: |
+          set -euo pipefail
+          test -f "$BOOTSTRAP_ENV"
+          sudo bash -c 'set -a; source "$1"; set +a; exec bash "$2"'             _ "$BOOTSTRAP_ENV" "$GITHUB_WORKSPACE/tools/local-agent/install-local-ai-linux.sh"
+          rm -f "$BOOTSTRAP_ENV"
+
+      - name: Verify loopback runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail --max-time 10 http://127.0.0.1:8080/health >/dev/null
+          sudo systemctl is-active --quiet atlas-local-ai.service
+          sudo systemctl is-active --quiet atlas-local-ai-tunnel.service
+          echo "Self-hosted llama.cpp runtime and Cloudflare Tunnel are active." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify ATLAS Local through protected production endpoint
+        shell: bash
+        env:
+          BOOTSTRAP_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-local-ai-bootstrap
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl --silent --show-error --fail             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-local-ai-bootstrap")"
+          OIDC_TOKEN="$(node -e 'const j=JSON.parse(process.argv[1]);process.stdout.write(String(j.value||""))' "$OIDC_JSON")"
+          test -n "$OIDC_TOKEN"
+          echo "::add-mask::$OIDC_TOKEN"
+
+          VERIFY_FILE="$RUNNER_TEMP/atlas-local-ai-verify.json"
+          HTTP_STATUS="$(curl --silent --show-error             --output "$VERIFY_FILE"             --write-out '%{http_code}'             --request POST             -H "Authorization: Bearer $OIDC_TOKEN"             -H 'Content-Type: application/json'             "$BOOTSTRAP_URL?api=verify")"
+          node - "$VERIFY_FILE" "$HTTP_STATUS" <<'NODE'
+          const fs=require('fs');
+          const file=process.argv[2];
+          const status=process.argv[3];
+          let j={};
+          try{j=JSON.parse(fs.readFileSync(file,'utf8'))}catch{}
+          if(status!=='200'||j.ok!==true||j.state!=='verified'||j.provider!=='atlas-local'||j.inference_verified!==true||j.automatic_api_cost_usd!==0){
+            console.error('ATLAS Local protected verification failed:',j.error||j.state||('http_'+status));
+            process.exit(1);
+          }
+          NODE
+          rm -f "$VERIFY_FILE"
+          echo "ATLAS Local verified live through Cloudflare Access with automatic API cost USD 0." >> "$GITHUB_STEP_SUMMARY"
