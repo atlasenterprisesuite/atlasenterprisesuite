@@ -11,6 +11,7 @@ import {
   type HubSpotLifecycleDependencies
 } from './hubspot-connection-lifecycle.ts';
 import { HubSpotCrmAdapter, HubSpotCrmError } from './hubspot-crm.ts';
+import { verifyHubSpotConnectionHealth } from './hubspot-resilience.ts';
 import type {
   HubSpotConnectionStore,
   HubSpotExternalObjectLinkInput
@@ -41,6 +42,7 @@ export type HubSpotCrmOperationDependencies = {
   lifecycle: HubSpotLifecycleDependencies;
   adapter?: HubSpotCrmOperationAdapter;
   now?: () => number;
+  writesEnabled?: boolean;
 };
 
 export type HubSpotCrmOperationResult = { status: number; body: unknown };
@@ -259,54 +261,27 @@ export async function executeHubSpotCrmOperation(input: {
   try {
     if (input.operation === 'crm.refresh') {
       const connection = await readyConnection({ organizationId: input.organizationId, deps: input.deps });
-      const credential = await refreshHubSpotConnectionCredential({
-        organizationId: input.organizationId,
+      const health = await verifyHubSpotConnectionHealth({
+        connection,
         actorUserId: input.actorUserId,
-        deps: input.deps.lifecycle
+        deps: {
+          store: input.deps.store,
+          lifecycle: input.deps.lifecycle,
+          adapter,
+          now: input.deps.now
+        },
+        forceRefresh: true
       });
-      try {
-        const readiness = await adapter.readiness(providerContext(credential.accessToken));
-        if (!readiness.ready || !readiness.account) {
-          const code = readiness.error?.code ?? 'upstream_unavailable';
-          await input.deps.store.updateConnection(input.organizationId, {
-            state: 'degraded', last_error_code: code, last_error_at: nowIso(input.deps)
-          });
-          await recordEvidence(input.deps, {
-            organizationId: input.organizationId, actorUserId: input.actorUserId,
-            operation: input.operation, status: 'failed', errorCode: code
-          });
-          return {
-            status: 200,
-            body: { connection: await getHubSpotConnectionStatus({
-              organizationId: input.organizationId, deps: input.deps.lifecycle
-            }) }
-          };
+      return {
+        status: 200,
+        body: {
+          connection: await getHubSpotConnectionStatus({
+            organizationId: input.organizationId,
+            deps: input.deps.lifecycle
+          }),
+          health
         }
-        if (readiness.account.id !== connection.provider_account_id) {
-          throw new HubSpotLifecycleError('provider_account_mismatch', 409);
-        }
-        const verifiedAt = nowIso(input.deps);
-        await input.deps.store.updateConnection(input.organizationId, {
-          state: 'connected',
-          provider_account_label: readiness.account.label,
-          last_verified_at: verifiedAt,
-          last_success_at: verifiedAt,
-          last_error_code: null,
-          last_error_at: null
-        });
-        await recordEvidence(input.deps, {
-          organizationId: input.organizationId, actorUserId: input.actorUserId,
-          operation: input.operation, status: 'completed'
-        });
-        return {
-          status: 200,
-          body: { connection: await getHubSpotConnectionStatus({
-            organizationId: input.organizationId, deps: input.deps.lifecycle
-          }) }
-        };
-      } finally {
-        destroyCredentialPayload(credential);
-      }
+      };
     }
 
     if (!isObjectType(input.body.objectType)) {
@@ -325,6 +300,23 @@ export async function executeHubSpotCrmOperation(input: {
     try {
       const context = providerContext(credential.accessToken);
       if (input.operation === 'crm.create') {
+        if (input.deps.writesEnabled !== true) {
+          await recordEvidence(input.deps, {
+            organizationId: input.organizationId,
+            actorUserId: input.actorUserId,
+            operation: input.operation,
+            objectType,
+            status: 'denied',
+            errorCode: 'crm_writes_disabled'
+          });
+          return {
+            status: 403,
+            body: {
+              error: 'HubSpot CRM writes are disabled by ATLAS policy',
+              code: 'crm_writes_disabled'
+            }
+          };
+        }
         const fields = createFields(input.body.fields);
         const sourceThreadId = optionalUuid(input.body.sourceThreadId);
         const writeAdapter = typeof adapter.createObject === 'function'

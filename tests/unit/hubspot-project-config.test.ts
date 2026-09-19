@@ -23,6 +23,15 @@ const app = JSON.parse(readFileSync(resolve(projectRoot, 'src/app/app-hsmeta.jso
     };
   };
 };
+const webhooks = JSON.parse(
+  readFileSync(resolve(projectRoot, 'src/app/webhooks/atlas-crm-hubspot-webhooks-hsmeta.json'), 'utf8')
+) as {
+  type: string;
+  config: {
+    settings: { targetUrl: string; maxConcurrentRequests: number };
+    subscriptions: { crmObjects: Array<Record<string, unknown>> };
+  };
+};
 
 describe('HubSpot developer project contract', () => {
   it('preserves the original generated HubSpot app component identity', () => {
@@ -34,6 +43,21 @@ describe('HubSpot developer project contract', () => {
     expect(app.uid).toBe('atlas_crm_hubspot_app');
     expect(app.type).toBe('app');
     expect(app.config.distribution).toBe('private');
+  });
+
+  it('configures realtime webhooks on the same governed callback', () => {
+    expect(webhooks.type).toBe('webhooks');
+    expect(webhooks.config.settings.targetUrl).toBe(
+      'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-crm-hubspot'
+    );
+    expect(webhooks.config.settings.maxConcurrentRequests).toBeGreaterThan(0);
+    for (const objectType of ['contact', 'company', 'deal', 'ticket']) {
+      expect(webhooks.config.subscriptions.crmObjects).toEqual(expect.arrayContaining([
+        expect.objectContaining({ objectType, subscriptionType: 'object.creation', active: true }),
+        expect.objectContaining({ objectType, subscriptionType: 'object.deletion', active: true }),
+        expect.objectContaining({ objectType, subscriptionType: 'object.associationChange', active: true })
+      ]));
+    }
   });
 
   it('keeps HubSpot OAuth aligned with the ATLAS production callback', () => {

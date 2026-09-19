@@ -55,6 +55,18 @@ function connection(state: string) {
 
 function defaultApi(operation: string, payload: Record<string, unknown> = {}) {
   if (operation === 'connection.status') return Promise.resolve({ connection: connected });
+  if (operation === 'connection.health') return Promise.resolve({ health: {
+    status: 'healthy',
+    lastProbeAt: '2026-09-19T05:00:00Z',
+    lastProbeSuccessAt: '2026-09-19T05:00:00Z',
+    lastRefreshVerifiedAt: '2026-09-19T05:00:00Z',
+    lastWebhookAt: null,
+    lastReconcileAt: '2026-09-19T05:00:00Z',
+    consecutiveFailures: 0,
+    lastErrorCode: null,
+    objectChecks: {},
+    reconcileSummary: {}
+  } });
   if (operation === 'connection.configuration') {
     return Promise.resolve({
       configured: true,
@@ -68,7 +80,18 @@ function defaultApi(operation: string, payload: Record<string, unknown> = {}) {
     });
   }
   if (operation === 'connection.disconnect') return Promise.resolve({ connection: connection('revoked') });
-  if (operation === 'crm.refresh') return Promise.resolve({ connection: connected });
+  if (operation === 'crm.refresh') return Promise.resolve({ connection: connected, health: {
+    status: 'healthy',
+    lastProbeAt: '2026-09-19T05:00:00Z',
+    lastProbeSuccessAt: '2026-09-19T05:00:00Z',
+    lastRefreshVerifiedAt: '2026-09-19T05:00:00Z',
+    lastWebhookAt: null,
+    lastReconcileAt: '2026-09-19T05:00:00Z',
+    consecutiveFailures: 0,
+    lastErrorCode: null,
+    objectChecks: {},
+    reconcileSummary: {}
+  } });
   if (operation === 'oauth.prepare') {
     return Promise.resolve({ authorizationUrl: 'https://app.hubspot.com/oauth/authorize?client_id=fake&state=fake' });
   }
@@ -277,6 +300,15 @@ describe('HubSpot connection controls', () => {
       clientId: 'client-id-1',
       clientSecret: 'client-secret-123'
     }));
+  });
+
+  it('renders production resilience health without exposing provider secrets', async () => {
+    render(<MemoryRouter initialEntries={['/crm/integrations/hubspot']}><CrmRoutes /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Production resilience' })).toBeInTheDocument();
+    expect(screen.getByText('healthy')).toBeInTheDocument();
+    expect(screen.getByText(/Outbound HubSpot writes remain disabled/)).toBeInTheDocument();
+    expect(integrationPageSource).not.toContain('refreshToken');
+    expect(integrationPageSource).not.toContain('accessToken');
   });
 
   it('allows configured OAuth credentials to be securely replaced', async () => {

@@ -96,6 +96,8 @@ export function CrmSocialHandoffPage() {
         setError('HubSpot is not connected or verified for this organization. Connect it before creating the CRM record.');
       } else if (caught instanceof CrmApiError && caught.code === 'forbidden_scope') {
         setError('HubSpot is connected but the granted scopes do not allow this CRM write.');
+      } else if (caught instanceof CrmApiError && caught.code === 'crm_writes_disabled') {
+        setError('ATLAS outbound HubSpot writes are disabled by server policy. Reads, health checks and synchronization remain available.');
       } else {
         setError(caught instanceof Error ? caught.message : 'CRM handoff failed');
       }

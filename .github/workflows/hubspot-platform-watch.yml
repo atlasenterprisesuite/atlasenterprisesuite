@@ -1,0 +1,81 @@
+name: HubSpot Platform Watch
+
+on:
+  schedule:
+    - cron: '17 10 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  hubspot-platform-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check HubSpot platform contracts and changelog
+        id: watch
+        continue-on-error: true
+        run: node scripts/verify-hubspot-platform.mjs
+
+      - name: Publish report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hubspot-platform-watch
+          path: .tmp/hubspot-platform-watch.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Open or update review issue
+        if: steps.watch.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('.tmp/hubspot-platform-watch.json', 'utf8');
+            const title = '[HubSpot Platform Watch] Review required';
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            const existing = issues.find(issue => issue.title === title && !issue.pull_request);
+            const body = [
+              'ATLAS detected a HubSpot platform change or local contract drift that requires review.',
+              '',
+              'Run: `node scripts/verify-hubspot-platform.mjs`',
+              '',
+              '```json',
+              report.slice(0, 55000),
+              '```'
+            ].join('\n');
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+            }
+
+      - name: Enforce review gate
+        if: steps.watch.outcome == 'failure'
+        run: exit 1

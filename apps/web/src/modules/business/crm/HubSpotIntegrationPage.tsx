@@ -35,9 +35,23 @@ type HubSpotOAuthConfiguration = {
   redirectUri: string;
 };
 
+type HubSpotHealthView = {
+  status: 'unknown' | 'healthy' | 'degraded' | 'error' | 'stale';
+  lastProbeAt: string | null;
+  lastProbeSuccessAt: string | null;
+  lastRefreshVerifiedAt: string | null;
+  lastWebhookAt: string | null;
+  lastReconcileAt: string | null;
+  consecutiveFailures: number;
+  lastErrorCode: string | null;
+  objectChecks: Record<string, unknown>;
+  reconcileSummary: Record<string, unknown>;
+};
+
 export function HubSpotIntegrationPage() {
   const [connection, setConnection] = useState<CrmConnectionView | null>(null);
   const [configuration, setConfiguration] = useState<HubSpotOAuthConfiguration | null>(null);
+  const [health, setHealth] = useState<HubSpotHealthView | null>(null);
   const [oauthClientId, setOauthClientId] = useState('');
   const [oauthClientSecret, setOauthClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
@@ -49,12 +63,14 @@ export function HubSpotIntegrationPage() {
     setLoading(true);
     setError(null);
     try {
-      const [statusResult, configurationResult] = await Promise.all([
+      const [statusResult, configurationResult, healthResult] = await Promise.all([
         crmApi<{ connection: CrmConnectionView }>('connection.status'),
-        crmApi<HubSpotOAuthConfiguration>('connection.configuration')
+        crmApi<HubSpotOAuthConfiguration>('connection.configuration'),
+        crmApi<{ health: HubSpotHealthView }>('connection.health')
       ]);
       setConnection(statusResult.connection);
       setConfiguration(configurationResult);
+      setHealth(healthResult.health);
     } catch (caught) {
       setError(safeError(caught));
     } finally {
@@ -101,8 +117,9 @@ export function HubSpotIntegrationPage() {
     setAction('verifying');
     setError(null);
     try {
-      const result = await crmApi<{ connection: CrmConnectionView }>('crm.refresh');
+      const result = await crmApi<{ connection: CrmConnectionView; health?: HubSpotHealthView }>('crm.refresh');
       setConnection(result.connection);
+      if (result.health) setHealth(result.health);
     } catch (caught) {
       setError(safeError(caught));
     } finally {
@@ -203,6 +220,21 @@ export function HubSpotIntegrationPage() {
                   : 'Save OAuth configuration'}
             </button>
           </div>
+        </section>
+      ) : null}
+
+      {!loading && health ? (
+        <section className="crm-scope-panel" aria-labelledby="hubspot-health-title">
+          <h2 id="hubspot-health-title">Production resilience</h2>
+          <dl className="crm-field-grid">
+            <div><dt>Health</dt><dd>{health.status}</dd></div>
+            <div><dt>Last provider smoke test</dt><dd>{health.lastProbeSuccessAt ? new Date(health.lastProbeSuccessAt).toLocaleString() : 'Not yet recorded'}</dd></div>
+            <div><dt>Refresh token verified</dt><dd>{health.lastRefreshVerifiedAt ? new Date(health.lastRefreshVerifiedAt).toLocaleString() : 'Not yet forced'}</dd></div>
+            <div><dt>Last webhook</dt><dd>{health.lastWebhookAt ? new Date(health.lastWebhookAt).toLocaleString() : 'Awaiting first event'}</dd></div>
+            <div><dt>Last reconciliation</dt><dd>{health.lastReconcileAt ? new Date(health.lastReconcileAt).toLocaleString() : 'Not yet recorded'}</dd></div>
+            <div><dt>Consecutive failures</dt><dd>{health.consecutiveFailures}</dd></div>
+          </dl>
+          <p>Outbound HubSpot writes remain disabled by server policy unless explicitly enabled by an authorized ATLAS deployment.</p>
         </section>
       ) : null}
 

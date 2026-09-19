@@ -410,6 +410,7 @@ export async function refreshHubSpotConnectionCredential(input: {
   organizationId: string;
   actorUserId: string;
   deps: HubSpotLifecycleDependencies;
+  forceRefresh?: boolean;
 }): Promise<ProviderCredentialPayload> {
   const connection = await input.deps.store.getConnection(input.organizationId);
   if (!connection || !connection.credential_ref || !['connected', 'degraded'].includes(connection.state)) {
@@ -441,7 +442,7 @@ export async function refreshHubSpotConnectionCredential(input: {
   }
 
   const expiresAt = credential.expiresAt ?? 0;
-  if (expiresAt > nowMs(input.deps) + 60_000) return credential;
+  if (!input.forceRefresh && expiresAt > nowMs(input.deps) + 60_000) return credential;
   const refreshToken = credential.refreshToken?.trim();
   if (!refreshToken) {
     destroyCredentialPayload(credential);
