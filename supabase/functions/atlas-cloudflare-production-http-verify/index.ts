@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 10;
+const VERSION = 11;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -309,11 +309,14 @@ Deno.serve(async (req: Request) => {
   const deploymentPathProtected = [302, 401, 403].includes(deployment.status);
   const observedVersionId = home.atlas_version_id;
   const observedVersionTag = home.atlas_version_tag;
+  const observedVersionIds = [...new Set(
+    routedProbes
+      .map((result) => result.atlas_version_id)
+      .filter((versionId): versionId is string => Boolean(versionId))
+  )];
   const productionCommitVerified = Boolean(caller.claims.sha) &&
-    Boolean(observedVersionId) &&
-    observedVersionTag === caller.claims.sha &&
     routedProbes.every((result) =>
-      result.atlas_version_id === observedVersionId && result.atlas_version_tag === caller.claims.sha
+      Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha
     );
   const verified = publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && deploymentPathProtected && productionCommitVerified;
 
@@ -325,7 +328,9 @@ Deno.serve(async (req: Request) => {
       production_url: PRODUCTION_URL,
       target_sha: caller.claims.sha,
       observed_version_id: observedVersionId,
+      observed_version_ids: observedVersionIds,
       observed_version_tag: observedVersionTag,
+      multi_version_same_sha: productionCommitVerified && observedVersionIds.length > 1,
       edge_security_preserved: true,
       checks: {
         public_home_reachable: home.status === 200,
