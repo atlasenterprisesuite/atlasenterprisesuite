@@ -4,7 +4,9 @@ import {
   clampWorldPoint,
   moveWorldPoint,
   nearestResourceTarget,
-  screenToPlacement
+  screenToPlacement,
+  normalizeRotationY,
+  toWorldPlacement
 } from '../../apps/web/src/modules/frontier/world3d';
 
 describe('ATLAS FRONTIER spatial world', () => {
@@ -25,5 +27,16 @@ describe('ATLAS FRONTIER spatial world', () => {
     const edge = screenToPlacement(1000, 500, 1000, 500);
     expect(edge.x).toBeLessThanOrEqual(6.5);
     expect(edge.z).toBeLessThanOrEqual(6.5);
+  });
+
+  it('normalizes durable building rotation and transform', () => {
+    expect(normalizeRotationY(Math.PI * 3)).toBeCloseTo(-Math.PI);
+    expect(normalizeRotationY(Number.NaN)).toBe(0);
+    expect(toWorldPlacement({ x: 99, z: -99 }, Math.PI / 2)).toEqual({
+      x: 6.5,
+      y: 0,
+      z: -6.5,
+      rotationY: Math.PI / 2
+    });
   });
 });
