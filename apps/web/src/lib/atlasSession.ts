@@ -178,6 +178,11 @@ export async function authorizedAtlasFetch(path: string, init: RequestInit = {})
   return response;
 }
 
+export async function atlasAuthorizedJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await authorizedAtlasFetch(path, init);
+  return parseResponse(response) as Promise<T>;
+}
+
 export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
   const response = await authorizedAtlasFetch('/rest/v1/organization_members?select=org_id,role,status,organizations!organization_members_org_id_fkey(id,name,legal_name,active)&status=eq.active&limit=1', {
     method: 'GET'

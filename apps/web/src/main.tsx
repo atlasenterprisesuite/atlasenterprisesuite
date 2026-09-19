@@ -6,6 +6,7 @@ import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { RideRoutes } from './modules/ride/RideRoutes';
 import './styles.css';
 import './health.css';
+import './accessibility.css';
 import './execution/execution.css';
 import './work/work.css';
 import './neuroplasticity.css';
