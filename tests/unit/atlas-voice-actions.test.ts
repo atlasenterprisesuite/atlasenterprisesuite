@@ -12,7 +12,8 @@ describe('ATLAS Voice safe navigation actions', () => {
     ['show me health', '/health'],
     ['go to health', '/health'],
     ['ATLAS CRM', '/crm'],
-    ['ATLAS muéstrame contabilidad', '/finance/accounting']
+    ['ATLAS muéstrame contabilidad', '/finance/accounting'],
+    ['ATLAS abre portales', '/galaxy/portals']
   ])('routes %s safely to %s', (transcript, route) => {
     expect(resolveVoiceNavigationCommand(transcript)?.route).toBe(route);
   });
