@@ -169,7 +169,7 @@ function drawCube(runtime: GlRuntime, viewProjection: Float32Array, position: re
   const { gl } = runtime;
   const matrix = multiply(viewProjection, modelMatrix(position[0], position[1], position[2], scale[0], scale[1], scale[2]));
   gl.uniformMatrix4fv(runtime.matrixLocation, false, matrix);
-  gl.uniform4fv(runtime.colorLocation, color);
+  gl.uniform4fv(runtime.colorLocation, new Float32Array(color));
   gl.drawArrays(gl.TRIANGLES, 0, 36);
 }
 
