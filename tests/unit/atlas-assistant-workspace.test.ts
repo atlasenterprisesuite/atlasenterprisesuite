@@ -36,6 +36,11 @@ describe('ATLAS Assistant workspace', () => {
     expect(client).toContain('/functions/v1/atlas-copilot?api=conversation');
     expect(client).toContain('/functions/v1/atlas-copilot?api=chat');
     expect(client).toContain("surface: 'atlas-assistant-workspace'");
+    expect(page).toContain('ATLAS Local AI');
+    expect(page).toContain('LIVE / VERIFIED');
+    expect(page).toContain("status?.local_runtime?.state === 'verified'");
+    expect(page).toContain("localProvider?.verified === true");
+    expect(page).toContain('last_verified_at');
   });
 
   it('maps the dedicated workspace to the assistant module context', () => {

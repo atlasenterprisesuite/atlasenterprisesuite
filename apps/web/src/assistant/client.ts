@@ -40,6 +40,12 @@ export type AssistantStatusResponse = {
   modes?: AssistantMode[];
   profiles?: AssistantProfile[];
   api?: string;
+  local_runtime?: {
+    state: string;
+    last_error_code?: string | null;
+    last_verified_at?: string | null;
+    host_required?: boolean;
+  };
   cost_policy?: {
     allow_paid_single?: boolean;
     allow_council?: boolean;
