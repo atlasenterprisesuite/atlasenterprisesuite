@@ -11,6 +11,7 @@ describe('ATLAS Assistant route context', () => {
     ['/payroll', 'payroll'],
     ['/learning/course/123', 'learning'],
     ['/hospitality/hotels', 'hospitality'],
+    ['/frontier', 'frontier'],
     ['/ride/trips', 'ride'],
     ['/voice/assistant', 'voice'],
     ['/studio/voice', 'studio.voice'],
