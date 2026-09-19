@@ -8,6 +8,7 @@ const orchestrator = readFileSync('packages/ai-core/src/orchestrator.ts', 'utf8'
 const install = readFileSync('scripts/install-render-local-ai.mjs', 'utf8');
 const start = readFileSync('scripts/start-atlas-orchestrator.mjs', 'utf8');
 const migration = readFileSync('supabase/migrations/20260919034000_atlas_render_free_local_ai.sql', 'utf8');
+const identityReuseMigration = readFileSync('supabase/migrations/20260919034500_atlas_render_existing_identity.sql', 'utf8');
 const bootstrap = readFileSync('supabase/functions/atlas-local-ai-bootstrap/index.ts', 'utf8');
 const workflow = readFileSync('.github/workflows/atlas-render-local-ai-verify.yml', 'utf8');
 
@@ -46,6 +47,15 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(migration).toContain('vault.update_secret');
     expect(migration).toContain("'https://atlas-sovereign-orchestrator.onrender.com/local-ai'");
     expect(migration).toContain("'render-free'");
+  });
+
+  it('can reuse the existing governed orchestrator identity without duplicating it', () => {
+    expect(identityReuseMigration).toContain("'credential_mode', 'existing_orchestrator_identity'");
+    expect(identityReuseMigration).toContain("name='atlas_local_ai_runtime_token'");
+    expect(identityReuseMigration).toContain("name='atlas_orchestrator_runtime_token'");
+    expect(identityReuseMigration).not.toContain('vault.create_secret');
+    expect(identityReuseMigration).not.toContain('vault.update_secret');
+    expect(identityReuseMigration).toContain('grant execute on function public.atlas_get_local_ai_runtime_config() to service_role');
   });
 
   it('requires a real response inference before Render becomes verified', () => {
