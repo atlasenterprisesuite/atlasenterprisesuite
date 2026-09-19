@@ -63,7 +63,7 @@ type DeploymentManifest = {
   commit_sha?: string;
 };
 
-let deploymentCommitShaPromise: Promise<string | null> | null = null;
+let deploymentCommitCache: { versionId: string; promise: Promise<string | null> } | null = null;
 
 function canonicalCommitSha(value: unknown) {
   const sha = String(value || '').trim().toLowerCase();
@@ -74,25 +74,31 @@ async function deploymentCommitSha(env: Env, request: Request) {
   const metadataTag = canonicalCommitSha(env.CF_VERSION_METADATA?.tag);
   if (metadataTag) return metadataTag;
 
-  if (!deploymentCommitShaPromise) {
-    deploymentCommitShaPromise = (async () => {
-      try {
-        const manifestUrl = new URL('/deployment.json', request.url);
-        const manifestResponse = await env.ASSETS.fetch(new Request(manifestUrl, {
-          method: 'GET',
-          headers: { 'cache-control': 'no-store' }
-        }));
-        if (!manifestResponse.ok) return null;
-        const manifest = await manifestResponse.json().catch(() => null) as DeploymentManifest | null;
-        return canonicalCommitSha(manifest?.commit_sha);
-      } catch {
-        return null;
-      }
-    })();
+  const versionId = String(env.CF_VERSION_METADATA?.id || '').trim();
+  if (!versionId) return null;
+
+  if (!deploymentCommitCache || deploymentCommitCache.versionId !== versionId) {
+    deploymentCommitCache = {
+      versionId,
+      promise: (async () => {
+        try {
+          const manifestUrl = new URL('/deployment.json', request.url);
+          const manifestResponse = await env.ASSETS.fetch(new Request(manifestUrl, {
+            method: 'GET',
+            headers: { 'cache-control': 'no-store' }
+          }));
+          if (!manifestResponse.ok) return null;
+          const manifest = await manifestResponse.json().catch(() => null) as DeploymentManifest | null;
+          return canonicalCommitSha(manifest?.commit_sha);
+        } catch {
+          return null;
+        }
+      })()
+    };
   }
 
-  const commitSha = await deploymentCommitShaPromise;
-  if (!commitSha) deploymentCommitShaPromise = null;
+  const commitSha = await deploymentCommitCache.promise;
+  if (!commitSha) deploymentCommitCache = null;
   return commitSha;
 }
 
