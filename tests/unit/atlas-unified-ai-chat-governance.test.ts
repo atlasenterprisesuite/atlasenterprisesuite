@@ -4,7 +4,7 @@ import { createCouncilOrchestrator } from '../../supabase/functions/atlas-copilo
 import { createToolGateway } from '../../supabase/functions/atlas-copilot/tool-gateway.mjs';
 import { evaluateIntelligenceCostPolicy } from '../../supabase/functions/atlas-copilot/cost-policy.mjs';
 
-function adapter(id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign', options: {
+function adapter(id: 'atlas-local' | 'atlas-sovereign-free' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign', options: {
   configured?: boolean;
   verified?: boolean;
   text?: string;
@@ -48,6 +48,7 @@ describe('ATLAS provider registry', () => {
     const registry = createProviderRegistry({
       providers: [
         adapter('atlas-local', { configured: false, verified: false }),
+        adapter('atlas-sovereign-free'),
         adapter('openai'),
         adapter('bedrock', { verified: false }),
         adapter('gemini', { configured: false, verified: false }),
@@ -57,6 +58,7 @@ describe('ATLAS provider registry', () => {
     const readiness = await registry.readiness({ profile: 'balanced' });
     expect(readiness.map((item: any) => [item.id, item.state])).toEqual([
       ['atlas-local', 'configuration-required'],
+      ['atlas-sovereign-free', 'verified'],
       ['openai', 'verified'],
       ['bedrock', 'unavailable'],
       ['gemini', 'configuration-required'],
@@ -174,6 +176,14 @@ describe('ATLAS AI cost policy', () => {
       mode: 'auto',
       providers: ['atlas-local'],
       policy: { allowed_providers: ['atlas-local'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: ['atlas-local'] },
+    })).toMatchObject({ decision: 'allow', reason: 'zero_cost_provider', estimated_automatic_cost_usd: 0 });
+  });
+
+  it('allows sovereign free as a zero-cost provider without paid authorization', () => {
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'auto',
+      providers: ['atlas-sovereign-free'],
+      policy: { allowed_providers: ['atlas-sovereign-free'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: ['atlas-local', 'atlas-sovereign-free'] },
     })).toMatchObject({ decision: 'allow', reason: 'zero_cost_provider', estimated_automatic_cost_usd: 0 });
   });
 
