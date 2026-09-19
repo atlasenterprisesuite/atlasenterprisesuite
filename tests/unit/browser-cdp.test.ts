@@ -24,6 +24,11 @@ it('accepts an exact semantic click target for an allowed session', () => {
 });
 
 it('supports explicit OAuth consent as a distinct action', () => {
-  expect(() => validateBrowserCommand('oauth_consent',{target:'text:Choose Account'},['hubspot.com']))
+  expect(() => validateBrowserCommand('oauth_consent',{domain:'app.hubspot.com',target:'text:Choose Account'},['hubspot.com']))
     .not.toThrow();
+});
+
+it('requires every DOM action to declare its expected allowed domain', () => {
+  expect(() => validateBrowserCommand('click',{target:'text:Choose Account'},['hubspot.com']))
+    .toThrow('browser_expected_domain_required');
 });
