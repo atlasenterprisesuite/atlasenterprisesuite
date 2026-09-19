@@ -18,6 +18,19 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function safeUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString().slice(0, 2000);
+  } catch {
+    return '[redacted-url]';
+  }
+}
+
 function sanitize(value, depth = 0) {
   if (depth > 8) return '[depth-limited]';
   if (typeof value === 'string') return value.slice(0, 2000);
@@ -27,6 +40,10 @@ function sanitize(value, depth = 0) {
     const output = {};
     for (const [key, nested] of Object.entries(value).slice(0, 100)) {
       if (SENSITIVE_KEY.test(key)) continue;
+      if (/^(url|uri|href)$/i.test(key)) {
+        output[key] = safeUrl(nested);
+        continue;
+      }
       output[key] = sanitize(nested, depth + 1);
     }
     return output;
