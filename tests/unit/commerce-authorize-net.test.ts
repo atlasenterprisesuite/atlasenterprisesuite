@@ -29,6 +29,7 @@ describe('Authorize.net payment adapter', () => {
         transactionKey: 'secret'
       });
       expect(body.createTransactionRequest.transactionRequest.amount).toBe('12.34');
+      expect(body.createTransactionRequest.transactionRequest.currencyCode).toBe('USD');
       expect(body.createTransactionRequest.transactionRequest.payment.opaqueData.dataValue)
         .toBe('opaque-test-token-12345');
       expect(body.createTransactionRequest.transactionRequest.transactionSettings.setting[0])
