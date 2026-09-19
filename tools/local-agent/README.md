@@ -118,3 +118,44 @@ ATLAS_AI_ZERO_COST_PROVIDERS=atlas-local
 ATLAS does not mark the runtime ready merely because variables exist. The `/health` probe must verify successfully. If `atlas-local` is unavailable, strict zero-cost mode blocks paid fallbacks instead of silently spending money.
 
 “Zero cost” means zero automatic third-party AI API charges. Local hardware, electricity, internet, storage, and optional hosting/tunnel costs remain outside the model API cost boundary.
+
+
+## ATLAS Browser Operator
+
+The Local Agent can expose an explicitly configured Chrome/Chromium browser as an audited `browser-cdp` device. It uses the same enrollment, tenant isolation, command queue, realtime mTLS bus, approval gates and audit stream as other local devices.
+
+Example `devices.json` entry:
+
+```json
+[
+  {
+    "external_id": "atlas-browser",
+    "label": "ATLAS Browser Operator",
+    "device_type": "browser",
+    "adapter": "browser-cdp",
+    "capabilities": ["browser.control"],
+    "metadata": {
+      "allowed_domains": [
+        "hubspot.com",
+        "supabase.co",
+        "atlasenterprisesuite.com"
+      ]
+    }
+  }
+]
+```
+
+Supported browser actions are `navigate`, `read_text`, `click`, `type`, `submit`, and the explicit high-risk `oauth_consent` action. Every command carries a bounded non-secret `action_payload` and is restricted to the device domain allowlist. Every non-navigation browser action must also declare its exact expected `domain`, and the Local Agent verifies the live page hostname before touching the DOM. Navigation is HTTPS-only. Semantic targets such as `text:Choose Account` use exact normalized text/ARIA matching and must resolve to exactly one interactive control.
+
+Ordinary `click` or `submit` commands refuse controls that look like OAuth consent (for example “Choose Account”, “Authorize”, “Allow”, or “Approve”). Provider consent must be represented as `oauth_consent`, marked `high` or `critical`, and bound to an already-approved canonical ATLAS execution approval whose current step payload exactly matches the device, capability, action, and action payload. This keeps ATLAS Work/Approval Center as the decision layer while the Local Agent + mTLS/Realtime Command Bus remains the single execution substrate.
+
+Password/OTP/token/card-like typing is blocked using both the requested target and the live DOM field attributes. Browser evidence strips URL userinfo, query strings, and fragments before it is sent back, so OAuth `code`/`state` values are not persisted in event detail. The operator binds Chrome DevTools Protocol only to `127.0.0.1` and launches a dedicated browser profile by default.
+
+Optional environment variables:
+
+- `ATLAS_BROWSER_EXECUTABLE`: explicit Chrome/Chromium executable path.
+- `ATLAS_BROWSER_PROFILE_DIR`: persistent dedicated operator profile.
+- `ATLAS_BROWSER_CDP_PORT`: loopback CDP port, default `9222`.
+- `ATLAS_BROWSER_HEADLESS=true`: optional headless execution. Interactive OAuth usually needs the visible browser profile.
+
+ATLAS must not claim a browser action occurred unless the Local Agent reports the audited command as succeeded.

@@ -21,12 +21,19 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(edge).toContain("String(step.module) !== 'device-os'");
     expect(edge).toContain("String(step.action_type) !== 'local_device_command'");
     expect(edge).toContain('digestApprovalPayload');
+    expect(edge).toContain("String(approval.required_permission) !== 'execution.approve'");
+    expect(edge).toContain("!['high', 'critical'].includes(String(approval.risk_level))");
+    expect(edge).toContain('oauth_consent_high_risk_required');
+    expect(edge).toContain("capability === 'browser.control' && action === 'oauth_consent'");
   });
 
-  it('rejects secret-shaped telemetry and arbitrary command payloads', () => {
+  it('rejects secret-shaped telemetry and permits only bounded non-secret action payloads', () => {
     expect(edge).toContain('sensitive_event_detail_rejected');
     expect(edge).toContain('sensitive_device_metadata_rejected');
-    expect(edge).not.toContain('command_payload');
+    expect(edge).toContain('safeActionPayload');
+    expect(edge).toContain('sensitive_command_payload_rejected');
+    expect(edge).toContain('command_payload_too_large');
+    expect(edge).toContain('action_payload');
   });
 
   it('provides an explicit non-scanning local agent with a real HTTP health adapter', () => {
@@ -35,6 +42,7 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(agent).toContain("command.capability !== 'health.check'");
     expect(agent).toContain("command.action !== 'status.read'");
     expect(agent).not.toMatch(/\bnmap\b|\barp\s+-/i);
+    expect(agent).toContain("command.capability === 'browser.control'");
   });
 
   it('keeps the local AI runtime loopback-bound with environment-backed authentication', () => {

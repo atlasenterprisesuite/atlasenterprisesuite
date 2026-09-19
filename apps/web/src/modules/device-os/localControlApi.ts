@@ -46,6 +46,7 @@ export type AtlasLocalCommand = {
   device_id: string;
   capability: string;
   action: string;
+  action_payload: Record<string, unknown>;
   risk_level: 'low' | 'medium' | 'high' | 'critical';
   approval_id: string | null;
   status: 'queued' | 'claimed' | 'succeeded' | 'failed' | 'cancelled';
@@ -157,7 +158,8 @@ export async function enqueueLocalDeviceCommand(input: {
   agentId: string;
   capability: string;
   action: string;
-  riskLevel?: 'low' | 'medium';
+  actionPayload?: Record<string, unknown>;
+  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
   approvalId?: string;
 }) {
   const organization = await getActiveAtlasOrganization();
@@ -165,6 +167,7 @@ export async function enqueueLocalDeviceCommand(input: {
     device_id: input.deviceId,
     capability: input.capability,
     action: input.action,
+    action_payload: input.actionPayload || {},
     risk_level: input.riskLevel || 'low',
     approval_id: input.approvalId || undefined
   });
