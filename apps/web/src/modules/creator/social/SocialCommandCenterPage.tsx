@@ -135,7 +135,8 @@ export function SocialCommandCenterPage() {
 
   async function schedulePost(event: FormEvent) {
     event.preventDefault();
-    const scheduledFor = new Date(scheduleFor).toISOString();
+    const scheduledDate = new Date(scheduleFor);
+    const scheduledFor = Number.isFinite(scheduledDate.getTime()) ? scheduledDate.toISOString() : scheduleFor;
     const errors = validateSocialScheduleInput({
       platform: schedulePlatform,
       caption: scheduleCaption,
