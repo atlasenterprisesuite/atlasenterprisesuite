@@ -143,10 +143,10 @@ ATLAS_WORK_RUNTIME_TOKEN=<one-time runtime token>
 ATLAS_BROWSER_CDP_URL=http://127.0.0.1:9222
 ```
 
-Start Chrome/Chromium with a dedicated ATLAS browser profile and loopback-only remote debugging, sign into provider sites in that profile yourself, then start:
+The recommended launcher creates a dedicated ATLAS Chrome/Chromium profile, binds remote debugging to loopback, and starts the Work runtime. Sign into provider sites in that dedicated profile yourself, then start:
 
 ```bash
-node tools/local-agent/atlas-work-browser-runtime.mjs
+node tools/local-agent/atlas-governed-browser.mjs
 ```
 
 ATLAS never receives the browser-profile password. The Work runtime token authenticates only the job queue; it is not a provider credential. A revoked runtime stops receiving work. Browser jobs use five-minute leases and sanitized completion evidence.
