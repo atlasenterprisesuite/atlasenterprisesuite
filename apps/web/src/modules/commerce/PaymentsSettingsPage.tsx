@@ -61,7 +61,7 @@ export function PaymentsSettingsPage() {
               <h2>{data.provider.displayName}</h2>
             </div>
             <strong className={data.provider.ready ? 'provider-ready' : 'provider-blocked'}>
-              {data.provider.ready ? 'Ready' : 'Setup required'}
+              {data.provider.ready ? 'Server ready' : 'Setup required'}
             </strong>
           </div>
 
@@ -75,7 +75,7 @@ export function PaymentsSettingsPage() {
           </dl>
 
           <div className="notice">
-            Production remains blocked until eCheck.Net is approved in the merchant account and the server-side credentials are present in ATLAS Vault.
+            The server adapter remains blocked until eCheck.Net is approved and the organization-scoped credentials are present in ATLAS Vault. Public storefront eCheck checkout stays disabled until the customer tokenization and post-settlement reconciliation flows are also enabled.
           </div>
 
           <a
