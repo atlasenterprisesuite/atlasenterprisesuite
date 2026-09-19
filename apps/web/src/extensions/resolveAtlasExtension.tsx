@@ -25,6 +25,15 @@ import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
+import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
+import {
+  AutomationsIntegrationHub,
+  PeopleIntegrationHub,
+  ReleaseControlIntegrationHub,
+  RevenueIntegrationHub,
+  SiteReviewIntegrationHub,
+  TelecomIntegrationHub
+} from '../modules/integration/AtlasIntegrationHubs';
 import { VoiceRoutes } from '../modules/voice/VoiceRoutes';
 import { WorkRoutes } from '../work/WorkRoutes';
 
@@ -33,6 +42,32 @@ const JAQUE_MATE_SENTINEL_V2 = '/health/jaque-mate/sentinel/v2';
 const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/suite') return <AtlasSuitePage />;
+
+  if (pathname === '/automations') {
+    return <RequireAtlasIdentity><AutomationsIntegrationHub /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/people') {
+    return <RequireAtlasIdentity><PeopleIntegrationHub /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/revenue') {
+    return <RequireAtlasIdentity><RevenueIntegrationHub /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/site-review') {
+    return <RequireAtlasIdentity><SiteReviewIntegrationHub /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/telecom') {
+    return <RequireAtlasIdentity><TelecomIntegrationHub /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/release') {
+    return <RequireAtlasIdentity><ReleaseControlIntegrationHub /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/assistant') {
     return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
   }

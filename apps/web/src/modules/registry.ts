@@ -25,6 +25,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'automations',
+    title: 'ATLAS Automations',
+    navLabel: 'Automations',
+    area: 'Platform',
+    route: '/automations',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed automation orchestration over ATLAS Work, execution readiness and assistant intelligence.',
+    showInNavigation: false
+  },
+  {
     id: 'assistant',
     title: 'ATLAS Assistant',
     navLabel: 'Assistant',
@@ -47,6 +58,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'revenue',
+    title: 'ATLAS Revenue Operations',
+    navLabel: 'Revenue',
+    area: 'Business',
+    route: '/revenue',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Canonical revenue operations across CRM, commerce, business growth and financial reconciliation.',
+    showInNavigation: false
+  },
+  {
     id: 'advisory',
     title: 'ATLAS Advisory Office',
     navLabel: 'Advisory',
@@ -67,6 +89,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     requiresAuth: false,
     description: 'Governed accounting and financial operations.',
     showInNavigation: true
+  },
+  {
+    id: 'accounting',
+    title: 'ATLAS Accounting',
+    navLabel: 'Accounting',
+    area: 'Finance',
+    route: '/finance/accounting',
+    readiness: 'partial',
+    requiresAuth: false,
+    description: 'Canonical accounting entry point across payable, reporting and governed finance workflows.',
+    showInNavigation: false
   },
   {
     id: 'crm',
@@ -102,6 +135,28 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'telecom',
+    title: 'ATLAS Telecom',
+    navLabel: 'Telecom',
+    area: 'Communications',
+    route: '/telecom',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Canonical telecom entry point over Connect, Device OS and Voice with carrier actions fail-closed.',
+    showInNavigation: false
+  },
+  {
+    id: 'people',
+    title: 'ATLAS People',
+    navLabel: 'People',
+    area: 'People',
+    route: '/people',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'People operations entry point spanning payroll, learning and governed workforce administration.',
+    showInNavigation: false
+  },
+  {
     id: 'payroll',
     title: 'ATLAS Payroll',
     navLabel: 'Payroll',
@@ -135,6 +190,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'insurance',
+    title: 'ATLAS Insurance',
+    navLabel: 'Insurance',
+    area: 'Protection',
+    route: '/insurance',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Secure insurance access, member and policy verification, and governed coverage workflows.',
+    showInNavigation: false
+  },
+  {
     id: 'studio',
     title: 'ATLAS Studio',
     navLabel: 'Creator',
@@ -144,6 +210,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     requiresAuth: true,
     description: 'Governed media creation and provider-aware execution.',
     showInNavigation: true
+  },
+  {
+    id: 'site-review',
+    title: 'ATLAS Site Review',
+    navLabel: 'Site Review',
+    area: 'Creative',
+    route: '/site-review',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed review entry point for web launch, content intelligence and execution evidence.',
+    showInNavigation: false
   },
   {
     id: 'voice',
@@ -234,6 +311,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'release-control',
+    title: 'ATLAS Release Control',
+    navLabel: 'Release',
+    area: 'Platform',
+    route: '/release',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Internal release and production-readiness entry point for governed deployment evidence.',
+    showInNavigation: false
+  },
+  {
     id: 'execution',
     title: 'Universal Execution',
     navLabel: 'Execution',
@@ -248,6 +336,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
 
 export const ATLAS_NAV_ITEMS = [
   { to: '/', label: 'Home' },
+  { to: '/suite', label: 'All Modules' },
   ...ATLAS_MODULES
     .filter((module) => module.showInNavigation)
     .map((module) => ({ to: module.route, label: module.navLabel })),

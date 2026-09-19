@@ -51,7 +51,7 @@ function appRouteLine(source, routePrefix) {
 }
 
 function moduleHasAuthCoverage(module, sources) {
-  const { app, resolver, hospitality, ride, payroll, events } = sources;
+  const { app, resolver, hospitality, ride, payroll, events, insurance } = sources;
   if (resolverBlock(resolver, module.route).includes('RequireAtlasIdentity')) return true;
 
   switch (module.id) {
@@ -63,6 +63,8 @@ function moduleHasAuthCoverage(module, sources) {
       return payroll.includes('RequireAtlasIdentity') && payroll.includes('<Routes>');
     case 'events':
       return events.includes('RequireAtlasIdentity') && events.includes(module.route);
+    case 'insurance':
+      return insurance.includes('RequireAtlasIdentity') && insurance.includes(module.route);
     case 'studio':
       return appRouteLine(app, '/studio"').includes('RequireAtlasIdentity');
     case 'voice':
@@ -122,11 +124,12 @@ export function evaluateNeuralIntegrity() {
   const ride = read('apps/web/src/modules/ride/RideRoutes.tsx');
   const payroll = read('apps/web/src/modules/payroll/PayrollRoutes.tsx');
   const events = read('apps/web/src/modules/events/EventsRoutes.tsx');
-  const routeSources = [main, app, resolver, hospitality, ride, payroll, events].join('\n');
+  const insurance = read('apps/web/src/modules/insurance/InsuranceRoutes.tsx');
+  const routeSources = [main, app, resolver, hospitality, ride, payroll, events, insurance].join('\n');
   const routesRepresented = modules.every((module) => routeSources.includes(module.route));
   const authCoverage = modules
     .filter((module) => module.requiresAuth)
-    .every((module) => moduleHasAuthCoverage(module, { app, resolver, hospitality, ride, payroll, events }));
+    .every((module) => moduleHasAuthCoverage(module, { app, resolver, hospitality, ride, payroll, events, insurance }));
   const nerves = routesRepresented && authCoverage;
 
   const worker = read('worker/index.ts');
