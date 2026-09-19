@@ -60,11 +60,14 @@ describe('ATLAS Commerce Edge source contract', () => {
 
   it('reads Authorize.net credentials only through the server secret store and exposes readiness without secret values', () => {
     expect(source).toContain('getServerSecret');
-    expect(source).toContain("'authorize_net_api_login_id'");
-    expect(source).toContain("'authorize_net_transaction_key'");
+    expect(source).toContain('authorizeNetSecretName(context.orgId');
+    expect(source).toContain("'api_login_id'");
+    expect(source).toContain("'transaction_key'");
     expect(source).toContain("'payments.status'");
     expect(source).toContain('storesRawBankData: false');
     expect(source).not.toContain('body.apiLoginId');
     expect(source).not.toContain('body.transactionKey');
+    expect(source).not.toContain("name: 'authorize_net_api_login_id'");
+    expect(source).not.toContain("name: 'authorize_net_transaction_key'");
   });
 });
