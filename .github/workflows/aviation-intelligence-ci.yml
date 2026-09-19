@@ -31,7 +31,7 @@ permissions:
 
 jobs:
   aviation:
-    runs-on: ${{ github.event_name == 'push' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
