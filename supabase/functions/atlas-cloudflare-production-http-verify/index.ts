@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 12;
+const VERSION = 13;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -241,6 +241,7 @@ Deno.serve(async (req: Request) => {
 
   const [
     home,
+    suite,
     identity,
     finance,
     automotiveSales,
@@ -258,6 +259,7 @@ Deno.serve(async (req: Request) => {
     deployment
   ] = await Promise.all([
     probe('/'),
+    probe('/suite'),
     probe('/identity?app=%2Ffinance'),
     probe('/finance'),
     probe('/finance/accounting/reports/automotive-sales'),
@@ -277,6 +279,7 @@ Deno.serve(async (req: Request) => {
 
   const publicShellOk =
     home.status === 200 &&
+    suite.status === 200 &&
     identity.status === 200 &&
     finance.status === 200 &&
     automotiveSales.status === 200 &&
@@ -288,6 +291,7 @@ Deno.serve(async (req: Request) => {
   const commerceRouteOk = commerce.status === 200;
   const routedProbes = [
     home,
+    suite,
     identity,
     finance,
     automotiveSales,
@@ -338,6 +342,7 @@ Deno.serve(async (req: Request) => {
       edge_security_preserved: true,
       checks: {
         public_home_reachable: home.status === 200,
+        suite_route_reachable: suite.status === 200,
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         automotive_sales_report_reachable: automotiveSales.status === 200,
@@ -356,6 +361,7 @@ Deno.serve(async (req: Request) => {
         network_compliance_route_reachable: networkCompliance.status === 200,
         deployment_path_protected: deploymentPathProtected,
         home,
+        suite,
         identity,
         finance,
         automotive_sales: automotiveSales,
