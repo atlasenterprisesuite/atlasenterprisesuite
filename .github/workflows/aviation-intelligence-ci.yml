@@ -10,6 +10,7 @@ on:
       - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
       - 'apps/web/src/styles.css'
       - 'tests/unit/module-registry.test.ts'
+      - 'tests/unit/aviation-*.test.ts'
       - 'tests/integration/aviation-*.test.tsx'
       - '.github/workflows/aviation-intelligence-ci.yml'
   pull_request:
@@ -21,6 +22,7 @@ on:
       - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
       - 'apps/web/src/styles.css'
       - 'tests/unit/module-registry.test.ts'
+      - 'tests/unit/aviation-*.test.ts'
       - 'tests/integration/aviation-*.test.tsx'
       - '.github/workflows/aviation-intelligence-ci.yml'
 
@@ -40,6 +42,6 @@ jobs:
       - name: Install dependencies for branch verification
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Aviation routing and registry tests
-        run: npx vitest run tests/integration/aviation-routing.test.tsx tests/unit/module-registry.test.ts
+        run: npx vitest run tests/unit/module-registry.test.ts tests/unit/aviation-*.test.ts tests/integration/aviation-*.test.tsx
       - run: npm run typecheck
       - run: npm run build
