@@ -2,13 +2,14 @@ name: ATLAS FRONTIER WebGL CI
 
 on:
   push:
-    branches: ["feat/frontier-webgl-world"]
+    branches: ["feat/frontier-webgl-world", "feat/frontier-persistent-world"]
   pull_request:
     branches: ["main"]
     paths:
       - "apps/web/src/modules/frontier/**"
       - "tests/unit/frontier-*.test.ts"
       - "tests/integration/frontier-*.test.ts"
+      - "supabase/migrations/*frontier*.sql"
       - ".github/workflows/frontier-webgl-ci.yml"
 
 permissions:
@@ -32,7 +33,7 @@ jobs:
       - name: Install
         run: npm ci
       - name: Focused FRONTIER tests
-        run: npx vitest run tests/unit/frontier-domain.test.ts tests/unit/frontier-world3d.test.ts tests/integration/frontier-route-contract.test.ts tests/integration/frontier-awakening-campaign.test.ts tests/integration/frontier-webgl-world.test.ts
+        run: npx vitest run tests/unit/frontier-domain.test.ts tests/unit/frontier-world3d.test.ts tests/integration/frontier-route-contract.test.ts tests/integration/frontier-awakening-campaign.test.ts tests/integration/frontier-webgl-world.test.ts tests/integration/frontier-persistent-world.test.ts
       - name: Typecheck
         run: npm run typecheck
       - name: Production build
