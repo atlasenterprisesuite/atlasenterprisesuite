@@ -4,6 +4,7 @@ import WebKit
 struct AtlasPortalWebView: UIViewRepresentable {
     @ObservedObject var model: AtlasSpatialModel
 
+    @MainActor
     final class Coordinator {
         let bridgeHandler: AtlasPortalBridgeHandler
         var lastNavigationRoute: String?
