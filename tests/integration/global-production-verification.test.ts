@@ -111,6 +111,8 @@ describe('ATLAS global production verification', () => {
 
     const cloudflareWorkflow = read('.github/workflows/cloudflare-deploy.yml');
     expect(cloudflareWorkflow).toContain('global-production-verification:');
+    expect(cloudflareWorkflow).toContain(`probe_worker '/suite' 'suite'`);
+    expect(cloudflareWorkflow).toContain('suite_route_reachable=true');
     expect(cloudflareWorkflow).toContain('uses: ./.github/workflows/global-production-verify.yml');
     expect(cloudflareWorkflow).toContain('mode: fail-closed');
     expect(cloudflareWorkflow).toContain('- "scripts/verify-global-production.mjs"');
@@ -150,6 +152,8 @@ describe('ATLAS global production verification', () => {
       expect(authorizedVerifier, route).toContain(`'${route}'`);
     }
 
+    expect(authorizedVerifier).toContain("'/suite'");
+    expect(authorizedVerifier).toContain('suite_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
     expect(authorizedVerifier).toContain("'/voice'");
