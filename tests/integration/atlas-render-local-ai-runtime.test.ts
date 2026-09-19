@@ -20,17 +20,20 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(orchestrator).toContain('this.options = options');
   });
 
-  it('installs local AI artifacts only in Render builds', () => {
+  it('installs a pinned verified llama.cpp CPU artifact only in Render builds', () => {
     expect(install).toContain("process.env.RENDER !== 'true'");
-    expect(install).toContain("LLAMA_VERSION: 'v0.4.1'");
+    expect(install).toContain('llama-b11046-bin-ubuntu-x64.tar.gz');
+    expect(install).toContain('ca14dec04b4c5725b6373681cc3685c5dbb914301f7f8be6c89649c0a68734a9');
+    expect(install).toContain("findFile(runtimeDir, 'llama-server')");
+    expect(install).toContain("sha256(archive) !== llamaSha256");
+    expect(install).not.toContain('llama.app/install.sh');
     expect(install).toContain('SmolLM2-135M-Instruct-Q4_K_M.gguf');
-    expect(install).toContain('SKIP_CUDA');
-    expect(install).toContain('SKIP_ROCM');
-    expect(install).toContain('SKIP_VULKAN');
   });
 
   it('keeps llama on loopback and exposes only the authenticated proxy', () => {
     expect(start).toContain("'--host', '127.0.0.1'");
+    expect(start).toContain("findFile(runtimeDir, 'llama-server')");
+    expect(start).toContain('LD_LIBRARY_PATH');
     expect(start).toContain("ATLAS_LOCAL_AI_INTERNAL_URL");
     expect(start).not.toContain("'--host', '0.0.0.0'");
     expect(http).toContain("req.url === '/local-ai/health'");
