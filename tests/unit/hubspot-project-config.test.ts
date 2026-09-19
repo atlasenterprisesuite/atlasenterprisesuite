@@ -54,7 +54,8 @@ describe('HubSpot developer project contract', () => {
     for (const objectType of ['contact', 'company', 'deal', 'ticket']) {
       expect(webhooks.config.subscriptions.crmObjects).toEqual(expect.arrayContaining([
         expect.objectContaining({ objectType, subscriptionType: 'object.creation', active: true }),
-        expect.objectContaining({ objectType, subscriptionType: 'object.deletion', active: true })
+        expect.objectContaining({ objectType, subscriptionType: 'object.deletion', active: true }),
+        expect.objectContaining({ objectType, subscriptionType: 'object.associationChange', active: true })
       ]));
     }
   });
