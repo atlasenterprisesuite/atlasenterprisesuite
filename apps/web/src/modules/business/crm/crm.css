@@ -265,3 +265,6 @@
     flex-direction: column;
   }
 }
+
+
+.crm-social-handoff-form{display:grid;gap:1rem}.crm-social-handoff-form>label{display:grid;gap:.4rem;max-width:28rem}.crm-social-handoff-form input,.crm-social-handoff-form select{width:100%;box-sizing:border-box}
