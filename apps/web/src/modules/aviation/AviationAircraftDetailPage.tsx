@@ -102,7 +102,7 @@ function DetailPanel({ aircraft, tab }: { aircraft: AviationConcept; tab: Aircra
       <p>{aircraft.summary}</p>
       <dl className="aviation-detail-metrics">
         <div><dt>Intended use</dt><dd>{aircraft.intendedUse}</dd></div>
-        <div><dt>Design state</dt><dd>Internal concept</dd></div>
+        <div><dt>Design state</dt><dd>Concept record</dd></div>
         <div><dt>Evidence</dt><dd>{evidenceState === 'not_configured' ? 'Not configured' : evidenceState}</dd></div>
       </dl>
     </div>
