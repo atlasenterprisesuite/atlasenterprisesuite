@@ -169,7 +169,12 @@ async function seededStore(organizationId = orgA) {
   return store;
 }
 
-function deps(store: Store, adapter: Adapter, permissions: readonly string[] = ['crm.read']): AtlasCrmHubSpotDependencies {
+function deps(
+  store: Store,
+  adapter: Adapter,
+  permissions: readonly string[] = ['crm.read'],
+  writesEnabled = false
+): AtlasCrmHubSpotDependencies {
   const granted = new Set(permissions);
   return {
     connectionStore: store,
@@ -180,7 +185,8 @@ function deps(store: Store, adapter: Adapter, permissions: readonly string[] = [
       SUPABASE_ANON_KEY: 'fake-publishable',
       HUBSPOT_CLIENT_ID: 'client',
       HUBSPOT_CLIENT_SECRET: 'fake-secret',
-      HUBSPOT_REDIRECT_URI: 'https://atlas.test/callback'
+      HUBSPOT_REDIRECT_URI: 'https://atlas.test/callback',
+      HUBSPOT_CRM_WRITES_ENABLED: writesEnabled ? 'true' : 'false'
     } as Record<string, string>)[name],
     fetchImpl: async (resource, init) => {
       const url = String(resource);
@@ -198,7 +204,7 @@ function deps(store: Store, adapter: Adapter, permissions: readonly string[] = [
 
 async function invoke(input: {
   store: Store; adapter: Adapter; operation: string; organizationId?: string;
-  body?: Record<string, unknown>; permissions?: readonly string[];
+  body?: Record<string, unknown>; permissions?: readonly string[]; writesEnabled?: boolean;
 }) {
   const request = new Request('https://atlas.test/functions/v1/atlas-crm-hubspot', {
     method: 'POST',
@@ -213,7 +219,10 @@ async function invoke(input: {
       ...(input.body ?? {})
     })
   });
-  return handleAtlasCrmHubSpotRequest(request, deps(input.store, input.adapter, input.permissions));
+  return handleAtlasCrmHubSpotRequest(
+    request,
+    deps(input.store, input.adapter, input.permissions, input.writesEnabled === true)
+  );
 }
 
 describe('ATLAS CRM HubSpot tenant-safe read operations', () => {
@@ -299,6 +308,7 @@ describe('ATLAS CRM HubSpot tenant-safe read operations', () => {
       adapter,
       operation: 'crm.create',
       permissions: ['crm.write'],
+      writesEnabled: true,
       body: {
         objectType: 'contact',
         fields: { firstName: 'Ada', lastName: 'Lovelace' },
@@ -314,6 +324,21 @@ describe('ATLAS CRM HubSpot tenant-safe read operations', () => {
       atlas_object_type: 'social_thread',
       atlas_object_id: '33333333-3333-4333-8333-333333333333'
     });
+  });
+
+  it('fails closed on CRM writes even when the actor has crm.write until policy is enabled', async () => {
+    const store = await seededStore();
+    const adapter = new Adapter();
+    const response = await invoke({
+      store,
+      adapter,
+      operation: 'crm.create',
+      permissions: ['crm.write'],
+      body: { objectType: 'contact', fields: { firstName: 'Ada' } }
+    });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: 'crm_writes_disabled' });
+    expect(adapter.createCalls).toBe(0);
   });
 
   it('denies CRM creation when the actor only has crm.read', async () => {
