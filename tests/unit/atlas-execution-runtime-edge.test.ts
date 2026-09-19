@@ -36,6 +36,13 @@ describe('ATLAS Work runtime and connection Edge boundary', () => {
     expect(runtimeSource).toContain('runtimeToken');
   });
 
+  it('requires canonical high-risk approval before OAuth consent is queued', () => {
+    expect(edgeSource).toContain('oauth_consent_approval_required');
+    expect(edgeSource).toContain("String(approval.required_permission) !== 'execution.approve'");
+    expect(edgeSource).toContain("!['high', 'critical'].includes(String(approval.risk_level))");
+    expect(edgeSource).toContain('payload_digest');
+  });
+
   it('leases jobs with runtime/org/tenant scope and sanitizes completion', () => {
     expect(runtimeSource).toContain("state: 'claimed'");
     expect(runtimeSource).toContain('lease_id');
