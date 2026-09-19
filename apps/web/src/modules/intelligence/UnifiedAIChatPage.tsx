@@ -186,16 +186,26 @@ export function UnifiedAIChatPage() {
     : 'Not verified';
 
   return (
-    <section className="page-stack atlas-ai-page">
+    <section className="page-stack atlas-ai-page atlas-ai-future">
       <header className="page-header atlas-ai-hero">
         <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
         <div>
-          <p className="eyebrow">ATLAS Assistant · Intelligence Platform</p>
-          <h1>ATLAS Unified AI Workspace</h1>
-          <p>One authenticated workspace for zero-cost ATLAS Local inference plus governed OpenAI, Amazon Bedrock, Gemini, Codex Sovereign and Council modes. Provider availability is always read from server-verified readiness.</p>
+          <p className="eyebrow">ATLAS Enterprise Suite · Intelligence Layer</p>
+          <h1>ATLAS AI</h1>
+          <p className="atlas-ai-tagline">Ask. Build. Analyze. Automate. <strong>All in one place.</strong></p>
+          <div className="atlas-ai-capabilities" aria-label="ATLAS AI capabilities">
+            <span>◉ Reason <small>Deep insight</small></span>
+            <span>▣ Create <small>Any content</small></span>
+            <span>⌘ Build <small>Turn ideas into reality</small></span>
+            <span>⌕ Research <small>Find the truth</small></span>
+          </div>
         </div>
       </header>
 
+      <nav className="atlas-ai-switch" aria-label="Workspace">
+        <button type="button" className="active">Chat</button>
+        <button type="button">Work</button>
+      </nav>
       <div className="atlas-ai-toolbar">
         <div className="atlas-ai-selectors">
           <label>
@@ -288,12 +298,12 @@ export function UnifiedAIChatPage() {
             <textarea
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              placeholder="Ask ATLAS Assistant…"
+              placeholder="Message ATLAS AI…"
               aria-label="Message ATLAS Assistant"
               disabled={busy}
             />
             <button type="submit" disabled={busy || !routeReady || !prompt.trim()}>
-              {busy ? 'Sending…' : 'Send'}
+              {busy ? '…' : '↑'}
             </button>
           </form>
         </section>
