@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { PortalDestination } from './portalModel';
 
 export function AtlasPortalDeck({
   destinations,
-  onEnter
+  onEnter,
+  onSelectionChange
 }: {
   destinations: readonly PortalDestination[];
   onEnter: (destination: PortalDestination) => void;
+  onSelectionChange?: (destination: PortalDestination | null) => void;
 }) {
   const [query, setQuery] = useState('');
   const [area, setArea] = useState('All');
@@ -32,6 +34,10 @@ export function AtlasPortalDeck({
   const selected = visibleDestinations.find((destination) => destination.id === selectedId)
     ?? visibleDestinations[0]
     ?? null;
+
+  useEffect(() => {
+    onSelectionChange?.(selected);
+  }, [onSelectionChange, selected]);
 
   return (
     <section className="portal-deck" aria-labelledby="atlas-portals-title">
