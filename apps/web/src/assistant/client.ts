@@ -46,6 +46,13 @@ export type AssistantStatusResponse = {
     allowed_providers?: string[];
     zero_cost_providers?: string[];
   };
+  realtime?: {
+    enabled: boolean;
+    configured: boolean;
+    model: string | null;
+    transport: 'webrtc';
+    reason: string | null;
+  };
 };
 
 export type AssistantConversation = {
