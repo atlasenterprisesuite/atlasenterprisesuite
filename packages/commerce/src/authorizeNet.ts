@@ -24,7 +24,7 @@ type AuthorizeNetOpaqueData = {
 
 const ENDPOINTS: Record<AuthorizeNetEnvironment, string> = {
   sandbox: 'https://apitest.authorize.net/xml/v1/request.api',
-  production: 'https://api2.authorize.net/xml/v1/request.api'
+  production: 'https://api.authorize.net/xml/v1/request.api'
 };
 
 function clean(value: unknown, max = 4096) {
