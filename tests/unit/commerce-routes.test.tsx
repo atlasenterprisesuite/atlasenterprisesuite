@@ -45,6 +45,21 @@ const order = {
 function defaultApi(operation: string) {
   if (operation === 'catalog.list') return Promise.resolve({ products: [product] });
   if (operation === 'orders.list') return Promise.resolve({ orders: [order] });
+  if (operation === 'payments.status') {
+    return Promise.resolve({
+      provider: {
+        id: 'authorize-net',
+        displayName: 'Authorize.net eCheck.Net',
+        enabled: false,
+        credentialsConfigured: false,
+        environment: 'sandbox',
+        currency: 'USD',
+        ready: false,
+        tokenization: 'accept-js-opaque-data',
+        storesRawBankData: false
+      }
+    });
+  }
   if (operation === 'orders.get') {
     return Promise.resolve({
       order,
@@ -83,10 +98,21 @@ describe('ATLAS Commerce routing and workspace UI', () => {
     ['/commerce', 'ATLAS Commerce'],
     ['/commerce/products', 'Products'],
     ['/commerce/orders', 'Orders'],
-    ['/commerce/orders/order-1', 'Order order-1']
+    ['/commerce/orders/order-1', 'Order order-1'],
+    ['/commerce/settings/payments', 'Payment providers']
   ])('resolves %s to %s', async (path, heading) => {
     render(<MemoryRouter initialEntries={[path]}><CommerceRoutes /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+  });
+
+  it('renders Authorize.net readiness truthfully and links to the merchant account', async () => {
+    render(<MemoryRouter initialEntries={['/commerce/settings/payments']}><CommerceRoutes /></MemoryRouter>);
+    expect(await screen.findByText('Setup required')).toBeInTheDocument();
+    expect(screen.getByText('Missing')).toBeInTheDocument();
+    expect(screen.getByText('Not stored')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Authorize.net merchant account' }))
+      .toHaveAttribute('href', 'https://account.authorize.net/');
+    await waitFor(() => expect(commerceApiMock).toHaveBeenCalledWith('payments.status'));
   });
 
   it('mounts Commerce behind the existing identity guard', () => {
