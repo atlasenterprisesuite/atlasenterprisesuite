@@ -1,15 +1,15 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkConnectionsPage } from '../../apps/web/src/work/WorkConnectionsPage';
 import { WorkRuntimesPage } from '../../apps/web/src/work/WorkRuntimesPage';
 import { WorkPoliciesPage } from '../../apps/web/src/work/WorkPoliciesPage';
-import { listWorkConnections, listWorkRuntimes } from '../../apps/web/src/work/api';
+import { enrollWorkRuntime, listWorkConnections, listWorkRuntimes } from '../../apps/web/src/work/api';
 
 vi.mock('../../apps/web/src/work/api', async () => {
   const actual = await vi.importActual<typeof import('../../apps/web/src/work/api')>('../../apps/web/src/work/api');
-  return { ...actual, listWorkConnections: vi.fn(), listWorkRuntimes: vi.fn() };
+  return { ...actual, enrollWorkRuntime: vi.fn(), listWorkConnections: vi.fn(), listWorkRuntimes: vi.fn() };
 });
 
 beforeEach(() => vi.clearAllMocks());
@@ -36,6 +36,24 @@ describe('ATLAS Work runtime support pages', () => {
     expect(screen.getByText('self hosted')).toBeInTheDocument();
     expect(screen.getByText('online')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/auth_token_hash/i);
+  });
+
+  it('enrolls a governed browser runtime and reveals the token only in the one-time setup state', async () => {
+    vi.mocked(listWorkRuntimes).mockResolvedValue([]);
+    vi.mocked(enrollWorkRuntime).mockResolvedValue({
+      runtime: { id: 'runtime-123', kind: 'local', label: 'ATLAS Governed Browser', status: 'offline', capabilities: ['browser'] },
+      runtime_token: 'one-time-runtime-token'
+    });
+    render(<MemoryRouter><WorkRuntimesPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Enroll Browser Runtime' }));
+    expect(await screen.findByText(/Save this token now/)).toBeInTheDocument();
+    expect(screen.getByText(/ATLAS_WORK_RUNTIME_ID=runtime-123/)).toBeInTheDocument();
+    expect(screen.getByText(/ATLAS_WORK_RUNTIME_TOKEN=one-time-runtime-token/)).toBeInTheDocument();
+    expect(enrollWorkRuntime).toHaveBeenCalledWith({
+      kind: 'local',
+      label: 'ATLAS Governed Browser',
+      capabilities: ['browser']
+    });
   });
 
   it('shows the fail-closed default policy', () => {
