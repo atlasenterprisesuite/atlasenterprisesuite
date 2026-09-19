@@ -70,7 +70,8 @@ describe('ATLAS visionOS spatial app contract', () => {
   it('fails closed on live readiness until signed physical-device evidence exists', () => {
     expect(readiness.source_state).toBe('source-ready');
     expect(readiness.sdk_typecheck_state).toBe('verified');
-    expect(readiness.simulator_build_state).toBe('verification-required');
+    expect(readiness.simulator_build_state).toBe('verified');
+    expect(readiness.simulator_state).toBe('build-verified-launch-required');
     expect(readiness.simulator_launch_state).toBe('verification-required');
     expect(readiness.signed_build_state).toBe('verification-required');
     expect(readiness.physical_device_state).toBe('verification-required');
