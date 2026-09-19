@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 9;
+const VERSION = 10;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -247,6 +247,7 @@ Deno.serve(async (req: Request) => {
     health,
     jaqueMateSentinel,
     studioWebLaunch,
+    studioWriting,
     commerce,
     network,
     networkPricing,
@@ -262,6 +263,7 @@ Deno.serve(async (req: Request) => {
     probe('/health'),
     probe('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'),
     probe('/studio/web-launch'),
+    probe('/studio/write'),
     probe('/commerce'),
     probe('/business/network'),
     probe('/business/network/pricing'),
@@ -278,7 +280,8 @@ Deno.serve(async (req: Request) => {
     voice.status === 200 &&
     health.status === 200 &&
     jaqueMateSentinel.status === 200 &&
-    studioWebLaunch.status === 200;
+    studioWebLaunch.status === 200 &&
+    studioWriting.status === 200;
   const commerceRouteOk = commerce.status === 200;
   const routedProbes = [
     home,
@@ -288,6 +291,7 @@ Deno.serve(async (req: Request) => {
     health,
     jaqueMateSentinel,
     studioWebLaunch,
+    studioWriting,
     commerce,
     network,
     networkPricing,
@@ -331,6 +335,7 @@ Deno.serve(async (req: Request) => {
         health_route_reachable: health.status === 200,
         jaque_mate_sentinel_route_reachable: jaqueMateSentinel.status === 200,
         studio_web_launch_route_reachable: studioWebLaunch.status === 200,
+        studio_writing_route_reachable: studioWriting.status === 200,
         commerce_route_reachable: commerce.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         production_commit_sha_verified: productionCommitVerified,
@@ -347,6 +352,7 @@ Deno.serve(async (req: Request) => {
         health,
         jaque_mate_sentinel: jaqueMateSentinel,
         studio_web_launch: studioWebLaunch,
+        studio_writing: studioWriting,
         commerce,
         network,
         network_pricing: networkPricing,
