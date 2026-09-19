@@ -23,6 +23,7 @@ const enterpriseSections: ModuleExperienceSection[] = [
     cards: [
       { label: 'Hospitality', title: 'Hospitality', description: 'Hotel and hospitality access, operations and governed integration surfaces.', to: '/hospitality/access' },
       { label: 'Mobility', title: 'Ride', description: 'Driver, compliance and mobility operations with truthful provider boundaries.', to: '/ride' },
+      { label: 'Entertainment', title: 'ATLAS FRONTIER', description: 'Explore, extract, craft, build and restore the Sky Grid through a governed server-authoritative vertical slice.', to: '/frontier' },
       { label: 'People', title: 'HR & Time', description: 'Commercial HR, time and recruiting depth is still being reconciled into the canonical suite.', status: 'Canonical module depth in progress' },
       { label: 'Commerce', title: 'Inventory & Purchasing', description: 'Required commercial workflows remain gated until their canonical routes and data contracts are complete.', status: 'Canonical module depth in progress' },
       { label: 'Operations', title: 'POS & Projects', description: 'Shared execution concepts exist; complete commercial module surfaces are not yet represented as active routes.', status: 'Canonical module depth in progress' },
