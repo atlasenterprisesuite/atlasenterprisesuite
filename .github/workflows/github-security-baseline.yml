@@ -7,12 +7,30 @@ on:
       - ".github/**"
       - "SECURITY.md"
       - "docs/security/**"
+      - "scripts/verify-github-org-migration-readiness.mjs"
+      - "supabase/functions/_shared/github-oidc-scope.ts"
+      - "supabase/functions/atlas-cloudflare-production-http-verify/**"
+      - "supabase/functions/atlas-creator-e2e-verifier/**"
+      - "supabase/functions/atlas-infra-evidence/**"
+      - "supabase/functions/atlas-infra-status/**"
+      - "supabase/functions/atlas-local-ai-bootstrap/**"
+      - "supabase/functions/atlas-local-control/**"
+      - "hubspot/atlas-crm-hubspot/repair-local-project.ps1"
   push:
     branches: ["main"]
     paths:
       - ".github/**"
       - "SECURITY.md"
       - "docs/security/**"
+      - "scripts/verify-github-org-migration-readiness.mjs"
+      - "supabase/functions/_shared/github-oidc-scope.ts"
+      - "supabase/functions/atlas-cloudflare-production-http-verify/**"
+      - "supabase/functions/atlas-creator-e2e-verifier/**"
+      - "supabase/functions/atlas-infra-evidence/**"
+      - "supabase/functions/atlas-infra-status/**"
+      - "supabase/functions/atlas-local-ai-bootstrap/**"
+      - "supabase/functions/atlas-local-control/**"
+      - "hubspot/atlas-crm-hubspot/repair-local-project.ps1"
   schedule:
     - cron: "23 11 * * 1"
 
@@ -98,6 +116,10 @@ jobs:
               exit 1
             }
           done
+
+      - name: Verify GitHub Organization migration readiness
+        shell: bash
+        run: node scripts/verify-github-org-migration-readiness.mjs
 
       - name: Record GitHub ownership and 2FA enforcement boundary
         env:
