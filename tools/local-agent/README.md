@@ -118,3 +118,37 @@ ATLAS_AI_ZERO_COST_PROVIDERS=atlas-local
 ATLAS does not mark the runtime ready merely because variables exist. The `/health` probe must verify successfully. If `atlas-local` is unavailable, strict zero-cost mode blocks paid fallbacks instead of silently spending money.
 
 “Zero cost” means zero automatic third-party AI API charges. Local hardware, electricity, internet, storage, and optional hosting/tunnel costs remain outside the model API cost boundary.
+
+
+## Governed Browser Runtime
+
+ATLAS Work can execute browser actions through a dedicated local Chromium profile without granting unrestricted desktop control. The runtime is `tools/local-agent/atlas-work-browser-runtime.mjs` and consumes only jobs already authorized by the ATLAS Work route, policy, tenant/RBAC and execution-envelope layers.
+
+Security boundaries:
+
+- Chromium DevTools Protocol is accepted only on loopback (`127.0.0.1`, `localhost`, or `::1`).
+- Navigation is HTTPS-only and the action hostname must match the declared domain.
+- The runtime independently re-checks envelope expiry, domain allowlist and action allowlist before every action.
+- Server-supplied JavaScript is never evaluated. ATLAS uses fixed runtime code plus bounded CSS selectors and scalar values.
+- Password, secret, token, OTP, CVC/CVV and credit-card-like inputs are denied.
+- Cookies, authorization values, credentials and private keys are stripped from runtime result data.
+- Ordinary `click` or `submit` actions that resemble OAuth consent return `waiting_human`.
+- OAuth consent must use the explicit `oauth_consent` action. The server refuses to queue that action unless a canonical `execution.approve` approval with high/critical risk is approved and still matches the exact current task/step payload.
+
+Required runtime values are issued by ATLAS Work when a Local or Self-Hosted runtime is enrolled:
+
+```text
+ATLAS_WORK_RUNTIME_ID=<runtime id>
+ATLAS_WORK_RUNTIME_TOKEN=<one-time runtime token>
+ATLAS_BROWSER_CDP_URL=http://127.0.0.1:9222
+```
+
+Start Chrome/Chromium with a dedicated ATLAS browser profile and loopback-only remote debugging, sign into provider sites in that profile yourself, then start:
+
+```bash
+node tools/local-agent/atlas-work-browser-runtime.mjs
+```
+
+ATLAS never receives the browser-profile password. The Work runtime token authenticates only the job queue; it is not a provider credential. A revoked runtime stops receiving work. Browser jobs use five-minute leases and sanitized completion evidence.
+
+For provider authorization flows such as HubSpot, the sequence is: ATLAS creates the OAuth URL -> the dedicated browser navigates -> the account choice is read -> ATLAS requests canonical approval -> after approval, an `oauth_consent` action may click the account/authorization control -> provider redirects to the existing ATLAS OAuth callback -> ATLAS validates state/scopes/account and persists only encrypted provider credentials.
