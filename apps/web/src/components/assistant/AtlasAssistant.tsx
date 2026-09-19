@@ -142,6 +142,14 @@ export function AtlasAssistant() {
   }, [refreshAuthorization]);
 
   useEffect(() => {
+    if (!authorized || textCapability === 'ready' || textCapability === 'permission-required') return;
+    const timer = window.setInterval(() => {
+      void refreshProviderStatus().catch(() => void refreshAuthorization());
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [authorized, refreshAuthorization, refreshProviderStatus, textCapability]);
+
+  useEffect(() => {
     if (!authorized || textCapability !== 'ready' || readGreetingSeen()) return;
     markGreetingSeen();
     setMessages((current) => current.length ? current : [{
@@ -246,8 +254,9 @@ export function AtlasAssistant() {
 
   function openAssistant() {
     setOpen(true);
-    setError(providerError);
+    setError('');
     setState(voice.microphoneActive ? 'listening' : 'idle');
+    void refreshProviderStatus().catch(() => void refreshAuthorization());
 
     if (!greetingSpoken.current && voice.speechEnabled && voice.speechCapability === 'ready' && messages.some((message) => message.role === 'assistant' && message.text === GREETING)) {
       greetingSpoken.current = true;
