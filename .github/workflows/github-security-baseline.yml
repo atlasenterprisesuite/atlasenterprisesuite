@@ -1,0 +1,140 @@
+name: ATLAS GitHub Security Baseline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/**"
+      - "SECURITY.md"
+      - "docs/security/**"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/**"
+      - "SECURITY.md"
+      - "docs/security/**"
+  schedule:
+    - cron: "23 11 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  github-security-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Validate CODEOWNERS security coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/CODEOWNERS
+          for path in             '/.github/workflows/'             '/worker/'             '/supabase/'             '/docs/security/'             '/SECURITY.md'; do
+            grep -Fq "$path" .github/CODEOWNERS || {
+              echo "::error::CODEOWNERS does not protect required path: $path"
+              exit 1
+            }
+          done
+
+      - name: Reject write-all workflow permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE '^[[:space:]]*permissions:[[:space:]]*write-all[[:space:]]*(#.*)?$' .github/workflows; then
+            echo "::error::permissions: write-all is prohibited in ATLAS workflows"
+            exit 1
+          fi
+
+      - name: Reject pull_request_target
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE '^[[:space:]]*pull_request_target[[:space:]]*:' .github/workflows; then
+            echo "::error::pull_request_target is prohibited without an explicit reviewed exception and compensating controls"
+            exit 1
+          fi
+
+      - name: Report workflows without explicit top-level permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          for (const file of fs.readdirSync('.github/workflows').filter((f) => /\.ya?ml$/i.test(f))) {
+            const workflow = fs.readFileSync(path.join('.github/workflows', file), 'utf8');
+            if (!/^permissions\s*:/m.test(workflow)) {
+              console.log(`::warning::${file}: no top-level permissions declaration; harden incrementally`);
+            }
+          }
+          NODE
+
+      - name: Verify fail-closed production security contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=.github/workflows/global-production-verify.yml
+          test -f "$file"
+          for required in             'default: fail-closed'             'critical_network_routes_reachable'             'id-token: write'             'Enforce final global deployment gate'; do
+            grep -Fq "$required" "$file" || {
+              echo "::error::global-production-verify.yml is missing required production security contract: $required"
+              exit 1
+            }
+          done
+
+      - name: Verify human identity security policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=SECURITY.md
+          test -f "$file"
+          for required in             'passkey'             'TOTP'             'recovery codes'             'Shared human GitHub accounts are prohibited'             'OIDC/workload identity'; do
+            grep -Fiq "$required" "$file" || {
+              echo "::error::SECURITY.md is missing GitHub identity requirement: $required"
+              exit 1
+            }
+          done
+
+      - name: Record GitHub ownership and 2FA enforcement boundary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO_JSON="$(curl --fail --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$REPOSITORY")"
+
+          OWNER_LOGIN="$(printf '%s' "$REPO_JSON" | jq -r '.owner.login')"
+          OWNER_TYPE="$(printf '%s' "$REPO_JSON" | jq -r '.owner.type')"
+
+          {
+            echo "## ATLAS GitHub identity baseline"
+            echo "- Repository: `$REPOSITORY`"
+            echo "- Owner: `$OWNER_LOGIN`"
+            echo "- Owner type: `$OWNER_TYPE`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$OWNER_TYPE" != "Organization" ]; then
+            echo "::warning::Canonical repository is not currently owned by a GitHub Organization; organization-wide 2FA enforcement cannot yet be verified or claimed."
+            echo "- Organization-wide 2FA: not applicable/verified until migration to an Organization" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          ORG_JSON="$(curl --fail --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/orgs/$OWNER_LOGIN")"
+
+          TWO_FACTOR="$(printf '%s' "$ORG_JSON" | jq -r 'if has("two_factor_requirement_enabled") then .two_factor_requirement_enabled else "unknown" end')"
+          echo "- Organization 2FA requirement: `$TWO_FACTOR`" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$TWO_FACTOR" = "false" ]; then
+            echo "::error::GitHub Organization exists but organization-wide 2FA is explicitly disabled."
+            exit 1
+          fi
+
+          if [ "$TWO_FACTOR" = "unknown" ]; then
+            echo "::warning::Organization 2FA state is not visible to this workflow token; verify it directly in GitHub organization authentication security settings."
+          fi
