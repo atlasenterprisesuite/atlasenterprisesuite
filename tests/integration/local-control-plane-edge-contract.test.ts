@@ -21,6 +21,8 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(edge).toContain("String(step.module) !== 'device-os'");
     expect(edge).toContain("String(step.action_type) !== 'local_device_command'");
     expect(edge).toContain('digestApprovalPayload');
+    expect(edge).toContain("String(approval.required_permission) !== 'execution.approve'");
+    expect(edge).toContain("!['high', 'critical'].includes(String(approval.risk_level))");
     expect(edge).toContain('oauth_consent_high_risk_required');
     expect(edge).toContain("capability === 'browser.control' && action === 'oauth_consent'");
   });
