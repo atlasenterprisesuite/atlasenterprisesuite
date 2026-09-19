@@ -29,6 +29,31 @@ describe('ATLAS Web Launch Lab UI and production gate', () => {
     expect(page).toContain('to="/execution/manager/readiness"');
   });
 
+  it('builds the reference interaction from approved Creator Library video without copying third-party media', () => {
+    const page = source('apps/web/src/modules/creator/web/WebLaunchPage.tsx');
+    const composer = source('apps/web/src/modules/creator/web/ScrollVideoComposer.tsx');
+    const client = source('apps/web/src/lib/creatorApi.ts');
+    const edge = source('supabase/functions/atlas-creator/index.ts');
+    const repository = source('supabase/functions/atlas-creator/_shared/repository.ts');
+
+    expect(page).toContain("<ScrollVideoComposer />");
+    expect(page).toContain("activeStage === 'Motion System'");
+    expect(composer).toContain('listCreatorAssets');
+    expect(composer).toContain('getCreatorAssetPreview');
+    expect(composer).toContain('Scroll-scrub video experience');
+    expect(composer).toContain('Timeline progress');
+    expect(composer).toContain('Vertical');
+    expect(composer).toContain('Horizontal');
+    expect(composer).toContain('Reverse direction');
+    expect(composer).toContain('Creator Library first');
+    expect(client).toContain("'asset-preview'");
+    expect(edge).toContain("api === 'asset-preview'");
+    expect(edge).toContain("'creator.asset.previewed'");
+    expect(repository).toContain(".eq('organization_id', orgId)");
+    expect(repository).toContain(".createSignedUrl(objectPath, 900)");
+    expect(repository).toContain("bucket !== 'creator-assets'");
+  });
+
   it('includes the new route in both direct and authorized fail-closed production verification', () => {
     const contract = source('data/ops/global-production-verification.json');
     const verifier = source('supabase/functions/atlas-cloudflare-production-http-verify/index.ts');

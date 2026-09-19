@@ -436,6 +436,39 @@ export async function listAssets(orgId: string, productionId?: string) {
   return data || [];
 }
 
+export async function createAssetPreview(orgId: string, assetId: string) {
+  const sb = adminClient();
+  const { data: asset, error } = await sb
+    .from('creator_assets')
+    .select('id,organization_id,production_id,generation_job_id,storage_path,media_type,provider_id,provider_asset_id,mime_type,width,height,duration_seconds,provenance_json,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .eq('id', assetId)
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!asset) throw creatorError('asset_not_found', 404);
+
+  const storagePath = String(asset.storage_path || '').trim();
+  const separator = storagePath.indexOf('/');
+  if (separator <= 0 || separator === storagePath.length - 1) {
+    throw creatorError('asset_storage_path_invalid', 409);
+  }
+
+  const bucket = storagePath.slice(0, separator);
+  const objectPath = storagePath.slice(separator + 1);
+  if (bucket !== 'creator-assets') throw creatorError('asset_preview_unavailable', 409);
+
+  const { data: signed, error: signedError } = await sb.storage
+    .from(bucket)
+    .createSignedUrl(objectPath, 900);
+  if (signedError || !signed?.signedUrl) throw creatorError('asset_preview_unavailable', 503);
+
+  return {
+    asset,
+    signedUrl: signed.signedUrl,
+    expiresIn: 900
+  };
+}
+
 export async function writeCreatorAudit(
   orgId: string,
   userId: string,

@@ -321,6 +321,24 @@ export async function listCreatorAssets(productionId?: string) {
   return data.assets.map(assetFromWire);
 }
 
+export type CreatorAssetPreview = {
+  ok: true;
+  asset: CreatorAsset;
+  signed_url: string;
+  expires_in: number;
+};
+
+export async function getCreatorAssetPreview(assetId: string): Promise<CreatorAssetPreview> {
+  const data = await creatorRequest<{ ok: true; asset: unknown; signed_url: string; expires_in: number }>(
+    'asset-preview',
+    { asset_id: assetId }
+  );
+  return {
+    ...data,
+    asset: assetFromWire(data.asset)
+  };
+}
+
 export async function submitCreatorProduction(productionId: string, providerId: ProviderId) {
   return creatorRequest<{ ok: true; job: unknown }>('submit', {}, {
     method: 'POST', body: JSON.stringify({ production_id: productionId, provider_id: providerId })

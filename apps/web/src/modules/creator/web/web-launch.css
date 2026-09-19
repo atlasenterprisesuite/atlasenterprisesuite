@@ -341,3 +341,285 @@
     min-height: 44px;
   }
 }
+
+
+.scroll-video-composer {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--web-border);
+}
+
+.scroll-video-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.scroll-video-heading h3 {
+  margin: 5px 0 8px;
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+}
+
+.scroll-video-heading p {
+  margin: 0;
+  max-width: 760px;
+  line-height: 1.55;
+  opacity: 0.72;
+}
+
+.scroll-video-state {
+  flex: 0 0 auto;
+  border: 1px solid var(--web-border);
+  border-radius: 999px;
+  padding: 8px 11px;
+  font-size: 0.74rem;
+  white-space: nowrap;
+  background: rgba(7, 19, 37, 0.72);
+}
+
+.scroll-video-state.ready {
+  border-color: rgba(98, 222, 190, 0.46);
+}
+
+.scroll-video-state.error {
+  border-color: rgba(255, 133, 133, 0.46);
+}
+
+.scroll-video-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 310px);
+  gap: 14px;
+}
+
+.scroll-video-stage {
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+  border: 1px solid var(--web-border);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(83, 122, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 48% 70%, rgba(255, 112, 62, 0.11), transparent 30%),
+    rgba(4, 12, 25, 0.94);
+  overscroll-behavior: contain;
+}
+
+.scroll-video-player {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  display: block;
+  background: #030914;
+}
+
+.scroll-video-player.fit-cover {
+  object-fit: cover;
+}
+
+.scroll-video-player.fit-contain {
+  object-fit: contain;
+}
+
+.scroll-video-placeholder {
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 32px;
+  text-align: center;
+}
+
+.scroll-video-placeholder > span:not(.scroll-video-orbit) {
+  max-width: 520px;
+  opacity: 0.66;
+}
+
+.scroll-video-placeholder a {
+  color: #8fdcff;
+}
+
+.scroll-video-orbit {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  border: 1px solid rgba(117, 197, 255, 0.4);
+  box-shadow:
+    0 0 0 16px rgba(85, 167, 255, 0.035),
+    0 0 58px rgba(63, 161, 255, 0.22),
+    inset -18px -8px 32px rgba(255, 112, 62, 0.22);
+}
+
+.scroll-video-poster-label {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(3, 9, 20, 0.76);
+  font-size: 0.72rem;
+}
+
+.scroll-video-progress {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.scroll-video-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #79d7ff, #f5fbff);
+}
+
+.scroll-video-controls {
+  display: grid;
+  align-content: start;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid var(--web-border);
+  border-radius: 18px;
+  background: rgba(6, 17, 34, 0.82);
+}
+
+.scroll-video-controls label {
+  display: grid;
+  gap: 7px;
+}
+
+.scroll-video-controls label > span,
+.scroll-video-controls legend {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.68;
+}
+
+.scroll-video-controls fieldset {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.scroll-video-controls legend {
+  grid-column: 1 / -1;
+  margin-bottom: 5px;
+}
+
+.scroll-video-controls fieldset button {
+  min-height: 40px;
+  border: 1px solid var(--web-border);
+  border-radius: 10px;
+  background: rgba(7, 19, 37, 0.72);
+  color: inherit;
+  cursor: pointer;
+}
+
+.scroll-video-controls fieldset button.active {
+  border-color: rgba(104, 190, 255, 0.72);
+  background: rgba(21, 67, 111, 0.92);
+}
+
+.scroll-video-toggle {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.scroll-video-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.scroll-video-controls input[type='range'] {
+  padding: 0;
+  accent-color: #8fdcff;
+}
+
+.scroll-video-controls button:focus-visible,
+.scroll-video-controls select:focus-visible,
+.scroll-video-controls input:focus-visible {
+  outline: 3px solid rgba(104, 190, 255, 0.48);
+  outline-offset: 2px;
+}
+
+.scroll-video-meta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--web-border);
+  font-size: 0.76rem;
+}
+
+.scroll-video-meta span {
+  opacity: 0.58;
+}
+
+.scroll-video-message {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--web-border);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  background: rgba(7, 19, 37, 0.6);
+}
+
+.scroll-video-message.error {
+  border-color: rgba(255, 133, 133, 0.42);
+}
+
+@media (max-width: 900px) {
+  .scroll-video-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scroll-video-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scroll-video-controls > label:first-child,
+  .scroll-video-meta {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .scroll-video-heading {
+    flex-direction: column;
+  }
+
+  .scroll-video-state {
+    white-space: normal;
+  }
+
+  .scroll-video-stage,
+  .scroll-video-player,
+  .scroll-video-placeholder {
+    min-height: 330px;
+  }
+
+  .scroll-video-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .scroll-video-controls > label:first-child,
+  .scroll-video-meta {
+    grid-column: auto;
+  }
+
+  .scroll-video-controls fieldset button {
+    min-height: 44px;
+  }
+}
