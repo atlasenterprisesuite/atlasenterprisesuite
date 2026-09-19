@@ -6,8 +6,10 @@ it('allows exact and subdomain matches only', () => {
   expect(browserDomainAllowed('evilhubspot.com',['hubspot.com'])).toBe(false);
 });
 
-it('rejects navigation outside the browser allowlist', () => {
+it('rejects navigation outside the browser allowlist and rejects plaintext HTTP', () => {
   expect(() => validateBrowserCommand('navigate',{url:'https://example.com'},['hubspot.com']))
+    .toThrow('browser_domain_not_allowed');
+  expect(() => validateBrowserCommand('navigate',{url:'http://app.hubspot.com'},['hubspot.com']))
     .toThrow('browser_domain_not_allowed');
 });
 
@@ -16,7 +18,12 @@ it('keeps password-like typing behind a human boundary', () => {
     .toThrow('browser_sensitive_input_requires_human');
 });
 
-it('accepts a bounded click command for an allowed session', () => {
-  expect(() => validateBrowserCommand('click',{target:'text=Choose Account'},['hubspot.com']))
+it('accepts an exact semantic click target for an allowed session', () => {
+  expect(() => validateBrowserCommand('click',{target:'text:Choose Account'},['hubspot.com']))
+    .not.toThrow();
+});
+
+it('supports explicit OAuth consent as a distinct action', () => {
+  expect(() => validateBrowserCommand('oauth_consent',{target:'text:Choose Account'},['hubspot.com']))
     .not.toThrow();
 });
