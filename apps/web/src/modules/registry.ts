@@ -190,6 +190,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'aviation',
+    title: 'ATLAS Aviation',
+    navLabel: 'Aviation',
+    area: 'Mobility',
+    route: '/mobility/aviation',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Evidence-aware aircraft, certification and advanced-air-mobility intelligence.',
+    showInNavigation: true
+  },
+  {
     id: 'galaxy',
     title: 'ATLAS Galaxy',
     navLabel: 'Galaxy',
