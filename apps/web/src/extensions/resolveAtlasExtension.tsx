@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
+import { AviationRoutes } from '../modules/aviation/AviationRoutes';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
@@ -46,6 +47,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/advisory' || pathname.startsWith('/advisory/')) {
     return <RequireAtlasIdentity><AdvisoryRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/mobility/aviation' || pathname.startsWith('/mobility/aviation/')) {
+    return <RequireAtlasIdentity><AviationRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/business') return <BusinessExperiencePage />;
