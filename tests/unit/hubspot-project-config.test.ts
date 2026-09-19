@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { HUBSPOT_P0_SCOPES } from '../../supabase/functions/_shared/hubspot-connection-lifecycle';
 
 const projectRoot = resolve(process.cwd(), 'hubspot/atlas-crm-hubspot');
+const repairScript = readFileSync(resolve(projectRoot, 'repair-local-project.ps1'), 'utf8');
 const project = JSON.parse(readFileSync(resolve(projectRoot, 'hsproject.json'), 'utf8')) as {
   name: string;
   srcDir: string;
