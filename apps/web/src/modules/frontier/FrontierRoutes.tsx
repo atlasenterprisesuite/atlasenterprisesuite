@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { actionAvailability, FRONTIER_ACTIONS, frontierObjective, INITIAL_FRONTIER_STATE, type FrontierActionId, type FrontierState } from './domain';
 import { executeFrontierAction, loadFrontierRun } from './api';
 import './frontier.css';
@@ -34,7 +34,7 @@ export function FrontierRoutes() {
   }, []);
 
   const objective = useMemo(() => frontierObjective(state), [state]);
-  const integrityStyle = { '--frontier-integrity': `${state.skyGridIntegrity}%` } as React.CSSProperties;
+  const integrityStyle = { '--frontier-integrity': `${state.skyGridIntegrity}%` } as CSSProperties;
 
   const runAction = async (action: FrontierActionId) => {
     if (runtime !== 'ready') return;
