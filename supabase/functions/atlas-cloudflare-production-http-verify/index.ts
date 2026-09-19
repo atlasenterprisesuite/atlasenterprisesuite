@@ -1,13 +1,15 @@
-const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
-const OWNER = 'atlasenterprisesuite';
-const AUDIENCE = 'atlas-production-http-verifier';
-const ALLOWED_WORKFLOWS = new Set([
-  `${REPO}/.github/workflows/cloudflare-deploy.yml@refs/heads/main`,
-  `${REPO}/.github/workflows/global-production-verify.yml@refs/heads/main`
+import { createGitHubOidcScope } from '../_shared/github-oidc-scope.ts';
+
+const GITHUB_SCOPE = createGitHubOidcScope([
+  'cloudflare-deploy.yml',
+  'global-production-verify.yml'
 ]);
+const REPO = GITHUB_SCOPE.canonicalRepository;
+const AUDIENCE = 'atlas-production-http-verifier';
+const ALLOWED_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 10;
+const VERSION = 11;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -98,8 +100,7 @@ async function verifyGitHubOIDC(req: Request) {
     ALLOWED_WORKFLOWS.has(jobWorkflowRef);
 
   if (
-    payload.repository !== REPO ||
-    payload.repository_owner !== OWNER ||
+    !GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner) ||
     payload.ref !== 'refs/heads/main' ||
     !workflowAllowed
   ) {
