@@ -9,6 +9,7 @@ const required = [
   'supabase/functions/atlas-local-control/index.ts',
   'supabase/functions/atlas-infra-status/index.ts',
   'hubspot/atlas-crm-hubspot/repair-local-project.ps1',
+  'supabase/config.toml',
   'docs/security/GITHUB_ORG_MIGRATION_RUNBOOK.md'
 ];
 
@@ -73,6 +74,24 @@ if (!hubspotRepair.includes('ATLAS_CANONICAL_REPO')) {
 if (hubspotRepair.includes('raw.githubusercontent.com/atlasenterprisesuite/atlasenterprisesuite')) {
   console.error('::error::HubSpot repair path still hardcodes the legacy raw GitHub repository URL');
   process.exit(1);
+}
+
+const supabaseConfig = read('supabase/config.toml');
+const jwtContracts = [
+  ['atlas-cloudflare-production-http-verify', 'false'],
+  ['atlas-creator-e2e-verifier', 'false'],
+  ['atlas-infra-evidence', 'false'],
+  ['atlas-local-ai-bootstrap', 'false'],
+  ['atlas-local-control', 'false'],
+  ['atlas-infra-status', 'true']
+];
+
+for (const [slug, expected] of jwtContracts) {
+  const contract = '[functions.' + slug + ']\nverify_jwt = ' + expected;
+  if (!supabaseConfig.includes(contract)) {
+    console.error('::error::supabase/config.toml JWT policy mismatch for ' + slug + '; expected verify_jwt=' + expected);
+    process.exit(1);
+  }
 }
 
 console.log('ATLAS_GITHUB_ORG_MIGRATION_PREFLIGHT_OK');
