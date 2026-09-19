@@ -47,6 +47,10 @@ export type AssistantStatusResponse = {
     host_required?: boolean;
   };
   cost_policy?: {
+    enforce_zero_cost?: boolean;
+    automatic_paid_calls?: boolean;
+    automatic_api_cost_usd?: number | null;
+    zero_cost_ready?: boolean;
     allow_paid_single?: boolean;
     allow_council?: boolean;
     allowed_providers?: string[];
