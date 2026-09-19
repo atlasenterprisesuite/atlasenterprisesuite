@@ -8,6 +8,7 @@ export type CrmApiOperation =
   | 'oauth.configure'
   | 'connection.configuration'
   | 'connection.status'
+  | 'connection.health'
   | 'connection.disconnect'
   | 'crm.create'
   | 'crm.list'
