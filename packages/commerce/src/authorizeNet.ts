@@ -171,6 +171,7 @@ export class AuthorizeNetPaymentAdapter implements PaymentAdapter {
         transactionRequest: {
           transactionType: 'authCaptureTransaction',
           amount: formatMinorUnits(input.amountMinor),
+          currencyCode: input.currency.toUpperCase(),
           payment: { opaqueData },
           transactionSettings: {
             setting: [{
