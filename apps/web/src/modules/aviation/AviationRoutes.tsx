@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { AviationAircraftDetailPage } from './AviationAircraftDetailPage';
 import { AviationCatalogPage } from './AviationCatalogPage';
 import './aviation.css';
 
@@ -72,6 +73,7 @@ export function AviationRoutes() {
     <Routes>
       <Route path="/mobility/aviation" element={<AviationHomePage />} />
       <Route path="/mobility/aviation/aircraft" element={<AviationCatalogPage />} />
+      <Route path="/mobility/aviation/aircraft/:aircraftId" element={<AviationAircraftDetailPage />} />
       <Route path="/mobility/aviation/*" element={<Navigate to="/mobility/aviation" replace />} />
     </Routes>
   );
