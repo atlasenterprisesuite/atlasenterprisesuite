@@ -110,6 +110,7 @@ jobs:
           AUTHORIZED_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.ok===true))")"
           TARGET_SHA="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.target_sha||''))")"
           HOME_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.public_home_reachable===true))")"
+          SUITE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.suite_route_reachable===true))")"
           IDENTITY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.identity_route_reachable===true))")"
           MODULE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.module_spa_shell_reachable===true))")"
           HEALTH_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.health_route_reachable===true))")"
@@ -122,6 +123,7 @@ jobs:
              [ "$AUTHORIZED_OK" = "true" ] && \
              [ "$TARGET_SHA" = "$GITHUB_SHA" ] && \
              [ "$HOME_OK" = "true" ] && \
+             [ "$SUITE_OK" = "true" ] && \
              [ "$IDENTITY_OK" = "true" ] && \
              [ "$MODULE_OK" = "true" ] && \
              [ "$HEALTH_OK" = "true" ] && \
@@ -130,7 +132,7 @@ jobs:
              [ "$NETWORK_OK" = "true" ] && \
              [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
             echo "verified=true" >> "$GITHUB_OUTPUT"
-            echo "Authorized ATLAS runtime verified the canonical production domain, ATLAS Health Jaque Mate + Sentinel, and critical ATLAS Network routes while edge security remained active." >> "$GITHUB_STEP_SUMMARY"
+            echo "Authorized ATLAS runtime verified the canonical production domain, A-Z directory, ATLAS Health Jaque Mate + Sentinel, and critical ATLAS Network routes while edge security remained active." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "verified=false" >> "$GITHUB_OUTPUT"
             echo "::error::Authorized production verification failed (HTTP $HTTP_STATUS, target SHA ${TARGET_SHA:-none})"
