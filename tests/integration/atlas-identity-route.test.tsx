@@ -99,10 +99,12 @@ describe('ATLAS Identity route', () => {
     expect(String(fetchMock.mock.calls[4][0])).toContain('/functions/v1/atlas-copilot?api=status');
   });
 
-  it('rejects external return targets and keeps navigation inside ATLAS', async () => {
+  it('rejects external return targets and falls back to the authenticated Galaxy home', async () => {
+    const membership = [{ org_id: 'org-1', role: 'owner', status: 'active' }];
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'identity-token', refresh_token: 'refresh-token' }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify(membership), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(membership), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(
@@ -115,7 +117,7 @@ describe('ATLAS Identity route', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'not-a-real-password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'One governed enterprise ecosystem' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'ATLAS Galaxy' })).toBeInTheDocument());
   });
 
   it('clears the session when authentication succeeds but no active ATLAS organization is available', async () => {
