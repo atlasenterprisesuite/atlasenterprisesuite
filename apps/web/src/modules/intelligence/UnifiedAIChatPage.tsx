@@ -22,7 +22,8 @@ type DisplayMessage = {
 
 const MODES: Array<{ value: AssistantMode; label: string }> = [
   { value: 'auto', label: 'Auto · $0 first' },
-  { value: 'atlas-local', label: 'ATLAS Local · $0 API' },
+  { value: 'atlas-local', label: 'ATLAS Local · physical $0 API' },
+  { value: 'atlas-sovereign-free', label: 'ATLAS Sovereign Free · $0 model API' },
   { value: 'openai', label: 'ChatGPT / OpenAI' },
   { value: 'bedrock', label: 'OpenAI on AWS Bedrock' },
   { value: 'gemini', label: 'Gemini' },
@@ -184,7 +185,7 @@ export function UnifiedAIChatPage() {
         <div>
           <p className="eyebrow">ATLAS Assistant · Intelligence Platform</p>
           <h1>ATLAS Unified AI Workspace</h1>
-          <p>One authenticated workspace for zero-cost ATLAS Local inference plus governed OpenAI, Amazon Bedrock, Gemini, Codex Sovereign and Council modes. Provider availability is always read from server-verified readiness.</p>
+          <p>One authenticated workspace for zero-cost ATLAS Local or ATLAS Sovereign Free inference plus governed OpenAI, Amazon Bedrock, Gemini, Codex Sovereign and Council modes. Provider availability is always read from server-verified readiness.</p>
         </div>
       </header>
 
