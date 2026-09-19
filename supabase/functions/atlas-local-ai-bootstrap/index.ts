@@ -5,7 +5,10 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
 const OWNER = 'atlasenterprisesuite';
 const AUDIENCE = 'atlas-local-ai-bootstrap';
-const WORKFLOW_REF = `${REPO}/.github/workflows/atlas-local-ai-bootstrap.yml@refs/heads/main`;
+const WORKFLOW_REFS = new Set([
+  `${REPO}/.github/workflows/atlas-local-ai-bootstrap.yml@refs/heads/main`,
+  `${REPO}/.github/workflows/atlas-render-local-ai-verify.yml@refs/heads/main`,
+]);
 const HOSTNAME = 'local-ai.atlasenterprisesuite.com';
 const ZONE_NAME = 'atlasenterprisesuite.com';
 const TUNNEL_NAME = 'atlas-local-ai-runtime';
@@ -107,7 +110,7 @@ async function verifyGitHubOIDC(req: Request) {
     payload.repository !== REPO ||
     payload.repository_owner !== OWNER ||
     payload.ref !== 'refs/heads/main' ||
-    (workflowRef !== WORKFLOW_REF && jobWorkflowRef !== WORKFLOW_REF)
+    (!WORKFLOW_REFS.has(workflowRef) && !WORKFLOW_REFS.has(jobWorkflowRef))
   ) {
     return { ok: false as const, status: 403, error: 'github_oidc_scope_denied' };
   }
@@ -493,12 +496,13 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
   const cfg = await localConfig(admin);
   const endpoint = String(cfg?.endpoint_url || '');
   const model = String(cfg?.model_id || '');
+  const source = String(cfg?.source || '');
+  const accessRequired = source !== 'render-free';
   if (
     !endpoint.startsWith('https://') ||
     !model ||
     !cfg?.runtime_token ||
-    !cfg?.access_client_id ||
-    !cfg?.access_client_secret
+    (accessRequired && (!cfg?.access_client_id || !cfg?.access_client_secret))
   ) {
     return json({ ok: false, state: 'configuration_incomplete' }, 503);
   }
@@ -506,7 +510,7 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
   try {
     const health = await fetch(`${endpoint}/health`, {
       headers: localHeaders(cfg),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(source === 'render-free' ? 90_000 : 15_000),
       cache: 'no-store',
     });
     if (!health.ok) throw Object.assign(new Error('local_ai_health_failed'), { status: health.status });
@@ -518,10 +522,10 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
         model,
         instructions: 'Return exactly ATLAS_LOCAL_READY.',
         input: [{ role: 'user', content: 'ATLAS local readiness check.' }],
-        max_output_tokens: 16,
+        max_output_tokens: 32,
         store: false,
       }),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(source === 'render-free' ? 120_000 : 90_000),
     });
     const body = await inference.json().catch(() => ({}));
     const text = responseText(body);
@@ -534,11 +538,11 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
       last_verified_at: new Date().toISOString(),
       last_error_code: null,
       metadata: {
+        ...(cfg?.metadata && typeof cfg.metadata === 'object' ? cfg.metadata : {}),
         bootstrap_version: VERSION,
         github_sha: caller.claims.sha,
         github_run_id: caller.claims.run_id,
-        model_hf_repo: MODEL_HF_REPO,
-        context_size: LOCAL_CONTEXT,
+        verification_source: source || 'github-self-hosted',
         health_verified: true,
         inference_verified: true,
       },
