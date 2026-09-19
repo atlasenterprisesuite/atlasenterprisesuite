@@ -1,7 +1,7 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSession';
 import { resolveAssistantModule } from './routeContext';
 
-export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign' | 'council';
+export type AssistantMode = 'auto' | 'atlas-local' | 'atlas-sovereign-free' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign' | 'council';
 export type AssistantProfile = 'fast' | 'balanced' | 'deep';
 
 export type AssistantProviderState =
