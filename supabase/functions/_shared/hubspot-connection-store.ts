@@ -39,6 +39,44 @@ export type HubSpotCredentialRow = {
 export type HubSpotStoredCredentialInput = Omit<HubSpotCredentialRow, 'id'>;
 export type HubSpotConnectionUpsert = Omit<HubSpotConnectionRow, 'id'>;
 
+export type HubSpotHealthStatus = 'unknown' | 'healthy' | 'degraded' | 'error' | 'stale';
+
+export type HubSpotHealthRow = {
+  id: string;
+  org_id: string;
+  provider: 'hubspot';
+  connection_name: 'default';
+  status: HubSpotHealthStatus;
+  last_probe_at: string | null;
+  last_probe_success_at: string | null;
+  last_refresh_verified_at: string | null;
+  last_webhook_at: string | null;
+  last_reconcile_at: string | null;
+  consecutive_failures: number;
+  last_error_code: string | null;
+  object_checks: Record<string, unknown>;
+  reconcile_summary: Record<string, unknown>;
+};
+
+export type HubSpotHealthPatch = Partial<Omit<
+  HubSpotHealthRow,
+  'id' | 'org_id' | 'provider' | 'connection_name'
+>>;
+
+export type HubSpotWebhookEventInput = {
+  org_id: string;
+  provider: 'hubspot';
+  provider_account_id: string;
+  event_key: string;
+  provider_event_id?: string | null;
+  subscription_type: string;
+  provider_object_type?: string | null;
+  provider_object_id?: string | null;
+  property_name?: string | null;
+  occurred_at?: string | null;
+  processed_at?: string;
+};
+
 export type HubSpotEvidenceInput = {
   org_id: string;
   provider: 'hubspot';
@@ -90,6 +128,11 @@ export interface HubSpotConnectionStore {
   ): Promise<HubSpotConnectionRow | null>;
   recordEvidence(input: HubSpotEvidenceInput): Promise<void>;
   upsertObjectLinks?(inputs: readonly HubSpotExternalObjectLinkInput[]): Promise<void>;
+  getHealth?(organizationId: string): Promise<HubSpotHealthRow | null>;
+  upsertHealth?(organizationId: string, patch: HubSpotHealthPatch): Promise<HubSpotHealthRow | null>;
+  listMonitorConnections?(): Promise<HubSpotConnectionRow[]>;
+  getConnectionByProviderAccountId?(providerAccountId: string): Promise<HubSpotConnectionRow | null>;
+  insertWebhookEvents?(inputs: readonly HubSpotWebhookEventInput[]): Promise<number>;
 }
 
 type ServiceFetch = typeof fetch;
@@ -290,5 +333,60 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
         body: JSON.stringify(inputs)
       }
     );
+  }
+
+  async getHealth(organizationId: string): Promise<HubSpotHealthRow | null> {
+    const response = await this.request(
+      `atlas_integration_health?org_id=eq.${filter(organizationId)}&provider=eq.hubspot&connection_name=eq.${filter(HUBSPOT_CONNECTION_NAME)}&select=id,org_id,provider,connection_name,status,last_probe_at,last_probe_success_at,last_refresh_verified_at,last_webhook_at,last_reconcile_at,consecutive_failures,last_error_code,object_checks,reconcile_summary&limit=1`
+    );
+    return (await this.rows<HubSpotHealthRow>(response))[0] ?? null;
+  }
+
+  async upsertHealth(
+    organizationId: string,
+    patch: HubSpotHealthPatch
+  ): Promise<HubSpotHealthRow | null> {
+    const response = await this.request(
+      'atlas_integration_health?on_conflict=org_id,provider,connection_name',
+      {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify({
+          org_id: organizationId,
+          provider: 'hubspot',
+          connection_name: HUBSPOT_CONNECTION_NAME,
+          ...patch,
+          updated_at: new Date().toISOString()
+        })
+      }
+    );
+    return (await this.rows<HubSpotHealthRow>(response))[0] ?? null;
+  }
+
+  async listMonitorConnections(): Promise<HubSpotConnectionRow[]> {
+    const response = await this.request(
+      'atlas_integration_connections?provider=eq.hubspot&connection_name=eq.default&credential_ref=not.is.null&state=in.(connected,degraded,error,expired)&select=id,org_id,provider,state,provider_account_id,provider_account_label,granted_scopes,credential_ref,last_verified_at,last_success_at,last_error_code,last_error_at,connected_by,connected_at,revoked_at'
+    );
+    return this.rows<HubSpotConnectionRow>(response);
+  }
+
+  async getConnectionByProviderAccountId(providerAccountId: string): Promise<HubSpotConnectionRow | null> {
+    const response = await this.request(
+      `atlas_integration_connections?provider=eq.hubspot&connection_name=eq.default&provider_account_id=eq.${filter(providerAccountId)}&select=id,org_id,provider,state,provider_account_id,provider_account_label,granted_scopes,credential_ref,last_verified_at,last_success_at,last_error_code,last_error_at,connected_by,connected_at,revoked_at&limit=1`
+    );
+    return (await this.rows<HubSpotConnectionRow>(response))[0] ?? null;
+  }
+
+  async insertWebhookEvents(inputs: readonly HubSpotWebhookEventInput[]): Promise<number> {
+    if (inputs.length === 0) return 0;
+    const response = await this.request(
+      'atlas_integration_webhook_events?on_conflict=provider,provider_account_id,event_key',
+      {
+        method: 'POST',
+        headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
+        body: JSON.stringify(inputs)
+      }
+    );
+    return (await this.rows<Record<string, unknown>>(response)).length;
   }
 }
