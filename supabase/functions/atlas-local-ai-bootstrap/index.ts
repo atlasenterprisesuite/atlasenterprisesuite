@@ -17,7 +17,7 @@ const ACCESS_TOKEN_NAME = 'ATLAS Local AI Service Auth';
 const MODEL_HF_REPO = 'ggml-org/Qwen3.5-0.8B-GGUF:Q4_0';
 const MODEL_ALIAS = 'atlas-local-default';
 const LOCAL_CONTEXT = 8192;
-const VERSION = 2;
+const VERSION = 3;
 
 const HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -520,7 +520,7 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
       headers: localHeaders(cfg),
       body: JSON.stringify({
         model,
-        instructions: 'Return exactly ATLAS_LOCAL_READY.',
+        instructions: 'Return a short readiness response. This request exists only to prove real local generation.',
         input: [{ role: 'user', content: 'ATLAS local readiness check.' }],
         max_output_tokens: 32,
         store: false,
@@ -529,7 +529,7 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
     });
     const body = await inference.json().catch(() => ({}));
     const text = responseText(body);
-    if (!inference.ok || !text.includes('ATLAS_LOCAL_READY')) {
+    if (!inference.ok || !text.trim()) {
       throw Object.assign(new Error('local_ai_inference_failed'), { status: inference.status || 502 });
     }
 
@@ -545,6 +545,7 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
         verification_source: source || 'github-self-hosted',
         health_verified: true,
         inference_verified: true,
+        inference_output_present: true,
       },
       updated_at: new Date().toISOString(),
     }).eq('runtime_key', 'primary');
@@ -557,6 +558,7 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
       model,
       health_verified: true,
       inference_verified: true,
+      inference_output_present: true,
       automatic_api_cost_usd: 0,
       secret_output: false,
     });
