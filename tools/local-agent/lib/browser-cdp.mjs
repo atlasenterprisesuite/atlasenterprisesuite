@@ -93,11 +93,24 @@ async function launchBrowser(port) {
   throw new Error('browser_cdp_start_failed');
 }
 
+export async function startBrowserSession() {
+  const port = operatorPort();
+  try {
+    await versionEndpoint(port);
+    return { port, alreadyRunning: true };
+  } catch {}
+  await launchBrowser(port);
+  return { port, alreadyRunning: false };
+}
+
 async function ensureBrowser() {
   const port = operatorPort();
   try {
     await versionEndpoint(port);
   } catch {
+    if (String(process.env.ATLAS_BROWSER_ALLOW_SERVICE_LAUNCH || '').toLowerCase() !== 'true') {
+      throw new Error('browser_session_not_running');
+    }
     await launchBrowser(port);
   }
   return port;
