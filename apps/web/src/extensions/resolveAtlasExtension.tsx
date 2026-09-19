@@ -5,6 +5,7 @@ import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
+import { EventsHomePage } from '../modules/events/EventsHomePage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { SocialCommandCenterPage } from '../modules/creator/social/SocialCommandCenterPage';
 import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDeskPage';
@@ -46,6 +47,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/advisory' || pathname.startsWith('/advisory/')) {
     return <RequireAtlasIdentity><AdvisoryRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/events') {
+    return <RequireAtlasIdentity><EventsHomePage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/business') return <BusinessExperiencePage />;

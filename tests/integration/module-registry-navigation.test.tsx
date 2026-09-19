@@ -9,4 +9,9 @@ describe('ATLAS shell module-registry navigation contract', () => {
     expect(source).toContain('ATLAS_NAV_ITEMS');
     expect(source).not.toContain('const navItems = [');
   });
+
+  it('keeps Automotive Sales Financial Reporting directly discoverable from the shared shell', () => {
+    const registry = readFileSync(`${process.cwd()}/apps/web/src/modules/registry.ts`, 'utf8');
+    expect(registry).toContain("{ to: '/finance/accounting/reports/automotive-sales', label: 'Automotive' }");
+  });
 });
