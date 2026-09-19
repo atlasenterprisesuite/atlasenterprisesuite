@@ -25,13 +25,13 @@ const app = JSON.parse(readFileSync(resolve(projectRoot, 'src/app/app-hsmeta.jso
 };
 
 describe('HubSpot developer project contract', () => {
-  it('tracks the generated HubSpot app component identity and current platform', () => {
+  it('preserves the original generated HubSpot app component identity', () => {
     expect(project).toMatchObject({
       name: 'atlas-crm-hubspot',
       srcDir: 'src',
       platformVersion: '2026.09'
     });
-    expect(app.uid).toBe('atlas-crm-hubspot_app');
+    expect(app.uid).toBe('atlas_crm_hubspot_app');
     expect(app.type).toBe('app');
     expect(app.config.distribution).toBe('private');
   });
