@@ -16,6 +16,7 @@ vi.mock('../../apps/web/src/lib/atlasSession', async () => {
 });
 
 const resolverSource = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
+const enterpriseExperienceSource = readFileSync('apps/web/src/modules/experience/AtlasModuleExperiences.tsx', 'utf8');
 
 afterEach(cleanup);
 
@@ -38,6 +39,11 @@ describe('ATLAS Galaxy routing', () => {
     expect(resolveAtlasIdentityTarget('/galaxy/portals')).toBe('/galaxy/portals');
     expect(resolveAtlasIdentityTarget('/crm')).toBe('/crm');
     expect(resolveAtlasIdentityTarget('//example.com/galaxy')).toBe('/galaxy');
+  });
+
+  it('keeps the Enterprise overview public while making Galaxy its primary workspace action', () => {
+    expect(resolverSource).toContain("if (pathname === '/') return <EnterpriseExperiencePage />;");
+    expect(enterpriseExperienceSource).toContain("{ label: 'Enter ATLAS Galaxy', to: '/galaxy' }");
   });
 
   it('navigates the CRM constellation node to the canonical protected CRM route', () => {
