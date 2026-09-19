@@ -149,7 +149,7 @@ export function EnterpriseExperiencePage() {
       description="Finance, CRM, Payroll, Health, Creator and operational verticals share one shell, organization context and execution boundary."
       narrative="One operating system for governed enterprise work."
       actions={[
-        { label: 'Open Finance', to: '/finance' },
+        { label: 'Enter ATLAS Galaxy', to: '/galaxy' },
         { label: 'Open CRM', to: '/crm', variant: 'secondary' }
       ]}
       sections={enterpriseSections}
