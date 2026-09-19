@@ -3,6 +3,7 @@ import {resolveIntelligenceContext} from './atlas-intelligence-auth.mjs';
 import {createIntelligenceStore} from './atlas-intelligence-store.mjs';
 import {createOpenAIResponsesAdapter} from './openai-responses-adapter.mjs';
 import {createAtlasLocalResponsesAdapter} from './atlas-local-responses-adapter.mjs';
+import {createAtlasSovereignFreeAdapter} from './atlas-sovereign-free-adapter.mjs';
 import {createAmazonBedrockResponsesAdapter} from './amazon-bedrock-responses-adapter.mjs';
 import {createGeminiAdapter} from './gemini-adapter.mjs';
 import {createCodexSovereignAdapter} from './codex-sovereign-adapter.mjs';
@@ -16,8 +17,8 @@ const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
-const VERSION=10;
-const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','codex-sovereign'];
+const VERSION=11;
+const PROVIDER_IDS=['atlas-local','atlas-sovereign-free','openai','bedrock','gemini','codex-sovereign'];
 const DEFAULT_OPENAI_MODEL='gpt-6-astra';
 const DEFAULT_BEDROCK_REGION='us-west-2';
 const DEFAULT_BEDROCK_ENDPOINT='runtime';
@@ -48,6 +49,9 @@ function runtime(){
   const localAiModels=profileModels('ATLAS_LOCAL_AI_MODEL','ATLAS_LOCAL_AI_MODEL_FAST','ATLAS_LOCAL_AI_MODEL_BALANCED','ATLAS_LOCAL_AI_MODEL_DEEP');
   const localAiAllowUnauthenticated=boolEnv('ATLAS_LOCAL_AI_ALLOW_UNAUTHENTICATED',false);
   const localAiAllowInsecure=boolEnv('ATLAS_LOCAL_AI_ALLOW_INSECURE',false);
+  const sovereignFreeBaseUrl=clean(Deno.env.get('ATLAS_SOVEREIGN_FREE_URL'));
+  const sovereignFreeToken=Deno.env.get('ATLAS_SOVEREIGN_FREE_TOKEN')||'';
+  const sovereignFreeModels=profileModels('ATLAS_SOVEREIGN_FREE_MODEL','ATLAS_SOVEREIGN_FREE_MODEL_FAST','ATLAS_SOVEREIGN_FREE_MODEL_BALANCED','ATLAS_SOVEREIGN_FREE_MODEL_DEEP');
   const openaiKey=Deno.env.get('OPENAI_API_KEY')||'';
   const bedrockKey=Deno.env.get('AWS_BEARER_TOKEN_BEDROCK')||Deno.env.get('ATLAS_BEDROCK_API_KEY')||'';
   const geminiKey=Deno.env.get('GEMINI_API_KEY')||Deno.env.get('GOOGLE_AI_API_KEY')||'';
@@ -64,12 +68,12 @@ function runtime(){
   const codexModel=clean(Deno.env.get('ATLAS_CODEX_SOVEREIGN_MODEL'));
   const costPolicy={
     allowed_providers:csvEnv('ATLAS_AI_ALLOWED_PROVIDERS').filter(id=>PROVIDER_IDS.includes(id)),
-    zero_cost_providers:(()=>{const ids=csvEnv('ATLAS_AI_ZERO_COST_PROVIDERS').filter(id=>PROVIDER_IDS.includes(id));return ids.length?ids:['atlas-local'];})(),
+    zero_cost_providers:(()=>{const ids=csvEnv('ATLAS_AI_ZERO_COST_PROVIDERS').filter(id=>PROVIDER_IDS.includes(id));return ids.length?ids:['atlas-local','atlas-sovereign-free'];})(),
     enforce_zero_cost:boolEnv('ATLAS_AI_ENFORCE_ZERO_COST',true),
     allow_paid_single:boolEnv('ATLAS_AI_ALLOW_PAID_SINGLE',false),
     allow_council:boolEnv('ATLAS_AI_ALLOW_COUNCIL',false),
   };
-  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,costPolicy};
+  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,sovereignFreeBaseUrl,sovereignFreeToken,sovereignFreeModels,openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,costPolicy};
 }
 async function resolveLocalAiRuntime(rt){
   let stored={};
@@ -104,9 +108,36 @@ async function resolveLocalAiRuntime(rt){
     allowInsecure:rt.localAiAllowInsecure,
   };
 }
-function registryFor(rt,localAi){
+async function resolveSovereignFreeRuntime(rt){
+  let stored={};
+  if(rt.serviceRoleKey){
+    try{
+      const response=await fetch(`${U}/rest/v1/rpc/atlas_get_sovereign_free_runtime_config`,{
+        method:'POST',
+        headers:{apikey:rt.serviceRoleKey,authorization:`Bearer ${rt.serviceRoleKey}`,'content-type':'application/json'},
+        body:'{}',
+        cache:'no-store',
+      });
+      if(response.ok)stored=await response.json().catch(()=>({}));
+    }catch{}
+  }
+  const storedModel=clean(stored?.model_id);
+  const envModelsConfigured=Object.values(rt.sovereignFreeModels||{}).some(Boolean);
+  return {
+    baseUrl:rt.sovereignFreeBaseUrl||clean(stored?.endpoint_url),
+    token:rt.sovereignFreeToken||clean(stored?.runtime_token)||'',
+    models:envModelsConfigured?rt.sovereignFreeModels:{fast:storedModel,balanced:storedModel,deep:storedModel},
+    state:clean(stored?.status)||'not_configured',
+    lastErrorCode:clean(stored?.last_error_code),
+    lastVerifiedAt:clean(stored?.last_verified_at),
+    hostProvider:clean(stored?.host_provider),
+    plan:clean(stored?.plan),
+  };
+}
+function registryFor(rt,localAi,sovereignFree){
   return createProviderRegistry({providers:[
     createAtlasLocalResponsesAdapter({baseUrl:localAi.baseUrl,token:localAi.token,accessClientId:localAi.accessClientId,accessClientSecret:localAi.accessClientSecret,models:localAi.models,allowUnauthenticated:localAi.allowUnauthenticated,allowInsecure:localAi.allowInsecure,fetchFn:fetch}),
+    createAtlasSovereignFreeAdapter({baseUrl:sovereignFree.baseUrl,token:sovereignFree.token,models:sovereignFree.models,state:sovereignFree.state,fetchFn:fetch}),
     createOpenAIResponsesAdapter({apiKey:rt.openaiKey,models:rt.openaiModels,fetchFn:fetch}),
     createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,fetchFn:fetch}),
     createGeminiAdapter({apiKey:rt.geminiKey,models:rt.geminiModels,fetchFn:fetch}),
@@ -114,10 +145,10 @@ function registryFor(rt,localAi){
   ]});
 }
 async function readinessFor(rt,profile='balanced'){
-  const localAi=await resolveLocalAiRuntime(rt);
-  const registry=registryFor(rt,localAi);
+  const [localAi,sovereignFree]=await Promise.all([resolveLocalAiRuntime(rt),resolveSovereignFreeRuntime(rt)]);
+  const registry=registryFor(rt,localAi,sovereignFree);
   const providers=await registry.readiness({profile});
-  return {registry,providers,localAi};
+  return {registry,providers,localAi,sovereignFree};
 }
 function legacyProviderState(item){if(!item)return'not_configured';if(item.state==='verified')return'verified_for_request';if(item.state==='configuration-required')return'not_configured';if(item.state==='rate-limited')return'unavailable';return'configured_unverified';}
 async function contextFor(req,organization_id){return resolveIntelligenceContext({request:authRequest(req,organization_id),supabaseUrl:U,publishableKey:K,fetchFn:fetch});}
@@ -126,10 +157,10 @@ async function parseJson(req){try{return await req.json()}catch{throw Object.ass
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
 async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
 async function handleStatus(req){
-  const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced');
+  const rt=runtime(),resolved=await contextFor(req),{providers,localAi,sovereignFree}=await readinessFor(rt,'balanced');
   const openai=providers.find(p=>p.id==='openai');
   const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
-  return json({ok:true,authenticated:true,local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning'],profiles:['fast','balanced','deep'],cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:rt.costPolicy.enforce_zero_cost?false:(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council),automatic_api_cost_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers},repositoryMutation:'github-actions-oidc-queue'});
+  return json({ok:true,authenticated:true,local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},sovereign_free_runtime:{state:sovereignFree.state,last_error_code:sovereignFree.lastErrorCode,last_verified_at:sovereignFree.lastVerifiedAt,host_provider:sovereignFree.hostProvider,plan:sovereignFree.plan},provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','atlas-sovereign-free','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning'],profiles:['fast','balanced','deep'],cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:rt.costPolicy.enforce_zero_cost?false:(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council),automatic_api_cost_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers},repositoryMutation:'github-actions-oidc-queue'});
 }
 async function handleChat(req){
   if(req.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
@@ -151,9 +182,9 @@ Deno.serve(async req=>{
   const url=new URL(req.url),api=url.searchParams.get('api');
   try{
     if(api==='readiness'){
-      const rt=runtime(),{providers,localAi}=await readinessFor(rt,'balanced'),openai=providers.find(p=>p.id==='openai');
+      const rt=runtime(),{providers,localAi,sovereignFree}=await readinessFor(rt,'balanced'),openai=providers.find(p=>p.id==='openai');
       const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
-      return json({ok:true,state:'ready',service:'atlas-copilot',local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:rt.costPolicy.enforce_zero_cost?false:(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council),automatic_api_cost_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,zero_cost_providers:rt.costPolicy.zero_cost_providers},repositoryMutation:'github-actions-oidc-queue',repairBridge:REPAIR,checkedAt:new Date().toISOString()});
+      return json({ok:true,state:'ready',service:'atlas-copilot',local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},sovereign_free_runtime:{state:sovereignFree.state,last_error_code:sovereignFree.lastErrorCode,last_verified_at:sovereignFree.lastVerifiedAt,host_provider:sovereignFree.hostProvider,plan:sovereignFree.plan},version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','atlas-sovereign-free','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:rt.costPolicy.enforce_zero_cost?false:(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council),automatic_api_cost_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,zero_cost_providers:rt.costPolicy.zero_cost_providers},repositoryMutation:'github-actions-oidc-queue',repairBridge:REPAIR,checkedAt:new Date().toISOString()});
     }
     if(api==='status')return await handleStatus(req);
     if(api==='history')return await handleHistory(req);
