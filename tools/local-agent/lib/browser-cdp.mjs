@@ -5,8 +5,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const DEFAULT_PORT = 9222;
-const DEFAULT_ALLOWED_ACTIONS = new Set(['navigate','read_text','click','type','submit']);
-const SENSITIVE_TARGET = /password|passwd|secret|token|otp|mfa|2fa|credit.?card|cvv|cvc|ssn|social.?security/i;
+const DEFAULT_ALLOWED_ACTIONS = new Set(['navigate','read_text','click','type','submit','oauth_consent']);
+const SENSITIVE_TARGET = /password|passwd|passcode|secret|token|otp|one.?time|verification.?code|mfa|2fa|credit.?card|cvv|cvc|ssn|social.?security/i;
+const OAUTH_CONSENT_TEXT = /\b(authorize|allow|grant|choose account|connect(?: app)?|approve|consent)\b/i;
+const INTERACTIVE_SELECTOR = 'button,a,[role="button"],input[type="button"],input[type="submit"]';
 
 function normalizeHostname(value) {
   return String(value || '').trim().toLowerCase().replace(/^https?:\/\//,'').split('/')[0].replace(/\.$/,'');
@@ -16,7 +18,7 @@ export function browserDomainAllowed(domain, allowedDomains) {
   const hostname = normalizeHostname(domain);
   return Boolean(hostname) && allowedDomains.some((allowed) => {
     const candidate = normalizeHostname(allowed);
-    return hostname === candidate || hostname.endsWith('.' + candidate);
+    return Boolean(candidate) && (hostname === candidate || hostname.endsWith('.' + candidate));
   });
 }
 
@@ -34,6 +36,7 @@ function candidateExecutables() {
   if (process.platform === 'darwin') {
     return [
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
       '/Applications/Chromium.app/Contents/MacOS/Chromium'
     ];
   }
@@ -41,6 +44,7 @@ function candidateExecutables() {
     const roots = [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean);
     return roots.flatMap((root) => [
       join(root,'Google','Chrome','Application','chrome.exe'),
+      join(root,'Google','Chrome for Testing','Application','chrome.exe'),
       join(root,'Chromium','Application','chrome.exe')
     ]);
   }
@@ -69,7 +73,7 @@ async function versionEndpoint(port) {
 
 async function launchBrowser(port) {
   const profile = process.env.ATLAS_BROWSER_PROFILE_DIR || join(homedir(),'.atlas','browser-operator');
-  await mkdir(profile,{recursive:true});
+  await mkdir(profile,{recursive:true,mode:0o700});
   const args = [
     '--remote-debugging-address=127.0.0.1',
     '--remote-debugging-port=' + port,
@@ -78,48 +82,25 @@ async function launchBrowser(port) {
     '--no-default-browser-check',
     'about:blank'
   ];
-  if (String(process.env.ATLAS_BROWSER_HEADLESS || '').toLowerCase() === 'true') {
-    args.unshift('--headless=new');
-  }
+  if (String(process.env.ATLAS_BROWSER_HEADLESS || '').toLowerCase() === 'true') args.unshift('--headless=new');
   const child = spawn(resolveExecutable(),args,{detached:true,stdio:'ignore'});
   child.unref();
-  for (let attempt=0; attempt<20; attempt+=1) {
+  for (let attempt=0; attempt<40; attempt+=1) {
     await new Promise((resolve)=>setTimeout(resolve,250));
-    try {
-      await versionEndpoint(port);
-      return;
-    } catch {}
+    try { await versionEndpoint(port); return; } catch {}
   }
   throw new Error('browser_cdp_start_failed');
 }
 
-export async function startBrowserSession() {
-  const port = operatorPort();
-  try {
-    await versionEndpoint(port);
-    return { port, alreadyRunning: true };
-  } catch {}
-  await launchBrowser(port);
-  return { port, alreadyRunning: false };
-}
-
 async function ensureBrowser() {
   const port = operatorPort();
-  try {
-    await versionEndpoint(port);
-  } catch {
-    if (String(process.env.ATLAS_BROWSER_ALLOW_SERVICE_LAUNCH || '').toLowerCase() !== 'true') {
-      throw new Error('browser_session_not_running');
-    }
-    await launchBrowser(port);
-  }
+  try { await versionEndpoint(port); } catch { await launchBrowser(port); }
   return port;
 }
 
 async function pageTarget(port) {
   const response = await fetch('http://127.0.0.1:' + port + '/json/list', {
-    cache:'no-store',
-    signal:AbortSignal.timeout(2000)
+    cache:'no-store', signal:AbortSignal.timeout(2000)
   });
   const targets = await response.json();
   const page = Array.isArray(targets) ? targets.find((item)=>item?.type === 'page' && item.webSocketDebuggerUrl) : null;
@@ -134,11 +115,10 @@ class CdpSession {
     this.pending = new Map();
     this.socket = null;
   }
-
   async connect() {
     this.socket = new WebSocket(this.url);
     await new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error('browser_cdp_connect_timeout')),3000);
+      const timer=setTimeout(()=>reject(new Error('browser_cdp_connect_timeout')),5000);
       this.socket.addEventListener('open',()=>{clearTimeout(timer);resolve();},{once:true});
       this.socket.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('browser_cdp_connect_failed'));},{once:true});
     });
@@ -153,7 +133,6 @@ class CdpSession {
       else pending.resolve(message.result);
     });
   }
-
   send(method,params={}) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return Promise.reject(new Error('browser_cdp_not_connected'));
     const id=this.nextId++;
@@ -161,7 +140,7 @@ class CdpSession {
       const timer=setTimeout(()=>{
         this.pending.delete(id);
         reject(new Error('browser_cdp_command_timeout'));
-      },8000);
+      },12_000);
       this.pending.set(id,{
         resolve:(value)=>{clearTimeout(timer);resolve(value);},
         reject:(error)=>{clearTimeout(timer);reject(error);}
@@ -169,40 +148,98 @@ class CdpSession {
       this.socket.send(JSON.stringify({id,method,params}));
     });
   }
-
-  close() {
-    try { this.socket?.close(); } catch {}
-  }
-}
-
-function targetExpression(target) {
-  const serialized=JSON.stringify(String(target || ''));
-  return '(() => {' +
-    'const target=' + serialized + ';' +
-    'if(!target)return document.activeElement||document.body;' +
-    'if(target.startsWith("text=")){' +
-      'const needle=target.slice(5).trim().toLowerCase();' +
-      'return [...document.querySelectorAll("button,a,[role=button],input[type=button],input[type=submit],label")]' +
-        '.find((el)=>String(el.innerText||el.value||el.textContent||"").trim().toLowerCase().includes(needle))||null;' +
-    '}' +
-    'try{return document.querySelector(target);}catch{return null;}' +
-  '})()';
+  close() { try { this.socket?.close(); } catch {} }
 }
 
 async function evaluate(session,expression) {
-  const result=await session.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
+  const result=await session.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true,userGesture:true});
   if (result?.exceptionDetails) throw new Error('browser_script_failed');
   return result?.result?.value;
 }
 
 async function currentLocation(session) {
-  return evaluate(session,'({url:location.href,title:document.title})');
+  return evaluate(session,'({url:location.href,title:document.title,domain:location.hostname})');
 }
 
 function assertLocationAllowed(location,allowedDomains) {
   let url;
   try { url=new URL(String(location?.url || '')); } catch { throw new Error('browser_location_invalid'); }
   if (!browserDomainAllowed(url.hostname,allowedDomains)) throw new Error('browser_domain_not_allowed');
+}
+
+function safePublicUrl(value) {
+  try {
+    const url=new URL(String(value || ''));
+    url.username='';
+    url.password='';
+    url.search='';
+    url.hash='';
+    return url.toString().slice(0,1500);
+  } catch {
+    return '[redacted-url]';
+  }
+}
+
+function targetSpec(target) {
+  const raw=String(target || '').trim();
+  if (!raw || raw.length > 1000 || /[\u0000-\u001f]/.test(raw)) throw new Error('browser_target_invalid');
+  const lower=raw.toLowerCase();
+  if (lower.startsWith('text:') || lower.startsWith('text=')) {
+    const text=raw.slice(5).trim();
+    if (!text || text.length > 240) throw new Error('browser_text_target_invalid');
+    return {kind:'text',value:text};
+  }
+  return {kind:'css',value:raw};
+}
+
+function targetFinderSource(spec) {
+  const encoded=JSON.stringify(spec);
+  const interactive=JSON.stringify(INTERACTIVE_SELECTOR);
+  return `
+    const spec=${encoded};
+    const normalized=(value)=>String(value||'').replace(/\\s+/g,' ').trim().toLowerCase();
+    let matches=[];
+    if(spec.kind==='text'){
+      const wanted=normalized(spec.value);
+      matches=Array.from(document.querySelectorAll(${interactive})).filter((el)=>{
+        const label=el.getAttribute('aria-label')||el.innerText||el.textContent||el.value||'';
+        return normalized(label)===wanted;
+      });
+    } else {
+      try {
+        const node=document.querySelector(spec.value);
+        matches=node?[node]:[];
+      } catch {
+        matches=[];
+      }
+    }
+  `;
+}
+
+async function elementSnapshot(session,spec) {
+  const finder=targetFinderSource(spec);
+  return evaluate(session,`(() => {
+    ${finder}
+    if(matches.length===0)return null;
+    const el=matches[0];
+    return {
+      matchCount:matches.length,
+      tag:String(el.tagName||'').toLowerCase(),
+      type:String(el.type||'').toLowerCase(),
+      name:String(el.name||''),
+      id:String(el.id||''),
+      autocomplete:String(el.autocomplete||''),
+      text:String(el.getAttribute('aria-label')||el.innerText||el.textContent||el.value||'').trim().slice(0,500),
+      disabled:Boolean(el.disabled),
+      ariaDisabled:el.getAttribute('aria-disabled')==='true'
+    };
+  })()`);
+}
+
+function assertUnique(snapshot) {
+  if (!snapshot) throw new Error('browser_target_not_found');
+  if (snapshot.matchCount !== 1) throw new Error('browser_text_target_ambiguous');
+  if (snapshot.disabled || snapshot.ariaDisabled) throw new Error('browser_target_disabled');
 }
 
 export function validateBrowserCommand(action,payload,allowedDomains) {
@@ -212,12 +249,14 @@ export function validateBrowserCommand(action,payload,allowedDomains) {
   if (action === 'navigate') {
     let url;
     try { url=new URL(String(payload.url || '')); } catch { throw new Error('browser_navigation_url_invalid'); }
-    if (!['https:','http:'].includes(url.protocol) || !browserDomainAllowed(url.hostname,allowedDomains)) {
+    if (url.protocol !== 'https:' || url.username || url.password || !browserDomainAllowed(url.hostname,allowedDomains)) {
       throw new Error('browser_domain_not_allowed');
     }
   }
-  if (action === 'type' && SENSITIVE_TARGET.test(String(payload.target || ''))) {
-    throw new Error('browser_sensitive_input_requires_human');
+  if (['click','type','submit','oauth_consent','read_text'].includes(action)) targetSpec(payload.target);
+  if (action === 'type') {
+    if (SENSITIVE_TARGET.test(String(payload.target || ''))) throw new Error('browser_sensitive_input_requires_human');
+    if (payload.value === undefined || String(payload.value).length > 4000) throw new Error('browser_type_value_invalid');
   }
 }
 
@@ -231,49 +270,86 @@ export async function executeBrowserCdpAction(device,action,payload={}) {
   try {
     await session.send('Page.enable');
     await session.send('Runtime.enable');
-
     if (action === 'navigate') {
       await session.send('Page.navigate',{url:String(payload.url)});
       await new Promise((resolve)=>setTimeout(resolve,700));
     } else {
       const before=await currentLocation(session);
       assertLocationAllowed(before,allowedDomains);
-
+      const spec=targetSpec(payload.target);
       if (action === 'read_text') {
-        const expression='(() => {const el=' + targetExpression(payload.target) + ';return el?String(el.innerText||el.textContent||el.value||"").slice(0,4000):null;})()';
-        const text=await evaluate(session,expression);
-        if (text === null) throw new Error('browser_target_not_found');
-        return {success:true,result:{text}};
+        const finder=targetFinderSource(spec);
+        const result=await evaluate(session,`(() => {
+          ${finder}
+          if(matches.length!==1)return {matchCount:matches.length,text:null};
+          const el=matches[0];
+          return {matchCount:1,text:String(el.innerText||el.textContent||el.value||'').slice(0,4000)};
+        })()`);
+        if (!result || result.matchCount===0) throw new Error('browser_target_not_found');
+        if (result.matchCount!==1) throw new Error('browser_text_target_ambiguous');
+        return {success:true,result:{text:String(result.text||'').slice(0,4000)}};
       }
-
-      if (action === 'click') {
-        const expression='(() => {const el=' + targetExpression(payload.target) + ';if(!el)return false;el.scrollIntoView({block:"center",inline:"center"});el.click();return true;})()';
-        if (!await evaluate(session,expression)) throw new Error('browser_target_not_found');
+      const snapshot=await elementSnapshot(session,spec);
+      assertUnique(snapshot);
+      if ((action === 'click' || action === 'submit') && OAUTH_CONSENT_TEXT.test(String(snapshot.text || ''))) {
+        throw new Error('browser_oauth_consent_requires_explicit_action');
+      }
+      if (action === 'oauth_consent' && !OAUTH_CONSENT_TEXT.test(String(snapshot.text || ''))) {
+        throw new Error('browser_oauth_consent_target_invalid');
+      }
+      if (action === 'click' || action === 'oauth_consent') {
+        const finder=targetFinderSource(spec);
+        const clicked=await evaluate(session,`(() => {
+          ${finder}
+          if(matches.length!==1)return false;
+          const el=matches[0];
+          el.scrollIntoView({block:'center',inline:'center'});
+          el.click();
+          return true;
+        })()`);
+        if (!clicked) throw new Error('browser_target_not_found');
         await new Promise((resolve)=>setTimeout(resolve,500));
       }
-
       if (action === 'type') {
+        const descriptor=`${snapshot.type} ${snapshot.name} ${snapshot.id} ${snapshot.autocomplete}`;
+        if (SENSITIVE_TARGET.test(descriptor)) throw new Error('browser_sensitive_input_requires_human');
         const value=String(payload.value ?? '').slice(0,4000);
-        const expression='(() => {const el=' + targetExpression(payload.target) + ';if(!el||!(el instanceof HTMLElement))return false;' +
-          'if(el instanceof HTMLInputElement&&String(el.type||"").toLowerCase()==="password")return "sensitive";' +
-          'el.focus();if("value" in el)el.value=' + JSON.stringify(value) + ';else el.textContent=' + JSON.stringify(value) + ';' +
-          'el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));return true;})()';
-        const outcome=await evaluate(session,expression);
-        if (outcome === 'sensitive') throw new Error('browser_sensitive_input_requires_human');
+        const finder=targetFinderSource(spec);
+        const outcome=await evaluate(session,`(() => {
+          ${finder}
+          if(matches.length!==1)return false;
+          const el=matches[0];
+          if(!(el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement))return false;
+          const proto=el instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+          const descriptor=Object.getOwnPropertyDescriptor(proto,'value');
+          if(descriptor?.set)descriptor.set.call(el,${JSON.stringify(value)});else el.value=${JSON.stringify(value)};
+          el.dispatchEvent(new Event('input',{bubbles:true}));
+          el.dispatchEvent(new Event('change',{bubbles:true}));
+          return true;
+        })()`);
         if (!outcome) throw new Error('browser_target_not_found');
       }
-
       if (action === 'submit') {
-        const expression='(() => {const el=' + targetExpression(payload.target) + ';const form=el instanceof HTMLFormElement?el:el?.closest?.("form")||document.activeElement?.closest?.("form");' +
-          'if(!form)return false;if(typeof form.requestSubmit==="function")form.requestSubmit();else form.submit();return true;})()';
-        if (!await evaluate(session,expression)) throw new Error('browser_form_not_found');
+        const finder=targetFinderSource(spec);
+        const submitted=await evaluate(session,`(() => {
+          ${finder}
+          if(matches.length!==1)return false;
+          const el=matches[0];
+          const form=el instanceof HTMLFormElement?el:el.closest?.('form');
+          if(form&&typeof form.requestSubmit==='function'){
+            form.requestSubmit(el instanceof HTMLButtonElement||el instanceof HTMLInputElement?el:undefined);
+            return true;
+          }
+          el.click();
+          return true;
+        })()`);
+        if (!submitted) throw new Error('browser_form_not_found');
         await new Promise((resolve)=>setTimeout(resolve,500));
       }
     }
-
     const location=await currentLocation(session);
     assertLocationAllowed(location,allowedDomains);
-    return {success:true,result:{url:String(location.url || '').slice(0,1500),title:String(location.title || '').slice(0,500)}};
+    return {success:true,result:{url:safePublicUrl(location.url),title:String(location.title || '').slice(0,500)}};
   } finally {
     session.close();
   }
