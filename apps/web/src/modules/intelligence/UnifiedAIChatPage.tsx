@@ -176,6 +176,14 @@ export function UnifiedAIChatPage() {
   }
 
   const councilConfigured = status?.cost_policy?.allow_council === true;
+  const localProvider = providers.find((provider) => provider.id === 'atlas-local') || null;
+  const localRuntimeVerified = status?.local_runtime?.state === 'verified'
+    && Boolean(status?.local_runtime?.last_verified_at)
+    && localProvider?.verified === true
+    && localProvider?.state === 'verified';
+  const localVerifiedAt = status?.local_runtime?.last_verified_at
+    ? new Date(status.local_runtime.last_verified_at).toLocaleString()
+    : 'Not verified';
 
   return (
     <section className="page-stack atlas-ai-page">
@@ -213,6 +221,23 @@ export function UnifiedAIChatPage() {
           </span>
         )) : <span className="atlas-ai-provider">Checking provider readiness…</span>}
       </div>
+
+      <section className={`atlas-local-live-card ${localRuntimeVerified ? 'verified' : 'pending'}`} aria-live="polite">
+        <div>
+          <p className="eyebrow">Sovereign runtime</p>
+          <h2>ATLAS Local AI</h2>
+          <p>{localRuntimeVerified
+            ? 'Protected local inference is server-verified and available to this authenticated ATLAS workspace.'
+            : 'ATLAS Local is not presented as live until runtime and provider verification both pass.'}</p>
+        </div>
+        <dl>
+          <div><dt>Status</dt><dd>{localRuntimeVerified ? 'LIVE / VERIFIED' : 'NOT VERIFIED'}</dd></div>
+          <div><dt>Provider</dt><dd>ATLAS Local</dd></div>
+          <div><dt>Model</dt><dd>{localProvider?.model || 'Unavailable'}</dd></div>
+          <div><dt>Last verified</dt><dd>{localVerifiedAt}</dd></div>
+          <div><dt>API cost</dt><dd>{status?.cost_policy?.enforce_zero_cost ? '$0 automatic paid calls' : 'Policy controlled'}</dd></div>
+        </dl>
+      </section>
 
       {error ? <div className="atlas-ai-error" role="alert">{error}</div> : null}
       {!routeReady && status ? (
