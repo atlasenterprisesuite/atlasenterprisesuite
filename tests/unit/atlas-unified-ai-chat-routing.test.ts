@@ -5,7 +5,7 @@ import {
 } from '../../supabase/functions/atlas-copilot/intelligence-gateway.mjs';
 
 type Provider = {
-  id: 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign';
+  id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign';
   configured: boolean;
   verified: boolean;
   capabilities: string[];
@@ -66,12 +66,12 @@ describe('ATLAS Unified AI routing', () => {
 
   it('prefers an explicitly declared zero-cost provider before a paid primary in auto mode', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('openai'), provider('gemini'), provider('codex-sovereign')],
-      preferredProviders: ['codex-sovereign'],
+      providers: [provider('atlas-local'), provider('openai'), provider('gemini'), provider('codex-sovereign')],
+      preferredProviders: ['atlas-local'],
     });
     expect(router.route({ mode: 'auto', intent: 'balanced', capabilities_requested: ['generation'] })).toMatchObject({
       mode: 'auto',
-      providers: ['codex-sovereign'],
+      providers: ['atlas-local'],
       reason: 'auto_zero_cost_verified_provider',
       fallback_used: false,
     });
