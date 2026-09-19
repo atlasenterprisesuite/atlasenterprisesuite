@@ -14,12 +14,12 @@ it('rejects navigation outside the browser allowlist and rejects plaintext HTTP'
 });
 
 it('keeps password-like typing behind a human boundary', () => {
-  expect(() => validateBrowserCommand('type',{target:'input[type=password]',value:'x'},['hubspot.com']))
+  expect(() => validateBrowserCommand('type',{domain:'app.hubspot.com',target:'input[type=password]',value:'x'},['hubspot.com']))
     .toThrow('browser_sensitive_input_requires_human');
 });
 
 it('accepts an exact semantic click target for an allowed session', () => {
-  expect(() => validateBrowserCommand('click',{target:'text:Choose Account'},['hubspot.com']))
+  expect(() => validateBrowserCommand('click',{domain:'app.hubspot.com',target:'text:Choose Account'},['hubspot.com']))
     .not.toThrow();
 });
 
