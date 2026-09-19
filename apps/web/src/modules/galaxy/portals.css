@@ -488,3 +488,160 @@
     animation: none;
   }
 }
+
+
+.immersive-portal-panel {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.65fr) auto;
+  gap: 22px;
+  align-items: center;
+  padding: 20px 22px;
+  border: 1px solid rgba(85, 230, 255, 0.18);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 86% 18%, rgba(111, 124, 255, 0.13), transparent 32%),
+    linear-gradient(135deg, rgba(5, 16, 30, 0.98), rgba(3, 8, 16, 0.98));
+  color: #f7fbff;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.3);
+}
+
+.immersive-portal-panel h2 {
+  margin: 3px 0 8px;
+}
+
+.immersive-portal-panel p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.55;
+}
+
+.immersive-portal-note {
+  margin-top: 10px !important;
+  color: rgba(255, 196, 120, 0.78) !important;
+  font-size: 0.78rem;
+}
+
+.immersive-portal-canvas {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.immersive-portal-destination {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.immersive-portal-destination span,
+.immersive-portal-destination small {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.7rem;
+}
+
+.immersive-portal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.portal-stop {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 11px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.portal-stop:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.immersive-portal-status {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 0.76rem;
+}
+
+.immersive-portal-status strong {
+  color: #b9f5ff;
+}
+
+.portal-stop:focus-visible {
+  outline: 3px solid rgba(85, 230, 255, 0.8);
+  outline-offset: 3px;
+}
+
+@media (max-width: 980px) {
+  .immersive-portal-panel {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .immersive-portal-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .immersive-portal-panel {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .immersive-portal-actions {
+    justify-content: stretch;
+  }
+
+  .immersive-portal-actions button {
+    width: 100%;
+  }
+
+  .immersive-portal-status {
+    grid-column: 1;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+
+.portal-native {
+  border: 1px solid rgba(166, 125, 255, 0.72);
+  border-radius: 14px;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, rgba(86, 66, 170, 0.92), rgba(52, 95, 196, 0.92));
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(111, 124, 255, 0.16);
+}
+
+.portal-native:hover:not(:disabled) {
+  border-color: rgba(195, 169, 255, 0.96);
+}
+
+.portal-native:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.portal-native:focus-visible {
+  outline: 3px solid rgba(166, 125, 255, 0.8);
+  outline-offset: 3px;
+}

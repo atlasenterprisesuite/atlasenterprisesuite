@@ -65,7 +65,7 @@ function withSecurityHeaders(response: Response, version?: WorkerVersionMetadata
   headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  headers.set('Permissions-Policy', 'camera=(), geolocation=(), payment=(), usb=()');
+  headers.set('Permissions-Policy', 'camera=(), geolocation=(), payment=(), usb=(), xr-spatial-tracking=(self)');
   headers.set('X-Frame-Options', 'DENY');
   if (version?.id) headers.set('X-Atlas-Version-Id', version.id);
   if (version?.tag) headers.set('X-Atlas-Version-Tag', version.tag);

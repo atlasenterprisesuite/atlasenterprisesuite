@@ -6,22 +6,15 @@ import {
   type AtlasShellOrganization
 } from '../../lib/atlasSession';
 import { AtlasPortalDeck } from './AtlasPortalDeck';
+import { ImmersivePortalPanel } from './ImmersivePortalPanel';
 import { buildPortalDestinations, type PortalDestination } from './portalModel';
-
-type PortalRuntimeMode = 'checking' | 'browser-3d' | 'webxr-capable';
-
-type XRNavigator = Navigator & {
-  xr?: {
-    isSessionSupported: (mode: string) => Promise<boolean>;
-  };
-};
 
 export function AtlasPortalsPage() {
   const navigate = useNavigate();
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(
     () => getCachedAtlasShellOrganization()
   );
-  const [runtimeMode, setRuntimeMode] = useState<PortalRuntimeMode>('checking');
+  const [selectedDestination, setSelectedDestination] = useState<PortalDestination | null>(null);
 
   useEffect(() => {
     const handleSessionChange = () => {
@@ -30,28 +23,6 @@ export function AtlasPortalsPage() {
 
     window.addEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     return () => window.removeEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const xr = (navigator as XRNavigator).xr;
-
-    if (!window.isSecureContext || !xr) {
-      setRuntimeMode('browser-3d');
-      return;
-    }
-
-    xr.isSessionSupported('immersive-ar')
-      .then((supported) => {
-        if (!cancelled) setRuntimeMode(supported ? 'webxr-capable' : 'browser-3d');
-      })
-      .catch(() => {
-        if (!cancelled) setRuntimeMode('browser-3d');
-      });
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const destinations = useMemo(
@@ -77,26 +48,22 @@ export function AtlasPortalsPage() {
         <Link className="portal-back-link" to="/galaxy">Back to Galaxy</Link>
       </header>
 
-      <div className="portal-runtime" role="status">
-        <span>Runtime</span>
-        <strong>
-          {runtimeMode === 'checking'
-            ? 'Checking spatial capability'
-            : runtimeMode === 'webxr-capable'
-              ? 'Browser 3D · WebXR immersive AR capability detected'
-              : 'Browser 3D'}
-        </strong>
-        <small>
-          Immersive AR is reported only when the current secure browser exposes WebXR support. Portal navigation itself remains available in browser 3D.
-        </small>
-      </div>
-
       {!organization ? (
         <div className="galaxy-resolution-state" role="status">
           Resolving ATLAS portal state
         </div>
       ) : (
-        <AtlasPortalDeck destinations={destinations} onEnter={handleEnter} />
+        <>
+          <AtlasPortalDeck
+            destinations={destinations}
+            onEnter={handleEnter}
+            onSelectionChange={setSelectedDestination}
+          />
+          <ImmersivePortalPanel
+            destination={selectedDestination}
+            onTraverse={handleEnter}
+          />
+        </>
       )}
     </section>
   );

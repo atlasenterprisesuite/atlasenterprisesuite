@@ -70,6 +70,20 @@ describe('AtlasPortalDeck', () => {
     expect(onEnter).toHaveBeenCalledWith(expect.objectContaining({ id: 'health', route: '/health' }));
   });
 
+  it('reports the focused destination to the spatial runtime', () => {
+    const onSelectionChange = vi.fn();
+    render(
+      <AtlasPortalDeck
+        destinations={destinations}
+        onEnter={() => {}}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+    expect(onSelectionChange).toHaveBeenCalledWith(expect.objectContaining({ id: 'finance' }));
+    fireEvent.click(screen.getByRole('button', { name: /Health Health Partial/ }));
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'health' }));
+  });
+
   it('keeps blocked destinations disabled', () => {
     render(<AtlasPortalDeck destinations={destinations} onEnter={() => {}} />);
     expect(screen.getByRole('button', { name: /CRM Business Identity required/ })).toBeDisabled();
