@@ -125,7 +125,7 @@ async function prepared(store: Store, lifecycle: HubSpotLifecycleDependencies) {
 
 describe('HubSpot OAuth lifecycle hardening', () => {
   it('stores only the OAuth state hash and claims the state one time', async () => {
-    const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'tickets'];
+    const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'crm.objects.tickets.read'];
     const store = new Store();
     const lifecycle = deps(store, scopes);
     const state = await prepared(store, lifecycle);
@@ -153,7 +153,7 @@ describe('HubSpot OAuth lifecycle hardening', () => {
   });
 
   it('never returns provider access or refresh tokens in connection view', async () => {
-    const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'tickets'];
+    const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'crm.objects.tickets.read'];
     const store = new Store();
     const lifecycle = deps(store, scopes);
     const state = await prepared(store, lifecycle);

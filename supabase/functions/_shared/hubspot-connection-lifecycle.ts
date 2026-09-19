@@ -30,7 +30,7 @@ export const HUBSPOT_P0_SCOPES = [
   'crm.objects.contacts.read',
   'crm.objects.companies.read',
   'crm.objects.deals.read',
-  'tickets'
+  'crm.objects.tickets.read'
 ] as const;
 
 export type HubSpotLifecycleErrorCode =

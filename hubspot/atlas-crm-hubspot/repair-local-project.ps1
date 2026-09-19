@@ -29,7 +29,7 @@ $appJson = @'
         "crm.objects.contacts.read",
         "crm.objects.companies.read",
         "crm.objects.deals.read",
-        "tickets"
+        "crm.objects.tickets.read"
       ],
       "optionalScopes": [],
       "conditionallyRequiredScopes": []
