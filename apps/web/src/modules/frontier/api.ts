@@ -15,6 +15,8 @@ type FrontierRunRow = {
   sky_grid_integrity: number;
   action_count: number;
   storm_minutes: number;
+  campaign_stage: number;
+  experience: number;
   revision: number;
 };
 
@@ -28,6 +30,8 @@ function rowToState(row: FrontierRunRow): FrontierState {
     skyGridIntegrity: row.sky_grid_integrity,
     actionCount: row.action_count,
     stormMinutes: row.storm_minutes,
+    campaignStage: row.campaign_stage,
+    experience: row.experience,
     revision: row.revision
   });
 }
@@ -50,7 +54,7 @@ export async function loadFrontierRun(): Promise<FrontierState> {
   const organization = await getActiveAtlasOrganization();
   const org = encodeURIComponent(`eq.${organization.id}`);
   const response = await authorizedAtlasFetch(
-    `/rest/v1/frontier_runs?org_id=${org}&select=aetherium,alloy,biofiber,power_cores,habitats,sky_grid_integrity,action_count,storm_minutes,revision&limit=1`,
+    `/rest/v1/frontier_runs?org_id=${org}&select=aetherium,alloy,biofiber,power_cores,habitats,sky_grid_integrity,action_count,storm_minutes,campaign_stage,experience,revision&limit=1`,
     { method: 'GET' }
   );
   const body = await parseJson(response) as FrontierRunRow[];
