@@ -12,6 +12,7 @@ export function resolveAssistantModule(pathname: string): string {
   if (pathname.startsWith('/health/research/frontiers')) return 'health.research.frontiers';
   if (pathname.startsWith('/health/research')) return 'health.research';
   if (pathname.startsWith('/health')) return 'health';
+  if (pathname.startsWith('/frontier')) return 'frontier';
   if (pathname.startsWith('/learning')) return 'learning';
   if (pathname.startsWith('/hospitality')) return 'hospitality';
   if (pathname.startsWith('/ride')) return 'ride';
