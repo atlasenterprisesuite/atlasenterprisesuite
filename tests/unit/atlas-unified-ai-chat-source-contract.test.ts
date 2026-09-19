@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const indexSource = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
 const openaiSource = readFileSync('supabase/functions/atlas-copilot/openai-responses-adapter.mjs', 'utf8');
+const localSource = readFileSync('supabase/functions/atlas-copilot/atlas-local-responses-adapter.mjs', 'utf8');
 const bedrockSource = readFileSync('supabase/functions/atlas-copilot/amazon-bedrock-responses-adapter.mjs', 'utf8');
 
 describe('ATLAS Unified AI source configuration contract', () => {
@@ -17,11 +18,22 @@ describe('ATLAS Unified AI source configuration contract', () => {
   });
 
   it('constructs all governed provider adapters through the registry', () => {
+    expect(indexSource).toContain('createAtlasLocalResponsesAdapter');
     expect(indexSource).toContain('createOpenAIResponsesAdapter');
     expect(indexSource).toContain('createAmazonBedrockResponsesAdapter');
     expect(indexSource).toContain('createGeminiAdapter');
     expect(indexSource).toContain('createCodexSovereignAdapter');
     expect(indexSource).toContain('createProviderRegistry');
+  });
+
+  it('keeps ATLAS Local self-hosted, authenticated and zero-cost eligible without embedded credentials', () => {
+    expect(indexSource).toContain("Deno.env.get('ATLAS_LOCAL_AI_URL')");
+    expect(indexSource).toContain("Deno.env.get('ATLAS_LOCAL_AI_TOKEN')");
+    expect(indexSource).toContain("['atlas-local']");
+    expect(localSource).toContain("id:'atlas-local'");
+    expect(localSource).toContain("backend:'self-hosted'");
+    expect(localSource).toContain('/v1/responses');
+    expect(localSource).not.toContain('local-secret');
   });
 
   it('keeps OpenAI requests on the Responses API and never embeds a secret', () => {

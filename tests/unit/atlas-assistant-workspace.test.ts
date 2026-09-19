@@ -21,7 +21,7 @@ describe('ATLAS Assistant workspace', () => {
   it('shares the governed assistant client for status, history, conversation and chat', () => {
     const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
     const client = source('apps/web/src/assistant/client.ts');
-    for (const mode of ['auto', 'openai', 'bedrock', 'gemini', 'codex-sovereign', 'council']) {
+    for (const mode of ['auto', 'atlas-local', 'openai', 'bedrock', 'gemini', 'codex-sovereign', 'council']) {
       expect(page).toContain(`value: '${mode}'`);
     }
     for (const profile of ['fast', 'balanced', 'deep']) {
