@@ -59,7 +59,48 @@ declare const WebSocketPair: {
   new(): { 0: WebSocket; 1: WebSocket };
 };
 
-function withSecurityHeaders(response: Response, version?: WorkerVersionMetadata): Response {
+type DeploymentManifest = {
+  commit_sha?: string;
+};
+
+let deploymentCommitShaPromise: Promise<string | null> | null = null;
+
+function canonicalCommitSha(value: unknown) {
+  const sha = String(value || '').trim().toLowerCase();
+  return /^[a-f0-9]{40}$/.test(sha) ? sha : null;
+}
+
+async function deploymentCommitSha(env: Env, request: Request) {
+  const metadataTag = canonicalCommitSha(env.CF_VERSION_METADATA?.tag);
+  if (metadataTag) return metadataTag;
+
+  if (!deploymentCommitShaPromise) {
+    deploymentCommitShaPromise = (async () => {
+      try {
+        const manifestUrl = new URL('/deployment.json', request.url);
+        const manifestResponse = await env.ASSETS.fetch(new Request(manifestUrl, {
+          method: 'GET',
+          headers: { 'cache-control': 'no-store' }
+        }));
+        if (!manifestResponse.ok) return null;
+        const manifest = await manifestResponse.json().catch(() => null) as DeploymentManifest | null;
+        return canonicalCommitSha(manifest?.commit_sha);
+      } catch {
+        return null;
+      }
+    })();
+  }
+
+  const commitSha = await deploymentCommitShaPromise;
+  if (!commitSha) deploymentCommitShaPromise = null;
+  return commitSha;
+}
+
+function withSecurityHeaders(
+  response: Response,
+  version?: WorkerVersionMetadata,
+  commitSha?: string | null
+): Response {
   const headers = new Headers(response.headers);
   headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
@@ -68,7 +109,11 @@ function withSecurityHeaders(response: Response, version?: WorkerVersionMetadata
   headers.set('Permissions-Policy', 'camera=(), geolocation=(), payment=(), usb=(), xr-spatial-tracking=(self)');
   headers.set('X-Frame-Options', 'DENY');
   if (version?.id) headers.set('X-Atlas-Version-Id', version.id);
-  if (version?.tag) headers.set('X-Atlas-Version-Tag', version.tag);
+  const effectiveTag = canonicalCommitSha(version?.tag) || canonicalCommitSha(commitSha);
+  if (effectiveTag) {
+    headers.set('X-Atlas-Version-Tag', effectiveTag);
+    headers.set('X-Atlas-Commit-Sha', effectiveTag);
+  }
 
   return new Response(response.body, {
     status: response.status,
@@ -253,6 +298,8 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === `${LOCAL_BUS_PREFIX}connect`) return connectLocalBus(request as CloudflareRequest, env);
     if (url.pathname === `${LOCAL_BUS_PREFIX}publish`) return publishLocalBus(request, env);
-    return withSecurityHeaders(await env.ASSETS.fetch(request), env.CF_VERSION_METADATA);
+    const assetResponse = await env.ASSETS.fetch(request);
+    const commitSha = await deploymentCommitSha(env, request);
+    return withSecurityHeaders(assetResponse, env.CF_VERSION_METADATA, commitSha);
   }
 };
