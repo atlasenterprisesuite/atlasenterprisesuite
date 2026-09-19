@@ -7,6 +7,7 @@ import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { EventsHomePage } from '../modules/events/EventsHomePage';
+import { FrontierRoutes } from '../modules/frontier/FrontierRoutes';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { SocialCommandCenterPage } from '../modules/creator/social/SocialCommandCenterPage';
 import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDeskPage';
@@ -52,6 +53,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/events') {
     return <RequireAtlasIdentity><EventsHomePage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/frontier' || pathname.startsWith('/frontier/')) {
+    return <RequireAtlasIdentity><FrontierRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/mobility/aviation' || pathname.startsWith('/mobility/aviation/')) {
