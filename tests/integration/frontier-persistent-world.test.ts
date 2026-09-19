@@ -5,6 +5,10 @@ const migration = readFileSync(
   `${process.cwd()}/supabase/migrations/20260919232000_frontier_persistent_world.sql`,
   'utf8'
 );
+const hardening = readFileSync(
+  `${process.cwd()}/supabase/migrations/20260919232800_frontier_persistent_world_hardening.sql`,
+  'utf8'
+);
 
 describe('ATLAS FRONTIER persistent spatial world migration', () => {
   it('creates durable tenant-scoped structures with read-only browser access', () => {
@@ -40,5 +44,13 @@ describe('ATLAS FRONTIER persistent spatial world migration', () => {
     expect(migration).toContain('frontier_runs_persist_legacy_habitat_position');
     expect(migration).toContain("current_setting('atlas.frontier_spatial_build', true)");
     expect(migration).toContain("set_config('atlas.frontier_spatial_build', '1', true)");
+  });
+
+  it('hardens trigger execution and Frontier access paths', () => {
+    expect(hardening).toContain('revoke all on function public.frontier_persist_legacy_habitat_position()');
+    expect(hardening).toContain('from public, anon, authenticated');
+    expect(hardening).toContain('frontier_structures_run_idx');
+    expect(hardening).toContain('frontier_events_run_idx');
+    expect(hardening).toContain('actor_user_id = (select auth.uid())');
   });
 });
