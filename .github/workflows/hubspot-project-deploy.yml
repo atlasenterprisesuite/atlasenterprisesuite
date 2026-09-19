@@ -1,0 +1,46 @@
+name: ATLAS HubSpot Project Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "hubspot/atlas-crm-hubspot/**"
+      - ".github/workflows/hubspot-project-deploy.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-hubspot-project-deploy
+  cancel-in-progress: false
+
+env:
+  DEFAULT_ACCOUNT_ID: ${{ secrets.HUBSPOT_ACCOUNT_ID }}
+  DEFAULT_PERSONAL_ACCESS_KEY: ${{ secrets.HUBSPOT_PERSONAL_ACCESS_KEY }}
+  DEFAULT_CLI_VERSION: "8.15.0"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate HubSpot project
+        uses: HubSpot/hubspot-project-actions/project-validate@v1.1.2
+        with:
+          project_dir: "./hubspot/atlas-crm-hubspot"
+
+      - name: Upload HubSpot project
+        id: upload
+        uses: HubSpot/hubspot-project-actions/project-upload@v1.1.2
+        with:
+          project_dir: "./hubspot/atlas-crm-hubspot"
+
+      - name: Deploy HubSpot project
+        uses: HubSpot/hubspot-project-actions/project-deploy@v1.1.2
+        with:
+          build_id: ${{ steps.upload.outputs.build_id }}
+          project_dir: "./hubspot/atlas-crm-hubspot"
