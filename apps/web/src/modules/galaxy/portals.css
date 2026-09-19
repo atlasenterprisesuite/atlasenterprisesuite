@@ -618,3 +618,30 @@
     gap: 6px;
   }
 }
+
+
+.portal-native {
+  border: 1px solid rgba(166, 125, 255, 0.72);
+  border-radius: 14px;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, rgba(86, 66, 170, 0.92), rgba(52, 95, 196, 0.92));
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(111, 124, 255, 0.16);
+}
+
+.portal-native:hover:not(:disabled) {
+  border-color: rgba(195, 169, 255, 0.96);
+}
+
+.portal-native:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.portal-native:focus-visible {
+  outline: 3px solid rgba(166, 125, 255, 0.8);
+  outline-offset: 3px;
+}
