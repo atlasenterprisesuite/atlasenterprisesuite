@@ -21,6 +21,8 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(edge).toContain("String(step.module) !== 'device-os'");
     expect(edge).toContain("String(step.action_type) !== 'local_device_command'");
     expect(edge).toContain('digestApprovalPayload');
+    expect(edge).toContain('oauth_consent_high_risk_required');
+    expect(edge).toContain("capability === 'browser.control' && action === 'oauth_consent'");
   });
 
   it('rejects secret-shaped telemetry and permits only bounded non-secret action payloads', () => {
@@ -38,6 +40,7 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(agent).toContain("command.capability !== 'health.check'");
     expect(agent).toContain("command.action !== 'status.read'");
     expect(agent).not.toMatch(/\bnmap\b|\barp\s+-/i);
+    expect(agent).toContain("command.capability === 'browser.control'");
   });
 
   it('keeps the local AI runtime loopback-bound with environment-backed authentication', () => {
