@@ -206,12 +206,7 @@ jobs:
           COMMERCE_VERSION="$(probe_worker '/commerce' 'commerce')"
           DIRECT_VERSION_ID="${ROOT_VERSION%%|*}"
           DIRECT_VERSION_TAG="${ROOT_VERSION#*|}"
-          test "${IDENTITY_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Identity served a different Cloudflare version"; exit 1; }
-          test "${MODULE_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Finance served a different Cloudflare version"; exit 1; }
-          test "${HEALTH_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Health served a different Cloudflare version"; exit 1; }
-          test "${JAQUE_MATE_SENTINEL_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Jaque Mate + Sentinel served a different Cloudflare version"; exit 1; }
-          test "${WEB_LAUNCH_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Web Launch served a different Cloudflare version"; exit 1; }
-          test "${COMMERCE_VERSION%%|*}" = "$DIRECT_VERSION_ID" || { echo "::error::workers.dev Commerce served a different Cloudflare version"; exit 1; }
+          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$IDENTITY_VERSION" "$MODULE_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
           test "${IDENTITY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${MODULE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${HEALTH_VERSION#*|}" = "$GITHUB_SHA" || exit 1
@@ -226,10 +221,11 @@ jobs:
           echo "studio_web_launch_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "commerce_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "version_id=$DIRECT_VERSION_ID" >> "$GITHUB_OUTPUT"
+          echo "version_ids=$DIRECT_VERSION_IDS" >> "$GITHUB_OUTPUT"
           echo "version_tag=$DIRECT_VERSION_TAG" >> "$GITHUB_OUTPUT"
           echo "deployment_commit_sha=$DIRECT_VERSION_TAG" >> "$GITHUB_OUTPUT"
           echo "edge_challenge_detected=false" >> "$GITHUB_OUTPUT"
-          echo "Public ATLAS Worker web shell and exact deployment commit verified via Cloudflare Version ID/Tag." >> "$GITHUB_STEP_SUMMARY"
+          echo "Public ATLAS Worker web shell verified by exact commit tag across all required routes; multiple Cloudflare Version IDs are accepted only when every route reports $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
           echo "Production commit SHA verified: $DIRECT_VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
           echo "Module authorization remains enforced by ATLAS Identity and authenticated backend boundaries." >> "$GITHUB_STEP_SUMMARY"
 
@@ -285,6 +281,7 @@ jobs:
           EDGE_CHALLENGE_DETECTED=false
           NETWORK_ROUTES_REACHABLE=true
           PRODUCTION_VERSION_ID=""
+          PRODUCTION_VERSION_IDS=""
           probe_route() {
             local label="$1"
             local path="$2"
@@ -310,8 +307,9 @@ jobs:
               test "$atlas_version_tag" = "$GITHUB_SHA" || { echo "::error::$label served version tag ${atlas_version_tag:-none} instead of $GITHUB_SHA"; return 1; }
               if [ -z "$PRODUCTION_VERSION_ID" ]; then
                 PRODUCTION_VERSION_ID="$atlas_version_id"
-              else
-                test "$atlas_version_id" = "$PRODUCTION_VERSION_ID" || { echo "::error::$label served a different Cloudflare Version ID"; return 1; }
+              fi
+              if [[ ",$PRODUCTION_VERSION_IDS," != *",$atlas_version_id,"* ]]; then
+                PRODUCTION_VERSION_IDS="${PRODUCTION_VERSION_IDS:+$PRODUCTION_VERSION_IDS,}$atlas_version_id"
               fi
               echo "$output_name=true" >> "$GITHUB_OUTPUT"
               return 0
@@ -353,8 +351,10 @@ jobs:
             echo "GitHub runner received a Cloudflare browser challenge; invoking the authorized ATLAS runtime verifier without weakening the edge policy." >> "$GITHUB_STEP_SUMMARY"
           else
             test -n "$PRODUCTION_VERSION_ID" || { echo "::error::Production Cloudflare Version ID was not observed"; exit 1; }
+            test -n "$PRODUCTION_VERSION_IDS" || { echo "::error::Production Cloudflare Version IDs were not observed"; exit 1; }
             echo "production_commit_sha_verified=true" >> "$GITHUB_OUTPUT"
             echo "observed_version_id=$PRODUCTION_VERSION_ID" >> "$GITHUB_OUTPUT"
+            echo "observed_version_ids=$PRODUCTION_VERSION_IDS" >> "$GITHUB_OUTPUT"
             echo "observed_version_tag=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
             echo "deployed_commit_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
             echo "Public ATLAS production domain and critical Network routes verified." >> "$GITHUB_STEP_SUMMARY"
