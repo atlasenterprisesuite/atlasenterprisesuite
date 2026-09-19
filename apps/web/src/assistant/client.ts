@@ -1,7 +1,7 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSession';
 import { resolveAssistantModule } from './routeContext';
 
-export type AssistantMode = 'auto' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign' | 'council';
+export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign' | 'council';
 export type AssistantProfile = 'fast' | 'balanced' | 'deep';
 
 export type AssistantProviderState =
@@ -41,6 +41,10 @@ export type AssistantStatusResponse = {
   profiles?: AssistantProfile[];
   api?: string;
   cost_policy?: {
+    enforce_zero_cost?: boolean;
+    automatic_paid_calls?: boolean;
+    automatic_api_cost_usd?: number | null;
+    zero_cost_ready?: boolean;
     allow_paid_single?: boolean;
     allow_council?: boolean;
     allowed_providers?: string[];
