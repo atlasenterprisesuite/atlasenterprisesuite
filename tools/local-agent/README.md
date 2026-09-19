@@ -145,7 +145,11 @@ Example `devices.json` entry:
 ]
 ```
 
-Supported browser actions are `navigate`, `read_text`, `click`, `type`, and `submit`. Every command carries a bounded non-secret `action_payload` and is restricted to the device domain allowlist. Password/OTP/token-like typing is blocked and remains a human action. The operator binds Chrome DevTools Protocol only to `127.0.0.1` and launches a dedicated browser profile by default.
+Supported browser actions are `navigate`, `read_text`, `click`, `type`, `submit`, and the explicit high-risk `oauth_consent` action. Every command carries a bounded non-secret `action_payload` and is restricted to the device domain allowlist. Navigation is HTTPS-only. Semantic targets such as `text:Choose Account` use exact normalized text/ARIA matching and must resolve to exactly one interactive control.
+
+Ordinary `click` or `submit` commands refuse controls that look like OAuth consent (for example “Choose Account”, “Authorize”, “Allow”, or “Approve”). Provider consent must be represented as `oauth_consent`, marked `high` or `critical`, and bound to an already-approved canonical ATLAS execution approval whose current step payload exactly matches the device, capability, action, and action payload. This keeps ATLAS Work/Approval Center as the decision layer while the Local Agent + mTLS/Reatime Command Bus remains the single execution substrate.
+
+Password/OTP/token/card-like typing is blocked using both the requested target and the live DOM field attributes. Browser evidence strips URL userinfo, query strings, and fragments before it is sent back, so OAuth `code`/`state` values are not persisted in event detail. The operator binds Chrome DevTools Protocol only to `127.0.0.1` and launches a dedicated browser profile by default.
 
 Optional environment variables:
 
