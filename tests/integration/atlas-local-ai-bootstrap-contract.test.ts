@@ -55,7 +55,9 @@ describe('ATLAS Local AI live bootstrap contract', () => {
     expect(workflow).toContain('?api=verify');
     expect(workflow).toContain("j.inference_verified!==true");
     expect(workflow).not.toContain('secrets.');
-    expect(bootstrap).toContain("instructions: 'Return exactly ATLAS_LOCAL_READY.'");
+    expect(bootstrap).toContain("instructions: 'Return a short readiness response. This request exists only to prove real local generation.'");
+    expect(bootstrap).toContain("if (!inference.ok || !text.trim())");
+    expect(bootstrap).toContain("inference_output_present: true");
     expect(bootstrap).toContain("status: 'verified'");
   });
 
