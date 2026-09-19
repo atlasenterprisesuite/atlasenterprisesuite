@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 13;
+const VERSION = 14;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -247,6 +247,7 @@ Deno.serve(async (req: Request) => {
     automotiveSales,
     voice,
     health,
+    frontier,
     jaqueMateSentinel,
     studioWebLaunch,
     studioWriting,
@@ -265,6 +266,7 @@ Deno.serve(async (req: Request) => {
     probe('/finance/accounting/reports/automotive-sales'),
     probe('/voice'),
     probe('/health'),
+    probe('/frontier'),
     probe('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'),
     probe('/studio/web-launch'),
     probe('/studio/write'),
@@ -285,6 +287,7 @@ Deno.serve(async (req: Request) => {
     automotiveSales.status === 200 &&
     voice.status === 200 &&
     health.status === 200 &&
+    frontier.status === 200 &&
     jaqueMateSentinel.status === 200 &&
     studioWebLaunch.status === 200 &&
     studioWriting.status === 200;
@@ -297,6 +300,7 @@ Deno.serve(async (req: Request) => {
     automotiveSales,
     voice,
     health,
+    frontier,
     jaqueMateSentinel,
     studioWebLaunch,
     studioWriting,
@@ -348,6 +352,7 @@ Deno.serve(async (req: Request) => {
         automotive_sales_report_reachable: automotiveSales.status === 200,
         voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
+        frontier_route_reachable: frontier.status === 200,
         jaque_mate_sentinel_route_reachable: jaqueMateSentinel.status === 200,
         studio_web_launch_route_reachable: studioWebLaunch.status === 200,
         studio_writing_route_reachable: studioWriting.status === 200,
@@ -367,6 +372,7 @@ Deno.serve(async (req: Request) => {
         automotive_sales: automotiveSales,
         voice,
         health,
+        frontier,
         jaque_mate_sentinel: jaqueMateSentinel,
         studio_web_launch: studioWebLaunch,
         studio_writing: studioWriting,
