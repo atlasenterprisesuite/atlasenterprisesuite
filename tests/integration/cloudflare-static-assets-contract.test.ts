@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const wrangler = readFileSync('wrangler.jsonc', 'utf8');
 const workflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8');
+const worker = readFileSync('worker/index.ts', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts?: Record<string, string> };
 
 describe('Cloudflare Workers Static Assets deployment contract', () => {
@@ -120,6 +121,14 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('GITHUB_SHA');
     expect(workflow).toContain('production_commit_sha_verified=true');
     expect(workflow).toContain('Production commit SHA verified');
+  });
+
+  it('attests native Cloudflare builds from the immutable build manifest when version metadata has no tag', () => {
+    expect(worker).toContain("new URL('/deployment.json', request.url)");
+    expect(worker).toContain('canonicalCommitSha');
+    expect(worker).toContain("headers.set('X-Atlas-Version-Tag', effectiveTag)");
+    expect(worker).toContain("headers.set('X-Atlas-Commit-Sha', effectiveTag)");
+    expect(worker).toContain('deploymentCommitCache.versionId !== versionId');
   });
 
   it('records exact-version verification only from the production verification output', () => {
