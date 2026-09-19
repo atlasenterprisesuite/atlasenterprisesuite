@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const edge = readFileSync('supabase/functions/atlas-local-control/index.ts','utf8');
 const agent = readFileSync('tools/local-agent/atlas-local-agent.mjs','utf8');
 const panel = readFileSync('apps/web/src/modules/device-os/LocalControlPlanePanel.tsx','utf8');
+const localAi = readFileSync('tools/local-agent/atlas-local-ai-runtime.mjs','utf8');
 
 describe('ATLAS Local Control Plane runtime contract', () => {
   it('uses one-time enrollment and short-lived hash-backed sessions', () => {
@@ -34,6 +35,14 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(agent).toContain("command.capability !== 'health.check'");
     expect(agent).toContain("command.action !== 'status.read'");
     expect(agent).not.toMatch(/scan|arp|nmap/i);
+  });
+
+  it('keeps the local AI runtime loopback-bound with environment-backed authentication', () => {
+    expect(localAi).toContain("ATLAS_LOCAL_AI_TOKEN");
+    expect(localAi).toContain("LLAMA_API_KEY:token");
+    expect(localAi).toContain("ATLAS_LOCAL_AI_HOST||'127.0.0.1'");
+    expect(localAi).not.toContain("'0.0.0.0'");
+    expect(localAi).not.toContain("'--api-key'");
   });
 
   it('surfaces enrollment, agents, devices and commands in Device OS', () => {
