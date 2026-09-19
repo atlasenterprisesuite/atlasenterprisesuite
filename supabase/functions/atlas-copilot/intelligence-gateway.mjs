@@ -4,7 +4,7 @@ import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
 export const INTELLIGENCE_CAPABILITIES=Object.freeze(['generation','reasoning']);
 export const REASONING_PROFILES=Object.freeze({fast:Object.freeze({id:'fast'}),balanced:Object.freeze({id:'balanced'}),deep:Object.freeze({id:'deep'})});
-export const INTELLIGENCE_PROVIDER_IDS=Object.freeze(['openai','bedrock','gemini','codex-sovereign']);
+export const INTELLIGENCE_PROVIDER_IDS=Object.freeze(['atlas-local','openai','bedrock','gemini','codex-sovereign']);
 export const INTELLIGENCE_MODES=Object.freeze(['auto',...INTELLIGENCE_PROVIDER_IDS,'council']);
 
 function fail(code,status=400,details={}){return Object.assign(new Error(code),{code,status,...details});}
