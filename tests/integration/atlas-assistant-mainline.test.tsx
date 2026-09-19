@@ -133,6 +133,40 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
   });
 
+  it('refreshes provider readiness when the Assistant opens after a runtime recovery', async () => {
+    const unavailable = {
+      ok: true,
+      authenticated: true,
+      provider: 'openai',
+      provider_state: 'not_configured',
+      model: null,
+      storage_state: 'configured',
+      organization: 'org-1',
+      role: 'owner',
+      capabilities: ['generation', 'reasoning'],
+      providers: [
+        { id: 'atlas-local', state: 'unavailable', configured: true, verified: false, model: 'atlas-local-free', capabilities: ['generation', 'reasoning'], profiles: ['balanced'], error: 'provider_unavailable' }
+      ]
+    };
+    const recovered = {
+      ...unavailable,
+      providers: [
+        { id: 'atlas-local', state: 'verified', configured: true, verified: true, model: 'atlas-local-free', capabilities: ['generation', 'reasoning'], profiles: ['balanced'], error: null }
+      ]
+    };
+    mocks.getAssistantStatus.mockReset()
+      .mockResolvedValueOnce(unavailable)
+      .mockResolvedValue(recovered);
+
+    render(<MemoryRouter initialEntries={['/ride']}><AtlasAssistant /></MemoryRouter>);
+    const launcher = await screen.findByRole('button', { name: /Intelligence unavailable/i });
+    fireEvent.click(launcher);
+
+    await waitFor(() => expect(mocks.getAssistantStatus).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('ATLAS Assistant is ready. How can I help in this workspace?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeEnabled();
+  });
+
   it('sends a recognized final utterance through atlas-copilot as voice modality', async () => {
     render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>);
     const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
