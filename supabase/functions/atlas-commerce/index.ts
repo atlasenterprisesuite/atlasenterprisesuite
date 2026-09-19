@@ -210,6 +210,7 @@ function normalizedOperation(value: unknown): CommerceApiOperation {
     'orders.get',
     'checkout.prepare',
     'checkout.submit',
+    'payments.status',
     'storefront.catalog',
     'storefront.product'
   ]);
@@ -533,6 +534,44 @@ async function orderGet(
     history: history.data || [],
     events: events.data || [],
     deliveries
+  });
+}
+
+async function paymentStatus(req: Request) {
+  let credentialsConfigured = false;
+  if (SUPABASE_URL && SERVICE_ROLE_KEY) {
+    try {
+      const [apiLoginId, transactionKey] = await Promise.all([
+        getServerSecret({
+          supabaseUrl: SUPABASE_URL,
+          serviceRoleKey: SERVICE_ROLE_KEY,
+          name: 'authorize_net_api_login_id'
+        }),
+        getServerSecret({
+          supabaseUrl: SUPABASE_URL,
+          serviceRoleKey: SERVICE_ROLE_KEY,
+          name: 'authorize_net_transaction_key'
+        })
+      ]);
+      credentialsConfigured = Boolean(apiLoginId && transactionKey);
+    } catch {
+      credentialsConfigured = false;
+    }
+  }
+
+  return json(req, {
+    ok: true,
+    provider: {
+      id: 'authorize-net',
+      displayName: 'Authorize.net eCheck.Net',
+      enabled: AUTHORIZE_NET_ECHECK_ENABLED,
+      credentialsConfigured,
+      environment: AUTHORIZE_NET_ENVIRONMENT,
+      currency: AUTHORIZE_NET_CURRENCY,
+      ready: AUTHORIZE_NET_ECHECK_ENABLED && credentialsConfigured,
+      tokenization: 'accept-js-opaque-data',
+      storesRawBankData: false
+    }
   });
 }
 
