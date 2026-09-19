@@ -60,7 +60,9 @@ function providerCapability(status: AssistantStatusResponse): { capability: Atla
 
   const states = status.providers?.map((provider) => provider.state) || [];
   const configurationOnly = states.length > 0 && states.every((state) => state === 'configuration-required');
-  if (configurationOnly || status.provider_state === 'not_configured' || status.provider_state === 'configured_unverified') {
+  const legacyConfigurationOnly = states.length === 0
+    && (status.provider_state === 'not_configured' || status.provider_state === 'configured_unverified');
+  if (configurationOnly || legacyConfigurationOnly) {
     return {
       capability: 'configuration-required',
       label: 'configuration required',
@@ -93,8 +95,6 @@ export function AtlasAssistant() {
   }, []);
 
   const refreshProviderStatus = useCallback(async () => {
-    setProviderLabel('checking');
-    setTextCapability('configuration-required');
     try {
       const status = await getAssistantStatus();
       const mapped = providerCapability(status);
