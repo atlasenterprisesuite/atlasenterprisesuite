@@ -69,6 +69,7 @@ class Adapter implements HubSpotCrmReadAdapter {
   listCalls = 0;
   searchCalls = 0;
   associationCalls = 0;
+  createCalls = 0;
   lastCursor: string | null | undefined;
   rateLimit = false;
 
@@ -125,6 +126,17 @@ class Adapter implements HubSpotCrmReadAdapter {
         associationType: 'contact_to_company'
       }],
       nextCursor: null
+    };
+  }
+  async createObject(_context: unknown, request: { objectType: 'contact'; fields: Record<string, unknown> }) {
+    this.createCalls += 1;
+    return {
+      provider: 'hubspot' as const,
+      objectType: request.objectType,
+      providerId: 'created-901',
+      displayName: String(request.fields.firstName || 'Created contact'),
+      fields: request.fields,
+      updatedAt: '2026-09-19T04:30:00Z'
     };
   }
 }
@@ -278,4 +290,44 @@ describe('ATLAS CRM HubSpot tenant-safe read operations', () => {
     });
     expect(store.evidence.at(-1)).toMatchObject({ status: 'rate_limited', error_code: 'rate_limited' });
   });
+
+  it('creates a CRM record only with crm.write and links the social source thread', async () => {
+    const store = await seededStore();
+    const adapter = new Adapter();
+    const response = await invoke({
+      store,
+      adapter,
+      operation: 'crm.create',
+      permissions: ['crm.write'],
+      body: {
+        objectType: 'contact',
+        fields: { firstName: 'Ada', lastName: 'Lovelace' },
+        sourceThreadId: '33333333-3333-4333-8333-333333333333'
+      }
+    });
+    expect(response.status).toBe(201);
+    expect(adapter.createCalls).toBe(1);
+    expect(store.links.at(-1)).toMatchObject({
+      org_id: orgA,
+      provider_object_type: 'contact',
+      provider_object_id: 'created-901',
+      atlas_object_type: 'social_thread',
+      atlas_object_id: '33333333-3333-4333-8333-333333333333'
+    });
+  });
+
+  it('denies CRM creation when the actor only has crm.read', async () => {
+    const store = await seededStore();
+    const adapter = new Adapter();
+    const response = await invoke({
+      store,
+      adapter,
+      operation: 'crm.create',
+      permissions: ['crm.read'],
+      body: { objectType: 'contact', fields: { firstName: 'Ada' } }
+    });
+    expect(response.status).toBe(403);
+    expect(adapter.createCalls).toBe(0);
+  });
+
 });

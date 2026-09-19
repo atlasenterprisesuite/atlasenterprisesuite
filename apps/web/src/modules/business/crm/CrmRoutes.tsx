@@ -3,6 +3,7 @@ import { CrmHomePage } from './CrmHomePage';
 import { CrmActivitiesPage, CrmObjectListPage } from './CrmObjectListPage';
 import { CrmRecordPage } from './CrmRecordPage';
 import { HubSpotIntegrationPage } from './HubSpotIntegrationPage';
+import { CrmSocialHandoffPage } from './CrmSocialHandoffPage';
 import './crm.css';
 
 const contactAssociations = ['company', 'deal'] as const;
@@ -56,6 +57,7 @@ export function CrmRoutes() {
         <CrmRecordPage objectType="ticket" title="Service Case" associationTargets={ticketAssociations} />
       } />
       <Route path="/crm/activities" element={<CrmActivitiesPage />} />
+      <Route path="/crm/social-handoff" element={<CrmSocialHandoffPage />} />
       <Route path="/crm/integrations" element={<CrmIntegrations />} />
       <Route path="/crm/integrations/hubspot" element={<HubSpotIntegrationPage />} />
     </Routes>

@@ -1,5 +1,7 @@
 export type MediaKind = 'image' | 'video';
 
+export type PlatformConnectionStatus = 'not_configured' | 'ready' | 'unavailable';
+
 export type PlatformId =
   | 'instagram'
   | 'facebook'
@@ -22,7 +24,7 @@ export type PlatformDefinition = {
   id: PlatformId;
   name: string;
   accent: string;
-  connectionStatus: 'not_configured';
+  connectionStatus: PlatformConnectionStatus;
   formats: readonly SocialFormat[];
 };
 

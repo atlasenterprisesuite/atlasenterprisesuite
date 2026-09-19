@@ -12,7 +12,7 @@ import {
 } from '../_shared/hubspot-connection-store.ts';
 import {
   executeHubSpotCrmOperation,
-  type HubSpotCrmReadAdapter
+  type HubSpotCrmOperationAdapter
 } from '../_shared/hubspot-crm-operations.ts';
 import { getServerSecret, setServerSecret } from '../_shared/server-secret-store.ts';
 
@@ -28,6 +28,7 @@ const OPERATIONS = [
   'connection.configuration',
   'connection.status',
   'connection.disconnect',
+  'crm.create',
   'crm.list',
   'crm.search',
   'crm.get',
@@ -41,7 +42,7 @@ export type AtlasCrmHubSpotDependencies = {
   fetchImpl?: typeof fetch;
   env?: (name: string) => string | undefined;
   connectionStore?: HubSpotConnectionStore;
-  crmAdapter?: HubSpotCrmReadAdapter;
+  crmAdapter?: HubSpotCrmOperationAdapter;
   lifecycle?: Partial<
     Pick<
       HubSpotLifecycleDependencies,
@@ -61,6 +62,7 @@ const PERMISSIONS: Record<
   'connection.configuration': ['integrations.read', 'integrations.admin', 'integrations.manage'],
   'connection.status': ['integrations.read', 'integrations.admin', 'integrations.manage'],
   'connection.disconnect': ['integrations.admin', 'integrations.manage'],
+  'crm.create': ['crm.write', 'crm.admin'],
   'crm.list': ['crm.read', 'crm.admin'],
   'crm.search': ['crm.read', 'crm.admin'],
   'crm.get': ['crm.read', 'crm.admin'],
