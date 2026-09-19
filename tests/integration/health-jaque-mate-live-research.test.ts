@@ -1,3 +1,4 @@
+// Live research contract: source, evidence, scheduling, and safety boundaries are fail-closed.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
