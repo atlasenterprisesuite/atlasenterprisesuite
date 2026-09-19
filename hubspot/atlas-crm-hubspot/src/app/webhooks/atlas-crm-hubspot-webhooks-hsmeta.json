@@ -195,6 +195,26 @@
           "objectType": "ticket",
           "propertyName": "hs_ticket_priority",
           "active": true
+        },
+        {
+          "subscriptionType": "object.associationChange",
+          "objectType": "contact",
+          "active": true
+        },
+        {
+          "subscriptionType": "object.associationChange",
+          "objectType": "company",
+          "active": true
+        },
+        {
+          "subscriptionType": "object.associationChange",
+          "objectType": "deal",
+          "active": true
+        },
+        {
+          "subscriptionType": "object.associationChange",
+          "objectType": "ticket",
+          "active": true
         }
       ],
       "legacyCrmObjects": [],
