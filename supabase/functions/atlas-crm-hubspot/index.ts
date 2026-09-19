@@ -15,6 +15,14 @@ import {
   type HubSpotCrmOperationAdapter
 } from '../_shared/hubspot-crm-operations.ts';
 import { getServerSecret, setServerSecret } from '../_shared/server-secret-store.ts';
+import {
+  hubSpotHealthView,
+  runHubSpotScheduledMonitor
+} from '../_shared/hubspot-resilience.ts';
+import {
+  normalizeHubSpotWebhookEvents,
+  verifyHubSpotV3Signature
+} from '../_shared/hubspot-webhook.ts';
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.atlasenterprisesuite.com',
@@ -27,6 +35,7 @@ const OPERATIONS = [
   'oauth.configure',
   'connection.configuration',
   'connection.status',
+  'connection.health',
   'connection.disconnect',
   'crm.create',
   'crm.list',
@@ -61,6 +70,7 @@ const PERMISSIONS: Record<
   'oauth.configure': ['integrations.admin', 'integrations.manage'],
   'connection.configuration': ['integrations.read', 'integrations.admin', 'integrations.manage'],
   'connection.status': ['integrations.read', 'integrations.admin', 'integrations.manage'],
+  'connection.health': ['integrations.read', 'integrations.admin', 'integrations.manage', 'crm.read', 'crm.admin'],
   'connection.disconnect': ['integrations.admin', 'integrations.manage'],
   'crm.create': ['crm.write', 'crm.admin'],
   'crm.list': ['crm.read', 'crm.admin'],
@@ -358,6 +368,145 @@ function hubSpotConfigured(deps: AtlasCrmHubSpotDependencies): boolean {
   );
 }
 
+
+async function validateInternalMonitorToken(
+  token: string,
+  deps: AtlasCrmHubSpotDependencies
+): Promise<boolean> {
+  const supabaseUrl = env('SUPABASE_URL', deps);
+  const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY', deps);
+  if (!token.trim() || !supabaseUrl || !serviceRoleKey) return false;
+  try {
+    const response = await (deps.fetchImpl ?? fetch)(
+      `${supabaseUrl.replace(/\/$/, '')}/rest/v1/rpc/validate_atlas_hubspot_monitor_trigger`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          apikey: serviceRoleKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_token: token })
+      }
+    );
+    return response.ok && (await response.json()) === true;
+  } catch {
+    return false;
+  }
+}
+
+function isHubSpotWebhookRequest(req: Request): boolean {
+  return Boolean(
+    req.headers.get('x-hubspot-signature-v3') ||
+    req.headers.get('x-hubspot-request-timestamp')
+  );
+}
+
+async function handleHubSpotWebhook(
+  req: Request,
+  deps: AtlasCrmHubSpotDependencies
+): Promise<Response> {
+  const secretDeps = await resolvedSecretDeps(deps);
+  const clientSecret = env('HUBSPOT_CLIENT_SECRET', secretDeps);
+  if (!clientSecret) return json(req, deps, 503, { error: 'HubSpot integration is not configured' });
+
+  const rawBody = await req.text();
+  const verified = await verifyHubSpotV3Signature({
+    method: req.method,
+    uri: req.url,
+    rawBody,
+    signature: req.headers.get('x-hubspot-signature-v3'),
+    timestamp: req.headers.get('x-hubspot-request-timestamp'),
+    clientSecret
+  });
+  if (!verified) return json(req, deps, 401, { error: 'Invalid HubSpot webhook signature' });
+
+  let events;
+  try {
+    events = await normalizeHubSpotWebhookEvents(rawBody);
+  } catch {
+    return json(req, deps, 400, { error: 'Invalid HubSpot webhook payload' });
+  }
+
+  const connectionStore = store(secretDeps);
+  if (
+    !connectionStore ||
+    !connectionStore.getConnectionByProviderAccountId ||
+    !connectionStore.insertWebhookEvents
+  ) {
+    return json(req, deps, 503, { error: 'ATLAS webhook storage is not configured' });
+  }
+
+  let accepted = 0;
+  let ignored = 0;
+  let duplicates = 0;
+  const now = new Date().toISOString();
+  const grouped = new Map<string, {
+    connection: Awaited<ReturnType<NonNullable<typeof connectionStore.getConnectionByProviderAccountId>>>;
+    events: typeof events;
+  }>();
+
+  for (const event of events) {
+    const connection = await connectionStore.getConnectionByProviderAccountId(event.providerAccountId);
+    if (!connection || ['revoked', 'unconfigured'].includes(connection.state)) {
+      ignored += 1;
+      continue;
+    }
+    const existing = grouped.get(connection.org_id);
+    if (existing) existing.events.push(event);
+    else grouped.set(connection.org_id, { connection, events: [event] });
+  }
+
+  for (const [organizationId, group] of grouped) {
+    const connection = group.connection;
+    if (!connection) continue;
+    const inserted = await connectionStore.insertWebhookEvents(group.events.map((event) => ({
+      org_id: organizationId,
+      provider: 'hubspot' as const,
+      provider_account_id: event.providerAccountId,
+      event_key: event.eventKey,
+      provider_event_id: event.providerEventId,
+      subscription_type: event.subscriptionType,
+      provider_object_type: event.providerObjectType,
+      provider_object_id: event.providerObjectId,
+      property_name: event.propertyName,
+      occurred_at: event.occurredAt,
+      processed_at: now
+    })));
+    accepted += inserted;
+    duplicates += group.events.length - inserted;
+
+    const links = group.events
+      .filter((event) => event.providerObjectType && event.providerObjectId)
+      .map((event) => ({
+        org_id: organizationId,
+        provider: 'hubspot' as const,
+        provider_account_id: event.providerAccountId,
+        provider_object_type: event.providerObjectType!,
+        provider_object_id: event.providerObjectId!,
+        last_seen_at: now,
+        source_updated_at: event.occurredAt,
+        source_fingerprint: null
+      }));
+    if (links.length && connectionStore.upsertObjectLinks) {
+      await connectionStore.upsertObjectLinks(links);
+    }
+    if (connectionStore.upsertHealth) {
+      await connectionStore.upsertHealth(organizationId, { last_webhook_at: now });
+    }
+    await connectionStore.recordEvidence({
+      org_id: organizationId,
+      provider: 'hubspot',
+      operation: 'webhook.receive',
+      status: 'completed',
+      records_observed: group.events.length,
+      completed_at: now
+    });
+  }
+
+  return json(req, deps, 200, { accepted, duplicates, ignored });
+}
+
 function lifecycleError(
   req: Request,
   deps: AtlasCrmHubSpotDependencies,
@@ -416,6 +565,10 @@ export async function handleAtlasCrmHubSpotRequest(
   }
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
 
+  if (req.method === 'POST' && isHubSpotWebhookRequest(req)) {
+    return handleHubSpotWebhook(req, deps);
+  }
+
   if (req.method === 'GET') {
     const url = new URL(req.url);
     if (url.searchParams.has('code') || url.searchParams.has('state')) {
@@ -443,6 +596,30 @@ export async function handleAtlasCrmHubSpotRequest(
   } catch {
     return json(req, deps, 400, { error: 'Invalid JSON body' });
   }
+
+  if (body.operation === 'internal.monitor') {
+    const token = req.headers.get('x-atlas-hubspot-monitor-token') ?? '';
+    if (!(await validateInternalMonitorToken(token, deps))) {
+      return json(req, deps, 403, { error: 'Internal monitor authorization failed' });
+    }
+    const secretDeps = await resolvedSecretDeps(deps);
+    const connectionStore = store(secretDeps);
+    if (!connectionStore) {
+      return json(req, deps, 503, { error: 'ATLAS integration storage is not configured' });
+    }
+    try {
+      const summary = await runHubSpotScheduledMonitor({
+        store: connectionStore,
+        lifecycle: lifecycle(connectionStore, secretDeps),
+        adapter: deps.crmAdapter,
+        now: deps.lifecycle?.now
+      });
+      return json(req, deps, 200, { ok: summary.failed === 0, summary });
+    } catch {
+      return json(req, deps, 500, { error: 'HubSpot resilience monitor failed' });
+    }
+  }
+
   if (!isOperation(body.operation)) return json(req, deps, 400, { error: 'Unknown operation' });
   if (body.operation === 'oauth.callback') {
     const secretDeps = await resolvedSecretDeps(deps);
@@ -513,6 +690,15 @@ export async function handleAtlasCrmHubSpotRequest(
         })
       });
     }
+    if (body.operation === 'connection.health') {
+      return json(req, deps, 200, {
+        health: hubSpotHealthView(
+          connectionStore.getHealth
+            ? await connectionStore.getHealth(body.organizationId)
+            : null
+        )
+      });
+    }
     if (body.operation === 'connection.disconnect') {
       return json(req, deps, 200, {
         connection: await disconnectHubSpotConnection({
@@ -535,7 +721,8 @@ export async function handleAtlasCrmHubSpotRequest(
       store: connectionStore,
       lifecycle: lifecycleDeps,
       adapter: deps.crmAdapter,
-      now: deps.lifecycle?.now
+      now: deps.lifecycle?.now,
+      writesEnabled: env('HUBSPOT_CRM_WRITES_ENABLED', secretDeps).toLowerCase() === 'true'
     }
   });
   return json(req, secretDeps, result.status, result.body);
