@@ -22,8 +22,11 @@ describe('ATLAS Local AI live bootstrap contract', () => {
   it('authorizes bootstrap only from the canonical main workflow via GitHub OIDC', () => {
     expect(bootstrap).toContain("const AUDIENCE = 'atlas-local-ai-bootstrap'");
     expect(bootstrap).toContain("payload.ref !== 'refs/heads/main'");
-    expect(bootstrap).toContain("atlas-local-ai-bootstrap.yml@refs/heads/main");
-    expect(bootstrap).toContain("payload.repository !== REPO");
+    expect(bootstrap).toContain("'atlas-local-ai-bootstrap.yml'");
+    expect(bootstrap).toContain("'atlas-render-local-ai-verify.yml'");
+    expect(bootstrap).toContain(
+      "GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner)"
+    );
     expect(bootstrap).not.toContain('GITHUB_TOKEN');
   });
 
