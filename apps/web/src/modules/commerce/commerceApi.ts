@@ -9,7 +9,8 @@ export type CommerceApiOperation =
   | 'orders.list'
   | 'orders.get'
   | 'checkout.prepare'
-  | 'checkout.submit';
+  | 'checkout.submit'
+  | 'payments.status';
 
 export class CommerceApiError extends Error {
   readonly status: number;

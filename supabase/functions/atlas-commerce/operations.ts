@@ -5,6 +5,7 @@ export type CommerceApiOperation =
   | 'orders.get'
   | 'checkout.prepare'
   | 'checkout.submit'
+  | 'payments.status'
   | 'storefront.catalog'
   | 'storefront.product';
 
@@ -32,7 +33,8 @@ const REQUIRED_PERMISSIONS: Record<WorkspaceCommerceOperation, CommercePermissio
   'orders.list': 'commerce.orders.read',
   'orders.get': 'commerce.orders.read',
   'checkout.prepare': 'commerce.orders.manage',
-  'checkout.submit': 'commerce.orders.manage'
+  'checkout.submit': 'commerce.orders.manage',
+  'payments.status': 'commerce.read'
 };
 
 export function isPublicCommerceOperation(

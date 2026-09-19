@@ -20,10 +20,15 @@ export function CommerceHomePage() {
           <strong>Orders</strong>
           <p>Inspect order, payment, fulfillment and downstream integration states separately.</p>
         </Link>
+        <Link className="module-card enabled" to="/commerce/settings/payments">
+          <span>ATLAS Pay</span>
+          <strong>Payment providers</strong>
+          <p>Configure and verify Authorize.net eCheck.Net without exposing banking credentials.</p>
+        </Link>
       </div>
 
       <div className="notice">
-        Payment and downstream integrations remain fail-closed until an authorized provider or canonical writer is configured.
+        Payments and downstream integrations remain fail-closed until provider readiness is verified.
       </div>
     </section>
   );
