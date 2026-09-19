@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 : "${ATLAS_SOVEREIGN_FREE_TOKEN:?ATLAS_SOVEREIGN_FREE_TOKEN is required}"
-MODEL="${ATLAS_SOVEREIGN_FREE_HF_REPO:-ggml-org/SmolLM2-135M-GGUF:Q4_K_M}"
+MODEL="${ATLAS_SOVEREIGN_FREE_HF_REPO:-tensorblock/SmolLM2-135M-Instruct-GGUF:Q4_K_M}"
 ALIAS="${ATLAS_SOVEREIGN_FREE_MODEL_ALIAS:-atlas-sovereign-free}"
 CONTEXT="${ATLAS_SOVEREIGN_FREE_CONTEXT:-2048}"
 mkdir -p /tmp/atlas-sovereign-free
