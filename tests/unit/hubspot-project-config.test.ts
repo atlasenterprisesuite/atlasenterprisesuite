@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { HUBSPOT_P0_SCOPES } from '../../supabase/functions/_shared/hubspot-connection-lifecycle';
 
 const projectRoot = resolve(process.cwd(), 'hubspot/atlas-crm-hubspot');
+const repairScript = readFileSync(resolve(projectRoot, 'repair-local-project.ps1'), 'utf8');
 const project = JSON.parse(readFileSync(resolve(projectRoot, 'hsproject.json'), 'utf8')) as {
   name: string;
   srcDir: string;
@@ -43,6 +44,14 @@ describe('HubSpot developer project contract', () => {
     expect(app.uid).toBe('atlas_crm_hubspot_app');
     expect(app.type).toBe('app');
     expect(app.config.distribution).toBe('private');
+  });
+
+  it('uploads and deploys the HubSpot project from the authenticated local CLI', () => {
+    expect(repairScript).toContain('hs.cmd project upload');
+    expect(repairScript).toContain('hs.cmd project deploy');
+    expect(repairScript.indexOf('hs.cmd project upload')).toBeLessThan(
+      repairScript.indexOf('hs.cmd project deploy')
+    );
   });
 
   it('configures realtime webhooks on the same governed callback', () => {

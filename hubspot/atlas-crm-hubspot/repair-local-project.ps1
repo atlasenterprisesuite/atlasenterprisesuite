@@ -34,7 +34,10 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "HubSpot project validation failed" }
 
   hs.cmd project upload
-  if ($LASTEXITCODE -ne 0) { throw "HubSpot project upload/deploy failed" }
+  if ($LASTEXITCODE -ne 0) { throw "HubSpot project upload failed" }
+
+  hs.cmd project deploy
+  if ($LASTEXITCODE -ne 0) { throw "HubSpot project deploy failed" }
 
   Write-Host "ATLAS_HUBSPOT_PROJECT_DEPLOY_OK"
 }
