@@ -1,0 +1,161 @@
+name: ATLAS GitHub Security Baseline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/**"
+      - "SECURITY.md"
+      - "docs/security/**"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/**"
+      - "SECURITY.md"
+      - "docs/security/**"
+  schedule:
+    - cron: "23 11 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  github-security-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate repository security invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const errors = [];
+          const warnings = [];
+
+          const read = (p) => fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+
+          const codeownersPath = '.github/CODEOWNERS';
+          const codeowners = read(codeownersPath);
+          if (!codeowners) {
+            errors.push('Missing .github/CODEOWNERS');
+          } else {
+            for (const required of [
+              '/.github/workflows/',
+              '/worker/',
+              '/supabase/',
+              '/docs/security/',
+              '/SECURITY.md'
+            ]) {
+              if (!codeowners.includes(required)) {
+                errors.push(`CODEOWNERS does not protect required path: ${required}`);
+              }
+            }
+          }
+
+          const workflowsDir = '.github/workflows';
+          const workflowFiles = fs.existsSync(workflowsDir)
+            ? fs.readdirSync(workflowsDir).filter((f) => /\.ya?ml$/i.test(f))
+            : [];
+
+          if (workflowFiles.length === 0) {
+            errors.push('No GitHub Actions workflows found');
+          }
+
+          for (const file of workflowFiles) {
+            const full = path.join(workflowsDir, file);
+            const text = read(full);
+
+            if (/permissions\s*:\s*write-all/i.test(text)) {
+              errors.push(`${file}: permissions: write-all is prohibited`);
+            }
+            if (/^\s*pull_request_target\s*:/m.test(text)) {
+              errors.push(`${file}: pull_request_target is prohibited without an explicit reviewed exception`);
+            }
+            if (!/^permissions\s*:/m.test(text)) {
+              warnings.push(`${file}: no top-level permissions declaration; harden incrementally`);
+            }
+          }
+
+          const production = read('.github/workflows/global-production-verify.yml');
+          for (const required of [
+            'default: fail-closed',
+            'critical_network_routes_reachable',
+            'id-token: write',
+            'Enforce final global deployment gate'
+          ]) {
+            if (!production.includes(required)) {
+              errors.push(`global-production-verify.yml is missing required production security contract: ${required}`);
+            }
+          }
+
+          const security = read('SECURITY.md');
+          for (const required of [
+            'passkey',
+            'TOTP',
+            'recovery codes',
+            'Shared human GitHub accounts are prohibited',
+            'OIDC/workload identity'
+          ]) {
+            if (!security.toLowerCase().includes(required.toLowerCase())) {
+              errors.push(`SECURITY.md is missing GitHub identity requirement: ${required}`);
+            }
+          }
+
+          for (const warning of warnings) {
+            console.log(`::warning::${warning}`);
+          }
+
+          if (errors.length) {
+            for (const error of errors) console.log(`::error::${error}`);
+            process.exit(1);
+          }
+
+          console.log('ATLAS GitHub repository security invariants passed.');
+          NODE
+
+      - name: Record GitHub ownership and 2FA enforcement boundary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO_JSON="$(curl --fail --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$REPOSITORY")"
+
+          OWNER_LOGIN="$(printf '%s' "$REPO_JSON" | jq -r '.owner.login')"
+          OWNER_TYPE="$(printf '%s' "$REPO_JSON" | jq -r '.owner.type')"
+
+          {
+            echo "## ATLAS GitHub identity baseline"
+            echo "- Repository: `$REPOSITORY`"
+            echo "- Owner: `$OWNER_LOGIN`"
+            echo "- Owner type: `$OWNER_TYPE`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$OWNER_TYPE" != "Organization" ]; then
+            echo "::warning::Canonical repository is not currently owned by a GitHub Organization; organization-wide 2FA enforcement cannot yet be verified or claimed."
+            echo "- Organization-wide 2FA: not applicable/verified until migration to an Organization" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          ORG_JSON="$(curl --fail --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/orgs/$OWNER_LOGIN")"
+
+          TWO_FACTOR="$(printf '%s' "$ORG_JSON" | jq -r 'if has("two_factor_requirement_enabled") then .two_factor_requirement_enabled else "unknown" end')"
+          echo "- Organization 2FA requirement: `$TWO_FACTOR`" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$TWO_FACTOR" = "false" ]; then
+            echo "::error::GitHub Organization exists but organization-wide 2FA is explicitly disabled."
+            exit 1
+          fi
+
+          if [ "$TWO_FACTOR" = "unknown" ]; then
+            echo "::warning::Organization 2FA state is not visible to this workflow token; verify it directly in GitHub organization authentication security settings."
+          fi
