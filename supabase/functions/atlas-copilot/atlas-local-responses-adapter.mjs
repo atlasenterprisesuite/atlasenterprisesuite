@@ -24,7 +24,7 @@ function errorForStatus(status){
   if(status>=500)return fail('provider_unavailable',502,{provider:'atlas-local'});
   return fail('provider_unavailable',502,{provider:'atlas-local'});
 }
-export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientId='',accessClientSecret='',models,allowUnauthenticated=false,allowInsecure=false,fetchFn=fetch,timeoutMs=120000}={}){
+export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientId='',accessClientSecret='',models,allowUnauthenticated=false,allowInsecure=false,fetchFn=fetch,timeoutMs=120000,probeTimeoutMs=15000}={}){
   const base=normalizeBase(baseUrl,{allowInsecure});
   const resolved=Object.freeze({fast:clean(models?.fast),balanced:clean(models?.balanced),deep:clean(models?.deep)});
   const configured=Boolean(base)&&Object.values(resolved).some(Boolean)&&Boolean(token||allowUnauthenticated);
@@ -58,7 +58,7 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     if(!configured||!model)return {configured:false,verified:false,provider:'atlas-local',model:model||null,error:'provider_not_configured'};
     let response;
     try{
-      response=await fetchFn(`${base}/health`,{headers:{...authHeaders(),'content-type':'application/json'},signal:AbortSignal.timeout(Math.min(timeoutMs,15000))});
+      response=await fetchFn(`${base}/health`,{headers:{...authHeaders(),'content-type':'application/json'},signal:AbortSignal.timeout(Math.min(timeoutMs,probeTimeoutMs))});
     }catch{return {configured:true,verified:false,provider:'atlas-local',model,error:'provider_unavailable'};}
     if(response.ok)return {configured:true,verified:true,provider:'atlas-local',model,error:null};
     const error=errorForStatus(response.status);
