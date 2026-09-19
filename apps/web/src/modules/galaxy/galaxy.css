@@ -302,3 +302,71 @@
     box-shadow: none !important;
   }
 }
+
+
+.galaxy-portal-launcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(85, 230, 255, 0.2);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 88% 50%, rgba(85, 230, 255, 0.12), transparent 26%),
+    linear-gradient(135deg, rgba(9, 24, 43, 0.96), rgba(5, 10, 18, 0.96));
+  color: #f7fbff;
+  text-decoration: none;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.26);
+}
+
+.galaxy-portal-launcher:hover {
+  border-color: rgba(85, 230, 255, 0.62);
+}
+
+.galaxy-portal-launcher small {
+  color: #55e6ff;
+  font-size: 0.7rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.galaxy-portal-launcher strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.05rem;
+}
+
+.galaxy-portal-launcher p {
+  margin: 5px 0 0;
+  max-width: 760px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.8rem;
+}
+
+.galaxy-portal-launcher-orb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 76px;
+  border: 2px solid rgba(85, 230, 255, 0.82);
+  border-radius: 50%;
+  box-shadow:
+    0 0 22px rgba(85, 230, 255, 0.34),
+    inset 0 0 18px rgba(85, 230, 255, 0.24);
+}
+
+.galaxy-portal-launcher:focus-visible {
+  outline: 3px solid rgba(85, 230, 255, 0.8);
+  outline-offset: 3px;
+}
+
+@media (max-width: 720px) {
+  .galaxy-portal-launcher {
+    align-items: flex-start;
+  }
+
+  .galaxy-portal-launcher-orb {
+    width: 42px;
+    height: 58px;
+  }
+}
