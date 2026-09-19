@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom';
 import { type ReactNode, useEffect, useState } from 'react';
 import {
   ATLAS_SESSION_EVENT,
-  getActiveAtlasOrganization,
   getAtlasAccessToken,
   getCachedAtlasShellOrganization,
   type AtlasShellOrganization
@@ -15,33 +14,13 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    let organizationRequestInFlight = false;
-
-    const syncOrganization = () => {
-      const cachedOrganization = getCachedAtlasShellOrganization();
-      if (active) setOrganization(cachedOrganization);
-
-      if (cachedOrganization || !getAtlasAccessToken() || organizationRequestInFlight) return;
-
-      organizationRequestInFlight = true;
-      void getActiveAtlasOrganization()
-        .then(() => {
-          if (active) setOrganization(getCachedAtlasShellOrganization());
-        })
-        .catch(() => {
-          if (active) setOrganization(null);
-        })
-        .finally(() => {
-          organizationRequestInFlight = false;
-        });
+    const handleSessionChange = () => {
+      setOrganization(getCachedAtlasShellOrganization());
     };
 
-    syncOrganization();
-    window.addEventListener(ATLAS_SESSION_EVENT, syncOrganization);
+    window.addEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     return () => {
-      active = false;
-      window.removeEventListener(ATLAS_SESSION_EVENT, syncOrganization);
+      window.removeEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     };
   }, []);
 
@@ -73,7 +52,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   const organizationContext = organization
     ? organization.legalName || 'Authenticated organization'
     : hasSession
-      ? 'Loading organization'
+      ? 'Verifying organization'
       : 'Public workspace';
   const roleLabel = organization ? organization.role.toUpperCase() : hasSession ? 'CHECKING' : 'PUBLIC';
   const closeMobileNav = () => setMobileNavOpen(false);
@@ -123,7 +102,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
             <span className="pulse-dot" />
             <div>
               <strong>{hasSession ? 'Identity pending' : 'Sign in'}</strong>
-              <small>{hasSession ? 'Loading organization context' : 'Open secure organization access'}</small>
+              <small>{hasSession ? 'Verify organization access' : 'Open secure organization access'}</small>
             </div>
           </NavLink>
         )}
