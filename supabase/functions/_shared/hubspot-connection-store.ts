@@ -365,7 +365,7 @@ export class SupabaseHubSpotConnectionStore implements HubSpotConnectionStore {
 
   async listMonitorConnections(): Promise<HubSpotConnectionRow[]> {
     const response = await this.request(
-      'atlas_integration_connections?provider=eq.hubspot&connection_name=eq.default&credential_ref=not.is.null&state=in.(connected,degraded,error,expired)&select=id,org_id,provider,state,provider_account_id,provider_account_label,granted_scopes,credential_ref,last_verified_at,last_success_at,last_error_code,last_error_at,connected_by,connected_at,revoked_at'
+      'atlas_integration_connections?provider=eq.hubspot&connection_name=eq.default&credential_ref=not.is.null&state=in.(connected,degraded)&select=id,org_id,provider,state,provider_account_id,provider_account_label,granted_scopes,credential_ref,last_verified_at,last_success_at,last_error_code,last_error_at,connected_by,connected_at,revoked_at'
     );
     return this.rows<HubSpotConnectionRow>(response);
   }
