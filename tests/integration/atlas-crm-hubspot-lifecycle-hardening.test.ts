@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   completeHubSpotConnection,
   prepareHubSpotConnection,
+  refreshHubSpotConnectionCredential,
   type HubSpotLifecycleDependencies,
   type HubSpotLifecycleOAuth
 } from '../../supabase/functions/_shared/hubspot-connection-lifecycle';
@@ -150,6 +151,46 @@ describe('HubSpot OAuth lifecycle hardening', () => {
       .rejects.toMatchObject({ code: 'oauth_scope_mismatch' });
     expect(store.connection?.state).not.toBe('connected');
     expect(store.credential).toBeNull();
+  });
+
+  it('forces a refresh-token round trip even when the current access token is not near expiry', async () => {
+    const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'crm.objects.tickets.read'];
+    const store = new Store();
+    const lifecycle = deps(store, scopes);
+    let refreshCalls = 0;
+    lifecycle.oauth = {
+      ...oauth(scopes),
+      async refreshToken() {
+        refreshCalls += 1;
+        return {
+          accessToken: 'refreshed-access',
+          refreshToken: 'refreshed-refresh',
+          tokenType: 'Bearer',
+          expiresIn: 1800,
+          hubId: providerAccountId,
+          userId: 'user',
+          scopes
+        };
+      }
+    };
+    const state = await prepared(store, lifecycle);
+    await completeHubSpotConnection({ state, code: 'code-1', deps: lifecycle });
+
+    await refreshHubSpotConnectionCredential({
+      organizationId: orgId,
+      actorUserId: 'user-a',
+      deps: lifecycle
+    });
+    expect(refreshCalls).toBe(0);
+
+    const refreshed = await refreshHubSpotConnectionCredential({
+      organizationId: orgId,
+      actorUserId: 'user-a',
+      deps: lifecycle,
+      forceRefresh: true
+    });
+    expect(refreshCalls).toBe(1);
+    expect(refreshed.accessToken).toBe('refreshed-access');
   });
 
   it('never returns provider access or refresh tokens in connection view', async () => {
