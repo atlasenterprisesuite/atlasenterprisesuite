@@ -1,5 +1,5 @@
 {
-  "uid": "atlas-crm-hubspot_app",
+  "uid": "atlas_crm_hubspot_app",
   "type": "app",
   "config": {
     "description": "ATLAS Enterprise Suite CRM integration for governed HubSpot OAuth connectivity and read-only CRM access.",

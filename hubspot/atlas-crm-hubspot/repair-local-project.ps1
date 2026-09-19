@@ -4,12 +4,8 @@ $project = Join-Path $HOME "Documents\atlas-crm-hubspot"
 $appFile = Join-Path $project "src\app\app-hsmeta.json"
 $projectFile = Join-Path $project "hsproject.json"
 
-if (-not (Test-Path $appFile)) {
-  throw "HubSpot app config not found at $appFile"
-}
-if (-not (Test-Path $projectFile)) {
-  throw "HubSpot project config not found at $projectFile"
-}
+if (-not (Test-Path $appFile)) { throw "HubSpot app config not found at $appFile" }
+if (-not (Test-Path $projectFile)) { throw "HubSpot project config not found at $projectFile" }
 
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 Copy-Item $appFile "$appFile.$stamp.bak" -Force
@@ -17,7 +13,7 @@ Copy-Item $projectFile "$projectFile.$stamp.bak" -Force
 
 $appJson = @'
 {
-  "uid": "atlas-crm-hubspot_app",
+  "uid": "atlas_crm_hubspot_app",
   "type": "app",
   "config": {
     "description": "ATLAS Enterprise Suite CRM integration for governed HubSpot OAuth connectivity and read-only CRM access.",
@@ -39,9 +35,7 @@ $appJson = @'
       "conditionallyRequiredScopes": []
     },
     "permittedUrls": {
-      "fetch": [
-        "https://api.hubapi.com"
-      ],
+      "fetch": ["https://api.hubapi.com"],
       "iframe": [],
       "img": []
     }
