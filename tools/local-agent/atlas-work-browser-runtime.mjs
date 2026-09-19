@@ -100,6 +100,36 @@ function selector(value) {
   return result;
 }
 
+function targetSpec(value) {
+  const raw = String(value || '').trim();
+  if (raw.toLowerCase().startsWith('text:')) {
+    const text = raw.slice(5).trim();
+    if (!text || text.length > 240 || /[\u0000-\u001f]/.test(text)) throw new Error('browser_text_target_invalid');
+    return { kind: 'text', value: text };
+  }
+  return { kind: 'css', value: selector(raw) };
+}
+
+function interactiveFinderSource(spec) {
+  const encoded = JSON.stringify(spec);
+  return `
+    const spec = ${encoded};
+    const normalized = (value) => String(value || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+    let matches;
+    if (spec.kind === 'text') {
+      const wanted = normalized(spec.value);
+      matches = Array.from(document.querySelectorAll('button, a, [role="button"], input[type="button"], input[type="submit"]'))
+        .filter((node) => {
+          const label = node.getAttribute('aria-label') || node.innerText || node.textContent || node.value || '';
+          return normalized(label) === wanted;
+        });
+    } else {
+      const node = document.querySelector(spec.value);
+      matches = node ? [node] : [];
+    }
+  `;
+}
+
 async function executionPost(operation, body = {}) {
   const response = await fetch(EXECUTION_URL, {
     method: 'POST',
@@ -265,19 +295,21 @@ async function readText(client, action) {
   })()`);
 }
 
-async function elementSnapshot(client, css) {
-  const cssJson = JSON.stringify(css);
+async function elementSnapshot(client, spec) {
+  const finder = interactiveFinderSource(spec);
   return await client.evaluate(`(() => {
-    const el = document.querySelector(${cssJson});
-    if (!el) return null;
+    ${finder}
+    if (matches.length === 0) return null;
+    const el = matches[0];
     const input = el;
     return {
+      matchCount: matches.length,
       tag: String(el.tagName || '').toLowerCase(),
       type: String(input.type || '').toLowerCase(),
       name: String(input.name || ''),
       id: String(el.id || ''),
       autocomplete: String(input.autocomplete || ''),
-      text: String(el.innerText || el.textContent || input.value || '').trim().slice(0, 500),
+      text: String(el.getAttribute('aria-label') || el.innerText || el.textContent || input.value || '').trim().slice(0, 500),
       disabled: Boolean(input.disabled),
       ariaDisabled: el.getAttribute('aria-disabled') === 'true'
     };
@@ -287,9 +319,10 @@ async function elementSnapshot(client, css) {
 async function click(client, action, consent = false) {
   const page = await currentPage(client);
   assertPageDomain(page, action);
-  const css = selector(action.target);
-  const snapshot = await elementSnapshot(client, css);
+  const spec = targetSpec(action.target);
+  const snapshot = await elementSnapshot(client, spec);
   if (!snapshot) throw new Error('browser_target_not_found');
+  if (snapshot.matchCount !== 1) throw new Error('browser_text_target_ambiguous');
   if (snapshot.disabled || snapshot.ariaDisabled) throw new Error('browser_target_disabled');
   if (!consent && OAUTH_CONSENT_TEXT.test(String(snapshot.text || ''))) {
     return {
@@ -297,10 +330,11 @@ async function click(client, action, consent = false) {
       result: { reason: 'oauth_consent_requires_approved_action', targetText: snapshot.text, url: page.url }
     };
   }
-  const cssJson = JSON.stringify(css);
+  const finder = interactiveFinderSource(spec);
   await client.evaluate(`(() => {
-    const el = document.querySelector(${cssJson});
-    if (!el) throw new Error('target_not_found');
+    ${finder}
+    if (matches.length !== 1) throw new Error('target_not_unique');
+    const el = matches[0];
     el.scrollIntoView({ block: 'center', inline: 'center' });
     el.click();
     return true;
@@ -314,7 +348,7 @@ async function typeValue(client, action) {
   const page = await currentPage(client);
   assertPageDomain(page, action);
   const css = selector(action.target);
-  const snapshot = await elementSnapshot(client, css);
+  const snapshot = await elementSnapshot(client, { kind: 'css', value: css });
   if (!snapshot) throw new Error('browser_target_not_found');
   const sensitiveDescriptor = `${snapshot.type} ${snapshot.name} ${snapshot.id} ${snapshot.autocomplete}`;
   if (SENSITIVE_INPUT.test(sensitiveDescriptor)) throw new Error('browser_sensitive_input_denied');
@@ -338,16 +372,18 @@ async function typeValue(client, action) {
 async function submit(client, action) {
   const page = await currentPage(client);
   assertPageDomain(page, action);
-  const css = selector(action.target);
-  const snapshot = await elementSnapshot(client, css);
+  const spec = targetSpec(action.target);
+  const snapshot = await elementSnapshot(client, spec);
   if (!snapshot) throw new Error('browser_target_not_found');
+  if (snapshot.matchCount !== 1) throw new Error('browser_text_target_ambiguous');
   if (OAUTH_CONSENT_TEXT.test(String(snapshot.text || ''))) {
     return { state: 'waiting_human', result: { reason: 'oauth_consent_requires_approved_action', targetText: snapshot.text, url: page.url } };
   }
-  const cssJson = JSON.stringify(css);
+  const finder = interactiveFinderSource(spec);
   await client.evaluate(`(() => {
-    const el = document.querySelector(${cssJson});
-    if (!el) throw new Error('target_not_found');
+    ${finder}
+    if (matches.length !== 1) throw new Error('target_not_unique');
+    const el = matches[0];
     if (el instanceof HTMLFormElement) el.requestSubmit();
     else {
       const form = el.closest('form');
