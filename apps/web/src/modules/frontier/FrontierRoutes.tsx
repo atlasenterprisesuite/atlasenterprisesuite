@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { actionAvailability, FRONTIER_ACTIONS, frontierObjective, INITIAL_FRONTIER_STATE, type FrontierActionId, type FrontierState } from './domain';
+import {
+  actionAvailability,
+  FRONTIER_ACTIONS,
+  FRONTIER_CAMPAIGN,
+  frontierCampaignProgress,
+  frontierExplorerRank,
+  frontierObjective,
+  INITIAL_FRONTIER_STATE,
+  type FrontierActionId,
+  type FrontierState
+} from './domain';
 import { executeFrontierAction, loadFrontierRun } from './api';
 import './frontier.css';
 
@@ -34,6 +44,9 @@ export function FrontierRoutes() {
   }, []);
 
   const objective = useMemo(() => frontierObjective(state), [state]);
+  const missionProgress = useMemo(() => frontierCampaignProgress(state), [state]);
+  const explorerRank = useMemo(() => frontierExplorerRank(state), [state]);
+  const activeMission = FRONTIER_CAMPAIGN.find((mission) => mission.stage === state.campaignStage) ?? FRONTIER_CAMPAIGN[0];
   const integrityStyle = { '--frontier-integrity': `${state.skyGridIntegrity}%` } as CSSProperties;
 
   const runAction = async (action: FrontierActionId) => {
@@ -44,12 +57,12 @@ export function FrontierRoutes() {
       return;
     }
     setRuntime('saving');
-    setMessage('Flow Controller validating organization, permission, resources and idempotency…');
+    setMessage('Flow Controller validating campaign stage, organization, permission, resources and idempotency…');
     try {
       const next = await executeFrontierAction(action, createActionKey());
       setState(next);
       setRuntime('ready');
-      setMessage(next.skyGridIntegrity >= 100 ? 'Sky Grid restored. Frontier expansion unlocked.' : 'Action committed and audited.');
+      setMessage(next.campaignStage >= 5 ? 'Awakening campaign complete. Mundos vivos remains gated for the next production phase.' : 'Action committed, audited and campaign progress recalculated.');
     } catch (error) {
       setRuntime('blocked');
       setMessage(error instanceof Error ? error.message : 'Flow Controller rejected the action.');
@@ -76,7 +89,7 @@ export function FrontierRoutes() {
         <div>
           <p className="eyebrow">ATLAS · FRONTIER</p>
           <h1>Restore the Sky Grid</h1>
-          <p>Governed sandbox vertical slice: explore, extract, craft, build and restore. Server-side rules remain authoritative.</p>
+          <p>Governed sandbox campaign: explore, extract, build, craft and restore. Server-side rules remain authoritative.</p>
         </div>
         <div className="frontier-runtime" data-state={runtime}>
           <span className="frontier-runtime-dot" />
@@ -85,8 +98,32 @@ export function FrontierRoutes() {
       </header>
 
       <div className="frontier-objective">
-        <div><span>MISSION OBJECTIVE</span><strong>{objective}</strong></div>
+        <div>
+          <span>MISSION {state.campaignStage} · {activeMission.title.toUpperCase()}</span>
+          <strong>{objective}</strong>
+        </div>
+        <div><span>EXPLORER RANK</span><strong>{explorerRank}</strong></div>
+        <div><span>EXPERIENCE</span><strong>{state.experience} XP</strong></div>
         <div><span>ION STORM</span><strong>{String(state.stormMinutes).padStart(2, '0')}:00</strong></div>
+      </div>
+
+      <div className="frontier-campaign" aria-label="ATLAS FRONTIER campaign progression">
+        <div className="frontier-campaign-head">
+          <div><span>AWAKENING CAMPAIGN</span><strong>{missionProgress}% current mission</strong></div>
+          <div className="frontier-campaign-progress"><i style={{ width: `${missionProgress}%` }} /></div>
+        </div>
+        <div className="frontier-campaign-grid">
+          {FRONTIER_CAMPAIGN.map((mission) => {
+            const status = state.campaignStage > mission.stage ? 'complete' : state.campaignStage === mission.stage ? 'active' : 'locked';
+            return (
+              <article key={mission.stage} data-status={status}>
+                <span>{String(mission.stage).padStart(2, '0')} · {status === 'complete' ? 'COMPLETE' : status === 'active' ? 'ACTIVE' : mission.productionState === 'next' ? 'NEXT PHASE' : 'LOCKED'}</span>
+                <strong>{mission.title}</strong>
+                <p>{mission.summary}</p>
+              </article>
+            );
+          })}
+        </div>
       </div>
 
       <div className="frontier-layout">
@@ -136,8 +173,8 @@ export function FrontierRoutes() {
 
       <div className="frontier-governance">
         <article><span>Identity</span><strong>Organization scoped</strong><p>ATLAS Identity and active organization membership are required before this route opens.</p></article>
-        <article><span>Controller</span><strong>Server authoritative</strong><p>Resource costs and progression are validated transactionally in Supabase, not trusted to the browser.</p></article>
-        <article><span>Audit</span><strong>Append-only events</strong><p>Every committed action records before/after state and an idempotency key.</p></article>
+        <article><span>Controller</span><strong>Server authoritative</strong><p>Mission gates, resource costs and progression are validated transactionally in Supabase, not trusted to the browser.</p></article>
+        <article><span>Audit</span><strong>Append-only events</strong><p>Every committed action records before/after state, campaign stage and an idempotency key.</p></article>
       </div>
     </section>
   );
