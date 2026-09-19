@@ -10,8 +10,9 @@ import {
   type FrontierActionId,
   type FrontierState
 } from './domain';
-import { executeFrontierAction, loadFrontierRun } from './api';
+import { buildFrontierHabitat, executeFrontierAction, loadFrontierRun, loadFrontierStructures } from './api';
 import { FrontierWorld3D } from './FrontierWorld3D';
+import type { FrontierStructure, WorldPlacement } from './world3d';
 import './frontier.css';
 
 type RuntimeState = 'loading' | 'ready' | 'saving' | 'blocked';
@@ -26,16 +27,23 @@ export function FrontierRoutes() {
   const [runtime, setRuntime] = useState<RuntimeState>('loading');
   const [message, setMessage] = useState('Connecting to governed FRONTIER state…');
   const [buildMode, setBuildMode] = useState(false);
+  const [structures, setStructures] = useState<FrontierStructure[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const loaded = await loadFrontierRun();
+        const [loaded, loadedStructures] = await Promise.all([
+          loadFrontierRun(),
+          loadFrontierStructures()
+        ]);
         if (cancelled) return;
         setState(loaded);
+        setStructures(loadedStructures);
         setRuntime('ready');
-        setMessage(loaded.revision > 0 ? 'Saved run loaded from organization-scoped storage.' : 'New governed run ready.');
+        setMessage(loaded.revision > 0
+          ? `Saved world loaded: revision ${loaded.revision} · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`
+          : 'New governed run ready.');
       } catch (error) {
         if (cancelled) return;
         setRuntime('blocked');
@@ -72,14 +80,45 @@ export function FrontierRoutes() {
     }
   };
 
+  const buildHabitat = async (placement: WorldPlacement) => {
+    if (runtime !== 'ready') return false;
+    const availability = actionAvailability(state, 'build_habitat');
+    if (!availability.enabled) {
+      setMessage(availability.reason || 'Habitat build unavailable.');
+      return false;
+    }
+
+    setRuntime('saving');
+    setMessage('Flow Controller validating resources, spatial bounds, collisions, audit and idempotency…');
+    try {
+      const result = await buildFrontierHabitat(placement, createActionKey());
+      setState(result.state);
+      setStructures((current) => {
+        const withoutDuplicate = current.filter((item) => item.id !== result.structure.id);
+        return [...withoutDuplicate, result.structure];
+      });
+      setRuntime('ready');
+      setMessage('Habitat committed with durable coordinates. This world position will be restored on the next session.');
+      return true;
+    } catch (error) {
+      setRuntime('blocked');
+      setMessage(error instanceof Error ? error.message : 'Spatial Flow Controller rejected the build.');
+      return false;
+    }
+  };
+
   const recover = async () => {
     setRuntime('loading');
     setMessage('Rechecking governed persistence…');
     try {
-      const loaded = await loadFrontierRun();
+      const [loaded, loadedStructures] = await Promise.all([
+        loadFrontierRun(),
+        loadFrontierStructures()
+      ]);
       setState(loaded);
+      setStructures(loadedStructures);
       setRuntime('ready');
-      setMessage('Governed run synchronized.');
+      setMessage(`Governed world synchronized · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`);
     } catch (error) {
       setRuntime('blocked');
       setMessage(error instanceof Error ? error.message : 'FRONTIER persistence unavailable.');
@@ -132,10 +171,12 @@ export function FrontierRoutes() {
       <div className="frontier-layout">
         <FrontierWorld3D
           state={state}
+          structures={structures}
           runtimeReady={runtime === 'ready'}
           buildMode={buildMode}
           onBuildModeChange={setBuildMode}
           onAction={runAction}
+          onBuildHabitat={buildHabitat}
           onMessage={setMessage}
         />
 
