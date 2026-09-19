@@ -23,6 +23,12 @@ describe('ATLAS Unified AI Chat UI', () => {
     expect(html).toContain('mode,capabilities_requested');
   });
 
+  it('surfaces strict zero-cost mode and blocks paid execution in the UI', () => {
+    expect(html).toContain('zero-cost mode · no zero-cost provider verified');
+    expect(html).toContain('paid provider blocked');
+    expect(html).toContain("zeroMode&&!zeroReady");
+  });
+
   it('provides ChatGPT only as an external optional link', () => {
     expect(html).toContain('https://chatgpt.com');
     expect(html).toContain('target="_blank"');
