@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
 import { AviationAircraftDetailPage } from './AviationAircraftDetailPage';
+import { AviationAlertsPage } from './AviationAlertsPage';
 import { AviationCatalogPage } from './AviationCatalogPage';
 import { AviationCertificationPage } from './AviationCertificationPage';
+import { AviationSavedPage } from './AviationSavedPage';
 import './aviation.css';
 
 const aviationSections: ModuleExperienceSection[] = [
@@ -28,6 +30,31 @@ const aviationSections: ModuleExperienceSection[] = [
         title: 'Research-only boundary',
         description: 'Offering information remains read-only research with source provenance and no securities transaction execution.',
         status: 'No transaction capability'
+      }
+    ]
+  },
+  {
+    eyebrow: 'Personal intelligence',
+    title: 'Watchlists and change alerts',
+    description: 'Saved aircraft and alert rules are exposed only through durable, governed persistence. Until that adapter exists, the routes remain explicit capability boundaries.',
+    cards: [
+      {
+        label: 'Watchlist',
+        title: 'Saved Aircraft',
+        description: 'Review the durable persistence boundary for personal and organization-scoped aircraft watchlists.',
+        to: '/mobility/aviation/saved'
+      },
+      {
+        label: 'Monitoring',
+        title: 'Aviation Alerts',
+        description: 'Review the governed boundary for certification, evidence and offering-change alerts.',
+        to: '/mobility/aviation/alerts'
+      },
+      {
+        label: 'Persistence',
+        title: 'Supabase adapter required',
+        description: 'Writes stay disabled until a tenant-scoped persistence and audit contract is implemented.',
+        status: 'Persistence not configured'
       }
     ]
   },
@@ -76,6 +103,8 @@ export function AviationRoutes() {
       <Route path="/mobility/aviation/aircraft" element={<AviationCatalogPage />} />
       <Route path="/mobility/aviation/aircraft/:aircraftId" element={<AviationAircraftDetailPage />} />
       <Route path="/mobility/aviation/certification" element={<AviationCertificationPage />} />
+      <Route path="/mobility/aviation/saved" element={<AviationSavedPage />} />
+      <Route path="/mobility/aviation/alerts" element={<AviationAlertsPage />} />
       <Route path="/mobility/aviation/*" element={<Navigate to="/mobility/aviation" replace />} />
     </Routes>
   );
