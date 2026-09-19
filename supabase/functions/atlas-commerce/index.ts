@@ -803,6 +803,8 @@ async function workspaceOperation(
       return checkoutPrepare(req, admin, context, body);
     case 'checkout.submit':
       return checkoutSubmit(req, admin, context, body);
+    case 'payments.status':
+      return paymentStatus(req);
   }
 }
 
