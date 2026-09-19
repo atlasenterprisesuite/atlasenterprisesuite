@@ -18,6 +18,7 @@ import {
   saveWebLaunchBlueprint,
   type WebLaunchBlueprintRecord
 } from '../../../lib/creatorApi';
+import { ScrollVideoComposer } from './ScrollVideoComposer';
 import './web-launch.css';
 
 const STAGES = [
@@ -286,6 +287,7 @@ export function WebLaunchPage() {
           <button className="creator-secondary" type="button" onClick={() => generate(activeStage)} disabled={!canGenerate}>Generate stage</button>
         </div>
         <ResultPanel result={result} />
+        {activeStage === 'Motion System' ? <ScrollVideoComposer /> : null}
       </main>
 
       <aside className="web-launch-side-panel">
