@@ -145,7 +145,7 @@ Example `devices.json` entry:
 ]
 ```
 
-Supported browser actions are `navigate`, `read_text`, `click`, `type`, `submit`, and the explicit high-risk `oauth_consent` action. Every command carries a bounded non-secret `action_payload` and is restricted to the device domain allowlist. Navigation is HTTPS-only. Semantic targets such as `text:Choose Account` use exact normalized text/ARIA matching and must resolve to exactly one interactive control.
+Supported browser actions are `navigate`, `read_text`, `click`, `type`, `submit`, and the explicit high-risk `oauth_consent` action. Every command carries a bounded non-secret `action_payload` and is restricted to the device domain allowlist. Every non-navigation browser action must also declare its exact expected `domain`, and the Local Agent verifies the live page hostname before touching the DOM. Navigation is HTTPS-only. Semantic targets such as `text:Choose Account` use exact normalized text/ARIA matching and must resolve to exactly one interactive control.
 
 Ordinary `click` or `submit` commands refuse controls that look like OAuth consent (for example “Choose Account”, “Authorize”, “Allow”, or “Approve”). Provider consent must be represented as `oauth_consent`, marked `high` or `critical`, and bound to an already-approved canonical ATLAS execution approval whose current step payload exactly matches the device, capability, action, and action payload. This keeps ATLAS Work/Approval Center as the decision layer while the Local Agent + mTLS/Realtime Command Bus remains the single execution substrate.
 
