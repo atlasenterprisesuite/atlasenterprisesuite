@@ -18,7 +18,9 @@ const NOT_CONFIGURED_INVESTMENT: AviationConcept['investment'] = {
   status: 'not_configured',
   sharePriceUsd: null,
   minimumInvestmentUsd: null,
+  valuationUsd: null,
   officialSourceUrl: null,
+  officialSourceVerified: false,
   lastVerifiedAt: null
 };
 
