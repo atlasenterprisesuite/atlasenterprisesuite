@@ -23,9 +23,10 @@ describe('ATLAS responsive shell contract', () => {
     expect(styles).toContain('.atlas-workspace{width:100%;min-width:0;overflow-x:clip}');
   });
 
-  it('hydrates authenticated organization context and avoids a permanent checking state for public visitors', () => {
-    expect(shell).toContain('getActiveAtlasOrganization');
+  it('keeps public identity state truthful without bypassing the canonical bootstrap flow', () => {
     expect(shell).toContain('getAtlasAccessToken');
+    expect(shell).toContain('getCachedAtlasShellOrganization');
+    expect(shell).not.toContain('getActiveAtlasOrganization');
     expect(shell).toContain("'Public workspace'");
     expect(shell).toContain("'PUBLIC'");
     expect(shell).toContain('to="/identity"');
