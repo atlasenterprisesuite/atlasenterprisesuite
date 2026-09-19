@@ -8,8 +8,28 @@ import {
 } from '../lib/atlasSession';
 import './identity.css';
 
-const DEFAULT_TARGET = '/';
-const SUPPORTED_PREFIXES = ['/finance', '/health', '/studio', '/insurance'];
+const DEFAULT_TARGET = '/galaxy';
+const SUPPORTED_PREFIXES = [
+  '/advisory',
+  '/assistant',
+  '/business',
+  '/commerce',
+  '/connect',
+  '/crm',
+  '/device-os',
+  '/events',
+  '/execution',
+  '/finance',
+  '/galaxy',
+  '/health',
+  '/hospitality',
+  '/insurance',
+  '/payroll',
+  '/ride',
+  '/studio',
+  '/voice',
+  '/work'
+];
 
 export function resolveAtlasIdentityTarget(rawTarget: string | null) {
   if (!rawTarget) return DEFAULT_TARGET;
