@@ -1,0 +1,20 @@
+# Security-critical Edge Function JWT policy.
+# Keep this file aligned with the live Supabase project before any deploy.
+
+[functions.atlas-cloudflare-production-http-verify]
+verify_jwt = false
+
+[functions.atlas-creator-e2e-verifier]
+verify_jwt = false
+
+[functions.atlas-infra-evidence]
+verify_jwt = false
+
+[functions.atlas-local-ai-bootstrap]
+verify_jwt = false
+
+[functions.atlas-local-control]
+verify_jwt = false
+
+[functions.atlas-infra-status]
+verify_jwt = true

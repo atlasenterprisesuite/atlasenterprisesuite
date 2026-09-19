@@ -4,7 +4,7 @@ import { evaluateInfrastructure } from '../_shared/infrastructure-readiness.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const CANONICAL_REPO = Deno.env.get('ATLAS_CANONICAL_REPO') || 'atlasenterprisesuite/atlasenterprisesuite';
+const CANONICAL_REPO = (Deno.env.get('ATLAS_GITHUB_REPOSITORIES') || Deno.env.get('ATLAS_CANONICAL_REPO') || 'atlasenterprisesuite/atlasenterprisesuite').split(',')[0].trim();
 const PRODUCTION_URL = Deno.env.get('ATLAS_PRODUCTION_URL') || 'https://www.atlasenterprisesuite.com';
 const VERSION = 6;
 

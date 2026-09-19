@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import { createGitHubOidcScope } from '../_shared/github-oidc-scope.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -6,10 +7,10 @@ const MAX_REQUEST_BYTES = 64 * 1024;
 const SESSION_MINUTES = 60;
 const ROTATE_BEFORE_MINUTES = 15;
 const MTLS_FINGERPRINT = /^[a-f0-9]{64}$/;
-const GITHUB_REPO = 'atlasenterprisesuite/atlasenterprisesuite';
-const GITHUB_OWNER = 'atlasenterprisesuite';
+const GITHUB_SCOPE = createGitHubOidcScope(['local-agent-mtls.yml']);
+const GITHUB_REPO = GITHUB_SCOPE.canonicalRepository;
 const MTLS_PROVISION_AUDIENCE = 'atlas-local-agent-mtls-provision';
-const MTLS_PROVISION_WORKFLOW = `${GITHUB_REPO}/.github/workflows/local-agent-mtls.yml@refs/heads/main`;
+const MTLS_PROVISION_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
   'https://www.atlasenterprisesuite.com',
@@ -193,10 +194,9 @@ async function verifyMtlsProvisionOidc(req: Request) {
   ) throw new EdgeError('github_oidc_verification_failed', 401);
 
   if (
-    payload.repository !== GITHUB_REPO ||
-    payload.repository_owner !== GITHUB_OWNER ||
+    !GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner) ||
     payload.ref !== 'refs/heads/main' ||
-    (workflowRef !== MTLS_PROVISION_WORKFLOW && jobWorkflowRef !== MTLS_PROVISION_WORKFLOW)
+    (!MTLS_PROVISION_WORKFLOWS.has(workflowRef) && !MTLS_PROVISION_WORKFLOWS.has(jobWorkflowRef))
   ) throw new EdgeError('github_oidc_scope_denied', 403);
 
   return { sha: String(payload.sha || ''), runId: String(payload.run_id || '') };
