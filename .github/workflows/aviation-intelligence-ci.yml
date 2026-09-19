@@ -1,0 +1,51 @@
+name: ATLAS Aviation Intelligence CI
+
+on:
+  push:
+    branches:
+      - feat/aviation-intelligence
+    paths:
+      - 'apps/web/src/modules/aviation/**'
+      - 'apps/web/src/modules/registry.ts'
+      - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
+      - 'apps/web/src/styles.css'
+      - 'tests/unit/module-registry.test.ts'
+      - 'tests/unit/aviation-*.test.ts'
+      - 'tests/integration/aviation-*.test.tsx'
+      - '.github/workflows/aviation-intelligence-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/web/src/modules/aviation/**'
+      - 'apps/web/src/modules/registry.ts'
+      - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
+      - 'apps/web/src/styles.css'
+      - 'tests/unit/module-registry.test.ts'
+      - 'tests/unit/aviation-*.test.ts'
+      - 'tests/integration/aviation-*.test.tsx'
+      - '.github/workflows/aviation-intelligence-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  aviation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Aviation routing and registry tests
+        run: npx vitest run tests/unit/module-registry.test.ts tests/unit/aviation-*.test.ts tests/integration/aviation-*.test.tsx
+      - run: npm run typecheck
+      - name: Full unit suite
+        run: npm run test:unit
+      - name: Full integration suite
+        run: npm run test:integration
+      - run: npm run build
