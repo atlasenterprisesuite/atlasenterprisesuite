@@ -19,16 +19,19 @@ describe('ATLAS FRONTIER WebGL world contract', () => {
     expect(world).toContain('900');
   });
 
-  it('keeps build and resource mutations behind the existing governed action callback', () => {
-    expect(world).toContain("await onAction('build_habitat')");
+  it('keeps resource and spatial build mutations behind governed callbacks', () => {
+    expect(world).toContain('await onBuildHabitat(spatialPlacement)');
     expect(world).toContain('await onAction(target.action)');
     expect(world).not.toContain('/rest/v1/');
     expect(api).toContain("'/rest/v1/rpc/frontier_apply_action'");
+    expect(api).toContain("'/rest/v1/rpc/frontier_build_structure'");
   });
 
   it('replaces the CSS-only world with the interactive renderer', () => {
     expect(route).toContain('<FrontierWorld3D');
     expect(route).not.toContain('<div className="frontier-world"');
     expect(route).toContain("action.id === 'build_habitat'");
+    expect(route).toContain('structures={structures}');
+    expect(world).toContain('structures.forEach');
   });
 });

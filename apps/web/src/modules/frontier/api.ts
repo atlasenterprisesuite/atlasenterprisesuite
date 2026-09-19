@@ -5,6 +5,11 @@ import {
   type FrontierActionId,
   type FrontierState
 } from './domain';
+import {
+  normalizeRotationY,
+  type FrontierStructure,
+  type WorldPlacement
+} from './world3d';
 
 type FrontierRunRow = {
   aetherium: number;
@@ -18,6 +23,17 @@ type FrontierRunRow = {
   campaign_stage: number;
   experience: number;
   revision: number;
+};
+
+type FrontierStructureRow = {
+  id: string;
+  structure_type: string;
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  rotation_y: number;
+  run_revision: number;
+  placement_origin: string;
 };
 
 function rowToState(row: FrontierRunRow): FrontierState {
@@ -34,6 +50,42 @@ function rowToState(row: FrontierRunRow): FrontierState {
     experience: row.experience,
     revision: row.revision
   });
+}
+
+function finiteNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeStructure(value: unknown): FrontierStructure | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, any>;
+  const structureType = String(source.structureType ?? source.structure_type ?? '');
+  if (structureType !== 'habitat') return null;
+
+  const rawPosition = source.position && typeof source.position === 'object'
+    ? source.position as Record<string, unknown>
+    : null;
+
+  const x = finiteNumber(rawPosition?.x ?? source.position_x);
+  const y = finiteNumber(rawPosition?.y ?? source.position_y);
+  const z = finiteNumber(rawPosition?.z ?? source.position_z);
+  const rotationY = normalizeRotationY(finiteNumber(source.rotationY ?? source.rotation_y));
+  const placementOrigin = String(source.placementOrigin ?? source.placement_origin ?? 'legacy_backfill');
+
+  const normalizedOrigin: FrontierStructure['placementOrigin'] =
+    placementOrigin === 'governed' || placementOrigin === 'legacy_default' || placementOrigin === 'legacy_backfill'
+      ? placementOrigin
+      : 'legacy_backfill';
+
+  return {
+    id: String(source.id ?? ''),
+    structureType: 'habitat',
+    position: { x, y, z },
+    rotationY,
+    runRevision: Math.max(0, Math.floor(finiteNumber(source.runRevision ?? source.run_revision))),
+    placementOrigin: normalizedOrigin
+  };
 }
 
 async function parseJson(response: Response) {
@@ -62,6 +114,18 @@ export async function loadFrontierRun(): Promise<FrontierState> {
   return rowToState(body[0]);
 }
 
+export async function loadFrontierStructures(): Promise<FrontierStructure[]> {
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(`eq.${organization.id}`);
+  const response = await authorizedAtlasFetch(
+    `/rest/v1/frontier_structures?org_id=${org}&select=id,structure_type,position_x,position_y,position_z,rotation_y,run_revision,placement_origin&order=created_at.asc`,
+    { method: 'GET' }
+  );
+  const body = await parseJson(response) as FrontierStructureRow[];
+  if (!Array.isArray(body)) return [];
+  return body.map(normalizeStructure).filter((item): item is FrontierStructure => Boolean(item?.id));
+}
+
 export async function executeFrontierAction(action: FrontierActionId, idempotencyKey: string): Promise<FrontierState> {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch('/rest/v1/rpc/frontier_apply_action', {
@@ -75,4 +139,30 @@ export async function executeFrontierAction(action: FrontierActionId, idempotenc
   const body = await parseJson(response);
   if (!body?.ok || !body?.state) throw new Error('frontier_invalid_controller_response');
   return normalizeFrontierState({ ...body.state, revision: body.revision });
+}
+
+export async function buildFrontierHabitat(
+  placement: WorldPlacement,
+  idempotencyKey: string
+): Promise<{ state: FrontierState; structure: FrontierStructure }> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/frontier_build_structure', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_structure_type: 'habitat',
+      p_idempotency_key: idempotencyKey,
+      p_position_x: placement.x,
+      p_position_y: placement.y,
+      p_position_z: placement.z,
+      p_rotation_y: normalizeRotationY(placement.rotationY)
+    })
+  });
+  const body = await parseJson(response);
+  const structure = normalizeStructure(body?.structure);
+  if (!body?.ok || !body?.state || !structure?.id) throw new Error('frontier_invalid_structure_controller_response');
+  return {
+    state: normalizeFrontierState({ ...body.state, revision: body.revision }),
+    structure
+  };
 }

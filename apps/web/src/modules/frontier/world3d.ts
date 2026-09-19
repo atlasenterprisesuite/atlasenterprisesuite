@@ -2,6 +2,20 @@ import type { FrontierActionId } from './domain';
 
 export type WorldPoint = { x: number; z: number };
 
+export type WorldPlacement = WorldPoint & {
+  y: number;
+  rotationY: number;
+};
+
+export type FrontierStructure = {
+  id: string;
+  structureType: 'habitat';
+  position: { x: number; y: number; z: number };
+  rotationY: number;
+  runRevision: number;
+  placementOrigin: 'governed' | 'legacy_default' | 'legacy_backfill';
+};
+
 export type ResourceTarget = {
   id: 'aetherium' | 'alloy' | 'biofiber';
   label: string;
@@ -51,4 +65,23 @@ export function screenToPlacement(clientX: number, clientY: number, width: numbe
   const x = ((clientX / safeWidth) - 0.5) * 14;
   const z = ((clientY / safeHeight) - 0.5) * 11;
   return clampWorldPoint({ x, z }, 6.5);
+}
+
+
+export function normalizeRotationY(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  const twoPi = Math.PI * 2;
+  let normalized = ((value + Math.PI) % twoPi + twoPi) % twoPi - Math.PI;
+  if (Object.is(normalized, -0)) normalized = 0;
+  return normalized;
+}
+
+export function toWorldPlacement(point: WorldPoint, rotationY = 0): WorldPlacement {
+  const bounded = clampWorldPoint(point, 6.5);
+  return {
+    x: bounded.x,
+    y: 0,
+    z: bounded.z,
+    rotationY: normalizeRotationY(rotationY)
+  };
 }

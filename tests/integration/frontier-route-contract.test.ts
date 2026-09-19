@@ -21,8 +21,17 @@ describe('ATLAS FRONTIER route contract', () => {
     expect(api).not.toContain('/rest/v1/frontier_runs?on_conflict');
   });
 
-  it('loads durable campaign stage and experience from governed state', () => {
+  it('loads durable campaign stage, experience and spatial structures from governed state', () => {
     expect(api).toContain('campaign_stage');
     expect(api).toContain('experience');
+    expect(api).toContain('/rest/v1/frontier_structures?');
+    expect(api).toContain('position_x');
+    expect(api).toContain('rotation_y');
+  });
+
+  it('uses a dedicated spatial build RPC instead of direct browser writes', () => {
+    expect(api).toContain("'/rest/v1/rpc/frontier_build_structure'");
+    expect(api).toContain("p_structure_type: 'habitat'");
+    expect(api).not.toContain('/rest/v1/frontier_structures?on_conflict');
   });
 });

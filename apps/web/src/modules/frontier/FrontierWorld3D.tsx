@@ -5,17 +5,23 @@ import {
   clampWorldPoint,
   distanceToTarget,
   moveWorldPoint,
+  normalizeRotationY,
   screenToPlacement,
+  toWorldPlacement,
+  type FrontierStructure,
   type ResourceTarget,
+  type WorldPlacement,
   type WorldPoint
 } from './world3d';
 
 type Props = {
   state: FrontierState;
+  structures: readonly FrontierStructure[];
   runtimeReady: boolean;
   buildMode: boolean;
   onBuildModeChange: (enabled: boolean) => void;
   onAction: (action: FrontierActionId) => Promise<boolean>;
+  onBuildHabitat: (placement: WorldPlacement) => Promise<boolean>;
   onMessage: (message: string) => void;
 };
 
@@ -89,6 +95,8 @@ function createRuntime(canvas: HTMLCanvasElement): GlRuntime | null {
 
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.CULL_FACE);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   return { gl, program, vao, positionLocation, matrixLocation, colorLocation };
 }
 
@@ -147,11 +155,15 @@ function lookAt(eye: readonly number[], target: readonly number[], up: readonly 
   ]);
 }
 
-function modelMatrix(x: number, y: number, z: number, sx: number, sy: number, sz: number) {
-  const out = identity();
-  out[0] = sx; out[5] = sy; out[10] = sz;
-  out[12] = x; out[13] = y; out[14] = z;
-  return out;
+function modelMatrix(x: number, y: number, z: number, sx: number, sy: number, sz: number, rotationY = 0) {
+  const cosine = Math.cos(rotationY);
+  const sine = Math.sin(rotationY);
+  return new Float32Array([
+    cosine * sx, 0, -sine * sx, 0,
+    0, sy, 0, 0,
+    sine * sz, 0, cosine * sz, 0,
+    x, y, z, 1
+  ]);
 }
 
 function projectPoint(point: readonly [number, number, number], matrix: Float32Array, width: number, height: number) {
@@ -165,15 +177,34 @@ function projectPoint(point: readonly [number, number, number], matrix: Float32A
   return { x: (nx * 0.5 + 0.5) * width, y: (1 - (ny * 0.5 + 0.5)) * height };
 }
 
-function drawCube(runtime: GlRuntime, viewProjection: Float32Array, position: readonly [number,number,number], scale: readonly [number,number,number], color: readonly [number,number,number,number]) {
+function drawCube(
+  runtime: GlRuntime,
+  viewProjection: Float32Array,
+  position: readonly [number,number,number],
+  scale: readonly [number,number,number],
+  color: readonly [number,number,number,number],
+  rotationY = 0
+) {
   const { gl } = runtime;
-  const matrix = multiply(viewProjection, modelMatrix(position[0], position[1], position[2], scale[0], scale[1], scale[2]));
+  const matrix = multiply(
+    viewProjection,
+    modelMatrix(position[0], position[1], position[2], scale[0], scale[1], scale[2], rotationY)
+  );
   gl.uniformMatrix4fv(runtime.matrixLocation, false, matrix);
   gl.uniform4fv(runtime.colorLocation, new Float32Array(color));
   gl.drawArrays(gl.TRIANGLES, 0, 36);
 }
 
-export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeChange, onAction, onMessage }: Props) {
+export function FrontierWorld3D({
+  state,
+  structures,
+  runtimeReady,
+  buildMode,
+  onBuildModeChange,
+  onAction,
+  onBuildHabitat,
+  onMessage
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const runtimeRef = useRef<GlRuntime | null>(null);
   const viewProjectionRef = useRef<Float32Array>(identity());
@@ -186,6 +217,7 @@ export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeCha
   const placementRef = useRef<WorldPoint>({ x: -4.2, z: 2.6 });
   const [player, setPlayer] = useState<WorldPoint>(playerRef.current);
   const [placement, setPlacement] = useState<WorldPoint>(placementRef.current);
+  const [rotationY, setRotationY] = useState(0);
   const [selectedTarget, setSelectedTarget] = useState<ResourceTarget | null>(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [engineStatus, setEngineStatus] = useState<EngineStatus>('initializing');
@@ -299,11 +331,16 @@ export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeCha
           drawCube(runtime, viewProjection, [target.x,1.35,target.z], [0.18,0.18,0.18], [0.82,0.96,1,1]);
         });
 
-        const habitatPoint = state.habitats > 0 ? placementRef.current : placement;
-        if (state.habitats > 0 || buildMode) {
-          const alpha = buildMode && state.habitats === 0 ? 0.55 : 1;
-          drawCube(runtime, viewProjection, [habitatPoint.x,0.65,habitatPoint.z], [2.4,1.15,1.8], [0.14,0.62,0.72,alpha]);
-          drawCube(runtime, viewProjection, [habitatPoint.x,1.42,habitatPoint.z], [1.3,0.38,1.05], [0.33,0.88,0.96,alpha]);
+        structures.forEach((structure) => {
+          if (structure.structureType !== 'habitat') return;
+          const { x, y, z } = structure.position;
+          drawCube(runtime, viewProjection, [x,y + 0.65,z], [2.4,1.15,1.8], [0.14,0.62,0.72,1], structure.rotationY);
+          drawCube(runtime, viewProjection, [x,y + 1.42,z], [1.3,0.38,1.05], [0.33,0.88,0.96,1], structure.rotationY);
+        });
+
+        if (buildMode) {
+          drawCube(runtime, viewProjection, [placement.x,0.65,placement.z], [2.4,1.15,1.8], [0.14,0.75,0.82,0.48], rotationY);
+          drawCube(runtime, viewProjection, [placement.x,1.42,placement.z], [1.3,0.38,1.05], [0.45,0.95,1,0.58], rotationY);
         }
 
         drawCube(runtime, viewProjection, [p.x,0.72,p.z], [0.5,1.25,0.48], [0.08,0.55,0.76,1]);
@@ -331,7 +368,7 @@ export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeCha
       }
       runtimeRef.current = null;
     };
-  }, [buildMode, cancelHold, placement, state.habitats, state.skyGridIntegrity, syncPlayer]);
+  }, [buildMode, cancelHold, placement, rotationY, state.skyGridIntegrity, structures, syncPlayer]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -348,6 +385,14 @@ export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeCha
         beginExtraction(selectedTarget);
       }
       if (key === 'b') onBuildModeChange(!buildMode);
+      if (buildMode && key === 'q') {
+        event.preventDefault();
+        setRotationY((current) => normalizeRotationY(current - Math.PI / 12));
+      }
+      if (buildMode && key === 'r') {
+        event.preventDefault();
+        setRotationY((current) => normalizeRotationY(current + Math.PI / 12));
+      }
     };
     const up = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
@@ -410,11 +455,13 @@ export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeCha
       onMessage(availability.reason || 'Habitat build unavailable.');
       return;
     }
-    const ok = await onAction('build_habitat');
+    const spatialPlacement = toWorldPlacement(placement, rotationY);
+    const ok = await onBuildHabitat(spatialPlacement);
     if (ok) {
       placementRef.current = placement;
+      setRotationY(0);
       onBuildModeChange(false);
-      onMessage('Habitat committed. The server accepted the build and the structure is now active.');
+      onMessage('Habitat committed with persistent position and rotation.');
     }
   };
 
@@ -440,6 +487,7 @@ export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeCha
       <div className="frontier-world3d-topbar">
         <span>{capabilityLabel}</span>
         <span>POSITION {player.x.toFixed(1)} · {player.z.toFixed(1)}</span>
+        <span>STRUCTURES {structures.length}</span>
       </div>
 
       <div className="frontier-integrity frontier-integrity-3d">
@@ -462,11 +510,13 @@ export function FrontierWorld3D({ state, runtimeReady, buildMode, onBuildModeCha
       {buildMode ? (
         <div className="frontier-build-card">
           <span>BUILD MODE · HABITAT</span>
-          <strong>Place at {placement.x.toFixed(1)} · {placement.z.toFixed(1)}</strong>
-          <small>Tap the terrain to reposition the hologram, then confirm. Resource costs remain server-authoritative.</small>
+          <strong>Place at {placement.x.toFixed(1)} · {placement.z.toFixed(1)} · {Math.round(rotationY * 180 / Math.PI)}°</strong>
+          <small>Tap the terrain to reposition. Rotate with Q/R or the controls below. Position, rotation and resource costs are validated by the server.</small>
           <div>
+            <button type="button" onClick={() => setRotationY((current) => normalizeRotationY(current - Math.PI / 12))}>Rotate −15°</button>
+            <button type="button" onClick={() => setRotationY((current) => normalizeRotationY(current + Math.PI / 12))}>Rotate +15°</button>
             <button type="button" onClick={() => void confirmHabitat()} disabled={!runtimeReady}>Confirm placement</button>
-            <button type="button" onClick={() => onBuildModeChange(false)}>Cancel</button>
+            <button type="button" onClick={() => { setRotationY(0); onBuildModeChange(false); }}>Cancel</button>
           </div>
         </div>
       ) : null}
