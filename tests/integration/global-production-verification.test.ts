@@ -146,12 +146,11 @@ describe('ATLAS global production verification', () => {
     const authorizedVerifier = read(authorizedVerifierPath);
 
     expect(authorizedVerifier).toContain('ALLOWED_WORKFLOWS');
-    expect(authorizedVerifier).not.toContain('Set([\\n');
+    expect(authorizedVerifier).toContain('createGitHubOidcScope');
+    expect(authorizedVerifier).toContain("'cloudflare-deploy.yml'");
+    expect(authorizedVerifier).toContain("'global-production-verify.yml'");
     expect(authorizedVerifier).toContain(
-      '.github/workflows/cloudflare-deploy.yml@refs/heads/main'
-    );
-    expect(authorizedVerifier).toContain(
-      '.github/workflows/global-production-verify.yml@refs/heads/main'
+      'GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner)'
     );
     expect(authorizedVerifier).toContain("payload.ref !== 'refs/heads/main'");
   });
