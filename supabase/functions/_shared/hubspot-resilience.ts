@@ -32,7 +32,7 @@ export type HubSpotHealthView = {
 export type HubSpotResilienceDependencies = {
   store: HubSpotConnectionStore;
   lifecycle: HubSpotLifecycleDependencies;
-  adapter?: Pick<HubSpotCrmAdapter, 'listObjects'>;
+  adapter?: Pick<HubSpotCrmAdapter, 'readiness' | 'listObjects'>;
   now?: () => number;
 };
 
@@ -116,9 +116,23 @@ export async function verifyHubSpotConnectionHealth(input: {
       forceRefresh: input.forceRefresh === true
     });
 
-    const checks: Record<string, unknown> = {};
+    const context = providerContext(credential.accessToken, input.deps);
+    const readiness = await adapter.readiness(context);
+    if (!readiness.ready || !readiness.account) {
+      throw new HubSpotLifecycleError('provider_probe_failed', 502);
+    }
+    if (
+      input.connection.provider_account_id &&
+      readiness.account.id !== input.connection.provider_account_id
+    ) {
+      throw new HubSpotLifecycleError('provider_account_mismatch', 409);
+    }
+
+    const checks: Record<string, unknown> = {
+      account: { ok: true, id: readiness.account.id }
+    };
     for (const objectType of HUBSPOT_SMOKE_OBJECT_TYPES) {
-      const page = await adapter.listObjects(providerContext(credential.accessToken, input.deps), {
+      const page = await adapter.listObjects(context, {
         objectType,
         limit: 1
       });
@@ -139,6 +153,7 @@ export async function verifyHubSpotConnectionHealth(input: {
 
     await input.deps.store.updateConnection(input.connection.org_id, {
       state: 'connected',
+      provider_account_label: readiness.account.label,
       last_verified_at: timestamp,
       last_success_at: timestamp,
       last_error_code: null,
