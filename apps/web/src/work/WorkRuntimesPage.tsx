@@ -63,7 +63,7 @@ export function WorkRuntimesPage() {
       `ATLAS_WORK_RUNTIME_ID=${enrollment.runtimeId}`,
       `ATLAS_WORK_RUNTIME_TOKEN=${enrollment.runtimeToken}`,
       'ATLAS_BROWSER_CDP_URL=http://127.0.0.1:9222',
-      'node tools/local-agent/atlas-work-browser-runtime.mjs'
+      'node tools/local-agent/atlas-governed-browser.mjs'
     ].join('\n');
   }
 
