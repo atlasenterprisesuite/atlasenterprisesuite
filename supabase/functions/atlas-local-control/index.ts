@@ -5,6 +5,11 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const MAX_REQUEST_BYTES = 64 * 1024;
 const SESSION_MINUTES = 60;
 const ROTATE_BEFORE_MINUTES = 15;
+const MTLS_FINGERPRINT = /^[a-f0-9]{64}$/;
+const GITHUB_REPO = 'atlasenterprisesuite/atlasenterprisesuite';
+const GITHUB_OWNER = 'atlasenterprisesuite';
+const MTLS_PROVISION_AUDIENCE = 'atlas-local-agent-mtls-provision';
+const MTLS_PROVISION_WORKFLOW = `${GITHUB_REPO}/.github/workflows/local-agent-mtls.yml@refs/heads/main`;
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
   'https://www.atlasenterprisesuite.com',
@@ -108,6 +113,139 @@ function requirePermission(context: UserContext, permission: string) {
   if (!context.permissions.includes(permission) && !context.permissions.includes('device.agent.admin')) {
     throw new EdgeError('permission_required', 403);
   }
+}
+
+function b64u(input: string) {
+  let value = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (value.length % 4) value += '=';
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+function decodeJwtPart(input: string) {
+  return JSON.parse(new TextDecoder().decode(b64u(input))) as Record<string, unknown>;
+}
+
+let githubJwksCache: { until: number; keys: Array<JsonWebKey & { kid?: string }> } | null = null;
+
+async function githubJwks() {
+  if (githubJwksCache && githubJwksCache.until > Date.now()) return githubJwksCache.keys;
+  const config = await fetch(
+    'https://token.actions.githubusercontent.com/.well-known/openid-configuration',
+    { cache: 'no-store' }
+  ).then((response) => response.json());
+  const data = await fetch(config.jwks_uri, { cache: 'no-store' }).then((response) => response.json());
+  const keys = Array.isArray(data?.keys) ? data.keys : [];
+  githubJwksCache = { until: Date.now() + 10 * 60 * 1000, keys };
+  return keys;
+}
+
+async function verifyMtlsProvisionOidc(req: Request) {
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new EdgeError('github_oidc_required', 401);
+
+  let header: Record<string, unknown>;
+  let payload: Record<string, unknown>;
+  try {
+    header = decodeJwtPart(parts[0]);
+    payload = decodeJwtPart(parts[1]);
+  } catch {
+    throw new EdgeError('invalid_github_oidc', 401);
+  }
+
+  if (header.alg !== 'RS256' || !header.kid) throw new EdgeError('unsupported_github_oidc', 401);
+  const jwk = (await githubJwks()).find((candidate) => candidate.kid === header.kid);
+  if (!jwk) throw new EdgeError('github_oidc_key_not_found', 401);
+
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  const signatureOk = await crypto.subtle.verify(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    b64u(parts[2]),
+    new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
+  );
+
+  const now = Math.floor(Date.now() / 1000);
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  const workflowRef = String(payload.workflow_ref || '');
+  const jobWorkflowRef = String(payload.job_workflow_ref || '');
+  if (
+    !signatureOk ||
+    payload.iss !== 'https://token.actions.githubusercontent.com' ||
+    !audiences.includes(MTLS_PROVISION_AUDIENCE) ||
+    Number(payload.exp || 0) <= now ||
+    Number(payload.nbf || 0) > now + 30
+  ) throw new EdgeError('github_oidc_verification_failed', 401);
+
+  if (
+    payload.repository !== GITHUB_REPO ||
+    payload.repository_owner !== GITHUB_OWNER ||
+    payload.ref !== 'refs/heads/main' ||
+    (workflowRef !== MTLS_PROVISION_WORKFLOW && jobWorkflowRef !== MTLS_PROVISION_WORKFLOW)
+  ) throw new EdgeError('github_oidc_scope_denied', 403);
+
+  return { sha: String(payload.sha || ''), runId: String(payload.run_id || '') };
+}
+
+async function mtlsProvisionCallback(req: Request) {
+  const github = await verifyMtlsProvisionOidc(req);
+  const body = record(await req.json());
+  const action = requiredText(body.action, 'mtls_action_required', 20);
+  const orgId = requiredText(body.organization_id, 'organization_id_required', 80);
+  const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
+  const admin = adminClient();
+  const now = new Date().toISOString();
+
+  if (action === 'issue') {
+    const fingerprint = requiredText(body.fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
+    const serial = requiredText(body.serial, 'mtls_serial_required', 160);
+    const certificateId = requiredText(body.certificate_id, 'mtls_certificate_id_required', 80);
+    const expiresAt = new Date(requiredText(body.expires_at, 'mtls_expiry_required', 80));
+    if (!MTLS_FINGERPRINT.test(fingerprint)) throw new EdgeError('invalid_mtls_fingerprint', 422);
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) throw new EdgeError('invalid_mtls_expiry', 422);
+
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'active',
+      mtls_cert_fingerprint_sha256: fingerprint,
+      mtls_cert_serial: serial,
+      mtls_cloudflare_cert_id: certificateId,
+      mtls_cert_expires_at: expiresAt.toISOString(),
+      updated_at: now
+    }).eq('id', agentId).eq('org_id', orgId).neq('status', 'revoked')
+      .select('id,org_id,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cloudflare_cert_id,mtls_cert_expires_at').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_not_found', 404);
+    await appendEvent(admin, {
+      orgId, agentId, eventType: 'agent.mtls.provider_issued', success: true,
+      safeDetail: { certificate_id: certificateId, fingerprint_sha256: fingerprint, serial, expires_at: expiresAt.toISOString(), github_run_id: github.runId }
+    });
+    return json(req, { ok: true, agent });
+  }
+
+  if (action === 'revoke') {
+    const certificateId = requiredText(body.certificate_id, 'mtls_certificate_id_required', 80);
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'revoked',
+      realtime_last_connected_at: null,
+      updated_at: now
+    }).eq('id', agentId).eq('org_id', orgId).eq('mtls_cloudflare_cert_id', certificateId)
+      .select('id,org_id,mtls_status').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_certificate_binding_not_found', 404);
+    await appendEvent(admin, {
+      orgId, agentId, eventType: 'agent.mtls.provider_revoked', severity: 'warning', success: true,
+      safeDetail: { certificate_id: certificateId, github_run_id: github.runId }
+    });
+    return json(req, { ok: true, agent });
+  }
+
+  throw new EdgeError('unsupported_mtls_action', 422);
 }
 
 function bytesToBase64Url(bytes: Uint8Array) {
@@ -238,7 +376,7 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
 
   if (operation === 'agents.list') {
     requirePermission(context, 'device.agent.read');
-    const { data, error } = await admin.from('atlas_local_agents').select('id,org_id,name,status,platform,agent_version,capabilities,modules,public_key_fingerprint,last_seen_at,created_at,updated_at')
+    const { data, error } = await admin.from('atlas_local_agents').select('id,org_id,name,status,platform,agent_version,capabilities,modules,public_key_fingerprint,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cloudflare_cert_id,mtls_cert_expires_at,realtime_last_connected_at,installer_version,last_seen_at,created_at,updated_at')
       .eq('org_id', context.orgId).order('created_at');
     if (error) throw new EdgeError('persistence_error', 500);
     return json(req, { ok: true, agents: data || [] });
@@ -260,6 +398,70 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     return json(req, { ok: true, commands: data || [] });
   }
 
+  if (operation === 'agents.mtls.bind') {
+    requirePermission(context, 'device.agent.admin');
+    const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
+    const fingerprint = requiredText(body.fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
+    if (!MTLS_FINGERPRINT.test(fingerprint)) throw new EdgeError('invalid_mtls_fingerprint', 422);
+    const serial = requiredText(body.serial, 'mtls_serial_required', 160);
+    const expiresAt = new Date(requiredText(body.expires_at, 'mtls_expiry_required', 80));
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+      throw new EdgeError('invalid_mtls_expiry', 422);
+    }
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'active',
+      mtls_cert_fingerprint_sha256: fingerprint,
+      mtls_cert_serial: serial,
+      mtls_cert_expires_at: expiresAt.toISOString(),
+      updated_at: new Date().toISOString()
+    }).eq('id', agentId).eq('org_id', context.orgId).neq('status', 'revoked')
+      .select('id,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cert_expires_at').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_not_found', 404);
+    await appendEvent(admin, { orgId: context.orgId, agentId, eventType: 'agent.mtls.bound', success: true, safeDetail: { fingerprint_sha256: fingerprint, serial, expires_at: expiresAt.toISOString() } });
+    return json(req, { ok: true, agent });
+  }
+
+  if (operation === 'agents.mtls.revoke') {
+    requirePermission(context, 'device.agent.admin');
+    const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
+    const { data: agent, error } = await admin.from('atlas_local_agents').update({
+      mtls_status: 'revoked',
+      realtime_last_connected_at: null,
+      updated_at: new Date().toISOString()
+    }).eq('id', agentId).eq('org_id', context.orgId)
+      .select('id,mtls_status').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!agent) throw new EdgeError('agent_not_found', 404);
+    await appendEvent(admin, { orgId: context.orgId, agentId, eventType: 'agent.mtls.revoked', severity: 'warning', success: true });
+    return json(req, { ok: true, agent });
+  }
+
+  if (operation === 'bus.publish.authorize') {
+    requirePermission(context, 'device.agent.use');
+    const commandId = requiredText(body.command_id, 'command_id_required', 80);
+    const requestedAgentId = requiredText(body.agent_id, 'agent_id_required', 80);
+    const { data: command, error: commandError } = await admin.from('atlas_local_device_commands')
+      .select('id,device_id,status,capability,action,risk_level')
+      .eq('id', commandId).eq('org_id', context.orgId).maybeSingle();
+    if (commandError) throw new EdgeError('persistence_error', 500);
+    if (!command) throw new EdgeError('command_not_found', 404);
+    if (!['queued','claimed'].includes(String(command.status))) throw new EdgeError('command_not_realtime_eligible', 409);
+    const { data: device, error: deviceError } = await admin.from('atlas_local_devices')
+      .select('id,agent_id').eq('id', command.device_id).eq('org_id', context.orgId).maybeSingle();
+    if (deviceError) throw new EdgeError('persistence_error', 500);
+    if (!device || String(device.agent_id) !== requestedAgentId) throw new EdgeError('bus_target_mismatch', 403);
+    return json(req, {
+      ok: true,
+      bus: {
+        org_id: context.orgId,
+        agent_id: requestedAgentId,
+        event: 'command.ready',
+        command_id: String(command.id)
+      }
+    });
+  }
+
   if (operation === 'enrollment.create') {
     requirePermission(context, 'device.agent.admin');
     const agentName = requiredText(body.agent_name, 'agent_name_required', 120);
@@ -278,7 +480,7 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     requirePermission(context, 'device.agent.admin');
     const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
     const { data: agent, error } = await admin.from('atlas_local_agents').update({
-      status: 'revoked', updated_at: new Date().toISOString()
+      status: 'revoked', mtls_status: 'revoked', realtime_last_connected_at: null, updated_at: new Date().toISOString()
     }).eq('id', agentId).eq('org_id', context.orgId).select('id').maybeSingle();
     if (error) throw new EdgeError('persistence_error', 500);
     if (!agent) throw new EdgeError('agent_not_found', 404);
@@ -339,7 +541,7 @@ async function enrollAgent(req: Request, body: JsonObject) {
     platform: clean(body.platform, 120) || 'unknown',
     agent_version: clean(body.agent_version, 80) || 'unknown',
     capabilities: stringArray(body.capabilities), modules: stringArray(body.modules),
-    public_key_fingerprint: fingerprint, last_seen_at: now, created_by: String(enrollment.created_by), updated_at: now
+    public_key_fingerprint: fingerprint, installer_version: clean(body.installer_version, 80) || null, last_seen_at: now, created_by: String(enrollment.created_by), updated_at: now
   };
   const { data: agent, error: agentError } = await admin.from('atlas_local_agents')
     .upsert(row, { onConflict: 'org_id,name' }).select('*').single();
@@ -361,6 +563,29 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
   const agentId = String(context.agent.id);
   const orgId = String(context.agent.org_id);
   const now = new Date().toISOString();
+
+  if (operation === 'agent.bus.verify') {
+    const fingerprint = requiredText(body.mtls_cert_fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
+    const serial = requiredText(body.mtls_cert_serial, 'mtls_serial_required', 160);
+    if (body.mtls_cert_verified !== true || !MTLS_FINGERPRINT.test(fingerprint)) {
+      throw new EdgeError('mtls_required', 401);
+    }
+    if (String(context.agent.mtls_status) !== 'active') throw new EdgeError('mtls_not_active', 403);
+    if (String(context.agent.mtls_cert_fingerprint_sha256 || '').toLowerCase() !== fingerprint) {
+      throw new EdgeError('mtls_fingerprint_mismatch', 403);
+    }
+    if (String(context.agent.mtls_cert_serial || '') !== serial) throw new EdgeError('mtls_serial_mismatch', 403);
+    const expiresAt = new Date(String(context.agent.mtls_cert_expires_at || ''));
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+      await admin.from('atlas_local_agents').update({ mtls_status: 'expired', realtime_last_connected_at: null, updated_at: now })
+        .eq('id', agentId).eq('org_id', orgId);
+      throw new EdgeError('mtls_certificate_expired', 403);
+    }
+    await admin.from('atlas_local_agents').update({ realtime_last_connected_at: now, updated_at: now })
+      .eq('id', agentId).eq('org_id', orgId);
+    await appendEvent(admin, { orgId, agentId, eventType: 'agent.realtime.authorized', success: true, safeDetail: { fingerprint_sha256: fingerprint, serial } });
+    return json(req, { ok: true, bus: { org_id: orgId, agent_id: agentId } });
+  }
 
   if (operation === 'agent.heartbeat') {
     const capabilities = body.capabilities === undefined ? context.agent.capabilities : stringArray(body.capabilities);
@@ -463,6 +688,18 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
+  const url = new URL(req.url);
+  if (url.searchParams.get('api') === 'mtls-provision-callback') {
+    if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
+    try {
+      return await mtlsProvisionCallback(req);
+    } catch (error) {
+      const status = error instanceof EdgeError ? error.status : 500;
+      const code = error instanceof EdgeError ? error.code : 'internal_error';
+      if (status >= 500) console.error('atlas_local_mtls_provision_failed', { code });
+      return json(req, { ok: false, error: code }, status);
+    }
+  }
   if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
   try {
     const length = Number(req.headers.get('content-length') || '0');
