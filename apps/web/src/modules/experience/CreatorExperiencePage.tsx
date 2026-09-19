@@ -7,6 +7,12 @@ const creatorSections: ModuleExperienceSection[] = [
     description: 'ATLAS Studio keeps content, image, video, music and voice workflows inside the same organization and execution boundary.',
     cards: [
       {
+        label: 'Writing',
+        title: 'ATLAS Writing Desk',
+        description: 'Turn prompts, pasted notes and locally readable files into governed drafts using the existing verified ATLAS intelligence bus.',
+        to: '/studio/write'
+      },
+      {
         label: 'Intelligence',
         title: 'Content Intelligence',
         description: 'Turn creator context into audience insights, ranked ideas, hooks, structured drafts, channel variants and governed handoffs.',
@@ -104,10 +110,11 @@ export function CreatorExperiencePage() {
     <ModuleExperiencePage
       eyebrow="ATLAS Studio"
       title="Create beyond the prompt."
-      description="Content intelligence, imagery, video, sound and voice share one governed creative workspace connected to ATLAS Identity and organization context."
+      description="Writing, content intelligence, imagery, video, sound and voice share one governed creative workspace connected to ATLAS Identity and organization context."
       narrative="One governed creative operating system for content, media, voice and provider-aware execution."
       actions={[
-        { label: 'Open Smart Teleprompter', to: '/studio/teleprompter' },
+        { label: 'Open Writing Desk', to: '/studio/write' },
+        { label: 'Open Smart Teleprompter', to: '/studio/teleprompter', variant: 'secondary' },
         { label: 'Start with Content Intelligence', to: '/studio/content', variant: 'secondary' },
         { label: 'Plan a website launch', to: '/studio/web-launch', variant: 'secondary' },
         { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' }
