@@ -471,8 +471,8 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
 
       {!supported && (
         <div className="notice strong">{realtimeSupported
-          ? 'Browser SpeechRecognition is unavailable, but authenticated WebRTC Realtime can still provide native audio conversation when enabled by ATLAS policy.'
-          : 'This browser exposes neither SpeechRecognition nor the required WebRTC microphone APIs. Text Assistant remains available.'}</div>
+          ? 'This browser does not expose SpeechRecognition, but authenticated WebRTC Realtime can still provide native audio conversation when enabled by ATLAS policy.'
+          : 'This browser does not expose SpeechRecognition or the required WebRTC microphone APIs. Text Assistant remains available.'}</div>
       )}
 
       <div className="voice-stage-grid">
