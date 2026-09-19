@@ -60,7 +60,9 @@ function providerCapability(status: AssistantStatusResponse): { capability: Atla
 
   const states = status.providers?.map((provider) => provider.state) || [];
   const configurationOnly = states.length > 0 && states.every((state) => state === 'configuration-required');
-  if (configurationOnly || status.provider_state === 'not_configured' || status.provider_state === 'configured_unverified') {
+  const legacyConfigurationOnly = states.length === 0
+    && (status.provider_state === 'not_configured' || status.provider_state === 'configured_unverified');
+  if (configurationOnly || legacyConfigurationOnly) {
     return {
       capability: 'configuration-required',
       label: 'configuration required',
@@ -93,8 +95,6 @@ export function AtlasAssistant() {
   }, []);
 
   const refreshProviderStatus = useCallback(async () => {
-    setProviderLabel('checking');
-    setTextCapability('configuration-required');
     try {
       const status = await getAssistantStatus();
       const mapped = providerCapability(status);
@@ -140,6 +140,14 @@ export function AtlasAssistant() {
     window.addEventListener(ATLAS_SESSION_EVENT, handleSession);
     return () => window.removeEventListener(ATLAS_SESSION_EVENT, handleSession);
   }, [refreshAuthorization]);
+
+  useEffect(() => {
+    if (!authorized || textCapability === 'ready' || textCapability === 'permission-required') return;
+    const timer = window.setInterval(() => {
+      void refreshProviderStatus().catch(() => void refreshAuthorization());
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [authorized, refreshAuthorization, refreshProviderStatus, textCapability]);
 
   useEffect(() => {
     if (!authorized || textCapability !== 'ready' || readGreetingSeen()) return;
@@ -246,8 +254,9 @@ export function AtlasAssistant() {
 
   function openAssistant() {
     setOpen(true);
-    setError(providerError);
+    setError('');
     setState(voice.microphoneActive ? 'listening' : 'idle');
+    void refreshProviderStatus().catch(() => void refreshAuthorization());
 
     if (!greetingSpoken.current && voice.speechEnabled && voice.speechCapability === 'ready' && messages.some((message) => message.role === 'assistant' && message.text === GREETING)) {
       greetingSpoken.current = true;
