@@ -1,0 +1,55 @@
+name: ATLAS visionOS Spatial CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/visionos/AtlasSpatial/**"
+      - "tests/unit/visionos-spatial-contract.test.ts"
+      - "data/ops/visionos-spatial-readiness.json"
+      - ".github/workflows/visionos-spatial-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/visionos/AtlasSpatial/**"
+      - "tests/unit/visionos-spatial-contract.test.ts"
+      - "data/ops/visionos-spatial-readiness.json"
+      - ".github/workflows/visionos-spatial-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visionos-source-and-sdk:
+    name: visionOS source + SDK contract
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Xcode and visionOS SDK
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcrun --sdk xrsimulator --show-sdk-version
+          xcrun --sdk xros --show-sdk-version
+
+      - name: Typecheck native ATLAS Spatial sources
+        run: |
+          set -euo pipefail
+          xcrun --sdk xrsimulator swiftc \
+            -typecheck \
+            -swift-version 6 \
+            -target arm64-apple-xros2.0-simulator \
+            apps/visionos/AtlasSpatial/Sources/*.swift
+
+      - name: Record unsigned CI boundary
+        run: |
+          {
+            echo "### ATLAS Spatial visionOS"
+            echo "- visionOS SDK typecheck: passed"
+            echo "- signing: not attempted"
+            echo "- physical Vision Pro: not attempted"
+            echo "- live: false until signed device verification passes"
+          } >> "$GITHUB_STEP_SUMMARY"
