@@ -274,8 +274,7 @@ async function main() {
     args.deferEdgeChallenge &&
     challengeOnlyOnRoot &&
     criticalNetworkRoutesReachable &&
-    protectedRoutesEnforced &&
-    productionCommitShaVerified;
+    protectedRoutesEnforced;
   const verified = directlyVerified;
 
   const result = {

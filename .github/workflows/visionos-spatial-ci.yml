@@ -44,11 +44,38 @@ jobs:
             -target arm64-apple-xros2.0-simulator \
             apps/visionos/AtlasSpatial/Sources/*.swift
 
+      - name: Install XcodeGen
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+
+      - name: Generate native Xcode project
+        run: |
+          set -euo pipefail
+          xcodegen generate --spec apps/visionos/AtlasSpatial/project.yml
+          xcodebuild -project apps/visionos/AtlasSpatial/AtlasSpatial.xcodeproj -list
+
+      - name: Build ATLAS Spatial for visionOS Simulator
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project apps/visionos/AtlasSpatial/AtlasSpatial.xcodeproj \
+            -scheme AtlasSpatial \
+            -configuration Debug \
+            -sdk xrsimulator \
+            -destination 'generic/platform=visionOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
       - name: Record unsigned CI boundary
         run: |
           {
             echo "### ATLAS Spatial visionOS"
             echo "- visionOS SDK typecheck: passed"
+            echo "- generated Xcode project: passed"
+            echo "- visionOS Simulator target build: passed"
+            echo "- simulator launch: not attempted"
             echo "- signing: not attempted"
             echo "- physical Vision Pro: not attempted"
             echo "- live: false until signed device verification passes"

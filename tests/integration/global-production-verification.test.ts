@@ -110,8 +110,12 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('challengeOnlyOnRoot');
     expect(verifier).toContain('const verified = directlyVerified;');
     expect(verifier).toContain('requires_authorized_fallback: challengeDeferred');
+    expect(verifier).not.toMatch(/challengeDeferred[\s\S]{0,260}productionCommitShaVerified/);
     expect(verifier).not.toContain('passed-edge-secured');
     expect(workflow).toContain('Verify through authorized ATLAS runtime after classified edge challenge');
+    expect(workflow).toContain('[ "$TARGET_SHA" = "$GITHUB_SHA" ]');
+    expect(workflow).toContain('[ "$AUTHORIZED_OK" = "true" ]');
+    expect(workflow).toContain('[ "$NETWORK_OK" = "true" ]');
   });
 
   it('keeps authorized runtime verification aligned with the shared Network route contract', () => {
