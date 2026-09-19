@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { AviationCatalogPage } from './AviationCatalogPage';
+import './aviation.css';
 
 const aviationSections: ModuleExperienceSection[] = [
   {
@@ -11,7 +13,7 @@ const aviationSections: ModuleExperienceSection[] = [
         label: 'Aircraft',
         title: 'Concept catalog foundation',
         description: 'The approved ten-model ATLAS design family will be exposed as internal concepts without invented engineering specifications.',
-        status: 'Catalog implementation in progress'
+        to: '/mobility/aviation/aircraft'
       },
       {
         label: 'Certification',
@@ -69,6 +71,7 @@ export function AviationRoutes() {
   return (
     <Routes>
       <Route path="/mobility/aviation" element={<AviationHomePage />} />
+      <Route path="/mobility/aviation/aircraft" element={<AviationCatalogPage />} />
       <Route path="/mobility/aviation/*" element={<Navigate to="/mobility/aviation" replace />} />
     </Routes>
   );
