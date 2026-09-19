@@ -349,6 +349,12 @@ async function validateApproval(admin: ReturnType<typeof createClient>, orgId: s
     .select('*').eq('id', approvalId).eq('org_id', orgId).eq('status', 'approved').maybeSingle();
   if (error) throw new EdgeError('approval_lookup_failed', 500);
   if (!approval) throw new EdgeError('approved_execution_approval_required', 409);
+  if (
+    String(approval.required_permission) !== 'execution.approve' ||
+    !['high', 'critical'].includes(String(approval.risk_level))
+  ) {
+    throw new EdgeError('approval_binding_mismatch', 409);
+  }
 
   const { data: task, error: taskError } = await admin.from('execution_tasks')
     .select('*').eq('id', approval.task_id).eq('org_id', orgId).maybeSingle();
