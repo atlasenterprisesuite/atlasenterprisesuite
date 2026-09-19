@@ -35,3 +35,12 @@ targets:
       - path: Tests
     dependencies:
       - target: AtlasSpatial
+
+schemes:
+  AtlasSpatial:
+    build:
+      targets:
+        AtlasSpatial: all
+    test:
+      targets:
+        - AtlasSpatialTests
