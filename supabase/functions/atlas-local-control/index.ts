@@ -514,6 +514,9 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     if (!(device.capabilities || []).includes(capability)) throw new EdgeError('capability_not_declared', 409);
     const actionPayload = safeActionPayload(body.action_payload);
     const approvalId = clean(body.approval_id, 80) || null;
+    if (capability === 'browser.control' && action === 'oauth_consent' && !['high', 'critical'].includes(risk)) {
+      throw new EdgeError('oauth_consent_high_risk_required', 409);
+    }
     if (['high', 'critical'].includes(risk)) {
       if (!approvalId) throw new EdgeError('approved_execution_approval_required', 409);
       await validateApproval(admin, context.orgId, approvalId, { deviceId, capability, action, actionPayload });
