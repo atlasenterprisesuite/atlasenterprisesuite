@@ -23,10 +23,13 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(edge).toContain('digestApprovalPayload');
   });
 
-  it('rejects secret-shaped telemetry and arbitrary command payloads', () => {
+  it('rejects secret-shaped telemetry and permits only bounded non-secret action payloads', () => {
     expect(edge).toContain('sensitive_event_detail_rejected');
     expect(edge).toContain('sensitive_device_metadata_rejected');
-    expect(edge).not.toContain('command_payload');
+    expect(edge).toContain('safeActionPayload');
+    expect(edge).toContain('sensitive_command_payload_rejected');
+    expect(edge).toContain('command_payload_too_large');
+    expect(edge).toContain('action_payload');
   });
 
   it('provides an explicit non-scanning local agent with a real HTTP health adapter', () => {
