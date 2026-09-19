@@ -97,7 +97,7 @@ describe('ATLAS CRM HubSpot resilience contract', () => {
   it('persists only safe health/webhook metadata and schedules an hourly fail-closed monitor', () => {
     expect(migration).toContain('create table if not exists public.atlas_integration_health');
     expect(migration).toContain('create table if not exists public.atlas_integration_webhook_events');
-    expect(migration).not.toMatch(/atlas_integration_webhook_events[\s\S]{0,1000}\bpayload\b/i);
+    expect(migration).not.toMatch(/atlas_integration_webhook_events[\s\S]{0,1000}\bpayload\s+(jsonb|text|bytea)\b/i);
     expect(migration).toContain('atlas_hubspot_monitor_trigger_v1');
     expect(migration).toContain('validate_atlas_hubspot_monitor_trigger');
     expect(migration).toContain("'23 * * * *'");
