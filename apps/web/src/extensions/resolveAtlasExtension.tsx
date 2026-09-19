@@ -7,6 +7,7 @@ import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { SocialCommandCenterPage } from '../modules/creator/social/SocialCommandCenterPage';
+import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDeskPage';
 import { WebLaunchPage } from '../modules/creator/web/WebLaunchPage';
 import {
   AccountingExperiencePage,
@@ -81,6 +82,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/studio/social') {
     return <RequireAtlasIdentity><SocialCommandCenterPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/studio/write') {
+    return <RequireAtlasIdentity><ATLASWritingDeskPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/studio/web-launch') {
