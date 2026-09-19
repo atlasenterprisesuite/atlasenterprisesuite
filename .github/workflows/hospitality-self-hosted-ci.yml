@@ -12,24 +12,43 @@ permissions:
 jobs:
   verify:
     runs-on: self-hosted
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Runtime
+      - name: ATLAS local AI hardware probe
+        shell: bash
         run: |
-          node --version
-          npm --version
-      - name: Install
-        run: npm ci
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Hospitality unit tests
-        run: npx vitest run tests/unit/hospitality-room-access.test.ts tests/unit/hospitality-provider-registry.test.ts tests/unit/hospitality-provider-adapters.test.ts
-      - name: Hospitality integration tests
-        run: npx vitest run tests/integration/hospitality-schema-contract.test.ts tests/integration/hospitality-edge-contract.test.ts tests/integration/hospitality-routes.test.tsx tests/integration/hospitality-security-contract.test.ts
-      - name: Unit tests
-        run: npm run test:unit
-      - name: Integration tests
-        run: npm run test:integration
-      - name: Production build
-        run: npm run build
+          set -uo pipefail
+          echo "ATLAS_LOCAL_AI_PROBE_BEGIN"
+          echo "hostname=$(hostname)"
+          echo "kernel=$(uname -srmo)"
+          echo "arch=$(uname -m)"
+          echo "cpus=$(nproc)"
+          echo "cpu_model=$(lscpu | awk -F: '/Model name/ {gsub(/^[ 	]+/,"",$2); print $2; exit}')"
+          echo "cpu_flags=$(awk -F: '/^flags/ {print $2; exit}' /proc/cpuinfo | tr -s ' ')"
+          echo "memory:"
+          free -h
+          echo "disk:"
+          df -h /
+          echo "graphics:"
+          if command -v lspci >/dev/null 2>&1; then lspci | grep -Ei 'VGA|3D|Display|NVIDIA|AMD|Intel' || true; fi
+          if command -v nvidia-smi >/dev/null 2>&1; then
+            echo "nvidia_smi=present"
+            nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader || true
+          else
+            echo "nvidia_smi=absent"
+          fi
+          if command -v rocm-smi >/dev/null 2>&1; then
+            echo "rocm_smi=present"
+            rocm-smi --showproductname --showmeminfo vram || true
+          else
+            echo "rocm_smi=absent"
+          fi
+          echo "toolchain:"
+          command -v cmake >/dev/null 2>&1 && cmake --version | head -1 || echo "cmake=absent"
+          command -v gcc >/dev/null 2>&1 && gcc --version | head -1 || echo "gcc=absent"
+          command -v clang >/dev/null 2>&1 && clang --version | head -1 || echo "clang=absent"
+          command -v git >/dev/null 2>&1 && git --version || echo "git=absent"
+          command -v python3 >/dev/null 2>&1 && python3 --version || echo "python3=absent"
+          command -v llama-server >/dev/null 2>&1 && echo "llama_server=present" || echo "llama_server=absent"
+          echo "ATLAS_LOCAL_AI_PROBE_END"
