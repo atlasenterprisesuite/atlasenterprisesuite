@@ -67,6 +67,24 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('blocked-cross-origin-redirect');
   });
 
+  it('verifies exact commit convergence without requiring one provider Version ID', () => {
+    const verifier = read(verifierPath);
+    const cloudflareWorkflow = read('.github/workflows/cloudflare-deploy.yml');
+    const authorizedVerifier = read(authorizedVerifierPath);
+
+    expect(verifier).toContain('observed_version_ids: versionIds');
+    expect(verifier).toContain('multi_version_same_sha');
+    expect(verifier).not.toContain('versionIds.size === 1');
+
+    expect(cloudflareWorkflow).toContain('version_ids=$DIRECT_VERSION_IDS');
+    expect(cloudflareWorkflow).toContain('observed_version_ids=$PRODUCTION_VERSION_IDS');
+    expect(cloudflareWorkflow).not.toContain('served a different Cloudflare Version ID');
+
+    expect(authorizedVerifier).toContain('observedVersionIds');
+    expect(authorizedVerifier).toContain('Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha');
+    expect(authorizedVerifier).not.toContain('result.atlas_version_id === observedVersionId');
+  });
+
   it('exposes the portable verifier through package scripts', () => {
     const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
     expect(pkg.scripts?.['verify:production:global']).toBe(

@@ -259,11 +259,10 @@ async function main() {
     challengeFailures[0].path === '/' &&
     nonChallengeFailures.length === 0;
   const versionEvidence = requiredResults.filter((entry) => entry.ok);
-  const versionIds = new Set(versionEvidence.map((entry) => entry.atlas_version_id).filter(Boolean));
+  const versionIds = [...new Set(versionEvidence.map((entry) => entry.atlas_version_id).filter(Boolean))];
   const productionCommitShaVerified =
     Boolean(args.expectedSha) &&
     versionEvidence.length > 0 &&
-    versionIds.size === 1 &&
     versionEvidence.every(
       (entry) =>
         Boolean(entry.atlas_version_id) &&
@@ -296,6 +295,8 @@ async function main() {
       critical_network_routes_reachable: criticalNetworkRoutesReachable,
       protected_routes_enforced: protectedRoutesEnforced,
       production_commit_sha_verified: productionCommitShaVerified,
+      observed_version_ids: versionIds,
+      multi_version_same_sha: productionCommitShaVerified && versionIds.length > 1,
       classified_root_challenge_deferred: challengeDeferred,
       required_routes: requiredResults,
       protected_routes: protectedResults
