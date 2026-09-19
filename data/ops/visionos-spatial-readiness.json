@@ -23,5 +23,14 @@
     "destination route must pass native fail-closed allowlist",
     "canonical web origin is https://www.atlasenterprisesuite.com",
     "signing secrets must never be committed"
-  ]
+  ],
+  "sdk_typecheck_state": "verified",
+  "sdk_typecheck_evidence": {
+    "xcode": "26.6",
+    "visionos_sdk": "26.5",
+    "main_commit": "dac75b1c7e06e9df9300851f6966d647f63f283c",
+    "workflow_run": 35420181005
+  },
+  "simulator_build_state": "verification-required",
+  "simulator_launch_state": "verification-required"
 }
