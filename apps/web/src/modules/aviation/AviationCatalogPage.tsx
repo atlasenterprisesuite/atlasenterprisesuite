@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AVIATION_CONCEPTS } from './aviation-concepts';
 import { filterAviationConcepts } from './aviation-catalog';
 import type { AviationCategory } from './aviation-model';
@@ -105,6 +106,13 @@ export function AviationCatalogPage() {
                   <span>Certification: Unverified</span>
                   <span>Investment: Not configured</span>
                 </div>
+                <Link
+                  className="aviation-open-aircraft"
+                  aria-label={`Open ${aircraft.modelName}`}
+                  to={`/mobility/aviation/aircraft/${aircraft.id}`}
+                >
+                  Open aircraft
+                </Link>
               </div>
             </article>
           ))}
