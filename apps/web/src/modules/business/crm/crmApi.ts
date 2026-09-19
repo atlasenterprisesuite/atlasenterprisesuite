@@ -9,6 +9,7 @@ export type CrmApiOperation =
   | 'connection.configuration'
   | 'connection.status'
   | 'connection.disconnect'
+  | 'crm.create'
   | 'crm.list'
   | 'crm.search'
   | 'crm.get'
