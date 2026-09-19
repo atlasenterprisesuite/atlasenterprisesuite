@@ -3,7 +3,7 @@ name: ATLAS Aviation Intelligence CI
 on:
   push:
     branches:
-      - feat/aviation-intelligence
+      - feat/aviation-intelligence-current-main
     paths:
       - 'apps/web/src/modules/aviation/**'
       - 'apps/web/src/modules/registry.ts'
