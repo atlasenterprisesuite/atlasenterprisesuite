@@ -42,6 +42,8 @@ describe('HubSpot developer project contract', () => {
       'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-crm-hubspot'
     ]);
     expect(app.config.auth.requiredScopes).toEqual([...HUBSPOT_P0_SCOPES]);
+    expect(app.config.auth.requiredScopes).toContain('crm.objects.tickets.read');
+    expect(app.config.auth.requiredScopes).not.toContain('tickets');
     expect(app.config.auth.optionalScopes).toEqual([]);
     expect(app.config.auth.conditionallyRequiredScopes).toEqual([]);
   });
