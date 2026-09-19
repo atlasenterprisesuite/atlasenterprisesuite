@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PortalDestination } from './portalModel';
+import { detectNativeSpatialBridge, requestNativeSpatialPortal, type NativeSpatialBridgeKind } from './nativeSpatialBridge';
 import {
   detectSpatialPortalSupport,
   startSpatialPortalSession,
@@ -26,10 +27,12 @@ export function ImmersivePortalPanel({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sessionRef = useRef<SpatialPortalSession | null>(null);
   const [support, setSupport] = useState<SpatialPortalSupport>(INITIAL_SUPPORT);
+  const [nativeBridge, setNativeBridge] = useState<NativeSpatialBridgeKind>(null);
   const [sessionState, setSessionState] = useState<'idle' | 'starting' | 'running' | 'error'>('idle');
   const [sessionDetail, setSessionDetail] = useState('');
 
   useEffect(() => {
+    setNativeBridge(detectNativeSpatialBridge());
     let cancelled = false;
     detectSpatialPortalSupport()
       .then((result) => {
@@ -91,6 +94,15 @@ export function ImmersivePortalPanel({
     }
   };
 
+  const openNativePortal = () => {
+    if (!destination?.navigable) return;
+    const kind = requestNativeSpatialPortal(destination);
+    if (kind) {
+      setNativeBridge(kind);
+      setSessionDetail(`Native spatial handoff requested through ${kind}.`);
+    }
+  };
+
   const stopSession = async () => {
     const session = sessionRef.current;
     sessionRef.current = null;
@@ -132,6 +144,16 @@ export function ImmersivePortalPanel({
       </div>
 
       <div className="immersive-portal-actions">
+        {nativeBridge ? (
+          <button
+            type="button"
+            className="portal-native"
+            disabled={!destination?.navigable}
+            onClick={openNativePortal}
+          >
+            Open native spatial portal
+          </button>
+        ) : null}
         <button
           type="button"
           className="portal-enter"
@@ -166,7 +188,7 @@ export function ImmersivePortalPanel({
         <span>
           {sessionState === 'running'
             ? 'Walk through the rendered portal plane to open the selected ATLAS destination.'
-            : sessionDetail || support.capability.replaceAll('-', ' ')}
+            : sessionDetail || (nativeBridge ? `native bridge: ${nativeBridge}` : support.capability.replaceAll('-', ' '))}
         </span>
       </div>
     </section>
