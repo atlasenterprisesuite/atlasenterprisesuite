@@ -118,3 +118,40 @@ ATLAS_AI_ZERO_COST_PROVIDERS=atlas-local
 ATLAS does not mark the runtime ready merely because variables exist. The `/health` probe must verify successfully. If `atlas-local` is unavailable, strict zero-cost mode blocks paid fallbacks instead of silently spending money.
 
 “Zero cost” means zero automatic third-party AI API charges. Local hardware, electricity, internet, storage, and optional hosting/tunnel costs remain outside the model API cost boundary.
+
+
+## ATLAS Browser Operator
+
+The Local Agent can expose an explicitly configured Chrome/Chromium browser as an audited `browser-cdp` device. It uses the same enrollment, tenant isolation, command queue, realtime mTLS bus, approval gates and audit stream as other local devices.
+
+Example `devices.json` entry:
+
+```json
+[
+  {
+    "external_id": "atlas-browser",
+    "label": "ATLAS Browser Operator",
+    "device_type": "browser",
+    "adapter": "browser-cdp",
+    "capabilities": ["browser.control"],
+    "metadata": {
+      "allowed_domains": [
+        "hubspot.com",
+        "supabase.co",
+        "atlasenterprisesuite.com"
+      ]
+    }
+  }
+]
+```
+
+Supported browser actions are `navigate`, `read_text`, `click`, `type`, and `submit`. Every command carries a bounded non-secret `action_payload` and is restricted to the device domain allowlist. Password/OTP/token-like typing is blocked and remains a human action. The operator binds Chrome DevTools Protocol only to `127.0.0.1` and launches a dedicated browser profile by default.
+
+Optional environment variables:
+
+- `ATLAS_BROWSER_EXECUTABLE`: explicit Chrome/Chromium executable path.
+- `ATLAS_BROWSER_PROFILE_DIR`: persistent dedicated operator profile.
+- `ATLAS_BROWSER_CDP_PORT`: loopback CDP port, default `9222`.
+- `ATLAS_BROWSER_HEADLESS=true`: optional headless execution. Interactive OAuth usually needs the visible browser profile.
+
+ATLAS must not claim a browser action occurred unless the Local Agent reports the audited command as succeeded.
