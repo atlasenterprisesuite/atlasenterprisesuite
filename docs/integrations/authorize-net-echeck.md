@@ -1,7 +1,7 @@
 # Authorize.net eCheck.Net for ATLAS Pay
 
 Date: 2026-09-18  
-Status: Integrated behind a fail-closed feature gate; production activation requires merchant-side approval and secrets.
+Status: Server adapter integrated behind a fail-closed feature gate; customer-facing eCheck checkout is not yet enabled.
 
 ## Purpose
 
@@ -11,11 +11,13 @@ The implementation supports ACH/eCheck checkout through Authorize.net tokenized 
 
 ## Runtime architecture
 
-Flow:
+Implemented server flow:
 
-`Browser / hosted payment form -> Authorize.net Accept.js -> opaque payment nonce -> ATLAS Commerce -> Authorize.net transaction API -> normalized payment result -> atomic Commerce order commit`
+`Authorize.net Accept.js opaque payment nonce -> ATLAS Commerce -> Authorize.net transaction API -> normalized payment result -> atomic Commerce order commit`
 
-The browser sends only an Authorize.net opaque payment reference to the Commerce API. The server validates that the reference uses `COMMON.ACCEPT.INAPP.PAYMENT`, then submits an `authCaptureTransaction`.
+The Commerce server accepts only an Authorize.net opaque payment reference, validates that it uses `COMMON.ACCEPT.INAPP.PAYMENT`, then submits an `authCaptureTransaction`.
+
+Customer-facing Accept.js bank-data collection is not enabled by this change. The existing public storefront cart therefore remains blocked rather than collecting bank information or fabricating a successful checkout. Enabling public eCheck checkout requires the merchant Public Client Key, a reviewed ACH authorization UX, public checkout scoping, and post-submission reconciliation.
 
 Provider responses are normalized into the shared Commerce payment states. Only explicit accepted results with a provider transaction reference can complete a positive-total order. Declines, failures, provider unavailability, timeouts, held results, malformed responses, and ambiguous outcomes fail closed.
 
