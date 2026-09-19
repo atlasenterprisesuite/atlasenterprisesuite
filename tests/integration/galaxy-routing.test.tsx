@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AtlasShell } from '../../apps/web/src/components/AtlasShell';
 import { resolveAtlasIdentityTarget } from '../../apps/web/src/identity/IdentityPage';
 import { AtlasGalaxyPage } from '../../apps/web/src/modules/galaxy/AtlasGalaxyPage';
+import { ATLAS_MODULES } from '../../apps/web/src/modules/registry';
 
 vi.mock('../../apps/web/src/lib/atlasSession', async () => {
   const actual = await vi.importActual<typeof import('../../apps/web/src/lib/atlasSession')>('../../apps/web/src/lib/atlasSession');
@@ -44,6 +45,12 @@ describe('ATLAS Galaxy routing', () => {
   it('keeps the Enterprise overview public while making Galaxy its primary workspace action', () => {
     expect(resolverSource).toContain("if (pathname === '/') return <EnterpriseExperiencePage />;");
     expect(enterpriseExperienceSource).toContain("{ label: 'Enter ATLAS Galaxy', to: '/galaxy' }");
+  });
+
+  it('preserves every authenticated registry module as an ATLAS Identity return target', () => {
+    for (const module of ATLAS_MODULES.filter((item) => item.requiresAuth)) {
+      expect(resolveAtlasIdentityTarget(module.route)).toBe(module.route);
+    }
   });
 
   it('navigates the CRM constellation node to the canonical protected CRM route', () => {
