@@ -89,7 +89,8 @@ describe('ATLAS CRM HubSpot resilience contract', () => {
       expect(subscriptions).toEqual(expect.arrayContaining([
         expect.objectContaining({ subscriptionType: 'object.creation', objectType, active: true }),
         expect.objectContaining({ subscriptionType: 'object.deletion', objectType, active: true }),
-        expect.objectContaining({ subscriptionType: 'object.propertyChange', objectType, active: true })
+        expect.objectContaining({ subscriptionType: 'object.propertyChange', objectType, active: true }),
+        expect.objectContaining({ subscriptionType: 'object.associationChange', objectType, active: true })
       ]));
     }
   });
