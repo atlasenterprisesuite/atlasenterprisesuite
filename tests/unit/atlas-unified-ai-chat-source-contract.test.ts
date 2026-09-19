@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const indexSource = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
 const openaiSource = readFileSync('supabase/functions/atlas-copilot/openai-responses-adapter.mjs', 'utf8');
 const localSource = readFileSync('supabase/functions/atlas-copilot/atlas-local-responses-adapter.mjs', 'utf8');
+const sovereignFreeSource = readFileSync('supabase/functions/atlas-copilot/atlas-sovereign-free-adapter.mjs', 'utf8');
 const bedrockSource = readFileSync('supabase/functions/atlas-copilot/amazon-bedrock-responses-adapter.mjs', 'utf8');
 
 describe('ATLAS Unified AI source configuration contract', () => {
@@ -19,6 +20,7 @@ describe('ATLAS Unified AI source configuration contract', () => {
 
   it('constructs all governed provider adapters through the registry', () => {
     expect(indexSource).toContain('createAtlasLocalResponsesAdapter');
+    expect(indexSource).toContain('createAtlasSovereignFreeAdapter');
     expect(indexSource).toContain('createOpenAIResponsesAdapter');
     expect(indexSource).toContain('createAmazonBedrockResponsesAdapter');
     expect(indexSource).toContain('createGeminiAdapter');
@@ -34,6 +36,15 @@ describe('ATLAS Unified AI source configuration contract', () => {
     expect(localSource).toContain("backend:'self-hosted'");
     expect(localSource).toContain('/v1/responses');
     expect(localSource).not.toContain('local-secret');
+  });
+
+  it('keeps ATLAS Sovereign Free authenticated, Vault-backed and distinct from physical local inference', () => {
+    expect(indexSource).toContain('atlas_get_sovereign_free_runtime_config');
+    expect(indexSource).toContain("'atlas-sovereign-free'");
+    expect(sovereignFreeSource).toContain("id:'atlas-sovereign-free'");
+    expect(sovereignFreeSource).toContain("backend:'render-free-llama'");
+    expect(sovereignFreeSource).toContain("authorization:`Bearer ${token}`");
+    expect(sovereignFreeSource).not.toContain('render-secret');
   });
 
   it('keeps OpenAI requests on the Responses API and never embeds a secret', () => {
