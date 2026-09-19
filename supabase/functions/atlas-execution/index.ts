@@ -308,6 +308,40 @@ function reviewedAction(task: Record<string, unknown>, step: Record<string, unkn
   };
 }
 
+async function requireCanonicalBrowserConsentApproval(
+  admin: ReturnType<typeof createClient>,
+  context: RequestContext,
+  task: Record<string, unknown>,
+  step: Record<string, unknown>
+) {
+  const payloadVersion = Number(task.version);
+  const payloadDigest = await digestApprovalPayload({
+    payloadVersion,
+    payload: reviewedAction(task, step)
+  });
+  const { data: approval, error } = await admin
+    .from('execution_approvals')
+    .select('id,status,payload_version,payload_digest,required_permission,risk_level,decided_at')
+    .eq('org_id', context.orgId)
+    .eq('tenant_id', context.tenantId)
+    .eq('task_id', String(task.id))
+    .eq('workflow_id', String(task.workflow_id))
+    .eq('status', 'approved')
+    .order('decided_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new EdgeError('persistence_error', 500);
+  if (
+    !approval ||
+    String(approval.required_permission) !== 'execution.approve' ||
+    !['high', 'critical'].includes(String(approval.risk_level)) ||
+    Number(approval.payload_version) !== payloadVersion ||
+    String(approval.payload_digest) !== payloadDigest
+  ) {
+    throw new EdgeError('oauth_consent_approval_required', 409);
+  }
+}
+
 async function completionGate(admin: ReturnType<typeof createClient>, orgId: string, taskId: string) {
   const [stepsResult, evidenceResult, approvalsResult, dependenciesResult] = await Promise.all([
     admin.from('execution_steps').select('id,status,evidence_requirement').eq('org_id', orgId).eq('task_id', taskId),
@@ -760,6 +794,9 @@ async function runtimeUserOperation(req: Request, operation: string, body: JsonO
       const payload = record(step.action_payload);
       const rawEnvelope = record(payload.execution_envelope);
       const rawAction = record(payload.browser_action);
+      if (clean(rawAction.type, 80) === 'oauth_consent') {
+        await requireCanonicalBrowserConsentApproval(admin, context, task, step);
+      }
       const work = parseAtlasWorkContext({ work: record(workflow.context).work });
       const { data: runtimeRows, error: runtimeError } = await admin.from('execution_runtime_registrations')
         .select('id,kind,status,capabilities,last_seen_at').eq('org_id', context.orgId).eq('tenant_id', context.tenantId).eq('status', 'online');
