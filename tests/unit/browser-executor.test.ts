@@ -37,3 +37,14 @@ it('runs deterministic fake browser outcomes without touching a provider', async
   const result = await fake.execute({ executionEnvelope: envelope, action: { type: 'navigate', domain: 'openai.com' } });
   expect(result).toEqual({ state: 'completed', result: { page: 'domain-verification' } });
 });
+
+it('allows an explicit OAuth consent action only when the envelope names it', () => {
+  const consentEnvelope = { ...envelope, allowedDomains: ['hubspot.com'], allowedActions: ['oauth_consent'] };
+  const job = prepareBrowserJob(
+    consentEnvelope,
+    { type: 'oauth_consent', domain: 'app.hubspot.com', target: 'button[type="submit"]' },
+    '2026-09-12T21:00:00Z'
+  );
+  expect(job.action.type).toBe('oauth_consent');
+  expect(job.action.domain).toBe('app.hubspot.com');
+});
