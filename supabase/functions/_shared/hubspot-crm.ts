@@ -2,6 +2,7 @@ import type {
   CrmAssociation,
   CrmAssociationPage,
   CrmAssociationRequest,
+  CrmCreateRequest,
   CrmFieldValue,
   CrmGetRequest,
   CrmListRequest,
@@ -98,6 +99,36 @@ const FIELD_MAP: Record<CrmObjectType, Readonly<Record<string, string>>> = {
     hs_email_text: 'preview',
     hs_timestamp: 'occurredAt',
     hubspot_owner_id: 'ownerId'
+  }
+};
+
+const WRITE_FIELD_MAP: Partial<Record<CrmObjectType, Readonly<Record<string, string>>>> = {
+  contact: {
+    firstName: 'firstname',
+    lastName: 'lastname',
+    email: 'email',
+    phone: 'phone',
+    lifecycleStage: 'lifecyclestage'
+  },
+  company: {
+    name: 'name',
+    domain: 'domain',
+    industry: 'industry',
+    phone: 'phone'
+  },
+  deal: {
+    name: 'dealname',
+    amount: 'amount',
+    currency: 'hs_currency',
+    pipeline: 'pipeline',
+    stage: 'dealstage',
+    closeDate: 'closedate'
+  },
+  ticket: {
+    subject: 'subject',
+    pipeline: 'hs_pipeline',
+    stage: 'hs_pipeline_stage',
+    priority: 'hs_ticket_priority'
   }
 };
 
@@ -312,6 +343,22 @@ function normalizePage(objectType: CrmObjectType, value: unknown): CrmPage {
   };
 }
 
+function providerCreateProperties(
+  objectType: CrmObjectType,
+  fields: Record<string, CrmFieldValue>
+): Record<string, string | number | boolean> {
+  const mapping = WRITE_FIELD_MAP[objectType];
+  if (!mapping) throw new Error('CRM object type is not writable through this adapter');
+  const properties: Record<string, string | number | boolean> = {};
+  for (const [atlasField, providerField] of Object.entries(mapping)) {
+    const value = fields[atlasField];
+    if (value === undefined || value === null || value === '') continue;
+    properties[providerField] = value;
+  }
+  if (Object.keys(properties).length === 0) throw new Error('At least one supported CRM field is required');
+  return properties;
+}
+
 function objectUrl(objectType: CrmObjectType): string {
   return `${CRM_ROOT}/${OBJECT_PATH[objectType]}`;
 }
@@ -396,6 +443,20 @@ export class HubSpotCrmAdapter {
     return normalizeHubSpotRecord(
       request.objectType,
       await requestJson(context, url.toString())
+    );
+  }
+
+  async createObject(
+    context: CrmProviderContext,
+    request: CrmCreateRequest
+  ): Promise<CrmRecord> {
+    const properties = providerCreateProperties(request.objectType, request.fields);
+    return normalizeHubSpotRecord(
+      request.objectType,
+      await requestJson(context, objectUrl(request.objectType), {
+        method: 'POST',
+        body: JSON.stringify({ properties })
+      })
     );
   }
 
