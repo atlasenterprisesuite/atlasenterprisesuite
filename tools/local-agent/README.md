@@ -75,3 +75,46 @@ Provider/device-specific adapters must have a real protocol contract and authori
 ## Distribution integrity
 
 Installer source is versioned in the canonical ATLAS repository. Release packaging must include SHA-256 checksums and GitHub build provenance where the repository plan supports attestations. Apple notarization and Microsoft Authenticode are separate code-signing credentials; ATLAS must not label packages as Apple/Microsoft signed until those credentials and signing workflows are configured.
+
+
+## ATLAS Local AI Runtime — zero external API spend
+
+ATLAS can run model inference on hardware you control instead of sending prompts to a metered AI API. The canonical provider id is `atlas-local`.
+
+The reference launcher uses `llama-server` through `tools/local-agent/atlas-local-ai-runtime.mjs`. ATLAS keeps tenant isolation, RBAC, audit, cost policy and tool approvals outside the model runtime.
+
+Required runtime environment:
+
+- `ATLAS_LOCAL_AI_TOKEN`: random bearer token. Never commit it.
+- Either `ATLAS_LOCAL_AI_MODEL_FILE` for an existing GGUF model or `ATLAS_LOCAL_AI_HF_REPO` for a compatible Hugging Face GGUF repository.
+- `ATLAS_LOCAL_AI_BINARY`: optional path/name for `llama-server`.
+- `ATLAS_LOCAL_AI_HOST`: defaults to `127.0.0.1`.
+- `ATLAS_LOCAL_AI_PORT`: defaults to `8080`.
+- `ATLAS_LOCAL_AI_CONTEXT`: defaults to `32768`.
+- `ATLAS_LOCAL_AI_GPU_LAYERS`: optional integer GPU offload setting.
+
+Start the reference runtime:
+
+```bash
+node tools/local-agent/atlas-local-ai-runtime.mjs
+```
+
+The launcher passes the model runtime API key through `LLAMA_API_KEY` rather than a command-line secret.
+
+Because the deployed Supabase Edge `atlas-copilot` cannot reach a loopback-only service directly, expose the runtime only through an authenticated HTTPS reverse proxy/tunnel when remote ATLAS access is required. Do not expose an unauthenticated inference server to the public internet.
+
+Server-side ATLAS configuration:
+
+```text
+ATLAS_LOCAL_AI_URL=https://<authorized-runtime-host>
+ATLAS_LOCAL_AI_TOKEN=<same-runtime-token>
+ATLAS_LOCAL_AI_MODEL=<runtime model id/alias>
+ATLAS_AI_ENFORCE_ZERO_COST=true
+ATLAS_AI_ALLOW_PAID_SINGLE=false
+ATLAS_AI_ALLOW_COUNCIL=false
+ATLAS_AI_ZERO_COST_PROVIDERS=atlas-local
+```
+
+ATLAS does not mark the runtime ready merely because variables exist. The `/health` probe must verify successfully. If `atlas-local` is unavailable, strict zero-cost mode blocks paid fallbacks instead of silently spending money.
+
+“Zero cost” means zero automatic third-party AI API charges. Local hardware, electricity, internet, storage, and optional hosting/tunnel costs remain outside the model API cost boundary.
