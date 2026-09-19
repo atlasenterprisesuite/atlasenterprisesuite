@@ -35,7 +35,8 @@ describe('ATLAS global production verification', () => {
       '/studio/teleprompter',
       '/studio/web-launch',
       '/studio/write',
-      '/crm'
+      '/crm',
+      '/frontier'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
@@ -158,12 +159,14 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
     expect(authorizedVerifier).toContain("'/voice'");
     expect(authorizedVerifier).toContain("'/health'");
+    expect(authorizedVerifier).toContain("'/frontier'");
     expect(authorizedVerifier).toContain("'/studio/write'");
     expect(authorizedVerifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
     expect(authorizedVerifier).toContain('voice_route_reachable');
     expect(authorizedVerifier).toContain('health_route_reachable');
+    expect(authorizedVerifier).toContain('frontier_route_reachable');
     expect(authorizedVerifier).toContain('jaque_mate_sentinel_route_reachable');
     expect(authorizedVerifier).toContain('studio_writing_route_reachable');
   });
