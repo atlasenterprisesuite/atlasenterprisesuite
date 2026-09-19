@@ -37,7 +37,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - name: Install dependencies for branch verification
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Aviation routing and registry tests
         run: npx vitest run tests/integration/aviation-routing.test.tsx tests/unit/module-registry.test.ts
       - run: npm run typecheck
