@@ -572,12 +572,30 @@ Deno.serve(async (req: Request) => {
   const api = url.searchParams.get('api');
 
   if (req.method === 'GET' && api === 'readiness') {
+    let runtimeState = 'not_configured';
+    let lastErrorCode: string | null = null;
+    let lastVerifiedAt: string | null = null;
+    try {
+      const admin = adminClient();
+      const cfg = await localConfig(admin);
+      runtimeState = String(cfg?.status || 'not_configured');
+      lastErrorCode = cfg?.last_error_code ? String(cfg.last_error_code) : null;
+      lastVerifiedAt = cfg?.last_verified_at ? String(cfg.last_verified_at) : null;
+    } catch {
+      runtimeState = 'control_plane_unavailable';
+    }
     return json({
       ok: true,
       service: 'atlas-local-ai-bootstrap',
       version: VERSION,
       auth: 'github-oidc-main-workflow',
       hostname: HOSTNAME,
+      runtime_state: runtimeState,
+      host_required: runtimeState !== 'verified',
+      last_error_code: lastErrorCode,
+      last_verified_at: lastVerifiedAt,
+      automatic_api_cost_usd: 0,
+      paid_fallback_enabled: false,
       secret_output: false,
     });
   }

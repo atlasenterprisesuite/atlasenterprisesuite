@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync('supabase/migrations/20260919022000_atlas_local_ai_runtime_bootstrap.sql','utf8');
+const offlineState = readFileSync('supabase/migrations/20260919033500_atlas_local_ai_offline_state.sql','utf8');
 const bootstrap = readFileSync('supabase/functions/atlas-local-ai-bootstrap/index.ts','utf8');
 const workflow = readFileSync('.github/workflows/atlas-local-ai-bootstrap.yml','utf8');
 const installer = readFileSync('tools/local-agent/install-local-ai-linux.sh','utf8');
@@ -65,6 +66,18 @@ describe('ATLAS Local AI live bootstrap contract', () => {
     expect(adapter).toContain("'CF-Access-Client-Id'");
     expect(adapter).toContain("'CF-Access-Client-Secret'");
     expect(adapter).toContain("id:'atlas-local'");
+  });
+
+  it('records an explicit offline host state without inventing production readiness', () => {
+    expect(offlineState).toContain("'offline'");
+    expect(offlineState).toContain("'host_offline'");
+    expect(offlineState).toContain("'waiting_for_self_hosted_runner'");
+    expect(offlineState).toContain("'automatic_api_cost_usd', 0");
+    expect(copilot).toContain("state:clean(stored?.status)||'not_configured'");
+    expect(copilot).toContain("host_required:localAi.state!=='verified'");
+    expect(bootstrap).toContain("runtime_state: runtimeState");
+    expect(bootstrap).toContain("host_required: runtimeState !== 'verified'");
+    expect(bootstrap).toContain('paid_fallback_enabled: false');
   });
 
   it('keeps the zero-cost fail-closed boundary explicit', () => {
