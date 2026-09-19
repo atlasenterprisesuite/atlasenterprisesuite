@@ -22,6 +22,8 @@ describe('ATLAS governed browser runtime', () => {
     expect(source).toContain('browser_sensitive_input_denied');
     expect(source).toContain('oauth_consent_requires_approved_action');
     expect(source).toContain("'oauth_consent'");
+    expect(source).toContain("startsWith('text:')");
+    expect(source).toContain('browser_text_target_ambiguous');
   });
 
   it('never sends browser cookies or credentials as result data', () => {
