@@ -5,6 +5,7 @@ const binary=String(process.env.ATLAS_LOCAL_AI_BINARY||'llama-server').trim();
 const modelFile=String(process.env.ATLAS_LOCAL_AI_MODEL_FILE||'').trim();
 const hfRepo=String(process.env.ATLAS_LOCAL_AI_HF_REPO||'').trim();
 const token=String(process.env.ATLAS_LOCAL_AI_TOKEN||'').trim();
+const modelAlias=String(process.env.ATLAS_LOCAL_AI_MODEL_ALIAS||'atlas-local-default').trim();
 const host=String(process.env.ATLAS_LOCAL_AI_HOST||'127.0.0.1').trim();
 const port=String(process.env.ATLAS_LOCAL_AI_PORT||'8080').trim();
 const context=String(process.env.ATLAS_LOCAL_AI_CONTEXT||'32768').trim();
@@ -15,10 +16,10 @@ if(!modelFile&&!hfRepo)throw new Error('ATLAS_LOCAL_AI_MODEL_FILE or ATLAS_LOCAL
 if(!/^\d{2,5}$/.test(port))throw new Error('ATLAS_LOCAL_AI_PORT must be numeric');
 if(!/^\d+$/.test(context))throw new Error('ATLAS_LOCAL_AI_CONTEXT must be numeric');
 
-const args=['--host',host,'--port',port,'-c',context,'--jinja'];
+const args=['--host',host,'--port',port,'-c',context,'--jinja','--alias',modelAlias];
 if(modelFile)args.push('-m',modelFile);
 else args.push('-hf',hfRepo);
-if(gpuLayers&&/^-?\d+$/.test(gpuLayers))args.push('-ngl',gpuLayers);
+if(gpuLayers==='all'||/^-?\d+$/.test(gpuLayers))args.push('-ngl',gpuLayers);
 
 const child=spawn(binary,args,{
   stdio:'inherit',
