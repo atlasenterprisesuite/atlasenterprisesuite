@@ -86,6 +86,11 @@ export type CrmGetRequest = {
   providerId: string;
 };
 
+export type CrmCreateRequest = {
+  objectType: CrmObjectType;
+  fields: Record<string, CrmFieldValue>;
+};
+
 export type CrmAssociationRequest = CrmGetRequest & {
   targetObjectType?: CrmObjectType;
   cursor?: string | null;
