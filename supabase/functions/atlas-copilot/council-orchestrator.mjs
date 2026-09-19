@@ -1,5 +1,5 @@
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
-const LABEL=Object.freeze({'atlas-local':'ATLAS Local',openai:'OpenAI',bedrock:'OpenAI on Amazon Bedrock',gemini:'Gemini','codex-sovereign':'Codex Sovereign'});
+const LABEL=Object.freeze({'atlas-local':'ATLAS Local','atlas-sovereign-free':'ATLAS Sovereign Free',openai:'OpenAI',bedrock:'OpenAI on Amazon Bedrock',gemini:'Gemini','codex-sovereign':'Codex Sovereign'});
 function reconcile(contributions){return contributions.map(item=>`### ${LABEL[item.provider]||item.provider}\n${item.text}`).join('\n\n');}
 export function createCouncilOrchestrator({registry}={}){
   if(!registry)throw new TypeError('council_registry_required');
