@@ -2,7 +2,7 @@
   "component": "ATLAS Spatial for visionOS",
   "bundle_id": "com.atlasenterprisesuite.spatial",
   "source_state": "source-ready",
-  "simulator_state": "verification-required",
+  "simulator_state": "build-verified-launch-required",
   "signed_build_state": "verification-required",
   "physical_device_state": "verification-required",
   "distribution_state": "not-approved",
@@ -31,6 +31,14 @@
     "main_commit": "dac75b1c7e06e9df9300851f6966d647f63f283c",
     "workflow_run": 35420181005
   },
-  "simulator_build_state": "verification-required",
-  "simulator_launch_state": "verification-required"
+  "simulator_build_state": "verified",
+  "simulator_launch_state": "verification-required",
+  "simulator_build_evidence": {
+    "xcode": "26.6",
+    "visionos_simulator_sdk": "26.5",
+    "branch_head": "aa1f5a5f34e727566496985c38541564cf025907",
+    "workflow_run": 35420266456,
+    "project_generation": "xcodegen",
+    "code_signing": "disabled"
+  }
 }
