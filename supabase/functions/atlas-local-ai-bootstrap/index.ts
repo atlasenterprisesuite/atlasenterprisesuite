@@ -1,14 +1,15 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createGitHubOidcScope } from '../_shared/github-oidc-scope.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
-const OWNER = 'atlasenterprisesuite';
-const AUDIENCE = 'atlas-local-ai-bootstrap';
-const WORKFLOW_REFS = new Set([
-  `${REPO}/.github/workflows/atlas-local-ai-bootstrap.yml@refs/heads/main`,
-  `${REPO}/.github/workflows/atlas-render-local-ai-verify.yml@refs/heads/main`,
+const GITHUB_SCOPE = createGitHubOidcScope([
+  'atlas-local-ai-bootstrap.yml',
+  'atlas-render-local-ai-verify.yml'
 ]);
+const REPO = GITHUB_SCOPE.canonicalRepository;
+const AUDIENCE = 'atlas-local-ai-bootstrap';
+const WORKFLOW_REFS = GITHUB_SCOPE.workflowRefs;
 const HOSTNAME = 'local-ai.atlasenterprisesuite.com';
 const ZONE_NAME = 'atlasenterprisesuite.com';
 const TUNNEL_NAME = 'atlas-local-ai-runtime';
@@ -17,7 +18,7 @@ const ACCESS_TOKEN_NAME = 'ATLAS Local AI Service Auth';
 const MODEL_HF_REPO = 'ggml-org/Qwen3.5-0.8B-GGUF:Q4_0';
 const MODEL_ALIAS = 'atlas-local-default';
 const LOCAL_CONTEXT = 8192;
-const VERSION = 3;
+const VERSION = 4;
 
 const HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -107,8 +108,7 @@ async function verifyGitHubOIDC(req: Request) {
     !audiences.includes(AUDIENCE) ||
     Number(payload.exp || 0) <= now ||
     Number(payload.nbf || 0) > now + 30 ||
-    payload.repository !== REPO ||
-    payload.repository_owner !== OWNER ||
+    !GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner) ||
     payload.ref !== 'refs/heads/main' ||
     (!WORKFLOW_REFS.has(workflowRef) && !WORKFLOW_REFS.has(jobWorkflowRef))
   ) {
