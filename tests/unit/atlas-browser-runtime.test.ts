@@ -29,5 +29,7 @@ describe('ATLAS governed browser runtime', () => {
     expect(source).toMatch(/cookie\\|authorization\\|credential/);
     expect(source).not.toContain('Network.getAllCookies');
     expect(source).not.toContain('Storage.getCookies');
+    expect(source).toContain("url.search = ''");
+    expect(source).toContain("url.hash = ''");
   });
 });
