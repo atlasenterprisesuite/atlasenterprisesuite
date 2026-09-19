@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createOpenAIResponsesAdapter } from '../../supabase/functions/atlas-copilot/openai-responses-adapter.mjs';
 import { createAtlasLocalResponsesAdapter } from '../../supabase/functions/atlas-copilot/atlas-local-responses-adapter.mjs';
 import { createAtlasSovereignFreeAdapter } from '../../supabase/functions/atlas-copilot/atlas-sovereign-free-adapter.mjs';
+import { createAtlasSovereignFreeAdapter } from '../../supabase/functions/atlas-copilot/atlas-sovereign-free-adapter.mjs';
 import { createAmazonBedrockResponsesAdapter } from '../../supabase/functions/atlas-copilot/amazon-bedrock-responses-adapter.mjs';
 import { createGeminiAdapter } from '../../supabase/functions/atlas-copilot/gemini-adapter.mjs';
 import { createCodexSovereignAdapter } from '../../supabase/functions/atlas-copilot/codex-sovereign-adapter.mjs';
@@ -53,6 +54,38 @@ describe('ATLAS Unified AI provider adapters', () => {
       verified: false,
       error: 'provider_not_configured',
     });
+  });
+
+  it('runs ATLAS Sovereign Free only after external verification state is recorded', async () => {
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer sovereign-secret');
+      return new Response(JSON.stringify({
+        id: 'resp_sovereign_free',
+        model: 'atlas-sovereign-free',
+        output: [{ content: [{ type: 'output_text', text: 'sovereign-free-ok' }] }],
+        usage: {},
+      }), { status: 200 });
+    });
+    const adapter = createAtlasSovereignFreeAdapter({
+      baseUrl: 'https://atlas-sovereign-free.example',
+      token: 'sovereign-secret',
+      models: { balanced: 'atlas-sovereign-free' },
+      state: 'verified',
+      fetchFn,
+    });
+    expect(adapter.descriptor()).toMatchObject({ id: 'atlas-sovereign-free', configured: true, backend: 'render-free-llama' });
+    expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
+    expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('sovereign-free-ok');
+  });
+
+  it('fails closed when sovereign free is configured but has not passed real inference verification', async () => {
+    const adapter = createAtlasSovereignFreeAdapter({
+      baseUrl: 'https://atlas-sovereign-free.example',
+      token: 'sovereign-secret',
+      models: { balanced: 'atlas-sovereign-free' },
+      state: 'provisioning',
+    });
+    await expect(adapter.probe({ profile: 'balanced' })).resolves.toMatchObject({ verified: false, error: 'provider_verification_required' });
   });
 
   it('runs ATLAS Sovereign Free only after external verification state is recorded', async () => {
