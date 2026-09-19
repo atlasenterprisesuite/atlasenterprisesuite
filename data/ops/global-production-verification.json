@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -13,7 +13,8 @@
     "/studio/teleprompter",
     "/studio/web-launch",
     "/studio/write",
-    "/crm"
+    "/crm",
+    "/events"
   ],
   "critical_network_routes": [
     "/business/network",
@@ -25,11 +26,7 @@
   "protected_routes": [
     {
       "path": "/deployment.json",
-      "allowed_statuses": [
-        302,
-        401,
-        403
-      ]
+      "allowed_statuses": [302, 401, 403]
     }
   ]
 }
