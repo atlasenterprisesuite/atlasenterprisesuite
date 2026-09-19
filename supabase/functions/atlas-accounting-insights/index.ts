@@ -31,11 +31,17 @@ function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: corsHeaders(req) });
 }
 
+function bearerToken(req: Request) {
+  const authorization = req.headers.get('authorization') || '';
+  const match = authorization.match(/^Bearer\\s+(.+)$/i);
+  return match?.[1]?.trim() || '';
+}
+
 function userClient(req: Request) {
   const authorization = req.headers.get('authorization') || '';
   return createClient(SUPABASE_URL, PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { authorization } }
+    global: { headers: { Authorization: authorization } }
   });
 }
 
@@ -73,7 +79,8 @@ async function visibleCount(client: any, table: string, orgId: string) {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
-  if (!req.headers.get('authorization')) return json(req, { ok: false, error: 'authentication_required' }, 401);
+  const token = bearerToken(req);
+  if (!token) return json(req, { ok: false, error: 'authentication_required' }, 401);
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -82,7 +89,7 @@ Deno.serve(async (req: Request) => {
     if (!orgId) return json(req, { ok: false, error: 'org_id_required' }, 400);
 
     const client = userClient(req);
-    const { data: userData, error: userError } = await client.auth.getUser();
+    const { data: userData, error: userError } = await client.auth.getUser(token);
     const user = userData?.user;
     if (userError || !user) return json(req, { ok: false, error: 'invalid_session' }, 401);
 
