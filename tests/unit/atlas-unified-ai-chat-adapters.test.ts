@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createOpenAIResponsesAdapter } from '../../supabase/functions/atlas-copilot/openai-responses-adapter.mjs';
+import { createAtlasLocalResponsesAdapter } from '../../supabase/functions/atlas-copilot/atlas-local-responses-adapter.mjs';
 import { createAmazonBedrockResponsesAdapter } from '../../supabase/functions/atlas-copilot/amazon-bedrock-responses-adapter.mjs';
 import { createGeminiAdapter } from '../../supabase/functions/atlas-copilot/gemini-adapter.mjs';
 import { createCodexSovereignAdapter } from '../../supabase/functions/atlas-copilot/codex-sovereign-adapter.mjs';
@@ -8,6 +9,45 @@ const context = { organization_id: 'org-1', user_id: 'user-1' };
 const route = { profile: 'balanced', capabilities: ['generation'] };
 
 describe('ATLAS Unified AI provider adapters', () => {
+  it('runs ATLAS Local through a verified self-hosted Responses-compatible runtime', async () => {
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/health')) return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
+      expect(url).toBe('https://local-ai.example/v1/responses');
+      const body = JSON.parse(String(init?.body));
+      expect(body.model).toBe('local-model');
+      expect(body.store).toBe(false);
+      expect(String(body.instructions)).toContain('ATLAS LOCAL RUNTIME PROFILE');
+      return new Response(JSON.stringify({
+        id: 'local_resp_1',
+        model: 'local-model',
+        output: [{ content: [{ type: 'output_text', text: 'local-ok' }] }],
+        usage: { input_tokens: 4, output_tokens: 2 },
+      }), { status: 200 });
+    });
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      token: 'local-secret',
+      models: { balanced: 'local-model' },
+      fetchFn,
+    });
+    expect(adapter.descriptor()).toMatchObject({ id: 'atlas-local', configured: true, backend: 'self-hosted' });
+    expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
+    expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('local-ok');
+  });
+
+  it('fails closed when ATLAS Local has no authenticated runtime configuration', async () => {
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      models: { balanced: 'local-model' },
+    });
+    expect(adapter.descriptor().configured).toBe(false);
+    await expect(adapter.probe({ profile: 'balanced' })).resolves.toMatchObject({
+      configured: false,
+      verified: false,
+      error: 'provider_not_configured',
+    });
+  });
+
   it('does not invent an OpenAI model when none is configured', () => {
     const adapter = createOpenAIResponsesAdapter({ apiKey: 'secret', models: {} });
     expect(adapter.descriptor().models).toEqual({ fast: null, balanced: null, deep: null });
