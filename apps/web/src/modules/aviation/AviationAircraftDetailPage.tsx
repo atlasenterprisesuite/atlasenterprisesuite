@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AVIATION_CONCEPTS } from './aviation-concepts';
 import { classifyEvidenceState } from './aviation-evidence';
+import { classifyInvestmentFreshness, getOfficialInvestmentAction } from './aviation-investment';
 import type { AviationConcept } from './aviation-model';
 
 const TABS = [
@@ -60,11 +61,27 @@ function DetailPanel({ aircraft, tab }: { aircraft: AviationConcept; tab: Aircra
   }
 
   if (tab === 'Investment') {
+    const freshness = classifyInvestmentFreshness(aircraft.investment);
+    const officialAction = getOfficialInvestmentAction(aircraft.investment);
+
     return (
       <div className="aviation-detail-panel">
         <h2>Investment intelligence</h2>
-        <p>Investment data is not configured for this internal concept.</p>
-        <div className="notice strong">ATLAS does not execute securities transactions from this workspace.</div>
+        <p>{freshness === 'not_configured' ? 'Investment data is not configured for this internal concept.' : `Investment evidence state: ${freshness}.`}</p>
+        <div className="notice strong">
+          Early-stage investments may be illiquid and may result in total loss. ATLAS does not execute securities transactions from this workspace.
+        </div>
+        {officialAction ? (
+          <a
+            className="aviation-open-aircraft"
+            href={officialAction}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open official offering source"
+          >
+            Open official offering source
+          </a>
+        ) : null}
       </div>
     );
   }
