@@ -25,6 +25,7 @@ describe('ATLAS global production verification', () => {
     expect(contract.default_mode).toBe('fail-closed');
     expect(contract.public_routes).toEqual([
       '/',
+      '/suite',
       '/identity?app=%2Ffinance',
       '/finance',
       '/finance/accounting/reports/automotive-sales',
