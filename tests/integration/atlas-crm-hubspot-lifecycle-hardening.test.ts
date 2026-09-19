@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   completeHubSpotConnection,
+  disconnectHubSpotConnection,
   prepareHubSpotConnection,
   refreshHubSpotConnectionCredential,
   type HubSpotLifecycleDependencies,
@@ -191,6 +192,35 @@ describe('HubSpot OAuth lifecycle hardening', () => {
     });
     expect(refreshCalls).toBe(1);
     expect(refreshed.accessToken).toBe('refreshed-access');
+  });
+
+  it('can disconnect and then complete a fresh OAuth reconnect without reusing the old credential', async () => {
+    const scopes = ['oauth', 'crm.objects.contacts.read', 'crm.objects.companies.read', 'crm.objects.deals.read', 'crm.objects.tickets.read'];
+    const store = new Store();
+    const lifecycle = deps(store, scopes);
+    lifecycle.oauth = {
+      ...oauth(scopes),
+      async revokeToken() {}
+    };
+
+    const firstState = await prepared(store, lifecycle);
+    await completeHubSpotConnection({ state: firstState, code: 'code-1', deps: lifecycle });
+    const firstCredentialId = store.connection?.credential_ref;
+    expect(firstCredentialId).toBe('credential-1');
+
+    const disconnected = await disconnectHubSpotConnection({
+      organizationId: orgId,
+      actorUserId: 'user-a',
+      deps: lifecycle
+    });
+    expect(disconnected.state).toBe('revoked');
+    expect(store.credential).toBeNull();
+
+    const secondState = await prepared(store, lifecycle);
+    const reconnected = await completeHubSpotConnection({ state: secondState, code: 'code-2', deps: lifecycle });
+    expect(reconnected.state).toBe('connected');
+    expect(store.connection?.credential_ref).toBe('credential-1');
+    expect(store.connection?.revoked_at).toBeNull();
   });
 
   it('never returns provider access or refresh tokens in connection view', async () => {
