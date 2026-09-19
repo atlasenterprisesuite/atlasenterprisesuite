@@ -23,10 +23,12 @@ Provider responses are normalized into the shared Commerce payment states. Only 
 
 Authorize.net credentials are server-only and reuse the existing Supabase Vault-backed ATLAS secret store.
 
-Required Vault secret names:
+Required Vault secret names are organization-scoped:
 
-- `authorize_net_api_login_id`
-- `authorize_net_transaction_key`
+- `authorize_net_{org_id}_api_login_id`
+- `authorize_net_{org_id}_transaction_key`
+
+Each ATLAS organization therefore resolves its own merchant credentials; one tenant cannot silently reuse another tenant's Authorize.net account.
 
 Do not place either value in browser environment variables, source files, GitHub commits, logs, screenshots, or client storage.
 
@@ -59,7 +61,7 @@ Use sandbox first. Switch to production only after merchant approval, production
 Before enabling production:
 
 1. Confirm eCheck.Net approval in the Authorize.net merchant account.
-2. Store the two credentials in ATLAS Vault under the exact names above.
+2. Store the two credentials in ATLAS Vault under the exact organization-scoped names above.
 3. Run with `ATLAS_AUTHORIZE_NET_ENVIRONMENT=sandbox` and execute a sandbox eCheck transaction using an Accept.js opaque nonce.
 4. Verify the order stores only provider name, transaction reference, normalized state, amount, currency, and timestamps.
 5. Confirm no bank account/routing values appear in logs, audit evidence, database records, browser storage, or test snapshots.
