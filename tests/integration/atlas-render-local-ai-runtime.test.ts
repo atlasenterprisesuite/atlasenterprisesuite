@@ -63,7 +63,8 @@ describe('ATLAS Render free local AI runtime contract', () => {
 
   it('requires a real response inference before Render becomes verified', () => {
     expect(bootstrap).toContain("source !== 'render-free'");
-    expect(bootstrap).toContain("text.includes('ATLAS_LOCAL_READY')");
+    expect(bootstrap).toContain("if (!inference.ok || !text.trim())");
+    expect(bootstrap).toContain("inference_output_present: true");
     expect(bootstrap).toContain("status: 'verified'");
     expect(workflow).toContain('runs-on: ubuntu-latest');
     expect(workflow).toContain('audience=atlas-local-ai-bootstrap');
