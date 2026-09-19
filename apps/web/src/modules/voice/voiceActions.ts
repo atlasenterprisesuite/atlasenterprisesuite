@@ -28,6 +28,7 @@ const TARGETS: VoiceTarget[] = [
   { route: '/connect', label: 'Connect', aliases: ['connect', 'conecta', 'communications', 'comunicaciones'] },
   { route: '/studio', label: 'Creator Studio', aliases: ['studio', 'creator', 'creator studio', 'estudio'] },
   { route: '/galaxy', label: 'Galaxy', aliases: ['galaxy', 'galaxia'] },
+  { route: '/galaxy/portals', label: 'Portals', aliases: ['portals', 'portal', 'atlas portals', 'portales', 'portal atlas'] },
   { route: '/device-os', label: 'Device OS', aliases: ['device os', 'devices', 'dispositivos'] }
 ];
 
