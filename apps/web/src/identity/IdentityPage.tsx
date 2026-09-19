@@ -25,6 +25,7 @@ const SUPPORTED_PREFIXES = [
   '/hospitality',
   '/insurance',
   '/payroll',
+  '/ride',
   '/studio',
   '/voice',
   '/work'
