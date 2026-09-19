@@ -32,6 +32,18 @@ describe('ATLAS Portals routing', () => {
     expect(css).toContain(':focus-visible');
   });
 
+  it('mounts the progressive immersive spatial controls without bypassing registered navigation', () => {
+    render(
+      <MemoryRouter initialEntries={['/galaxy/portals']}>
+        <Routes>
+          <Route path="/galaxy/portals" element={<AtlasPortalsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('heading', { name: 'Immersive portal' })).toBeInTheDocument();
+    expect(screen.getByText(/native spatial adapter is required|Checking spatial capabilities/i)).toBeInTheDocument();
+  });
+
   it('navigates through a real registered portal destination', () => {
     render(
       <MemoryRouter initialEntries={['/galaxy/portals']}>
