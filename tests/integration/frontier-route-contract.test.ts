@@ -20,4 +20,9 @@ describe('ATLAS FRONTIER route contract', () => {
     expect(api).toContain("'/rest/v1/rpc/frontier_apply_action'");
     expect(api).not.toContain('/rest/v1/frontier_runs?on_conflict');
   });
+
+  it('loads durable campaign stage and experience from governed state', () => {
+    expect(api).toContain('campaign_stage');
+    expect(api).toContain('experience');
+  });
 });
