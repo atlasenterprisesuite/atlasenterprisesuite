@@ -168,6 +168,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'frontier',
+    title: 'ATLAS FRONTIER',
+    navLabel: 'Frontier',
+    area: 'Entertainment',
+    route: '/frontier',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed sandbox vertical slice with server-authoritative progression, organization scope and append-only gameplay audit.',
+    showInNavigation: true
+  },
+  {
     id: 'hospitality',
     title: 'ATLAS Hospitality',
     navLabel: 'Hospitality',
