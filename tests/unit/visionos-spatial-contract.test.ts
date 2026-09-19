@@ -10,6 +10,8 @@ const tracking = readFileSync(`${root}/Sources/PortalTraversalMonitor.swift`, 'u
 const policy = readFileSync(`${root}/Sources/PortalDestination.swift`, 'utf8');
 const project = readFileSync(`${root}/project.yml`, 'utf8');
 const readiness = JSON.parse(readFileSync('data/ops/visionos-spatial-readiness.json', 'utf8'));
+const nativeCI = readFileSync('.github/workflows/visionos-spatial-ci.yml', 'utf8');
+const signedArchive = readFileSync('.github/workflows/visionos-signed-archive.yml', 'utf8');
 
 describe('ATLAS visionOS spatial app contract', () => {
   it('defines a native SwiftUI immersive-space application', () => {
@@ -49,9 +51,27 @@ describe('ATLAS visionOS spatial app contract', () => {
     }
   });
 
+  it('builds the generated project against the real visionOS simulator SDK in CI', () => {
+    expect(nativeCI).toContain('runs-on: macos-26');
+    expect(nativeCI).toContain('xcodegen generate');
+    expect(nativeCI).toContain("generic/platform=visionOS Simulator");
+    expect(nativeCI).toContain('CODE_SIGNING_ALLOWED=NO');
+  });
+
+  it('keeps signed archives behind a protected fail-closed release environment', () => {
+    expect(signedArchive).toContain('environment: visionos-release');
+    expect(signedArchive).toContain('Fail closed on missing signing material');
+    expect(signedArchive).toContain('APPLE_CERTIFICATE_P12_BASE64');
+    expect(signedArchive).toContain('APPLE_PROVISIONING_PROFILE_BASE64');
+    expect(signedArchive).toContain('com.atlasenterprisesuite.spatial');
+    expect(signedArchive).toContain('codesign --verify');
+  });
+
   it('fails closed on live readiness until signed physical-device evidence exists', () => {
     expect(readiness.source_state).toBe('source-ready');
-    expect(readiness.simulator_state).toBe('verification-required');
+    expect(readiness.sdk_typecheck_state).toBe('verified');
+    expect(readiness.simulator_build_state).toBe('verification-required');
+    expect(readiness.simulator_launch_state).toBe('verification-required');
     expect(readiness.signed_build_state).toBe('verification-required');
     expect(readiness.physical_device_state).toBe('verification-required');
     expect(readiness.live).toBe(false);
