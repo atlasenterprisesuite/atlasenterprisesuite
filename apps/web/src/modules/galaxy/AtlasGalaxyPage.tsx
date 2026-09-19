@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ATLAS_SESSION_EVENT,
   getCachedAtlasShellOrganization,
@@ -40,6 +40,15 @@ export function AtlasGalaxyPage() {
         <h1>ATLAS Galaxy</h1>
         <p>Navigate the enterprise ecosystem through a truthful spatial view of registered modules and protected destinations.</p>
       </header>
+
+      <Link className="galaxy-portal-launcher" to="/galaxy/portals">
+        <span>
+          <small>Spatial gateway</small>
+          <strong>Open ATLAS Portals</strong>
+          <p>Enter registered modules through the futuristic portal interface while preserving existing identity and readiness gates.</p>
+        </span>
+        <span className="galaxy-portal-launcher-orb" aria-hidden="true" />
+      </Link>
 
       {!organization ? (
         <div className="galaxy-resolution-state" role="status">
