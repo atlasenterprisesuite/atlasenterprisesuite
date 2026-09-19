@@ -17,6 +17,7 @@ describe('Cloudflare public Worker security headers', () => {
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
+    expect(response.headers.get('Permissions-Policy')).toContain('xr-spatial-tracking=(self)');
     expect(assetFetch).toHaveBeenCalledOnce();
     expect(assetFetch).toHaveBeenCalledWith(request);
   });
