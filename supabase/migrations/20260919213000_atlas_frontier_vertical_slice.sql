@@ -59,6 +59,12 @@ create table if not exists public.frontier_events (
 
 create index if not exists frontier_events_org_created_idx on public.frontier_events (org_id, created_at desc);
 
+comment on table public.frontier_runs is
+  'Per-user, organization-scoped ATLAS FRONTIER progression. Direct browser writes are prohibited; the Flow Controller is authoritative.';
+comment on table public.frontier_events is
+  'Append-only ATLAS FRONTIER gameplay audit with idempotency evidence and before/after state snapshots.';
+
+
 alter table public.frontier_runs enable row level security;
 alter table public.frontier_events enable row level security;
 
