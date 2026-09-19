@@ -143,6 +143,14 @@ describe('ATLAS Tool Gateway', () => {
 });
 
 describe('ATLAS AI cost policy', () => {
+  it('fails closed when no provider is selected', () => {
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'auto',
+      providers: [],
+      policy: { enforce_zero_cost: true, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'no_provider_selected' });
+  });
+
   it('allows an explicitly permitted single paid provider', () => {
     expect(evaluateIntelligenceCostPolicy({
       mode: 'openai',
@@ -151,12 +159,28 @@ describe('ATLAS AI cost policy', () => {
     }).decision).toBe('allow');
   });
 
-  it('requires approval for council when council spending is not pre-authorized', () => {
+  it('blocks paid council execution when zero-cost mode is enforced', () => {
     expect(evaluateIntelligenceCostPolicy({
       mode: 'council',
       providers: ['openai', 'gemini'],
-      policy: { allowed_providers: ['openai', 'gemini'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] },
-    })).toMatchObject({ decision: 'approval_required', reason: 'council_cost_approval_required' });
+      policy: { allowed_providers: ['openai', 'gemini'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'paid_provider_blocked_by_zero_cost_policy', estimated_automatic_cost_usd: 0 });
+  });
+
+  it('allows a verified zero-cost provider without paid authorization', () => {
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'auto',
+      providers: ['codex-sovereign'],
+      policy: { allowed_providers: ['codex-sovereign'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: ['codex-sovereign'] },
+    })).toMatchObject({ decision: 'allow', reason: 'zero_cost_provider', estimated_automatic_cost_usd: 0 });
+  });
+
+  it('blocks a paid single provider before any model execution in zero-cost mode', () => {
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'openai',
+      providers: ['openai'],
+      policy: { allowed_providers: ['openai'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'paid_provider_blocked_by_zero_cost_policy', estimated_automatic_cost_usd: 0 });
   });
 
   it('denies providers outside the server policy without substituting another provider', () => {
