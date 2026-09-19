@@ -12,7 +12,7 @@ describe('ATLAS Unified AI Chat UI', () => {
   });
 
   it('offers all unified routing modes and reasoning profiles', () => {
-    for (const value of ['auto', 'atlas-local', 'openai', 'bedrock', 'gemini', 'codex-sovereign', 'council']) {
+    for (const value of ['auto', 'atlas-local', 'atlas-sovereign-free', 'openai', 'bedrock', 'gemini', 'codex-sovereign', 'council']) {
       expect(html).toContain(`value="${value}"`);
     }
     for (const value of ['fast', 'balanced', 'deep']) expect(html).toContain(`value="${value}"`);
