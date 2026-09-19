@@ -229,5 +229,6 @@ export const ATLAS_NAV_ITEMS = [
   ...ATLAS_MODULES
     .filter((module) => module.showInNavigation)
     .map((module) => ({ to: module.route, label: module.navLabel })),
-  { to: '/finance/accounting/accounts-payable', label: 'Payables' }
+  { to: '/finance/accounting/accounts-payable', label: 'Payables' },
+  { to: '/finance/accounting/reports/automotive-sales', label: 'Automotive' }
 ] as const;
