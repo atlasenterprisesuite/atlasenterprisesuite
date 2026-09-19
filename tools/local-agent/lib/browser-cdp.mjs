@@ -167,6 +167,17 @@ function assertLocationAllowed(location,allowedDomains) {
   if (!browserDomainAllowed(url.hostname,allowedDomains)) throw new Error('browser_domain_not_allowed');
 }
 
+function expectedDomain(payload,allowedDomains) {
+  const domain=normalizeHostname(payload?.domain);
+  if (!domain || !browserDomainAllowed(domain,allowedDomains)) throw new Error('browser_expected_domain_required');
+  return domain;
+}
+
+function assertExpectedDomain(location,expected) {
+  const actual=normalizeHostname(location?.domain);
+  if (!actual || actual !== normalizeHostname(expected)) throw new Error('browser_page_domain_mismatch');
+}
+
 function safePublicUrl(value) {
   try {
     const url=new URL(String(value || ''));
@@ -253,7 +264,10 @@ export function validateBrowserCommand(action,payload,allowedDomains) {
       throw new Error('browser_domain_not_allowed');
     }
   }
-  if (['click','type','submit','oauth_consent','read_text'].includes(action)) targetSpec(payload.target);
+  if (['click','type','submit','oauth_consent','read_text'].includes(action)) {
+    targetSpec(payload.target);
+    expectedDomain(payload,allowedDomains);
+  }
   if (action === 'type') {
     if (SENSITIVE_TARGET.test(String(payload.target || ''))) throw new Error('browser_sensitive_input_requires_human');
     if (payload.value === undefined || String(payload.value).length > 4000) throw new Error('browser_type_value_invalid');
@@ -276,6 +290,7 @@ export async function executeBrowserCdpAction(device,action,payload={}) {
     } else {
       const before=await currentLocation(session);
       assertLocationAllowed(before,allowedDomains);
+      assertExpectedDomain(before,expectedDomain(payload,allowedDomains));
       const spec=targetSpec(payload.target);
       if (action === 'read_text') {
         const finder=targetFinderSource(spec);
