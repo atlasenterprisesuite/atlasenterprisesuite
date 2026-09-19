@@ -97,6 +97,8 @@ async function resolveLocalAiRuntime(rt){
     accessClientId:rt.localAiAccessClientId||clean(stored?.access_client_id)||'',
     accessClientSecret:rt.localAiAccessClientSecret||clean(stored?.access_client_secret)||'',
     models,
+    source:clean(stored?.source)||null,
+    metadata:stored?.metadata&&typeof stored.metadata==='object'?stored.metadata:{},
     state:clean(stored?.status)||'not_configured',
     lastErrorCode:clean(stored?.last_error_code),
     lastVerifiedAt:clean(stored?.last_verified_at),
@@ -106,7 +108,7 @@ async function resolveLocalAiRuntime(rt){
 }
 function registryFor(rt,localAi){
   return createProviderRegistry({providers:[
-    createAtlasLocalResponsesAdapter({baseUrl:localAi.baseUrl,token:localAi.token,accessClientId:localAi.accessClientId,accessClientSecret:localAi.accessClientSecret,models:localAi.models,allowUnauthenticated:localAi.allowUnauthenticated,allowInsecure:localAi.allowInsecure,fetchFn:fetch}),
+    createAtlasLocalResponsesAdapter({baseUrl:localAi.baseUrl,token:localAi.token,accessClientId:localAi.accessClientId,accessClientSecret:localAi.accessClientSecret,models:localAi.models,allowUnauthenticated:localAi.allowUnauthenticated,allowInsecure:localAi.allowInsecure,fetchFn:fetch,probeTimeoutMs:localAi.source==='render-free'?90000:15000}),
     createOpenAIResponsesAdapter({apiKey:rt.openaiKey,models:rt.openaiModels,fetchFn:fetch}),
     createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,fetchFn:fetch}),
     createGeminiAdapter({apiKey:rt.geminiKey,models:rt.geminiModels,fetchFn:fetch}),
