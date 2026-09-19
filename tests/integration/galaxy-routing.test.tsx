@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AtlasShell } from '../../apps/web/src/components/AtlasShell';
+import { resolveAtlasIdentityTarget } from '../../apps/web/src/identity/IdentityPage';
 import { AtlasGalaxyPage } from '../../apps/web/src/modules/galaxy/AtlasGalaxyPage';
 
 vi.mock('../../apps/web/src/lib/atlasSession', async () => {
@@ -28,6 +29,15 @@ describe('ATLAS Galaxy routing', () => {
     expect(resolverSource).toContain("pathname === '/galaxy'");
     expect(resolverSource).toContain('<RequireAtlasIdentity>');
     expect(resolverSource).toContain('<AtlasGalaxyPage />');
+  });
+
+  it('uses Galaxy as the default authenticated landing target without taking over the public root', () => {
+    expect(resolveAtlasIdentityTarget(null)).toBe('/galaxy');
+    expect(resolveAtlasIdentityTarget('/')).toBe('/');
+    expect(resolveAtlasIdentityTarget('/galaxy')).toBe('/galaxy');
+    expect(resolveAtlasIdentityTarget('/galaxy/portals')).toBe('/galaxy/portals');
+    expect(resolveAtlasIdentityTarget('/crm')).toBe('/crm');
+    expect(resolveAtlasIdentityTarget('//example.com/galaxy')).toBe('/galaxy');
   });
 
   it('navigates the CRM constellation node to the canonical protected CRM route', () => {
