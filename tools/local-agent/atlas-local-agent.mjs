@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
+import { executeBrowserCdpAction } from './lib/browser-cdp.mjs';
 import {
   consumeEnrollmentFile,
   loadAgentState,
@@ -19,7 +20,7 @@ const REALTIME_URL = String(
   'wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect'
 ).trim();
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const HEARTBEAT_MS = 30_000;
 const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
@@ -46,19 +47,30 @@ function localHostname(hostname) {
 async function readDeviceConfig() {
   const parsed = await readExplicitDevices();
   return parsed.slice(0,100).map((item,index)=>{
+    const adapter = String(item.adapter || 'http-health').trim();
+    const base = {
+      external_id: String(item.external_id || '').trim(),
+      label: String(item.label || '').trim(),
+      device_type: String(item.device_type || (adapter === 'browser-cdp' ? 'browser' : 'service')).trim(),
+      adapter,
+      capabilities: Array.isArray(item.capabilities)
+        ? item.capabilities.map(String)
+        : (adapter === 'browser-cdp' ? ['browser.control'] : ['health.check']),
+      health_status: 'unknown',
+      metadata: item.metadata && typeof item.metadata === 'object' && !Array.isArray(item.metadata) ? item.metadata : {}
+    };
+    if (adapter === 'browser-cdp') {
+      const allowed = Array.isArray(base.metadata.allowed_domains)
+        ? base.metadata.allowed_domains.map((value)=>String(value || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+      if (!allowed.length) throw new Error(`Device ${index} browser-cdp adapter requires metadata.allowed_domains`);
+      return { ...base, metadata: { allowed_domains: [...new Set(allowed)].slice(0,50) } };
+    }
     const endpoint = new URL(String(item.endpoint || ''));
     if (!['http:','https:'].includes(endpoint.protocol) || !localHostname(endpoint.hostname) || endpoint.username || endpoint.password) {
       throw new Error(`Device ${index} endpoint must be an explicit local HTTP(S) URL without embedded credentials`);
     }
-    return {
-      external_id: String(item.external_id || '').trim(),
-      label: String(item.label || '').trim(),
-      device_type: String(item.device_type || 'service').trim(),
-      adapter: String(item.adapter || 'http-health').trim(),
-      capabilities: Array.isArray(item.capabilities) ? item.capabilities.map(String) : ['health.check'],
-      health_status: 'unknown',
-      endpoint: endpoint.toString()
-    };
+    return { ...base, endpoint: endpoint.toString() };
   }).filter(d=>d.external_id && d.label);
 }
 
@@ -103,8 +115,8 @@ async function enroll() {
     platform: PLATFORM,
     agent_version: VERSION,
     installer_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health'],
-    modules: ['device-os','connect','hospitality']
+    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'],
+    modules: ['device-os','connect','hospitality','browser-operator']
   }, false);
   sessionToken = String(result.session_token || '');
   if (!sessionToken) throw new Error('enrollment_did_not_return_session');
@@ -133,8 +145,8 @@ async function heartbeat() {
   const result = await post('agent.heartbeat', {
     platform: PLATFORM,
     agent_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health'],
-    modules: ['device-os','connect','hospitality']
+    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'],
+    modules: ['device-os','connect','hospitality','browser-operator']
   });
   if (result.session_token || result.session_expires_at) await persistSession(result);
 }
@@ -142,6 +154,35 @@ async function heartbeat() {
 async function execute(command) {
   const device = deviceByServerId.get(String(command.device_id));
   if (!device) return {success:false,error_code:'device_not_configured_locally'};
+
+  if (device.adapter === 'browser-cdp' && command.capability === 'browser.control') {
+    try {
+      const outcome = await executeBrowserCdpAction(device,String(command.action || ''),command.action_payload || {});
+      await post('agent.events.append', {
+        device_id: String(command.device_id),
+        event_type: 'browser.action.completed',
+        severity: 'info',
+        success: true,
+        safe_detail: {
+          action: String(command.action || '').slice(0,120),
+          url: String(outcome?.result?.url || '').slice(0,1500),
+          title: String(outcome?.result?.title || '').slice(0,500)
+        }
+      });
+      return {success:true};
+    } catch (error) {
+      const code = String(error?.message || 'browser_action_failed').slice(0,120);
+      await post('agent.events.append', {
+        device_id: String(command.device_id),
+        event_type: 'browser.action.failed',
+        severity: 'warning',
+        success: false,
+        safe_detail: { action: String(command.action || '').slice(0,120), error_code: code }
+      }).catch(()=>{});
+      return {success:false,error_code:code};
+    }
+  }
+
   if (device.adapter !== 'http-health' || command.capability !== 'health.check' || command.action !== 'status.read') {
     return {success:false,error_code:'unsupported_adapter_or_action'};
   }
