@@ -28,9 +28,13 @@ import type {
 export const HUBSPOT_P0_SCOPES = [
   'oauth',
   'crm.objects.contacts.read',
+  'crm.objects.contacts.write',
   'crm.objects.companies.read',
+  'crm.objects.companies.write',
   'crm.objects.deals.read',
-  'tickets'
+  'crm.objects.deals.write',
+  'crm.objects.tickets.read',
+  'crm.objects.tickets.write'
 ] as const;
 
 export type HubSpotLifecycleErrorCode =
