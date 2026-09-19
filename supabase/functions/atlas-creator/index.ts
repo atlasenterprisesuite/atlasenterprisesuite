@@ -14,6 +14,7 @@ import {
 } from './_shared/recordings.ts';
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
 import {
+  createAssetPreview,
   getContentWorkspace,
   getCreativePlan,
   getWebLaunchBlueprint,
@@ -31,7 +32,7 @@ import {
   writeCreatorAudit
 } from './_shared/repository.ts';
 
-const VERSION = '2026-09-18.2';
+const VERSION = '2026-09-18.3';
 const PROVIDER_IDS = new Set<ProviderId>(['seedance', 'veo', 'kling', 'wan', 'minimax']);
 
 function json(body: unknown, status = 200) {
@@ -270,6 +271,23 @@ async function handleAssets(req: Request, url: URL) {
   return json({ ok: true, assets: await listAssets(ctx.orgId, productionId) });
 }
 
+async function handleAssetPreview(req: Request, url: URL) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const assetId = String(url.searchParams.get('asset_id') || '').trim();
+  if (!assetId) throw creatorError('asset_id_required', 422);
+  const result = await createAssetPreview(ctx.orgId, assetId);
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.asset.previewed', assetId, {
+    asset_id: assetId,
+    expires_in: result.expiresIn
+  });
+  return json({
+    ok: true,
+    asset: result.asset,
+    signed_url: result.signedUrl,
+    expires_in: result.expiresIn
+  });
+}
+
 async function handleRecordingReadiness(req: Request) {
   const ctx = await creatorContext(req, 'creator.read');
   const storage = await creatorRecordingReadiness();
@@ -373,6 +391,7 @@ async function route(req: Request) {
   if (api === 'creative-plan' && req.method === 'GET') return handleCreativePlan(req, url);
   if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
   if (api === 'assets') return handleAssets(req, url);
+  if (api === 'asset-preview' && req.method === 'GET') return handleAssetPreview(req, url);
   if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
   if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
   if (api === 'recording-download' && req.method === 'GET') return handleRecordingDownload(req, url);
