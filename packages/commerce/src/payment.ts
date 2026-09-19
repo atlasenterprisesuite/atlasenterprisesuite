@@ -2,6 +2,7 @@ export type PaymentAuthorizationInput = {
   amountMinor: bigint;
   currency: string;
   paymentMethodReference: string;
+  idempotencyKey?: string;
 };
 
 export type NormalizedPaymentResult = {
