@@ -21,7 +21,8 @@ type DisplayMessage = {
 };
 
 const MODES: Array<{ value: AssistantMode; label: string }> = [
-  { value: 'auto', label: 'Auto' },
+  { value: 'auto', label: 'Auto · $0 first' },
+  { value: 'atlas-local', label: 'ATLAS Local · $0 API' },
   { value: 'openai', label: 'ChatGPT / OpenAI' },
   { value: 'bedrock', label: 'OpenAI on AWS Bedrock' },
   { value: 'gemini', label: 'Gemini' },
@@ -183,7 +184,7 @@ export function UnifiedAIChatPage() {
         <div>
           <p className="eyebrow">ATLAS Assistant · Intelligence Platform</p>
           <h1>ATLAS Unified AI Workspace</h1>
-          <p>One authenticated workspace for Auto routing, OpenAI, Amazon Bedrock, Gemini, Codex Sovereign and Council mode. Provider availability is always read from server-verified readiness.</p>
+          <p>One authenticated workspace for zero-cost ATLAS Local inference plus governed OpenAI, Amazon Bedrock, Gemini, Codex Sovereign and Council modes. Provider availability is always read from server-verified readiness.</p>
         </div>
       </header>
 
@@ -279,6 +280,9 @@ export function UnifiedAIChatPage() {
             <div><dt>Role</dt><dd>{status?.role || 'Loading…'}</dd></div>
             <div><dt>Storage</dt><dd>{status?.storage_state || 'Loading…'}</dd></div>
             <div><dt>Verified providers</dt><dd>{verifiedProviders.length}</dd></div>
+            <div><dt>Zero-cost policy</dt><dd>{status?.cost_policy?.enforce_zero_cost === true ? 'Enforced' : 'Not enforced'}</dd></div>
+            <div><dt>Zero-cost runtime</dt><dd>{status?.cost_policy?.zero_cost_ready ? 'Verified' : 'Not verified'}</dd></div>
+            <div><dt>Automatic paid calls</dt><dd>{status?.cost_policy?.automatic_paid_calls ? 'Allowed' : 'Blocked'}</dd></div>
             <div><dt>Council policy</dt><dd>{councilConfigured ? 'Pre-authorized' : 'Approval may be required'}</dd></div>
           </dl>
           <a className="atlas-ai-link" href="https://chatgpt.com" target="_blank" rel="noopener noreferrer">Open ChatGPT separately</a>
