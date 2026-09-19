@@ -45,6 +45,14 @@ describe('HubSpot developer project contract', () => {
     expect(app.config.distribution).toBe('private');
   });
 
+  it('uploads and deploys the HubSpot project from the authenticated local CLI', () => {
+    expect(repairScript).toContain('hs.cmd project upload');
+    expect(repairScript).toContain('hs.cmd project deploy');
+    expect(repairScript.indexOf('hs.cmd project upload')).toBeLessThan(
+      repairScript.indexOf('hs.cmd project deploy')
+    );
+  });
+
   it('configures realtime webhooks on the same governed callback', () => {
     expect(webhooks.type).toBe('webhooks');
     expect(webhooks.config.settings.targetUrl).toBe(
