@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   actionAvailability,
   FRONTIER_ACTIONS,
@@ -11,6 +11,7 @@ import {
   type FrontierState
 } from './domain';
 import { executeFrontierAction, loadFrontierRun } from './api';
+import { FrontierWorld3D } from './FrontierWorld3D';
 import './frontier.css';
 
 type RuntimeState = 'loading' | 'ready' | 'saving' | 'blocked';
@@ -24,6 +25,7 @@ export function FrontierRoutes() {
   const [state, setState] = useState<FrontierState>({ ...INITIAL_FRONTIER_STATE });
   const [runtime, setRuntime] = useState<RuntimeState>('loading');
   const [message, setMessage] = useState('Connecting to governed FRONTIER state…');
+  const [buildMode, setBuildMode] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,14 +49,13 @@ export function FrontierRoutes() {
   const missionProgress = useMemo(() => frontierCampaignProgress(state), [state]);
   const explorerRank = useMemo(() => frontierExplorerRank(state), [state]);
   const activeMission = FRONTIER_CAMPAIGN.find((mission) => mission.stage === state.campaignStage) ?? FRONTIER_CAMPAIGN[0];
-  const integrityStyle = { '--frontier-integrity': `${state.skyGridIntegrity}%` } as CSSProperties;
 
   const runAction = async (action: FrontierActionId) => {
-    if (runtime !== 'ready') return;
+    if (runtime !== 'ready') return false;
     const availability = actionAvailability(state, action);
     if (!availability.enabled) {
       setMessage(availability.reason || 'Action unavailable.');
-      return;
+      return false;
     }
     setRuntime('saving');
     setMessage('Flow Controller validating campaign stage, organization, permission, resources and idempotency…');
@@ -63,9 +64,11 @@ export function FrontierRoutes() {
       setState(next);
       setRuntime('ready');
       setMessage(next.campaignStage >= 5 ? 'Awakening campaign complete. Mundos vivos remains gated for the next production phase.' : 'Action committed, audited and campaign progress recalculated.');
+      return true;
     } catch (error) {
       setRuntime('blocked');
       setMessage(error instanceof Error ? error.message : 'Flow Controller rejected the action.');
+      return false;
     }
   };
 
@@ -127,20 +130,14 @@ export function FrontierRoutes() {
       </div>
 
       <div className="frontier-layout">
-        <div className="frontier-world" style={integrityStyle} aria-label="ATLAS FRONTIER world status">
-          <div className="frontier-sky-grid"><i /><i /><i /></div>
-          <div className="frontier-city"><span /><span /><span /><span /></div>
-          <div className="frontier-habitat" data-built={state.habitats > 0}><span>HABITAT {state.habitats}</span></div>
-          <div className="frontier-node frontier-node-aetherium"><span>A</span></div>
-          <div className="frontier-node frontier-node-alloy"><span>AL</span></div>
-          <div className="frontier-node frontier-node-bio"><span>B</span></div>
-          <div className="frontier-explorer"><span className="frontier-explorer-head" /><span className="frontier-explorer-body" /></div>
-          <div className="frontier-integrity">
-            <span>SKY GRID INTEGRITY</span>
-            <strong>{state.skyGridIntegrity}%</strong>
-            <div><i /></div>
-          </div>
-        </div>
+        <FrontierWorld3D
+          state={state}
+          runtimeReady={runtime === 'ready'}
+          buildMode={buildMode}
+          onBuildModeChange={setBuildMode}
+          onAction={runAction}
+          onMessage={setMessage}
+        />
 
         <aside className="frontier-panel">
           <div className="frontier-resources">
@@ -155,7 +152,19 @@ export function FrontierRoutes() {
               const availability = actionAvailability(state, action.id);
               const disabled = runtime !== 'ready' || !availability.enabled;
               return (
-                <button key={action.id} type="button" disabled={disabled} onClick={() => void runAction(action.id)}>
+                <button
+                  key={action.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    if (action.id === 'build_habitat') {
+                      setBuildMode(true);
+                      setMessage('Build mode enabled. Choose a placement point in the 3D world and confirm.');
+                      return;
+                    }
+                    void runAction(action.id);
+                  }}
+                >
                   <span>{action.mode}</span>
                   <strong>{action.label}</strong>
                   <small>{availability.enabled ? action.description : availability.reason}</small>

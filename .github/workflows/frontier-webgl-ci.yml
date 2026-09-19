@@ -1,0 +1,39 @@
+name: ATLAS FRONTIER WebGL CI
+
+on:
+  push:
+    branches: ["feat/frontier-webgl-world"]
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/web/src/modules/frontier/**"
+      - "tests/unit/frontier-*.test.ts"
+      - "tests/integration/frontier-*.test.ts"
+      - ".github/workflows/frontier-webgl-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontier-webgl-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: FRONTIER WebGL gameplay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install
+        run: npm ci
+      - name: Focused FRONTIER tests
+        run: npx vitest run tests/unit/frontier-domain.test.ts tests/unit/frontier-world3d.test.ts tests/integration/frontier-route-contract.test.ts tests/integration/frontier-awakening-campaign.test.ts tests/integration/frontier-webgl-world.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
