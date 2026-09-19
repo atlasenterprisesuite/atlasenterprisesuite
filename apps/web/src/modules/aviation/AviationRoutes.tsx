@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
 import { AviationAircraftDetailPage } from './AviationAircraftDetailPage';
 import { AviationCatalogPage } from './AviationCatalogPage';
+import { AviationCertificationPage } from './AviationCertificationPage';
 import './aviation.css';
 
 const aviationSections: ModuleExperienceSection[] = [
@@ -20,7 +21,7 @@ const aviationSections: ModuleExperienceSection[] = [
         label: 'Certification',
         title: 'Authority-backed status',
         description: 'Certification milestones require regulator or other traceable evidence before ATLAS can promote a status.',
-        status: 'Evidence integration not configured'
+        to: '/mobility/aviation/certification'
       },
       {
         label: 'Investment intelligence',
@@ -74,6 +75,7 @@ export function AviationRoutes() {
       <Route path="/mobility/aviation" element={<AviationHomePage />} />
       <Route path="/mobility/aviation/aircraft" element={<AviationCatalogPage />} />
       <Route path="/mobility/aviation/aircraft/:aircraftId" element={<AviationAircraftDetailPage />} />
+      <Route path="/mobility/aviation/certification" element={<AviationCertificationPage />} />
       <Route path="/mobility/aviation/*" element={<Navigate to="/mobility/aviation" replace />} />
     </Routes>
   );
