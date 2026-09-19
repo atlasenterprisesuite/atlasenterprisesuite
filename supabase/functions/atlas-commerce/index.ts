@@ -1,10 +1,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import {
+  AuthorizeNetPaymentAdapter,
   CommercePaymentError,
   UnavailablePaymentAdapter,
   canonicalCheckoutFingerprint,
-  priceCart
+  evaluatePaymentResult,
+  priceCart,
+  type NormalizedPaymentResult
 } from '../../../packages/commerce/src/index.ts';
+import { getServerSecret } from '../_shared/server-secret-store.ts';
 import {
   commercePermissionsForRole,
   isPublicCommerceOperation,
@@ -22,6 +26,14 @@ const PUBLISHABLE_KEY =
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const ALLOW_ZERO_TOTAL_ORDERS =
   Deno.env.get('ATLAS_COMMERCE_ALLOW_ZERO_TOTAL_ORDERS') === 'true';
+const AUTHORIZE_NET_ECHECK_ENABLED =
+  Deno.env.get('ATLAS_AUTHORIZE_NET_ECHECK_ENABLED') === 'true';
+const AUTHORIZE_NET_ENVIRONMENT =
+  Deno.env.get('ATLAS_AUTHORIZE_NET_ENVIRONMENT') === 'production'
+    ? 'production'
+    : 'sandbox';
+const AUTHORIZE_NET_CURRENCY =
+  (Deno.env.get('ATLAS_AUTHORIZE_NET_CURRENCY') || 'USD').toUpperCase();
 const MAX_REQUEST_BYTES = 64 * 1024;
 
 const ALLOWED_ORIGINS = new Set([
@@ -98,6 +110,40 @@ function adminClient() {
   }
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+
+async function configuredPaymentAdapter() {
+  if (!AUTHORIZE_NET_ECHECK_ENABLED) {
+    return new UnavailablePaymentAdapter();
+  }
+
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    return new UnavailablePaymentAdapter();
+  }
+
+  const [apiLoginId, transactionKey] = await Promise.all([
+    getServerSecret({
+      supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SERVICE_ROLE_KEY,
+      name: 'authorize_net_api_login_id'
+    }),
+    getServerSecret({
+      supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SERVICE_ROLE_KEY,
+      name: 'authorize_net_transaction_key'
+    })
+  ]);
+
+  if (!apiLoginId || !transactionKey) {
+    return new UnavailablePaymentAdapter();
+  }
+
+  return new AuthorizeNetPaymentAdapter({
+    apiLoginId,
+    transactionKey,
+    environment: AUTHORIZE_NET_ENVIRONMENT,
+    currency: AUTHORIZE_NET_CURRENCY
   });
 }
 
@@ -542,26 +588,44 @@ async function checkoutSubmit(
   if (storefrontError) throw new EdgeError('persistence_error', 500);
   if (!storefront) throw new EdgeError('storefront_not_found', 404);
 
+  let paymentResult: NormalizedPaymentResult | null = null;
+
   if (priced.totalMinor > 0n) {
-    const adapter = new UnavailablePaymentAdapter();
+    const adapter = await configuredPaymentAdapter();
     try {
-      await adapter.authorize({
+      paymentResult = await adapter.authorize({
         amountMinor: priced.totalMinor,
         currency: priced.currency,
         paymentMethodReference: requiredText(
           body.paymentMethodReference ?? body.payment_method_reference,
           'payment_method_reference_required',
-          300
-        )
+          4096
+        ),
+        idempotencyKey
       });
     } catch (error) {
-      if (
-        error instanceof CommercePaymentError &&
-        error.code === 'PAYMENT_PROVIDER_UNAVAILABLE'
-      ) {
-        throw new EdgeError('PAYMENT_PROVIDER_UNAVAILABLE', 503);
+      if (error instanceof CommercePaymentError) {
+        if (error.code === 'PAYMENT_PROVIDER_UNAVAILABLE') {
+          throw new EdgeError('PAYMENT_PROVIDER_UNAVAILABLE', 503);
+        }
+        if (
+          error.code === 'PAYMENT_METHOD_REFERENCE_INVALID' ||
+          error.code === 'PAYMENT_CURRENCY_UNSUPPORTED' ||
+          error.code === 'PAYMENT_AMOUNT_INVALID'
+        ) {
+          throw new EdgeError(error.code, 422);
+        }
+        if (error.code === 'PAYMENT_FAILED') {
+          throw new EdgeError('PAYMENT_FAILED', 502);
+        }
       }
       throw new EdgeError('PAYMENT_RESULT_AMBIGUOUS', 502);
+    }
+
+    const evaluation = evaluatePaymentResult(paymentResult);
+    if (!evaluation.accepted) {
+      const status = evaluation.code === 'PAYMENT_DECLINED' ? 402 : 502;
+      throw new EdgeError(evaluation.code, status);
     }
   }
 
@@ -642,10 +706,10 @@ async function checkoutSubmit(
     p_shipping_minor: safeMoney(priced.shippingMinor),
     p_tax_minor: safeMoney(priced.taxMinor),
     p_total_minor: safeMoney(priced.totalMinor),
-    p_payment_state: 'captured',
-    p_payment_provider: null,
-    p_payment_provider_reference: null,
-    p_payment_recorded_at: null,
+    p_payment_state: paymentResult?.state ?? 'captured',
+    p_payment_provider: paymentResult?.provider ?? null,
+    p_payment_provider_reference: paymentResult?.providerReference ?? null,
+    p_payment_recorded_at: paymentResult?.recordedAt ?? null,
     p_lines: lines.map((line) => ({
       productId: line.productId,
       variantId: line.variantId,
