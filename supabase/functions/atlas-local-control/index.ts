@@ -73,6 +73,15 @@ function containsSensitiveKey(value: unknown, depth = 0): boolean {
   );
 }
 
+function safeActionPayload(value: unknown) {
+  const payload = record(value);
+  if (containsSensitiveKey(payload)) throw new EdgeError('sensitive_command_payload_rejected', 422);
+  if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > 8192) {
+    throw new EdgeError('command_payload_too_large', 422);
+  }
+  return payload;
+}
+
 function adminClient() {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new EdgeError('server_runtime_not_configured', 503);
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -334,7 +343,7 @@ async function resolveAgent(req: Request): Promise<AgentContext> {
 }
 
 async function validateApproval(admin: ReturnType<typeof createClient>, orgId: string, approvalId: string, command: {
-  deviceId: string; capability: string; action: string;
+  deviceId: string; capability: string; action: string; actionPayload: JsonObject;
 }) {
   const { data: approval, error } = await admin.from('execution_approvals')
     .select('*').eq('id', approvalId).eq('org_id', orgId).eq('status', 'approved').maybeSingle();
@@ -356,7 +365,8 @@ async function validateApproval(admin: ReturnType<typeof createClient>, orgId: s
   if (
     clean(payload.device_id, 80) !== command.deviceId ||
     clean(payload.capability, 120) !== command.capability ||
-    clean(payload.action, 120) !== command.action
+    clean(payload.action, 120) !== command.action ||
+    JSON.stringify(sortApprovalValue(record(payload.action_payload))) !== JSON.stringify(sortApprovalValue(command.actionPayload))
   ) throw new EdgeError('approval_binding_mismatch', 409);
 
   const reviewed = {
@@ -392,7 +402,7 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
 
   if (operation === 'commands.list') {
     requirePermission(context, 'device.agent.read');
-    const { data, error } = await admin.from('atlas_local_device_commands').select('id,org_id,device_id,capability,action,risk_level,approval_id,status,claimed_by_agent_id,claimed_at,finished_at,error_code,correlation_id,created_at')
+    const { data, error } = await admin.from('atlas_local_device_commands').select('id,org_id,device_id,capability,action,action_payload,risk_level,approval_id,status,claimed_by_agent_id,claimed_at,finished_at,error_code,correlation_id,created_at')
       .eq('org_id', context.orgId).order('created_at', { ascending: false }).limit(100);
     if (error) throw new EdgeError('persistence_error', 500);
     return json(req, { ok: true, commands: data || [] });
@@ -502,14 +512,15 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     if (deviceError) throw new EdgeError('persistence_error', 500);
     if (!device) throw new EdgeError('device_not_found', 404);
     if (!(device.capabilities || []).includes(capability)) throw new EdgeError('capability_not_declared', 409);
+    const actionPayload = safeActionPayload(body.action_payload);
     const approvalId = clean(body.approval_id, 80) || null;
     if (['high', 'critical'].includes(risk)) {
       if (!approvalId) throw new EdgeError('approved_execution_approval_required', 409);
-      await validateApproval(admin, context.orgId, approvalId, { deviceId, capability, action });
+      await validateApproval(admin, context.orgId, approvalId, { deviceId, capability, action, actionPayload });
     }
     const { data: command, error } = await admin.from('atlas_local_device_commands').insert({
       org_id: context.orgId, device_id: deviceId, requested_by: context.userId,
-      capability, action, risk_level: risk, approval_id: approvalId,
+      capability, action, action_payload: actionPayload, risk_level: risk, approval_id: approvalId,
       correlation_id: clean(req.headers.get('x-request-id'), 120) || crypto.randomUUID()
     }).select('*').single();
     if (error || !command) throw new EdgeError('command_enqueue_failed', 500);
@@ -650,7 +661,7 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
     const { data: claimed, error: claimError } = await admin.from('atlas_local_device_commands')
       .update({ status: 'claimed', claimed_by_agent_id: agentId, claimed_at: now })
       .eq('id', candidate.id).eq('org_id', orgId).eq('status', 'queued')
-      .select('id,device_id,capability,action,risk_level,status,claimed_at').maybeSingle();
+      .select('id,device_id,capability,action,action_payload,risk_level,status,claimed_at').maybeSingle();
     if (claimError) throw new EdgeError('command_claim_failed', 500);
     if (!claimed) return json(req, { ok: true, command: null });
     await appendEvent(admin, { orgId, agentId, deviceId: String(claimed.device_id), commandId: String(claimed.id), eventType: 'command.claimed', success: null });
