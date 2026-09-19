@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import { createGitHubOidcScope } from '../_shared/github-oidc-scope.ts';
 
 const URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -7,11 +8,11 @@ const CREATOR = `${URL}/functions/v1/atlas-creator`;
 const EMAIL = 'atlas-creator-e2e@atlas.invalid';
 const ORG_NAME = 'ATLAS Creator E2E';
 const PURPOSE = 'creator-privileged-production-e2e';
-const REPO = 'atlasenterprisesuite/atlasenterprisesuite';
-const OWNER = 'atlasenterprisesuite';
+const GITHUB_SCOPE = createGitHubOidcScope(['verify-creator-production-e2e.yml']);
+const REPO = GITHUB_SCOPE.canonicalRepository;
 const OIDC_AUDIENCE = 'atlas-enterprise-suite-creator-e2e';
-const WORKFLOW_REF = `${REPO}/.github/workflows/verify-creator-production-e2e.yml@refs/heads/main`;
-const VERSION = 2;
+const WORKFLOW_REFS = GITHUB_SCOPE.workflowRefs;
+const VERSION = 3;
 
 function headers(extra: Record<string, string> = {}) {
   return {
@@ -119,10 +120,13 @@ async function verifyGitHubOIDC(req: Request) {
     throw fail('github_oidc_verification_failed', 401);
   }
 
-  if (payload.repository !== REPO) throw fail('github_oidc_scope_denied', 403);
-  if (payload.repository_owner !== OWNER) throw fail('github_oidc_scope_denied', 403);
+  if (!GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner)) {
+    throw fail('github_oidc_scope_denied', 403);
+  }
   if (payload.ref !== 'refs/heads/main') throw fail('github_oidc_scope_denied', 403);
-  if (payload.workflow_ref !== WORKFLOW_REF) throw fail('github_oidc_scope_denied', 403);
+  if (!WORKFLOW_REFS.has(String(payload.workflow_ref || ''))) {
+    throw fail('github_oidc_scope_denied', 403);
+  }
 }
 
 async function parseJson(response: Response) {
