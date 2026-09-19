@@ -22,6 +22,7 @@ describe('ATLAS Commerce operation governance', () => {
     expect(requiredCommercePermissionForOperation('catalog.upsert')).toBe('commerce.catalog.manage');
     expect(requiredCommercePermissionForOperation('orders.get')).toBe('commerce.orders.read');
     expect(requiredCommercePermissionForOperation('checkout.submit')).toBe('commerce.orders.manage');
+    expect(requiredCommercePermissionForOperation('payments.status')).toBe('commerce.read');
   });
 
   it('does not let a generic member acquire Commerce mutation authority', () => {
@@ -51,7 +52,19 @@ describe('ATLAS Commerce Edge source contract', () => {
   it('recomputes checkout and fails closed through the payment boundary', () => {
     expect(source).toContain('priceCart');
     expect(source).toContain('UnavailablePaymentAdapter');
+    expect(source).toContain('AuthorizeNetPaymentAdapter');
+    expect(source).toContain('evaluatePaymentResult');
     expect(source).toContain('PAYMENT_PROVIDER_UNAVAILABLE');
     expect(source).toContain("rpc('commerce_commit_order'");
+  });
+
+  it('reads Authorize.net credentials only through the server secret store and exposes readiness without secret values', () => {
+    expect(source).toContain('getServerSecret');
+    expect(source).toContain("'authorize_net_api_login_id'");
+    expect(source).toContain("'authorize_net_transaction_key'");
+    expect(source).toContain("'payments.status'");
+    expect(source).toContain('storesRawBankData: false');
+    expect(source).not.toContain('body.apiLoginId');
+    expect(source).not.toContain('body.transactionKey');
   });
 });
