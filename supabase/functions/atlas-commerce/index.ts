@@ -113,7 +113,14 @@ function adminClient() {
   });
 }
 
-async function configuredPaymentAdapter() {
+function authorizeNetSecretName(
+  orgId: string,
+  key: 'api_login_id' | 'transaction_key'
+) {
+  return `authorize_net_${orgId}_${key}`;
+}
+
+async function configuredPaymentAdapter(context: CommerceContext) {
   if (!AUTHORIZE_NET_ECHECK_ENABLED) {
     return new UnavailablePaymentAdapter();
   }
@@ -126,12 +133,12 @@ async function configuredPaymentAdapter() {
     getServerSecret({
       supabaseUrl: SUPABASE_URL,
       serviceRoleKey: SERVICE_ROLE_KEY,
-      name: 'authorize_net_api_login_id'
+      name: authorizeNetSecretName(context.orgId, 'api_login_id')
     }),
     getServerSecret({
       supabaseUrl: SUPABASE_URL,
       serviceRoleKey: SERVICE_ROLE_KEY,
-      name: 'authorize_net_transaction_key'
+      name: authorizeNetSecretName(context.orgId, 'transaction_key')
     })
   ]);
 
@@ -537,7 +544,7 @@ async function orderGet(
   });
 }
 
-async function paymentStatus(req: Request) {
+async function paymentStatus(req: Request, context: CommerceContext) {
   let credentialsConfigured = false;
   if (SUPABASE_URL && SERVICE_ROLE_KEY) {
     try {
@@ -545,12 +552,12 @@ async function paymentStatus(req: Request) {
         getServerSecret({
           supabaseUrl: SUPABASE_URL,
           serviceRoleKey: SERVICE_ROLE_KEY,
-          name: 'authorize_net_api_login_id'
+          name: authorizeNetSecretName(context.orgId, 'api_login_id')
         }),
         getServerSecret({
           supabaseUrl: SUPABASE_URL,
           serviceRoleKey: SERVICE_ROLE_KEY,
-          name: 'authorize_net_transaction_key'
+          name: authorizeNetSecretName(context.orgId, 'transaction_key')
         })
       ]);
       credentialsConfigured = Boolean(apiLoginId && transactionKey);
@@ -630,7 +637,7 @@ async function checkoutSubmit(
   let paymentResult: NormalizedPaymentResult | null = null;
 
   if (priced.totalMinor > 0n) {
-    const adapter = await configuredPaymentAdapter();
+    const adapter = await configuredPaymentAdapter(context);
     try {
       paymentResult = await adapter.authorize({
         amountMinor: priced.totalMinor,
@@ -804,7 +811,7 @@ async function workspaceOperation(
     case 'checkout.submit':
       return checkoutSubmit(req, admin, context, body);
     case 'payments.status':
-      return paymentStatus(req);
+      return paymentStatus(req, context);
   }
 }
 
