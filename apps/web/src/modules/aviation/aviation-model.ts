@@ -1,3 +1,5 @@
+import type { AviationInvestmentProfile } from './aviation-investment';
+
 export type AviationCategory =
   | 'urban'
   | 'regional'
@@ -31,11 +33,5 @@ export type AviationConcept = {
     authority: string | null;
     lastVerifiedAt: string | null;
   };
-  investment: {
-    status: 'not_configured';
-    sharePriceUsd: number | null;
-    minimumInvestmentUsd: number | null;
-    officialSourceUrl: string | null;
-    lastVerifiedAt: string | null;
-  };
+  investment: AviationInvestmentProfile;
 };
