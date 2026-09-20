@@ -17,6 +17,22 @@ describe('ATLAS FRONTIER Codex', () => {
     }
   });
 
+  it('matches the six canonical Creative Bible biome families', () => {
+    const biomes = FRONTIER_CODEX
+      .filter((entry) => entry.category === 'biome')
+      .map((entry) => entry.title);
+
+    expect(biomes).toEqual(expect.arrayContaining([
+      'Luminous Forest',
+      'Crystalline Desert',
+      'Ionic Tundra',
+      'Biofiber Ocean',
+      'Floating Mountains',
+      'Abandoned Technological City'
+    ]));
+    expect(biomes).toHaveLength(6);
+  });
+
   it('never exposes stage-locked records through stage filtering', () => {
     expect(codexEntriesForStage(1).every((entry) => entry.requiredStage <= 1)).toBe(true);
     expect(codexEntriesForStage(10)).toHaveLength(FRONTIER_CODEX.length);
