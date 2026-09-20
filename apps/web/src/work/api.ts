@@ -175,5 +175,9 @@ export async function revokeWorkConnectionRef(connectionId: string) {
 }
 
 export async function enrollWorkRuntime(input: { kind: WorkRuntimeSummary['kind']; label: string; capabilities: string[] }) {
-  return workPost({ operation: 'enroll_work_runtime', kind: input.kind, label: input.label, capabilities: input.capabilities });
+  const data = await workPost({ operation: 'enroll_work_runtime', kind: input.kind, label: input.label, capabilities: input.capabilities });
+  const runtime = normalizeRuntime(data.runtime);
+  const runtimeToken = String(data.runtime_token || '');
+  if (!runtime || !runtimeToken) throw new Error('work_runtime_enroll_response_invalid');
+  return { runtime, runtimeToken };
 }
