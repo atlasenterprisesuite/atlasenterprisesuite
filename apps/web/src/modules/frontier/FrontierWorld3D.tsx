@@ -226,6 +226,10 @@ export function FrontierWorld3D({
   const holdTickerRef = useRef<number | null>(null);
   const transitionInFlightRef = useRef(false);
   const blockedBiomeRef = useRef<string | null>(null);
+  const runtimeReadyRef = useRef(runtimeReady);
+  const campaignStageRef = useRef(state.campaignStage);
+  const biomeTransitionRef = useRef(onBiomeTransition);
+  const messageRef = useRef(onMessage);
   const playerRef = useRef<WorldPoint>(clampWorldPoint(initialPosition));
   const activeBiomeRef = useRef<FrontierBiomeRegion>(frontierBiomeAt(playerRef.current));
   const placementRef = useRef<WorldPoint>({ x: -4.2, z: 2.6 });
@@ -238,6 +242,13 @@ export function FrontierWorld3D({
   const [engineStatus, setEngineStatus] = useState<EngineStatus>('initializing');
   const [gpuCapable] = useState(() => typeof navigator !== 'undefined' && Boolean((navigator as Navigator & { gpu?: unknown }).gpu));
 
+  useEffect(() => {
+    runtimeReadyRef.current = runtimeReady;
+    campaignStageRef.current = state.campaignStage;
+    biomeTransitionRef.current = onBiomeTransition;
+    messageRef.current = onMessage;
+  }, [onBiomeTransition, onMessage, runtimeReady, state.campaignStage]);
+
   const syncPlayer = useCallback((next: WorldPoint) => {
     const bounded = clampWorldPoint(next);
     playerRef.current = bounded;
@@ -246,12 +257,12 @@ export function FrontierWorld3D({
 
   const attemptPlayerMove = useCallback((next: WorldPoint) => {
     const bounded = clampWorldPoint(next);
-    const movement = resolveFrontierBiomeMovement(playerRef.current, bounded, state.campaignStage);
+    const movement = resolveFrontierBiomeMovement(playerRef.current, bounded, campaignStageRef.current);
 
     if (movement.blockedBiome) {
       if (blockedBiomeRef.current !== movement.blockedBiome.id) {
         blockedBiomeRef.current = movement.blockedBiome.id;
-        onMessage(`${movement.blockedBiome.label} is locked until campaign phase ${movement.blockedBiome.requiredStage}.`);
+        messageRef.current(`${movement.blockedBiome.label} is locked until campaign phase ${movement.blockedBiome.requiredStage}.`);
       }
       return;
     }
@@ -263,12 +274,12 @@ export function FrontierWorld3D({
       return;
     }
 
-    if (transitionInFlightRef.current || !runtimeReady) return;
+    if (transitionInFlightRef.current || !runtimeReadyRef.current) return;
     transitionInFlightRef.current = true;
     const targetBiome = movement.biome;
-    onMessage(`Crossing into ${targetBiome.label}. Biome Controller is validating the transition…`);
+    messageRef.current(`Crossing into ${targetBiome.label}. Biome Controller is validating the transition…`);
 
-    void onBiomeTransition(targetBiome, movement.point)
+    void biomeTransitionRef.current(targetBiome, movement.point)
       .then((ok) => {
         if (!ok) return;
         activeBiomeRef.current = targetBiome;
@@ -278,7 +289,7 @@ export function FrontierWorld3D({
       .finally(() => {
         transitionInFlightRef.current = false;
       });
-  }, [onBiomeTransition, onMessage, runtimeReady, state.campaignStage, syncPlayer]);
+  }, [syncPlayer]);
 
   const stepPlayer = useCallback((dx: number, dz: number) => {
     attemptPlayerMove(moveWorldPoint(playerRef.current, dx, dz, 0.65));
