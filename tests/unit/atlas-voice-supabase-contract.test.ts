@@ -10,10 +10,11 @@ describe('ATLAS Personal Voice Supabase activation contract', () => {
 
   it('parses Storage ownership from the object path, never from profile.name', () => {
     const migration = readFileSync(migrationPath, 'utf8');
-    expect(migration).toContain("storage.foldername(name))[1]");
-    expect(migration).toContain("storage.foldername(name))[2]");
-    expect(migration).toContain("storage.foldername(name))[3]");
+    expect(migration).toContain("storage.foldername(storage.objects.name))[1]");
+    expect(migration).toContain("storage.foldername(storage.objects.name))[2]");
+    expect(migration).toContain("storage.foldername(storage.objects.name))[3]");
     expect(migration).not.toContain('storage.foldername(p.name)');
+    expect(migration).not.toContain('storage.foldername(name)');
   });
 
   it('keeps Voice private and explicitly exposed only to authenticated users', () => {
