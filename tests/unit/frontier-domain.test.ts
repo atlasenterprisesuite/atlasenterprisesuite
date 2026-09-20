@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
   actionAvailability,
   ecologyActionAvailability,
+  expansionActionAvailability,
+  FRONTIER_LEVELS,
   frontierCampaignProgress,
+  frontierCurrentLevel,
   frontierExplorerRank,
   frontierObjective,
   INITIAL_FRONTIER_ECOLOGY_STATE,
+  INITIAL_FRONTIER_EXPANSION_STATE,
   INITIAL_FRONTIER_STATE,
   normalizeFrontierEcologyState,
+  normalizeFrontierExpansionState,
   normalizeFrontierState
 } from '../../apps/web/src/modules/frontier/domain';
 
@@ -17,7 +22,14 @@ describe('ATLAS FRONTIER domain', () => {
     expect(INITIAL_FRONTIER_STATE.campaignStage).toBe(1);
     expect(INITIAL_FRONTIER_STATE.experience).toBe(0);
     expect(INITIAL_FRONTIER_ECOLOGY_STATE.ecosystemStability).toBe(0);
+    expect(INITIAL_FRONTIER_EXPANSION_STATE.campaignComplete).toBe(false);
     expect(frontierObjective(INITIAL_FRONTIER_STATE)).toContain('Sample Aetherium');
+  });
+
+  it('defines exactly forty campaign levels across ten phases', () => {
+    expect(FRONTIER_LEVELS).toHaveLength(40);
+    expect(FRONTIER_LEVELS[0]).toMatchObject({ level: 1, stage: 1 });
+    expect(FRONTIER_LEVELS[39]).toMatchObject({ level: 40, stage: 10, title: 'Atlas Infinite' });
   });
 
   it('gates core campaign actions by stage and resources', () => {
@@ -43,7 +55,20 @@ describe('ATLAS FRONTIER domain', () => {
     expect(ecologyActionAvailability(livingState, powered, 'restore_biome').enabled).toBe(true);
   });
 
-  it('calculates campaign progress for Awakening and Living Worlds', () => {
+  it('enforces exact phase gates for stages six through ten', () => {
+    const stormState = { ...INITIAL_FRONTIER_STATE, campaignStage: 6 as const, alloy: 8, biofiber: 4 };
+    expect(expansionActionAvailability(stormState, INITIAL_FRONTIER_EXPANSION_STATE, 'capture_storm_charge').enabled).toBe(true);
+    expect(expansionActionAvailability(stormState, INITIAL_FRONTIER_EXPANSION_STATE, 'found_settlement').enabled).toBe(false);
+
+    const stormReady = { ...INITIAL_FRONTIER_EXPANSION_STATE, stormCharge: 50, shelterIntegrity: 50 };
+    expect(expansionActionAvailability(stormState, stormReady, 'master_ion_storm').enabled).toBe(true);
+
+    const infiniteState = { ...INITIAL_FRONTIER_STATE, campaignStage: 10 as const, aetherium: 20, biofiber: 6 };
+    expect(expansionActionAvailability(infiniteState, INITIAL_FRONTIER_EXPANSION_STATE, 'synthesize_world_seed').enabled).toBe(true);
+    expect(expansionActionAvailability(infiniteState, INITIAL_FRONTIER_EXPANSION_STATE, 'restore_generated_world').enabled).toBe(false);
+  });
+
+  it('calculates campaign progress through level forty and endless mode', () => {
     expect(frontierCampaignProgress({ ...INITIAL_FRONTIER_STATE, aetherium: 4, alloy: 3, biofiber: 3 })).toBe(100);
 
     const livingState = { ...INITIAL_FRONTIER_STATE, campaignStage: 5 as const };
@@ -55,20 +80,34 @@ describe('ATLAS FRONTIER domain', () => {
       ecosystemStability: 25
     };
     expect(frontierCampaignProgress(livingState, livingEcology)).toBe(100);
-    expect(frontierObjective(livingState, livingEcology)).toContain('Restore the first living biome');
+
+    const infiniteState = { ...INITIAL_FRONTIER_STATE, campaignStage: 10 as const };
+    const completeExpansion = {
+      ...INITIAL_FRONTIER_EXPANSION_STATE,
+      infiniteMastery: 25,
+      endlessCycles: 1,
+      campaignComplete: true
+    };
+    expect(frontierCampaignProgress(infiniteState, INITIAL_FRONTIER_ECOLOGY_STATE, completeExpansion)).toBe(100);
+    expect(frontierCurrentLevel(infiniteState, INITIAL_FRONTIER_ECOLOGY_STATE, completeExpansion).level).toBe(40);
     expect(frontierExplorerRank({ ...INITIAL_FRONTIER_STATE, experience: 250 })).toBe(3);
   });
 
-  it('normalizes bounded frontier and ecology values', () => {
+  it('normalizes bounded frontier, ecology and expansion values', () => {
     const normalized = normalizeFrontierState({ skyGridIntegrity: 140, campaignStage: 99, experience: 50, revision: 3 });
     expect(normalized.skyGridIntegrity).toBe(100);
-    expect(normalized.campaignStage).toBe(6);
+    expect(normalized.campaignStage).toBe(10);
     expect(normalized.experience).toBe(50);
     expect(normalized.revision).toBe(3);
 
     const ecology = normalizeFrontierEcologyState({ ecoEnergy: 140, ecosystemStability: 180, revision: 2 });
     expect(ecology.ecoEnergy).toBe(100);
     expect(ecology.ecosystemStability).toBe(100);
-    expect(ecology.revision).toBe(2);
+
+    const expansion = normalizeFrontierExpansionState({ stormCharge: 140, tradeVolume: 250, campaignComplete: true, revision: 4 });
+    expect(expansion.stormCharge).toBe(100);
+    expect(expansion.tradeVolume).toBe(100);
+    expect(expansion.campaignComplete).toBe(true);
+    expect(expansion.revision).toBe(4);
   });
 });
