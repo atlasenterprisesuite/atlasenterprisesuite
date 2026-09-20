@@ -31,6 +31,8 @@ describe('ATLAS canonical workflow consolidation', () => {
   it('uses a non-mutating Wrangler validation gate for PR and feature verification', () => {
     expect(verify).toContain('pull_request:');
     expect(verify).toContain('branches-ignore: ["main"]');
+    expect(verify).toContain('github.event.pull_request.head.ref || github.ref_name');
+    expect(verify).toContain('cancel-in-progress: true');
     expect(verify).toContain('versions upload --dry-run --config wrangler.jsonc');
     expect(verify).toContain('npm run verify:all');
     expect(verify).not.toContain('wrangler@4 deploy --config wrangler.jsonc');
