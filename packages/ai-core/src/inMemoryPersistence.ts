@@ -1,15 +1,17 @@
 import { sameScope, type TenantScope } from '../../core/src/index';
 import type { AtlasEvent, AtlasTask } from '../../task-protocol/src';
+import type { GitHubWebhookDeliveryClaim, GitHubWebhookDeliveryStore } from './githubWebhookPersistence';
 import type { PersistencePort } from './persistence';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export class InMemoryPersistence implements PersistencePort {
+export class InMemoryPersistence implements PersistencePort, GitHubWebhookDeliveryStore {
   readonly durable = false;
   private readonly tasks = new Map<string, AtlasTask>();
   private readonly events: AtlasEvent[] = [];
+  private readonly githubDeliveries = new Set<string>();
 
   async createTask(task: AtlasTask): Promise<void> {
     if (this.tasks.has(task.taskId)) throw new Error(`ATLAS task already exists: ${task.taskId}`);
@@ -38,5 +40,15 @@ export class InMemoryPersistence implements PersistencePort {
     return this.events
       .filter((event) => event.taskId === taskId && sameScope(event.scope, scope))
       .map(clone);
+  }
+
+  async claimGitHubWebhookDelivery(
+    scope: TenantScope,
+    delivery: GitHubWebhookDeliveryClaim,
+  ): Promise<boolean> {
+    const key = `${scope.tenantId}:${scope.organizationId}:${delivery.deliveryId}`;
+    if (this.githubDeliveries.has(key)) return false;
+    this.githubDeliveries.add(key);
+    return true;
   }
 }

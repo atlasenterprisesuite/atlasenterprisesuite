@@ -1,5 +1,6 @@
 import type { TenantScope } from '../../core/src/index';
 import type { AtlasEvent, AtlasTask } from '../../task-protocol/src';
+import type { GitHubWebhookDeliveryClaim, GitHubWebhookDeliveryStore } from './githubWebhookPersistence';
 import type { PersistencePort } from './persistence';
 
 type FetchLike = typeof fetch;
@@ -15,7 +16,7 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export class SupabaseRpcPersistence implements PersistencePort {
+export class SupabaseRpcPersistence implements PersistencePort, GitHubWebhookDeliveryStore {
   readonly durable = true;
   private readonly baseUrl: string;
   private readonly publishableKey: string;
@@ -105,5 +106,21 @@ export class SupabaseRpcPersistence implements PersistencePort {
       p_task_id: taskId,
     });
     return Array.isArray(value) ? value.map(clone) : [];
+  }
+
+  async claimGitHubWebhookDelivery(
+    scope: TenantScope,
+    delivery: GitHubWebhookDeliveryClaim,
+  ): Promise<boolean> {
+    return Boolean(await this.rpc<boolean>('atlas_orchestrator_claim_github_delivery', {
+      p_tenant_id: scope.tenantId,
+      p_organization_id: scope.organizationId,
+      p_delivery_id: delivery.deliveryId,
+      p_event_type: delivery.event,
+      p_action: delivery.action,
+      p_installation_id: delivery.installationId,
+      p_repository_full_name: delivery.repository,
+      p_received_at: delivery.receivedAt,
+    }));
   }
 }
