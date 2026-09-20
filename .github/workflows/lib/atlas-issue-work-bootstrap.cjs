@@ -1,5 +1,8 @@
 'use strict';
 
+const PR_BRIDGE_URL = 'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-github-pr-bridge?api=create-draft';
+const PR_BRIDGE_AUDIENCE = 'atlas-github-pr-bridge';
+
 const BLOCKING_LABELS = new Set([
   'review:human-required',
   'security:sensitive',
@@ -94,6 +97,66 @@ async function findOpenPull(github, owner, repo, branchName) {
     per_page: 10,
   });
   return pulls.data[0] || null;
+}
+
+async function createDraftPull({ github, core, owner, repo, issue, branchName, defaultBranch }) {
+  const title = '[AUTO][#' + issue.number + '] ' + issue.title;
+  const body = [
+    'Tracks #' + issue.number + '.',
+    '',
+    'ATLAS Director created this draft PR as the governed workspace for the auto-eligible issue.',
+    '',
+    '- The source issue remains the requirements source of truth.',
+    '- Codex/ATLAS Director may implement on this branch according to routing metadata.',
+    '- This draft PR is not completion evidence.',
+    '- Do not mark ready or merge until implementation, tests, review, and required governance gates pass.',
+    '- Production deployment remains a separate authorized step.',
+  ].join('\n');
+
+  try {
+    const created = await github.rest.pulls.create({
+      owner,
+      repo,
+      title,
+      head: branchName,
+      base: defaultBranch,
+      draft: true,
+      body,
+    });
+    return created.data;
+  } catch (error) {
+    const message = String(error?.message || '');
+    if (error?.status !== 403 || !message.includes('not permitted to create or approve pull requests')) {
+      throw error;
+    }
+  }
+
+  const oidc = await core.getIDToken(PR_BRIDGE_AUDIENCE);
+  const response = await fetch(PR_BRIDGE_URL, {
+    method: 'POST',
+    headers: {
+      authorization: 'Bearer ' + oidc,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      issue_number: issue.number,
+      head: branchName,
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result?.ok !== true || !Number.isInteger(Number(result?.pull_request?.number))) {
+    const code = String(result?.error || 'github_pr_bridge_failed');
+    const bridgeError = new Error('github_pr_bridge_failed:' + code);
+    bridgeError.status = response.status;
+    throw bridgeError;
+  }
+
+  const pull = await github.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: Number(result.pull_request.number),
+  });
+  return pull.data;
 }
 
 async function ensureDraft(github, pull) {
@@ -284,28 +347,53 @@ async function run({ github, context, core, issueNumber }) {
   pull = pull || await findOpenPull(github, owner, repo, branchName);
 
   if (!pull) {
-    const created = await github.rest.pulls.create({
-      owner,
-      repo,
-      title: '[AUTO][#' + issueNumber + '] ' + issue.title,
-      head: branchName,
-      base: defaultBranch,
-      draft: true,
-      body: [
-        'Tracks #' + issueNumber + '.',
-        '',
-        'ATLAS Director created this draft PR as the governed workspace for the auto-eligible issue.',
-        '',
-        '- The source issue remains the requirements source of truth.',
-        '- Codex/ATLAS Director may implement on this branch according to routing metadata.',
-        '- This draft PR is not completion evidence.',
-        '- Do not mark ready or merge until implementation, tests, review, and required governance gates pass.',
-        '- Production deployment remains a separate authorized step.',
-      ].join('\n'),
-    });
-    pull = created.data;
+    try {
+      pull = await createDraftPull({
+        github,
+        core,
+        owner,
+        repo,
+        issue,
+        branchName,
+        defaultBranch,
+      });
+    } catch (error) {
+      await ensureLabel(
+        github,
+        owner,
+        repo,
+        'work:pr-blocked',
+        'd1242f',
+        'The governed work branch exists but draft PR creation is blocked by repository authorization.',
+      );
+      await github.rest.issues.addLabels({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        labels: ['work:pr-blocked'],
+      });
+      await upsertMarkerComment(
+        github,
+        owner,
+        repo,
+        issueNumber,
+        '<!-- atlas-auto-work-pr-blocked -->',
+        [
+          '<!-- atlas-auto-work-pr-blocked -->',
+          '## ATLAS Auto-Work PR Blocked',
+          '',
+          '- **Branch:** ' + branchName,
+          '- **State:** Fail-closed',
+          '- **Reason:** ' + String(error?.message || 'github_pr_creation_failed').slice(0, 180),
+          '',
+          'The branch/work-order remain available, but ATLAS will not claim the workspace complete until a draft PR is created.',
+        ].join('\n'),
+      );
+      throw error;
+    }
   }
 
+  await removeLabelIfPresent(github, owner, repo, issueNumber, 'work:pr-blocked');
   await removeLabelIfPresent(github, owner, repo, pull.number, 'review:human-required');
 
   await github.rest.issues.addLabels({
@@ -347,3 +435,4 @@ module.exports.labelNames = labelNames;
 module.exports.slugify = slugify;
 module.exports.branchNameFor = branchNameFor;
 module.exports.isAutoEligible = isAutoEligible;
+module.exports.createDraftPull = createDraftPull;
