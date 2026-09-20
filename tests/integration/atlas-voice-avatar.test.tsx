@@ -33,6 +33,9 @@ describe('ATLAS functional avatar', () => {
     const avatar = screen.getByRole('button', { name: 'Start speaking with ATLAS' });
     expect(avatar).toHaveAttribute('data-state', 'idle');
     expect(document.querySelector('img[src="/atlas-avatar-particle.svg"]')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Talk to ATLAS' })).toBeInTheDocument();
+    expect(screen.getByText('Private voice turn')).toBeInTheDocument();
+    expect(screen.getByText('Voice diagnostics')).toBeInTheDocument();
 
     fireEvent.click(avatar);
 
