@@ -38,11 +38,19 @@ import {
   loadFrontierExpansion,
   loadFrontierRun,
   loadFrontierStructures,
-  loadFrontierSurvival
+  loadFrontierSurvival,
+  loadFrontierWorldPresence,
+  transitionFrontierBiome
 } from './api';
 import { FrontierCodex } from './FrontierCodex';
 import { FrontierWorld3D } from './FrontierWorld3D';
 import type { FrontierStructure, WorldPlacement } from './world3d';
+import {
+  INITIAL_FRONTIER_WORLD_PRESENCE,
+  type FrontierBiomeRegion,
+  type FrontierWorldPoint,
+  type FrontierWorldPresence
+} from './biomes';
 import './frontier.css';
 
 type RuntimeState = 'loading' | 'ready' | 'saving' | 'blocked';
@@ -62,18 +70,24 @@ export function FrontierRoutes() {
   const [buildMode, setBuildMode] = useState(false);
   const [structures, setStructures] = useState<FrontierStructure[]>([]);
   const [codexDiscoveries, setCodexDiscoveries] = useState<Set<string>>(() => new Set());
+  const [worldPresence, setWorldPresence] = useState<FrontierWorldPresence>({
+    position: { ...INITIAL_FRONTIER_WORLD_PRESENCE.position },
+    biomeEntryId: INITIAL_FRONTIER_WORLD_PRESENCE.biomeEntryId,
+    revision: INITIAL_FRONTIER_WORLD_PRESENCE.revision
+  });
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival, loadedDiscoveries] = await Promise.all([
+        const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival, loadedDiscoveries, loadedPresence] = await Promise.all([
           loadFrontierRun(),
           loadFrontierStructures(),
           loadFrontierEcology(),
           loadFrontierExpansion(),
           loadFrontierSurvival(),
-          loadFrontierCodexDiscoveries()
+          loadFrontierCodexDiscoveries(),
+          loadFrontierWorldPresence()
         ]);
         if (cancelled) return;
         setState(loaded);
@@ -82,6 +96,7 @@ export function FrontierRoutes() {
         setExpansion(loadedExpansion);
         setSurvival(loadedSurvival);
         setCodexDiscoveries(new Set(loadedDiscoveries));
+        setWorldPresence(loadedPresence);
         setRuntime('ready');
         setMessage(loaded.revision > 0
           ? `Saved world loaded: revision ${loaded.revision} · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`
@@ -250,6 +265,28 @@ export function FrontierRoutes() {
     }
   };
 
+  const transitionBiome = async (biome: FrontierBiomeRegion, position: FrontierWorldPoint) => {
+    if (runtime !== 'ready') return false;
+    setRuntime('saving');
+    setMessage(`Biome Controller validating ${biome.label}, campaign phase, organization, coordinates and idempotency…`);
+    try {
+      const presence = await transitionFrontierBiome(biome.entryId, position, createActionKey());
+      setWorldPresence(presence);
+      setCodexDiscoveries((current) => {
+        const next = new Set(current);
+        next.add(presence.biomeEntryId);
+        return next;
+      });
+      setRuntime('ready');
+      setMessage(`${biome.label} entered and persisted. Codex discovery and traversal audit committed atomically.`);
+      return true;
+    } catch (error) {
+      setRuntime('ready');
+      setMessage(error instanceof Error ? error.message : 'Biome Controller rejected the transition.');
+      return false;
+    }
+  };
+
   const buildHabitat = async (placement: WorldPlacement) => {
     if (runtime !== 'ready') return false;
     const availability = actionAvailability(state, 'build_habitat');
@@ -281,13 +318,14 @@ export function FrontierRoutes() {
     setRuntime('loading');
     setMessage('Rechecking governed persistence…');
     try {
-      const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival, loadedDiscoveries] = await Promise.all([
+      const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival, loadedDiscoveries, loadedPresence] = await Promise.all([
         loadFrontierRun(),
         loadFrontierStructures(),
         loadFrontierEcology(),
         loadFrontierExpansion(),
         loadFrontierSurvival(),
-        loadFrontierCodexDiscoveries()
+        loadFrontierCodexDiscoveries(),
+        loadFrontierWorldPresence()
       ]);
       setState(loaded);
       setStructures(loadedStructures);
@@ -295,6 +333,7 @@ export function FrontierRoutes() {
       setExpansion(loadedExpansion);
       setSurvival(loadedSurvival);
       setCodexDiscoveries(new Set(loadedDiscoveries));
+      setWorldPresence(loadedPresence);
       setRuntime('ready');
       setMessage(`Governed world synchronized · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`);
     } catch (error) {
@@ -360,10 +399,12 @@ export function FrontierRoutes() {
           state={state}
           structures={structures}
           runtimeReady={runtime === 'ready'}
+          initialPosition={worldPresence.position}
           buildMode={buildMode}
           onBuildModeChange={setBuildMode}
           onAction={runAction}
           onBuildHabitat={buildHabitat}
+          onBiomeTransition={transitionBiome}
           onMessage={setMessage}
         />
 
