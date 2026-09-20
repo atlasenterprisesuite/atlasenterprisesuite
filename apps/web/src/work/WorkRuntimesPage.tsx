@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { runtimeIsHealthy } from '../../../../packages/execution/src/work-runtime';
 import { enrollWorkRuntime, listWorkRuntimes, type WorkRuntimeSummary } from './api';
 import { WorkSubnav } from './WorkSubnav';
