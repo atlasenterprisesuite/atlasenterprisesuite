@@ -7,6 +7,8 @@ const registry = read('apps/web/src/modules/registry.ts');
 const resolver = read('apps/web/src/extensions/resolveAtlasExtension.tsx');
 const suite = read('apps/web/src/modules/integration/AtlasSuitePage.tsx');
 const hubs = read('apps/web/src/modules/integration/AtlasIntegrationHubs.tsx');
+const app = read('apps/web/src/App.tsx');
+const experiences = read('apps/web/src/modules/experience/AtlasModuleExperiences.tsx');
 
 describe('ATLAS A-Z canonical integration', () => {
   it('surfaces one searchable A-Z module directory', () => {
@@ -19,13 +21,14 @@ describe('ATLAS A-Z canonical integration', () => {
   });
 
   it('reconciles historical A-Z domains onto the modern router without restoring the legacy shell', () => {
-    const routes = ['/automations', '/people', '/revenue', '/site-review', '/telecom', '/release'];
+    const routes = ['/analytics', '/automations', '/people', '/revenue', '/site-review', '/telecom', '/release'];
     for (const route of routes) {
       expect(registry, route).toContain(`route: '${route}'`);
       expect(resolver, route).toContain(`pathname === '${route}'`);
     }
 
     for (const component of [
+      'AnalyticsIntegrationHub',
       'AutomationsIntegrationHub',
       'PeopleIntegrationHub',
       'RevenueIntegrationHub',
@@ -44,6 +47,17 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(registry).toContain("id: 'insurance'");
     expect(registry).toContain("route: '/insurance'");
     expect(registry).toContain("readiness: 'partial'");
+  });
+
+  it('reconciles business commercial depth without bypassing governance', () => {
+    expect(registry).toContain("id: 'analytics'");
+    expect(registry).toContain("route: '/analytics'");
+    expect(app).toContain('<Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />');
+    expect(experiences).toContain("title: 'Revenue Operations'");
+    expect(experiences).toContain("to: '/revenue'");
+    expect(experiences).toContain("to: '/commerce'");
+    expect(experiences).toContain("to: '/analytics'");
+    expect(experiences).toContain('aggregation gated');
   });
 
   it('keeps migrated domains fail-closed instead of claiming provider completion', () => {
