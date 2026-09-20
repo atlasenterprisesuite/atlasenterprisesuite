@@ -41,6 +41,16 @@ create index if not exists frontier_world_presence_events_run_created_idx
 create index if not exists frontier_world_presence_events_actor_idx
   on public.frontier_world_presence_events(actor_user_id);
 
+insert into public.frontier_world_presence(
+  tenant_id, org_id, run_id, actor_user_id,
+  position_x, position_z, biome_entry_id, revision
+)
+select
+  r.tenant_id, r.org_id, r.id, r.actor_user_id,
+  0::double precision, 2.8::double precision, 'biome-luminous-grove', 0
+from public.frontier_runs r
+on conflict (org_id, actor_user_id) do nothing;
+
 alter table public.frontier_world_presence enable row level security;
 alter table public.frontier_world_presence_events enable row level security;
 
@@ -248,6 +258,10 @@ declare
   v_biome_entry_id text;
   v_required_stage integer;
 begin
+  if new.placement_origin <> 'governed' then
+    return new;
+  end if;
+
   select campaign_stage into v_campaign_stage
   from public.frontier_runs
   where id = new.run_id
