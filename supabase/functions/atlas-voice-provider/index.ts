@@ -11,6 +11,9 @@ const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPAB
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const OPENAI_BASE = 'https://api.openai.com/v1';
+const OPENAI_CONSENTS_URL = 'https://api.openai.com/v1/audio/voice_consents';
+const OPENAI_VOICES_URL = 'https://api.openai.com/v1/audio/voices';
+const OPENAI_SPEECH_URL = 'https://api.openai.com/v1/audio/speech';
 const ALLOWED_ORIGINS = new Set(['https://atlasenterprisesuite.com','https://www.atlasenterprisesuite.com']);
 
 function headers(extra: Record<string,string> = {}) {
@@ -84,7 +87,7 @@ async function providerAccess() {
     const probe = new FormData();
     probe.set('name','atlas_access_probe');
     probe.set('language','en');
-    const write = await fetch(`${OPENAI_BASE}/audio/voice_consents`,{method:'POST',headers:auth,body:probe,cache:'no-store'});
+    const write = await fetch(OPENAI_CONSENTS_URL,{method:'POST',headers:auth,body:probe,cache:'no-store'});
     writeStatus = write.status;
   } catch {
     return {configured:true,readable:false,writable:false,state:'provider_unreachable',read_status:readStatus,write_status:writeStatus};
@@ -177,7 +180,7 @@ async function createProviderConsent(req: Request) {
   form.set('name',`atlas_${profile.id.slice(0,8)}_consent`);
   form.set('language',String(profile.language||'en').split('-')[0].toLowerCase());
   form.set('recording',new File([blob],`consent.${ext}`,{type:mime}));
-  const response = await fetch(`${OPENAI_BASE}/audio/voice_consents`,{
+  const response = await fetch(OPENAI_CONSENTS_URL,{
     method:'POST',headers:{authorization:`Bearer ${OPENAI_API_KEY}`},body:form,cache:'no-store'
   });
   const provider = await openAIJson(response);
@@ -218,7 +221,7 @@ async function createProviderVoice(req: Request) {
   form.set('name',String(profile.name||'ATLAS Personal Voice').slice(0,80));
   form.set('consent',String(consent.provider_consent_ref));
   form.set('audio_sample',new File([blob],`sample.${ext}`,{type:mime}));
-  const response = await fetch(`${OPENAI_BASE}/audio/voices`,{
+  const response = await fetch(OPENAI_VOICES_URL,{
     method:'POST',headers:{authorization:`Bearer ${OPENAI_API_KEY}`},body:form,cache:'no-store'
   });
   const provider = await openAIJson(response);
@@ -262,7 +265,7 @@ async function synthesize(req: Request) {
     language: String(profile.language||'en').split('-')[0].toLowerCase(),
     response_format: format
   };
-  const response = await fetch(`${OPENAI_BASE}/audio/speech`,{
+  const response = await fetch(OPENAI_SPEECH_URL,{
     method:'POST',
     headers:{authorization:`Bearer ${OPENAI_API_KEY}`,'content-type':'application/json'},
     body:JSON.stringify(payload),cache:'no-store'
