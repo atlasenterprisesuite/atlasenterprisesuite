@@ -62,6 +62,18 @@ export function verifyGitHubWebhookSignature(
     && timingSafeEqual(suppliedBytes, expectedBytes);
 }
 
+export function assertGitHubWebhookRepositoryScope(
+  envelope: GitHubWebhookEnvelope,
+  expectedRepository: string | undefined,
+): void {
+  if (!envelope.repository) return;
+  const expected = String(expectedRepository || '').trim().toLowerCase();
+  if (!expected) throw new GitHubWebhookError(503, 'github_repository_scope_not_configured');
+  if (envelope.repository.toLowerCase() !== expected) {
+    throw new GitHubWebhookError(403, 'github_repository_scope_mismatch');
+  }
+}
+
 export function ingestGitHubWebhook(input: {
   headers: Record<string, string | string[] | undefined>;
   body: Buffer;
