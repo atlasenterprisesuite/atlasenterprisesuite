@@ -5,6 +5,7 @@ const edge = readFileSync('supabase/functions/atlas-local-control/index.ts','utf
 const agent = readFileSync('tools/local-agent/atlas-local-agent.mjs','utf8');
 const panel = readFileSync('apps/web/src/modules/device-os/LocalControlPlanePanel.tsx','utf8');
 const localAi = readFileSync('tools/local-agent/atlas-local-ai-runtime.mjs','utf8');
+const trustMigration = readFileSync('supabase/migrations/20260920111500_device_os_trust_hardening.sql','utf8');
 
 describe('ATLAS Local Control Plane runtime contract', () => {
   it('uses one-time enrollment and short-lived hash-backed sessions', () => {
@@ -61,6 +62,10 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(edge).toContain('mtls_cloudflare_cert_id: certificateId');
     expect(edge).toContain("eventType: 'agent.mtls.provider_issued'");
     expect(edge).toContain("rpc('has_identity_permission'");
+    expect(trustMigration).toContain("alter column status set default 'offline'");
+    expect(trustMigration).toContain("status <> 'online' or last_seen_at is not null");
+    expect(trustMigration).toContain('atlas_local_agents_active_mtls_requires_provider_evidence');
+    expect(trustMigration).toContain('mtls_cloudflare_cert_id is not null');
   });
 
   it('surfaces enrollment, agents, devices and commands in Device OS', () => {
