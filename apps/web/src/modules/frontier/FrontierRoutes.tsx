@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   actionAvailability,
+  ecologyActionAvailability,
   FRONTIER_ACTIONS,
   FRONTIER_CAMPAIGN,
+  FRONTIER_ECOLOGY_ACTIONS,
   frontierCampaignProgress,
   frontierExplorerRank,
   frontierObjective,
+  INITIAL_FRONTIER_ECOLOGY_STATE,
   INITIAL_FRONTIER_STATE,
   type FrontierActionId,
+  type FrontierEcologyActionId,
+  type FrontierEcologyState,
   type FrontierState
 } from './domain';
-import { buildFrontierHabitat, executeFrontierAction, loadFrontierRun, loadFrontierStructures } from './api';
+import {
+  buildFrontierHabitat,
+  executeFrontierAction,
+  executeFrontierEcologyAction,
+  loadFrontierEcology,
+  loadFrontierRun,
+  loadFrontierStructures
+} from './api';
 import { FrontierWorld3D } from './FrontierWorld3D';
 import type { FrontierStructure, WorldPlacement } from './world3d';
 import './frontier.css';
@@ -24,6 +36,7 @@ function createActionKey() {
 
 export function FrontierRoutes() {
   const [state, setState] = useState<FrontierState>({ ...INITIAL_FRONTIER_STATE });
+  const [ecology, setEcology] = useState<FrontierEcologyState>({ ...INITIAL_FRONTIER_ECOLOGY_STATE });
   const [runtime, setRuntime] = useState<RuntimeState>('loading');
   const [message, setMessage] = useState('Connecting to governed FRONTIER state…');
   const [buildMode, setBuildMode] = useState(false);
@@ -33,13 +46,15 @@ export function FrontierRoutes() {
     let cancelled = false;
     void (async () => {
       try {
-        const [loaded, loadedStructures] = await Promise.all([
+        const [loaded, loadedStructures, loadedEcology] = await Promise.all([
           loadFrontierRun(),
-          loadFrontierStructures()
+          loadFrontierStructures(),
+          loadFrontierEcology()
         ]);
         if (cancelled) return;
         setState(loaded);
         setStructures(loadedStructures);
+        setEcology(loadedEcology);
         setRuntime('ready');
         setMessage(loaded.revision > 0
           ? `Saved world loaded: revision ${loaded.revision} · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`
@@ -53,8 +68,8 @@ export function FrontierRoutes() {
     return () => { cancelled = true; };
   }, []);
 
-  const objective = useMemo(() => frontierObjective(state), [state]);
-  const missionProgress = useMemo(() => frontierCampaignProgress(state), [state]);
+  const objective = useMemo(() => frontierObjective(state, ecology), [state, ecology]);
+  const missionProgress = useMemo(() => frontierCampaignProgress(state, ecology), [state, ecology]);
   const explorerRank = useMemo(() => frontierExplorerRank(state), [state]);
   const activeMission = FRONTIER_CAMPAIGN.find((mission) => mission.stage === state.campaignStage) ?? FRONTIER_CAMPAIGN[0];
 
@@ -71,12 +86,38 @@ export function FrontierRoutes() {
       const next = await executeFrontierAction(action, createActionKey());
       setState(next);
       setRuntime('ready');
-      setMessage(next.campaignStage >= 5 ? 'Awakening campaign complete. Mundos vivos remains gated for the next production phase.' : 'Action committed, audited and campaign progress recalculated.');
+      setMessage(next.campaignStage >= 5
+        ? 'Awakening complete. Living-world systems are now available.'
+        : 'Action committed, audited and campaign progress recalculated.');
       return true;
     } catch (error) {
       setRuntime('blocked');
       setMessage(error instanceof Error ? error.message : 'Flow Controller rejected the action.');
       return false;
+    }
+  };
+
+  const runEcologyAction = async (action: FrontierEcologyActionId) => {
+    if (runtime !== 'ready') return;
+    const availability = ecologyActionAvailability(state, ecology, action);
+    if (!availability.enabled) {
+      setMessage(availability.reason || 'Living-world action unavailable.');
+      return;
+    }
+
+    setRuntime('saving');
+    setMessage('Living Systems Controller validating biome state, resources, organization, permission and idempotency…');
+    try {
+      const next = await executeFrontierEcologyAction(action, createActionKey());
+      setState(next.state);
+      setEcology(next.ecology);
+      setRuntime('ready');
+      setMessage(next.state.campaignStage >= 6
+        ? 'First biome restored. Mundos vivos complete; Tormenta iónica remains the next production phase.'
+        : 'Ecology action committed and audited.');
+    } catch (error) {
+      setRuntime('blocked');
+      setMessage(error instanceof Error ? error.message : 'Living Systems Controller rejected the action.');
     }
   };
 
@@ -111,12 +152,14 @@ export function FrontierRoutes() {
     setRuntime('loading');
     setMessage('Rechecking governed persistence…');
     try {
-      const [loaded, loadedStructures] = await Promise.all([
+      const [loaded, loadedStructures, loadedEcology] = await Promise.all([
         loadFrontierRun(),
-        loadFrontierStructures()
+        loadFrontierStructures(),
+        loadFrontierEcology()
       ]);
       setState(loaded);
       setStructures(loadedStructures);
+      setEcology(loadedEcology);
       setRuntime('ready');
       setMessage(`Governed world synchronized · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`);
     } catch (error) {
@@ -131,7 +174,7 @@ export function FrontierRoutes() {
         <div>
           <p className="eyebrow">ATLAS · FRONTIER</p>
           <h1>Restore the Sky Grid</h1>
-          <p>Governed sandbox campaign: explore, extract, build, craft and restore. Server-side rules remain authoritative.</p>
+          <p>Governed sandbox campaign: explore, extract, build, cultivate, generate clean energy and restore living worlds.</p>
         </div>
         <div className="frontier-runtime" data-state={runtime}>
           <span className="frontier-runtime-dot" />
@@ -151,7 +194,7 @@ export function FrontierRoutes() {
 
       <div className="frontier-campaign" aria-label="ATLAS FRONTIER campaign progression">
         <div className="frontier-campaign-head">
-          <div><span>AWAKENING CAMPAIGN</span><strong>{missionProgress}% current mission</strong></div>
+          <div><span>FRONTIER CAMPAIGN</span><strong>{missionProgress}% current mission</strong></div>
           <div className="frontier-campaign-progress"><i style={{ width: `${missionProgress}%` }} /></div>
         </div>
         <div className="frontier-campaign-grid">
@@ -213,6 +256,38 @@ export function FrontierRoutes() {
               );
             })}
           </div>
+
+          <section className="frontier-ecology" aria-label="Living Worlds systems">
+            <div className="frontier-ecology-heading">
+              <div><span>LIVING SYSTEMS</span><strong>Mundos vivos</strong></div>
+              <small>{ecology.ecosystemStability}% stable</small>
+            </div>
+            <div className="frontier-ecology-meter"><i style={{ width: `${ecology.ecosystemStability}%` }} /></div>
+            <div className="frontier-ecology-stats">
+              <article><span>Seed Pods</span><strong>{ecology.seedPods}</strong></article>
+              <article><span>Living Plots</span><strong>{ecology.cultivatedPlots}</strong></article>
+              <article><span>Eco Energy</span><strong>{ecology.ecoEnergy}</strong></article>
+              <article><span>Biomes</span><strong>{ecology.restoredBiomes}</strong></article>
+            </div>
+            <div className="frontier-ecology-actions">
+              {FRONTIER_ECOLOGY_ACTIONS.map((action) => {
+                const availability = ecologyActionAvailability(state, ecology, action.id);
+                const disabled = runtime !== 'ready' || !availability.enabled;
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => void runEcologyAction(action.id)}
+                  >
+                    <span>{action.mode}</span>
+                    <strong>{action.label}</strong>
+                    <small>{availability.enabled ? action.description : availability.reason}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         </aside>
       </div>
 
@@ -223,8 +298,8 @@ export function FrontierRoutes() {
 
       <div className="frontier-governance">
         <article><span>Identity</span><strong>Organization scoped</strong><p>ATLAS Identity and active organization membership are required before this route opens.</p></article>
-        <article><span>Controller</span><strong>Server authoritative</strong><p>Mission gates, resource costs and progression are validated transactionally in Supabase, not trusted to the browser.</p></article>
-        <article><span>Audit</span><strong>Append-only events</strong><p>Every committed action records before/after state, campaign stage and an idempotency key.</p></article>
+        <article><span>Controller</span><strong>Server authoritative</strong><p>Mission gates, spatial builds, ecology rules and resource costs are validated transactionally in Supabase.</p></article>
+        <article><span>Audit</span><strong>Append-only evidence</strong><p>World structures and living-system actions retain idempotency plus before/after state evidence.</p></article>
       </div>
     </section>
   );
