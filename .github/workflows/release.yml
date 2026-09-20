@@ -1,0 +1,141 @@
+name: ATLAS Verified Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Semantic release tag, for example v1.4.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-release-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      release_sha: ${{ steps.source.outputs.release_sha }}
+
+    steps:
+      - name: Require canonical main branch
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::ATLAS releases must be dispatched from main."
+            exit 1
+          fi
+          echo "release_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install native verification dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          ffmpeg -version
+          ffprobe -version
+          espeak --version
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify complete repository
+        run: npm run verify:all
+
+  verify-production:
+    needs: verify-release-source
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/global-production-verify.yml
+    with:
+      mode: fail-closed
+
+  publish-release:
+    needs:
+      - verify-release-source
+      - verify-production
+    if: needs.verify-production.outputs.verified == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_SHA: ${{ needs.verify-release-source.outputs.release_sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
+            echo "::error::Release tag must use semantic version syntax such as v1.4.0 or v1.4.0-rc.1."
+            exit 1
+          fi
+
+      - name: Pin tag to exact verified production SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+
+          if git rev-parse "$RELEASE_TAG^{commit}" >/dev/null 2>&1; then
+            EXISTING_SHA="$(git rev-parse "$RELEASE_TAG^{commit}")"
+            if [ "$EXISTING_SHA" != "$RELEASE_SHA" ]; then
+              echo "::error::Existing tag $RELEASE_TAG points to $EXISTING_SHA, not verified production SHA $RELEASE_SHA."
+              exit 1
+            fi
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "ATLAS $RELEASE_TAG"
+            git push origin "$RELEASE_TAG"
+          fi
+
+      - name: Publish immutable GitHub release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists and its tag is pinned to $RELEASE_SHA." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          gh release create "$RELEASE_TAG"             --verify-tag             --title "ATLAS $RELEASE_TAG"             --generate-notes
+
+          {
+            echo "## ATLAS verified release"
+            echo "- Tag: `$RELEASE_TAG`"
+            echo "- Production SHA: `$RELEASE_SHA`"
+            echo "- Repository verification: passed"
+            echo "- Global production verification: passed fail-closed"
+            echo "- Release publication: completed"
+            echo "- Deployment was not duplicated; release points to the already verified production SHA"
+          } >> "$GITHUB_STEP_SUMMARY"
