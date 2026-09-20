@@ -1,12 +1,16 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../../lib/atlasSession';
 import {
   INITIAL_FRONTIER_ECOLOGY_STATE,
+  INITIAL_FRONTIER_EXPANSION_STATE,
   INITIAL_FRONTIER_STATE,
   normalizeFrontierEcologyState,
+  normalizeFrontierExpansionState,
   normalizeFrontierState,
   type FrontierActionId,
   type FrontierEcologyActionId,
   type FrontierEcologyState,
+  type FrontierExpansionActionId,
+  type FrontierExpansionState,
   type FrontierState
 } from './domain';
 import {
@@ -35,6 +39,27 @@ type FrontierEcologyRow = {
   eco_energy: number;
   ecosystem_stability: number;
   restored_biomes: number;
+  revision: number;
+};
+
+type FrontierExpansionRow = {
+  storm_charge: number;
+  shelter_integrity: number;
+  storm_mastery: number;
+  settlements: number;
+  civic_links: number;
+  civilization_index: number;
+  orbital_frames: number;
+  orbital_stations: number;
+  orbital_reach: number;
+  network_links: number;
+  trade_volume: number;
+  network_integrity: number;
+  world_seeds: number;
+  worlds_generated: number;
+  infinite_mastery: number;
+  endless_cycles: number;
+  campaign_complete: boolean;
   revision: number;
 };
 
@@ -72,6 +97,29 @@ function ecologyRowToState(row: FrontierEcologyRow): FrontierEcologyState {
     ecoEnergy: row.eco_energy,
     ecosystemStability: row.ecosystem_stability,
     restoredBiomes: row.restored_biomes,
+    revision: row.revision
+  });
+}
+
+function expansionRowToState(row: FrontierExpansionRow): FrontierExpansionState {
+  return normalizeFrontierExpansionState({
+    stormCharge: row.storm_charge,
+    shelterIntegrity: row.shelter_integrity,
+    stormMastery: row.storm_mastery,
+    settlements: row.settlements,
+    civicLinks: row.civic_links,
+    civilizationIndex: row.civilization_index,
+    orbitalFrames: row.orbital_frames,
+    orbitalStations: row.orbital_stations,
+    orbitalReach: row.orbital_reach,
+    networkLinks: row.network_links,
+    tradeVolume: row.trade_volume,
+    networkIntegrity: row.network_integrity,
+    worldSeeds: row.world_seeds,
+    worldsGenerated: row.worlds_generated,
+    infiniteMastery: row.infinite_mastery,
+    endlessCycles: row.endless_cycles,
+    campaignComplete: row.campaign_complete,
     revision: row.revision
   });
 }
@@ -150,6 +198,18 @@ export async function loadFrontierEcology(): Promise<FrontierEcologyState> {
   return ecologyRowToState(body[0]);
 }
 
+export async function loadFrontierExpansion(): Promise<FrontierExpansionState> {
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(`eq.${organization.id}`);
+  const response = await authorizedAtlasFetch(
+    `/rest/v1/frontier_expansion?org_id=${org}&select=storm_charge,shelter_integrity,storm_mastery,settlements,civic_links,civilization_index,orbital_frames,orbital_stations,orbital_reach,network_links,trade_volume,network_integrity,world_seeds,worlds_generated,infinite_mastery,endless_cycles,campaign_complete,revision&limit=1`,
+    { method: 'GET' }
+  );
+  const body = await parseJson(response) as FrontierExpansionRow[];
+  if (!Array.isArray(body) || body.length === 0) return { ...INITIAL_FRONTIER_EXPANSION_STATE };
+  return expansionRowToState(body[0]);
+}
+
 export async function loadFrontierStructures(): Promise<FrontierStructure[]> {
   const organization = await getActiveAtlasOrganization();
   const org = encodeURIComponent(`eq.${organization.id}`);
@@ -195,6 +255,27 @@ export async function executeFrontierEcologyAction(
   return {
     state: normalizeFrontierState({ ...body.state, revision: body.revision }),
     ecology: normalizeFrontierEcologyState({ ...body.ecology, revision: body.ecology_revision })
+  };
+}
+
+export async function executeFrontierExpansionAction(
+  action: FrontierExpansionActionId,
+  idempotencyKey: string
+): Promise<{ state: FrontierState; expansion: FrontierExpansionState }> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/frontier_apply_expansion_action', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_action: action,
+      p_idempotency_key: idempotencyKey
+    })
+  });
+  const body = await parseJson(response);
+  if (!body?.ok || !body?.state || !body?.expansion) throw new Error('frontier_invalid_expansion_controller_response');
+  return {
+    state: normalizeFrontierState({ ...body.state, revision: body.revision }),
+    expansion: normalizeFrontierExpansionState({ ...body.expansion, revision: body.expansion_revision })
   };
 }
 
