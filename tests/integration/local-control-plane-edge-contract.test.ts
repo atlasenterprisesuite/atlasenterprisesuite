@@ -53,11 +53,23 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(localAi).not.toContain("'--api-key'");
   });
 
+  it('keeps mTLS trust provider-backed and enrollment truthfully offline until heartbeat', () => {
+    expect(edge).not.toContain("operation === 'agents.mtls.bind'");
+    expect(edge).not.toContain("if (operation === 'agents.mtls.bind')");
+    expect(edge).toContain("status: 'offline'");
+    expect(edge).toContain("status: 'online', last_seen_at: now");
+    expect(edge).toContain('mtls_cloudflare_cert_id: certificateId');
+    expect(edge).toContain("eventType: 'agent.mtls.provider_issued'");
+    expect(edge).toContain("rpc('has_identity_permission'");
+  });
+
   it('surfaces enrollment, agents, devices and commands in Device OS', () => {
     expect(panel).toContain('Create one-time enrollment');
     expect(panel).toContain('Registered agents');
     expect(panel).toContain('Devices');
     expect(panel).toContain('Recent commands');
     expect(panel).toContain('High/critical actions remain bound to ATLAS Approval Center');
+    expect(panel).toContain('Device OS Trust Posture');
+    expect(panel).not.toContain('Bind mTLS certificate');
   });
 });
