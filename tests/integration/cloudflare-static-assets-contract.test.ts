@@ -97,7 +97,9 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('probe_route "Public home"');
     expect(workflow).toContain('probe_route "ATLAS Identity"');
     expect(workflow).toContain('probe_route "Module SPA shell"');
-    expect(workflow).toContain('Public ATLAS production domain and critical Network routes verified.');
+    expect(workflow).toContain('probe_route "ATLAS Work" "/work"');
+    expect(workflow).toContain('work_routes_reachable');
+    expect(workflow).toContain('Public ATLAS production domain, critical Work routes and critical Network routes verified.');
   });
 
   it('records that module authorization is enforced by tested ATLAS Identity rather than edge-wide Access', () => {
