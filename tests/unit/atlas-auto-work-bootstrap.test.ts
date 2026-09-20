@@ -40,6 +40,7 @@ describe('ATLAS auto-work bootstrap', () => {
     expect(workflow).toContain('bootstrap-work:');
     expect(workflow).toContain('pull-requests: write');
     expect(workflow).toContain('contents: write');
+    expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).toContain("require('./.github/workflows/lib/atlas-issue-work-bootstrap.cjs')");
     expect(workflow).not.toContain('pull_request_target');
@@ -54,6 +55,8 @@ describe('ATLAS auto-work bootstrap', () => {
     expect(engine).toContain('This draft PR is not completion evidence.');
     expect(engine).toContain('Production deployment remains a separate authorized step.');
     expect(engine).toContain('work:bootstrapped');
+    expect(engine).toContain('PR_BRIDGE_AUDIENCE');
+    expect(engine).toContain('work:pr-blocked');
   });
 
   it('fails closed when governance becomes human-required', () => {
