@@ -12,7 +12,24 @@ export type FrontierEcologyActionId =
   | 'generate_eco_energy'
   | 'restore_biome';
 
-export type FrontierCampaignStage = 1 | 2 | 3 | 4 | 5 | 6;
+export type FrontierExpansionActionId =
+  | 'capture_storm_charge'
+  | 'reinforce_storm_shelter'
+  | 'master_ion_storm'
+  | 'found_settlement'
+  | 'connect_settlements'
+  | 'establish_civilization'
+  | 'fabricate_orbital_frame'
+  | 'launch_orbital_station'
+  | 'open_orbital_horizon'
+  | 'establish_network_link'
+  | 'run_trade_route'
+  | 'activate_frontier_network'
+  | 'synthesize_world_seed'
+  | 'generate_frontier_world'
+  | 'restore_generated_world';
+
+export type FrontierCampaignStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export type FrontierState = {
   aetherium: number;
@@ -37,6 +54,27 @@ export type FrontierEcologyState = {
   revision: number;
 };
 
+export type FrontierExpansionState = {
+  stormCharge: number;
+  shelterIntegrity: number;
+  stormMastery: number;
+  settlements: number;
+  civicLinks: number;
+  civilizationIndex: number;
+  orbitalFrames: number;
+  orbitalStations: number;
+  orbitalReach: number;
+  networkLinks: number;
+  tradeVolume: number;
+  networkIntegrity: number;
+  worldSeeds: number;
+  worldsGenerated: number;
+  infiniteMastery: number;
+  endlessCycles: number;
+  campaignComplete: boolean;
+  revision: number;
+};
+
 export type FrontierActionDefinition = {
   id: FrontierActionId;
   label: string;
@@ -51,11 +89,25 @@ export type FrontierEcologyActionDefinition = {
   description: string;
 };
 
+export type FrontierExpansionActionDefinition = {
+  id: FrontierExpansionActionId;
+  stage: 6 | 7 | 8 | 9 | 10;
+  label: string;
+  mode: 'Survive' | 'Build' | 'Civilize' | 'Orbit' | 'Network' | 'Infinite';
+  description: string;
+};
+
 export type FrontierCampaignDefinition = {
   stage: FrontierCampaignStage;
   title: string;
   summary: string;
-  productionState: 'playable' | 'next';
+  productionState: 'playable';
+};
+
+export type FrontierLevelDefinition = {
+  level: number;
+  stage: FrontierCampaignStage;
+  title: string;
 };
 
 export const INITIAL_FRONTIER_STATE: FrontierState = Object.freeze({
@@ -81,6 +133,27 @@ export const INITIAL_FRONTIER_ECOLOGY_STATE: FrontierEcologyState = Object.freez
   revision: 0
 });
 
+export const INITIAL_FRONTIER_EXPANSION_STATE: FrontierExpansionState = Object.freeze({
+  stormCharge: 0,
+  shelterIntegrity: 0,
+  stormMastery: 0,
+  settlements: 0,
+  civicLinks: 0,
+  civilizationIndex: 0,
+  orbitalFrames: 0,
+  orbitalStations: 0,
+  orbitalReach: 0,
+  networkLinks: 0,
+  tradeVolume: 0,
+  networkIntegrity: 0,
+  worldSeeds: 0,
+  worldsGenerated: 0,
+  infiniteMastery: 0,
+  endlessCycles: 0,
+  campaignComplete: false,
+  revision: 0
+});
+
 export const FRONTIER_ACTIONS: readonly FrontierActionDefinition[] = [
   { id: 'extract_aetherium', label: 'Extract Aetherium', mode: 'Explore', description: 'Mine the luminous resource seam. +4 Aetherium.' },
   { id: 'salvage_alloy', label: 'Salvage Alloy', mode: 'Explore', description: 'Recover structural material. +3 Alloy.' },
@@ -97,23 +170,74 @@ export const FRONTIER_ECOLOGY_ACTIONS: readonly FrontierEcologyActionDefinition[
   { id: 'restore_biome', label: 'Restore Biome', mode: 'Restore', description: 'Consumes 40 Eco Energy and 4 Biofiber. Restores 25% ecosystem stability.' }
 ] as const;
 
+export const FRONTIER_EXPANSION_ACTIONS: readonly FrontierExpansionActionDefinition[] = [
+  { id: 'capture_storm_charge', stage: 6, label: 'Capture Storm Charge', mode: 'Survive', description: 'Harvest ion energy from the active storm. +25 charge.' },
+  { id: 'reinforce_storm_shelter', stage: 6, label: 'Reinforce Shelter', mode: 'Build', description: 'Costs 8 Alloy and 4 Biofiber. +25 shelter integrity.' },
+  { id: 'master_ion_storm', stage: 6, label: 'Stabilize Ion Storm', mode: 'Survive', description: 'Requires 50 charge and 50% shelter integrity.' },
+
+  { id: 'found_settlement', stage: 7, label: 'Found Settlement', mode: 'Civilize', description: 'Costs 16 Alloy and 8 Biofiber. Build two settlements.' },
+  { id: 'connect_settlements', stage: 7, label: 'Connect Settlements', mode: 'Civilize', description: 'Requires two settlements. Establish a civic link.' },
+  { id: 'establish_civilization', stage: 7, label: 'Establish Civilization', mode: 'Civilize', description: 'Requires two settlements and one civic link.' },
+
+  { id: 'fabricate_orbital_frame', stage: 8, label: 'Fabricate Orbital Frame', mode: 'Orbit', description: 'Costs 16 Aetherium and 24 Alloy.' },
+  { id: 'launch_orbital_station', stage: 8, label: 'Launch Orbital Station', mode: 'Orbit', description: 'Consumes one frame and one Power Core.' },
+  { id: 'open_orbital_horizon', stage: 8, label: 'Open Orbital Horizon', mode: 'Orbit', description: 'Requires an orbital station. Establish planetary orbit.' },
+
+  { id: 'establish_network_link', stage: 9, label: 'Establish Network Link', mode: 'Network', description: 'Costs 8 Aetherium and 8 Alloy. Build two interworld links.' },
+  { id: 'run_trade_route', stage: 9, label: 'Run Trade Route', mode: 'Network', description: 'Requires two links. +25 trade volume.' },
+  { id: 'activate_frontier_network', stage: 9, label: 'Activate Frontier Network', mode: 'Network', description: 'Requires two links and 50 trade volume.' },
+
+  { id: 'synthesize_world_seed', stage: 10, label: 'Synthesize World Seed', mode: 'Infinite', description: 'Costs 20 Aetherium and 6 Biofiber.' },
+  { id: 'generate_frontier_world', stage: 10, label: 'Generate Frontier World', mode: 'Infinite', description: 'Consumes one World Seed and creates a new frontier world.' },
+  { id: 'restore_generated_world', stage: 10, label: 'Restore Generated World', mode: 'Infinite', description: 'Restore the newest generated world and complete an endless cycle.' }
+] as const;
+
 export const FRONTIER_CAMPAIGN: readonly FrontierCampaignDefinition[] = [
   { stage: 1, title: 'Despertar', summary: 'Explore the crash zone and learn the three resource families.', productionState: 'playable' },
   { stage: 2, title: 'Primer refugio', summary: 'Gather structural material and build a self-sustaining habitat.', productionState: 'playable' },
   { stage: 3, title: 'Power Core', summary: 'Manufacture a stable core from Aetherium, Alloy and Biofiber.', productionState: 'playable' },
   { stage: 4, title: 'Sky Grid', summary: 'Restore the first sector of the planetary energy network.', productionState: 'playable' },
   { stage: 5, title: 'Mundos vivos', summary: 'Recover seed stock, cultivate living plots, generate bio-energy and restore the first biome.', productionState: 'playable' },
-  { stage: 6, title: 'Tormenta iónica', summary: 'Advanced weather survival and storm engineering arrive in the next production phase.', productionState: 'next' }
+  { stage: 6, title: 'Tormenta iónica', summary: 'Capture storm energy, reinforce shelter and master the first ion storm.', productionState: 'playable' },
+  { stage: 7, title: 'Civilización', summary: 'Found settlements, connect them and establish a civilization.', productionState: 'playable' },
+  { stage: 8, title: 'Horizonte orbital', summary: 'Fabricate an orbital frame, launch a station and reach orbit.', productionState: 'playable' },
+  { stage: 9, title: 'Frontier Network', summary: 'Connect worlds, move trade and activate the frontier network.', productionState: 'playable' },
+  { stage: 10, title: 'Atlas infinito', summary: 'Synthesize world seeds, generate new worlds and repeat restoration indefinitely.', productionState: 'playable' }
 ] as const;
+
+const LEVEL_TITLES = [
+  ['Crash Wake', 'Aetherium Sample', 'Alloy Salvage', 'Biofiber Harvest'],
+  ['Foundation', 'Habitat Frame', 'Environmental Seal', 'Habitat Online'],
+  ['Resource Calibration', 'Core Frame', 'Core Assembly', 'Stable Ignition'],
+  ['Grid Trace', 'Relay Charge', 'Sector Reconnect', 'First Sector Online'],
+  ['Seed Recovery', 'Living Plot', 'Bio-Energy', 'First Biome Restored'],
+  ['Storm Scan', 'Charge Capture', 'Shelter Reinforcement', 'Storm Mastery'],
+  ['Outpost Charter', 'Second Settlement', 'Civic Link', 'Civilization Online'],
+  ['Orbital Materials', 'Frame Fabrication', 'Station Launch', 'Orbital Horizon'],
+  ['First Link', 'Second Link', 'Trade Route', 'Network Online'],
+  ['World Seed', 'World Generation', 'Restoration Cycle', 'Atlas Infinite']
+] as const;
+
+export const FRONTIER_LEVELS: readonly FrontierLevelDefinition[] = LEVEL_TITLES.flatMap((titles, stageIndex) =>
+  titles.map((title, index) => ({
+    level: stageIndex * 4 + index + 1,
+    stage: (stageIndex + 1) as FrontierCampaignStage,
+    title
+  }))
+);
 
 function finiteNonNegative(value: unknown, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : fallback;
 }
 
+function boundedPercent(value: unknown) {
+  return Math.min(100, finiteNonNegative(value, 0));
+}
+
 function campaignStage(value: unknown): FrontierCampaignStage {
   const parsed = finiteNonNegative(value, 1);
-  return Math.min(6, Math.max(1, parsed)) as FrontierCampaignStage;
+  return Math.min(10, Math.max(1, parsed)) as FrontierCampaignStage;
 }
 
 export function normalizeFrontierState(value: unknown): FrontierState {
@@ -124,7 +248,7 @@ export function normalizeFrontierState(value: unknown): FrontierState {
     biofiber: finiteNonNegative(source.biofiber, 0),
     powerCores: finiteNonNegative(source.powerCores, 0),
     habitats: finiteNonNegative(source.habitats, 0),
-    skyGridIntegrity: Math.min(100, finiteNonNegative(source.skyGridIntegrity, 0)),
+    skyGridIntegrity: boundedPercent(source.skyGridIntegrity),
     actionCount: finiteNonNegative(source.actionCount, 0),
     stormMinutes: finiteNonNegative(source.stormMinutes, 12),
     campaignStage: campaignStage(source.campaignStage),
@@ -138,16 +262,41 @@ export function normalizeFrontierEcologyState(value: unknown): FrontierEcologySt
   return {
     seedPods: finiteNonNegative(source.seedPods, 0),
     cultivatedPlots: finiteNonNegative(source.cultivatedPlots, 0),
-    ecoEnergy: Math.min(100, finiteNonNegative(source.ecoEnergy, 0)),
-    ecosystemStability: Math.min(100, finiteNonNegative(source.ecosystemStability, 0)),
+    ecoEnergy: boundedPercent(source.ecoEnergy),
+    ecosystemStability: boundedPercent(source.ecosystemStability),
     restoredBiomes: finiteNonNegative(source.restoredBiomes, 0),
+    revision: finiteNonNegative(source.revision, 0)
+  };
+}
+
+export function normalizeFrontierExpansionState(value: unknown): FrontierExpansionState {
+  const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  return {
+    stormCharge: boundedPercent(source.stormCharge),
+    shelterIntegrity: boundedPercent(source.shelterIntegrity),
+    stormMastery: boundedPercent(source.stormMastery),
+    settlements: finiteNonNegative(source.settlements, 0),
+    civicLinks: finiteNonNegative(source.civicLinks, 0),
+    civilizationIndex: boundedPercent(source.civilizationIndex),
+    orbitalFrames: finiteNonNegative(source.orbitalFrames, 0),
+    orbitalStations: finiteNonNegative(source.orbitalStations, 0),
+    orbitalReach: boundedPercent(source.orbitalReach),
+    networkLinks: finiteNonNegative(source.networkLinks, 0),
+    tradeVolume: boundedPercent(source.tradeVolume),
+    networkIntegrity: boundedPercent(source.networkIntegrity),
+    worldSeeds: finiteNonNegative(source.worldSeeds, 0),
+    worldsGenerated: finiteNonNegative(source.worldsGenerated, 0),
+    infiniteMastery: boundedPercent(source.infiniteMastery),
+    endlessCycles: finiteNonNegative(source.endlessCycles, 0),
+    campaignComplete: source.campaignComplete === true,
     revision: finiteNonNegative(source.revision, 0)
   };
 }
 
 export function frontierObjective(
   state: FrontierState,
-  ecology: FrontierEcologyState = INITIAL_FRONTIER_ECOLOGY_STATE
+  ecology: FrontierEcologyState = INITIAL_FRONTIER_ECOLOGY_STATE,
+  expansion: FrontierExpansionState = INITIAL_FRONTIER_EXPANSION_STATE
 ) {
   if (state.campaignStage === 1) return 'Sample Aetherium, Alloy and Biofiber';
   if (state.campaignStage === 2) return 'Build your first habitat';
@@ -159,12 +308,36 @@ export function frontierObjective(
     if (ecology.ecoEnergy < 40) return 'Generate 40 Eco Energy';
     return 'Restore the first living biome';
   }
-  return 'Mundos vivos complete · Tormenta iónica is the next production phase';
+  if (state.campaignStage === 6) {
+    if (expansion.stormCharge < 50) return 'Capture 50 ion storm charge';
+    if (expansion.shelterIntegrity < 50) return 'Reinforce shelter to 50%';
+    return 'Stabilize the first ion storm';
+  }
+  if (state.campaignStage === 7) {
+    if (expansion.settlements < 2) return 'Found two settlements';
+    if (expansion.civicLinks < 1) return 'Connect the settlements';
+    return 'Establish the first civilization';
+  }
+  if (state.campaignStage === 8) {
+    if (expansion.orbitalFrames < 1) return 'Fabricate an orbital frame';
+    if (expansion.orbitalStations < 1) return 'Launch an orbital station';
+    return 'Open the orbital horizon';
+  }
+  if (state.campaignStage === 9) {
+    if (expansion.networkLinks < 2) return 'Establish two frontier links';
+    if (expansion.tradeVolume < 50) return 'Run trade routes to 50 volume';
+    return 'Activate the Frontier Network';
+  }
+  if (expansion.campaignComplete) return `Atlas infinito online · Endless cycle ${expansion.endlessCycles + 1}`;
+  if (expansion.worldSeeds < 1) return 'Synthesize a World Seed';
+  if (expansion.worldsGenerated <= expansion.endlessCycles) return 'Generate a new frontier world';
+  return 'Restore the generated world';
 }
 
 export function frontierCampaignProgress(
   state: FrontierState,
-  ecology: FrontierEcologyState = INITIAL_FRONTIER_ECOLOGY_STATE
+  ecology: FrontierEcologyState = INITIAL_FRONTIER_ECOLOGY_STATE,
+  expansion: FrontierExpansionState = INITIAL_FRONTIER_EXPANSION_STATE
 ) {
   if (state.campaignStage === 1) {
     const progress = (
@@ -189,7 +362,33 @@ export function frontierCampaignProgress(
     ) / 4;
     return Math.round(progress * 100);
   }
-  return 100;
+  if (state.campaignStage === 6) {
+    return Math.round(((Math.min(1, expansion.stormCharge / 50) + Math.min(1, expansion.shelterIntegrity / 50) + Math.min(1, expansion.stormMastery / 25)) / 3) * 100);
+  }
+  if (state.campaignStage === 7) {
+    return Math.round(((Math.min(1, expansion.settlements / 2) + Math.min(1, expansion.civicLinks) + Math.min(1, expansion.civilizationIndex / 25)) / 3) * 100);
+  }
+  if (state.campaignStage === 8) {
+    return Math.round(((Math.min(1, expansion.orbitalFrames) + Math.min(1, expansion.orbitalStations) + Math.min(1, expansion.orbitalReach / 25)) / 3) * 100);
+  }
+  if (state.campaignStage === 9) {
+    return Math.round(((Math.min(1, expansion.networkLinks / 2) + Math.min(1, expansion.tradeVolume / 50) + Math.min(1, expansion.networkIntegrity / 25)) / 3) * 100);
+  }
+  if (expansion.campaignComplete) return 100;
+  return Math.round(((Math.min(1, expansion.worldSeeds) + Math.min(1, Math.max(0, expansion.worldsGenerated - expansion.endlessCycles)) + Math.min(1, expansion.infiniteMastery / 25)) / 3) * 100);
+}
+
+export function frontierCurrentLevel(
+  state: FrontierState,
+  ecology: FrontierEcologyState = INITIAL_FRONTIER_ECOLOGY_STATE,
+  expansion: FrontierExpansionState = INITIAL_FRONTIER_EXPANSION_STATE
+) {
+  const progress = frontierCampaignProgress(state, ecology, expansion);
+  const step = expansion.campaignComplete && state.campaignStage === 10
+    ? 3
+    : Math.min(3, Math.floor(progress / 25));
+  const level = Math.min(40, (state.campaignStage - 1) * 4 + step + 1);
+  return FRONTIER_LEVELS[level - 1];
 }
 
 export function frontierExplorerRank(state: FrontierState) {
@@ -239,5 +438,67 @@ export function ecologyActionAvailability(
     if (state.biofiber < 4) return { enabled: false, reason: 'Need 4 Biofiber' };
     if (ecology.ecosystemStability >= 100) return { enabled: false, reason: 'Ecosystem already stable' };
   }
+  return { enabled: true };
+}
+
+export function expansionActionAvailability(
+  state: FrontierState,
+  expansion: FrontierExpansionState,
+  action: FrontierExpansionActionId
+): { enabled: boolean; reason?: string } {
+  const definition = FRONTIER_EXPANSION_ACTIONS.find((item) => item.id === action);
+  if (!definition) return { enabled: false, reason: 'Unknown expansion action' };
+  if (state.campaignStage !== definition.stage) return { enabled: false, reason: `Available in phase ${definition.stage}` };
+
+  if (action === 'capture_storm_charge' && expansion.stormCharge >= 100) return { enabled: false, reason: 'Storm charge storage full' };
+  if (action === 'reinforce_storm_shelter') {
+    if (state.alloy < 8) return { enabled: false, reason: 'Need 8 Alloy' };
+    if (state.biofiber < 4) return { enabled: false, reason: 'Need 4 Biofiber' };
+    if (expansion.shelterIntegrity >= 100) return { enabled: false, reason: 'Shelter fully reinforced' };
+  }
+  if (action === 'master_ion_storm') {
+    if (expansion.stormCharge < 50) return { enabled: false, reason: 'Need 50 Storm Charge' };
+    if (expansion.shelterIntegrity < 50) return { enabled: false, reason: 'Need 50% Shelter Integrity' };
+  }
+
+  if (action === 'found_settlement') {
+    if (state.alloy < 16) return { enabled: false, reason: 'Need 16 Alloy' };
+    if (state.biofiber < 8) return { enabled: false, reason: 'Need 8 Biofiber' };
+  }
+  if (action === 'connect_settlements' && expansion.settlements < 2) return { enabled: false, reason: 'Need 2 settlements' };
+  if (action === 'establish_civilization') {
+    if (expansion.settlements < 2) return { enabled: false, reason: 'Need 2 settlements' };
+    if (expansion.civicLinks < 1) return { enabled: false, reason: 'Need 1 civic link' };
+  }
+
+  if (action === 'fabricate_orbital_frame') {
+    if (state.aetherium < 16) return { enabled: false, reason: 'Need 16 Aetherium' };
+    if (state.alloy < 24) return { enabled: false, reason: 'Need 24 Alloy' };
+  }
+  if (action === 'launch_orbital_station') {
+    if (expansion.orbitalFrames < 1) return { enabled: false, reason: 'Need 1 orbital frame' };
+    if (state.powerCores < 1) return { enabled: false, reason: 'Need 1 Power Core' };
+  }
+  if (action === 'open_orbital_horizon' && expansion.orbitalStations < 1) return { enabled: false, reason: 'Launch an orbital station first' };
+
+  if (action === 'establish_network_link') {
+    if (state.aetherium < 8) return { enabled: false, reason: 'Need 8 Aetherium' };
+    if (state.alloy < 8) return { enabled: false, reason: 'Need 8 Alloy' };
+  }
+  if (action === 'run_trade_route' && expansion.networkLinks < 2) return { enabled: false, reason: 'Need 2 network links' };
+  if (action === 'activate_frontier_network') {
+    if (expansion.networkLinks < 2) return { enabled: false, reason: 'Need 2 network links' };
+    if (expansion.tradeVolume < 50) return { enabled: false, reason: 'Need 50 trade volume' };
+  }
+
+  if (action === 'synthesize_world_seed') {
+    if (state.aetherium < 20) return { enabled: false, reason: 'Need 20 Aetherium' };
+    if (state.biofiber < 6) return { enabled: false, reason: 'Need 6 Biofiber' };
+  }
+  if (action === 'generate_frontier_world' && expansion.worldSeeds < 1) return { enabled: false, reason: 'Need 1 World Seed' };
+  if (action === 'restore_generated_world' && expansion.worldsGenerated <= expansion.endlessCycles) {
+    return { enabled: false, reason: 'Generate a new frontier world first' };
+  }
+
   return { enabled: true };
 }
