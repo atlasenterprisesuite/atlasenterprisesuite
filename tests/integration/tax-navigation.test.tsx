@@ -23,4 +23,9 @@ describe('ATLAS Tax navigation contract', () => {
       expect(routes).toContain(path);
     }
   });
+  it('keeps Tax inside the neural auth coverage contract', () => {
+    const neural = readFileSync(process.cwd() + '/scripts/verify-neural-integrity.mjs', 'utf8');
+    expect(neural).toContain("case 'tax':");
+    expect(neural).toContain("tax.includes('RequireAtlasIdentity')");
+  });
 });
