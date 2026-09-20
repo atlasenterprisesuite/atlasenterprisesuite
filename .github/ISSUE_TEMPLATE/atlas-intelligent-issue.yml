@@ -1,0 +1,241 @@
+name: ATLAS Intelligent Issue
+description: Structured intake for bugs, features, integrations, security, infrastructure, data, UX, incidents, research, and technical debt.
+title: "[ATLAS] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for all ATLAS work. Do not include secrets, tokens, credentials, or fabricated production evidence.
+        Completion requires implementation evidence, verification, and a real final state.
+
+  - type: dropdown
+    id: owner_module
+    attributes:
+      label: Owner module
+      description: Primary ATLAS module responsible for the work.
+      options:
+        - Core Web
+        - ATLAS Manager
+        - ATLAS Assistant
+        - Finance
+        - Accounting
+        - Payroll
+        - HR
+        - CRM
+        - POS
+        - Inventory
+        - Projects
+        - Analytics
+        - Security
+        - Settings
+        - ATLAS Pay
+        - ATLAS Studio
+        - ATLAS Drive
+        - Knowledge Atlas
+        - ATLAS Voice
+        - ATLAS Connect
+        - Health
+        - Ride
+        - Hospitality
+        - Education
+        - FRONTIER
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue type
+      options:
+        - Bug
+        - Feature
+        - Enhancement
+        - Integration
+        - Security
+        - Infrastructure
+        - Data
+        - UX/UI
+        - Performance
+        - Accessibility
+        - Technical Debt
+        - Production Incident
+        - Research / Spike
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 — Production / Security blocker
+        - P1 — Critical
+        - P2 — High
+        - P3 — Normal
+        - P4 — Low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      multiple: true
+      options:
+        - Local
+        - Test
+        - Preview
+        - Staging
+        - Production
+    validations:
+      required: true
+
+  - type: dropdown
+    id: actors
+    attributes:
+      label: Affected actor
+      multiple: true
+      options:
+        - Customer
+        - Employee
+        - Administrator
+        - Manager
+        - Accountant
+        - HR / Payroll
+        - Developer
+        - ATLAS AI Agent
+        - External integration
+        - System process
+    validations:
+      required: true
+
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent and business reason
+      description: What must happen, and why does it matter?
+      placeholder: "Outcome → reason → user/business/security/compliance impact"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_state
+    attributes:
+      label: Current state and evidence
+      description: Describe existing route/component/service, observed behavior, and real evidence.
+      placeholder: "Path/component/endpoint/table/workflow; observed behavior; logs/screenshots/URL/API evidence"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_state
+    attributes:
+      label: Expected state and user flow
+      description: State the exact desired behavior.
+      placeholder: "Entry → Navigation → Action → Validation → Result → Next Action"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source_of_truth
+    attributes:
+      label: Authoritative data source
+      multiple: true
+      options:
+        - Supabase
+        - Existing ATLAS API
+        - External authorized API
+        - Local application state
+        - No data required
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tenant_sensitive
+    attributes:
+      label: Tenant-sensitive?
+      options:
+        - "Yes"
+        - "No"
+        - Unknown — must be resolved before implementation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: security_sensitive
+    attributes:
+      label: Security-sensitive?
+      options:
+        - "Yes"
+        - "No"
+        - Unknown — must be resolved before implementation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: production_mutation
+    attributes:
+      label: Production mutation or deployment required?
+      options:
+        - "Yes"
+        - "No"
+        - Unknown — must be resolved before implementation
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and blockers
+      description: Include internal issues/PRs/services/migrations and external providers, credentials, approvals, or billing dependencies.
+      placeholder: "BLOCKED BY: ... or None"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Define observable completion criteria, including permissions, tenant isolation, states, responsiveness, errors, tests, build, and production verification when applicable.
+      placeholder: "- [ ] Required behavior implemented
+- [ ] Relevant tests pass
+- [ ] No unexpected 404/500
+- [ ] Typecheck/build pass
+- [ ] Production verified when applicable"
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Commands and focused checks that must prove completion.
+      value: |
+        npm ci
+        npm run typecheck
+        npm test
+        npm run build
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: execution_contract
+    attributes:
+      label: ATLAS execution contract
+      options:
+        - label: I searched for an existing equivalent before requesting new architecture.
+          required: true
+        - label: I will not include secrets or fabricate connected/live/production state.
+          required: true
+        - label: This issue must not be marked complete without verification evidence.
+          required: true
+        - label: Interactive UI must use real destinations/actions; no empty hrefs or fake console-only actions.
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        AI routing rule:
+        INTENT → OWNER MODULE → CONTEXT → CURRENT STATE → TARGET STATE → DEPENDENCIES → PERMISSIONS → TEST → MINIMAL IMPLEMENTATION → VERIFY → REVIEW → EVIDENCE → NEXT ACTION
