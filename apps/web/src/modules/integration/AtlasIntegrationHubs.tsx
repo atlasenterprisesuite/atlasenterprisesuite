@@ -114,6 +114,39 @@ export function RevenueIntegrationHub() {
   );
 }
 
+export function AnalyticsIntegrationHub() {
+  return (
+    <IntegrationHub
+      title="ATLAS Business Analytics"
+      description="Canonical reporting entry point that composes verified ATLAS reporting surfaces without inventing cross-module totals."
+      narrative="Observe • Compare • Explain • Act"
+      sections={[
+        {
+          eyebrow: 'Verified reporting',
+          title: 'Source-backed analytics surfaces',
+          description: 'Open reporting and operational views that already exist on canonical routes. Each source preserves its own organization, permission and evidence boundary.',
+          cards: [
+            { label: 'Finance', title: 'Automotive Sales', description: 'Verified dealership financial reporting across vehicle, F&I, fixed operations, inventory and floorplan dimensions.', to: '/finance/accounting/reports/automotive-sales' },
+            { label: 'Commerce', title: 'Commerce Operations', description: 'Tenant-scoped catalog, product and order state from the canonical commerce module.', to: '/commerce' },
+            { label: 'Growth', title: 'Social Command Center', description: 'Governed social planning and source-scoped imported metrics when an authorized source exists.', to: '/studio/social' },
+            { label: 'Customers', title: 'CRM', description: 'Customer and pipeline context from authorized provider-backed CRM records.', to: '/crm' }
+          ]
+        },
+        {
+          eyebrow: 'Aggregation boundary',
+          title: 'Universal metrics remain source-gated',
+          description: 'This hub is canonical navigation and orchestration, not a fabricated warehouse. Cross-module KPIs activate only when their source contracts, tenant scope and lineage are verified.',
+          cards: [
+            { label: 'Data', title: 'Cross-module KPI layer', description: 'Universal KPIs require canonical metric definitions, source lineage and tenant-safe aggregation before activation.', status: 'Data contract gate' },
+            { label: 'Providers', title: 'External analytics providers', description: 'No external analytics account is treated as connected until organization authorization and provider readiness are verified.', status: 'External gate' }
+          ]
+        }
+      ]}
+      statusNote="Business Analytics is active as a canonical hub over verified ATLAS routes. Cross-module KPI aggregation and external analytics remain fail-closed until their source and authorization gates pass."
+    />
+  );
+}
+
 export function SiteReviewIntegrationHub() {
   return (
     <IntegrationHub
