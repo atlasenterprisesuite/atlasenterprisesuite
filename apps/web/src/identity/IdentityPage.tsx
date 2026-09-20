@@ -6,10 +6,15 @@ import {
   getAtlasAccessToken,
   signInAtlas
 } from '../lib/atlasSession';
+import { ATLAS_MODULES } from '../modules/registry';
 import './identity.css';
 
 const DEFAULT_TARGET = '/';
-const SUPPORTED_PREFIXES = ['/finance', '/health', '/studio', '/insurance'];
+const SUPPORTED_PREFIXES = [
+  ...ATLAS_MODULES.filter((module) => module.requiresAuth).map((module) => module.route),
+  '/execution',
+  '/business/growth/social-publisher'
+];
 
 export function resolveAtlasIdentityTarget(rawTarget: string | null) {
   if (!rawTarget) return DEFAULT_TARGET;
