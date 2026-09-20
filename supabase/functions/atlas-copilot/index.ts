@@ -3,6 +3,7 @@ import {resolveIntelligenceContext} from './atlas-intelligence-auth.mjs';
 import {createIntelligenceStore} from './atlas-intelligence-store.mjs';
 import {createOpenAIResponsesAdapter} from './openai-responses-adapter.mjs';
 import {createAtlasLocalResponsesAdapter} from './atlas-local-responses-adapter.mjs';
+import {createFreeLLMAPIAdapter} from './freellmapi-adapter.mjs';
 import {createAmazonBedrockResponsesAdapter} from './amazon-bedrock-responses-adapter.mjs';
 import {createGeminiAdapter} from './gemini-adapter.mjs';
 import {createCodexSovereignAdapter} from './codex-sovereign-adapter.mjs';
@@ -16,8 +17,8 @@ const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
-const VERSION=10;
-const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','codex-sovereign'];
+const VERSION=11;
+const PROVIDER_IDS=['atlas-local','freellmapi','openai','bedrock','gemini','codex-sovereign'];
 const DEFAULT_OPENAI_MODEL='gpt-6-astra';
 const DEFAULT_BEDROCK_REGION='us-west-2';
 const DEFAULT_BEDROCK_ENDPOINT='runtime';
@@ -66,6 +67,18 @@ function runtime(){
   const localAiModels=profileModels('ATLAS_LOCAL_AI_MODEL','ATLAS_LOCAL_AI_MODEL_FAST','ATLAS_LOCAL_AI_MODEL_BALANCED','ATLAS_LOCAL_AI_MODEL_DEEP');
   const localAiAllowUnauthenticated=boolEnv('ATLAS_LOCAL_AI_ALLOW_UNAUTHENTICATED',false);
   const localAiAllowInsecure=boolEnv('ATLAS_LOCAL_AI_ALLOW_INSECURE',false);
+  const freeLlmEnabled=boolEnv('ATLAS_FREELLMAPI_ENABLED',false);
+  const freeLlmBaseUrl=clean(Deno.env.get('ATLAS_FREELLMAPI_URL'));
+  const freeLlmKey=Deno.env.get('ATLAS_FREELLMAPI_KEY')||'';
+  const freeLlmSharedModel=clean(Deno.env.get('ATLAS_FREELLMAPI_MODEL'));
+  const freeLlmModels={
+    fast:clean(Deno.env.get('ATLAS_FREELLMAPI_MODEL_FAST'))||freeLlmSharedModel,
+    balanced:clean(Deno.env.get('ATLAS_FREELLMAPI_MODEL_BALANCED'))||freeLlmSharedModel,
+    deep:clean(Deno.env.get('ATLAS_FREELLMAPI_MODEL_DEEP'))||freeLlmSharedModel,
+  };
+  const freeLlmAllowInsecure=boolEnv('ATLAS_FREELLMAPI_ALLOW_INSECURE',false);
+  const freeLlmTimeoutMs=Math.max(30000,Math.min(300000,Math.trunc(numberEnv('ATLAS_FREELLMAPI_TIMEOUT_MS',150000))||150000));
+  const freeLlmProbeTimeoutMs=Math.max(1000,Math.min(30000,Math.trunc(numberEnv('ATLAS_FREELLMAPI_PROBE_TIMEOUT_MS',10000))||10000));
   const openaiKey=Deno.env.get('OPENAI_API_KEY')||'';
   const bedrockKey=Deno.env.get('AWS_BEARER_TOKEN_BEDROCK')||Deno.env.get('ATLAS_BEDROCK_API_KEY')||'';
   const geminiKey=Deno.env.get('GEMINI_API_KEY')||Deno.env.get('GOOGLE_AI_API_KEY')||'';
@@ -91,7 +104,7 @@ function runtime(){
     emergency_openai_reserve_usd:Math.max(0,numberEnv('ATLAS_AI_EMERGENCY_OPENAI_RESERVE_USD',0)),
     emergency_openai_max_output_tokens:Math.max(64,Math.min(3000,Math.trunc(numberEnv('ATLAS_AI_EMERGENCY_OPENAI_MAX_OUTPUT_TOKENS',512))||512)),
   };
-  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,costPolicy};
+  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,freeLlmEnabled,freeLlmBaseUrl,freeLlmKey,freeLlmModels,freeLlmAllowInsecure,freeLlmTimeoutMs,freeLlmProbeTimeoutMs,openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,costPolicy};
 }
 async function resolveLocalAiRuntime(rt){
   let stored={};
@@ -131,6 +144,7 @@ async function resolveLocalAiRuntime(rt){
 function registryFor(rt,localAi){
   return createProviderRegistry({providers:[
     createAtlasLocalResponsesAdapter({baseUrl:localAi.baseUrl,token:localAi.token,accessClientId:localAi.accessClientId,accessClientSecret:localAi.accessClientSecret,models:localAi.models,allowUnauthenticated:localAi.allowUnauthenticated,allowInsecure:localAi.allowInsecure,fetchFn:fetch,probeTimeoutMs:localAi.source==='render-free'?90000:15000}),
+    createFreeLLMAPIAdapter({enabled:rt.freeLlmEnabled,baseUrl:rt.freeLlmBaseUrl,apiKey:rt.freeLlmKey,models:rt.freeLlmModels,allowInsecure:rt.freeLlmAllowInsecure,fetchFn:fetch,timeoutMs:rt.freeLlmTimeoutMs,probeTimeoutMs:rt.freeLlmProbeTimeoutMs}),
     createOpenAIResponsesAdapter({apiKey:rt.openaiKey,models:rt.openaiModels,fetchFn:fetch}),
     createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,fetchFn:fetch}),
     createGeminiAdapter({apiKey:rt.geminiKey,models:rt.geminiModels,fetchFn:fetch}),
