@@ -18,11 +18,17 @@ describe('Cloudflare authorized production HTTP verifier', () => {
   it('checks the public shell while preserving the protected deployment path', () => {
     expect(verifier).toContain("'/identity?app=%2Ffinance'");
     expect(verifier).toContain("'/finance'");
+    expect(verifier).toContain("'/commerce'");
+    expect(verifier).toContain("'/revenue'");
+    expect(verifier).toContain("'/analytics'");
     expect(verifier).toContain("'/health'");
     expect(verifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
     expect(verifier).toContain('health_route_reachable');
+    expect(verifier).toContain('commerce_route_reachable');
+    expect(verifier).toContain('revenue_route_reachable');
+    expect(verifier).toContain('analytics_route_reachable');
     expect(verifier).toContain('jaque_mate_sentinel_route_reachable');
     expect(verifier).toContain("'/deployment.json'");
     expect(verifier).toContain("[302, 401, 403].includes(deployment.status)");
