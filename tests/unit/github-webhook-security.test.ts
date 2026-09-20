@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   GitHubWebhookError,
@@ -87,5 +88,12 @@ describe('ATLAS GitHub App webhook boundary', () => {
       installationId: 12345,
       repository: 'atlasenterprisesuite/atlasenterprisesuite',
     });
+  });
+
+  it('wires the trusted webhook boundary into the orchestrator HTTP server', () => {
+    const source = readFileSync('apps/atlas-orchestrator/src/http.ts', 'utf8');
+    expect(source).toContain("req.url === '/webhooks/github'");
+    expect(source).toContain('ATLAS_GITHUB_WEBHOOK_SECRET');
+    expect(source).toContain('executionAuthorized: false');
   });
 });
