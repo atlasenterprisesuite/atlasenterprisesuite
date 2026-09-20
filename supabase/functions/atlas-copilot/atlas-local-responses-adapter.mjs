@@ -1,6 +1,8 @@
 const PROFILES=Object.freeze(['fast','balanced','deep']);
-const LOCAL_INPUT_CHAR_BUDGET=12000;
-const LOCAL_MAX_OUTPUT_TOKENS=1024;
+const LOCAL_INPUT_CHAR_BUDGET=6000;
+const LOCAL_MAX_OUTPUT_TOKENS=384;
+const LOCAL_INSTRUCTION_CHAR_BUDGET=2600;
+const LOCAL_SYSTEM_CORE=`You are ATLAS, one coherent cognitive system. Return one unified answer. Follow the user's authorized intent and current module context. Preserve authentication, tenant isolation, RBAC, least privilege, approval gates, auditability, privacy, and secret protection. Never expose credentials, secrets, private chain-of-thought, or unnecessary internal provider chatter. Do not fabricate data, tool results, provider state, tests, deployments, or production status. Distinguish verified, probable, unknown, conflicted, and blocked states. For requested actions, execute only within authorization, verify the result, and report the real state. Fail closed on unsafe or unauthorized mutations. Reuse existing ATLAS services, data, components, and sources of truth instead of creating parallel systems. Prefer concise RESULT, EVIDENCE, ACTION, STATUS, BLOCKERS, and NEXT ACTION when operational work is involved.`;
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
 function normalizeBase(value,{allowInsecure=false}={}){
@@ -25,6 +27,14 @@ function compactInput(input,budget=LOCAL_INPUT_CHAR_BUDGET){
     if(used>=budget)break;
   }
   return selected.reverse();
+}
+function compactInstructions(value){
+  const raw=String(value||'').trim();
+  if(raw.length<=LOCAL_INSTRUCTION_CHAR_BUDGET)return raw;
+  const marker='CURRENT COGNITIVE CONTEXT';
+  const index=raw.lastIndexOf(marker);
+  const context=index>=0?raw.slice(index,index+800):'';
+  return `${LOCAL_SYSTEM_CORE}${context?`\n\n${context}`:''}`.slice(0,LOCAL_INSTRUCTION_CHAR_BUDGET).trim();
 }
 function outputText(data){
   const parts=[];
@@ -90,7 +100,8 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
         ? 'Prefer a fast, concise local answer unless more reasoning is required for correctness.'
         : 'Use a balanced local reasoning budget.';
     const boundedMaxOutput=Math.max(64,Math.min(LOCAL_MAX_OUTPUT_TOKENS,Number(max_output_tokens)||LOCAL_MAX_OUTPUT_TOKENS));
-    const body={model,instructions:`${String(instructions||'')}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false};
+    const localInstructions=compactInstructions(instructions);
+    const body={model,instructions:`${localInstructions}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false};
     let response;
     try{
       response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
