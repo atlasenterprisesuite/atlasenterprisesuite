@@ -324,29 +324,42 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
   const avatarBusy = snapshot.state === 'transcribing' || snapshot.state === 'understanding' || snapshot.state === 'responding';
   const visibleState = stateLabel(snapshot.state);
 
-  return (
-    <section className={`voice-page page-stack${embedded ? ' voice-page-embedded' : ''}`}>
-      {!embedded && (
-        <header className="page-header">
-          <p className="eyebrow">ATLAS Voice</p>
-          <h1>Voice Assistant</h1>
-          <p>Guarded speech turns can execute safe local navigation or use the verified ATLAS Intelligence backend for conversational responses.</p>
-        </header>
-      )}
+  const promptText = turn?.finalTranscript || turn?.interimTranscript || 'Say what you need. ATLAS will show what it heard before taking action.';
+  const responseText = turn?.responseText || (snapshot.state === 'responding'
+    ? 'ATLAS is preparing a response…'
+    : 'Your response will appear here after a verified turn.');
+  const intelligenceLabel = intelligenceState === 'ready'
+    ? providerLabel
+    : intelligenceState === 'checking'
+      ? 'Checking provider'
+      : 'Provider unavailable';
 
-      <div className="voice-status-row">
-        <span className={`voice-state voice-state-${snapshot.state}`}>{visibleState}</span>
-        <span>Intelligence: {intelligenceState === 'ready' ? providerLabel : intelligenceState}</span>
-        <span>Session {snapshot.sessionId.slice(0, 8)}</span>
-        <span>Turn {snapshot.sequence}</span>
+  return (
+    <section className={`voice-page voice-experience${embedded ? ' voice-page-embedded' : ''}`}>
+      <div className="voice-experience-header">
+        <div>
+          <p className="eyebrow">ATLAS Voice Assistant</p>
+          <h2>Talk to ATLAS</h2>
+          <p>Tap once, speak naturally, and keep the conversation focused. ATLAS only executes after the transcript and provider checks pass.</p>
+        </div>
+        <span className="voice-private-pill"><span aria-hidden="true">●</span> Private voice turn</span>
+      </div>
+
+      <div className="voice-presence-bar" aria-label="Voice readiness">
+        <span className={`voice-state voice-state-${snapshot.state}`}><i aria-hidden="true" />{visibleState}</span>
+        <span className={`voice-provider-state voice-provider-${intelligenceState}`}>AI · {intelligenceLabel}</span>
+        <span className={supported ? 'voice-device-state is-ready' : 'voice-device-state'}>{supported ? 'Mic ready' : 'Mic unavailable'}</span>
       </div>
 
       {!supported && (
-        <div className="notice strong">This browser does not expose SpeechRecognition. The turn engine and Intelligence backend remain available, but microphone transcription needs a configured STT provider or a supported browser.</div>
+        <div className="voice-inline-warning" role="status">
+          <strong>Microphone transcription is unavailable in this browser.</strong>
+          <span>ATLAS keeps the assistant and turn engine available, but voice input requires browser SpeechRecognition or a configured STT provider.</span>
+        </div>
       )}
 
-      <div className="voice-stage-grid">
-        <article className="atlas-avatar-console" aria-label="ATLAS AI avatar console">
+      <div className="voice-focus-stage">
+        <div className="voice-focus-visual">
           <button
             type="button"
             className={`atlas-avatar atlas-avatar-${snapshot.state}`}
@@ -363,55 +376,84 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
             <span className="avatar-state-ring" aria-hidden="true" />
           </button>
 
-          <div className="avatar-readout" role="status" aria-live="polite">
+          <div className="voice-live-readout" role="status" aria-live="polite">
             <span className={`avatar-live-dot avatar-live-dot-${snapshot.state}`} aria-hidden="true" />
-            <strong>ATLAS // {visibleState.toUpperCase()}</strong>
-            <small>{supported ? 'Tap the avatar to control the microphone.' : 'Voice recognition unavailable in this browser.'}</small>
+            <div>
+              <strong>ATLAS // {visibleState.toUpperCase()}</strong>
+              <small>{snapshot.state === 'listening'
+                ? 'I’m listening. Tap the avatar when you are done.'
+                : snapshot.state === 'speaking'
+                  ? 'ATLAS is speaking. Tap the avatar to interrupt.'
+                  : supported
+                    ? 'Tap the avatar and speak.'
+                    : 'Voice input is not available on this browser.'}</small>
+            </div>
           </div>
 
           <div className={`avatar-waveform avatar-waveform-${snapshot.state}`} aria-hidden="true">
-            {Array.from({ length: 14 }, (_, index) => <span key={index} />)}
+            {Array.from({ length: 18 }, (_, index) => <span key={index} />)}
           </div>
-        </article>
+        </div>
 
-        <div className="voice-console">
-          <article className="voice-panel transcript-panel">
-            <p className="eyebrow">What ATLAS heard</p>
-            <div className="voice-transcript final">{turn?.finalTranscript || 'No final transcript yet.'}</div>
-            {turn?.interimTranscript && !turn.finalTranscript && <div className="voice-transcript interim">{turn.interimTranscript}</div>}
-            <dl>
-              <div><dt>Turn ID</dt><dd>{turn?.id ?? '-'}</dd></div>
-              <div><dt>Confidence</dt><dd>{turn?.confidence !== undefined ? `${Math.round(turn.confidence * 100)}%` : '-'}</dd></div>
-              <div><dt>Source</dt><dd>{turn?.source ?? '-'}</dd></div>
-            </dl>
+        <div className="voice-conversation" aria-label="Current voice turn">
+          <article className="voice-turn-card voice-turn-user">
+            <div className="voice-turn-label"><span>You</span><small>{turn?.confidence !== undefined ? `${Math.round(turn.confidence * 100)}% confidence` : 'Microphone'}</small></div>
+            <p className={turn?.finalTranscript || turn?.interimTranscript ? '' : 'is-placeholder'}>{promptText}</p>
           </article>
 
-          <article className="voice-panel response-panel">
-            <p className="eyebrow">ATLAS response</p>
-            <div className="voice-transcript final">{turn?.responseText || 'No response generated.'}</div>
-            <p className="voice-help">Commands such as “ATLAS abre nómina” and “Hey ATLAS open Health” resolve locally to approved routes. Other turns use the authenticated ATLAS Intelligence provider only when verification passes.</p>
+          <article className="voice-turn-card voice-turn-atlas">
+            <div className="voice-turn-label"><span>ATLAS</span><small>{intelligenceState === 'ready' ? 'Verified intelligence' : 'Waiting for provider'}</small></div>
+            <p className={turn?.responseText || snapshot.state === 'responding' ? '' : 'is-placeholder'}>{responseText}</p>
           </article>
+
+          <div className="voice-message voice-message-quiet" role="status" aria-live="polite">{message}</div>
         </div>
       </div>
 
-      <div className="voice-controls">
-        <button type="button" className="voice-primary" onClick={startListening} disabled={!supported || snapshot.state === 'listening' || avatarBusy}>Start speaking</button>
-        <button type="button" onClick={stopListening} disabled={!supported || snapshot.state !== 'listening'}>Stop</button>
-        <button type="button" onClick={interrupt} disabled={!supported || snapshot.state !== 'speaking'}>Interrupt ATLAS</button>
+      <div className="voice-action-dock" aria-label="Voice controls">
+        {snapshot.state !== 'listening' && snapshot.state !== 'speaking' ? (
+          <button type="button" className="voice-primary" onClick={startListening} disabled={!supported || avatarBusy}>
+            <span className="voice-control-icon" aria-hidden="true">●</span>
+            Start voice turn
+          </button>
+        ) : null}
+        {snapshot.state === 'listening' ? (
+          <button type="button" className="voice-primary is-listening" onClick={stopListening}>
+            <span className="voice-control-icon" aria-hidden="true">■</span>
+            Finish listening
+          </button>
+        ) : null}
+        {snapshot.state === 'speaking' ? (
+          <button type="button" className="voice-primary is-speaking" onClick={interrupt}>
+            <span className="voice-control-icon" aria-hidden="true">↺</span>
+            Interrupt & listen
+          </button>
+        ) : null}
+        <span className="voice-action-hint">Or tap the ATLAS avatar</span>
       </div>
 
-      <div className="voice-message" role="status" aria-live="polite">{message}</div>
-
-      <div className="voice-rules">
-        <strong>Loop protections active</strong>
-        <span>one response per turn ID</span>
-        <span>duplicate transcript suppression</span>
-        <span>duplicate response suppression</span>
-        <span>ATLAS TTS excluded from user input</span>
-        <span>barge-in opens a fresh turn</span>
-        <span>low-confidence final transcripts are blocked</span>
-        <span>unverified AI providers fail closed</span>
-      </div>
+      <details className="voice-diagnostics">
+        <summary>
+          <span>Voice diagnostics</span>
+          <small>Session {snapshot.sessionId.slice(0, 8)} · Turn {snapshot.sequence}</small>
+        </summary>
+        <div className="voice-diagnostics-grid">
+          <div><span>State</span><strong>{visibleState}</strong></div>
+          <div><span>Intelligence</span><strong>{intelligenceLabel}</strong></div>
+          <div><span>Source</span><strong>{turn?.source ?? '—'}</strong></div>
+          <div><span>Turn ID</span><strong>{turn?.id ?? '—'}</strong></div>
+        </div>
+        <div className="voice-rules">
+          <strong>Loop protections</strong>
+          <span>one response per turn</span>
+          <span>duplicate transcript suppression</span>
+          <span>duplicate response suppression</span>
+          <span>ATLAS TTS excluded from input</span>
+          <span>barge-in opens a new turn</span>
+          <span>low-confidence transcripts blocked</span>
+          <span>unverified AI fails closed</span>
+        </div>
+      </details>
     </section>
   );
 }
