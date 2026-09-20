@@ -92,7 +92,7 @@ describe('ATLAS Identity route', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'not-a-real-password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'ATLAS Voice Studio' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Voice Studio' })).toBeInTheDocument());
     expect(screen.getByText('Requires ATLAS iOS app')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(5);
     expect(String(fetchMock.mock.calls[3][0])).toContain('/rest/v1/organization_members');
