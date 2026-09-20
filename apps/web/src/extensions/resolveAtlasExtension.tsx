@@ -8,6 +8,7 @@ import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { EventsHomePage } from '../modules/events/EventsHomePage';
 import { FrontierRoutes } from '../modules/frontier/FrontierRoutes';
+import { AtlasGestationPage } from '../modules/release/AtlasGestationPage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { SocialCommandCenterPage } from '../modules/creator/social/SocialCommandCenterPage';
 import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDeskPage';
@@ -66,6 +67,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/release') {
     return <RequireAtlasIdentity><ReleaseControlIntegrationHub /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/release/gestation') {
+    return <RequireAtlasIdentity><AtlasGestationPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/assistant') {
