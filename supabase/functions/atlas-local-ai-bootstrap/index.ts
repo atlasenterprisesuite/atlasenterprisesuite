@@ -517,7 +517,7 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
     if (!health.ok) throw Object.assign(new Error('local_ai_health_failed'), { status: health.status });
 
     const productionContextInstructions = source === 'render-free'
-      ? `${'ATLAS production context capacity verification. '.repeat(320)} Return exactly: ATLAS ready.`
+      ? `${'ATLAS production context capacity verification. '.repeat(80)} Return exactly: ATLAS ready.`
       : 'Return a short readiness response. This request exists only to prove real local generation.';
     const inference = await fetch(`${endpoint}/v1/responses`, {
       method: 'POST',
