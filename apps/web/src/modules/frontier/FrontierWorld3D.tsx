@@ -20,6 +20,12 @@ import {
   resolveFrontierBiomeMovement,
   type FrontierBiomeRegion
 } from './biomes';
+import {
+  FRONTIER_CONTROLS,
+  FRONTIER_MOVEMENT_KEYS,
+  frontierMovementSpeed,
+  frontierMovementVector
+} from './controls';
 
 type Props = {
   state: FrontierState;
@@ -240,6 +246,8 @@ export function FrontierWorld3D({
   const [selectedTarget, setSelectedTarget] = useState<ResourceTarget | null>(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [engineStatus, setEngineStatus] = useState<EngineStatus>('initializing');
+  const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [gpuCapable] = useState(() => typeof navigator !== 'undefined' && Boolean((navigator as Navigator & { gpu?: unknown }).gpu));
 
   useEffect(() => {
@@ -357,11 +365,11 @@ export function FrontierWorld3D({
         const delta = Math.min(0.05, Math.max(0, (time - lastFrameRef.current) / 1000 || 0));
         lastFrameRef.current = time;
         const keys = keysRef.current;
-        const horizontal = Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft'));
-        const vertical = Number(keys.has('s') || keys.has('arrowdown')) - Number(keys.has('w') || keys.has('arrowup'));
+        const { horizontal, vertical } = frontierMovementVector(keys);
         if (horizontal || vertical) {
           const length = Math.hypot(horizontal, vertical) || 1;
-          const next = moveWorldPoint(playerRef.current, horizontal / length, vertical / length, delta * 4.2);
+          const speed = frontierMovementSpeed(keys);
+          const next = moveWorldPoint(playerRef.current, horizontal / length, vertical / length, delta * speed);
           if (next.x !== playerRef.current.x || next.z !== playerRef.current.z) attemptPlayerMove(next);
         }
 
@@ -467,15 +475,56 @@ export function FrontierWorld3D({
     const down = (event: KeyboardEvent) => {
       if (event.target !== canvas) return;
       const key = event.key.toLowerCase();
-      if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key)) {
+
+      if (FRONTIER_MOVEMENT_KEYS.has(key) || key === 'shift') {
         keysRef.current.add(key);
-        event.preventDefault();
+        if (key !== 'shift') event.preventDefault();
       }
+
       if (key === 'e' && selectedTarget && extractionTimerRef.current == null) {
         event.preventDefault();
         beginExtraction(selectedTarget);
       }
-      if (key === 'b') onBuildModeChange(!buildMode);
+
+      if (key === 'c') {
+        event.preventDefault();
+        if (runtimeReady) void onAction('craft_power_core');
+      }
+
+      if (key === 'g') {
+        event.preventDefault();
+        if (runtimeReady) void onAction('restore_sky_grid');
+      }
+
+      if (key === 'b') {
+        event.preventDefault();
+        onBuildModeChange(!buildMode);
+      }
+
+      if (key === 'i') {
+        event.preventDefault();
+        setInventoryOpen((current) => !current);
+        setControlsOpen(false);
+      }
+
+      if (key === 'h') {
+        event.preventDefault();
+        setControlsOpen((current) => !current);
+        setInventoryOpen(false);
+      }
+
+      if (key === 'escape') {
+        event.preventDefault();
+        cancelHold();
+        setSelectedTarget(null);
+        setInventoryOpen(false);
+        setControlsOpen(false);
+        if (buildMode) {
+          setRotationY(0);
+          onBuildModeChange(false);
+        }
+      }
+
       if (buildMode && key === 'q') {
         event.preventDefault();
         setRotationY((current) => normalizeRotationY(current - Math.PI / 12));
@@ -496,7 +545,7 @@ export function FrontierWorld3D({
       canvas.removeEventListener('keydown', down);
       canvas.removeEventListener('keyup', up);
     };
-  }, [beginExtraction, buildMode, cancelHold, onBuildModeChange, selectedTarget]);
+  }, [beginExtraction, buildMode, cancelHold, onAction, onBuildModeChange, runtimeReady, selectedTarget]);
 
   const pickTarget = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -584,6 +633,8 @@ export function FrontierWorld3D({
         <span>{capabilityLabel}</span>
         <span>POSITION {player.x.toFixed(1)} · {player.z.toFixed(1)}</span>
         <span>STRUCTURES {structures.length}</span>
+        <button type="button" onClick={() => { setInventoryOpen((current) => !current); setControlsOpen(false); }}>I · Inventory</button>
+        <button type="button" onClick={() => { setControlsOpen((current) => !current); setInventoryOpen(false); }}>H · Controls</button>
       </div>
 
       <div className="frontier-biome-card" data-biome={activeBiome.id}>
@@ -599,6 +650,39 @@ export function FrontierWorld3D({
       </div>
 
       <div className="frontier-crosshair" aria-hidden="true"><i /><i /></div>
+
+      {inventoryOpen ? (
+        <section className="frontier-hud-panel frontier-inventory-panel" aria-label="ATLAS FRONTIER inventory">
+          <header><span>FIELD INVENTORY</span><strong>Explorer Loadout</strong></header>
+          <div className="frontier-inventory-grid">
+            <article><span>Aetherium</span><strong>{state.aetherium}</strong></article>
+            <article><span>Alloy</span><strong>{state.alloy}</strong></article>
+            <article><span>Biofiber</span><strong>{state.biofiber}</strong></article>
+            <article><span>Power Cores</span><strong>{state.powerCores}</strong></article>
+            <article><span>Habitats</span><strong>{state.habitats}</strong></article>
+            <article><span>Sky Grid</span><strong>{state.skyGridIntegrity}%</strong></article>
+            <article><span>Phase</span><strong>{state.campaignStage}/10</strong></article>
+            <article><span>XP</span><strong>{state.experience}</strong></article>
+          </div>
+          <small>I or Esc to close · C crafts a Power Core · G restores the Sky Grid when requirements are met.</small>
+        </section>
+      ) : null}
+
+      {controlsOpen ? (
+        <section className="frontier-hud-panel frontier-controls-panel" aria-label="ATLAS FRONTIER keyboard controls">
+          <header><span>CONTROL MATRIX</span><strong>Keyboard + Pointer</strong></header>
+          <div className="frontier-controls-grid">
+            {FRONTIER_CONTROLS.map((control) => (
+              <article key={control.id}>
+                <span>{control.group}</span>
+                <strong>{control.label}</strong>
+                <div>{control.keys.map((key) => <kbd key={key}>{key}</kbd>)}</div>
+              </article>
+            ))}
+          </div>
+          <small>Pointer/touch: select resources, hold to extract, and place structures. H or Esc closes this panel.</small>
+        </section>
+      ) : null}
 
       {selectedTarget ? (
         <div className="frontier-target-card" role="status">

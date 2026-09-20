@@ -12,8 +12,10 @@ describe('ATLAS FRONTIER WebGL world contract', () => {
     expect(world).toContain('requestAnimationFrame');
   });
 
-  it('supports keyboard, touch movement and hold-to-extract interaction', () => {
-    expect(world).toContain("['w','a','s','d'");
+  it('supports canonical keyboard, touch movement and hold-to-extract interaction', () => {
+    expect(world).toContain('FRONTIER_MOVEMENT_KEYS');
+    expect(world).toContain('frontierMovementVector');
+    expect(world).toContain('frontierMovementSpeed');
     expect(world).toContain('frontier-mobile-controls');
     expect(world).toContain('beginExtraction');
     expect(world).toContain('900');
