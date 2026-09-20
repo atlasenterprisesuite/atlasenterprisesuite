@@ -36,7 +36,12 @@ describe('ATLAS global production verification', () => {
       '/studio/web-launch',
       '/studio/write',
       '/crm',
-      '/frontier'
+      '/frontier',
+      '/work',
+      '/work/new',
+      '/work/connections',
+      '/work/runtimes',
+      '/work/policies'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
@@ -140,6 +145,7 @@ describe('ATLAS global production verification', () => {
     expect(workflow).toContain('[ "$TARGET_SHA" = "$GITHUB_SHA" ]');
     expect(workflow).toContain('[ "$AUTHORIZED_OK" = "true" ]');
     expect(workflow).toContain('[ "$NETWORK_OK" = "true" ]');
+    expect(workflow).toContain('[ "$WORK_OK" = "true" ]');
   });
 
   it('keeps authorized runtime verification aligned with the shared Network route contract', () => {
@@ -169,6 +175,10 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('frontier_route_reachable');
     expect(authorizedVerifier).toContain('jaque_mate_sentinel_route_reachable');
     expect(authorizedVerifier).toContain('studio_writing_route_reachable');
+    for (const route of ['/work', '/work/new', '/work/connections', '/work/runtimes', '/work/policies']) {
+      expect(authorizedVerifier).toContain(`'${route}'`);
+    }
+    expect(authorizedVerifier).toContain('work_routes_reachable');
   });
 
   it('authorizes only the canonical Cloudflare and global verification workflows through OIDC', () => {
