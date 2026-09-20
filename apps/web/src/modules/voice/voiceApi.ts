@@ -32,6 +32,28 @@ export type VoiceSessionRow = {
   updated_at?: string;
 };
 
+export type VoiceSampleRow = {
+  id: string;
+  profile_id: string;
+  session_id: string;
+  phrase_id: string;
+  attempt: number;
+  storage_path: string | null;
+  status: 'accepted' | 'needs_retry' | 'rejected' | 'missing';
+  audio_stats: JsonRecord;
+  assessment: JsonRecord;
+  created_at?: string;
+};
+
+export type VoiceConsentRow = {
+  id: string;
+  profile_id: string;
+  consent_version: string;
+  scope: JsonRecord;
+  accepted_at: string;
+  revoked_at: string | null;
+};
+
 type JsonRecord = Record<string, unknown>;
 
 type VoiceApiDependencies = {
@@ -182,6 +204,32 @@ export class AtlasVoiceApi {
       }
     );
     return firstRow(await parseResponse<VoiceSessionRow[]>(response));
+  }
+
+
+  async listSamples(sessionId: string): Promise<VoiceSampleRow[]> {
+    const { orgId, userId } = await this.getContext();
+    const path =
+      '/rest/v1/atlas_voice_samples'
+      + `?org_id=${encodeURIComponent(`eq.${orgId}`)}`
+      + `&owner_user_id=${encodeURIComponent(`eq.${userId}`)}`
+      + `&session_id=${encodeURIComponent(`eq.${sessionId}`)}`
+      + '&select=id,profile_id,session_id,phrase_id,attempt,storage_path,status,audio_stats,assessment,created_at'
+      + '&order=created_at.asc';
+    return parseResponse<VoiceSampleRow[]>(await this.transport(path, { method: 'GET' }));
+  }
+
+  async listConsents(profileId: string): Promise<VoiceConsentRow[]> {
+    const { orgId, userId } = await this.getContext();
+    const path =
+      '/rest/v1/atlas_voice_consents'
+      + `?org_id=${encodeURIComponent(`eq.${orgId}`)}`
+      + `&owner_user_id=${encodeURIComponent(`eq.${userId}`)}`
+      + `&profile_id=${encodeURIComponent(`eq.${profileId}`)}`
+      + '&revoked_at=is.null'
+      + '&select=id,profile_id,consent_version,scope,accepted_at,revoked_at'
+      + '&order=accepted_at.desc&limit=1';
+    return parseResponse<VoiceConsentRow[]>(await this.transport(path, { method: 'GET' }));
   }
 
   async saveConsent(input: { profileId: string; consentVersion: string; scope?: JsonRecord }) {
