@@ -13,15 +13,24 @@ import {
   type WorldPlacement,
   type WorldPoint
 } from './world3d';
+import {
+  FRONTIER_BIOME_REGIONS,
+  frontierBiomeAt,
+  isFrontierBiomeUnlocked,
+  resolveFrontierBiomeMovement,
+  type FrontierBiomeRegion
+} from './biomes';
 
 type Props = {
   state: FrontierState;
   structures: readonly FrontierStructure[];
   runtimeReady: boolean;
+  initialPosition: WorldPoint;
   buildMode: boolean;
   onBuildModeChange: (enabled: boolean) => void;
   onAction: (action: FrontierActionId) => Promise<boolean>;
   onBuildHabitat: (placement: WorldPlacement) => Promise<boolean>;
+  onBiomeTransition: (biome: FrontierBiomeRegion, position: WorldPoint) => Promise<boolean>;
   onMessage: (message: string) => void;
 };
 
@@ -199,10 +208,12 @@ export function FrontierWorld3D({
   state,
   structures,
   runtimeReady,
+  initialPosition,
   buildMode,
   onBuildModeChange,
   onAction,
   onBuildHabitat,
+  onBiomeTransition,
   onMessage
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -213,9 +224,17 @@ export function FrontierWorld3D({
   const keysRef = useRef(new Set<string>());
   const extractionTimerRef = useRef<number | null>(null);
   const holdTickerRef = useRef<number | null>(null);
-  const playerRef = useRef<WorldPoint>({ x: 0, z: 2.8 });
+  const transitionInFlightRef = useRef(false);
+  const blockedBiomeRef = useRef<string | null>(null);
+  const runtimeReadyRef = useRef(runtimeReady);
+  const campaignStageRef = useRef(state.campaignStage);
+  const biomeTransitionRef = useRef(onBiomeTransition);
+  const messageRef = useRef(onMessage);
+  const playerRef = useRef<WorldPoint>(clampWorldPoint(initialPosition));
+  const activeBiomeRef = useRef<FrontierBiomeRegion>(frontierBiomeAt(playerRef.current));
   const placementRef = useRef<WorldPoint>({ x: -4.2, z: 2.6 });
   const [player, setPlayer] = useState<WorldPoint>(playerRef.current);
+  const [activeBiome, setActiveBiome] = useState<FrontierBiomeRegion>(activeBiomeRef.current);
   const [placement, setPlacement] = useState<WorldPoint>(placementRef.current);
   const [rotationY, setRotationY] = useState(0);
   const [selectedTarget, setSelectedTarget] = useState<ResourceTarget | null>(null);
@@ -223,15 +242,68 @@ export function FrontierWorld3D({
   const [engineStatus, setEngineStatus] = useState<EngineStatus>('initializing');
   const [gpuCapable] = useState(() => typeof navigator !== 'undefined' && Boolean((navigator as Navigator & { gpu?: unknown }).gpu));
 
+  useEffect(() => {
+    runtimeReadyRef.current = runtimeReady;
+    campaignStageRef.current = state.campaignStage;
+    biomeTransitionRef.current = onBiomeTransition;
+    messageRef.current = onMessage;
+  }, [onBiomeTransition, onMessage, runtimeReady, state.campaignStage]);
+
   const syncPlayer = useCallback((next: WorldPoint) => {
     const bounded = clampWorldPoint(next);
     playerRef.current = bounded;
     setPlayer(bounded);
   }, []);
 
-  const stepPlayer = useCallback((dx: number, dz: number) => {
-    syncPlayer(moveWorldPoint(playerRef.current, dx, dz, 0.65));
+  const attemptPlayerMove = useCallback((next: WorldPoint) => {
+    const bounded = clampWorldPoint(next);
+    const movement = resolveFrontierBiomeMovement(playerRef.current, bounded, campaignStageRef.current);
+
+    if (movement.blockedBiome) {
+      if (blockedBiomeRef.current !== movement.blockedBiome.id) {
+        blockedBiomeRef.current = movement.blockedBiome.id;
+        messageRef.current(`${movement.blockedBiome.label} is locked until campaign phase ${movement.blockedBiome.requiredStage}.`);
+      }
+      return;
+    }
+
+    blockedBiomeRef.current = null;
+
+    if (!movement.changedBiome) {
+      syncPlayer(movement.point);
+      return;
+    }
+
+    if (transitionInFlightRef.current || !runtimeReadyRef.current) return;
+    transitionInFlightRef.current = true;
+    const targetBiome = movement.biome;
+    messageRef.current(`Crossing into ${targetBiome.label}. Biome Controller is validating the transition…`);
+
+    void biomeTransitionRef.current(targetBiome, movement.point)
+      .then((ok) => {
+        if (!ok) return;
+        activeBiomeRef.current = targetBiome;
+        setActiveBiome(targetBiome);
+        syncPlayer(movement.point);
+      })
+      .finally(() => {
+        transitionInFlightRef.current = false;
+      });
   }, [syncPlayer]);
+
+  const stepPlayer = useCallback((dx: number, dz: number) => {
+    attemptPlayerMove(moveWorldPoint(playerRef.current, dx, dz, 0.65));
+  }, [attemptPlayerMove]);
+
+  useEffect(() => {
+    if (transitionInFlightRef.current) return;
+    const bounded = clampWorldPoint(initialPosition);
+    playerRef.current = bounded;
+    setPlayer(bounded);
+    const biome = frontierBiomeAt(bounded);
+    activeBiomeRef.current = biome;
+    setActiveBiome(biome);
+  }, [initialPosition.x, initialPosition.z]);
 
   const cancelHold = useCallback(() => {
     if (extractionTimerRef.current != null) window.clearTimeout(extractionTimerRef.current);
@@ -290,7 +362,7 @@ export function FrontierWorld3D({
         if (horizontal || vertical) {
           const length = Math.hypot(horizontal, vertical) || 1;
           const next = moveWorldPoint(playerRef.current, horizontal / length, vertical / length, delta * 4.2);
-          if (next.x !== playerRef.current.x || next.z !== playerRef.current.z) syncPlayer(next);
+          if (next.x !== playerRef.current.x || next.z !== playerRef.current.z) attemptPlayerMove(next);
         }
 
         const rect = canvas.getBoundingClientRect();
@@ -315,7 +387,26 @@ export function FrontierWorld3D({
         const viewProjection = multiply(projection, view);
         viewProjectionRef.current = viewProjection;
 
-        drawCube(runtime, viewProjection, [0,-0.45,0], [19,0.8,19], [0.035,0.14,0.15,1]);
+        drawCube(runtime, viewProjection, [0,-0.5,0], [19,0.75,19], [0.018,0.055,0.07,1]);
+        FRONTIER_BIOME_REGIONS.forEach((biome, index) => {
+          const unlocked = isFrontierBiomeUnlocked(biome, state.campaignStage);
+          const color = unlocked ? biome.color : [0.025,0.035,0.055,1] as const;
+          drawCube(
+            runtime,
+            viewProjection,
+            [biome.center.x,-0.06,biome.center.z],
+            [Math.max(0.25, biome.size.x - 0.08),0.18,Math.max(0.25, biome.size.z - 0.08)],
+            color
+          );
+          const beaconHeight = unlocked ? 0.9 + (index % 3) * 0.25 : 0.32;
+          drawCube(
+            runtime,
+            viewProjection,
+            [biome.center.x,beaconHeight / 2,biome.center.z],
+            [0.12,beaconHeight,0.12],
+            unlocked ? [0.24,0.82,1,0.72] : [0.18,0.2,0.25,0.45]
+          );
+        });
         drawCube(runtime, viewProjection, [0,-0.02,-8.4], [18,0.12,0.45], [0.16,0.55,0.72,1]);
         drawCube(runtime, viewProjection, [0,0.1,8.3], [18,0.18,0.32], [0.12,0.34,0.31,1]);
 
@@ -368,7 +459,7 @@ export function FrontierWorld3D({
       }
       runtimeRef.current = null;
     };
-  }, [buildMode, cancelHold, placement, rotationY, state.skyGridIntegrity, structures, syncPlayer]);
+  }, [attemptPlayerMove, buildMode, cancelHold, placement, rotationY, state.campaignStage, state.skyGridIntegrity, structures]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -456,6 +547,11 @@ export function FrontierWorld3D({
       return;
     }
     const spatialPlacement = toWorldPlacement(placement, rotationY);
+    const placementBiome = frontierBiomeAt(spatialPlacement);
+    if (!isFrontierBiomeUnlocked(placementBiome, state.campaignStage)) {
+      onMessage(`${placementBiome.label} is locked until campaign phase ${placementBiome.requiredStage}; construction is blocked.`);
+      return;
+    }
     const ok = await onBuildHabitat(spatialPlacement);
     if (ok) {
       placementRef.current = placement;
@@ -488,6 +584,12 @@ export function FrontierWorld3D({
         <span>{capabilityLabel}</span>
         <span>POSITION {player.x.toFixed(1)} · {player.z.toFixed(1)}</span>
         <span>STRUCTURES {structures.length}</span>
+      </div>
+
+      <div className="frontier-biome-card" data-biome={activeBiome.id}>
+        <span>ACTIVE BIOME</span>
+        <strong>{activeBiome.label}</strong>
+        <small>Physical region · phase {activeBiome.requiredStage}+ · traversal persisted on boundary crossing</small>
       </div>
 
       <div className="frontier-integrity frontier-integrity-3d">

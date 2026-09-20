@@ -33,7 +33,7 @@ jobs:
       - name: Install
         run: npm ci
       - name: Focused FRONTIER tests
-        run: npx vitest run tests/unit/frontier-domain.test.ts tests/unit/frontier-world3d.test.ts tests/integration/frontier-route-contract.test.ts tests/integration/frontier-awakening-campaign.test.ts tests/integration/frontier-webgl-world.test.ts tests/integration/frontier-persistent-world.test.ts
+        run: npx vitest run tests/unit/frontier-*.test.ts tests/integration/frontier-*.test.ts
       - name: Typecheck
         run: npm run typecheck
       - name: Production build

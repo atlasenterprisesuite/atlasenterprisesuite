@@ -30,6 +30,7 @@ describe('ATLAS FRONTIER route contract', () => {
     expect(api).toContain('/rest/v1/frontier_expansion?');
     expect(api).toContain('/rest/v1/frontier_survival?');
     expect(api).toContain('/rest/v1/frontier_codex_discoveries?');
+    expect(api).toContain('/rest/v1/frontier_world_presence?');
     expect(api).toContain('active_hazard');
     expect(api).toContain('campaign_complete');
     expect(api).toContain('/rest/v1/frontier_structures?');
@@ -40,6 +41,7 @@ describe('ATLAS FRONTIER route contract', () => {
     expect(api).toContain("'/rest/v1/rpc/frontier_apply_expansion_action'");
     expect(api).toContain("'/rest/v1/rpc/frontier_apply_survival_action'");
     expect(api).toContain("'/rest/v1/rpc/frontier_discover_codex_entry'");
+    expect(api).toContain("'/rest/v1/rpc/frontier_transition_biome'");
     expect(api).not.toContain('/rest/v1/frontier_ecology?on_conflict');
     expect(api).not.toContain('/rest/v1/frontier_expansion?on_conflict');
     expect(api).not.toContain('/rest/v1/frontier_expansion_events?on_conflict');
@@ -58,10 +60,13 @@ describe('ATLAS FRONTIER route contract', () => {
     expect(routes).toContain('survival.hazardTurns');
   });
 
-  it('surfaces the persistent world Codex in the player UI', () => {
+  it('surfaces the persistent world Codex and governed biome presence in the player UI', () => {
     expect(routes).toContain('<FrontierCodex');
     expect(routes).toContain('loadFrontierCodexDiscoveries');
     expect(routes).toContain('discoverFrontierCodexEntry');
+    expect(routes).toContain('loadFrontierWorldPresence');
+    expect(routes).toContain('transitionFrontierBiome');
+    expect(routes).toContain('onBiomeTransition={transitionBiome}');
   });
 
   it('surfaces forty-level and endless-mode evidence in the player UI', () => {
