@@ -2,7 +2,7 @@ import {
   InMemoryPersistence,
   SupabasePersistence,
   SupabaseRpcPersistence,
-  type PersistencePort,
+  type AtlasRuntimePersistence,
 } from '../../../../packages/ai-core/src';
 
 export type AtlasPersistenceEnvironment = {
@@ -13,7 +13,7 @@ export type AtlasPersistenceEnvironment = {
   ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN?: string;
 };
 
-export function resolvePersistence(env: AtlasPersistenceEnvironment): PersistencePort {
+export function resolvePersistence(env: AtlasPersistenceEnvironment): AtlasRuntimePersistence {
   if (env.ATLAS_PERSISTENCE_MODE === 'memory') {
     return new InMemoryPersistence();
   }
