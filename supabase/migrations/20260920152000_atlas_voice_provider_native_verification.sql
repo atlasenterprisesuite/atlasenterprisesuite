@@ -2,6 +2,7 @@
 
 alter table public.atlas_voice_profiles
   add column if not exists provider_backend text,
+  add column if not exists provider_ref text,
   add column if not exists provider_state text not null default 'not_configured',
   add column if not exists provider_verified_at timestamptz,
   add column if not exists provider_metadata jsonb not null default '{}'::jsonb;
