@@ -1,6 +1,6 @@
 import type { TenantScope } from '../../core/src/index';
 import type { AtlasEvent, AtlasTask } from '../../task-protocol/src';
-import type { PersistencePort } from './persistence';
+import type { GitHubWebhookDeliveryClaim, PersistencePort } from './persistence';
 
 type FetchLike = typeof fetch;
 
@@ -108,5 +108,27 @@ export class SupabasePersistence implements PersistencePort {
     const response = await this.request(query, { method: 'GET' });
     const rows = await response.json() as Array<{ event_json: AtlasEvent }>;
     return rows.map((row) => clone(row.event_json));
+  }
+
+  async claimGitHubWebhookDelivery(
+    scope: TenantScope,
+    delivery: GitHubWebhookDeliveryClaim,
+  ): Promise<boolean> {
+    const response = await this.request('atlas_github_webhook_deliveries?select=delivery_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
+      body: JSON.stringify({
+        tenant_id: scope.tenantId,
+        organization_id: scope.organizationId,
+        delivery_id: delivery.deliveryId,
+        event_type: delivery.event,
+        action: delivery.action,
+        installation_id: delivery.installationId,
+        repository_full_name: delivery.repository,
+        received_at: delivery.receivedAt,
+      }),
+    });
+    const rows = await response.json() as Array<{ delivery_id: string }>;
+    return rows.length === 1;
   }
 }
