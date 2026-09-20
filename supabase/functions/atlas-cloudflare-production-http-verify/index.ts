@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 14;
+const VERSION = 15;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -257,6 +257,11 @@ Deno.serve(async (req: Request) => {
     networkCommissions,
     networkPayouts,
     networkCompliance,
+    work,
+    workNew,
+    workConnections,
+    workRuntimes,
+    workPolicies,
     deployment
   ] = await Promise.all([
     probe('/'),
@@ -276,6 +281,11 @@ Deno.serve(async (req: Request) => {
     probe('/business/network/commissions'),
     probe('/business/network/payouts'),
     probe('/business/network/compliance'),
+    probe('/work'),
+    probe('/work/new'),
+    probe('/work/connections'),
+    probe('/work/runtimes'),
+    probe('/work/policies'),
     probe('/deployment.json', false)
   ]);
 
@@ -290,7 +300,12 @@ Deno.serve(async (req: Request) => {
     frontier.status === 200 &&
     jaqueMateSentinel.status === 200 &&
     studioWebLaunch.status === 200 &&
-    studioWriting.status === 200;
+    studioWriting.status === 200 &&
+    work.status === 200 &&
+    workNew.status === 200 &&
+    workConnections.status === 200 &&
+    workRuntimes.status === 200 &&
+    workPolicies.status === 200;
   const commerceRouteOk = commerce.status === 200;
   const routedProbes = [
     home,
@@ -309,7 +324,12 @@ Deno.serve(async (req: Request) => {
     networkPricing,
     networkCommissions,
     networkPayouts,
-    networkCompliance
+    networkCompliance,
+    work,
+    workNew,
+    workConnections,
+    workRuntimes,
+    workPolicies
   ];
   const criticalNetworkRoutesOk = [
     network,
@@ -318,6 +338,8 @@ Deno.serve(async (req: Request) => {
     networkPayouts,
     networkCompliance
   ].every((result) => result.status === 200);
+  const workRoutesOk = [work, workNew, workConnections, workRuntimes, workPolicies]
+    .every((result) => result.status === 200);
   const deploymentPathProtected = [302, 401, 403].includes(deployment.status);
   const observedVersionId = home.atlas_version_id;
   const observedVersionTag = home.atlas_version_tag;
@@ -330,7 +352,7 @@ Deno.serve(async (req: Request) => {
     routedProbes.every((result) =>
       Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha
     );
-  const verified = publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && deploymentPathProtected && productionCommitVerified;
+  const verified = publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
 
   return json(
     {
@@ -358,6 +380,12 @@ Deno.serve(async (req: Request) => {
         studio_writing_route_reachable: studioWriting.status === 200,
         commerce_route_reachable: commerce.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
+        work_routes_reachable: workRoutesOk,
+        work_command_center_reachable: work.status === 200,
+        work_new_route_reachable: workNew.status === 200,
+        work_connections_route_reachable: workConnections.status === 200,
+        work_runtimes_route_reachable: workRuntimes.status === 200,
+        work_policies_route_reachable: workPolicies.status === 200,
         production_commit_sha_verified: productionCommitVerified,
         network_route_reachable: network.status === 200,
         network_pricing_route_reachable: networkPricing.status === 200,
@@ -382,6 +410,11 @@ Deno.serve(async (req: Request) => {
         network_commissions: networkCommissions,
         network_payouts: networkPayouts,
         network_compliance: networkCompliance,
+        work,
+        work_new: workNew,
+        work_connections: workConnections,
+        work_runtimes: workRuntimes,
+        work_policies: workPolicies,
         deployment
       },
       secrets_returned: false
