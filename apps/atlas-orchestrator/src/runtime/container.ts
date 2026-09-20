@@ -1,8 +1,8 @@
-import { AtlasOrchestrator, InMemoryPersistence, type PersistencePort, type ProviderAdapter } from '../../../../packages/ai-core/src';
+import { AtlasOrchestrator, InMemoryPersistence, type AtlasRuntimePersistence, type ProviderAdapter } from '../../../../packages/ai-core/src';
 import { ToolExecutor, type AtlasMcpOperations } from '../../../../packages/atlas-mcp/src';
 
 export function createAtlasRuntime(options: {
-  persistence?: PersistencePort;
+  persistence?: AtlasRuntimePersistence;
   providers?: ProviderAdapter[];
   operations?: AtlasMcpOperations;
 } = {}) {
