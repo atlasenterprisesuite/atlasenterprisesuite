@@ -6,6 +6,8 @@ describe('ATLAS Assistant route context', () => {
     ['/finance/accounting/accounts-payable', 'finance.accounting.accounts-payable'],
     ['/business/network', 'business.network'],
     ['/business', 'business'],
+    ['/revenue', 'revenue'],
+    ['/analytics', 'analytics'],
     ['/commerce/orders', 'commerce'],
     ['/crm/accounts', 'crm'],
     ['/payroll', 'payroll'],
