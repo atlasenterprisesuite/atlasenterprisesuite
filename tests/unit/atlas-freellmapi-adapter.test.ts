@@ -60,6 +60,22 @@ describe('ATLAS FreeLLMAPI adapter', () => {
     }).descriptor().configured).toBe(false);
   });
 
+  it('converts structurally malformed successful output into a retryable provider failure', async () => {
+    const malformed = createFreeLLMAPIAdapter({
+      enabled: true,
+      baseUrl: 'https://freellm.internal',
+      apiKey: 'secret',
+      fetchFn: vi.fn(async () => new Response(JSON.stringify({
+        id: 'resp-malformed',
+        output: { content: { type: 'output_text', text: 'not-an-array' } },
+      }), { status: 200 })),
+    });
+    await expect(malformed.execute({ route, instructions: 'ATLAS', input: [] })).rejects.toMatchObject({
+      code: 'provider_unavailable',
+      status: 502,
+    });
+  });
+
   it('normalizes exhausted-pool and transient upstream failures for outer ATLAS failover', async () => {
     const rateLimited = createFreeLLMAPIAdapter({
       enabled: true,
