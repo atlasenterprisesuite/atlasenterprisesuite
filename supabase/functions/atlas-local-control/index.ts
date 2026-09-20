@@ -95,11 +95,7 @@ function userClient(req: Request) {
   });
 }
 
-function permissionsForRole(role: string) {
-  return ['owner', 'admin'].includes(role)
-    ? ['device.agent.read', 'device.agent.use', 'device.agent.admin']
-    : [];
-}
+const DEVICE_AGENT_PERMISSIONS = ['device.agent.read', 'device.agent.use', 'device.agent.admin'] as const;
 
 async function resolveUser(req: Request, requestedOrgId: string): Promise<UserContext> {
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
@@ -115,7 +111,17 @@ async function resolveUser(req: Request, requestedOrgId: string): Promise<UserCo
     .maybeSingle();
   if (error || !membership?.org_id) throw new EdgeError('membership_required', 403);
   const role = String(membership.role || 'member');
-  return { userId: authData.user.id, orgId: String(membership.org_id), role, permissions: permissionsForRole(role) };
+  const permissions = (await Promise.all(
+    DEVICE_AGENT_PERMISSIONS.map(async (permission) => {
+      const { data: allowed, error: permissionError } = await sb.rpc('has_identity_permission', {
+        o: requestedOrgId,
+        p: permission
+      });
+      if (permissionError) throw new EdgeError('permission_lookup_failed', 500);
+      return allowed === true ? permission : null;
+    })
+  )).filter((permission): permission is string => permission !== null);
+  return { userId: authData.user.id, orgId: String(membership.org_id), role, permissions };
 }
 
 function requirePermission(context: UserContext, permission: string) {
@@ -414,30 +420,6 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     return json(req, { ok: true, commands: data || [] });
   }
 
-  if (operation === 'agents.mtls.bind') {
-    requirePermission(context, 'device.agent.admin');
-    const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
-    const fingerprint = requiredText(body.fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
-    if (!MTLS_FINGERPRINT.test(fingerprint)) throw new EdgeError('invalid_mtls_fingerprint', 422);
-    const serial = requiredText(body.serial, 'mtls_serial_required', 160);
-    const expiresAt = new Date(requiredText(body.expires_at, 'mtls_expiry_required', 80));
-    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
-      throw new EdgeError('invalid_mtls_expiry', 422);
-    }
-    const { data: agent, error } = await admin.from('atlas_local_agents').update({
-      mtls_status: 'active',
-      mtls_cert_fingerprint_sha256: fingerprint,
-      mtls_cert_serial: serial,
-      mtls_cert_expires_at: expiresAt.toISOString(),
-      updated_at: new Date().toISOString()
-    }).eq('id', agentId).eq('org_id', context.orgId).neq('status', 'revoked')
-      .select('id,mtls_status,mtls_cert_fingerprint_sha256,mtls_cert_serial,mtls_cert_expires_at').maybeSingle();
-    if (error) throw new EdgeError('persistence_error', 500);
-    if (!agent) throw new EdgeError('agent_not_found', 404);
-    await appendEvent(admin, { orgId: context.orgId, agentId, eventType: 'agent.mtls.bound', success: true, safeDetail: { fingerprint_sha256: fingerprint, serial, expires_at: expiresAt.toISOString() } });
-    return json(req, { ok: true, agent });
-  }
-
   if (operation === 'agents.mtls.revoke') {
     requirePermission(context, 'device.agent.admin');
     const agentId = requiredText(body.agent_id, 'agent_id_required', 80);
@@ -557,7 +539,7 @@ async function enrollAgent(req: Request, body: JsonObject) {
   const fingerprint = clean(body.public_key_fingerprint, 191) || null;
   if (fingerprint && !/^[A-Fa-f0-9:]{16,191}$/.test(fingerprint)) throw new EdgeError('invalid_public_key_fingerprint', 422);
   const row = {
-    org_id: String(enrollment.org_id), name: String(enrollment.agent_name), status: 'online',
+    org_id: String(enrollment.org_id), name: String(enrollment.agent_name), status: 'offline',
     platform: clean(body.platform, 120) || 'unknown',
     agent_version: clean(body.agent_version, 80) || 'unknown',
     capabilities: stringArray(body.capabilities), modules: stringArray(body.modules),
