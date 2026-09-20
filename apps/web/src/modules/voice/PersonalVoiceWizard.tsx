@@ -720,7 +720,7 @@ export function PersonalVoiceWizard({
         <p>
           {providerReady
             ? 'ATLAS verificó acceso al proveedor. El consentimiento y la muestra se enviarán únicamente cuando autorices esta generación.'
-            : 'ATLAS conserva tus grabaciones privadas, pero no generará una voz hasta que el proyecto tenga acceso real al proveedor.'}
+            : 'Proveedor de generación no configurado o no verificado. ATLAS conserva tus grabaciones privadas y no generará una voz hasta que el proyecto tenga acceso real al proveedor.'}
         </p>
       </div>
 
