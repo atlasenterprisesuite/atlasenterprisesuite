@@ -1,4 +1,6 @@
 const PROFILES=Object.freeze(['fast','balanced','deep']);
+const LOCAL_INPUT_CHAR_BUDGET=12000;
+const LOCAL_MAX_OUTPUT_TOKENS=1024;
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
 function normalizeBase(value,{allowInsecure=false}={}){
@@ -9,6 +11,20 @@ function normalizeBase(value,{allowInsecure=false}={}){
   if(url.username||url.password)return null;
   if(url.protocol!=='https:'&&!(allowInsecure&&url.protocol==='http:'))return null;
   return url.toString().replace(/\/+$/,'');
+}
+function itemSize(item){try{return JSON.stringify(item??{}).length}catch{return String(item??'').length;}}
+function compactInput(input,budget=LOCAL_INPUT_CHAR_BUDGET){
+  const source=Array.isArray(input)?input:[];
+  const selected=[];
+  let used=0;
+  for(let index=source.length-1;index>=0;index-=1){
+    const item=source[index],size=Math.max(1,itemSize(item));
+    if(selected.length&&used+size>budget)break;
+    selected.push(item);
+    used+=size;
+    if(used>=budget)break;
+  }
+  return selected.reverse();
 }
 function outputText(data){
   const parts=[];
@@ -73,7 +89,8 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
       : profile==='fast'
         ? 'Prefer a fast, concise local answer unless more reasoning is required for correctness.'
         : 'Use a balanced local reasoning budget.';
-    const body={model,instructions:`${String(instructions||'')}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:Array.isArray(input)?input:[],max_output_tokens,store:false};
+    const boundedMaxOutput=Math.max(64,Math.min(LOCAL_MAX_OUTPUT_TOKENS,Number(max_output_tokens)||LOCAL_MAX_OUTPUT_TOKENS));
+    const body={model,instructions:`${String(instructions||'')}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false};
     let response;
     try{
       response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});

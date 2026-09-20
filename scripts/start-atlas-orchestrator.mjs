@@ -8,6 +8,8 @@ const root = resolve('.atlas-render');
 const runtimeDir = join(root, 'llama-b11046');
 const model = join(root, 'models', 'SmolLM2-135M-Instruct-Q4_K_M.gguf');
 const localPort = '18080';
+const configuredLocalContext = Number.parseInt(String(process.env.ATLAS_RENDER_LOCAL_AI_CONTEXT_SIZE || '8192'), 10);
+const localContext = String(Number.isFinite(configuredLocalContext) ? Math.min(8192, Math.max(4096, configuredLocalContext)) : 8192);
 let llamaChild = null;
 
 function findFile(dir, basename) {
@@ -38,7 +40,7 @@ if (
     '--host', '127.0.0.1',
     '--port', localPort,
     '--no-webui',
-    '-c', '512',
+    '-c', localContext,
     '-np', '1',
     '-t', '1',
   ], {
