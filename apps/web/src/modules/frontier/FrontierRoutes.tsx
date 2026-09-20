@@ -277,7 +277,7 @@ export function FrontierRoutes() {
   };
 
   return (
-    <section className="frontier-page page-stack">
+    <section className="frontier-page page-stack" data-hazard={survival.activeHazard}>
       <header className="frontier-hero">
         <div>
           <p className="eyebrow">ATLAS · FRONTIER</p>
