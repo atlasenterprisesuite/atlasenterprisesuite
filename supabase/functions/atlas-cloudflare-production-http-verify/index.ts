@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 15;
+const VERSION = 16;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -252,6 +252,8 @@ Deno.serve(async (req: Request) => {
     studioWebLaunch,
     studioWriting,
     commerce,
+    revenue,
+    analytics,
     network,
     networkPricing,
     networkCommissions,
@@ -276,6 +278,8 @@ Deno.serve(async (req: Request) => {
     probe('/studio/web-launch'),
     probe('/studio/write'),
     probe('/commerce'),
+    probe('/revenue'),
+    probe('/analytics'),
     probe('/business/network'),
     probe('/business/network/pricing'),
     probe('/business/network/commissions'),
@@ -307,6 +311,8 @@ Deno.serve(async (req: Request) => {
     workRuntimes.status === 200 &&
     workPolicies.status === 200;
   const commerceRouteOk = commerce.status === 200;
+  const revenueRouteOk = revenue.status === 200;
+  const analyticsRouteOk = analytics.status === 200;
   const routedProbes = [
     home,
     suite,
@@ -320,6 +326,8 @@ Deno.serve(async (req: Request) => {
     studioWebLaunch,
     studioWriting,
     commerce,
+    revenue,
+    analytics,
     network,
     networkPricing,
     networkCommissions,
@@ -352,7 +360,7 @@ Deno.serve(async (req: Request) => {
     routedProbes.every((result) =>
       Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha
     );
-  const verified = publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
+  const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
 
   return json(
     {
@@ -379,6 +387,8 @@ Deno.serve(async (req: Request) => {
         studio_web_launch_route_reachable: studioWebLaunch.status === 200,
         studio_writing_route_reachable: studioWriting.status === 200,
         commerce_route_reachable: commerce.status === 200,
+        revenue_route_reachable: revenue.status === 200,
+        analytics_route_reachable: analytics.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         work_routes_reachable: workRoutesOk,
         work_command_center_reachable: work.status === 200,
@@ -405,6 +415,8 @@ Deno.serve(async (req: Request) => {
         studio_web_launch: studioWebLaunch,
         studio_writing: studioWriting,
         commerce,
+        revenue,
+        analytics,
         network,
         network_pricing: networkPricing,
         network_commissions: networkCommissions,
