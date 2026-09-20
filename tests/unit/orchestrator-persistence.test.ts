@@ -33,6 +33,25 @@ describe('ATLAS orchestrator persistence', () => {
     expect(await persistence.getTask({ tenantId: 'tenant-b', organizationId: 'org-a' }, 'ATL-2026-000001')).toBeNull();
   });
 
+  it('claims each GitHub delivery id once per tenant and organization', async () => {
+    const persistence = new InMemoryPersistence();
+    const delivery = {
+      deliveryId: 'github-delivery-1',
+      event: 'issues',
+      action: 'opened',
+      installationId: 42,
+      repository: 'atlasenterprisesuite/atlasenterprisesuite',
+      receivedAt: '2026-09-20T15:40:00.000Z',
+    };
+
+    await expect(persistence.claimGitHubWebhookDelivery(scope, delivery)).resolves.toBe(true);
+    await expect(persistence.claimGitHubWebhookDelivery(scope, delivery)).resolves.toBe(false);
+    await expect(persistence.claimGitHubWebhookDelivery(
+      { tenantId: 'tenant-b', organizationId: 'org-a' },
+      delivery,
+    )).resolves.toBe(true);
+  });
+
   it('returns defensive copies so callers cannot mutate canonical state', async () => {
     const persistence = new InMemoryPersistence();
     await persistence.createTask(task());
