@@ -347,7 +347,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
 
       <div className="voice-presence-bar" aria-label="Voice readiness">
         <span className={`voice-state voice-state-${snapshot.state}`}><i aria-hidden="true" />{visibleState}</span>
-        <span className={`voice-provider-state voice-provider-${intelligenceState}`}>AI · {intelligenceLabel}</span>
+        <span className={`voice-intelligence-state voice-intelligence-${intelligenceState}`}>AI · {intelligenceLabel}</span>
         <span className={supported ? 'voice-device-state is-ready' : 'voice-device-state'}>{supported ? 'Mic ready' : 'Mic unavailable'}</span>
       </div>
 
