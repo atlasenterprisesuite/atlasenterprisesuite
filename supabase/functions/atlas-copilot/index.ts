@@ -35,7 +35,24 @@ function profileModels(sharedName,fastName,balancedName,deepName,legacySharedNam
 }
 function csvEnv(name){return String(Deno.env.get(name)||'').split(',').map(v=>v.trim()).filter(Boolean);}
 function boolEnv(name,fallback=false){const raw=clean(Deno.env.get(name));if(raw===null)return fallback;return ['1','true','yes','on'].includes(raw.toLowerCase());}
+const ALLOWED_BROWSER_ORIGINS=new Set(['https://atlasenterprisesuite.com','https://www.atlasenterprisesuite.com']);
 function headers(extra={}){return {'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin',...extra};}
+function corsHeaders(origin){
+  if(!origin||!ALLOWED_BROWSER_ORIGINS.has(origin))return {};
+  return {
+    'access-control-allow-origin':origin,
+    'access-control-allow-headers':'authorization, apikey, content-type, x-atlas-org-id',
+    'access-control-allow-methods':'GET, POST, OPTIONS',
+    'access-control-max-age':'86400',
+    vary:'Origin',
+  };
+}
+function optionsResponse(origin){return new Response(null,{status:204,headers:headers(corsHeaders(origin))});}
+function withCors(response,origin){
+  const nextHeaders=new Headers(response.headers);
+  for(const [key,value] of Object.entries(corsHeaders(origin)))nextHeaders.set(key,value);
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers:nextHeaders});
+}
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:headers({'content-type':'application/json; charset=utf-8'})});}
 function safeError(error){const n=normalizeIntelligenceError(error);return json({ok:false,error:n.code,trace_id:error?.trace_id||n.trace_id||null},n.status);}
 function authRequest(req,organization_id){if(!organization_id||req.headers.get('x-atlas-org-id'))return req;const h=new Headers(req.headers);h.set('x-atlas-org-id',String(organization_id));return new Request(req.url,{method:req.method,headers:h});}
@@ -149,7 +166,7 @@ async function handleChat(req){
   return json({ok:true,...result,text:result.output,provider_state:'verified_for_request',provider_readiness:providers,execution:{repositoryMutation:false,repairQueue:'available',mode:'analysis'}});
 }
 
-Deno.serve(async req=>{
+async function handleRequest(req: Request){
   const url=new URL(req.url),api=url.searchParams.get('api');
   try{
     if(api==='readiness'){
@@ -164,4 +181,10 @@ Deno.serve(async req=>{
     const html=renderAtlasCopilotPage({supabaseUrl:U,publishableKey:K,selfPath:SELF,repairPath:REPAIR,livePath:LIVE,version:VERSION});
     return new Response(html,{headers:headers({'content-type':'text/html; charset=utf-8','content-security-policy':`default-src 'self'; connect-src ${U}; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'`})});
   }catch(error){console.error('atlas_ia_request_failed',{code:error?.code||'internal_error'});return safeError(error);}
+}
+
+Deno.serve(async req=>{
+  const origin=req.headers.get('origin');
+  if(req.method==='OPTIONS')return optionsResponse(origin);
+  return withCors(await handleRequest(req),origin);
 });
