@@ -1,6 +1,7 @@
 import type { TenantScope } from '../../core/src/index';
 import type { AtlasEvent, AtlasTask } from '../../task-protocol/src';
-import type { GitHubWebhookDeliveryClaim, PersistencePort } from './persistence';
+import type { GitHubWebhookDeliveryClaim, GitHubWebhookDeliveryStore } from './githubWebhookPersistence';
+import type { PersistencePort } from './persistence';
 
 type FetchLike = typeof fetch;
 
@@ -15,7 +16,7 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export class SupabaseRpcPersistence implements PersistencePort {
+export class SupabaseRpcPersistence implements PersistencePort, GitHubWebhookDeliveryStore {
   readonly durable = true;
   private readonly baseUrl: string;
   private readonly publishableKey: string;
