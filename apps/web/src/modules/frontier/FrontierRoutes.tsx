@@ -2,24 +2,32 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   actionAvailability,
   ecologyActionAvailability,
+  expansionActionAvailability,
   FRONTIER_ACTIONS,
   FRONTIER_CAMPAIGN,
   FRONTIER_ECOLOGY_ACTIONS,
+  FRONTIER_EXPANSION_ACTIONS,
   frontierCampaignProgress,
+  frontierCurrentLevel,
   frontierExplorerRank,
   frontierObjective,
   INITIAL_FRONTIER_ECOLOGY_STATE,
+  INITIAL_FRONTIER_EXPANSION_STATE,
   INITIAL_FRONTIER_STATE,
   type FrontierActionId,
   type FrontierEcologyActionId,
   type FrontierEcologyState,
+  type FrontierExpansionActionId,
+  type FrontierExpansionState,
   type FrontierState
 } from './domain';
 import {
   buildFrontierHabitat,
   executeFrontierAction,
   executeFrontierEcologyAction,
+  executeFrontierExpansionAction,
   loadFrontierEcology,
+  loadFrontierExpansion,
   loadFrontierRun,
   loadFrontierStructures
 } from './api';
@@ -37,6 +45,7 @@ function createActionKey() {
 export function FrontierRoutes() {
   const [state, setState] = useState<FrontierState>({ ...INITIAL_FRONTIER_STATE });
   const [ecology, setEcology] = useState<FrontierEcologyState>({ ...INITIAL_FRONTIER_ECOLOGY_STATE });
+  const [expansion, setExpansion] = useState<FrontierExpansionState>({ ...INITIAL_FRONTIER_EXPANSION_STATE });
   const [runtime, setRuntime] = useState<RuntimeState>('loading');
   const [message, setMessage] = useState('Connecting to governed FRONTIER state…');
   const [buildMode, setBuildMode] = useState(false);
@@ -46,15 +55,17 @@ export function FrontierRoutes() {
     let cancelled = false;
     void (async () => {
       try {
-        const [loaded, loadedStructures, loadedEcology] = await Promise.all([
+        const [loaded, loadedStructures, loadedEcology, loadedExpansion] = await Promise.all([
           loadFrontierRun(),
           loadFrontierStructures(),
-          loadFrontierEcology()
+          loadFrontierEcology(),
+          loadFrontierExpansion()
         ]);
         if (cancelled) return;
         setState(loaded);
         setStructures(loadedStructures);
         setEcology(loadedEcology);
+        setExpansion(loadedExpansion);
         setRuntime('ready');
         setMessage(loaded.revision > 0
           ? `Saved world loaded: revision ${loaded.revision} · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`
@@ -68,10 +79,41 @@ export function FrontierRoutes() {
     return () => { cancelled = true; };
   }, []);
 
-  const objective = useMemo(() => frontierObjective(state, ecology), [state, ecology]);
-  const missionProgress = useMemo(() => frontierCampaignProgress(state, ecology), [state, ecology]);
+  const objective = useMemo(() => frontierObjective(state, ecology, expansion), [state, ecology, expansion]);
+  const missionProgress = useMemo(() => frontierCampaignProgress(state, ecology, expansion), [state, ecology, expansion]);
+  const currentLevel = useMemo(() => frontierCurrentLevel(state, ecology, expansion), [state, ecology, expansion]);
   const explorerRank = useMemo(() => frontierExplorerRank(state), [state]);
   const activeMission = FRONTIER_CAMPAIGN.find((mission) => mission.stage === state.campaignStage) ?? FRONTIER_CAMPAIGN[0];
+  const expansionActions = FRONTIER_EXPANSION_ACTIONS.filter((action) => action.stage === state.campaignStage);
+
+  const expansionMetrics = useMemo(() => {
+    if (state.campaignStage === 6) return [
+      ['Storm Charge', `${expansion.stormCharge}%`],
+      ['Shelter', `${expansion.shelterIntegrity}%`],
+      ['Storm Mastery', `${expansion.stormMastery}%`]
+    ];
+    if (state.campaignStage === 7) return [
+      ['Settlements', String(expansion.settlements)],
+      ['Civic Links', String(expansion.civicLinks)],
+      ['Civilization', `${expansion.civilizationIndex}%`]
+    ];
+    if (state.campaignStage === 8) return [
+      ['Orbital Frames', String(expansion.orbitalFrames)],
+      ['Stations', String(expansion.orbitalStations)],
+      ['Orbital Reach', `${expansion.orbitalReach}%`]
+    ];
+    if (state.campaignStage === 9) return [
+      ['Network Links', String(expansion.networkLinks)],
+      ['Trade Volume', `${expansion.tradeVolume}%`],
+      ['Network Integrity', `${expansion.networkIntegrity}%`]
+    ];
+    return [
+      ['World Seeds', String(expansion.worldSeeds)],
+      ['Worlds Generated', String(expansion.worldsGenerated)],
+      ['Infinite Mastery', `${expansion.infiniteMastery}%`],
+      ['Endless Cycles', String(expansion.endlessCycles)]
+    ];
+  }, [state.campaignStage, expansion]);
 
   const runAction = async (action: FrontierActionId) => {
     if (runtime !== 'ready') return false;
@@ -87,7 +129,7 @@ export function FrontierRoutes() {
       setState(next);
       setRuntime('ready');
       setMessage(next.campaignStage >= 5
-        ? 'Awakening complete. Living-world systems are now available.'
+        ? 'Core progression committed. Advanced campaign systems remain governed by their dedicated controllers.'
         : 'Action committed, audited and campaign progress recalculated.');
       return true;
     } catch (error) {
@@ -113,11 +155,35 @@ export function FrontierRoutes() {
       setEcology(next.ecology);
       setRuntime('ready');
       setMessage(next.state.campaignStage >= 6
-        ? 'First biome restored. Mundos vivos complete; Tormenta iónica remains the next production phase.'
+        ? 'First biome restored. Tormenta iónica unlocked.'
         : 'Ecology action committed and audited.');
     } catch (error) {
       setRuntime('blocked');
       setMessage(error instanceof Error ? error.message : 'Living Systems Controller rejected the action.');
+    }
+  };
+
+  const runExpansionAction = async (action: FrontierExpansionActionId) => {
+    if (runtime !== 'ready') return;
+    const availability = expansionActionAvailability(state, expansion, action);
+    if (!availability.enabled) {
+      setMessage(availability.reason || 'Campaign expansion action unavailable.');
+      return;
+    }
+
+    setRuntime('saving');
+    setMessage('Campaign Controller validating exact phase, resources, permissions, progression and idempotency…');
+    try {
+      const next = await executeFrontierExpansionAction(action, createActionKey());
+      setState(next.state);
+      setExpansion(next.expansion);
+      setRuntime('ready');
+      setMessage(next.expansion.campaignComplete
+        ? `ATLAS Infinite campaign spine complete · Endless cycle ${next.expansion.endlessCycles} recorded.`
+        : `Phase ${next.state.campaignStage} progression committed and audited.`);
+    } catch (error) {
+      setRuntime('blocked');
+      setMessage(error instanceof Error ? error.message : 'Campaign Controller rejected the action.');
     }
   };
 
@@ -152,14 +218,16 @@ export function FrontierRoutes() {
     setRuntime('loading');
     setMessage('Rechecking governed persistence…');
     try {
-      const [loaded, loadedStructures, loadedEcology] = await Promise.all([
+      const [loaded, loadedStructures, loadedEcology, loadedExpansion] = await Promise.all([
         loadFrontierRun(),
         loadFrontierStructures(),
-        loadFrontierEcology()
+        loadFrontierEcology(),
+        loadFrontierExpansion()
       ]);
       setState(loaded);
       setStructures(loadedStructures);
       setEcology(loadedEcology);
+      setExpansion(loadedExpansion);
       setRuntime('ready');
       setMessage(`Governed world synchronized · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`);
     } catch (error) {
@@ -173,8 +241,8 @@ export function FrontierRoutes() {
       <header className="frontier-hero">
         <div>
           <p className="eyebrow">ATLAS · FRONTIER</p>
-          <h1>Restore the Sky Grid</h1>
-          <p>Governed sandbox campaign: explore, extract, build, cultivate, generate clean energy and restore living worlds.</p>
+          <h1>{expansion.campaignComplete ? 'Atlas Infinite' : 'Restore the Sky Grid'}</h1>
+          <p>Governed 40-level sandbox campaign: survive, build, cultivate, civilize, reach orbit, connect worlds and generate new frontiers.</p>
         </div>
         <div className="frontier-runtime" data-state={runtime}>
           <span className="frontier-runtime-dot" />
@@ -184,17 +252,18 @@ export function FrontierRoutes() {
 
       <div className="frontier-objective">
         <div>
-          <span>MISSION {state.campaignStage} · {activeMission.title.toUpperCase()}</span>
+          <span>PHASE {state.campaignStage} · {activeMission.title.toUpperCase()}</span>
           <strong>{objective}</strong>
         </div>
+        <div><span>LEVEL</span><strong>{currentLevel.level}/40 · {currentLevel.title}</strong></div>
         <div><span>EXPLORER RANK</span><strong>{explorerRank}</strong></div>
         <div><span>EXPERIENCE</span><strong>{state.experience} XP</strong></div>
-        <div><span>ION STORM</span><strong>{String(state.stormMinutes).padStart(2, '0')}:00</strong></div>
+        <div><span>ION CLOCK</span><strong>{String(state.stormMinutes).padStart(2, '0')}:00</strong></div>
       </div>
 
       <div className="frontier-campaign" aria-label="ATLAS FRONTIER campaign progression">
         <div className="frontier-campaign-head">
-          <div><span>FRONTIER CAMPAIGN</span><strong>{missionProgress}% current mission</strong></div>
+          <div><span>40-LEVEL CAMPAIGN</span><strong>{missionProgress}% current phase</strong></div>
           <div className="frontier-campaign-progress"><i style={{ width: `${missionProgress}%` }} /></div>
         </div>
         <div className="frontier-campaign-grid">
@@ -202,7 +271,7 @@ export function FrontierRoutes() {
             const status = state.campaignStage > mission.stage ? 'complete' : state.campaignStage === mission.stage ? 'active' : 'locked';
             return (
               <article key={mission.stage} data-status={status}>
-                <span>{String(mission.stage).padStart(2, '0')} · {status === 'complete' ? 'COMPLETE' : status === 'active' ? 'ACTIVE' : mission.productionState === 'next' ? 'NEXT PHASE' : 'LOCKED'}</span>
+                <span>{String(mission.stage).padStart(2, '0')} · {status === 'complete' ? 'COMPLETE' : status === 'active' ? 'ACTIVE' : 'LOCKED'}</span>
                 <strong>{mission.title}</strong>
                 <p>{mission.summary}</p>
               </article>
@@ -210,6 +279,13 @@ export function FrontierRoutes() {
           })}
         </div>
       </div>
+
+      {expansion.campaignComplete ? (
+        <div className="frontier-complete" role="status">
+          <div><span>CAMPAIGN SPINE COMPLETE</span><strong>40 / 40 · ATLAS INFINITE</strong></div>
+          <p>The first full restoration cycle is verified. Endless mode remains active: synthesize a World Seed, generate another world and restore it again.</p>
+        </div>
+      ) : null}
 
       <div className="frontier-layout">
         <FrontierWorld3D
@@ -288,6 +364,33 @@ export function FrontierRoutes() {
               })}
             </div>
           </section>
+
+          {state.campaignStage >= 6 ? (
+            <section className="frontier-expansion" data-stage={state.campaignStage} aria-label="Advanced campaign systems">
+              <div className="frontier-expansion-heading">
+                <div><span>ADVANCED CAMPAIGN</span><strong>{activeMission.title}</strong></div>
+                <small>Phase {state.campaignStage}/10</small>
+              </div>
+              <div className="frontier-expansion-stats">
+                {expansionMetrics.map(([label, value]) => (
+                  <article key={label}><span>{label}</span><strong>{value}</strong></article>
+                ))}
+              </div>
+              <div className="frontier-expansion-actions">
+                {expansionActions.map((action) => {
+                  const availability = expansionActionAvailability(state, expansion, action.id);
+                  const disabled = runtime !== 'ready' || !availability.enabled;
+                  return (
+                    <button key={action.id} type="button" disabled={disabled} onClick={() => void runExpansionAction(action.id)}>
+                      <span>{action.mode}</span>
+                      <strong>{action.label}</strong>
+                      <small>{availability.enabled ? action.description : availability.reason}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
         </aside>
       </div>
 
@@ -298,8 +401,8 @@ export function FrontierRoutes() {
 
       <div className="frontier-governance">
         <article><span>Identity</span><strong>Organization scoped</strong><p>ATLAS Identity and active organization membership are required before this route opens.</p></article>
-        <article><span>Controller</span><strong>Server authoritative</strong><p>Mission gates, spatial builds, ecology rules and resource costs are validated transactionally in Supabase.</p></article>
-        <article><span>Audit</span><strong>Append-only evidence</strong><p>World structures and living-system actions retain idempotency plus before/after state evidence.</p></article>
+        <article><span>Controllers</span><strong>Server authoritative</strong><p>Core, spatial, ecology and phases 6-10 validate exact progression, resources and idempotency transactionally in Supabase.</p></article>
+        <article><span>Audit</span><strong>Append-only evidence</strong><p>World structures, ecology and advanced campaign actions retain before/after state and revision evidence.</p></article>
       </div>
     </section>
   );
