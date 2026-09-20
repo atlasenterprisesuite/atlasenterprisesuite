@@ -2,15 +2,19 @@ import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../../lib/atla
 import {
   INITIAL_FRONTIER_ECOLOGY_STATE,
   INITIAL_FRONTIER_EXPANSION_STATE,
+  INITIAL_FRONTIER_SURVIVAL_STATE,
   INITIAL_FRONTIER_STATE,
   normalizeFrontierEcologyState,
   normalizeFrontierExpansionState,
+  normalizeFrontierSurvivalState,
   normalizeFrontierState,
   type FrontierActionId,
   type FrontierEcologyActionId,
   type FrontierEcologyState,
   type FrontierExpansionActionId,
   type FrontierExpansionState,
+  type FrontierSurvivalActionId,
+  type FrontierSurvivalState,
   type FrontierState
 } from './domain';
 import {
@@ -60,6 +64,19 @@ type FrontierExpansionRow = {
   infinite_mastery: number;
   endless_cycles: number;
   campaign_complete: boolean;
+  revision: number;
+};
+
+type FrontierSurvivalRow = {
+  health: number;
+  suit_energy: number;
+  shield_integrity: number;
+  thermal_stability: number;
+  exposure: number;
+  active_hazard: string;
+  hazard_intensity: number;
+  hazard_turns: number;
+  survived_events: number;
   revision: number;
 };
 
@@ -120,6 +137,21 @@ function expansionRowToState(row: FrontierExpansionRow): FrontierExpansionState 
     infiniteMastery: row.infinite_mastery,
     endlessCycles: row.endless_cycles,
     campaignComplete: row.campaign_complete,
+    revision: row.revision
+  });
+}
+
+function survivalRowToState(row: FrontierSurvivalRow): FrontierSurvivalState {
+  return normalizeFrontierSurvivalState({
+    health: row.health,
+    suitEnergy: row.suit_energy,
+    shieldIntegrity: row.shield_integrity,
+    thermalStability: row.thermal_stability,
+    exposure: row.exposure,
+    activeHazard: row.active_hazard,
+    hazardIntensity: row.hazard_intensity,
+    hazardTurns: row.hazard_turns,
+    survivedEvents: row.survived_events,
     revision: row.revision
   });
 }
@@ -210,6 +242,18 @@ export async function loadFrontierExpansion(): Promise<FrontierExpansionState> {
   return expansionRowToState(body[0]);
 }
 
+export async function loadFrontierSurvival(): Promise<FrontierSurvivalState> {
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(`eq.${organization.id}`);
+  const response = await authorizedAtlasFetch(
+    `/rest/v1/frontier_survival?org_id=${org}&select=health,suit_energy,shield_integrity,thermal_stability,exposure,active_hazard,hazard_intensity,hazard_turns,survived_events,revision&limit=1`,
+    { method: 'GET' }
+  );
+  const body = await parseJson(response) as FrontierSurvivalRow[];
+  if (!Array.isArray(body) || body.length === 0) return { ...INITIAL_FRONTIER_SURVIVAL_STATE };
+  return survivalRowToState(body[0]);
+}
+
 export async function loadFrontierStructures(): Promise<FrontierStructure[]> {
   const organization = await getActiveAtlasOrganization();
   const org = encodeURIComponent(`eq.${organization.id}`);
@@ -276,6 +320,27 @@ export async function executeFrontierExpansionAction(
   return {
     state: normalizeFrontierState({ ...body.state, revision: body.revision }),
     expansion: normalizeFrontierExpansionState({ ...body.expansion, revision: body.expansion_revision })
+  };
+}
+
+export async function executeFrontierSurvivalAction(
+  action: FrontierSurvivalActionId,
+  idempotencyKey: string
+): Promise<{ state: FrontierState; survival: FrontierSurvivalState }> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/frontier_apply_survival_action', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_action: action,
+      p_idempotency_key: idempotencyKey
+    })
+  });
+  const body = await parseJson(response);
+  if (!body?.ok || !body?.state || !body?.survival) throw new Error('frontier_invalid_survival_controller_response');
+  return {
+    state: normalizeFrontierState({ ...body.state, revision: body.revision }),
+    survival: normalizeFrontierSurvivalState({ ...body.survival, revision: body.survival_revision })
   };
 }
 
