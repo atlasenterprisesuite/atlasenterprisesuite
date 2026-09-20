@@ -102,6 +102,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: false
   },
   {
+    id: 'tax',
+    title: 'ATLAS Tax',
+    navLabel: 'Tax',
+    area: 'Finance',
+    route: '/tax',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Versioned personal and business tax preparation with source-document mapping, jurisdiction gates and filing boundaries.',
+    showInNavigation: true
+  },
+  {
     id: 'crm',
     title: 'CRM',
     navLabel: 'CRM',

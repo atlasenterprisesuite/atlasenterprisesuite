@@ -1,0 +1,172 @@
+
+.tax-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.tax-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.tax-header h1 {
+  margin: .25rem 0;
+}
+
+.tax-gate,
+.tax-status,
+.tax-review-chip,
+.tax-ok-chip {
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.tax-nav {
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  padding-bottom: 4px;
+}
+
+.tax-nav a {
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 999px;
+  padding: 9px 13px;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.tax-nav a.active {
+  border-color: rgba(117, 208, 255, .65);
+  background: rgba(117, 208, 255, .08);
+}
+
+.tax-panel {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.tax-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tax-panel-heading h2 {
+  margin: .2rem 0;
+}
+
+.tax-year {
+  min-width: 130px;
+}
+
+.tax-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.tax-field-grid input,
+.tax-field-grid select,
+.tax-year select {
+  width: 100%;
+}
+
+.tax-check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.tax-map-list {
+  display: grid;
+  gap: 10px;
+}
+
+.tax-map-row {
+  display: grid;
+  grid-template-columns: minmax(130px, .6fr) auto minmax(260px, 1.4fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 16px;
+}
+
+.tax-map-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.tax-map-row p {
+  margin: 0;
+  opacity: .72;
+}
+
+.tax-map-row small {
+  opacity: .66;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.tax-status.ok,
+.tax-ok-chip {
+  border-color: rgba(115, 226, 168, .45);
+}
+
+.tax-status.review,
+.tax-review-chip {
+  border-color: rgba(255, 202, 100, .45);
+}
+
+.tax-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.tax-catalog article {
+  display: grid;
+  gap: 7px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 16px;
+}
+
+.tax-catalog p {
+  margin: 0;
+  opacity: .75;
+}
+
+.tax-catalog span,
+.tax-catalog small {
+  opacity: .62;
+}
+
+@media (max-width: 780px) {
+  .tax-header,
+  .tax-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tax-map-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tax-map-row > span[aria-hidden='true'] {
+    transform: rotate(90deg);
+    justify-self: start;
+  }
+}
