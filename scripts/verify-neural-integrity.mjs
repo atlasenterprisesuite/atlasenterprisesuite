@@ -51,7 +51,7 @@ function appRouteLine(source, routePrefix) {
 }
 
 function moduleHasAuthCoverage(module, sources) {
-  const { app, resolver, hospitality, ride, payroll, events, insurance } = sources;
+  const { app, resolver, hospitality, ride, payroll, tax, events, insurance } = sources;
   if (resolverBlock(resolver, module.route).includes('RequireAtlasIdentity')) return true;
 
   switch (module.id) {
@@ -61,6 +61,8 @@ function moduleHasAuthCoverage(module, sources) {
       return ride.includes('RequireAtlasIdentity') && ride.includes(module.route);
     case 'payroll':
       return payroll.includes('RequireAtlasIdentity') && payroll.includes('<Routes>');
+    case 'tax':
+      return tax.includes('RequireAtlasIdentity') && tax.includes('<Routes>');
     case 'events':
       return events.includes('RequireAtlasIdentity') && events.includes(module.route);
     case 'insurance':
@@ -123,13 +125,14 @@ export function evaluateNeuralIntegrity() {
   const hospitality = read('apps/web/src/modules/hospitality/HospitalityRoutes.tsx');
   const ride = read('apps/web/src/modules/ride/RideRoutes.tsx');
   const payroll = read('apps/web/src/modules/payroll/PayrollRoutes.tsx');
+  const tax = read('apps/web/src/modules/tax/TaxRoutes.tsx');
   const events = read('apps/web/src/modules/events/EventsRoutes.tsx');
   const insurance = read('apps/web/src/modules/insurance/InsuranceRoutes.tsx');
-  const routeSources = [main, app, resolver, hospitality, ride, payroll, events, insurance].join('\n');
+  const routeSources = [main, app, resolver, hospitality, ride, payroll, tax, events, insurance].join('\n');
   const routesRepresented = modules.every((module) => routeSources.includes(module.route));
   const authCoverage = modules
     .filter((module) => module.requiresAuth)
-    .every((module) => moduleHasAuthCoverage(module, { app, resolver, hospitality, ride, payroll, events, insurance }));
+    .every((module) => moduleHasAuthCoverage(module, { app, resolver, hospitality, ride, payroll, tax, events, insurance }));
   const nerves = routesRepresented && authCoverage;
 
   const worker = read('worker/index.ts');
