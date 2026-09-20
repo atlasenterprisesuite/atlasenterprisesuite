@@ -4,11 +4,14 @@ import { createProviderRegistry } from '../../supabase/functions/atlas-copilot/p
 import { createCouncilOrchestrator } from '../../supabase/functions/atlas-copilot/council-orchestrator.mjs';
 import { createToolGateway } from '../../supabase/functions/atlas-copilot/tool-gateway.mjs';
 
-function fakeAdapter(id: 'openai' | 'gemini' | 'codex-sovereign') {
+function fakeAdapter(id: 'atlas-local' | 'openai' | 'gemini' | 'codex-sovereign', options: { failCode?: string } = {}) {
   return {
     descriptor: () => ({ id, configured: true, verified: false, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'], model: `${id}-model` }),
     probe: async () => ({ configured: true, verified: true, provider: id, model: `${id}-model`, error: null }),
-    execute: async () => ({ provider: id, model: `${id}-model`, text: `${id} reply`, capabilities_used: ['generation'], usage: {}, provenance: [], tool_calls: [] }),
+    execute: async () => {
+      if (options.failCode) throw Object.assign(new Error(options.failCode), { code: options.failCode, status: options.failCode === 'provider_rate_limited' ? 429 : 502 });
+      return { provider: id, model: `${id}-model`, text: `${id} reply`, capabilities_used: ['generation'], usage: {}, provenance: [], tool_calls: [] };
+    },
   };
 }
 
@@ -81,6 +84,69 @@ describe('ATLAS Unified AI gateway', () => {
     expect(first.provider).toBe('openai');
     expect(second.provider).toBe('gemini');
     expect(second.mode).toBe('gemini');
+  });
+
+  it('falls back from atlas-local to OpenAI after a transient runtime failure when policy allows it', async () => {
+    const local = fakeAdapter('atlas-local', { failCode: 'provider_unavailable' });
+    const openai = fakeAdapter('openai');
+    const registry = createProviderRegistry({ providers: [local, openai] });
+    const router = createIntelligenceRouter({
+      providers: [
+        { id: 'atlas-local', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'] },
+        { id: 'openai', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'] },
+      ],
+      preferredProviders: ['atlas-local'],
+    });
+    const store = fakeStore();
+    const gateway = createIntelligenceGateway({
+      router,
+      registry,
+      store,
+      costPolicy: { allowed_providers: ['atlas-local', 'openai'], enforce_zero_cost: false, allow_paid_single: true, allow_council: false, zero_cost_providers: ['atlas-local'] },
+      toolGateway: createToolGateway(),
+    });
+
+    const result = await gateway.execute({
+      context: context('req-fallback', ['intelligence.use']),
+      request: { message: 'Recover automatically', mode: 'auto', intent: 'balanced' },
+    });
+
+    expect(result.provider).toBe('openai');
+    expect(result.providers).toEqual(['openai']);
+    expect(result.fallback_used).toBe(true);
+    const stored = store._messages.get(result.conversation_id) ?? [];
+    const assistant = stored.find((item: any) => item.role === 'assistant');
+    expect(assistant?.content?.routing?.reason).toBe('runtime_fallback_after_provider_failure');
+    expect(assistant?.content?.routing?.fallback_attempts).toEqual([
+      { provider: 'atlas-local', outcome: 'provider_unavailable' },
+      { provider: 'openai', outcome: 'completed' },
+    ]);
+  });
+
+  it('does not bypass zero-cost policy when a paid fallback is not authorized', async () => {
+    const local = fakeAdapter('atlas-local', { failCode: 'provider_unavailable' });
+    const openai = fakeAdapter('openai');
+    const registry = createProviderRegistry({ providers: [local, openai] });
+    const router = createIntelligenceRouter({
+      providers: [
+        { id: 'atlas-local', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'] },
+        { id: 'openai', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'] },
+      ],
+      preferredProviders: ['atlas-local'],
+    });
+    const store = fakeStore();
+    const gateway = createIntelligenceGateway({
+      router,
+      registry,
+      store,
+      costPolicy: { allowed_providers: ['atlas-local', 'openai'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: ['atlas-local'] },
+      toolGateway: createToolGateway(),
+    });
+
+    await expect(gateway.execute({
+      context: context('req-zero-cost', ['intelligence.use']),
+      request: { message: 'Stay governed', mode: 'auto', intent: 'balanced' },
+    })).rejects.toMatchObject({ code: 'provider_unavailable' });
   });
 
   it('returns governed tool proposal metadata without executing side effects', async () => {
