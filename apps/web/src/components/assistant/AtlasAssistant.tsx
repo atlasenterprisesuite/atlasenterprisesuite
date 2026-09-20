@@ -44,6 +44,8 @@ function errorMessage(cause: unknown) {
   if (code === 'provider_not_configured') return 'ATLAS Intelligence is not configured for this environment.';
   if (code === 'provider_rate_limited') return 'ATLAS Intelligence is temporarily rate limited. Try again shortly.';
   if (code === 'provider_unavailable') return 'ATLAS Intelligence is temporarily unavailable.';
+  if (code === 'emergency_budget_exhausted') return 'ATLAS emergency OpenAI fallback reached its configured spending limit.';
+  if (code === 'emergency_budget_unavailable') return 'ATLAS emergency fallback budget control is unavailable, so paid fallback was blocked.';
   if (code === 'microphone_permission_denied') return 'Microphone permission was denied. Text mode remains available.';
   if (code === 'microphone_unsupported' || code === 'microphone_unavailable') return 'Microphone capture is unavailable. Text mode remains available.';
   if (code === 'speech_unavailable') return 'Speech output is unavailable. The assistant reply remains available as text.';
