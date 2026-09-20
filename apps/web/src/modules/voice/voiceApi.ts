@@ -56,6 +56,28 @@ export type VoiceConsentRow = {
 
 type JsonRecord = Record<string, unknown>;
 
+export type VoiceProviderStatus = {
+  ok: boolean;
+  provider: 'openai_custom_voice';
+  state: string;
+  configured?: boolean;
+  readable?: boolean;
+  writable?: boolean;
+  capabilities?: JsonRecord;
+};
+
+export type VoiceProviderConsentPhrase = {
+  language: string;
+  text: string;
+};
+
+export type VoiceProviderCreateResult = {
+  ok: boolean;
+  state: string;
+  consent_id?: string;
+  voice_id?: string;
+};
+
 type VoiceApiDependencies = {
   transport?: VoiceApiTransport;
   getContext?: () => Promise<VoiceApiContext>;
@@ -115,6 +137,31 @@ function postgrestHeaders() {
     Prefer: 'return=representation',
     'content-type': 'application/json'
   };
+}
+
+
+function normalizeConsentPhrases(value: unknown): VoiceProviderConsentPhrase[] {
+  const source = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+  const candidates = Array.isArray(value)
+    ? value
+    : Array.isArray(source?.data)
+      ? source?.data as unknown[]
+      : Array.isArray(source?.phrases)
+        ? source?.phrases as unknown[]
+        : source
+          ? Object.entries(source).map(([language, text]) => ({ language, text }))
+          : [];
+
+  return candidates.flatMap((item) => {
+    if (typeof item === 'string') return [{ language: '', text: item }];
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    const language = String(record.language || record.locale || record.lang || '').trim();
+    const text = String(record.text || record.phrase || record.consent_phrase || '').trim();
+    return text ? [{ language, text }] : [];
+  });
 }
 
 export class AtlasVoiceApi {
@@ -318,6 +365,49 @@ export class AtlasVoiceApi {
       }
       throw error;
     }
+  }
+
+  async providerStatus(): Promise<VoiceProviderStatus> {
+    return parseResponse<VoiceProviderStatus>(
+      await this.transport('/functions/v1/atlas-voice-provider?api=status', { method: 'GET' })
+    );
+  }
+
+  async providerConsentPhrases(): Promise<VoiceProviderConsentPhrase[]> {
+    const body = await parseResponse<{ ok: boolean; phrases?: unknown }>(
+      await this.transport('/functions/v1/atlas-voice-provider?api=consent-phrases', { method: 'GET' })
+    );
+    return normalizeConsentPhrases(body.phrases);
+  }
+
+  async createProviderConsent(profileId: string, sampleId: string): Promise<VoiceProviderCreateResult> {
+    return parseResponse<VoiceProviderCreateResult>(
+      await this.transport('/functions/v1/atlas-voice-provider?api=create-consent', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ profile_id: profileId, sample_id: sampleId })
+      })
+    );
+  }
+
+  async createProviderVoice(profileId: string, sampleId: string): Promise<VoiceProviderCreateResult> {
+    return parseResponse<VoiceProviderCreateResult>(
+      await this.transport('/functions/v1/atlas-voice-provider?api=create-voice', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ profile_id: profileId, sample_id: sampleId })
+      })
+    );
+  }
+
+  async synthesizeProviderVoice(profileId: string, text: string, format = 'mp3'): Promise<Blob> {
+    const response = await this.transport('/functions/v1/atlas-voice-provider?api=speech', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ profile_id: profileId, text, format })
+    });
+    if (!response.ok) await parseResponse(response);
+    return response.blob();
   }
 
   async appendAuditEvent(profileId: string, eventType: string, metadata: JsonRecord = {}) {
