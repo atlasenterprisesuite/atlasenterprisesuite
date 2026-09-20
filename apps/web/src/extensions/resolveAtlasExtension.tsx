@@ -28,6 +28,7 @@ import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityP
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
 import {
+  AnalyticsIntegrationHub,
   AutomationsIntegrationHub,
   PeopleIntegrationHub,
   ReleaseControlIntegrationHub,
@@ -47,6 +48,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/automations') {
     return <RequireAtlasIdentity><AutomationsIntegrationHub /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/analytics') {
+    return <RequireAtlasIdentity><AnalyticsIntegrationHub /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/people') {
