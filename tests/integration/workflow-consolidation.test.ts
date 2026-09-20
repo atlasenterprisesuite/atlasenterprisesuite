@@ -7,6 +7,7 @@ describe('ATLAS canonical workflow consolidation', () => {
   const verify = read('.github/workflows/verify.yml');
   const cloudflare = read('.github/workflows/cloudflare-deploy.yml');
   const globalProduction = read('.github/workflows/global-production-verify.yml');
+  const production = read('.github/workflows/production-deploy.yml');
   const release = read('.github/workflows/release.yml');
   const security = read('.github/workflows/github-security-baseline.yml');
   const infraStatus = read('supabase/functions/atlas-infra-status/index.ts');
@@ -54,6 +55,16 @@ describe('ATLAS canonical workflow consolidation', () => {
     expect(release).toContain('git tag -a "$RELEASE_TAG" "$RELEASE_SHA"');
     expect(release).toContain('gh release create "$RELEASE_TAG"');
     expect(release).not.toContain('wrangler deploy');
+  });
+
+  it('uses current official GitHub checkout and setup-node actions in canonical workflows', () => {
+    for (const workflow of [verify, cloudflare, globalProduction, production, release]) {
+      expect(workflow).toContain('actions/checkout@v7');
+    }
+    for (const workflow of [verify, cloudflare, globalProduction, production, release]) {
+      expect(workflow).toContain('actions/setup-node@v7');
+    }
+    expect(security).toContain('actions/checkout@v7');
   });
 
   it('keeps the weekly security baseline as the single security audit workflow', () => {
