@@ -1,6 +1,7 @@
 import type { TenantScope } from '../../core/src/index';
 import type { AtlasEvent, AtlasTask } from '../../task-protocol/src';
-import type { GitHubWebhookDeliveryClaim, PersistencePort } from './persistence';
+import type { GitHubWebhookDeliveryClaim, GitHubWebhookDeliveryStore } from './githubWebhookPersistence';
+import type { PersistencePort } from './persistence';
 
 type FetchLike = typeof fetch;
 
@@ -18,7 +19,7 @@ function encode(value: string): string {
   return encodeURIComponent(value);
 }
 
-export class SupabasePersistence implements PersistencePort {
+export class SupabasePersistence implements PersistencePort, GitHubWebhookDeliveryStore {
   readonly durable = true;
   private readonly baseUrl: string;
   private readonly key: string;
