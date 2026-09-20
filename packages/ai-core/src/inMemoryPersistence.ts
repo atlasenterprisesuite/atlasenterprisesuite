@@ -1,12 +1,13 @@
 import { sameScope, type TenantScope } from '../../core/src/index';
 import type { AtlasEvent, AtlasTask } from '../../task-protocol/src';
-import type { GitHubWebhookDeliveryClaim, PersistencePort } from './persistence';
+import type { GitHubWebhookDeliveryClaim, GitHubWebhookDeliveryStore } from './githubWebhookPersistence';
+import type { PersistencePort } from './persistence';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export class InMemoryPersistence implements PersistencePort {
+export class InMemoryPersistence implements PersistencePort, GitHubWebhookDeliveryStore {
   readonly durable = false;
   private readonly tasks = new Map<string, AtlasTask>();
   private readonly events: AtlasEvent[] = [];
