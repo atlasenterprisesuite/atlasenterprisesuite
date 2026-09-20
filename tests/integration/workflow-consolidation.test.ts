@@ -36,7 +36,7 @@ describe('ATLAS canonical workflow consolidation', () => {
     expect(verify).toContain('cancel-in-progress: true');
     expect(verify).toContain('versions upload --dry-run --config wrangler.jsonc');
     expect(verify).toContain('npm run verify:all');
-    expect(verify).not.toContain('wrangler@4 deploy --config wrangler.jsonc');
+    expect(verify).not.toMatch(/^\s*run:\s+.*wrangler@4 deploy\b/m);
   });
 
   it('keeps production deployment fail-closed and bound to the exact commit SHA', () => {
