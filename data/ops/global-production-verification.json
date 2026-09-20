@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -15,7 +15,12 @@
     "/studio/web-launch",
     "/studio/write",
     "/crm",
-    "/frontier"
+    "/frontier",
+    "/work",
+    "/work/new",
+    "/work/connections",
+    "/work/runtimes",
+    "/work/policies"
   ],
   "critical_network_routes": [
     "/business/network",
