@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   getAssistantConversation,
   getAssistantStatus,
@@ -23,7 +24,7 @@ type DisplayMessage = {
 const MODES: Array<{ value: AssistantMode; label: string }> = [
   { value: 'auto', label: 'Auto · $0 first' },
   { value: 'atlas-local', label: 'ATLAS Local · $0 API' },
-  { value: 'openai', label: 'ChatGPT / OpenAI' },
+  { value: 'openai', label: 'OpenAI' },
   { value: 'bedrock', label: 'OpenAI on AWS Bedrock' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'codex-sovereign', label: 'Codex Sovereign' },
@@ -35,6 +36,22 @@ const PROFILES: Array<{ value: AssistantProfile; label: string }> = [
   { value: 'balanced', label: 'Balanced' },
   { value: 'deep', label: 'Deep' }
 ];
+
+const PROMPT_STARTERS = [
+  'Summarize what changed across this organization today.',
+  'Find the most relevant information across connected ATLAS sources and cite it.',
+  'Create a governed work plan for this request and identify approvals before execution.',
+  'Review this request for security, cost, permissions and execution risk.'
+] as const;
+
+const ENTERPRISE_LINKS = [
+  { to: '/work', label: 'Work', description: 'Long-running governed execution' },
+  { to: '/automations', label: 'Agents', description: 'Repeatable workflows and automation' },
+  { to: '/work/connections', label: 'Apps', description: 'Connected tools and runtimes' },
+  { to: '/work/team', label: 'Team', description: 'Members, roles and delegations' },
+  { to: '/work/policies', label: 'Policies', description: 'Autonomy, approval and budget controls' },
+  { to: '/suite', label: 'Modules', description: 'ATLAS enterprise application catalog' }
+] as const;
 
 function textOf(message: AssistantStoredMessage) {
   if (typeof message.content === 'string') return message.content;
@@ -61,6 +78,7 @@ export function UnifiedAIChatPage() {
   const [mode, setMode] = useState<AssistantMode>('auto');
   const [profile, setProfile] = useState<AssistantProfile>('balanced');
   const [prompt, setPrompt] = useState('');
+  const [historyQuery, setHistoryQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [error, setError] = useState('');
@@ -81,6 +99,12 @@ export function UnifiedAIChatPage() {
     () => conversations.find((conversation) => conversation.id === conversationId) || null,
     [conversationId, conversations]
   );
+
+  const filteredConversations = useMemo(() => {
+    const query = historyQuery.trim().toLowerCase();
+    if (!query) return conversations;
+    return conversations.filter((conversation) => (conversation.title || 'Untitled conversation').toLowerCase().includes(query));
+  }, [conversations, historyQuery]);
 
   useEffect(() => {
     let active = true;
@@ -142,6 +166,7 @@ export function UnifiedAIChatPage() {
   function startNewConversation() {
     setConversationId(null);
     setMessages([]);
+    setPrompt('');
     setError('');
   }
 
@@ -181,145 +206,169 @@ export function UnifiedAIChatPage() {
     && Boolean(status?.local_runtime?.last_verified_at)
     && localProvider?.verified === true
     && localProvider?.state === 'verified';
-  const localVerifiedAt = status?.local_runtime?.last_verified_at
-    ? new Date(status.local_runtime.last_verified_at).toLocaleString()
-    : 'Not verified';
 
   return (
-    <section className="page-stack atlas-ai-page atlas-ai-future">
-      <header className="page-header atlas-ai-hero">
-        <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
-        <div>
-          <p className="eyebrow">ATLAS Enterprise Suite · Intelligence Layer</p>
-          <h1>ATLAS AI</h1>
-          <p className="atlas-ai-tagline">Ask. Build. Analyze. Automate. <strong>All in one place.</strong></p>
-          <div className="atlas-ai-capabilities" aria-label="ATLAS AI capabilities">
-            <span>◉ Reason <small>Deep insight</small></span>
-            <span>▣ Create <small>Any content</small></span>
-            <span>⌘ Build <small>Turn ideas into reality</small></span>
-            <span>⌕ Research <small>Find the truth</small></span>
+    <section className="atlas-ai-enterprise" aria-label="ATLAS Enterprise Intelligence">
+      <aside className="atlas-ai-rail" aria-label="ATLAS Assistant conversations and enterprise tools">
+        <div className="atlas-ai-rail-brand">
+          <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
+          <div>
+            <strong>ATLAS Intelligence</strong>
+            <span>Enterprise workspace</span>
           </div>
         </div>
-      </header>
 
-      <nav className="atlas-ai-switch" aria-label="Workspace">
-        <button type="button" className="active">Chat</button>
-        <button type="button">Work</button>
-      </nav>
-      <div className="atlas-ai-toolbar">
-        <div className="atlas-ai-selectors">
-          <label>
-            <span>AI mode</span>
-            <select value={mode} onChange={(event) => setMode(event.target.value as AssistantMode)}>
-              {MODES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Reasoning profile</span>
-            <select value={profile} onChange={(event) => setProfile(event.target.value as AssistantProfile)}>
-              {PROFILES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-          </label>
+        <button className="atlas-ai-new" type="button" onClick={startNewConversation}>＋ New chat</button>
+
+        <label className="atlas-ai-history-search">
+          <span className="sr-only">Search conversations</span>
+          <input
+            type="search"
+            value={historyQuery}
+            onChange={(event) => setHistoryQuery(event.target.value)}
+            placeholder="Search chats"
+          />
+        </label>
+
+        <nav className="atlas-ai-enterprise-links" aria-label="Enterprise intelligence tools">
+          {ENTERPRISE_LINKS.map((item) => (
+            <Link key={item.to} to={item.to}>
+              <strong>{item.label}</strong>
+              <span>{item.description}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="atlas-ai-history">
+          <span className="atlas-ai-section-label">Chats</span>
+          {filteredConversations.length ? filteredConversations.map((conversation) => (
+            <button
+              key={conversation.id}
+              type="button"
+              className={conversation.id === conversationId ? 'active' : ''}
+              onClick={() => openConversation(conversation.id)}
+              disabled={loadingConversation}
+            >
+              <strong>{conversation.title || 'Untitled conversation'}</strong>
+            </button>
+          )) : <p className="atlas-ai-empty">{historyQuery ? 'No matching chats.' : 'No conversations yet.'}</p>}
         </div>
-        <button type="button" onClick={refreshStatus}>Refresh provider status</button>
-      </div>
 
-      <div className="atlas-ai-providers" aria-label="Provider readiness">
-        {providers.length ? providers.map((provider) => (
-          <span key={provider.id} className={providerClass(provider)}>
-            {provider.id} · {provider.state}{provider.model ? ` · ${provider.model}` : ''}
+        <div className="atlas-ai-workspace-status">
+          <span>{status?.organization || 'ATLAS Enterprise Suite'}</span>
+          <strong>{status?.role ? status.role.toUpperCase() : status ? 'MEMBER' : 'CHECKING'}</strong>
+        </div>
+      </aside>
+
+      <div className="atlas-ai-conversation-shell">
+        <header className="atlas-ai-topbar">
+          <div className="atlas-ai-topbar-title">
+            <span className="eyebrow">ATLAS Enterprise Suite</span>
+            <strong>{currentConversation?.title || 'New conversation'}</strong>
+          </div>
+
+          <div className="atlas-ai-topbar-controls">
+            <label>
+              <span className="sr-only">AI mode</span>
+              <select value={mode} onChange={(event) => setMode(event.target.value as AssistantMode)}>
+                {MODES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">Reasoning profile</span>
+              <select value={profile} onChange={(event) => setProfile(event.target.value as AssistantProfile)}>
+                {PROFILES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </label>
+            <button type="button" onClick={refreshStatus}>Status</button>
+          </div>
+        </header>
+
+        <div className="atlas-ai-enterprise-state" aria-label="Enterprise security and provider state">
+          <span className={status?.authenticated ? 'verified' : ''}>
+            {status?.authenticated ? 'Authenticated workspace' : 'Checking identity'}
           </span>
-        )) : <span className="atlas-ai-provider">Checking provider readiness…</span>}
-      </div>
-
-      <section className={`atlas-local-live-card ${localRuntimeVerified ? 'verified' : 'pending'}`} aria-live="polite">
-        <div>
-          <p className="eyebrow">Sovereign runtime</p>
-          <h2>ATLAS Local AI</h2>
-          <p>{localRuntimeVerified
-            ? 'Protected local inference is server-verified and available to this authenticated ATLAS workspace.'
-            : 'ATLAS Local is not presented as live until runtime and provider verification both pass.'}</p>
+          <span>{status?.storage_state === 'configured' ? 'Conversation storage configured' : 'Storage not configured'}</span>
+          <span>{verifiedProviders.length} verified provider{verifiedProviders.length === 1 ? '' : 's'}</span>
+          <span>{councilConfigured ? 'Council enabled' : 'Council approval controlled'}</span>
+          <span>{localRuntimeVerified ? 'ATLAS Local verified' : 'ATLAS Local not verified'}</span>
         </div>
-        <dl>
-          <div><dt>Status</dt><dd>{localRuntimeVerified ? 'LIVE / VERIFIED' : 'NOT VERIFIED'}</dd></div>
-          <div><dt>Provider</dt><dd>ATLAS Local</dd></div>
-          <div><dt>Model</dt><dd>{localProvider?.model || 'Unavailable'}</dd></div>
-          <div><dt>Last verified</dt><dd>{localVerifiedAt}</dd></div>
-          <div><dt>API cost</dt><dd>{status?.cost_policy?.enforce_zero_cost ? '$0 automatic paid calls' : 'Policy controlled'}</dd></div>
-        </dl>
-      </section>
 
-      {error ? <div className="atlas-ai-error" role="alert">{error}</div> : null}
-      {!routeReady && status ? (
-        <div className="atlas-ai-notice">
-          {mode === 'council'
-            ? 'Council needs at least two verified providers before it can run.'
-            : mode === 'auto'
-              ? 'No verified provider is available yet. Configure a provider on the server before sending.'
-              : `${mode} is not verified for this request yet.`}
-        </div>
-      ) : null}
-
-      <div className="atlas-ai-grid">
-        <aside className="atlas-ai-panel">
-          <h2>History</h2>
-          <button className="atlas-ai-new" type="button" onClick={startNewConversation}>New conversation</button>
-          <div className="atlas-ai-history">
-            {conversations.length ? conversations.map((conversation) => (
-              <button
-                key={conversation.id}
-                type="button"
-                className={conversation.id === conversationId ? 'active' : ''}
-                onClick={() => openConversation(conversation.id)}
-                disabled={loadingConversation}
-              >
-                <strong>{conversation.title || 'Untitled conversation'}</strong>
-              </button>
-            )) : <p className="atlas-ai-empty">No conversations yet.</p>}
+        {error ? <div className="atlas-ai-error" role="alert">{error}</div> : null}
+        {!routeReady && status ? (
+          <div className="atlas-ai-notice">
+            {mode === 'council'
+              ? 'Council needs at least two verified providers before it can run.'
+              : mode === 'auto'
+                ? 'No verified provider is available yet. Configure and verify a provider before sending.'
+                : `${mode} is not verified for this request yet.`}
           </div>
-        </aside>
+        ) : null}
 
-        <section className="atlas-ai-panel atlas-ai-chat">
-          <h2>{currentConversation?.title || 'New conversation'}</h2>
+        <main className="atlas-ai-chat">
           <div className="atlas-ai-messages" aria-live="polite">
             {messages.length ? messages.map((message) => (
-              <div key={message.key} className={`atlas-ai-message ${message.role}`}>
-                {message.text}
+              <article key={message.key} className={`atlas-ai-message ${message.role}`}>
+                <div className="atlas-ai-message-role">{message.role === 'user' ? 'You' : 'ATLAS'}</div>
+                <div>{message.text}</div>
                 {message.meta ? <span className="atlas-ai-meta">{message.meta}</span> : null}
-              </div>
+              </article>
             )) : (
-              <div className="atlas-ai-message assistant">
-                Ask ATLAS Assistant. The selected provider must be verified before the request is sent.
-              </div>
+              <section className="atlas-ai-welcome">
+                <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
+                <p className="eyebrow">ATLAS Intelligence</p>
+                <h1>What can I help your organization do?</h1>
+                <p>
+                  Chat, analyze, coordinate Work, use approved connections and route actions through ATLAS permissions,
+                  approval and audit controls.
+                </p>
+                <div className="atlas-ai-starters">
+                  {PROMPT_STARTERS.map((starter) => (
+                    <button key={starter} type="button" onClick={() => setPrompt(starter)}>{starter}</button>
+                  ))}
+                </div>
+              </section>
             )}
             <div ref={messageEnd} />
           </div>
+
           <form className="atlas-ai-composer" onSubmit={submit}>
             <textarea
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              placeholder="Message ATLAS AI…"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              placeholder={routeReady ? 'Message ATLAS…' : 'A verified provider is required before sending'}
               aria-label="Message ATLAS Assistant"
               disabled={busy}
+              rows={1}
             />
-            <button type="submit" disabled={busy || !routeReady || !prompt.trim()}>
+            <div className="atlas-ai-composer-meta">
+              <span>{mode} · {profile}</span>
+              <Link to="/work/connections">Apps</Link>
+              <Link to="/work">Work</Link>
+            </div>
+            <button className="atlas-ai-send" type="submit" disabled={busy || !routeReady || !prompt.trim()} aria-label="Send message">
               {busy ? '…' : '↑'}
             </button>
           </form>
-        </section>
 
-        <aside className="atlas-ai-panel atlas-ai-diagnostics">
-          <h3>Execution state</h3>
-          <dl>
-            <div><dt>Organization</dt><dd>{status?.organization || 'Loading…'}</dd></div>
-            <div><dt>Role</dt><dd>{status?.role || 'Loading…'}</dd></div>
-            <div><dt>Storage</dt><dd>{status?.storage_state || 'Loading…'}</dd></div>
-            <div><dt>Verified providers</dt><dd>{verifiedProviders.length}</dd></div>
-            <div><dt>Council policy</dt><dd>{councilConfigured ? 'Pre-authorized' : 'Approval may be required'}</dd></div>
-          </dl>
-          <a className="atlas-ai-link" href="https://chatgpt.com" target="_blank" rel="noopener noreferrer">Open ChatGPT separately</a>
-          <p className="atlas-ai-empty">The external link is optional. ATLAS requests stay on the governed server API.</p>
-        </aside>
+          <p className="atlas-ai-disclaimer">
+            ATLAS applies organization scope, provider readiness, permissions and approval policy before governed execution.
+          </p>
+        </main>
+
+        <footer className="atlas-ai-provider-strip" aria-label="Provider readiness">
+          {providers.length ? providers.map((provider) => (
+            <span key={provider.id} className={providerClass(provider)}>
+              {provider.id} · {provider.state}{provider.model ? ` · ${provider.model}` : ''}
+            </span>
+          )) : <span className="atlas-ai-provider">Checking provider readiness…</span>}
+        </footer>
       </div>
     </section>
   );
