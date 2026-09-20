@@ -22,7 +22,7 @@ describe('ATLAS FRONTIER WebGL world contract', () => {
   it('keeps resource, spatial build and biome mutations behind governed callbacks', () => {
     expect(world).toContain('await onBuildHabitat(spatialPlacement)');
     expect(world).toContain('await onAction(target.action)');
-    expect(world).toContain('onBiomeTransition(targetBiome, movement.point)');
+    expect(world).toContain('biomeTransitionRef.current(targetBiome, movement.point)');
     expect(world).not.toContain('/rest/v1/');
     expect(api).toContain("'/rest/v1/rpc/frontier_apply_action'");
     expect(api).toContain("'/rest/v1/rpc/frontier_build_structure'");
