@@ -22,6 +22,11 @@ import {
   type FrontierStructure,
   type WorldPlacement
 } from './world3d';
+import {
+  INITIAL_FRONTIER_WORLD_PRESENCE,
+  type FrontierWorldPoint,
+  type FrontierWorldPresence
+} from './biomes';
 
 type FrontierRunRow = {
   aetherium: number;
@@ -77,6 +82,13 @@ type FrontierSurvivalRow = {
   hazard_intensity: number;
   hazard_turns: number;
   survived_events: number;
+  revision: number;
+};
+
+type FrontierWorldPresenceRow = {
+  position_x: number;
+  position_z: number;
+  biome_entry_id: string;
   revision: number;
 };
 
@@ -367,6 +379,61 @@ export async function buildFrontierHabitat(
   return {
     state: normalizeFrontierState({ ...body.state, revision: body.revision }),
     structure
+  };
+}
+
+
+export async function loadFrontierWorldPresence(): Promise<FrontierWorldPresence> {
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(`eq.${organization.id}`);
+  const response = await authorizedAtlasFetch(
+    `/rest/v1/frontier_world_presence?org_id=${org}&select=position_x,position_z,biome_entry_id,revision&limit=1`,
+    { method: 'GET' }
+  );
+  const body = await parseJson(response) as FrontierWorldPresenceRow[];
+  if (!Array.isArray(body) || body.length === 0) {
+    return {
+      position: { ...INITIAL_FRONTIER_WORLD_PRESENCE.position },
+      biomeEntryId: INITIAL_FRONTIER_WORLD_PRESENCE.biomeEntryId,
+      revision: INITIAL_FRONTIER_WORLD_PRESENCE.revision
+    };
+  }
+  const row = body[0];
+  return {
+    position: {
+      x: Math.max(-8, Math.min(8, finiteNumber(row.position_x, INITIAL_FRONTIER_WORLD_PRESENCE.position.x))),
+      z: Math.max(-8, Math.min(8, finiteNumber(row.position_z, INITIAL_FRONTIER_WORLD_PRESENCE.position.z)))
+    },
+    biomeEntryId: String(row.biome_entry_id || INITIAL_FRONTIER_WORLD_PRESENCE.biomeEntryId),
+    revision: Math.max(0, Math.floor(finiteNumber(row.revision)))
+  };
+}
+
+export async function transitionFrontierBiome(
+  entryId: string,
+  position: FrontierWorldPoint,
+  idempotencyKey: string
+): Promise<FrontierWorldPresence> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/frontier_transition_biome', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_entry_id: entryId,
+      p_position_x: position.x,
+      p_position_z: position.z,
+      p_idempotency_key: idempotencyKey
+    })
+  });
+  const body = await parseJson(response);
+  if (!body?.ok || !body?.entry_id) throw new Error('frontier_invalid_biome_transition_response');
+  return {
+    position: {
+      x: Math.max(-8, Math.min(8, finiteNumber(body.position_x, position.x))),
+      z: Math.max(-8, Math.min(8, finiteNumber(body.position_z, position.z)))
+    },
+    biomeEntryId: String(body.entry_id),
+    revision: Math.max(0, Math.floor(finiteNumber(body.revision)))
   };
 }
 
