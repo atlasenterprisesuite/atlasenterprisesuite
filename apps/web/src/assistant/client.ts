@@ -55,6 +55,14 @@ export type AssistantStatusResponse = {
     allow_council?: boolean;
     allowed_providers?: string[];
     zero_cost_providers?: string[];
+    emergency_openai_fallback?: {
+      enabled?: boolean;
+      configured?: boolean;
+      ready?: boolean;
+      daily_budget_usd?: number;
+      reserve_usd?: number;
+      max_output_tokens?: number;
+    };
   };
 };
 
