@@ -1,0 +1,115 @@
+name: ATLAS Canonical Verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches-ignore: ["main"]
+
+concurrency:
+  group: atlas-canonical-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install native verification dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          ffmpeg -version
+          ffprobe -version
+          espeak --version
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify canonical Cloudflare and workflow contract
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -f wrangler.jsonc
+          test -f .github/workflows/cloudflare-deploy.yml
+          test -f .github/workflows/global-production-verify.yml
+          test -f .github/workflows/production-deploy.yml
+
+          test ! -e scripts/mint-cloudflare-deploy-token.mjs
+          test ! -e scripts/resolve-cloudflare-auth.mjs
+
+          node <<'NODE'
+          const fs = require('fs');
+          const wrangler = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          if (wrangler.name !== 'atlas-enterprise-suite-web') {
+            throw new Error('Unexpected Cloudflare Worker name');
+          }
+          if (wrangler.account_id !== '1dd6dea2bb98459c66f610464354d686') {
+            throw new Error('Canonical Cloudflare account_id is missing or changed');
+          }
+          if (wrangler.workers_dev !== true) {
+            throw new Error('workers_dev must remain enabled for the canonical Worker');
+          }
+          if (wrangler.preview_urls !== true) {
+            throw new Error('preview_urls contract must remain explicit');
+          }
+          NODE
+
+          cloudflare=.github/workflows/cloudflare-deploy.yml
+          grep -Fq 'environment: production' "$cloudflare"
+          grep -Fq 'CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}' "$cloudflare"
+          grep -Fq 'npm run verify:all' "$cloudflare"
+          grep -Fq 'wrangler@4 deploy --config wrangler.jsonc --tag "$GITHUB_SHA"' "$cloudflare"
+          grep -Fq 'uses: ./.github/workflows/global-production-verify.yml' "$cloudflare"
+          grep -Fq 'mode: fail-closed' "$cloudflare"
+
+          ALT_TOKEN="CF""_API_TOKEN"
+          ACCOUNT_ENV="CLOUDFLARE""_ACCOUNT_ID"
+          MINT_SCRIPT="mint-cloudflare""-deploy-token"
+          RESOLVE_SCRIPT="resolve-cloudflare""-auth"
+          if grep -RInE "${ALT_TOKEN}|${ACCOUNT_ENV}|${MINT_SCRIPT}|${RESOLVE_SCRIPT}"             .github/workflows scripts supabase/functions             --include='*.yml' --include='*.yaml' --include='*.mjs' --include='*.js' --include='*.ts'; then
+            echo "::error::Alternate Cloudflare credential namespace or obsolete token-generation path detected."
+            exit 1
+          fi
+
+      - name: Validate Wrangler compile and bindings without deployment
+        env:
+          CI: "true"
+        run: npx --yes wrangler@4 versions upload --dry-run --config wrangler.jsonc
+
+      - name: Verify complete repository
+        run: npm run verify:all
+
+      - name: Record canonical verification evidence
+        run: |
+          {
+            echo "## ATLAS canonical verification"
+            echo "- Commit: `$GITHUB_SHA`"
+            echo "- Canonical Cloudflare credential contract: passed"
+            echo "- Wrangler compile/bindings dry run: passed"
+            echo "- Dependency audit: passed"
+            echo "- Typecheck: passed"
+            echo "- Unit tests: passed"
+            echo "- Integration tests: passed"
+            echo "- Edge + neural verification: passed"
+            echo "- Creator Native verification: passed"
+            echo "- Production build: passed"
+            echo "- Deployment: not performed by this workflow"
+          } >> "$GITHUB_STEP_SUMMARY"
