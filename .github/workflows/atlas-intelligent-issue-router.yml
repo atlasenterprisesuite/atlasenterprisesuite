@@ -12,7 +12,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: atlas-issue-router-${{ github.event.issue.number || inputs.issue_number }}
@@ -20,10 +19,16 @@ concurrency:
 
 jobs:
   route:
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      issue_number: ${{ steps.route.outputs.issueNumber }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Route ATLAS issue
+        id: route
         uses: actions/github-script@v7
         env:
           MANUAL_ISSUE_NUMBER: ${{ inputs.issue_number }}
@@ -37,6 +42,8 @@ jobs:
               core.setFailed('A valid issue number is required.');
               return;
             }
+
+            core.setOutput('issueNumber', String(issueNumber));
 
             let issue = context.payload.issue;
             if (!issue || issue.number !== issueNumber) {
@@ -295,3 +302,33 @@ jobs:
               .addHeading('ATLAS Intelligent Issue Routing')
               .addRaw(`Issue #${issueNumber}: ${labels.join(', ')}`)
               .write();
+
+  bootstrap-work:
+    needs: route
+    if: needs.route.outputs.issue_number != ''
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout router revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Bootstrap governed branch and draft PR
+        uses: actions/github-script@v7
+        env:
+          ATLAS_ISSUE_NUMBER: ${{ needs.route.outputs.issue_number }}
+        with:
+          script: |
+            const bootstrap = require('./.github/workflows/lib/atlas-issue-work-bootstrap.cjs');
+            await bootstrap({
+              github,
+              context,
+              core,
+              issueNumber: Number(process.env.ATLAS_ISSUE_NUMBER),
+            });
