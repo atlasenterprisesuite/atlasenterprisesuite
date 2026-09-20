@@ -806,7 +806,7 @@ export function PersonalVoiceWizard({
           disabled={!generationReady || busy || voiceCreated}
           onClick={() => void generateProviderVoice()}
         >
-          {busy ? 'Generando…' : voiceCreated ? 'Voz creada' : 'Generar voz'}
+          {busy ? 'Generando…' : voiceCreated ? 'Completado' : 'Generar voz'}
         </button>
       </div>
     </section>
