@@ -2,7 +2,7 @@ name: ATLAS Auto Workspace
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, edited, reopened, labeled]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -21,7 +21,6 @@ concurrency:
 
 jobs:
   prepare:
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'execution:auto-eligible'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -49,23 +48,81 @@ jobs:
               return;
             }
 
+            const body = issue.body || '';
+            const readField = (heading) => {
+              const escaped = heading.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+              const match = body.match(new RegExp(`### ${escaped}\\s*\\n+([\\s\\S]*?)(?=\\n### |$)`, 'i'));
+              if (!match) return '';
+              return match[1].replace(/<!--.*?-->/gs, '').trim();
+            };
+            const slug = (value) => value
+              .toLowerCase()
+              .normalize('NFKD')
+              .replace(/[—–]/g, '-')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .slice(0, 45);
+
+            const ownerModule = readField('Owner module');
+            const issueType = readField('Issue type');
+            const priority = readField('Priority');
+            const securitySensitive = readField('Security-sensitive?');
+            const productionMutation = readField('Production mutation or deployment required?');
+            const priorityMatch = priority.match(/P[0-4]/i);
+            const prioritySlug = priorityMatch ? priorityMatch[0].toLowerCase() : '';
+            const typeSlug = slug(issueType);
+            const moduleSlug = slug(ownerModule);
+            const structured = Boolean(moduleSlug && typeSlug && prioritySlug);
+
             const labelNames = issue.labels.map((label) =>
               typeof label === 'string' ? label : label.name
             ).filter(Boolean);
-            const eligible = labelNames.includes('execution:auto-eligible');
-            const blocked =
+
+            const blockedByBody =
+              prioritySlug === 'p0' ||
+              /^yes$/i.test(securitySensitive) ||
+              /^yes$/i.test(productionMutation);
+            const blockedByLabels =
               labelNames.includes('review:human-required') ||
               labelNames.includes('security:sensitive') ||
               labelNames.includes('production:mutation') ||
               labelNames.includes('priority:p0');
-            if (!eligible || blocked) {
-              core.setFailed('Issue is not eligible for automatic workspace creation.');
+            const eligibleByBody = structured && !blockedByBody;
+            const eligibleByLabel = labelNames.includes('execution:auto-eligible');
+
+            if ((!eligibleByBody && !eligibleByLabel) || blockedByBody || blockedByLabels) {
+              core.info('Issue is not eligible for automatic workspace creation.');
               return;
             }
 
-            const moduleLabel = labelNames.find((name) => name.startsWith('module:')) || 'module:unresolved';
-            const typeLabel = labelNames.find((name) => name.startsWith('type:')) || 'type:unresolved';
-            const priorityLabel = labelNames.find((name) => name.startsWith('priority:')) || 'priority:unresolved';
+            const implementationTypes = new Set([
+              'bug',
+              'feature',
+              'enhancement',
+              'integration',
+              'security',
+              'infrastructure',
+              'data',
+              'ux-ui',
+              'performance',
+              'accessibility',
+              'technical-debt',
+              'production-incident',
+            ]);
+
+            const moduleLabel =
+              labelNames.find((name) => name.startsWith('module:')) ||
+              `module:${moduleSlug || 'unresolved'}`;
+            const typeLabel =
+              labelNames.find((name) => name.startsWith('type:')) ||
+              `type:${typeSlug || 'unresolved'}`;
+            const priorityLabel =
+              labelNames.find((name) => name.startsWith('priority:')) ||
+              `priority:${prioritySlug || 'unresolved'}`;
+            const executor =
+              labelNames.includes('agent:codex') || implementationTypes.has(typeSlug)
+                ? 'Codex'
+                : 'ATLAS Director';
 
             const branchName = `atlas/issue-${issueNumber}`;
             const markerPath = `.atlas/workspaces/issue-${issueNumber}.md`;
@@ -106,7 +163,7 @@ jobs:
               `Type: ${typeLabel.replace('type:', '')}`,
               `Priority: ${priorityLabel.replace('priority:', '').toUpperCase()}`,
               'Orchestrator: ATLAS Director',
-              `Executor: ${labelNames.includes('agent:codex') ? 'Codex' : 'ATLAS Director'}`,
+              `Executor: ${executor}`,
               '',
               'This file establishes an isolated implementation workspace. It does not claim the issue is implemented.',
               '',
@@ -168,8 +225,8 @@ jobs:
                   `- Module: ${moduleLabel}`,
                   `- Type: ${typeLabel}`,
                   `- Priority: ${priorityLabel}`,
-                  `- Orchestrator: ATLAS Director`,
-                  `- Executor: ${labelNames.includes('agent:codex') ? 'Codex' : 'ATLAS Director'}`,
+                  '- Orchestrator: ATLAS Director',
+                  `- Executor: ${executor}`,
                   '',
                   'This draft PR is a workspace, not completion evidence. Keep it draft until acceptance criteria and CI verification are satisfied.',
                 ].join('\n'),
@@ -207,7 +264,7 @@ jobs:
               issue_number: issueNumber,
               per_page: 100,
             });
-            const body = [
+            const commentBody = [
               marker,
               '## ATLAS Auto Workspace',
               '',
@@ -225,14 +282,14 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: prior.id,
-                body,
+                body: commentBody,
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body,
+                body: commentBody,
               });
             }
 
