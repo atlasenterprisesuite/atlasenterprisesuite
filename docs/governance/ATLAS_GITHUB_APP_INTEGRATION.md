@@ -67,13 +67,17 @@ GitHub also sends `ping` when testing the webhook.
 
 Do not use a long-lived personal access token as the normal ATLAS GitHub identity.
 
-The completed GitHub App adapter should:
+The GitHub App authentication helper in
+`apps/atlas-orchestrator/src/github/appAuth.ts`:
 
-1. sign a short-lived GitHub App JWT from the App private key;
-2. obtain the installation id from the trusted webhook payload or GitHub API;
-3. mint an installation access token scoped to the target installation/repository and minimum required permissions;
-4. cache it only until shortly before expiry;
-5. never log the JWT, private key, installation token, authorization header, or webhook secret.
+1. signs a short-lived RS256 GitHub App JWT from the App private key;
+2. accepts the installation id resolved from a trusted webhook payload or GitHub API;
+3. mints an installation access token scoped to selected repository ids and requested permissions;
+4. returns token expiry and repository metadata to the caller;
+5. never writes the JWT, private key, installation token, authorization header, or webhook secret to ATLAS persistence.
+
+Callers must cache installation tokens only until shortly before expiry and request the
+minimum repository and permission scope needed for each operation.
 
 Installation access tokens expire after one hour.
 
@@ -89,9 +93,18 @@ These values must be supplied through the authorized secret store/runtime and mu
 
 ## Replay protection
 
-`X-GitHub-Delivery` is mandatory at ingress. Before webhook events can mutate canonical ATLAS task state, delivery ids must be persisted in the durable ATLAS backend with a uniqueness constraint so duplicate/redelivered events are idempotent.
+`X-GitHub-Delivery` is mandatory at ingress. ATLAS persists each delivery claim in
+`public.atlas_github_webhook_deliveries` using
+`(tenant_id, organization_id, delivery_id)` as the primary key. Duplicate or
+redelivered events therefore return a duplicate acknowledgement and are not claimed twice.
 
-Until durable delivery-id deduplication and event-to-task dispatch are implemented and verified, the webhook endpoint intentionally acknowledges trusted events without authorizing execution.
+The managed-host path uses the token-gated
+`atlas_orchestrator_claim_github_delivery` SECURITY DEFINER RPC. Raw table access
+remains revoked from `anon` and `authenticated`.
+
+Webhook receipt and successful delivery claiming still do not authorize execution.
+Event-to-task dispatch remains subject to ATLAS Director, tenant/RBAC policy, task state,
+CI, and release governance.
 
 ## Governed execution path
 
