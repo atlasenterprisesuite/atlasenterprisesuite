@@ -29,6 +29,16 @@ export type FrontierExpansionActionId =
   | 'generate_frontier_world'
   | 'restore_generated_world';
 
+export type FrontierSurvivalActionId =
+  | 'scan_environment'
+  | 'recharge_suit'
+  | 'deploy_shield'
+  | 'stabilize_temperature'
+  | 'endure_hazard'
+  | 'recover_at_habitat';
+
+export type FrontierHazard = 'clear' | 'ion_storm' | 'thermal_front' | 'anomaly';
+
 export type FrontierCampaignStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export type FrontierState = {
@@ -75,6 +85,19 @@ export type FrontierExpansionState = {
   revision: number;
 };
 
+export type FrontierSurvivalState = {
+  health: number;
+  suitEnergy: number;
+  shieldIntegrity: number;
+  thermalStability: number;
+  exposure: number;
+  activeHazard: FrontierHazard;
+  hazardIntensity: number;
+  hazardTurns: number;
+  survivedEvents: number;
+  revision: number;
+};
+
 export type FrontierActionDefinition = {
   id: FrontierActionId;
   label: string;
@@ -94,6 +117,13 @@ export type FrontierExpansionActionDefinition = {
   stage: 6 | 7 | 8 | 9 | 10;
   label: string;
   mode: 'Survive' | 'Build' | 'Civilize' | 'Orbit' | 'Network' | 'Infinite';
+  description: string;
+};
+
+export type FrontierSurvivalActionDefinition = {
+  id: FrontierSurvivalActionId;
+  label: string;
+  mode: 'Scan' | 'Energy' | 'Shield' | 'Thermal' | 'Survive' | 'Recover';
   description: string;
 };
 
@@ -154,6 +184,19 @@ export const INITIAL_FRONTIER_EXPANSION_STATE: FrontierExpansionState = Object.f
   revision: 0
 });
 
+export const INITIAL_FRONTIER_SURVIVAL_STATE: FrontierSurvivalState = Object.freeze({
+  health: 100,
+  suitEnergy: 100,
+  shieldIntegrity: 0,
+  thermalStability: 50,
+  exposure: 0,
+  activeHazard: 'clear',
+  hazardIntensity: 0,
+  hazardTurns: 0,
+  survivedEvents: 0,
+  revision: 0
+});
+
 export const FRONTIER_ACTIONS: readonly FrontierActionDefinition[] = [
   { id: 'extract_aetherium', label: 'Extract Aetherium', mode: 'Explore', description: 'Mine the luminous resource seam. +4 Aetherium.' },
   { id: 'salvage_alloy', label: 'Salvage Alloy', mode: 'Explore', description: 'Recover structural material. +3 Alloy.' },
@@ -190,6 +233,15 @@ export const FRONTIER_EXPANSION_ACTIONS: readonly FrontierExpansionActionDefinit
   { id: 'synthesize_world_seed', stage: 10, label: 'Synthesize World Seed', mode: 'Infinite', description: 'Costs 20 Aetherium and 6 Biofiber.' },
   { id: 'generate_frontier_world', stage: 10, label: 'Generate Frontier World', mode: 'Infinite', description: 'Consumes one World Seed and creates a new frontier world.' },
   { id: 'restore_generated_world', stage: 10, label: 'Restore Generated World', mode: 'Infinite', description: 'Restore the newest generated world and complete an endless cycle.' }
+] as const;
+
+export const FRONTIER_SURVIVAL_ACTIONS: readonly FrontierSurvivalActionDefinition[] = [
+  { id: 'scan_environment', label: 'Scan Environment', mode: 'Scan', description: 'Spend 5 suit energy to reveal the next governed environmental hazard.' },
+  { id: 'recharge_suit', label: 'Recharge Suit', mode: 'Energy', description: 'Consume 4 Aetherium to restore 25 suit energy.' },
+  { id: 'deploy_shield', label: 'Deploy Shield', mode: 'Shield', description: 'Spend 10 suit energy to add 25 shield integrity.' },
+  { id: 'stabilize_temperature', label: 'Thermal Stabilization', mode: 'Thermal', description: 'Spend 10 suit energy to add 25 thermal stability.' },
+  { id: 'endure_hazard', label: 'Endure Hazard', mode: 'Survive', description: 'Advance the active hazard one turn. Protection reduces damage and exposure.' },
+  { id: 'recover_at_habitat', label: 'Recover at Habitat', mode: 'Recover', description: 'Consume 4 Biofiber at a built Habitat to restore health and reduce exposure.' }
 ] as const;
 
 export const FRONTIER_CAMPAIGN: readonly FrontierCampaignDefinition[] = [
@@ -289,6 +341,26 @@ export function normalizeFrontierExpansionState(value: unknown): FrontierExpansi
     infiniteMastery: boundedPercent(source.infiniteMastery),
     endlessCycles: finiteNonNegative(source.endlessCycles, 0),
     campaignComplete: source.campaignComplete === true,
+    revision: finiteNonNegative(source.revision, 0)
+  };
+}
+
+
+export function normalizeFrontierSurvivalState(value: unknown): FrontierSurvivalState {
+  const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const hazard = String(source.activeHazard ?? 'clear');
+  const activeHazard: FrontierHazard =
+    hazard === 'ion_storm' || hazard === 'thermal_front' || hazard === 'anomaly' ? hazard : 'clear';
+  return {
+    health: boundedPercent(source.health ?? 100),
+    suitEnergy: boundedPercent(source.suitEnergy ?? 100),
+    shieldIntegrity: boundedPercent(source.shieldIntegrity),
+    thermalStability: boundedPercent(source.thermalStability ?? 50),
+    exposure: boundedPercent(source.exposure),
+    activeHazard,
+    hazardIntensity: boundedPercent(source.hazardIntensity),
+    hazardTurns: finiteNonNegative(source.hazardTurns, 0),
+    survivedEvents: finiteNonNegative(source.survivedEvents, 0),
     revision: finiteNonNegative(source.revision, 0)
   };
 }
@@ -500,5 +572,40 @@ export function expansionActionAvailability(
     return { enabled: false, reason: 'Generate a new frontier world first' };
   }
 
+  return { enabled: true };
+}
+
+
+export function survivalActionAvailability(
+  state: FrontierState,
+  survival: FrontierSurvivalState,
+  action: FrontierSurvivalActionId
+): { enabled: boolean; reason?: string } {
+  if (action === 'scan_environment') {
+    if (survival.activeHazard !== 'clear') return { enabled: false, reason: 'Resolve the active hazard first' };
+    if (survival.suitEnergy < 5) return { enabled: false, reason: 'Need 5 suit energy' };
+  }
+  if (action === 'recharge_suit') {
+    if (state.aetherium < 4) return { enabled: false, reason: 'Need 4 Aetherium' };
+    if (survival.suitEnergy >= 100) return { enabled: false, reason: 'Suit energy full' };
+  }
+  if (action === 'deploy_shield') {
+    if (survival.suitEnergy < 10) return { enabled: false, reason: 'Need 10 suit energy' };
+    if (survival.shieldIntegrity >= 100) return { enabled: false, reason: 'Shield integrity full' };
+  }
+  if (action === 'stabilize_temperature') {
+    if (survival.suitEnergy < 10) return { enabled: false, reason: 'Need 10 suit energy' };
+    if (survival.thermalStability >= 100) return { enabled: false, reason: 'Thermal stability full' };
+  }
+  if (action === 'endure_hazard') {
+    if (survival.activeHazard === 'clear' || survival.hazardTurns < 1) return { enabled: false, reason: 'No active hazard' };
+    if (survival.health <= 0) return { enabled: false, reason: 'Recover at a Habitat first' };
+    if (survival.suitEnergy < 5) return { enabled: false, reason: 'Need 5 suit energy' };
+  }
+  if (action === 'recover_at_habitat') {
+    if (state.habitats < 1) return { enabled: false, reason: 'Build a Habitat first' };
+    if (state.biofiber < 4) return { enabled: false, reason: 'Need 4 Biofiber' };
+    if (survival.health >= 100 && survival.exposure === 0) return { enabled: false, reason: 'Recovery not required' };
+  }
   return { enabled: true };
 }
