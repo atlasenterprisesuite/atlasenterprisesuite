@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEFAULT_ACCOUNT_ID: ${{ secrets.HUBSPOT_ACCOUNT_ID }}
+  DEFAULT_ACCOUNT_ID: "247228429"
   DEFAULT_PERSONAL_ACCESS_KEY: ${{ secrets.HUBSPOT_PERSONAL_ACCESS_KEY }}
   DEFAULT_CLI_VERSION: "8.15.0"
 
@@ -25,6 +25,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Verify HubSpot deployment credential
+        shell: bash
+        run: |
+          if [ -z "$DEFAULT_PERSONAL_ACCESS_KEY" ]; then
+            echo "::error::GitHub Actions secret HUBSPOT_PERSONAL_ACCESS_KEY is not available to this workflow."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
