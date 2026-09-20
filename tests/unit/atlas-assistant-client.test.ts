@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -63,4 +64,17 @@ describe('ATLAS Assistant governed copilot client', () => {
       client_metadata: { modality: 'text', surface: 'atlas-assistant' }
     });
   });
+
+  it('allows the ATLAS web origins to preflight the authenticated copilot request', () => {
+    const source = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
+
+    expect(source).toContain("'https://atlasenterprisesuite.com'");
+    expect(source).toContain("'https://www.atlasenterprisesuite.com'");
+    expect(source).toContain("'access-control-allow-origin':origin");
+    expect(source).toContain("'access-control-allow-headers':'authorization, apikey, content-type, x-atlas-org-id'");
+    expect(source).toContain("if(req.method==='OPTIONS')return optionsResponse(origin)");
+    expect(source).toContain("return withCors(await handleRequest(req),origin)");
+    expect(source).not.toContain("'access-control-allow-origin':'*'");
+  });
+
 });
