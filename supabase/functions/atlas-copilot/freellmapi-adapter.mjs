@@ -14,10 +14,15 @@ function normalizeBase(value,{allowInsecure=false}={}){
 }
 function outputText(data){
   const parts=[];
-  for(const item of data?.output||[])for(const part of item?.content||[])if(part?.type==='output_text'&&part?.text)parts.push(String(part.text));
+  const output=Array.isArray(data?.output)?data.output:[];
+  for(const item of output){
+    const content=Array.isArray(item?.content)?item.content:[];
+    for(const part of content)if(part?.type==='output_text'&&part?.text)parts.push(String(part.text));
+  }
   if(parts.length)return parts.join('\n').trim();
   if(typeof data?.output_text==='string')return data.output_text.trim();
-  const chat=data?.choices?.[0]?.message?.content;
+  const choices=Array.isArray(data?.choices)?data.choices:[];
+  const chat=choices[0]?.message?.content;
   return typeof chat==='string'?chat.trim():'';
 }
 function errorForStatus(status){
