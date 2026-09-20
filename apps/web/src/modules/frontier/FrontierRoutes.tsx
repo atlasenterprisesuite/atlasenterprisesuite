@@ -3,22 +3,27 @@ import {
   actionAvailability,
   ecologyActionAvailability,
   expansionActionAvailability,
+  survivalActionAvailability,
   FRONTIER_ACTIONS,
   FRONTIER_CAMPAIGN,
   FRONTIER_ECOLOGY_ACTIONS,
   FRONTIER_EXPANSION_ACTIONS,
+  FRONTIER_SURVIVAL_ACTIONS,
   frontierCampaignProgress,
   frontierCurrentLevel,
   frontierExplorerRank,
   frontierObjective,
   INITIAL_FRONTIER_ECOLOGY_STATE,
   INITIAL_FRONTIER_EXPANSION_STATE,
+  INITIAL_FRONTIER_SURVIVAL_STATE,
   INITIAL_FRONTIER_STATE,
   type FrontierActionId,
   type FrontierEcologyActionId,
   type FrontierEcologyState,
   type FrontierExpansionActionId,
   type FrontierExpansionState,
+  type FrontierSurvivalActionId,
+  type FrontierSurvivalState,
   type FrontierState
 } from './domain';
 import {
@@ -26,10 +31,12 @@ import {
   executeFrontierAction,
   executeFrontierEcologyAction,
   executeFrontierExpansionAction,
+  executeFrontierSurvivalAction,
   loadFrontierEcology,
   loadFrontierExpansion,
   loadFrontierRun,
-  loadFrontierStructures
+  loadFrontierStructures,
+  loadFrontierSurvival
 } from './api';
 import { FrontierWorld3D } from './FrontierWorld3D';
 import type { FrontierStructure, WorldPlacement } from './world3d';
@@ -46,6 +53,7 @@ export function FrontierRoutes() {
   const [state, setState] = useState<FrontierState>({ ...INITIAL_FRONTIER_STATE });
   const [ecology, setEcology] = useState<FrontierEcologyState>({ ...INITIAL_FRONTIER_ECOLOGY_STATE });
   const [expansion, setExpansion] = useState<FrontierExpansionState>({ ...INITIAL_FRONTIER_EXPANSION_STATE });
+  const [survival, setSurvival] = useState<FrontierSurvivalState>({ ...INITIAL_FRONTIER_SURVIVAL_STATE });
   const [runtime, setRuntime] = useState<RuntimeState>('loading');
   const [message, setMessage] = useState('Connecting to governed FRONTIER state…');
   const [buildMode, setBuildMode] = useState(false);
@@ -55,17 +63,19 @@ export function FrontierRoutes() {
     let cancelled = false;
     void (async () => {
       try {
-        const [loaded, loadedStructures, loadedEcology, loadedExpansion] = await Promise.all([
+        const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival] = await Promise.all([
           loadFrontierRun(),
           loadFrontierStructures(),
           loadFrontierEcology(),
-          loadFrontierExpansion()
+          loadFrontierExpansion(),
+          loadFrontierSurvival()
         ]);
         if (cancelled) return;
         setState(loaded);
         setStructures(loadedStructures);
         setEcology(loadedEcology);
         setExpansion(loadedExpansion);
+        setSurvival(loadedSurvival);
         setRuntime('ready');
         setMessage(loaded.revision > 0
           ? `Saved world loaded: revision ${loaded.revision} · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`
@@ -187,6 +197,34 @@ export function FrontierRoutes() {
     }
   };
 
+  const runSurvivalAction = async (action: FrontierSurvivalActionId) => {
+    if (runtime !== 'ready') return;
+    const availability = survivalActionAvailability(state, survival, action);
+    if (!availability.enabled) {
+      setMessage(availability.reason || 'Survival action unavailable.');
+      return;
+    }
+
+    setRuntime('saving');
+    setMessage('Survival Controller validating hazard state, protection, resources, organization and idempotency…');
+    try {
+      const next = await executeFrontierSurvivalAction(action, createActionKey());
+      setState(next.state);
+      setSurvival(next.survival);
+      setRuntime('ready');
+      if (next.survival.health <= 0) {
+        setMessage('Explorer incapacitated. Recovery at a governed Habitat is required.');
+      } else if (next.survival.activeHazard === 'clear') {
+        setMessage(`Survival state committed · ${next.survival.survivedEvents} environmental event${next.survival.survivedEvents === 1 ? '' : 's'} survived.`);
+      } else {
+        setMessage(`${next.survival.activeHazard.replace('_', ' ')} active · ${next.survival.hazardTurns} turn${next.survival.hazardTurns === 1 ? '' : 's'} remaining.`);
+      }
+    } catch (error) {
+      setRuntime('blocked');
+      setMessage(error instanceof Error ? error.message : 'Survival Controller rejected the action.');
+    }
+  };
+
   const buildHabitat = async (placement: WorldPlacement) => {
     if (runtime !== 'ready') return false;
     const availability = actionAvailability(state, 'build_habitat');
@@ -218,16 +256,18 @@ export function FrontierRoutes() {
     setRuntime('loading');
     setMessage('Rechecking governed persistence…');
     try {
-      const [loaded, loadedStructures, loadedEcology, loadedExpansion] = await Promise.all([
+      const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival] = await Promise.all([
         loadFrontierRun(),
         loadFrontierStructures(),
         loadFrontierEcology(),
-        loadFrontierExpansion()
+        loadFrontierExpansion(),
+        loadFrontierSurvival()
       ]);
       setState(loaded);
       setStructures(loadedStructures);
       setEcology(loadedEcology);
       setExpansion(loadedExpansion);
+      setSurvival(loadedSurvival);
       setRuntime('ready');
       setMessage(`Governed world synchronized · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`);
     } catch (error) {
@@ -258,6 +298,7 @@ export function FrontierRoutes() {
         <div><span>LEVEL</span><strong>{currentLevel.level}/40 · {currentLevel.title}</strong></div>
         <div><span>EXPLORER RANK</span><strong>{explorerRank}</strong></div>
         <div><span>EXPERIENCE</span><strong>{state.experience} XP</strong></div>
+        <div><span>HEALTH</span><strong>{survival.health}%</strong></div>
         <div><span>ION CLOCK</span><strong>{String(state.stormMinutes).padStart(2, '0')}:00</strong></div>
       </div>
 
@@ -333,6 +374,34 @@ export function FrontierRoutes() {
             })}
           </div>
 
+          <section className="frontier-survival" data-hazard={survival.activeHazard} aria-label="Survival and dynamic environment">
+            <div className="frontier-survival-heading">
+              <div><span>SURVIVAL SYSTEMS</span><strong>{survival.activeHazard === 'clear' ? 'Environment stable' : survival.activeHazard.replace('_', ' ')}</strong></div>
+              <small>{survival.survivedEvents} survived</small>
+            </div>
+            <div className="frontier-survival-stats">
+              <article><span>Health</span><strong>{survival.health}%</strong></article>
+              <article><span>Suit Energy</span><strong>{survival.suitEnergy}%</strong></article>
+              <article><span>Shield</span><strong>{survival.shieldIntegrity}%</strong></article>
+              <article><span>Thermal</span><strong>{survival.thermalStability}%</strong></article>
+              <article><span>Exposure</span><strong>{survival.exposure}%</strong></article>
+              <article><span>Hazard</span><strong>{survival.hazardIntensity}% · {survival.hazardTurns}T</strong></article>
+            </div>
+            <div className="frontier-survival-actions">
+              {FRONTIER_SURVIVAL_ACTIONS.map((action) => {
+                const availability = survivalActionAvailability(state, survival, action.id);
+                const disabled = runtime !== 'ready' || !availability.enabled;
+                return (
+                  <button key={action.id} type="button" disabled={disabled} onClick={() => void runSurvivalAction(action.id)}>
+                    <span>{action.mode}</span>
+                    <strong>{action.label}</strong>
+                    <small>{availability.enabled ? action.description : availability.reason}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           <section className="frontier-ecology" aria-label="Living Worlds systems">
             <div className="frontier-ecology-heading">
               <div><span>LIVING SYSTEMS</span><strong>Mundos vivos</strong></div>
@@ -401,8 +470,8 @@ export function FrontierRoutes() {
 
       <div className="frontier-governance">
         <article><span>Identity</span><strong>Organization scoped</strong><p>ATLAS Identity and active organization membership are required before this route opens.</p></article>
-        <article><span>Controllers</span><strong>Server authoritative</strong><p>Core, spatial, ecology and phases 6-10 validate exact progression, resources and idempotency transactionally in Supabase.</p></article>
-        <article><span>Audit</span><strong>Append-only evidence</strong><p>World structures, ecology and advanced campaign actions retain before/after state and revision evidence.</p></article>
+        <article><span>Controllers</span><strong>Server authoritative</strong><p>Core, spatial, ecology, survival and phases 6-10 validate progression, hazards, resources and idempotency transactionally in Supabase.</p></article>
+        <article><span>Audit</span><strong>Append-only evidence</strong><p>World structures, ecology, survival hazards and advanced campaign actions retain before/after state and revision evidence.</p></article>
       </div>
     </section>
   );
