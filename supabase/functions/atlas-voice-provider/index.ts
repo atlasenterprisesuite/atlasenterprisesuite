@@ -172,13 +172,21 @@ async function createProviderConsent(req: Request) {
     ownedSample(ctx,profileId,sampleId),
     activeConsent(ctx,profileId)
   ]);
-  if (sample.phrase_id !== 'challenge') return json({ok:false,error:'provider_consent_sample_required'},409);
+  if (
+    consent?.scope?.provider !== 'openai_custom_voice'
+    || consent?.scope?.provider_generation_authorized !== true
+  ) return json({ok:false,error:'provider_generation_consent_required'},409);
+  if (sample.phrase_id !== 'provider-consent') return json({ok:false,error:'provider_consent_sample_required'},409);
+  const consentByteSize = Number(sample.byte_size || 0);
+  if (consentByteSize <= 0 || consentByteSize > 10 * 1024 * 1024) {
+    return json({ok:false,error:'provider_consent_size_invalid'},409);
+  }
   const blob = await sampleBlob(sample);
   const mime = normalizeVoiceMimeType(sample.mime_type || blob.type || 'audio/webm');
   const ext = extensionForVoiceMime(mime);
   const form = new FormData();
   form.set('name',`atlas_${profile.id.slice(0,8)}_consent`);
-  form.set('language',String(profile.language||'en').split('-')[0].toLowerCase());
+  form.set('language',String(profile.language||'en-US'));
   form.set('recording',new File([blob],`consent.${ext}`,{type:mime}));
   const response = await fetch(OPENAI_CONSENTS_URL,{
     method:'POST',headers:{authorization:`Bearer ${OPENAI_API_KEY}`},body:form,cache:'no-store'
@@ -211,8 +219,16 @@ async function createProviderVoice(req: Request) {
     ownedSample(ctx,profileId,sampleId),
     activeConsent(ctx,profileId)
   ]);
+  if (
+    consent?.scope?.provider !== 'openai_custom_voice'
+    || consent?.scope?.provider_generation_authorized !== true
+  ) return json({ok:false,error:'provider_generation_consent_required'},409);
   if (!consent.provider_consent_ref || consent.provider_state !== 'ready') return json({ok:false,error:'provider_consent_required'},409);
-  if (sample.phrase_id === 'challenge') return json({ok:false,error:'provider_reference_sample_required'},409);
+  if (sample.phrase_id !== 'provider-reference') return json({ok:false,error:'provider_reference_sample_required'},409);
+  const durationMs = Number(sample.duration_ms || 0);
+  const byteSize = Number(sample.byte_size || 0);
+  if (durationMs < 5000 || durationMs > 30000) return json({ok:false,error:'provider_reference_duration_invalid'},409);
+  if (byteSize <= 0 || byteSize > 10 * 1024 * 1024) return json({ok:false,error:'provider_reference_size_invalid'},409);
 
   const blob = await sampleBlob(sample);
   const mime = normalizeVoiceMimeType(sample.mime_type || blob.type || 'audio/webm');
@@ -262,7 +278,6 @@ async function synthesize(req: Request) {
     model: 'gpt-4o-mini-tts',
     voice: { id: profile.provider_ref },
     input,
-    language: String(profile.language||'en').split('-')[0].toLowerCase(),
     response_format: format
   };
   const response = await fetch(OPENAI_SPEECH_URL,{
