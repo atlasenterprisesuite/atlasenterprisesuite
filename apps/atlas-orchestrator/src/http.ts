@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
+import { GitHubWebhookError, ingestGitHubWebhook } from './webhooks/github';
 import { handleMcpRequest, type JsonRpcRequest } from '../../../packages/atlas-mcp/src';
 import { createAtlasRuntime } from './runtime/container';
 import { resolveHttpActor } from './runtime/auth';
@@ -88,6 +89,30 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/readyz') {
       const state = await verifyReadiness(runtime.persistence, scope);
       return json(res, state.ready ? 200 : 503, state);
+    }
+    if (req.method === 'POST' && req.url === '/webhooks/github') {
+      const body = await readBody(req, 2_097_152);
+      try {
+        const envelope = ingestGitHubWebhook({
+          headers: req.headers,
+          body,
+          secret: process.env.ATLAS_GITHUB_WEBHOOK_SECRET,
+        });
+        return json(res, 202, {
+          status: 'accepted',
+          deliveryId: envelope.deliveryId,
+          event: envelope.event,
+          action: envelope.action,
+          installationId: envelope.installationId,
+          repository: envelope.repository,
+          executionAuthorized: false,
+        });
+      } catch (error) {
+        if (error instanceof GitHubWebhookError) {
+          return json(res, error.status, { error: error.code });
+        }
+        throw error;
+      }
     }
     if (req.url === '/local-ai/health' || req.url === '/local-ai/v1/responses') {
       return await proxyLocalAi(req, res);
