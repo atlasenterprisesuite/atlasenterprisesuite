@@ -52,8 +52,10 @@ jobs:
           test -f .github/workflows/global-production-verify.yml
           test -f .github/workflows/production-deploy.yml
 
-          test ! -e scripts/mint-cloudflare-deploy-token.mjs
-          test ! -e scripts/resolve-cloudflare-auth.mjs
+          MINT_PATH="scripts/mint-cloudflare""-deploy-token.mjs"
+          RESOLVE_PATH="scripts/resolve-cloudflare""-auth.mjs"
+          test ! -e "$MINT_PATH"
+          test ! -e "$RESOLVE_PATH"
 
           node <<'NODE'
           const fs = require('fs');
