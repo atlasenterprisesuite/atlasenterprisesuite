@@ -19,12 +19,14 @@ describe('ATLAS FRONTIER WebGL world contract', () => {
     expect(world).toContain('900');
   });
 
-  it('keeps resource and spatial build mutations behind governed callbacks', () => {
+  it('keeps resource, spatial build and biome mutations behind governed callbacks', () => {
     expect(world).toContain('await onBuildHabitat(spatialPlacement)');
     expect(world).toContain('await onAction(target.action)');
+    expect(world).toContain('onBiomeTransition(targetBiome, movement.point)');
     expect(world).not.toContain('/rest/v1/');
     expect(api).toContain("'/rest/v1/rpc/frontier_apply_action'");
     expect(api).toContain("'/rest/v1/rpc/frontier_build_structure'");
+    expect(api).toContain("'/rest/v1/rpc/frontier_transition_biome'");
   });
 
   it('replaces the CSS-only world with the interactive renderer', () => {
@@ -32,6 +34,9 @@ describe('ATLAS FRONTIER WebGL world contract', () => {
     expect(route).not.toContain('<div className="frontier-world"');
     expect(route).toContain("action.id === 'build_habitat'");
     expect(route).toContain('structures={structures}');
+    expect(route).toContain('initialPosition={worldPresence.position}');
     expect(world).toContain('structures.forEach');
+    expect(world).toContain('FRONTIER_BIOME_REGIONS.forEach');
+    expect(world).toContain('frontier-biome-card');
   });
 });
