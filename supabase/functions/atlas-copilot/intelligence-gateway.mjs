@@ -1,5 +1,5 @@
 import {normalizeAgentContext} from './agentic-core.mjs';
-import {evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
+import {evaluateEmergencyFallbackPolicy,evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
 export const INTELLIGENCE_CAPABILITIES=Object.freeze(['generation','reasoning']);
@@ -105,15 +105,43 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
         const candidates=route.mode==='auto'
           ?[route.providers[0],...(Array.isArray(route.fallback_providers)?route.fallback_providers:[])]
           :[route.providers[0]];
-        let lastRetryableError=null;
+        let lastRetryableError=null,lastBlockingError=null;
         for(let index=0;index<candidates.length;index+=1){
           const providerId=candidates[index];
-          const candidateCost=index===0
+          let candidateCost=index===0
             ?costDecision
             :evaluateIntelligenceCostPolicy({mode:'auto',providers:[providerId],policy:effectiveCostPolicy});
+          let emergencyReservation=null;
+          let emergencyFallback=false;
           if(candidateCost.decision!=='allow'){
-            fallbackAttempts.push({provider:providerId,outcome:candidateCost.decision,reason:candidateCost.reason});
-            continue;
+            const emergency=index>0&&route.mode==='auto'
+              ?evaluateEmergencyFallbackPolicy({provider:providerId,policy:effectiveCostPolicy})
+              :{decision:'deny',reason:'emergency_fallback_not_applicable'};
+            if(emergency.decision!=='allow'){
+              fallbackAttempts.push({provider:providerId,outcome:candidateCost.decision,reason:candidateCost.reason,emergency_reason:emergency.reason});
+              continue;
+            }
+            if(typeof store.reserveEmergencyBudget!=='function'){
+              lastBlockingError=fail('emergency_budget_unavailable',503,{provider:providerId});
+              fallbackAttempts.push({provider:providerId,outcome:'emergency_budget_unavailable'});
+              continue;
+            }
+            const reservation=await store.reserveEmergencyBudget({
+              context:principal,
+              trace_id,
+              provider:providerId,
+              reserve_usd:emergency.reserve_usd,
+              daily_budget_usd:emergency.daily_budget_usd
+            });
+            if(reservation?.allowed!==true){
+              const reason=String(reservation?.reason||'emergency_daily_budget_exhausted');
+              lastBlockingError=fail('emergency_budget_exhausted',429,{provider:providerId,budget_reason:reason});
+              fallbackAttempts.push({provider:providerId,outcome:'emergency_budget_denied',reason});
+              continue;
+            }
+            emergencyReservation=reservation;
+            emergencyFallback=true;
+            candidateCost={...emergency,estimated_automatic_cost_usd:Number(emergency.reserve_usd)};
           }
           const adapter=registry?.get(providerId)||provider;
           if(!adapter){
@@ -126,22 +154,30 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
             providers:[providerId],
             provider:providerId,
             fallback_used:index>0||route.fallback_used,
-            reason:index>0?'runtime_fallback_after_provider_failure':route.reason
+            reason:emergencyFallback?'runtime_emergency_fallback_after_provider_failure':index>0?'runtime_fallback_after_provider_failure':route.reason
           });
+          const maxOutputTokens=emergencyFallback
+            ?Math.max(64,Math.min(3000,Number(effectiveCostPolicy.emergency_openai_max_output_tokens)||512))
+            :3000;
           try{
-            result=await adapter.execute({context:principal,route:candidateRoute,instructions,input:history,max_output_tokens:3000});
+            result=await adapter.execute({context:principal,route:candidateRoute,instructions,input:history,max_output_tokens:maxOutputTokens});
             executionRoute=candidateRoute;
             executionCostDecision=candidateCost;
-            fallbackAttempts.push({provider:providerId,outcome:'completed'});
+            fallbackAttempts.push({
+              provider:providerId,
+              outcome:'completed',
+              ...(emergencyReservation?{emergency:true,reservation_id:emergencyReservation.reservation_id||null,reserved_usd:Number(emergencyReservation.reserved_usd||candidateCost.reserve_usd||0)}:{})
+            });
             break;
           }catch(error){
             const code=normalizeIntelligenceError(error).code;
-            fallbackAttempts.push({provider:providerId,outcome:code});
+            fallbackAttempts.push({provider:providerId,outcome:code,...(emergencyFallback?{emergency:true}:{})});
             if(route.mode!=='auto'||!['provider_unavailable','provider_rate_limited'].includes(code))throw error;
             lastRetryableError=error;
           }
         }
         if(!result){
+          if(lastBlockingError)throw lastBlockingError;
           if(lastRetryableError)throw lastRetryableError;
           throw fail('provider_unavailable',502,{fallback_attempts:fallbackAttempts});
         }
