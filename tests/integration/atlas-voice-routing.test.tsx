@@ -21,6 +21,16 @@ describe('ATLAS Voice first-class routing', () => {
     expect(resolver).toContain('<RequireAtlasIdentity><VoiceRoutes /></RequireAtlasIdentity>');
   });
 
+  it('versions the complete governed Personal Voice route family', () => {
+    const routes = readFileSync('apps/web/src/modules/voice/VoiceRoutes.tsx', 'utf8');
+    for (const suffix of ['', '/setup', '/sound-check', '/record', '/review', '/generate', '/apple']) {
+      expect(routes).toContain(`/voice/personal-voice${suffix}`);
+    }
+    expect(routes).toContain('PersonalVoicePage');
+    expect(routes).toContain('PersonalVoiceWizard');
+    expect(routes).toContain('AppleVoicePage');
+  });
+
   it('surfaces the governed Voice Assistant and Personal Voice entry points', () => {
     render(<MemoryRouter><VoiceHomePage /></MemoryRouter>);
     expect(screen.getByRole('link', { name: /Voice Assistant/i })).toHaveAttribute('href', '/voice/assistant');
