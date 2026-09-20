@@ -369,3 +369,32 @@ export async function buildFrontierHabitat(
     structure
   };
 }
+
+
+export async function loadFrontierCodexDiscoveries(): Promise<string[]> {
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(`eq.${organization.id}`);
+  const response = await authorizedAtlasFetch(
+    `/rest/v1/frontier_codex_discoveries?org_id=${org}&select=entry_id&order=discovered_at.asc`,
+    { method: 'GET' }
+  );
+  const body = await parseJson(response) as Array<{ entry_id?: unknown }>;
+  if (!Array.isArray(body)) return [];
+  return body
+    .map((row) => String(row.entry_id ?? ''))
+    .filter((entryId) => entryId.length > 0);
+}
+
+export async function discoverFrontierCodexEntry(entryId: string): Promise<string> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/frontier_discover_codex_entry', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_entry_id: entryId
+    })
+  });
+  const body = await parseJson(response);
+  if (!body?.ok || !body?.entry_id) throw new Error('frontier_invalid_codex_controller_response');
+  return String(body.entry_id);
+}
