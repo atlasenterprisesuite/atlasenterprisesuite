@@ -41,8 +41,10 @@ final class ApplePersonalVoiceBridgeTests: XCTestCase {
     func testDeniedAuthorizationReturnsNoVoices() async {
         let system = FakeAppleSpeechSystem(authorization: .denied)
         let bridge = ApplePersonalVoiceBridge(system: system)
-        XCTAssertEqual(await bridge.status(), .denied)
-        XCTAssertEqual(await bridge.listVoices(), [])
+        let status = await bridge.status()
+        let voices = await bridge.listVoices()
+        XCTAssertEqual(status, .denied)
+        XCTAssertEqual(voices, [])
     }
 
     @available(iOS 17.0, macOS 14.0, *)
