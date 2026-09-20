@@ -11,6 +11,10 @@ import './identity.css';
 
 const DEFAULT_TARGET = '/';
 const SUPPORTED_PREFIXES = [
+  '/finance',
+  '/health',
+  '/studio',
+  '/insurance',
   ...ATLAS_MODULES.filter((module) => module.requiresAuth).map((module) => module.route),
   '/execution',
   '/business/growth/social-publisher'
