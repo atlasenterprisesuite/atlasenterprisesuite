@@ -54,6 +54,6 @@ describe('ATLAS functional avatar', () => {
 
     expect(screen.getByRole('button', { name: 'Start speaking with ATLAS' })).toBeDisabled();
     expect(screen.getByText(/Microphone transcription is unavailable in this browser/i)).toBeInTheDocument();
-    expect(screen.getByText('Requires ATLAS iOS app')).toBeInTheDocument();
+    expect(screen.getByText(/Requires ATLAS iOS app/i)).toBeInTheDocument();
   });
 });
