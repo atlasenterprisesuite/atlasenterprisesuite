@@ -5,12 +5,18 @@ on:
   pull_request:
     paths:
       - ".github/**"
+      - "scripts/**"
+      - "supabase/functions/**"
+      - "wrangler.jsonc"
       - "SECURITY.md"
       - "docs/security/**"
   push:
     branches: ["main"]
     paths:
       - ".github/**"
+      - "scripts/**"
+      - "supabase/functions/**"
+      - "wrangler.jsonc"
       - "SECURITY.md"
       - "docs/security/**"
   schedule:
@@ -72,6 +78,41 @@ jobs:
             }
           }
           NODE
+
+      - name: Enforce canonical Cloudflare credential namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -f wrangler.jsonc
+          test ! -e scripts/mint-cloudflare-deploy-token.mjs
+          test ! -e scripts/resolve-cloudflare-auth.mjs
+
+          node <<'NODE'
+          const fs = require('fs');
+          const wrangler = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          if (wrangler.account_id !== '1dd6dea2bb98459c66f610464354d686') {
+            throw new Error('Cloudflare account_id must remain canonical in wrangler.jsonc');
+          }
+          if (wrangler.name !== 'atlas-enterprise-suite-web') {
+            throw new Error('Cloudflare Worker name changed unexpectedly');
+          }
+          NODE
+
+          ALT_TOKEN="CF""_API_TOKEN"
+          ACCOUNT_ENV="CLOUDFLARE""_ACCOUNT_ID"
+          MINT_SCRIPT="mint-cloudflare""-deploy-token"
+          RESOLVE_SCRIPT="resolve-cloudflare""-auth"
+
+          if grep -RInE "${ALT_TOKEN}|${ACCOUNT_ENV}|${MINT_SCRIPT}|${RESOLVE_SCRIPT}"             .github/workflows scripts supabase/functions             --include='*.yml' --include='*.yaml' --include='*.mjs' --include='*.js' --include='*.ts'; then
+            echo "::error::ATLAS active automation/runtime contains a prohibited alternate Cloudflare credential or obsolete token-generation path."
+            exit 1
+          fi
+
+          cloudflare=.github/workflows/cloudflare-deploy.yml
+          grep -Fq 'CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}' "$cloudflare"
+          grep -Fq 'environment: production' "$cloudflare"
+          grep -Fq 'wrangler@4 deploy --config wrangler.jsonc --tag "$GITHUB_SHA"' "$cloudflare"
 
       - name: Verify fail-closed production security contract
         shell: bash
