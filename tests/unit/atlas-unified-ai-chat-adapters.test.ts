@@ -20,6 +20,7 @@ describe('ATLAS Unified AI provider adapters', () => {
       const body = JSON.parse(String(init?.body));
       expect(body.model).toBe('local-model');
       expect(body.store).toBe(false);
+      expect(body.max_output_tokens).toBe(1024);
       expect(String(body.instructions)).toContain('ATLAS LOCAL RUNTIME PROFILE');
       return new Response(JSON.stringify({
         id: 'local_resp_1',
@@ -39,6 +40,33 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect(adapter.descriptor()).toMatchObject({ id: 'atlas-local', configured: true, backend: 'self-hosted', access_protected: true });
     expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
     expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('local-ok');
+  });
+
+  it('bounds ATLAS Local conversation history while preserving the newest turn', async () => {
+    let captured: any = null;
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      captured = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({
+        id: 'local_resp_compact',
+        model: 'local-model',
+        output: [{ content: [{ type: 'output_text', text: 'bounded-ok' }] }],
+        usage: {},
+      }), { status: 200 });
+    });
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      token: 'local-secret',
+      models: { balanced: 'local-model' },
+      fetchFn,
+    });
+    const oldTurn = { role: 'user', content: 'old '.repeat(4000) };
+    const middleTurn = { role: 'assistant', content: 'middle '.repeat(2000) };
+    const newestTurn = { role: 'user', content: 'latest request' };
+    const result = await adapter.execute({ context, route, instructions: 'ATLAS', input: [oldTurn, middleTurn, newestTurn], max_output_tokens: 3000 });
+    expect(result.text).toBe('bounded-ok');
+    expect(captured.max_output_tokens).toBe(1024);
+    expect(captured.input.at(-1)).toEqual(newestTurn);
+    expect(captured.input).not.toContainEqual(oldTurn);
   });
 
   it('fails closed when ATLAS Local has no authenticated runtime configuration', async () => {
