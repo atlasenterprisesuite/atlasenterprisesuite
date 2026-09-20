@@ -4,7 +4,8 @@ import {
   AtlasVoiceApi,
   atlasVoiceApi,
   type VoiceProfileRow,
-  type VoiceSessionRow
+  type VoiceSessionRow,
+  type VoiceProviderStatus
 } from './voiceApi';
 import { BrowserMicrophoneAdapter, type MicrophoneAdapter, type MicrophonePermission } from './browserMicrophone';
 import { assessVoiceQuality, type MeasuredAudioStats, type VoiceQualityAssessment } from './quality';
@@ -22,11 +23,22 @@ export type PersonalVoicePersistence =
     | 'saveAcceptedSample'
     | 'appendAuditEvent'
   >
-  & Partial<Pick<AtlasVoiceApi, 'listSamples' | 'listConsents'>>;
+  & Partial<
+    Pick<
+      AtlasVoiceApi,
+      | 'listSamples'
+      | 'listConsents'
+      | 'providerStatus'
+      | 'providerConsentPhrases'
+      | 'createProviderConsent'
+      | 'createProviderVoice'
+    >
+  >;
 
 export type PersonalVoiceWizardStep = 'setup' | 'sound-check' | 'record' | 'review' | 'generate';
 
 type SampleState = {
+  id?: string;
   status: 'accepted' | 'needs_retry' | 'rejected' | 'missing';
   persisted?: boolean;
   blob?: Blob;
@@ -55,6 +67,9 @@ const phrases = [
   { id: 'phrase-8', text: 'Hoy revisaré los detalles importantes antes de tomar la siguiente decisión.' },
   { id: 'phrase-9', text: 'Esta grabación pertenece únicamente a mi perfil personal de ATLAS Voice.' }
 ] as const;
+
+const providerReferenceText =
+  'Esta es una muestra de referencia de mi voz natural. Hablo con un ritmo cómodo, una entonación estable y el volumen que uso normalmente. Autorizo esta muestra únicamente para crear mi Personal Voice mediante el proveedor que he aprobado en ATLAS.';
 
 function routeForStep(step: PersonalVoiceWizardStep) {
   return `/voice/personal-voice/${step}`;
@@ -119,6 +134,15 @@ export function PersonalVoiceWizard({
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [samples, setSamples] = useState<Record<string, SampleState>>(emptySamples);
   const [challengeVerified, setChallengeVerified] = useState(false);
+  const [providerStatus, setProviderStatus] = useState<VoiceProviderStatus | null>(null);
+  const [providerConsentPhrase, setProviderConsentPhrase] = useState('');
+  const [providerConsentSampleId, setProviderConsentSampleId] = useState('');
+  const [providerReferenceSampleId, setProviderReferenceSampleId] = useState('');
+  const [providerAuthorized, setProviderAuthorized] = useState(false);
+  const [providerRecording, setProviderRecording] = useState<'consent' | 'reference' | null>(null);
+  const [providerRecordingStartedAt, setProviderRecordingStartedAt] = useState(0);
+  const [providerMessage, setProviderMessage] = useState<string | null>(null);
+  const [voiceCreated, setVoiceCreated] = useState(false);
 
   const acceptedCount = phrases.filter((phrase) => samples[phrase.id]?.status === 'accepted').length;
   const reviewComplete = acceptedCount === phrases.length;
@@ -157,7 +181,7 @@ export function PersonalVoiceWizard({
           const restored = emptySamples();
           for (const sample of persisted) {
             if (restored[sample.phrase_id] && sample.status === 'accepted') {
-              restored[sample.phrase_id] = { status: 'accepted', persisted: true };
+              restored[sample.phrase_id] = { id: sample.id, status: 'accepted', persisted: true };
             }
           }
           setSamples(restored);
@@ -173,6 +197,50 @@ export function PersonalVoiceWizard({
 
     return () => { active = false; };
   }, [api, initialProfileId, initialSessionId, initialStep]);
+
+
+  useEffect(() => {
+    if (initialStep !== 'generate' || !profileId || !sessionId || !api.providerStatus) return;
+
+    let active = true;
+    setProviderMessage(null);
+
+    void (async () => {
+      try {
+        const [status, providerPhrases, persisted] = await Promise.all([
+          api.providerStatus!(),
+          api.providerConsentPhrases ? api.providerConsentPhrases() : Promise.resolve([]),
+          api.listSamples ? api.listSamples(sessionId) : Promise.resolve([])
+        ]);
+        if (!active) return;
+        setProviderStatus(status);
+        const spanish = providerPhrases.find((phrase) => phrase.language.toLowerCase().startsWith('es'));
+        setProviderConsentPhrase((spanish || providerPhrases[0])?.text || '');
+
+        const providerConsent = persisted.find((sample) => sample.phrase_id === 'provider-consent' && sample.status === 'accepted');
+        const providerReference = persisted.find((sample) => sample.phrase_id === 'provider-reference' && sample.status === 'accepted');
+        setProviderConsentSampleId(providerConsent?.id || '');
+        setProviderReferenceSampleId(providerReference?.id || '');
+
+        if (status.state !== 'ready') {
+          setProviderMessage('OpenAI Custom Voice todavía no está habilitado para este proyecto de API.');
+        } else if (!((spanish || providerPhrases[0])?.text)) {
+          setProviderMessage('El proveedor está disponible, pero no devolvió una frase de consentimiento utilizable.');
+        }
+      } catch {
+        if (active) {
+          setProviderStatus({
+            ok: false,
+            provider: 'openai_custom_voice',
+            state: 'provider_unavailable'
+          });
+          setProviderMessage('ATLAS no pudo verificar el proveedor de voz.');
+        }
+      }
+    })();
+
+    return () => { active = false; };
+  }, [api, initialStep, profileId, sessionId]);
 
   async function beginSetup() {
     if (!consentAccepted || busy) return;
@@ -290,7 +358,7 @@ export function PersonalVoiceWizard({
       const nextAcceptedCount = samples[phrase.id]?.status === 'accepted' ? acceptedCount : acceptedCount + 1;
       const nextChallengeVerified = challengeVerified || phrase.id === 'challenge';
 
-      await api.saveAcceptedSample({
+      const persistedSample = await api.saveAcceptedSample({
         profileId,
         sessionId,
         phraseId: phrase.id,
@@ -315,6 +383,7 @@ export function PersonalVoiceWizard({
       setSamples((current) => ({
         ...current,
         [phrase.id]: {
+          id: String((persistedSample as { id?: string }).id || ''),
           status: 'accepted',
           persisted: true,
           blob: result.blob,
@@ -391,6 +460,103 @@ export function PersonalVoiceWizard({
       navigate(routeForStep('generate'));
     } catch {
       setPersistenceError('ATLAS no pudo cerrar la revisión.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
+  async function startProviderRecording(kind: 'consent' | 'reference') {
+    setProviderMessage(null);
+    const permission = microphonePermission === 'granted'
+      ? 'granted'
+      : await checkMicrophone();
+    if (permission !== 'granted') return;
+
+    try {
+      await mic.start();
+      setProviderRecordingStartedAt(Date.now());
+      setProviderRecording(kind);
+    } catch {
+      setProviderMessage('ATLAS no pudo iniciar la grabación del proveedor.');
+    }
+  }
+
+  async function stopProviderRecording() {
+    if (!providerRecording || !profileId || !sessionId) return;
+    const kind = providerRecording;
+    try {
+      const result = await mic.stop();
+      const durationMs = Math.max(0, Date.now() - providerRecordingStartedAt);
+      const assessment = assessVoiceQuality(result.stats);
+      if (assessment.status !== 'accepted') {
+        setProviderMessage('La grabación no pasó el control acústico. Repite la muestra.');
+        return;
+      }
+      if (kind === 'reference' && (durationMs < 5000 || durationMs > 30000)) {
+        setProviderMessage('La muestra de referencia debe durar entre 5 y 30 segundos.');
+        return;
+      }
+
+      const saved = await api.saveAcceptedSample({
+        profileId,
+        sessionId,
+        phraseId: kind === 'consent' ? 'provider-consent' : 'provider-reference',
+        attempt: 1,
+        blob: result.blob,
+        durationMs,
+        stats: result.stats,
+        assessment
+      });
+      const id = String((saved as { id?: string }).id || '');
+      if (!id) throw new Error('voice_sample_id_missing');
+      if (kind === 'consent') setProviderConsentSampleId(id);
+      else setProviderReferenceSampleId(id);
+      setProviderMessage(kind === 'consent'
+        ? 'Consentimiento de voz guardado de forma privada.'
+        : 'Muestra de referencia guardada de forma privada.');
+    } catch {
+      setProviderMessage('ATLAS no pudo guardar la grabación del proveedor.');
+    } finally {
+      setProviderRecording(null);
+      setProviderRecordingStartedAt(0);
+    }
+  }
+
+  async function generateProviderVoice() {
+    if (
+      !profileId
+      || !providerAuthorized
+      || providerStatus?.state !== 'ready'
+      || !providerConsentSampleId
+      || !providerReferenceSampleId
+      || !api.createProviderConsent
+      || !api.createProviderVoice
+    ) return;
+
+    setBusy(true);
+    setProviderMessage('Creando consentimiento verificable con el proveedor…');
+    try {
+      await api.saveConsent({
+        profileId,
+        consentVersion: 'openai-custom-voice-v1',
+        scope: {
+          purpose: 'personal_voice_generation',
+          owner_attestation: true,
+          provider: 'openai_custom_voice',
+          provider_generation_authorized: true
+        }
+      });
+      await api.createProviderConsent(profileId, providerConsentSampleId);
+      setProviderMessage('Consentimiento verificado. Creando la voz…');
+      await api.createProviderVoice(profileId, providerReferenceSampleId);
+      await api.appendAuditEvent(profileId, 'voice.provider.generation.completed', {
+        provider: 'openai_custom_voice'
+      });
+      setVoiceCreated(true);
+      setProviderMessage('Voz creada. ATLAS ya puede utilizarla en los destinos autorizados.');
+    } catch {
+      setProviderMessage('La generación no pudo completarse. ATLAS mantuvo el perfil fail-closed.');
     } finally {
       setBusy(false);
     }
@@ -537,24 +703,111 @@ export function PersonalVoiceWizard({
     );
   }
 
+  const providerReady = providerStatus?.state === 'ready';
+  const providerSamplesReady = Boolean(providerConsentSampleId && providerReferenceSampleId);
+  const generationReady = providerReady
+    && providerSamplesReady
+    && providerAuthorized
+    && Boolean(providerConsentPhrase)
+    && Boolean(api.createProviderConsent)
+    && Boolean(api.createProviderVoice);
+
   return (
     <section className="voice-wizard" aria-labelledby="voice-generate-heading">
-      <WizardHeader step="5 de 5" title="Tu Personal Voice está preparada para generación" id="voice-generate-heading" />
+      <WizardHeader step="5 de 5" title="Genera tu Personal Voice" id="voice-generate-heading" />
       <div className="voice-provider-state" role="status">
-        <strong>Proveedor de generación de voz no configurado</strong>
+        <strong>{providerReady ? 'OpenAI Custom Voice listo' : 'OpenAI Custom Voice no disponible'}</strong>
         <p>
-          Las grabaciones pueden quedar listas y seguras en ATLAS, pero la voz no se marcará como generada ni disponible
-          hasta que un proveedor real pase autorización y verificación de extremo a extremo.
+          {providerReady
+            ? 'ATLAS verificó acceso al proveedor. El consentimiento y la muestra se enviarán únicamente cuando autorices esta generación.'
+            : 'Proveedor de generación no configurado o no verificado. ATLAS conserva tus grabaciones privadas y no generará una voz hasta que el proyecto tenga acceso real al proveedor.'}
         </p>
       </div>
+
+      {providerReady ? (
+        <>
+          <div className="voice-phrase-card">
+            <span>Consentimiento del proveedor</span>
+            <blockquote>{providerConsentPhrase || 'Frase de consentimiento no disponible.'}</blockquote>
+            <strong>{providerConsentSampleId ? 'Grabación guardada' : 'Pendiente de grabar'}</strong>
+          </div>
+          <div className="voice-record-controls">
+            <button
+              type="button"
+              className="record-action"
+              disabled={Boolean(providerRecording) || Boolean(providerConsentSampleId) || !providerConsentPhrase}
+              onClick={() => void startProviderRecording('consent')}
+            >
+              Consentir
+            </button>
+            <button
+              type="button"
+              className="secondary-action"
+              disabled={providerRecording !== 'consent'}
+              onClick={() => void stopProviderRecording()}
+            >
+              Finalizar consentimiento
+            </button>
+          </div>
+
+          <div className="voice-phrase-card">
+            <span>Muestra de referencia · 5–30 segundos</span>
+            <blockquote>{providerReferenceText}</blockquote>
+            <strong>{providerReferenceSampleId ? 'Muestra guardada' : 'Pendiente de grabar'}</strong>
+          </div>
+          <div className="voice-record-controls">
+            <button
+              type="button"
+              className="record-action"
+              disabled={Boolean(providerRecording) || Boolean(providerReferenceSampleId)}
+              onClick={() => void startProviderRecording('reference')}
+            >
+              Muestra
+            </button>
+            <button
+              type="button"
+              className="secondary-action"
+              disabled={providerRecording !== 'reference'}
+              onClick={() => void stopProviderRecording()}
+            >
+              Finalizar muestra
+            </button>
+          </div>
+
+          <label className="voice-consent">
+            <input
+              type="checkbox"
+              checked={providerAuthorized}
+              onChange={(event) => setProviderAuthorized(event.target.checked)}
+            />
+            <span>
+              Autorizo a ATLAS a enviar estas dos grabaciones a OpenAI para crear una voz sintética personal
+              bajo mi control y según los permisos que yo otorgue.
+            </span>
+          </label>
+        </>
+      ) : null}
+
+      {providerMessage ? (
+        <div className={voiceCreated ? 'voice-status' : 'voice-alert'} role="status">{providerMessage}</div>
+      ) : null}
+
       <div className="voice-generation-summary">
-        <span>Muestras requeridas <strong>{phrases.length}</strong></span>
-        <span>Proveedor <strong>No configurado</strong></span>
-        <span>Apple bridge <strong>No verificado en hardware</strong></span>
+        <span>Muestras ATLAS <strong>{phrases.length}</strong></span>
+        <span>Consentimiento provider <strong>{providerConsentSampleId ? 'Listo' : 'Pendiente'}</strong></span>
+        <span>Referencia provider <strong>{providerReferenceSampleId ? 'Lista' : 'Pendiente'}</strong></span>
+        <span>Apple bridge <strong>Verificación nativa separada</strong></span>
       </div>
       <div className="voice-actions">
         <Link className="secondary-action" to="/voice/personal-voice">Volver a Mis voces</Link>
-        <button type="button" className="primary-action" disabled>Generar voz</button>
+        <button
+          type="button"
+          className="primary-action"
+          disabled={!generationReady || busy || voiceCreated}
+          onClick={() => void generateProviderVoice()}
+        >
+          {busy ? 'Generando…' : voiceCreated ? 'Completado' : 'Generar voz'}
+        </button>
       </div>
     </section>
   );

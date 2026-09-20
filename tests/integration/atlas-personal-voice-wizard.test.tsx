@@ -148,4 +148,89 @@ describe('ATLAS Personal Voice persisted wizard', () => {
     expect(screen.getByText(/proveedor de generación.*no configurado|generation provider.*not configured/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Generar voz|Generate Voice/i })).toBeDisabled();
   });
+
+  it('enables provider generation only after explicit provider consent and persisted provider samples', async () => {
+    const api = persistence() as PersonalVoicePersistence & {
+      providerStatus: ReturnType<typeof vi.fn>;
+      providerConsentPhrases: ReturnType<typeof vi.fn>;
+      createProviderConsent: ReturnType<typeof vi.fn>;
+      createProviderVoice: ReturnType<typeof vi.fn>;
+      listSamples: ReturnType<typeof vi.fn>;
+    };
+    api.providerStatus = vi.fn(async () => ({
+      ok: true,
+      provider: 'openai_custom_voice',
+      state: 'ready',
+      configured: true,
+      readable: true,
+      writable: true
+    }));
+    api.providerConsentPhrases = vi.fn(async () => [
+      { language: 'es', text: 'Frase exacta de consentimiento del proveedor.' }
+    ]);
+    api.listSamples = vi.fn(async () => [
+      {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        profile_id: '33333333-3333-4333-8333-333333333333',
+        session_id: '44444444-4444-4444-8444-444444444444',
+        phrase_id: 'provider-consent',
+        attempt: 1,
+        storage_path: 'private/consent.webm',
+        status: 'accepted' as const,
+        audio_stats: {},
+        assessment: {}
+      },
+      {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        profile_id: '33333333-3333-4333-8333-333333333333',
+        session_id: '44444444-4444-4444-8444-444444444444',
+        phrase_id: 'provider-reference',
+        attempt: 1,
+        storage_path: 'private/reference.webm',
+        status: 'accepted' as const,
+        audio_stats: {},
+        assessment: {}
+      }
+    ]);
+    api.createProviderConsent = vi.fn(async () => ({ ok: true, consent_id: 'cons_123', state: 'ready' }));
+    api.createProviderVoice = vi.fn(async () => ({ ok: true, voice_id: 'voice_123', state: 'ready' }));
+
+    render(
+      <MemoryRouter>
+        <PersonalVoiceWizard
+          initialStep="generate"
+          api={api}
+          initialProfileId="33333333-3333-4333-8333-333333333333"
+          initialSessionId="44444444-4444-4444-8444-444444444444"
+          initialConsentAccepted
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByText(/OpenAI Custom Voice.*listo|OpenAI Custom Voice.*ready/i)).toBeInTheDocument());
+    expect(screen.getByText('Frase exacta de consentimiento del proveedor.')).toBeInTheDocument();
+
+    const generate = screen.getByRole('button', { name: /Generar voz|Generate Voice/i });
+    expect(generate).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /OpenAI.*voz sintética|OpenAI.*synthetic voice/i }));
+    expect(generate).toBeEnabled();
+    fireEvent.click(generate);
+
+    await waitFor(() => expect(api.saveConsent).toHaveBeenCalledWith(expect.objectContaining({
+      consentVersion: 'openai-custom-voice-v1',
+      scope: expect.objectContaining({
+        provider: 'openai_custom_voice',
+        provider_generation_authorized: true
+      })
+    })));
+    expect(api.createProviderConsent).toHaveBeenCalledWith(
+      '33333333-3333-4333-8333-333333333333',
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    );
+    expect(api.createProviderVoice).toHaveBeenCalledWith(
+      '33333333-3333-4333-8333-333333333333',
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    );
+    await waitFor(() => expect(screen.getByText(/voz creada|voice created/i)).toBeInTheDocument());
+  });
 });

@@ -135,4 +135,39 @@ describe('ATLAS Voice Supabase API adapter', () => {
     expect(String(calls[0].init?.body)).not.toContain('provider_ref');
     expect(String(calls[1].init?.body)).not.toContain('provider');
   });
+
+  it('uses the authenticated Voice provider Edge Function for readiness and generation lifecycle', async () => {
+    const calls: Array<{ path: string; init?: RequestInit }> = [];
+    const transport: VoiceApiTransport = async (path, init) => {
+      calls.push({ path, init });
+      if (path.includes('api=status')) return jsonResponse({ ok: true, provider: 'openai_custom_voice', state: 'ready', readable: true, writable: true });
+      if (path.includes('api=consent-phrases')) return jsonResponse({ ok: true, phrases: [{ language: 'es', text: 'Frase de consentimiento.' }] });
+      if (path.includes('api=create-consent')) return jsonResponse({ ok: true, consent_id: 'cons_123', state: 'ready' });
+      if (path.includes('api=create-voice')) return jsonResponse({ ok: true, voice_id: 'voice_123', state: 'ready' });
+      throw new Error('unexpected path ' + path);
+    };
+    const api = new AtlasVoiceApi({ transport, getContext: async () => context });
+
+    const status = await api.providerStatus();
+    const phrases = await api.providerConsentPhrases();
+    await api.createProviderConsent('33333333-3333-4333-8333-333333333333', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    await api.createProviderVoice('33333333-3333-4333-8333-333333333333', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+
+    expect(status.state).toBe('ready');
+    expect(phrases[0]?.text).toBe('Frase de consentimiento.');
+    expect(calls.map((call) => call.path)).toEqual([
+      '/functions/v1/atlas-voice-provider?api=status',
+      '/functions/v1/atlas-voice-provider?api=consent-phrases',
+      '/functions/v1/atlas-voice-provider?api=create-consent',
+      '/functions/v1/atlas-voice-provider?api=create-voice'
+    ]);
+    expect(JSON.parse(String(calls[2].init?.body))).toEqual({
+      profile_id: '33333333-3333-4333-8333-333333333333',
+      sample_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    });
+    expect(JSON.parse(String(calls[3].init?.body))).toEqual({
+      profile_id: '33333333-3333-4333-8333-333333333333',
+      sample_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    });
+  });
 });
