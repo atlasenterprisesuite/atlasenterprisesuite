@@ -28,16 +28,19 @@ import {
 } from './domain';
 import {
   buildFrontierHabitat,
+  discoverFrontierCodexEntry,
   executeFrontierAction,
   executeFrontierEcologyAction,
   executeFrontierExpansionAction,
   executeFrontierSurvivalAction,
+  loadFrontierCodexDiscoveries,
   loadFrontierEcology,
   loadFrontierExpansion,
   loadFrontierRun,
   loadFrontierStructures,
   loadFrontierSurvival
 } from './api';
+import { FrontierCodex } from './FrontierCodex';
 import { FrontierWorld3D } from './FrontierWorld3D';
 import type { FrontierStructure, WorldPlacement } from './world3d';
 import './frontier.css';
@@ -58,17 +61,19 @@ export function FrontierRoutes() {
   const [message, setMessage] = useState('Connecting to governed FRONTIER state…');
   const [buildMode, setBuildMode] = useState(false);
   const [structures, setStructures] = useState<FrontierStructure[]>([]);
+  const [codexDiscoveries, setCodexDiscoveries] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival] = await Promise.all([
+        const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival, loadedDiscoveries] = await Promise.all([
           loadFrontierRun(),
           loadFrontierStructures(),
           loadFrontierEcology(),
           loadFrontierExpansion(),
-          loadFrontierSurvival()
+          loadFrontierSurvival(),
+          loadFrontierCodexDiscoveries()
         ]);
         if (cancelled) return;
         setState(loaded);
@@ -76,6 +81,7 @@ export function FrontierRoutes() {
         setEcology(loadedEcology);
         setExpansion(loadedExpansion);
         setSurvival(loadedSurvival);
+        setCodexDiscoveries(new Set(loadedDiscoveries));
         setRuntime('ready');
         setMessage(loaded.revision > 0
           ? `Saved world loaded: revision ${loaded.revision} · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`
@@ -225,6 +231,25 @@ export function FrontierRoutes() {
     }
   };
 
+  const discoverCodexEntry = async (entryId: string) => {
+    if (runtime !== 'ready') return;
+    setRuntime('saving');
+    setMessage('Codex Controller validating campaign stage, organization and discovery access…');
+    try {
+      const discoveredId = await discoverFrontierCodexEntry(entryId);
+      setCodexDiscoveries((current) => {
+        const next = new Set(current);
+        next.add(discoveredId);
+        return next;
+      });
+      setRuntime('ready');
+      setMessage('Codex discovery persisted to the governed world record.');
+    } catch (error) {
+      setRuntime('blocked');
+      setMessage(error instanceof Error ? error.message : 'Codex Controller rejected the discovery.');
+    }
+  };
+
   const buildHabitat = async (placement: WorldPlacement) => {
     if (runtime !== 'ready') return false;
     const availability = actionAvailability(state, 'build_habitat');
@@ -256,18 +281,20 @@ export function FrontierRoutes() {
     setRuntime('loading');
     setMessage('Rechecking governed persistence…');
     try {
-      const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival] = await Promise.all([
+      const [loaded, loadedStructures, loadedEcology, loadedExpansion, loadedSurvival, loadedDiscoveries] = await Promise.all([
         loadFrontierRun(),
         loadFrontierStructures(),
         loadFrontierEcology(),
         loadFrontierExpansion(),
-        loadFrontierSurvival()
+        loadFrontierSurvival(),
+        loadFrontierCodexDiscoveries()
       ]);
       setState(loaded);
       setStructures(loadedStructures);
       setEcology(loadedEcology);
       setExpansion(loadedExpansion);
       setSurvival(loadedSurvival);
+      setCodexDiscoveries(new Set(loadedDiscoveries));
       setRuntime('ready');
       setMessage(`Governed world synchronized · ${loadedStructures.length} persistent structure${loadedStructures.length === 1 ? '' : 's'}.`);
     } catch (error) {
@@ -463,6 +490,13 @@ export function FrontierRoutes() {
         </aside>
       </div>
 
+      <FrontierCodex
+        campaignStage={state.campaignStage}
+        discoveredIds={codexDiscoveries}
+        runtimeReady={runtime === 'ready'}
+        onDiscover={discoverCodexEntry}
+      />
+
       <div className={runtime === 'blocked' ? 'frontier-status frontier-status-error' : 'frontier-status'} role="status" aria-live="polite">
         <div><strong>{runtime === 'blocked' ? 'Execution blocked' : 'Governed run'}</strong><span>{message}</span></div>
         {runtime === 'blocked' ? <button type="button" onClick={() => void recover()}>Retry controller</button> : null}
@@ -471,7 +505,7 @@ export function FrontierRoutes() {
       <div className="frontier-governance">
         <article><span>Identity</span><strong>Organization scoped</strong><p>ATLAS Identity and active organization membership are required before this route opens.</p></article>
         <article><span>Controllers</span><strong>Server authoritative</strong><p>Core, spatial, ecology, survival and phases 6-10 validate progression, hazards, resources and idempotency transactionally in Supabase.</p></article>
-        <article><span>Audit</span><strong>Append-only evidence</strong><p>World structures, ecology, survival hazards and advanced campaign actions retain before/after state and revision evidence.</p></article>
+        <article><span>Audit</span><strong>Append-only evidence</strong><p>World structures, ecology, survival hazards, campaign actions and Codex discoveries retain durable governed evidence.</p></article>
       </div>
     </section>
   );
