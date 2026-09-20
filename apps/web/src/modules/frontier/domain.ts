@@ -6,7 +6,13 @@ export type FrontierActionId =
   | 'build_habitat'
   | 'restore_sky_grid';
 
-export type FrontierCampaignStage = 1 | 2 | 3 | 4 | 5;
+export type FrontierEcologyActionId =
+  | 'collect_seed_pods'
+  | 'cultivate_plot'
+  | 'generate_eco_energy'
+  | 'restore_biome';
+
+export type FrontierCampaignStage = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type FrontierState = {
   aetherium: number;
@@ -22,10 +28,26 @@ export type FrontierState = {
   revision: number;
 };
 
+export type FrontierEcologyState = {
+  seedPods: number;
+  cultivatedPlots: number;
+  ecoEnergy: number;
+  ecosystemStability: number;
+  restoredBiomes: number;
+  revision: number;
+};
+
 export type FrontierActionDefinition = {
   id: FrontierActionId;
   label: string;
   mode: 'Explore' | 'Craft' | 'Build' | 'Restore';
+  description: string;
+};
+
+export type FrontierEcologyActionDefinition = {
+  id: FrontierEcologyActionId;
+  label: string;
+  mode: 'Explore' | 'Cultivate' | 'Energy' | 'Restore';
   description: string;
 };
 
@@ -50,6 +72,15 @@ export const INITIAL_FRONTIER_STATE: FrontierState = Object.freeze({
   revision: 0
 });
 
+export const INITIAL_FRONTIER_ECOLOGY_STATE: FrontierEcologyState = Object.freeze({
+  seedPods: 0,
+  cultivatedPlots: 0,
+  ecoEnergy: 0,
+  ecosystemStability: 0,
+  restoredBiomes: 0,
+  revision: 0
+});
+
 export const FRONTIER_ACTIONS: readonly FrontierActionDefinition[] = [
   { id: 'extract_aetherium', label: 'Extract Aetherium', mode: 'Explore', description: 'Mine the luminous resource seam. +4 Aetherium.' },
   { id: 'salvage_alloy', label: 'Salvage Alloy', mode: 'Explore', description: 'Recover structural material. +3 Alloy.' },
@@ -59,12 +90,20 @@ export const FRONTIER_ACTIONS: readonly FrontierActionDefinition[] = [
   { id: 'restore_sky_grid', label: 'Restore Sky Grid', mode: 'Restore', description: 'Consumes 1 Power Core and 8 Aetherium. Restores 25%.' }
 ] as const;
 
+export const FRONTIER_ECOLOGY_ACTIONS: readonly FrontierEcologyActionDefinition[] = [
+  { id: 'collect_seed_pods', label: 'Recover Seed Pods', mode: 'Explore', description: 'Recover viable native seed pods. +2 Seed Pods.' },
+  { id: 'cultivate_plot', label: 'Cultivate Plot', mode: 'Cultivate', description: 'Consumes 2 Seed Pods and 2 Biofiber.' },
+  { id: 'generate_eco_energy', label: 'Generate Bio-Energy', mode: 'Energy', description: 'Requires a cultivated plot. +20 Eco Energy.' },
+  { id: 'restore_biome', label: 'Restore Biome', mode: 'Restore', description: 'Consumes 40 Eco Energy and 4 Biofiber. Restores 25% ecosystem stability.' }
+] as const;
+
 export const FRONTIER_CAMPAIGN: readonly FrontierCampaignDefinition[] = [
   { stage: 1, title: 'Despertar', summary: 'Explore the crash zone and learn the three resource families.', productionState: 'playable' },
   { stage: 2, title: 'Primer refugio', summary: 'Gather structural material and build a self-sustaining habitat.', productionState: 'playable' },
   { stage: 3, title: 'Power Core', summary: 'Manufacture a stable core from Aetherium, Alloy and Biofiber.', productionState: 'playable' },
   { stage: 4, title: 'Sky Grid', summary: 'Restore the first sector of the planetary energy network.', productionState: 'playable' },
-  { stage: 5, title: 'Mundos vivos', summary: 'Biomes, cultivation and ecosystem restoration arrive in the next production phase.', productionState: 'next' }
+  { stage: 5, title: 'Mundos vivos', summary: 'Recover seed stock, cultivate living plots, generate bio-energy and restore the first biome.', productionState: 'playable' },
+  { stage: 6, title: 'Tormenta iónica', summary: 'Advanced weather survival and storm engineering arrive in the next production phase.', productionState: 'next' }
 ] as const;
 
 function finiteNonNegative(value: unknown, fallback: number) {
@@ -74,7 +113,7 @@ function finiteNonNegative(value: unknown, fallback: number) {
 
 function campaignStage(value: unknown): FrontierCampaignStage {
   const parsed = finiteNonNegative(value, 1);
-  return Math.min(5, Math.max(1, parsed)) as FrontierCampaignStage;
+  return Math.min(6, Math.max(1, parsed)) as FrontierCampaignStage;
 }
 
 export function normalizeFrontierState(value: unknown): FrontierState {
@@ -94,15 +133,39 @@ export function normalizeFrontierState(value: unknown): FrontierState {
   };
 }
 
-export function frontierObjective(state: FrontierState) {
+export function normalizeFrontierEcologyState(value: unknown): FrontierEcologyState {
+  const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  return {
+    seedPods: finiteNonNegative(source.seedPods, 0),
+    cultivatedPlots: finiteNonNegative(source.cultivatedPlots, 0),
+    ecoEnergy: Math.min(100, finiteNonNegative(source.ecoEnergy, 0)),
+    ecosystemStability: Math.min(100, finiteNonNegative(source.ecosystemStability, 0)),
+    restoredBiomes: finiteNonNegative(source.restoredBiomes, 0),
+    revision: finiteNonNegative(source.revision, 0)
+  };
+}
+
+export function frontierObjective(
+  state: FrontierState,
+  ecology: FrontierEcologyState = INITIAL_FRONTIER_ECOLOGY_STATE
+) {
   if (state.campaignStage === 1) return 'Sample Aetherium, Alloy and Biofiber';
   if (state.campaignStage === 2) return 'Build your first habitat';
   if (state.campaignStage === 3) return 'Craft a Power Core';
   if (state.campaignStage === 4) return 'Restore the first Sky Grid sector';
-  return 'Chapter complete · Mundos vivos is the next production phase';
+  if (state.campaignStage === 5) {
+    if (ecology.seedPods < 2) return 'Recover native seed pods';
+    if (ecology.cultivatedPlots < 2) return 'Cultivate two living plots';
+    if (ecology.ecoEnergy < 40) return 'Generate 40 Eco Energy';
+    return 'Restore the first living biome';
+  }
+  return 'Mundos vivos complete · Tormenta iónica is the next production phase';
 }
 
-export function frontierCampaignProgress(state: FrontierState) {
+export function frontierCampaignProgress(
+  state: FrontierState,
+  ecology: FrontierEcologyState = INITIAL_FRONTIER_ECOLOGY_STATE
+) {
   if (state.campaignStage === 1) {
     const progress = (
       Math.min(1, state.aetherium / 4) +
@@ -117,6 +180,15 @@ export function frontierCampaignProgress(state: FrontierState) {
     return Math.min(99, Math.round(((state.aetherium / 20) + (state.alloy / 10) + (state.biofiber / 4)) * (100 / 3)));
   }
   if (state.campaignStage === 4) return Math.min(100, Math.round((state.skyGridIntegrity / 25) * 100));
+  if (state.campaignStage === 5) {
+    const progress = (
+      Math.min(1, ecology.seedPods / 2) +
+      Math.min(1, ecology.cultivatedPlots / 2) +
+      Math.min(1, ecology.ecoEnergy / 40) +
+      Math.min(1, ecology.ecosystemStability / 25)
+    ) / 4;
+    return Math.round(progress * 100);
+  }
   return 100;
 }
 
@@ -143,6 +215,29 @@ export function actionAvailability(state: FrontierState, action: FrontierActionI
     if (state.campaignStage < 4) return { enabled: false, reason: 'Craft the Power Core first' };
     if (state.powerCores < 1) return { enabled: false, reason: 'Need 1 Power Core' };
     if (state.aetherium < 8) return { enabled: false, reason: 'Need 8 Aetherium' };
+  }
+  return { enabled: true };
+}
+
+export function ecologyActionAvailability(
+  state: FrontierState,
+  ecology: FrontierEcologyState,
+  action: FrontierEcologyActionId
+): { enabled: boolean; reason?: string } {
+  if (state.campaignStage < 5) return { enabled: false, reason: 'Restore the first Sky Grid sector first' };
+  if (action === 'cultivate_plot') {
+    if (ecology.seedPods < 2) return { enabled: false, reason: 'Need 2 Seed Pods' };
+    if (state.biofiber < 2) return { enabled: false, reason: 'Need 2 Biofiber' };
+  }
+  if (action === 'generate_eco_energy') {
+    if (ecology.cultivatedPlots < 1) return { enabled: false, reason: 'Cultivate a living plot first' };
+    if (ecology.ecoEnergy >= 100) return { enabled: false, reason: 'Eco Energy storage full' };
+  }
+  if (action === 'restore_biome') {
+    if (ecology.cultivatedPlots < 2) return { enabled: false, reason: 'Need 2 cultivated plots' };
+    if (ecology.ecoEnergy < 40) return { enabled: false, reason: 'Need 40 Eco Energy' };
+    if (state.biofiber < 4) return { enabled: false, reason: 'Need 4 Biofiber' };
+    if (ecology.ecosystemStability >= 100) return { enabled: false, reason: 'Ecosystem already stable' };
   }
   return { enabled: true };
 }
