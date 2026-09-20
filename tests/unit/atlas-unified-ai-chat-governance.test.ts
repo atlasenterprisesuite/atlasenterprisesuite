@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createProviderRegistry } from '../../supabase/functions/atlas-copilot/provider-registry.mjs';
 import { createCouncilOrchestrator } from '../../supabase/functions/atlas-copilot/council-orchestrator.mjs';
 import { createToolGateway } from '../../supabase/functions/atlas-copilot/tool-gateway.mjs';
-import { evaluateIntelligenceCostPolicy } from '../../supabase/functions/atlas-copilot/cost-policy.mjs';
+import { evaluateEmergencyFallbackPolicy, evaluateIntelligenceCostPolicy } from '../../supabase/functions/atlas-copilot/cost-policy.mjs';
 
 function adapter(id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign', options: {
   configured?: boolean;
@@ -183,6 +183,30 @@ describe('ATLAS AI cost policy', () => {
       providers: ['openai'],
       policy: { allowed_providers: ['openai'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: [] },
     })).toMatchObject({ decision: 'deny', reason: 'paid_provider_blocked_by_zero_cost_policy', estimated_automatic_cost_usd: 0 });
+  });
+
+  it('keeps emergency OpenAI fallback disabled until an explicit budget is configured', () => {
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'openai',
+      policy: { allowed_providers: ['atlas-local', 'openai'], emergency_openai_enabled: false },
+    })).toMatchObject({ decision: 'deny', reason: 'emergency_fallback_disabled' });
+
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'openai',
+      policy: { allowed_providers: ['atlas-local', 'openai'], emergency_openai_enabled: true, emergency_openai_daily_budget_usd: 0, emergency_openai_reserve_usd: 0 },
+    })).toMatchObject({ decision: 'deny', reason: 'emergency_budget_not_configured' });
+  });
+
+  it('pre-authorizes only OpenAI emergency fallback when a positive budget and reservation exist', () => {
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'openai',
+      policy: { allowed_providers: ['atlas-local', 'openai'], emergency_openai_enabled: true, emergency_openai_daily_budget_usd: 5, emergency_openai_reserve_usd: 0.25 },
+    })).toMatchObject({ decision: 'allow', reason: 'emergency_openai_pre_authorized', daily_budget_usd: 5, reserve_usd: 0.25 });
+
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'gemini',
+      policy: { allowed_providers: ['atlas-local', 'openai', 'gemini'], emergency_openai_enabled: true, emergency_openai_daily_budget_usd: 5, emergency_openai_reserve_usd: 0.25 },
+    })).toMatchObject({ decision: 'deny', reason: 'emergency_provider_not_allowed' });
   });
 
   it('denies providers outside the server policy without substituting another provider', () => {

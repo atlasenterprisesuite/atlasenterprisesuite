@@ -50,6 +50,10 @@ ATLAS_AI_ENFORCE_ZERO_COST=true
 ATLAS_AI_ALLOW_PAID_SINGLE=false
 ATLAS_AI_ALLOW_COUNCIL=false
 ATLAS_AI_ZERO_COST_PROVIDERS=atlas-local
+ATLAS_AI_EMERGENCY_OPENAI_ENABLED=false
+ATLAS_AI_EMERGENCY_OPENAI_DAILY_BUDGET_USD=0
+ATLAS_AI_EMERGENCY_OPENAI_RESERVE_USD=0
+ATLAS_AI_EMERGENCY_OPENAI_MAX_OUTPUT_TOKENS=512
 ```
 
 No production default model is fabricated. The runtime is unavailable until a real model is configured and the health probe passes.
@@ -83,6 +87,21 @@ A local model is never advertised as supporting a capability that has not been v
 It means no automatic third-party AI API charge. It does not claim that electricity, hardware, storage, bandwidth, a reverse proxy/tunnel, or optional cloud hosting are free.
 
 Paid OpenAI, Bedrock or Gemini routes remain available for explicit future authorization, but strict zero-cost mode blocks them automatically.
+
+### Emergency OpenAI fallback
+
+ATLAS can be prepared for a narrowly scoped paid fallback without disabling zero-cost governance globally. The emergency path is valid only when all of these conditions are true:
+
+- Auto mode selected `atlas-local` first;
+- the selected local provider failed with a transient `provider_unavailable` or `provider_rate_limited` result;
+- OpenAI is currently configured and verified;
+- `ATLAS_AI_EMERGENCY_OPENAI_ENABLED=true`;
+- both the daily authorization budget and per-call reservation are positive;
+- the server-side reservation RPC atomically confirms remaining daily headroom.
+
+The reservation ledger is organization-scoped, service-role-only, RLS protected and conservative: every authorized emergency attempt consumes its reservation from the ATLAS daily authorization budget even if the upstream request later fails. This is intentionally fail-closed.
+
+The default values keep emergency paid fallback disabled. A positive dollar limit must be explicitly authorized before activation.
 
 
 ## Live bootstrap
