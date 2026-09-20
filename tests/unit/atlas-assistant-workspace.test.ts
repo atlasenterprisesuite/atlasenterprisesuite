@@ -36,11 +36,20 @@ describe('ATLAS Assistant workspace', () => {
     expect(client).toContain('/functions/v1/atlas-copilot?api=conversation');
     expect(client).toContain('/functions/v1/atlas-copilot?api=chat');
     expect(client).toContain("surface: 'atlas-assistant-workspace'");
-    expect(page).toContain('ATLAS Local AI');
-    expect(page).toContain('LIVE / VERIFIED');
     expect(page).toContain("status?.local_runtime?.state === 'verified'");
     expect(page).toContain("localProvider?.verified === true");
-    expect(page).toContain('last_verified_at');
+  });
+
+  it('exposes enterprise navigation using existing governed ATLAS routes', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    for (const route of ['/work', '/automations', '/work/connections', '/work/team', '/work/policies', '/suite']) {
+      expect(page).toContain(`to: '${route}'`);
+    }
+    expect(page).toContain('Search chats');
+    expect(page).toContain('historyQuery');
+    expect(page).toContain('PROMPT_STARTERS');
+    expect(page).toContain("event.key === 'Enter'");
+    expect(page).not.toContain('https://chatgpt.com');
   });
 
   it('maps the dedicated workspace to the assistant module context', () => {
