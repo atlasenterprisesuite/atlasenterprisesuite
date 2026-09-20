@@ -135,6 +135,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'analytics',
+    title: 'ATLAS Business Analytics',
+    navLabel: 'Analytics',
+    area: 'Business',
+    route: '/analytics',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Canonical source-backed analytics hub with cross-module aggregation kept fail-closed until metric contracts and lineage are verified.',
+    showInNavigation: true
+  },
+  {
     id: 'connect',
     title: 'ATLAS Connect',
     navLabel: 'Connect',
