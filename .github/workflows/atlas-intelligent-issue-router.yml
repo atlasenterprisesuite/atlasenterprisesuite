@@ -1,0 +1,297 @@
+name: ATLAS Intelligent Issue Router
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Existing issue number to route or re-route
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: atlas-issue-router-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: true
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Route ATLAS issue
+        uses: actions/github-script@v7
+        env:
+          MANUAL_ISSUE_NUMBER: ${{ inputs.issue_number }}
+        with:
+          script: |
+            const issueNumber = context.eventName === 'workflow_dispatch'
+              ? Number(process.env.MANUAL_ISSUE_NUMBER)
+              : context.issue.number;
+
+            if (!Number.isInteger(issueNumber) || issueNumber < 1) {
+              core.setFailed('A valid issue number is required.');
+              return;
+            }
+
+            let issue = context.payload.issue;
+            if (!issue || issue.number !== issueNumber) {
+              const response = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+              });
+              issue = response.data;
+            }
+
+            if (issue.pull_request) {
+              core.info('Pull request detected; issue routing skipped.');
+              return;
+            }
+
+            const body = issue.body || '';
+            const readField = (heading) => {
+              const escaped = heading.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+              const match = body.match(new RegExp(`### ${escaped}\\s*\\n+([\\s\\S]*?)(?=\\n### |$)`, 'i'));
+              if (!match) return '';
+              return match[1]
+                .replace(/<!--.*?-->/gs, '')
+                .trim();
+            };
+
+            const ownerModule = readField('Owner module');
+            const issueType = readField('Issue type');
+            const priority = readField('Priority');
+            const tenantSensitive = readField('Tenant-sensitive?');
+            const securitySensitive = readField('Security-sensitive?');
+            const productionMutation = readField('Production mutation or deployment required?');
+
+            const slug = (value) => value
+              .toLowerCase()
+              .normalize('NFKD')
+              .replace(/[—–]/g, '-')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .slice(0, 45);
+
+            const priorityMatch = priority.match(/P[0-4]/i);
+            const prioritySlug = priorityMatch ? priorityMatch[0].toLowerCase() : '';
+            const structured = Boolean(ownerModule && issueType && prioritySlug);
+
+            const implementationTypes = new Set([
+              'bug',
+              'feature',
+              'enhancement',
+              'integration',
+              'security',
+              'infrastructure',
+              'data',
+              'ux-ui',
+              'performance',
+              'accessibility',
+              'technical-debt',
+              'production-incident',
+            ]);
+
+            const typeSlug = slug(issueType);
+            const labels = structured
+              ? [
+                  'intake:structured',
+                  `module:${slug(ownerModule)}`,
+                  `type:${typeSlug}`,
+                  `priority:${prioritySlug}`,
+                  'route:atlas-director',
+                ]
+              : [
+                  'intake:legacy',
+                  'route:atlas-director',
+                  'review:human-required',
+                ];
+
+            let executor = 'ATLAS Director';
+            if (structured && implementationTypes.has(typeSlug)) {
+              labels.push('agent:codex');
+              executor = 'Codex (orchestrated by ATLAS Director)';
+            } else if (structured) {
+              labels.push('agent:director');
+            }
+
+            const sensitive =
+              prioritySlug === 'p0' ||
+              /^yes$/i.test(securitySensitive) ||
+              /^yes$/i.test(productionMutation);
+
+            if (structured) {
+              labels.push(sensitive ? 'review:human-required' : 'execution:auto-eligible');
+              if (/^yes$/i.test(tenantSensitive)) labels.push('tenant:sensitive');
+              if (/^yes$/i.test(securitySensitive)) labels.push('security:sensitive');
+              if (/^yes$/i.test(productionMutation)) labels.push('production:mutation');
+            }
+
+            const controlledPrefixes = [
+              'module:',
+              'type:',
+              'priority:',
+              'route:',
+              'agent:',
+              'review:',
+              'execution:',
+              'security:',
+              'production:',
+              'tenant:',
+              'intake:',
+            ];
+
+            for (const existing of issue.labels || []) {
+              const name = typeof existing === 'string' ? existing : existing.name;
+              if (!name || !controlledPrefixes.some((prefix) => name.startsWith(prefix))) continue;
+              if (labels.includes(name)) continue;
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  name,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+            }
+
+            const colors = {
+              'intake:structured': '1f6feb',
+              'intake:legacy': '6e7781',
+              'route:atlas-director': '8250df',
+              'agent:codex': '0969da',
+              'agent:director': '8250df',
+              'review:human-required': 'd1242f',
+              'execution:auto-eligible': '1a7f37',
+              'tenant:sensitive': 'bf8700',
+              'security:sensitive': 'd1242f',
+              'production:mutation': 'fb8f44',
+            };
+
+            const colorFor = (label) => {
+              if (colors[label]) return colors[label];
+              if (label.startsWith('module:')) return '0e8a16';
+              if (label.startsWith('type:')) return '5319e7';
+              if (label.startsWith('priority:p0')) return 'b60205';
+              if (label.startsWith('priority:p1')) return 'd93f0b';
+              if (label.startsWith('priority:p2')) return 'fbca04';
+              if (label.startsWith('priority:')) return 'c5def5';
+              return 'ededed';
+            };
+
+            const descriptions = {
+              'intake:structured': 'Created with the governed ATLAS Intelligent Issue form.',
+              'intake:legacy': 'Issue does not contain the current structured ATLAS intake fields.',
+              'route:atlas-director': 'ATLAS Director owns orchestration and next-action routing.',
+              'agent:codex': 'Codex is the technical implementation executor under ATLAS Director.',
+              'agent:director': 'ATLAS Director is the primary executor for this issue.',
+              'review:human-required': 'Human review is required before sensitive execution or completion.',
+              'execution:auto-eligible': 'Eligible for governed automated execution; normal approval rules still apply.',
+              'tenant:sensitive': 'Issue affects tenant or organization isolation.',
+              'security:sensitive': 'Issue is explicitly security-sensitive.',
+              'production:mutation': 'Issue may mutate or deploy production.',
+            };
+
+            for (const name of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  color: colorFor(name),
+                  description: descriptions[name] || 'ATLAS intelligent issue routing label.',
+                });
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels,
+            });
+
+            let humanOwner = 'not-assigned';
+            try {
+              const repository = await github.rest.repos.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              if (repository.data.owner.type === 'User') {
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  assignees: [context.repo.owner],
+                });
+                humanOwner = context.repo.owner;
+              }
+            } catch (error) {
+              core.warning(`Human assignee could not be applied: ${error.message}`);
+            }
+
+            const governance = structured
+              ? (sensitive ? 'Human review required' : 'Governed auto-execution eligible')
+              : 'Legacy intake — human review required';
+
+            const marker = '<!-- atlas-intelligent-issue-routing -->';
+            const routingComment = [
+              marker,
+              '## ATLAS Intelligent Routing',
+              '',
+              '- **Orchestrator:** ATLAS Director',
+              `- **Executor:** ${executor}`,
+              `- **Module:** ${ownerModule || 'Unresolved'}`,
+              `- **Type:** ${issueType || 'Unresolved'}`,
+              `- **Priority:** ${prioritySlug ? prioritySlug.toUpperCase() : 'Unresolved'}`,
+              `- **Governance:** ${governance}`,
+              `- **GitHub owner:** ${humanOwner}`,
+              '',
+              'Routing is metadata, not evidence of implementation or production readiness. Completion still requires the issue acceptance criteria and verification evidence.',
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+
+            const existingRoutingComment = comments.find((comment) =>
+              typeof comment.body === 'string' && comment.body.includes(marker)
+            );
+
+            if (existingRoutingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingRoutingComment.id,
+                body: routingComment,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: routingComment,
+              });
+            }
+
+            core.summary
+              .addHeading('ATLAS Intelligent Issue Routing')
+              .addRaw(`Issue #${issueNumber}: ${labels.join(', ')}`)
+              .write();
