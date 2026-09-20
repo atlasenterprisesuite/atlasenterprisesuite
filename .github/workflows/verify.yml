@@ -91,13 +91,13 @@ jobs:
             exit 1
           fi
 
+      - name: Verify complete repository
+        run: npm run verify:all
+
       - name: Validate Wrangler compile and bindings without deployment
         env:
           CI: "true"
         run: npx --yes wrangler@4 versions upload --dry-run --config wrangler.jsonc
-
-      - name: Verify complete repository
-        run: npm run verify:all
 
       - name: Record canonical verification evidence
         run: |
