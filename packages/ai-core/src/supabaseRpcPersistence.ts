@@ -6,7 +6,7 @@ type FetchLike = typeof fetch;
 
 export type SupabaseRpcPersistenceOptions = {
   url: string;
-  publishableKey: string;
+  secretKey: string;
   runtimeToken: string;
   fetchImpl?: FetchLike;
 };
@@ -18,16 +18,16 @@ function clone<T>(value: T): T {
 export class SupabaseRpcPersistence implements PersistencePort {
   readonly durable = true;
   private readonly baseUrl: string;
-  private readonly publishableKey: string;
+  private readonly secretKey: string;
   private readonly runtimeToken: string;
   private readonly fetchImpl: FetchLike;
 
   constructor(options: SupabaseRpcPersistenceOptions) {
-    if (!options.url || !options.publishableKey || !options.runtimeToken) {
-      throw new Error('Supabase RPC persistence requires URL, publishable key and runtime token');
+    if (!options.url || !options.secretKey || !options.runtimeToken) {
+      throw new Error('Supabase RPC persistence requires URL, server secret and runtime token');
     }
     this.baseUrl = options.url.replace(/\/$/, '');
-    this.publishableKey = options.publishableKey;
+    this.secretKey = options.secretKey;
     this.runtimeToken = options.runtimeToken;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
@@ -36,7 +36,7 @@ export class SupabaseRpcPersistence implements PersistencePort {
     const response = await this.fetchImpl(`${this.baseUrl}/rest/v1/rpc/${name}`, {
       method: 'POST',
       headers: {
-        apikey: this.publishableKey,
+        apikey: this.secretKey,
         'content-type': 'application/json',
         'x-atlas-runtime-token': this.runtimeToken,
       },
