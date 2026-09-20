@@ -1,8 +1,12 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../../lib/atlasSession';
 import {
+  INITIAL_FRONTIER_ECOLOGY_STATE,
   INITIAL_FRONTIER_STATE,
+  normalizeFrontierEcologyState,
   normalizeFrontierState,
   type FrontierActionId,
+  type FrontierEcologyActionId,
+  type FrontierEcologyState,
   type FrontierState
 } from './domain';
 import {
@@ -22,6 +26,15 @@ type FrontierRunRow = {
   storm_minutes: number;
   campaign_stage: number;
   experience: number;
+  revision: number;
+};
+
+type FrontierEcologyRow = {
+  seed_pods: number;
+  cultivated_plots: number;
+  eco_energy: number;
+  ecosystem_stability: number;
+  restored_biomes: number;
   revision: number;
 };
 
@@ -48,6 +61,17 @@ function rowToState(row: FrontierRunRow): FrontierState {
     stormMinutes: row.storm_minutes,
     campaignStage: row.campaign_stage,
     experience: row.experience,
+    revision: row.revision
+  });
+}
+
+function ecologyRowToState(row: FrontierEcologyRow): FrontierEcologyState {
+  return normalizeFrontierEcologyState({
+    seedPods: row.seed_pods,
+    cultivatedPlots: row.cultivated_plots,
+    ecoEnergy: row.eco_energy,
+    ecosystemStability: row.ecosystem_stability,
+    restoredBiomes: row.restored_biomes,
     revision: row.revision
   });
 }
@@ -114,6 +138,18 @@ export async function loadFrontierRun(): Promise<FrontierState> {
   return rowToState(body[0]);
 }
 
+export async function loadFrontierEcology(): Promise<FrontierEcologyState> {
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(`eq.${organization.id}`);
+  const response = await authorizedAtlasFetch(
+    `/rest/v1/frontier_ecology?org_id=${org}&select=seed_pods,cultivated_plots,eco_energy,ecosystem_stability,restored_biomes,revision&limit=1`,
+    { method: 'GET' }
+  );
+  const body = await parseJson(response) as FrontierEcologyRow[];
+  if (!Array.isArray(body) || body.length === 0) return { ...INITIAL_FRONTIER_ECOLOGY_STATE };
+  return ecologyRowToState(body[0]);
+}
+
 export async function loadFrontierStructures(): Promise<FrontierStructure[]> {
   const organization = await getActiveAtlasOrganization();
   const org = encodeURIComponent(`eq.${organization.id}`);
@@ -139,6 +175,27 @@ export async function executeFrontierAction(action: FrontierActionId, idempotenc
   const body = await parseJson(response);
   if (!body?.ok || !body?.state) throw new Error('frontier_invalid_controller_response');
   return normalizeFrontierState({ ...body.state, revision: body.revision });
+}
+
+export async function executeFrontierEcologyAction(
+  action: FrontierEcologyActionId,
+  idempotencyKey: string
+): Promise<{ state: FrontierState; ecology: FrontierEcologyState }> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/frontier_apply_ecology_action', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_action: action,
+      p_idempotency_key: idempotencyKey
+    })
+  });
+  const body = await parseJson(response);
+  if (!body?.ok || !body?.state || !body?.ecology) throw new Error('frontier_invalid_ecology_controller_response');
+  return {
+    state: normalizeFrontierState({ ...body.state, revision: body.revision }),
+    ecology: normalizeFrontierEcologyState({ ...body.ecology, revision: body.ecology_revision })
+  };
 }
 
 export async function buildFrontierHabitat(
