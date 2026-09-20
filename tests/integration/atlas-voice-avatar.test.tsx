@@ -33,6 +33,9 @@ describe('ATLAS functional avatar', () => {
     const avatar = screen.getByRole('button', { name: 'Start speaking with ATLAS' });
     expect(avatar).toHaveAttribute('data-state', 'idle');
     expect(document.querySelector('img[src="/atlas-avatar-particle.svg"]')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Talk to ATLAS' })).toBeInTheDocument();
+    expect(screen.getByText('Private voice turn')).toBeInTheDocument();
+    expect(screen.getByText('Voice diagnostics')).toBeInTheDocument();
 
     fireEvent.click(avatar);
 
@@ -50,7 +53,7 @@ describe('ATLAS functional avatar', () => {
     render(<MemoryRouter><VoiceStudioPage /></MemoryRouter>);
 
     expect(screen.getByRole('button', { name: 'Start speaking with ATLAS' })).toBeDisabled();
-    expect(screen.getByText(/browser does not expose SpeechRecognition/i)).toBeInTheDocument();
-    expect(screen.getByText('Requires ATLAS iOS app')).toBeInTheDocument();
+    expect(screen.getByText(/Microphone transcription is unavailable in this browser/i)).toBeInTheDocument();
+    expect(screen.getByText(/Requires ATLAS iOS app/i)).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { type ReactNode, useEffect, useState } from 'react';
 import {
   ATLAS_SESSION_EVENT,
@@ -10,6 +10,7 @@ import { ATLAS_NAV_ITEMS } from '../modules/registry';
 import { AtlasAssistant } from './assistant/AtlasAssistant';
 
 export function AtlasShell({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -56,6 +57,9 @@ export function AtlasShell({ children }: { children: ReactNode }) {
       : 'Public workspace';
   const roleLabel = organization ? organization.role.toUpperCase() : hasSession ? 'CHECKING' : 'PUBLIC';
   const closeMobileNav = () => setMobileNavOpen(false);
+  const voiceOwnsAssistantSurface = location.pathname === '/studio/voice'
+    || location.pathname === '/voice'
+    || location.pathname.startsWith('/voice/');
 
   return (
     <div className="atlas-shell">
@@ -137,7 +141,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <div className="topbar-meta"><span>{organizationContext}</span><span className="badge">{roleLabel}</span></div>
         </header>
         <main>{children}</main>
-        {organization ? <AtlasAssistant /> : null}
+        {organization && !voiceOwnsAssistantSurface ? <AtlasAssistant /> : null}
       </div>
     </div>
   );
