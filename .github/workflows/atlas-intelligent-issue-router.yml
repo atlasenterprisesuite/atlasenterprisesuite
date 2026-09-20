@@ -310,6 +310,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      id-token: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
