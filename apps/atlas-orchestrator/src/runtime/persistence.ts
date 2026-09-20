@@ -9,7 +9,7 @@ export type AtlasPersistenceEnvironment = {
   ATLAS_PERSISTENCE_MODE?: string;
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
-  SUPABASE_PUBLISHABLE_KEY?: string;
+  SUPABASE_SECRET_KEY?: string;
   ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN?: string;
 };
 
@@ -33,13 +33,13 @@ export function resolvePersistence(env: AtlasPersistenceEnvironment): Persistenc
     });
   }
 
-  if (env.SUPABASE_PUBLISHABLE_KEY && env.ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN) {
+  if (env.SUPABASE_SECRET_KEY && env.ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN) {
     return new SupabaseRpcPersistence({
       url: env.SUPABASE_URL,
-      publishableKey: env.SUPABASE_PUBLISHABLE_KEY,
+      secretKey: env.SUPABASE_SECRET_KEY,
       runtimeToken: env.ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN,
     });
   }
 
-  throw new Error('ATLAS persistence Supabase configuration is incomplete');
+  throw new Error('ATLAS persistence requires a server-only Supabase credential');
 }
