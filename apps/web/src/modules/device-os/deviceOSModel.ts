@@ -13,7 +13,7 @@ export type AtlasDeviceId =
 export type AtlasDeviceCapability = {
   id: string;
   label: string;
-  status: 'software-ready' | 'adapter-required';
+  status: 'implemented-core' | 'adapter-required';
 };
 
 export type AtlasDeviceProfile = {
@@ -25,10 +25,10 @@ export type AtlasDeviceProfile = {
 };
 
 const sharedSoftware = [
-  { id: 'identity', label: 'ATLAS Identity', status: 'software-ready' },
-  { id: 'connect', label: 'ATLAS Connect', status: 'software-ready' },
-  { id: 'privacy', label: 'Privacy Center', status: 'software-ready' },
-  { id: 'automation', label: 'Automation Engine', status: 'software-ready' }
+  { id: 'identity', label: 'ATLAS Identity', status: 'implemented-core' },
+  { id: 'connect', label: 'ATLAS Connect', status: 'implemented-core' },
+  { id: 'privacy', label: 'Privacy Center', status: 'implemented-core' },
+  { id: 'automation', label: 'Automation Engine', status: 'implemented-core' }
 ] as const satisfies readonly AtlasDeviceCapability[];
 
 function profile(
@@ -74,7 +74,7 @@ export function getAtlasDeviceProfile(id: AtlasDeviceId): AtlasDeviceProfile {
 }
 
 export function summarizeDeviceReadiness(profile: AtlasDeviceProfile) {
-  const softwareReady = profile.capabilities.filter((capability) => capability.status === 'software-ready').length;
-  const adapterRequired = profile.capabilities.length - softwareReady;
-  return { softwareReady, adapterRequired, total: profile.capabilities.length };
+  const implementedCore = profile.capabilities.filter((capability) => capability.status === 'implemented-core').length;
+  const adapterRequired = profile.capabilities.length - implementedCore;
+  return { implementedCore, adapterRequired, total: profile.capabilities.length };
 }
