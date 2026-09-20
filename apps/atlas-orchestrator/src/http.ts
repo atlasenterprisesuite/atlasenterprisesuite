@@ -1,6 +1,10 @@
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
-import { GitHubWebhookError, ingestGitHubWebhook } from './webhooks/github';
+import {
+  GitHubWebhookError,
+  assertGitHubWebhookRepositoryScope,
+  ingestGitHubWebhook,
+} from './webhooks/github';
 import { handleMcpRequest, type JsonRpcRequest } from '../../../packages/atlas-mcp/src';
 import { createAtlasRuntime } from './runtime/container';
 import { resolveHttpActor } from './runtime/auth';
@@ -98,13 +102,25 @@ const server = createServer(async (req, res) => {
           body,
           secret: process.env.ATLAS_GITHUB_WEBHOOK_SECRET,
         });
-        return json(res, 202, {
-          status: 'accepted',
+        assertGitHubWebhookRepositoryScope(envelope, process.env.ATLAS_GITHUB_REPOSITORY);
+
+        const claimed = await runtime.persistence.claimGitHubWebhookDelivery(scope, {
           deliveryId: envelope.deliveryId,
           event: envelope.event,
           action: envelope.action,
           installationId: envelope.installationId,
           repository: envelope.repository,
+          receivedAt: new Date().toISOString(),
+        });
+
+        return json(res, 202, {
+          status: claimed ? 'accepted' : 'duplicate',
+          deliveryId: envelope.deliveryId,
+          event: envelope.event,
+          action: envelope.action,
+          installationId: envelope.installationId,
+          repository: envelope.repository,
+          duplicate: !claimed,
           executionAuthorized: false,
         });
       } catch (error) {
