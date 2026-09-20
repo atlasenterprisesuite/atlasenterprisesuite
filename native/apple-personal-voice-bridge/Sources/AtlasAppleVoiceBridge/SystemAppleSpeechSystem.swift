@@ -15,6 +15,8 @@ public actor SystemAppleSpeechSystem: AppleSpeechSystem {
             return .denied
         case .notDetermined:
             return .notDetermined
+        case .unsupported:
+            return .unsupported
         @unknown default:
             return .unsupported
         }
@@ -30,6 +32,8 @@ public actor SystemAppleSpeechSystem: AppleSpeechSystem {
                     continuation.resume(returning: .denied)
                 case .notDetermined:
                     continuation.resume(returning: .notDetermined)
+                case .unsupported:
+                    continuation.resume(returning: .unsupported)
                 @unknown default:
                     continuation.resume(returning: .unsupported)
                 }
