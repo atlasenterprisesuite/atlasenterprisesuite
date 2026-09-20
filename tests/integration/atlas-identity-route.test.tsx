@@ -93,7 +93,7 @@ describe('ATLAS Identity route', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Voice Studio' })).toBeInTheDocument());
-    expect(screen.getByText('Requires ATLAS iOS app')).toBeInTheDocument();
+    expect(screen.getByText(/Requires ATLAS iOS app/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(5);
     expect(String(fetchMock.mock.calls[3][0])).toContain('/rest/v1/organization_members');
     expect(String(fetchMock.mock.calls[4][0])).toContain('/functions/v1/atlas-copilot?api=status');
