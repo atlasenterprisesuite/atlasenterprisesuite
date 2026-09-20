@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   GitHubWebhookError,
+  assertGitHubWebhookRepositoryScope,
   ingestGitHubWebhook,
   verifyGitHubWebhookSignature,
 } from '../../apps/atlas-orchestrator/src/webhooks/github';
@@ -90,10 +91,30 @@ describe('ATLAS GitHub App webhook boundary', () => {
     });
   });
 
+  it('fails closed when repository scope is absent or mismatched', () => {
+    const envelope = {
+      deliveryId: 'delivery-4',
+      event: 'issues',
+      action: 'opened',
+      installationId: 12345,
+      repository: 'atlasenterprisesuite/atlasenterprisesuite',
+      payload: {},
+    };
+
+    expect(() => assertGitHubWebhookRepositoryScope(envelope, undefined))
+      .toThrow(/github_repository_scope_not_configured/);
+    expect(() => assertGitHubWebhookRepositoryScope(envelope, 'other/repo'))
+      .toThrow(/github_repository_scope_mismatch/);
+    expect(() => assertGitHubWebhookRepositoryScope(envelope, 'atlasenterprisesuite/atlasenterprisesuite'))
+      .not.toThrow();
+  });
+
   it('wires the trusted webhook boundary into the orchestrator HTTP server', () => {
     const source = readFileSync('apps/atlas-orchestrator/src/http.ts', 'utf8');
     expect(source).toContain("req.url === '/webhooks/github'");
     expect(source).toContain('ATLAS_GITHUB_WEBHOOK_SECRET');
+    expect(source).toContain('claimGitHubWebhookDelivery');
+    expect(source).toContain('ATLAS_GITHUB_REPOSITORY');
     expect(source).toContain('executionAuthorized: false');
   });
 });
