@@ -49,11 +49,11 @@ describe('ATLAS shared MCP runtime', () => {
     expect(persistence.durable).toBe(true);
   });
 
-  it('creates durable Supabase RPC persistence for managed hosts without exposing the service role', () => {
+  it('creates durable Supabase RPC persistence only with a server secret', () => {
     const persistence = resolvePersistence({
       ATLAS_PERSISTENCE_MODE: 'supabase',
       SUPABASE_URL: 'https://example.supabase.co',
-      SUPABASE_PUBLISHABLE_KEY: 'publishable',
+      SUPABASE_SECRET_KEY: 'sb_secret_server_only',
       ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN: 'runtime-token',
     });
     expect(persistence.durable).toBe(true);
@@ -95,6 +95,7 @@ describe('ATLAS shared MCP runtime', () => {
       ATLAS_PERSISTENCE_MODE: 'supabase',
       SUPABASE_URL: 'https://example.supabase.co',
       SUPABASE_PUBLISHABLE_KEY: 'publishable',
+      ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN: 'runtime-token',
     },
   ])('fails closed for ambiguous or incomplete production persistence: %o', (env) => {
     expect(() => resolvePersistence(env)).toThrow(/ATLAS persistence/i);
