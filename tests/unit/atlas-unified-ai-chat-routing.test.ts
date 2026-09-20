@@ -72,6 +72,7 @@ describe('ATLAS Unified AI routing', () => {
     expect(router.route({ mode: 'auto', intent: 'balanced', capabilities_requested: ['generation'] })).toMatchObject({
       mode: 'auto',
       providers: ['atlas-local'],
+      fallback_providers: ['openai', 'gemini', 'codex-sovereign'],
       reason: 'auto_zero_cost_verified_provider',
       fallback_used: false,
     });
