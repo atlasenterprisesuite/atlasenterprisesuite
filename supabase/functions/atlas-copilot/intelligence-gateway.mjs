@@ -48,12 +48,21 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[],prefe
       }
       const configured=autoOrdered.filter(p=>allowed(p)&&p?.configured===true);
       if(!configured.length)throw fail('provider_not_configured',503);
-      const index=autoOrdered.findIndex(p=>allowed(p)&&supports(p,intent,capabilities));
-      if(index<0)throw fail('capability_unavailable',503);
-      const selected=autoOrdered[index];
+      const compatible=autoOrdered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
+      if(!compatible.length)throw fail('capability_unavailable',503);
+      const selected=compatible[0];
       const originalIndex=ordered.findIndex(p=>p?.id===selected.id);
       const preferred=preferredSet.has(selected.id);
-      return Object.freeze({mode:'auto',providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:preferred?false:originalIndex>0,reason:preferred?'auto_zero_cost_verified_provider':originalIndex>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'});
+      return Object.freeze({
+        mode:'auto',
+        providers:[selected.id],
+        provider:selected.id,
+        fallback_providers:compatible.slice(1).map(p=>p.id),
+        profile:intent,
+        capabilities,
+        fallback_used:preferred?false:originalIndex>0,
+        reason:preferred?'auto_zero_cost_verified_provider':originalIndex>0?'auto_fallback_to_verified_provider':'auto_primary_verified_provider'
+      });
     },
   });
 }
@@ -87,22 +96,63 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       const history=messages.map(m=>({role:m.role,content:m.content?.text??m.content}));
       if(normalized.legacy_context)history.push({role:'user',content:`Current ATLAS context:\n${normalized.legacy_context}`});
       const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:route.mode,intent:normalized.intent});
-      let result;
+      let result,executionRoute=route,executionCostDecision=costDecision;
+      const fallbackAttempts=[];
       if(route.mode==='council'){
         if(!council)throw fail('capability_unavailable',503,{mode:'council'});
         result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000});
       }else{
-        const adapter=registry?.get(route.providers[0])||provider;
-        if(!adapter)throw fail('provider_not_configured',503,{provider:route.providers[0]});
-        result=await adapter.execute({context:principal,route,instructions,input:history,max_output_tokens:3000});
+        const candidates=route.mode==='auto'
+          ?[route.providers[0],...(Array.isArray(route.fallback_providers)?route.fallback_providers:[])]
+          :[route.providers[0]];
+        let lastRetryableError=null;
+        for(let index=0;index<candidates.length;index+=1){
+          const providerId=candidates[index];
+          const candidateCost=index===0
+            ?costDecision
+            :evaluateIntelligenceCostPolicy({mode:'auto',providers:[providerId],policy:effectiveCostPolicy});
+          if(candidateCost.decision!=='allow'){
+            fallbackAttempts.push({provider:providerId,outcome:candidateCost.decision,reason:candidateCost.reason});
+            continue;
+          }
+          const adapter=registry?.get(providerId)||provider;
+          if(!adapter){
+            if(index===0)throw fail('provider_not_configured',503,{provider:providerId});
+            fallbackAttempts.push({provider:providerId,outcome:'provider_not_configured'});
+            continue;
+          }
+          const candidateRoute=Object.freeze({
+            ...route,
+            providers:[providerId],
+            provider:providerId,
+            fallback_used:index>0||route.fallback_used,
+            reason:index>0?'runtime_fallback_after_provider_failure':route.reason
+          });
+          try{
+            result=await adapter.execute({context:principal,route:candidateRoute,instructions,input:history,max_output_tokens:3000});
+            executionRoute=candidateRoute;
+            executionCostDecision=candidateCost;
+            fallbackAttempts.push({provider:providerId,outcome:'completed'});
+            break;
+          }catch(error){
+            const code=normalizeIntelligenceError(error).code;
+            fallbackAttempts.push({provider:providerId,outcome:code});
+            if(route.mode!=='auto'||!['provider_unavailable','provider_rate_limited'].includes(code))throw error;
+            lastRetryableError=error;
+          }
+        }
+        if(!result){
+          if(lastRetryableError)throw lastRetryableError;
+          throw fail('provider_unavailable',502,{fallback_attempts:fallbackAttempts});
+        }
       }
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
-      const automaticApiCostUsd=Number.isFinite(costDecision.estimated_automatic_cost_usd)?costDecision.estimated_automatic_cost_usd:null;
-      const routing={mode:route.mode,providers:route.providers,profile:route.profile,fallback_used:route.fallback_used,reason:route.reason,cost_decision:costDecision.reason,automatic_api_cost_usd:automaticApiCostUsd};
+      const automaticApiCostUsd=Number.isFinite(executionCostDecision.estimated_automatic_cost_usd)?executionCostDecision.estimated_automatic_cost_usd:null;
+      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
       await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
       await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:{...(result.usage||{}),atlas_routing:routing},latency_ms:latency});
-      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:route.providers,model:result.model,mode:route.mode,profile:route.profile,fallback_used:route.fallback_used,capabilities_used:result.capabilities_used||route.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
+      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});
