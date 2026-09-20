@@ -3,6 +3,7 @@ import {
   actionAvailability,
   ecologyActionAvailability,
   expansionActionAvailability,
+  survivalActionAvailability,
   FRONTIER_LEVELS,
   frontierCampaignProgress,
   frontierCurrentLevel,
@@ -10,9 +11,11 @@ import {
   frontierObjective,
   INITIAL_FRONTIER_ECOLOGY_STATE,
   INITIAL_FRONTIER_EXPANSION_STATE,
+  INITIAL_FRONTIER_SURVIVAL_STATE,
   INITIAL_FRONTIER_STATE,
   normalizeFrontierEcologyState,
   normalizeFrontierExpansionState,
+  normalizeFrontierSurvivalState,
   normalizeFrontierState
 } from '../../apps/web/src/modules/frontier/domain';
 
@@ -68,6 +71,24 @@ describe('ATLAS FRONTIER domain', () => {
     expect(expansionActionAvailability(infiniteState, INITIAL_FRONTIER_EXPANSION_STATE, 'restore_generated_world').enabled).toBe(false);
   });
 
+  it('gates survival actions by governed hazard and protection state', () => {
+    expect(survivalActionAvailability(INITIAL_FRONTIER_STATE, INITIAL_FRONTIER_SURVIVAL_STATE, 'scan_environment').enabled).toBe(true);
+
+    const hazard = {
+      ...INITIAL_FRONTIER_SURVIVAL_STATE,
+      suitEnergy: 40,
+      activeHazard: 'ion_storm' as const,
+      hazardIntensity: 55,
+      hazardTurns: 3
+    };
+    expect(survivalActionAvailability(INITIAL_FRONTIER_STATE, hazard, 'scan_environment').enabled).toBe(false);
+    expect(survivalActionAvailability(INITIAL_FRONTIER_STATE, hazard, 'endure_hazard').enabled).toBe(true);
+
+    const injured = { ...INITIAL_FRONTIER_SURVIVAL_STATE, health: 0, exposure: 70 };
+    const habitatRun = { ...INITIAL_FRONTIER_STATE, habitats: 1, biofiber: 4 };
+    expect(survivalActionAvailability(habitatRun, injured, 'recover_at_habitat').enabled).toBe(true);
+  });
+
   it('calculates campaign progress through level forty and endless mode', () => {
     expect(frontierCampaignProgress({ ...INITIAL_FRONTIER_STATE, aetherium: 4, alloy: 3, biofiber: 3 })).toBe(100);
 
@@ -109,5 +130,12 @@ describe('ATLAS FRONTIER domain', () => {
     expect(expansion.tradeVolume).toBe(100);
     expect(expansion.campaignComplete).toBe(true);
     expect(expansion.revision).toBe(4);
+
+    const survival = normalizeFrontierSurvivalState({ health: 150, suitEnergy: -2, activeHazard: 'unknown', hazardIntensity: 140, revision: 5 });
+    expect(survival.health).toBe(100);
+    expect(survival.suitEnergy).toBe(0);
+    expect(survival.activeHazard).toBe('clear');
+    expect(survival.hazardIntensity).toBe(100);
+    expect(survival.revision).toBe(5);
   });
 });
