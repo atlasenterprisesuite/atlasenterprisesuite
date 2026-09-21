@@ -1,5 +1,5 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from './atlasSession';
-import type { AdvisoryProviderConnectionEvidence, LaunchEvidenceDimension } from '../../../../packages/advisory/src';
+import type { AdvisoryProviderAuthorizationEvidence, AdvisoryProviderConnectionEvidence, AdvisoryExternalCapability, LaunchEvidenceDimension } from '../../../../packages/advisory/src';
 
 export type AdvisoryFirmRow = {
   id: string;
@@ -80,6 +80,20 @@ export type AdvisoryLaunchEvidenceRow = {
   updated_at: string;
 };
 
+export type AdvisoryProviderAuthorizationRow = {
+  id: string;
+  org_id: string;
+  firm_id: string;
+  capability: AdvisoryExternalCapability;
+  authorized: boolean;
+  authorization_source: string;
+  authorization_reference: string | null;
+  authorized_by: string | null;
+  authorized_at: string | null;
+  revoked_at: string | null;
+  updated_at: string;
+};
+
 export type AdvisoryIntegrationConnectionRow = {
   id: string;
   org_id: string;
@@ -125,6 +139,26 @@ export async function bootstrapAdvisoryFirm(): Promise<AdvisoryFirmRow> {
   const rows = await rpcRows<AdvisoryFirmRow>('advisory_bootstrap_default_firm', {});
   if (!rows[0]) throw new Error('advisory_firm_unavailable');
   return rows[0];
+}
+
+
+export async function listAdvisoryProviderAuthorizations(): Promise<AdvisoryProviderAuthorizationEvidence[]> {
+  const organization = await getActiveAtlasOrganization();
+  if (!organization.id) throw new Error('no_active_organization');
+  const firm = await bootstrapAdvisoryFirm();
+  const response = await authorizedAtlasFetch(
+    '/rest/v1/advisory_provider_authorizations?org_id=eq.' + encodeURIComponent(organization.id) +
+    '&firm_id=eq.' + encodeURIComponent(firm.id) +
+    '&select=id,org_id,firm_id,capability,authorized,authorization_source,authorization_reference,authorized_by,authorized_at,revoked_at,updated_at&order=capability.asc',
+    { method: 'GET' }
+  );
+  const rows = await parseJson<AdvisoryProviderAuthorizationRow[]>(response);
+  return rows.map((row) => ({
+    capability: row.capability,
+    authorized: row.authorized,
+    authorizedAt: row.authorized_at,
+    authorizationReference: row.authorization_reference
+  }));
 }
 
 export async function listAdvisoryProviderConnections(): Promise<AdvisoryProviderConnectionEvidence[]> {
