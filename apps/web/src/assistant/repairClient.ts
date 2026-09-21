@@ -6,11 +6,16 @@ export type AssistantRepairJob = {
   id?: string;
   status?: string;
   request_text?: string;
+  attempts?: number;
+  created_at?: string;
+  updated_at?: string;
+  completed_at?: string | null;
 };
 
 export type AssistantRepairResponse = {
   ok: boolean;
   job?: AssistantRepairJob | null;
+  jobs?: AssistantRepairJob[];
   execution?: string;
   github_required?: boolean;
 };
@@ -53,6 +58,16 @@ export async function enqueueAssistantRepair(input: {
         page
       }
     })
+  });
+
+  return parseRepairResponse(response);
+}
+
+export async function getAssistantRepairs(): Promise<AssistantRepairResponse> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-repair-bridge?api=status', {
+    method: 'GET',
+    headers: { 'x-atlas-org-id': organization.id }
   });
 
   return parseRepairResponse(response);
