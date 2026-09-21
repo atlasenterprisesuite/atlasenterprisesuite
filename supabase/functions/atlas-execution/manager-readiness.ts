@@ -29,9 +29,10 @@ function plainRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 }
 
-function normalizeRequiredProvider(value: unknown): ProviderStatus {
+function normalizeRequiredProvider(value: unknown, requirement: unknown): ProviderStatus {
   const raw = plainRecord(value);
-  if (typeof raw.state !== 'string' || !raw.state.trim() || raw.required !== true) {
+  const required = raw.required === true || (raw.required === undefined && requirement === true);
+  if (typeof raw.state !== 'string' || !raw.state.trim() || !required || raw.required === false) {
     throw new ManagerReadinessError('infra_status_contract_invalid', 502);
   }
   return { state: raw.state.trim(), required: true };
@@ -41,6 +42,7 @@ export function normalizeManagerInfraStatus(value: unknown): ManagerInfraStatus 
   const raw = plainRecord(value);
   if (raw.ok !== true) throw new ManagerReadinessError('infra_status_contract_invalid', 502);
   const providerStatus = plainRecord(raw.provider_status);
+  const providerRequirements = plainRecord(raw.provider_requirements);
   const vercelRaw = plainRecord(providerStatus.vercel);
   const blockers = Array.isArray(raw.blockers)
     ? raw.blockers.map((item) => plainRecord(item)).filter((item) => typeof item.stage === 'string' && typeof item.code === 'string').map((item) => ({
@@ -50,10 +52,10 @@ export function normalizeManagerInfraStatus(value: unknown): ManagerInfraStatus 
   const scope = plainRecord(raw.scope);
 
   const providers: ManagerInfraStatus['providers'] = {
-    github: normalizeRequiredProvider(providerStatus.github),
-    supabase: normalizeRequiredProvider(providerStatus.supabase),
-    cloudflare: normalizeRequiredProvider(providerStatus.cloudflare),
-    production: normalizeRequiredProvider(providerStatus.production)
+    github: normalizeRequiredProvider(providerStatus.github, providerRequirements.github),
+    supabase: normalizeRequiredProvider(providerStatus.supabase, providerRequirements.supabase),
+    cloudflare: normalizeRequiredProvider(providerStatus.cloudflare, providerRequirements.cloudflare),
+    production: normalizeRequiredProvider(providerStatus.production, providerRequirements.production)
   };
   if (typeof vercelRaw.state === 'string' && vercelRaw.state.trim() && vercelRaw.required === false) {
     providers.vercel = { state: vercelRaw.state.trim(), required: false };
