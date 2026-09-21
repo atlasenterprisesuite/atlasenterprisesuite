@@ -1,3 +1,5 @@
+import type { AuthenticatedEvidence } from '../../core/src/evidence';
+
 export type CommerceIntegrationTarget =
   | 'inventory'
   | 'accounting'
@@ -23,6 +25,7 @@ export type CommerceIntegrationDeliveryRequest = {
 
 export type CommerceIntegrationDeliveryResult = {
   adapterReference: string | null;
+  evidence: AuthenticatedEvidence;
 };
 
 export interface CommerceIntegrationAdapter {
