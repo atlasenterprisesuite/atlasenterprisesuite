@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { renderAtlasCopilotPage } from '../../supabase/functions/atlas-copilot/ui.mjs';
 
@@ -38,5 +40,15 @@ describe('ATLAS Unified AI Chat UI', () => {
   it('does not expose internal model identifiers in the static HTML', () => {
     expect(html).not.toContain('GPT-6 Astra');
     expect(html).not.toContain('gpt-6-astra');
+  });
+
+  it('keeps the canonical authenticated assistant surface simple and actionable', () => {
+    const workspace = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx'), 'utf8');
+    expect(workspace).toContain('How can I help you?');
+    expect(workspace).toContain('Chat history');
+    expect(workspace).toContain('Projects');
+    expect(workspace).toContain('Prompts');
+    expect(workspace).toContain('Translator');
+    expect(workspace).toContain('useAssistantVoice');
   });
 });
