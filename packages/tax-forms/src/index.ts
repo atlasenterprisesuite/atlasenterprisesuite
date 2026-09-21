@@ -45,7 +45,7 @@ export type TaxMapping = {
 
 export type TaxMappingResult = {
   taxYear: number;
-  sourceDocument: 'W-2';
+  sourceDocument: 'W-2' | '1099-INT' | '1099-DIV' | '1099-NEC' | 'K-1 (Form 1065)';
   mappings: TaxMapping[];
   activatedForms: string[];
   reviewFlags: string[];
@@ -204,3 +204,5 @@ export function mapW2ToReturn(document: W2Document): TaxMappingResult {
     revisionStatus: document.taxYear <= 2025 ? 'final-destination' : 'destination-review-gated'
   };
 }
+
+export * from './sourceDocuments';
