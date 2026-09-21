@@ -9,7 +9,7 @@ const authorizedVerifier = readFileSync('supabase/functions/atlas-cloudflare-pro
 const cloudflareWorkflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8');
 const globalWorkflow = readFileSync('.github/workflows/global-production-verify.yml', 'utf8');
 
-const WORK_ROUTES = ['/work', '/work/new', '/work/connections', '/work/runtimes', '/work/policies'];
+const WORK_ROUTES = ['/work', '/work/new', '/work/connections', '/work/runtimes', '/work/policies', '/work/computer-operations'];
 
 describe('ATLAS Work fail-closed production verification', () => {
   it('requires every critical Work route in the global production contract', () => {
