@@ -95,6 +95,29 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect(captured.max_output_tokens).toBe(384);
   });
 
+  it('retries one transient ATLAS Local inference failure before failing closed', async () => {
+    let attempt = 0;
+    const fetchFn = vi.fn(async () => {
+      attempt += 1;
+      if (attempt === 1) return new Response(JSON.stringify({ error: 'warming' }), { status: 503 });
+      return new Response(JSON.stringify({
+        id: 'local_resp_retry',
+        model: 'local-model',
+        output: [{ content: [{ type: 'output_text', text: 'retry-ok' }] }],
+        usage: {},
+      }), { status: 200 });
+    });
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      token: 'local-secret',
+      models: { balanced: 'local-model' },
+      fetchFn,
+    });
+    const result = await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'continue' }] });
+    expect(result.text).toBe('retry-ok');
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
   it('fails closed when ATLAS Local has no authenticated runtime configuration', async () => {
     const adapter = createAtlasLocalResponsesAdapter({
       baseUrl: 'https://local-ai.example',
