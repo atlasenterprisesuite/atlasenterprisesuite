@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   approveRideComplianceSubmission,
   getRideCompliancePreview,
+  getRideComplianceRequirements,
   getRideComplianceTimeline,
   getRideProfilePhotoRequirement,
   rejectRideComplianceSubmission,
@@ -42,6 +43,28 @@ describe('ATLAS Ride compliance browser API', () => {
         })
       })
     );
+  });
+
+  it('loads the persisted requirements registry under the selected organization', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({
+      ok: true,
+      requirements: [],
+      readiness: {
+        state: 'unknown',
+        eligibleForNewTrips: false,
+        blockingRequirementIds: [],
+        warningRequirementIds: [],
+        satisfiedRequirementIds: [],
+        evaluatedRequirementCount: 0
+      },
+      permissions: ['ride.compliance.read']
+    }));
+
+    await getRideComplianceRequirements();
+
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toContain('api=requirements');
+    const [, init] = fetchMock.mock.calls.at(-1)!;
+    expect((init?.headers as Record<string, string>)['x-atlas-org-id']).toBe('11111111-1111-4111-8111-111111111111');
   });
 
   it('uploads FormData without manually setting multipart content type', async () => {

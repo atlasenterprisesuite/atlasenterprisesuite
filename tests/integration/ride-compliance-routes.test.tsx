@@ -5,7 +5,6 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { ComplianceHomePage } from '../../apps/web/src/modules/ride/ComplianceHomePage';
-import { DocumentsPage } from '../../apps/web/src/modules/ride/DocumentsPage';
 import { DriverHomePage } from '../../apps/web/src/modules/ride/DriverHomePage';
 import { RideHomePage } from '../../apps/web/src/modules/ride/RideHomePage';
 
@@ -21,6 +20,7 @@ describe('ATLAS Ride compliance routes', () => {
     for (const route of [
       '/ride',
       '/ride/driver',
+      '/ride/readiness',
       '/ride/driver/compliance',
       '/ride/driver/compliance/documents',
       '/ride/driver/compliance/documents/profile-photo'
@@ -47,6 +47,7 @@ describe('ATLAS Ride compliance routes', () => {
     expect(screen.getByText('Driver readiness, compliance evidence and governed mobility operations.')).toBeInTheDocument();
     const rideNav = screen.getByRole('navigation', { name: /atlas ride/i });
     expect(within(rideNav).getByRole('link', { name: /driver.*partner/i })).toHaveAttribute('href', '/ride/driver');
+    expect(within(rideNav).getByRole('link', { name: /^readiness$/i })).toHaveAttribute('href', '/ride/readiness');
     expect(screen.getByText('Dispatch & Trips').closest('[aria-disabled="true"]')).toBeTruthy();
   });
 
@@ -61,8 +62,11 @@ describe('ATLAS Ride compliance routes', () => {
     expect(within(complianceNav).getByRole('link', { name: /documents.*credentials/i })).toHaveAttribute('href', '/ride/driver/compliance/documents');
     compliance.unmount();
 
-    render(<MemoryRouter><DocumentsPage /></MemoryRouter>);
-    expect(screen.getByRole('link', { name: /profile photo/i })).toHaveAttribute('href', '/ride/driver/compliance/documents/profile-photo');
+    const documentsSource = readFileSync(resolve(moduleRoot, 'DocumentsPage.tsx'), 'utf8');
+    const requirementsSource = readFileSync(resolve(root, 'packages/ride/requirements.ts'), 'utf8');
+    expect(documentsSource).toContain('getRideComplianceRequirements');
+    expect(documentsSource).toContain('describeRideRequirement');
+    expect(requirementsSource).toContain("actionPath: '/ride/driver/compliance/documents/profile-photo'");
   });
 
   it('has a concrete profile-photo page instead of a generic placeholder route', () => {

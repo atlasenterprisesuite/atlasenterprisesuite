@@ -191,3 +191,19 @@
   .ride-timeline-list li { flex-direction: column; gap: 4px; }
   .ride-timeline-list time { text-align: left; }
 }
+
+
+.ride-document-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.ride-document-card small {
+  color: #7e96aa;
+  line-height: 1.45;
+}
+
+.ride-document-card .ride-status {
+  width: max-content;
+}

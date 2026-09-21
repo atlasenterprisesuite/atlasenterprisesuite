@@ -1,5 +1,6 @@
 import { validateComplianceImageMetadata } from '../../../packages/compliance/file-policy.ts';
 import { requireCompliancePermission } from '../../../packages/compliance/permissions.ts';
+import { calculateRideReadiness } from '../../../packages/ride/readiness.ts';
 import { resolveContext } from './_shared/context.ts';
 import { errorResponse, json, optionsResponse, withCors } from './_shared/errors.ts';
 import { getLatestSubmissionForRequirement } from './_shared/queries.ts';
@@ -9,6 +10,7 @@ import {
   finalizeProfilePhotoSubmission,
   getProfilePhotoRequirement,
   getSubmission,
+  listRideRequirements,
   listTimeline,
   markSubmissionUnderReview,
   recordComplianceAudit,
@@ -20,7 +22,7 @@ import {
   uploadComplianceEvidence
 } from './_shared/storage.ts';
 
-const VERSION = 1;
+const VERSION = 2;
 
 function queryValue(url: URL, name: string) {
   return String(url.searchParams.get(name) || '').trim().slice(0, 160);
@@ -49,6 +51,18 @@ async function readiness(req: Request) {
     review_mode: 'manual',
     automated_identity_provider_connected: false,
     checked_at: new Date().toISOString()
+  });
+}
+
+async function requirements(req: Request) {
+  const ctx = await resolveContext(req);
+  requireCompliancePermission(ctx.permissions, 'ride.compliance.read');
+  const persisted = await listRideRequirements(ctx);
+  return json({
+    ok: true,
+    requirements: persisted,
+    readiness: calculateRideReadiness(persisted),
+    permissions: ctx.permissions
   });
 }
 
@@ -180,6 +194,7 @@ Deno.serve(async (req) => {
     let response: Response;
     switch (api) {
       case 'readiness': response = await readiness(req); break;
+      case 'requirements': response = await requirements(req); break;
       case 'profile-photo': response = await profilePhoto(req); break;
       case 'submit-profile-photo': response = await submitProfilePhoto(req); break;
       case 'preview': response = await preview(req, url); break;

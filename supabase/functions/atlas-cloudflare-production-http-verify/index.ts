@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 20;
+const VERSION = 21;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -259,6 +259,10 @@ Deno.serve(async (req: Request) => {
     commerce,
     revenue,
     analytics,
+    ride,
+    rideReadiness,
+    rideDocuments,
+    rideProfilePhoto,
     network,
     networkPricing,
     networkCommissions,
@@ -290,6 +294,10 @@ Deno.serve(async (req: Request) => {
     probe('/commerce'),
     probe('/revenue'),
     probe('/analytics'),
+    probe('/ride'),
+    probe('/ride/readiness'),
+    probe('/ride/driver/compliance/documents'),
+    probe('/ride/driver/compliance/documents/profile-photo'),
     probe('/business/network'),
     probe('/business/network/pricing'),
     probe('/business/network/commissions'),
@@ -348,6 +356,10 @@ Deno.serve(async (req: Request) => {
     commerce,
     revenue,
     analytics,
+    ride,
+    rideReadiness,
+    rideDocuments,
+    rideProfilePhoto,
     network,
     networkPricing,
     networkCommissions,
@@ -359,6 +371,8 @@ Deno.serve(async (req: Request) => {
     workRuntimes,
     workPolicies
   ];
+  const rideRoutesOk = [ride, rideReadiness, rideDocuments, rideProfilePhoto]
+    .every((result) => result.status === 200);
   const criticalNetworkRoutesOk = [
     network,
     networkPricing,
@@ -380,7 +394,7 @@ Deno.serve(async (req: Request) => {
     routedProbes.every((result) =>
       Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha
     );
-  const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
+  const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && rideRoutesOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
 
   return json(
     {
@@ -415,6 +429,11 @@ Deno.serve(async (req: Request) => {
         commerce_route_reachable: commerce.status === 200,
         revenue_route_reachable: revenue.status === 200,
         analytics_route_reachable: analytics.status === 200,
+        ride_route_reachable: ride.status === 200,
+        ride_readiness_route_reachable: rideReadiness.status === 200,
+        ride_documents_route_reachable: rideDocuments.status === 200,
+        ride_profile_photo_route_reachable: rideProfilePhoto.status === 200,
+        ride_routes_reachable: rideRoutesOk,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         work_routes_reachable: workRoutesOk,
         work_command_center_reachable: work.status === 200,
