@@ -371,6 +371,8 @@ Deno.serve(async (req: Request) => {
     workRuntimes,
     workPolicies
   ];
+  const rideRoutesOk = [ride, rideReadiness, rideDocuments, rideProfilePhoto]
+    .every((result) => result.status === 200);
   const criticalNetworkRoutesOk = [
     network,
     networkPricing,
@@ -392,7 +394,7 @@ Deno.serve(async (req: Request) => {
     routedProbes.every((result) =>
       Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha
     );
-  const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
+  const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && rideRoutesOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
 
   return json(
     {
@@ -431,6 +433,7 @@ Deno.serve(async (req: Request) => {
         ride_readiness_route_reachable: rideReadiness.status === 200,
         ride_documents_route_reachable: rideDocuments.status === 200,
         ride_profile_photo_route_reachable: rideProfilePhoto.status === 200,
+        ride_routes_reachable: rideRoutesOk,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         work_routes_reachable: workRoutesOk,
         work_command_center_reachable: work.status === 200,
