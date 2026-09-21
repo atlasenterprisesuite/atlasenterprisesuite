@@ -402,7 +402,7 @@ export function ProcureToPayPage() {
           <label className="field"><span>Cost tolerance %</span><input type="number" min="0" max="99.99" step="0.01" value={tolerancePct} onChange={(e) => setTolerancePct(e.target.value)} required /></label>
           <button className="primary-action" disabled={working || !selectedReceiptLines.length}>Match & register AP</button>
         </form>
-        {selectedReceiptLines.length > 0 && <div className="table-wrap"><table><thead><tr><th>Item</th><th>Received qty</th><th>PO cost</th><th>Invoice cost</th><th>Tax/landed add-on</th></tr></thead><tbody>
+        {selectedReceiptLines.length > 0 && <div className="table-wrap"><table><thead><tr><th>Item</th><th>Received qty</th><th>PO cost</th><th>Invoice cost</th><th>Capitalized landed cost</th></tr></thead><tbody>
           {selectedReceiptLines.map((line) => {
             const poLine = snapshot?.purchaseOrderLines.find((candidate) => candidate.id === line.purchase_order_line_id);
             return <tr key={line.id}><td>{itemById.get(line.item_id)?.name || poLine?.description || 'Item'}</td><td>{line.quantity}</td><td>{currency.format(poLine?.unit_cost || line.unit_cost)}</td><td><input type="number" min="0" step="0.01" value={invoiceCosts[line.purchase_order_line_id] || ''} onChange={(e) => setInvoiceCosts((current) => ({ ...current, [line.purchase_order_line_id]: e.target.value }))} /></td><td><input type="number" min="0" step="0.01" value={invoiceTaxes[line.purchase_order_line_id] || '0'} onChange={(e) => setInvoiceTaxes((current) => ({ ...current, [line.purchase_order_line_id]: e.target.value }))} /></td></tr>;
