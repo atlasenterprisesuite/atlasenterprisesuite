@@ -206,3 +206,5 @@ export function mapW2ToReturn(document: W2Document): TaxMappingResult {
 }
 
 export * from './sourceDocuments';
+
+export * from './professionalWorkflow';
