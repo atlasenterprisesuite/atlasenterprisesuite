@@ -1,4 +1,5 @@
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { FinanceControlCenterPanel } from '../finance/FinanceControlCenterPanel';
 
 const enterpriseSections: ModuleExperienceSection[] = [
   {
@@ -88,14 +89,16 @@ const financeSections: ModuleExperienceSection[] = [
     ]
   },
   {
-    eyebrow: 'Commercial expansion',
-    title: 'Finance depth without false readiness',
-    description: 'Capabilities without a complete canonical route remain visible as governed gates, not fake screens.',
+    eyebrow: 'Planning & control',
+    title: 'Finance depth from the canonical accounting backend',
+    description: 'ATLAS surfaces the real organization-scoped state that already exists for budgeting, currency, close and consolidation without fabricating provider readiness.',
     cards: [
       { label: 'Receivables', title: 'Accounts Receivable', description: 'Live customer invoicing with governed inventory issue, COGS and gross-margin posting for inventory-backed products.', to: '/finance/accounting/accounts-receivable', status: 'Canonical AR active' },
-      { label: 'Ledger', title: 'General Ledger & Close', description: 'Broader journal and close work exists but is not yet proven as one complete current workflow.', status: 'Canonical workflow incomplete' },
-      { label: 'Cash', title: 'Bank Reconciliation', description: 'Bank and cash reconciliation must be recovered into the current architecture before activation.', status: 'Canonical route not active' },
-      { label: 'Treasury', title: 'Treasury & Forecasting', description: 'No live treasury metrics or banking connection is represented without an authorized source.', status: 'Provider and product gates apply' }
+      { label: 'Planning', title: 'Budgeting', description: 'Budget versions, lifecycle and approval state are read from the RLS-protected accounting backend.', status: 'Live backend state surfaced below' },
+      { label: 'Currency', title: 'Multi-currency', description: 'Registered FX rates and evidence state remain organization-scoped and source-backed.', status: 'Live backend state surfaced below' },
+      { label: 'Group reporting', title: 'Consolidation', description: 'Consolidation groups and intercompany controls remain governed by accounting permissions.', status: 'Live backend state surfaced below' },
+      { label: 'Close', title: 'Period Close', description: 'Accounting periods and close readiness are read from the canonical close controls.', status: 'Live backend state surfaced below' },
+      { label: 'Cash', title: 'Bank & Reconciliation', description: 'ATLAS exposes only registered bank and reconciliation state; external banking execution stays gated until authorization is verified.', status: 'Provider execution remains fail-closed' }
     ]
   },
   {
@@ -187,8 +190,10 @@ export function FinanceExperiencePage() {
       narrative="Finance intelligence, execution and control."
       actions={[{ label: 'Open Accounting', to: '/finance/accounting' }]}
       sections={financeSections}
-      statusNote="No revenue, cash, banking or forecasting value is presented as live unless it comes from an authorized configured source."
-    />
+      statusNote="Finance totals and readiness state are shown only when they come from the authenticated organization through Supabase RLS. External banking and payment execution remain fail-closed until the organization authorizes and verifies those providers."
+    >
+      <FinanceControlCenterPanel />
+    </ModuleExperiencePage>
   );
 }
 

@@ -18,6 +18,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
   it('checks the public shell while preserving the protected deployment path', () => {
     expect(verifier).toContain("'/identity?app=%2Ffinance'");
     expect(verifier).toContain("'/finance'");
+    expect(verifier).toContain("'/finance/accounting'");
+    expect(verifier).toContain("'/finance/accounting/accounts-payable'");
     expect(verifier).toContain("'/finance/accounting/accounts-receivable'");
     expect(verifier).toContain("'/inventory/procure-to-pay'");
     expect(verifier).toContain("'/commerce'");
@@ -28,6 +30,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
     expect(verifier).toContain('health_route_reachable');
+    expect(verifier).toContain('finance_accounting_route_reachable');
+    expect(verifier).toContain('accounts_payable_route_reachable');
     expect(verifier).toContain('accounts_receivable_route_reachable');
     expect(verifier).toContain('procure_to_pay_route_reachable');
     expect(verifier).toContain('commerce_route_reachable');
@@ -53,7 +57,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
     expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
-    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "19" ]');
+    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "20" ]');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');
@@ -85,6 +89,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
       expect(verifier).toContain(`'${route}'`);
     }
 
+    expect(productionStep).toContain('/finance/accounting');
+    expect(productionStep).toContain('/finance/accounting/accounts-payable');
     expect(productionStep).toContain('/health');
     expect(productionStep).toContain('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel');
     expect(workflow).toContain('health_route_reachable');

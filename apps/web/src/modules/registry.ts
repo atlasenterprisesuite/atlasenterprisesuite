@@ -87,7 +87,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/finance',
     readiness: 'implemented',
     requiresAuth: false,
-    description: 'Governed accounting and financial operations.',
+    description: 'Governed accounting and financial operations with live organization-scoped control-center state protected by session and RLS.',
     showInNavigation: true
   },
   {
@@ -98,7 +98,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/finance/accounting',
     readiness: 'partial',
     requiresAuth: false,
-    description: 'Canonical accounting entry point across payable, reporting and governed finance workflows.',
+    description: 'Canonical accounting entry point across payable, receivable, inventory, reporting and governed finance workflows.',
     showInNavigation: false
   },
   {
@@ -374,5 +374,6 @@ export const ATLAS_NAV_ITEMS = [
     .filter((module) => module.showInNavigation)
     .map((module) => ({ to: module.route, label: module.navLabel })),
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
+  { to: '/finance/accounting/accounts-receivable', label: 'Receivables' },
   { to: '/finance/accounting/reports/automotive-sales', label: 'Automotive' }
 ] as const;
