@@ -8,7 +8,7 @@ function source(path: string) {
 }
 
 describe('ATLAS vendor W-9 intake', () => {
-  it('extracts normalized W-9 facts while retaining only the last four TIN digits', () => {
+  it('extracts normalized W-9 facts and keeps the full TIN only in memory for secure save', () => {
     const parsed = parseW9Text([
       'Name (as shown on your income tax return)',
       'Future Atlas LLC',
@@ -31,8 +31,8 @@ describe('ATLAS vendor W-9 intake', () => {
     expect(parsed.state).toBe('FL');
     expect(parsed.postalCode).toBe('32801');
     expect(parsed.taxIdType).toBe('ein');
+    expect(parsed.taxId).toBe('12-3456789');
     expect(parsed.taxIdLast4).toBe('6789');
-    expect(JSON.stringify(parsed)).not.toContain('12-3456789');
   });
 
   it('fails closed when the printed classification is present but no selected mark is proven', () => {
@@ -49,10 +49,15 @@ describe('ATLAS vendor W-9 intake', () => {
     expect(migration).toContain('upsert_vendor_w9_profile_v1');
     expect(migration).toContain('purchasing_vendor_addresses');
     expect(migration).toContain('purchasing_vendor_tax_audit_events');
+    expect(migration).toContain('vault.create_secret');
+    expect(migration).toContain('vault.update_secret');
+    expect(migration).toContain('tax_id_vault_secret_id');
     expect(api).toContain('resolution=merge-duplicates,return=representation');
     expect(api).toContain('saveVendorW9Profile');
     expect(page).toContain('capture="environment"');
     expect(page).toContain('Review & save W-9 vendor');
+    expect(page).toContain('type="password"');
+    expect(page).toContain('encrypted in Supabase Vault');
     expect(page).toContain('1099 handling stays fail-closed');
   });
 });
