@@ -19,7 +19,27 @@ jobs:
       TXT_VALUE: openai-domain-verification=dv-D4JRMoEd80HhyW05wDAYS32z
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
+      - name: Precheck public DNS
+        id: precheck
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error --max-time 20             -o /tmp/doh-precheck.json -w '%{http_code}'             -H 'accept: application/dns-json'             "https://cloudflare-dns.com/dns-query?name=$DOMAIN&type=TXT" || true)"
+          test "$HTTP" = "200" || { echo "::error::Public DNS resolver unavailable"; exit 1; }
+          EXACT="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/doh-precheck.json','utf8'));const vals=(j.Answer||[]).filter(x=>x.type===16).map(x=>String(x.data||'').replace(/^\\\"|\\\"$/g,''));process.stdout.write(String(vals.includes(process.env.TXT_VALUE)))")"
+          OPENAI_COUNT="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/doh-precheck.json','utf8'));const vals=(j.Answer||[]).filter(x=>x.type===16).map(x=>String(x.data||'').replace(/^\\\"|\\\"$/g,''));process.stdout.write(String(vals.filter(x=>x.startsWith('openai-domain-verification=')).length))")"
+          if [ "$EXACT" = "true" ]; then
+            echo "already_verified=true" >> "$GITHUB_OUTPUT"
+            echo "Exact OpenAI verification TXT is already publicly visible; no provider mutation is required." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "already_verified=false" >> "$GITHUB_OUTPUT"
+            if [ "$OPENAI_COUNT" -gt 0 ]; then
+              echo "::error::A different public OpenAI domain-verification TXT exists. Failing closed without changing DNS."
+              exit 1
+            fi
+          fi
+
       - name: Validate Cloudflare authorization
+        if: steps.precheck.outputs.already_verified != 'true'
         run: |
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Cloudflare API token is unavailable"; exit 1; }
@@ -31,6 +51,7 @@ jobs:
           fi
 
       - name: Ensure exact root TXT only
+        if: steps.precheck.outputs.already_verified != 'true'
         id: dns
         run: |
           set -euo pipefail
