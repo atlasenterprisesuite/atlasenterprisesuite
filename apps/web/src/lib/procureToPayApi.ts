@@ -219,8 +219,8 @@ export async function saveVendorW9Profile(input: {
   city: string;
   state: string;
   postalCode: string;
-  taxIdType: 'ein' | 'ssn' | 'unknown';
-  taxIdLast4?: string;
+  taxIdType: 'ein' | 'ssn';
+  taxId: string;
   w9SignedDate?: string;
   w9SourceFilename?: string;
 }) {
@@ -240,7 +240,7 @@ export async function saveVendorW9Profile(input: {
       p_state: requiredText(input.state, 'w9_state').toUpperCase(),
       p_postal_code: requiredText(input.postalCode, 'w9_postal_code'),
       p_tax_id_type: input.taxIdType,
-      p_tax_id_last4: input.taxIdLast4?.trim() || null,
+      p_tax_id: requiredText(input.taxId, 'w9_tax_id'),
       p_w9_signed_date: input.w9SignedDate || null,
       p_w9_source_filename: input.w9SourceFilename?.trim() || null
     })
