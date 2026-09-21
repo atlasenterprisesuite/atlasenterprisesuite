@@ -128,7 +128,7 @@ jobs:
 
           if [ "$HTTP_STATUS" = "200" ] && \
              [ "$AUTHORIZED_OK" = "true" ] && \
-             [ "$AUTHORIZED_VERIFIER_VERSION" = "18" ] && \
+             [ "$AUTHORIZED_VERIFIER_VERSION" = "19" ] && \
              [ "$TARGET_SHA" = "$GITHUB_SHA" ] && \
              [ "$HOME_OK" = "true" ] && \
              [ "$SUITE_OK" = "true" ] && \
