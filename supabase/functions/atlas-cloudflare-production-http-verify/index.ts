@@ -367,6 +367,7 @@ Deno.serve(async (req: Request) => {
       ok: verified,
       status: verified ? 'passed' : 'failed',
       verification_source: 'atlas-authorized-supabase-runtime',
+      verifier_version: VERSION,
       production_url: PRODUCTION_URL,
       target_sha: caller.claims.sha,
       observed_version_id: observedVersionId,
