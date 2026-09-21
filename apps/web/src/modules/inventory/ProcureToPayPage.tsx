@@ -352,7 +352,7 @@ export function ProcureToPayPage() {
                 <td>{vendorById.get(po.vendor_id)?.name || 'Unknown vendor'}</td>
                 <td><span className={`status-pill ${po.status}`}>{po.status.replaceAll('_', ' ')}</span></td>
                 <td>{po.order_date}</td>
-                <td>{snapshot.purchaseOrderLines.filter((line) => line.purchase_order_id === po.id).length}</td>
+                <td>{(snapshot?.purchaseOrderLines || []).filter((line) => line.purchase_order_id === po.id).length}</td>
                 <td>{['draft', 'submitted'].includes(po.status) && <button className="secondary-action" type="button" disabled={working} onClick={() => void runMutation(() => approvePurchaseOrder(po.id), 'Purchase order approved for receiving.')}>Approve</button>}</td>
               </tr>
             ))}</tbody>
@@ -395,7 +395,7 @@ export function ProcureToPayPage() {
       <section className="workspace-card">
         <div className="detail-heading"><div><p className="eyebrow">4 · Three-way match</p><h2>Vendor invoice → Accounts Payable</h2></div></div>
         <form className="toolbar" onSubmit={handleMatch}>
-          <label className="field"><span>Packing-slip receipt</span><select value={matchReceiptId} onChange={(e) => { setMatchReceiptId(e.target.value); setInvoiceCosts({}); setInvoiceTaxes({}); }} required><option value="">Select receipt</option>{snapshot?.receipts.filter((receipt) => !snapshot.bills.some((bill) => bill.inventory_receipt_id === receipt.id && bill.status !== 'void')).map((receipt) => <option key={receipt.id} value={receipt.id}>{poById.get(receipt.purchase_order_id)?.po_number} · {receipt.packing_slip_number}</option>)}</select></label>
+          <label className="field"><span>Packing-slip receipt</span><select value={matchReceiptId} onChange={(e) => { setMatchReceiptId(e.target.value); setInvoiceCosts({}); setInvoiceTaxes({}); }} required><option value="">Select receipt</option>{snapshot?.receipts.filter((receipt) => !(snapshot?.bills || []).some((bill) => bill.inventory_receipt_id === receipt.id && bill.status !== 'void')).map((receipt) => <option key={receipt.id} value={receipt.id}>{poById.get(receipt.purchase_order_id)?.po_number} · {receipt.packing_slip_number}</option>)}</select></label>
           <label className="field"><span>Vendor invoice #</span><input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} required /></label>
           <label className="field"><span>Bill date</span><input type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)} required /></label>
           <label className="field"><span>Due date</span><input type="date" value={billDueDate} onChange={(e) => setBillDueDate(e.target.value)} /></label>
