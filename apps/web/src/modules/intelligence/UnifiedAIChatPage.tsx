@@ -591,11 +591,20 @@ export function UnifiedAIChatPage() {
                   disabled={busy || voice.transcriptionCapability !== 'ready'}
                   onClick={() => void toggleMicrophone()}
                 >
-                  <span aria-hidden="true">{voice.microphoneActive ? '■' : '⌕'}</span>
+                  {voice.microphoneActive ? (
+                    <span aria-hidden="true">■</span>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="9" y="3" width="6" height="12" rx="3" />
+                      <path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" />
+                    </svg>
+                  )}
                 </button>
 
                 <Link className="atlas-ai-voice-link" to="/voice" aria-label="Open ATLAS Voice">
-                  <span aria-hidden="true">≋</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 14v-4M8 18V6M12 21V3M16 18V6M20 14v-4" />
+                  </svg>
                 </Link>
 
                 <button
