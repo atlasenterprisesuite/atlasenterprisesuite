@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadFinanceControlCenter, type FinanceControlCenterSnapshot } from '../../lib/financeApi';
 
@@ -22,7 +22,7 @@ function capabilityValue(available: boolean, value: string) {
 
 export function FinanceControlCenterPanel() {
   const [snapshot, setSnapshot] = useState<FinanceControlCenterSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   async function refresh() {
@@ -37,10 +37,6 @@ export function FinanceControlCenterPanel() {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
 
   const derived = useMemo(() => {
     if (!snapshot) return null;
@@ -111,19 +107,19 @@ export function FinanceControlCenterPanel() {
           </div>
 
           <div className="module-experience-grid" aria-label="Finance capability readiness">
-            <Link className="module-experience-card is-active" to="/finance/accounting/accounts-payable">
+            <Link className="module-experience-card is-active" to="/finance/accounting/accounts-payable" aria-label="Open AP workspace">
               <span className="module-experience-card-label">Payables</span>
               <strong>Accounts Payable</strong>
               <p>Vendor obligations, three-way match state, approvals and open balances.</p>
               <span className="module-experience-card-action">Open AP ↗</span>
             </Link>
-            <Link className="module-experience-card is-active" to="/finance/accounting/accounts-receivable">
+            <Link className="module-experience-card is-active" to="/finance/accounting/accounts-receivable" aria-label="Open AR workspace">
               <span className="module-experience-card-label">Receivables</span>
               <strong>Accounts Receivable</strong>
               <p>Customer invoicing, collections state, inventory issue and COGS posting.</p>
               <span className="module-experience-card-action">Open AR ↗</span>
             </Link>
-            <Link className="module-experience-card is-active" to="/inventory/procure-to-pay">
+            <Link className="module-experience-card is-active" to="/inventory/procure-to-pay" aria-label="Open procure-to-pay workspace">
               <span className="module-experience-card-label">Inventory · AP</span>
               <strong>Procure to Pay</strong>
               <p>PO receiving, packing-slip evidence, three-way match, costing and margin pricing.</p>
@@ -157,7 +153,7 @@ export function FinanceControlCenterPanel() {
                   : 'Unavailable'}
               </small>
             </article>
-            <Link className="module-experience-card is-active" to="/finance/accounting/reports/automotive-sales">
+            <Link className="module-experience-card is-active" to="/finance/accounting/reports/automotive-sales" aria-label="Open automotive finance report">
               <span className="module-experience-card-label">Reporting</span>
               <strong>Automotive Sales</strong>
               <p>Departmental financial reporting across vehicle, F&I, fixed ops, inventory and floorplan.</p>
@@ -174,7 +170,12 @@ export function FinanceControlCenterPanel() {
           <strong>Loading Finance Control Center…</strong>
           <span>Reading the active organization through the existing ATLAS session and Supabase RLS.</span>
         </div>
-      ) : null}
+      ) : (
+        <div className="empty-state" role="status">
+          <strong>Live Finance snapshot ready to load</strong>
+          <span>Use Refresh finance to read the active organization. No financial totals are requested until you explicitly open the live snapshot.</span>
+        </div>
+      )}
     </section>
   );
 }

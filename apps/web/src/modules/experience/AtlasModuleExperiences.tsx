@@ -188,12 +188,7 @@ export function FinanceExperiencePage() {
       title="Finance"
       description="Governed financial operations inside the shared ATLAS organization and permission model."
       narrative="Finance intelligence, execution and control."
-      actions={[
-        { label: 'Open Accounting', to: '/finance/accounting' },
-        { label: 'Accounts Payable', to: '/finance/accounting/accounts-payable', variant: 'secondary' },
-        { label: 'Accounts Receivable', to: '/finance/accounting/accounts-receivable', variant: 'secondary' },
-        { label: 'Procure to Pay', to: '/inventory/procure-to-pay', variant: 'secondary' }
-      ]}
+      actions={[{ label: 'Open Accounting', to: '/finance/accounting' }]}
       sections={financeSections}
       statusNote="Finance totals and readiness state are shown only when they come from the authenticated organization through Supabase RLS. External banking and payment execution remain fail-closed until the organization authorizes and verifies those providers."
     >
