@@ -29,14 +29,14 @@ jobs:
           PUBLIC_NS="$(dig +short NS "$DOMAIN" @1.1.1.1 | sed 's/\.$//' | sort)"
           ZONE_JSON="$(curl --silent --show-error --max-time 20             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN&status=active")"
           CF_NS="$(printf '%s' "$ZONE_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);const z=(j.result||[])[0]||{};for(const n of (z.name_servers||[]).sort())console.log(n)})")"
-          echo "Public NS:" >> "$GITHUB_STEP_SUMMARY"
-          printf '%s\n' "$PUBLIC_NS" >> "$GITHUB_STEP_SUMMARY"
-          echo "Cloudflare assigned NS:" >> "$GITHUB_STEP_SUMMARY"
-          printf '%s\n' "$CF_NS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Public NS:" | tee -a "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$PUBLIC_NS" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Cloudflare assigned NS:" | tee -a "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$CF_NS" | tee -a "$GITHUB_STEP_SUMMARY"
           if [ "$PUBLIC_NS" = "$CF_NS" ]; then
-            echo "Delegation match: true" >> "$GITHUB_STEP_SUMMARY"
+            echo "Delegation match: true" | tee -a "$GITHUB_STEP_SUMMARY"
           else
-            echo "Delegation match: false" >> "$GITHUB_STEP_SUMMARY"
+            echo "Delegation match: false" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Compare TXT across resolvers
@@ -46,5 +46,5 @@ jobs:
             OUT="$(dig +short TXT "$DOMAIN" @"$R" | tr -d '"' || true)"
             COUNT="$(printf '%s\n' "$OUT" | grep -c '^openai-domain-verification=' || true)"
             EXACT="$(printf '%s\n' "$OUT" | grep -Fx -c "$EXPECTED" || true)"
-            echo "$R openai_count=$COUNT exact_count=$EXACT" >> "$GITHUB_STEP_SUMMARY"
+            echo "$R openai_count=$COUNT exact_count=$EXACT" | tee -a "$GITHUB_STEP_SUMMARY"
           done
