@@ -8,6 +8,7 @@ const items = [
   { to: '/work/history', label: 'History' },
   { to: '/work/templates', label: 'Templates' },
   { to: '/work/connections', label: 'Connections' },
+  { to: '/work/computer-operations', label: 'Computer' },
   { to: '/work/runtimes', label: 'Runtimes' },
   { to: '/work/policies', label: 'Policies' },
   { to: '/work/team', label: 'Team' }
