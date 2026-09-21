@@ -5,6 +5,7 @@ describe('ATLAS Assistant route context', () => {
   it.each([
     ['/finance/accounting/accounts-payable', 'finance.accounting.accounts-payable'],
     ['/finance/accounting/accounts-receivable', 'finance.accounting.accounts-receivable'],
+    ['/inventory/procure-to-pay', 'inventory.procure-to-pay'],
     ['/business/network', 'business.network'],
     ['/business', 'business'],
     ['/revenue', 'revenue'],
