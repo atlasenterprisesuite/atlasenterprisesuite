@@ -188,20 +188,64 @@ export async function getProcureToPaySnapshot(): Promise<ProcureToPaySnapshot> {
 
 export async function createPurchasingVendor(input: { vendorCode: string; name: string; paymentTerms?: string }) {
   const organization = await getActiveAtlasOrganization();
-  const response = await authorizedAtlasFetch('/rest/v1/purchasing_vendors?select=id,org_id,vendor_code,name,payment_terms,status', {
+  const vendorCode = requiredText(input.vendorCode, 'vendor_code');
+  const response = await authorizedAtlasFetch(
+    '/rest/v1/purchasing_vendors?on_conflict=org_id,vendor_code&select=id,org_id,vendor_code,name,payment_terms,status',
+    {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({
+        org_id: organization.id,
+        vendor_code: vendorCode,
+        name: requiredText(input.name, 'vendor_name'),
+        payment_terms: input.paymentTerms?.trim() || null,
+        status: 'active'
+      })
+    }
+  );
+  const rows = await parseResponse<PurchasingVendor[]>(response);
+  if (!rows[0]) throw new Error('vendor_save_failed');
+  return rows[0];
+}
+
+export async function saveVendorW9Profile(input: {
+  vendorId: string;
+  legalName: string;
+  businessName?: string;
+  federalTaxClassification: string;
+  llcTaxClassification?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  taxIdType: 'ein' | 'ssn';
+  taxId: string;
+  w9SignedDate?: string;
+  w9SourceFilename?: string;
+}) {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/upsert_vendor_w9_profile_v1', {
     method: 'POST',
-    headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
-      org_id: organization.id,
-      vendor_code: requiredText(input.vendorCode, 'vendor_code'),
-      name: requiredText(input.name, 'vendor_name'),
-      payment_terms: input.paymentTerms?.trim() || null,
-      status: 'active'
+      p_org_id: organization.id,
+      p_vendor_id: requiredText(input.vendorId, 'vendor'),
+      p_legal_name: requiredText(input.legalName, 'w9_legal_name'),
+      p_business_name: input.businessName?.trim() || null,
+      p_federal_tax_classification: requiredText(input.federalTaxClassification, 'w9_tax_classification'),
+      p_llc_tax_classification: input.llcTaxClassification?.trim() || null,
+      p_address_line1: requiredText(input.addressLine1, 'w9_address'),
+      p_address_line2: input.addressLine2?.trim() || null,
+      p_city: requiredText(input.city, 'w9_city'),
+      p_state: requiredText(input.state, 'w9_state').toUpperCase(),
+      p_postal_code: requiredText(input.postalCode, 'w9_postal_code'),
+      p_tax_id_type: input.taxIdType,
+      p_tax_id: requiredText(input.taxId, 'w9_tax_id'),
+      p_w9_signed_date: input.w9SignedDate || null,
+      p_w9_source_filename: input.w9SourceFilename?.trim() || null
     })
   });
-  const rows = await parseResponse<PurchasingVendor[]>(response);
-  if (!rows[0]) throw new Error('vendor_create_failed');
-  return rows[0];
+  return parseResponse<Record<string, unknown>>(response);
 }
 
 export async function createInventoryItem(input: { sku: string; name: string; unit?: string }) {

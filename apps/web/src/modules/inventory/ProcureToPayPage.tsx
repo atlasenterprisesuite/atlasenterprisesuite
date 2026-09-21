@@ -10,11 +10,13 @@ import {
   getProcureToPaySnapshot,
   receivePurchaseOrder,
   registerMatchedApBill,
+  saveVendorW9Profile,
   setProductMargin,
   suggestPoNumber,
   type ProcureToPaySnapshot
 } from '../../lib/procureToPayApi';
 import { ATLAS_SESSION_EVENT } from '../../lib/atlasSession';
+import { extractW9FromImage, suggestVendorCode, type W9TaxClassification } from '../../lib/w9Intake';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -34,6 +36,21 @@ export function ProcureToPayPage() {
   const [vendorCode, setVendorCode] = useState('');
   const [vendorName, setVendorName] = useState('');
   const [vendorTerms, setVendorTerms] = useState('');
+
+  const [w9FileName, setW9FileName] = useState('');
+  const [w9LegalName, setW9LegalName] = useState('');
+  const [w9BusinessName, setW9BusinessName] = useState('');
+  const [w9Classification, setW9Classification] = useState<W9TaxClassification | ''>('');
+  const [w9LlcClassification, setW9LlcClassification] = useState<'C' | 'S' | 'P' | ''>('');
+  const [w9AddressLine1, setW9AddressLine1] = useState('');
+  const [w9AddressLine2, setW9AddressLine2] = useState('');
+  const [w9City, setW9City] = useState('');
+  const [w9State, setW9State] = useState('');
+  const [w9PostalCode, setW9PostalCode] = useState('');
+  const [w9TaxIdType, setW9TaxIdType] = useState<'ein' | 'ssn' | 'unknown'>('unknown');
+  const [w9TaxId, setW9TaxId] = useState('');
+  const [w9TaxIdLast4, setW9TaxIdLast4] = useState('');
+  const [w9SignedDate, setW9SignedDate] = useState('');
 
   const [itemSku, setItemSku] = useState('');
   const [itemName, setItemName] = useState('');
@@ -163,6 +180,94 @@ export function ProcureToPayPage() {
       setVendorTerms('');
       setPoVendorId(created.id);
     }, 'Vendor created for purchasing.');
+  }
+
+  async function handleW9File(file: File | undefined) {
+    if (!file) return;
+    setWorking(true);
+    setError('');
+    setSuccess('');
+    setW9FileName(file.name);
+    try {
+      if (!file.type.startsWith('image/')) throw new Error('w9_image_required');
+      if (file.size > 8_000_000) throw new Error('w9_image_too_large');
+      const parsed = await extractW9FromImage(file);
+      setW9LegalName(parsed.legalName);
+      setW9BusinessName(parsed.businessName);
+      setW9Classification(parsed.classification);
+      setW9LlcClassification(parsed.llcTaxClassification);
+      setW9AddressLine1(parsed.addressLine1);
+      setW9AddressLine2(parsed.addressLine2);
+      setW9City(parsed.city);
+      setW9State(parsed.state);
+      setW9PostalCode(parsed.postalCode);
+      setW9TaxIdType(parsed.taxIdType);
+      setW9TaxId(parsed.taxId);
+      setW9TaxIdLast4(parsed.taxIdLast4);
+      const displayName = parsed.businessName || parsed.legalName;
+      if (displayName) {
+        setVendorName(displayName);
+        setVendorCode((current) => current || suggestVendorCode(displayName));
+      }
+      setSuccess(parsed.classification
+        ? 'W-9 text extracted locally. Review every field before saving.'
+        : 'W-9 text extracted locally. Tax classification could not be proven from the image, so manual review is required.');
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : 'w9_read_failed';
+      setError(code === 'w9_ocr_not_supported'
+        ? 'This browser does not expose local image OCR. ATLAS will not guess W-9 data; use a supported browser/device or enter the fields manually.'
+        : friendlyError(cause));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleW9Save(event: FormEvent) {
+    event.preventDefault();
+    if (!w9Classification) {
+      setError('W-9 tax classification must be reviewed before saving.');
+      return;
+    }
+    if (w9Classification === 'llc' && !w9LlcClassification) {
+      setError('LLC tax classification C, S, or P is required.');
+      return;
+    }
+    if (w9TaxIdType === 'unknown') {
+      setError('TIN type must be reviewed as EIN or SSN before saving.');
+      return;
+    }
+    if (w9TaxId.replace(/\D/g, '').length !== 9) {
+      setError('A complete 9-digit TIN is required before saving the reviewed W-9.');
+      return;
+    }
+    await runMutation(async () => {
+      const displayName = vendorName.trim() || w9BusinessName.trim() || w9LegalName.trim();
+      const code = vendorCode.trim() || suggestVendorCode(displayName);
+      const vendor = await createPurchasingVendor({
+        vendorCode: code,
+        name: displayName,
+        paymentTerms: vendorTerms
+      });
+      setVendorCode(code);
+      setVendorName(displayName);
+      setPoVendorId(vendor.id);
+      await saveVendorW9Profile({
+        vendorId: vendor.id,
+        legalName: w9LegalName,
+        businessName: w9BusinessName,
+        federalTaxClassification: w9Classification,
+        llcTaxClassification: w9Classification === 'llc' ? w9LlcClassification : undefined,
+        addressLine1: w9AddressLine1,
+        addressLine2: w9AddressLine2,
+        city: w9City,
+        state: w9State,
+        postalCode: w9PostalCode,
+        taxIdType: w9TaxIdType,
+        taxId: w9TaxId,
+        w9SignedDate,
+        w9SourceFilename: w9FileName
+      });
+    }, 'W-9 vendor profile saved. Business address was normalized for Purchasing/Tax, the full TIN was encrypted in Supabase Vault, and 1099 reportability remains review-required.');
   }
 
   async function handleItem(event: FormEvent) {
@@ -312,12 +417,44 @@ export function ProcureToPayPage() {
 
       <section className="workspace-card">
         <div className="detail-heading"><div><p className="eyebrow">1 · Master data</p><h2>Vendor, item and warehouse</h2></div></div>
+        <div className="notice">
+          W-9 intake is source-aware: ATLAS extracts image text locally when the device supports it, requires human review, keeps the TIN memory-only until save, encrypts the full TIN in Supabase Vault, exposes only the last four digits to normal workflows, and does not treat a W-9 as a filed 1099.
+        </div>
+        <form className="toolbar" onSubmit={handleW9Save}>
+          <label className="field wide-field"><span>W-9 photo</span><input type="file" accept="image/*" capture="environment" onChange={(e) => void handleW9File(e.target.files?.[0])} /></label>
+          <label className="field"><span>Legal name</span><input value={w9LegalName} onChange={(e) => setW9LegalName(e.target.value)} required /></label>
+          <label className="field"><span>Business / DBA</span><input value={w9BusinessName} onChange={(e) => setW9BusinessName(e.target.value)} /></label>
+          <label className="field"><span>Federal tax classification</span><select value={w9Classification} onChange={(e) => setW9Classification(e.target.value as W9TaxClassification | '')} required>
+            <option value="">Review classification</option>
+            <option value="individual_sole_proprietor">Individual / sole proprietor</option>
+            <option value="c_corporation">C corporation</option>
+            <option value="s_corporation">S corporation</option>
+            <option value="partnership">Partnership</option>
+            <option value="trust_estate">Trust / estate</option>
+            <option value="llc">LLC</option>
+            <option value="other">Other</option>
+          </select></label>
+          {w9Classification === 'llc' && <label className="field"><span>LLC tax class</span><select value={w9LlcClassification} onChange={(e) => setW9LlcClassification(e.target.value as 'C' | 'S' | 'P' | '')} required><option value="">Select C / S / P</option><option value="C">C</option><option value="S">S</option><option value="P">P</option></select></label>}
+          <label className="field wide-field"><span>Business address</span><input value={w9AddressLine1} onChange={(e) => setW9AddressLine1(e.target.value)} required /></label>
+          <label className="field"><span>Suite / unit</span><input value={w9AddressLine2} onChange={(e) => setW9AddressLine2(e.target.value)} /></label>
+          <label className="field"><span>City</span><input value={w9City} onChange={(e) => setW9City(e.target.value)} required /></label>
+          <label className="field"><span>State</span><input value={w9State} onChange={(e) => setW9State(e.target.value.toUpperCase())} maxLength={2} required /></label>
+          <label className="field"><span>ZIP</span><input value={w9PostalCode} onChange={(e) => setW9PostalCode(e.target.value)} required /></label>
+          <label className="field"><span>TIN type</span><select value={w9TaxIdType} onChange={(e) => setW9TaxIdType(e.target.value as 'ein' | 'ssn' | 'unknown')} required><option value="unknown">Review EIN / SSN</option><option value="ein">EIN</option><option value="ssn">SSN</option></select></label>
+          <label className="field"><span>TIN · encrypted on save</span><input type="password" inputMode="numeric" autoComplete="off" value={w9TaxId} onChange={(e) => { const value = e.target.value.replace(/[^0-9-]/g, '').slice(0, 11); setW9TaxId(value); setW9TaxIdLast4(value.replace(/\D/g, '').slice(-4)); }} required /></label>
+          <label className="field"><span>TIN verification</span><input value={w9TaxIdLast4 ? 'Ending •••• ' + w9TaxIdLast4 : 'Not detected'} readOnly aria-label="TIN last four digits" /></label>
+          <label className="field"><span>W-9 signed date</span><input type="date" value={w9SignedDate} onChange={(e) => setW9SignedDate(e.target.value)} /></label>
+          <button className="primary-action" disabled={working || !w9LegalName || !w9Classification || !w9AddressLine1 || !w9City || !w9State || !w9PostalCode || w9TaxIdType === 'unknown' || w9TaxId.replace(/\D/g, '').length !== 9}>Review & save W-9 vendor</button>
+        </form>
+        <div className="notice strong">
+          1099 handling stays fail-closed: the W-9 creates the vendor tax profile and address record, but ATLAS will not mark a vendor reportable or generate 1099-NEC/1099-MISC until payment facts and the applicable tax rules are evaluated.
+        </div>
         <div className="module-grid">
           <form className="toolbar" onSubmit={handleVendor}>
             <label className="field"><span>Vendor code</span><input value={vendorCode} onChange={(e) => setVendorCode(e.target.value)} required /></label>
             <label className="field"><span>Vendor name</span><input value={vendorName} onChange={(e) => setVendorName(e.target.value)} required /></label>
             <label className="field"><span>Payment terms</span><input value={vendorTerms} onChange={(e) => setVendorTerms(e.target.value)} placeholder="Net 30" /></label>
-            <button className="primary-action" disabled={working}>Create vendor</button>
+            <button className="primary-action" disabled={working}>Save vendor</button>
           </form>
           <form className="toolbar" onSubmit={handleItem}>
             <label className="field"><span>SKU</span><input value={itemSku} onChange={(e) => setItemSku(e.target.value)} required /></label>
