@@ -139,7 +139,8 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     render(<MemoryRouter><AtlasAssistant /></MemoryRouter>);
     const launcher = await screen.findByRole('button', { name: /Intelligence configuration required/i });
     fireEvent.click(launcher);
-    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
+    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Speak to ATLAS' })).toBeDisabled();
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
   });
