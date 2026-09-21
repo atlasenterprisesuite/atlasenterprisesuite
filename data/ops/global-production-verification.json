@@ -1,5 +1,5 @@
 {
-  "version": 9,
+  "version": 10,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -8,6 +8,7 @@
     "/identity?app=%2Ffinance",
     "/finance",
     "/finance/accounting/reports/automotive-sales",
+    "/finance/accounting/accounts-receivable",
     "/voice",
     "/health",
     "/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel",
