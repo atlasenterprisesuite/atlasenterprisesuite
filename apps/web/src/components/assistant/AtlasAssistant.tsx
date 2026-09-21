@@ -8,6 +8,7 @@ import {
   type AssistantStatusResponse
 } from '../../assistant/client';
 import { enqueueAssistantRepair, getAssistantRepairs, type AssistantRepairJob } from '../../assistant/repairClient';
+import { assistantElementLabel, startAssistantElementPicker, type AssistantElementContext } from '../../assistant/elementContext';
 import { resolveAssistantModule } from '../../assistant/routeContext';
 import { markGreetingSeen, readGreetingSeen } from '../../assistant/storage';
 import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
@@ -104,7 +105,10 @@ export function AtlasAssistant() {
   const [messages, setMessages] = useState<AtlasAssistantMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [repairSummary, setRepairSummary] = useState<RepairSummary>({ active: 0, failed: 0, completed: 0, total: 0 });
+  const [selectedElement, setSelectedElement] = useState<AssistantElementContext | null>(null);
+  const [selectingElement, setSelectingElement] = useState(false);
   const sequence = useRef(0);
+  const pickerCleanup = useRef<null | (() => void)>(null);
   const greetingSpoken = useRef(false);
   const moduleName = useMemo(() => resolveAssistantModule(location.pathname), [location.pathname]);
   const voice = useAssistantVoice();
@@ -171,6 +175,17 @@ export function AtlasAssistant() {
   }, [refreshAuthorization]);
 
   useEffect(() => {
+    return () => pickerCleanup.current?.();
+  }, []);
+
+  useEffect(() => {
+    pickerCleanup.current?.();
+    pickerCleanup.current = null;
+    setSelectingElement(false);
+    setSelectedElement(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
     if (!authorized || textCapability === 'ready' || textCapability === 'permission-required') return;
     const timer = window.setInterval(() => {
       void refreshProviderStatus().catch(() => void refreshAuthorization());
@@ -208,7 +223,7 @@ export function AtlasAssistant() {
 
   if (!authorized) return null;
 
-  async function submit(message: string, modality: 'text' | 'voice' = 'text') {
+  async function submit(message: string, modality: 'text' | 'voice' = 'text', includeSelected = true) {
     if (textCapability !== 'ready') {
       setError(providerError || 'ATLAS Intelligence is not ready for requests.');
       setState('error');
@@ -224,7 +239,8 @@ export function AtlasAssistant() {
         message,
         pathname: location.pathname,
         conversationId,
-        modality
+        modality,
+        elementContext: includeSelected ? selectedElement : null
       });
       if (response.conversation_id) setConversationId(response.conversation_id);
       setMessages((current) => [...current, {
@@ -256,7 +272,7 @@ export function AtlasAssistant() {
     }
   }
 
-  async function queueRepair(message: string) {
+  async function queueRepair(message: string, includeSelected = true) {
     if (voice.microphoneActive) voice.stopMicrophone();
     setError('');
     setState('thinking');
@@ -266,13 +282,14 @@ export function AtlasAssistant() {
       const response = await enqueueAssistantRepair({
         message,
         pathname: location.pathname,
-        conversationId
+        conversationId,
+        elementContext: includeSelected ? selectedElement : null
       });
       const jobId = response.job?.id ? ` ${response.job.id}` : '';
       setMessages((current) => [...current, {
         id: nextId('assistant'),
         role: 'assistant',
-        text: `Repair task${jobId} queued securely. ATLAS attached this route and safe structural screen context to the governed repair path.`
+        text: `Repair task${jobId} queued securely. ATLAS attached this route${includeSelected && selectedElement ? ' plus the selected element fingerprint' : ' and safe structural screen context'} to the governed repair path.`
       }]);
       void refreshRepairSummary();
       setState('idle');
@@ -312,6 +329,35 @@ export function AtlasAssistant() {
       setState('error');
       if (identityFailure(cause)) void refreshAuthorization();
     }
+  }
+
+  function beginElementSelection() {
+    pickerCleanup.current?.();
+    setError('');
+    setSelectingElement(true);
+    pickerCleanup.current = startAssistantElementPicker({
+      onSelect: (context) => {
+        pickerCleanup.current = null;
+        setSelectedElement(context);
+        setSelectingElement(false);
+        setMessages((current) => [...current, {
+          id: nextId('assistant'),
+          role: 'assistant',
+          text: `Selected element: ${assistantElementLabel(context)}. Only structural metadata was captured; values and cell contents were excluded.`
+        }]);
+      },
+      onCancel: () => {
+        pickerCleanup.current = null;
+        setSelectingElement(false);
+      }
+    });
+  }
+
+  function clearSelectedElement() {
+    pickerCleanup.current?.();
+    pickerCleanup.current = null;
+    setSelectingElement(false);
+    setSelectedElement(null);
   }
 
   async function toggleMicrophone() {
@@ -365,6 +411,9 @@ export function AtlasAssistant() {
   function closeAssistant() {
     voice.stopMicrophone();
     voice.stopSpeech();
+    pickerCleanup.current?.();
+    pickerCleanup.current = null;
+    setSelectingElement(false);
     setOpen(false);
     setState('closed');
     setError('');
@@ -381,15 +430,19 @@ export function AtlasAssistant() {
           textCapability={textCapability}
           providerLabel={providerLabel}
           repairSummary={repairSummary}
+          selectedElementLabel={selectedElement ? assistantElementLabel(selectedElement) : null}
+          selectingElement={selectingElement}
           microphoneCapability={voice.microphoneCapability}
           transcriptionCapability={voice.transcriptionCapability}
           microphoneActive={voice.microphoneActive}
           speechCapability={voice.speechCapability}
           speechEnabled={voice.speechEnabled}
           onClose={closeAssistant}
-          onSubmit={submit}
+          onSubmit={(message, includeSelected = true) => submit(message, 'text', includeSelected)}
           onRepair={queueRepair}
           onShowRepairs={showRepairQueue}
+          onSelectElement={beginElementSelection}
+          onClearElement={clearSelectedElement}
           onToggleMicrophone={toggleMicrophone}
           onSpeechPreference={voice.setSpeechEnabled}
         />
