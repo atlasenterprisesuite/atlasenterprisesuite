@@ -221,6 +221,8 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     expect(screen.getByRole('button', { name: 'Check screen' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Repair this screen' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Repair queue' })).toBeEnabled();
+    await waitFor(() => expect(mocks.getAssistantRepairs).toHaveBeenCalled());
+    expect(await screen.findByText('Repairs · 1 active · 0 failed')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Explain screen' }));
     await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({
@@ -234,8 +236,9 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       message: expect.stringContaining('Inspect and repair verified defects on the current ATLAS screen')
     })));
 
+    const repairStatusCalls = mocks.getAssistantRepairs.mock.calls.length;
     fireEvent.click(screen.getByRole('button', { name: 'Repair queue' }));
-    await waitFor(() => expect(mocks.getAssistantRepairs).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.getAssistantRepairs.mock.calls.length).toBeGreaterThan(repairStatusCalls));
     expect(await screen.findByText(/Recent repair tasks:/)).toBeInTheDocument();
     expect(screen.getByText(/PENDING — Fix mobile approval controls · repair-1/)).toBeInTheDocument();
   });
