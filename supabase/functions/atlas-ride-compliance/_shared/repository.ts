@@ -156,6 +156,19 @@ export async function getProfilePhotoRequirement(ctx: RideComplianceContext): Pr
   return data?.[0] ? mapRequirement(data[0]) : null;
 }
 
+export async function listRideRequirements(ctx: RideComplianceContext): Promise<ComplianceRequirement[]> {
+  const { data, error } = await ctx.storageAdmin
+    .from('compliance_requirements')
+    .select(REQUIREMENT_SELECT)
+    .eq('organization_id', ctx.organizationId)
+    .eq('tenant_id', ctx.tenantId)
+    .eq('subject_user_id', ctx.userId)
+    .eq('module', 'ride')
+    .order('requested_at', { ascending: false });
+  if (error) throw new Error('internal_error');
+  return (data || []).map(mapRequirement);
+}
+
 export async function listTimeline(
   ctx: RideComplianceContext,
   requirementId: string
