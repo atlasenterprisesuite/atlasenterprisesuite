@@ -26,6 +26,7 @@ describe('ATLAS global production verification', () => {
     expect(contract.public_routes).toEqual([
       '/',
       '/suite',
+      '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
       '/finance',
       '/finance/accounting/reports/automotive-sales',
@@ -165,6 +166,8 @@ describe('ATLAS global production verification', () => {
     }
 
     expect(authorizedVerifier).toContain("'/suite'");
+    expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
+    expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
     expect(authorizedVerifier).toContain('suite_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
