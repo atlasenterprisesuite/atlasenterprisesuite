@@ -28,10 +28,12 @@ describe('ATLAS Assistant element context', () => {
       tag: 'input',
       id: 'vendor-email',
       name: 'vendorEmail',
-      label: 'Vendor email',
-      placeholder: 'name@example.com'
+      label: null,
+      placeholder: null
     });
     expect(serialized).not.toContain('secret@vendor.com');
+    expect(serialized).not.toContain('Vendor email');
+    expect(serialized).not.toContain('name@example.com');
     expect(serialized).not.toContain('Private Vendor');
     expect(serialized).not.toContain('$250,000');
     expect(assistantElementLabel(context)).toBe('vendor-email');
