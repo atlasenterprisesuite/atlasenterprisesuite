@@ -210,7 +210,8 @@ export async function listAdvisoryLaunchIntakes(): Promise<AdvisoryLaunchIntakeR
   const rows = await parseJson<any[]>(response);
   return rows.map((row) => ({
     ...row,
-    quote_amount: row.quote_amount == null ? null : Number(row.quote_amount)
+    quote_amount: row.quote_amount == null ? null : Number(row.quote_amount),
+    quote_tax_rate: row.quote_tax_rate == null ? null : Number(row.quote_tax_rate)
   })) as AdvisoryLaunchIntakeRow[];
 }
 
