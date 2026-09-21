@@ -464,6 +464,7 @@ function LaunchPage() {
 
   return <AdvisoryLayout>
     <Status loading={workspace.loading} error={workspace.error} />
+    <LaunchCommercialPipeline onChanged={workspace.refresh} />
     <div className="stat-grid">
       <article><strong>{readiness.score}</strong><span>Launch Readiness / 100</span></article>
       <article><strong>{readiness.verified.length}</strong><span>verified dimensions</span></article>
