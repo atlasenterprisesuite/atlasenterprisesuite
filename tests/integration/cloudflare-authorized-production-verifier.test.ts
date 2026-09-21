@@ -33,6 +33,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain("'/deployment.json'");
     expect(verifier).toContain("[302, 401, 403].includes(deployment.status)");
     expect(verifier).toContain("verification_source: 'atlas-authorized-supabase-runtime'");
+    expect(verifier).toContain('verifier_version: VERSION');
   });
 
   it('returns observed Cloudflare version metadata without exposing the protected manifest path', () => {
@@ -47,6 +48,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('audience=atlas-production-http-verifier');
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
+    expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
+    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "16" ]');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');
