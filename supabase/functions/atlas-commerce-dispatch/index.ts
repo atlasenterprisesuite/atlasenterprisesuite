@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import { canDisplayEvidenceBackedState } from '../../../packages/core/src/evidence.ts';
 import {
   CommerceIntegrationError,
   createDefaultCommerceIntegrationAdapters,
@@ -208,13 +209,28 @@ async function dispatch() {
           : {}
       });
 
+      const evidenceAllowed = canDisplayEvidenceBackedState({
+        state: 'fulfilled',
+        evidence: result.evidence
+      });
+      if (
+        !evidenceAllowed ||
+        !result.adapterReference?.trim() ||
+        result.adapterReference !== result.evidence.reference
+      ) {
+        throw new CommerceIntegrationError(
+          'AUTHENTICATED_EVIDENCE_REQUIRED',
+          false
+        );
+      }
+
       const { error: updateError } = await admin
         .from('commerce_integration_deliveries')
         .update({
           status: 'fulfilled',
           reason_code: null,
-          adapter_reference: result.adapterReference,
-          delivered_at: new Date().toISOString(),
+          adapter_reference: result.evidence.reference,
+          delivered_at: result.evidence.observedAt,
           updated_at: new Date().toISOString()
         })
         .eq('id', delivery.id)
