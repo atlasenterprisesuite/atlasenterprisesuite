@@ -10,8 +10,11 @@ on:
       - 'apps/web/src/modules/registry.ts'
       - 'packages/core/src/permissions.ts'
       - 'supabase/migrations/*advisory*'
+      - 'supabase/migrations/*business_launch_360*'
+      - 'supabase/functions/atlas-advisory-public/**'
       - 'tests/unit/advisory-office.test.ts'
       - 'tests/integration/advisory-*.test.ts'
+      - 'tests/integration/business-launch-360-commercial.test.ts'
       - 'tests/integration/root-router-sanity.test.ts'
       - '.github/workflows/advisory-office-ci.yml'
   workflow_dispatch:
@@ -26,5 +29,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npx vitest run tests/unit/advisory-office.test.ts tests/integration/advisory-office-routes.test.ts tests/integration/advisory-office-persistence.test.ts tests/integration/advisory-firm-scope-rls.test.ts tests/integration/root-router-sanity.test.ts
+      - run: npx vitest run tests/unit/advisory-office.test.ts tests/integration/advisory-office-routes.test.ts tests/integration/advisory-office-persistence.test.ts tests/integration/advisory-firm-scope-rls.test.ts tests/integration/business-launch-360-commercial.test.ts tests/integration/root-router-sanity.test.ts
       - run: npm run build
