@@ -53,7 +53,7 @@ it('shows a route blocker as an execution prerequisite rather than a policy deni
   );
 
   expect(screen.getByText('Not evaluated — execution route unavailable')).toBeInTheDocument();
-  expect(screen.getByText('Openai authorized session missing')).toBeInTheDocument();
+  expect(screen.getByText('Openai Authorized Session Missing')).toBeInTheDocument();
   expect(screen.getByText('Connect an authorized OpenAI/ChatGPT session before ATLAS retries this step.')).toBeInTheDocument();
   expect(screen.queryByText('Blocked by policy')).not.toBeInTheDocument();
 });
