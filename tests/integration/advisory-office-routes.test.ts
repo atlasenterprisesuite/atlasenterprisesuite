@@ -23,6 +23,7 @@ describe('Advisory Office canonical integration', () => {
     const page = readFileSync(resolve(root, 'apps/web/src/modules/advisory/AdvisoryRoutes.tsx'), 'utf8');
     expect(page).toMatch(/No demo clients are seeded|No clients yet/);
     expect(page).toContain('Authorization required');
-    expect(page).toMatch(/not connected until real provider authorization is verified/i);
+    expect(page).toMatch(/authorization and provider verification are tracked separately/i);
+    expect(page).toMatch(/Organizational authorization alone never creates a connected state/i);
   });
 });
