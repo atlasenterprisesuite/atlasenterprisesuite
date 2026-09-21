@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import {
   AW_FINANCE_FIRM,
   BUSINESS_LAUNCH_360,
@@ -21,6 +21,10 @@ import {
   type AdvisoryFirmRow,
   type AdvisoryLaunchEvidenceRow
 } from '../../lib/advisoryApi';
+import { listWorkflows } from '../../work/api';
+import { WorkQueue } from '../../work/WorkQueue';
+import type { WorkWorkflow } from '../../work/types';
+import { workflowsByView } from '../../work/view-model';
 import './advisory.css';
 
 const advisoryNav = [
@@ -54,7 +58,16 @@ function AdvisoryLayout({ children }: { children: React.ReactNode }) {
       <p>Firm #001 · Organization-scoped professional services operations.</p>
     </header>
     <nav className="advisory-nav" aria-label="Advisory Office">
-      {advisoryNav.map(([to,label]) => <Link key={to} to={to}>{label}</Link>)}
+      {advisoryNav.map(([to,label]) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/advisory'}
+          className={({ isActive }) => isActive ? 'active' : undefined}
+        >
+          {label}
+        </NavLink>
+      ))}
     </nav>
     {children}
   </section>;
@@ -263,6 +276,82 @@ function LaunchPage() {
   </AdvisoryLayout>;
 }
 
+function AdvisoryTasksPage() {
+  const [workflows,setWorkflows] = useState<WorkWorkflow[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await listWorkflows();
+        if (!cancelled) {
+          setWorkflows(result);
+          setError('');
+        }
+      } catch (cause) {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Unable to load ATLAS Work');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const active = useMemo(() => workflowsByView(workflows, 'active'), [workflows]);
+  const approvals = useMemo(() => workflowsByView(workflows, 'approvals'), [workflows]);
+  const recent = useMemo(() => workflowsByView(workflows, 'history').slice(0, 4), [workflows]);
+
+  return <AdvisoryLayout>
+    <section className="advisory-task-hero">
+      <div>
+        <p className="eyebrow">Canonical ATLAS Work</p>
+        <h2>Tasks</h2>
+        <p>Advisory reuses the organization-scoped ATLAS Work execution layer. No parallel task ledger is created.</p>
+      </div>
+      <div className="advisory-task-actions">
+        <Link className="action-link" to="/work/new">Create work</Link>
+        <Link className="action-link" to="/work">Open Work Command Center</Link>
+      </div>
+    </section>
+
+    <div className="stat-grid advisory-task-stats" aria-label="Advisory work summary">
+      <article><strong>{active.length}</strong><span>active work</span></article>
+      <article><strong>{approvals.length}</strong><span>awaiting approval</span></article>
+      <article><strong>{recent.length}</strong><span>recent completed</span></article>
+      <article><strong>{workflows.length}</strong><span>organization workflows</span></article>
+    </div>
+
+    {loading ? <div className="notice" role="status">Loading authenticated ATLAS Work…</div> : null}
+    {error ? <div className="notice strong" role="alert">ATLAS Work unavailable: {error}</div> : null}
+
+    {!loading && !error ? <div className="advisory-task-stack">
+      <section className="feature-card wide">
+        <div className="advisory-task-heading">
+          <div><p className="eyebrow">Execution queue</p><h3>Active work</h3></div>
+          <Link to="/work/active">View all active</Link>
+        </div>
+        <WorkQueue workflows={active.slice(0, 6)} emptyMessage="No active ATLAS Work workflows for this organization." />
+      </section>
+      <section className="feature-card wide">
+        <div className="advisory-task-heading">
+          <div><p className="eyebrow">Governance</p><h3>Awaiting approval</h3></div>
+          <Link to="/work/approvals">Open approvals</Link>
+        </div>
+        <WorkQueue workflows={approvals.slice(0, 4)} emptyMessage="No Work workflows are awaiting approval." />
+      </section>
+      <section className="feature-card wide">
+        <div className="advisory-task-heading">
+          <div><p className="eyebrow">Audit trail</p><h3>Recent completed work</h3></div>
+          <Link to="/work/history">View history</Link>
+        </div>
+        <WorkQueue workflows={recent} emptyMessage="No completed Work workflows yet." />
+      </section>
+    </div> : null}
+  </AdvisoryLayout>;
+}
+
 function BoundaryPage({ title, description }: { title: string; description: string }) {
   return <AdvisoryLayout><div className="feature-card wide"><p className="eyebrow">Governed boundary</p><h2>{title}</h2><p>{description}</p><div className="notice">No connected, approved, paid, signed, printed, shipped or fulfilled state is displayed without authenticated evidence.</div></div></AdvisoryLayout>;
 }
@@ -274,7 +363,7 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/clients" element={<ClientsPage />} />
     <Route path="/advisory/engagements" element={<EngagementsPage />} />
     <Route path="/advisory/business-launch-360" element={<LaunchPage />} />
-    <Route path="/advisory/tasks" element={<BoundaryPage title="Tasks" description="Task orchestration will reuse the canonical ATLAS execution/work layer rather than create a parallel task source of truth." />} />
+    <Route path="/advisory/tasks" element={<AdvisoryTasksPage />} />
     <Route path="/advisory/calendar" element={<BoundaryPage title="Calendar" description="Calendar events remain provider-gated until an authorized calendar connection is available for the active organization." />} />
     <Route path="/advisory/documents" element={<BoundaryPage title="Documents" description="Document metadata can be linked to engagements, but storage, signatures and provider delivery are not claimed as connected here." />} />
     <Route path="/advisory/billing" element={<Navigate to="/finance/accounting/accounts-receivable" replace />} />

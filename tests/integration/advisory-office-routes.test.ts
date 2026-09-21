@@ -19,6 +19,24 @@ describe('Advisory Office canonical integration', () => {
     expect(resolver).toContain('<RequireAtlasIdentity><AdvisoryRoutes /></RequireAtlasIdentity>');
   });
 
+  it('reuses canonical ATLAS Work for Advisory tasks instead of a placeholder ledger', () => {
+    const page = readFileSync(resolve(root, 'apps/web/src/modules/advisory/AdvisoryRoutes.tsx'), 'utf8');
+    expect(page).toContain("import { listWorkflows } from '../../work/api'");
+    expect(page).toContain("import { WorkQueue } from '../../work/WorkQueue'");
+    expect(page).toContain('<Route path="/advisory/tasks" element={<AdvisoryTasksPage />} />');
+    expect(page).toContain('Create work');
+    expect(page).toContain('Open Work Command Center');
+    expect(page).not.toContain('Task orchestration will reuse the canonical ATLAS execution/work layer');
+  });
+
+  it('keeps the Advisory tab bar usable on narrow mobile screens', () => {
+    const css = readFileSync(resolve(root, 'apps/web/src/modules/advisory/advisory.css'), 'utf8');
+    expect(css).toContain('overflow-x:auto');
+    expect(css).toContain('-webkit-overflow-scrolling:touch');
+    expect(css).toContain('flex:0 0 auto');
+    expect(css).toContain('.advisory-nav a.active');
+  });
+
   it('keeps persistence and provider execution truthfully gated in the UI', () => {
     const page = readFileSync(resolve(root, 'apps/web/src/modules/advisory/AdvisoryRoutes.tsx'), 'utf8');
     expect(page).toMatch(/No demo clients are seeded|No clients yet/);
