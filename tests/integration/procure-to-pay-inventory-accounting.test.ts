@@ -32,8 +32,13 @@ describe('ATLAS procure-to-pay inventory accounting contract', () => {
     expect(lifecycleSql).toContain('average_unit_cost');
     expect(lifecycleSql).toContain('target_margin_pct');
     expect(lifecycleSql).toContain('v_cost / (1 - p_target_margin_pct / 100)');
+    expect(lifecycleSql).toContain('unmatched_purchase_receipt_blocks_pricing');
+    expect(lifecycleSql).toContain('unmatched_purchase_receipt_blocks_sale');
     expect(procurePage).toContain('Target gross margin %');
+    expect(procurePage).toContain('Capitalized landed cost');
     expect(procureApi).toContain('/rest/v1/rpc/set_product_margin_v1');
+    expect(procureApi).toContain('/rest/v1/inventory_movements?org_id=');
+    expect(procureApi).toContain('const onHand = movements.reduce');
   });
 
   it('keeps product stock projected from the movement ledger', () => {
