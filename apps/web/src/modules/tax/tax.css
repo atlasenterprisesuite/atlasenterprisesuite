@@ -170,3 +170,218 @@
     justify-self: start;
   }
 }
+
+
+.tax-pro-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.tax-pro-toolbar,
+.tax-pro-summary {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tax-pro-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tax-pro-summary {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tax-pro-summary > div,
+.tax-pro-diagnostics article,
+.tax-pro-link-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  background: rgba(255,255,255,.02);
+}
+
+.tax-pro-summary small,
+.tax-pro-diagnostics small,
+.tax-pro-link-grid small {
+  opacity: .62;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.tax-pro-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 230px) minmax(0, 1fr) minmax(220px, 280px);
+  gap: 16px;
+  align-items: start;
+}
+
+.tax-stepper {
+  display: grid;
+  gap: 7px;
+  position: sticky;
+  top: 12px;
+}
+
+.tax-step {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255,255,255,.02);
+  color: inherit;
+}
+
+.tax-step > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.tax-step small {
+  opacity: .62;
+}
+
+.tax-step-number {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 50%;
+  font-size: .78rem;
+}
+
+.tax-step-current {
+  border-color: rgba(117,208,255,.65);
+  background: rgba(117,208,255,.08);
+}
+
+.tax-step-complete {
+  border-color: rgba(115,226,168,.4);
+}
+
+.tax-step-review {
+  border-color: rgba(255,202,100,.45);
+}
+
+.tax-step-blocked {
+  border-color: rgba(255,115,115,.5);
+}
+
+.tax-step-future {
+  opacity: .6;
+}
+
+.tax-pro-main {
+  display: grid;
+  gap: 16px;
+}
+
+.tax-pro-link-grid,
+.tax-pro-diagnostics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tax-pro-diagnostics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tax-pro-link-grid ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.tax-pro-entry-surface {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px dashed rgba(117,208,255,.28);
+  border-radius: 16px;
+  background: rgba(117,208,255,.035);
+}
+
+.tax-pro-entry-surface p {
+  margin-bottom: 0;
+  opacity: .76;
+}
+
+.tax-pro-actions,
+.tax-pro-nav-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tax-pro-nav-actions {
+  justify-content: space-between;
+}
+
+.tax-pro-rail {
+  position: sticky;
+  top: 12px;
+}
+
+.tax-pro-system-list {
+  display: grid;
+  gap: 7px;
+}
+
+.tax-pro-system-list span {
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px;
+  font-size: .86rem;
+  opacity: .78;
+}
+
+@media (max-width: 1100px) {
+  .tax-pro-grid {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .tax-pro-rail {
+    grid-column: 1 / -1;
+    position: static;
+  }
+
+  .tax-pro-system-list {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .tax-pro-toolbar,
+  .tax-pro-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tax-pro-summary,
+  .tax-pro-grid,
+  .tax-pro-link-grid,
+  .tax-pro-diagnostics {
+    grid-template-columns: 1fr;
+  }
+
+  .tax-stepper,
+  .tax-pro-rail {
+    position: static;
+  }
+
+  .tax-stepper {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
