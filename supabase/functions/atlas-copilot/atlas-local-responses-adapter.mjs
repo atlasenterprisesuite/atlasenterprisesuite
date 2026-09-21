@@ -28,7 +28,10 @@ function compactInput(input,budget=LOCAL_INPUT_CHAR_BUDGET){
     used+=size;
     if(used>=budget)break;
   }
-  return selected.reverse();
+  return selected.reverse().map(item=>{
+    if(item&&typeof item==='object'&&item.role==='assistant'&&!item.type)return {...item,type:'message'};
+    return item;
+  });
 }
 function compactInstructions(value){
   const raw=String(value||'').trim();
