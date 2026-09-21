@@ -21,6 +21,13 @@ function safeToken(value: string | null, max = 80) {
   return /^[A-Za-z][A-Za-z0-9:_.-]*$/.test(token) ? token : '';
 }
 
+function safeIdentifier(value: string | null, max = 80) {
+  const token = safeToken(value, max);
+  if (!token) return '';
+  if (/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/i.test(token) || /\d{6,}/.test(token)) return '';
+  return token;
+}
+
 function siblingIndex(element: Element) {
   const parent = element.parentElement;
   if (!parent) return 1;
@@ -30,10 +37,10 @@ function siblingIndex(element: Element) {
 
 function selectorHint(element: HTMLElement) {
   const tag = element.tagName.toLowerCase();
-  const id = safeToken(element.id);
+  const id = safeIdentifier(element.id);
   if (id) return `${tag}#${id}`;
 
-  const component = safeToken(element.getAttribute('data-atlas-component'));
+  const component = safeIdentifier(element.getAttribute('data-atlas-component'));
   if (component) return `${tag}[data-atlas-component=${component}]`;
 
   const role = safeToken(element.getAttribute('role'));
@@ -46,24 +53,29 @@ function safeHrefPath(element: HTMLElement) {
   if (!(element instanceof HTMLAnchorElement)) return null;
   const href = clean(element.getAttribute('href'), 300);
   if (!href || !href.startsWith('/')) return null;
-  return href.split(/[?#]/, 1)[0].slice(0, 180) || null;
+  const rawPath = href.split(/[?#]/, 1)[0].slice(0, 180);
+  const redacted = rawPath.split('/').map((segment) => {
+    if (/^\d{6,}$/.test(segment) || /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(segment) || segment.length > 80) return ':id';
+    return segment;
+  }).join('/');
+  return redacted || null;
 }
 
 export function describeAssistantElement(element: HTMLElement): AssistantElementContext {
   const rect = typeof element.getBoundingClientRect === 'function' ? element.getBoundingClientRect() : null;
-  const dataComponent = safeToken(element.getAttribute('data-atlas-component'))
-    || safeToken(element.getAttribute('data-component'))
-    || safeToken(element.getAttribute('data-testid'));
+  const dataComponent = safeIdentifier(element.getAttribute('data-atlas-component'))
+    || safeIdentifier(element.getAttribute('data-component'))
+    || safeIdentifier(element.getAttribute('data-testid'));
 
   return {
     tag: element.tagName.toLowerCase(),
     role: safeToken(element.getAttribute('role')) || null,
     type: safeToken(element.getAttribute('type')) || null,
-    id: safeToken(element.id) || null,
+    id: safeIdentifier(element.id) || null,
     component: dataComponent || null,
-    name: safeToken(element.getAttribute('name')) || null,
-    label: clean(element.getAttribute('aria-label') || element.getAttribute('title'), 120) || null,
-    placeholder: clean(element.getAttribute('placeholder'), 120) || null,
+    name: safeIdentifier(element.getAttribute('name')) || null,
+    label: null,
+    placeholder: null,
     href_path: safeHrefPath(element),
     selector_hint: selectorHint(element),
     rect: rect ? {
