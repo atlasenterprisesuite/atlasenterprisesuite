@@ -41,7 +41,7 @@ describe('ATLAS Assistant repair client', () => {
       context: {
         source: 'atlas-assistant',
         organization_id: 'org-1',
-        module: 'accounting.accounts-payable',
+        module: 'finance.accounting.accounts-payable',
         pathname: '/finance/accounting/accounts-payable',
         conversation_id: 'conv-1'
       }
