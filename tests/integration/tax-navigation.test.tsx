@@ -19,7 +19,7 @@ describe('ATLAS Tax navigation contract', () => {
   });
 
   it('links source-document intake, forms, personal, business and review workspaces', () => {
-    for (const path of ['/tax/prepare', '/tax/documents/w2', '/tax/documents/1099', '/tax/documents/k1', '/tax/forms', '/tax/personal', '/tax/business', '/tax/review']) {
+    for (const path of ['/tax/control', '/tax/prepare', '/tax/documents/w2', '/tax/documents/1099', '/tax/documents/k1', '/tax/forms', '/tax/personal', '/tax/business', '/tax/review']) {
       expect(routes).toContain(path);
     }
   });
