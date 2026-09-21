@@ -192,9 +192,12 @@ drop policy if exists inventory_invoice_costing_read on public.inventory_invoice
 create policy inventory_invoice_costing_read on public.inventory_invoice_costing
   for select to authenticated using (public.is_org_member(org_id));
 
-grant select, insert on public.inventory_receipts to authenticated;
-grant select, insert on public.inventory_receipt_lines to authenticated;
-grant select, insert, update, delete on public.accounting_bill_lines to authenticated;
+revoke insert, update, delete on public.inventory_receipts from authenticated;
+revoke insert, update, delete on public.inventory_receipt_lines from authenticated;
+revoke insert, update, delete on public.accounting_bill_lines from authenticated;
+grant select on public.inventory_receipts to authenticated;
+grant select on public.inventory_receipt_lines to authenticated;
+grant select on public.accounting_bill_lines to authenticated;
 grant select on public.ap_three_way_matches to authenticated;
 grant select on public.inventory_invoice_costing to authenticated;
 
@@ -221,8 +224,7 @@ begin
 end;
 $$;
 
-revoke all on function public.atlas_ensure_inventory_accounts(uuid) from public, anon;
-grant execute on function public.atlas_ensure_inventory_accounts(uuid) to authenticated;
+revoke all on function public.atlas_ensure_inventory_accounts(uuid) from public, anon, authenticated;
 
 create or replace function public.receive_purchase_order_v1(
   p_org_id uuid,
