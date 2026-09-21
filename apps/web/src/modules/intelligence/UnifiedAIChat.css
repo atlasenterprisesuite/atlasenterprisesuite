@@ -1245,6 +1245,17 @@
   background:var(--atlas-ai-surface-hover);
 }
 
+.atlas-ai-mic svg,
+.atlas-ai-voice-link svg{
+  width:17px;
+  height:17px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
 .atlas-ai-mic.active{
   border-color:rgba(125,211,252,.55);
   background:rgba(125,211,252,.12);
