@@ -10,7 +10,7 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => ({
   getActiveAtlasOrganization: mocks.getActiveAtlasOrganization
 }));
 
-import { enqueueAssistantRepair } from '../../apps/web/src/assistant/repairClient';
+import { enqueueAssistantRepair, getAssistantRepairs } from '../../apps/web/src/assistant/repairClient';
 
 describe('ATLAS Assistant repair client', () => {
   beforeEach(() => {
@@ -47,5 +47,21 @@ describe('ATLAS Assistant repair client', () => {
       }
     });
     expect(body.context.page.headings).toContain('Accounts Payable');
+  });
+
+  it('reads the active organization repair queue', async () => {
+    mocks.authorizedAtlasFetch.mockResolvedValueOnce(new Response(JSON.stringify({
+      ok: true,
+      jobs: [{ id: 'repair-1', status: 'pending', request_text: 'Fix screen' }],
+      execution: 'supabase-native'
+    }), { status: 200 }));
+
+    const response = await getAssistantRepairs();
+
+    expect(response.jobs?.[0]).toMatchObject({ id: 'repair-1', status: 'pending' });
+    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-repair-bridge?api=status', {
+      method: 'GET',
+      headers: { 'x-atlas-org-id': 'org-1' }
+    });
   });
 });
