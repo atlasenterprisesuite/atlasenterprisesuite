@@ -415,6 +415,7 @@ declare
 begin
   if auth.uid() is null then raise exception 'authentication_required'; end if;
   if not public.can_write_accounting_data(p_org_id) then raise exception 'accounts_payable_permission_denied'; end if;
+  if not public.has_identity_permission(p_org_id, 'accounting.post') then raise exception 'accounting_post_permission_required'; end if;
   if p_tolerance_pct < 0 or p_tolerance_pct >= 100 then raise exception 'invalid_match_tolerance'; end if;
   if coalesce(trim(p_bill_number),'') = '' then raise exception 'bill_number_required'; end if;
   if jsonb_typeof(p_lines) <> 'array' or jsonb_array_length(p_lines) = 0 then raise exception 'bill_lines_required'; end if;
@@ -560,13 +561,17 @@ begin
   ) values (
     v_journal_id,p_org_id,v_journal_number,coalesce(p_bill_date,current_date),
     'Matched vendor bill ' || trim(p_bill_number) || ' for ' || v_po.po_number,
-    'posted',auth.uid()
+    'draft',auth.uid()
   );
 
   insert into public.journal_lines (org_id,journal_entry_id,account_id,debit,credit)
   values
     (p_org_id,v_journal_id,v_inventory_account,v_total,0),
     (p_org_id,v_journal_id,v_ap_account,0,v_total);
+
+  update public.journal_entries
+    set status = 'posted'
+  where id = v_journal_id and org_id = p_org_id;
 
   return jsonb_build_object(
     'bill_id',v_bill_id,
@@ -702,6 +707,9 @@ begin
   ) then
     raise exception 'inventory_invoice_permission_denied';
   end if;
+  if not public.has_identity_permission(p_org_id, 'accounting.post') then
+    raise exception 'accounting_post_permission_required';
+  end if;
 
   select * into v_invoice
   from public.invoices
@@ -785,7 +793,7 @@ begin
   ) values (
     v_journal_id,p_org_id,v_journal_number,coalesce(v_invoice.issue_date,current_date),
     'Customer invoice ' || v_invoice.invoice_number || ' with inventory costing',
-    'posted',auth.uid()
+    'draft',auth.uid()
   );
 
   insert into public.journal_lines (org_id,journal_entry_id,account_id,debit,credit)
@@ -807,6 +815,10 @@ begin
       (p_org_id,v_journal_id,v_cogs_account,v_cogs,0),
       (p_org_id,v_journal_id,v_inventory_account,0,v_cogs);
   end if;
+
+  update public.journal_entries
+    set status = 'posted'
+  where id = v_journal_id and org_id = p_org_id;
 
   update public.invoices
     set status='open',
