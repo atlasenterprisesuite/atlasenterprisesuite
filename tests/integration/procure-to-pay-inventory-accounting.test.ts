@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const lifecycleSql = readFileSync('supabase/migrations/20260920190000_procure_to_pay_inventory_margin.sql', 'utf8');
 const quantitySyncSql = readFileSync('supabase/migrations/20260920190500_inventory_product_quantity_sync.sql', 'utf8');
+const postingGuardSql = readFileSync('supabase/migrations/20260920191500_procure_to_pay_posting_guard_fix.sql', 'utf8');
 const procureApi = readFileSync('apps/web/src/lib/procureToPayApi.ts', 'utf8');
 const receivablesApi = readFileSync('apps/web/src/lib/receivablesApi.ts', 'utf8');
 const procurePage = readFileSync('apps/web/src/modules/inventory/ProcureToPayPage.tsx', 'utf8');
@@ -39,6 +40,13 @@ describe('ATLAS procure-to-pay inventory accounting contract', () => {
     expect(quantitySyncSql).toContain('sync_product_quantity_from_inventory_movement');
     expect(quantitySyncSql).toContain('after insert on public.inventory_movements');
     expect(quantitySyncSql).toContain('sum(m.quantity)');
+  });
+
+  it('respects the immutable-ledger posting sequence', () => {
+    expect(postingGuardSql).toContain("has_identity_permission(p_org_id, 'accounting.post')");
+    expect(postingGuardSql).toContain("'draft',auth.uid()");
+    expect(postingGuardSql).toContain("set status = 'posted'");
+    expect(postingGuardSql).not.toContain("'posted',auth.uid()");
   });
 
   it('forces inventory-backed AR through stock relief and COGS posting', () => {
