@@ -522,9 +522,13 @@ begin
     for update;
 
     if v_item_on_hand > 0 then
-      v_adjusted_avg := greatest(0, v_current_avg + ((v_invoice_unit_cost - v_po_line.unit_cost) * v_invoice_qty / v_item_on_hand));
+      v_adjusted_avg := greatest(
+        0,
+        v_current_avg
+          + (((v_invoice_unit_cost - v_po_line.unit_cost) * v_invoice_qty + v_tax) / v_item_on_hand)
+      );
     else
-      v_adjusted_avg := v_invoice_unit_cost;
+      v_adjusted_avg := v_invoice_unit_cost + (v_tax / v_invoice_qty);
     end if;
 
     update public.inventory_items
@@ -613,6 +617,27 @@ begin
   for update;
   if not found then raise exception 'product_not_found'; end if;
   if v_item_id is null then raise exception 'product_inventory_link_required'; end if;
+
+  if exists (
+    select 1
+    from public.inventory_receipt_lines irl
+    join public.inventory_receipts ir
+      on ir.id = irl.receipt_id
+     and ir.org_id = p_org_id
+    where irl.org_id = p_org_id
+      and irl.item_id = v_item_id
+      and ir.status = 'posted'
+      and not exists (
+        select 1
+        from public.accounting_bills ab
+        where ab.org_id = p_org_id
+          and ab.inventory_receipt_id = ir.id
+          and ab.match_state = 'three_way_matched'
+          and ab.status <> 'void'
+      )
+  ) then
+    raise exception 'unmatched_purchase_receipt_blocks_pricing';
+  end if;
 
   select average_unit_cost into v_cost
   from public.inventory_items
@@ -740,6 +765,27 @@ begin
 
     if v_line.product_id is not null and v_line.inventory_item_id is not null then
       v_item_id := v_line.inventory_item_id;
+
+      if exists (
+        select 1
+        from public.inventory_receipt_lines irl
+        join public.inventory_receipts ir
+          on ir.id = irl.receipt_id
+         and ir.org_id = p_org_id
+        where irl.org_id = p_org_id
+          and irl.item_id = v_item_id
+          and ir.status = 'posted'
+          and not exists (
+            select 1
+            from public.accounting_bills ab
+            where ab.org_id = p_org_id
+              and ab.inventory_receipt_id = ir.id
+              and ab.match_state = 'three_way_matched'
+              and ab.status <> 'void'
+          )
+      ) then
+        raise exception 'unmatched_purchase_receipt_blocks_sale';
+      end if;
 
       select average_unit_cost into v_cost
       from public.inventory_items
