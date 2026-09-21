@@ -31,6 +31,7 @@ describe('Business Launch 360 commercial pipeline', () => {
     expect(sql).toContain('advisory_set_launch_quote');
     expect(sql).toContain('advisory_accept_launch_quote');
     expect(sql).toContain('quote_tax_rate');
+    expect(sql).toContain('quote_payment_terms_days');
     expect(sql).toContain('quote_acceptance_reference');
     expect(sql).toContain('advisory_convert_launch_intake');
     expect(sql).toContain('advisory_set_launch_billing_refs');
@@ -45,6 +46,7 @@ describe('Business Launch 360 commercial pipeline', () => {
     expect(fn).toContain("from('advisory_firms')");
     expect(fn).toContain("from('advisory_launch_intakes').insert");
     expect(fn).toContain("firms.length !== 1");
+    expect(fn).toContain("throw new IntakeError('rate_limited', 429)");
     expect(fn).not.toContain(".select('*').from('advisory_launch_intakes')");
   });
 
