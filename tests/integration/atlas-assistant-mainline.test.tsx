@@ -204,7 +204,8 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       message: 'Summarize overdue payables',
       pathname: '/finance/accounting/accounts-payable',
       conversationId: null,
-      modality: 'voice'
+      modality: 'voice',
+      elementContext: null
     }));
 
     expect(await screen.findByText('Summarize overdue payables')).toBeInTheDocument();
@@ -243,6 +244,37 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     expect(screen.getByText(/PENDING — Fix mobile approval controls · repair-1/)).toBeInTheDocument();
   });
 
+  it('selects a concrete page element and repairs only its structural target', async () => {
+    render(
+      <>
+        <button data-atlas-component="approvalAction" aria-label="Approve payment">Approve</button>
+        <MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>
+      </>
+    );
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
+    fireEvent.click(launcher);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select element' }));
+    expect(screen.getByRole('button', { name: 'Cancel selection' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve payment' }));
+
+    expect(await screen.findByText('Selected · approvalAction')).toBeInTheDocument();
+    expect(await screen.findByText(/Selected element: approvalAction/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Repair selected' }));
+
+    await waitFor(() => expect(mocks.enqueueAssistantRepair).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: '/finance/accounting/accounts-payable',
+      message: expect.stringContaining('selected ATLAS element'),
+      elementContext: expect.objectContaining({
+        component: 'approvalAction',
+        label: 'Approve payment',
+        tag: 'button'
+      })
+    })));
+  });
+
   it('queues a governed repair from the current ATLAS screen', async () => {
     render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>);
     const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
@@ -255,7 +287,8 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     await waitFor(() => expect(mocks.enqueueAssistantRepair).toHaveBeenCalledWith({
       message: 'The approval actions are clipped on mobile',
       pathname: '/finance/accounting/accounts-payable',
-      conversationId: null
+      conversationId: null,
+      elementContext: null
     }));
     expect(await screen.findByText(/Repair task repair-1 queued securely/)).toBeInTheDocument();
   });
