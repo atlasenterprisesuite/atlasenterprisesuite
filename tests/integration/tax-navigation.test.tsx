@@ -18,8 +18,8 @@ describe('ATLAS Tax navigation contract', () => {
     expect(app).toContain('<Route path="/tax/*" element={<TaxRoutes />} />');
   });
 
-  it('links W-2 intake, forms, personal, business and review workspaces', () => {
-    for (const path of ['/tax/documents/w2', '/tax/forms', '/tax/personal', '/tax/business', '/tax/review']) {
+  it('links source-document intake, forms, personal, business and review workspaces', () => {
+    for (const path of ['/tax/documents/w2', '/tax/documents/1099', '/tax/documents/k1', '/tax/forms', '/tax/personal', '/tax/business', '/tax/review']) {
       expect(routes).toContain(path);
     }
   });
