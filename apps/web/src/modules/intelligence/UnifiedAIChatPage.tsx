@@ -47,6 +47,8 @@ const ENTERPRISE_LINKS = [
   { to: '/work', label: 'Work' },
   { to: '/automations', label: 'Agents' },
   { to: '/work/connections', label: 'Apps' },
+  { to: '/work/team', label: 'Team' },
+  { to: '/work/policies', label: 'Policies' },
   { to: '/suite', label: 'Modules' }
 ] as const;
 
