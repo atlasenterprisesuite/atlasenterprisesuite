@@ -6,6 +6,7 @@ const root = process.cwd();
 const functionRoot = resolve(root, 'supabase/functions/atlas-ride-compliance');
 const indexSource = readFileSync(resolve(functionRoot, 'index.ts'), 'utf8');
 const contextSource = readFileSync(resolve(functionRoot, '_shared/context.ts'), 'utf8');
+const errorsSource = readFileSync(resolve(functionRoot, '_shared/errors.ts'), 'utf8');
 const storageSource = readFileSync(resolve(functionRoot, '_shared/storage.ts'), 'utf8');
 const repositorySource = readFileSync(resolve(functionRoot, '_shared/repository.ts'), 'utf8');
 
@@ -23,6 +24,14 @@ describe('ATLAS Ride compliance edge boundary', () => {
     expect(contextSource).toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(indexSource).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(indexSource).not.toMatch(/face[_ -]?match|biometric[_ -]?score|confidence[_ -]?score/i);
+  });
+
+  it('binds every request to an explicit active organization when provided', () => {
+    expect(contextSource).toContain("req.headers.get('x-atlas-org-id')");
+    expect(contextSource).toContain("membershipQuery.eq('org_id', requestedOrg)");
+    expect(contextSource).toContain("'organization_membership_required'");
+    expect(contextSource).toContain("'invalid_organization'");
+    expect(errorsSource).toContain('authorization, apikey, content-type, x-atlas-org-id');
   });
 
   it('uses short-lived signed previews and server-side transition checks', () => {
