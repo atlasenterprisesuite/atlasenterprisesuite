@@ -3,11 +3,14 @@ import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction }
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { TAX_FORM_CATALOG, mapW2ToReturn, type W2Document } from '../../../../../packages/tax-forms/src';
+import { InformationReturnWorkspace, PartnershipK1Workspace } from './AdditionalTaxIntake';
 import './tax.css';
 
 const nav = [
   { to: '/tax', label: 'Tax Home', end: true },
   { to: '/tax/documents/w2', label: 'W-2 Intake', end: false },
+  { to: '/tax/documents/1099', label: '1099 Intake', end: false },
+  { to: '/tax/documents/k1', label: 'K-1 Intake', end: false },
   { to: '/tax/forms', label: 'Forms & Schedules', end: false },
   { to: '/tax/personal', label: 'Personal Returns', end: false },
   { to: '/tax/business', label: 'Business Returns', end: false },
@@ -110,6 +113,8 @@ function TaxHome() {
       </div>
       <div className="module-grid">
         <Link className="module-card enabled" to="/tax/documents/w2"><span>Source documents</span><strong>Enter a W-2</strong><p>Populate W-2 boxes and see federal, state and local destinations update immediately.</p></Link>
+        <Link className="module-card enabled" to="/tax/documents/1099"><span>Information returns</span><strong>Enter a 1099</strong><p>Map 1099-INT, 1099-DIV and 1099-NEC into the connected return graph with classification gates.</p></Link>
+        <Link className="module-card enabled" to="/tax/documents/k1"><span>Pass-through</span><strong>Enter a K-1</strong><p>Route partnership income, rental, portfolio, capital gain and self-employment items with limitation review.</p></Link>
         <Link className="module-card enabled" to="/tax/forms"><span>Return graph</span><strong>Forms & Schedules</strong><p>Browse personal and business forms as one connected tax graph.</p></Link>
         <Link className="module-card enabled" to="/tax/personal"><span>1040 family</span><strong>Personal Returns</strong><p>1040, schedules, credits, self-employment, investments and international attachments.</p></Link>
         <Link className="module-card enabled" to="/tax/business"><span>Entity returns</span><strong>Business Returns</strong><p>1065, 1120, 1120-S, 1041, 990, payroll and information-return families.</p></Link>
@@ -298,6 +303,8 @@ export function TaxRoutes() {
         <Routes>
           <Route index element={<TaxHome />} />
           <Route path="documents/w2" element={<W2Workspace />} />
+          <Route path="documents/1099" element={<InformationReturnWorkspace />} />
+          <Route path="documents/k1" element={<PartnershipK1Workspace />} />
           <Route path="forms" element={<FormsCatalog />} />
           <Route path="personal" element={<FormsCatalog audience="personal" />} />
           <Route path="business" element={<FormsCatalog audience="business" />} />
