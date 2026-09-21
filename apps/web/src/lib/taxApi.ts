@@ -311,6 +311,33 @@ export async function recordTaxFact(input: {
   return rows[0];
 }
 
+
+export async function importTaxSourceMapping(input: {
+  returnId: string;
+  documentType: string;
+  taxYear: number;
+  mappings: Array<Record<string, unknown>>;
+  issuerName?: string;
+  externalAssetReference?: string;
+  sourceHash?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<{ document_id: string; mapping_count: number }> {
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/tax_import_source_mapping', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_return_id: input.returnId,
+      p_document_type: input.documentType,
+      p_tax_year: input.taxYear,
+      p_mappings: input.mappings,
+      p_issuer_name: input.issuerName || null,
+      p_external_asset_reference: input.externalAssetReference || null,
+      p_source_hash: input.sourceHash || null,
+      p_metadata: input.metadata || {}
+    })
+  });
+  return parseJson<{ document_id: string; mapping_count: number }>(response);
+}
+
 export async function recordTaxLineMapping(input: {
   returnId: string;
   taxFactId: string;
