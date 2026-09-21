@@ -7,7 +7,7 @@ import {
   sendAssistantMessage,
   type AssistantStatusResponse
 } from '../../assistant/client';
-import { enqueueAssistantRepair } from '../../assistant/repairClient';
+import { enqueueAssistantRepair, getAssistantRepairs } from '../../assistant/repairClient';
 import { resolveAssistantModule } from '../../assistant/routeContext';
 import { markGreetingSeen, readGreetingSeen } from '../../assistant/storage';
 import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
@@ -252,6 +252,35 @@ export function AtlasAssistant() {
     }
   }
 
+  async function showRepairQueue() {
+    if (voice.microphoneActive) voice.stopMicrophone();
+    setError('');
+    setState('thinking');
+
+    try {
+      const response = await getAssistantRepairs();
+      const jobs = Array.isArray(response.jobs) ? response.jobs.slice(0, 5) : [];
+      const text = jobs.length
+        ? ['Recent repair tasks:', ...jobs.map((job) => {
+            const status = String(job.status || 'unknown').toUpperCase();
+            const request = String(job.request_text || 'Repair task').replace(/\s+/g, ' ').trim().slice(0, 96);
+            const id = job.id ? ` · ${job.id}` : '';
+            return `• ${status} — ${request}${id}`;
+          })].join('\n')
+        : 'There are no repair tasks for the active ATLAS organization.';
+      setMessages((current) => [...current, {
+        id: nextId('assistant'),
+        role: 'assistant',
+        text
+      }]);
+      setState('idle');
+    } catch (cause) {
+      setError(errorMessage(cause));
+      setState('error');
+      if (identityFailure(cause)) void refreshAuthorization();
+    }
+  }
+
   async function toggleMicrophone() {
     setError(providerError);
     if (voice.microphoneActive) {
@@ -326,6 +355,7 @@ export function AtlasAssistant() {
           onClose={closeAssistant}
           onSubmit={submit}
           onRepair={queueRepair}
+          onShowRepairs={showRepairQueue}
           onToggleMicrophone={toggleMicrophone}
           onSpeechPreference={voice.setSpeechEnabled}
         />
