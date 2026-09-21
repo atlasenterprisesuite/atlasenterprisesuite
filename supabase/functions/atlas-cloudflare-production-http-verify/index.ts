@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 17;
+const VERSION = 18;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -246,6 +246,7 @@ Deno.serve(async (req: Request) => {
     finance,
     automotiveSales,
     receivables,
+    procureToPay,
     voice,
     health,
     frontier,
@@ -273,6 +274,7 @@ Deno.serve(async (req: Request) => {
     probe('/finance'),
     probe('/finance/accounting/reports/automotive-sales'),
     probe('/finance/accounting/accounts-receivable'),
+    probe('/inventory/procure-to-pay'),
     probe('/voice'),
     probe('/health'),
     probe('/frontier'),
@@ -302,6 +304,7 @@ Deno.serve(async (req: Request) => {
     finance.status === 200 &&
     automotiveSales.status === 200 &&
     receivables.status === 200 &&
+    procureToPay.status === 200 &&
     voice.status === 200 &&
     health.status === 200 &&
     frontier.status === 200 &&
@@ -322,6 +325,8 @@ Deno.serve(async (req: Request) => {
     identity,
     finance,
     automotiveSales,
+    receivables,
+    procureToPay,
     voice,
     health,
     frontier,
@@ -385,6 +390,7 @@ Deno.serve(async (req: Request) => {
         module_spa_shell_reachable: finance.status === 200,
         automotive_sales_report_reachable: automotiveSales.status === 200,
         accounts_receivable_route_reachable: receivables.status === 200,
+        procure_to_pay_route_reachable: procureToPay.status === 200,
         voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
         frontier_route_reachable: frontier.status === 200,
@@ -414,6 +420,7 @@ Deno.serve(async (req: Request) => {
         finance,
         automotive_sales: automotiveSales,
         accounts_receivable: receivables,
+        procure_to_pay: procureToPay,
         voice,
         health,
         frontier,
