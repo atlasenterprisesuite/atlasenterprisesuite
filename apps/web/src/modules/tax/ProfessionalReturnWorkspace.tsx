@@ -206,6 +206,13 @@ export function ProfessionalReturnWorkspace() {
                 <strong>Persistent professional work surface</strong>
                 <p>Documents, normalized tax facts, calculations, workpapers and form-line mappings for this return are persisted under the active organization and preserve provenance across revisions.</p>
               </div>
+              {current.id === 'income-documents' ? (
+                <div className="tax-pro-actions">
+                  <Link to={'/tax/documents/w2?returnId=' + encodeURIComponent(returnId)}>Add W-2</Link>
+                  <Link to={'/tax/documents/1099?returnId=' + encodeURIComponent(returnId)}>Add 1099</Link>
+                  <Link to={'/tax/documents/k1?returnId=' + encodeURIComponent(returnId)}>Add K-1</Link>
+                </div>
+              ) : null}
               <div className="tax-pro-actions">
                 <button type="button" disabled={working || locked} onClick={() => void setStep(current.id, 'blocked')}>Block</button>
                 <button type="button" disabled={working || locked} onClick={() => void setStep(current.id, 'review')}>Needs review</button>
