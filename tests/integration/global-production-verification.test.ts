@@ -49,7 +49,11 @@ describe('ATLAS global production verification', () => {
       '/work/new',
       '/work/connections',
       '/work/runtimes',
-      '/work/policies'
+      '/work/policies',
+      '/ride',
+      '/ride/readiness',
+      '/ride/driver/compliance/documents',
+      '/ride/driver/compliance/documents/profile-photo'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
@@ -180,6 +184,10 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/commerce'");
     expect(authorizedVerifier).toContain("'/revenue'");
     expect(authorizedVerifier).toContain("'/analytics'");
+    expect(authorizedVerifier).toContain("'/ride'");
+    expect(authorizedVerifier).toContain("'/ride/readiness'");
+    expect(authorizedVerifier).toContain("'/ride/driver/compliance/documents'");
+    expect(authorizedVerifier).toContain("'/ride/driver/compliance/documents/profile-photo'");
     expect(authorizedVerifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
@@ -192,6 +200,10 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('commerce_route_reachable');
     expect(authorizedVerifier).toContain('revenue_route_reachable');
     expect(authorizedVerifier).toContain('analytics_route_reachable');
+    expect(authorizedVerifier).toContain('ride_route_reachable');
+    expect(authorizedVerifier).toContain('ride_readiness_route_reachable');
+    expect(authorizedVerifier).toContain('ride_documents_route_reachable');
+    expect(authorizedVerifier).toContain('ride_profile_photo_route_reachable');
     for (const route of ['/work', '/work/new', '/work/connections', '/work/runtimes', '/work/policies']) {
       expect(authorizedVerifier).toContain(`'${route}'`);
     }
