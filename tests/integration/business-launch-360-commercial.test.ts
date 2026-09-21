@@ -28,6 +28,7 @@ describe('Business Launch 360 commercial pipeline', () => {
   it('persists intake and conversion through governed server contracts', () => {
     const sql = read('supabase/migrations/20260920223000_business_launch_360_commercial.sql');
     expect(sql).toContain('public.advisory_launch_intakes');
+    expect(sql.match(/create table if not exists public\\.advisory_launch_intakes/g)?.length).toBe(1);
     expect(sql).toContain('enable row level security');
     expect(sql).toContain('advisory_set_launch_quote');
     expect(sql).toContain('advisory_accept_launch_quote');
@@ -39,6 +40,8 @@ describe('Business Launch 360 commercial pipeline', () => {
     expect(sql).toContain("status = 'quoted'");
     expect(sql).toContain("status = 'accepted'");
     expect(sql).toContain('Quote acceptance evidence required before conversion');
+    expect(sql).toContain('invoice_id is null');
+    expect(sql).not.toContain("as $\\n");
     expect(sql).toContain("'business-launch-360'");
   });
 
@@ -49,6 +52,8 @@ describe('Business Launch 360 commercial pipeline', () => {
     expect(fn).toContain("firms.length !== 1");
     expect(fn).toContain("throw new IntakeError('rate_limited', 429)");
     expect(fn).not.toContain(".select('*').from('advisory_launch_intakes')");
+    const page = read('apps/web/src/modules/advisory/PublicBusinessLaunch360Page.tsx');
+    expect(page).toContain('/identity?app=%2Fadvisory%2Fbusiness-launch-360%2Fworkspace');
   });
 
   it('adds Launch 360 to fail-closed global production verification', () => {
