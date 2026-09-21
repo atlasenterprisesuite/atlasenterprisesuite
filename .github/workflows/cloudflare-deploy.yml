@@ -201,6 +201,8 @@ jobs:
           SUITE_VERSION="$(probe_worker '/suite' 'suite')"
           IDENTITY_VERSION="$(probe_worker '/identity?app=%2Ffinance' 'identity')"
           MODULE_VERSION="$(probe_worker '/finance' 'finance')"
+          ACCOUNTING_VERSION="$(probe_worker '/finance/accounting' 'finance-accounting')"
+          PAYABLES_VERSION="$(probe_worker '/finance/accounting/accounts-payable' 'accounts-payable')"
           AUTOMOTIVE_VERSION="$(probe_worker '/finance/accounting/reports/automotive-sales' 'automotive-sales')"
           RECEIVABLES_VERSION="$(probe_worker '/finance/accounting/accounts-receivable' 'accounts-receivable')"
           PROCURE_TO_PAY_VERSION="$(probe_worker '/inventory/procure-to-pay' 'procure-to-pay')"
@@ -215,10 +217,12 @@ jobs:
           WORK_POLICIES_VERSION="$(probe_worker '/work/policies' 'work-policies')"
           DIRECT_VERSION_ID="${ROOT_VERSION%%|*}"
           DIRECT_VERSION_TAG="${ROOT_VERSION#*|}"
-          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MODULE_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$PROCURE_TO_PAY_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
+          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MODULE_VERSION" "$ACCOUNTING_VERSION" "$PAYABLES_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$PROCURE_TO_PAY_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
           test "${SUITE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${IDENTITY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${MODULE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
+          test "${ACCOUNTING_VERSION#*|}" = "$GITHUB_SHA" || exit 1
+          test "${PAYABLES_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${AUTOMOTIVE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${RECEIVABLES_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${PROCURE_TO_PAY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
@@ -235,6 +239,8 @@ jobs:
           echo "suite_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "finance_accounting_route_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "accounts_payable_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "automotive_sales_report_reachable=true" >> "$GITHUB_OUTPUT"
           echo "accounts_receivable_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "procure_to_pay_route_reachable=true" >> "$GITHUB_OUTPUT"
@@ -355,6 +361,8 @@ jobs:
           probe_route "Public home" "/" "public_home_reachable"
           probe_route "ATLAS Identity" "/identity?app=%2Ffinance" "identity_route_reachable"
           probe_route "Module SPA shell" "/finance" "module_spa_shell_reachable"
+          probe_route "ATLAS Accounting" "/finance/accounting" "finance_accounting_route_reachable"
+          probe_route "ATLAS Accounts Payable" "/finance/accounting/accounts-payable" "accounts_payable_route_reachable"
           probe_route "ATLAS Automotive Sales Financial Reporting" "/finance/accounting/reports/automotive-sales" "automotive_sales_report_reachable"
           probe_route "ATLAS Accounts Receivable" "/finance/accounting/accounts-receivable" "accounts_receivable_route_reachable"
           probe_route "ATLAS Health" "/health" "health_route_reachable"
@@ -421,6 +429,8 @@ jobs:
           HOME_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.public_home_reachable===true))")"
           IDENTITY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.identity_route_reachable===true))")"
           MODULE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.module_spa_shell_reachable===true))")"
+          ACCOUNTING_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.finance_accounting_route_reachable===true))")"
+          PAYABLES_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.accounts_payable_route_reachable===true))")"
           AUTOMOTIVE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.automotive_sales_report_reachable===true))")"
           RECEIVABLES_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.accounts_receivable_route_reachable===true))")"
           PROCURE_TO_PAY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.procure_to_pay_route_reachable===true))")"
@@ -433,11 +443,13 @@ jobs:
           WORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.work_routes_reachable===true))")"
           NETWORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.critical_network_routes_reachable===true))")"
           DEPLOYMENT_PROTECTED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.deployment_path_protected===true))")"
-          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "18" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$PROCURE_TO_PAY_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
+          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "20" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$ACCOUNTING_OK" = "true" ] && [ "$PAYABLES_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$PROCURE_TO_PAY_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
             echo "verified=true" >> "$GITHUB_OUTPUT"
             echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "finance_accounting_route_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "accounts_payable_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "automotive_sales_report_reachable=true" >> "$GITHUB_OUTPUT"
             echo "accounts_receivable_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "procure_to_pay_route_reachable=true" >> "$GITHUB_OUTPUT"
@@ -461,6 +473,8 @@ jobs:
             echo "public_home_reachable=false" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "module_spa_shell_reachable=false" >> "$GITHUB_OUTPUT"
+             echo "finance_accounting_route_reachable=false" >> "$GITHUB_OUTPUT"
+             echo "accounts_payable_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "automotive_sales_report_reachable=false" >> "$GITHUB_OUTPUT"
             echo "health_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "jaque_mate_sentinel_route_reachable=false" >> "$GITHUB_OUTPUT"

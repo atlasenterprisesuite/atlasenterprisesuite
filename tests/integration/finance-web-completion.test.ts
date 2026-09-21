@@ -7,6 +7,7 @@ const registry = readFileSync('apps/web/src/modules/registry.ts', 'utf8');
 const experiences = readFileSync('apps/web/src/modules/experience/AtlasModuleExperiences.tsx', 'utf8');
 const api = readFileSync('apps/web/src/lib/financeApi.ts', 'utf8');
 const panel = readFileSync('apps/web/src/modules/finance/FinanceControlCenterPanel.tsx', 'utf8');
+const productionContract = readFileSync('data/ops/global-production-verification.json', 'utf8');
 
 describe('ATLAS Finance web completion', () => {
   it('protects Finance and Accounting with the canonical identity boundary', () => {
@@ -49,5 +50,13 @@ describe('ATLAS Finance web completion', () => {
     expect(panel).toContain('to="/inventory/procure-to-pay"');
     expect(panel).toContain('to="/finance/accounting/reports/automotive-sales"');
     expect(registry).toContain("{ to: '/finance/accounting/accounts-receivable', label: 'Receivables' }");
+  });
+
+  it('makes Finance landing, Accounting and AP mandatory production routes', () => {
+    const contract = JSON.parse(productionContract) as { public_routes: string[]; default_mode: string };
+    expect(contract.default_mode).toBe('fail-closed');
+    expect(contract.public_routes).toContain('/finance');
+    expect(contract.public_routes).toContain('/finance/accounting');
+    expect(contract.public_routes).toContain('/finance/accounting/accounts-payable');
   });
 });

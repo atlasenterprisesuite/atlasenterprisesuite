@@ -29,6 +29,8 @@ describe('ATLAS global production verification', () => {
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
       '/finance',
+      '/finance/accounting',
+      '/finance/accounting/accounts-payable',
       '/finance/accounting/reports/automotive-sales',
       '/finance/accounting/accounts-receivable',
       '/inventory/procure-to-pay',
