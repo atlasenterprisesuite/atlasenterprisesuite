@@ -7,6 +7,8 @@ export function resolveAssistantModule(pathname: string): string {
   if (pathname.startsWith('/finance')) return 'finance';
   if (pathname.startsWith('/inventory/procure-to-pay')) return 'inventory.procure-to-pay';
   if (pathname.startsWith('/inventory')) return 'inventory';
+  if (pathname.startsWith('/advisory/tasks')) return 'advisory.tasks';
+  if (pathname.startsWith('/advisory')) return 'advisory';
   if (pathname.startsWith('/business/network')) return 'business.network';
   if (pathname.startsWith('/business')) return 'business';
   if (pathname.startsWith('/revenue')) return 'revenue';
