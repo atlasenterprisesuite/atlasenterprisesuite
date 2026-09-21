@@ -277,7 +277,7 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/tasks" element={<BoundaryPage title="Tasks" description="Task orchestration will reuse the canonical ATLAS execution/work layer rather than create a parallel task source of truth." />} />
     <Route path="/advisory/calendar" element={<BoundaryPage title="Calendar" description="Calendar events remain provider-gated until an authorized calendar connection is available for the active organization." />} />
     <Route path="/advisory/documents" element={<BoundaryPage title="Documents" description="Document metadata can be linked to engagements, but storage, signatures and provider delivery are not claimed as connected here." />} />
-    <Route path="/advisory/billing" element={<BoundaryPage title="Billing" description="Accounting remains the financial source of truth. Advisory will reference approved invoices and payments without creating a second ledger." />} />
+    <Route path="/advisory/billing" element={<Navigate to="/finance/accounting/accounts-receivable" replace />} />
     <Route path="/advisory/crm" element={<BoundaryPage title="CRM" description="Prospects and opportunities remain in canonical ATLAS CRM. Won opportunities may open Advisory clients and engagements through governed conversion." />} />
     <Route path="/advisory/portal" element={<BoundaryPage title="Client Portal" description="Client access is deny-by-default until authenticated client/delegate scope is implemented and verified." />} />
     <Route path="/advisory/reports" element={<BoundaryPage title="Reports" description="Reports will aggregate only persisted Advisory records and verified Accounting references. No synthetic business metrics are introduced." />} />
