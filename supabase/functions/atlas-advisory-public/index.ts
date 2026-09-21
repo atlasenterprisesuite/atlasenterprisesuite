@@ -100,6 +100,18 @@ Deno.serve(async (req) => {
     if (firmError) throw new IntakeError('service_unavailable', 503);
     if (!firms || firms.length !== 1) throw new IntakeError('public_service_configuration_required', 503);
 
+    const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: recent, error: recentError } = await admin
+      .from('advisory_launch_intakes')
+      .select('id')
+      .eq('org_id', firms[0].org_id)
+      .eq('firm_id', firms[0].id)
+      .eq('email', email)
+      .gte('created_at', windowStart)
+      .limit(3);
+    if (recentError) throw new IntakeError('service_unavailable', 503);
+    if ((recent || []).length >= 3) throw new IntakeError('rate_limited', 429);
+
     const ref = reference();
     const { error } = await admin.from('advisory_launch_intakes').insert({
       org_id: firms[0].org_id,
