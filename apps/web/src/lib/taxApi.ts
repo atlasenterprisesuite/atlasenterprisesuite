@@ -322,13 +322,18 @@ export async function importTaxSourceMapping(input: {
   sourceHash?: string;
   metadata?: Record<string, unknown>;
 }): Promise<{ document_id: string; mapping_count: number }> {
+  const revisionReviewGated = input.metadata?.revisionStatus === 'destination-review-gated';
+  const governedMappings = revisionReviewGated
+    ? input.mappings.map((mapping) => ({ ...mapping, reviewRequired: true }))
+    : input.mappings;
+
   const response = await authorizedAtlasFetch('/rest/v1/rpc/tax_import_source_mapping', {
     method: 'POST',
     body: JSON.stringify({
       p_return_id: input.returnId,
       p_document_type: input.documentType,
       p_tax_year: input.taxYear,
-      p_mappings: input.mappings,
+      p_mappings: governedMappings,
       p_issuer_name: input.issuerName || null,
       p_external_asset_reference: input.externalAssetReference || null,
       p_source_hash: input.sourceHash || null,
