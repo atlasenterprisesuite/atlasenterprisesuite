@@ -95,6 +95,31 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect(captured.max_output_tokens).toBe(384);
   });
 
+  it('marks ATLAS Local assistant history as Responses output messages for llama.cpp continuity', async () => {
+    let captured: any = null;
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      captured = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({
+        id: 'local_resp_continuity',
+        model: 'local-model',
+        output: [{ content: [{ type: 'output_text', text: 'continued-ok' }] }],
+        usage: {},
+      }), { status: 200 });
+    });
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      token: 'local-secret',
+      models: { balanced: 'local-model' },
+      fetchFn,
+    });
+    const assistantTurn = { role: 'assistant', content: 'previous answer' };
+    const userTurn = { role: 'user', content: 'continue' };
+    const result = await adapter.execute({ context, route, instructions: 'ATLAS', input: [assistantTurn, userTurn] });
+    expect(result.text).toBe('continued-ok');
+    expect(captured.input[0]).toEqual({ ...assistantTurn, type: 'message' });
+    expect(captured.input[1]).toEqual(userTurn);
+  });
+
   it('retries one transient ATLAS Local inference failure before failing closed', async () => {
     let attempt = 0;
     const fetchFn = vi.fn(async () => {
