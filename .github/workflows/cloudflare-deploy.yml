@@ -203,6 +203,7 @@ jobs:
           MODULE_VERSION="$(probe_worker '/finance' 'finance')"
           AUTOMOTIVE_VERSION="$(probe_worker '/finance/accounting/reports/automotive-sales' 'automotive-sales')"
           RECEIVABLES_VERSION="$(probe_worker '/finance/accounting/accounts-receivable' 'accounts-receivable')"
+          PROCURE_TO_PAY_VERSION="$(probe_worker '/inventory/procure-to-pay' 'procure-to-pay')"
           HEALTH_VERSION="$(probe_worker '/health' 'health')"
           JAQUE_MATE_SENTINEL_VERSION="$(probe_worker '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel' 'jaque-mate-sentinel')"
           WEB_LAUNCH_VERSION="$(probe_worker '/studio/web-launch' 'web-launch')"
@@ -214,12 +215,13 @@ jobs:
           WORK_POLICIES_VERSION="$(probe_worker '/work/policies' 'work-policies')"
           DIRECT_VERSION_ID="${ROOT_VERSION%%|*}"
           DIRECT_VERSION_TAG="${ROOT_VERSION#*|}"
-          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MODULE_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
+          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MODULE_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$PROCURE_TO_PAY_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
           test "${SUITE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${IDENTITY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${MODULE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${AUTOMOTIVE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${RECEIVABLES_VERSION#*|}" = "$GITHUB_SHA" || exit 1
+          test "${PROCURE_TO_PAY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${HEALTH_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${JAQUE_MATE_SENTINEL_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${WEB_LAUNCH_VERSION#*|}" = "$GITHUB_SHA" || exit 1
@@ -235,6 +237,7 @@ jobs:
           echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
           echo "automotive_sales_report_reachable=true" >> "$GITHUB_OUTPUT"
           echo "accounts_receivable_route_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "procure_to_pay_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "health_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "jaque_mate_sentinel_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "studio_web_launch_route_reachable=true" >> "$GITHUB_OUTPUT"
@@ -420,6 +423,7 @@ jobs:
           MODULE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.module_spa_shell_reachable===true))")"
           AUTOMOTIVE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.automotive_sales_report_reachable===true))")"
           RECEIVABLES_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.accounts_receivable_route_reachable===true))")"
+          PROCURE_TO_PAY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.procure_to_pay_route_reachable===true))")"
           HEALTH_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.health_route_reachable===true))")"
           JAQUE_MATE_SENTINEL_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.jaque_mate_sentinel_route_reachable===true))")"
           WEB_LAUNCH_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.studio_web_launch_route_reachable===true))")"
@@ -429,13 +433,14 @@ jobs:
           WORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.work_routes_reachable===true))")"
           NETWORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.critical_network_routes_reachable===true))")"
           DEPLOYMENT_PROTECTED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.deployment_path_protected===true))")"
-          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "17" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
+          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "18" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$PROCURE_TO_PAY_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
             echo "verified=true" >> "$GITHUB_OUTPUT"
             echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
             echo "automotive_sales_report_reachable=true" >> "$GITHUB_OUTPUT"
             echo "accounts_receivable_route_reachable=true" >> "$GITHUB_OUTPUT"
+            echo "procure_to_pay_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "health_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "jaque_mate_sentinel_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "studio_web_launch_route_reachable=true" >> "$GITHUB_OUTPUT"
