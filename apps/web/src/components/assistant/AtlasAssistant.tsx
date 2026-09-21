@@ -7,7 +7,7 @@ import {
   sendAssistantMessage,
   type AssistantStatusResponse
 } from '../../assistant/client';
-import { enqueueAssistantRepair, getAssistantRepairs } from '../../assistant/repairClient';
+import { enqueueAssistantRepair, getAssistantRepairs, type AssistantRepairJob } from '../../assistant/repairClient';
 import { resolveAssistantModule } from '../../assistant/routeContext';
 import { markGreetingSeen, readGreetingSeen } from '../../assistant/storage';
 import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
@@ -79,6 +79,19 @@ function providerCapability(status: AssistantStatusResponse): { capability: Atla
   return { capability: 'unavailable', label: 'unavailable', message: 'ATLAS Intelligence has no verified provider available right now.' };
 }
 
+type RepairSummary = { active: number; failed: number; completed: number; total: number };
+
+function summarizeRepairJobs(jobs: AssistantRepairJob[]): RepairSummary {
+  return jobs.reduce<RepairSummary>((summary, job) => {
+    const status = String(job.status || '').toLowerCase();
+    summary.total += 1;
+    if (status === 'failed') summary.failed += 1;
+    else if (status === 'completed') summary.completed += 1;
+    else summary.active += 1;
+    return summary;
+  }, { active: 0, failed: 0, completed: 0, total: 0 });
+}
+
 export function AtlasAssistant() {
   const location = useLocation();
   const [authorized, setAuthorized] = useState(false);
@@ -90,6 +103,7 @@ export function AtlasAssistant() {
   const [providerLabel, setProviderLabel] = useState('checking');
   const [messages, setMessages] = useState<AtlasAssistantMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [repairSummary, setRepairSummary] = useState<RepairSummary>({ active: 0, failed: 0, completed: 0, total: 0 });
   const sequence = useRef(0);
   const greetingSpoken = useRef(false);
   const moduleName = useMemo(() => resolveAssistantModule(location.pathname), [location.pathname]);
@@ -119,6 +133,15 @@ export function AtlasAssistant() {
       setTextCapability('unavailable');
       setProviderLabel('unavailable');
       setProviderError(message);
+    }
+  }, []);
+
+  const refreshRepairSummary = useCallback(async () => {
+    try {
+      const response = await getAssistantRepairs();
+      setRepairSummary(summarizeRepairJobs(Array.isArray(response.jobs) ? response.jobs : []));
+    } catch {
+      // Passive status refresh must never block chat or repair submission.
     }
   }, []);
 
@@ -154,6 +177,13 @@ export function AtlasAssistant() {
     }, 30_000);
     return () => window.clearInterval(timer);
   }, [authorized, refreshAuthorization, refreshProviderStatus, textCapability]);
+
+  useEffect(() => {
+    if (!authorized || !open) return;
+    void refreshRepairSummary();
+    const timer = window.setInterval(() => void refreshRepairSummary(), 15_000);
+    return () => window.clearInterval(timer);
+  }, [authorized, open, refreshRepairSummary]);
 
   useEffect(() => {
     if (!authorized || textCapability !== 'ready' || readGreetingSeen()) return;
@@ -244,6 +274,7 @@ export function AtlasAssistant() {
         role: 'assistant',
         text: `Repair task${jobId} queued securely. ATLAS attached this route and safe structural screen context to the governed repair path.`
       }]);
+      void refreshRepairSummary();
       setState('idle');
     } catch (cause) {
       setError(errorMessage(cause));
@@ -259,7 +290,9 @@ export function AtlasAssistant() {
 
     try {
       const response = await getAssistantRepairs();
-      const jobs = Array.isArray(response.jobs) ? response.jobs.slice(0, 5) : [];
+      const allJobs = Array.isArray(response.jobs) ? response.jobs : [];
+      setRepairSummary(summarizeRepairJobs(allJobs));
+      const jobs = allJobs.slice(0, 5);
       const text = jobs.length
         ? ['Recent repair tasks:', ...jobs.map((job) => {
             const status = String(job.status || 'unknown').toUpperCase();
@@ -347,6 +380,7 @@ export function AtlasAssistant() {
           moduleLabel={readableModule(moduleName)}
           textCapability={textCapability}
           providerLabel={providerLabel}
+          repairSummary={repairSummary}
           microphoneCapability={voice.microphoneCapability}
           transcriptionCapability={voice.transcriptionCapability}
           microphoneActive={voice.microphoneActive}
