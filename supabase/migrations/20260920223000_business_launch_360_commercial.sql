@@ -18,6 +18,7 @@ create table if not exists public.advisory_launch_intakes (
   status text not null default 'new' check (status in ('new','quoted','accepted','converted','invoiced','closed')),
   quote_amount numeric(14,2) check (quote_amount is null or quote_amount > 0),
   quote_tax_rate numeric(7,4) check (quote_tax_rate is null or (quote_tax_rate >= 0 and quote_tax_rate <= 100)),
+  quote_payment_terms_days integer check (quote_payment_terms_days is null or (quote_payment_terms_days >= 0 and quote_payment_terms_days <= 365)),
   quote_currency text not null default 'USD' check (quote_currency ~ '^[A-Z]{3}
   advisory_client_id uuid references public.advisory_clients(id),
   engagement_id uuid references public.advisory_engagements(id),
@@ -57,6 +58,7 @@ create or replace function public.advisory_set_launch_quote(
   p_intake_id uuid,
   p_amount numeric,
   p_tax_rate numeric,
+  p_payment_terms_days integer,
   p_note text default null
 )
 returns setof public.advisory_launch_intakes
@@ -80,10 +82,14 @@ begin
   if p_tax_rate is null or p_tax_rate < 0 or p_tax_rate > 100 then
     raise exception 'Quote tax rate must be between 0 and 100';
   end if;
+  if p_payment_terms_days is null or p_payment_terms_days < 0 or p_payment_terms_days > 365 then
+    raise exception 'Quote payment terms must be between 0 and 365 days';
+  end if;
 
   update public.advisory_launch_intakes
   set quote_amount = round(p_amount::numeric, 2),
       quote_tax_rate = round(p_tax_rate::numeric, 4),
+      quote_payment_terms_days = p_payment_terms_days,
       quote_note = nullif(trim(coalesce(p_note,'')), ''),
       quote_currency = 'USD',
       quote_acceptance_reference = null,
@@ -131,6 +137,7 @@ begin
     and quote_amount is not null
     and quote_amount > 0
     and quote_tax_rate is not null
+    and quote_payment_terms_days is not null
     and status in ('quoted','accepted');
 
   if not found then raise exception 'Quoted launch intake not available for acceptance'; end if;
@@ -166,7 +173,7 @@ begin
   for update;
 
   if v_intake.id is null then raise exception 'Launch intake not available'; end if;
-  if v_intake.quote_amount is null or v_intake.quote_amount <= 0 or v_intake.quote_tax_rate is null then
+  if v_intake.quote_amount is null or v_intake.quote_amount <= 0 or v_intake.quote_tax_rate is null or v_intake.quote_payment_terms_days is null then
     raise exception 'Complete quote required before conversion';
   end if;
   if v_intake.quote_accepted_at is null or length(trim(coalesce(v_intake.quote_acceptance_reference,''))) = 0 then
@@ -282,11 +289,11 @@ begin
 end
 $$;
 
-revoke all on function public.advisory_set_launch_quote(uuid,numeric,numeric,text) from public;
+revoke all on function public.advisory_set_launch_quote(uuid,numeric,numeric,integer,text) from public;
 revoke all on function public.advisory_accept_launch_quote(uuid,text) from public;
 revoke all on function public.advisory_convert_launch_intake(uuid) from public;
 revoke all on function public.advisory_set_launch_billing_refs(uuid,uuid,uuid) from public;
-grant execute on function public.advisory_set_launch_quote(uuid,numeric,numeric,text) to authenticated;
+grant execute on function public.advisory_set_launch_quote(uuid,numeric,numeric,integer,text) to authenticated;
 grant execute on function public.advisory_accept_launch_quote(uuid,text) to authenticated;
 grant execute on function public.advisory_convert_launch_intake(uuid) to authenticated;
 grant execute on function public.advisory_set_launch_billing_refs(uuid,uuid,uuid) to authenticated;
