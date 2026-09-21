@@ -1,14 +1,17 @@
 
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useSearchParams } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { TAX_FORM_CATALOG, mapW2ToReturn, type W2Document } from '../../../../../packages/tax-forms/src';
 import { InformationReturnWorkspace, PartnershipK1Workspace } from './AdditionalTaxIntake';
 import { ProfessionalReturnWorkspace } from './ProfessionalReturnWorkspace';
+import { TaxControlCenter } from './TaxControlCenter';
+import { importTaxSourceMapping } from '../../lib/taxApi';
 import './tax.css';
 
 const nav = [
   { to: '/tax', label: 'Tax Home', end: true },
+  { to: '/tax/control', label: 'Control Center', end: false },
   { to: '/tax/prepare', label: 'Prepare Return', end: false },
   { to: '/tax/documents/w2', label: 'W-2 Intake', end: false },
   { to: '/tax/documents/1099', label: '1099 Intake', end: false },
@@ -114,6 +117,7 @@ function TaxHome() {
         ATLAS can prepare deterministic mappings and review paths. External e-file submission remains unavailable until the filing adapter, authorization and production verification are approved.
       </div>
       <div className="module-grid">
+        <Link className="module-card enabled" to="/tax/control"><span>Firm operations</span><strong>Tax Control Center</strong><p>Persistent client return queue, statuses, review/signature gates, rejects and filing readiness.</p></Link>
         <Link className="module-card enabled" to="/tax/prepare"><span>Professional workflow</span><strong>Prepare a Return</strong><p>Guided preparation from engagement and interview through review, signature, e-file readiness and closeout.</p></Link>
         <Link className="module-card enabled" to="/tax/documents/w2"><span>Source documents</span><strong>Enter a W-2</strong><p>Populate W-2 boxes and see federal, state and local destinations update immediately.</p></Link>
         <Link className="module-card enabled" to="/tax/documents/1099"><span>Information returns</span><strong>Enter a 1099</strong><p>Map 1099-INT, 1099-DIV and 1099-NEC into the connected return graph with classification gates.</p></Link>
@@ -150,9 +154,32 @@ function MoneyField({
 }
 
 function W2Workspace() {
+  const [params] = useSearchParams();
+  const returnId = params.get('returnId') || '';
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const [draft, setDraft] = useState<W2Draft>(initialW2);
   const document = useMemo(() => buildW2(draft), [draft]);
   const result = useMemo(() => mapW2ToReturn(document), [document]);
+
+  const persistW2 = async () => {
+    if (!returnId || !result.mappings.length) return;
+    setSaving(true); setSaveMessage('');
+    try {
+      const saved = await importTaxSourceMapping({
+        returnId,
+        documentType: 'W-2',
+        taxYear: document.taxYear,
+        mappings: result.mappings.map((mapping) => ({ ...mapping })),
+        metadata: { reviewFlags: result.reviewFlags, revisionStatus: result.revisionStatus }
+      });
+      setSaveMessage('Saved ' + saved.mapping_count + ' mappings to return ledger.');
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Unable to save W-2 mapping.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="page-stack">
@@ -227,6 +254,12 @@ function W2Workspace() {
             </label>
           ))}
         </div>
+        {returnId ? (
+          <div className="tax-pro-actions">
+            <button type="button" className="primary-action" disabled={saving || !result.mappings.length} onClick={() => void persistW2()}>{saving ? 'Saving…' : 'Save W-2 to return'}</button>
+            {saveMessage ? <span>{saveMessage}</span> : null}
+          </div>
+        ) : <div className="notice">Preview mode. Open this W-2 intake with a returnId to persist the document and its source-to-line mappings.</div>}
       </section>
 
       <section className="tax-panel">
@@ -305,6 +338,7 @@ export function TaxRoutes() {
       <TaxLayout>
         <Routes>
           <Route index element={<TaxHome />} />
+          <Route path="control" element={<TaxControlCenter />} />
           <Route path="prepare" element={<ProfessionalReturnWorkspace />} />
           <Route path="documents/w2" element={<W2Workspace />} />
           <Route path="documents/1099" element={<InformationReturnWorkspace />} />

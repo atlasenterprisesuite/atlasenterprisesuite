@@ -1,5 +1,6 @@
 
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   map1099DIVToReturn,
   map1099INTToReturn,
@@ -8,8 +9,13 @@ import {
   type NecIncomeClassification,
   type TaxMappingResult
 } from '../../../../../packages/tax-forms/src';
+import { importTaxSourceMapping } from '../../lib/taxApi';
 
 type Draft = Record<string, string | boolean>;
+
+function mappingPayload(result: TaxMappingResult): Array<Record<string, unknown>> {
+  return result.mappings.map((mapping) => ({ ...mapping }));
+}
 
 const money = (value: string | boolean | undefined) => {
   const text = String(value ?? '').trim();
@@ -55,6 +61,10 @@ function Input({ label, value, onChange }: { label: string; value: string; onCha
 }
 
 export function InformationReturnWorkspace() {
+  const [params] = useSearchParams();
+  const returnId = params.get('returnId') || '';
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const [kind, setKind] = useState<'1099-INT' | '1099-DIV' | '1099-NEC'>('1099-INT');
   const [draft, setDraft] = useState<Draft>({ taxYear: '2026', classification: 'unknown' });
 
@@ -101,6 +111,25 @@ export function InformationReturnWorkspace() {
     });
   }, [draft, kind, taxYear]);
 
+  const persist1099 = async () => {
+    if (!returnId || !result.mappings.length) return;
+    setSaving(true); setSaveMessage('');
+    try {
+      const saved = await importTaxSourceMapping({
+        returnId,
+        documentType: kind,
+        taxYear,
+        mappings: mappingPayload(result),
+        metadata: { reviewFlags: result.reviewFlags, revisionStatus: result.revisionStatus }
+      });
+      setSaveMessage('Saved ' + saved.mapping_count + ' mappings to return ledger.');
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Unable to save source mapping.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const fields = kind === '1099-INT'
     ? [
         ['box1', 'Box 1 · Interest income'],
@@ -143,6 +172,12 @@ export function InformationReturnWorkspace() {
           <Input label="State tax withheld" value={String(draft.stateTax ?? '')} onChange={(value) => set('stateTax', value)} />
           <Input label="State income" value={String(draft.stateIncome ?? '')} onChange={(value) => set('stateIncome', value)} />
         </div>
+        {returnId ? (
+          <div className="tax-pro-actions">
+            <button type="button" className="primary-action" disabled={saving || !result.mappings.length} onClick={() => void persist1099()}>{saving ? 'Saving…' : 'Save 1099 to return'}</button>
+            {saveMessage ? <span>{saveMessage}</span> : null}
+          </div>
+        ) : <div className="notice">Preview mode. Open this intake with a returnId to persist the document and its mappings.</div>}
       </section>
       <MappingPanel result={result} />
     </div>
@@ -150,6 +185,10 @@ export function InformationReturnWorkspace() {
 }
 
 export function PartnershipK1Workspace() {
+  const [params] = useSearchParams();
+  const returnId = params.get('returnId') || '';
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const [draft, setDraft] = useState<Draft>({ taxYear: '2026', hasK3: false, isPTP: false });
   const set = (key: string, value: string | boolean) => setDraft((current) => ({ ...current, [key]: value }));
 
@@ -171,6 +210,25 @@ export function PartnershipK1Workspace() {
     hasK3: Boolean(draft.hasK3),
     isPubliclyTradedPartnership: Boolean(draft.isPTP)
   }), [draft]);
+
+  const persistK1 = async () => {
+    if (!returnId || !result.mappings.length) return;
+    setSaving(true); setSaveMessage('');
+    try {
+      const saved = await importTaxSourceMapping({
+        returnId,
+        documentType: 'K-1 (Form 1065)',
+        taxYear: Number(draft.taxYear) || 2026,
+        mappings: mappingPayload(result),
+        metadata: { reviewFlags: result.reviewFlags, revisionStatus: result.revisionStatus, hasK3: Boolean(draft.hasK3), isPTP: Boolean(draft.isPTP) }
+      });
+      setSaveMessage('Saved ' + saved.mapping_count + ' mappings to return ledger.');
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Unable to save source mapping.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fields = [
     ['box1', 'Box 1 · Ordinary business income (loss)'],
@@ -202,6 +260,12 @@ export function PartnershipK1Workspace() {
           <label><input type="checkbox" checked={Boolean(draft.hasK3)} onChange={(event) => set('hasK3', event.target.checked)} /> Schedule K-3 attached</label>
           <label><input type="checkbox" checked={Boolean(draft.isPTP)} onChange={(event) => set('isPTP', event.target.checked)} /> Publicly traded partnership (PTP)</label>
         </div>
+        {returnId ? (
+          <div className="tax-pro-actions">
+            <button type="button" className="primary-action" disabled={saving || !result.mappings.length} onClick={() => void persistK1()}>{saving ? 'Saving…' : 'Save K-1 to return'}</button>
+            {saveMessage ? <span>{saveMessage}</span> : null}
+          </div>
+        ) : <div className="notice">Preview mode. Open this intake with a returnId to persist the K-1 and its mappings.</div>}
       </section>
       <MappingPanel result={result} />
     </div>

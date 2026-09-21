@@ -1,5 +1,6 @@
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   TAX_PROFESSIONAL_SYSTEM_AREAS,
   filingReadiness,
@@ -8,6 +9,11 @@ import {
   type TaxReturnCase,
   type TaxReturnKind
 } from '../../../../../packages/tax-forms/src';
+import {
+  getTaxReturnWorkspace,
+  setTaxReturnStepState,
+  type TaxReturnWorkspaceData
+} from '../../lib/taxApi';
 
 const returnLabels: Record<TaxReturnKind, string> = {
   '1040': 'Individual · Form 1040',
@@ -16,24 +22,6 @@ const returnLabels: Record<TaxReturnKind, string> = {
   '1120': 'C Corporation · Form 1120',
   '1041': 'Estate / Trust · Form 1041'
 };
-
-function initialCase(returnKind: TaxReturnKind): TaxReturnCase {
-  return {
-    returnId: 'draft-return',
-    taxYear: 2026,
-    returnKind,
-    clientDisplayName: 'New client',
-    preparerDisplayName: 'Assigned preparer',
-    status: 'in_progress',
-    currentStepId: 'engagement',
-    completedStepIds: [],
-    reviewStepIds: [],
-    blockedStepIds: [],
-    activatedForms: [returnKind === '1040' ? 'Form 1040' : 'Form ' + returnKind],
-    missingItems: [],
-    diagnostics: []
-  };
-}
 
 function stateLabel(state: string) {
   if (state === 'complete') return 'Complete';
@@ -44,79 +32,131 @@ function stateLabel(state: string) {
   return 'Later';
 }
 
+function toCase(data: TaxReturnWorkspaceData): TaxReturnCase {
+  const completedStepIds = data.steps.filter((item) => item.state === 'complete').map((item) => item.step_id);
+  const reviewStepIds = data.steps.filter((item) => item.state === 'review').map((item) => item.step_id);
+  const blockedStepIds = data.steps.filter((item) => item.state === 'blocked').map((item) => item.step_id);
+  const activatedForms = Array.from(new Set([
+    data.returnRow.return_kind === '1040' ? 'Form 1040' : 'Form ' + data.returnRow.return_kind,
+    ...data.mappings.map((item) => item.form_id)
+  ]));
+  const openBlocking = data.diagnostics.filter((item) => item.status === 'open' && item.blocking);
+
+  return {
+    returnId: data.returnRow.id,
+    taxYear: data.returnRow.tax_year,
+    returnKind: data.returnRow.return_kind,
+    clientDisplayName: data.client?.display_name || 'Client',
+    preparerDisplayName: data.returnRow.preparer_user_id ? 'Assigned preparer' : 'Unassigned',
+    status: data.returnRow.status === 'review' ? 'review' : data.returnRow.locked_at ? 'complete' : 'in_progress',
+    currentStepId: data.returnRow.current_step_id,
+    completedStepIds,
+    reviewStepIds,
+    blockedStepIds,
+    activatedForms,
+    missingItems: openBlocking.filter((item) => item.diagnostic_code.startsWith('MISSING_')).map((item) => item.message),
+    diagnostics: openBlocking.map((item) => item.message)
+  };
+}
+
 export function ProfessionalReturnWorkspace() {
-  const [returnCase, setReturnCase] = useState<TaxReturnCase>(() => initialCase('1040'));
-  const steps = useMemo(() => stepsForReturn(returnCase.returnKind), [returnCase.returnKind]);
-  const states = useMemo(() => stepStates(returnCase), [returnCase]);
-  const current = steps.find((step) => step.id === returnCase.currentStepId) ?? steps[0];
-  const currentIndex = Math.max(0, steps.findIndex((step) => step.id === current.id));
-  const readiness = useMemo(() => filingReadiness(returnCase), [returnCase]);
+  const [params] = useSearchParams();
+  const returnId = params.get('returnId') || '';
+  const [data, setData] = useState<TaxReturnWorkspaceData | null>(null);
+  const [loading, setLoading] = useState(Boolean(returnId));
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState('');
 
-  const moveTo = (stepId: string) => setReturnCase((currentCase) => ({ ...currentCase, currentStepId: stepId }));
+  const refresh = useCallback(async () => {
+    if (!returnId) return;
+    setLoading(true);
+    setError('');
+    try {
+      setData(await getTaxReturnWorkspace(returnId));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'tax_return_workspace_unavailable');
+    } finally {
+      setLoading(false);
+    }
+  }, [returnId]);
 
-  const markComplete = () => {
-    setReturnCase((currentCase) => {
-      const completed = Array.from(new Set([...currentCase.completedStepIds, current.id]));
-      const next = steps[currentIndex + 1];
-      return {
-        ...currentCase,
-        completedStepIds: completed,
-        reviewStepIds: currentCase.reviewStepIds.filter((id) => id !== current.id),
-        blockedStepIds: currentCase.blockedStepIds.filter((id) => id !== current.id),
-        currentStepId: next?.id ?? current.id,
-        status: next ? 'in_progress' : 'review'
-      };
-    });
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const returnCase = useMemo(() => data ? toCase(data) : null, [data]);
+  const steps = useMemo(() => returnCase ? stepsForReturn(returnCase.returnKind) : [], [returnCase]);
+  const states = useMemo(() => returnCase ? stepStates(returnCase) : [], [returnCase]);
+  const current = returnCase ? (steps.find((step) => step.id === returnCase.currentStepId) ?? steps[0]) : null;
+  const currentIndex = current ? Math.max(0, steps.findIndex((step) => step.id === current.id)) : 0;
+  const readiness = useMemo(() => returnCase ? filingReadiness(returnCase) : null, [returnCase]);
+  const locked = Boolean(data?.returnRow.locked_at);
+
+  const setStep = async (stepId: string, state: 'in_progress' | 'review' | 'blocked' | 'complete') => {
+    if (!returnId || locked) return;
+    setWorking(true);
+    setError('');
+    try {
+      await setTaxReturnStepState({ returnId, stepId, state });
+      await refresh();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'tax_step_update_failed');
+    } finally {
+      setWorking(false);
+    }
   };
 
-  const markReview = () => {
-    setReturnCase((currentCase) => ({
-      ...currentCase,
-      reviewStepIds: Array.from(new Set([...currentCase.reviewStepIds, current.id])),
-      completedStepIds: currentCase.completedStepIds.filter((id) => id !== current.id)
-    }));
-  };
+  if (!returnId) {
+    return (
+      <div className="page-stack">
+        <section className="tax-panel">
+          <p className="eyebrow">ATLAS Tax Professional</p>
+          <h2>Select a persistent return</h2>
+          <p>The professional workspace no longer creates a local/demo return. Start or open a real organization-scoped return from Tax Control Center.</p>
+          <div><Link className="primary-action" to="/tax/control">Open Tax Control Center</Link></div>
+        </section>
+      </div>
+    );
+  }
 
-  const markBlocked = () => {
-    setReturnCase((currentCase) => ({
-      ...currentCase,
-      blockedStepIds: Array.from(new Set([...currentCase.blockedStepIds, current.id])),
-      completedStepIds: currentCase.completedStepIds.filter((id) => id !== current.id)
-    }));
-  };
+  if (loading && !data) {
+    return <div className="empty-state"><strong>Loading return</strong><span>Reading tax facts, workpapers, diagnostics and workflow state.</span></div>;
+  }
 
-  const changeReturnKind = (kind: TaxReturnKind) => setReturnCase(initialCase(kind));
+  if (error && !data) {
+    return (
+      <section className="tax-panel">
+        <div className="notice"><strong>Return unavailable.</strong> {error}</div>
+        <Link to="/tax/control">Back to Tax Control Center</Link>
+      </section>
+    );
+  }
+
+  if (!data || !returnCase || !current || !readiness) return null;
+
+  const factById = new Map(data.facts.map((fact) => [fact.id, fact]));
+  const openDiagnostics = data.diagnostics.filter((item) => item.status === 'open');
 
   return (
     <div className="tax-pro-workspace">
       <section className="tax-pro-toolbar">
         <div>
-          <p className="eyebrow">ATLAS Tax Professional</p>
-          <h2>Prepare return</h2>
-          <p>One guided workspace from client intake through review, signature, e-file gate and closeout.</p>
+          <p className="eyebrow">ATLAS Tax Professional · Persisted Return</p>
+          <h2>{returnCase.clientDisplayName}</h2>
+          <p>{returnLabels[returnCase.returnKind]} · {returnCase.taxYear} · {data.returnRow.jurisdiction} · revision {data.returnRow.revision}</p>
         </div>
         <div className="tax-pro-controls">
-          <label className="field">
-            <span>Return type</span>
-            <select value={returnCase.returnKind} onChange={(event) => changeReturnKind(event.target.value as TaxReturnKind)}>
-              {Object.entries(returnLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>Tax year</span>
-            <select value={returnCase.taxYear} onChange={(event) => setReturnCase((currentCase) => ({ ...currentCase, taxYear: Number(event.target.value) }))}>
-              <option value={2025}>2025</option>
-              <option value={2026}>2026</option>
-            </select>
-          </label>
+          <Link to="/tax/control">Control Center</Link>
+          <button type="button" onClick={() => void refresh()} disabled={loading || working}>Refresh</button>
         </div>
       </section>
+
+      {error ? <div className="notice"><strong>Last operation failed.</strong> {error}</div> : null}
+      {locked ? <div className="notice"><strong>Return locked.</strong> This revision has an immutable submission snapshot. Create an amendment/new revision instead of changing its tax facts.</div> : null}
 
       <section className="tax-pro-summary">
         <div><small>Client</small><strong>{returnCase.clientDisplayName}</strong></div>
         <div><small>Preparer</small><strong>{returnCase.preparerDisplayName}</strong></div>
-        <div><small>Return</small><strong>{returnLabels[returnCase.returnKind]}</strong></div>
-        <div><small>Filing gate</small><strong>{readiness.ready ? 'Ready' : 'Not ready'}</strong></div>
+        <div><small>Status</small><strong>{data.returnRow.status.replaceAll('_',' ')}</strong></div>
+        <div><small>Filing gate</small><strong>{readiness.ready && !locked ? 'Workflow ready' : locked ? 'Locked snapshot' : 'Not ready'}</strong></div>
       </section>
 
       <div className="tax-pro-grid">
@@ -126,7 +166,8 @@ export function ProfessionalReturnWorkspace() {
               type="button"
               key={step.id}
               className={'tax-step tax-step-' + state}
-              onClick={() => moveTo(step.id)}
+              onClick={() => void setStep(step.id, 'in_progress')}
+              disabled={working || locked}
             >
               <span className="tax-step-number">{index + 1}</span>
               <span><strong>{step.shortTitle}</strong><small>{stateLabel(state)}</small></span>
@@ -162,38 +203,74 @@ export function ProfessionalReturnWorkspace() {
 
             <div className="tax-pro-entry-surface">
               <div>
-                <strong>Professional work surface</strong>
-                <p>This panel is where the step-specific interview, document fields, worksheets and form-line mappings attach. Existing W-2, 1099 and K-1 intake pages feed this return graph rather than living as isolated screens.</p>
+                <strong>Persistent professional work surface</strong>
+                <p>Documents, normalized tax facts, calculations, workpapers and form-line mappings for this return are persisted under the active organization and preserve provenance across revisions.</p>
               </div>
+              {current.id === 'income-documents' ? (
+                <div className="tax-pro-actions">
+                  <Link to={'/tax/documents/w2?returnId=' + encodeURIComponent(returnId)}>Add W-2</Link>
+                  <Link to={'/tax/documents/1099?returnId=' + encodeURIComponent(returnId)}>Add 1099</Link>
+                  <Link to={'/tax/documents/k1?returnId=' + encodeURIComponent(returnId)}>Add K-1</Link>
+                </div>
+              ) : null}
               <div className="tax-pro-actions">
-                <button type="button" onClick={markBlocked}>Block</button>
-                <button type="button" onClick={markReview}>Needs review</button>
-                <button type="button" className="primary-action" onClick={markComplete}>Complete & continue</button>
+                <button type="button" disabled={working || locked} onClick={() => void setStep(current.id, 'blocked')}>Block</button>
+                <button type="button" disabled={working || locked} onClick={() => void setStep(current.id, 'review')}>Needs review</button>
+                <button type="button" className="primary-action" disabled={working || locked} onClick={() => void setStep(current.id, 'complete')}>Complete step</button>
               </div>
             </div>
 
             <div className="tax-pro-nav-actions">
-              <button type="button" disabled={currentIndex === 0} onClick={() => moveTo(steps[Math.max(0, currentIndex - 1)].id)}>Previous</button>
-              <button type="button" disabled={currentIndex >= steps.length - 1} onClick={() => moveTo(steps[Math.min(steps.length - 1, currentIndex + 1)].id)}>Next</button>
+              <button type="button" disabled={working || locked || currentIndex === 0} onClick={() => void setStep(steps[Math.max(0, currentIndex - 1)].id, 'in_progress')}>Previous</button>
+              <button type="button" disabled={working || locked || currentIndex >= steps.length - 1} onClick={() => void setStep(steps[Math.min(steps.length - 1, currentIndex + 1)].id, 'in_progress')}>Next</button>
             </div>
           </section>
 
           <section className="tax-panel">
             <div className="tax-panel-heading">
-              <div><p className="eyebrow">Return graph</p><h2>Forms, diagnostics & evidence</h2></div>
-              <span className={readiness.blocking ? 'tax-status review' : 'tax-status ok'}>{readiness.blocking ? 'Open issues' : 'No blocking issues'}</span>
+              <div><p className="eyebrow">Return ledger</p><h2>Facts, workpapers & diagnostics</h2></div>
+              <span className={openDiagnostics.some((item) => item.blocking) ? 'tax-status review' : 'tax-status ok'}>
+                {openDiagnostics.some((item) => item.blocking) ? 'Blocking diagnostics' : 'No blocking diagnostics'}
+              </span>
             </div>
             <div className="tax-pro-diagnostics">
-              <article><small>Activated forms</small><strong>{returnCase.activatedForms.length}</strong><p>{returnCase.activatedForms.join(', ') || 'None yet'}</p></article>
-              <article><small>Incomplete steps</small><strong>{readiness.incompleteStepIds.length}</strong><p>{readiness.incompleteStepIds.slice(0, 5).join(', ') || 'None'}</p></article>
-              <article><small>Review items</small><strong>{returnCase.reviewStepIds.length}</strong><p>{returnCase.reviewStepIds.join(', ') || 'None'}</p></article>
-              <article><small>Blocked</small><strong>{returnCase.blockedStepIds.length}</strong><p>{returnCase.blockedStepIds.join(', ') || 'None'}</p></article>
+              <article><small>Tax facts</small><strong>{data.facts.filter((item) => item.is_current).length}</strong><p>Current normalized ledger facts.</p></article>
+              <article><small>Mappings</small><strong>{data.mappings.length}</strong><p>Source/fact to Form/Schedule destinations.</p></article>
+              <article><small>Workpapers</small><strong>{data.workpapers.length}</strong><p>Reconciliations, basis, depreciation and worksheets.</p></article>
+              <article><small>Diagnostics</small><strong>{openDiagnostics.length}</strong><p>{openDiagnostics.filter((item) => item.blocking).length} blocking.</p></article>
+              <article><small>Documents</small><strong>{data.documents.length}</strong><p>Source documents attached to this return.</p></article>
+              <article><small>Carryforwards</small><strong>{data.carryforwards.filter((item) => item.status === 'available').length}</strong><p>Available multi-year tax attributes.</p></article>
+              <article><small>Snapshots</small><strong>{data.snapshots.length}</strong><p>Immutable reviewed/signature/submission snapshots.</p></article>
+              <article><small>Activated forms</small><strong>{returnCase.activatedForms.length}</strong><p>{returnCase.activatedForms.slice(0,3).join(', ')}</p></article>
             </div>
-            {!readiness.professionalReviewComplete || !readiness.signatureComplete ? (
-              <div className="notice">
-                Filing remains disabled until professional review, client authorization/signature, diagnostics and provider authorization are complete.
+          </section>
+
+          <section className="tax-panel">
+            <div className="tax-panel-heading">
+              <div><p className="eyebrow">Explain this number</p><h2>Source → fact → form line</h2></div>
+              <span className="tax-status ok">Provenance graph</span>
+            </div>
+            {data.mappings.length === 0 ? (
+              <div className="empty-state"><strong>No persisted line mappings yet</strong><span>W-2/1099/K-1 import adapters will write their normalized facts and mappings here.</span></div>
+            ) : (
+              <div className="tax-map-list">
+                {data.mappings.slice(0,12).map((mapping) => {
+                  const fact = factById.get(mapping.tax_fact_id);
+                  return (
+                    <article className="tax-map-row" key={mapping.id}>
+                      <div><small>Tax fact</small><strong>{fact?.tax_fact_key || mapping.tax_fact_id}</strong></div>
+                      <span aria-hidden="true">→</span>
+                      <div>
+                        <small>{mapping.contribution_role}{mapping.rule_pack_version ? ' · ' + mapping.rule_pack_version : ''}</small>
+                        <strong>{mapping.form_id}{mapping.destination_line ? ' · line ' + mapping.destination_line : ''}</strong>
+                        <p>{mapping.destination_field}{fact?.source_field ? ' · source ' + fact.source_field : ''}</p>
+                      </div>
+                      {mapping.review_required ? <span className="tax-review-chip">Review</span> : <span className="tax-ok-chip">Mapped</span>}
+                    </article>
+                  );
+                })}
               </div>
-            ) : null}
+            )}
           </section>
         </main>
 
