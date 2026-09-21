@@ -656,8 +656,23 @@ async function queueOpenAiStep(deps: PilotDeps, state: any, actionType: string, 
       : { type: 'read_text', domain: 'chatgpt.com', target: actionType, metadata: { domain: OPENAI_DOMAIN } };
 
   const allowedActions = action.type === 'click_openai_check' ? ['click_openai_check'] : action.type === 'navigate' ? ['navigate'] : ['read_text'];
+
+  if (!await hasBrowserConnection(deps, 'openai')) {
+    return blockCurrentStep(deps, state, 'openai_authorized_session_missing', options);
+  }
+
+  const work = parseAtlasWorkContext({ work: record(state.workflow.context).work });
+  const runtimes = await listEligibleBrowserRuntimes(deps);
+  const selection = selectWorkRuntime(
+    { preference: work.runtimePreference, requiredCapabilities: ['browser'], runtimes },
+    options?.now?.() ?? new Date()
+  );
+  if (selection.state !== 'ready') {
+    return blockCurrentStep(deps, state, 'openai_browser_runtime_missing', options);
+  }
+
   const job = await queueBrowserAction(deps, state, { provider: 'openai', domain: 'chatgpt.com', action, allowedActions, options });
-  if (!job) return blockCurrentStep(deps, state, 'openai_browser_session_or_runtime_missing', options);
+  if (!job) return blockCurrentStep(deps, state, 'openai_browser_execution_unavailable', options);
   if (String(state.step.status) === 'ready') await setStepStatus(deps, state.step, 'running', options);
   return { state: 'running' as const, mechanism: 'browser', jobId: String(job.id) };
 }
