@@ -22,6 +22,7 @@ describe('Business Launch 360 commercial pipeline', () => {
     expect(routes).toContain('createDraftInvoice');
     expect(routes).toContain('addInvoiceLine');
     expect(routes).toContain('issueInvoice');
+    expect(routes).toContain('<LaunchCommercialPipeline onChanged={workspace.refresh} />');
   });
 
   it('persists intake and conversion through governed server contracts', () => {
