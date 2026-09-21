@@ -57,6 +57,13 @@ describe('OpenAI domain pilot Edge contract', () => {
     expect(pilotSource).toContain("allowedActions: ['create_dns_txt']");
   });
 
+  it('reports OpenAI authorization and browser runtime blockers separately', () => {
+    expect(pilotSource).toContain('openai_authorized_session_missing');
+    expect(pilotSource).toContain('openai_browser_runtime_missing');
+    expect(pilotSource).toContain('openai_browser_execution_unavailable');
+    expect(pilotSource).not.toContain('openai_browser_session_or_runtime_missing');
+  });
+
   it('reconciles provider/public DNS state before mutation retry', () => {
     expect(pilotSource).toContain('resumeOpenAiDomainStep');
     expect(pilotSource).toContain('readTxt');
