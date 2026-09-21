@@ -20,6 +20,7 @@ describe('ATLAS Ride compliance routes', () => {
     for (const route of [
       '/ride',
       '/ride/driver',
+      '/ride/readiness',
       '/ride/driver/compliance',
       '/ride/driver/compliance/documents',
       '/ride/driver/compliance/documents/profile-photo'
@@ -46,6 +47,7 @@ describe('ATLAS Ride compliance routes', () => {
     expect(screen.getByText('Driver readiness, compliance evidence and governed mobility operations.')).toBeInTheDocument();
     const rideNav = screen.getByRole('navigation', { name: /atlas ride/i });
     expect(within(rideNav).getByRole('link', { name: /driver.*partner/i })).toHaveAttribute('href', '/ride/driver');
+    expect(within(rideNav).getByRole('link', { name: /^readiness$/i })).toHaveAttribute('href', '/ride/readiness');
     expect(screen.getByText('Dispatch & Trips').closest('[aria-disabled="true"]')).toBeTruthy();
   });
 
