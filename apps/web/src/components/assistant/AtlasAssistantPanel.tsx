@@ -54,6 +54,9 @@ export function AtlasAssistantPanel({
   const microphoneUnavailable = microphoneCapability === 'unavailable';
   const transcriptionUnavailable = transcriptionCapability !== 'ready';
   const speechUnavailable = speechCapability !== 'ready';
+  const explainScreenPrompt = 'Explain the current ATLAS screen, what each visible section is for, and what I can do here.';
+  const checkScreenPrompt = 'Review the current ATLAS screen for visible UX, workflow, navigation, loading, error, empty-state, responsive, or accessibility problems. Report only issues supported by the current structural context.';
+  const repairScreenPrompt = 'Inspect and repair verified defects on the current ATLAS screen: clipped or broken responsive UI, nonfunctional controls, route/navigation defects, loading/error/empty-state problems, and accessibility regressions. Preserve existing working functionality, tenant isolation, RBAC, auditability, and fail-closed production gates.';
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,6 +73,16 @@ export function AtlasAssistantPanel({
     await onRepair(value);
   }
 
+  async function handleQuickAsk(message: string) {
+    if (busy || microphoneActive || !textReady) return;
+    await onSubmit(message);
+  }
+
+  async function handleScreenRepair() {
+    if (busy || microphoneActive) return;
+    await onRepair(repairScreenPrompt);
+  }
+
   return (
     <section className="atlas-assistant-panel" aria-label="ATLAS Assistant">
       <header className="atlas-assistant-header">
@@ -83,6 +96,15 @@ export function AtlasAssistantPanel({
         </div>
         <button type="button" className="atlas-assistant-close" aria-label="Close ATLAS Assistant" onClick={onClose}>×</button>
       </header>
+
+      <div className="atlas-assistant-quick-actions" aria-label="ATLAS Assistant current screen actions">
+        <span className="atlas-assistant-context-chip">Current screen · safe structural context</span>
+        <div>
+          <button type="button" onClick={() => void handleQuickAsk(explainScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Explain screen</button>
+          <button type="button" onClick={() => void handleQuickAsk(checkScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Check screen</button>
+          <button type="button" className="repair" onClick={() => void handleScreenRepair()} disabled={busy || microphoneActive}>Repair this screen</button>
+        </div>
+      </div>
 
       <AtlasAssistantMessageList messages={messages} />
 
