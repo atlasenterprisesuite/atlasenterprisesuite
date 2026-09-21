@@ -7,6 +7,7 @@ import {
   sendAssistantMessage,
   type AssistantStatusResponse
 } from '../../assistant/client';
+import { enqueueAssistantRepair } from '../../assistant/repairClient';
 import { resolveAssistantModule } from '../../assistant/routeContext';
 import { markGreetingSeen, readGreetingSeen } from '../../assistant/storage';
 import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
@@ -41,6 +42,9 @@ function errorMessage(cause: unknown) {
   if (code === 'authentication_required' || code === 'session_expired') return 'Your ATLAS session expired. Sign in again to continue.';
   if (code === 'no_active_organization' || code === 'active_organization_required' || code === 'organization_membership_required') return 'ATLAS could not resolve an active organization for this session.';
   if (code === 'permission_denied') return 'Your ATLAS role does not include permission to use Intelligence.';
+  if (code === 'owner_or_admin_required') return 'Only an ATLAS owner or admin can queue a repair.';
+  if (code === 'repair_request_required') return 'Describe the detail that ATLAS should repair.';
+  if (code === 'server_secret_not_configured' || code === 'storage_not_configured') return 'The governed repair service is not configured in this environment.';
   if (code === 'provider_not_configured') return 'ATLAS Intelligence is not configured for this environment.';
   if (code === 'provider_rate_limited') return 'ATLAS Intelligence is temporarily rate limited. Try again shortly.';
   if (code === 'provider_unavailable') return 'ATLAS Intelligence is temporarily unavailable.';
@@ -222,6 +226,32 @@ export function AtlasAssistant() {
     }
   }
 
+  async function queueRepair(message: string) {
+    if (voice.microphoneActive) voice.stopMicrophone();
+    setError('');
+    setState('thinking');
+    setMessages((current) => [...current, { id: nextId('user'), role: 'user', text: message }]);
+
+    try {
+      const response = await enqueueAssistantRepair({
+        message,
+        pathname: location.pathname,
+        conversationId
+      });
+      const jobId = response.job?.id ? ` ${response.job.id}` : '';
+      setMessages((current) => [...current, {
+        id: nextId('assistant'),
+        role: 'assistant',
+        text: `Repair task${jobId} queued securely. ATLAS attached this route and safe structural screen context to the governed repair path.`
+      }]);
+      setState('idle');
+    } catch (cause) {
+      setError(errorMessage(cause));
+      setState('error');
+      if (identityFailure(cause)) void refreshAuthorization();
+    }
+  }
+
   async function toggleMicrophone() {
     setError(providerError);
     if (voice.microphoneActive) {
@@ -295,6 +325,7 @@ export function AtlasAssistant() {
           speechEnabled={voice.speechEnabled}
           onClose={closeAssistant}
           onSubmit={submit}
+          onRepair={queueRepair}
           onToggleMicrophone={toggleMicrophone}
           onSpeechPreference={voice.setSpeechEnabled}
         />
