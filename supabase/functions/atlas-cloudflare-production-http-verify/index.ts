@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 20;
+const VERSION = 21;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -269,6 +269,7 @@ Deno.serve(async (req: Request) => {
     workConnections,
     workRuntimes,
     workPolicies,
+    workComputerOperations,
     deployment
   ] = await Promise.all([
     probe('/'),
@@ -300,6 +301,7 @@ Deno.serve(async (req: Request) => {
     probe('/work/connections'),
     probe('/work/runtimes'),
     probe('/work/policies'),
+    probe('/work/computer-operations'),
     probe('/deployment.json', false)
   ]);
 
@@ -324,7 +326,8 @@ Deno.serve(async (req: Request) => {
     workNew.status === 200 &&
     workConnections.status === 200 &&
     workRuntimes.status === 200 &&
-    workPolicies.status === 200;
+    workPolicies.status === 200 &&
+    workComputerOperations.status === 200;
   const commerceRouteOk = commerce.status === 200;
   const revenueRouteOk = revenue.status === 200;
   const analyticsRouteOk = analytics.status === 200;
@@ -357,7 +360,8 @@ Deno.serve(async (req: Request) => {
     workNew,
     workConnections,
     workRuntimes,
-    workPolicies
+    workPolicies,
+    workComputerOperations
   ];
   const criticalNetworkRoutesOk = [
     network,
@@ -366,7 +370,7 @@ Deno.serve(async (req: Request) => {
     networkPayouts,
     networkCompliance
   ].every((result) => result.status === 200);
-  const workRoutesOk = [work, workNew, workConnections, workRuntimes, workPolicies]
+  const workRoutesOk = [work, workNew, workConnections, workRuntimes, workPolicies, workComputerOperations]
     .every((result) => result.status === 200);
   const deploymentPathProtected = [302, 401, 403].includes(deployment.status);
   const observedVersionId = home.atlas_version_id;
@@ -422,6 +426,7 @@ Deno.serve(async (req: Request) => {
         work_connections_route_reachable: workConnections.status === 200,
         work_runtimes_route_reachable: workRuntimes.status === 200,
         work_policies_route_reachable: workPolicies.status === 200,
+        work_computer_operations_route_reachable: workComputerOperations.status === 200,
         production_commit_sha_verified: productionCommitVerified,
         network_route_reachable: network.status === 200,
         network_pricing_route_reachable: networkPricing.status === 200,
@@ -458,6 +463,7 @@ Deno.serve(async (req: Request) => {
         work_connections: workConnections,
         work_runtimes: workRuntimes,
         work_policies: workPolicies,
+        work_computer_operations: workComputerOperations,
         deployment
       },
       secrets_returned: false

@@ -1,5 +1,5 @@
 {
-  "version": 13,
+  "version": 14,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -29,7 +29,8 @@
     "/work/new",
     "/work/connections",
     "/work/runtimes",
-    "/work/policies"
+    "/work/policies",
+    "/work/computer-operations"
   ],
   "critical_network_routes": [
     "/business/network",
