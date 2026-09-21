@@ -219,6 +219,7 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
   const [selectedId,setSelectedId] = useState('');
   const [quoteAmount,setQuoteAmount] = useState('');
   const [quoteTaxRate,setQuoteTaxRate] = useState('');
+  const [paymentTermsDays,setPaymentTermsDays] = useState('');
   const [quoteNote,setQuoteNote] = useState('');
   const [acceptanceReference,setAcceptanceReference] = useState('');
   const [busy,setBusy] = useState(false);
@@ -243,9 +244,10 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
   useEffect(() => {
     setQuoteAmount(selected?.quote_amount == null ? '' : String(selected.quote_amount));
     setQuoteTaxRate(selected?.quote_tax_rate == null ? '' : String(selected.quote_tax_rate));
+    setPaymentTermsDays(selected?.quote_payment_terms_days == null ? '' : String(selected.quote_payment_terms_days));
     setQuoteNote(selected?.quote_note || '');
     setAcceptanceReference(selected?.quote_acceptance_reference || '');
-  }, [selectedId, selected?.quote_amount, selected?.quote_tax_rate, selected?.quote_note, selected?.quote_acceptance_reference]);
+  }, [selectedId, selected?.quote_amount, selected?.quote_tax_rate, selected?.quote_payment_terms_days, selected?.quote_note, selected?.quote_acceptance_reference]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true); setError(''); setMessage('');
@@ -258,13 +260,18 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
     if (!selected) return;
     const amount = Number(quoteAmount);
     const taxRate = Number(quoteTaxRate);
+    const termsDays = Number(paymentTermsDays);
     if (!Number.isFinite(amount) || amount <= 0) { setError('Enter a positive quote amount.'); return; }
     if (!quoteTaxRate.trim() || !Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
       setError('Record the applicable tax rate from 0 to 100 before saving the quote.');
       return;
     }
+    if (!paymentTermsDays.trim() || !Number.isInteger(termsDays) || termsDays < 0 || termsDays > 365) {
+      setError('Record invoice payment terms from 0 to 365 days before saving the quote.');
+      return;
+    }
     await run(async () => {
-      await setAdvisoryLaunchQuote({ intakeId:selected.id, amount, taxRate, note:quoteNote });
+      await setAdvisoryLaunchQuote({ intakeId:selected.id, amount, taxRate, paymentTermsDays:termsDays, note:quoteNote });
       await refresh();
       setMessage('Quote saved. Any previous acceptance evidence was cleared because the commercial terms changed.');
     });
@@ -295,8 +302,9 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
       let current = selected;
       const quotedAmount = current.quote_amount;
       const quotedTaxRate = current.quote_tax_rate;
-      if (quotedAmount == null || quotedAmount <= 0 || quotedTaxRate == null) {
-        throw new Error('Complete the quote amount and tax rate before invoicing.');
+      const paymentTerms = current.quote_payment_terms_days;
+      if (quotedAmount == null || quotedAmount <= 0 || quotedTaxRate == null || paymentTerms == null) {
+        throw new Error('Complete the quote amount, tax rate and payment terms before invoicing.');
       }
       if (!current.quote_accepted_at || !current.quote_acceptance_reference) {
         throw new Error('Quote acceptance evidence is required before invoicing.');
@@ -326,7 +334,7 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
           customerId,
           invoiceNumber: suggestInvoiceNumber(),
           issueDate: isoDatePlus(0),
-          dueDate: isoDatePlus(14)
+          dueDate: isoDatePlus(paymentTerms)
         });
         invoiceId = invoice.id;
         current = await setAdvisoryLaunchBillingRefs({
@@ -368,7 +376,7 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
     });
   }
 
-  const quoteReady = Boolean(selected?.quote_amount && selected.quote_tax_rate != null);
+  const quoteReady = Boolean(selected?.quote_amount && selected.quote_tax_rate != null && selected.quote_payment_terms_days != null);
   const accepted = Boolean(selected?.quote_accepted_at && selected.quote_acceptance_reference);
 
   return <section className="feature-card wide">
@@ -395,6 +403,7 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
       <div className="advisory-grid">
         <label className="field"><span>Quote amount (USD)</span><input type="number" min="0.01" step="0.01" value={quoteAmount} onChange={(event) => setQuoteAmount(event.target.value)} /></label>
         <label className="field"><span>Tax rate (%)</span><input type="number" min="0" max="100" step="0.0001" value={quoteTaxRate} onChange={(event) => setQuoteTaxRate(event.target.value)} placeholder="Record 0 explicitly when applicable" /></label>
+        <label className="field"><span>Payment terms (days)</span><input type="number" min="0" max="365" step="1" value={paymentTermsDays} onChange={(event) => setPaymentTermsDays(event.target.value)} placeholder="Record the approved terms" /></label>
         <label className="field"><span>Quote note</span><input value={quoteNote} onChange={(event) => setQuoteNote(event.target.value)} placeholder="Scope, exclusions or commercial note" /></label>
         <label className="field"><span>Acceptance evidence</span><input value={acceptanceReference} onChange={(event) => setAcceptanceReference(event.target.value)} placeholder="Signed quote, email, PO or approved record reference" /></label>
       </div>
