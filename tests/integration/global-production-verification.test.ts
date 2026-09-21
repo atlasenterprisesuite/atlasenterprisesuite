@@ -204,6 +204,9 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('ride_readiness_route_reachable');
     expect(authorizedVerifier).toContain('ride_documents_route_reachable');
     expect(authorizedVerifier).toContain('ride_profile_photo_route_reachable');
+    expect(authorizedVerifier).toContain('ride_routes_reachable');
+    expect(authorizedVerifier).toContain('rideRoutesOk');
+    expect(authorizedVerifier).toContain('analyticsRouteOk && rideRoutesOk && criticalNetworkRoutesOk');
     for (const route of ['/work', '/work/new', '/work/connections', '/work/runtimes', '/work/policies']) {
       expect(authorizedVerifier).toContain(`'${route}'`);
     }
