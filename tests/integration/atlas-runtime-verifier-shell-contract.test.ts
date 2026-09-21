@@ -44,5 +44,9 @@ describe('ATLAS runtime verifier shell contract', () => {
     expect(source).not.toContain("text.includes('ATLAS IA')");
     expect(source).toContain("service!=='atlas-copilot'");
     expect(source).toContain("storage_state!=='configured'");
+    expect(source).toContain("zero_cost_policy_violation");
+    expect(source).toContain("actualProvider!=='atlas-local'");
+    expect(source).toContain("automatic_api_cost_usd");
+    expect(source).not.toContain("provider:'openai'");
   });
 });
