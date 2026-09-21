@@ -42,4 +42,5 @@ export function canReportConnected(input: {
   return input.authorized && input.providerVerified;
 }
 
+export * from './evidence';
 export * from './crm';
