@@ -9,6 +9,27 @@ export type WorkStepExecutionDecision = {
   approvalRequired: boolean;
 };
 
+function blockerGuidance(reason: string | null | undefined) {
+  switch (reason) {
+    case 'openai_authorized_session_missing':
+      return 'Connect an authorized OpenAI/ChatGPT session before ATLAS retries this step.';
+    case 'openai_browser_runtime_missing':
+      return 'Start an online ATLAS runtime with the browser capability before retrying.';
+    case 'openai_browser_execution_unavailable':
+      return 'The authorized session or browser runtime changed during execution. Refresh the connection and retry.';
+    case 'openai_browser_session_or_runtime_missing':
+      return 'Connect an authorized OpenAI/ChatGPT session and start an online browser-capable ATLAS runtime.';
+    default:
+      return null;
+  }
+}
+
+function policyLabel(decision: WorkStepExecutionDecision) {
+  if (decision.route.state === 'blocked') return 'Not evaluated — execution route unavailable';
+  if (decision.approvalRequired) return 'Approval required';
+  return decision.policy.outcome === 'allow' ? 'Allowed by current policy' : 'Blocked by policy';
+}
+
 type Props = {
   step: GuidedStep;
   task: GuidedTask;
@@ -34,11 +55,18 @@ export function StepDetailPanel({ step, task, dependencies, evidence, approvals,
         {executionDecision ? (
           <div className="execution-decision" aria-label="Server execution decision">
             <p>Execution route: <strong>{executionDecision.route.mechanism === 'api' ? 'API' : executionDecision.route.mechanism === 'browser' ? 'Browser' : 'Blocked'}</strong></p>
-            <p>Policy: <strong>{executionDecision.approvalRequired ? 'Approval required' : executionDecision.policy.outcome === 'allow' ? 'Allowed by current policy' : 'Blocked by policy'}</strong></p>
-            <small>{humanizeExecutionValue(executionDecision.policy.reason)}</small>
+            <p>Policy: <strong>{policyLabel(executionDecision)}</strong></p>
+            <small>Route: {humanizeExecutionValue(executionDecision.route.reason)}</small>
+            {executionDecision.route.state === 'ready' ? <small>Policy: {humanizeExecutionValue(executionDecision.policy.reason)}</small> : null}
           </div>
         ) : null}
-        {task.blockedReason ? <div className="execution-blocker" role="status"><strong>Blocked</strong><p>{task.blockedReason}</p></div> : null}
+        {task.blockedReason ? (
+          <div className="execution-blocker" role="status">
+            <strong>Action required</strong>
+            <p>{humanizeExecutionValue(task.blockedReason)}</p>
+            {blockerGuidance(task.blockedReason) ? <p>{blockerGuidance(task.blockedReason)}</p> : null}
+          </div>
+        ) : null}
         <h3>Completion criteria</h3>
         {step.completionCriteria.length ? <ul>{step.completionCriteria.map((item) => <li key={item}>{item}</li>)}</ul> : <p>No completion criteria are persisted.</p>}
         <h3>Required permissions</h3>
