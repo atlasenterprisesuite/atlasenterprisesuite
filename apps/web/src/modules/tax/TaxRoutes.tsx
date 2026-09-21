@@ -1,11 +1,12 @@
 
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useSearchParams } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { TAX_FORM_CATALOG, mapW2ToReturn, type W2Document } from '../../../../../packages/tax-forms/src';
 import { InformationReturnWorkspace, PartnershipK1Workspace } from './AdditionalTaxIntake';
 import { ProfessionalReturnWorkspace } from './ProfessionalReturnWorkspace';
 import { TaxControlCenter } from './TaxControlCenter';
+import { importTaxSourceMapping } from '../../lib/taxApi';
 import './tax.css';
 
 const nav = [
@@ -153,9 +154,32 @@ function MoneyField({
 }
 
 function W2Workspace() {
+  const [params] = useSearchParams();
+  const returnId = params.get('returnId') || '';
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const [draft, setDraft] = useState<W2Draft>(initialW2);
   const document = useMemo(() => buildW2(draft), [draft]);
   const result = useMemo(() => mapW2ToReturn(document), [document]);
+
+  const persistW2 = async () => {
+    if (!returnId || !result.mappings.length) return;
+    setSaving(true); setSaveMessage('');
+    try {
+      const saved = await importTaxSourceMapping({
+        returnId,
+        documentType: 'W-2',
+        taxYear: document.taxYear,
+        mappings: result.mappings.map((mapping) => ({ ...mapping })),
+        metadata: { reviewFlags: result.reviewFlags, revisionStatus: result.revisionStatus }
+      });
+      setSaveMessage('Saved ' + saved.mapping_count + ' mappings to return ledger.');
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Unable to save W-2 mapping.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="page-stack">
@@ -230,6 +254,12 @@ function W2Workspace() {
             </label>
           ))}
         </div>
+        {returnId ? (
+          <div className="tax-pro-actions">
+            <button type="button" className="primary-action" disabled={saving || !result.mappings.length} onClick={() => void persistW2()}>{saving ? 'Saving…' : 'Save W-2 to return'}</button>
+            {saveMessage ? <span>{saveMessage}</span> : null}
+          </div>
+        ) : <div className="notice">Preview mode. Open this W-2 intake with a returnId to persist the document and its source-to-line mappings.</div>}
       </section>
 
       <section className="tax-panel">
