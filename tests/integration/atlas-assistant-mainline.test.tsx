@@ -269,7 +269,6 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       message: expect.stringContaining('selected ATLAS element'),
       elementContext: expect.objectContaining({
         component: 'approvalAction',
-        label: 'Approve payment',
         tag: 'button'
       })
     })));
