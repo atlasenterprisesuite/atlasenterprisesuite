@@ -28,6 +28,12 @@ describe('ATLAS Tax productive UI contracts', () => {
     expect(api).toContain('tax_line_mappings');
   });
 
+  it('forces destination-review-gated tax years into persisted review state', () => {
+    expect(api).toContain("revisionReviewGated");
+    expect(api).toContain("reviewRequired: true");
+    expect(api).toContain("destination-review-gated");
+  });
+
   it('exposes all productive persistence RPC clients', () => {
     for (const rpc of [
       'tax_create_return',

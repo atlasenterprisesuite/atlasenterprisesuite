@@ -45,7 +45,7 @@ export type TaxMapping = {
 
 export type TaxMappingResult = {
   taxYear: number;
-  sourceDocument: 'W-2' | '1099-INT' | '1099-DIV' | '1099-NEC' | 'K-1 (Form 1065)';
+  sourceDocument: 'W-2' | '1099-INT' | '1099-DIV' | '1099-NEC' | 'K-1 (Form 1065)' | '1098' | '1095-A' | 'SSA-1099' | '1099-B / Brokerage';
   mappings: TaxMapping[];
   activatedForms: string[];
   reviewFlags: string[];
@@ -210,3 +210,5 @@ export * from './sourceDocuments';
 export * from './professionalWorkflow';
 
 export * from './productiveCalculations';
+
+export * from './depthSourceDocuments';
