@@ -18,6 +18,7 @@ type AtlasAssistantPanelProps = {
   onClose: () => void;
   onSubmit: (message: string) => Promise<void>;
   onRepair: (message: string) => Promise<void>;
+  onShowRepairs: () => Promise<void>;
   onToggleMicrophone: () => Promise<void>;
   onSpeechPreference: (enabled: boolean) => void;
 };
@@ -45,6 +46,7 @@ export function AtlasAssistantPanel({
   onClose,
   onSubmit,
   onRepair,
+  onShowRepairs,
   onToggleMicrophone,
   onSpeechPreference
 }: AtlasAssistantPanelProps) {
@@ -103,6 +105,7 @@ export function AtlasAssistantPanel({
           <button type="button" onClick={() => void handleQuickAsk(explainScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Explain screen</button>
           <button type="button" onClick={() => void handleQuickAsk(checkScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Check screen</button>
           <button type="button" className="repair" onClick={() => void handleScreenRepair()} disabled={busy || microphoneActive}>Repair this screen</button>
+          <button type="button" onClick={() => void onShowRepairs()} disabled={busy || microphoneActive}>Repair queue</button>
         </div>
       </div>
 
