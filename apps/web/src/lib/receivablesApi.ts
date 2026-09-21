@@ -23,6 +23,10 @@ export type ReceivableInvoice = {
   total: number;
   balance_due: number;
   status: string;
+  inventory_posted_at: string | null;
+  cogs_amount: number | null;
+  gross_profit: number | null;
+  gross_margin_pct: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -47,6 +51,28 @@ export type ReceivablePayment = {
   status: string;
 };
 
+export type ReceivableProduct = {
+  id: string;
+  org_id: string;
+  inventory_item_id: string | null;
+  sku: string;
+  name: string;
+  quantity: number;
+  unit_cost: number;
+  unit_price: number;
+  target_margin_pct: number | null;
+  status: string;
+};
+
+export type ReceivableInventoryLocation = {
+  id: string;
+  org_id: string;
+  code: string;
+  name: string;
+  location_type: string;
+  status: string;
+};
+
 export type LiveReceivablesLedger = {
   source: 'supabase_rls_live';
   organization: AtlasOrganization;
@@ -54,6 +80,8 @@ export type LiveReceivablesLedger = {
   invoices: ReceivableInvoice[];
   lines: ReceivableInvoiceLine[];
   payments: ReceivablePayment[];
+  products: ReceivableProduct[];
+  locations: ReceivableInventoryLocation[];
   loaded_at: string;
 };
 
@@ -93,13 +121,13 @@ export function suggestInvoiceNumber(now = new Date()) {
 export async function getLiveReceivablesLedger(): Promise<LiveReceivablesLedger> {
   const organization = await getActiveAtlasOrganization();
   const filter = orgFilter(organization.id);
-  const [customersResponse, invoicesResponse, linesResponse, paymentsResponse] = await Promise.all([
+  const [customersResponse, invoicesResponse, linesResponse, paymentsResponse, productsResponse, locationsResponse] = await Promise.all([
     authorizedAtlasFetch(
       `/rest/v1/customers?org_id=${filter}&select=id,org_id,name,email,phone,status&order=name.asc`,
       { method: 'GET' }
     ),
     authorizedAtlasFetch(
-      `/rest/v1/invoices?org_id=${filter}&select=id,org_id,customer_id,invoice_number,issue_date,due_date,total,balance_due,status,created_at,updated_at&order=issue_date.desc,invoice_number.desc`,
+      `/rest/v1/invoices?org_id=${filter}&select=id,org_id,customer_id,invoice_number,issue_date,due_date,total,balance_due,status,inventory_posted_at,cogs_amount,gross_profit,gross_margin_pct,created_at,updated_at&order=issue_date.desc,invoice_number.desc`,
       { method: 'GET' }
     ),
     authorizedAtlasFetch(
@@ -109,6 +137,14 @@ export async function getLiveReceivablesLedger(): Promise<LiveReceivablesLedger>
     authorizedAtlasFetch(
       `/rest/v1/payments?org_id=${filter}&select=id,org_id,invoice_id,amount,payment_date,status&order=payment_date.desc,created_at.desc`,
       { method: 'GET' }
+    ),
+    authorizedAtlasFetch(
+      `/rest/v1/products?org_id=${filter}&select=id,org_id,inventory_item_id,sku,name,quantity,unit_cost,unit_price,target_margin_pct,status&status=eq.active&order=name.asc`,
+      { method: 'GET' }
+    ),
+    authorizedAtlasFetch(
+      `/rest/v1/inventory_locations?org_id=${filter}&select=id,org_id,code,name,location_type,status&status=eq.active&order=name.asc`,
+      { method: 'GET' }
     )
   ]);
 
@@ -116,6 +152,8 @@ export async function getLiveReceivablesLedger(): Promise<LiveReceivablesLedger>
   const rawInvoices = await parseResponse<any[]>(invoicesResponse);
   const rawLines = await parseResponse<any[]>(linesResponse);
   const rawPayments = await parseResponse<any[]>(paymentsResponse);
+  const rawProducts = await parseResponse<any[]>(productsResponse);
+  const rawLocations = await parseResponse<any[]>(locationsResponse);
 
   return {
     source: 'supabase_rls_live',
@@ -138,6 +176,10 @@ export async function getLiveReceivablesLedger(): Promise<LiveReceivablesLedger>
       total: Number(invoice.total || 0),
       balance_due: Number(invoice.balance_due || 0),
       status: String(invoice.status || 'draft'),
+      inventory_posted_at: invoice.inventory_posted_at ? String(invoice.inventory_posted_at) : null,
+      cogs_amount: invoice.cogs_amount == null ? null : Number(invoice.cogs_amount),
+      gross_profit: invoice.gross_profit == null ? null : Number(invoice.gross_profit),
+      gross_margin_pct: invoice.gross_margin_pct == null ? null : Number(invoice.gross_margin_pct),
       created_at: String(invoice.created_at || ''),
       updated_at: String(invoice.updated_at || '')
     })),
@@ -158,6 +200,26 @@ export async function getLiveReceivablesLedger(): Promise<LiveReceivablesLedger>
       amount: Number(payment.amount || 0),
       payment_date: String(payment.payment_date || ''),
       status: String(payment.status || 'confirmed')
+    })),
+    products: rawProducts.map((product) => ({
+      id: String(product.id),
+      org_id: String(product.org_id),
+      inventory_item_id: product.inventory_item_id ? String(product.inventory_item_id) : null,
+      sku: String(product.sku || ''),
+      name: String(product.name || ''),
+      quantity: Number(product.quantity || 0),
+      unit_cost: Number(product.unit_cost || 0),
+      unit_price: Number(product.unit_price || 0),
+      target_margin_pct: product.target_margin_pct == null ? null : Number(product.target_margin_pct),
+      status: String(product.status || 'active')
+    })),
+    locations: rawLocations.map((location) => ({
+      id: String(location.id),
+      org_id: String(location.org_id),
+      code: String(location.code || ''),
+      name: String(location.name || ''),
+      location_type: String(location.location_type || 'warehouse'),
+      status: String(location.status || 'active')
     })),
     loaded_at: new Date().toISOString()
   };
@@ -192,7 +254,7 @@ export async function createDraftInvoice(input: {
   dueDate?: string;
 }) {
   const organization = await getActiveAtlasOrganization();
-  const response = await authorizedAtlasFetch('/rest/v1/invoices?select=id,org_id,customer_id,invoice_number,issue_date,due_date,total,balance_due,status,created_at,updated_at', {
+  const response = await authorizedAtlasFetch('/rest/v1/invoices?select=id,org_id,customer_id,invoice_number,issue_date,due_date,total,balance_due,status,inventory_posted_at,cogs_amount,gross_profit,gross_margin_pct,created_at,updated_at', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
@@ -216,6 +278,7 @@ export async function addInvoiceLine(input: {
   quantity: number;
   unitPrice: number;
   taxRate: number;
+  productId?: string | null;
 }) {
   if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error('quantity_must_be_positive');
   if (!Number.isFinite(input.unitPrice) || input.unitPrice < 0) throw new Error('unit_price_invalid');
@@ -228,7 +291,7 @@ export async function addInvoiceLine(input: {
     body: JSON.stringify({
       org_id: organization.id,
       invoice_id: requiredText(input.invoiceId, 'invoice'),
-      product_id: null,
+      product_id: input.productId ? requiredText(input.productId, 'product') : null,
       description: requiredText(input.description, 'description'),
       quantity: input.quantity,
       unit_price: input.unitPrice,
@@ -245,7 +308,7 @@ export async function issueInvoice(invoiceId: string) {
   const id = encodeURIComponent(`eq.${requiredText(invoiceId, 'invoice')}`);
   const filter = orgFilter(organization.id);
   const response = await authorizedAtlasFetch(
-    `/rest/v1/invoices?id=${id}&org_id=${filter}&status=eq.draft&total=gt.0&select=id,org_id,customer_id,invoice_number,issue_date,due_date,total,balance_due,status,created_at,updated_at`,
+    `/rest/v1/invoices?id=${id}&org_id=${filter}&status=eq.draft&total=gt.0&select=id,org_id,customer_id,invoice_number,issue_date,due_date,total,balance_due,status,inventory_posted_at,cogs_amount,gross_profit,gross_margin_pct,created_at,updated_at`,
     {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
@@ -255,6 +318,19 @@ export async function issueInvoice(invoiceId: string) {
   const rows = await parseResponse<ReceivableInvoice[]>(response);
   if (!rows[0]) throw new Error('invoice_not_issuable');
   return rows[0];
+}
+
+export async function issueInventoryInvoice(input: { invoiceId: string; locationId: string }) {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/issue_inventory_invoice_v1', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_invoice_id: requiredText(input.invoiceId, 'invoice'),
+      p_location_id: requiredText(input.locationId, 'inventory_location')
+    })
+  });
+  return parseResponse<Record<string, unknown>>(response);
 }
 
 export async function recordReceivablesPayment(input: {

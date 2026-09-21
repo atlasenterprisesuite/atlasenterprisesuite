@@ -77,7 +77,8 @@ export const GALAXY_NODE_DEFINITIONS: readonly GalaxyNodeDefinition[] = [
     label: 'Supply Network',
     category: 'operations',
     coordinates: { x: 25, y: 70 },
-    dependencies: []
+    dependencies: [],
+    moduleId: 'inventory'
   }
 ] as const;
 

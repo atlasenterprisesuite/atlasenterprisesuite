@@ -51,6 +51,9 @@ export type LivePayableBill = {
   id: string;
   org_id: string;
   vendor_id: string | null;
+  purchasing_vendor_id: string | null;
+  purchase_order_id: string | null;
+  inventory_receipt_id: string | null;
   bill_number: string;
   bill_date: string;
   due_date: string | null;
@@ -215,13 +218,15 @@ export async function getAccountingInsight(forceRefresh = false): Promise<Accoun
 export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
   const organization = await getActiveAtlasOrganization();
   const orgFilter = encodeURIComponent(`eq.${organization.id}`);
-  const [billsResponse, vendorsResponse] = await Promise.all([
-    authorizedAtlasFetch(`/rest/v1/accounting_bills?org_id=${orgFilter}&select=id,org_id,vendor_id,bill_number,bill_date,due_date,amount,balance_due,approval_state,match_state,status,created_at,updated_at&order=bill_date.desc,bill_number.asc`, { method: 'GET' }),
-    authorizedAtlasFetch(`/rest/v1/vendors?org_id=${orgFilter}&select=id,name,email,phone,status&order=name.asc`, { method: 'GET' })
+  const [billsResponse, vendorsResponse, purchasingVendorsResponse] = await Promise.all([
+    authorizedAtlasFetch(`/rest/v1/accounting_bills?org_id=${orgFilter}&select=id,org_id,vendor_id,purchasing_vendor_id,purchase_order_id,inventory_receipt_id,bill_number,bill_date,due_date,amount,balance_due,approval_state,match_state,status,created_at,updated_at&order=bill_date.desc,bill_number.asc`, { method: 'GET' }),
+    authorizedAtlasFetch(`/rest/v1/vendors?org_id=${orgFilter}&select=id,name,email,phone,status&order=name.asc`, { method: 'GET' }),
+    authorizedAtlasFetch(`/rest/v1/purchasing_vendors?org_id=${orgFilter}&select=id,name,email,phone,status&order=name.asc`, { method: 'GET' })
   ]);
 
   const rawBills = await parseResponse(billsResponse) as any[];
   const rawVendors = await parseResponse(vendorsResponse) as any[];
+  const rawPurchasingVendors = await parseResponse(purchasingVendorsResponse) as any[];
   const vendorMap = new Map<string, LivePayableVendor>();
   for (const vendor of rawVendors) {
     const normalizedVendor: LivePayableVendor = {
@@ -234,10 +239,25 @@ export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
     vendorMap.set(normalizedVendor.id, normalizedVendor);
   }
 
+  const purchasingVendorMap = new Map<string, LivePayableVendor>();
+  for (const vendor of rawPurchasingVendors) {
+    const normalizedVendor: LivePayableVendor = {
+      id: String(vendor.id),
+      name: String(vendor.name || 'Unnamed purchasing vendor'),
+      email: vendor.email ? String(vendor.email) : null,
+      phone: vendor.phone ? String(vendor.phone) : null,
+      status: String(vendor.status || 'unknown')
+    };
+    purchasingVendorMap.set(normalizedVendor.id, normalizedVendor);
+  }
+
   const bills: LivePayableBill[] = rawBills.map((bill) => ({
     id: String(bill.id),
     org_id: String(bill.org_id),
     vendor_id: bill.vendor_id ? String(bill.vendor_id) : null,
+    purchasing_vendor_id: bill.purchasing_vendor_id ? String(bill.purchasing_vendor_id) : null,
+    purchase_order_id: bill.purchase_order_id ? String(bill.purchase_order_id) : null,
+    inventory_receipt_id: bill.inventory_receipt_id ? String(bill.inventory_receipt_id) : null,
     bill_number: String(bill.bill_number || ''),
     bill_date: String(bill.bill_date || ''),
     due_date: bill.due_date ? String(bill.due_date) : null,
@@ -248,7 +268,11 @@ export async function getLivePayablesLedger(): Promise<LivePayablesLedger> {
     status: String(bill.status || 'unknown'),
     created_at: String(bill.created_at || ''),
     updated_at: String(bill.updated_at || ''),
-    vendor: bill.vendor_id ? vendorMap.get(String(bill.vendor_id)) || null : null
+    vendor: bill.vendor_id
+      ? vendorMap.get(String(bill.vendor_id)) || null
+      : bill.purchasing_vendor_id
+        ? purchasingVendorMap.get(String(bill.purchasing_vendor_id)) || null
+        : null
   }));
 
   return {

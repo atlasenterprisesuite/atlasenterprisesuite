@@ -13,6 +13,7 @@ import { SocialPublisherPage } from './modules/business/social/SocialPublisherPa
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
+import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
 import { TaxRoutes } from './modules/tax/TaxRoutes';
 import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
@@ -81,6 +82,7 @@ function FinanceHome() {
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting</span><strong>Accounts Receivable</strong><p>Live customers, invoices, line items, balances, issuance and payment recording.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · Purchasing · AP</span><strong>Procure to Pay</strong><p>PO receiving, packing slips, three-way matching, inventory costing, AP and margin pricing.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting / Reports</span><strong>Automotive Sales</strong><p>Vehicle, F&I, fixed operations, inventory and floorplan financial reporting.</p></Link>
       </div>
     </section>
@@ -94,6 +96,7 @@ function AccountingHome() {
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging and payment application state.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Operations</span><strong>Accounts Receivable</strong><p>Customer invoicing, open balances, aging inputs and governed payment recording.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · AP</span><strong>Procure to Pay</strong><p>Receive by PO, match packing slips and vendor invoices, calculate cost and post inventory/AP.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Reports</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed ops, inventory and floorplan controls.</p></Link>
       </div>
     </section>
@@ -280,6 +283,7 @@ export function App() {
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
+        <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />} />
         <Route path="/tax/*" element={<TaxRoutes />} />
         <Route path="/payroll/*" element={<PayrollRoutes />} />

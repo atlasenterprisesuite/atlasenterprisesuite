@@ -135,6 +135,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'inventory',
+    title: 'ATLAS Inventory & Purchasing',
+    navLabel: 'Inventory',
+    area: 'Operations',
+    route: '/inventory/procure-to-pay',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'PO receiving, packing-slip evidence, three-way AP matching, weighted inventory costing and governed margin pricing.',
+    showInNavigation: true
+  },
+  {
     id: 'analytics',
     title: 'ATLAS Business Analytics',
     navLabel: 'Analytics',

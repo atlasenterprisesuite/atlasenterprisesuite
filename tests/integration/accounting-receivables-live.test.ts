@@ -27,6 +27,8 @@ describe('ATLAS Accounts Receivable live bridge', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'customer-1', org_id: 'org-1', name: 'Client One', email: null, phone: null, status: 'active' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'invoice-1', org_id: 'org-1', customer_id: 'customer-1', invoice_number: 'INV-1', issue_date: '2026-09-20', due_date: '2026-10-20', total: '125.00', balance_due: '125.00', status: 'open', created_at: '', updated_at: '' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'line-1', org_id: 'org-1', invoice_id: 'invoice-1', product_id: null, description: 'ATLAS service', quantity: '1', unit_price: '125', tax_rate: '0' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 

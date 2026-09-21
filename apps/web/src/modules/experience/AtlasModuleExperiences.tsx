@@ -25,7 +25,7 @@ const enterpriseSections: ModuleExperienceSection[] = [
       { label: 'Mobility', title: 'Ride', description: 'Driver, compliance and mobility operations with truthful provider boundaries.', to: '/ride' },
       { label: 'Entertainment', title: 'ATLAS FRONTIER', description: 'Explore, extract, craft, build and restore the Sky Grid through a governed server-authoritative vertical slice.', to: '/frontier' },
       { label: 'People', title: 'HR & Time', description: 'Commercial HR, time and recruiting depth is still being reconciled into the canonical suite.', status: 'Canonical module depth in progress' },
-      { label: 'Commerce', title: 'Inventory & Purchasing', description: 'Required commercial workflows remain gated until their canonical routes and data contracts are complete.', status: 'Canonical module depth in progress' },
+      { label: 'Commerce', title: 'Inventory & Purchasing', description: 'Canonical PO receiving, packing-slip evidence, three-way invoice matching, inventory costing and margin pricing.', to: '/inventory/procure-to-pay', status: 'Canonical procure-to-pay active' },
       { label: 'Operations', title: 'POS & Projects', description: 'Shared execution concepts exist; complete commercial module surfaces are not yet represented as active routes.', status: 'Canonical module depth in progress' },
       { label: 'Intelligence', title: 'Analytics', description: 'Reporting exists across modules, while the universal analytics hub remains a gated commercial capability.', status: 'Universal hub not yet active' }
     ]
@@ -83,6 +83,7 @@ const financeSections: ModuleExperienceSection[] = [
     cards: [
       { label: 'Accounting', title: 'Accounting', description: 'Open the governed Accounting module landing surface.', to: '/finance/accounting' },
       { label: 'Payables', title: 'Accounts Payable', description: 'Vendor bills, aging, balances, approvals and payment application state.', to: '/finance/accounting/accounts-payable' },
+      { label: 'Inventory', title: 'Procure to Pay', description: 'PO receiving, packing-slip matching, AP registration and inventory cost/margin controls.', to: '/inventory/procure-to-pay' },
       { label: 'Reporting', title: 'Automotive Sales', description: 'Vehicle, F&I, fixed operations, inventory and floorplan financial reporting.', to: '/finance/accounting/reports/automotive-sales' }
     ]
   },
@@ -91,7 +92,7 @@ const financeSections: ModuleExperienceSection[] = [
     title: 'Finance depth without false readiness',
     description: 'Capabilities without a complete canonical route remain visible as governed gates, not fake screens.',
     cards: [
-      { label: 'Receivables', title: 'Accounts Receivable', description: 'AR remains incomplete in the current canonical commercial surface.', status: 'Reconciliation required' },
+      { label: 'Receivables', title: 'Accounts Receivable', description: 'Live customer invoicing with governed inventory issue, COGS and gross-margin posting for inventory-backed products.', to: '/finance/accounting/accounts-receivable', status: 'Canonical AR active' },
       { label: 'Ledger', title: 'General Ledger & Close', description: 'Broader journal and close work exists but is not yet proven as one complete current workflow.', status: 'Canonical workflow incomplete' },
       { label: 'Cash', title: 'Bank Reconciliation', description: 'Bank and cash reconciliation must be recovered into the current architecture before activation.', status: 'Canonical route not active' },
       { label: 'Treasury', title: 'Treasury & Forecasting', description: 'No live treasury metrics or banking connection is represented without an authorized source.', status: 'Provider and product gates apply' }
@@ -116,6 +117,8 @@ const accountingSections: ModuleExperienceSection[] = [
     description: 'The current Accounting surface links directly to the implemented operational slices and keeps unfinished commercial breadth explicit.',
     cards: [
       { label: 'Operations', title: 'Accounts Payable', description: 'Vendor obligations, aging, approvals and payment application state.', to: '/finance/accounting/accounts-payable' },
+      { label: 'Inventory', title: 'Procure to Pay', description: 'Receive inventory by PO, preserve packing-slip evidence, three-way match vendor invoices and post Inventory/AP.', to: '/inventory/procure-to-pay' },
+      { label: 'AR', title: 'Accounts Receivable', description: 'Customer invoices can relieve inventory and post Revenue, COGS and gross-margin evidence when products are inventory-backed.', to: '/finance/accounting/accounts-receivable' },
       { label: 'Reports', title: 'Automotive Sales Financial Reporting', description: 'Departmental dealership reporting with F&I, fixed operations, inventory and floorplan controls.', to: '/finance/accounting/reports/automotive-sales' }
     ]
   },
@@ -124,7 +127,6 @@ const accountingSections: ModuleExperienceSection[] = [
     title: 'Next canonical accounting capabilities',
     description: 'These capabilities are required for commercial completeness but remain gated until implementation, data contracts and tests converge in the canonical route graph.',
     cards: [
-      { label: 'AR', title: 'Accounts Receivable', description: 'Customer receivables and collections are not yet a complete canonical current-main workflow.', status: 'Incomplete canonical surface' },
       { label: 'GL', title: 'General Ledger', description: 'Journal and ledger domain work requires final route and workflow reconciliation.', status: 'Reconciliation required' },
       { label: 'Cash', title: 'Bank Reconciliation', description: 'Cash and bank matching remains gated until verified accounting capability is recovered into the current architecture.', status: 'Canonical route not active' },
       { label: 'Close', title: 'Period Close', description: 'A complete governed close workflow is not yet proven in the canonical product surface.', status: 'Commercial workflow incomplete' }

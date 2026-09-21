@@ -14,12 +14,13 @@ describe('ATLAS Galaxy model', () => {
     expect(nodes.find((node) => node.id === 'payroll')?.status).toBe('warning');
   });
 
-  it('preserves canonical routes and leaves inventory non-navigable', () => {
+  it('preserves canonical routes and activates the inventory supply network', () => {
     const nodes = buildGalaxyNodes({ modules: ATLAS_MODULES, hasIdentity: true });
     expect(nodes.find((node) => node.id === 'crm')?.route).toBe('/crm');
     expect(nodes.find((node) => node.id === 'accounting')?.route).toBe('/finance/accounting');
-    expect(nodes.find((node) => node.id === 'inventory')?.route).toBeNull();
-    expect(nodes.find((node) => node.id === 'inventory')?.status).toBe('unverified');
+    expect(nodes.find((node) => node.id === 'inventory')?.route).toBe('/inventory/procure-to-pay');
+    expect(nodes.find((node) => node.id === 'inventory')?.status).toBe('active');
+    expect(nodes.find((node) => node.id === 'inventory')?.navigable).toBe(true);
   });
 
   it('blocks authenticated destinations when identity is absent', () => {

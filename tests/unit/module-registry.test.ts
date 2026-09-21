@@ -8,7 +8,7 @@ describe('ATLAS canonical module registry', () => {
   it('defines one typed registry for surfaced top-level modules', () => {
     expect(existsSync(path)).toBe(true);
     expect(source).toContain('export const ATLAS_MODULES');
-    for (const id of ['work', 'automations', 'business', 'revenue', 'finance', 'accounting', 'tax', 'crm', 'commerce', 'telecom', 'people', 'payroll', 'learning', 'health', 'insurance', 'studio', 'site-review', 'frontier', 'hospitality', 'ride', 'voice', 'galaxy', 'release-control']) {
+    for (const id of ['work', 'automations', 'business', 'revenue', 'finance', 'accounting', 'tax', 'crm', 'commerce', 'inventory', 'telecom', 'people', 'payroll', 'learning', 'health', 'insurance', 'studio', 'site-review', 'frontier', 'hospitality', 'ride', 'voice', 'galaxy', 'release-control']) {
       expect(source).toContain(`id: '${id}'`);
     }
   });
@@ -23,6 +23,14 @@ describe('ATLAS canonical module registry', () => {
     expect(source).toContain('requiresAuth: true');
     expect(source).toContain('showInNavigation: true');
     expect((source.match(/id: 'commerce'/g) || []).length).toBe(1);
+  });
+
+  it('registers Inventory once with the canonical protected procure-to-pay route', () => {
+    expect(source).toContain("id: 'inventory'");
+    expect(source).toContain("title: 'ATLAS Inventory & Purchasing'");
+    expect(source).toContain("route: '/inventory/procure-to-pay'");
+    expect(source).toContain("readiness: 'implemented'");
+    expect((source.match(/id: 'inventory'/g) || []).length).toBe(1);
   });
 
   it('declares route, readiness and authentication metadata', () => {
