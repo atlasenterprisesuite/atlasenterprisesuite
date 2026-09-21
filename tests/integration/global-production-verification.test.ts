@@ -30,6 +30,7 @@ describe('ATLAS global production verification', () => {
       '/finance',
       '/finance/accounting/reports/automotive-sales',
       '/finance/accounting/accounts-receivable',
+      '/inventory/procure-to-pay',
       '/voice',
       '/health',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
