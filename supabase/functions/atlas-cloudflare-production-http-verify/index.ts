@@ -242,6 +242,7 @@ Deno.serve(async (req: Request) => {
   const [
     home,
     suite,
+    launch360,
     identity,
     finance,
     automotiveSales,
@@ -270,6 +271,7 @@ Deno.serve(async (req: Request) => {
   ] = await Promise.all([
     probe('/'),
     probe('/suite'),
+    probe('/advisory/business-launch-360'),
     probe('/identity?app=%2Ffinance'),
     probe('/finance'),
     probe('/finance/accounting/reports/automotive-sales'),
@@ -300,6 +302,7 @@ Deno.serve(async (req: Request) => {
   const publicShellOk =
     home.status === 200 &&
     suite.status === 200 &&
+    launch360.status === 200 &&
     identity.status === 200 &&
     finance.status === 200 &&
     automotiveSales.status === 200 &&
@@ -322,6 +325,7 @@ Deno.serve(async (req: Request) => {
   const routedProbes = [
     home,
     suite,
+    launch360,
     identity,
     finance,
     automotiveSales,
@@ -386,6 +390,7 @@ Deno.serve(async (req: Request) => {
       checks: {
         public_home_reachable: home.status === 200,
         suite_route_reachable: suite.status === 200,
+        business_launch_360_route_reachable: launch360.status === 200,
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         automotive_sales_report_reachable: automotiveSales.status === 200,
@@ -416,6 +421,7 @@ Deno.serve(async (req: Request) => {
         deployment_path_protected: deploymentPathProtected,
         home,
         suite,
+        business_launch_360: launch360,
         identity,
         finance,
         automotive_sales: automotiveSales,
