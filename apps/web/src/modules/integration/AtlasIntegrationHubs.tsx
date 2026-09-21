@@ -126,7 +126,7 @@ export function AnalyticsIntegrationHub() {
           title: 'Source-backed analytics surfaces',
           description: 'Open reporting and operational views that already exist on canonical routes. Each source preserves its own organization, permission and evidence boundary.',
           cards: [
-            { label: 'Finance', title: 'Automotive Sales', description: 'Verified dealership financial reporting across vehicle, F&I, fixed operations, inventory and floorplan dimensions.', to: '/finance/accounting/reports/automotive-sales' },
+            { label: 'Finance · Demo-backed', title: 'Automotive Sales', description: 'Dealership reporting model backed by repository demo data; production tenant data remains gated until its live source contract is connected.', to: '/finance/accounting/reports/automotive-sales' },
             { label: 'Commerce', title: 'Commerce Operations', description: 'Tenant-scoped catalog, product and order state from the canonical commerce module.', to: '/commerce' },
             { label: 'Growth', title: 'Social Command Center', description: 'Governed social planning and source-scoped imported metrics when an authorized source exists.', to: '/studio/social' },
             { label: 'Customers', title: 'CRM', description: 'Customer and pipeline context from authorized provider-backed CRM records.', to: '/crm' }
