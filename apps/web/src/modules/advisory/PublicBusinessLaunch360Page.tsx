@@ -121,7 +121,7 @@ export function PublicBusinessLaunch360Page() {
 
     <footer className="launch360-footer">
       <span>ATLAS Business Launch 360</span>
-      <Link to="/identity?next=%2Fadvisory%2Fbusiness-launch-360%2Fworkspace">Staff workspace</Link>
+      <Link to="/identity?app=%2Fadvisory%2Fbusiness-launch-360%2Fworkspace">Staff workspace</Link>
     </footer>
   </main>;
 }
