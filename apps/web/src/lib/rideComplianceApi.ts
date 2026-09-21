@@ -1,4 +1,8 @@
-import { getActiveAtlasOrganization, getAtlasAccessToken } from './atlasSession';
+import {
+  getActiveAtlasOrganization,
+  getAtlasAccessToken,
+  getCachedAtlasShellOrganization
+} from './atlasSession';
 import type {
   ComplianceAuditEvent,
   CompliancePermission,
@@ -74,10 +78,27 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
-function requestHeaders(token: string, jsonBody: boolean) {
+function storedOrganizationId() {
+  if (typeof window === 'undefined') return '';
+  return String(window.localStorage.getItem('atlas_org_id') || '').trim();
+}
+
+async function resolveRideOrganizationId() {
+  const selected = storedOrganizationId();
+  if (selected) return selected;
+
+  const cached = getCachedAtlasShellOrganization();
+  if (cached?.id) return cached.id;
+
+  const organization = await getActiveAtlasOrganization();
+  return organization.id;
+}
+
+function requestHeaders(token: string, organizationId: string, jsonBody: boolean) {
   return {
     apikey: PUBLISHABLE_KEY,
     authorization: `Bearer ${token}`,
+    'x-atlas-org-id': organizationId,
     ...(jsonBody ? { 'content-type': 'application/json' } : {})
   };
 }
@@ -91,11 +112,12 @@ async function requestWithRetry<T>(
   let token = getAtlasAccessToken();
   if (!token) throw new RideComplianceApiError('authentication_required', 401);
 
+  const organizationId = await resolveRideOrganizationId();
   const url = `${SUPABASE_URL}/functions/v1/atlas-ride-compliance?${query(api, params)}`;
   const request = (accessToken: string) => fetch(url, {
     ...init,
     headers: {
-      ...requestHeaders(accessToken, jsonBody),
+      ...requestHeaders(accessToken, organizationId, jsonBody),
       ...(init.headers || {})
     }
   });
