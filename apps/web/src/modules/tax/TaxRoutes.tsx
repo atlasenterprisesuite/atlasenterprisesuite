@@ -5,10 +5,12 @@ import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { TAX_FORM_CATALOG, mapW2ToReturn, type W2Document } from '../../../../../packages/tax-forms/src';
 import { InformationReturnWorkspace, PartnershipK1Workspace } from './AdditionalTaxIntake';
 import { ProfessionalReturnWorkspace } from './ProfessionalReturnWorkspace';
+import { TaxControlCenter } from './TaxControlCenter';
 import './tax.css';
 
 const nav = [
   { to: '/tax', label: 'Tax Home', end: true },
+  { to: '/tax/control', label: 'Control Center', end: false },
   { to: '/tax/prepare', label: 'Prepare Return', end: false },
   { to: '/tax/documents/w2', label: 'W-2 Intake', end: false },
   { to: '/tax/documents/1099', label: '1099 Intake', end: false },
@@ -114,6 +116,7 @@ function TaxHome() {
         ATLAS can prepare deterministic mappings and review paths. External e-file submission remains unavailable until the filing adapter, authorization and production verification are approved.
       </div>
       <div className="module-grid">
+        <Link className="module-card enabled" to="/tax/control"><span>Firm operations</span><strong>Tax Control Center</strong><p>Persistent client return queue, statuses, review/signature gates, rejects and filing readiness.</p></Link>
         <Link className="module-card enabled" to="/tax/prepare"><span>Professional workflow</span><strong>Prepare a Return</strong><p>Guided preparation from engagement and interview through review, signature, e-file readiness and closeout.</p></Link>
         <Link className="module-card enabled" to="/tax/documents/w2"><span>Source documents</span><strong>Enter a W-2</strong><p>Populate W-2 boxes and see federal, state and local destinations update immediately.</p></Link>
         <Link className="module-card enabled" to="/tax/documents/1099"><span>Information returns</span><strong>Enter a 1099</strong><p>Map 1099-INT, 1099-DIV and 1099-NEC into the connected return graph with classification gates.</p></Link>
@@ -305,6 +308,7 @@ export function TaxRoutes() {
       <TaxLayout>
         <Routes>
           <Route index element={<TaxHome />} />
+          <Route path="control" element={<TaxControlCenter />} />
           <Route path="prepare" element={<ProfessionalReturnWorkspace />} />
           <Route path="documents/w2" element={<W2Workspace />} />
           <Route path="documents/1099" element={<InformationReturnWorkspace />} />
