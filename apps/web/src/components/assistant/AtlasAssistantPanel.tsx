@@ -123,7 +123,7 @@ export function AtlasAssistantPanel({
             Repairs · {repairSummary.active} active · {repairSummary.failed} failed
           </span>
         </div>
-        <div>
+        <div className="atlas-assistant-quick-action-grid">
           <button type="button" onClick={() => void handleQuickAsk(explainScreenPrompt, false)} disabled={busy || microphoneActive || !textReady}>Explain screen</button>
           <button type="button" onClick={() => void handleQuickAsk(checkScreenPrompt, false)} disabled={busy || microphoneActive || !textReady}>Check screen</button>
           <button type="button" className="repair" onClick={() => void handleScreenRepair()} disabled={busy || microphoneActive}>Repair this screen</button>
