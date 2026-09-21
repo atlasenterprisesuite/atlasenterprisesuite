@@ -124,7 +124,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public, vault, pg_temp
-as $
+as $$
 declare
   v_profile_id uuid;
   v_address_id uuid;
