@@ -5,6 +5,7 @@ import {
   BUSINESS_LAUNCH_360,
   LAUNCH_READINESS_DIMENSIONS,
   calculateLaunchReadiness,
+  resolveAdvisoryProviderReadiness,
   type LaunchEvidenceDimension,
   type ReadinessEvidence
 } from '../../../../../packages/advisory/src';
@@ -16,6 +17,7 @@ import {
   listAdvisoryEngagements,
   listAdvisoryLaunchEvidence,
   listAdvisoryLaunchIntakes,
+  listAdvisoryProviderConnections,
   setAdvisoryLaunchQuote,
   acceptAdvisoryLaunchQuote,
   convertAdvisoryLaunchIntake,
@@ -51,6 +53,7 @@ const advisoryNav = [
   ['/advisory/reports','Reports'],
   ['/advisory/compliance','Compliance'],
   ['/advisory/automations','Automations'],
+  ['/advisory/providers','Providers'],
   ['/advisory/settings','Settings']
 ] as const;
 
@@ -119,7 +122,7 @@ export function AdvisoryOverviewPage() {
       <Link className="module-card enabled" to="/advisory/clients"><span>Firm operations</span><strong>Clients</strong><p>Create real organization-scoped client records through authenticated Supabase RPCs.</p></Link>
       <Link className="module-card enabled" to="/advisory/engagements"><span>Service delivery</span><strong>Engagements</strong><p>Open service engagements without duplicating CRM or Accounting as sources of truth.</p></Link>
       <Link className="module-card enabled" to="/advisory/business-launch-360/workspace"><span>Launch system</span><strong>Business Launch 360</strong><p>Evidence-based readiness across ten governed dimensions.</p></Link>
-      <article className="module-card disabled" aria-disabled="true"><span>External providers</span><strong>Authorization required</strong><p>E-sign, print fulfillment, paid media, payment and publishing providers remain not connected until real provider authorization is verified.</p></article>
+      <Link className="module-card enabled" to="/advisory/providers"><span>External providers</span><strong>Authorization required</strong><p>E-sign, print fulfillment, paid media, payment and publishing providers remain not connected until real provider authorization is verified.</p></Link>
     </div>
   </AdvisoryLayout>;
 }
@@ -490,6 +493,61 @@ function LaunchPage() {
   </AdvisoryLayout>;
 }
 
+
+function ProviderReadinessPage() {
+  const [connections,setConnections] = useState<Awaited<ReturnType<typeof listAdvisoryProviderConnections>>>([]);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    void listAdvisoryProviderConnections()
+      .then((rows) => { if (active) { setConnections(rows); setError(''); } })
+      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load provider readiness'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const readiness = useMemo(() => resolveAdvisoryProviderReadiness(connections), [connections]);
+  const connectedCount = readiness.filter((item) => item.status === 'connected').length;
+  const statusLabel = {
+    authorization_required: 'Authorization required',
+    authorizing: 'Authorizing',
+    connected: 'Connected',
+    degraded: 'Degraded'
+  } as const;
+
+  return <AdvisoryLayout>
+    <div className="feature-card wide">
+      <p className="eyebrow">External providers</p>
+      <h2>Authorization readiness</h2>
+      <p>E-sign, print fulfillment, paid media, payment and publishing providers remain not connected until real provider authorization is verified.</p>
+      <div className="notice">ATLAS reports a provider as Connected only when the canonical organization-scoped integration registry records both authorization and successful provider verification. Browser-visible Advisory code never receives provider credentials.</div>
+    </div>
+    {loading ? <div className="notice">Loading provider readiness…</div> : null}
+    {error ? <div className="notice strong" role="alert">{error}</div> : null}
+    <div className="stat-grid">
+      <article><strong>{connectedCount}</strong><span>verified provider capabilities</span></article>
+      <article><strong>{readiness.length - connectedCount}</strong><span>capabilities still gated</span></article>
+      <article><strong>{connections.length}</strong><span>safe integration records observed</span></article>
+      <article><strong>Fail closed</strong><span>authorization policy</span></article>
+    </div>
+    <div className="module-grid">
+      {readiness.map((item) => <article className="module-card enabled" key={item.capability}>
+        <span>{item.label}</span>
+        <strong>{statusLabel[item.status]}</strong>
+        <p>{item.description}</p>
+        <small>
+          {item.provider ? `Provider: ${item.provider}` : 'No authorized provider configured'}
+          {item.providerAccountLabel ? ` · ${item.providerAccountLabel}` : ''}
+          {item.lastVerifiedAt ? ` · verified ${item.lastVerifiedAt}` : ''}
+          {item.lastErrorCode ? ` · ${item.lastErrorCode}` : ''}
+        </small>
+      </article>)}
+    </div>
+  </AdvisoryLayout>;
+}
+
 function BoundaryPage({ title, description }: { title: string; description: string }) {
   return <AdvisoryLayout><div className="feature-card wide"><p className="eyebrow">Governed boundary</p><h2>{title}</h2><p>{description}</p><div className="notice">No connected, approved, paid, signed, printed, shipped or fulfilled state is displayed without authenticated evidence.</div></div></AdvisoryLayout>;
 }
@@ -511,6 +569,7 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/reports" element={<BoundaryPage title="Reports" description="Reports will aggregate only persisted Advisory records and verified Accounting references. No synthetic business metrics are introduced." />} />
     <Route path="/advisory/compliance" element={<BoundaryPage title="Compliance" description="Conflict checks, engagement letters, consents and regulated authorizations require explicit evidence and approval gates." />} />
     <Route path="/advisory/automations" element={<BoundaryPage title="Automations" description="Low-risk reminders may be automated. Sensitive sharing, billing, closeout and regulated actions remain approval-bound." />} />
+    <Route path="/advisory/providers" element={<ProviderReadinessPage />} />
     <Route path="/advisory/settings" element={<BoundaryPage title="Settings" description="Firm configuration remains organization-scoped. Provider credentials and secrets are never stored in browser-visible Advisory records." />} />
     <Route path="/advisory/*" element={<Navigate to="/advisory" replace />} />
   </Routes>;
