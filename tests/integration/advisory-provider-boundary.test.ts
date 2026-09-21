@@ -15,6 +15,8 @@ describe('Advisory external provider boundary', () => {
     expect(api).toContain('atlas_integration_connections');
     expect(api).toContain('provider_verified');
     expect(api).toContain('last_verified_at');
+    expect(api).toContain('advisory_firm_id');
+    expect(api).toContain('bootstrapAdvisoryFirm');
     expect(api).not.toMatch(/select=[^\n]*secret_ref/);
     expect(api).not.toMatch(/select=[^\n]*credential_ref/);
     expect(api).not.toContain('atlas_integration_credentials');
