@@ -9,6 +9,7 @@ on:
       - "apps/web/src/components/assistant/**"
       - "apps/web/src/components/AtlasShell.tsx"
       - "apps/web/src/modules/voice/**"
+      - "supabase/functions/atlas-repair-bridge/**"
       - "tests/unit/*assistant*.test.ts"
       - "tests/integration/*assistant*.test.tsx"
       - ".github/workflows/atlas-assistant-self-hosted-ci.yml"
@@ -38,7 +39,7 @@ jobs:
       - name: Locked install
         run: npm ci
       - name: Assistant focused unit tests
-        run: npx vitest run tests/unit/assistant-capabilities.test.ts tests/unit/assistant-storage.test.ts tests/unit/assistant-voice.test.ts tests/unit/atlas-assistant-provider-readiness.test.ts tests/unit/atlas-assistant-route-context.test.ts tests/unit/atlas-assistant-client.test.ts
+        run: npx vitest run tests/unit/assistant-capabilities.test.ts tests/unit/assistant-storage.test.ts tests/unit/assistant-voice.test.ts tests/unit/atlas-assistant-provider-readiness.test.ts tests/unit/atlas-assistant-route-context.test.ts tests/unit/atlas-assistant-client.test.ts tests/unit/atlas-assistant-page-context.test.ts tests/unit/atlas-assistant-repair-client.test.ts tests/unit/atlas-repair-bridge-browser.test.ts
       - name: Assistant focused integration tests
         run: npx vitest run tests/integration/atlas-assistant-mainline.test.tsx
       - name: Canonical Cloudflare verification gate
