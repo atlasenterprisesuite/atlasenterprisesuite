@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 11,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -9,6 +9,7 @@
     "/finance",
     "/finance/accounting/reports/automotive-sales",
     "/finance/accounting/accounts-receivable",
+    "/inventory/procure-to-pay",
     "/voice",
     "/health",
     "/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel",
