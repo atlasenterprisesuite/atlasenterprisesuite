@@ -211,6 +211,7 @@ export function ProfessionalReturnWorkspace() {
                   <Link to={'/tax/documents/w2?returnId=' + encodeURIComponent(returnId)}>Add W-2</Link>
                   <Link to={'/tax/documents/1099?returnId=' + encodeURIComponent(returnId)}>Add 1099</Link>
                   <Link to={'/tax/documents/k1?returnId=' + encodeURIComponent(returnId)}>Add K-1</Link>
+                  <Link to={'/tax/documents/depth?returnId=' + encodeURIComponent(returnId)}>Add 1098 / 1095-A / SSA / Brokerage</Link>
                 </div>
               ) : null}
               <div className="tax-pro-actions">
