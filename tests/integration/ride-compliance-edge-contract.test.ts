@@ -12,6 +12,7 @@ const repositorySource = readFileSync(resolve(functionRoot, '_shared/repository.
 
 describe('ATLAS Ride compliance edge boundary', () => {
   it('exposes only governed compliance operations', () => {
+    expect(indexSource).toContain("case 'requirements'");
     expect(indexSource).toContain("case 'profile-photo'");
     expect(indexSource).toContain("case 'submit-profile-photo'");
     expect(indexSource).toContain("case 'preview'");
@@ -37,6 +38,8 @@ describe('ATLAS Ride compliance edge boundary', () => {
   it('uses short-lived signed previews and server-side transition checks', () => {
     expect(storageSource).toMatch(/createSignedUrl\([^,]+,\s*300\)/);
     expect(storageSource).toContain('atlas-compliance-evidence');
+    expect(repositorySource).toContain('listRideRequirements');
+    expect(indexSource).toContain('calculateRideReadiness');
     expect(repositorySource).toContain('canTransitionRequirement');
     expect(repositorySource).toContain('canTransitionSubmission');
     expect(repositorySource).toContain('state_conflict');
