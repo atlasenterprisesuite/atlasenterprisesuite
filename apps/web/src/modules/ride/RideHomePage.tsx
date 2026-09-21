@@ -5,13 +5,19 @@ const rideSections: ModuleExperienceSection[] = [
   {
     eyebrow: 'Mobility architecture',
     title: 'Driver readiness before trip execution',
-    description: 'ATLAS Ride currently exposes authenticated driver readiness and compliance evidence while dispatch, pricing and external rideshare operations remain explicitly gated.',
+    description: 'ATLAS Ride exposes authenticated compliance and server-derived readiness, with a canonical Driver/Vehicle/Trip foundation while dispatch, pricing and external providers remain gated until their operational services are verified.',
     cards: [
       {
         label: 'People & readiness',
         title: 'Driver / Partner',
         description: 'Open onboarding and compliance requirements for the authenticated Ride participant.',
         to: '/ride/driver'
+      },
+      {
+        label: 'Readiness',
+        title: 'Driver & Vehicle Readiness',
+        description: 'Evaluate the new-trip gate from persisted compliance requirements for the active organization.',
+        to: '/ride/readiness'
       },
       {
         label: 'Compliance',
@@ -28,7 +34,7 @@ const rideSections: ModuleExperienceSection[] = [
       {
         label: 'Dispatch & Trips',
         title: 'Not active',
-        description: 'Trip dispatch, pricing and external rideshare provider operations are not represented as production-ready in this slice.',
+        description: 'Canonical Trip persistence now exists, but dispatch, pricing, live GPS, payment execution and external rideshare provider operations remain gated until their services are implemented and verified.',
         status: 'Mobility execution not yet active'
       }
     ]
