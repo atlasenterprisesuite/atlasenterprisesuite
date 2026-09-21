@@ -17,6 +17,7 @@ type AtlasAssistantPanelProps = {
   speechEnabled: boolean;
   onClose: () => void;
   onSubmit: (message: string) => Promise<void>;
+  onRepair: (message: string) => Promise<void>;
   onToggleMicrophone: () => Promise<void>;
   onSpeechPreference: (enabled: boolean) => void;
 };
@@ -43,6 +44,7 @@ export function AtlasAssistantPanel({
   speechEnabled,
   onClose,
   onSubmit,
+  onRepair,
   onToggleMicrophone,
   onSpeechPreference
 }: AtlasAssistantPanelProps) {
@@ -59,6 +61,13 @@ export function AtlasAssistantPanel({
     if (!value || busy || microphoneActive || !textReady) return;
     setInput('');
     await onSubmit(value);
+  }
+
+  async function handleRepair() {
+    const value = input.trim();
+    if (!value || busy || microphoneActive) return;
+    setInput('');
+    await onRepair(value);
   }
 
   return (
@@ -106,11 +115,15 @@ export function AtlasAssistantPanel({
           id="atlas-assistant-input"
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={!textReady ? `Intelligence ${providerLabel}` : microphoneActive ? 'Finish or cancel the voice turn to type' : 'Ask ATLAS…'}
+          placeholder={microphoneActive ? 'Finish or cancel the voice turn to type' : textReady ? 'Ask ATLAS or describe something to repair…' : 'Describe something to repair…'}
           rows={2}
-          disabled={busy || microphoneActive || !textReady}
+          disabled={busy || microphoneActive}
         />
-        <button type="submit" disabled={busy || microphoneActive || !textReady || !input.trim()}>{state === 'thinking' ? 'Thinking…' : 'Send'}</button>
+        <div className="atlas-assistant-compose-actions">
+          <button type="submit" disabled={busy || microphoneActive || !textReady || !input.trim()}>{state === 'thinking' ? 'Thinking…' : 'Send'}</button>
+          <button type="button" className="atlas-assistant-repair" onClick={() => void handleRepair()} disabled={busy || microphoneActive || !input.trim()}>{state === 'thinking' ? 'Working…' : 'Queue repair'}</button>
+        </div>
+        <small className="atlas-assistant-repair-note">Repair attaches route and structural screen context only. Form values and table contents are not captured.</small>
       </form>
     </section>
   );
