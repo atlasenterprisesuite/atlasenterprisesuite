@@ -11,15 +11,19 @@ type AtlasAssistantPanelProps = {
   textCapability: AtlasCapabilityState;
   providerLabel: string;
   repairSummary: { active: number; failed: number; completed: number; total: number };
+  selectedElementLabel: string | null;
+  selectingElement: boolean;
   microphoneCapability: AtlasCapabilityState;
   transcriptionCapability: AtlasCapabilityState;
   microphoneActive: boolean;
   speechCapability: AtlasCapabilityState;
   speechEnabled: boolean;
   onClose: () => void;
-  onSubmit: (message: string) => Promise<void>;
-  onRepair: (message: string) => Promise<void>;
+  onSubmit: (message: string, includeSelected?: boolean) => Promise<void>;
+  onRepair: (message: string, includeSelected?: boolean) => Promise<void>;
   onShowRepairs: () => Promise<void>;
+  onSelectElement: () => void;
+  onClearElement: () => void;
   onToggleMicrophone: () => Promise<void>;
   onSpeechPreference: (enabled: boolean) => void;
 };
@@ -40,6 +44,8 @@ export function AtlasAssistantPanel({
   textCapability,
   providerLabel,
   repairSummary,
+  selectedElementLabel,
+  selectingElement,
   microphoneCapability,
   transcriptionCapability,
   microphoneActive,
@@ -49,6 +55,8 @@ export function AtlasAssistantPanel({
   onSubmit,
   onRepair,
   onShowRepairs,
+  onSelectElement,
+  onClearElement,
   onToggleMicrophone,
   onSpeechPreference
 }: AtlasAssistantPanelProps) {
@@ -61,6 +69,8 @@ export function AtlasAssistantPanel({
   const explainScreenPrompt = 'Explain the current ATLAS screen, what each visible section is for, and what I can do here.';
   const checkScreenPrompt = 'Review the current ATLAS screen for visible UX, workflow, navigation, loading, error, empty-state, responsive, or accessibility problems. Report only issues supported by the current structural context.';
   const repairScreenPrompt = 'Inspect and repair verified defects on the current ATLAS screen: clipped or broken responsive UI, nonfunctional controls, route/navigation defects, loading/error/empty-state problems, and accessibility regressions. Preserve existing working functionality, tenant isolation, RBAC, auditability, and fail-closed production gates.';
+  const explainSelectedPrompt = 'Explain the selected ATLAS element, what it does, how it relates to this screen, and any relevant state or permission behavior. Use the selected structural fingerprint and do not infer private field or table values.';
+  const repairSelectedPrompt = 'Inspect and repair verified defects affecting the selected ATLAS element. Use its structural fingerprint to localize the component, preserve working behavior, tenant isolation, RBAC, auditability, and fail-closed production gates. Do not infer or capture private field or table values.';
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,14 +87,19 @@ export function AtlasAssistantPanel({
     await onRepair(value);
   }
 
-  async function handleQuickAsk(message: string) {
+  async function handleQuickAsk(message: string, includeSelected = false) {
     if (busy || microphoneActive || !textReady) return;
-    await onSubmit(message);
+    await onSubmit(message, includeSelected);
   }
 
   async function handleScreenRepair() {
     if (busy || microphoneActive) return;
-    await onRepair(repairScreenPrompt);
+    await onRepair(repairScreenPrompt, false);
+  }
+
+  async function handleSelectedRepair() {
+    if (busy || microphoneActive || !selectedElementLabel) return;
+    await onRepair(repairSelectedPrompt, true);
   }
 
   return (
@@ -109,11 +124,22 @@ export function AtlasAssistantPanel({
           </span>
         </div>
         <div>
-          <button type="button" onClick={() => void handleQuickAsk(explainScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Explain screen</button>
-          <button type="button" onClick={() => void handleQuickAsk(checkScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Check screen</button>
+          <button type="button" onClick={() => void handleQuickAsk(explainScreenPrompt, false)} disabled={busy || microphoneActive || !textReady}>Explain screen</button>
+          <button type="button" onClick={() => void handleQuickAsk(checkScreenPrompt, false)} disabled={busy || microphoneActive || !textReady}>Check screen</button>
           <button type="button" className="repair" onClick={() => void handleScreenRepair()} disabled={busy || microphoneActive}>Repair this screen</button>
+          <button type="button" onClick={selectingElement ? onClearElement : onSelectElement} disabled={busy || microphoneActive}>{selectingElement ? 'Cancel selection' : selectedElementLabel ? 'Change element' : 'Select element'}</button>
           <button type="button" onClick={() => void onShowRepairs()} disabled={busy || microphoneActive}>Repair queue</button>
         </div>
+        {selectedElementLabel ? (
+          <div className="atlas-assistant-selected-target">
+            <span>Selected · {selectedElementLabel}</span>
+            <div>
+              <button type="button" onClick={() => void handleQuickAsk(explainSelectedPrompt, true)} disabled={busy || microphoneActive || !textReady}>Explain selected</button>
+              <button type="button" className="repair" onClick={() => void handleSelectedRepair()} disabled={busy || microphoneActive}>Repair selected</button>
+              <button type="button" onClick={onClearElement} disabled={busy || microphoneActive}>Clear</button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <AtlasAssistantMessageList messages={messages} />
