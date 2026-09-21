@@ -53,7 +53,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
     expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
-    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "18" ]');
+    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "19" ]');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');
