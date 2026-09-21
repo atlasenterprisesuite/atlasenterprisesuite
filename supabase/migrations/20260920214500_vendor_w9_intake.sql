@@ -1,6 +1,6 @@
 -- ATLAS Vendor W-9 intake, address normalization and 1099 readiness.
 -- A W-9 is onboarding evidence. It does not itself create a filed 1099.
--- This schema persists normalized vendor tax facts and only the last four TIN digits.
+-- This schema persists normalized vendor tax facts, keeps the full TIN encrypted in Supabase Vault, and exposes only the last four digits to ordinary application reads.
 
 create table if not exists public.purchasing_vendor_addresses (
   id uuid primary key default gen_random_uuid(),
@@ -32,6 +32,7 @@ create table if not exists public.purchasing_vendor_tax_profiles (
   federal_tax_classification text not null,
   llc_tax_classification text,
   tax_id_type text not null default 'unknown',
+  tax_id_vault_secret_id uuid,
   tax_id_last4 text,
   w9_status text not null default 'reviewed',
   w9_signed_date date,
@@ -115,18 +116,22 @@ create or replace function public.upsert_vendor_w9_profile_v1(
   p_state text,
   p_postal_code text,
   p_tax_id_type text default 'unknown',
-  p_tax_id_last4 text default null,
+  p_tax_id text default null,
   p_w9_signed_date date default null,
   p_w9_source_filename text default null
 )
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
-as $$
+set search_path = public, vault, pg_temp
+as $
 declare
   v_profile_id uuid;
   v_address_id uuid;
+  v_tin_digits text;
+  v_tin_last4 text;
+  v_secret_id uuid;
+  v_secret_name text;
 begin
   if auth.uid() is null then raise exception 'authentication_required'; end if;
   if not public.can_write_purchasing_data(p_org_id) then raise exception 'purchasing_permission_denied'; end if;
@@ -152,8 +157,39 @@ begin
   if p_federal_tax_classification = 'llc' and coalesce(p_llc_tax_classification,'') not in ('C','S','P') then
     raise exception 'w9_llc_tax_classification_required';
   end if;
-  if p_tax_id_type not in ('ein','ssn','unknown') then raise exception 'w9_tax_id_type_invalid'; end if;
-  if p_tax_id_last4 is not null and p_tax_id_last4 !~ '^\\d{4}$' then raise exception 'w9_tax_id_last4_invalid'; end if;
+  if p_tax_id_type not in ('ein','ssn') then raise exception 'w9_tax_id_type_required'; end if;
+  v_tin_digits := regexp_replace(coalesce(p_tax_id,''), '[^0-9]', '', 'g');
+  if length(v_tin_digits) <> 9 then raise exception 'w9_tax_id_invalid'; end if;
+  v_tin_last4 := right(v_tin_digits,4);
+  v_secret_name := 'atlas.vendor.tin.' || p_org_id::text || '.' || p_vendor_id::text;
+
+  select id into v_secret_id
+  from vault.secrets
+  where name = v_secret_name
+  order by updated_at desc
+  limit 1;
+
+  if v_secret_id is null then
+    perform vault.create_secret(
+      v_tin_digits,
+      v_secret_name,
+      'ATLAS vendor taxpayer identification number; encrypted at rest'
+    );
+    select id into v_secret_id
+    from vault.secrets
+    where name = v_secret_name
+    order by updated_at desc
+    limit 1;
+  else
+    perform vault.update_secret(
+      v_secret_id,
+      v_tin_digits,
+      v_secret_name,
+      'ATLAS vendor taxpayer identification number; encrypted at rest'
+    );
+  end if;
+
+  if v_secret_id is null then raise exception 'w9_tax_id_vault_write_failed'; end if;
 
   insert into public.purchasing_vendor_addresses (
     org_id,vendor_id,address_type,address_line1,address_line2,city,state,postal_code,
@@ -177,13 +213,13 @@ begin
 
   insert into public.purchasing_vendor_tax_profiles (
     org_id,vendor_id,legal_name,business_name,federal_tax_classification,llc_tax_classification,
-    tax_id_type,tax_id_last4,w9_status,w9_signed_date,w9_source_filename,
+    tax_id_type,tax_id_vault_secret_id,tax_id_last4,w9_status,w9_signed_date,w9_source_filename,
     reportability_status,default_1099_form,reviewed_at,reviewed_by,updated_at
   ) values (
     p_org_id,p_vendor_id,trim(p_legal_name),nullif(trim(p_business_name),''),
     p_federal_tax_classification,
     case when p_federal_tax_classification='llc' then p_llc_tax_classification else null end,
-    p_tax_id_type,p_tax_id_last4,'reviewed',p_w9_signed_date,nullif(trim(p_w9_source_filename),''),
+    p_tax_id_type,v_secret_id,v_tin_last4,'reviewed',p_w9_signed_date,nullif(trim(p_w9_source_filename),''),
     'review_required',null,now(),auth.uid(),now()
   )
   on conflict (org_id,vendor_id) do update set
@@ -192,6 +228,7 @@ begin
     federal_tax_classification=excluded.federal_tax_classification,
     llc_tax_classification=excluded.llc_tax_classification,
     tax_id_type=excluded.tax_id_type,
+    tax_id_vault_secret_id=excluded.tax_id_vault_secret_id,
     tax_id_last4=excluded.tax_id_last4,
     w9_status='reviewed',
     w9_signed_date=excluded.w9_signed_date,
@@ -206,7 +243,7 @@ begin
   insert into public.purchasing_vendor_tax_audit_events (
     org_id,vendor_id,action,tax_classification,tax_id_type,tax_id_last4,actor_user_id
   ) values (
-    p_org_id,p_vendor_id,'w9_reviewed',p_federal_tax_classification,p_tax_id_type,p_tax_id_last4,auth.uid()
+    p_org_id,p_vendor_id,'w9_reviewed',p_federal_tax_classification,p_tax_id_type,v_tin_last4,auth.uid()
   );
 
   return jsonb_build_object(
