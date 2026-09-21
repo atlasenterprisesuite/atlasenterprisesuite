@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getAssistantStatus: vi.fn(),
   sendAssistantMessage: vi.fn(),
   enqueueAssistantRepair: vi.fn(),
+  getAssistantRepairs: vi.fn(),
   startMicrophone: vi.fn(),
   startVoiceTurn: vi.fn(),
   stopMicrophone: vi.fn(),
@@ -34,7 +35,8 @@ vi.mock('../../apps/web/src/assistant/client', async () => {
 });
 
 vi.mock('../../apps/web/src/assistant/repairClient', () => ({
-  enqueueAssistantRepair: mocks.enqueueAssistantRepair
+  enqueueAssistantRepair: mocks.enqueueAssistantRepair,
+  getAssistantRepairs: mocks.getAssistantRepairs
 }));
 
 vi.mock('../../apps/web/src/assistant/useAssistantVoice', () => ({
@@ -87,6 +89,13 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       job: { id: 'repair-1', status: 'pending' },
       execution: 'supabase-native',
       github_required: false
+    });
+    mocks.getAssistantRepairs.mockReset().mockResolvedValue({
+      ok: true,
+      jobs: [
+        { id: 'repair-1', status: 'pending', request_text: 'Fix mobile approval controls' }
+      ],
+      execution: 'supabase-native'
     });
     mocks.startMicrophone.mockReset();
     mocks.startVoiceTurn.mockReset().mockImplementation(async (onFinal, onError) => {
@@ -211,6 +220,7 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     expect(screen.getByRole('button', { name: 'Explain screen' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Check screen' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Repair this screen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Repair queue' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Explain screen' }));
     await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({
@@ -223,6 +233,11 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       pathname: '/finance/accounting/accounts-payable',
       message: expect.stringContaining('Inspect and repair verified defects on the current ATLAS screen')
     })));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Repair queue' }));
+    await waitFor(() => expect(mocks.getAssistantRepairs).toHaveBeenCalledOnce());
+    expect(await screen.findByText(/Recent repair tasks:/)).toBeInTheDocument();
+    expect(screen.getByText(/PENDING — Fix mobile approval controls · repair-1/)).toBeInTheDocument();
   });
 
   it('queues a governed repair from the current ATLAS screen', async () => {
