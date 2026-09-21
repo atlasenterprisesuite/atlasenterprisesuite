@@ -1,0 +1,95 @@
+name: ATLAS OpenAI Domain DNS One-Time Verification
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/openai-domain-dns-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ensure-openai-domain-txt:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    env:
+      DOMAIN: atlasenterprisesuite.com
+      TXT_VALUE: openai-domain-verification=dv-D4JRMoEd80HhyW05wDAYS32z
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Validate Cloudflare authorization
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Cloudflare API token is unavailable"; exit 1; }
+          HTTP="$(curl --silent --show-error --max-time 30             -o /tmp/cf-token.json -w '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             'https://api.cloudflare.com/client/v4/user/tokens/verify' || true)"
+          ACTIVE="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cf-token.json','utf8'))}catch{};process.stdout.write(String(j.success===true&&j.result?.status==='active'))")"
+          if [ "$HTTP" != "200" ] || [ "$ACTIVE" != "true" ]; then
+            HTTP="$(curl --silent --show-error --max-time 30               -o /tmp/cf-token.json -w '%{http_code}'               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"               -H 'Content-Type: application/json'               'https://api.cloudflare.com/client/v4/accounts' || true)"
+            test "$HTTP" = "200" || { echo "::error::Cloudflare authorization could not be verified"; exit 1; }
+          fi
+
+      - name: Ensure exact root TXT only
+        id: dns
+        run: |
+          set -euo pipefail
+
+          ZONE_HTTP="$(curl --silent --show-error --max-time 30             -o /tmp/cf-zone.json -w '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN&status=active" || true)"
+          test "$ZONE_HTTP" = "200" || { echo "::error::Unable to resolve Cloudflare zone"; exit 1; }
+          ZONE_ID="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cf-zone.json','utf8'));const z=(j.result||[]).find(x=>x.name===process.env.DOMAIN);if(z)process.stdout.write(z.id)")"
+          test -n "$ZONE_ID" || { echo "::error::Authoritative Cloudflare zone not found"; exit 1; }
+
+          RECORDS_HTTP="$(curl --silent --show-error --max-time 30             -o /tmp/cf-records.json -w '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=TXT&name=$DOMAIN&per_page=100" || true)"
+          test "$RECORDS_HTTP" = "200" || { echo "::error::Unable to inspect root TXT records"; exit 1; }
+
+          EXACT_COUNT="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cf-records.json','utf8'));process.stdout.write(String((j.result||[]).filter(x=>x.content===process.env.TXT_VALUE).length))")"
+          OPENAI_COUNT="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cf-records.json','utf8'));process.stdout.write(String((j.result||[]).filter(x=>String(x.content||'').startsWith('openai-domain-verification=')).length))")"
+
+          if [ "$EXACT_COUNT" -gt 0 ]; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "Exact OpenAI verification TXT already exists; no DNS mutation performed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            if [ "$OPENAI_COUNT" -gt 0 ]; then
+              echo "::error::A different OpenAI domain-verification TXT already exists at the root. Failing closed without modifying it."
+              exit 1
+            fi
+
+            BODY="$(node -e "process.stdout.write(JSON.stringify({type:'TXT',name:process.env.DOMAIN,content:process.env.TXT_VALUE,ttl:120}))")"
+            CREATE_HTTP="$(curl --silent --show-error --max-time 30               -o /tmp/cf-create.json -w '%{http_code}'               -X POST               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"               -H 'Content-Type: application/json'               "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"               --data "$BODY" || true)"
+            CREATED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cf-create.json','utf8'))}catch{};process.stdout.write(String(j.success===true))")"
+            if [ "$CREATE_HTTP" != "200" ] || [ "$CREATED" != "true" ]; then
+              echo "::error::Cloudflare did not accept the exact TXT mutation."
+              exit 1
+            fi
+            echo "created=true" >> "$GITHUB_OUTPUT"
+            echo "Exact root OpenAI verification TXT created; unrelated DNS records were not modified." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          VERIFY_HTTP="$(curl --silent --show-error --max-time 30             -o /tmp/cf-verify.json -w '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=TXT&name=$DOMAIN&per_page=100" || true)"
+          test "$VERIFY_HTTP" = "200" || { echo "::error::Provider readback failed"; exit 1; }
+          PROVIDER_OK="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cf-verify.json','utf8'));process.stdout.write(String((j.result||[]).some(x=>x.content===process.env.TXT_VALUE)))")"
+          test "$PROVIDER_OK" = "true" || { echo "::error::Exact TXT missing on provider readback"; exit 1; }
+          echo "provider_verified=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify public DNS propagation
+        id: public_dns
+        run: |
+          set -euo pipefail
+          VERIFIED=false
+          for ATTEMPT in $(seq 1 24); do
+            HTTP="$(curl --silent --show-error --max-time 20               -o /tmp/doh.json -w '%{http_code}'               -H 'accept: application/dns-json'               "https://cloudflare-dns.com/dns-query?name=$DOMAIN&type=TXT" || true)"
+            if [ "$HTTP" = "200" ]; then
+              VERIFIED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/doh.json','utf8'))}catch{};const vals=(j.Answer||[]).filter(x=>x.type===16).map(x=>String(x.data||'').replace(/^\"|\"$/g,''));process.stdout.write(String(vals.includes(process.env.TXT_VALUE)))")"
+              if [ "$VERIFIED" = "true" ]; then
+                break
+              fi
+            fi
+            sleep 5
+          done
+          test "$VERIFIED" = "true" || { echo "::error::Exact TXT was not publicly observable before timeout"; exit 1; }
+
+          DIGEST="$(printf '%s' "$TXT_VALUE" | sha256sum | awk '{print $1}')"
+          echo "verified=true" >> "$GITHUB_OUTPUT"
+          echo "value_digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "Public DNS exact-match verification passed for $DOMAIN (SHA-256 $DIGEST)." >> "$GITHUB_STEP_SUMMARY"
