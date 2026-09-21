@@ -17,6 +17,7 @@ import {
   listAdvisoryLaunchEvidence,
   listAdvisoryLaunchIntakes,
   setAdvisoryLaunchQuote,
+  acceptAdvisoryLaunchQuote,
   convertAdvisoryLaunchIntake,
   setAdvisoryLaunchBillingRefs,
   updateAdvisoryLaunchEvidence,
@@ -108,7 +109,6 @@ export function AdvisoryOverviewPage() {
   const launchEngagements = workspace.engagements.filter((engagement) => engagement.service_id === BUSINESS_LAUNCH_360.id).length;
   return <AdvisoryLayout>
     <Status loading={workspace.loading} error={workspace.error} />
-    <LaunchCommercialPipeline onChanged={workspace.refresh} />
     <div className="stat-grid">
       <article><strong>{activeClients}</strong><span>active clients recorded</span></article>
       <article><strong>{openEngagements}</strong><span>open engagements recorded</span></article>
@@ -218,7 +218,9 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
   const [intakes,setIntakes] = useState<AdvisoryLaunchIntakeRow[]>([]);
   const [selectedId,setSelectedId] = useState('');
   const [quoteAmount,setQuoteAmount] = useState('');
+  const [quoteTaxRate,setQuoteTaxRate] = useState('');
   const [quoteNote,setQuoteNote] = useState('');
+  const [acceptanceReference,setAcceptanceReference] = useState('');
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState('');
   const [message,setMessage] = useState('');
@@ -227,7 +229,7 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
     try {
       const rows = await listAdvisoryLaunchIntakes();
       setIntakes(rows);
-      setSelectedId((current) => current || rows[0]?.id || '');
+      setSelectedId((current) => current && rows.some((item) => item.id === current) ? current : rows[0]?.id || '');
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load launch requests');
@@ -240,8 +242,10 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
 
   useEffect(() => {
     setQuoteAmount(selected?.quote_amount == null ? '' : String(selected.quote_amount));
+    setQuoteTaxRate(selected?.quote_tax_rate == null ? '' : String(selected.quote_tax_rate));
     setQuoteNote(selected?.quote_note || '');
-  }, [selectedId, selected?.quote_amount, selected?.quote_note]);
+    setAcceptanceReference(selected?.quote_acceptance_reference || '');
+  }, [selectedId, selected?.quote_amount, selected?.quote_tax_rate, selected?.quote_note, selected?.quote_acceptance_reference]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true); setError(''); setMessage('');
@@ -253,11 +257,26 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
   async function saveQuote() {
     if (!selected) return;
     const amount = Number(quoteAmount);
+    const taxRate = Number(quoteTaxRate);
     if (!Number.isFinite(amount) || amount <= 0) { setError('Enter a positive quote amount.'); return; }
+    if (!quoteTaxRate.trim() || !Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
+      setError('Record the applicable tax rate from 0 to 100 before saving the quote.');
+      return;
+    }
     await run(async () => {
-      await setAdvisoryLaunchQuote({ intakeId:selected.id, amount, note:quoteNote });
+      await setAdvisoryLaunchQuote({ intakeId:selected.id, amount, taxRate, note:quoteNote });
       await refresh();
-      setMessage('Quote saved in the governed Launch 360 intake.');
+      setMessage('Quote saved. Any previous acceptance evidence was cleared because the commercial terms changed.');
+    });
+  }
+
+  async function acceptQuote() {
+    if (!selected) return;
+    if (!acceptanceReference.trim()) { setError('Acceptance evidence reference is required.'); return; }
+    await run(async () => {
+      await acceptAdvisoryLaunchQuote({ intakeId:selected.id, acceptanceReference });
+      await refresh();
+      setMessage('Quote acceptance evidence recorded. The request is now eligible for conversion.');
     });
   }
 
@@ -266,7 +285,7 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
     await run(async () => {
       await convertAdvisoryLaunchIntake(selected.id);
       await Promise.all([refresh(), onChanged()]);
-      setMessage('Client and Business Launch 360 engagement created.');
+      setMessage('Client and Business Launch 360 engagement created from the accepted quote.');
     });
   }
 
@@ -274,7 +293,14 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
     if (!selected) return;
     await run(async () => {
       let current = selected;
-      if (!current.quote_amount || current.quote_amount <= 0) throw new Error('Save a positive quote before invoicing.');
+      const quotedAmount = current.quote_amount;
+      const quotedTaxRate = current.quote_tax_rate;
+      if (quotedAmount == null || quotedAmount <= 0 || quotedTaxRate == null) {
+        throw new Error('Complete the quote amount and tax rate before invoicing.');
+      }
+      if (!current.quote_accepted_at || !current.quote_acceptance_reference) {
+        throw new Error('Quote acceptance evidence is required before invoicing.');
+      }
 
       if (!current.advisory_client_id || !current.engagement_id) {
         current = await convertAdvisoryLaunchIntake(current.id);
@@ -323,8 +349,8 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
             invoiceId,
             description:'Business Launch 360 · Launch fee',
             quantity:1,
-            unitPrice:current.quote_amount,
-            taxRate:0
+            unitPrice:quotedAmount,
+            taxRate:quotedTaxRate
           });
         }
         await issueInvoice(invoiceId);
@@ -342,10 +368,13 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
     });
   }
 
+  const quoteReady = Boolean(selected?.quote_amount && selected.quote_tax_rate != null);
+  const accepted = Boolean(selected?.quote_accepted_at && selected.quote_acceptance_reference);
+
   return <section className="feature-card wide">
     <div className="card-heading">
-      <div><p className="eyebrow">Commercial pipeline</p><h2>Public intake → quote → engagement → invoice</h2></div>
-      <Link className="text-link" to="/advisory/business-launch-360">Open public page</Link>
+      <div><p className="eyebrow">Commercial pipeline</p><h2>Public intake → quote → acceptance → engagement → invoice</h2></div>
+      <a className="text-link" href="https://www.atlasenterprisesuite.com/advisory/business-launch-360">Open public page</a>
     </div>
     {intakes.length === 0 ? <div className="empty-state"><strong>No public Launch 360 requests yet</strong><span>New website submissions will appear here without creating fabricated clients or revenue.</span></div> : <>
       <label className="field"><span>Launch request</span><select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
@@ -365,12 +394,15 @@ function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void
       </div> : null}
       <div className="advisory-grid">
         <label className="field"><span>Quote amount (USD)</span><input type="number" min="0.01" step="0.01" value={quoteAmount} onChange={(event) => setQuoteAmount(event.target.value)} /></label>
+        <label className="field"><span>Tax rate (%)</span><input type="number" min="0" max="100" step="0.0001" value={quoteTaxRate} onChange={(event) => setQuoteTaxRate(event.target.value)} placeholder="Record 0 explicitly when applicable" /></label>
         <label className="field"><span>Quote note</span><input value={quoteNote} onChange={(event) => setQuoteNote(event.target.value)} placeholder="Scope, exclusions or commercial note" /></label>
+        <label className="field"><span>Acceptance evidence</span><input value={acceptanceReference} onChange={(event) => setAcceptanceReference(event.target.value)} placeholder="Signed quote, email, PO or approved record reference" /></label>
       </div>
       <div className="button-row">
-        <button type="button" disabled={busy || !selected} onClick={() => void saveQuote()}>Save quote</button>
-        <button type="button" disabled={busy || !selected || !selected.quote_amount} onClick={() => void convert()}>Convert to client + engagement</button>
-        <button type="button" disabled={busy || !selected || !selected.quote_amount} onClick={() => void createInvoice()}>Create + issue AR invoice</button>
+        <button type="button" disabled={busy || !selected || selected.status === 'invoiced' || selected.status === 'closed'} onClick={() => void saveQuote()}>Save quote</button>
+        <button type="button" disabled={busy || !selected || !quoteReady || !['quoted','accepted'].includes(selected.status)} onClick={() => void acceptQuote()}>Record acceptance</button>
+        <button type="button" disabled={busy || !selected || !accepted || !['accepted','converted'].includes(selected.status)} onClick={() => void convert()}>Convert to client + engagement</button>
+        <button type="button" disabled={busy || !selected || !accepted || selected.status === 'invoiced' || selected.status === 'closed'} onClick={() => void createInvoice()}>Create + issue AR invoice</button>
       </div>
       {message ? <div className="notice">{message}</div> : null}
       {error ? <div className="notice strong" role="alert">{error}</div> : null}
@@ -458,6 +490,7 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/firms/aw-finance-advisory-solutions" element={<Navigate to="/advisory" replace />} />
     <Route path="/advisory/clients" element={<ClientsPage />} />
     <Route path="/advisory/engagements" element={<EngagementsPage />} />
+    <Route path="/advisory/business-launch-360" element={<LaunchPage />} />
     <Route path="/advisory/business-launch-360/workspace" element={<LaunchPage />} />
     <Route path="/advisory/tasks" element={<BoundaryPage title="Tasks" description="Task orchestration will reuse the canonical ATLAS execution/work layer rather than create a parallel task source of truth." />} />
     <Route path="/advisory/calendar" element={<BoundaryPage title="Calendar" description="Calendar events remain provider-gated until an authorized calendar connection is available for the active organization." />} />
