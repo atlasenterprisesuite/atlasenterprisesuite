@@ -65,12 +65,12 @@ const businessSections: ModuleExperienceSection[] = [
   },
   {
     eyebrow: 'Commercial expansion',
-    title: 'Business depth without fabricated readiness',
-    description: 'Broader sales, commerce and operational functions remain gated until their canonical routes, data models and permission contracts are complete.',
+    title: 'Canonical business depth with explicit gates',
+    description: 'Revenue, commerce and analytics now have canonical entry points. Provider-backed execution, downstream adapters and universal aggregation remain unavailable until their own contracts and authorization evidence pass.',
     cards: [
-      { label: 'Sales', title: 'Sales Operations', description: 'CRM is active; a separate universal sales operations hub is not yet represented as a complete canonical route.', status: 'Canonical depth in progress' },
-      { label: 'Commerce', title: 'POS & Inventory', description: 'Commercial commerce workflows remain gated until their canonical implementation is verified.', status: 'Canonical module depth in progress' },
-      { label: 'Analytics', title: 'Business Analytics', description: 'Module reporting exists, while a universal business analytics hub remains incomplete.', status: 'Universal hub not yet active' }
+      { label: 'Sales', title: 'Revenue Operations', description: 'Canonical revenue operations compose CRM, commerce, growth and finance without duplicating their sources of truth.', to: '/revenue', status: 'Canonical hub active' },
+      { label: 'Commerce', title: 'Commerce Core', description: 'Catalog, products, orders and payment settings are available through ATLAS Commerce; POS and inventory adapters remain gated until separately verified.', to: '/commerce', status: 'Canonical core active · adapters gated' },
+      { label: 'Analytics', title: 'Business Analytics', description: 'A canonical analytics hub now composes existing source-backed reporting surfaces; universal KPI aggregation remains source-gated.', to: '/analytics', status: 'Canonical hub active · aggregation gated' }
     ]
   }
 ];

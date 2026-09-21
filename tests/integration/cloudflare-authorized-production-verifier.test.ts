@@ -18,15 +18,24 @@ describe('Cloudflare authorized production HTTP verifier', () => {
   it('checks the public shell while preserving the protected deployment path', () => {
     expect(verifier).toContain("'/identity?app=%2Ffinance'");
     expect(verifier).toContain("'/finance'");
+    expect(verifier).toContain("'/finance/accounting/accounts-receivable'");
+    expect(verifier).toContain("'/commerce'");
+    expect(verifier).toContain("'/revenue'");
+    expect(verifier).toContain("'/analytics'");
     expect(verifier).toContain("'/health'");
     expect(verifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
     expect(verifier).toContain('health_route_reachable');
+    expect(verifier).toContain('accounts_receivable_route_reachable');
+    expect(verifier).toContain('commerce_route_reachable');
+    expect(verifier).toContain('revenue_route_reachable');
+    expect(verifier).toContain('analytics_route_reachable');
     expect(verifier).toContain('jaque_mate_sentinel_route_reachable');
     expect(verifier).toContain("'/deployment.json'");
     expect(verifier).toContain("[302, 401, 403].includes(deployment.status)");
     expect(verifier).toContain("verification_source: 'atlas-authorized-supabase-runtime'");
+    expect(verifier).toContain('verifier_version: VERSION');
   });
 
   it('returns observed Cloudflare version metadata without exposing the protected manifest path', () => {
@@ -41,6 +50,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('audience=atlas-production-http-verifier');
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
+    expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
+    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "17" ]');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');

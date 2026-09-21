@@ -29,6 +29,7 @@ describe('ATLAS global production verification', () => {
       '/identity?app=%2Ffinance',
       '/finance',
       '/finance/accounting/reports/automotive-sales',
+      '/finance/accounting/accounts-receivable',
       '/voice',
       '/health',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
@@ -36,6 +37,9 @@ describe('ATLAS global production verification', () => {
       '/studio/web-launch',
       '/studio/write',
       '/crm',
+      '/commerce',
+      '/revenue',
+      '/analytics',
       '/frontier',
       '/work',
       '/work/new',
@@ -167,14 +171,21 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/health'");
     expect(authorizedVerifier).toContain("'/frontier'");
     expect(authorizedVerifier).toContain("'/studio/write'");
+    expect(authorizedVerifier).toContain("'/commerce'");
+    expect(authorizedVerifier).toContain("'/revenue'");
+    expect(authorizedVerifier).toContain("'/analytics'");
     expect(authorizedVerifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
     expect(authorizedVerifier).toContain('voice_route_reachable');
     expect(authorizedVerifier).toContain('health_route_reachable');
+    expect(authorizedVerifier).toContain('accounts_receivable_route_reachable');
     expect(authorizedVerifier).toContain('frontier_route_reachable');
     expect(authorizedVerifier).toContain('jaque_mate_sentinel_route_reachable');
     expect(authorizedVerifier).toContain('studio_writing_route_reachable');
+    expect(authorizedVerifier).toContain('commerce_route_reachable');
+    expect(authorizedVerifier).toContain('revenue_route_reachable');
+    expect(authorizedVerifier).toContain('analytics_route_reachable');
     for (const route of ['/work', '/work/new', '/work/connections', '/work/runtimes', '/work/policies']) {
       expect(authorizedVerifier).toContain(`'${route}'`);
     }

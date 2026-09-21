@@ -2,10 +2,13 @@ export function resolveAssistantModule(pathname: string): string {
   if (pathname.startsWith('/assistant')) return 'assistant';
   if (pathname.startsWith('/voice')) return 'voice';
   if (pathname.startsWith('/finance/accounting/accounts-payable')) return 'finance.accounting.accounts-payable';
+  if (pathname.startsWith('/finance/accounting/accounts-receivable')) return 'finance.accounting.accounts-receivable';
   if (pathname.startsWith('/finance/accounting')) return 'finance.accounting';
   if (pathname.startsWith('/finance')) return 'finance';
   if (pathname.startsWith('/business/network')) return 'business.network';
   if (pathname.startsWith('/business')) return 'business';
+  if (pathname.startsWith('/revenue')) return 'revenue';
+  if (pathname.startsWith('/analytics')) return 'analytics';
   if (pathname.startsWith('/commerce')) return 'commerce';
   if (pathname.startsWith('/crm')) return 'crm';
   if (pathname.startsWith('/payroll')) return 'payroll';

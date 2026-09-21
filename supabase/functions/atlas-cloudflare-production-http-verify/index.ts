@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 15;
+const VERSION = 17;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -245,6 +245,7 @@ Deno.serve(async (req: Request) => {
     identity,
     finance,
     automotiveSales,
+    receivables,
     voice,
     health,
     frontier,
@@ -252,6 +253,8 @@ Deno.serve(async (req: Request) => {
     studioWebLaunch,
     studioWriting,
     commerce,
+    revenue,
+    analytics,
     network,
     networkPricing,
     networkCommissions,
@@ -269,6 +272,7 @@ Deno.serve(async (req: Request) => {
     probe('/identity?app=%2Ffinance'),
     probe('/finance'),
     probe('/finance/accounting/reports/automotive-sales'),
+    probe('/finance/accounting/accounts-receivable'),
     probe('/voice'),
     probe('/health'),
     probe('/frontier'),
@@ -276,6 +280,8 @@ Deno.serve(async (req: Request) => {
     probe('/studio/web-launch'),
     probe('/studio/write'),
     probe('/commerce'),
+    probe('/revenue'),
+    probe('/analytics'),
     probe('/business/network'),
     probe('/business/network/pricing'),
     probe('/business/network/commissions'),
@@ -295,6 +301,7 @@ Deno.serve(async (req: Request) => {
     identity.status === 200 &&
     finance.status === 200 &&
     automotiveSales.status === 200 &&
+    receivables.status === 200 &&
     voice.status === 200 &&
     health.status === 200 &&
     frontier.status === 200 &&
@@ -307,6 +314,8 @@ Deno.serve(async (req: Request) => {
     workRuntimes.status === 200 &&
     workPolicies.status === 200;
   const commerceRouteOk = commerce.status === 200;
+  const revenueRouteOk = revenue.status === 200;
+  const analyticsRouteOk = analytics.status === 200;
   const routedProbes = [
     home,
     suite,
@@ -320,6 +329,8 @@ Deno.serve(async (req: Request) => {
     studioWebLaunch,
     studioWriting,
     commerce,
+    revenue,
+    analytics,
     network,
     networkPricing,
     networkCommissions,
@@ -352,13 +363,14 @@ Deno.serve(async (req: Request) => {
     routedProbes.every((result) =>
       Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha
     );
-  const verified = publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
+  const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
 
   return json(
     {
       ok: verified,
       status: verified ? 'passed' : 'failed',
       verification_source: 'atlas-authorized-supabase-runtime',
+      verifier_version: VERSION,
       production_url: PRODUCTION_URL,
       target_sha: caller.claims.sha,
       observed_version_id: observedVersionId,
@@ -372,6 +384,7 @@ Deno.serve(async (req: Request) => {
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         automotive_sales_report_reachable: automotiveSales.status === 200,
+        accounts_receivable_route_reachable: receivables.status === 200,
         voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
         frontier_route_reachable: frontier.status === 200,
@@ -379,6 +392,8 @@ Deno.serve(async (req: Request) => {
         studio_web_launch_route_reachable: studioWebLaunch.status === 200,
         studio_writing_route_reachable: studioWriting.status === 200,
         commerce_route_reachable: commerce.status === 200,
+        revenue_route_reachable: revenue.status === 200,
+        analytics_route_reachable: analytics.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         work_routes_reachable: workRoutesOk,
         work_command_center_reachable: work.status === 200,
@@ -398,6 +413,7 @@ Deno.serve(async (req: Request) => {
         identity,
         finance,
         automotive_sales: automotiveSales,
+        accounts_receivable: receivables,
         voice,
         health,
         frontier,
@@ -405,6 +421,8 @@ Deno.serve(async (req: Request) => {
         studio_web_launch: studioWebLaunch,
         studio_writing: studioWriting,
         commerce,
+        revenue,
+        analytics,
         network,
         network_pricing: networkPricing,
         network_commissions: networkCommissions,

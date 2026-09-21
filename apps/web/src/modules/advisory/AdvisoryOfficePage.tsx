@@ -26,7 +26,7 @@ export function AdvisoryOfficePage() {
       <article className="module-card enabled"><span>Service catalog</span><strong>{BUSINESS_LAUNCH_360.name}</strong><p>{BUSINESS_LAUNCH_360.phases.length} evidence-driven phases from foundation through the 30-day review.</p></article>
       <article className="module-card enabled"><span>Physical + digital</span><strong>Brand, Print & Promotional Launch</strong><p>{BRAND_PRINT_PROMO_DELIVERABLES.length} approved deliverable categories with proof approval required before vendor ordering.</p></article>
       <article className="module-card disabled" aria-disabled="true"><span>Client Portal</span><strong>Identity + persistence gated</strong><p>Portal access remains closed until authenticated client scope and durable organization persistence are verified.</p></article>
-      <article className="module-card disabled" aria-disabled="true"><span>Billing bridge</span><strong>Accounting event boundary</strong><p>Invoices and payments remain in Finance/Accounting. Advisory links them by firm, client and engagement without creating a second ledger.</p></article>
+      <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Billing bridge</span><strong>Accounts Receivable</strong><p>Create governed customer invoices and record payments in Finance/Accounting without creating a second ledger.</p></Link>
       <article className="module-card disabled" aria-disabled="true"><span>Print vendors</span><strong>Provider authorization required</strong><p>No order, shipment or fulfillment state is shown without provider evidence or verified manual entry.</p></article>
     </div>
     <article className="feature-card wide">

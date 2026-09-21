@@ -12,7 +12,7 @@ describe('ATLAS Commerce production release gate', () => {
     expect(verifier).toContain("probe('/commerce')");
     expect(verifier).toContain('commerce_route_reachable');
     expect(verifier).toContain('commerce.status === 200');
-    expect(verifier).toContain('publicShellOk && commerceRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified');
+    expect(verifier).toContain('publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified');
   });
 
   it('requires /commerce in direct Worker verification', () => {
