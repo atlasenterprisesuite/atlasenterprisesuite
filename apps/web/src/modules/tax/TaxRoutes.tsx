@@ -4,10 +4,12 @@ import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { TAX_FORM_CATALOG, mapW2ToReturn, type W2Document } from '../../../../../packages/tax-forms/src';
 import { InformationReturnWorkspace, PartnershipK1Workspace } from './AdditionalTaxIntake';
+import { ProfessionalReturnWorkspace } from './ProfessionalReturnWorkspace';
 import './tax.css';
 
 const nav = [
   { to: '/tax', label: 'Tax Home', end: true },
+  { to: '/tax/prepare', label: 'Prepare Return', end: false },
   { to: '/tax/documents/w2', label: 'W-2 Intake', end: false },
   { to: '/tax/documents/1099', label: '1099 Intake', end: false },
   { to: '/tax/documents/k1', label: 'K-1 Intake', end: false },
@@ -112,6 +114,7 @@ function TaxHome() {
         ATLAS can prepare deterministic mappings and review paths. External e-file submission remains unavailable until the filing adapter, authorization and production verification are approved.
       </div>
       <div className="module-grid">
+        <Link className="module-card enabled" to="/tax/prepare"><span>Professional workflow</span><strong>Prepare a Return</strong><p>Guided preparation from engagement and interview through review, signature, e-file readiness and closeout.</p></Link>
         <Link className="module-card enabled" to="/tax/documents/w2"><span>Source documents</span><strong>Enter a W-2</strong><p>Populate W-2 boxes and see federal, state and local destinations update immediately.</p></Link>
         <Link className="module-card enabled" to="/tax/documents/1099"><span>Information returns</span><strong>Enter a 1099</strong><p>Map 1099-INT, 1099-DIV and 1099-NEC into the connected return graph with classification gates.</p></Link>
         <Link className="module-card enabled" to="/tax/documents/k1"><span>Pass-through</span><strong>Enter a K-1</strong><p>Route partnership income, rental, portfolio, capital gain and self-employment items with limitation review.</p></Link>
@@ -302,6 +305,7 @@ export function TaxRoutes() {
       <TaxLayout>
         <Routes>
           <Route index element={<TaxHome />} />
+          <Route path="prepare" element={<ProfessionalReturnWorkspace />} />
           <Route path="documents/w2" element={<W2Workspace />} />
           <Route path="documents/1099" element={<InformationReturnWorkspace />} />
           <Route path="documents/k1" element={<PartnershipK1Workspace />} />
