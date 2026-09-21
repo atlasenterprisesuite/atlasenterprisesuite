@@ -65,6 +65,43 @@ describe('ATLAS Assistant governed copilot client', () => {
     });
   });
 
+  it('adds only the selected structural fingerprint to contextual chat requests', async () => {
+    mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      text: 'Ready',
+      conversation_id: 'conv-2'
+    }), { status: 200 }));
+
+    await sendAssistantMessage({
+      message: 'Explain this control',
+      pathname: '/finance/accounting/accounts-payable',
+      modality: 'text',
+      elementContext: {
+        tag: 'button',
+        role: 'button',
+        type: 'button',
+        id: 'approve-payment',
+        component: 'approvalAction',
+        name: null,
+        label: 'Approve payment',
+        placeholder: null,
+        href_path: null,
+        selector_hint: 'button#approve-payment',
+        rect: { x: 12, y: 24, width: 120, height: 40 }
+      }
+    });
+
+    const [, init] = mocks.authorizedAtlasFetch.mock.calls[0];
+    const body = JSON.parse(String(init.body));
+    expect(body.context).toContain('Selected element (structural metadata only)');
+    expect(body.context).toContain('component=approvalAction');
+    expect(body.client_metadata.selected_element).toMatchObject({
+      tag: 'button',
+      id: 'approve-payment',
+      component: 'approvalAction'
+    });
+  });
+
   it('allows the ATLAS web origins to preflight the authenticated copilot request', () => {
     const source = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
 
