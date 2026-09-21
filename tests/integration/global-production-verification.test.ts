@@ -50,7 +50,8 @@ describe('ATLAS global production verification', () => {
       '/work/new',
       '/work/connections',
       '/work/runtimes',
-      '/work/policies'
+      '/work/policies',
+      '/work/computer-operations'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
