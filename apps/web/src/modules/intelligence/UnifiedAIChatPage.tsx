@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAssistantVoice } from '../../assistant/useAssistantVoice';
 import {
   getAssistantConversation,
   getAssistantStatus,
@@ -37,10 +38,17 @@ const PROFILES: Array<{ value: AssistantProfile; label: string }> = [
 ];
 
 const PROMPT_STARTERS = [
-  { title: 'Catch me up', text: 'Summarize what changed across this organization today.' },
-  { title: 'Find answers', text: 'Find the most relevant information across connected ATLAS sources and cite it.' },
-  { title: 'Plan work', text: 'Create a governed work plan for this request and identify approvals before execution.' },
-  { title: 'Check risk', text: 'Review this request for security, cost, permissions and execution risk.' }
+  { title: 'Prep my next meeting', text: 'Prepare me for my next meeting using the organization context available to ATLAS. Summarize the objective, relevant context, decisions needed and a concise agenda.' },
+  { title: 'Draft follow-up', text: 'Draft a concise follow-up message for my most recent meeting. Separate decisions, owners, deadlines and next actions.' },
+  { title: 'Summarize this contact', text: 'Summarize the current contact or customer context available in this workspace, including recent activity, open items and next actions.' },
+  { title: 'Translator', text: 'Translate the following text accurately. Preserve meaning, names, numbers, formatting and professional tone. Ask for the target language only if it is not clear from my message:\n\n' }
+] as const;
+
+const PROMPT_LIBRARY = [
+  { title: 'Translate', text: PROMPT_STARTERS[3].text },
+  { title: 'Summarize', text: 'Summarize the following content into key facts, decisions, risks and next actions:\n\n' },
+  { title: 'Rewrite', text: 'Rewrite the following text clearly and professionally while preserving the original meaning:\n\n' },
+  { title: 'Analyze', text: 'Analyze the following information. Separate facts, assumptions, risks, dependencies and recommended next steps:\n\n' }
 ] as const;
 
 const ENTERPRISE_LINKS = [
@@ -77,7 +85,10 @@ function humanizeError(value: string) {
     permission_denied: 'Your current ATLAS role does not permit this request.',
     conversation_unavailable: 'That conversation could not be loaded.',
     history_unavailable: 'Conversation history could not be loaded.',
-    status_unavailable: 'Provider status could not be refreshed.'
+    status_unavailable: 'Provider status could not be refreshed.',
+    voice_transcription_unavailable: 'Voice transcription is unavailable in this browser. Text mode remains available.',
+    voice_transcription_failed: 'ATLAS could not transcribe that voice turn. Try again or use text.',
+    microphone_permission_denied: 'Microphone permission was denied. Text mode remains available.'
   };
   return errors[value] || value.replaceAll('_', ' ');
 }
@@ -101,7 +112,10 @@ export function UnifiedAIChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [promptLibraryOpen, setPromptLibraryOpen] = useState(false);
   const messageEnd = useRef<HTMLDivElement | null>(null);
+  const voice = useAssistantVoice();
 
   const providers = status?.providers || [];
   const verifiedProviders = providers.filter((provider) => provider.verified && provider.state === 'verified');
@@ -194,6 +208,8 @@ export function UnifiedAIChatPage() {
     setPrompt('');
     setError('');
     setToolsOpen(false);
+    setPromptLibraryOpen(false);
+    setMobileActionsOpen(false);
     setSidebarOpen(false);
   }
 
@@ -232,6 +248,34 @@ export function UnifiedAIChatPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function toggleMicrophone() {
+    if (voice.microphoneActive) {
+      voice.stopMicrophone();
+      return;
+    }
+    if (voice.transcriptionCapability !== 'ready') {
+      setError('voice_transcription_unavailable');
+      return;
+    }
+    try {
+      await voice.startVoiceTurn(
+        (transcript) => {
+          setPrompt(transcript);
+          setError('');
+        },
+        (cause) => setError(cause instanceof Error ? cause.message : 'voice_transcription_failed')
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'voice_transcription_failed');
+    }
+  }
+
+  function usePrompt(text: string) {
+    setPrompt(text);
+    setPromptLibraryOpen(false);
+    setMobileActionsOpen(false);
   }
 
   const councilConfigured = status?.cost_policy?.allow_council === true;
@@ -337,6 +381,30 @@ export function UnifiedAIChatPage() {
           </div>
 
           <div className="atlas-ai-header-actions">
+            <div className="atlas-ai-mobile-actions">
+              <button
+                className="atlas-ai-icon-button atlas-ai-mobile-more"
+                type="button"
+                aria-label="Open assistant menu"
+                aria-expanded={mobileActionsOpen}
+                onClick={() => setMobileActionsOpen((current) => !current)}
+              >
+                <span aria-hidden="true">⋮</span>
+              </button>
+              {mobileActionsOpen ? (
+                <div className="atlas-ai-mobile-menu-popover">
+                  <button type="button" onClick={() => { setSidebarOpen(true); setMobileActionsOpen(false); }}>
+                    <strong>Chat history</strong><span>Open previous conversations</span>
+                  </button>
+                  <Link to="/work" onClick={() => setMobileActionsOpen(false)}>
+                    <strong>Projects</strong><span>Open governed ATLAS Work</span>
+                  </Link>
+                  <button type="button" onClick={() => { setPromptLibraryOpen(true); setMobileActionsOpen(false); }}>
+                    <strong>Prompts</strong><span>Open reusable prompt actions</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
             <button className="atlas-ai-text-button" type="button" onClick={startNewConversation}>New chat</button>
             <button
               className={'atlas-ai-status-dot ' + (routeReady ? 'ready' : 'not-ready')}
@@ -440,13 +508,12 @@ export function UnifiedAIChatPage() {
             )) : (
               <section className="atlas-ai-welcome">
                 <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
-                <h1>What can I help with?</h1>
-                <p>Ask ATLAS to analyze, plan, find information, or coordinate governed work across your organization.</p>
-                <div className="atlas-ai-starters">
+                <h1>How can I help you?</h1>
+                <p>Ask, translate, summarize, prepare work or use connected ATLAS context from one simple assistant.</p>
+                <div className="atlas-ai-starters atlas-ai-starter-chips">
                   {PROMPT_STARTERS.map((starter) => (
-                    <button key={starter.title} type="button" onClick={() => setPrompt(starter.text)}>
+                    <button key={starter.title} type="button" onClick={() => usePrompt(starter.text)}>
                       <strong>{starter.title}</strong>
-                      <span>{starter.text}</span>
                     </button>
                   ))}
                 </div>
@@ -498,11 +565,14 @@ export function UnifiedAIChatPage() {
                   </button>
                   {toolsOpen ? (
                     <div className="atlas-ai-tools-menu">
+                      <button type="button" onClick={() => { setPromptLibraryOpen(true); setToolsOpen(false); }}>
+                        <strong>Prompts</strong><span>Reusable actions and translator</span>
+                      </button>
                       <Link to="/work/connections" onClick={() => setToolsOpen(false)}>
                         <strong>Apps</strong><span>Connected tools</span>
                       </Link>
                       <Link to="/work" onClick={() => setToolsOpen(false)}>
-                        <strong>Work</strong><span>Long-running execution</span>
+                        <strong>Projects</strong><span>Governed long-running work</span>
                       </Link>
                       <Link to="/suite" onClick={() => setToolsOpen(false)}>
                         <strong>Modules</strong><span>Enterprise workspace</span>
@@ -514,6 +584,30 @@ export function UnifiedAIChatPage() {
                 <span className="atlas-ai-composer-route">{selectedMode.short} · {selectedProfile.label}</span>
 
                 <button
+                  className={'atlas-ai-mic' + (voice.microphoneActive ? ' active' : '')}
+                  type="button"
+                  aria-label={voice.microphoneActive ? 'Stop microphone' : 'Use microphone'}
+                  aria-pressed={voice.microphoneActive}
+                  disabled={busy || voice.transcriptionCapability !== 'ready'}
+                  onClick={() => void toggleMicrophone()}
+                >
+                  {voice.microphoneActive ? (
+                    <span aria-hidden="true">■</span>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="9" y="3" width="6" height="12" rx="3" />
+                      <path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" />
+                    </svg>
+                  )}
+                </button>
+
+                <Link className="atlas-ai-voice-link" to="/voice" aria-label="Open ATLAS Voice">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 14v-4M8 18V6M12 21V3M16 18V6M20 14v-4" />
+                  </svg>
+                </Link>
+
+                <button
                   className="atlas-ai-send"
                   type="submit"
                   disabled={busy || !routeReady || !prompt.trim()}
@@ -523,6 +617,22 @@ export function UnifiedAIChatPage() {
                 </button>
               </div>
             </form>
+
+            {promptLibraryOpen ? (
+              <section className="atlas-ai-prompt-library" aria-label="ATLAS prompt library">
+                <div className="atlas-ai-prompt-library-head">
+                  <div><strong>Prompts</strong><span>Choose an action, then add your content.</span></div>
+                  <button type="button" onClick={() => setPromptLibraryOpen(false)} aria-label="Close prompts">×</button>
+                </div>
+                <div className="atlas-ai-prompt-library-grid">
+                  {PROMPT_LIBRARY.map((item) => (
+                    <button key={item.title} type="button" onClick={() => usePrompt(item.text)}>
+                      <strong>{item.title}</strong>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <p className="atlas-ai-disclaimer">
               ATLAS can make mistakes. Verify important information and governed actions.

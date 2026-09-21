@@ -62,10 +62,16 @@ describe('ATLAS Assistant workspace', () => {
     const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
     const css = source('apps/web/src/modules/intelligence/UnifiedAIChat.css');
 
-    expect(page).toContain('What can I help with?');
+    expect(page).toContain('How can I help you?');
     expect(page).toContain('aria-controls="atlas-ai-status-panel"');
     expect(page).toContain('Open conversation sidebar');
     expect(page).toContain('atlas-ai-tools-menu');
+    expect(page).toContain('Chat history');
+    expect(page).toContain('Projects');
+    expect(page).toContain('Prompts');
+    expect(page).toContain('Translator');
+    expect(page).toContain('useAssistantVoice');
+    expect(page).toContain('toggleMicrophone');
     expect(page).toContain('ATLAS can make mistakes. Verify important information and governed actions.');
     expect(page).toContain("to=\"/work/connections\"");
     expect(page).toContain("to=\"/work\"");
@@ -75,6 +81,9 @@ describe('ATLAS Assistant workspace', () => {
     expect(css).toContain('.atlas-ai-composer');
     expect(css).toContain('@media(max-width:760px)');
     expect(css).toContain('.atlas-ai-mobile-scrim');
+    expect(css).toContain('.atlas-ai-mobile-menu-popover');
+    expect(css).toContain('.atlas-ai-prompt-library');
+    expect(css).toContain('.atlas-ai-mic');
   });
 
 });

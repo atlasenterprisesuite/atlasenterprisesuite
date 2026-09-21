@@ -9,6 +9,12 @@ on:
     branches: [main]
     paths:
       - 'supabase/functions/atlas-copilot/**'
+      - 'apps/web/src/assistant/**'
+      - 'apps/web/src/components/assistant/**'
+      - 'apps/web/src/modules/intelligence/**'
+      - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
+      - 'apps/web/src/modules/registry.ts'
+      - 'tests/unit/atlas-assistant-workspace.test.ts'
       - 'tests/unit/atlas-unified-ai-chat-*.test.ts'
       - 'packages/creator/studio_orchestration.ts'
       - 'tests/unit/atlas-studio-orchestration.test.ts'
@@ -36,7 +42,7 @@ jobs:
         run: npm ci
 
       - name: Focused unified AI tests
-        run: npm exec vitest -- run tests/unit/atlas-unified-ai-chat-*.test.ts tests/unit/atlas-studio-orchestration.test.ts
+        run: npm exec vitest -- run tests/unit/atlas-assistant-workspace.test.ts tests/unit/atlas-unified-ai-chat-*.test.ts tests/unit/atlas-studio-orchestration.test.ts
 
       - name: Typecheck
         run: npm run typecheck
