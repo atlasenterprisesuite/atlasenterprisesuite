@@ -48,6 +48,7 @@ export function ProcureToPayPage() {
   const [w9State, setW9State] = useState('');
   const [w9PostalCode, setW9PostalCode] = useState('');
   const [w9TaxIdType, setW9TaxIdType] = useState<'ein' | 'ssn' | 'unknown'>('unknown');
+  const [w9TaxId, setW9TaxId] = useState('');
   const [w9TaxIdLast4, setW9TaxIdLast4] = useState('');
   const [w9SignedDate, setW9SignedDate] = useState('');
 
@@ -201,6 +202,7 @@ export function ProcureToPayPage() {
       setW9State(parsed.state);
       setW9PostalCode(parsed.postalCode);
       setW9TaxIdType(parsed.taxIdType);
+      setW9TaxId(parsed.taxId);
       setW9TaxIdLast4(parsed.taxIdLast4);
       const displayName = parsed.businessName || parsed.legalName;
       if (displayName) {
@@ -230,6 +232,14 @@ export function ProcureToPayPage() {
       setError('LLC tax classification C, S, or P is required.');
       return;
     }
+    if (w9TaxIdType === 'unknown') {
+      setError('TIN type must be reviewed as EIN or SSN before saving.');
+      return;
+    }
+    if (w9TaxId.replace(/\D/g, '').length !== 9) {
+      setError('A complete 9-digit TIN is required before saving the reviewed W-9.');
+      return;
+    }
     await runMutation(async () => {
       const displayName = vendorName.trim() || w9BusinessName.trim() || w9LegalName.trim();
       const code = vendorCode.trim() || suggestVendorCode(displayName);
@@ -253,11 +263,11 @@ export function ProcureToPayPage() {
         state: w9State,
         postalCode: w9PostalCode,
         taxIdType: w9TaxIdType,
-        taxIdLast4: w9TaxIdLast4,
+        taxId: w9TaxId,
         w9SignedDate,
         w9SourceFilename: w9FileName
       });
-    }, 'W-9 vendor profile saved. Business address was normalized for Purchasing/Tax and 1099 reportability remains review-required.');
+    }, 'W-9 vendor profile saved. Business address was normalized for Purchasing/Tax, the full TIN was encrypted in Supabase Vault, and 1099 reportability remains review-required.');
   }
 
   async function handleItem(event: FormEvent) {
@@ -408,7 +418,7 @@ export function ProcureToPayPage() {
       <section className="workspace-card">
         <div className="detail-heading"><div><p className="eyebrow">1 · Master data</p><h2>Vendor, item and warehouse</h2></div></div>
         <div className="notice">
-          W-9 intake is source-aware: ATLAS extracts image text locally when the device supports it, requires human review, stores only normalized tax data plus the last four TIN digits, and does not treat a W-9 as a filed 1099.
+          W-9 intake is source-aware: ATLAS extracts image text locally when the device supports it, requires human review, keeps the TIN memory-only until save, encrypts the full TIN in Supabase Vault, exposes only the last four digits to normal workflows, and does not treat a W-9 as a filed 1099.
         </div>
         <form className="toolbar" onSubmit={handleW9Save}>
           <label className="field wide-field"><span>W-9 photo</span><input type="file" accept="image/*" capture="environment" onChange={(e) => void handleW9File(e.target.files?.[0])} /></label>
@@ -430,10 +440,11 @@ export function ProcureToPayPage() {
           <label className="field"><span>City</span><input value={w9City} onChange={(e) => setW9City(e.target.value)} required /></label>
           <label className="field"><span>State</span><input value={w9State} onChange={(e) => setW9State(e.target.value.toUpperCase())} maxLength={2} required /></label>
           <label className="field"><span>ZIP</span><input value={w9PostalCode} onChange={(e) => setW9PostalCode(e.target.value)} required /></label>
-          <label className="field"><span>TIN type</span><select value={w9TaxIdType} onChange={(e) => setW9TaxIdType(e.target.value as 'ein' | 'ssn' | 'unknown')}><option value="unknown">Unknown</option><option value="ein">EIN</option><option value="ssn">SSN</option></select></label>
-          <label className="field"><span>TIN last 4</span><input inputMode="numeric" pattern="[0-9]{4}" maxLength={4} value={w9TaxIdLast4} onChange={(e) => setW9TaxIdLast4(e.target.value.replace(/\D/g, '').slice(0, 4))} /></label>
+          <label className="field"><span>TIN type</span><select value={w9TaxIdType} onChange={(e) => setW9TaxIdType(e.target.value as 'ein' | 'ssn' | 'unknown')} required><option value="unknown">Review EIN / SSN</option><option value="ein">EIN</option><option value="ssn">SSN</option></select></label>
+          <label className="field"><span>TIN · encrypted on save</span><input type="password" inputMode="numeric" autoComplete="off" value={w9TaxId} onChange={(e) => { const value = e.target.value.replace(/[^0-9-]/g, '').slice(0, 11); setW9TaxId(value); setW9TaxIdLast4(value.replace(/\D/g, '').slice(-4)); }} required /></label>
+          <label className="field"><span>TIN verification</span><input value={w9TaxIdLast4 ? 'Ending •••• ' + w9TaxIdLast4 : 'Not detected'} readOnly aria-label="TIN last four digits" /></label>
           <label className="field"><span>W-9 signed date</span><input type="date" value={w9SignedDate} onChange={(e) => setW9SignedDate(e.target.value)} /></label>
-          <button className="primary-action" disabled={working || !w9LegalName || !w9Classification || !w9AddressLine1 || !w9City || !w9State || !w9PostalCode}>Review & save W-9 vendor</button>
+          <button className="primary-action" disabled={working || !w9LegalName || !w9Classification || !w9AddressLine1 || !w9City || !w9State || !w9PostalCode || w9TaxIdType === 'unknown' || w9TaxId.replace(/\D/g, '').length !== 9}>Review & save W-9 vendor</button>
         </form>
         <div className="notice strong">
           1099 handling stays fail-closed: the W-9 creates the vendor tax profile and address record, but ATLAS will not mark a vendor reportable or generate 1099-NEC/1099-MISC until payment facts and the applicable tax rules are evaluated.
