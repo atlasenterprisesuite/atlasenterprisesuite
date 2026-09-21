@@ -18,6 +18,7 @@ export type ParsedW9 = {
   state: string;
   postalCode: string;
   taxIdType: 'ein' | 'ssn' | 'unknown';
+  taxId: string;
   taxIdLast4: string;
 };
 
@@ -87,6 +88,7 @@ export function parseW9Text(source: string): ParsedW9 {
     addressLine2: '',
     ...location,
     taxIdType: ein ? 'ein' : ssn ? 'ssn' : 'unknown',
+    taxId: tin,
     taxIdLast4: tin ? tin.replace(/\D/g, '').slice(-4) : ''
   };
 }
