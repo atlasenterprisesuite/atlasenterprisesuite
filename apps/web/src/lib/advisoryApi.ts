@@ -1,5 +1,5 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from './atlasSession';
-import type { LaunchEvidenceDimension } from '../../../../packages/advisory/src';
+import type { AdvisoryProviderConnectionEvidence, LaunchEvidenceDimension } from '../../../../packages/advisory/src';
 
 export type AdvisoryFirmRow = {
   id: string;
@@ -80,6 +80,22 @@ export type AdvisoryLaunchEvidenceRow = {
   updated_at: string;
 };
 
+export type AdvisoryIntegrationConnectionRow = {
+  id: string;
+  org_id: string;
+  provider: string;
+  connection_name: string;
+  auth_kind: string;
+  authorized: boolean;
+  provider_verified: boolean;
+  state: AdvisoryProviderConnectionEvidence['state'];
+  metadata: Record<string, unknown> | null;
+  provider_account_label: string | null;
+  last_verified_at: string | null;
+  last_success_at: string | null;
+  last_error_code: string | null;
+};
+
 async function parseJson<T>(response: Response): Promise<T> {
   const text = await response.text();
   let payload: unknown = {};
@@ -109,6 +125,35 @@ export async function bootstrapAdvisoryFirm(): Promise<AdvisoryFirmRow> {
   const rows = await rpcRows<AdvisoryFirmRow>('advisory_bootstrap_default_firm', {});
   if (!rows[0]) throw new Error('advisory_firm_unavailable');
   return rows[0];
+}
+
+export async function listAdvisoryProviderConnections(): Promise<AdvisoryProviderConnectionEvidence[]> {
+  const organization = await getActiveAtlasOrganization();
+  if (!organization.id) throw new Error('no_active_organization');
+  const firm = await bootstrapAdvisoryFirm();
+  const response = await authorizedAtlasFetch(
+    '/rest/v1/atlas_integration_connections?org_id=eq.' + encodeURIComponent(organization.id) +
+    '&select=id,org_id,provider,connection_name,auth_kind,authorized,provider_verified,state,metadata,provider_account_label,last_verified_at,last_success_at,last_error_code&order=updated_at.desc',
+    { method: 'GET' }
+  );
+  const rows = await parseJson<AdvisoryIntegrationConnectionRow[]>(response);
+  return rows
+    .filter((row) =>
+      typeof row.metadata?.advisory_capability === 'string' &&
+      row.metadata?.advisory_firm_id === firm.id
+    )
+    .map((row) => ({
+      provider: row.provider,
+      connectionName: row.connection_name,
+      state: row.state,
+      authorized: row.authorized,
+      providerVerified: row.provider_verified,
+      providerAccountLabel: row.provider_account_label,
+      lastVerifiedAt: row.last_verified_at,
+      lastSuccessAt: row.last_success_at,
+      lastErrorCode: row.last_error_code,
+      metadata: row.metadata || {}
+    }));
 }
 
 export async function listAdvisoryClients(): Promise<AdvisoryClientRow[]> {
