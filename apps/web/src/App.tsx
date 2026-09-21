@@ -262,7 +262,8 @@ export function App() {
   if (location.pathname.startsWith('/events')) return <EventsRoutes />;
   if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
   if (location.pathname.startsWith('/insurance')) return <InsuranceRoutes />;
-  if (location.pathname === '/advisory/business-launch-360') return <PublicBusinessLaunch360Page />;
+  const publicAdvisoryHost = typeof window !== 'undefined' && ['atlasenterprisesuite.com','www.atlasenterprisesuite.com','localhost','127.0.0.1'].includes(window.location.hostname);
+  if (location.pathname === '/advisory/business-launch-360' && publicAdvisoryHost) return <PublicBusinessLaunch360Page />;
   const extension = resolveAtlasExtension(location.pathname);
   if (extension) return <AtlasShell>{extension}</AtlasShell>;
 
