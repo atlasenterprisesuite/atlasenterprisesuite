@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getActiveAtlasOrganization: vi.fn(),
   getAssistantStatus: vi.fn(),
   sendAssistantMessage: vi.fn(),
+  enqueueAssistantRepair: vi.fn(),
   startMicrophone: vi.fn(),
   startVoiceTurn: vi.fn(),
   stopMicrophone: vi.fn(),
@@ -31,6 +32,10 @@ vi.mock('../../apps/web/src/assistant/client', async () => {
     sendAssistantMessage: mocks.sendAssistantMessage
   };
 });
+
+vi.mock('../../apps/web/src/assistant/repairClient', () => ({
+  enqueueAssistantRepair: mocks.enqueueAssistantRepair
+}));
 
 vi.mock('../../apps/web/src/assistant/useAssistantVoice', () => ({
   useAssistantVoice: () => ({
@@ -76,6 +81,12 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       ok: true,
       text: 'Voice answer',
       conversation_id: 'conv-1'
+    });
+    mocks.enqueueAssistantRepair.mockReset().mockResolvedValue({
+      ok: true,
+      job: { id: 'repair-1', status: 'pending' },
+      execution: 'supabase-native',
+      github_required: false
     });
     mocks.startMicrophone.mockReset();
     mocks.startVoiceTurn.mockReset().mockImplementation(async (onFinal, onError) => {
@@ -188,6 +199,23 @@ describe('ATLAS Assistant on current mainline architecture', () => {
 
     expect(await screen.findByText('Summarize overdue payables')).toBeInTheDocument();
     expect(await screen.findByText('Voice answer')).toBeInTheDocument();
+  });
+
+  it('queues a governed repair from the current ATLAS screen', async () => {
+    render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>);
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
+    fireEvent.click(launcher);
+
+    const input = screen.getByLabelText('Message ATLAS Assistant');
+    fireEvent.change(input, { target: { value: 'The approval actions are clipped on mobile' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Queue repair' }));
+
+    await waitFor(() => expect(mocks.enqueueAssistantRepair).toHaveBeenCalledWith({
+      message: 'The approval actions are clipped on mobile',
+      pathname: '/finance/accounting/accounts-payable',
+      conversationId: null
+    }));
+    expect(await screen.findByText(/Repair task repair-1 queued securely/)).toBeInTheDocument();
   });
 
   it('surfaces recognition failures without sending a request', async () => {
