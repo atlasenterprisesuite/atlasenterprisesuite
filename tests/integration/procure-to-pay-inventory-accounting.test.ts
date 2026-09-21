@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 const lifecycleSql = readFileSync('supabase/migrations/20260920190000_procure_to_pay_inventory_margin.sql', 'utf8');
 const quantitySyncSql = readFileSync('supabase/migrations/20260920190500_inventory_product_quantity_sync.sql', 'utf8');
 const postingGuardSql = readFileSync('supabase/migrations/20260920191500_procure_to_pay_posting_guard_fix.sql', 'utf8');
+const integrityGuardSql = readFileSync('supabase/migrations/20260920192500_p2p_integrity_guards.sql', 'utf8');
+const invoiceLineGuardSql = readFileSync('supabase/migrations/20260920193000_invoice_line_issue_guard_fix.sql', 'utf8');
+const resolverSource = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
 const procureApi = readFileSync('apps/web/src/lib/procureToPayApi.ts', 'utf8');
 const receivablesApi = readFileSync('apps/web/src/lib/receivablesApi.ts', 'utf8');
 const procurePage = readFileSync('apps/web/src/modules/inventory/ProcureToPayPage.tsx', 'utf8');
@@ -52,6 +55,20 @@ describe('ATLAS procure-to-pay inventory accounting contract', () => {
     expect(postingGuardSql).toContain("'draft',auth.uid()");
     expect(postingGuardSql).toContain("set status = 'posted'");
     expect(postingGuardSql).not.toContain("'posted',auth.uid()");
+  });
+
+  it('keeps subledger mutation behind governed RPCs and locks posted economics', () => {
+    expect(integrityGuardSql).toContain('revoke insert, update, delete on public.inventory_receipts from authenticated');
+    expect(integrityGuardSql).toContain('revoke insert, update, delete on public.accounting_bill_lines from authenticated');
+    expect(integrityGuardSql).toContain('matched_accounting_bill_economic_fields_are_immutable');
+    expect(integrityGuardSql).toContain('received_purchase_order_line_is_immutable');
+    expect(integrityGuardSql).toContain('inventory_posted_invoice_economic_fields_are_immutable');
+    expect(invoiceLineGuardSql).toContain('invoice_lines_are_immutable_after_issue');
+  });
+
+  it('resolves the inventory module through the canonical identity-protected extension graph', () => {
+    expect(resolverSource).toContain("pathname === '/inventory/procure-to-pay'");
+    expect(resolverSource).toContain('<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>');
   });
 
   it('forces inventory-backed AR through stock relief and COGS posting', () => {
