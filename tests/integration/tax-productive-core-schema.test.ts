@@ -36,6 +36,7 @@ describe('ATLAS Tax productive core schema', () => {
       'tax_create_return',
       'tax_set_step_state',
       'tax_register_source_document',
+      'tax_import_source_mapping',
       'tax_record_fact',
       'tax_record_line_mapping',
       'tax_upsert_workpaper',
