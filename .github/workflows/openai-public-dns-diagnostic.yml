@@ -1,0 +1,44 @@
+name: ATLAS OpenAI Public DNS Diagnostic
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/openai-public-dns-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-public-openai-txt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      DOMAIN: atlasenterprisesuite.com
+      EXPECTED_DIGEST: 8506bf0d02f303d6391ac60a010536caf2dca23c7fe94995aa0fe8a675dd1987
+    steps:
+      - name: Inspect public TXT safely
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error --max-time 20             -o /tmp/doh.json -w '%{http_code}'             -H 'accept: application/dns-json'             "https://cloudflare-dns.com/dns-query?name=$DOMAIN&type=TXT" || true)"
+          test "$HTTP" = "200" || { echo "::error::Public DNS resolver unavailable (HTTP $HTTP)"; exit 1; }
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const crypto=require('crypto');
+          const j=JSON.parse(fs.readFileSync('/tmp/doh.json','utf8'));
+          const rows=(j.Answer||[])
+            .filter(x=>x.type===16)
+            .map(x=>({value:String(x.data||'').replace(/^"|"$/g,''),ttl:x.TTL??null}))
+            .filter(x=>x.value.startsWith('openai-domain-verification='));
+          const digests=rows.map(x=>({
+            digest:crypto.createHash('sha256').update(x.value).digest('hex'),
+            ttl:x.ttl
+          }));
+          const expected=digests.some(x=>x.digest===process.env.EXPECTED_DIGEST);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            `OpenAI TXT count: ${rows.length}\n\nExpected digest visible: ${expected}\n\nEntries: ${JSON.stringify(digests)}\n`);
+          console.log(JSON.stringify({count:rows.length,expectedVisible:expected,entries:digests}));
+          if (!expected) process.exit(2);
+          NODE
