@@ -31,6 +31,10 @@ function bearerToken(req: Request) {
   return (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function createUserClient(req: Request) {
   const authorization = req.headers.get('authorization') || '';
   return createClient(URL, PUBLISHABLE, {
@@ -56,17 +60,27 @@ export async function resolveContext(req: Request): Promise<RideComplianceContex
   const { data, error } = await userClient.auth.getUser(token);
   if (error || !data.user) throw new Error('invalid_session');
 
-  const { data: memberships, error: membershipError } = await userClient
+  const requestedOrg = (req.headers.get('x-atlas-org-id') || '').trim();
+  if (requestedOrg && !isUuid(requestedOrg)) throw new Error('invalid_organization');
+
+  let membershipQuery = userClient
     .from('organization_members')
     .select('org_id,role,status')
     .eq('user_id', data.user.id)
-    .eq('status', 'active')
-    .limit(1);
+    .eq('status', 'active');
 
-  if (membershipError || !memberships?.[0]?.org_id) throw new Error('active_organization_required');
+  if (requestedOrg) membershipQuery = membershipQuery.eq('org_id', requestedOrg);
 
-  const organizationId = String(memberships[0].org_id);
-  const role = String(memberships[0].role || 'member');
+  const { data: memberships, error: membershipError } = await membershipQuery.limit(1);
+  if (membershipError) throw new Error('active_organization_required');
+
+  const membership = memberships?.[0];
+  if (!membership?.org_id) {
+    throw new Error(requestedOrg ? 'organization_membership_required' : 'active_organization_required');
+  }
+
+  const organizationId = String(membership.org_id);
+  const role = String(membership.role || 'member');
 
   return {
     userId: data.user.id,
