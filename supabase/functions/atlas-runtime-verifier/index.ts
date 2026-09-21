@@ -7,7 +7,7 @@ const COPILOT=`${SUPABASE_URL}/functions/v1/atlas-copilot`;
 const SERVICE_ROLE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
 const E2E_EMAIL='atlas-intelligence-e2e@atlas.invalid';
 const E2E_ORG='ATLAS Intelligence E2E';
-const VERSION=2;
+const VERSION=3;
 const TERMINAL=new Set(['passed','failed','blocked']);
 
 type Check={ok:boolean,status:number|null,duration_ms:number,detail?:Record<string,unknown>};
@@ -34,7 +34,7 @@ function classify(error:any){
   const code=String(error?.code||'verifier_internal_error');
   if(code==='provider_not_configured')return {status:'blocked',code};
   if(code==='provider_rate_limited'||code==='provider_unavailable')return {status:'blocked',code};
-  if(['authentication_failed','permission_denied','storage_unavailable','persistence_failed','continuity_failed','tenant_boundary_failed','target_unavailable'].includes(code))return {status:'failed',code};
+  if(['authentication_failed','permission_denied','storage_unavailable','persistence_failed','continuity_failed','tenant_boundary_failed','target_unavailable','zero_cost_policy_violation'].includes(code))return {status:'failed',code};
   return {status:'failed',code:'verifier_internal_error'};
 }
 
@@ -94,7 +94,7 @@ async function prepareIdentity(){
 }
 
 async function runVerification(){
-  const traceId=crypto.randomUUID(); const checks:Checks={}; const runId=await begin(traceId); let providerState:string|null=null,storageState:string|null=null,orgId:string|null=null,conversationId:string|null=null,targetVersion:string|null=null;
+  const traceId=crypto.randomUUID(); const checks:Checks={}; const runId=await begin(traceId); let providerState:string|null=null,storageState:string|null=null,orgId:string|null=null,conversationId:string|null=null,targetVersion:string|null=null,actualProvider:string|null=null,actualModel:string|null=null,automaticApiCostUsd:number|null=null;
   try{
     await check(checks,'01_shell',async()=>{
       const r=await fetch(COPILOT,{cache:'no-store'});
@@ -117,20 +117,21 @@ async function runVerification(){
     await check(checks,'08_permission_intelligence_use',async()=>{if(statusPayload?.ok!==true)throw fail('permission_denied',403);return {status:200,detail:{effective:true}};});
     await check(checks,'09_provider_verified',async()=>{if(providerState==='not_configured')throw fail('provider_not_configured',503);if(providerState!=='verified_for_request')throw fail(providerState==='unavailable'?'provider_unavailable':'provider_unavailable',502);return {status:200,detail:{provider_state:providerState}};});
     const marker=`ATLAS-NATIVE-VERIFY-${traceId}`; let first:any;
-    await check(checks,'10_first_chat',async()=>{const x=await request(`${COPILOT}?api=chat`,{method:'POST',headers:authHeaders,json:{organization_id:orgId,module:'workbench',intent:'fast',capabilities_requested:['generation','reasoning'],message:`${marker}. Authorized non-destructive production verification. Reply briefly and include ${marker}.`}});if(x.r.status!==200||x.payload?.ok!==true||x.payload?.status!=='completed'||!String(x.payload?.output||x.payload?.text||'').trim())throw fail(x.payload?.error||'target_unavailable',x.r.status||502);first=x.payload;conversationId=String(first.conversation_id||'');return {status:x.r.status};});
+    await check(checks,'10_first_chat',async()=>{const x=await request(`${COPILOT}?api=chat`,{method:'POST',headers:authHeaders,json:{organization_id:orgId,module:'workbench',intent:'fast',capabilities_requested:['generation','reasoning'],message:`${marker}. Authorized non-destructive production verification. Reply briefly and include ${marker}.`}});if(x.r.status!==200||x.payload?.ok!==true||x.payload?.status!=='completed'||!String(x.payload?.output||x.payload?.text||'').trim())throw fail(x.payload?.error||'target_unavailable',x.r.status||502);first=x.payload;conversationId=String(first.conversation_id||'');actualProvider=String(first.provider||'');actualModel=String(first.model||'');automaticApiCostUsd=Number(first.automatic_api_cost_usd);return {status:x.r.status,detail:{provider:actualProvider,model:actualModel,automatic_api_cost_usd:Number.isFinite(automaticApiCostUsd)?automaticApiCostUsd:null}};});
     await check(checks,'11_conversation_created',async()=>{if(!conversationId)throw fail('persistence_failed',500);return {status:200,detail:{conversation_id:conversationId}};});
-    await check(checks,'12_second_chat_continuity',async()=>{const x=await request(`${COPILOT}?api=chat`,{method:'POST',headers:authHeaders,json:{organization_id:orgId,module:'workbench',intent:'balanced',conversation_id:conversationId,capabilities_requested:['generation','reasoning'],message:`Continue ${marker} in the same conversation and confirm continuity briefly.`}});if(x.r.status!==200||x.payload?.status!=='completed'||x.payload?.conversation_id!==conversationId||!String(x.payload?.output||x.payload?.text||'').trim())throw fail('continuity_failed',x.r.status||500);return {status:x.r.status};});
+    let second:any; await check(checks,'12_second_chat_continuity',async()=>{const x=await request(`${COPILOT}?api=chat`,{method:'POST',headers:authHeaders,json:{organization_id:orgId,module:'workbench',intent:'balanced',conversation_id:conversationId,capabilities_requested:['generation','reasoning'],message:`Continue ${marker} in the same conversation and confirm continuity briefly.`}});if(x.r.status!==200||x.payload?.status!=='completed'||x.payload?.conversation_id!==conversationId||!String(x.payload?.output||x.payload?.text||'').trim())throw fail('continuity_failed',x.r.status||500);second=x.payload;return {status:x.r.status,detail:{provider:String(second.provider||''),model:String(second.model||''),automatic_api_cost_usd:Number.isFinite(Number(second.automatic_api_cost_usd))?Number(second.automatic_api_cost_usd):null}};});
+    await check(checks,'12b_zero_cost_local_execution',async()=>{const secondProvider=String(second?.provider||'');const firstCost=Number(first?.automatic_api_cost_usd);const secondCost=Number(second?.automatic_api_cost_usd);if(actualProvider!=='atlas-local'||secondProvider!=='atlas-local'||!Number.isFinite(firstCost)||!Number.isFinite(secondCost)||firstCost!==0||secondCost!==0)throw fail('zero_cost_policy_violation',500,`first_provider=${actualProvider||'none'} second_provider=${secondProvider||'none'} first_cost=${String(first?.automatic_api_cost_usd)} second_cost=${String(second?.automatic_api_cost_usd)}`);automaticApiCostUsd=0;return {status:200,detail:{provider:'atlas-local',model:actualModel,first_turn_cost_usd:firstCost,second_turn_cost_usd:secondCost,automatic_api_cost_usd:0}};});
     await check(checks,'13_history_persisted',async()=>{const x=await request(`${COPILOT}?api=history`,{headers:authHeaders});if(x.r.status!==200||!(x.payload?.conversations||[]).some((c:any)=>c.id===conversationId))throw fail('persistence_failed',x.r.status||500);return {status:x.r.status};});
     await check(checks,'14_conversation_messages_persisted',async()=>{const x=await request(`${COPILOT}?api=conversation&id=${encodeURIComponent(String(conversationId))}`,{headers:authHeaders});const ms=x.payload?.messages||[];if(x.r.status!==200||ms.length<4||!ms.some((m:any)=>String(m?.content?.text||'').includes(marker)))throw fail('persistence_failed',x.r.status||500);return {status:x.r.status,detail:{message_count:ms.length}};});
     const foreignOrg=crypto.randomUUID();
     await check(checks,'15_cross_tenant_denied',async()=>{const x=await request(`${COPILOT}?api=status`,{headers:{...authHeaders,'x-atlas-org-id':foreignOrg}});if(x.r.status!==403||x.payload?.error!=='organization_membership_required')throw fail('tenant_boundary_failed',x.r.status||500);return {status:x.r.status,detail:{error:'organization_membership_required'}};});
     await check(checks,'16_completion_gate',async()=>{if(Object.values(checks).some(c=>!c.ok))throw fail('verifier_internal_error',500);return {status:200,detail:{all_required_checks:true}};});
-    await complete(runId,'passed',{target_version:targetVersion,provider:'openai',provider_state:providerState,storage_state:storageState,organization_id:orgId,conversation_id:conversationId,checks,metadata:{verifier_version:VERSION,source:'supabase-native'}});
-    return {ok:true,run_id:runId,status:'passed',trace_id:traceId,provider_state:providerState,storage_state:storageState,conversation_id:conversationId,checks};
+    await complete(runId,'passed',{target_version:targetVersion,provider:actualProvider,provider_state:providerState,storage_state:storageState,organization_id:orgId,conversation_id:conversationId,checks,metadata:{verifier_version:VERSION,source:'supabase-native',model:actualModel,automatic_api_cost_usd:automaticApiCostUsd}});
+    return {ok:true,run_id:runId,status:'passed',trace_id:traceId,provider:actualProvider,model:actualModel,automatic_api_cost_usd:automaticApiCostUsd,provider_state:providerState,storage_state:storageState,conversation_id:conversationId,checks};
   }catch(error:any){
     const c=classify(error);
-    await complete(runId,c.status,{target_version:targetVersion,provider:'openai',provider_state:providerState,storage_state:storageState,organization_id:orgId,conversation_id:conversationId,checks,metadata:{verifier_version:VERSION,source:'supabase-native'},error_code:c.code,error_detail:safeDetail(error?.detail||error?.message||c.code)}).catch(()=>{});
-    return {ok:false,run_id:runId,status:c.status,trace_id:traceId,provider_state:providerState,storage_state:storageState,conversation_id:conversationId,checks,error_code:c.code};
+    await complete(runId,c.status,{target_version:targetVersion,provider:actualProvider,provider_state:providerState,storage_state:storageState,organization_id:orgId,conversation_id:conversationId,checks,metadata:{verifier_version:VERSION,source:'supabase-native',model:actualModel,automatic_api_cost_usd:automaticApiCostUsd},error_code:c.code,error_detail:safeDetail(error?.detail||error?.message||c.code)}).catch(()=>{});
+    return {ok:false,run_id:runId,status:c.status,trace_id:traceId,provider:actualProvider,model:actualModel,automatic_api_cost_usd:automaticApiCostUsd,provider_state:providerState,storage_state:storageState,conversation_id:conversationId,checks,error_code:c.code};
   }
 }
 
