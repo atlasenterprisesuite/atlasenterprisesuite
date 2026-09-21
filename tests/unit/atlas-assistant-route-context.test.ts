@@ -4,6 +4,7 @@ import { resolveAssistantModule } from '../../apps/web/src/assistant/routeContex
 describe('ATLAS Assistant route context', () => {
   it.each([
     ['/finance/accounting/accounts-payable', 'finance.accounting.accounts-payable'],
+    ['/finance/accounting/accounts-receivable', 'finance.accounting.accounts-receivable'],
     ['/business/network', 'business.network'],
     ['/business', 'business'],
     ['/revenue', 'revenue'],
