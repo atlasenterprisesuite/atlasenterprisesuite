@@ -28,7 +28,7 @@ describe('Business Launch 360 commercial pipeline', () => {
   it('persists intake and conversion through governed server contracts', () => {
     const sql = read('supabase/migrations/20260920223000_business_launch_360_commercial.sql');
     expect(sql).toContain('public.advisory_launch_intakes');
-    expect(sql.match(/create table if not exists public\\.advisory_launch_intakes/g)?.length).toBe(1);
+    expect(sql.match(/create table if not exists public\.advisory_launch_intakes/g)?.length).toBe(1);
     expect(sql).toContain('enable row level security');
     expect(sql).toContain('advisory_set_launch_quote');
     expect(sql).toContain('advisory_accept_launch_quote');
@@ -41,7 +41,7 @@ describe('Business Launch 360 commercial pipeline', () => {
     expect(sql).toContain("status = 'accepted'");
     expect(sql).toContain('Quote acceptance evidence required before conversion');
     expect(sql).toContain('invoice_id is null');
-    expect(sql).not.toContain("as $\\n");
+    expect(sql).not.toMatch(/as \$(?!\$)/);
     expect(sql).toContain("'business-launch-360'");
   });
 
