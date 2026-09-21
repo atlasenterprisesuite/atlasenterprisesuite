@@ -1,4 +1,5 @@
 import { collectAssistantPageContext } from './pageContext';
+import type { AssistantElementContext } from './elementContext';
 import { resolveAssistantModule } from './routeContext';
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSession';
 
@@ -38,6 +39,7 @@ export async function enqueueAssistantRepair(input: {
   message: string;
   pathname: string;
   conversationId?: string | null;
+  elementContext?: AssistantElementContext | null;
 }): Promise<AssistantRepairResponse> {
   const message = input.message.trim();
   if (!message) throw new Error('repair_request_required');
@@ -55,7 +57,8 @@ export async function enqueueAssistantRepair(input: {
         module: resolveAssistantModule(input.pathname),
         pathname: input.pathname,
         conversation_id: input.conversationId || null,
-        page
+        page,
+        selected_element: input.elementContext || null
       }
     })
   });
