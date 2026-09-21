@@ -608,6 +608,131 @@ begin
 end
 $$;
 
+create or replace function public.tax_import_source_mapping(
+  p_return_id uuid,
+  p_document_type text,
+  p_tax_year integer,
+  p_mappings jsonb,
+  p_issuer_name text default null,
+  p_external_asset_reference text default null,
+  p_source_hash text default null,
+  p_metadata jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_user uuid := auth.uid();
+  v_return public.tax_returns := public.tax_assert_return_mutable(p_return_id, 'tax.prepare');
+  v_document_id uuid;
+  v_mapping jsonb;
+  v_fact_id uuid;
+  v_fact_key text;
+  v_value jsonb;
+  v_count integer := 0;
+begin
+  if p_tax_year <> v_return.tax_year then raise exception 'Source document tax year must match return tax year'; end if;
+  if length(trim(coalesce(p_document_type,''))) = 0 then raise exception 'Document type required'; end if;
+  if p_mappings is null or jsonb_typeof(p_mappings) <> 'array' then raise exception 'Mappings array required'; end if;
+
+  insert into public.tax_source_documents(
+    org_id, return_id, document_type, tax_year, issuer_name,
+    extraction_status, external_asset_reference, source_hash, metadata, created_by
+  ) values (
+    v_return.org_id, p_return_id, trim(p_document_type), p_tax_year,
+    nullif(trim(coalesce(p_issuer_name,'')),''),
+    'reviewed', nullif(trim(coalesce(p_external_asset_reference,'')),''),
+    nullif(trim(coalesce(p_source_hash,'')),''),
+    coalesce(p_metadata,'{}'::jsonb), v_user
+  ) returning id into v_document_id;
+
+  for v_mapping in select value from jsonb_array_elements(p_mappings)
+  loop
+    if length(trim(coalesce(v_mapping->>'destinationField',''))) = 0
+       or length(trim(coalesce(v_mapping->>'destinationForm',''))) = 0 then
+      raise exception 'Every mapping requires destinationField and destinationForm';
+    end if;
+
+    v_fact_key := trim(v_mapping->>'destinationField');
+    v_value := case
+      when v_mapping ? 'amount' then jsonb_build_object('amount', (v_mapping->>'amount')::numeric)
+      when v_mapping ? 'value' then v_mapping->'value'
+      else 'null'::jsonb
+    end;
+
+    insert into public.tax_facts(
+      org_id, return_id, tax_fact_key, jurisdiction, subject_key, value, unit,
+      source_document_id, source_field, mapping_treatment, rule_pack_version,
+      evidence_reference, review_state, version, is_current, created_by
+    ) values (
+      v_return.org_id,
+      p_return_id,
+      v_fact_key,
+      coalesce(nullif(trim(v_mapping->>'jurisdiction'),''),'federal'),
+      'document:' || v_document_id::text,
+      v_value,
+      case when v_mapping ? 'amount' then 'USD' else null end,
+      v_document_id,
+      nullif(trim(coalesce(v_mapping->>'source','')),''),
+      case
+        when v_mapping->>'treatment' in ('direct','derived','informational','jurisdiction','review','override')
+          then v_mapping->>'treatment'
+        else 'review'
+      end,
+      nullif(trim(coalesce(v_mapping->>'rulePackVersion','')),''),
+      nullif(trim(coalesce(v_mapping->>'reason','')),''),
+      case when coalesce((v_mapping->>'reviewRequired')::boolean,false) then 'review' else 'unreviewed' end,
+      1,
+      true,
+      v_user
+    ) returning id into v_fact_id;
+
+    insert into public.tax_line_mappings(
+      org_id, return_id, tax_fact_id, form_id, form_revision, destination_line,
+      destination_field, contribution_role, mapped_value, calculation_reference,
+      rule_pack_version, review_required, created_by
+    ) values (
+      v_return.org_id,
+      p_return_id,
+      v_fact_id,
+      trim(v_mapping->>'destinationForm'),
+      nullif(trim(coalesce(v_mapping->>'formRevision','')),''),
+      nullif(trim(coalesce(v_mapping->>'destinationLine','')),''),
+      v_fact_key,
+      case
+        when v_mapping->>'treatment' = 'informational' then 'informational'
+        when v_mapping->>'treatment' = 'derived' then 'subtotal'
+        else 'input'
+      end,
+      v_value,
+      nullif(trim(coalesce(v_mapping->>'reason','')),''),
+      nullif(trim(coalesce(v_mapping->>'rulePackVersion','')),''),
+      coalesce((v_mapping->>'reviewRequired')::boolean,false),
+      v_user
+    );
+
+    v_count := v_count + 1;
+  end loop;
+
+  update public.tax_returns
+  set status = case when status = 'organizer' then 'preparation' else status end,
+      current_step_id = 'income-documents',
+      updated_by = v_user,
+      updated_at = now()
+  where id = p_return_id and org_id = v_return.org_id;
+
+  insert into public.tax_audit_events(org_id, return_id, entity_type, entity_id, action, details, actor_user_id)
+  values (
+    v_return.org_id, p_return_id, 'tax_source_documents', v_document_id, 'source_mapping_imported',
+    jsonb_build_object('document_type', p_document_type, 'mapping_count', v_count), v_user
+  );
+
+  return jsonb_build_object('document_id', v_document_id, 'mapping_count', v_count);
+end
+$;
+
 create or replace function public.tax_record_line_mapping(
   p_return_id uuid,
   p_tax_fact_id uuid,
@@ -964,6 +1089,7 @@ revoke all on function public.tax_create_return(uuid,uuid,uuid,integer,text,text
 revoke all on function public.tax_set_step_state(uuid,text,text,text) from public;
 revoke all on function public.tax_register_source_document(uuid,text,integer,text,text,text,jsonb) from public;
 revoke all on function public.tax_record_fact(uuid,text,jsonb,text,text,text,uuid,text,text,text,text,text) from public;
+revoke all on function public.tax_import_source_mapping(uuid,text,integer,jsonb,text,text,text,jsonb) from public;
 revoke all on function public.tax_record_line_mapping(uuid,uuid,text,text,text,text,text,jsonb,text,text,boolean) from public;
 revoke all on function public.tax_upsert_workpaper(uuid,text,text,text,jsonb,numeric,numeric,text) from public;
 revoke all on function public.tax_open_diagnostic(uuid,text,text,boolean,text,text,text) from public;
@@ -975,6 +1101,7 @@ grant execute on function public.tax_create_return(uuid,uuid,uuid,integer,text,t
 grant execute on function public.tax_set_step_state(uuid,text,text,text) to authenticated;
 grant execute on function public.tax_register_source_document(uuid,text,integer,text,text,text,jsonb) to authenticated;
 grant execute on function public.tax_record_fact(uuid,text,jsonb,text,text,text,uuid,text,text,text,text,text) to authenticated;
+grant execute on function public.tax_import_source_mapping(uuid,text,integer,jsonb,text,text,text,jsonb) to authenticated;
 grant execute on function public.tax_record_line_mapping(uuid,uuid,text,text,text,text,text,jsonb,text,text,boolean) to authenticated;
 grant execute on function public.tax_upsert_workpaper(uuid,text,text,text,jsonb,numeric,numeric,text) to authenticated;
 grant execute on function public.tax_open_diagnostic(uuid,text,text,boolean,text,text,text) to authenticated;
