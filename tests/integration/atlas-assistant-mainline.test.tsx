@@ -202,6 +202,29 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     expect(await screen.findByText('Voice answer')).toBeInTheDocument();
   });
 
+  it('offers one-tap current-screen explain, check, and repair actions', async () => {
+    render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>);
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
+    fireEvent.click(launcher);
+
+    expect(screen.getByText('Current screen · safe structural context')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain screen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Check screen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Repair this screen' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Explain screen' }));
+    await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: '/finance/accounting/accounts-payable',
+      message: expect.stringContaining('Explain the current ATLAS screen')
+    })));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Repair this screen' }));
+    await waitFor(() => expect(mocks.enqueueAssistantRepair).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: '/finance/accounting/accounts-payable',
+      message: expect.stringContaining('Inspect and repair verified defects on the current ATLAS screen')
+    })));
+  });
+
   it('queues a governed repair from the current ATLAS screen', async () => {
     render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>);
     const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
