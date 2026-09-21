@@ -365,6 +365,13 @@ export async function createSalesProductFromInventory(input: { itemId: string })
   const existing = snapshot.products.find((product) => product.inventory_item_id === item.id);
   if (existing) return existing;
 
+  const movementResponse = await authorizedAtlasFetch(
+    `/rest/v1/inventory_movements?org_id=${filter(snapshot.organization.id)}&item_id=eq.${encodeURIComponent(item.id)}&select=quantity`,
+    { method: 'GET' }
+  );
+  const movements = await parseResponse<Array<{ quantity: number | string }>>(movementResponse);
+  const onHand = movements.reduce((sum, movement) => sum + Number(movement.quantity || 0), 0);
+
   const response = await authorizedAtlasFetch('/rest/v1/products?select=id,org_id,inventory_item_id,sku,name,quantity,unit_cost,unit_price,target_margin_pct,status', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
@@ -373,7 +380,7 @@ export async function createSalesProductFromInventory(input: { itemId: string })
       inventory_item_id: item.id,
       sku: item.sku,
       name: item.name,
-      quantity: 0,
+      quantity: onHand,
       reorder_point: 0,
       unit_cost: item.average_unit_cost,
       unit_price: 0,
