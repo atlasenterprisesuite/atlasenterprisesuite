@@ -1,10 +1,11 @@
 {
-  "version": 11,
+  "version": 12,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
     "/",
     "/suite",
+    "/advisory/business-launch-360",
     "/identity?app=%2Ffinance",
     "/finance",
     "/finance/accounting/reports/automotive-sales",

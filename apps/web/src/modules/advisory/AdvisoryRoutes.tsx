@@ -15,19 +15,33 @@ import {
   listAdvisoryClients,
   listAdvisoryEngagements,
   listAdvisoryLaunchEvidence,
+  listAdvisoryLaunchIntakes,
+  setAdvisoryLaunchQuote,
+  acceptAdvisoryLaunchQuote,
+  convertAdvisoryLaunchIntake,
+  setAdvisoryLaunchBillingRefs,
   updateAdvisoryLaunchEvidence,
   type AdvisoryClientRow,
   type AdvisoryEngagementRow,
   type AdvisoryFirmRow,
-  type AdvisoryLaunchEvidenceRow
+  type AdvisoryLaunchEvidenceRow,
+  type AdvisoryLaunchIntakeRow
 } from '../../lib/advisoryApi';
+import {
+  addInvoiceLine,
+  createDraftInvoice,
+  createReceivablesCustomer,
+  getLiveReceivablesLedger,
+  issueInvoice,
+  suggestInvoiceNumber
+} from '../../lib/receivablesApi';
 import './advisory.css';
 
 const advisoryNav = [
   ['/advisory','Overview'],
   ['/advisory/clients','Clients'],
   ['/advisory/engagements','Engagements'],
-  ['/advisory/business-launch-360','Business Launch 360'],
+  ['/advisory/business-launch-360/workspace','Business Launch 360'],
   ['/advisory/tasks','Tasks'],
   ['/advisory/calendar','Calendar'],
   ['/advisory/documents','Documents'],
@@ -104,7 +118,7 @@ export function AdvisoryOverviewPage() {
     <div className="module-grid">
       <Link className="module-card enabled" to="/advisory/clients"><span>Firm operations</span><strong>Clients</strong><p>Create real organization-scoped client records through authenticated Supabase RPCs.</p></Link>
       <Link className="module-card enabled" to="/advisory/engagements"><span>Service delivery</span><strong>Engagements</strong><p>Open service engagements without duplicating CRM or Accounting as sources of truth.</p></Link>
-      <Link className="module-card enabled" to="/advisory/business-launch-360"><span>Launch system</span><strong>Business Launch 360</strong><p>Evidence-based readiness across ten governed dimensions.</p></Link>
+      <Link className="module-card enabled" to="/advisory/business-launch-360/workspace"><span>Launch system</span><strong>Business Launch 360</strong><p>Evidence-based readiness across ten governed dimensions.</p></Link>
       <article className="module-card disabled" aria-disabled="true"><span>External providers</span><strong>Authorization required</strong><p>E-sign, print fulfillment, paid media, payment and publishing providers remain not connected until real provider authorization is verified.</p></article>
     </div>
   </AdvisoryLayout>;
@@ -193,6 +207,218 @@ function EngagementsPage() {
   </AdvisoryLayout>;
 }
 
+
+function isoDatePlus(days: number) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function LaunchCommercialPipeline({ onChanged }: { onChanged: () => Promise<void> }) {
+  const [intakes,setIntakes] = useState<AdvisoryLaunchIntakeRow[]>([]);
+  const [selectedId,setSelectedId] = useState('');
+  const [quoteAmount,setQuoteAmount] = useState('');
+  const [quoteTaxRate,setQuoteTaxRate] = useState('');
+  const [paymentTermsDays,setPaymentTermsDays] = useState('');
+  const [quoteNote,setQuoteNote] = useState('');
+  const [acceptanceReference,setAcceptanceReference] = useState('');
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState('');
+  const [message,setMessage] = useState('');
+
+  const refresh = useCallback(async () => {
+    try {
+      const rows = await listAdvisoryLaunchIntakes();
+      setIntakes(rows);
+      setSelectedId((current) => current && rows.some((item) => item.id === current) ? current : rows[0]?.id || '');
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to load launch requests');
+    }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const selected = useMemo(() => intakes.find((item) => item.id === selectedId) || null, [intakes,selectedId]);
+
+  useEffect(() => {
+    setQuoteAmount(selected?.quote_amount == null ? '' : String(selected.quote_amount));
+    setQuoteTaxRate(selected?.quote_tax_rate == null ? '' : String(selected.quote_tax_rate));
+    setPaymentTermsDays(selected?.quote_payment_terms_days == null ? '' : String(selected.quote_payment_terms_days));
+    setQuoteNote(selected?.quote_note || '');
+    setAcceptanceReference(selected?.quote_acceptance_reference || '');
+  }, [selectedId, selected?.quote_amount, selected?.quote_tax_rate, selected?.quote_payment_terms_days, selected?.quote_note, selected?.quote_acceptance_reference]);
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true); setError(''); setMessage('');
+    try { await action(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Launch pipeline action failed'); }
+    finally { setBusy(false); }
+  }
+
+  async function saveQuote() {
+    if (!selected) return;
+    const amount = Number(quoteAmount);
+    const taxRate = Number(quoteTaxRate);
+    const termsDays = Number(paymentTermsDays);
+    if (!Number.isFinite(amount) || amount <= 0) { setError('Enter a positive quote amount.'); return; }
+    if (!quoteTaxRate.trim() || !Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
+      setError('Record the applicable tax rate from 0 to 100 before saving the quote.');
+      return;
+    }
+    if (!paymentTermsDays.trim() || !Number.isInteger(termsDays) || termsDays < 0 || termsDays > 365) {
+      setError('Record invoice payment terms from 0 to 365 days before saving the quote.');
+      return;
+    }
+    await run(async () => {
+      await setAdvisoryLaunchQuote({ intakeId:selected.id, amount, taxRate, paymentTermsDays:termsDays, note:quoteNote });
+      await refresh();
+      setMessage('Quote saved. Any previous acceptance evidence was cleared because the commercial terms changed.');
+    });
+  }
+
+  async function acceptQuote() {
+    if (!selected) return;
+    if (!acceptanceReference.trim()) { setError('Acceptance evidence reference is required.'); return; }
+    await run(async () => {
+      await acceptAdvisoryLaunchQuote({ intakeId:selected.id, acceptanceReference });
+      await refresh();
+      setMessage('Quote acceptance evidence recorded. The request is now eligible for conversion.');
+    });
+  }
+
+  async function convert() {
+    if (!selected) return;
+    await run(async () => {
+      await convertAdvisoryLaunchIntake(selected.id);
+      await Promise.all([refresh(), onChanged()]);
+      setMessage('Client and Business Launch 360 engagement created from the accepted quote.');
+    });
+  }
+
+  async function createInvoice() {
+    if (!selected) return;
+    await run(async () => {
+      let current = selected;
+      const quotedAmount = current.quote_amount;
+      const quotedTaxRate = current.quote_tax_rate;
+      const paymentTerms = current.quote_payment_terms_days;
+      if (quotedAmount == null || quotedAmount <= 0 || quotedTaxRate == null || paymentTerms == null) {
+        throw new Error('Complete the quote amount, tax rate and payment terms before invoicing.');
+      }
+      if (!current.quote_accepted_at || !current.quote_acceptance_reference) {
+        throw new Error('Quote acceptance evidence is required before invoicing.');
+      }
+
+      if (!current.advisory_client_id || !current.engagement_id) {
+        current = await convertAdvisoryLaunchIntake(current.id);
+      }
+
+      let customerId = current.receivable_customer_id;
+      if (!customerId) {
+        const customer = await createReceivablesCustomer({
+          name: current.business_name || current.full_name,
+          email: current.email,
+          phone: current.phone || undefined
+        });
+        customerId = customer.id;
+        current = await setAdvisoryLaunchBillingRefs({
+          intakeId: current.id,
+          receivableCustomerId: customerId
+        });
+      }
+
+      let invoiceId = current.invoice_id;
+      if (!invoiceId) {
+        const invoice = await createDraftInvoice({
+          customerId,
+          invoiceNumber: suggestInvoiceNumber(),
+          issueDate: isoDatePlus(0),
+          dueDate: isoDatePlus(paymentTerms)
+        });
+        invoiceId = invoice.id;
+        current = await setAdvisoryLaunchBillingRefs({
+          intakeId: current.id,
+          receivableCustomerId: customerId,
+          invoiceId
+        });
+      }
+
+      const ledger = await getLiveReceivablesLedger();
+      const invoice = ledger.invoices.find((item) => item.id === invoiceId);
+      if (!invoice) throw new Error('Launch invoice could not be reloaded from Accounts Receivable.');
+
+      if (invoice.status === 'draft') {
+        const existingLine = ledger.lines.find((line) =>
+          line.invoice_id === invoiceId && line.description === 'Business Launch 360 · Launch fee'
+        );
+        if (!existingLine) {
+          await addInvoiceLine({
+            invoiceId,
+            description:'Business Launch 360 · Launch fee',
+            quantity:1,
+            unitPrice:quotedAmount,
+            taxRate:quotedTaxRate
+          });
+        }
+        await issueInvoice(invoiceId);
+      } else if (invoice.status !== 'open') {
+        throw new Error('Launch invoice is not in an issuable Accounts Receivable state.');
+      }
+
+      await setAdvisoryLaunchBillingRefs({
+        intakeId: current.id,
+        receivableCustomerId: customerId,
+        invoiceId
+      });
+      await Promise.all([refresh(), onChanged()]);
+      setMessage('Accounts Receivable invoice issued and linked to Business Launch 360.');
+    });
+  }
+
+  const quoteReady = Boolean(selected?.quote_amount && selected.quote_tax_rate != null && selected.quote_payment_terms_days != null);
+  const accepted = Boolean(selected?.quote_accepted_at && selected.quote_acceptance_reference);
+
+  return <section className="feature-card wide">
+    <div className="card-heading">
+      <div><p className="eyebrow">Commercial pipeline</p><h2>Public intake → quote → acceptance → engagement → invoice</h2></div>
+      <a className="text-link" href="https://www.atlasenterprisesuite.com/advisory/business-launch-360">Open public page</a>
+    </div>
+    {intakes.length === 0 ? <div className="empty-state"><strong>No public Launch 360 requests yet</strong><span>New website submissions will appear here without creating fabricated clients or revenue.</span></div> : <>
+      <label className="field"><span>Launch request</span><select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
+        {intakes.map((item) => <option key={item.id} value={item.id}>{item.reference} · {item.business_name || item.full_name} · {item.status}</option>)}
+      </select></label>
+      {selected ? <div className="advisory-grid">
+        <article className="module-card enabled">
+          <span>{selected.reference}</span><strong>{selected.business_name || selected.full_name}</strong>
+          <p>{selected.email}{selected.phone ? ' · ' + selected.phone : ''}</p>
+          <small>{selected.business_stage || 'Stage not specified'} · {selected.status}</small>
+        </article>
+        <article className="module-card enabled">
+          <span>Onboarding request</span><strong>{selected.goals ? 'Scope captured' : 'Scope pending'}</strong>
+          <p>{selected.goals || 'No goals recorded.'}</p>
+          <small>{selected.website || 'No website recorded'}</small>
+        </article>
+      </div> : null}
+      <div className="advisory-grid">
+        <label className="field"><span>Quote amount (USD)</span><input type="number" min="0.01" step="0.01" value={quoteAmount} onChange={(event) => setQuoteAmount(event.target.value)} /></label>
+        <label className="field"><span>Tax rate (%)</span><input type="number" min="0" max="100" step="0.0001" value={quoteTaxRate} onChange={(event) => setQuoteTaxRate(event.target.value)} placeholder="Record 0 explicitly when applicable" /></label>
+        <label className="field"><span>Payment terms (days)</span><input type="number" min="0" max="365" step="1" value={paymentTermsDays} onChange={(event) => setPaymentTermsDays(event.target.value)} placeholder="Record the approved terms" /></label>
+        <label className="field"><span>Quote note</span><input value={quoteNote} onChange={(event) => setQuoteNote(event.target.value)} placeholder="Scope, exclusions or commercial note" /></label>
+        <label className="field"><span>Acceptance evidence</span><input value={acceptanceReference} onChange={(event) => setAcceptanceReference(event.target.value)} placeholder="Signed quote, email, PO or approved record reference" /></label>
+      </div>
+      <div className="button-row">
+        <button type="button" disabled={busy || !selected || selected.status === 'invoiced' || selected.status === 'closed'} onClick={() => void saveQuote()}>Save quote</button>
+        <button type="button" disabled={busy || !selected || !quoteReady || !['quoted','accepted'].includes(selected.status)} onClick={() => void acceptQuote()}>Record acceptance</button>
+        <button type="button" disabled={busy || !selected || !accepted || !['accepted','converted'].includes(selected.status)} onClick={() => void convert()}>Convert to client + engagement</button>
+        <button type="button" disabled={busy || !selected || !accepted || selected.status === 'invoiced' || selected.status === 'closed'} onClick={() => void createInvoice()}>Create + issue AR invoice</button>
+      </div>
+      {message ? <div className="notice">{message}</div> : null}
+      {error ? <div className="notice strong" role="alert">{error}</div> : null}
+    </>}
+  </section>;
+}
+
 function LaunchPage() {
   const workspace = useWorkspace();
   const launchEngagements = workspace.engagements.filter((engagement) => engagement.service_id === BUSINESS_LAUNCH_360.id);
@@ -238,6 +464,7 @@ function LaunchPage() {
 
   return <AdvisoryLayout>
     <Status loading={workspace.loading} error={workspace.error} />
+    <LaunchCommercialPipeline onChanged={workspace.refresh} />
     <div className="stat-grid">
       <article><strong>{readiness.score}</strong><span>Launch Readiness / 100</span></article>
       <article><strong>{readiness.verified.length}</strong><span>verified dimensions</span></article>
@@ -274,6 +501,7 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/clients" element={<ClientsPage />} />
     <Route path="/advisory/engagements" element={<EngagementsPage />} />
     <Route path="/advisory/business-launch-360" element={<LaunchPage />} />
+    <Route path="/advisory/business-launch-360/workspace" element={<LaunchPage />} />
     <Route path="/advisory/tasks" element={<BoundaryPage title="Tasks" description="Task orchestration will reuse the canonical ATLAS execution/work layer rather than create a parallel task source of truth." />} />
     <Route path="/advisory/calendar" element={<BoundaryPage title="Calendar" description="Calendar events remain provider-gated until an authorized calendar connection is available for the active organization." />} />
     <Route path="/advisory/documents" element={<BoundaryPage title="Documents" description="Document metadata can be linked to engagements, but storage, signatures and provider delivery are not claimed as connected here." />} />

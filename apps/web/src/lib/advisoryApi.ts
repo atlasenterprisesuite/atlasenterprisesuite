@@ -38,6 +38,35 @@ export type AdvisoryEngagementRow = {
   updated_at: string;
 };
 
+export type AdvisoryLaunchIntakeRow = {
+  id: string;
+  org_id: string;
+  firm_id: string;
+  service_id: 'business-launch-360';
+  reference: string;
+  full_name: string;
+  business_name: string | null;
+  email: string;
+  phone: string | null;
+  website: string | null;
+  business_stage: string | null;
+  goals: string | null;
+  status: 'new' | 'quoted' | 'accepted' | 'converted' | 'invoiced' | 'closed';
+  quote_amount: number | null;
+  quote_tax_rate: number | null;
+  quote_payment_terms_days: number | null;
+  quote_currency: string;
+  quote_note: string | null;
+  quote_acceptance_reference: string | null;
+  quote_accepted_at: string | null;
+  advisory_client_id: string | null;
+  engagement_id: string | null;
+  receivable_customer_id: string | null;
+  invoice_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AdvisoryLaunchEvidenceRow = {
   id: string;
   org_id: string;
@@ -167,4 +196,70 @@ export async function updateAdvisoryLaunchEvidence(input: {
   });
   if (!rows[0]) throw new Error('advisory_evidence_update_failed');
   return rows[0];
+}
+
+
+export async function listAdvisoryLaunchIntakes(): Promise<AdvisoryLaunchIntakeRow[]> {
+  const organization = await getActiveAtlasOrganization();
+  const firm = await bootstrapAdvisoryFirm();
+  const response = await authorizedAtlasFetch(
+    '/rest/v1/advisory_launch_intakes?org_id=eq.' + encodeURIComponent(organization.id) +
+    '&firm_id=eq.' + encodeURIComponent(firm.id) +
+    '&select=id,org_id,firm_id,service_id,reference,full_name,business_name,email,phone,website,business_stage,goals,status,quote_amount,quote_tax_rate,quote_payment_terms_days,quote_currency,quote_note,quote_acceptance_reference,quote_accepted_at,advisory_client_id,engagement_id,receivable_customer_id,invoice_id,created_at,updated_at&order=created_at.desc',
+    { method: 'GET' }
+  );
+  const rows = await parseJson<any[]>(response);
+  return rows.map((row) => ({
+    ...row,
+    quote_amount: row.quote_amount == null ? null : Number(row.quote_amount),
+    quote_tax_rate: row.quote_tax_rate == null ? null : Number(row.quote_tax_rate),
+    quote_payment_terms_days: row.quote_payment_terms_days == null ? null : Number(row.quote_payment_terms_days)
+  })) as AdvisoryLaunchIntakeRow[];
+}
+
+export async function setAdvisoryLaunchQuote(input: {
+  intakeId: string;
+  amount: number;
+  taxRate: number;
+  paymentTermsDays: number;
+  note?: string;
+}): Promise<AdvisoryLaunchIntakeRow> {
+  const rows = await rpcRows<any>('advisory_set_launch_quote', {
+    p_intake_id: input.intakeId,
+    p_amount: input.amount,
+    p_tax_rate: input.taxRate,
+    p_payment_terms_days: input.paymentTermsDays,
+    p_note: input.note || null
+  });
+  if (!rows[0]) throw new Error('advisory_launch_quote_failed');
+  return { ...rows[0], quote_amount: rows[0].quote_amount == null ? null : Number(rows[0].quote_amount), quote_tax_rate: rows[0].quote_tax_rate == null ? null : Number(rows[0].quote_tax_rate), quote_payment_terms_days: rows[0].quote_payment_terms_days == null ? null : Number(rows[0].quote_payment_terms_days) } as AdvisoryLaunchIntakeRow;
+}
+
+export async function acceptAdvisoryLaunchQuote(input: { intakeId: string; acceptanceReference: string }): Promise<AdvisoryLaunchIntakeRow> {
+  const rows = await rpcRows<any>('advisory_accept_launch_quote', {
+    p_intake_id: input.intakeId,
+    p_acceptance_reference: input.acceptanceReference
+  });
+  if (!rows[0]) throw new Error('advisory_launch_acceptance_failed');
+  return { ...rows[0], quote_amount: rows[0].quote_amount == null ? null : Number(rows[0].quote_amount), quote_tax_rate: rows[0].quote_tax_rate == null ? null : Number(rows[0].quote_tax_rate), quote_payment_terms_days: rows[0].quote_payment_terms_days == null ? null : Number(rows[0].quote_payment_terms_days) } as AdvisoryLaunchIntakeRow;
+}
+
+export async function convertAdvisoryLaunchIntake(intakeId: string): Promise<AdvisoryLaunchIntakeRow> {
+  const rows = await rpcRows<any>('advisory_convert_launch_intake', { p_intake_id: intakeId });
+  if (!rows[0]) throw new Error('advisory_launch_conversion_failed');
+  return { ...rows[0], quote_amount: rows[0].quote_amount == null ? null : Number(rows[0].quote_amount), quote_tax_rate: rows[0].quote_tax_rate == null ? null : Number(rows[0].quote_tax_rate), quote_payment_terms_days: rows[0].quote_payment_terms_days == null ? null : Number(rows[0].quote_payment_terms_days) } as AdvisoryLaunchIntakeRow;
+}
+
+export async function setAdvisoryLaunchBillingRefs(input: {
+  intakeId: string;
+  receivableCustomerId?: string | null;
+  invoiceId?: string | null;
+}): Promise<AdvisoryLaunchIntakeRow> {
+  const rows = await rpcRows<any>('advisory_set_launch_billing_refs', {
+    p_intake_id: input.intakeId,
+    p_receivable_customer_id: input.receivableCustomerId || null,
+    p_invoice_id: input.invoiceId || null
+  });
+  if (!rows[0]) throw new Error('advisory_launch_billing_link_failed');
+  return { ...rows[0], quote_amount: rows[0].quote_amount == null ? null : Number(rows[0].quote_amount), quote_tax_rate: rows[0].quote_tax_rate == null ? null : Number(rows[0].quote_tax_rate), quote_payment_terms_days: rows[0].quote_payment_terms_days == null ? null : Number(rows[0].quote_payment_terms_days) } as AdvisoryLaunchIntakeRow;
 }

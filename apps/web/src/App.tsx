@@ -23,6 +23,7 @@ import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPag
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
+import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -261,6 +262,8 @@ export function App() {
   if (location.pathname.startsWith('/events')) return <EventsRoutes />;
   if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
   if (location.pathname.startsWith('/insurance')) return <InsuranceRoutes />;
+  const publicAdvisoryHost = typeof window !== 'undefined' && ['atlasenterprisesuite.com','www.atlasenterprisesuite.com','localhost','127.0.0.1'].includes(window.location.hostname);
+  if (location.pathname === '/advisory/business-launch-360' && publicAdvisoryHost) return <PublicBusinessLaunch360Page />;
   const extension = resolveAtlasExtension(location.pathname);
   if (extension) return <AtlasShell>{extension}</AtlasShell>;
 
