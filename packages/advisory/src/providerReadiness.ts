@@ -41,8 +41,16 @@ export type AdvisoryProviderConnectionEvidence = {
   metadata?: Record<string, unknown> | null;
 };
 
+export type AdvisoryProviderAuthorizationEvidence = {
+  capability: AdvisoryExternalCapability;
+  authorized: boolean;
+  authorizedAt: string | null;
+  authorizationReference?: string | null;
+};
+
 export type AdvisoryProviderReadinessStatus =
   | 'authorization_required'
+  | 'authorized'
   | 'authorizing'
   | 'connected'
   | 'degraded';
@@ -58,6 +66,9 @@ export type AdvisoryProviderReadiness = {
   lastVerifiedAt: string | null;
   lastSuccessAt: string | null;
   lastErrorCode: string | null;
+  organizationAuthorized: boolean;
+  authorizedAt: string | null;
+  authorizationReference: string | null;
 };
 
 const capabilityIds = new Set<string>(ADVISORY_EXTERNAL_CAPABILITIES.map((item) => item.id));
@@ -89,16 +100,21 @@ function statusForConnection(connection: AdvisoryProviderConnectionEvidence): Ad
 }
 
 function rank(status: AdvisoryProviderReadinessStatus) {
-  if (status === 'connected') return 4;
-  if (status === 'authorizing') return 3;
-  if (status === 'degraded') return 2;
+  if (status === 'connected') return 5;
+  if (status === 'authorizing') return 4;
+  if (status === 'degraded') return 3;
+  if (status === 'authorized') return 2;
   return 1;
 }
 
 export function resolveAdvisoryProviderReadiness(
-  connections: readonly AdvisoryProviderConnectionEvidence[]
+  connections: readonly AdvisoryProviderConnectionEvidence[],
+  authorizations: readonly AdvisoryProviderAuthorizationEvidence[] = []
 ): AdvisoryProviderReadiness[] {
   return ADVISORY_EXTERNAL_CAPABILITIES.map((capability) => {
+    const authorization = authorizations.find(
+      (item) => item.capability === capability.id && item.authorized
+    ) || null;
     const candidates = connections
       .filter((connection) => capabilityForConnection(connection) === capability.id)
       .map((connection) => ({ connection, status: statusForConnection(connection) }))
@@ -109,13 +125,16 @@ export function resolveAdvisoryProviderReadiness(
       capability: capability.id,
       label: capability.label,
       description: capability.description,
-      status: selected?.status || 'authorization_required',
+      status: selected?.status || (authorization ? 'authorized' : 'authorization_required'),
       provider: selected?.connection.provider || null,
       connectionName: selected?.connection.connectionName || null,
       providerAccountLabel: selected?.connection.providerAccountLabel || null,
       lastVerifiedAt: selected?.connection.lastVerifiedAt || null,
       lastSuccessAt: selected?.connection.lastSuccessAt || null,
-      lastErrorCode: selected?.connection.lastErrorCode || null
+      lastErrorCode: selected?.connection.lastErrorCode || null,
+      organizationAuthorized: Boolean(authorization),
+      authorizedAt: authorization?.authorizedAt || null,
+      authorizationReference: authorization?.authorizationReference || null
     };
   });
 }

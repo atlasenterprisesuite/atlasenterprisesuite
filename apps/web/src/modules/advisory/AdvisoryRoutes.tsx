@@ -17,6 +17,7 @@ import {
   listAdvisoryEngagements,
   listAdvisoryLaunchEvidence,
   listAdvisoryLaunchIntakes,
+  listAdvisoryProviderAuthorizations,
   listAdvisoryProviderConnections,
   setAdvisoryLaunchQuote,
   acceptAdvisoryLaunchQuote,
@@ -122,7 +123,7 @@ export function AdvisoryOverviewPage() {
       <Link className="module-card enabled" to="/advisory/clients"><span>Firm operations</span><strong>Clients</strong><p>Create real organization-scoped client records through authenticated Supabase RPCs.</p></Link>
       <Link className="module-card enabled" to="/advisory/engagements"><span>Service delivery</span><strong>Engagements</strong><p>Open service engagements without duplicating CRM or Accounting as sources of truth.</p></Link>
       <Link className="module-card enabled" to="/advisory/business-launch-360/workspace"><span>Launch system</span><strong>Business Launch 360</strong><p>Evidence-based readiness across ten governed dimensions.</p></Link>
-      <Link className="module-card enabled" to="/advisory/providers"><span>External providers</span><strong>Authorization required</strong><p>E-sign, print fulfillment, paid media, payment and publishing providers remain not connected until real provider authorization is verified.</p></Link>
+      <Link className="module-card enabled" to="/advisory/providers"><span>External providers</span><strong>Provider setup</strong><p>Organization authorization and provider verification are tracked separately for e-sign, print fulfillment, paid media, payments and publishing.</p></Link>
     </div>
   </AdvisoryLayout>;
 }
@@ -496,22 +497,34 @@ function LaunchPage() {
 
 function ProviderReadinessPage() {
   const [connections,setConnections] = useState<Awaited<ReturnType<typeof listAdvisoryProviderConnections>>>([]);
+  const [authorizations,setAuthorizations] = useState<Awaited<ReturnType<typeof listAdvisoryProviderAuthorizations>>>([]);
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState('');
 
   useEffect(() => {
     let active = true;
-    void listAdvisoryProviderConnections()
-      .then((rows) => { if (active) { setConnections(rows); setError(''); } })
+    void Promise.all([listAdvisoryProviderConnections(), listAdvisoryProviderAuthorizations()])
+      .then(([nextConnections,nextAuthorizations]) => {
+        if (active) {
+          setConnections(nextConnections);
+          setAuthorizations(nextAuthorizations);
+          setError('');
+        }
+      })
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load provider readiness'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
 
-  const readiness = useMemo(() => resolveAdvisoryProviderReadiness(connections), [connections]);
+  const readiness = useMemo(
+    () => resolveAdvisoryProviderReadiness(connections, authorizations),
+    [connections, authorizations]
+  );
   const connectedCount = readiness.filter((item) => item.status === 'connected').length;
+  const authorizedCount = readiness.filter((item) => item.organizationAuthorized).length;
   const statusLabel = {
     authorization_required: 'Authorization required',
+    authorized: 'Authorized · provider connection required',
     authorizing: 'Authorizing',
     connected: 'Connected',
     degraded: 'Degraded'
@@ -520,17 +533,17 @@ function ProviderReadinessPage() {
   return <AdvisoryLayout>
     <div className="feature-card wide">
       <p className="eyebrow">External providers</p>
-      <h2>Authorization readiness</h2>
-      <p>E-sign, print fulfillment, paid media, payment and publishing providers remain not connected until real provider authorization is verified.</p>
-      <div className="notice">ATLAS reports a provider as Connected only when the canonical organization-scoped integration registry records both authorization and successful provider verification. Browser-visible Advisory code never receives provider credentials.</div>
+      <h2>Authorization + connection readiness</h2>
+      <p>Organization approval is recorded separately from provider connectivity for e-sign, print fulfillment, paid media, payment and publishing.</p>
+      <div className="notice">ATLAS reports a provider as Connected only when the canonical organization-scoped integration registry records successful provider verification. Organizational authorization alone never creates a connected state, and browser-visible Advisory code never receives provider credentials.</div>
     </div>
     {loading ? <div className="notice">Loading provider readiness…</div> : null}
     {error ? <div className="notice strong" role="alert">{error}</div> : null}
     <div className="stat-grid">
+      <article><strong>{authorizedCount}</strong><span>organization-authorized capabilities</span></article>
       <article><strong>{connectedCount}</strong><span>verified provider capabilities</span></article>
-      <article><strong>{readiness.length - connectedCount}</strong><span>capabilities still gated</span></article>
-      <article><strong>{connections.length}</strong><span>safe integration records observed</span></article>
-      <article><strong>Fail closed</strong><span>authorization policy</span></article>
+      <article><strong>{readiness.length - connectedCount}</strong><span>connections still gated</span></article>
+      <article><strong>Fail closed</strong><span>provider verification policy</span></article>
     </div>
     <div className="module-grid">
       {readiness.map((item) => <article className="module-card enabled" key={item.capability}>
@@ -538,7 +551,9 @@ function ProviderReadinessPage() {
         <strong>{statusLabel[item.status]}</strong>
         <p>{item.description}</p>
         <small>
-          {item.provider ? `Provider: ${item.provider}` : 'No authorized provider configured'}
+          {item.organizationAuthorized ? 'Organization authorization recorded' : 'Organization authorization not recorded'}
+          {item.authorizedAt ? ` · authorized ${item.authorizedAt}` : ''}
+          {item.provider ? ` · Provider: ${item.provider}` : ' · Provider not connected'}
           {item.providerAccountLabel ? ` · ${item.providerAccountLabel}` : ''}
           {item.lastVerifiedAt ? ` · verified ${item.lastVerifiedAt}` : ''}
           {item.lastErrorCode ? ` · ${item.lastErrorCode}` : ''}

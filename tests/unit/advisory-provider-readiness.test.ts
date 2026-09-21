@@ -40,6 +40,23 @@ describe('Advisory external provider readiness', () => {
     expect(readiness.find((item) => item.capability === 'payment')?.status).not.toBe('connected');
   });
 
+
+  it('distinguishes organization authorization from provider connectivity', () => {
+    const readiness = resolveAdvisoryProviderReadiness([], [
+      {
+        capability: 'esign',
+        authorized: true,
+        authorizedAt: '2026-09-21T13:38:00Z',
+        authorizationReference: 'explicit-organization-approval'
+      }
+    ]);
+
+    const esign = readiness.find((item) => item.capability === 'esign');
+    expect(esign?.status).toBe('authorized');
+    expect(esign?.organizationAuthorized).toBe(true);
+    expect(esign?.provider).toBeNull();
+  });
+
   it('preserves degraded and authorizing states without fabricating readiness', () => {
     const readiness = resolveAdvisoryProviderReadiness([
       {
