@@ -2,6 +2,8 @@ const PROFILES=Object.freeze(['fast','balanced','deep']);
 const LOCAL_INPUT_CHAR_BUDGET=6000;
 const LOCAL_MAX_OUTPUT_TOKENS=384;
 const LOCAL_INSTRUCTION_CHAR_BUDGET=2600;
+const LOCAL_EXECUTION_ATTEMPTS=2;
+const LOCAL_RETRY_DELAY_MS=500;
 const LOCAL_SYSTEM_CORE=`You are ATLAS, one coherent cognitive system. Return one unified answer. Follow the user's authorized intent and current module context. Preserve authentication, tenant isolation, RBAC, least privilege, approval gates, auditability, privacy, and secret protection. Never expose credentials, secrets, private chain-of-thought, or unnecessary internal provider chatter. Do not fabricate data, tool results, provider state, tests, deployments, or production status. Distinguish verified, probable, unknown, conflicted, and blocked states. For requested actions, execute only within authorization, verify the result, and report the real state. Fail closed on unsafe or unauthorized mutations. Reuse existing ATLAS services, data, components, and sources of truth instead of creating parallel systems. Prefer concise RESULT, EVIDENCE, ACTION, STATUS, BLOCKERS, and NEXT ACTION when operational work is involved.`;
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
@@ -36,6 +38,8 @@ function compactInstructions(value){
   const context=index>=0?raw.slice(index,index+800):'';
   return `${LOCAL_SYSTEM_CORE}${context?`\n\n${context}`:''}`.slice(0,LOCAL_INSTRUCTION_CHAR_BUDGET).trim();
 }
+const sleep=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
+function retryableStatus(status){return status===429||status===500||status===502||status===503||status===504;}
 function outputText(data){
   const parts=[];
   for(const item of data?.output||[])for(const part of item?.content||[])if(part?.type==='output_text'&&part?.text)parts.push(String(part.text));
@@ -103,10 +107,18 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     const localInstructions=compactInstructions(instructions);
     const body={model,instructions:`${localInstructions}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false};
     let response;
-    try{
-      response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
-    }catch{throw fail('provider_unavailable',502,{provider:'atlas-local'});}
-    if(!response.ok)throw errorForStatus(response.status);
+    for(let attempt=1;attempt<=LOCAL_EXECUTION_ATTEMPTS;attempt+=1){
+      try{
+        response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
+      }catch{
+        if(attempt<LOCAL_EXECUTION_ATTEMPTS){await sleep(LOCAL_RETRY_DELAY_MS*attempt);continue;}
+        throw fail('provider_unavailable',502,{provider:'atlas-local'});
+      }
+      if(response.ok)break;
+      if(retryableStatus(response.status)&&attempt<LOCAL_EXECUTION_ATTEMPTS){await sleep(LOCAL_RETRY_DELAY_MS*attempt);continue;}
+      throw errorForStatus(response.status);
+    }
+    if(!response?.ok)throw fail('provider_unavailable',502,{provider:'atlas-local'});
     const data=await response.json().catch(()=>({}));
     const text=outputText(data);
     if(!text)throw fail('internal_error',500,{provider:'atlas-local'});
