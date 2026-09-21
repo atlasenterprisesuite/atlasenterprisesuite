@@ -29,7 +29,20 @@ describe('ATLAS Assistant repair client', () => {
     await enqueueAssistantRepair({
       message: 'Fix the mobile approval controls',
       pathname: '/finance/accounting/accounts-payable',
-      conversationId: 'conv-1'
+      conversationId: 'conv-1',
+      elementContext: {
+        tag: 'button',
+        role: 'button',
+        type: 'button',
+        id: 'approve-payment',
+        component: 'approvalAction',
+        name: null,
+        label: 'Approve payment',
+        placeholder: null,
+        href_path: null,
+        selector_hint: 'button#approve-payment',
+        rect: { x: 10, y: 20, width: 100, height: 40 }
+      }
     });
 
     const [path, init] = mocks.authorizedAtlasFetch.mock.calls[0];
@@ -43,7 +56,12 @@ describe('ATLAS Assistant repair client', () => {
         organization_id: 'org-1',
         module: 'finance.accounting.accounts-payable',
         pathname: '/finance/accounting/accounts-payable',
-        conversation_id: 'conv-1'
+        conversation_id: 'conv-1',
+        selected_element: expect.objectContaining({
+          tag: 'button',
+          id: 'approve-payment',
+          component: 'approvalAction'
+        })
       }
     });
     expect(body.context.page.headings).toContain('Accounts Payable');
