@@ -10,11 +10,13 @@ const panel = readFileSync('apps/web/src/modules/finance/FinanceControlCenterPan
 const productionContract = readFileSync('data/ops/global-production-verification.json', 'utf8');
 
 describe('ATLAS Finance web completion', () => {
-  it('protects Finance and Accounting with the canonical identity boundary', () => {
-    expect(resolver).toContain("pathname === '/finance') return <RequireAtlasIdentity><FinanceExperiencePage /></RequireAtlasIdentity>");
-    expect(resolver).toContain("pathname === '/finance/accounting') return <RequireAtlasIdentity><AccountingExperiencePage /></RequireAtlasIdentity>");
-    expect(app).toContain('path="/finance/accounting/accounts-payable" element={<RequireAtlasIdentity><PayablesPage /></RequireAtlasIdentity>}');
-    expect(app).toContain('path="/finance/accounting/reports/automotive-sales" element={<RequireAtlasIdentity><AutomotiveSalesReportingPage /></RequireAtlasIdentity>}');
+  it('keeps the Finance shell reachable while protecting live data at the session and RLS boundary', () => {
+    expect(resolver).toContain("pathname === '/finance') return <FinanceExperiencePage />");
+    expect(resolver).toContain("pathname === '/finance/accounting') return <AccountingExperiencePage />");
+    expect(app).toContain('path="/finance/accounting/accounts-payable" element={<PayablesPage />}');
+    expect(app).toContain('path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />}');
+    expect(api).toContain('authorizedAtlasFetch');
+    expect(api).toContain('getActiveAtlasOrganization');
   });
 
   it('surfaces the live Finance control center from the canonical experience page', () => {

@@ -86,8 +86,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     area: 'Finance',
     route: '/finance',
     readiness: 'implemented',
-    requiresAuth: true,
-    description: 'Governed accounting and financial operations with live organization-scoped control-center state.',
+    requiresAuth: false,
+    description: 'Governed accounting and financial operations with live organization-scoped control-center state protected by session and RLS.',
     showInNavigation: true
   },
   {
@@ -97,7 +97,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     area: 'Finance',
     route: '/finance/accounting',
     readiness: 'partial',
-    requiresAuth: true,
+    requiresAuth: false,
     description: 'Canonical accounting entry point across payable, receivable, inventory, reporting and governed finance workflows.',
     showInNavigation: false
   },

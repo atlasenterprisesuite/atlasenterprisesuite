@@ -282,12 +282,12 @@ export function App() {
         <Route path="/studio/teleprompter" element={<RequireAtlasIdentity><TeleprompterPage /></RequireAtlasIdentity>} />
         <Route path="/business" element={<BusinessHome />} />
         <Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />
-        <Route path="/finance" element={<RequireAtlasIdentity><FinanceHome /></RequireAtlasIdentity>} />
-        <Route path="/finance/accounting" element={<RequireAtlasIdentity><AccountingHome /></RequireAtlasIdentity>} />
-        <Route path="/finance/accounting/accounts-payable" element={<RequireAtlasIdentity><PayablesPage /></RequireAtlasIdentity>} />
+        <Route path="/finance" element={<FinanceHome />} />
+        <Route path="/finance/accounting" element={<AccountingHome />} />
+        <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
         <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />
-        <Route path="/finance/accounting/reports/automotive-sales" element={<RequireAtlasIdentity><AutomotiveSalesReportingPage /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />} />
         <Route path="/tax/*" element={<TaxRoutes />} />
         <Route path="/payroll/*" element={<PayrollRoutes />} />
         <Route path="/health" element={<HealthHome />} />

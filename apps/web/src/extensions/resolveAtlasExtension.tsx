@@ -110,8 +110,8 @@ export function resolveAtlasExtension(pathname: string) {
   }
 
   if (pathname === '/business') return <BusinessExperiencePage />;
-  if (pathname === '/finance') return <RequireAtlasIdentity><FinanceExperiencePage /></RequireAtlasIdentity>;
-  if (pathname === '/finance/accounting') return <RequireAtlasIdentity><AccountingExperiencePage /></RequireAtlasIdentity>;
+  if (pathname === '/finance') return <FinanceExperiencePage />;
+  if (pathname === '/finance/accounting') return <AccountingExperiencePage />;
 
   if (pathname === '/galaxy/portals') {
     return <RequireAtlasIdentity><AtlasPortalsPage /></RequireAtlasIdentity>;
