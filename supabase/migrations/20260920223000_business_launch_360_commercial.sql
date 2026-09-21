@@ -185,6 +185,7 @@ declare
   v_org uuid := public.advisory_actor_org();
   v_intake public.advisory_launch_intakes%rowtype;
   v_customer uuid;
+  v_invoice_status text;
 begin
   if v_user is null or v_org is null then
     raise exception 'Authentication and active organization required';
@@ -209,10 +210,10 @@ begin
   end if;
 
   if p_invoice_id is not null then
-    select inv.customer_id into v_customer
+    select inv.customer_id, inv.status into v_customer, v_invoice_status
     from public.invoices inv
-    where inv.id = p_invoice_id and inv.org_id = v_org and inv.status = 'open';
-    if v_customer is null then raise exception 'Issued invoice not available in organization'; end if;
+    where inv.id = p_invoice_id and inv.org_id = v_org and inv.status in ('draft','open');
+    if v_customer is null then raise exception 'Invoice not available in organization'; end if;
     if coalesce(p_receivable_customer_id, v_intake.receivable_customer_id) is not null
        and v_customer <> coalesce(p_receivable_customer_id, v_intake.receivable_customer_id) then
       raise exception 'Invoice customer does not match launch intake billing customer';
@@ -222,7 +223,7 @@ begin
   update public.advisory_launch_intakes
   set receivable_customer_id = coalesce(p_receivable_customer_id, receivable_customer_id),
       invoice_id = coalesce(p_invoice_id, invoice_id),
-      status = case when coalesce(p_invoice_id, invoice_id) is not null then 'invoiced' else status end,
+      status = case when p_invoice_id is not null and v_invoice_status = 'open' then 'invoiced' else status end,
       updated_at = now()
   where id = p_intake_id and org_id = v_org;
 
