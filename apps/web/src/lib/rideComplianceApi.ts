@@ -9,6 +9,7 @@ import type {
   ComplianceRequirement,
   ComplianceSubmission
 } from '../../../../packages/compliance/types';
+import type { RideReadiness } from '../../../../packages/ride/readiness';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
@@ -24,6 +25,13 @@ export type RideComplianceReadiness = {
   review_mode: 'manual';
   automated_identity_provider_connected: false;
   checked_at: string;
+};
+
+export type RideRequirementsResponse = {
+  ok: true;
+  requirements: ComplianceRequirement[];
+  readiness: RideReadiness;
+  permissions: CompliancePermission[];
 };
 
 export type RideProfilePhotoResponse = {
@@ -138,6 +146,10 @@ function jsonRequest<T>(api: string, params: Record<string, string | undefined> 
 
 export function getRideComplianceReadiness() {
   return jsonRequest<RideComplianceReadiness>('readiness');
+}
+
+export function getRideComplianceRequirements() {
+  return jsonRequest<RideRequirementsResponse>('requirements');
 }
 
 export function getRideProfilePhotoRequirement() {
