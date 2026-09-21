@@ -39,7 +39,7 @@ jobs:
       - name: Locked install
         run: npm ci
       - name: Assistant focused unit tests
-        run: npx vitest run tests/unit/assistant-capabilities.test.ts tests/unit/assistant-storage.test.ts tests/unit/assistant-voice.test.ts tests/unit/atlas-assistant-provider-readiness.test.ts tests/unit/atlas-assistant-route-context.test.ts tests/unit/atlas-assistant-client.test.ts tests/unit/atlas-assistant-page-context.test.ts tests/unit/atlas-assistant-repair-client.test.ts tests/unit/atlas-repair-bridge-browser.test.ts
+        run: npx vitest run tests/unit/assistant-capabilities.test.ts tests/unit/assistant-storage.test.ts tests/unit/assistant-voice.test.ts tests/unit/atlas-assistant-provider-readiness.test.ts tests/unit/atlas-assistant-route-context.test.ts tests/unit/atlas-assistant-client.test.ts tests/unit/atlas-assistant-page-context.test.ts tests/unit/atlas-assistant-element-context.test.ts tests/unit/atlas-assistant-repair-client.test.ts tests/unit/atlas-repair-bridge-browser.test.ts
       - name: Assistant focused integration tests
         run: npx vitest run tests/integration/atlas-assistant-mainline.test.tsx
       - name: Canonical Cloudflare verification gate
