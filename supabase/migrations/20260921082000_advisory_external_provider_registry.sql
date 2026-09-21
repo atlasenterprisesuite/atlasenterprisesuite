@@ -59,7 +59,10 @@ begin
   else
     v_org := new.org_id;
     v_connection := new.id;
-    v_metadata := coalesce(new.metadata, '{}'::jsonb);
+    v_metadata := case
+      when coalesce(new.metadata, '{}'::jsonb) ? 'advisory_capability' then coalesce(new.metadata, '{}'::jsonb)
+      else coalesce(old.metadata, '{}'::jsonb)
+    end;
     v_action := 'update';
   end if;
 
