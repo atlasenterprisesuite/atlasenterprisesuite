@@ -4,6 +4,7 @@ import {
   createDraftInvoice,
   createReceivablesCustomer,
   getLiveReceivablesLedger,
+  issueInventoryInvoice,
   issueInvoice,
   recordReceivablesPayment,
   suggestInvoiceNumber,
@@ -43,10 +44,12 @@ export function ReceivablesPage() {
   const [issueDate, setIssueDate] = useState(today);
   const [dueDate, setDueDate] = useState(defaultDueDate);
 
+  const [lineProductId, setLineProductId] = useState('');
   const [lineDescription, setLineDescription] = useState('');
   const [lineQuantity, setLineQuantity] = useState('1');
   const [lineUnitPrice, setLineUnitPrice] = useState('');
   const [lineTaxRate, setLineTaxRate] = useState('0');
+  const [inventoryLocationId, setInventoryLocationId] = useState('');
 
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(today);
@@ -61,6 +64,7 @@ export function ReceivablesPage() {
         ? current
         : next.invoices[0]?.id || '');
       setCustomerId((current) => current || next.customers[0]?.id || '');
+      setInventoryLocationId((current) => current || next.locations[0]?.id || '');
     } catch (cause) {
       setError(friendlyError(cause));
     } finally {
@@ -79,9 +83,18 @@ export function ReceivablesPage() {
     () => new Map((ledger?.customers || []).map((customer) => [customer.id, customer])),
     [ledger?.customers]
   );
+  const productById = useMemo(
+    () => new Map((ledger?.products || []).map((product) => [product.id, product])),
+    [ledger?.products]
+  );
   const selected = ledger?.invoices.find((invoice) => invoice.id === selectedId) || null;
   const selectedLines = (ledger?.lines || []).filter((line) => line.invoice_id === selectedId);
   const selectedPayments = (ledger?.payments || []).filter((payment) => payment.invoice_id === selectedId);
+  const inventoryBackedLines = selectedLines.filter((line) => {
+    const product = line.product_id ? productById.get(line.product_id) : null;
+    return Boolean(product?.inventory_item_id);
+  });
+  const requiresInventoryPosting = inventoryBackedLines.length > 0;
 
   const visibleInvoices = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -163,8 +176,10 @@ export function ReceivablesPage() {
         description: lineDescription,
         quantity: Number(lineQuantity),
         unitPrice: Number(lineUnitPrice),
-        taxRate: Number(lineTaxRate)
+        taxRate: Number(lineTaxRate),
+        productId: lineProductId || null
       });
+      setLineProductId('');
       setLineDescription('');
       setLineQuantity('1');
       setLineUnitPrice('');
@@ -186,7 +201,33 @@ export function ReceivablesPage() {
   }
 
   const selectedCustomer = selected?.customer_id ? customerById.get(selected.customer_id) : null;
-  const canIssue = selected?.status === 'draft' && selected.total > 0;
+  const canIssue = selected?.status === 'draft'
+    && selected.total > 0
+    && (!requiresInventoryPosting || Boolean(inventoryLocationId));
+
+  function handleProductSelection(productId: string) {
+    setLineProductId(productId);
+    if (!productId) return;
+    const product = productById.get(productId);
+    if (!product) return;
+    setLineDescription(product.name);
+    setLineUnitPrice(String(product.unit_price));
+  }
+
+  async function handleIssueSelectedInvoice() {
+    if (!selected) return;
+    if (requiresInventoryPosting) {
+      await runMutation(
+        () => issueInventoryInvoice({ invoiceId: selected.id, locationId: inventoryLocationId }),
+        'Invoice issued. Inventory was relieved and Revenue, COGS, Inventory and Accounts Receivable were posted to the ledger.'
+      );
+      return;
+    }
+    await runMutation(
+      () => issueInvoice(selected.id),
+      'Invoice issued and moved to open receivables.'
+    );
+  }
 
   return (
     <section className="page-stack">
@@ -278,6 +319,7 @@ export function ReceivablesPage() {
 
           {selected.status === 'draft' && (
             <form className="toolbar" onSubmit={handleLine}>
+              <label className="field"><span>Product / service</span><select value={lineProductId} onChange={(event) => handleProductSelection(event.target.value)}><option value="">Service / manual line</option>{ledger?.products.map((product) => <option key={product.id} value={product.id}>{product.sku} · {product.name} · {currency.format(product.unit_price)} · stock {product.quantity}</option>)}</select></label>
               <label className="field wide-field"><span>Description</span><input value={lineDescription} onChange={(event) => setLineDescription(event.target.value)} required /></label>
               <label className="field"><span>Quantity</span><input type="number" min="0.01" step="0.01" value={lineQuantity} onChange={(event) => setLineQuantity(event.target.value)} required /></label>
               <label className="field"><span>Unit price</span><input type="number" min="0" step="0.01" value={lineUnitPrice} onChange={(event) => setLineUnitPrice(event.target.value)} required /></label>
@@ -292,7 +334,8 @@ export function ReceivablesPage() {
               <tbody>
                 {selectedLines.map((line) => {
                   const lineTotal = line.quantity * line.unit_price * (1 + line.tax_rate / 100);
-                  return <tr key={line.id}><td>{line.description}</td><td>{line.quantity}</td><td className="money">{currency.format(line.unit_price)}</td><td>{line.tax_rate}%</td><td className="money">{currency.format(lineTotal)}</td></tr>;
+                  const product = line.product_id ? productById.get(line.product_id) : null;
+                  return <tr key={line.id}><td>{line.description}{product && <small>{product.sku} · inventory-backed</small>}</td><td>{line.quantity}</td><td className="money">{currency.format(line.unit_price)}</td><td>{line.tax_rate}%</td><td className="money">{currency.format(lineTotal)}</td></tr>;
                 })}
               </tbody>
             </table>
@@ -305,9 +348,18 @@ export function ReceivablesPage() {
             </div>
             {selected.status === 'draft' && (
               <article>
-                <span>Issue invoice</span>
+                <span>{requiresInventoryPosting ? 'Issue + inventory + COGS' : 'Issue invoice'}</span>
                 <strong>{currency.format(selected.total)}</strong>
-                <button className="primary-action" type="button" disabled={!canIssue || working} onClick={() => void runMutation(() => issueInvoice(selected.id), 'Invoice issued and moved to open receivables.')}>Issue now</button>
+                {requiresInventoryPosting && (
+                  <label className="field">
+                    <span>Fulfillment warehouse</span>
+                    <select value={inventoryLocationId} onChange={(event) => setInventoryLocationId(event.target.value)} required>
+                      <option value="">Select warehouse</option>
+                      {ledger?.locations.map((location) => <option key={location.id} value={location.id}>{location.code} · {location.name}</option>)}
+                    </select>
+                  </label>
+                )}
+                <button className="primary-action" type="button" disabled={!canIssue || working} onClick={() => void handleIssueSelectedInvoice()}>Issue now</button>
               </article>
             )}
             <article>
@@ -316,6 +368,15 @@ export function ReceivablesPage() {
               <button className="secondary-action" type="button" onClick={() => window.print()}>Print invoice view</button>
             </article>
           </div>
+
+          {selected.inventory_posted_at && (
+            <section className="metric-grid" aria-label="Invoice inventory costing">
+              <article><span>COGS</span><strong>{currency.format(selected.cogs_amount || 0)}</strong><small>weighted inventory cost relieved</small></article>
+              <article><span>Gross profit</span><strong>{currency.format(selected.gross_profit || 0)}</strong><small>net sales less COGS</small></article>
+              <article><span>Gross margin</span><strong>{selected.gross_margin_pct == null ? '—' : `${selected.gross_margin_pct.toFixed(2)}%`}</strong><small>recognized at issue</small></article>
+              <article><span>Inventory posting</span><strong>Posted</strong><small>{selected.inventory_posted_at}</small></article>
+            </section>
+          )}
 
           {selected.status !== 'draft' && selected.status !== 'cancelled' && selected.balance_due > 0 && (
             <form className="toolbar" onSubmit={handlePayment}>
