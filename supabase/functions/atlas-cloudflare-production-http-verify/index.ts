@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 16;
+const VERSION = 17;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -245,6 +245,7 @@ Deno.serve(async (req: Request) => {
     identity,
     finance,
     automotiveSales,
+    receivables,
     voice,
     health,
     frontier,
@@ -271,6 +272,7 @@ Deno.serve(async (req: Request) => {
     probe('/identity?app=%2Ffinance'),
     probe('/finance'),
     probe('/finance/accounting/reports/automotive-sales'),
+    probe('/finance/accounting/accounts-receivable'),
     probe('/voice'),
     probe('/health'),
     probe('/frontier'),
@@ -299,6 +301,7 @@ Deno.serve(async (req: Request) => {
     identity.status === 200 &&
     finance.status === 200 &&
     automotiveSales.status === 200 &&
+    receivables.status === 200 &&
     voice.status === 200 &&
     health.status === 200 &&
     frontier.status === 200 &&
@@ -381,6 +384,7 @@ Deno.serve(async (req: Request) => {
         identity_route_reachable: identity.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         automotive_sales_report_reachable: automotiveSales.status === 200,
+        accounts_receivable_route_reachable: receivables.status === 200,
         voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
         frontier_route_reachable: frontier.status === 200,
@@ -409,6 +413,7 @@ Deno.serve(async (req: Request) => {
         identity,
         finance,
         automotive_sales: automotiveSales,
+        accounts_receivable: receivables,
         voice,
         health,
         frontier,
