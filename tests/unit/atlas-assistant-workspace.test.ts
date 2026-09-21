@@ -57,4 +57,24 @@ describe('ATLAS Assistant workspace', () => {
     expect(routeContext).toContain("pathname.startsWith('/assistant')");
     expect(routeContext).toContain("return 'assistant'");
   });
+
+  it('keeps the dedicated AI workspace focused, responsive and fully actionable', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    const css = source('apps/web/src/modules/intelligence/UnifiedAIChat.css');
+
+    expect(page).toContain('What can I help with?');
+    expect(page).toContain('aria-controls="atlas-ai-status-panel"');
+    expect(page).toContain('Open conversation sidebar');
+    expect(page).toContain('atlas-ai-tools-menu');
+    expect(page).toContain('ATLAS can make mistakes. Verify important information and governed actions.');
+    expect(page).toContain("to=\"/work/connections\"");
+    expect(page).toContain("to=\"/work\"");
+    expect(page).toContain("to=\"/suite\"");
+    expect(page).not.toContain('href="#"');
+    expect(page).not.toContain('atlas-ai-provider-strip');
+    expect(css).toContain('.atlas-ai-composer');
+    expect(css).toContain('@media(max-width:760px)');
+    expect(css).toContain('.atlas-ai-mobile-scrim');
+  });
+
 });
