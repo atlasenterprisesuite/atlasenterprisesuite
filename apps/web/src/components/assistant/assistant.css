@@ -16,9 +16,18 @@
 .atlas-assistant-repair-status{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border:1px solid rgba(115,184,238,.16);border-radius:999px;background:rgba(15,37,54,.72);color:#9fb6c8;font-size:10px;font-weight:700;white-space:nowrap}
 .atlas-assistant-repair-status.has-active{border-color:rgba(255,180,84,.28);background:rgba(100,69,22,.18);color:#ffd295}
 .atlas-assistant-repair-status.has-failures{border-color:rgba(255,156,143,.3);background:rgba(112,43,38,.2);color:#ffb6ac}
-.atlas-assistant-quick-actions>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}
+.atlas-assistant-quick-action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}
 .atlas-assistant-quick-actions button{min-height:36px;padding:6px 8px;border:1px solid rgba(95,215,255,.16);border-radius:10px;background:rgba(16,39,57,.86);color:#cfe9f7;font:inherit;font-size:11px;font-weight:750;cursor:pointer}
 .atlas-assistant-quick-actions button:hover:not(:disabled){border-color:rgba(95,215,255,.38);background:rgba(22,57,81,.96)}
 .atlas-assistant-quick-actions button.repair{border-color:rgba(112,215,173,.24);background:rgba(22,73,58,.35);color:#bff0d7}
 .atlas-assistant-quick-actions button:disabled{opacity:.42;cursor:not-allowed}
-@media(max-width:440px){.atlas-assistant-quick-actions>div{grid-template-columns:1fr 1fr}}
+@media(max-width:440px){.atlas-assistant-quick-action-grid{grid-template-columns:1fr 1fr}}
+
+.atlas-assistant-selected-target{margin-top:9px;padding:9px;border:1px solid rgba(95,215,255,.18);border-radius:12px;background:rgba(10,31,47,.74)}
+.atlas-assistant-selected-target>span{display:block;color:#bfeeff;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.atlas-assistant-selected-target>div{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-top:7px}
+.atlas-assistant-selected-target button{min-height:34px}
+body.atlas-assistant-picking{cursor:crosshair}
+body.atlas-assistant-picking .atlas-assistant-root{cursor:default}
+.atlas-assistant-element-hover{outline:2px solid #64cfff!important;outline-offset:3px!important;box-shadow:0 0 0 5px rgba(100,207,255,.12)!important}
+@media(max-width:440px){.atlas-assistant-selected-target>div{grid-template-columns:1fr 1fr}.atlas-assistant-selected-target>div button:last-child{grid-column:1/-1}}
