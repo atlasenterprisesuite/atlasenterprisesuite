@@ -10,6 +10,7 @@ type AtlasAssistantPanelProps = {
   moduleLabel: string;
   textCapability: AtlasCapabilityState;
   providerLabel: string;
+  repairSummary: { active: number; failed: number; completed: number; total: number };
   microphoneCapability: AtlasCapabilityState;
   transcriptionCapability: AtlasCapabilityState;
   microphoneActive: boolean;
@@ -38,6 +39,7 @@ export function AtlasAssistantPanel({
   moduleLabel,
   textCapability,
   providerLabel,
+  repairSummary,
   microphoneCapability,
   transcriptionCapability,
   microphoneActive,
@@ -100,7 +102,12 @@ export function AtlasAssistantPanel({
       </header>
 
       <div className="atlas-assistant-quick-actions" aria-label="ATLAS Assistant current screen actions">
-        <span className="atlas-assistant-context-chip">Current screen · safe structural context</span>
+        <div className="atlas-assistant-context-row">
+          <span className="atlas-assistant-context-chip">Current screen · safe structural context</span>
+          <span className={`atlas-assistant-repair-status ${repairSummary.failed > 0 ? 'has-failures' : repairSummary.active > 0 ? 'has-active' : ''}`} role="status" aria-live="polite">
+            Repairs · {repairSummary.active} active · {repairSummary.failed} failed
+          </span>
+        </div>
         <div>
           <button type="button" onClick={() => void handleQuickAsk(explainScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Explain screen</button>
           <button type="button" onClick={() => void handleQuickAsk(checkScreenPrompt)} disabled={busy || microphoneActive || !textReady}>Check screen</button>
