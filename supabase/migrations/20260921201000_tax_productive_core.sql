@@ -860,7 +860,8 @@ set search_path = public
 as $$
 declare
   v_user uuid := auth.uid();
-  v_return public.tax_returns := public.tax_assert_return_mutable(p_return_id, 'tax.review');
+  v_org uuid := public.tax_actor_org();
+  v_return public.tax_returns;
   v_hash text;
   v_id uuid;
 begin
@@ -868,6 +869,16 @@ begin
     raise exception 'Invalid snapshot kind';
   end if;
   if p_snapshot is null or p_snapshot = '{}'::jsonb then raise exception 'Return snapshot required'; end if;
+
+  if p_snapshot_kind = 'accepted' then
+    if v_user is null or v_org is null then raise exception 'Authentication and active organization required'; end if;
+    if not public.has_identity_permission(v_org, 'tax.file') then raise exception 'Tax file permission required'; end if;
+    select * into v_return from public.tax_returns r where r.id = p_return_id and r.org_id = v_org;
+    if v_return.id is null then raise exception 'Tax return not available in active organization'; end if;
+    if v_return.locked_at is null then raise exception 'Accepted snapshot requires a previously locked submission revision'; end if;
+  else
+    v_return := public.tax_assert_return_mutable(p_return_id, 'tax.review');
+  end if;
 
   if exists (
     select 1 from public.tax_diagnostics d
