@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { CrmConnectionView } from '../../../../../../packages/core/src/crm';
+import { canDisplayEvidenceBackedState } from '../../../../../../packages/core/src/evidence';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../../components/ModuleExperiencePage';
 import { CrmApiError, crmApi } from './crmApi';
 
@@ -71,6 +72,26 @@ export function CrmHomePage() {
     return () => { active = false; };
   }, []);
 
+  const connectionEvidence =
+    connection?.state === 'connected' &&
+    connection.providerAccountId &&
+    connection.lastVerifiedAt
+      ? {
+          authenticated: true,
+          authoritative: true,
+          source: 'hubspot:connection.status',
+          reference: connection.providerAccountId,
+          observedAt: connection.lastVerifiedAt
+        }
+      : null;
+
+  const connectedVerified =
+    connection?.state === 'connected' &&
+    canDisplayEvidenceBackedState({
+      state: 'connected',
+      evidence: connectionEvidence
+    });
+
   return (
     <ModuleExperiencePage
       eyebrow="ATLAS CRM"
@@ -86,36 +107,44 @@ export function CrmHomePage() {
         ) : error ? (
           <span className="crm-status error">Status unavailable</span>
         ) : connection ? (
-          <span className={`crm-status ${connection.state}`}>{stateLabel[connection.state]}</span>
+          connection.state === 'connected' && !connectedVerified
+            ? <span className="crm-status neutral">Verification required</span>
+            : <span className={`crm-status ${connection.state}`}>{stateLabel[connection.state]}</span>
         ) : null}
       </div>
 
       {error ? <div className="crm-banner error" role="alert">{error}</div> : null}
-      {connection && connection.state !== 'connected' ? (
-        <div className={`crm-banner ${connection.state}`} role="status">
-          <strong>{stateLabel[connection.state]}</strong>
+      {connection && (connection.state !== 'connected' || !connectedVerified) ? (
+        <div className={`crm-banner ${connection.state === 'connected' ? 'neutral' : connection.state}`} role="status">
+          <strong>
+            {connection.state === 'connected' && !connectedVerified
+              ? 'Verification required'
+              : stateLabel[connection.state]}
+          </strong>
           <span>
-            {connection.state === 'degraded'
-              ? 'The provider is reachable, but one or more authorized CRM capabilities are unavailable.'
-              : connection.state === 'expired'
-                ? 'The provider credential must be re-authorized before CRM records can be read.'
-                : connection.state === 'revoked'
-                  ? 'This organization disconnected its CRM provider.'
-                  : connection.state === 'authorizing'
-                    ? 'Provider authorization has started but is not yet verified.'
-                    : connection.state === 'error'
-                      ? `Connection verification failed${connection.safeErrorCode ? ` (${connection.safeErrorCode})` : ''}.`
-                      : 'Connect and verify a CRM provider before customer records are available.'}
+            {connection.state === 'connected' && !connectedVerified
+              ? 'ATLAS received a connected state without complete authenticated provider evidence. The state remains unverified.'
+              : connection.state === 'degraded'
+                ? 'The provider is reachable, but one or more authorized CRM capabilities are unavailable.'
+                : connection.state === 'expired'
+                  ? 'The provider credential must be re-authorized before CRM records can be read.'
+                  : connection.state === 'revoked'
+                    ? 'This organization disconnected its CRM provider.'
+                    : connection.state === 'authorizing'
+                      ? 'Provider authorization has started but is not yet verified.'
+                      : connection.state === 'error'
+                        ? `Connection verification failed${connection.safeErrorCode ? ` (${connection.safeErrorCode})` : ''}.`
+                        : 'Connect and verify a CRM provider before customer records are available.'}
           </span>
           <Link className="text-link" to="/crm/integrations/hubspot">Open HubSpot connection</Link>
         </div>
       ) : null}
 
-      {connection?.state === 'connected' ? (
+      {connection?.state === 'connected' && connectedVerified ? (
         <div className="crm-banner connected" role="status">
           <strong>HubSpot verified</strong>
           <span>{connection.providerAccountLabel || 'Authorized provider account'}</span>
-          {connection.lastVerifiedAt ? <small>Verified {new Date(connection.lastVerifiedAt).toLocaleString()}</small> : null}
+          <small>Verified {new Date(connection.lastVerifiedAt as string).toLocaleString()}</small>
         </div>
       ) : null}
     </ModuleExperiencePage>
