@@ -17,9 +17,11 @@ import {
 } from '../../lib/procureToPayApi';
 import { ATLAS_SESSION_EVENT } from '../../lib/atlasSession';
 import { extractW9FromImage, suggestVendorCode, type W9TaxClassification } from '../../lib/w9Intake';
+import { extractPurchasingDocumentFromImage, type ParsedPurchasingDocument, type ParsedPurchasingLine } from '../../lib/purchasingDocumentIntake';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const today = () => new Date().toISOString().slice(0, 10);
+const normalizeScanKey = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 function friendlyError(cause: unknown) {
   const raw = cause instanceof Error ? cause.message : 'Unable to complete the request.';
@@ -64,6 +66,7 @@ export function ProcureToPayPage() {
   const [poOrderDate, setPoOrderDate] = useState(today);
   const [poExpectedDate, setPoExpectedDate] = useState('');
   const [selectedPoId, setSelectedPoId] = useState('');
+  const [scannedPo, setScannedPo] = useState<ParsedPurchasingDocument | null>(null);
 
   const [poLineItemId, setPoLineItemId] = useState('');
   const [poLineDescription, setPoLineDescription] = useState('');
@@ -74,6 +77,7 @@ export function ProcureToPayPage() {
   const [receiptLocationId, setReceiptLocationId] = useState('');
   const [packingSlipNumber, setPackingSlipNumber] = useState('');
   const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
+  const [scannedPackingSlip, setScannedPackingSlip] = useState<ParsedPurchasingDocument | null>(null);
 
   const [matchReceiptId, setMatchReceiptId] = useState('');
   const [billNumber, setBillNumber] = useState('');
@@ -82,6 +86,7 @@ export function ProcureToPayPage() {
   const [tolerancePct, setTolerancePct] = useState('0.5');
   const [invoiceCosts, setInvoiceCosts] = useState<Record<string, string>>({});
   const [invoiceTaxes, setInvoiceTaxes] = useState<Record<string, string>>({});
+  const [scannedInvoice, setScannedInvoice] = useState<ParsedPurchasingDocument | null>(null);
 
   const [pricingItemId, setPricingItemId] = useState('');
   const [pricingProductId, setPricingProductId] = useState('');
@@ -141,6 +146,26 @@ export function ProcureToPayPage() {
   const selectedReceiptLines = (snapshot?.receiptLines || []).filter((line) => line.receipt_id === matchReceiptId);
   const matchedReceiptPo = selectedReceipt ? poById.get(selectedReceipt.purchase_order_id) : null;
   const selectedPricingProduct = snapshot?.products.find((product) => product.id === pricingProductId) || null;
+
+  function resolveVendorFromScan(document: ParsedPurchasingDocument) {
+    const key = normalizeScanKey(document.vendorName);
+    if (!key) return null;
+    return (snapshot?.vendors || []).find((vendor) =>
+      normalizeScanKey(vendor.name) === key || normalizeScanKey(vendor.vendor_code) === key
+    ) || null;
+  }
+
+  function resolveItemFromScan(line: ParsedPurchasingLine) {
+    const key = normalizeScanKey(line.sku);
+    if (!key) return null;
+    return (snapshot?.items || []).find((item) => normalizeScanKey(item.sku) === key) || null;
+  }
+
+  function resolvePoFromScan(document: ParsedPurchasingDocument) {
+    const key = normalizeScanKey(document.poNumber);
+    if (!key) return null;
+    return (snapshot?.purchaseOrders || []).find((po) => normalizeScanKey(po.po_number) === key) || null;
+  }
 
   useEffect(() => {
     if (!receiptPoLines.length) return;
@@ -268,6 +293,159 @@ export function ProcureToPayPage() {
         w9SourceFilename: w9FileName
       });
     }, 'W-9 vendor profile saved. Business address was normalized for Purchasing/Tax, the full TIN was encrypted in Supabase Vault, and 1099 reportability remains review-required.');
+  }
+
+  async function handlePoDocument(file: File | undefined) {
+    if (!file) return;
+    setWorking(true);
+    setError('');
+    setSuccess('');
+    try {
+      const parsed = await extractPurchasingDocumentFromImage(file);
+      if (parsed.kind !== 'purchase_order') throw new Error('scan_is_not_purchase_order');
+      if (parsed.confidence < 0.45) throw new Error('purchase_order_scan_confidence_too_low');
+      const vendor = resolveVendorFromScan(parsed);
+      if (!vendor) throw new Error('purchase_order_vendor_not_found');
+      if (!parsed.poNumber) throw new Error('purchase_order_number_not_found');
+      if (!parsed.lines.length) throw new Error('purchase_order_lines_not_found');
+      const unresolved = parsed.lines.filter((line) => !resolveItemFromScan(line) || !line.quantity || line.unitCost == null);
+      if (unresolved.length) throw new Error('purchase_order_scan_has_unmatched_or_incomplete_lines');
+      setScannedPo(parsed);
+      setPoNumber(parsed.poNumber);
+      setPoVendorId(vendor.id);
+      if (parsed.documentDate) setPoOrderDate(parsed.documentDate);
+      setSuccess(`Purchase order photo matched at ${Math.round(parsed.confidence * 100)}% confidence. Review and create; ATLAS will fail closed on any unmatched SKU.`);
+    } catch (cause) {
+      setScannedPo(null);
+      setError(friendlyError(cause));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleScannedPoCreate() {
+    if (!scannedPo) return;
+    const vendor = resolveVendorFromScan(scannedPo);
+    if (!vendor) {
+      setError('Scanned purchase order vendor no longer resolves uniquely.');
+      return;
+    }
+    const resolvedLines = scannedPo.lines.map((line) => ({ line, item: resolveItemFromScan(line) }));
+    if (resolvedLines.some(({ line, item }) => !item || !line.quantity || line.unitCost == null)) {
+      setError('Scanned purchase order contains an unmatched SKU, missing quantity, or missing unit cost.');
+      return;
+    }
+
+    let id = '';
+    await runMutation(async () => {
+      const created = await createPurchaseOrder({
+        poNumber: scannedPo.poNumber,
+        vendorId: vendor.id,
+        orderDate: scannedPo.documentDate || today(),
+        notes: 'Created from locally scanned purchase order after deterministic vendor/SKU matching.'
+      });
+      id = created.id;
+      for (const { line, item } of resolvedLines) {
+        if (!item || !line.quantity || line.unitCost == null) throw new Error('purchase_order_scan_line_resolution_failed');
+        await addPurchaseOrderLine({
+          purchaseOrderId: created.id,
+          itemId: item.id,
+          description: line.description || item.name,
+          quantity: line.quantity,
+          unitCost: line.unitCost
+        });
+      }
+      setScannedPo(null);
+      setPoNumber(suggestPoNumber());
+    }, 'Scanned purchase order created with all recognized lines.');
+    if (id) setSelectedPoId(id);
+  }
+
+  async function handlePackingSlipDocument(file: File | undefined) {
+    if (!file) return;
+    setWorking(true);
+    setError('');
+    setSuccess('');
+    try {
+      const parsed = await extractPurchasingDocumentFromImage(file);
+      if (parsed.kind !== 'packing_slip') throw new Error('scan_is_not_packing_slip');
+      if (parsed.confidence < 0.45) throw new Error('packing_slip_scan_confidence_too_low');
+      const po = resolvePoFromScan(parsed);
+      if (!po || !['approved', 'partially_received'].includes(po.status)) throw new Error('packing_slip_po_not_receivable');
+      if (!parsed.packingSlipNumber) throw new Error('packing_slip_number_not_found');
+      const poLines = (snapshot?.purchaseOrderLines || []).filter((line) => line.purchase_order_id === po.id && line.received_quantity < line.quantity);
+      const quantities: Record<string, string> = {};
+      for (const scannedLine of parsed.lines) {
+        const item = resolveItemFromScan(scannedLine);
+        if (!item || !scannedLine.quantity) throw new Error('packing_slip_scan_has_unmatched_or_incomplete_lines');
+        const poLine = poLines.find((line) => line.item_id === item.id);
+        if (!poLine) throw new Error('packing_slip_item_not_on_open_po');
+        const open = poLine.quantity - poLine.received_quantity;
+        if (scannedLine.quantity > open) throw new Error('packing_slip_quantity_exceeds_open_po');
+        quantities[poLine.id] = String(scannedLine.quantity);
+      }
+      if (!Object.keys(quantities).length) throw new Error('packing_slip_lines_not_found');
+      setScannedPackingSlip(parsed);
+      setReceiptPoId(po.id);
+      setPackingSlipNumber(parsed.packingSlipNumber);
+      setReceiptQuantities(quantities);
+      if (!receiptLocationId && (snapshot?.locations.length || 0) === 1) setReceiptLocationId(snapshot!.locations[0].id);
+      setSuccess(`Packing slip photo matched to ${po.po_number}. Receipt quantities were prepared without manual entry; posting remains fail-closed.`);
+    } catch (cause) {
+      setScannedPackingSlip(null);
+      setError(friendlyError(cause));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleInvoiceDocument(file: File | undefined) {
+    if (!file) return;
+    setWorking(true);
+    setError('');
+    setSuccess('');
+    try {
+      const parsed = await extractPurchasingDocumentFromImage(file);
+      if (parsed.kind !== 'vendor_invoice') throw new Error('scan_is_not_vendor_invoice');
+      if (parsed.confidence < 0.45) throw new Error('vendor_invoice_scan_confidence_too_low');
+      const po = resolvePoFromScan(parsed);
+      if (!po) throw new Error('vendor_invoice_po_not_found');
+      const receipt = (snapshot?.receipts || []).find((candidate) =>
+        candidate.purchase_order_id === po.id &&
+        candidate.status === 'posted' &&
+        !(snapshot?.bills || []).some((bill) => bill.inventory_receipt_id === candidate.id && bill.status !== 'void')
+      );
+      if (!receipt) throw new Error('vendor_invoice_has_no_unbilled_posted_receipt');
+      if (!parsed.documentNumber) throw new Error('vendor_invoice_number_not_found');
+      const receiptLines = (snapshot?.receiptLines || []).filter((line) => line.receipt_id === receipt.id);
+      const costs: Record<string, string> = {};
+      const taxes: Record<string, string> = {};
+      for (const scannedLine of parsed.lines) {
+        const item = resolveItemFromScan(scannedLine);
+        if (!item || scannedLine.unitCost == null) throw new Error('vendor_invoice_scan_has_unmatched_or_incomplete_lines');
+        const receiptLine = receiptLines.find((line) => line.item_id === item.id);
+        if (!receiptLine) throw new Error('vendor_invoice_item_not_on_receipt');
+        if (scannedLine.quantity != null && Math.abs(scannedLine.quantity - receiptLine.quantity) > 0.0001) {
+          throw new Error('vendor_invoice_quantity_does_not_match_receipt');
+        }
+        costs[receiptLine.purchase_order_line_id] = String(scannedLine.unitCost);
+        taxes[receiptLine.purchase_order_line_id] = String(scannedLine.taxAmount || 0);
+      }
+      if (Object.keys(costs).length !== receiptLines.length) throw new Error('vendor_invoice_does_not_cover_entire_receipt');
+      setScannedInvoice(parsed);
+      setMatchReceiptId(receipt.id);
+      setBillNumber(parsed.documentNumber);
+      if (parsed.documentDate) setBillDate(parsed.documentDate);
+      if (parsed.dueDate) setBillDueDate(parsed.dueDate);
+      setInvoiceCosts(costs);
+      setInvoiceTaxes(taxes);
+      setSuccess(`Vendor invoice photo matched to ${po.po_number} and receipt ${receipt.packing_slip_number}. AP fields were prepared for the existing three-way-match gate.`);
+    } catch (cause) {
+      setScannedInvoice(null);
+      setError(friendlyError(cause));
+    } finally {
+      setWorking(false);
+    }
   }
 
   async function handleItem(event: FormEvent) {
@@ -472,6 +650,13 @@ export function ProcureToPayPage() {
 
       <section className="workspace-card">
         <div className="detail-heading"><div><p className="eyebrow">2 · Purchasing</p><h2>Purchase order</h2></div></div>
+        <div className="notice">
+          Camera-first document intelligence runs locally on supported devices. A scanned PO is only created when the vendor, PO number, every SKU, quantity and unit cost resolve deterministically; otherwise ATLAS stops.
+        </div>
+        <div className="toolbar">
+          <label className="field wide-field"><span>Purchase order photo</span><input type="file" accept="image/*" capture="environment" onChange={(e) => void handlePoDocument(e.target.files?.[0])} /></label>
+          {scannedPo && <button className="primary-action" type="button" disabled={working} onClick={() => void handleScannedPoCreate()}>Create scanned PO · {Math.round(scannedPo.confidence * 100)}%</button>}
+        </div>
         <form className="toolbar" onSubmit={handlePo}>
           <label className="field"><span>PO number</span><input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} required /></label>
           <label className="field"><span>Vendor</span><select value={poVendorId} onChange={(e) => setPoVendorId(e.target.value)} required><option value="">Select vendor</option>{snapshot?.vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</select></label>
@@ -518,6 +703,10 @@ export function ProcureToPayPage() {
 
       <section className="workspace-card">
         <div className="detail-heading"><div><p className="eyebrow">3 · Receiving</p><h2>PO + packing slip receipt</h2></div></div>
+        <div className="toolbar">
+          <label className="field wide-field"><span>Packing slip photo</span><input type="file" accept="image/*" capture="environment" onChange={(e) => void handlePackingSlipDocument(e.target.files?.[0])} /></label>
+          {scannedPackingSlip && <span className="approval-chip">scan {Math.round(scannedPackingSlip.confidence * 100)}% · matched</span>}
+        </div>
         <form className="toolbar" onSubmit={handleReceipt}>
           <label className="field"><span>Receivable PO</span><select value={receiptPoId} onChange={(e) => { setReceiptPoId(e.target.value); setReceiptQuantities({}); }} required><option value="">Select approved PO</option>{receivablePos.map((po) => <option key={po.id} value={po.id}>{po.po_number} · {vendorById.get(po.vendor_id)?.name}</option>)}</select></label>
           <label className="field"><span>Warehouse</span><select value={receiptLocationId} onChange={(e) => setReceiptLocationId(e.target.value)} required><option value="">Select warehouse</option>{snapshot?.locations.map((location) => <option key={location.id} value={location.id}>{location.code} · {location.name}</option>)}</select></label>
@@ -531,6 +720,10 @@ export function ProcureToPayPage() {
 
       <section className="workspace-card">
         <div className="detail-heading"><div><p className="eyebrow">4 · Three-way match</p><h2>Vendor invoice → Accounts Payable</h2></div></div>
+        <div className="toolbar">
+          <label className="field wide-field"><span>Vendor invoice photo</span><input type="file" accept="image/*" capture="environment" onChange={(e) => void handleInvoiceDocument(e.target.files?.[0])} /></label>
+          {scannedInvoice && <span className="approval-chip">scan {Math.round(scannedInvoice.confidence * 100)}% · linked to PO/receipt</span>}
+        </div>
         <form className="toolbar" onSubmit={handleMatch}>
           <label className="field"><span>Packing-slip receipt</span><select value={matchReceiptId} onChange={(e) => { setMatchReceiptId(e.target.value); setInvoiceCosts({}); setInvoiceTaxes({}); }} required><option value="">Select receipt</option>{snapshot?.receipts.filter((receipt) => !(snapshot?.bills || []).some((bill) => bill.inventory_receipt_id === receipt.id && bill.status !== 'void')).map((receipt) => <option key={receipt.id} value={receipt.id}>{poById.get(receipt.purchase_order_id)?.po_number} · {receipt.packing_slip_number}</option>)}</select></label>
           <label className="field"><span>Vendor invoice #</span><input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} required /></label>
