@@ -58,7 +58,7 @@ describe('ATLAS Tax 2025 Form 1040 core', () => {
   it('calculates ordinary 2025 rate-schedule tax as a non-filing estimate', () => {
     expect(calculateOrdinaryRateScheduleTax2025(11925, 'single')).toBe(1192.5);
     expect(calculateOrdinaryRateScheduleTax2025(48475, 'single')).toBe(5578.5);
-    expect(calculateOrdinaryRateScheduleTax2025(100000, 'married-filing-jointly')).toBeCloseTo(12014, 2);
+    expect(calculateOrdinaryRateScheduleTax2025(100000, 'married-filing-jointly')).toBeCloseTo(11828, 2);
   });
 
   it('builds lines 1 through 15 from normalized ledger inputs', () => {
