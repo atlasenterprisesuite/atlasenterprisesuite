@@ -1,5 +1,6 @@
-export type RideDriverStatus = 'onboarding' | 'active' | 'suspended' | 'inactive';
-export type RideDriverAvailability = 'offline' | 'online' | 'on_trip';
+export type RideDriverAvailability = 'offline' | 'online' | 'paused' | 'suspended';
+export type RideDriverComplianceState = 'incomplete' | 'pending_review' | 'approved' | 'suspended' | 'rejected';
+export type RideVehicleStatus = 'draft' | 'pending_review' | 'approved' | 'inactive' | 'rejected';
 
 export type RideTripStatus =
   | 'requested'
@@ -21,7 +22,6 @@ export type RideMoney = {
 export type RideTrip = {
   id: string;
   organizationId: string;
-  tenantId: string;
   requesterUserId: string | null;
   driverProfileId: string | null;
   vehicleId: string | null;
