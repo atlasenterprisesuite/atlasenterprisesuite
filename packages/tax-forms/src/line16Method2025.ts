@@ -81,7 +81,7 @@ export function resolveLine16Method2025(input: Line16MethodInputs2025): Line16Me
       ...base,
       method: 'qualified-dividends-capital-gain-worksheet',
       reason: 'Qualified dividends or eligible net capital gain require the Qualified Dividends and Capital Gain Tax Worksheet.',
-      canCalculateWithCurrentCore: input.taxableIncome >= 100000
+      canCalculateWithCurrentCore: false
     };
   }
 
