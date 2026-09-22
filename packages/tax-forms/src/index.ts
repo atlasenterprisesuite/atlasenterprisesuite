@@ -216,3 +216,7 @@ export * from './depthSourceDocuments';
 export * from './individual1040Engine';
 
 export * from './scheduleA2025';
+
+export * from './socialSecurity2025';
+export * from './scheduleD2025';
+export * from './line16Method2025';
