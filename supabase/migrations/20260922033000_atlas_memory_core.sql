@@ -52,6 +52,10 @@ using (
     where om.org_id = atlas_memory_records.organization_id
       and om.user_id = auth.uid()
       and om.status = 'active'
+      and (
+        atlas_memory_records.sensitivity = 'organization'
+        or om.role in ('owner','admin','platform_admin')
+      )
   )
 );
 
