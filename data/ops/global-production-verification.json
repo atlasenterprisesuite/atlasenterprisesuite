@@ -1,5 +1,5 @@
 {
-  "version": 14,
+  "version": 15,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -14,6 +14,7 @@
     "/finance/accounting/accounts-receivable",
     "/inventory/procure-to-pay",
     "/assistant",
+    "/knowledge",
     "/voice",
     "/health",
     "/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel",
