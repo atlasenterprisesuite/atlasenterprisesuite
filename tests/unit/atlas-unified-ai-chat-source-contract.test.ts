@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const indexSource = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
 const openaiSource = readFileSync('supabase/functions/atlas-copilot/openai-responses-adapter.mjs', 'utf8');
 const localSource = readFileSync('supabase/functions/atlas-copilot/atlas-local-responses-adapter.mjs', 'utf8');
+const freeLlmSource = readFileSync('supabase/functions/atlas-copilot/freellmapi-adapter.mjs', 'utf8');
 const bedrockSource = readFileSync('supabase/functions/atlas-copilot/amazon-bedrock-responses-adapter.mjs', 'utf8');
 
 describe('ATLAS Unified AI source configuration contract', () => {
@@ -19,6 +20,7 @@ describe('ATLAS Unified AI source configuration contract', () => {
 
   it('constructs all governed provider adapters through the registry', () => {
     expect(indexSource).toContain('createAtlasLocalResponsesAdapter');
+    expect(indexSource).toContain('createFreeLLMAPIAdapter');
     expect(indexSource).toContain('createOpenAIResponsesAdapter');
     expect(indexSource).toContain('createAmazonBedrockResponsesAdapter');
     expect(indexSource).toContain('createGeminiAdapter');
@@ -34,6 +36,18 @@ describe('ATLAS Unified AI source configuration contract', () => {
     expect(localSource).toContain("backend:'self-hosted'");
     expect(localSource).toContain('/v1/responses');
     expect(localSource).not.toContain('local-secret');
+  });
+
+  it('keeps FreeLLMAPI disabled by default, authenticated server-side, and outside the Council trust boundary', () => {
+    expect(indexSource).toContain("Deno.env.get('ATLAS_FREELLMAPI_URL')");
+    expect(indexSource).toContain("Deno.env.get('ATLAS_FREELLMAPI_KEY')");
+    expect(indexSource).toContain("'ATLAS_FREELLMAPI_ENABLED'");
+    expect(freeLlmSource).toContain("id:'freellmapi'");
+    expect(freeLlmSource).toContain("aggregate_router:true");
+    expect(freeLlmSource).toContain('/v1/models');
+    expect(freeLlmSource).toContain('/v1/responses');
+    expect(freeLlmSource).not.toContain('unified-secret');
+    expect(indexSource).not.toMatch(/freellmapi-[A-Za-z0-9_-]{12,}/);
   });
 
   it('keeps OpenAI requests on the Responses API and never embeds a secret', () => {

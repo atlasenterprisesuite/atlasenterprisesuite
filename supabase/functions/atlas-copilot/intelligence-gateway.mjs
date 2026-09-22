@@ -4,8 +4,8 @@ import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
 export const INTELLIGENCE_CAPABILITIES=Object.freeze(['generation','reasoning']);
 export const REASONING_PROFILES=Object.freeze({fast:Object.freeze({id:'fast'}),balanced:Object.freeze({id:'balanced'}),deep:Object.freeze({id:'deep'})});
-export const INTELLIGENCE_PROVIDER_IDS=Object.freeze(['atlas-local','openai','bedrock','gemini','codex-sovereign']);
-export const INTELLIGENCE_MODES=Object.freeze(['auto',...INTELLIGENCE_PROVIDER_IDS,'council']);
+export const INTELLIGENCE_PROVIDER_IDS=Object.freeze(['atlas-local','freellmapi','openai','bedrock','gemini','codex-sovereign']);
+export const INTELLIGENCE_MODES=Object.freeze(['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council']);
 
 function fail(code,status=400,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function has(context,permission){return Array.isArray(context?.permissions)&&(context.permissions.includes(permission)||context.permissions.includes('*'));}
@@ -36,7 +36,7 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[],prefe
       if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
       const capabilities=[...capabilities_requested];
       if(mode==='council'){
-        const compatible=ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
+        const compatible=ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities)&&p?.feature_support?.aggregate_router!==true);
         if(compatible.length<2)throw fail('capability_unavailable',503,{mode:'council',minimum_providers:2});
         return Object.freeze({mode:'council',providers:compatible.map(p=>p.id),provider:compatible[0].id,profile:intent,capabilities,fallback_used:false,reason:'council_verified_capability_match'});
       }

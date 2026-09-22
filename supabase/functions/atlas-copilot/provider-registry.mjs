@@ -1,4 +1,4 @@
-const ORDER=Object.freeze(['atlas-local','openai','bedrock','gemini','codex-sovereign']);
+const ORDER=Object.freeze(['atlas-local','freellmapi','openai','bedrock','gemini','codex-sovereign']);
 function stateFor(probe){if(probe?.verified===true)return'verified';if(probe?.configured!==true||probe?.error==='provider_not_configured')return'configuration-required';if(probe?.error==='provider_verification_required')return'configured-unverified';if(probe?.error==='provider_rate_limited')return'rate-limited';return'unavailable';}
 function safeDescriptor(adapter){
   const raw=adapter?.descriptor?.()||{};
