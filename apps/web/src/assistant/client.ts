@@ -46,6 +46,15 @@ export type AssistantStatusResponse = {
     last_verified_at?: string | null;
     host_required?: boolean;
   };
+  diarization?: {
+    state: 'verified' | 'configured-unverified' | 'configuration-required' | 'unavailable' | string;
+    configured: boolean;
+    verified: boolean;
+    provider: string;
+    model?: string | null;
+    endpoint?: string | null;
+    error?: string | null;
+  };
   cost_policy?: {
     enforce_zero_cost?: boolean;
     automatic_paid_calls?: boolean;
@@ -101,6 +110,31 @@ export type AssistantChatResponse = {
   fallback_used?: boolean;
   contributions?: Array<{ provider: string; model: string | null; text: string }>;
 };
+
+export type AssistantDiarizationSegment = {
+  speaker_id: string;
+  text: string;
+  confidence?: number | null;
+  start_ms?: number | null;
+  end_ms?: number | null;
+};
+
+export type AssistantDiarizationResponse = {
+  ok: boolean;
+  provider: string;
+  model?: string | null;
+  segments: AssistantDiarizationSegment[];
+};
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buffer = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < buffer.length; index += chunkSize) {
+    binary += String.fromCharCode(...buffer.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
 
 async function parseCopilotResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
@@ -168,6 +202,26 @@ export async function getAssistantConversation(id: string): Promise<{
     headers
   });
   return parseCopilotResponse(response);
+}
+
+export async function diarizeAssistantAudio(input: {
+  audio: Blob;
+  languageHints?: string[];
+}): Promise<AssistantDiarizationResponse> {
+  if (!input.audio.size) throw new Error('voice_no_speech');
+  const { organization, headers } = await assistantHeaders();
+  const audioBase64 = await blobToBase64(input.audio);
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=diarize', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      organization_id: organization.id,
+      audio_base64: audioBase64,
+      mime_type: input.audio.type || 'audio/webm',
+      language_hints: input.languageHints || []
+    })
+  });
+  return parseCopilotResponse<AssistantDiarizationResponse>(response);
 }
 
 export async function sendAssistantWorkspaceMessage(input: {
