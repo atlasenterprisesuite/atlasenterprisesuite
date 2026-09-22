@@ -7,6 +7,7 @@ import { InformationReturnWorkspace, PartnershipK1Workspace } from './Additional
 import { ProfessionalReturnWorkspace } from './ProfessionalReturnWorkspace';
 import { TaxControlCenter } from './TaxControlCenter';
 import { DepthTaxIntake } from './DepthTaxIntake';
+import { TaxProfessionalDashboard } from './TaxProfessionalDashboard';
 import { importTaxSourceMapping } from '../../lib/taxApi';
 import './tax.css';
 
@@ -22,6 +23,19 @@ const nav = [
   { to: '/tax/personal', label: 'Personal Returns', end: false },
   { to: '/tax/business', label: 'Business Returns', end: false },
   { to: '/tax/review', label: 'Review Queue', end: false }
+] as const;
+
+const shellNav = [
+  { to: '/tax', label: 'Workspace', glyph: '⌂', end: true },
+  { to: '/tax/control', label: 'Clients', glyph: '●', end: false },
+  { to: '/tax/control', label: 'Returns', glyph: '▤', end: false },
+  { to: '/tax/documents/depth', label: 'Documents', glyph: '▱', end: false },
+  { to: '/tax/prepare', label: 'Tax Facts', glyph: '◎', end: false },
+  { to: '/tax/prepare', label: 'Workpapers', glyph: '▧', end: false },
+  { to: '/tax/review', label: 'Diagnostics', glyph: '◇', end: false },
+  { to: '/tax/review', label: 'Submissions', glyph: '↗', end: false },
+  { to: '/tax/prepare', label: 'Carryforwards', glyph: '⟳', end: false },
+  { to: '/tax/control', label: 'Firm Settings', glyph: '⚙', end: false }
 ] as const;
 
 type W2Draft = Record<string, string | boolean>;
@@ -93,44 +107,57 @@ function buildW2(draft: W2Draft): W2Document {
 
 function TaxLayout({ children }: { children: ReactNode }) {
   return (
-    <section className="tax-shell">
-      <header className="tax-header">
-        <div>
-          <p className="eyebrow">ATLAS Tax</p>
-          <h1>Forms & Schedules Engine</h1>
-          <p>Source-document intake, versioned return mapping and governed review.</p>
+    <section className="tax-shell tax-shell-pro">
+      <aside className="tax-shell-sidebar">
+        <Link className="tax-shell-brand" to="/tax" aria-label="ATLAS Tax home">
+          <span className="tax-shell-brandmark" aria-hidden="true">A</span>
+          <span><strong>ATLAS <em>Tax</em></strong><small>Prepare. Verify. Defend.</small></span>
+        </Link>
+
+        <nav className="tax-shell-side-nav" aria-label="ATLAS Tax workspace">
+          {shellNav.map((item, index) => (
+            <NavLink key={item.label + index} to={item.to} end={item.end}>
+              <span aria-hidden="true">{item.glyph}</span>
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="tax-shell-sidebar-footer" aria-hidden="true">
+          <div className="tax-shell-mini-mountain" />
+          <span>HIGHER</span>
+          <span>STANDARDS</span>
+          <span>BRIGHTER</span>
+          <span>OUTCOMES</span>
         </div>
-        <span className="tax-gate">Filing rails gated</span>
-      </header>
-      <nav className="tax-nav" aria-label="ATLAS Tax workspace">
-        {nav.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end}>{item.label}</NavLink>
-        ))}
-      </nav>
-      {children}
+      </aside>
+
+      <div className="tax-shell-stage">
+        <header className="tax-shell-topbar">
+          <div className="tax-shell-topline">
+            <span>BUILT FOR TODAY. READY FOR WHAT'S NEXT.</span>
+            <span>TAX PROFESSIONALS · STRONGER TOGETHER</span>
+          </div>
+          <div className="tax-shell-toolbar">
+            <Link className="tax-shell-search" to="/tax/control">⌕ &nbsp; Open clients, returns &amp; documents</Link>
+            <span className="tax-gate">Filing rails gated</span>
+          </div>
+        </header>
+
+        <nav className="tax-nav tax-nav-compact" aria-label="ATLAS Tax detailed navigation">
+          {nav.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end}>{item.label}</NavLink>
+          ))}
+        </nav>
+
+        <main className="tax-shell-content">{children}</main>
+      </div>
     </section>
   );
 }
 
 function TaxHome() {
-  return (
-    <div className="page-stack">
-      <div className="notice">
-        ATLAS can prepare deterministic mappings and review paths. External e-file submission remains unavailable until the filing adapter, authorization and production verification are approved.
-      </div>
-      <div className="module-grid">
-        <Link className="module-card enabled" to="/tax/control"><span>Firm operations</span><strong>Tax Control Center</strong><p>Persistent client return queue, statuses, review/signature gates, rejects and filing readiness.</p></Link>
-        <Link className="module-card enabled" to="/tax/prepare"><span>Professional workflow</span><strong>Prepare a Return</strong><p>Guided preparation from engagement and interview through review, signature, e-file readiness and closeout.</p></Link>
-        <Link className="module-card enabled" to="/tax/documents/w2"><span>Source documents</span><strong>Enter a W-2</strong><p>Populate W-2 boxes and see federal, state and local destinations update immediately.</p></Link>
-        <Link className="module-card enabled" to="/tax/documents/1099"><span>Information returns</span><strong>Enter a 1099</strong><p>Map 1099-INT, 1099-DIV and 1099-NEC into the connected return graph with classification gates.</p></Link>
-        <Link className="module-card enabled" to="/tax/documents/k1"><span>Pass-through</span><strong>Enter a K-1</strong><p>Route partnership income, rental, portfolio, capital gain and self-employment items with limitation review.</p></Link>
-        <Link className="module-card enabled" to="/tax/documents/depth"><span>Tax depth</span><strong>1098 · 1095-A · SSA-1099 · Brokerage</strong><p>Persist mortgage, Marketplace, Social Security and transaction-level brokerage data with governed form mappings.</p></Link>
-        <Link className="module-card enabled" to="/tax/forms"><span>Return graph</span><strong>Forms & Schedules</strong><p>Browse personal and business forms as one connected tax graph.</p></Link>
-        <Link className="module-card enabled" to="/tax/personal"><span>1040 family</span><strong>Personal Returns</strong><p>1040, schedules, credits, self-employment, investments and international attachments.</p></Link>
-        <Link className="module-card enabled" to="/tax/business"><span>Entity returns</span><strong>Business Returns</strong><p>1065, 1120, 1120-S, 1041, 990, payroll and information-return families.</p></Link>
-      </div>
-    </div>
-  );
+  return <TaxProfessionalDashboard />;
 }
 
 function MoneyField({
