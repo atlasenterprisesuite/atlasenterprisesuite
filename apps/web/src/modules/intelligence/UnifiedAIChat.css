@@ -1567,3 +1567,160 @@
     width:32px;
   }
 }
+
+
+.atlas-ai-translator-head-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.atlas-ai-translator-head-actions>button{
+  min-height:28px;
+  border:0;
+  border-radius:8px;
+  padding:0 9px;
+  background:transparent;
+  color:#a7b4ba;
+  font-size:.67rem;
+}
+
+.atlas-ai-translator-head-actions>button:hover{
+  background:rgba(255,255,255,.06);
+}
+
+.atlas-ai-translator-head-actions>button.active{
+  background:rgba(125,211,252,.12);
+  color:#bde9fb;
+}
+
+.atlas-ai-conversation-translator{
+  display:grid;
+  gap:10px;
+}
+
+.atlas-ai-conversation-language-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);
+  align-items:end;
+  gap:8px;
+}
+
+.atlas-ai-conversation-language-row label{
+  min-width:0;
+  display:grid;
+  gap:4px;
+}
+
+.atlas-ai-conversation-language-row label>span{
+  color:#83949d;
+  font-size:.62rem;
+}
+
+.atlas-ai-conversation-language-row select{
+  width:100%;
+  min-width:0;
+  min-height:36px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:10px;
+  outline:0;
+  padding:0 9px;
+  background:#20282c;
+  color:#e8edf0;
+  font-size:.74rem;
+}
+
+.atlas-ai-conversation-language-row select:disabled{
+  opacity:.62;
+}
+
+.atlas-ai-conversation-status{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 11px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  background:#20282c;
+}
+
+.atlas-ai-conversation-status>div{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.atlas-ai-conversation-status strong{
+  color:#eef3f5;
+  font-size:.76rem;
+  font-weight:620;
+}
+
+.atlas-ai-conversation-status span{
+  color:#8fa0a8;
+  font-size:.65rem;
+  line-height:1.35;
+}
+
+.atlas-ai-conversation-status>button{
+  min-height:34px;
+  flex:0 0 auto;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:10px;
+  padding:0 12px;
+  font-size:.69rem;
+  font-weight:620;
+}
+
+.atlas-ai-conversation-status>button.start{
+  background:#e8f4f8;
+  color:#182126;
+}
+
+.atlas-ai-conversation-status>button.stop{
+  background:rgba(239,119,129,.12);
+  color:#ffc2c8;
+  border-color:rgba(239,119,129,.26);
+}
+
+.atlas-ai-conversation-status>button:disabled{
+  opacity:.38;
+}
+
+.atlas-ai-conversation-enable-speech{
+  justify-self:start;
+  min-height:32px;
+  border:1px solid rgba(125,211,252,.20);
+  border-radius:9px;
+  padding:0 10px;
+  background:rgba(125,211,252,.08);
+  color:#bfe9fa;
+  font-size:.67rem;
+}
+
+.atlas-ai-conversation-boundary{
+  margin:0;
+  color:#788991;
+  font-size:.61rem;
+  line-height:1.4;
+}
+
+@media(max-width:560px){
+  .atlas-ai-translator-head{
+    align-items:center;
+  }
+
+  .atlas-ai-translator-head-actions>button:first-child{
+    padding-inline:8px;
+  }
+
+  .atlas-ai-conversation-status{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .atlas-ai-conversation-status>button{
+    width:100%;
+  }
+}
