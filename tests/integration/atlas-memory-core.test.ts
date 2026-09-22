@@ -15,6 +15,7 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(migration).toContain('organization_members');
     expect(migration).toContain('enable row level security');
     expect(migration).toContain('revoke insert, update, delete');
+    expect(migration).toContain("om.role in ('owner','admin','platform_admin')");
     expect(migration).toContain("status in ('draft','approved','superseded')");
   });
 
@@ -24,6 +25,8 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(edge).toContain("from('audit_logs')");
     expect(edge).toContain("table_name: 'atlas_memory_records'");
     expect(edge).toContain("new Set(['owner','admin','platform_admin'])");
+    expect(edge).toContain("query = query.eq('sensitivity', 'organization')");
+    expect(edge).toContain('memory_restricted_role_required');
   });
 
   it('keeps chat imports fail-closed until explicit approval', () => {
@@ -37,7 +40,7 @@ describe('ATLAS Memory / Knowledge Layer', () => {
   it('uses the canonical authenticated API boundary', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');
-    expect(api).toContain("'/functions/v1/atlas-memory");
+    expect(api).toContain('/functions/v1/atlas-memory');
     expect(api).not.toContain("from('atlas_memory_records')");
   });
 
