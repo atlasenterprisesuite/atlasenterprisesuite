@@ -83,7 +83,7 @@ describe('ATLAS Assistant workspace', () => {
     expect(page).toContain('recordAssistantAudioChunk');
     expect(page).toContain('Person A');
     expect(page).toContain('Person B');
-    expect(page).toContain('Speaker identity detection is not verified on this device');
+    expect(page).toContain('Speaker identity detection is not verified.');
     expect(page).toContain('conversationSessionRef');
     expect(page).toContain('conversationIdRef');
     expect(page).toContain('startConversationTurn');
