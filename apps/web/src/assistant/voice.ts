@@ -128,14 +128,14 @@ export function stopAssistantSpeech(): void {
   window.speechSynthesis.cancel();
 }
 
-export function speakAssistantText(text: string): Promise<void> {
+export function speakAssistantText(text: string, lang?: string): Promise<void> {
   if (detectSpeechOutputCapability() !== 'ready') return Promise.reject(new Error('speech_unavailable'));
   const value = text.trim();
   if (!value) return Promise.resolve();
 
   return new Promise((resolve, reject) => {
     const utterance = new SpeechSynthesisUtterance(value);
-    utterance.lang = typeof navigator !== 'undefined' ? navigator.language || 'es-US' : 'es-US';
+    utterance.lang = lang || (typeof navigator !== 'undefined' ? navigator.language || 'es-US' : 'es-US');
     utterance.onend = () => resolve();
     utterance.onerror = () => reject(new Error('speech_unavailable'));
     stopAssistantSpeech();
