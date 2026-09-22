@@ -72,9 +72,18 @@ describe('ATLAS Assistant workspace', () => {
     expect(page).toContain('Translator');
     expect(page).toContain('TRANSLATOR_LANGUAGES');
     expect(page).toContain('ATLAS TRANSLATOR TASK');
+    expect(page).toContain('ATLAS TWO-PERSON CONVERSATION TRANSLATION');
     expect(page).toContain('Text auto-detect · voice uses device locale');
     expect(page).toContain('Speak translation');
+    expect(page).toContain('Start live conversation');
+    expect(page).toContain('Person A');
+    expect(page).toContain('Person B');
+    expect(page).toContain('Speaker identity detection is not verified on this device');
+    expect(page).toContain('conversationSessionRef');
+    expect(page).toContain('conversationIdRef');
+    expect(page).toContain('startConversationTurn');
     expect(page).toContain('swapTranslatorLanguages');
+    expect(page).toContain('swapConversationLanguages');
     expect(page).toContain('useAssistantVoice');
     expect(page).toContain('toggleMicrophone');
     expect(page).toContain('ATLAS can make mistakes. Verify important information and governed actions.');
@@ -91,6 +100,8 @@ describe('ATLAS Assistant workspace', () => {
     expect(css).toContain('.atlas-ai-mic');
     expect(css).toContain('.atlas-ai-translator-bar');
     expect(css).toContain('.atlas-ai-translator-controls');
+    expect(css).toContain('.atlas-ai-conversation-translator');
+    expect(css).toContain('.atlas-ai-conversation-status');
   });
 
 });
