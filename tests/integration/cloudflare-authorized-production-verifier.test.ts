@@ -22,6 +22,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain("'/finance/accounting/accounts-payable'");
     expect(verifier).toContain("'/finance/accounting/accounts-receivable'");
     expect(verifier).toContain("'/inventory/procure-to-pay'");
+    expect(verifier).toContain("'/knowledge'");
     expect(verifier).toContain("'/commerce'");
     expect(verifier).toContain("'/revenue'");
     expect(verifier).toContain("'/analytics'");
@@ -34,6 +35,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain('accounts_payable_route_reachable');
     expect(verifier).toContain('accounts_receivable_route_reachable');
     expect(verifier).toContain('procure_to_pay_route_reachable');
+    expect(verifier).toContain('knowledge_route_reachable');
     expect(verifier).toContain('commerce_route_reachable');
     expect(verifier).toContain('revenue_route_reachable');
     expect(verifier).toContain('analytics_route_reachable');

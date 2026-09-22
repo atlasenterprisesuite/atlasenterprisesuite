@@ -47,6 +47,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'knowledge',
+    title: 'Knowledge Atlas',
+    navLabel: 'Knowledge',
+    area: 'Intelligence',
+    route: '/knowledge',
+    readiness: 'partial',
+    requiresAuth: true,
+    description: 'Governed organizational memory for approved decisions, requirements, workflows, configuration and evidence.',
+    showInNavigation: true
+  },
+  {
     id: 'business',
     title: 'Business Suite',
     navLabel: 'Business',
