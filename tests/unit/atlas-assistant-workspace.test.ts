@@ -70,6 +70,11 @@ describe('ATLAS Assistant workspace', () => {
     expect(page).toContain('Projects');
     expect(page).toContain('Prompts');
     expect(page).toContain('Translator');
+    expect(page).toContain('TRANSLATOR_LANGUAGES');
+    expect(page).toContain('ATLAS TRANSLATOR TASK');
+    expect(page).toContain('Text auto-detect · voice uses device locale');
+    expect(page).toContain('Speak translation');
+    expect(page).toContain('swapTranslatorLanguages');
     expect(page).toContain('useAssistantVoice');
     expect(page).toContain('toggleMicrophone');
     expect(page).toContain('ATLAS can make mistakes. Verify important information and governed actions.');
@@ -84,6 +89,8 @@ describe('ATLAS Assistant workspace', () => {
     expect(css).toContain('.atlas-ai-mobile-menu-popover');
     expect(css).toContain('.atlas-ai-prompt-library');
     expect(css).toContain('.atlas-ai-mic');
+    expect(css).toContain('.atlas-ai-translator-bar');
+    expect(css).toContain('.atlas-ai-translator-controls');
   });
 
 });
