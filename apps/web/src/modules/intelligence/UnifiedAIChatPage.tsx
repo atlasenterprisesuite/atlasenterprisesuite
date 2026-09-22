@@ -51,6 +51,23 @@ const PROMPT_LIBRARY = [
   { title: 'Analyze', text: 'Analyze the following information. Separate facts, assumptions, risks, dependencies and recommended next steps:\n\n' }
 ] as const;
 
+const TRANSLATOR_LANGUAGES = [
+  { code: 'en-US', label: 'English' },
+  { code: 'es-US', label: 'Spanish' },
+  { code: 'pt-BR', label: 'Portuguese' },
+  { code: 'fr-FR', label: 'French' },
+  { code: 'it-IT', label: 'Italian' },
+  { code: 'de-DE', label: 'German' },
+  { code: 'ja-JP', label: 'Japanese' },
+  { code: 'ko-KR', label: 'Korean' },
+  { code: 'zh-CN', label: 'Chinese' },
+  { code: 'ar-SA', label: 'Arabic' }
+] as const;
+
+function translatorLanguageLabel(code: string) {
+  return TRANSLATOR_LANGUAGES.find((language) => language.code === code)?.label || code;
+}
+
 const ENTERPRISE_LINKS = [
   { to: '/work', label: 'Work' },
   { to: '/automations', label: 'Agents' },
@@ -88,7 +105,8 @@ function humanizeError(value: string) {
     status_unavailable: 'Provider status could not be refreshed.',
     voice_transcription_unavailable: 'Voice transcription is unavailable in this browser. Text mode remains available.',
     voice_transcription_failed: 'ATLAS could not transcribe that voice turn. Try again or use text.',
-    microphone_permission_denied: 'Microphone permission was denied. Text mode remains available.'
+    microphone_permission_denied: 'Microphone permission was denied. Text mode remains available.',
+    speech_unavailable: 'Speech output is unavailable. The translated text remains available.'
   };
   return errors[value] || value.replaceAll('_', ' ');
 }
@@ -114,6 +132,9 @@ export function UnifiedAIChatPage() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [promptLibraryOpen, setPromptLibraryOpen] = useState(false);
+  const [translatorEnabled, setTranslatorEnabled] = useState(false);
+  const [sourceLanguage, setSourceLanguage] = useState('auto');
+  const [targetLanguage, setTargetLanguage] = useState('en-US');
   const messageEnd = useRef<HTMLDivElement | null>(null);
   const voice = useAssistantVoice();
 
@@ -213,41 +234,77 @@ export function UnifiedAIChatPage() {
     setSidebarOpen(false);
   }
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const message = prompt.trim();
-    if (!message || busy || !routeReady) return;
+  function translationRequest(message: string) {
+    if (!translatorEnabled) return message;
+    const source = sourceLanguage === 'auto'
+      ? 'Detect the source language automatically from the text.'
+      : 'Source language: ' + translatorLanguageLabel(sourceLanguage) + '.';
+    return [
+      'ATLAS TRANSLATOR TASK',
+      source,
+      'Target language: ' + translatorLanguageLabel(targetLanguage) + '.',
+      'Translate accurately and return only the translated content unless a genuine ambiguity prevents a reliable translation.',
+      'Preserve names, numbers, dates, currency values, line breaks and document structure.',
+      '',
+      message
+    ].join('\n');
+  }
+
+  async function executeMessage(message: string) {
+    const value = message.trim();
+    if (!value || busy || !routeReady) return;
 
     setMessages((current) => [
       ...current,
-      { key: 'local-' + Date.now(), role: 'user', text: message }
+      { key: 'local-' + Date.now(), role: 'user', text: value }
     ]);
-    setPrompt('');
     setToolsOpen(false);
     setBusy(true);
     setError('');
 
     try {
-      const result = await sendAssistantWorkspaceMessage({ message, conversationId, mode, profile });
+      const result = await sendAssistantWorkspaceMessage({
+        message: translationRequest(value),
+        conversationId,
+        mode,
+        profile
+      });
       if (result.conversation_id) setConversationId(result.conversation_id);
       const providersUsed = Array.isArray(result.providers) && result.providers.length
         ? result.providers.join(' + ')
         : result.provider || 'ATLAS';
+      const reply = result.output || result.text || '';
       setMessages((current) => [
         ...current,
         {
           key: 'assistant-' + Date.now(),
           role: 'assistant',
-          text: result.output || result.text || '',
-          meta: 'via ' + providersUsed + (result.model ? ' · ' + result.model : '')
+          text: reply,
+          meta: (translatorEnabled ? 'translated to ' + translatorLanguageLabel(targetLanguage) + ' · ' : '')
+            + 'via ' + providersUsed + (result.model ? ' · ' + result.model : '')
         }
       ]);
+      if (translatorEnabled && voice.speechEnabled && voice.speechCapability === 'ready' && reply) {
+        try {
+          await voice.speak(reply, targetLanguage);
+        } catch {
+          setError('speech_unavailable');
+        }
+      }
       await Promise.all([refreshHistory(), refreshStatus()]);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const message = prompt.trim();
+    if (!message || busy || !routeReady) return;
+    setPrompt('');
+    await executeMessage(message);
   }
 
   async function toggleMicrophone() {
@@ -262,10 +319,16 @@ export function UnifiedAIChatPage() {
     try {
       await voice.startVoiceTurn(
         (transcript) => {
-          setPrompt(transcript);
           setError('');
+          if (translatorEnabled) {
+            setPrompt('');
+            void executeMessage(transcript);
+          } else {
+            setPrompt(transcript);
+          }
         },
-        (cause) => setError(cause instanceof Error ? cause.message : 'voice_transcription_failed')
+        (cause) => setError(cause instanceof Error ? cause.message : 'voice_transcription_failed'),
+        sourceLanguage === 'auto' ? undefined : sourceLanguage
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'voice_transcription_failed');
@@ -276,6 +339,21 @@ export function UnifiedAIChatPage() {
     setPrompt(text);
     setPromptLibraryOpen(false);
     setMobileActionsOpen(false);
+  }
+
+  function activateTranslator() {
+    setTranslatorEnabled(true);
+    setPrompt('');
+    setPromptLibraryOpen(false);
+    setMobileActionsOpen(false);
+    setError('');
+  }
+
+  function swapTranslatorLanguages() {
+    if (sourceLanguage === 'auto') return;
+    const nextSource = targetLanguage;
+    setTargetLanguage(sourceLanguage);
+    setSourceLanguage(nextSource);
   }
 
   const councilConfigured = status?.cost_policy?.allow_council === true;
@@ -512,7 +590,11 @@ export function UnifiedAIChatPage() {
                 <p>Ask, translate, summarize, prepare work or use connected ATLAS context from one simple assistant.</p>
                 <div className="atlas-ai-starters atlas-ai-starter-chips">
                   {PROMPT_STARTERS.map((starter) => (
-                    <button key={starter.title} type="button" onClick={() => usePrompt(starter.text)}>
+                    <button
+                      key={starter.title}
+                      type="button"
+                      onClick={() => starter.title === 'Translator' ? activateTranslator() : usePrompt(starter.text)}
+                    >
                       <strong>{starter.title}</strong>
                     </button>
                   ))}
@@ -532,7 +614,54 @@ export function UnifiedAIChatPage() {
           </div>
 
           <div className="atlas-ai-composer-wrap">
-            <form className="atlas-ai-composer" onSubmit={submit}>
+            {translatorEnabled ? (
+              <section className="atlas-ai-translator-bar" aria-label="ATLAS Translator">
+                <div className="atlas-ai-translator-head">
+                  <div>
+                    <strong>Translator</strong>
+                    <span>{sourceLanguage === 'auto' ? 'Text auto-detect · voice uses device locale' : translatorLanguageLabel(sourceLanguage)} → {translatorLanguageLabel(targetLanguage)}</span>
+                  </div>
+                  <button type="button" onClick={() => setTranslatorEnabled(false)} aria-label="Close translator">×</button>
+                </div>
+                <div className="atlas-ai-translator-controls">
+                  <label>
+                    <span>From</span>
+                    <select value={sourceLanguage} onChange={(event) => setSourceLanguage(event.target.value)}>
+                      <option value="auto">Auto detect</option>
+                      {TRANSLATOR_LANGUAGES.map((language) => (
+                        <option key={language.code} value={language.code}>{language.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="atlas-ai-translator-swap"
+                    type="button"
+                    onClick={swapTranslatorLanguages}
+                    disabled={sourceLanguage === 'auto'}
+                    aria-label="Swap translation languages"
+                  >⇄</button>
+                  <label>
+                    <span>To</span>
+                    <select value={targetLanguage} onChange={(event) => setTargetLanguage(event.target.value)}>
+                      {TRANSLATOR_LANGUAGES.map((language) => (
+                        <option key={language.code} value={language.code}>{language.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="atlas-ai-translator-speech">
+                    <input
+                      type="checkbox"
+                      checked={voice.speechEnabled && voice.speechCapability === 'ready'}
+                      disabled={voice.speechCapability !== 'ready'}
+                      onChange={(event) => voice.setSpeechEnabled(event.target.checked)}
+                    />
+                    <span>Speak translation</span>
+                  </label>
+                </div>
+              </section>
+            ) : null}
+
+            <form className={'atlas-ai-composer' + (translatorEnabled ? ' translator-active' : '')} onSubmit={submit}>
               <textarea
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
@@ -544,7 +673,7 @@ export function UnifiedAIChatPage() {
                 }}
                 placeholder={status
                   ? routeReady
-                    ? 'Message ATLAS'
+                    ? translatorEnabled ? 'Speak or type to translate…' : 'Message ATLAS'
                     : 'Open AI controls to restore a verified provider'
                   : 'Checking ATLAS AI readiness…'}
                 aria-label="Message ATLAS Assistant"
@@ -626,7 +755,11 @@ export function UnifiedAIChatPage() {
                 </div>
                 <div className="atlas-ai-prompt-library-grid">
                   {PROMPT_LIBRARY.map((item) => (
-                    <button key={item.title} type="button" onClick={() => usePrompt(item.text)}>
+                    <button
+                      key={item.title}
+                      type="button"
+                      onClick={() => item.title === 'Translate' ? activateTranslator() : usePrompt(item.text)}
+                    >
                       <strong>{item.title}</strong>
                     </button>
                   ))}
