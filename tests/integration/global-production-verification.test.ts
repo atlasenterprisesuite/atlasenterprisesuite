@@ -35,6 +35,7 @@ describe('ATLAS global production verification', () => {
       '/finance/accounting/accounts-receivable',
       '/inventory/procure-to-pay',
       '/assistant',
+      '/knowledge',
       '/voice',
       '/health',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
@@ -175,6 +176,7 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('suite_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
+    expect(authorizedVerifier).toContain("'/knowledge'");
     expect(authorizedVerifier).toContain("'/voice'");
     expect(authorizedVerifier).toContain("'/health'");
     expect(authorizedVerifier).toContain("'/frontier'");
@@ -185,6 +187,7 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
+    expect(authorizedVerifier).toContain('knowledge_route_reachable');
     expect(authorizedVerifier).toContain('voice_route_reachable');
     expect(authorizedVerifier).toContain('health_route_reachable');
     expect(authorizedVerifier).toContain('accounts_receivable_route_reachable');
