@@ -21,6 +21,8 @@ type DisplayMessage = {
   meta?: string;
 };
 
+type ConversationSpeaker = 'A' | 'B';
+
 const MODES: Array<{ value: AssistantMode; label: string; short: string }> = [
   { value: 'auto', label: 'Auto · $0 first', short: 'Auto' },
   { value: 'atlas-local', label: 'ATLAS Local · $0 API', short: 'ATLAS Local' },
@@ -46,6 +48,7 @@ const PROMPT_STARTERS = [
 
 const PROMPT_LIBRARY = [
   { title: 'Translate', text: PROMPT_STARTERS[3].text },
+  { title: 'Conversation', text: '' },
   { title: 'Summarize', text: 'Summarize the following content into key facts, decisions, risks and next actions:\n\n' },
   { title: 'Rewrite', text: 'Rewrite the following text clearly and professionally while preserving the original meaning:\n\n' },
   { title: 'Analyze', text: 'Analyze the following information. Separate facts, assumptions, risks, dependencies and recommended next steps:\n\n' }
@@ -135,6 +138,12 @@ export function UnifiedAIChatPage() {
   const [translatorEnabled, setTranslatorEnabled] = useState(false);
   const [sourceLanguage, setSourceLanguage] = useState('auto');
   const [targetLanguage, setTargetLanguage] = useState('en-US');
+  const [conversationTranslatorEnabled, setConversationTranslatorEnabled] = useState(false);
+  const [conversationActive, setConversationActive] = useState(false);
+  const [conversationSpeaker, setConversationSpeaker] = useState<ConversationSpeaker>('A');
+  const [participantALanguage, setParticipantALanguage] = useState('es-US');
+  const [participantBLanguage, setParticipantBLanguage] = useState('en-US');
+  const conversationSessionRef = useRef(0);
   const messageEnd = useRef<HTMLDivElement | null>(null);
   const voice = useAssistantVoice();
 
@@ -185,6 +194,10 @@ export function UnifiedAIChatPage() {
     messageEnd.current?.scrollIntoView({ block: 'nearest' });
   }, [messages, busy]);
 
+  useEffect(() => () => {
+    conversationSessionRef.current += 1;
+  }, []);
+
   async function refreshStatus() {
     try {
       setStatus(await getAssistantStatus());
@@ -224,6 +237,7 @@ export function UnifiedAIChatPage() {
   }
 
   function startNewConversation() {
+    stopConversationSession();
     setConversationId(null);
     setMessages([]);
     setPrompt('');
@@ -245,6 +259,21 @@ export function UnifiedAIChatPage() {
       'Target language: ' + translatorLanguageLabel(targetLanguage) + '.',
       'Translate accurately and return only the translated content unless a genuine ambiguity prevents a reliable translation.',
       'Preserve names, numbers, dates, currency values, line breaks and document structure.',
+      '',
+      message
+    ].join('\n');
+  }
+
+  function conversationTranslationRequest(message: string, speaker: ConversationSpeaker) {
+    const sourceLanguageCode = speaker === 'A' ? participantALanguage : participantBLanguage;
+    const targetLanguageCode = speaker === 'A' ? participantBLanguage : participantALanguage;
+    return [
+      'ATLAS TWO-PERSON CONVERSATION TRANSLATION',
+      'Current speaker: Person ' + speaker + '.',
+      'Source language: ' + translatorLanguageLabel(sourceLanguageCode) + '.',
+      'Target language: ' + translatorLanguageLabel(targetLanguageCode) + '.',
+      'Translate only the current speaker turn. Do not answer the speaker, add commentary, summarize, or identify the person.',
+      'Preserve names, numbers, dates, currency values, tone and meaning.',
       '',
       message
     ].join('\n');
@@ -299,6 +328,143 @@ export function UnifiedAIChatPage() {
     }
   }
 
+  async function executeConversationTurn(
+    message: string,
+    speaker: ConversationSpeaker,
+    sessionId: number
+  ) {
+    const value = message.trim();
+    if (!value || busy || !routeReady) return false;
+
+    const sourceLanguageCode = speaker === 'A' ? participantALanguage : participantBLanguage;
+    const targetLanguageCode = speaker === 'A' ? participantBLanguage : participantALanguage;
+    const listener: ConversationSpeaker = speaker === 'A' ? 'B' : 'A';
+
+    setMessages((current) => [
+      ...current,
+      {
+        key: 'conversation-source-' + Date.now(),
+        role: 'user',
+        text: value,
+        meta: 'Person ' + speaker + ' · ' + translatorLanguageLabel(sourceLanguageCode)
+      }
+    ]);
+    setBusy(true);
+    setError('');
+
+    try {
+      const result = await sendAssistantWorkspaceMessage({
+        message: conversationTranslationRequest(value, speaker),
+        conversationId,
+        mode,
+        profile
+      });
+      if (result.conversation_id) setConversationId(result.conversation_id);
+      const providersUsed = Array.isArray(result.providers) && result.providers.length
+        ? result.providers.join(' + ')
+        : result.provider || 'ATLAS';
+      const reply = result.output || result.text || '';
+      setMessages((current) => [
+        ...current,
+        {
+          key: 'conversation-translation-' + Date.now(),
+          role: 'assistant',
+          text: reply,
+          meta: 'for Person ' + listener + ' · ' + translatorLanguageLabel(targetLanguageCode)
+            + ' · via ' + providersUsed + (result.model ? ' · ' + result.model : '')
+        }
+      ]);
+
+      if (
+        conversationSessionRef.current === sessionId
+        && voice.speechEnabled
+        && voice.speechCapability === 'ready'
+        && reply
+      ) {
+        await voice.speak(reply, targetLanguageCode);
+      }
+
+      await Promise.all([refreshHistory(), refreshStatus()]);
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startConversationTurn(speaker: ConversationSpeaker, sessionId: number) {
+    if (conversationSessionRef.current !== sessionId) return;
+
+    const recognitionLanguage = speaker === 'A' ? participantALanguage : participantBLanguage;
+    setConversationSpeaker(speaker);
+
+    try {
+      await voice.startVoiceTurn(
+        async (transcript) => {
+          if (conversationSessionRef.current !== sessionId) return;
+          const translated = await executeConversationTurn(transcript, speaker, sessionId);
+          if (!translated || conversationSessionRef.current !== sessionId) {
+            stopConversationSession();
+            return;
+          }
+          const nextSpeaker: ConversationSpeaker = speaker === 'A' ? 'B' : 'A';
+          setConversationSpeaker(nextSpeaker);
+          window.setTimeout(() => {
+            if (conversationSessionRef.current === sessionId) {
+              void startConversationTurn(nextSpeaker, sessionId);
+            }
+          }, 250);
+        },
+        (cause) => {
+          if (conversationSessionRef.current !== sessionId) return;
+          setError(cause instanceof Error ? cause.message : 'voice_transcription_failed');
+          stopConversationSession();
+        },
+        recognitionLanguage
+      );
+    } catch (cause) {
+      if (conversationSessionRef.current !== sessionId) return;
+      setError(cause instanceof Error ? cause.message : 'voice_transcription_failed');
+      stopConversationSession();
+    }
+  }
+
+  function stopConversationSession() {
+    conversationSessionRef.current += 1;
+    setConversationActive(false);
+    voice.stopMicrophone();
+    voice.stopSpeech();
+  }
+
+  function startConversationSession() {
+    if (!routeReady) {
+      setError('provider_unavailable');
+      return;
+    }
+    if (voice.transcriptionCapability !== 'ready') {
+      setError('voice_transcription_unavailable');
+      return;
+    }
+    if (voice.speechCapability !== 'ready') {
+      setError('speech_unavailable');
+      return;
+    }
+    if (!voice.speechEnabled) {
+      voice.setSpeechEnabled(true);
+      setError('');
+      return;
+    }
+
+    const sessionId = conversationSessionRef.current + 1;
+    conversationSessionRef.current = sessionId;
+    setConversationActive(true);
+    setConversationSpeaker('A');
+    setError('');
+    void startConversationTurn('A', sessionId);
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     const message = prompt.trim();
@@ -342,11 +508,26 @@ export function UnifiedAIChatPage() {
   }
 
   function activateTranslator() {
+    stopConversationSession();
+    setConversationTranslatorEnabled(false);
     setTranslatorEnabled(true);
     setPrompt('');
     setPromptLibraryOpen(false);
     setMobileActionsOpen(false);
     setError('');
+  }
+
+  function activateConversationTranslator() {
+    stopConversationSession();
+    setTranslatorEnabled(true);
+    setConversationTranslatorEnabled(true);
+    setPrompt('');
+    setPromptLibraryOpen(false);
+    setMobileActionsOpen(false);
+    setError('');
+    if (voice.speechCapability === 'ready' && !voice.speechEnabled) {
+      voice.setSpeechEnabled(true);
+    }
   }
 
   function swapTranslatorLanguages() {
@@ -355,6 +536,18 @@ export function UnifiedAIChatPage() {
     setTargetLanguage(sourceLanguage);
     setSourceLanguage(nextSource);
   }
+
+  function swapConversationLanguages() {
+    if (conversationActive) return;
+    const nextA = participantBLanguage;
+    setParticipantBLanguage(participantALanguage);
+    setParticipantALanguage(nextA);
+  }
+
+  const conversationVoiceReady = routeReady
+    && voice.transcriptionCapability === 'ready'
+    && voice.speechCapability === 'ready'
+    && voice.speechEnabled;
 
   const councilConfigured = status?.cost_policy?.allow_council === true;
   const localProvider = providers.find((provider) => provider.id === 'atlas-local') || null;
@@ -621,43 +814,136 @@ export function UnifiedAIChatPage() {
                     <strong>Translator</strong>
                     <span>{sourceLanguage === 'auto' ? 'Text auto-detect · voice uses device locale' : translatorLanguageLabel(sourceLanguage)} → {translatorLanguageLabel(targetLanguage)}</span>
                   </div>
-                  <button type="button" onClick={() => setTranslatorEnabled(false)} aria-label="Close translator">×</button>
+                  <div className="atlas-ai-translator-head-actions">
+                    <button
+                      type="button"
+                      className={conversationTranslatorEnabled ? 'active' : ''}
+                      onClick={() => conversationTranslatorEnabled
+                        ? (stopConversationSession(), setConversationTranslatorEnabled(false))
+                        : activateConversationTranslator()}
+                    >
+                      Conversation
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopConversationSession();
+                        setConversationTranslatorEnabled(false);
+                        setTranslatorEnabled(false);
+                      }}
+                      aria-label="Close translator"
+                    >×</button>
+                  </div>
                 </div>
-                <div className="atlas-ai-translator-controls">
-                  <label>
-                    <span>From</span>
-                    <select value={sourceLanguage} onChange={(event) => setSourceLanguage(event.target.value)}>
-                      <option value="auto">Auto detect</option>
-                      {TRANSLATOR_LANGUAGES.map((language) => (
-                        <option key={language.code} value={language.code}>{language.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    className="atlas-ai-translator-swap"
-                    type="button"
-                    onClick={swapTranslatorLanguages}
-                    disabled={sourceLanguage === 'auto'}
-                    aria-label="Swap translation languages"
-                  >⇄</button>
-                  <label>
-                    <span>To</span>
-                    <select value={targetLanguage} onChange={(event) => setTargetLanguage(event.target.value)}>
-                      {TRANSLATOR_LANGUAGES.map((language) => (
-                        <option key={language.code} value={language.code}>{language.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="atlas-ai-translator-speech">
-                    <input
-                      type="checkbox"
-                      checked={voice.speechEnabled && voice.speechCapability === 'ready'}
-                      disabled={voice.speechCapability !== 'ready'}
-                      onChange={(event) => voice.setSpeechEnabled(event.target.checked)}
-                    />
-                    <span>Speak translation</span>
-                  </label>
-                </div>
+                {conversationTranslatorEnabled ? (
+                  <div className="atlas-ai-conversation-translator">
+                    <div className="atlas-ai-conversation-language-row">
+                      <label>
+                        <span>Person A</span>
+                        <select
+                          value={participantALanguage}
+                          disabled={conversationActive}
+                          onChange={(event) => setParticipantALanguage(event.target.value)}
+                        >
+                          {TRANSLATOR_LANGUAGES.map((language) => (
+                            <option key={language.code} value={language.code}>{language.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        className="atlas-ai-translator-swap"
+                        type="button"
+                        disabled={conversationActive}
+                        onClick={swapConversationLanguages}
+                        aria-label="Swap conversation languages"
+                      >⇄</button>
+                      <label>
+                        <span>Person B</span>
+                        <select
+                          value={participantBLanguage}
+                          disabled={conversationActive}
+                          onChange={(event) => setParticipantBLanguage(event.target.value)}
+                        >
+                          {TRANSLATOR_LANGUAGES.map((language) => (
+                            <option key={language.code} value={language.code}>{language.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="atlas-ai-conversation-status">
+                      <div>
+                        <strong>{conversationActive ? 'Listening to Person ' + conversationSpeaker : 'Ready for Person A'}</strong>
+                        <span>
+                          {conversationActive
+                            ? translatorLanguageLabel(conversationSpeaker === 'A' ? participantALanguage : participantBLanguage)
+                              + ' → '
+                              + translatorLanguageLabel(conversationSpeaker === 'A' ? participantBLanguage : participantALanguage)
+                            : 'ATLAS alternates A/B turns and speaks each translation automatically.'}
+                        </span>
+                      </div>
+                      <button
+                        className={conversationActive ? 'stop' : 'start'}
+                        type="button"
+                        disabled={!conversationActive && !conversationVoiceReady}
+                        onClick={conversationActive ? stopConversationSession : startConversationSession}
+                      >
+                        {conversationActive ? 'Stop' : 'Start live conversation'}
+                      </button>
+                    </div>
+
+                    {!voice.speechEnabled && voice.speechCapability === 'ready' ? (
+                      <button
+                        className="atlas-ai-conversation-enable-speech"
+                        type="button"
+                        onClick={() => voice.setSpeechEnabled(true)}
+                      >
+                        Enable spoken translations
+                      </button>
+                    ) : null}
+
+                    <p className="atlas-ai-conversation-boundary">
+                      Speaker identity detection is not verified on this device. ATLAS assigns alternating Person A / Person B turns instead of guessing who is speaking.
+                    </p>
+                  </div>
+                ) : (
+                                  <div className="atlas-ai-translator-controls">
+                                    <label>
+                                      <span>From</span>
+                                      <select value={sourceLanguage} onChange={(event) => setSourceLanguage(event.target.value)}>
+                                        <option value="auto">Auto detect</option>
+                                        {TRANSLATOR_LANGUAGES.map((language) => (
+                                          <option key={language.code} value={language.code}>{language.label}</option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    <button
+                                      className="atlas-ai-translator-swap"
+                                      type="button"
+                                      onClick={swapTranslatorLanguages}
+                                      disabled={sourceLanguage === 'auto'}
+                                      aria-label="Swap translation languages"
+                                    >⇄</button>
+                                    <label>
+                                      <span>To</span>
+                                      <select value={targetLanguage} onChange={(event) => setTargetLanguage(event.target.value)}>
+                                        {TRANSLATOR_LANGUAGES.map((language) => (
+                                          <option key={language.code} value={language.code}>{language.label}</option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    <label className="atlas-ai-translator-speech">
+                                      <input
+                                        type="checkbox"
+                                        checked={voice.speechEnabled && voice.speechCapability === 'ready'}
+                                        disabled={voice.speechCapability !== 'ready'}
+                                        onChange={(event) => voice.setSpeechEnabled(event.target.checked)}
+                                      />
+                                      <span>Speak translation</span>
+                                    </label>
+                                  </div>
+                  
+                )}
               </section>
             ) : null}
 
@@ -673,11 +959,17 @@ export function UnifiedAIChatPage() {
                 }}
                 placeholder={status
                   ? routeReady
-                    ? translatorEnabled ? 'Speak or type to translate…' : 'Message ATLAS'
+                    ? conversationTranslatorEnabled
+                      ? conversationActive
+                        ? 'Live conversation is listening automatically…'
+                        : 'Start live conversation above'
+                      : translatorEnabled
+                        ? 'Speak or type to translate…'
+                        : 'Message ATLAS'
                     : 'Open AI controls to restore a verified provider'
                   : 'Checking ATLAS AI readiness…'}
                 aria-label="Message ATLAS Assistant"
-                disabled={busy}
+                disabled={busy || conversationActive}
                 rows={1}
               />
 
@@ -758,7 +1050,11 @@ export function UnifiedAIChatPage() {
                     <button
                       key={item.title}
                       type="button"
-                      onClick={() => item.title === 'Translate' ? activateTranslator() : usePrompt(item.text)}
+                      onClick={() => item.title === 'Translate'
+                        ? activateTranslator()
+                        : item.title === 'Conversation'
+                          ? activateConversationTranslator()
+                          : usePrompt(item.text)}
                     >
                       <strong>{item.title}</strong>
                     </button>
