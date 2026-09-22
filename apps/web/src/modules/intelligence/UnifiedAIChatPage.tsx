@@ -144,6 +144,7 @@ export function UnifiedAIChatPage() {
   const [participantALanguage, setParticipantALanguage] = useState('es-US');
   const [participantBLanguage, setParticipantBLanguage] = useState('en-US');
   const conversationSessionRef = useRef(0);
+  const conversationIdRef = useRef<string | null>(null);
   const messageEnd = useRef<HTMLDivElement | null>(null);
   const voice = useAssistantVoice();
 
@@ -194,6 +195,10 @@ export function UnifiedAIChatPage() {
     messageEnd.current?.scrollIntoView({ block: 'nearest' });
   }, [messages, busy]);
 
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
   useEffect(() => () => {
     conversationSessionRef.current += 1;
   }, []);
@@ -223,6 +228,7 @@ export function UnifiedAIChatPage() {
     try {
       const payload = await getAssistantConversation(id);
       setConversationId(payload.conversation.id);
+      conversationIdRef.current = payload.conversation.id;
       setMessages((payload.messages || []).map((message, index) => ({
         key: message.id || message.role + '-' + index,
         role: message.role === 'user' ? 'user' : 'assistant',
@@ -239,6 +245,7 @@ export function UnifiedAIChatPage() {
   function startNewConversation() {
     stopConversationSession();
     setConversationId(null);
+    conversationIdRef.current = null;
     setMessages([]);
     setPrompt('');
     setError('');
@@ -294,11 +301,14 @@ export function UnifiedAIChatPage() {
     try {
       const result = await sendAssistantWorkspaceMessage({
         message: translationRequest(value),
-        conversationId,
+        conversationId: conversationIdRef.current,
         mode,
         profile
       });
-      if (result.conversation_id) setConversationId(result.conversation_id);
+      if (result.conversation_id) {
+        setConversationId(result.conversation_id);
+        conversationIdRef.current = result.conversation_id;
+      }
       const providersUsed = Array.isArray(result.providers) && result.providers.length
         ? result.providers.join(' + ')
         : result.provider || 'ATLAS';
@@ -812,7 +822,15 @@ export function UnifiedAIChatPage() {
                 <div className="atlas-ai-translator-head">
                   <div>
                     <strong>Translator</strong>
-                    <span>{sourceLanguage === 'auto' ? 'Text auto-detect · voice uses device locale' : translatorLanguageLabel(sourceLanguage)} → {translatorLanguageLabel(targetLanguage)}</span>
+                    <span>
+                      {conversationTranslatorEnabled
+                        ? 'Person A ' + translatorLanguageLabel(participantALanguage)
+                          + ' ↔ Person B ' + translatorLanguageLabel(participantBLanguage)
+                        : (sourceLanguage === 'auto'
+                          ? 'Text auto-detect · voice uses device locale'
+                          : translatorLanguageLabel(sourceLanguage))
+                          + ' → ' + translatorLanguageLabel(targetLanguage)}
+                    </span>
                   </div>
                   <div className="atlas-ai-translator-head-actions">
                     <button
@@ -1009,7 +1027,7 @@ export function UnifiedAIChatPage() {
                   type="button"
                   aria-label={voice.microphoneActive ? 'Stop microphone' : 'Use microphone'}
                   aria-pressed={voice.microphoneActive}
-                  disabled={busy || voice.transcriptionCapability !== 'ready'}
+                  disabled={busy || conversationTranslatorEnabled || voice.transcriptionCapability !== 'ready'}
                   onClick={() => void toggleMicrophone()}
                 >
                   {voice.microphoneActive ? (
@@ -1031,7 +1049,7 @@ export function UnifiedAIChatPage() {
                 <button
                   className="atlas-ai-send"
                   type="submit"
-                  disabled={busy || !routeReady || !prompt.trim()}
+                  disabled={busy || conversationTranslatorEnabled || !routeReady || !prompt.trim()}
                   aria-label="Send message"
                 >
                   <span aria-hidden="true">↑</span>
