@@ -365,11 +365,14 @@ export function UnifiedAIChatPage() {
     try {
       const result = await sendAssistantWorkspaceMessage({
         message: conversationTranslationRequest(value, speaker),
-        conversationId,
+        conversationId: conversationIdRef.current,
         mode,
         profile
       });
-      if (result.conversation_id) setConversationId(result.conversation_id);
+      if (result.conversation_id) {
+        setConversationId(result.conversation_id);
+        conversationIdRef.current = result.conversation_id;
+      }
       const providersUsed = Array.isArray(result.providers) && result.providers.length
         ? result.providers.join(' + ')
         : result.provider || 'ATLAS';
