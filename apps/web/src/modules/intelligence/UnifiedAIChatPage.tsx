@@ -1,10 +1,12 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAssistantVoice } from '../../assistant/useAssistantVoice';
+import { detectAudioRecordingCapability, recordAssistantAudioChunk } from '../../assistant/voice';
 import {
   getAssistantConversation,
   getAssistantStatus,
   listAssistantConversations,
+  diarizeAssistantAudio,
   sendAssistantWorkspaceMessage,
   type AssistantConversation,
   type AssistantMode,
@@ -109,7 +111,13 @@ function humanizeError(value: string) {
     voice_transcription_unavailable: 'Voice transcription is unavailable in this browser. Text mode remains available.',
     voice_transcription_failed: 'ATLAS could not transcribe that voice turn. Try again or use text.',
     microphone_permission_denied: 'Microphone permission was denied. Text mode remains available.',
-    speech_unavailable: 'Speech output is unavailable. The translated text remains available.'
+    speech_unavailable: 'Speech output is unavailable. The translated text remains available.',
+    diarization_provider_unverified: 'Automatic speaker detection is unavailable until an authenticated diarization provider is verified.',
+    diarization_provider_unavailable: 'The verified diarization provider is temporarily unavailable.',
+    diarization_provider_failed: 'Speaker detection failed for that audio turn.',
+    diarization_speaker_limit_exceeded: 'More than two speakers were detected. Two-person translation stopped safely.',
+    audio_recording_unavailable: 'Raw audio recording is unavailable in this browser.',
+    audio_recording_failed: 'ATLAS could not capture the audio segment.'
   };
   return errors[value] || value.replaceAll('_', ' ');
 }
@@ -143,8 +151,10 @@ export function UnifiedAIChatPage() {
   const [conversationSpeaker, setConversationSpeaker] = useState<ConversationSpeaker>('A');
   const [participantALanguage, setParticipantALanguage] = useState('es-US');
   const [participantBLanguage, setParticipantBLanguage] = useState('en-US');
+  const [automaticSpeakerDetection, setAutomaticSpeakerDetection] = useState(false);
   const conversationSessionRef = useRef(0);
   const conversationIdRef = useRef<string | null>(null);
+  const diarizationSpeakerMapRef = useRef(new Map<string, ConversationSpeaker>());
   const messageEnd = useRef<HTMLDivElement | null>(null);
   const voice = useAssistantVoice();
 
@@ -174,6 +184,8 @@ export function UnifiedAIChatPage() {
 
   const selectedMode = MODES.find((item) => item.value === mode) || MODES[0];
   const selectedProfile = PROFILES.find((item) => item.value === profile) || PROFILES[1];
+  const diarizationVerified = status?.diarization?.verified === true && status?.diarization?.state === 'verified';
+  const audioRecordingReady = detectAudioRecordingCapability() === 'ready';
 
   useEffect(() => {
     let active = true;
@@ -407,6 +419,62 @@ export function UnifiedAIChatPage() {
     }
   }
 
+  function speakerForDiarizationId(id: string): ConversationSpeaker | null {
+    const existing = diarizationSpeakerMapRef.current.get(id);
+    if (existing) return existing;
+    const assigned = new Set(diarizationSpeakerMapRef.current.values());
+    const next: ConversationSpeaker | null = !assigned.has('A') ? 'A' : !assigned.has('B') ? 'B' : null;
+    if (next) diarizationSpeakerMapRef.current.set(id, next);
+    return next;
+  }
+
+  async function startDiarizedConversationSession(sessionId: number) {
+    if (conversationSessionRef.current !== sessionId) return;
+    try {
+      const audio = await recordAssistantAudioChunk(4200);
+      if (conversationSessionRef.current !== sessionId) return;
+      const result = await diarizeAssistantAudio({
+        audio,
+        languageHints: [participantALanguage, participantBLanguage]
+      });
+      if (conversationSessionRef.current !== sessionId) return;
+
+      for (const segment of result.segments || []) {
+        const speaker = speakerForDiarizationId(segment.speaker_id);
+        if (!speaker) {
+          setError('diarization_speaker_limit_exceeded');
+          stopConversationSession();
+          return;
+        }
+        setConversationSpeaker(speaker);
+        const translated = await executeConversationTurn(segment.text, speaker, sessionId);
+        if (!translated || conversationSessionRef.current !== sessionId) {
+          stopConversationSession();
+          return;
+        }
+      }
+
+      window.setTimeout(() => {
+        if (conversationSessionRef.current === sessionId) {
+          void startDiarizedConversationSession(sessionId);
+        }
+      }, 180);
+    } catch (cause) {
+      if (conversationSessionRef.current !== sessionId) return;
+      const code = cause instanceof Error ? cause.message : 'diarization_provider_failed';
+      if (code === 'voice_no_speech') {
+        window.setTimeout(() => {
+          if (conversationSessionRef.current === sessionId) {
+            void startDiarizedConversationSession(sessionId);
+          }
+        }, 180);
+        return;
+      }
+      setError(code);
+      stopConversationSession();
+    }
+  }
+
   async function startConversationTurn(speaker: ConversationSpeaker, sessionId: number) {
     if (conversationSessionRef.current !== sessionId) return;
 
@@ -446,6 +514,7 @@ export function UnifiedAIChatPage() {
 
   function stopConversationSession() {
     conversationSessionRef.current += 1;
+    diarizationSpeakerMapRef.current.clear();
     setConversationActive(false);
     voice.stopMicrophone();
     voice.stopSpeech();
@@ -456,7 +525,16 @@ export function UnifiedAIChatPage() {
       setError('provider_unavailable');
       return;
     }
-    if (voice.transcriptionCapability !== 'ready') {
+    if (automaticSpeakerDetection) {
+      if (!diarizationVerified) {
+        setError('diarization_provider_unverified');
+        return;
+      }
+      if (!audioRecordingReady) {
+        setError('audio_recording_unavailable');
+        return;
+      }
+    } else if (voice.transcriptionCapability !== 'ready') {
       setError('voice_transcription_unavailable');
       return;
     }
@@ -472,10 +550,12 @@ export function UnifiedAIChatPage() {
 
     const sessionId = conversationSessionRef.current + 1;
     conversationSessionRef.current = sessionId;
+    diarizationSpeakerMapRef.current.clear();
     setConversationActive(true);
     setConversationSpeaker('A');
     setError('');
-    void startConversationTurn('A', sessionId);
+    if (automaticSpeakerDetection) void startDiarizedConversationSession(sessionId);
+    else void startConversationTurn('A', sessionId);
   }
 
   async function submit(event: FormEvent) {
@@ -534,6 +614,7 @@ export function UnifiedAIChatPage() {
     stopConversationSession();
     setTranslatorEnabled(true);
     setConversationTranslatorEnabled(true);
+    setAutomaticSpeakerDetection(status?.diarization?.verified === true && status?.diarization?.state === 'verified');
     setPrompt('');
     setPromptLibraryOpen(false);
     setMobileActionsOpen(false);
@@ -558,9 +639,11 @@ export function UnifiedAIChatPage() {
   }
 
   const conversationVoiceReady = routeReady
-    && voice.transcriptionCapability === 'ready'
     && voice.speechCapability === 'ready'
-    && voice.speechEnabled;
+    && voice.speechEnabled
+    && (automaticSpeakerDetection
+      ? diarizationVerified && audioRecordingReady
+      : voice.transcriptionCapability === 'ready');
 
   const councilConfigured = status?.cost_policy?.allow_council === true;
   const localProvider = providers.find((provider) => provider.id === 'atlas-local') || null;
@@ -735,6 +818,8 @@ export function UnifiedAIChatPage() {
                 <strong>{localRuntimeVerified ? 'Verified' : 'Not verified'}</strong>
                 <span><i className={councilConfigured ? 'ok' : ''} />Council</span>
                 <strong>{councilConfigured ? 'Enabled' : 'Approval controlled'}</strong>
+                <span><i className={diarizationVerified ? 'ok' : ''} />Diarization</span>
+                <strong>{diarizationVerified ? 'Verified' : 'Not verified'}</strong>
               </div>
 
               {providers.length ? (
@@ -892,15 +977,42 @@ export function UnifiedAIChatPage() {
                       </label>
                     </div>
 
+                    <label className="atlas-ai-diarization-toggle">
+                      <input
+                        type="checkbox"
+                        checked={automaticSpeakerDetection}
+                        disabled={conversationActive || !diarizationVerified || !audioRecordingReady}
+                        onChange={(event) => setAutomaticSpeakerDetection(event.target.checked)}
+                      />
+                      <span>
+                        <strong>Automatic speaker detection</strong>
+                        <small>
+                          {diarizationVerified
+                            ? audioRecordingReady
+                              ? 'Verified provider · ATLAS maps authenticated speaker labels to Person A/B.'
+                              : 'Verified provider, but this browser cannot record raw audio.'
+                            : 'Blocked until a diarization provider passes authenticated readiness.'}
+                        </small>
+                      </span>
+                    </label>
+
                     <div className="atlas-ai-conversation-status">
                       <div>
-                        <strong>{conversationActive ? 'Listening to Person ' + conversationSpeaker : 'Ready for Person A'}</strong>
+                        <strong>{conversationActive
+                          ? automaticSpeakerDetection
+                            ? 'Detecting current speaker'
+                            : 'Listening to Person ' + conversationSpeaker
+                          : automaticSpeakerDetection
+                            ? 'Ready for automatic speaker detection'
+                            : 'Ready for Person A'}</strong>
                         <span>
                           {conversationActive
                             ? translatorLanguageLabel(conversationSpeaker === 'A' ? participantALanguage : participantBLanguage)
                               + ' → '
                               + translatorLanguageLabel(conversationSpeaker === 'A' ? participantBLanguage : participantALanguage)
-                            : 'ATLAS alternates A/B turns and speaks each translation automatically.'}
+                            : automaticSpeakerDetection
+                              ? 'ATLAS records short audio turns, uses the verified diarization provider, then speaks each translation.'
+                              : 'ATLAS alternates A/B turns and speaks each translation automatically.'}
                         </span>
                       </div>
                       <button
@@ -924,7 +1036,9 @@ export function UnifiedAIChatPage() {
                     ) : null}
 
                     <p className="atlas-ai-conversation-boundary">
-                      Speaker identity detection is not verified on this device. ATLAS assigns alternating Person A / Person B turns instead of guessing who is speaking.
+                      {automaticSpeakerDetection && diarizationVerified
+                        ? 'Speaker labels come from an authenticated, verified diarization provider. ATLAS maps labels to Person A/B for this session only and does not claim biometric identity.'
+                        : 'Speaker identity detection is not verified. ATLAS assigns alternating Person A / Person B turns instead of guessing who is speaking.'}
                     </p>
                   </div>
                 ) : (
