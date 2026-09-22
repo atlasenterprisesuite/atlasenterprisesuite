@@ -27,6 +27,7 @@ import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
+import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
 import {
   AnalyticsIntegrationHub,
@@ -81,6 +82,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/assistant') {
     return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/knowledge') {
+    return <RequireAtlasIdentity><KnowledgeAtlasPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/voice' || pathname.startsWith('/voice/')) {
