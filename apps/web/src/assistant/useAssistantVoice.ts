@@ -55,7 +55,8 @@ export function useAssistantVoice() {
 
   const startVoiceTurn = useCallback((
     onFinal: (transcript: string, confidence?: number) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
+    lang?: string
   ) => {
     if (transcriptionCapability !== 'ready') {
       return Promise.reject(new Error('voice_transcription_unavailable'));
@@ -68,6 +69,7 @@ export function useAssistantVoice() {
     return new Promise<void>((resolve, reject) => {
       let started = false;
       const recognition = createAssistantSpeechRecognition({
+        lang,
         onStart: () => {
           started = true;
           setMicrophoneActive(true);
@@ -118,10 +120,10 @@ export function useAssistantVoice() {
     stopAssistantSpeech();
   }, []);
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, lang?: string) => {
     if (!speechEnabled) return false;
     if (speechCapability !== 'ready') throw new Error('speech_unavailable');
-    await speakAssistantText(text);
+    await speakAssistantText(text, lang);
     return true;
   }, [speechCapability, speechEnabled]);
 
