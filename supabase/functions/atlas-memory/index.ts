@@ -155,6 +155,7 @@ async function listRecords(ctx: MemoryContext, url: URL) {
   const status = safeText(url.searchParams.get('status'), 40);
   if (kind && KINDS.has(kind)) query = query.eq('kind', kind);
   if (status && ['draft','approved','superseded'].includes(status)) query = query.eq('status', status);
+  if (!ADMIN_ROLES.has(ctx.role)) query = query.eq('sensitivity', 'organization');
 
   const { data, error } = await query;
   if (error) throw fail('memory_read_failed', 500);
@@ -166,7 +167,7 @@ async function listRecords(ctx: MemoryContext, url: URL) {
     const moduleMatches = !moduleId || (Array.isArray(row.module_ids) && row.module_ids.includes(moduleId));
     return qMatches && moduleMatches;
   });
-  return json({ ok: true, organization_id: ctx.orgId, role: ctx.role, records }, 200, url.origin === 'null' ? null : null);
+  return { organization_id: ctx.orgId, role: ctx.role, records };
 }
 
 async function getRecord(ctx: MemoryContext, url: URL) {
@@ -179,12 +180,15 @@ async function getRecord(ctx: MemoryContext, url: URL) {
     .eq('id', id)
     .maybeSingle();
   if (error) throw fail('memory_read_failed', 500);
-  if (!data) throw fail('memory_not_found', 404);
+  if (!data || (data.sensitivity === 'restricted' && !ADMIN_ROLES.has(ctx.role))) throw fail('memory_not_found', 404);
   return data;
 }
 
 async function saveDraft(ctx: MemoryContext, input: Record<string, any>) {
   const normalized = normalizeDraft(input);
+  if (normalized.sensitivity === 'restricted' && !ADMIN_ROLES.has(ctx.role)) {
+    throw fail('memory_restricted_role_required', 403);
+  }
   const now = new Date().toISOString();
   const { data, error } = await adminClient()
     .from('atlas_memory_records')
@@ -285,9 +289,7 @@ async function route(req: Request, origin: string | null) {
   const api = safeText(url.searchParams.get('api') || 'list', 40);
 
   if (api === 'list' && req.method === 'GET') {
-    const response = await listRecords(ctx, url);
-    const payload = await response.json();
-    return json(payload, response.status, origin);
+    return json({ ok: true, ...(await listRecords(ctx, url)) }, 200, origin);
   }
   if (api === 'record' && req.method === 'GET') return json({ ok: true, record: await getRecord(ctx, url) }, 200, origin);
   if (api === 'save' && req.method === 'POST') return json({ ok: true, record: await saveDraft(ctx, await body(req)) }, 201, origin);
