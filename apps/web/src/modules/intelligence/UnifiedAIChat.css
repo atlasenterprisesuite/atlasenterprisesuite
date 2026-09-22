@@ -1724,3 +1724,46 @@
     width:100%;
   }
 }
+
+
+.atlas-ai-diarization-toggle{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:flex-start;
+  gap:9px;
+  padding:9px 10px;
+  border:1px solid rgba(125,211,252,.12);
+  border-radius:11px;
+  background:rgba(18,27,31,.5);
+}
+
+.atlas-ai-diarization-toggle input{
+  margin:3px 0 0;
+}
+
+.atlas-ai-diarization-toggle>span{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.atlas-ai-diarization-toggle strong{
+  color:#dce7eb;
+  font-size:.69rem;
+  font-weight:620;
+}
+
+.atlas-ai-diarization-toggle small{
+  color:#7f929a;
+  font-size:.6rem;
+  line-height:1.4;
+}
+
+.atlas-ai-diarization-toggle:has(input:checked){
+  border-color:rgba(125,211,252,.28);
+  background:rgba(125,211,252,.07);
+}
+
+.atlas-ai-diarization-toggle:has(input:disabled){
+  opacity:.66;
+}

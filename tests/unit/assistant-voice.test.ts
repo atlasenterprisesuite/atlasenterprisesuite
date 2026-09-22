@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createAssistantSpeechRecognition,
+  detectAudioRecordingCapability,
   detectMicrophoneCapability,
   detectSpeechOutputCapability,
   detectSpeechRecognitionCapability,
@@ -49,6 +50,11 @@ describe('ATLAS Assistant browser voice primitives', () => {
   it('does not claim speech output when browser speech synthesis is absent', () => {
     vi.stubGlobal('SpeechSynthesisUtterance', undefined);
     expect(detectSpeechOutputCapability()).toBe('unavailable');
+  });
+
+  it('fails closed when raw audio recording is unavailable', () => {
+    vi.stubGlobal('MediaRecorder', undefined);
+    expect(detectAudioRecordingCapability()).toBe('unavailable');
   });
 
   it('reports browser speech recognition only when a constructor exists', () => {

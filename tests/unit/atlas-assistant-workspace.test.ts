@@ -76,9 +76,14 @@ describe('ATLAS Assistant workspace', () => {
     expect(page).toContain('Text auto-detect · voice uses device locale');
     expect(page).toContain('Speak translation');
     expect(page).toContain('Start live conversation');
+    expect(page).toContain('Automatic speaker detection');
+    expect(page).toContain('diarizationVerified');
+    expect(page).toContain('startDiarizedConversationSession');
+    expect(page).toContain('diarizeAssistantAudio');
+    expect(page).toContain('recordAssistantAudioChunk');
     expect(page).toContain('Person A');
     expect(page).toContain('Person B');
-    expect(page).toContain('Speaker identity detection is not verified on this device');
+    expect(page).toContain('Speaker identity detection is not verified.');
     expect(page).toContain('conversationSessionRef');
     expect(page).toContain('conversationIdRef');
     expect(page).toContain('startConversationTurn');
@@ -102,6 +107,27 @@ describe('ATLAS Assistant workspace', () => {
     expect(css).toContain('.atlas-ai-translator-controls');
     expect(css).toContain('.atlas-ai-conversation-translator');
     expect(css).toContain('.atlas-ai-conversation-status');
+    expect(css).toContain('.atlas-ai-diarization-toggle');
+  });
+
+  it('keeps diarization authenticated, provider-gated and fail-closed', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    const client = source('apps/web/src/assistant/client.ts');
+    const voice = source('apps/web/src/assistant/voice.ts');
+    const backend = source('supabase/functions/atlas-copilot/index.ts');
+
+    expect(client).toContain('/functions/v1/atlas-copilot?api=diarize');
+    expect(client).toContain('organization_id: organization.id');
+    expect(voice).toContain('recordAssistantAudioChunk');
+    expect(voice).toContain('MediaRecorder');
+    expect(backend).toContain("ATLAS_DIARIZATION_URL");
+    expect(backend).toContain("ATLAS_DIARIZATION_TOKEN");
+    expect(backend).toContain("api==='diarize'");
+    expect(backend).toContain("diarization_provider_unverified");
+    expect(backend).toContain("max_speakers:2");
+    expect(backend).toContain("diarization_speaker_limit_exceeded");
+    expect(page).toContain("status?.diarization?.verified === true");
+    expect(page).toContain("Speaker labels come from an authenticated, verified diarization provider");
   });
 
 });

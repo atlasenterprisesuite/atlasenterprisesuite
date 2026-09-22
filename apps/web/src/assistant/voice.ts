@@ -64,6 +64,62 @@ export function detectSpeechRecognitionCapability(): AtlasCapabilityState {
   return recognitionConstructor() ? 'ready' : 'unavailable';
 }
 
+export function detectAudioRecordingCapability(): AtlasCapabilityState {
+  if (typeof window === 'undefined') return 'unavailable';
+  return typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia) ? 'ready' : 'unavailable';
+}
+
+export async function recordAssistantAudioChunk(durationMs = 4200): Promise<Blob> {
+  if (detectAudioRecordingCapability() !== 'ready') throw new Error('audio_recording_unavailable');
+  const stream = await requestMicrophoneCapture();
+  return new Promise((resolve, reject) => {
+    const chunks: BlobPart[] = [];
+    let recorder: MediaRecorder;
+    let settled = false;
+    let timer = 0;
+
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      if (timer) window.clearTimeout(timer);
+      stopMicrophoneCapture(stream);
+      if (error) {
+        reject(error);
+        return;
+      }
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+      if (!blob.size) {
+        reject(new Error('voice_no_speech'));
+        return;
+      }
+      resolve(blob);
+    };
+
+    try {
+      recorder = new MediaRecorder(stream);
+    } catch {
+      stopMicrophoneCapture(stream);
+      reject(new Error('audio_recording_unavailable'));
+      return;
+    }
+
+    recorder.ondataavailable = (event) => {
+      if (event.data?.size) chunks.push(event.data);
+    };
+    recorder.onerror = () => finish(new Error('audio_recording_failed'));
+    recorder.onstop = () => finish();
+
+    try {
+      recorder.start();
+      timer = window.setTimeout(() => {
+        if (recorder.state !== 'inactive') recorder.stop();
+      }, Math.max(1000, Math.min(10000, durationMs)));
+    } catch {
+      finish(new Error('audio_recording_failed'));
+    }
+  });
+}
+
 export function detectSpeechOutputCapability(): AtlasCapabilityState {
   if (typeof window === 'undefined') return 'unavailable';
   return 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined' ? 'ready' : 'unavailable';
