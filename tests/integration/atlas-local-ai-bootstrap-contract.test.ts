@@ -46,6 +46,12 @@ describe('ATLAS Local AI live bootstrap contract', () => {
     expect(installer).not.toContain('--host 0.0.0.0');
   });
 
+  it('keeps the self-hosted bootstrap operator-controlled instead of auto-queuing on main', () => {
+    expect(workflow).toContain('workflow_dispatch:');
+    expect(workflow).not.toContain('  push:');
+    expect(workflow).toContain('runs-on: self-hosted');
+  });
+
   it('never treats installation alone as production verification', () => {
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('runs-on: self-hosted');
