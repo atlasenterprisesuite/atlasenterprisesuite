@@ -66,7 +66,21 @@ export function NeuralGraphPanel({ nodes, edges, evidence }: NeuralGraphPanelPro
         </div>
       </div>
       <aside className="inspector" aria-live="polite">
-        {selectedNode && (
+        {selectedEdge ? (
+          <>
+            <p className="eyebrow">Selected edge</p>
+            <h3>{selectedEdge.relationType.replaceAll('_', ' ')}</h3>
+            <p>{nodeLabel(selectedEdge.sourceNodeId)} → {nodeLabel(selectedEdge.targetNodeId)}</p>
+            <dl>
+              <div><dt>Status</dt><dd>{selectedEdge.status}</dd></div>
+              <div><dt>Confidence</dt><dd>{Math.round(selectedEdge.confidence * 100)}%</dd></div>
+            </dl>
+            <strong>Supporting evidence</strong>
+            {supportingEvidence.length ? <ul>{supportingEvidence.map((record) => <li key={record.id}>{record.title}</li>)}</ul> : <p>No supporting evidence record is available in this view.</p>}
+            <strong>Falsification notes</strong>
+            {selectedEdge.falsificationNotes.length ? <ul>{selectedEdge.falsificationNotes.map((note) => <li key={note}>{note}</li>)}</ul> : <p>No falsification notes registered.</p>}
+          </>
+        ) : selectedNode && (
           <>
             <p className="eyebrow">Selected node</p>
             <h3>{selectedNode.label}</h3>
