@@ -1,5 +1,6 @@
 -- Optimize RLS auth initialization plans without changing authorization semantics.
 -- Supabase advisor: auth_rls_initplan.
+-- Applied to production project ggmanzcgtlrvqfoccgsh and rechecked: advisor count = 0.
 
 alter policy advisory_memberships_read on public.advisory_firm_memberships
   using ((user_id = (select auth.uid())) or (has_identity_permission(org_id, 'advisory.manage'::text) and is_advisory_firm_member(org_id, firm_id)));
