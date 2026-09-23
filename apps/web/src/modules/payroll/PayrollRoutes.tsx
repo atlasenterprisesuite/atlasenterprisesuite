@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { loadPayrollWorkspace, payrollMutations, type PayrollWorkspace } from './payrollApi';
@@ -12,11 +12,11 @@ function usePayroll(){
   const reload=useCallback(()=>{setState({status:'loading'});void loadPayrollWorkspace().then(data=>setState({status:'ready',data})).catch(e=>setState({status:'error',message:e instanceof Error?e.message:'payroll_unavailable'}));},[]);
   useEffect(reload,[reload]); return {state,reload};
 }
-function Frame({children}:{children:React.ReactNode}){
+function Frame({children}:{children:ReactNode}){
  return <section className="payroll-page page-stack"><header className="payroll-section-header"><p className="payroll-kicker">ATLAS PAYROLL</p><h1>Payroll</h1><p>Governed payroll preparation and approval. Tax filing, remittance and direct deposit remain external-gated.</p>
  <nav className="module-experience-actions"><Link to="/payroll">Overview</Link><Link to="/payroll/people">People</Link><Link to="/payroll/time-earnings">Time & Earnings</Link><Link to="/payroll/pay-runs">Pay Runs</Link></nav></header>{children}</section>;
 }
-function View({state,children}:{state:State;children:(d:PayrollWorkspace)=>React.ReactNode}){
+function View({state,children}:{state:State;children:(d:PayrollWorkspace)=>ReactNode}){
  if(state.status==='loading')return <div className="payroll-section-empty" role="status">Loading authorized payroll records…</div>;
  if(state.status==='error')return <div className="payroll-section-empty" role="alert"><strong>Payroll unavailable</strong><p>{state.message}</p><small>No simulated payroll data is substituted.</small></div>;
  return <>{children(state.data)}</>;
