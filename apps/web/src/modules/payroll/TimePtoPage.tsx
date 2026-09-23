@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { listPayrollTimeEntries, listPayrollWorkers, savePayrollTimeEntry, type PayrollTimeEntry, type PayrollWorker } from '../../lib/payrollApi';
 
-export function TimePtoPage() {
+export function TimePtoPage({ title = 'Time & PTO' }:{ title?: string } = {}) {
   const [entries,setEntries]=useState<PayrollTimeEntry[]>([]);
   const [workers,setWorkers]=useState<PayrollWorker[]>([]);
   const [error,setError]=useState<string|null>(null);
@@ -37,8 +38,9 @@ export function TimePtoPage() {
   return <section className="payroll-page payroll-operational-page">
     <header className="payroll-section-header">
       <p className="payroll-kicker">PAYROLL INPUTS</p>
-      <h1>Time & PTO</h1>
+      <h1>{title}</h1>
       <p>Time must be approved before a payroll run can be processed.</p>
+      <Link className="payroll-secondary-button" to="/payroll">Back to Payroll</Link>
     </header>
 
     {error?<div className="payroll-notice payroll-error" role="alert">{error}</div>:null}
