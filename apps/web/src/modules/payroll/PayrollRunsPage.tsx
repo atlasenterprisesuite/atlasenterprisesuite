@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { createPayrollRun, listPayrollRuns, transitionPayrollRun, type PayrollRun } from '../../lib/payrollApi';
 
-export function PayrollRunsPage() {
+export function PayrollRunsPage({ title = 'Payroll runs' }:{ title?: string } = {}) {
   const [runs,setRuns]=useState<PayrollRun[]>([]);
   const [error,setError]=useState<string|null>(null);
   const [periodStart,setPeriodStart]=useState('');
@@ -31,8 +32,9 @@ export function PayrollRunsPage() {
   return <section className="payroll-page payroll-operational-page">
     <header className="payroll-section-header">
       <p className="payroll-kicker">EXECUTION</p>
-      <h1>Payroll runs</h1>
+      <h1>{title}</h1>
       <p>Draft → review → approval → governed processing. Tax filing and money movement remain separate external gates.</p>
+      <Link className="payroll-secondary-button" to="/payroll">Back to Payroll</Link>
     </header>
 
     {error?<div className="payroll-notice payroll-error" role="alert">{error}</div>:null}
