@@ -86,6 +86,10 @@ function LabLayout() {
     <div className="lab-shell">
       <aside className="lab-sidebar">
         <div><p className="eyebrow">Health Frontiers</p><strong>Disease Reconstruction Lab</strong></div>
+        <nav aria-label="Lab breadcrumbs">
+          <Link to="/health/research" aria-label="Breadcrumb Research & Innovation">Research & Innovation</Link>
+          <Link to="/health/research/frontiers" aria-label="Breadcrumb Health Frontiers">Health Frontiers</Link>
+        </nav>
         <LabNav />
       </aside>
       <section className="lab-content"><Outlet /></section>
@@ -147,19 +151,37 @@ function DiseaseDetailPage() {
         <article className="feature-card"><p className="eyebrow">Evidence</p><strong>{diseaseEvidence.length}</strong><p>registered demo evidence records</p></article>
         <article className="feature-card"><p className="eyebrow">Curability display</p><strong>{disease.curabilityLevel}</strong><p>Demo classification only; not a clinical determination.</p></article>
       </div>
-      <NeuralGraphPanel nodes={graph.nodes} edges={graph.edges} />
+      <NeuralGraphPanel nodes={graph.nodes} edges={graph.edges} evidence={evidenceRecords} />
     </div>
   );
 }
 
 function NeuralGraphPage() {
   const [diseaseId, setDiseaseId] = useState('all');
-  const graph = useMemo(() => diseaseId === 'all' ? { nodes: graphNodes, edges: graphEdges } : graphForDisease(diseaseId, graphNodes, graphEdges), [diseaseId]);
+  const [level, setLevel] = useState<'all' | EvidenceLevel>('all');
+  const [status, setStatus] = useState<'all' | EvidenceStatus>('all');
+  const graph = useMemo(() => {
+    const diseaseGraph = diseaseId === 'all' ? { nodes: graphNodes, edges: graphEdges } : graphForDisease(diseaseId, graphNodes, graphEdges);
+    const allowedEvidence = new Set(
+      evidenceRecords
+        .filter((record) => (level === 'all' || record.evidenceLevel === level) && (status === 'all' || record.status === status))
+        .map((record) => record.id)
+    );
+    if (level === 'all' && status === 'all') return diseaseGraph;
+    const nodes = diseaseGraph.nodes.filter((node) => node.evidenceRecordIds.some((id) => allowedEvidence.has(id)));
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    const edges = diseaseGraph.edges.filter((edge) => nodeIds.has(edge.sourceNodeId) && nodeIds.has(edge.targetNodeId) && edge.evidenceRecordIds.some((id) => allowedEvidence.has(id)));
+    return { nodes, edges };
+  }, [diseaseId, level, status]);
   return (
     <div className="page-stack">
       <PageHeader eyebrow="Disease Reconstruction Lab" title="Neural Graph" description="Interactive mechanism graph. Confidence is visible; synthetic demo nodes are never promoted into scientific evidence." />
-      <label className="field">Disease filter<select value={diseaseId} onChange={(event) => setDiseaseId(event.target.value)}><option value="all">All diseases</option>{diseases.map((disease) => <option key={disease.id} value={disease.id}>{disease.name}</option>)}</select></label>
-      <NeuralGraphPanel nodes={graph.nodes} edges={graph.edges} />
+      <div className="filter-row">
+        <label className="field">Disease filter<select value={diseaseId} onChange={(event) => setDiseaseId(event.target.value)}><option value="all">All diseases</option>{diseases.map((disease) => <option key={disease.id} value={disease.id}>{disease.name}</option>)}</select></label>
+        <label className="field">Evidence level filter<select value={level} onChange={(event) => setLevel(event.target.value as 'all' | EvidenceLevel)}><option value="all">All levels</option><option value="human_randomized">Human randomized</option><option value="human_interventional">Human interventional</option><option value="human_observational">Human observational</option><option value="human_case_report">Human case report</option><option value="preclinical_animal">Preclinical animal</option><option value="preclinical_organoid">Preclinical organoid</option><option value="in_vitro">In vitro</option><option value="mechanistic">Mechanistic</option><option value="hypothesis">Hypothesis</option></select></label>
+        <label className="field">Status filter<select value={status} onChange={(event) => setStatus(event.target.value as 'all' | EvidenceStatus)}><option value="all">All statuses</option><option value="active">Active</option><option value="supported">Supported</option><option value="mixed">Mixed</option><option value="contradicted">Contradicted</option><option value="falsified">Falsified</option><option value="retracted">Retracted</option><option value="superseded">Superseded</option></select></label>
+      </div>
+      <NeuralGraphPanel nodes={graph.nodes} edges={graph.edges} evidence={evidenceRecords} />
     </div>
   );
 }
