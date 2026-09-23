@@ -34,6 +34,8 @@ describe('ATLAS platform stability contract', () => {
     expect(reconcile).toContain('/builds/workers/$LEGACY_TAG/triggers');
     expect(reconcile).toContain('/builds/triggers/$TRIGGER_ID');
     expect(reconcile).toContain('GITHUB_REPOSITORY_OWNER');
+    expect(reconcile).toContain('Reconciliation state: permission_blocked');
+    expect(reconcile).toContain('::warning::Unable to read legacy Workers Builds triggers');
     expect(reconcile).not.toContain('/workers/scripts/$LEGACY_WORKER');
   });
 });
