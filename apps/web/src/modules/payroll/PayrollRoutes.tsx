@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { HelpDrawer } from './HelpDrawer';
@@ -20,7 +21,7 @@ const nav=[
   ['/payroll/help','Help']
 ] as const;
 
-function PayrollLayout({children}:{children:React.ReactNode}) {
+function PayrollLayout({children}:{children:ReactNode}) {
   const location=useLocation();
   return <div className="payroll-layout">
     <nav className="payroll-nav" aria-label="Payroll">
@@ -42,7 +43,7 @@ function PayrollBoundaryPage({title,description}:{title:string;description:strin
   </section>;
 }
 
-function Routed({children}:{children:React.ReactNode}) {
+function Routed({children}:{children:ReactNode}) {
   return <PayrollLayout>{children}</PayrollLayout>;
 }
 
