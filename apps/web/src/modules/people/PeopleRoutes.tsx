@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { getCachedAtlasShellOrganization } from '../../lib/atlasSession';
 import {
@@ -24,7 +24,7 @@ function usePeopleWorkspace() {
   return { state, reload };
 }
 
-function Layout({ children }: { children: React.ReactNode }) {
+function Layout({ children }: { children: ReactNode }) {
   return <section className="page-stack">
     <header className="page-header">
       <p className="eyebrow">ATLAS People</p>
@@ -40,7 +40,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   </section>;
 }
 
-function State({ state, children }: { state: WorkspaceState; children: (data: PeopleWorkspace) => React.ReactNode }) {
+function State({ state, children }: { state: WorkspaceState; children: (data: PeopleWorkspace) => ReactNode }) {
   if (state.status === 'loading') return <div className="status-card" role="status">Loading authorized People records…</div>;
   if (state.status === 'error') return <div className="status-card" role="alert"><strong>People data unavailable</strong><p>{state.message}</p><small>No local or simulated records are substituted.</small></div>;
   return <>{children(state.data)}</>;
