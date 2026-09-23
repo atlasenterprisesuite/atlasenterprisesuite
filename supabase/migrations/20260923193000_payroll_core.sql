@@ -552,6 +552,47 @@ with check (
   and status='draft'
 );
 
+create or replace function public.payroll_audit_sensitive_mutation()
+returns trigger
+language plpgsql security definer set search_path=public as $
+declare
+  v_org uuid;
+  v_tenant uuid;
+  v_entity_id text;
+begin
+  v_org := coalesce(new.organization_id,old.organization_id);
+  v_tenant := coalesce(new.tenant_id,old.tenant_id);
+  v_entity_id := coalesce(new.id,old.id)::text;
+
+  insert into public.payroll_audit_events(
+    tenant_id,organization_id,actor_user_id,entity_type,entity_id,action,before_json,after_json
+  ) values (
+    v_tenant,v_org,auth.uid(),tg_table_name,v_entity_id,lower(tg_op),
+    case when tg_op in ('UPDATE','DELETE') then to_jsonb(old) else null end,
+    case when tg_op in ('INSERT','UPDATE') then to_jsonb(new) else null end
+  );
+  return coalesce(new,old);
+end $;
+
+do $
+declare t text;
+declare trigger_name text;
+begin
+  foreach t in array array[
+    'payroll_legal_entities','payroll_addresses','payroll_tax_profiles','payroll_admin_bindings',
+    'payroll_workers','payroll_compensation','payroll_contractors','payroll_pay_schedules',
+    'payroll_time_entries','payroll_pto_policies','payroll_deductions','payroll_tax_elections',
+    'payroll_disbursement_accounts','payroll_setup_progress'
+  ] loop
+    trigger_name := 'audit_'||t||'_mutation';
+    execute format('drop trigger if exists %I on public.%I',trigger_name,t);
+    execute format(
+      'create trigger %I after insert or update or delete on public.%I for each row execute function public.payroll_audit_sensitive_mutation()',
+      trigger_name,t
+    );
+  end loop;
+end $;
+
 alter table public.payroll_help_content enable row level security;
 drop policy if exists payroll_help_read on public.payroll_help_content;
 create policy payroll_help_read on public.payroll_help_content for select to authenticated using (active=true);
