@@ -30,7 +30,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Automations',
     area: 'Platform',
     route: '/automations',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed automation orchestration over ATLAS Work, execution readiness and assistant intelligence.',
     showInNavigation: false
@@ -74,7 +74,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Revenue',
     area: 'Business',
     route: '/revenue',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Canonical revenue operations across CRM, commerce, business growth and financial reconciliation.',
     showInNavigation: false
@@ -162,7 +162,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Analytics',
     area: 'Business',
     route: '/analytics',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Canonical source-backed analytics hub with cross-module aggregation kept fail-closed until metric contracts and lineage are verified.',
     showInNavigation: true
@@ -261,7 +261,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Site Review',
     area: 'Creative',
     route: '/site-review',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed review entry point for web launch, content intelligence and execution evidence.',
     showInNavigation: false
