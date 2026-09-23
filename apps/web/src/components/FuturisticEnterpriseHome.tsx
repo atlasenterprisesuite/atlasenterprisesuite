@@ -38,8 +38,8 @@ export function FuturisticEnterpriseHome() {
       <section className="atlas-hero-command">
         <div className="atlas-hero-copy">
           <div className="atlas-core-orb" aria-hidden="true"><span>ATLAS</span></div>
-          <p className="atlas-command-eyebrow">ORLANDO · ENTERPRISE OS</p>
-          <h1 id="atlas-command-title">Bienvenido a <span>ATLAS</span></h1>
+          <p className="atlas-command-eyebrow">ATLAS Enterprise Suite</p>
+          <h1 id="atlas-command-title" aria-label="One governed enterprise ecosystem">Bienvenido a <span>ATLAS</span></h1>
           <p className="atlas-command-lede">
             Un sistema operativo empresarial conectado. Navega por módulos, datos y flujos desde un espacio
             multidireccional diseñado para desktop, tablet y móvil.
@@ -50,7 +50,8 @@ export function FuturisticEnterpriseHome() {
             </Link>
             <Link className="atlas-secondary-action" to="/suite">Explorar todos los módulos</Link>
           </div>
-          <p className="atlas-system-note">Personas · Procesos · Datos · Resultados</p>
+          <p className="atlas-contract-narrative">One operating system for governed enterprise work.</p>
+          <p className="atlas-system-note">Orlando · Personas · Procesos · Datos · Resultados</p>
         </div>
 
         <div className="atlas-globe-stage" aria-label="ATLAS global enterprise network">
