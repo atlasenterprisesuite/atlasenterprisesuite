@@ -25,6 +25,40 @@ describe('ATLAS A-Z readiness closure', () => {
     expect(hubs).toContain(`export function ${component}`);
   });
 
+  it.each([
+    'knowledge',
+    'advisory',
+    'accounting',
+    'learning',
+    'health',
+    'frontier',
+    'aviation',
+    'release-control'
+  ])('%s is release-complete for its current governed scope', (id) => {
+    expect(moduleBlock(id)).toContain("readiness: 'implemented'");
+  });
+
+  it.each([
+    'crm',
+    'commerce',
+    'connect',
+    'telecom',
+    'insurance',
+    'studio',
+    'voice',
+    'hospitality',
+    'device-os'
+  ])('%s remains truthfully external-gated', (id) => {
+    expect(moduleBlock(id)).toContain("readiness: 'external-gated'");
+  });
+
+  it.each(['tax', 'people', 'payroll', 'events'])(
+    '%s remains partial until internal implementation is complete',
+    (id) => {
+      expect(moduleBlock(id)).toContain("readiness: 'partial'");
+    }
+  );
+
   it('preserves fail-closed provider and aggregation boundaries', () => {
     expect(hubs).toContain('External triggers stay fail-closed');
     expect(hubs).toContain('Cross-module KPI layer');
