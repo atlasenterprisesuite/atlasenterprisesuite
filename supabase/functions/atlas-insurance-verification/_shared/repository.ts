@@ -166,6 +166,34 @@ export async function restoreChallengeRotation(admin: SupabaseClient, before: Ch
   if (error) throw insuranceError('persistence_failed', 500);
 }
 
+export async function createInsuranceMfaGrant(admin: SupabaseClient, input: {
+  orgId: string;
+  userId: string;
+  scope: ChallengeRecord['scope'];
+  resourceId: string | null;
+}) {
+  const verifiedAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + VERIFICATION_GRANT_TTL_SECONDS * 1000).toISOString();
+  const { data, error } = await admin.rpc('create_insurance_mfa_grant', {
+    p_org_id: input.orgId,
+    p_user_id: input.userId,
+    p_scope: input.scope,
+    p_resource_id: input.resourceId,
+    p_verified_at: verifiedAt,
+    p_expires_at: expiresAt
+  });
+  if (error) throw insuranceError('persistence_failed', 500);
+  const grant = Array.isArray(data) ? data[0] : data;
+  if (!grant) throw insuranceError('persistence_failed', 500);
+  return grant as {
+    scope: ChallengeRecord['scope'];
+    resource_id: string | null;
+    verified_at: string;
+    expires_at: string;
+    verification_method: 'totp';
+  };
+}
+
 export async function consumeChallengeAndCreateGrant(admin: SupabaseClient, challenge: ChallengeRecord) {
   const verifiedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + VERIFICATION_GRANT_TTL_SECONDS * 1000).toISOString();

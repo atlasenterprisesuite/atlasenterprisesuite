@@ -12,6 +12,7 @@ import { errorResponse, insuranceError, normalizeInsuranceError, json, optionsRe
 import {
   consumeChallengeAndCreateGrant,
   createChallenge,
+  createInsuranceMfaGrant,
   deleteChallenge,
   hashInsuranceVerificationCode,
   loadChallenge,
@@ -24,6 +25,45 @@ import {
 
 function clean(value: unknown, max = 256) {
   return String(value ?? '').trim().slice(0, max);
+}
+
+const MFA_RECENCY_SECONDS = 15 * 60;
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const parts = token.split('.');
+  if (parts.length !== 3 || !parts[1]) throw insuranceError('mfa_required', 403);
+  try {
+    const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const jsonText = new TextDecoder().decode(
+      Uint8Array.from(atob(padded), (character) => character.charCodeAt(0))
+    );
+    const payload = JSON.parse(jsonText);
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('invalid_payload');
+    return payload as Record<string, unknown>;
+  } catch {
+    throw insuranceError('mfa_required', 403);
+  }
+}
+
+function requireRecentTotp(ctx: InsuranceRequestContext) {
+  const payload = decodeJwtPayload(ctx.accessToken);
+  if (String(payload.sub || '') !== ctx.userId || payload.aal !== 'aal2') {
+    throw insuranceError('mfa_required', 403);
+  }
+
+  const amr = Array.isArray(payload.amr) ? payload.amr : [];
+  const totp = amr.find((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+    const method = String((entry as Record<string, unknown>).method || '');
+    return method === 'totp';
+  }) as Record<string, unknown> | undefined;
+
+  const verifiedAt = Number(totp?.timestamp);
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(verifiedAt) || verifiedAt > now + 60 || now - verifiedAt > MFA_RECENCY_SECONDS) {
+    throw insuranceError('mfa_required', 403);
+  }
 }
 
 async function parseBody(req: Request) {
@@ -105,6 +145,18 @@ async function auditDeliveryFailure(ctx: InsuranceRequestContext, challenge: Cha
   } catch {
     // Preserve the original delivery error; failed audit is not a reason to expose OTP material.
   }
+}
+
+async function grantMfa(ctx: InsuranceRequestContext, body: Record<string, unknown>) {
+  const { scope, resourceId } = parseScope(body);
+  requireRecentTotp(ctx);
+  const grant = await createInsuranceMfaGrant(ctx.admin, {
+    orgId: ctx.orgId,
+    userId: ctx.userId,
+    scope,
+    resourceId
+  });
+  return { ok: true as const, grant };
 }
 
 async function issue(ctx: InsuranceRequestContext, body: Record<string, unknown>) {
@@ -237,7 +289,8 @@ Deno.serve(async (req) => {
     const ctx = await resolveInsuranceContext(req);
 
     let response: unknown;
-    if (operation === 'issue') response = await issue(ctx, body);
+    if (operation === 'grant_mfa') response = await grantMfa(ctx, body);
+    else if (operation === 'issue') response = await issue(ctx, body);
     else if (operation === 'verify') response = await verify(ctx, body);
     else if (operation === 'resend') response = await resend(ctx, body);
     else throw insuranceError('invalid_request', 400);
