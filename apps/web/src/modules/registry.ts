@@ -52,7 +52,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Knowledge',
     area: 'Intelligence',
     route: '/knowledge',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed organizational memory for approved decisions, requirements, workflows, configuration and evidence.',
     showInNavigation: true
@@ -85,7 +85,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Advisory',
     area: 'Business',
     route: '/advisory',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Firm, client, engagement and Business Launch 360 operations with governed external boundaries.',
     showInNavigation: true
@@ -107,7 +107,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Accounting',
     area: 'Finance',
     route: '/finance/accounting',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: false,
     description: 'Canonical accounting entry point across payable, receivable, inventory, reporting and governed finance workflows.',
     showInNavigation: false
@@ -140,7 +140,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Commerce',
     area: 'Business',
     route: '/commerce',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Governed catalog, checkout and order operations with fail-closed providers.',
     showInNavigation: true
@@ -217,7 +217,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Learning',
     area: 'People',
     route: '/learning',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: false,
     description: 'Structured learning, practice and measurable progress.',
     showInNavigation: true
@@ -228,7 +228,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Health',
     area: 'Health',
     route: '/health',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: false,
     description: 'Research and wellbeing tooling with explicit evidence boundaries.',
     showInNavigation: true
@@ -239,7 +239,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Insurance',
     area: 'Protection',
     route: '/insurance',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Secure insurance access, member and policy verification, and governed coverage workflows.',
     showInNavigation: false
@@ -272,7 +272,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Voice',
     area: 'Creative',
     route: '/voice',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Universal governed voice control, conversational intelligence and agent workspace across ATLAS.',
     showInNavigation: true
@@ -294,7 +294,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Frontier',
     area: 'Entertainment',
     route: '/frontier',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed sandbox vertical slice with server-authoritative progression, organization scope and append-only gameplay audit.',
     showInNavigation: true
@@ -305,7 +305,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Hospitality',
     area: 'Hospitality',
     route: '/hospitality',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Hospitality operations with truthful provider access boundaries.',
     showInNavigation: true
@@ -327,7 +327,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Aviation',
     area: 'Mobility',
     route: '/mobility/aviation',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Evidence-aware aircraft, certification and advanced-air-mobility intelligence.',
     showInNavigation: true
@@ -349,7 +349,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Device OS',
     area: 'Platform',
     route: '/device-os',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Governed software control plane for ATLAS phones, desktops, wearables, smart spaces and mobility hardware.',
     showInNavigation: true
@@ -360,7 +360,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Release',
     area: 'Platform',
     route: '/release',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Internal release and production-readiness entry point for governed deployment evidence.',
     showInNavigation: false
