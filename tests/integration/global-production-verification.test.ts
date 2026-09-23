@@ -124,6 +124,9 @@ describe('ATLAS global production verification', () => {
     expect(workflow).toContain('--expected-sha "$GITHUB_SHA"');
     expect(workflow).toContain('audience=atlas-production-http-verifier');
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
+    expect(workflow).toContain('for ATTEMPT in 1 2 3 4 5; do');
+    expect(workflow).toContain('408|429|500|502|503|504');
+    expect(workflow).toContain('sleep "$((ATTEMPT * 2))"');
     expect(workflow).toContain('fail-closed');
 
     const cloudflareWorkflow = read('.github/workflows/cloudflare-deploy.yml');
