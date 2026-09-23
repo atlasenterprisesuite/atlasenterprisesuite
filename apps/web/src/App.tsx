@@ -81,6 +81,7 @@ function FinanceHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Finance" title="Finance" description="Governed finance operations with Accounting as the first enterprise domain." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Advisory · Client planning</span><strong>Financial Guidance</strong><p>Explainable 30-day liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting</span><strong>Accounts Receivable</strong><p>Live customers, invoices, line items, balances, issuance and payment recording.</p></Link>
         <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · Purchasing · AP</span><strong>Procure to Pay</strong><p>PO receiving, packing slips, three-way matching, inventory costing, AP and margin pricing.</p></Link>
