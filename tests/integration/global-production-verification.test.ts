@@ -111,13 +111,13 @@ describe('ATLAS global production verification', () => {
     );
   });
 
-  it('provides a reusable post-deploy workflow for any provider path', () => {
+  it('provides a reusable post-deploy workflow only through governed canonical entry paths', () => {
     expect(existsSync(workflowPath)).toBe(true);
     const workflow = read(workflowPath);
 
     expect(workflow).toContain('workflow_call:');
     expect(workflow).toContain('workflow_dispatch:');
-    expect(workflow).toContain('deployment_status:');
+    expect(workflow).not.toContain('deployment_status:');
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('verify:production:global');
     expect(workflow).toContain('--defer-edge-challenge');
