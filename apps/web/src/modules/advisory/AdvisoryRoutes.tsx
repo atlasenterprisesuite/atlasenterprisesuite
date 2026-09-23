@@ -38,12 +38,14 @@ import {
   issueInvoice,
   suggestInvoiceNumber
 } from '../../lib/receivablesApi';
+import { ClientFinancialGuidancePage } from './ClientFinancialGuidancePage';
 import './advisory.css';
 
 const advisoryNav = [
   ['/advisory','Overview'],
   ['/advisory/clients','Clients'],
   ['/advisory/engagements','Engagements'],
+  ['/advisory/financial-guidance','Financial Guidance'],
   ['/advisory/business-launch-360/workspace','Business Launch 360'],
   ['/advisory/tasks','Tasks'],
   ['/advisory/calendar','Calendar'],
@@ -123,6 +125,7 @@ export function AdvisoryOverviewPage() {
       <Link className="module-card enabled" to="/advisory/clients"><span>Firm operations</span><strong>Clients</strong><p>Create real organization-scoped client records through authenticated Supabase RPCs.</p></Link>
       <Link className="module-card enabled" to="/advisory/engagements"><span>Service delivery</span><strong>Engagements</strong><p>Open service engagements without duplicating CRM or Accounting as sources of truth.</p></Link>
       <Link className="module-card enabled" to="/advisory/business-launch-360/workspace"><span>Launch system</span><strong>Business Launch 360</strong><p>Evidence-based readiness across ten governed dimensions.</p></Link>
+      <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Client planning</span><strong>Financial Guidance</strong><p>Build explainable 30-day liquidity and debt action plans from confirmed client data without fabricating missing values.</p></Link>
       <Link className="module-card enabled" to="/advisory/providers"><span>External providers</span><strong>Provider setup</strong><p>Organization authorization and provider verification are tracked separately for e-sign, print fulfillment, paid media, payments and publishing.</p></Link>
     </div>
   </AdvisoryLayout>;
@@ -573,6 +576,7 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/firms/aw-finance-advisory-solutions" element={<Navigate to="/advisory" replace />} />
     <Route path="/advisory/clients" element={<ClientsPage />} />
     <Route path="/advisory/engagements" element={<EngagementsPage />} />
+    <Route path="/advisory/financial-guidance" element={<ClientFinancialGuidancePage />} />
     <Route path="/advisory/business-launch-360" element={<LaunchPage />} />
     <Route path="/advisory/business-launch-360/workspace" element={<LaunchPage />} />
     <Route path="/advisory/tasks" element={<BoundaryPage title="Tasks" description="Task orchestration will reuse the canonical ATLAS execution/work layer rather than create a parallel task source of truth." />} />
