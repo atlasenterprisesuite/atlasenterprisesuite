@@ -22,17 +22,12 @@ on:
         options:
           - fail-closed
           - warning-only
-  deployment_status:
-
 permissions:
   contents: read
   id-token: write
 
 jobs:
   verify-production:
-    if: >-
-      github.event_name != 'deployment_status' ||
-      (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'production')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -54,9 +49,6 @@ jobs:
         run: |
           set -euo pipefail
           MODE="${REQUESTED_MODE:-fail-closed}"
-          if [ "$GITHUB_EVENT_NAME" = "deployment_status" ]; then
-            MODE="fail-closed"
-          fi
           case "$MODE" in
             fail-closed|warning-only) ;;
             *) echo "::error::Unsupported verification mode: $MODE"; exit 1 ;;
