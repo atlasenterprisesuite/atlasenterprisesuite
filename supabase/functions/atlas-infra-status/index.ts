@@ -1,17 +1,39 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { evaluateInfrastructure } from '../_shared/infrastructure-readiness.ts';
+import {
+  classifyCloudflareIncidentScope,
+  evaluateInfrastructure
+} from '../_shared/infrastructure-readiness.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const CANONICAL_REPO = Deno.env.get('ATLAS_CANONICAL_REPO') || 'atlasenterprisesuite/atlasenterprisesuite';
 const PRODUCTION_URL = Deno.env.get('ATLAS_PRODUCTION_URL') || 'https://www.atlasenterprisesuite.com';
-const VERSION = 6;
+const VERSION = 7;
+const CLOUDFLARE_STATUS_URL = 'https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json';
 
 type Blocker = {
   stage: string;
   code: string;
   detail: string;
+};
+
+type CloudflareStatusComponent = {
+  name?: string;
+};
+
+type CloudflareStatusUpdate = {
+  affected_components?: CloudflareStatusComponent[];
+};
+
+type CloudflareStatusIncident = {
+  id?: string;
+  name?: string;
+  status?: string;
+  impact?: string;
+  updated_at?: string;
+  components?: CloudflareStatusComponent[];
+  incident_updates?: CloudflareStatusUpdate[];
 };
 
 const json = (data: unknown, status = 200) =>
@@ -86,7 +108,7 @@ async function probe(url: string) {
   try {
     const response = await timeout(url, {
       redirect: 'manual',
-      headers: { 'user-agent': 'ATLAS-Manager/6.0' }
+      headers: { 'user-agent': 'ATLAS-Manager/7.0' }
     });
     return {
       reachable: response.status >= 200 && response.status < 500,
@@ -108,8 +130,8 @@ async function repairBridgeState() {
   try {
     const response = await timeout(`${SUPABASE_URL}/functions/v1/atlas-repair-bridge?api=readiness`, {
       headers: ANON_KEY
-        ? { apikey: ANON_KEY, 'user-agent': 'ATLAS-Manager/6.0' }
-        : { 'user-agent': 'ATLAS-Manager/6.0' }
+        ? { apikey: ANON_KEY, 'user-agent': 'ATLAS-Manager/7.0' }
+        : { 'user-agent': 'ATLAS-Manager/7.0' }
     });
     const data = await response.json().catch(() => ({}));
     const openaiConfigured = data?.openaiConfigured === true;
@@ -259,10 +281,131 @@ async function githubState() {
   }
 }
 
+function incidentComponentNames(incident: CloudflareStatusIncident) {
+  const direct = Array.isArray(incident.components)
+    ? incident.components.map((component) => component?.name || '')
+    : [];
+  const fromUpdates = Array.isArray(incident.incident_updates)
+    ? incident.incident_updates.flatMap((update) =>
+        Array.isArray(update?.affected_components)
+          ? update.affected_components.map((component) => component?.name || '')
+          : []
+      )
+    : [];
+
+  return [...new Set([...direct, ...fromUpdates].filter(Boolean))];
+}
+
+function highestIncidentImpact(incidents: Array<{ impact: string }>) {
+  const rank: Record<string, number> = { none: 0, minor: 1, major: 2, critical: 3 };
+  return incidents.reduce(
+    (current, incident) =>
+      (rank[incident.impact] ?? 0) > (rank[current] ?? 0) ? incident.impact : current,
+    'none'
+  );
+}
+
+async function cloudflarePublicStatus() {
+  const started = Date.now();
+  try {
+    const response = await timeout(CLOUDFLARE_STATUS_URL, {
+      headers: { 'user-agent': 'ATLAS-Manager/7.0' }
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return {
+        state: 'unavailable',
+        reachable: false,
+        status_code: response.status,
+        duration_ms: Date.now() - started,
+        unresolved_count: 0,
+        relevant_count: 0,
+        incidents: [],
+        provider_incident: null
+      };
+    }
+
+    const sourceIncidents: CloudflareStatusIncident[] = Array.isArray(data?.incidents)
+      ? data.incidents
+      : [];
+    const incidents = sourceIncidents.map((incident) => {
+      const components = incidentComponentNames(incident);
+      const scope = classifyCloudflareIncidentScope([incident.name || '', ...components]);
+      return {
+        id: incident.id || null,
+        name: incident.name || 'Unnamed Cloudflare incident',
+        status: incident.status || 'unknown',
+        impact: incident.impact || 'none',
+        updated_at: incident.updated_at || null,
+        scope,
+        components
+      };
+    });
+
+    const relevantIncidents = incidents.filter((incident) => incident.scope !== 'unknown');
+    const dashboardAffected = relevantIncidents.some(
+      (incident) => incident.scope === 'dashboard' || incident.scope === 'mixed'
+    );
+    const edgeAffected = relevantIncidents.some(
+      (incident) => incident.scope === 'edge' || incident.scope === 'mixed'
+    );
+    const aggregateScope: ReturnType<typeof classifyCloudflareIncidentScope> =
+      dashboardAffected && edgeAffected
+        ? 'mixed'
+        : dashboardAffected
+          ? 'dashboard'
+          : edgeAffected
+            ? 'edge'
+            : 'unknown';
+    const incidentSetForImpact = relevantIncidents.length > 0 ? relevantIncidents : incidents;
+    const providerIncident = incidents.length === 0
+      ? null
+      : {
+          source: 'cloudflare_status' as const,
+          active: true,
+          scope: aggregateScope,
+          impact: highestIncidentImpact(incidentSetForImpact),
+          name:
+            relevantIncidents.length === 1
+              ? relevantIncidents[0].name
+              : relevantIncidents.length > 1
+                ? 'Multiple unresolved Cloudflare incidents'
+                : incidents[0].name
+        };
+
+    return {
+      state: 'reachable',
+      reachable: true,
+      status_code: response.status,
+      duration_ms: Date.now() - started,
+      unresolved_count: incidents.length,
+      relevant_count: relevantIncidents.length,
+      incidents: incidents.slice(0, 10),
+      provider_incident: providerIncident
+    };
+  } catch (error) {
+    return {
+      state: 'unreachable',
+      reachable: false,
+      status_code: null,
+      duration_ms: Date.now() - started,
+      unresolved_count: 0,
+      relevant_count: 0,
+      incidents: [],
+      provider_incident: null,
+      error: error instanceof Error ? error.name : 'status_probe_failed'
+    };
+  }
+}
+
 async function cloudflareState() {
   const token = Deno.env.get('CLOUDFLARE_API_TOKEN') || Deno.env.get('CF_API_TOKEN') || '';
   const zoneId = Deno.env.get('CLOUDFLARE_ZONE_ID') || '';
-  const publicEdge = await probe(`${PRODUCTION_URL}/status`);
+  const [publicEdge, providerStatus] = await Promise.all([
+    probe(`${PRODUCTION_URL}/status`),
+    cloudflarePublicStatus()
+  ]);
 
   if (!token) {
     return {
@@ -270,7 +413,9 @@ async function cloudflareState() {
         ? 'public_edge_reachable_control_api_not_configured'
         : 'not_configured',
       authorization: 'missing',
-      public_edge: publicEdge
+      public_edge: publicEdge,
+      provider_status: providerStatus,
+      provider_incident: providerStatus.provider_incident
     };
   }
 
@@ -291,13 +436,17 @@ async function cloudflareState() {
       authorization: response.ok ? 'verified' : 'rejected',
       zone_verified: Boolean(zoneId && response.ok),
       status_code: response.status,
-      public_edge: publicEdge
+      public_edge: publicEdge,
+      provider_status: providerStatus,
+      provider_incident: providerStatus.provider_incident
     };
   } catch {
     return {
       state: 'unreachable',
       authorization: 'present',
-      public_edge: publicEdge
+      public_edge: publicEdge,
+      provider_status: providerStatus,
+      provider_incident: providerStatus.provider_incident
     };
   }
 }
@@ -367,10 +516,22 @@ Deno.serve(async (req: Request) => {
     releaseQ.error || runtimeQ.error || infraQ.error || controlQ.error ? 'degraded' : 'ready';
 
   const normalized = evaluateInfrastructure({
-    github: { state: ['ready', 'oidc_bridge_reachable_token_not_present'].includes(github.state) ? 'ready' : github.state, required: true },
+    github: {
+      state: ['ready', 'oidc_bridge_reachable_token_not_present'].includes(github.state)
+        ? 'ready'
+        : github.state,
+      required: true
+    },
     supabase: { state: supabaseState, required: true },
-    cloudflare: { state: cloudflare.state, required: true },
-    production: { state: productionRoot.reachable ? 'ready' : 'public_site_unreachable', required: true },
+    cloudflare: {
+      state: cloudflare.state,
+      required: true,
+      incident: cloudflare.provider_incident
+    },
+    production: {
+      state: productionRoot.reachable ? 'ready' : 'public_site_unreachable',
+      required: true
+    },
     vercel: { state: vercel.state, required: false }
   });
 
@@ -467,6 +628,7 @@ Deno.serve(async (req: Request) => {
       vercel: false
     },
     provider_status: normalized.providers,
+    diagnostics: normalized.diagnostics,
     production_readiness: readiness,
     infrastructure: {
       github,
