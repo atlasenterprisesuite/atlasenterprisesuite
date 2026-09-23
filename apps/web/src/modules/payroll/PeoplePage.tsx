@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { listPayrollWorkers, savePayrollWorker, type PayrollWorker } from '../../lib/payrollApi';
 
 export function PeoplePage() {
@@ -37,6 +38,7 @@ export function PeoplePage() {
         <p className="payroll-kicker">WORKFORCE</p>
         <h1>People</h1>
         <p>Organization-scoped employees and contractors used by Payroll.</p>
+        <Link className="payroll-secondary-button" to="/payroll">Back to Payroll</Link>
       </div>
       <button className="payroll-button" type="button" onClick={()=>setAdding((value)=>!value)}>Add worker</button>
     </header>
