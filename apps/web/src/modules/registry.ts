@@ -118,7 +118,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Tax',
     area: 'Finance',
     route: '/tax',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Versioned personal and business tax preparation with source-document mapping, jurisdiction gates and filing boundaries.',
     showInNavigation: true
@@ -283,7 +283,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Events',
     area: 'Entertainment',
     route: '/events',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed live entertainment operations across talent, venues, production, commerce and settlement.',
     showInNavigation: true
