@@ -22,6 +22,7 @@ import {
 import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
 import { AtlasPortalsPage } from '../modules/galaxy/AtlasPortalsPage';
 import { ProcureToPayPage } from '../modules/inventory/ProcureToPayPage';
+import { PeopleRoutes } from '../modules/people/PeopleRoutes';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
@@ -32,7 +33,6 @@ import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
 import {
   AnalyticsIntegrationHub,
   AutomationsIntegrationHub,
-  PeopleIntegrationHub,
   ReleaseControlIntegrationHub,
   RevenueIntegrationHub,
   SiteReviewIntegrationHub,
@@ -56,8 +56,8 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><AnalyticsIntegrationHub /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/people') {
-    return <RequireAtlasIdentity><PeopleIntegrationHub /></RequireAtlasIdentity>;
+  if (pathname === '/people' || pathname.startsWith('/people/')) {
+    return <RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/revenue') {
