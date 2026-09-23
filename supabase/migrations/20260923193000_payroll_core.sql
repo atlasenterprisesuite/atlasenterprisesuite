@@ -221,6 +221,29 @@ create table if not exists public.payroll_tax_elections (
   check (tenant_id=organization_id)
 );
 
+create table if not exists public.payroll_tax_rule_sets (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references public.organizations(id) on delete cascade,
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  jurisdiction text not null,
+  version text not null,
+  effective_from date not null,
+  effective_to date,
+  validated boolean not null default false,
+  employee_tax_bps integer,
+  employer_tax_bps integer,
+  source_reference text,
+  approved_by uuid references auth.users(id),
+  approved_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique(organization_id,jurisdiction,version),
+  check (tenant_id=organization_id),
+  check (effective_to is null or effective_to >= effective_from),
+  check (employee_tax_bps is null or employee_tax_bps between 0 and 10000),
+  check (employer_tax_bps is null or employer_tax_bps between 0 and 10000),
+  check (validated=false or (approved_by is not null and approved_at is not null and source_reference is not null))
+);
+
 create table if not exists public.payroll_runs (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references public.organizations(id) on delete cascade,
@@ -428,7 +451,7 @@ begin
     'payroll_legal_entities','payroll_addresses','payroll_tax_profiles','payroll_admin_bindings',
     'payroll_workers','payroll_compensation','payroll_contractors','payroll_pay_schedules',
     'payroll_time_entries','payroll_pto_policies','payroll_pto_balances','payroll_deductions',
-    'payroll_tax_elections','payroll_runs','payroll_run_workers','payroll_calculations',
+    'payroll_tax_elections','payroll_tax_rule_sets','payroll_runs','payroll_run_workers','payroll_calculations',
     'payroll_liabilities','payroll_disbursement_accounts','payroll_journal_contracts',
     'payroll_billing_accounts','payroll_entitlements','payroll_setup_progress','payroll_audit_events'
   ] loop
