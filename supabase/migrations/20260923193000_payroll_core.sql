@@ -44,7 +44,7 @@ create table if not exists public.payroll_legal_entities (
     check (ein_verification_status in ('not_verified','format_valid','verified_external')),
   effective_from date not null default current_date,
   effective_to date,
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (tenant_id=organization_id),
@@ -87,7 +87,7 @@ create table if not exists public.payroll_admin_bindings (
   organization_id uuid not null references public.organizations(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   payroll_role text not null check (payroll_role in ('organization_owner','payroll_admin','payroll_approver','payroll_processor','payroll_manager','payroll_viewer')),
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   unique(organization_id,user_id),
   check (tenant_id=organization_id)
@@ -104,7 +104,7 @@ create table if not exists public.payroll_workers (
   employment_status text not null default 'active' check (employment_status in ('draft','active','leave','terminated')),
   hire_date date,
   termination_date date,
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (tenant_id=organization_id),
@@ -121,7 +121,7 @@ create table if not exists public.payroll_compensation (
   currency text not null default 'USD' check (currency ~ '^[A-Z]{3}$'),
   effective_from date not null,
   effective_to date,
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   check (tenant_id=organization_id),
   check (effective_to is null or effective_to >= effective_from)
@@ -166,7 +166,7 @@ create table if not exists public.payroll_time_entries (
   locked_by_run_id uuid,
   approved_by uuid references auth.users(id),
   approved_at timestamptz,
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (tenant_id=organization_id)
@@ -239,7 +239,7 @@ create table if not exists public.payroll_runs (
   approved_at timestamptz,
   processed_at timestamptz,
   correlation_id uuid not null default gen_random_uuid(),
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (tenant_id=organization_id),
@@ -352,7 +352,7 @@ create table if not exists public.payroll_setup_progress (
   organization_id uuid not null unique references public.organizations(id) on delete cascade,
   current_step text not null default 'company' check (current_step in ('company','admins','tax','bank','pay_schedule','workers','benefits','review','complete')),
   completed_steps text[] not null default '{}',
-  updated_by uuid not null references auth.users(id),
+  updated_by uuid not null default auth.uid() references auth.users(id),
   updated_at timestamptz not null default now(),
   check (tenant_id=organization_id)
 );
