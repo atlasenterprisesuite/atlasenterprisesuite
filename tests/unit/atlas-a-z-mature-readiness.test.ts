@@ -13,10 +13,10 @@ function readiness(id: string) {
 }
 
 describe('ATLAS A-Z mature module readiness', () => {
-  it.each(['knowledge','advisory','tax','commerce','learning','health','events','frontier','aviation','release-control'])
+  it.each(['knowledge','advisory','tax','learning','health','events','frontier','aviation','release-control'])
     ('%s is implemented within its declared product scope', (id) => expect(readiness(id)).toBe('implemented'));
 
-  it.each(['insurance','voice','hospitality','device-os'])
+  it.each(['commerce','insurance','voice','hospitality','device-os'])
     ('%s truthfully remains external-gated', (id) => expect(readiness(id)).toBe('external-gated'));
 
   it('Knowledge is persisted, approval-governed organizational memory', () => {
