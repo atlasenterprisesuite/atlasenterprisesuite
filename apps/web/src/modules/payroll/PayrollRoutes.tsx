@@ -51,16 +51,16 @@ export function PayrollRoutes() {
   return <RequireAtlasIdentity>
     <Routes>
       <Route index element={<Routed><PayrollHome /></Routed>} />
-      <Route path="overview" element={<Navigate to="/payroll" replace />} />
+      <Route path="overview" element={<Routed><PayrollHome title="Payroll Overview" showBack /></Routed>} />
       <Route path="setup" element={<Navigate to="/payroll/setup/company" replace />} />
       <Route path="setup/:step" element={<Routed><SetupWizard /></Routed>} />
       <Route path="people" element={<Routed><PeoplePage /></Routed>} />
       <Route path="contractors" element={<Routed><PeoplePage /></Routed>} />
       <Route path="time" element={<Routed><TimePtoPage /></Routed>} />
       <Route path="pto" element={<Routed><TimePtoPage /></Routed>} />
-      <Route path="time-earnings" element={<Navigate to="/payroll/time" replace />} />
+      <Route path="time-earnings" element={<Routed><TimePtoPage title="Time & Earnings" /></Routed>} />
       <Route path="runs" element={<Routed><PayrollRunsPage /></Routed>} />
-      <Route path="pay-runs" element={<Navigate to="/payroll/runs" replace />} />
+      <Route path="pay-runs" element={<Routed><PayrollRunsPage title="Pay Runs" /></Routed>} />
       <Route path="taxes" element={<Routed><PayrollBoundaryPage title="Payroll taxes" description="Validated tax rules can calculate governed payroll. Filing and remittance require separately authenticated external rails." /></Routed>} />
       <Route path="deductions" element={<Routed><PayrollBoundaryPage title="Deductions" description="Effective-dated worker deductions feed payroll calculation when configured." /></Routed>} />
       <Route path="benefits" element={<Routed><PayrollBoundaryPage title="Benefits" description="Benefits administration does not imply insurance issuance or carrier transmission." /></Routed>} />
