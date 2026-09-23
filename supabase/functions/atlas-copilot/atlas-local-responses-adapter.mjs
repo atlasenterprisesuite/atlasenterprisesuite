@@ -2,8 +2,10 @@ const PROFILES=Object.freeze(['fast','balanced','deep']);
 const LOCAL_INPUT_CHAR_BUDGET=6000;
 const LOCAL_MAX_OUTPUT_TOKENS=384;
 const LOCAL_INSTRUCTION_CHAR_BUDGET=2600;
-const LOCAL_EXECUTION_ATTEMPTS=2;
-const LOCAL_RETRY_DELAY_MS=500;
+const LOCAL_EXECUTION_ATTEMPTS=4;
+const LOCAL_RETRY_DELAY_MS=1000;
+const LOCAL_PROBE_ATTEMPTS=4;
+const LOCAL_PROBE_RETRY_DELAY_MS=1500;
 const LOCAL_SYSTEM_CORE=`You are ATLAS, one coherent cognitive system. Return one unified answer. Follow the user's authorized intent and current module context. Preserve authentication, tenant isolation, RBAC, least privilege, approval gates, auditability, privacy, and secret protection. Never expose credentials, secrets, private chain-of-thought, or unnecessary internal provider chatter. Do not fabricate data, tool results, provider state, tests, deployments, or production status. Distinguish verified, probable, unknown, conflicted, and blocked states. For requested actions, execute only within authorization, verify the result, and report the real state. Fail closed on unsafe or unauthorized mutations. Reuse existing ATLAS services, data, components, and sources of truth instead of creating parallel systems. Prefer concise RESULT, EVIDENCE, ACTION, STATUS, BLOCKERS, and NEXT ACTION when operational work is involved.`;
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
@@ -57,11 +59,15 @@ function errorForStatus(status){
   if(status>=500)return fail('provider_unavailable',502,{provider:'atlas-local'});
   return fail('provider_unavailable',502,{provider:'atlas-local'});
 }
-export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientId='',accessClientSecret='',models,allowUnauthenticated=false,allowInsecure=false,fetchFn=fetch,timeoutMs=120000,probeTimeoutMs=15000}={}){
+export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientId='',accessClientSecret='',models,allowUnauthenticated=false,allowInsecure=false,fetchFn=fetch,timeoutMs=120000,probeTimeoutMs=15000,executionAttempts=LOCAL_EXECUTION_ATTEMPTS,retryDelayMs=LOCAL_RETRY_DELAY_MS,probeAttempts=LOCAL_PROBE_ATTEMPTS,probeRetryDelayMs=LOCAL_PROBE_RETRY_DELAY_MS}={}){
   const base=normalizeBase(baseUrl,{allowInsecure});
   const resolved=Object.freeze({fast:clean(models?.fast),balanced:clean(models?.balanced),deep:clean(models?.deep)});
   const configured=Boolean(base)&&Object.values(resolved).some(Boolean)&&Boolean(token||allowUnauthenticated);
   const accessProtected=Boolean(clean(accessClientId)&&clean(accessClientSecret));
+  const boundedExecutionAttempts=Math.max(1,Math.min(6,Math.trunc(Number(executionAttempts)||LOCAL_EXECUTION_ATTEMPTS)));
+  const boundedRetryDelayMs=Math.max(0,Math.min(5000,Math.trunc(Number(retryDelayMs)||0)));
+  const boundedProbeAttempts=Math.max(1,Math.min(6,Math.trunc(Number(probeAttempts)||LOCAL_PROBE_ATTEMPTS)));
+  const boundedProbeRetryDelayMs=Math.max(0,Math.min(10000,Math.trunc(Number(probeRetryDelayMs)||0)));
   const authHeaders=()=>({
     ...(token?{authorization:`Bearer ${token}`}:{}),
     ...(accessProtected?{'CF-Access-Client-Id':String(accessClientId),'CF-Access-Client-Secret':String(accessClientSecret)}:{}),
@@ -89,13 +95,23 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
   async function probe({profile='balanced'}={}){
     const model=resolved[profile];
     if(!configured||!model)return {configured:false,verified:false,provider:'atlas-local',model:model||null,error:'provider_not_configured'};
-    let response;
-    try{
-      response=await fetchFn(`${base}/health`,{headers:{...authHeaders(),'content-type':'application/json'},signal:AbortSignal.timeout(Math.min(timeoutMs,probeTimeoutMs))});
-    }catch{return {configured:true,verified:false,provider:'atlas-local',model,error:'provider_unavailable'};}
-    if(response.ok)return {configured:true,verified:true,provider:'atlas-local',model,error:null};
-    const error=errorForStatus(response.status);
-    return {configured:true,verified:false,provider:'atlas-local',model,error:error.code};
+    let lastError='provider_unavailable';
+    for(let attempt=1;attempt<=boundedProbeAttempts;attempt+=1){
+      let response;
+      try{
+        response=await fetchFn(`${base}/health`,{headers:{...authHeaders(),'content-type':'application/json'},signal:AbortSignal.timeout(Math.min(timeoutMs,probeTimeoutMs))});
+      }catch{
+        lastError='provider_unavailable';
+        if(attempt<boundedProbeAttempts){await sleep(boundedProbeRetryDelayMs*attempt);continue;}
+        break;
+      }
+      if(response.ok)return {configured:true,verified:true,provider:'atlas-local',model,error:null};
+      const error=errorForStatus(response.status);
+      lastError=error.code;
+      if(retryableStatus(response.status)&&attempt<boundedProbeAttempts){await sleep(boundedProbeRetryDelayMs*attempt);continue;}
+      break;
+    }
+    return {configured:true,verified:false,provider:'atlas-local',model,error:lastError};
   }
   async function execute({route,instructions,input,max_output_tokens=3000}={}){
     const profile=route?.profile||'balanced';
@@ -110,15 +126,15 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     const localInstructions=compactInstructions(instructions);
     const body={model,instructions:`${localInstructions}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false};
     let response;
-    for(let attempt=1;attempt<=LOCAL_EXECUTION_ATTEMPTS;attempt+=1){
+    for(let attempt=1;attempt<=boundedExecutionAttempts;attempt+=1){
       try{
         response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
       }catch{
-        if(attempt<LOCAL_EXECUTION_ATTEMPTS){await sleep(LOCAL_RETRY_DELAY_MS*attempt);continue;}
+        if(attempt<boundedExecutionAttempts){await sleep(boundedRetryDelayMs*attempt);continue;}
         throw fail('provider_unavailable',502,{provider:'atlas-local'});
       }
       if(response.ok)break;
-      if(retryableStatus(response.status)&&attempt<LOCAL_EXECUTION_ATTEMPTS){await sleep(LOCAL_RETRY_DELAY_MS*attempt);continue;}
+      if(retryableStatus(response.status)&&attempt<boundedExecutionAttempts){await sleep(boundedRetryDelayMs*attempt);continue;}
       throw errorForStatus(response.status);
     }
     if(!response?.ok)throw fail('provider_unavailable',502,{provider:'atlas-local'});
