@@ -15,3 +15,9 @@ Use real tests, typecheck, build, and existing CI gates. Do not weaken assertion
 For UI/reference-image work, follow the approved ATLAS sequence: IMAGE -> ANALYSIS -> CLASSIFICATION -> EXISTING ATLAS -> ARCHITECTURE -> MODULE -> ROUTE -> NAVIGATION -> COMPONENTS -> DATA -> PERMISSIONS -> FUNCTIONS -> TESTS -> COMMIT -> DEPLOY -> VERIFICATION.
 
 Do not leave fake buttons, `href="#"`, console-only actions, invented metrics, or false `Live`, `Connected`, `Ready`, or `100% functional` labels.
+
+## Cloudflare agent tooling
+
+For Cloudflare work, prefer repository Cloudflare Skills under `.github/skills/` and retrieve current platform facts through the configured Cloudflare MCP servers. Use `cloudflare-docs` for current documentation, `cloudflare-builds` for Workers Builds evidence, `cloudflare-observability` for runtime telemetry, `cloudflare-bindings` for Worker resource bindings, and the unified `cloudflare` MCP for broader account/API operations.
+
+Preserve ATLAS fail-closed production semantics. MCP availability or OAuth authorization is not proof that a deployment, connection, or runtime is healthy; require the existing authenticated evidence and exact-SHA production gates.
