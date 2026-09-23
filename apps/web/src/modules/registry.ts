@@ -195,7 +195,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'People',
     area: 'People',
     route: '/people',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'People operations entry point spanning payroll, learning and governed workforce administration.',
     showInNavigation: false
