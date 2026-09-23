@@ -23,6 +23,7 @@ import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPag
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
+import { Gps4DPage } from './modules/gps/Gps4DPage';
 import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
@@ -56,6 +57,7 @@ function EnterpriseHome() {
         <Link className="module-card enabled" to="/payroll"><span>People • Pay • Progress</span><strong>ATLAS Payroll</strong><p>Governed payroll workspace with real configuration boundaries and no fabricated metrics.</p></Link>
         <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tooling with explicit evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
         <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
       </div>
@@ -283,6 +285,7 @@ export function App() {
         <Route path="/studio/teleprompter" element={<RequireAtlasIdentity><TeleprompterPage /></RequireAtlasIdentity>} />
         <Route path="/business" element={<BusinessHome />} />
         <Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />
+        <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
