@@ -427,9 +427,24 @@ create index if not exists payroll_time_org_worker_date_idx on public.payroll_ti
 create index if not exists payroll_runs_org_paydate_idx on public.payroll_runs(organization_id,pay_date desc);
 create index if not exists payroll_audit_org_created_idx on public.payroll_audit_events(organization_id,created_at desc);
 
+create or replace function public.payroll_has_bound_role(p_org_id uuid,p_roles text[])
+returns boolean language sql stable security definer set search_path=public as $$
+  select exists (
+    select 1 from public.payroll_admin_bindings b
+    where b.organization_id=p_org_id
+      and b.user_id=auth.uid()
+      and b.payroll_role=any(p_roles)
+  )
+$$;
+
 create or replace function public.payroll_can_read(p_org_id uuid)
 returns boolean language sql stable security definer set search_path=public as $$
-  select public.has_identity_permission(p_org_id,'payroll.read')
+  select
+    public.has_identity_permission(p_org_id,'payroll.read')
+    or public.payroll_has_bound_role(
+      p_org_id,
+      array['organization_owner','payroll_admin','payroll_approver','payroll_processor','payroll_manager','payroll_viewer']
+    )
 $$;
 
 create or replace function public.payroll_can_manage(p_org_id uuid)
@@ -437,12 +452,21 @@ returns boolean language sql stable security definer set search_path=public as $
   select
     public.has_identity_permission(p_org_id,'payroll.setup.write')
     or public.has_identity_permission(p_org_id,'payroll.worker.write')
-    or public.has_identity_permission(p_org_id,'payroll.run.create')
     or public.has_identity_permission(p_org_id,'payroll.settings.write')
+    or public.payroll_has_bound_role(p_org_id,array['organization_owner','payroll_admin','payroll_manager'])
 $$;
 
+create or replace function public.payroll_can_create_run(p_org_id uuid)
+returns boolean language sql stable security definer set search_path=public as $$
+  select
+    public.has_identity_permission(p_org_id,'payroll.run.create')
+    or public.payroll_has_bound_role(p_org_id,array['organization_owner','payroll_admin','payroll_manager','payroll_processor'])
+$$;
+
+grant execute on function public.payroll_has_bound_role(uuid,text[]) to authenticated;
 grant execute on function public.payroll_can_read(uuid) to authenticated;
 grant execute on function public.payroll_can_manage(uuid) to authenticated;
+grant execute on function public.payroll_can_create_run(uuid) to authenticated;
 
 do $$
 declare t text;
@@ -457,11 +481,76 @@ begin
   ] loop
     execute format('alter table public.%I enable row level security',t);
     execute format('drop policy if exists %I on public.%I','payroll_scope_read_'||t,t);
-    execute format('create policy %I on public.%I for select to authenticated using (public.payroll_can_read(organization_id))','payroll_scope_read_'||t,t);
+    execute format(
+      'create policy %I on public.%I for select to authenticated using (public.payroll_can_read(organization_id))',
+      'payroll_scope_read_'||t,t
+    );
     execute format('drop policy if exists %I on public.%I','payroll_scope_write_'||t,t);
-    execute format('create policy %I on public.%I for all to authenticated using (public.payroll_can_manage(organization_id)) with check (public.payroll_can_manage(organization_id) and tenant_id=organization_id)','payroll_scope_write_'||t,t);
+  end loop;
+
+  foreach t in array array[
+    'payroll_addresses','payroll_workers','payroll_compensation','payroll_contractors',
+    'payroll_pay_schedules','payroll_time_entries','payroll_pto_policies',
+    'payroll_deductions','payroll_tax_elections','payroll_setup_progress'
+  ] loop
+    execute format(
+      'create policy %I on public.%I for all to authenticated using (public.payroll_can_manage(organization_id)) with check (public.payroll_can_manage(organization_id) and tenant_id=organization_id)',
+      'payroll_scope_write_'||t,t
+    );
   end loop;
 end $$;
+
+drop policy if exists payroll_legal_entities_write on public.payroll_legal_entities;
+create policy payroll_legal_entities_write on public.payroll_legal_entities
+for all to authenticated
+using (public.payroll_can_manage(organization_id))
+with check (
+  public.payroll_can_manage(organization_id)
+  and tenant_id=organization_id
+  and ein_verification_status <> 'verified_external'
+);
+
+drop policy if exists payroll_tax_profiles_write on public.payroll_tax_profiles;
+create policy payroll_tax_profiles_write on public.payroll_tax_profiles
+for all to authenticated
+using (public.payroll_can_manage(organization_id))
+with check (
+  public.payroll_can_manage(organization_id)
+  and tenant_id=organization_id
+  and filing_status <> 'externally_verified'
+);
+
+drop policy if exists payroll_disbursement_accounts_write on public.payroll_disbursement_accounts;
+create policy payroll_disbursement_accounts_write on public.payroll_disbursement_accounts
+for all to authenticated
+using (public.payroll_can_manage(organization_id))
+with check (
+  public.payroll_can_manage(organization_id)
+  and tenant_id=organization_id
+  and verification_status <> 'verified'
+);
+
+drop policy if exists payroll_admin_bindings_write on public.payroll_admin_bindings;
+create policy payroll_admin_bindings_write on public.payroll_admin_bindings
+for all to authenticated
+using (public.payroll_can_manage(organization_id))
+with check (
+  public.payroll_can_manage(organization_id)
+  and tenant_id=organization_id
+  and (
+    payroll_role <> 'organization_owner'
+    or public.has_identity_permission(organization_id,'platform.billing.internal_comp.manage')
+  )
+);
+
+drop policy if exists payroll_runs_insert on public.payroll_runs;
+create policy payroll_runs_insert on public.payroll_runs
+for insert to authenticated
+with check (
+  public.payroll_can_create_run(organization_id)
+  and tenant_id=organization_id
+  and status='draft'
+);
 
 alter table public.payroll_help_content enable row level security;
 drop policy if exists payroll_help_read on public.payroll_help_content;
