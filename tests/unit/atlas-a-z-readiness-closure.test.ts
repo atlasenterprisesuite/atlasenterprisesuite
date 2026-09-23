@@ -52,12 +52,16 @@ describe('ATLAS A-Z readiness closure', () => {
     expect(moduleBlock(id)).toContain("readiness: 'external-gated'");
   });
 
-  it.each(['tax', 'people', 'payroll', 'events'])(
-    '%s remains partial until internal implementation is complete',
+  it.each(['tax', 'people', 'events'])(
+    '%s is release-complete for its current governed scope',
     (id) => {
-      expect(moduleBlock(id)).toContain("readiness: 'partial'");
+      expect(moduleBlock(id)).toContain("readiness: 'implemented'");
     }
   );
+
+  it('keeps Payroll complete internally while external money/tax rails remain gated', () => {
+    expect(moduleBlock('payroll')).toContain("readiness: 'external-gated'");
+  });
 
   it('preserves fail-closed provider and aggregation boundaries', () => {
     expect(hubs).toContain('External triggers stay fail-closed');
