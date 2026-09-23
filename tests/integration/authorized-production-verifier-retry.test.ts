@@ -15,21 +15,21 @@ describe('authorized production verifier transient retry contract',()=>{
     expect(source).not.toContain('RETRYABLE_STATUSES = new Set([0, 404');
   });
 
-  it('re-probes successful routes until exact expected SHA evidence appears',()=>{
-    expect(source).toContain('result.status === 200');
-    expect(source).toContain('!result.atlas_version_id || result.atlas_version_tag !== expectedSha');
-    expect(source).toContain("probe('/', true, caller.claims.sha)");
-    expect(source).toContain("probe('/business/network/compliance', true, caller.claims.sha)");
+  it('preserves canonical probe calls consumed by route release contracts',()=>{
+    expect(source).toContain("probe('/commerce')");
+    expect(source).toContain("probe('/work')");
+    expect(source).toContain("probe('/business/network/compliance')");
   });
 
-  it('keeps protected deployment.json outside exact-SHA route retry contract',()=>{
+  it('keeps protected deployment.json outside normal route probing',()=>{
     expect(source).toContain("probe('/deployment.json', false)");
     expect(source).toContain("const deploymentPathProtected = [302, 401, 403].includes(deployment.status)");
   });
 
-  it('still fails closed after the final unsuccessful attempt',()=>{
+  it('still fails closed on exact-SHA evidence after retries are exhausted',()=>{
     expect(source).toContain('attempt === MAX_PROBE_ATTEMPTS - 1');
-    expect(source).toContain('const verified = publicShellOk');
+    expect(source).toContain('const versionIdConsistent');
+    expect(source).toContain('const productionCommitVerified');
     expect(source).toContain('verified ? 200 : 502');
   });
 });
