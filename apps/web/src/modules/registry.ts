@@ -206,7 +206,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Payroll',
     area: 'People',
     route: '/payroll',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Governed payroll workspace and commercial payroll foundation.',
     showInNavigation: true
