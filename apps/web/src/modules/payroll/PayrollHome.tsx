@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getPayrollOverview, type PayrollOverview } from '../../lib/payrollApi';
 
-export function PayrollHome() {
+export function PayrollHome({ title = 'ATLAS PAYROLL', showBack = false }:{ title?: string; showBack?: boolean } = {}) {
   const [overview,setOverview]=useState<PayrollOverview|null>(null);
   const [error,setError]=useState<string|null>(null);
   const [loading,setLoading]=useState(true);
@@ -16,15 +16,25 @@ export function PayrollHome() {
     return()=>{active=false;};
   },[]);
 
-  return <section className="payroll-page payroll-operational-page">
+  return <section className="module-experience-page payroll-page payroll-operational-page">
     <header className="payroll-section-header">
-      <p className="payroll-kicker">ATLAS PAYROLL</p>
-      <h1>Payroll</h1>
+      <p className="payroll-kicker">People • Pay • Progress</p>
+      <h1>{title}</h1>
+      <p>Payroll intelligence, governed inputs and controlled execution.</p>
       <p>Organization-scoped people, time, payroll runs and accounting handoff.</p>
+      {showBack?<Link className="payroll-secondary-button" to="/payroll">Back to Payroll</Link>:null}
     </header>
 
     {loading?<div className="payroll-notice" role="status">Loading payroll state…</div>:null}
     {error?<div className="payroll-notice payroll-error" role="alert">{error}</div>:null}
+
+    {!loading&&!error&&overview&&(!overview.setupComplete || (!overview.nextPayrollDate && !overview.currentRunStatus))?
+      <div className="payroll-callout">
+        <div>
+          <strong>Payroll data is not configured</strong>
+          <p>Complete employer and pay-schedule setup before ATLAS treats payroll as operational.</p>
+        </div>
+      </div>:null}
 
     {!loading&&!error&&overview&&!overview.setupComplete?
       <div className="payroll-callout">
@@ -45,9 +55,10 @@ export function PayrollHome() {
     </div>:null}
 
     <div className="payroll-action-grid">
-      <Link className="payroll-action-card" to="/payroll/people"><strong>People</strong><span>Employees and contractors</span></Link>
-      <Link className="payroll-action-card" to="/payroll/time"><strong>Time & PTO</strong><span>Approved payroll inputs</span></Link>
-      <Link className="payroll-action-card" to="/payroll/runs"><strong>Payroll runs</strong><span>Review, approve and process</span></Link>
+      <Link className="payroll-action-card" to="/payroll/overview"><strong>Payroll Overview</strong><span>Live organization state</span></Link>
+      <Link className="payroll-action-card" to="/payroll/people"><strong>Workforce People</strong><span>Employees and contractors</span></Link>
+      <Link className="payroll-action-card" to="/payroll/time-earnings"><strong>Time & Earnings</strong><span>Approved payroll inputs</span></Link>
+      <Link className="payroll-action-card" to="/payroll/pay-runs"><strong>Pay Runs</strong><span>Review, approve and process</span></Link>
       <Link className="payroll-action-card" to="/payroll/settings"><strong>Settings</strong><span>Commercial and provider readiness</span></Link>
     </div>
   </section>;
