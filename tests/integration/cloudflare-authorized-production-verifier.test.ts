@@ -17,6 +17,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
 
   it('checks the public shell while preserving the protected deployment path', () => {
     expect(verifier).toContain("'/identity?app=%2Ffinance'");
+    expect(verifier).toContain("'/gps'");
+    expect(verifier).toContain('gps_route_reachable');
     expect(verifier).toContain("'/finance'");
     expect(verifier).toContain("'/finance/accounting'");
     expect(verifier).toContain("'/finance/accounting/accounts-payable'");

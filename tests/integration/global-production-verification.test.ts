@@ -28,6 +28,7 @@ describe('ATLAS global production verification', () => {
       '/suite',
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
+      '/gps',
       '/finance',
       '/finance/accounting',
       '/finance/accounting/accounts-payable',
@@ -177,6 +178,8 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
     expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
     expect(authorizedVerifier).toContain('suite_route_reachable');
+    expect(authorizedVerifier).toContain("'/gps'");
+    expect(authorizedVerifier).toContain('gps_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
     expect(authorizedVerifier).toContain("'/knowledge'");

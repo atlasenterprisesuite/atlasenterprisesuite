@@ -244,6 +244,7 @@ Deno.serve(async (req: Request) => {
     suite,
     launch360,
     identity,
+    gps,
     finance,
     accounting,
     payables,
@@ -277,6 +278,7 @@ Deno.serve(async (req: Request) => {
     probe('/suite'),
     probe('/advisory/business-launch-360'),
     probe('/identity?app=%2Ffinance'),
+    probe('/gps'),
     probe('/finance'),
     probe('/finance/accounting'),
     probe('/finance/accounting/accounts-payable'),
@@ -312,6 +314,7 @@ Deno.serve(async (req: Request) => {
     suite.status === 200 &&
     launch360.status === 200 &&
     identity.status === 200 &&
+    gps.status === 200 &&
     finance.status === 200 &&
     accounting.status === 200 &&
     payables.status === 200 &&
@@ -339,6 +342,7 @@ Deno.serve(async (req: Request) => {
     suite,
     launch360,
     identity,
+    gps,
     finance,
     accounting,
     payables,
@@ -408,6 +412,7 @@ Deno.serve(async (req: Request) => {
         suite_route_reachable: suite.status === 200,
         business_launch_360_route_reachable: launch360.status === 200,
         identity_route_reachable: identity.status === 200,
+        gps_route_reachable: gps.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         finance_accounting_route_reachable: accounting.status === 200,
         accounts_payable_route_reachable: payables.status === 200,
