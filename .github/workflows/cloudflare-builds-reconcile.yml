@@ -1,0 +1,99 @@
+name: ATLAS Cloudflare Builds Reconcile
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/cloudflare-builds-reconcile.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile-legacy-build:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Disconnect noncanonical legacy Workers Builds trigger
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CANONICAL_WORKER: atlas-enterprise-suite-web
+          LEGACY_WORKER: atlas-enterprise-suite
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ACCOUNT_ID="$(node -e "const fs=require('fs');const c=fs.readFileSync('wrangler.jsonc','utf8');const m=c.match(/\"account_id\"\s*:\s*\"([^\"]+)\"/);process.stdout.write(m?.[1]||'')")"
+          WORKER_NAME="$(node -e "const fs=require('fs');const c=fs.readFileSync('wrangler.jsonc','utf8');const m=c.match(/\"name\"\s*:\s*\"([^\"]+)\"/);process.stdout.write(m?.[1]||'')")"
+          test -n "$ACCOUNT_ID"
+          test "$WORKER_NAME" = "$CANONICAL_WORKER"
+          test -n "$CLOUDFLARE_API_TOKEN"
+
+          TOKEN_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cloudflare-user-token.json             --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             'https://api.cloudflare.com/client/v4/user/tokens/verify' || true)"
+          TOKEN_ACTIVE="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cloudflare-user-token.json','utf8'))}catch{};process.stdout.write(String(j.success===true&&j.result?.status==='active'))")"
+          if [ "$TOKEN_HTTP" != "200" ] || [ "$TOKEN_ACTIVE" != "true" ]; then
+            echo "::error::Cloudflare Workers Builds reconciliation requires the existing CLOUDFLARE_API_TOKEN to be a user-scoped token with Workers CI Read/Write."
+            exit 1
+          fi
+
+          SCRIPTS_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cloudflare-scripts.json             --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts" || true)"
+          SCRIPTS_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cloudflare-scripts.json','utf8'))}catch{};process.stdout.write(String(j.success===true&&Array.isArray(j.result)))")"
+          test "$SCRIPTS_HTTP" = "200"
+          test "$SCRIPTS_OK" = "true"
+
+          CANONICAL_TAG="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cloudflare-scripts.json','utf8'));const x=(j.result||[]).find(v=>String(v.id||v.name||'')===process.argv[1]);process.stdout.write(String(x?.tag||''))" "$CANONICAL_WORKER")"
+          test -n "$CANONICAL_TAG" || { echo "::error::Canonical Cloudflare Worker is missing."; exit 1; }
+
+          LEGACY_TAG="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cloudflare-scripts.json','utf8'));const x=(j.result||[]).find(v=>String(v.id||v.name||'')===process.argv[1]);process.stdout.write(String(x?.tag||''))" "$LEGACY_WORKER")"
+          if [ -z "$LEGACY_TAG" ]; then
+            echo "Legacy Worker is already absent; no Workers Builds trigger can remain." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          TRIGGERS_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cloudflare-triggers.json             --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/builds/workers/$LEGACY_TAG/triggers" || true)"
+          TRIGGERS_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cloudflare-triggers.json','utf8'))}catch{};process.stdout.write(String(j.success===true&&Array.isArray(j.result)))")"
+          if [ "$TRIGGERS_HTTP" != "200" ] || [ "$TRIGGERS_OK" != "true" ]; then
+            echo "::error::Unable to read Workers Builds triggers. Confirm Workers CI Read permission on the user-scoped token."
+            exit 1
+          fi
+
+          node - /tmp/cloudflare-triggers.json "$GITHUB_REPOSITORY_OWNER" "${GITHUB_REPOSITORY#*/}" > /tmp/legacy-trigger-ids.txt <<'NODE'
+          const fs=require('fs');
+          const [file,owner,repo]=process.argv.slice(2);
+          const j=JSON.parse(fs.readFileSync(file,'utf8'));
+          for(const trigger of j.result||[]){
+            const connection=trigger?.repo_connection||{};
+            const provider=String(connection.provider_type||'').toLowerCase();
+            const account=String(connection.provider_account_name||'');
+            const name=String(connection.repo_name||'');
+            if(provider==='github' && name===repo && (!account || account===owner) && trigger?.trigger_uuid){
+              process.stdout.write(String(trigger.trigger_uuid)+'\n');
+            }
+          }
+          NODE
+
+          if [ ! -s /tmp/legacy-trigger-ids.txt ]; then
+            echo "No legacy GitHub build trigger is attached to $LEGACY_WORKER for $GITHUB_REPOSITORY." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          while IFS= read -r TRIGGER_ID; do
+            [ -n "$TRIGGER_ID" ] || continue
+            DELETE_HTTP="$(curl --silent --show-error --max-time 30               --output /tmp/cloudflare-trigger-delete.json               --write-out '%{http_code}'               --request DELETE               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"               -H 'Content-Type: application/json'               "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/builds/triggers/$TRIGGER_ID" || true)"
+            DELETE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/cloudflare-trigger-delete.json','utf8'))}catch{};process.stdout.write(String(j.success===true))")"
+            if [ "$DELETE_HTTP" != "200" ] || [ "$DELETE_OK" != "true" ]; then
+              echo "::error::Cloudflare refused removal of legacy Workers Builds trigger $TRIGGER_ID."
+              exit 1
+            fi
+          done < /tmp/legacy-trigger-ids.txt
+
+          VERIFY_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cloudflare-triggers-after.json             --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/builds/workers/$LEGACY_TAG/triggers" || true)"
+          test "$VERIFY_HTTP" = "200"
+          REMAINING="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cloudflare-triggers-after.json','utf8'));const owner=process.argv[1],repo=process.argv[2];const n=(j.result||[]).filter(t=>{const c=t?.repo_connection||{};return String(c.provider_type||'').toLowerCase()==='github'&&String(c.repo_name||'')===repo&&(!c.provider_account_name||String(c.provider_account_name)===owner)}).length;process.stdout.write(String(n))" "$GITHUB_REPOSITORY_OWNER" "${GITHUB_REPOSITORY#*/}")"
+          test "$REMAINING" = "0" || { echo "::error::Legacy Workers Builds trigger still exists after reconciliation."; exit 1; }
+
+          echo "Disconnected the noncanonical $LEGACY_WORKER Workers Builds trigger for $GITHUB_REPOSITORY. Canonical Worker $CANONICAL_WORKER was not modified." >> "$GITHUB_STEP_SUMMARY"

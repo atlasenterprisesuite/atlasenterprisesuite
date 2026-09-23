@@ -42,6 +42,30 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('local-ok');
   });
 
+  it('retries transient ATLAS Local health failures before declaring the provider unavailable', async () => {
+    let attempt = 0;
+    const fetchFn = vi.fn(async (url: string) => {
+      expect(url).toBe('https://local-ai.example/health');
+      attempt += 1;
+      if (attempt < 3) return new Response(JSON.stringify({ error: 'warming' }), { status: 503 });
+      return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
+    });
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      token: 'local-secret',
+      models: { balanced: 'local-model' },
+      fetchFn,
+      probeAttempts: 4,
+      probeRetryDelayMs: 0,
+    });
+    await expect(adapter.probe({ profile: 'balanced' })).resolves.toMatchObject({
+      configured: true,
+      verified: true,
+      error: null,
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+  });
+
   it('bounds ATLAS Local conversation history while preserving the newest turn', async () => {
     let captured: any = null;
     const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -137,6 +161,7 @@ describe('ATLAS Unified AI provider adapters', () => {
       token: 'local-secret',
       models: { balanced: 'local-model' },
       fetchFn,
+      retryDelayMs: 0,
     });
     const result = await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'continue' }] });
     expect(result.text).toBe('retry-ok');
