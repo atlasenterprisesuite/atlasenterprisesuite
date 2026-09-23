@@ -139,16 +139,8 @@ function isTransientProbeFailure(status: number) {
   return RETRYABLE_STATUSES.has(status) || status >= 500;
 }
 
-function shouldRetryProbe(result: Probe, expectedSha?: string) {
-  if (isTransientProbeFailure(result.status)) return true;
-  if (
-    expectedSha &&
-    result.status === 200 &&
-    (!result.atlas_version_id || result.atlas_version_tag !== expectedSha)
-  ) {
-    return true;
-  }
-  return false;
+function shouldRetryProbe(result: Probe) {
+  return isTransientProbeFailure(result.status);
 }
 
 async function sleep(ms: number) {
@@ -242,14 +234,13 @@ async function probeOnce(path: string, followRedirects = true): Promise<Probe> {
 
 async function probe(
   path: string,
-  followRedirects = true,
-  expectedSha?: string
+  followRedirects = true
 ): Promise<Probe> {
   let last: Probe | null = null;
 
   for (let attempt = 0; attempt < MAX_PROBE_ATTEMPTS; attempt += 1) {
     last = await probeOnce(path, followRedirects);
-    if (!shouldRetryProbe(last, expectedSha) || attempt === MAX_PROBE_ATTEMPTS - 1) {
+    if (!shouldRetryProbe(last) || attempt === MAX_PROBE_ATTEMPTS - 1) {
       return last;
     }
     await sleep(PROBE_RETRY_DELAYS_MS[attempt] ?? PROBE_RETRY_DELAYS_MS.at(-1) ?? 0);
@@ -314,37 +305,37 @@ Deno.serve(async (req: Request) => {
     workComputerOperations,
     deployment
   ] = await Promise.all([
-    probe('/', true, caller.claims.sha),
-    probe('/suite', true, caller.claims.sha),
-    probe('/advisory/business-launch-360', true, caller.claims.sha),
-    probe('/identity?app=%2Ffinance', true, caller.claims.sha),
-    probe('/finance', true, caller.claims.sha),
-    probe('/finance/accounting', true, caller.claims.sha),
-    probe('/finance/accounting/accounts-payable', true, caller.claims.sha),
-    probe('/finance/accounting/reports/automotive-sales', true, caller.claims.sha),
-    probe('/finance/accounting/accounts-receivable', true, caller.claims.sha),
-    probe('/inventory/procure-to-pay', true, caller.claims.sha),
-    probe('/knowledge', true, caller.claims.sha),
-    probe('/voice', true, caller.claims.sha),
-    probe('/health', true, caller.claims.sha),
-    probe('/frontier', true, caller.claims.sha),
-    probe('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel', true, caller.claims.sha),
-    probe('/studio/web-launch', true, caller.claims.sha),
-    probe('/studio/write', true, caller.claims.sha),
-    probe('/commerce', true, caller.claims.sha),
-    probe('/revenue', true, caller.claims.sha),
-    probe('/analytics', true, caller.claims.sha),
-    probe('/business/network', true, caller.claims.sha),
-    probe('/business/network/pricing', true, caller.claims.sha),
-    probe('/business/network/commissions', true, caller.claims.sha),
-    probe('/business/network/payouts', true, caller.claims.sha),
-    probe('/business/network/compliance', true, caller.claims.sha),
-    probe('/work', true, caller.claims.sha),
-    probe('/work/new', true, caller.claims.sha),
-    probe('/work/connections', true, caller.claims.sha),
-    probe('/work/runtimes', true, caller.claims.sha),
-    probe('/work/policies', true, caller.claims.sha),
-    probe('/work/computer-operations', true, caller.claims.sha),
+    probe('/'),
+    probe('/suite'),
+    probe('/advisory/business-launch-360'),
+    probe('/identity?app=%2Ffinance'),
+    probe('/finance'),
+    probe('/finance/accounting'),
+    probe('/finance/accounting/accounts-payable'),
+    probe('/finance/accounting/reports/automotive-sales'),
+    probe('/finance/accounting/accounts-receivable'),
+    probe('/inventory/procure-to-pay'),
+    probe('/knowledge'),
+    probe('/voice'),
+    probe('/health'),
+    probe('/frontier'),
+    probe('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'),
+    probe('/studio/web-launch'),
+    probe('/studio/write'),
+    probe('/commerce'),
+    probe('/revenue'),
+    probe('/analytics'),
+    probe('/business/network'),
+    probe('/business/network/pricing'),
+    probe('/business/network/commissions'),
+    probe('/business/network/payouts'),
+    probe('/business/network/compliance'),
+    probe('/work'),
+    probe('/work/new'),
+    probe('/work/connections'),
+    probe('/work/runtimes'),
+    probe('/work/policies'),
+    probe('/work/computer-operations'),
     probe('/deployment.json', false)
   ]);
 
