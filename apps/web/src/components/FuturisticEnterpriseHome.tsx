@@ -1,3 +1,4 @@
+import { type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ATLAS_MODULES } from '../modules/registry';
 import './futuristic-enterprise-home.css';
@@ -136,7 +137,7 @@ export function FuturisticEnterpriseHome() {
                   key={module.id}
                   className={`atlas-spatial-module readiness-${module.readiness}`}
                   to={module.route}
-                  style={{ '--module-index': index } as React.CSSProperties}
+                  style={{ '--module-index': index } as CSSProperties}
                 >
                   <span className="atlas-module-symbol" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
                   <small>{module.area}</small>
