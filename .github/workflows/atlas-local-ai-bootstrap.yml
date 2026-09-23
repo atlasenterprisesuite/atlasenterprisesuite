@@ -1,17 +1,11 @@
 name: ATLAS Local AI Bootstrap
 
 on:
+  # The persistent self-hosted llama.cpp bootstrap is an operator-controlled
+  # recovery/provisioning path. Production zero-cost readiness is verified
+  # automatically by ATLAS Render Free AI Verify, so this job must never
+  # occupy a self-hosted queue merely because application code changed.
   workflow_dispatch:
-  push:
-    branches: ["main"]
-    paths:
-      - "supabase/functions/atlas-copilot/**"
-      - "supabase/functions/atlas-local-ai-bootstrap/**"
-      - "supabase/migrations/20260919022000_atlas_local_ai_runtime_bootstrap.sql"
-      - "tools/local-agent/atlas-local-ai-runtime.mjs"
-      - "tools/local-agent/install-local-ai-linux.sh"
-      - ".github/workflows/atlas-local-ai-bootstrap.yml"
-      - "docs/architecture/ATLAS_LOCAL_ZERO_COST_AI.md"
 
 permissions:
   contents: read
