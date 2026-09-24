@@ -18,9 +18,13 @@ export const GPS_CAPABILITY_MATRIX: Array<{
   { id: 'lanes', label: 'Lane guidance', state: 'available', detail: 'Shown only when upstream intersections include lane evidence.' },
   { id: 'reroute', label: 'Automatic rerouting', state: 'available', detail: 'Client navigation logic reroutes only after measurable route deviation.' },
   { id: 'voice', label: 'Voice guidance', state: 'available', detail: 'Uses browser speech synthesis; no paid provider.' },
+  { id: 'multistop', label: 'Multi-stop routing', state: 'available', detail: 'Builds governed multi-leg journeys from the authenticated ATLAS routing boundary.' },
+  { id: 'route-tradeoffs', label: 'Route comparison', state: 'available', detail: 'Compares available alternatives by duration and distance without inventing traffic data.' },
+  { id: 'share', label: 'Share destination / ETA context', state: 'available', detail: 'Uses native Web Share or clipboard when supported.' },
+  { id: 'arrival', label: 'Arrival guidance', state: 'available', detail: 'Provides proximity-based arrival prompts from live GPS position.' },
   { id: 'traffic', label: 'Live traffic', state: 'blocked', detail: 'Requires an authorized live traffic provider.' },
   { id: 'incidents', label: 'Live incidents', state: 'blocked', detail: 'Requires authoritative incident data.' },
-  { id: 'streetview', label: 'Street-level imagery', state: 'blocked', detail: 'Requires an authorized street-level imagery provider.' },
+  { id: 'streetview', label: 'Street-level / Look Around imagery', state: 'blocked', detail: 'Requires an authorized street-level imagery provider.' },
   { id: 'transit', label: 'Transit realtime', state: 'blocked', detail: 'Requires GTFS/GTFS-RT or an OpenTripPlanner deployment.' },
   { id: 'offline', label: 'Offline world maps', state: 'blocked', detail: 'Requires self-hosted PMTiles or an offline-licensed dataset; public OSM tiles are not bulk-downloaded.' }
 ];

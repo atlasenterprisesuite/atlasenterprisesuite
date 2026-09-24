@@ -49,6 +49,29 @@
 .maplibregl-map { font:inherit; }
 .maplibregl-popup-content { color:#0b1220; border-radius:10px; }
 @media (max-width:1100px) { .gps4d-capability-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:900px) { .gps4d-layout { grid-template-columns:1fr; } .gps4d-panel { order:-1; max-height:none; } }
+@media (max-width:900px) { .gps4d-layout { grid-template-columns:1fr; } .gps4d-map-wrap { order:1; min-height:58vh; } .gps4d-map { min-height:58vh; } .gps4d-panel { order:2; max-height:none; } }
 @media (max-width:700px) { .gps4d-toolbar { grid-template-columns:1fr 1fr; } .gps4d-search { grid-column:1 / -1; } }
 @media (max-width:640px) { .gps4d-header { flex-direction:column; } .gps4d-badges { justify-content:flex-start; } .gps4d-view-modes span { width:100%; margin-left:0; } .gps4d-layout, .gps4d-map-wrap, .gps4d-map { min-height:540px; } .gps4d-capability-grid { grid-template-columns:1fr; } .gps4d-nav-banner { left:10px; right:10px; top:10px; } }
+
+.gps4d-layer-status { position:absolute; left:14px; bottom:14px; z-index:520; display:flex; align-items:center; gap:8px; max-width:min(520px,calc(100% - 28px)); padding:8px 10px; border-radius:12px; background:rgba(7,13,24,.86); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(12px); font-size:12px; }
+.gps4d-layer-status.ready { opacity:.82; }
+.gps4d-layer-status.error { border-color:rgba(255,176,32,.55); }
+.gps4d-layer-status button { min-height:30px; border-radius:8px; white-space:nowrap; }
+.gps4d-arrival { position:absolute; left:50%; transform:translateX(-50%); top:14px; z-index:540; padding:10px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(7,13,24,.92); font-weight:700; }
+.gps4d-arrival.arrived { box-shadow:0 0 0 2px rgba(32,214,122,.22); }
+.gps4d-search-result { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:stretch; border-bottom:1px solid rgba(255,255,255,.08); }
+.gps4d-search-result > button { border-bottom:0; }
+.gps4d-search-result .gps4d-add-stop { border-left:1px solid rgba(255,255,255,.08); border-radius:0; padding:8px 10px; white-space:nowrap; }
+.gps4d-stops { display:grid; gap:8px; margin:0 0 16px; padding:12px; border:1px solid rgba(255,255,255,.09); border-radius:14px; }
+.gps4d-stops h3 { margin:0 0 2px; }
+.gps4d-stops > div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+.gps4d-stops > div button { min-height:32px; }
+@media (max-width:640px) {
+  .gps4d-page { gap:10px; }
+  .gps4d-map-wrap, .gps4d-map { min-height:56vh; }
+  .gps4d-panel { padding:12px; }
+  .gps4d-metrics { grid-template-columns:1fr 1fr; }
+  .gps4d-metrics div { padding:8px; }
+  .gps4d-layer-status { left:10px; bottom:10px; max-width:calc(100% - 20px); flex-wrap:wrap; }
+  .gps4d-arrival { top:10px; max-width:calc(100% - 24px); text-align:center; }
+}
