@@ -5,6 +5,10 @@ const ORACLE_TERMS = [
   'mi lectura de cartas'
 ];
 
+const READING_TERMS = /\b(lectura|reading|léeme|leeme|reflexión|reflexion|mensaje)\b/;
+const ORACLE_FOCUS_TERMS = /\b(amor|love|relationship|relación|relacion|dinero|money|finanzas|financial|recursos|trabajo|work|career|carrera|empleo|emocional|emotional|emociones|feelings|espiritual|spiritual|alma|soul|completa|completo|full|seven|siete)\b/;
+const CARD_TERMS = /\b(carta|cartas|card|cards)\b/;
+
 function normalize(message) {
   return String(message || '').trim().toLocaleLowerCase('es');
 }
@@ -22,8 +26,12 @@ function readingTypeFor(text) {
 export function detectOracleIntent(message) {
   const text = normalize(message);
   if (!text) return null;
+
   const explicitOracle = ORACLE_TERMS.some((term) => text.includes(term));
-  const cardReading = /\b(lectura|reading|léeme|leeme)\b/.test(text) && /\b(carta|cartas|card|cards)\b/.test(text);
-  if (!explicitOracle && !cardReading) return null;
+  const readingLanguage = READING_TERMS.test(text);
+  const cardReading = readingLanguage && CARD_TERMS.test(text);
+  const focusedReading = readingLanguage && ORACLE_FOCUS_TERMS.test(text);
+
+  if (!explicitOracle && !cardReading && !focusedReading) return null;
   return { readingType: readingTypeFor(text) };
 }
