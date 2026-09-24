@@ -96,15 +96,19 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('PRODUCTION_URL: https://www.atlasenterprisesuite.com');
     expect(workflow).toContain('probe_route "Public home"');
     expect(workflow).toContain('probe_route "ATLAS Identity"');
+    expect(workflow).toContain('probe_route "ATLAS Manager readiness" "/execution/manager/readiness" "manager_readiness_route_reachable"');
     expect(workflow).toContain('probe_route "Module SPA shell"');
     expect(workflow).toContain('probe_route "ATLAS Work" "/work"');
     expect(workflow).toContain('work_routes_reachable');
     expect(workflow).toContain('Public ATLAS production domain, critical Work routes and critical Network routes verified.');
+    expect(workflow).toContain('Verify ATLAS Manager post-deployment canary');
+    expect(workflow).toContain('ATLAS Manager post-deployment canary: evidence persisted, control plane reachable, readiness route verified');
   });
 
   it('records that module authorization is enforced by tested ATLAS Identity rather than edge-wide Access', () => {
     expect(workflow).toContain('public_home_reachable:true');
     expect(workflow).toContain('identity_route_reachable:true');
+    expect(workflow).toContain("manager_readiness_route_reachable:process.env.MANAGER_READINESS_ROUTE_REACHABLE==='true'");
     expect(workflow).toContain('module_spa_shell_reachable:true');
     expect(workflow).toContain('module_authorization_boundary:\'atlas-identity\'');
     expect(workflow).not.toContain('access_gateway_fail_closed:true');
