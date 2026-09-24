@@ -147,3 +147,111 @@ export function formatDuration(seconds: number) {
   const remainder = minutes % 60;
   return remainder ? `${hours} h ${remainder} min` : `${hours} h`;
 }
+
+
+export type NavigationFix = {
+  raw: Pick<GpsPoint, 'lat' | 'lon'>;
+  matched: Pick<GpsPoint, 'lat' | 'lon'>;
+  distance_to_route_m: number;
+  progress: number;
+  remaining_m: number;
+  on_route: boolean;
+};
+
+function closestPointOnSegment(
+  point: Pick<GpsPoint, 'lat' | 'lon'>,
+  start: [number, number],
+  end: [number, number]
+) {
+  const midLat = (start[1] + end[1] + point.lat) / 3;
+  const scaleX = metersPerDegreeLongitude(midLat);
+  const scaleY = 110_540;
+  const sx = start[0] * scaleX;
+  const sy = start[1] * scaleY;
+  const ex = end[0] * scaleX;
+  const ey = end[1] * scaleY;
+  const px = point.lon * scaleX;
+  const py = point.lat * scaleY;
+  const dx = ex - sx;
+  const dy = ey - sy;
+  const denominator = dx * dx + dy * dy;
+  const t = denominator === 0 ? 0 : Math.max(0, Math.min(1, ((px - sx) * dx + (py - sy) * dy) / denominator));
+  return {
+    point: { lat: (sy + t * dy) / scaleY, lon: (sx + t * dx) / scaleX },
+    t,
+    distance_m: Math.hypot(px - (sx + t * dx), py - (sy + t * dy))
+  };
+}
+
+/**
+ * Lightweight on-device map matching. It never invents a road: it only snaps
+ * to the geometry returned by the authenticated routing boundary.
+ */
+export function matchPositionToRoute(
+  point: Pick<GpsPoint, 'lat' | 'lon'>,
+  route: GpsRoute | null,
+  snapThresholdM = 45
+): NavigationFix {
+  const coordinates = route?.geometry?.coordinates || [];
+  if (coordinates.length < 2) {
+    return { raw: point, matched: point, distance_to_route_m: Number.POSITIVE_INFINITY, progress: 0, remaining_m: route?.distance_m || 0, on_route: false };
+  }
+
+  let total = 0;
+  const lengths: number[] = [];
+  for (let i = 1; i < coordinates.length; i += 1) {
+    const length = metersBetween(
+      { lat: coordinates[i - 1][1], lon: coordinates[i - 1][0] },
+      { lat: coordinates[i][1], lon: coordinates[i][0] }
+    );
+    lengths.push(length);
+    total += length;
+  }
+
+  let best = { point, t: 0, distance_m: Number.POSITIVE_INFINITY, segment: 0 };
+  let before = 0;
+  let bestAlong = 0;
+  for (let i = 1; i < coordinates.length; i += 1) {
+    const candidate = closestPointOnSegment(point, coordinates[i - 1], coordinates[i]);
+    if (candidate.distance_m < best.distance_m) {
+      best = { ...candidate, segment: i - 1 };
+      bestAlong = before + lengths[i - 1] * candidate.t;
+    }
+    before += lengths[i - 1];
+  }
+
+  const onRoute = best.distance_m <= snapThresholdM;
+  const progressed = total > 0 ? Math.max(0, Math.min(1, bestAlong / total)) : 0;
+  return {
+    raw: point,
+    matched: onRoute ? best.point : point,
+    distance_to_route_m: best.distance_m,
+    progress: progressed,
+    remaining_m: Math.max(0, (route?.distance_m || total) * (1 - progressed)),
+    on_route: onRoute
+  };
+}
+
+export function navigationBearing(
+  fix: Pick<GpsPoint, 'lat' | 'lon'>,
+  route: GpsRoute | null,
+  fallback: number | null
+) {
+  const coordinates = route?.geometry?.coordinates || [];
+  if (coordinates.length < 2) return fallback ?? 0;
+  let nearest = 0;
+  let minimum = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < coordinates.length; i += 1) {
+    const d = metersBetween(fix, { lat: coordinates[i][1], lon: coordinates[i][0] });
+    if (d < minimum) { minimum = d; nearest = i; }
+  }
+  const next = coordinates[Math.min(nearest + 1, coordinates.length - 1)];
+  const current = coordinates[Math.max(0, Math.min(nearest, coordinates.length - 2))];
+  const lat1 = toRadians(current[1]);
+  const lat2 = toRadians(next[1]);
+  const dLon = toRadians(next[0] - current[0]);
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  const routeBearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  return typeof fallback === 'number' && Number.isFinite(fallback) ? fallback : routeBearing;
+}
