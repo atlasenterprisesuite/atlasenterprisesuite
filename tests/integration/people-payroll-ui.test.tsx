@@ -130,7 +130,7 @@ it('shows persisted payroll totals and explicit unconfigured provider states', a
   });
 
   expect(await screen.findByRole('heading', { name: 'Payroll' })).toBeInTheDocument();
-  expect(screen.getByText('Ada Rivera')).toBeInTheDocument();
+  expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
   expect(screen.getByText('$950.00')).toBeInTheDocument();
   expect(screen.getByText('$725.00')).toBeInTheDocument();
   expect(screen.getByText('Tax filing: Not configured')).toBeInTheDocument();
@@ -159,7 +159,7 @@ it('creates a payroll run through the governed write service for payroll.write',
   }, service);
 
   await screen.findByRole('heading', { name: 'Payroll' });
-  fireEvent.change(screen.getByLabelText('Payroll period start'), { target: { value: '2026-09-14' } });
+  fireEvent.change(await screen.findByLabelText('Payroll period start'), { target: { value: '2026-09-14' } });
   fireEvent.change(screen.getByLabelText('Payroll period end'), { target: { value: '2026-09-20' } });
   fireEvent.change(screen.getByLabelText('Payroll pay date'), { target: { value: '2026-09-25' } });
   fireEvent.click(screen.getByRole('button', { name: 'Create payroll run' }));
@@ -204,7 +204,7 @@ it('saves an hourly payroll line and uses persisted compensation as the rate sou
   }, service, compensationRepository);
 
   await screen.findByRole('heading', { name: 'Payroll' });
-  fireEvent.change(screen.getByLabelText('Payroll line employee payroll-draft'), { target: { value: 'employee-a' } });
+  fireEvent.change(await screen.findByLabelText('Payroll line employee payroll-draft'), { target: { value: 'employee-a' } });
 
   await waitFor(() => expect(screen.getByLabelText('Hourly rate payroll-draft')).toHaveValue(22.5));
   expect(screen.getByText('Rate loaded from compensation effective on 2026-09-13.')).toBeInTheDocument();
@@ -296,7 +296,7 @@ it('approves a calculated run only when payroll.approve is present and a governe
   }, service);
 
   await screen.findByRole('heading', { name: 'Payroll' });
-  fireEvent.click(screen.getByRole('button', { name: 'Approve payroll payroll-a' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Approve payroll payroll-a' }));
 
   await waitFor(() => expect(approvePayrollRun).toHaveBeenCalledWith({
     organizationId: 'org-a',
