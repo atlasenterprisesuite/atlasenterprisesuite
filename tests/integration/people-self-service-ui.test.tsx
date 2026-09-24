@@ -63,7 +63,7 @@ it('shows only the authenticated employee self-service read model', async () => 
   render(
     <MemoryRouter initialEntries={['/people/self-service']}>
       <AtlasProvider source={sourceFor({
-        status: 'ready', userId: 'user-a', organizationId: 'org-a', organizationName: 'Test Organization',
+        status: 'ready', userId: 'user-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
         role: 'staff', permissions: ['payroll.self'],
       })}>
         <PeopleRepositoryProvider repository={peopleRepository}>
@@ -76,7 +76,7 @@ it('shows only the authenticated employee self-service read model', async () => 
   );
 
   expect(await screen.findByRole('heading', { name: 'Employee Self-Service' })).toBeInTheDocument();
-  expect(screen.getByText('Ada Rivera')).toBeInTheDocument();
+  expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
   expect(screen.getByText('$22.00 / hour')).toBeInTheDocument();
   expect(screen.getByText('Health Plan')).toBeInTheDocument();
   expect(screen.getByText('$800.00')).toBeInTheDocument();
@@ -89,7 +89,7 @@ it('denies self-service without payroll.self', async () => {
   render(
     <MemoryRouter initialEntries={['/people/self-service']}>
       <AtlasProvider source={sourceFor({
-        status: 'ready', userId: 'user-a', organizationId: 'org-a', organizationName: 'Test Organization',
+        status: 'ready', userId: 'user-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
         role: 'viewer', permissions: ['accounting.read'],
       })}>
         <PeopleRepositoryProvider repository={peopleRepository}>
