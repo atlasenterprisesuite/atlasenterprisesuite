@@ -1308,3 +1308,49 @@
     flex-direction: column;
   }
 }
+
+
+.tax-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 12px;
+}
+
+.tax-benefit-card {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  background: rgba(255,255,255,.018);
+}
+
+.tax-benefit-card > .tax-panel-heading {
+  align-items: center;
+}
+
+.tax-benefit-card > .tax-panel-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.tax-benefit-card p {
+  margin: 0;
+  color: rgba(220, 239, 250, .82);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.tax-benefit-card ul {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(205, 231, 247, .72);
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.tax-benefit-card a {
+  width: max-content;
+  color: #70d1ff;
+  font-size: .74rem;
+}
