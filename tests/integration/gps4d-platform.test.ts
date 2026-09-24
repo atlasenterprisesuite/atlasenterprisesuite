@@ -6,6 +6,7 @@ const api = readFileSync('apps/web/src/modules/gps/gpsApi.ts', 'utf8');
 const domain = readFileSync('apps/web/src/modules/gps/gpsDomain.ts', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-gps/index.ts', 'utf8');
 const migration = readFileSync('supabase/migrations/20260923235500_atlas_gps4d_core.sql', 'utf8');
+const hardening = readFileSync('supabase/migrations/20260924001200_harden_atlas_gps4d_internal_tables.sql', 'utf8');
 const production = readFileSync('data/ops/global-production-verification.json', 'utf8');
 
 describe('ATLAS GPS 4D platform', () => {
@@ -62,6 +63,9 @@ describe('ATLAS GPS 4D platform', () => {
     expect(migration).toContain('p_min_interval_ms < 1000');
     expect(edge).toContain('p_min_interval_ms: 1000');
     expect(edge).toContain("'user-agent': 'ATLAS-GPS-4D/1.0");
+    expect(hardening).toContain('atlas_gps_provider_cache_explicit_deny');
+    expect(hardening).toContain('atlas_gps_provider_throttle_explicit_deny');
+    expect(hardening.match(/using \(false\)/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   it('keeps paid/live-provider capabilities fail-closed until authoritative evidence exists', () => {
