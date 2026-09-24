@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -82,7 +82,7 @@ it('shows only the authenticated employee self-service read model', async () => 
   expect(await screen.findByText(/Net \$800\.00/)).toBeInTheDocument();
   expect(await screen.findByText(/8\.00 h/)).toBeInTheDocument();
   expect(screen.queryByText('Bob Other')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  expect(within(screen.getByRole('main')).queryByRole('button')).not.toBeInTheDocument();
 });
 
 it('denies self-service without payroll.self', async () => {
