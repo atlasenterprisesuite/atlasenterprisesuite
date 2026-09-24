@@ -17,15 +17,14 @@ describe('ATLAS Creator privileged E2E verifier contract', () => {
   });
 
   it('accepts GitHub OIDC only from the canonical main workflow', () => {
-    expect(source).toContain("const REPO = 'atlasenterprisesuite/atlasenterprisesuite'");
-    expect(source).toContain("const OWNER = 'atlasenterprisesuite'");
+    expect(source).toContain("createGitHubOidcScope(['verify-creator-production-e2e.yml'])");
+    expect(source).toContain('const REPO = GITHUB_SCOPE.canonicalRepository');
     expect(source).toContain("const OIDC_AUDIENCE = 'atlas-enterprise-suite-creator-e2e'");
     expect(source).toContain("verifyGitHubOIDC");
     expect(source).toContain("https://token.actions.githubusercontent.com");
-    expect(source).toContain("payload.repository !== REPO");
-    expect(source).toContain("payload.repository_owner !== OWNER");
+    expect(source).toContain('GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner)');
     expect(source).toContain("payload.ref !== 'refs/heads/main'");
-    expect(source).toContain('payload.workflow_ref !== WORKFLOW_REF');
+    expect(source).toContain("WORKFLOW_REFS.has(String(payload.workflow_ref || ''))");
   });
 
   it('ships a secretless manual workflow that requests OIDC and asserts cleanup', () => {
