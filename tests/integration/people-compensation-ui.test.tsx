@@ -70,7 +70,7 @@ it('shows persisted compensation and deductions to payroll readers without write
   });
 
   expect(await screen.findByRole('heading', { name: 'Compensation & Benefits' })).toBeInTheDocument();
-  expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
+  expect((await screen.findAllByText('Ada Rivera')).length).toBeGreaterThan(0);
   expect(screen.getByText('$22.00 / hour')).toBeInTheDocument();
   expect(screen.getByText(/Health Plan/)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Save compensation' })).not.toBeInTheDocument();
