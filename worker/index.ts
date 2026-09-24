@@ -304,6 +304,25 @@ export class AtlasLocalRealtimeBus {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === '/status' && request.method === 'GET') {
+      const commitSha = await deploymentCommitSha(env, request);
+      const effectiveCommitSha =
+        canonicalCommitSha(env.CF_VERSION_METADATA?.tag) || canonicalCommitSha(commitSha);
+      return withSecurityHeaders(
+        json({
+          ok: true,
+          status: 'ok',
+          service: 'atlas-enterprise-suite-web',
+          environment: 'production',
+          release: {
+            version_id: env.CF_VERSION_METADATA?.id || null,
+            commit_sha: effectiveCommitSha
+          }
+        }),
+        env.CF_VERSION_METADATA,
+        commitSha
+      );
+    }
     if (url.pathname === `${LOCAL_BUS_PREFIX}connect`) return connectLocalBus(request as CloudflareRequest, env);
     if (url.pathname === `${LOCAL_BUS_PREFIX}publish`) return publishLocalBus(request, env);
     const assetResponse = await env.ASSETS.fetch(request);
