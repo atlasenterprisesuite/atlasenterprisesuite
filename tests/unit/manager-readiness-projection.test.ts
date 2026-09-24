@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MANAGER_CRITICAL_NETWORK_ROUTES,
   normalizeManagerInfraStatus,
   projectManagerReadiness,
   REQUIRED_MANAGER_STEPS
@@ -104,5 +105,16 @@ describe('Manager readiness projection', () => {
     const projected = projectManagerReadiness(normalizeManagerInfraStatus(status({ production: 'public_site_unreachable' })));
     expect(projected.taskStatus).toBe('blocked');
     expect(projected.steps.find((step) => step.key === 'production')?.status).toBe('blocked');
+  });
+
+
+  it('monitors every critical ATLAS Network route in the Manager production summary', () => {
+    expect(MANAGER_CRITICAL_NETWORK_ROUTES.map((route) => route.path)).toEqual([
+      '/business/network',
+      '/business/network/pricing',
+      '/business/network/commissions',
+      '/business/network/payouts',
+      '/business/network/compliance'
+    ]);
   });
 });
