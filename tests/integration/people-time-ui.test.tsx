@@ -76,6 +76,8 @@ it('renders organization time data and derives worked hours without fake metrics
   renderPeople({
     status: 'ready',
     userId: 'manager-a',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'manager',
@@ -83,8 +85,8 @@ it('renders organization time data and derives worked hours without fake metrics
   });
 
   expect(await screen.findByRole('heading', { name: 'Time & Attendance' })).toBeInTheDocument();
-  expect(screen.getByText('Ada Rivera')).toBeInTheDocument();
-  expect(screen.getByText('8.00 h')).toBeInTheDocument();
+  expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
+  expect(await screen.findByText('8.00 h')).toBeInTheDocument();
   expect(screen.getByLabelText('Status filter')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Submit time entry time-a' })).not.toBeInTheDocument();
 });
@@ -102,6 +104,8 @@ it('submits a draft through the governed write service when HR write is authoriz
   renderPeople({
     status: 'ready',
     userId: 'manager-a',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'manager',
@@ -109,7 +113,7 @@ it('submits a draft through the governed write service when HR write is authoriz
   }, service);
 
   await screen.findByRole('heading', { name: 'Time & Attendance' });
-  fireEvent.click(screen.getByRole('button', { name: 'Submit time entry time-a' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Submit time entry time-a' }));
 
   await waitFor(() => expect(submitTimeEntry).toHaveBeenCalledWith({
     organizationId: 'org-a',
@@ -122,6 +126,8 @@ it('fails closed when the identity has no People permission', async () => {
   renderPeople({
     status: 'ready',
     userId: 'viewer-a',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'viewer',
