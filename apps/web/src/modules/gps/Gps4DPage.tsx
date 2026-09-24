@@ -15,11 +15,11 @@ import {
   formatDistance,
   formatDuration,
   metersBetween,
-  routeDeviationMeters,
-  routeProgress,
   spokenInstruction,
   type GpsViewMode
 } from './gpsDomain';
+import { AtlasNavigationEngine, type NavigationEngineObservation } from './navigationEngine';
+import { createNavigationLocationSource, type NavigationLocationSourceKind } from './navigationLocation';
 import './gps4d.css';
 
 type LivePosition = GpsPoint & {
@@ -35,7 +35,6 @@ const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.mjs';
 const STREET_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const USGS_TILE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
 const TERRAIN_TILEJSON = 'https://tiles.mapterhorn.com/tilejson.json';
-const REROUTE_THRESHOLD_M = 80;
 const REROUTE_COOLDOWN_MS = 15_000;
 
 function satelliteStyle(withTerrain = false): any {
@@ -118,7 +117,9 @@ export function Gps4DPage() {
   const currentMarker = useRef<any>(null);
   const driveMarker = useRef<any>(null);
   const selectedMarker = useRef<any>(null);
-  const watchId = useRef<number | null>(null);
+  const locationStop = useRef<(() => void) | null>(null);
+  const navigationEngine = useRef(new AtlasNavigationEngine());
+  const wakeLock = useRef<any>(null);
   const activeRouteRef = useRef<GpsRoute | null>(null);
   const selectedRef = useRef<GpsPoint | null>(null);
   const navigationActiveRef = useRef(false);
@@ -131,6 +132,9 @@ export function Gps4DPage() {
   const [layerState, setLayerState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [layerMessage, setLayerMessage] = useState('Cargando mapa…');
   const [gpsState, setGpsState] = useState<'pending' | 'active' | 'blocked'>('pending');
+  const [locationSourceKind, setLocationSourceKind] = useState<NavigationLocationSourceKind>('browser-geolocation');
+  const [navigationFixSource, setNavigationFixSource] = useState<'gps' | 'route-snap'>('gps');
+  const [navigationConfidence, setNavigationConfidence] = useState(0);
   const [viewMode, setViewMode] = useState<GpsViewMode>('street');
   const [current, setCurrent] = useState<LivePosition | null>(null);
   const [selected, setSelected] = useState<GpsPoint | null>(null);
@@ -155,7 +159,10 @@ export function Gps4DPage() {
   const activeRoute = routes[activeRouteIndex] || null;
   const activeStep = activeRoute?.steps?.[currentStepIndex] || null;
 
-  useEffect(() => { activeRouteRef.current = activeRoute; }, [activeRoute]);
+  useEffect(() => {
+    activeRouteRef.current = activeRoute;
+    navigationEngine.current.reset();
+  }, [activeRoute]);
   useEffect(() => { selectedRef.current = selected; }, [selected]);
   useEffect(() => { navigationActiveRef.current = navigationActive; }, [navigationActive]);
   useEffect(() => { voiceEnabledRef.current = voiceEnabled; }, [voiceEnabled]);
@@ -209,7 +216,9 @@ export function Gps4DPage() {
 
     return () => {
       cancelled = true;
-      if (watchId.current !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId.current);
+      locationStop.current?.();
+      locationStop.current = null;
+      void releaseWakeLock();
       map.current?.remove();
       map.current = null;
       maplibre.current = null;
@@ -385,30 +394,23 @@ export function Gps4DPage() {
     renderRouteOn(driveMap.current, route, 'atlas-drive-route', false);
   }
 
-  function updateNavigation(next: LivePosition) {
+  function updateNavigation(next: LivePosition): NavigationEngineObservation | null {
     const route = activeRouteRef.current;
-    if (!navigationActiveRef.current || !route) return;
+    if (!navigationActiveRef.current || !route) return null;
 
-    const deviation = routeDeviationMeters(next, route);
-    setDeviationM(Number.isFinite(deviation) ? deviation : null);
-    const progressState = routeProgress(next, route);
-    setProgress(progressState.progress);
-    setRemainingM(progressState.remaining_m);
+    const observation = navigationEngine.current.update(next, route, currentStepIndexRef.current);
+    setDeviationM(Number.isFinite(observation.off_route_m) ? observation.off_route_m : null);
+    setProgress(observation.route_progress);
+    setRemainingM(observation.remaining_m);
+    setNavigationFixSource(observation.source);
+    setNavigationConfidence(observation.confidence);
 
-    const steps = route.steps || [];
-    let index = currentStepIndexRef.current;
-    const currentStep = steps[index];
-    const stepLocation = currentStep?.location;
-    if (stepLocation) {
-      const distanceToStep = metersBetween(next, { lat: stepLocation[1], lon: stepLocation[0] });
-      if (distanceToStep < 35 && index < steps.length - 1) {
-        index += 1;
-        setCurrentStepIndex(index);
-        currentStepIndexRef.current = index;
-      }
+    if (observation.step_index !== currentStepIndexRef.current) {
+      setCurrentStepIndex(observation.step_index);
+      currentStepIndexRef.current = observation.step_index;
     }
 
-    const nextStep = steps[index] || null;
+    const nextStep = route.steps?.[observation.step_index] || null;
     if (voiceEnabledRef.current && nextStep && nextStep.id !== spokenStepIdRef.current) {
       const phrase = spokenInstruction(nextStep);
       if (phrase && 'speechSynthesis' in window) {
@@ -420,48 +422,77 @@ export function Gps4DPage() {
       }
     }
 
+    if (observation.arrived) {
+      setArrivalState('arrived');
+    }
+
     if (
-      deviation > REROUTE_THRESHOLD_M &&
+      observation.reroute_suggested &&
       selectedRef.current &&
       Date.now() - lastRerouteAt.current > REROUTE_COOLDOWN_MS
     ) {
       lastRerouteAt.current = Date.now();
-      void loadRoute(next, selectedRef.current, true);
+      void loadRoute({
+        lat: observation.display.lat,
+        lon: observation.display.lon,
+        label: 'Tu ubicación ajustada',
+        category: 'navigation'
+      }, selectedRef.current, true);
+    }
+
+    return observation;
+  }
+
+  async function acquireWakeLock() {
+    try {
+      const nav = navigator as any;
+      if (nav.wakeLock?.request && !wakeLock.current) {
+        wakeLock.current = await nav.wakeLock.request('screen');
+      }
+    } catch {
+      // Navigation continues without a wake lock when the browser denies it.
+    }
+  }
+
+  async function releaseWakeLock() {
+    try {
+      await wakeLock.current?.release?.();
+    } catch {
+      // A released/invalidated lock is already safe.
+    } finally {
+      wakeLock.current = null;
     }
   }
 
   function startGps(center = true) {
-    if (!navigator.geolocation) {
-      setGpsState('blocked');
-      return;
-    }
-    if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+    locationStop.current?.();
+    const source = createNavigationLocationSource();
+    setLocationSourceKind(source.kind);
 
-    watchId.current = navigator.geolocation.watchPosition((position) => {
+    locationStop.current = source.start((sample) => {
       const next: LivePosition = {
-        lat: position.coords.latitude,
-        lon: position.coords.longitude,
-        label: 'Tu ubicación',
-        accuracy_m: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
-        heading_deg: typeof position.coords.heading === 'number' && Number.isFinite(position.coords.heading) ? position.coords.heading : null,
-        speed_mps: typeof position.coords.speed === 'number' && Number.isFinite(position.coords.speed) ? position.coords.speed : null,
-        timestamp: position.timestamp
+        ...sample,
+        label: 'Tu ubicación'
       };
       setCurrent(next);
       setGpsState('active');
 
+      const observation = updateNavigation(next);
+      const display = observation?.display || { lat: next.lat, lon: next.lon };
+      const course = observation?.course_deg ?? next.heading_deg;
+
       if (map.current && maplibre.current) {
         if (!currentMarker.current) {
           currentMarker.current = new maplibre.current.Marker({ color: '#20d67a' })
-            .setLngLat([next.lon, next.lat])
+            .setLngLat([display.lon, display.lat])
             .setPopup(new maplibre.current.Popup({ offset: 22 }).setText('Tu ubicación'))
             .addTo(map.current);
         } else {
-          currentMarker.current.setLngLat([next.lon, next.lat]);
+          currentMarker.current.setLngLat([display.lon, display.lat]);
         }
         if (center) {
           map.current.easeTo({
-            center: [next.lon, next.lat],
+            center: [display.lon, display.lat],
             zoom: Math.max(map.current.getZoom(), navigationActiveRef.current ? 15.5 : 15),
             bearing: navigationActiveRef.current ? 0 : map.current.getBearing(),
             pitch: navigationActiveRef.current ? 0 : map.current.getPitch(),
@@ -479,33 +510,37 @@ export function Gps4DPage() {
             element: markerElement,
             rotationAlignment: 'map',
             pitchAlignment: 'map'
-          }).setLngLat([next.lon, next.lat]).addTo(driveMap.current);
+          }).setLngLat([display.lon, display.lat]).addTo(driveMap.current);
         } else {
-          driveMarker.current.setLngLat([next.lon, next.lat]);
+          driveMarker.current.setLngLat([display.lon, display.lat]);
         }
         if (typeof driveMarker.current.setRotation === 'function') {
-          driveMarker.current.setRotation(next.heading_deg ?? 0);
+          driveMarker.current.setRotation(course ?? 0);
         }
         driveMap.current.easeTo({
-          center: [next.lon, next.lat],
+          center: [display.lon, display.lat],
           zoom: 18.2,
-          bearing: next.heading_deg ?? driveMap.current.getBearing(),
+          bearing: course ?? driveMap.current.getBearing(),
           pitch: 72,
           duration: 350
         });
       }
 
-      if (selectedRef.current) {
+      if (!observation && selectedRef.current) {
         const destinationDistance = metersBetween(next, selectedRef.current);
         if (destinationDistance <= 35) setArrivalState('arrived');
         else if (destinationDistance <= 180) setArrivalState('approaching');
         else setArrivalState('idle');
+      } else if (observation && !observation.arrived && selectedRef.current) {
+        const destinationDistance = metersBetween(observation.display, selectedRef.current);
+        if (destinationDistance <= 180) setArrivalState('approaching');
+        else setArrivalState('idle');
       }
-      updateNavigation(next);
-    }, () => setGpsState('blocked'), {
-      enableHighAccuracy: true,
-      maximumAge: 1500,
-      timeout: 15_000
+    }, (error) => {
+      setGpsState('blocked');
+      setRouteMessage(error === 'geolocation_permission_denied'
+        ? 'Permiso de ubicación denegado. ATLAS no puede iniciar navegación.'
+        : 'La fuente de ubicación no está disponible.');
     });
   }
 
@@ -601,20 +636,26 @@ export function Gps4DPage() {
 
   function beginNavigation() {
     if (!activeRoute || !current) return;
+    navigationEngine.current.reset();
     setNavigationActive(true);
     navigationActiveRef.current = true;
     setCurrentStepIndex(0);
     currentStepIndexRef.current = 0;
     spokenStepIdRef.current = '';
+    void acquireWakeLock();
     startGps(true);
   }
 
   function stopNavigation() {
     setNavigationActive(false);
     navigationActiveRef.current = false;
+    navigationEngine.current.reset();
     setDeviationM(null);
     setProgress(0);
     setRemainingM(0);
+    setNavigationFixSource('gps');
+    setNavigationConfidence(0);
+    void releaseWakeLock();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   }
 
@@ -646,6 +687,16 @@ export function Gps4DPage() {
     : activeRoute
       ? Math.max(1, Math.round(activeRoute.duration_s / 60))
       : null;
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && navigationActiveRef.current) {
+        void acquireWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
 
   const mapModeDetail = useMemo(() => {
     if (viewMode === 'street') return 'OpenFreeMap + OpenStreetMap';
@@ -789,6 +840,9 @@ export function Gps4DPage() {
             <div><dt>Rumbo</dt><dd>{current?.heading_deg === null || current?.heading_deg === undefined ? '—' : `${Math.round(current.heading_deg)}°`}</dd></div>
             <div><dt>Desvío de ruta</dt><dd>{deviationM === null ? '—' : formatDistance(deviationM)}</dd></div>
             <div><dt>Progreso</dt><dd>{navigationActive ? `${Math.round(progress * 100)}% · ${formatDistance(remainingM)} restantes` : '—'}</dd></div>
+            <div><dt>Fuente ubicación</dt><dd>{locationSourceKind === 'apple-native-bridge' ? 'Apple Core Location bridge' : 'Browser geolocation'}</dd></div>
+            <div><dt>Ajuste a ruta</dt><dd>{navigationActive ? (navigationFixSource === 'route-snap' ? 'Activo' : 'GPS crudo') : '—'}</dd></div>
+            <div><dt>Confianza</dt><dd>{navigationActive ? `${Math.round(navigationConfidence * 100)}%` : '—'}</dd></div>
           </dl>
 
           {routes.length > 1 && (

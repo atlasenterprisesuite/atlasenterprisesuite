@@ -1,0 +1,33 @@
+name: Apple Navigation Bridge CI
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "native/apple-navigation-bridge/**"
+      - ".github/workflows/apple-navigation-bridge-ci.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "native/apple-navigation-bridge/**"
+      - ".github/workflows/apple-navigation-bridge-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  native-navigation-verify:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: native/apple-navigation-bridge
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift runtime
+        run: swift --version
+      - name: macOS tests
+        run: swift test
+      - name: macOS build
+        run: swift build
+      - name: iOS SDK compile
+        run: xcodebuild -scheme AtlasAppleNavigationBridge -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/xcode-ios CODE_SIGNING_ALLOWED=NO build
