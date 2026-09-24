@@ -376,6 +376,13 @@
   overflow-wrap: anywhere;
 }
 
+.manager-meta-subline {
+  display: block;
+  margin-top: .25rem;
+  color: var(--execution-muted);
+  font-size: .76rem;
+}
+
 .manager-history-section {
   display: grid;
   gap: .75rem;
