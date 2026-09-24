@@ -61,11 +61,17 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(identityReuseMigration).toContain('grant execute on function public.atlas_get_local_ai_runtime_config() to service_role');
   });
 
-  it('allocates production context headroom for the Render local runtime', () => {
+  it('allocates production context headroom with a bounded Render memory policy', () => {
     expect(start).toContain('ATLAS_RENDER_LOCAL_AI_CONTEXT_SIZE');
     expect(start).toContain("|| '4096'");
     expect(start).toContain('Math.max(4096');
     expect(start).toContain("'-c', localContext");
+    expect(start).toContain("'-b', '512'");
+    expect(start).toContain("'-ub', '128'");
+    expect(start).toContain("'-ctk', 'q8_0'");
+    expect(start).toContain("'-ctv', 'q8_0'");
+    expect(start).toContain("'--cache-ram', '0'");
+    expect(start).toContain("'--no-cache-idle-slots'");
     expect(start).not.toContain("'-c', '512'");
   });
 
