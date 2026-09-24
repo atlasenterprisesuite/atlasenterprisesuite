@@ -122,7 +122,7 @@ describe('Manager readiness launcher', () => {
 
     expect(await screen.findByRole('heading', { name: 'Production verification' })).toBeInTheDocument();
     expect(screen.getByLabelText('Production canary verified')).toHaveTextContent('Canary verified');
-    expect(screen.getByText('a1ac03f22df4db95766167eee0962529ccf85634')).toBeInTheDocument();
+    expect(screen.getAllByText('a1ac03f22df4db95766167eee0962529ccf85634').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('/business/network')).toBeInTheDocument();
     expect(screen.getByText('/business/network/pricing')).toBeInTheDocument();
     expect(screen.getByText('/business/network/commissions')).toBeInTheDocument();
