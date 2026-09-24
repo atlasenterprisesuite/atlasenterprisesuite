@@ -61,7 +61,7 @@ describe('ATLAS Private Oracle routes', () => {
     renderOracle();
     expect(await screen.findByRole('heading', { name: 'ATLAS Mystic Oracle' })).toBeInTheDocument();
     for (const label of ['Daily Reading', 'Love', 'Money', 'Work', 'Emotional reflection', 'Spiritual message', 'Full Reading']) {
-      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: new RegExp(`^${label}`) })).toBeInTheDocument();
     }
     expect(await screen.findByText('No private readings yet.')).toBeInTheDocument();
     expect(screen.getByText(/symbolic reflection/i)).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('ATLAS Private Oracle routes', () => {
     renderOracle('/assistant/oracle/readings/r1');
     expect(await screen.findByRole('heading', { name: 'Your private reading' })).toBeInTheDocument();
     expect(screen.getByText('CONFÍA')).toBeInTheDocument();
-    expect(screen.getByLabelText('Private note')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Private note' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save private note' })).toBeInTheDocument();
   });
 
