@@ -8,6 +8,7 @@ import { ProfessionalReturnWorkspace } from './ProfessionalReturnWorkspace';
 import { TaxControlCenter } from './TaxControlCenter';
 import { DepthTaxIntake } from './DepthTaxIntake';
 import { TaxProfessionalDashboard } from './TaxProfessionalDashboard';
+import { TaxBenefits2025 } from './TaxBenefits2025';
 import { importTaxSourceMapping } from '../../lib/taxApi';
 import './tax.css';
 
@@ -20,6 +21,7 @@ const nav = [
   { to: '/tax/documents/k1', label: 'K-1 Intake', end: false },
   { to: '/tax/documents/depth', label: 'Tax Depth Intake', end: false },
   { to: '/tax/forms', label: 'Forms & Schedules', end: false },
+  { to: '/tax/benefits', label: 'Credits & Deductions', end: false },
   { to: '/tax/personal', label: 'Personal Returns', end: false },
   { to: '/tax/business', label: 'Business Returns', end: false },
   { to: '/tax/review', label: 'Review Queue', end: false }
@@ -31,6 +33,7 @@ const shellNav = [
   { to: '/tax/control', label: 'Returns', glyph: '▤', end: false },
   { to: '/tax/documents/depth', label: 'Documents', glyph: '▱', end: false },
   { to: '/tax/prepare', label: 'Tax Facts', glyph: '◎', end: false },
+  { to: '/tax/benefits', label: 'Credits & Deductions', glyph: '★', end: false },
   { to: '/tax/prepare', label: 'Workpapers', glyph: '▧', end: false },
   { to: '/tax/review', label: 'Diagnostics', glyph: '◇', end: false },
   { to: '/tax/review', label: 'Submissions', glyph: '↗', end: false },
@@ -375,6 +378,7 @@ export function TaxRoutes() {
           <Route path="documents/k1" element={<PartnershipK1Workspace />} />
           <Route path="documents/depth" element={<DepthTaxIntake />} />
           <Route path="forms" element={<FormsCatalog />} />
+          <Route path="benefits" element={<TaxBenefits2025 />} />
           <Route path="personal" element={<FormsCatalog audience="personal" />} />
           <Route path="business" element={<FormsCatalog audience="business" />} />
           <Route path="review" element={<ReviewQueue />} />

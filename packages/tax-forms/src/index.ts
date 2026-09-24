@@ -216,3 +216,6 @@ export * from './depthSourceDocuments';
 export * from './individual1040Engine';
 
 export * from './scheduleA2025';
+
+export * from './taxTable2025';
+export * from './federalBenefits2025';
