@@ -51,6 +51,10 @@ export type ManagerProductionVerificationSummary = {
   provider_state: string | null;
   version_id: string | null;
   evidence_id: string | null;
+  regression_detected: boolean;
+  regression_reasons: string[];
+  previous_deployment_sha: string | null;
+  previous_verified_at: string | null;
   history: Array<{
     evidence_id: string | null;
     deployment_sha: string | null;
@@ -148,6 +152,10 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
       provider_state: null,
       version_id: null,
       evidence_id: null,
+      regression_detected: false,
+      regression_reasons: [],
+      previous_deployment_sha: null,
+      previous_verified_at: null,
       history: [],
       critical_routes: MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) => ({
         ...definition,
@@ -190,6 +198,27 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
   const allCriticalRoutesVerified = criticalRoutes.every((route) => route.state === 'verified');
   const canaryVerified = persistedEvidenceVerified && allCriticalRoutesVerified;
 
+  const previous = historyRows[1] ?? null;
+  const previousChecks = plainRecord(previous?.checks);
+  const previousWasHealthy = Boolean(
+    previous &&
+    previous.status === 'passed' &&
+    previous.provider_state === 'verified' &&
+    previousChecks.production_commit_sha_verified === true &&
+    previousChecks.manager_readiness_route_reachable === true &&
+    previousChecks.critical_network_routes_reachable === true
+  );
+  const regressionReasons: string[] = [];
+  if (previousWasHealthy) {
+    if (latest.status !== 'passed') regressionReasons.push('deployment_status_regressed');
+    if (latest.provider_state !== 'verified') regressionReasons.push('provider_state_regressed');
+    if (checks.production_commit_sha_verified !== true) regressionReasons.push('production_sha_regressed');
+    if (checks.manager_readiness_route_reachable !== true) regressionReasons.push('manager_readiness_regressed');
+    if (checks.critical_network_routes_reachable !== true) regressionReasons.push('critical_network_routes_regressed');
+    if (!allCriticalRoutesVerified) regressionReasons.push('live_critical_route_regression');
+  }
+  const regressionDetected = regressionReasons.length > 0;
+
   return {
     state: canaryVerified ? 'verified' : 'unverified',
     canary_verified: canaryVerified,
@@ -199,6 +228,10 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
     provider_state: typeof latest.provider_state === 'string' ? latest.provider_state : null,
     version_id: typeof checks.cloudflare_version_id === 'string' ? checks.cloudflare_version_id : null,
     evidence_id: typeof latest.id === 'string' ? latest.id : null,
+    regression_detected: regressionDetected,
+    regression_reasons: regressionReasons,
+    previous_deployment_sha: typeof previous?.target_version === 'string' ? previous.target_version : null,
+    previous_verified_at: typeof previous?.created_at === 'string' ? previous.created_at : null,
     history,
     critical_routes: criticalRoutes
   };

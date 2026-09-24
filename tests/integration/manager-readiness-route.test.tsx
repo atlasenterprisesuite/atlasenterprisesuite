@@ -76,6 +76,10 @@ describe('Manager readiness launcher', () => {
         provider_state: 'verified',
         version_id: '38b63eb1-6b04-4f32-8a00-96e93f519244',
         evidence_id: 'evidence-1',
+        regression_detected: false,
+        regression_reasons: [],
+        previous_deployment_sha: '8c0249b5d4f8141e8eb487d9f554d78a61e674b5',
+        previous_verified_at: '2026-09-24T06:40:00Z',
         history: [
           {
             evidence_id: 'evidence-1',
@@ -131,7 +135,72 @@ describe('Manager readiness launcher', () => {
     expect(screen.getByRole('heading', { name: 'Recent production deployments' })).toBeInTheDocument();
     expect(screen.getByText('Current deployment')).toBeInTheDocument();
     expect(screen.getByText('Previous deployment')).toBeInTheDocument();
-    expect(screen.getByText('8c0249b5d4f8141e8eb487d9f554d78a61e674b5')).toBeInTheDocument();
+    expect(screen.getAllByText('8c0249b5d4f8141e8eb487d9f554d78a61e674b5').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByLabelText('No production regression detected')).toHaveTextContent('No regression');
+  });
+
+  it('shows a fail-closed regression alert when the latest deployment loses a required verification', async () => {
+    const state = makeGuidedState({ workflowStatus: 'completed', taskStatus: 'completed', currentStepId: 'step-3' });
+    state.workflow.context = {
+      return_path: '/',
+      source: 'atlas-infra-status',
+      production_verification: {
+        state: 'unverified',
+        canary_verified: false,
+        deployment_sha: 'latest-sha',
+        verified_at: '2026-09-24T08:14:33.171635Z',
+        provider: 'cloudflare',
+        provider_state: 'verified',
+        version_id: 'version-new',
+        evidence_id: 'evidence-new',
+        regression_detected: true,
+        regression_reasons: ['manager_readiness_regressed', 'live_critical_route_regression'],
+        previous_deployment_sha: 'previous-sha',
+        previous_verified_at: '2026-09-24T07:59:43.477568Z',
+        history: [
+          {
+            evidence_id: 'evidence-new',
+            deployment_sha: 'latest-sha',
+            verified_at: '2026-09-24T08:14:33.171635Z',
+            status: 'passed',
+            provider: 'cloudflare',
+            provider_state: 'verified',
+            version_id: 'version-new',
+            production_commit_sha_verified: true,
+            manager_readiness_route_reachable: false,
+            critical_network_routes_reachable: true
+          },
+          {
+            evidence_id: 'evidence-old',
+            deployment_sha: 'previous-sha',
+            verified_at: '2026-09-24T07:59:43.477568Z',
+            status: 'passed',
+            provider: 'cloudflare',
+            provider_state: 'verified',
+            version_id: 'version-old',
+            production_commit_sha_verified: true,
+            manager_readiness_route_reachable: true,
+            critical_network_routes_reachable: true
+          }
+        ],
+        critical_routes: [
+          { label: 'ATLAS Network', path: '/business/network', state: 'failed', http_status: 500 }
+        ]
+      }
+    };
+    vi.mocked(loadGuidedExecutionState).mockResolvedValue(state);
+    vi.mocked(loadGuidedExecutionAudit).mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={['/execution/wf-1']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByLabelText('Production regression detected')).toHaveTextContent('Regression detected');
+    expect(screen.getByRole('alert')).toHaveTextContent('manager_readiness_regressed');
+    expect(screen.getByRole('alert')).toHaveTextContent('live_critical_route_regression');
+    expect(screen.getAllByText('previous-sha').length).toBeGreaterThanOrEqual(2);
   });
 
   it('shows the exact sync error and retries only when requested', async () => {
