@@ -37,6 +37,13 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
     ? summary.regression_reasons.filter((value): value is string => typeof value === 'string' && Boolean(value))
     : [];
   const previousDeploymentSha = nullableString(summary.previous_deployment_sha);
+  const lastKnownGoodSha = nullableString(summary.last_known_good_sha);
+  const lastKnownGoodVerifiedAt = nullableString(summary.last_known_good_verified_at);
+  const lastKnownGoodVersionId = nullableString(summary.last_known_good_version_id);
+  const greenStreakCount = typeof summary.green_streak_count === 'number' && Number.isFinite(summary.green_streak_count)
+    ? Math.max(0, Math.trunc(summary.green_streak_count))
+    : 0;
+  const greenStreakCapped = summary.green_streak_capped === true;
 
   return (
     <section className="execution-panel manager-production-panel" aria-labelledby="manager-production-title">
@@ -82,7 +89,19 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
         </div>
         <div>
           <dt>Compared with</dt>
-          <dd><code>{previousDeploymentSha ?? 'No previous verified deployment'}</code></dd>
+          <dd><code>{previousDeploymentSha ?? 'No previous deployment'}</code></dd>
+        </div>
+        <div>
+          <dt>Green streak</dt>
+          <dd>{greenStreakCapped ? greenStreakCount + '+' : greenStreakCount} consecutive verified deployment{greenStreakCount === 1 ? '' : 's'}</dd>
+        </div>
+        <div>
+          <dt>Last known good</dt>
+          <dd>
+            <code>{lastKnownGoodSha ?? 'Unavailable'}</code>
+            {lastKnownGoodVerifiedAt ? <small className="manager-meta-subline">{readableDate(lastKnownGoodVerifiedAt)}</small> : null}
+            {lastKnownGoodVersionId ? <small className="manager-meta-subline">Version {lastKnownGoodVersionId}</small> : null}
+          </dd>
         </div>
       </dl>
 
@@ -90,6 +109,9 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
         <div className="manager-regression-alert" role="alert">
           <strong>Production regression detected</strong>
           <span>{regressionReasons.join(' · ') || 'A required production verification regressed.'}</span>
+          <span>
+            Recovery candidate: <code>{lastKnownGoodSha ?? 'No verified prior deployment available'}</code>
+          </span>
         </div>
       ) : null}
 

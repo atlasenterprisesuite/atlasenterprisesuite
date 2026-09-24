@@ -80,6 +80,11 @@ describe('Manager readiness launcher', () => {
         regression_reasons: [],
         previous_deployment_sha: '8c0249b5d4f8141e8eb487d9f554d78a61e674b5',
         previous_verified_at: '2026-09-24T06:40:00Z',
+        last_known_good_sha: '8c0249b5d4f8141e8eb487d9f554d78a61e674b5',
+        last_known_good_verified_at: '2026-09-24T06:40:00Z',
+        last_known_good_version_id: 'older-version',
+        green_streak_count: 2,
+        green_streak_capped: false,
         history: [
           {
             evidence_id: 'evidence-1',
@@ -137,6 +142,9 @@ describe('Manager readiness launcher', () => {
     expect(screen.getByText('Previous deployment')).toBeInTheDocument();
     expect(screen.getAllByText('8c0249b5d4f8141e8eb487d9f554d78a61e674b5').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByLabelText('No production regression detected')).toHaveTextContent('No regression');
+    expect(screen.getByText('2 consecutive verified deployments')).toBeInTheDocument();
+    expect(screen.getAllByText('8c0249b5d4f8141e8eb487d9f554d78a61e674b5').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Version older-version')).toBeInTheDocument();
   });
 
   it('shows a fail-closed regression alert when the latest deployment loses a required verification', async () => {
@@ -157,6 +165,11 @@ describe('Manager readiness launcher', () => {
         regression_reasons: ['manager_readiness_regressed', 'live_critical_route_regression'],
         previous_deployment_sha: 'previous-sha',
         previous_verified_at: '2026-09-24T07:59:43.477568Z',
+        last_known_good_sha: 'previous-sha',
+        last_known_good_verified_at: '2026-09-24T07:59:43.477568Z',
+        last_known_good_version_id: 'version-old',
+        green_streak_count: 0,
+        green_streak_capped: false,
         history: [
           {
             evidence_id: 'evidence-new',
@@ -200,7 +213,9 @@ describe('Manager readiness launcher', () => {
     expect(await screen.findByLabelText('Production regression detected')).toHaveTextContent('Regression detected');
     expect(screen.getByRole('alert')).toHaveTextContent('manager_readiness_regressed');
     expect(screen.getByRole('alert')).toHaveTextContent('live_critical_route_regression');
-    expect(screen.getAllByText('previous-sha').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('previous-sha').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByRole('alert')).toHaveTextContent('Recovery candidate:');
+    expect(screen.getByText('0 consecutive verified deployments')).toBeInTheDocument();
   });
 
   it('shows the exact sync error and retries only when requested', async () => {
