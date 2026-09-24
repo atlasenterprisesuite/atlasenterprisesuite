@@ -11,6 +11,7 @@ const approvedNames = [
   'ATLAS Education',
   'ATLAS Analytics',
   'ATLAS Connect',
+  'ATLAS Telecom',
   'ATLAS Documents',
   'Knowledge Atlas',
   'ATLAS Security',
@@ -23,11 +24,11 @@ const approvedNames = [
 ] as const;
 
 describe('ATLAS product module catalog', () => {
-  it('contains exactly the 18 approved unique product modules in visual order', () => {
-    expect(ATLAS_MODULE_CATALOG).toHaveLength(18);
+  it('contains exactly the approved unique product modules in visual order', () => {
+    expect(ATLAS_MODULE_CATALOG).toHaveLength(approvedNames.length);
     expect(ATLAS_MODULE_CATALOG.map((module) => module.displayName)).toEqual(approvedNames);
-    expect(new Set(ATLAS_MODULE_CATALOG.map((module) => module.id)).size).toBe(18);
-    expect(new Set(ATLAS_MODULE_CATALOG.map((module) => module.route)).size).toBe(18);
+    expect(new Set(ATLAS_MODULE_CATALOG.map((module) => module.id)).size).toBe(approvedNames.length);
+    expect(new Set(ATLAS_MODULE_CATALOG.map((module) => module.route)).size).toBe(approvedNames.length);
   });
 
   it('uses canonical authenticated app routes', () => {
