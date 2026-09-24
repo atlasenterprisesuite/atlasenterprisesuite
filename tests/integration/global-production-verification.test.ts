@@ -136,8 +136,10 @@ describe('ATLAS global production verification', () => {
     expect(cloudflareWorkflow).toContain('suite_route_reachable=true');
     expect(cloudflareWorkflow).toContain('uses: ./.github/workflows/global-production-verify.yml');
     expect(cloudflareWorkflow).toContain('mode: fail-closed');
-    expect(cloudflareWorkflow).toContain('- "scripts/verify-global-production.mjs"');
-    expect(cloudflareWorkflow).toContain('- ".github/workflows/global-production-verify.yml"');
+    expect(cloudflareWorkflow).toContain('push:');
+    expect(cloudflareWorkflow).toContain('branches: ["main"]');
+    expect(cloudflareWorkflow).not.toContain('    paths:');
+    expect(cloudflareWorkflow).toContain('Every main SHA must receive its own production deployment evidence');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
