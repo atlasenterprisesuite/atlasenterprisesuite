@@ -22,6 +22,8 @@ function sourceFor(state: AtlasIdentityState): AtlasIdentitySource {
 const readyIdentity: AtlasIdentityState = {
   status: 'ready',
   userId: 'test-user-id',
+  tenantId: 'tenant-test',
+  tenantName: 'Test Tenant',
   organizationId: 'test-organization-id',
   organizationName: 'Test Organization',
   role: 'admin',
