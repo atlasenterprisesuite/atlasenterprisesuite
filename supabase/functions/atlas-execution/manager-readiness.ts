@@ -51,6 +51,18 @@ export type ManagerProductionVerificationSummary = {
   provider_state: string | null;
   version_id: string | null;
   evidence_id: string | null;
+  history: Array<{
+    evidence_id: string | null;
+    deployment_sha: string | null;
+    verified_at: string | null;
+    status: string;
+    provider: string | null;
+    provider_state: string | null;
+    version_id: string | null;
+    production_commit_sha_verified: boolean;
+    manager_readiness_route_reachable: boolean;
+    critical_network_routes_reachable: boolean;
+  }>;
   critical_routes: Array<{
     label: string;
     path: string;
@@ -121,10 +133,12 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
     .eq('target_service', 'atlas-enterprise-suite-web')
     .eq('environment', 'production')
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
 
-  if (error || !data) {
+  const historyRows = Array.isArray(data) ? data : [];
+  const latest = historyRows[0] ?? null;
+
+  if (error || !latest) {
     return {
       state: 'unavailable',
       canary_verified: false,
@@ -134,6 +148,7 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
       provider_state: null,
       version_id: null,
       evidence_id: null,
+      history: [],
       critical_routes: MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) => ({
         ...definition,
         state: 'unavailable',
@@ -144,16 +159,31 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
     };
   }
 
-  const checks = plainRecord(data.checks);
-  const deploymentSha = typeof data.target_version === 'string' ? data.target_version : '';
+  const checks = plainRecord(latest.checks);
+  const deploymentSha = typeof latest.target_version === 'string' ? latest.target_version : '';
+  const history = historyRows.map((row: any) => {
+    const rowChecks = plainRecord(row.checks);
+    return {
+      evidence_id: typeof row.id === 'string' ? row.id : null,
+      deployment_sha: typeof row.target_version === 'string' ? row.target_version : null,
+      verified_at: typeof row.created_at === 'string' ? row.created_at : null,
+      status: typeof row.status === 'string' ? row.status : 'unknown',
+      provider: typeof row.provider === 'string' ? row.provider : null,
+      provider_state: typeof row.provider_state === 'string' ? row.provider_state : null,
+      version_id: typeof rowChecks.cloudflare_version_id === 'string' ? rowChecks.cloudflare_version_id : null,
+      production_commit_sha_verified: rowChecks.production_commit_sha_verified === true,
+      manager_readiness_route_reachable: rowChecks.manager_readiness_route_reachable === true,
+      critical_network_routes_reachable: rowChecks.critical_network_routes_reachable === true
+    };
+  });
   const criticalRoutes = await Promise.all(
     MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) =>
       probeManagerCriticalRoute(definition, deploymentSha)
     )
   );
   const persistedEvidenceVerified =
-    data.status === 'passed' &&
-    data.provider_state === 'verified' &&
+    latest.status === 'passed' &&
+    latest.provider_state === 'verified' &&
     checks.production_commit_sha_verified === true &&
     checks.manager_readiness_route_reachable === true &&
     checks.critical_network_routes_reachable === true;
@@ -164,11 +194,12 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
     state: canaryVerified ? 'verified' : 'unverified',
     canary_verified: canaryVerified,
     deployment_sha: deploymentSha || null,
-    verified_at: typeof data.created_at === 'string' ? data.created_at : null,
-    provider: typeof data.provider === 'string' ? data.provider : null,
-    provider_state: typeof data.provider_state === 'string' ? data.provider_state : null,
+    verified_at: typeof latest.created_at === 'string' ? latest.created_at : null,
+    provider: typeof latest.provider === 'string' ? latest.provider : null,
+    provider_state: typeof latest.provider_state === 'string' ? latest.provider_state : null,
     version_id: typeof checks.cloudflare_version_id === 'string' ? checks.cloudflare_version_id : null,
-    evidence_id: typeof data.id === 'string' ? data.id : null,
+    evidence_id: typeof latest.id === 'string' ? latest.id : null,
+    history,
     critical_routes: criticalRoutes
   };
 }
