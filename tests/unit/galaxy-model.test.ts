@@ -11,7 +11,7 @@ describe('ATLAS Galaxy model', () => {
     const nodes = buildGalaxyNodes({ modules: ATLAS_MODULES, hasIdentity: true });
     expect(nodes.find((node) => node.id === 'finance')?.status).toBe('active');
     expect(nodes.find((node) => node.id === 'crm')?.status).toBe('available');
-    expect(nodes.find((node) => node.id === 'payroll')?.status).toBe('warning');
+    expect(nodes.find((node) => node.id === 'payroll')?.status).toBe('available');
   });
 
   it('preserves canonical routes and activates the inventory supply network', () => {
