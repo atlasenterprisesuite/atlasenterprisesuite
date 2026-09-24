@@ -7,13 +7,14 @@ export class ManagerReadinessError extends Error {
 }
 
 type ProviderKey = 'github' | 'supabase' | 'cloudflare' | 'production';
-type ProviderStatus = { state: string; required: true };
-type OptionalProviderStatus = { state: string; required: false } | null;
+type RequiredProviderStatus = { state: string; required: true };
+type OptionalProviderStatus = { state: string; required: false };
+type ProviderStatus = RequiredProviderStatus | OptionalProviderStatus;
 
 type InfraBlocker = { stage: string; code: string; detail: string };
 
 export type ManagerInfraStatus = {
-  providers: Record<ProviderKey, ProviderStatus> & { vercel?: OptionalProviderStatus };
+  providers: Record<ProviderKey, ProviderStatus> & { vercel?: OptionalProviderStatus | null };
   blockers: InfraBlocker[];
   organizationId: string | null;
 };
@@ -29,18 +30,289 @@ function plainRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 }
 
-function normalizeRequiredProvider(value: unknown): ProviderStatus {
+
+const MANAGER_PRODUCTION_ORIGIN = 'https://www.atlasenterprisesuite.com';
+export const MANAGER_CRITICAL_NETWORK_ROUTES = [
+  { label: 'ATLAS Network', path: '/business/network' },
+  { label: 'Pricing', path: '/business/network/pricing' },
+  { label: 'Commissions', path: '/business/network/commissions' },
+  { label: 'Payouts', path: '/business/network/payouts' },
+  { label: 'Compliance', path: '/business/network/compliance' }
+] as const;
+
+type ManagerCriticalRouteState = 'verified' | 'failed' | 'challenge' | 'unavailable';
+
+export function isPersistedProductionEvidenceHealthy(value: unknown) {
+  const row = plainRecord(value);
+  const rowChecks = plainRecord(row.checks);
+  return Boolean(
+    row.status === 'passed' &&
+    row.provider_state === 'verified' &&
+    rowChecks.production_commit_sha_verified === true &&
+    rowChecks.manager_readiness_route_reachable === true &&
+    rowChecks.critical_network_routes_reachable === true
+  );
+}
+
+export function deriveProductionContinuity(historyRows: unknown[], canaryVerified: boolean) {
+  const rows = Array.isArray(historyRows) ? historyRows : [];
+  const lastKnownGood = rows.slice(1).find((row) => isPersistedProductionEvidenceHealthy(row)) ?? null;
+  let greenStreakCount = 0;
+  if (canaryVerified) {
+    greenStreakCount = 1;
+    for (const row of rows.slice(1)) {
+      if (!isPersistedProductionEvidenceHealthy(row)) break;
+      greenStreakCount += 1;
+    }
+  }
+  return {
+    lastKnownGood,
+    greenStreakCount,
+    greenStreakCapped: greenStreakCount === rows.length && rows.length === 5
+  };
+}
+
+export type ManagerProductionVerificationSummary = {
+  state: 'verified' | 'unverified' | 'unavailable';
+  canary_verified: boolean;
+  deployment_sha: string | null;
+  verified_at: string | null;
+  provider: string | null;
+  provider_state: string | null;
+  version_id: string | null;
+  evidence_id: string | null;
+  regression_detected: boolean;
+  regression_reasons: string[];
+  previous_deployment_sha: string | null;
+  previous_verified_at: string | null;
+  last_known_good_sha: string | null;
+  last_known_good_verified_at: string | null;
+  last_known_good_version_id: string | null;
+  green_streak_count: number;
+  green_streak_capped: boolean;
+  history: Array<{
+    evidence_id: string | null;
+    deployment_sha: string | null;
+    verified_at: string | null;
+    status: string;
+    provider: string | null;
+    provider_state: string | null;
+    version_id: string | null;
+    production_commit_sha_verified: boolean;
+    manager_readiness_route_reachable: boolean;
+    critical_network_routes_reachable: boolean;
+  }>;
+  critical_routes: Array<{
+    label: string;
+    path: string;
+    state: ManagerCriticalRouteState;
+    http_status: number | null;
+    observed_sha: string | null;
+    observed_version_id: string | null;
+  }>;
+};
+
+async function probeManagerCriticalRoute(
+  definition: (typeof MANAGER_CRITICAL_NETWORK_ROUTES)[number],
+  expectedSha: string
+) {
+  if (!expectedSha) {
+    return {
+      ...definition,
+      state: 'unavailable' as const,
+      http_status: null,
+      observed_sha: null,
+      observed_version_id: null
+    };
+  }
+
+  try {
+    const response = await fetch(new URL(definition.path, MANAGER_PRODUCTION_ORIGIN), {
+      method: 'GET',
+      redirect: 'manual',
+      headers: {
+        'user-agent': 'ATLAS-Manager-Production-Panel/1.0',
+        'cache-control': 'no-cache, no-store'
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+    const observedSha = response.headers.get('x-atlas-version-tag');
+    const observedVersionId = response.headers.get('x-atlas-version-id');
+    const challenged =
+      response.status === 403 &&
+      String(response.headers.get('cf-mitigated') || '').toLowerCase() === 'challenge';
+    const verified =
+      response.status === 200 &&
+      observedSha === expectedSha &&
+      Boolean(observedVersionId);
+
+    return {
+      ...definition,
+      state: verified ? 'verified' as const : challenged ? 'challenge' as const : 'failed' as const,
+      http_status: response.status,
+      observed_sha: observedSha,
+      observed_version_id: observedVersionId
+    };
+  } catch {
+    return {
+      ...definition,
+      state: 'unavailable' as const,
+      http_status: null,
+      observed_sha: null,
+      observed_version_id: null
+    };
+  }
+}
+
+async function loadProductionVerificationSummary(deps: SyncDependencies): Promise<ManagerProductionVerificationSummary> {
+  const { data, error } = await deps.admin
+    .from('atlas_runtime_verification_runs')
+    .select('id,target_version,status,provider,provider_state,created_at,checks')
+    .eq('verification_type', 'infrastructure-deployment')
+    .eq('target_service', 'atlas-enterprise-suite-web')
+    .eq('environment', 'production')
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  const historyRows = Array.isArray(data) ? data : [];
+  const latest = historyRows[0] ?? null;
+
+  if (error || !latest) {
+    return {
+      state: 'unavailable',
+      canary_verified: false,
+      deployment_sha: null,
+      verified_at: null,
+      provider: null,
+      provider_state: null,
+      version_id: null,
+      evidence_id: null,
+      regression_detected: false,
+      regression_reasons: [],
+      previous_deployment_sha: null,
+      previous_verified_at: null,
+      last_known_good_sha: null,
+      last_known_good_verified_at: null,
+      last_known_good_version_id: null,
+      green_streak_count: 0,
+      green_streak_capped: false,
+      history: [],
+      critical_routes: MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) => ({
+        ...definition,
+        state: 'unavailable',
+        http_status: null,
+        observed_sha: null,
+        observed_version_id: null
+      }))
+    };
+  }
+
+  const checks = plainRecord(latest.checks);
+  const deploymentSha = typeof latest.target_version === 'string' ? latest.target_version : '';
+  const history = historyRows.map((row: any) => {
+    const rowChecks = plainRecord(row.checks);
+    return {
+      evidence_id: typeof row.id === 'string' ? row.id : null,
+      deployment_sha: typeof row.target_version === 'string' ? row.target_version : null,
+      verified_at: typeof row.created_at === 'string' ? row.created_at : null,
+      status: typeof row.status === 'string' ? row.status : 'unknown',
+      provider: typeof row.provider === 'string' ? row.provider : null,
+      provider_state: typeof row.provider_state === 'string' ? row.provider_state : null,
+      version_id: typeof rowChecks.cloudflare_version_id === 'string' ? rowChecks.cloudflare_version_id : null,
+      production_commit_sha_verified: rowChecks.production_commit_sha_verified === true,
+      manager_readiness_route_reachable: rowChecks.manager_readiness_route_reachable === true,
+      critical_network_routes_reachable: rowChecks.critical_network_routes_reachable === true
+    };
+  });
+  const criticalRoutes = await Promise.all(
+    MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) =>
+      probeManagerCriticalRoute(definition, deploymentSha)
+    )
+  );
+  const persistedEvidenceVerified =
+    latest.status === 'passed' &&
+    latest.provider_state === 'verified' &&
+    checks.production_commit_sha_verified === true &&
+    checks.manager_readiness_route_reachable === true &&
+    checks.critical_network_routes_reachable === true;
+  const allCriticalRoutesVerified = criticalRoutes.every((route) => route.state === 'verified');
+  const canaryVerified = persistedEvidenceVerified && allCriticalRoutesVerified;
+
+  const continuity = deriveProductionContinuity(historyRows, canaryVerified);
+  const previousHealthy = continuity.lastKnownGood;
+  const previousHealthyChecks = plainRecord((previousHealthy as any)?.checks);
+  const greenStreakCount = continuity.greenStreakCount;
+  const greenStreakCapped = continuity.greenStreakCapped;
+
+  const previous = historyRows[1] ?? null;
+  const previousChecks = plainRecord(previous?.checks);
+  const previousWasHealthy = isPersistedProductionEvidenceHealthy(previous);
+  const regressionReasons: string[] = [];
+  if (previousWasHealthy) {
+    if (latest.status !== 'passed') regressionReasons.push('deployment_status_regressed');
+    if (latest.provider_state !== 'verified') regressionReasons.push('provider_state_regressed');
+    if (checks.production_commit_sha_verified !== true) regressionReasons.push('production_sha_regressed');
+    if (checks.manager_readiness_route_reachable !== true) regressionReasons.push('manager_readiness_regressed');
+    if (checks.critical_network_routes_reachable !== true) regressionReasons.push('critical_network_routes_regressed');
+    if (!allCriticalRoutesVerified) regressionReasons.push('live_critical_route_regression');
+  }
+  const regressionDetected = regressionReasons.length > 0;
+
+  return {
+    state: canaryVerified ? 'verified' : 'unverified',
+    canary_verified: canaryVerified,
+    deployment_sha: deploymentSha || null,
+    verified_at: typeof latest.created_at === 'string' ? latest.created_at : null,
+    provider: typeof latest.provider === 'string' ? latest.provider : null,
+    provider_state: typeof latest.provider_state === 'string' ? latest.provider_state : null,
+    version_id: typeof checks.cloudflare_version_id === 'string' ? checks.cloudflare_version_id : null,
+    evidence_id: typeof latest.id === 'string' ? latest.id : null,
+    regression_detected: regressionDetected,
+    regression_reasons: regressionReasons,
+    previous_deployment_sha: typeof previous?.target_version === 'string' ? previous.target_version : null,
+    previous_verified_at: typeof previous?.created_at === 'string' ? previous.created_at : null,
+    last_known_good_sha: typeof previousHealthy?.target_version === 'string' ? previousHealthy.target_version : null,
+    last_known_good_verified_at: typeof previousHealthy?.created_at === 'string' ? previousHealthy.created_at : null,
+    last_known_good_version_id: typeof previousHealthyChecks.cloudflare_version_id === 'string'
+      ? previousHealthyChecks.cloudflare_version_id
+      : null,
+    green_streak_count: greenStreakCount,
+    green_streak_capped: greenStreakCapped,
+    history,
+    critical_routes: criticalRoutes
+  };
+}
+
+function normalizeRequiredProvider(value: unknown, requirement: unknown): RequiredProviderStatus {
   const raw = plainRecord(value);
-  if (typeof raw.state !== 'string' || !raw.state.trim() || raw.required !== true) {
+  const required = raw.required === true || (raw.required === undefined && requirement === true);
+  if (typeof raw.state !== 'string' || !raw.state.trim() || !required || raw.required === false || requirement === false) {
     throw new ManagerReadinessError('infra_status_contract_invalid', 502);
   }
   return { state: raw.state.trim(), required: true };
+}
+
+function normalizeOptionalAwareProvider(value: unknown, requirement: unknown): ProviderStatus {
+  const raw = plainRecord(value);
+  const hasRequired = raw.required === true || raw.required === false;
+  const hasRequirement = requirement === true || requirement === false;
+  if (typeof raw.state !== 'string' || !raw.state.trim() || (!hasRequired && !hasRequirement)) {
+    throw new ManagerReadinessError('infra_status_contract_invalid', 502);
+  }
+  if (hasRequired && hasRequirement && raw.required !== requirement) {
+    throw new ManagerReadinessError('infra_status_contract_invalid', 502);
+  }
+  const required = hasRequired ? raw.required === true : requirement === true;
+  return required
+    ? { state: raw.state.trim(), required: true }
+    : { state: raw.state.trim(), required: false };
 }
 
 export function normalizeManagerInfraStatus(value: unknown): ManagerInfraStatus {
   const raw = plainRecord(value);
   if (raw.ok !== true) throw new ManagerReadinessError('infra_status_contract_invalid', 502);
   const providerStatus = plainRecord(raw.provider_status);
+  const providerRequirements = plainRecord(raw.provider_requirements);
   const vercelRaw = plainRecord(providerStatus.vercel);
   const blockers = Array.isArray(raw.blockers)
     ? raw.blockers.map((item) => plainRecord(item)).filter((item) => typeof item.stage === 'string' && typeof item.code === 'string').map((item) => ({
@@ -50,10 +322,10 @@ export function normalizeManagerInfraStatus(value: unknown): ManagerInfraStatus 
   const scope = plainRecord(raw.scope);
 
   const providers: ManagerInfraStatus['providers'] = {
-    github: normalizeRequiredProvider(providerStatus.github),
-    supabase: normalizeRequiredProvider(providerStatus.supabase),
-    cloudflare: normalizeRequiredProvider(providerStatus.cloudflare),
-    production: normalizeRequiredProvider(providerStatus.production)
+    github: normalizeOptionalAwareProvider(providerStatus.github, providerRequirements.github),
+    supabase: normalizeRequiredProvider(providerStatus.supabase, providerRequirements.supabase),
+    cloudflare: normalizeRequiredProvider(providerStatus.cloudflare, providerRequirements.cloudflare),
+    production: normalizeRequiredProvider(providerStatus.production, providerRequirements.production)
   };
   if (typeof vercelRaw.state === 'string' && vercelRaw.state.trim() && vercelRaw.required === false) {
     providers.vercel = { state: vercelRaw.state.trim(), required: false };
@@ -78,6 +350,7 @@ export type ProjectedManagerReadiness = {
     title: string;
     evidenceKind: string;
     providerState: string;
+    required: boolean;
     status: 'completed' | 'blocked';
   }>;
 };
@@ -85,10 +358,12 @@ export type ProjectedManagerReadiness = {
 export function projectManagerReadiness(status: ManagerInfraStatus): ProjectedManagerReadiness {
   const steps = REQUIRED_MANAGER_STEPS.map((definition) => {
     const provider = status.providers[definition.key];
+    const required = provider.required === true;
     return {
       ...definition,
       providerState: provider.state,
-      status: provider.state === 'ready' ? 'completed' as const : 'blocked' as const
+      required,
+      status: required && provider.state !== 'ready' ? 'blocked' as const : 'completed' as const
     };
   });
   const firstBlocked = steps.find((step) => step.status === 'blocked') ?? null;
@@ -134,8 +409,8 @@ type SyncDependencies = {
   appendAudit: (input: AuditInput) => Promise<void>;
 };
 
-async function digestEvidence(input: { provider: string; state: string; checkedAt: string }) {
-  const payload = JSON.stringify({ provider: input.provider, state: input.state, required: true, checkedAt: input.checkedAt });
+async function digestEvidence(input: { provider: string; state: string; required: boolean; checkedAt: string }) {
+  const payload = JSON.stringify({ provider: input.provider, state: input.state, required: input.required, checkedAt: input.checkedAt });
   const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
   return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
@@ -276,7 +551,7 @@ async function upsertSteps(deps: SyncDependencies, workflow: any, task: any, pro
     status: step.status,
     completion_criteria: [`${step.title} is reported ready by atlas-infra-status`],
     permissions_required: ['execution.read'],
-    evidence_requirement: [step.evidenceKind],
+    evidence_requirement: step.required ? [step.evidenceKind] : [],
     completed_at: step.status === 'completed' ? now : null,
     updated_at: now
   }));
@@ -291,7 +566,7 @@ async function recordProviderEvidence(deps: SyncDependencies, workflow: any, tas
     const step = steps.find((item) => Number(item.sequence) === definition.sequence);
     if (!step) throw new ManagerReadinessError('readiness_step_missing', 500);
     const provider = status.providers[definition.key];
-    const digest = await digestEvidence({ provider: definition.key, state: provider.state, checkedAt });
+    const digest = await digestEvidence({ provider: definition.key, state: provider.state, required: provider.required, checkedAt });
     const reference = `atlas-infra-status:${definition.key}:${digest}`;
     const { data: existing, error: findError } = await deps.admin
       .from('execution_evidence')
@@ -341,11 +616,21 @@ async function completionEligibility(deps: SyncDependencies, task: any, steps: a
   });
 }
 
-async function mirrorWorkflowState(deps: SyncDependencies, workflow: any, task: any, status: 'now' | 'blocked' | 'completed') {
+async function mirrorWorkflowState(
+  deps: SyncDependencies,
+  workflow: any,
+  task: any,
+  status: 'now' | 'blocked' | 'completed',
+  productionVerification: ManagerProductionVerificationSummary
+) {
   const patch: Record<string, unknown> = {
     status,
     current_task_id: String(task.id),
     current_module: 'manager',
+    context: {
+      ...plainRecord(workflow.context),
+      production_verification: productionVerification
+    },
     updated_at: new Date().toISOString(),
     version: Number(workflow.version || 1) + 1,
     completed_at: status === 'completed' ? new Date().toISOString() : null
@@ -360,6 +645,7 @@ export async function syncManagerReadiness(deps: SyncDependencies) {
   const checkedAt = new Date().toISOString();
   const status = await fetchInfrastructureStatus(deps);
   const projection = projectManagerReadiness(status);
+  const productionVerification = await loadProductionVerificationSummary(deps);
   let workflow = await createOrLoadWorkflow(deps);
   let task = await createOrLoadTask(deps, workflow);
   task = await normalizeTaskForSync(deps, task);
@@ -379,7 +665,7 @@ export async function syncManagerReadiness(deps: SyncDependencies) {
         blocked_reason: projection.blockedReason
       }, 'execution.manager.readiness_transition');
     }
-    workflow = await mirrorWorkflowState(deps, workflow, task, 'blocked');
+    workflow = await mirrorWorkflowState(deps, workflow, task, 'blocked', productionVerification);
   } else {
     if (String(task.status) !== 'now') {
       if (!canTransitionTask(String(task.status) as any, 'now')) throw new ManagerReadinessError('invalid_transition', 409);
@@ -398,9 +684,9 @@ export async function syncManagerReadiness(deps: SyncDependencies) {
     if (gate.eligible) {
       if (!canTransitionTask('now', 'completed')) throw new ManagerReadinessError('invalid_transition', 409);
       task = await updateTaskState(deps, task, 'completed', { next_action: null, blocked_reason: null }, 'execution.manager.readiness_transition');
-      workflow = await mirrorWorkflowState(deps, workflow, task, 'completed');
+      workflow = await mirrorWorkflowState(deps, workflow, task, 'completed', productionVerification);
     } else {
-      workflow = await mirrorWorkflowState(deps, workflow, task, 'now');
+      workflow = await mirrorWorkflowState(deps, workflow, task, 'now', productionVerification);
     }
   }
 

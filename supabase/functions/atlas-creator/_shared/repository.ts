@@ -1,4 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence.ts';
+import type { CreativePlan } from '../../../../packages/creator/creative_plan.ts';
+import type { WebLaunchBlueprint } from '../../../../packages/creator/web_launch.ts';
 import { providerLabel } from '../../../../packages/creator/providers.ts';
 import type {
   ProductionSpec,
@@ -95,6 +98,260 @@ export async function saveProduction(ctx: CreatorContext, spec: ProductionSpec, 
   return data;
 }
 
+export async function listContentWorkspaces(orgId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_content_workspaces')
+    .select('id,organization_id,created_by,title,state_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .order('updated_at', { ascending: false });
+  if (error) throw creatorError('persistence_failed', 500);
+  return data || [];
+}
+
+export async function getContentWorkspace(orgId: string, workspaceId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_content_workspaces')
+    .select('id,organization_id,created_by,title,state_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .eq('id', workspaceId)
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('content_workspace_not_found', 404);
+  return data;
+}
+
+export async function saveContentWorkspace(
+  ctx: CreatorContext,
+  state: ContentWorkspaceState,
+  expectedVersion: number
+) {
+  const id = String(state?.id || '').trim();
+  if (!id) throw creatorError('workspace_id_required', 422);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 0) {
+    throw creatorError('expected_version_required', 422);
+  }
+
+  const sb = adminClient();
+  const { data: existing, error: existingError } = await sb
+    .from('creator_content_workspaces')
+    .select('id,version,created_by,created_at')
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .maybeSingle();
+  if (existingError) throw creatorError('persistence_failed', 500);
+
+  const now = new Date().toISOString();
+  const nextVersion = existing ? expectedVersion + 1 : 1;
+  const trustedState: ContentWorkspaceState = {
+    ...state,
+    id,
+    title: String(state.title || 'Untitled content workspace'),
+    version: nextVersion,
+    createdAt: existing ? String(existing.created_at || state.createdAt || now) : now,
+    updatedAt: now
+  };
+  const baseRow = {
+    organization_id: ctx.orgId,
+    title: trustedState.title,
+    state_json: trustedState,
+    updated_at: now
+  };
+
+  if (!existing) {
+    if (expectedVersion !== 0) throw creatorError('version_conflict', 409);
+    const { data, error } = await sb
+      .from('creator_content_workspaces')
+      .insert({ ...baseRow, id, created_by: ctx.userId, version: 1, created_at: now })
+      .select('*')
+      .single();
+    if (error || !data) throw creatorError('persistence_failed', 500);
+    return data;
+  }
+
+  const { data, error } = await sb
+    .from('creator_content_workspaces')
+    .update({ ...baseRow, version: expectedVersion + 1 })
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .eq('version', expectedVersion)
+    .select('*')
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('version_conflict', 409);
+  return data;
+}
+
+
+export async function listWebLaunchBlueprints(orgId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_web_launch_blueprints')
+    .select('id,organization_id,created_by,title,state_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .order('updated_at', { ascending: false });
+  if (error) throw creatorError('persistence_failed', 500);
+  return data || [];
+}
+
+export async function getWebLaunchBlueprint(orgId: string, blueprintId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_web_launch_blueprints')
+    .select('id,organization_id,created_by,title,state_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .eq('id', blueprintId)
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('web_launch_blueprint_not_found', 404);
+  return data;
+}
+
+export async function saveWebLaunchBlueprint(
+  ctx: CreatorContext,
+  state: WebLaunchBlueprint,
+  expectedVersion: number
+) {
+  const id = String(state?.id || '').trim();
+  if (!id) throw creatorError('web_launch_blueprint_id_required', 422);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 0) {
+    throw creatorError('expected_version_required', 422);
+  }
+
+  const sb = adminClient();
+  const { data: existing, error: existingError } = await sb
+    .from('creator_web_launch_blueprints')
+    .select('id,version,created_by,created_at')
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .maybeSingle();
+  if (existingError) throw creatorError('persistence_failed', 500);
+
+  const now = new Date().toISOString();
+  const nextVersion = existing ? expectedVersion + 1 : 1;
+  const trustedState: WebLaunchBlueprint = {
+    ...state,
+    id,
+    title: String(state.title || 'Untitled web launch'),
+    version: nextVersion,
+    createdAt: existing ? String(existing.created_at || state.createdAt || now) : now,
+    updatedAt: now
+  };
+  const baseRow = {
+    organization_id: ctx.orgId,
+    title: trustedState.title,
+    state_json: trustedState,
+    updated_at: now
+  };
+
+  if (!existing) {
+    if (expectedVersion !== 0) throw creatorError('version_conflict', 409);
+    const { data, error } = await sb
+      .from('creator_web_launch_blueprints')
+      .insert({ ...baseRow, id, created_by: ctx.userId, version: 1, created_at: now })
+      .select('*')
+      .single();
+    if (error || !data) throw creatorError('persistence_failed', 500);
+    return data;
+  }
+
+  const { data, error } = await sb
+    .from('creator_web_launch_blueprints')
+    .update({ ...baseRow, version: nextVersion })
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .eq('version', expectedVersion)
+    .select('*')
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('version_conflict', 409);
+  return data;
+}
+
+export async function listCreativePlans(orgId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_creative_plans')
+    .select('id,organization_id,created_by,title,source_brief,media_kinds,plan_json,version,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .order('updated_at', { ascending: false });
+  if (error) throw creatorError('persistence_failed', 500);
+  return data || [];
+}
+
+export async function getCreativePlan(orgId: string, planId: string) {
+  const { data, error } = await adminClient()
+    .from('creator_creative_plans')
+    .select('*')
+    .eq('organization_id', orgId)
+    .eq('id', planId)
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('creative_plan_not_found', 404);
+  return data;
+}
+
+export async function saveCreativePlan(
+  ctx: CreatorContext,
+  plan: CreativePlan,
+  expectedVersion: number
+) {
+  const id = String(plan?.id || '').trim();
+  if (!id) throw creatorError('creative_plan_id_required', 422);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 0) {
+    throw creatorError('expected_version_required', 422);
+  }
+
+  const sb = adminClient();
+  const { data: existing, error: existingError } = await sb
+    .from('creator_creative_plans')
+    .select('id,version,created_by,created_at')
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .maybeSingle();
+  if (existingError) throw creatorError('persistence_failed', 500);
+
+  const now = new Date().toISOString();
+  const nextVersion = existing ? expectedVersion + 1 : 1;
+  const trustedPlan: CreativePlan = {
+    ...plan,
+    id,
+    organizationId: ctx.orgId,
+    createdByUserId: existing ? String(existing.created_by) : ctx.userId,
+    version: nextVersion,
+    createdAt: existing ? String(existing.created_at || plan.createdAt || now) : now,
+    updatedAt: now
+  };
+
+  const baseRow = {
+    organization_id: ctx.orgId,
+    title: trustedPlan.title,
+    source_brief: trustedPlan.sourceBrief,
+    media_kinds: trustedPlan.mediaKinds,
+    plan_json: trustedPlan,
+    updated_at: now
+  };
+
+  if (!existing) {
+    if (expectedVersion !== 0) throw creatorError('version_conflict', 409);
+    const { data, error } = await sb
+      .from('creator_creative_plans')
+      .insert({ ...baseRow, id, created_by: ctx.userId, version: 1, created_at: now })
+      .select('*')
+      .single();
+    if (error || !data) throw creatorError('persistence_failed', 500);
+    return data;
+  }
+
+  const { data, error } = await sb
+    .from('creator_creative_plans')
+    .update({ ...baseRow, version: nextVersion })
+    .eq('organization_id', ctx.orgId)
+    .eq('id', id)
+    .eq('version', expectedVersion)
+    .select('*')
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!data) throw creatorError('version_conflict', 409);
+  return data;
+}
+
 function nullableNumber(value: unknown) {
   return value === null || (typeof value === 'number' && Number.isFinite(value));
 }
@@ -177,6 +434,39 @@ export async function listAssets(orgId: string, productionId?: string) {
   const { data, error } = await query;
   if (error) throw creatorError('persistence_failed', 500);
   return data || [];
+}
+
+export async function createAssetPreview(orgId: string, assetId: string) {
+  const sb = adminClient();
+  const { data: asset, error } = await sb
+    .from('creator_assets')
+    .select('id,organization_id,production_id,generation_job_id,storage_path,media_type,provider_id,provider_asset_id,mime_type,width,height,duration_seconds,provenance_json,created_at,updated_at')
+    .eq('organization_id', orgId)
+    .eq('id', assetId)
+    .maybeSingle();
+  if (error) throw creatorError('persistence_failed', 500);
+  if (!asset) throw creatorError('asset_not_found', 404);
+
+  const storagePath = String(asset.storage_path || '').trim();
+  const separator = storagePath.indexOf('/');
+  if (separator <= 0 || separator === storagePath.length - 1) {
+    throw creatorError('asset_storage_path_invalid', 409);
+  }
+
+  const bucket = storagePath.slice(0, separator);
+  const objectPath = storagePath.slice(separator + 1);
+  if (bucket !== 'creator-assets') throw creatorError('asset_preview_unavailable', 409);
+
+  const { data: signed, error: signedError } = await sb.storage
+    .from(bucket)
+    .createSignedUrl(objectPath, 900);
+  if (signedError || !signed?.signedUrl) throw creatorError('asset_preview_unavailable', 503);
+
+  return {
+    asset,
+    signedUrl: signed.signedUrl,
+    expiresIn: 900
+  };
 }
 
 export async function writeCreatorAudit(

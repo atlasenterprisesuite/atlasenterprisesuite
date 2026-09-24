@@ -1,0 +1,59 @@
+name: ATLAS Creator Production E2E
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run privileged Creator E2E with GitHub OIDC
+        env:
+          VERIFIER_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-creator-e2e-verifier?api=verify
+          OIDC_AUDIENCE: atlas-enterprise-suite-creator-e2e
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          oidc_response="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")"
+          oidc_token="$(jq -er '.value' <<<"${oidc_response}")"
+
+          result="$(curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${oidc_token}" \
+            -H 'content-type: application/json' \
+            "${VERIFIER_URL}" \
+            --data '{}')"
+
+          jq -e '
+            .ok == true and
+            .creator_write == true and
+            .generation_enabled == false and
+            .save_status == 200 and
+            .read_status == 200 and
+            .audit_verified == true and
+            .cleanup.production_deleted == true and
+            .cleanup.membership_demoted == true and
+            .cleanup.session_revoked == true
+          ' <<<"${result}" >/dev/null
+
+          jq '{
+            ok,
+            service,
+            version,
+            organization_id,
+            role,
+            creator_write,
+            generation_enabled,
+            save_status,
+            read_status,
+            audit_verified,
+            cleanup
+          }' <<<"${result}"

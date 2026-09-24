@@ -1,0 +1,133 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+function source(path: string) {
+  return readFileSync(resolve(process.cwd(), path), 'utf8');
+}
+
+describe('ATLAS Assistant workspace', () => {
+  it('registers an authenticated /assistant route in the canonical module registry', () => {
+    const resolver = source('apps/web/src/extensions/resolveAtlasExtension.tsx');
+    const registry = source('apps/web/src/modules/registry.ts');
+    expect(existsSync(resolve(process.cwd(), 'apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx'))).toBe(true);
+    expect(resolver).toContain("pathname === '/assistant'");
+    expect(resolver).toContain('UnifiedAIChatPage');
+    expect(resolver).toContain('RequireAtlasIdentity');
+    expect(registry).toContain("id: 'assistant'");
+    expect(registry).toContain("route: '/assistant'");
+  });
+
+  it('shares the governed assistant client for status, history, conversation and chat', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    const client = source('apps/web/src/assistant/client.ts');
+    for (const mode of ['auto', 'atlas-local', 'openai', 'bedrock', 'gemini', 'codex-sovereign', 'council']) {
+      expect(page).toContain(`value: '${mode}'`);
+    }
+    for (const profile of ['fast', 'balanced', 'deep']) {
+      expect(page).toContain(`value: '${profile}'`);
+    }
+    expect(page).toContain('getAssistantStatus');
+    expect(page).toContain('listAssistantConversations');
+    expect(page).toContain('getAssistantConversation');
+    expect(page).toContain('sendAssistantWorkspaceMessage');
+    expect(client).toContain('/functions/v1/atlas-copilot?api=status');
+    expect(client).toContain('/functions/v1/atlas-copilot?api=history');
+    expect(client).toContain('/functions/v1/atlas-copilot?api=conversation');
+    expect(client).toContain('/functions/v1/atlas-copilot?api=chat');
+    expect(client).toContain("surface: 'atlas-assistant-workspace'");
+    expect(page).toContain("status?.local_runtime?.state === 'verified'");
+    expect(page).toContain("localProvider?.verified === true");
+  });
+
+  it('exposes enterprise navigation using existing governed ATLAS routes', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    for (const route of ['/work', '/automations', '/work/connections', '/work/team', '/work/policies', '/suite']) {
+      expect(page).toContain(`to: '${route}'`);
+    }
+    expect(page).toContain('Search chats');
+    expect(page).toContain('historyQuery');
+    expect(page).toContain('PROMPT_STARTERS');
+    expect(page).toContain("event.key === 'Enter'");
+    expect(page).not.toContain('https://chatgpt.com');
+  });
+
+  it('maps the dedicated workspace to the assistant module context', () => {
+    const routeContext = source('apps/web/src/assistant/routeContext.ts');
+    expect(routeContext).toContain("pathname.startsWith('/assistant')");
+    expect(routeContext).toContain("return 'assistant'");
+  });
+
+  it('keeps the dedicated AI workspace focused, responsive and fully actionable', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    const css = source('apps/web/src/modules/intelligence/UnifiedAIChat.css');
+
+    expect(page).toContain('How can I help you?');
+    expect(page).toContain('aria-controls="atlas-ai-status-panel"');
+    expect(page).toContain('Open conversation sidebar');
+    expect(page).toContain('atlas-ai-tools-menu');
+    expect(page).toContain('Chat history');
+    expect(page).toContain('Projects');
+    expect(page).toContain('Prompts');
+    expect(page).toContain('Translator');
+    expect(page).toContain('TRANSLATOR_LANGUAGES');
+    expect(page).toContain('ATLAS TRANSLATOR TASK');
+    expect(page).toContain('ATLAS TWO-PERSON CONVERSATION TRANSLATION');
+    expect(page).toContain('Text auto-detect · voice uses device locale');
+    expect(page).toContain('Speak translation');
+    expect(page).toContain('Start live conversation');
+    expect(page).toContain('Automatic speaker detection');
+    expect(page).toContain('diarizationVerified');
+    expect(page).toContain('startDiarizedConversationSession');
+    expect(page).toContain('diarizeAssistantAudio');
+    expect(page).toContain('recordAssistantAudioChunk');
+    expect(page).toContain('Person A');
+    expect(page).toContain('Person B');
+    expect(page).toContain('Speaker identity detection is not verified.');
+    expect(page).toContain('conversationSessionRef');
+    expect(page).toContain('conversationIdRef');
+    expect(page).toContain('startConversationTurn');
+    expect(page).toContain('swapTranslatorLanguages');
+    expect(page).toContain('swapConversationLanguages');
+    expect(page).toContain('useAssistantVoice');
+    expect(page).toContain('toggleMicrophone');
+    expect(page).toContain('ATLAS can make mistakes. Verify important information and governed actions.');
+    expect(page).toContain("to=\"/work/connections\"");
+    expect(page).toContain("to=\"/work\"");
+    expect(page).toContain("to=\"/suite\"");
+    expect(page).not.toContain('href="#"');
+    expect(page).not.toContain('atlas-ai-provider-strip');
+    expect(css).toContain('.atlas-ai-composer');
+    expect(css).toContain('@media(max-width:760px)');
+    expect(css).toContain('.atlas-ai-mobile-scrim');
+    expect(css).toContain('.atlas-ai-mobile-menu-popover');
+    expect(css).toContain('.atlas-ai-prompt-library');
+    expect(css).toContain('.atlas-ai-mic');
+    expect(css).toContain('.atlas-ai-translator-bar');
+    expect(css).toContain('.atlas-ai-translator-controls');
+    expect(css).toContain('.atlas-ai-conversation-translator');
+    expect(css).toContain('.atlas-ai-conversation-status');
+    expect(css).toContain('.atlas-ai-diarization-toggle');
+  });
+
+  it('keeps diarization authenticated, provider-gated and fail-closed', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    const client = source('apps/web/src/assistant/client.ts');
+    const voice = source('apps/web/src/assistant/voice.ts');
+    const backend = source('supabase/functions/atlas-copilot/index.ts');
+
+    expect(client).toContain('/functions/v1/atlas-copilot?api=diarize');
+    expect(client).toContain('organization_id: organization.id');
+    expect(voice).toContain('recordAssistantAudioChunk');
+    expect(voice).toContain('MediaRecorder');
+    expect(backend).toContain("ATLAS_DIARIZATION_URL");
+    expect(backend).toContain("ATLAS_DIARIZATION_TOKEN");
+    expect(backend).toContain("api==='diarize'");
+    expect(backend).toContain("diarization_provider_unverified");
+    expect(backend).toContain("max_speakers:2");
+    expect(backend).toContain("diarization_speaker_limit_exceeded");
+    expect(page).toContain("status?.diarization?.verified === true");
+    expect(page).toContain("Speaker labels come from an authenticated, verified diarization provider");
+  });
+
+});

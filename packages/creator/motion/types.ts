@@ -1,0 +1,12 @@
+export type MotionLayerKind = 'text' | 'shape' | 'image' | 'video' | 'audio' | 'particle' | 'camera' | 'light' | 'group';
+export type MotionEasing = { type: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' } | { type: 'cubic-bezier'; points: [number, number, number, number] };
+export type MotionValue = number | string | boolean | number[];
+export type MotionKeyframe<T extends MotionValue = MotionValue> = { id: string; time: number; value: T; easing: MotionEasing };
+export type MotionTrack<T extends MotionValue = MotionValue> = { id: string; property: string; keyframes: MotionKeyframe<T>[] };
+export type MotionTransform = Partial<Record<'positionX'|'positionY'|'positionZ'|'scaleX'|'scaleY'|'scaleZ'|'rotationX'|'rotationY'|'rotationZ'|'opacity'|'anchorX'|'anchorY'|'anchorZ', number>>;
+export type MotionEffect = { id: string; type: string; enabled: boolean; params: Record<string, MotionValue> };
+export type MotionExpression = { source: string };
+export type MotionLayer = { id: string; name: string; kind: MotionLayerKind; sceneId: string | null; parentLayerId: string | null; startSecond: number; endSecond: number; visible: boolean; locked: boolean; transform: MotionTransform; tracks: MotionTrack[]; effects: MotionEffect[]; expression: MotionExpression | null };
+export type MotionMarker = { id: string; time: number; label: string };
+export type MotionCompositionSpec = { id: string; version: 1; width: number; height: number; fps: number; durationSeconds: number; background: string; scenes: string[]; layers: MotionLayer[]; markers: MotionMarker[]; renderSettings: { quality: 'preview'|'production'; motionBlur: boolean } };
+export type MotionValidationIssue = { code: string; severity: 'warning'|'blocking'; message: string; targetId: string | null };

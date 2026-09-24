@@ -1,4 +1,9 @@
 import { getActiveAtlasOrganization, getAtlasAccessToken } from './atlasSession';
+import type { ContentWorkspaceState } from '../../../../packages/creator/content_intelligence';
+import type { WebLaunchBlueprint } from '../../../../packages/creator/web_launch';
+import type { CreativePlan } from '../../../../packages/creator/creative_plan';
+import { adaptNativeReadiness, type CreativeEngineReadiness } from '../../../../packages/creator/creative_engine';
+import type { PromptExportPackage, PromptExportRequest } from '../../../../packages/creator/prompt_engine';
 import type {
   CreatorAsset,
   CreatorReadinessResponse,
@@ -10,6 +15,16 @@ import type {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
+
+export type ContentWorkspaceRecord = ContentWorkspaceState & {
+  organizationId: string;
+  createdByUserId: string;
+};
+
+export type WebLaunchBlueprintRecord = WebLaunchBlueprint & {
+  organizationId: string;
+  createdByUserId: string;
+};
 
 function query(params: Record<string, string | undefined>) {
   const search = new URLSearchParams();
@@ -32,12 +47,13 @@ async function parseResponse(response: Response) {
 }
 
 async function requestWithToken(url: string, init: RequestInit, token: string) {
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
   return fetch(url, {
     ...init,
     headers: {
       apikey: PUBLISHABLE_KEY,
       authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
+      ...(!isFormData ? { 'content-type': 'application/json' } : {}),
       ...(init.headers || {})
     }
   });
@@ -122,11 +138,107 @@ function assetFromWire(value: any): CreatorAsset {
   } as CreatorAsset;
 }
 
+
+function webLaunchBlueprintFromWire(value: any): WebLaunchBlueprintRecord {
+  const state = (value?.state_json ?? value?.stateJson ?? {}) as Partial<WebLaunchBlueprint>;
+  return {
+    ...(state as WebLaunchBlueprint),
+    id: String(value?.id ?? state.id ?? ''),
+    title: String(value?.title ?? state.title ?? 'Untitled web launch'),
+    profile: state.profile ?? {
+      brand: '',
+      audience: '',
+      competitors: [],
+      promise: '',
+      proof: '',
+      primaryAction: '',
+      tone: '',
+      language: 'English'
+    },
+    masterPlan: state.masterPlan ?? null,
+    hero: state.hero ?? null,
+    motion: state.motion ?? null,
+    copy: state.copy ?? null,
+    construction: state.construction ?? null,
+    conversionAudit: state.conversionAudit ?? null,
+    launchPlan: state.launchPlan ?? null,
+    version: Number(value?.version ?? state.version ?? 0),
+    createdAt: String(value?.created_at ?? state.createdAt ?? ''),
+    updatedAt: String(value?.updated_at ?? state.updatedAt ?? ''),
+    organizationId: String(value?.organization_id ?? value?.organizationId ?? ''),
+    createdByUserId: String(value?.created_by ?? value?.createdByUserId ?? '')
+  };
+}
+
+function creativePlanFromWire(value: any): CreativePlan {
+  const plan = (value?.plan_json ?? value) as CreativePlan;
+  return {
+    ...plan,
+    id: String(value?.id ?? plan.id),
+    organizationId: String(value?.organization_id ?? plan.organizationId ?? ''),
+    createdByUserId: String(value?.created_by ?? plan.createdByUserId ?? ''),
+    version: Number(value?.version ?? plan.version ?? 1),
+    createdAt: String(value?.created_at ?? plan.createdAt ?? ''),
+    updatedAt: String(value?.updated_at ?? plan.updatedAt ?? '')
+  };
+}
+
+function contentWorkspaceFromWire(value: any): ContentWorkspaceRecord {
+  const state = (value?.state_json ?? value?.stateJson ?? {}) as Partial<ContentWorkspaceState>;
+  return {
+    ...(state as ContentWorkspaceState),
+    id: String(value?.id ?? state.id ?? ''),
+    title: String(value?.title ?? state.title ?? 'Untitled content workspace'),
+    profile: state.profile ?? { niche: '', objective: '', tone: '', platforms: [], audience: '', language: 'English' },
+    audienceSeed: String(state.audienceSeed ?? ''),
+    audience: state.audience ?? null,
+    ideas: state.ideas ?? [],
+    hooks: state.hooks ?? [],
+    selectedIdeaId: state.selectedIdeaId ?? null,
+    selectedHookId: state.selectedHookId ?? null,
+    draft: state.draft ?? null,
+    variants: state.variants ?? [],
+    review: state.review ?? null,
+    version: Number(value?.version ?? state.version ?? 0),
+    createdAt: String(value?.created_at ?? state.createdAt ?? ''),
+    updatedAt: String(value?.updated_at ?? state.updatedAt ?? ''),
+    organizationId: String(value?.organization_id ?? value?.organizationId ?? ''),
+    createdByUserId: String(value?.created_by ?? value?.createdByUserId ?? '')
+  };
+}
+
 export const getCreatorReadiness = () => creatorRequest<CreatorReadinessResponse>('readiness');
 
 export async function listCreatorProviders() {
   const data = await creatorRequest<{ ok: true; providers: ProviderReadiness[] }>('providers');
   return data.providers;
+}
+
+export async function listCreativeEngines(): Promise<CreativeEngineReadiness[]> {
+  const data = await creatorRequest<{ ok: true; engines: CreativeEngineReadiness[] }>('engines');
+  const engines = data.engines.slice();
+  try {
+    const native = await getNativeCreatorReadiness();
+    engines.push(adaptNativeReadiness(native));
+  } catch {
+    // Native is optional. A failed probe is never converted into fake readiness.
+  }
+  return engines;
+}
+
+export async function exportCreatorPrompt(request: PromptExportRequest): Promise<PromptExportPackage> {
+  const data = await creatorRequest<{ ok: true; prompt_package: PromptExportPackage }>('prompt-export', {}, {
+    method: 'POST',
+    body: JSON.stringify({
+      media_kind: request.mediaKind,
+      brief: request.brief,
+      aspect_ratio: request.aspectRatio,
+      destination: request.destination,
+      language: request.language,
+      negative_constraints: request.negativeConstraints
+    })
+  });
+  return data.prompt_package;
 }
 
 export async function listCreatorProductions() {
@@ -146,11 +258,85 @@ export async function saveCreatorProduction(spec: ProductionSpec, expectedVersio
   return specFromWire(data.production);
 }
 
+export async function listContentWorkspaces() {
+  const data = await creatorRequest<{ ok: true; workspaces: unknown[] }>('content-workspaces');
+  return data.workspaces.map(contentWorkspaceFromWire);
+}
+
+export async function getContentWorkspace(id: string) {
+  const data = await creatorRequest<{ ok: true; workspace: unknown }>('content-workspace', { id });
+  return contentWorkspaceFromWire(data.workspace);
+}
+
+export async function saveContentWorkspace(workspace: ContentWorkspaceState, expectedVersion: number) {
+  const data = await creatorRequest<{ ok: true; workspace: unknown }>('content-save', {}, {
+    method: 'POST',
+    body: JSON.stringify({ workspace, expected_version: expectedVersion })
+  });
+  return contentWorkspaceFromWire(data.workspace);
+}
+
+
+
+export async function listWebLaunchBlueprints() {
+  const data = await creatorRequest<{ ok: true; blueprints: unknown[] }>('web-launch-blueprints');
+  return data.blueprints.map(webLaunchBlueprintFromWire);
+}
+
+export async function getWebLaunchBlueprint(id: string) {
+  const data = await creatorRequest<{ ok: true; blueprint: unknown }>('web-launch-blueprint', { id });
+  return webLaunchBlueprintFromWire(data.blueprint);
+}
+
+export async function saveWebLaunchBlueprint(blueprint: WebLaunchBlueprint, expectedVersion: number) {
+  const data = await creatorRequest<{ ok: true; blueprint: unknown }>('web-launch-save', {}, {
+    method: 'POST',
+    body: JSON.stringify({ blueprint, expected_version: expectedVersion })
+  });
+  return webLaunchBlueprintFromWire(data.blueprint);
+}
+
+export async function listCreativePlans() {
+  const data = await creatorRequest<{ ok: true; creative_plans: unknown[] }>('creative-plans');
+  return data.creative_plans.map(creativePlanFromWire);
+}
+
+export async function getCreativePlan(id: string) {
+  const data = await creatorRequest<{ ok: true; creative_plan: unknown }>('creative-plan', { id });
+  return creativePlanFromWire(data.creative_plan);
+}
+
+export async function saveCreativePlan(plan: CreativePlan, expectedVersion: number) {
+  const data = await creatorRequest<{ ok: true; creative_plan: unknown }>('creative-plan-save', {}, {
+    method: 'POST',
+    body: JSON.stringify({ creative_plan: plan, expected_version: expectedVersion })
+  });
+  return creativePlanFromWire(data.creative_plan);
+}
+
 export async function listCreatorAssets(productionId?: string) {
   const data = await creatorRequest<{ ok: true; assets: unknown[] }>('assets', {
     production_id: productionId
   });
   return data.assets.map(assetFromWire);
+}
+
+export type CreatorAssetPreview = {
+  ok: true;
+  asset: CreatorAsset;
+  signed_url: string;
+  expires_in: number;
+};
+
+export async function getCreatorAssetPreview(assetId: string): Promise<CreatorAssetPreview> {
+  const data = await creatorRequest<{ ok: true; asset: unknown; signed_url: string; expires_in: number }>(
+    'asset-preview',
+    { asset_id: assetId }
+  );
+  return {
+    ...data,
+    asset: assetFromWire(data.asset)
+  };
 }
 
 export async function submitCreatorProduction(productionId: string, providerId: ProviderId) {
@@ -174,4 +360,62 @@ export async function submitNativeCreatorProduction(productionId: string, expect
     method: 'POST',
     body: JSON.stringify({ production_id: productionId, expected_version: expectedVersion })
   });
+}
+
+
+export type CreatorRecordingReadiness = {
+  ok: true;
+  service: 'atlas-creator-recordings';
+  organization_id: string;
+  connected: boolean;
+  reason: string | null;
+  upload_allowed: boolean;
+  bucket: 'atlas-creator-recordings' | null;
+  checked_at: string;
+};
+
+export type CreatorRecording = {
+  id: string;
+  organization_id: string;
+  created_by: string;
+  language: 'es' | 'en';
+  storage_bucket: 'atlas-creator-recordings';
+  storage_path: string;
+  mime_type: string;
+  file_size_bytes: number;
+  duration_seconds: number | null;
+  source: 'teleprompter';
+  created_at: string;
+};
+
+export const getCreatorRecordingReadiness = () =>
+  creatorRequest<CreatorRecordingReadiness>('recording-readiness');
+
+export async function uploadCreatorRecording(
+  blob: Blob,
+  language: 'es' | 'en',
+  durationSeconds: number
+) {
+  const mimeType = String(blob.type || 'video/webm').split(';')[0] || 'video/webm';
+  const extension = mimeType === 'video/mp4' ? 'mp4' : mimeType === 'video/quicktime' ? 'mov' : 'webm';
+  const file = new File([blob], `atlas-teleprompter.${extension}`, { type: mimeType });
+  const form = new FormData();
+  form.append('recording', file);
+  form.append('language', language);
+  form.append('duration_seconds', String(Math.max(0, Math.round(durationSeconds))));
+  const data = await creatorRequest<{ ok: true; recording: CreatorRecording }>(
+    'recording-upload',
+    {},
+    { method: 'POST', body: form }
+  );
+  return data.recording;
+}
+
+export async function getCreatorRecordingDownload(recordingId: string) {
+  return creatorRequest<{
+    ok: true;
+    recording: CreatorRecording;
+    signed_url: string;
+    expires_in: number;
+  }>('recording-download', { recording_id: recordingId });
 }

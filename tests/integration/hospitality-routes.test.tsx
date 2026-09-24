@@ -6,6 +6,7 @@ const root = process.cwd();
 const moduleRoot = resolve(root, 'apps/web/src/modules/hospitality');
 const routePath = resolve(moduleRoot, 'HospitalityRoutes.tsx');
 const apiPath = resolve(root, 'apps/web/src/lib/hospitalityApi.ts');
+const moduleRegistryPath = resolve(root, 'apps/web/src/modules/registry.ts');
 const pages = [
   'ProvidersPage.tsx',
   'RoomsPage.tsx',
@@ -17,6 +18,18 @@ describe('ATLAS Hospitality route and UI contract', () => {
   it('creates the authenticated Hospitality API client and all workspace pages', () => {
     expect(existsSync(apiPath)).toBe(true);
     for (const page of pages) expect(existsSync(page)).toBe(true);
+  });
+
+  it('uses the Hospitality OS overview as the governed module home', () => {
+    const source = readFileSync(routePath, 'utf8');
+    const registry = readFileSync(moduleRegistryPath, 'utf8');
+    expect(source).toContain('HospitalityOverviewPage');
+    expect(source).toContain('<Route path="/hospitality" element={<Navigate to="/hospitality/overview" replace />} />');
+    expect(source).toContain('<Route path="/hospitality/overview" element={<HospitalityOverviewPage />} />');
+    expect(source).toContain('<Route path="/hospitality/properties" element={<PropertiesPage />} />');
+    expect(registry).toContain("route: '/hospitality'");
+    expect(registry).toContain("navLabel: 'Hospitality'");
+    expect(registry).toContain('showInNavigation: true');
   });
 
   it('exposes all protected Hospitality access routes', () => {

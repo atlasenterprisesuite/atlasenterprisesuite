@@ -66,7 +66,8 @@ describe('ATLAS accounting Astra session bridge', () => {
       ]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([
         { id: 'vendor-1', name: 'Walgreens', email: null, phone: null, status: 'active' }
-      ]), { status: 200 }));
+      ]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     const ledger = await getLivePayablesLedger();
@@ -84,7 +85,9 @@ describe('ATLAS accounting Astra session bridge', () => {
     });
     expect(String(fetchMock.mock.calls[1][0])).toContain('/rest/v1/accounting_bills');
     expect(String(fetchMock.mock.calls[2][0])).toContain('/rest/v1/vendors');
+    expect(String(fetchMock.mock.calls[3][0])).toContain('/rest/v1/purchasing_vendors');
     expect((fetchMock.mock.calls[1][1]?.headers as Record<string, string>).authorization).toBe('Bearer live-token');
     expect((fetchMock.mock.calls[2][1]?.headers as Record<string, string>).authorization).toBe('Bearer live-token');
+    expect((fetchMock.mock.calls[3][1]?.headers as Record<string, string>).authorization).toBe('Bearer live-token');
   });
 });

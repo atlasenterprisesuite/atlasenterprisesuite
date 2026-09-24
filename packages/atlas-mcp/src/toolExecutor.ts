@@ -37,11 +37,19 @@ function requiredString(args: Record<string, unknown>, key: string): string {
 }
 
 export class ToolExecutor {
-  constructor(private readonly options: {
+  private readonly options: {
     orchestrator: AtlasOrchestrator;
     persistence: PersistencePort;
     operations?: AtlasMcpOperations;
-  }) {}
+  };
+
+  constructor(options: {
+    orchestrator: AtlasOrchestrator;
+    persistence: PersistencePort;
+    operations?: AtlasMcpOperations;
+  }) {
+    this.options = options;
+  }
 
   async execute(toolId: AtlasToolId, rawArgs: unknown, actor: AtlasActor): Promise<unknown> {
     const decision = authorize(actor, toolPermission[toolId], actor.scope);

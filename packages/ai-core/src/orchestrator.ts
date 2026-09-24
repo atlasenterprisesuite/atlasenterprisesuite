@@ -26,8 +26,10 @@ function id(prefix: string): string {
 
 export class AtlasOrchestrator {
   private readonly providers: Map<string, ProviderAdapter>;
+  private readonly options: { persistence: PersistencePort; providers?: ProviderAdapter[] };
 
-  constructor(private readonly options: { persistence: PersistencePort; providers?: ProviderAdapter[] }) {
+  constructor(options: { persistence: PersistencePort; providers?: ProviderAdapter[] }) {
+    this.options = options;
     this.providers = new Map((options.providers ?? []).map((provider) => [provider.providerId, provider]));
   }
 

@@ -12,6 +12,8 @@ import { RideHomePage } from '../../apps/web/src/modules/ride/RideHomePage';
 const root = process.cwd();
 const moduleRoot = resolve(root, 'apps/web/src/modules/ride');
 const routeSource = () => readFileSync(resolve(moduleRoot, 'RideRoutes.tsx'), 'utf8');
+const rootRouterSource = () => readFileSync(resolve(root, 'apps/web/src/main.tsx'), 'utf8');
+const moduleRegistrySource = () => readFileSync(resolve(root, 'apps/web/src/modules/registry.ts'), 'utf8');
 
 describe('ATLAS Ride compliance routes', () => {
   it('exposes every protected route in the approved hierarchy', () => {
@@ -27,11 +29,25 @@ describe('ATLAS Ride compliance routes', () => {
     expect(source).toContain('RequireAtlasIdentity');
   });
 
-  it('links Ride to Driver / Partner', () => {
+  it('wires Ride into the root router and canonical ATLAS navigation registry', () => {
+    const rootSource = rootRouterSource();
+    const registry = moduleRegistrySource();
+    expect(rootSource).toContain("import { RideRoutes } from './modules/ride/RideRoutes';");
+    expect(rootSource).toContain("location.pathname.startsWith('/ride')");
+    expect(rootSource).toContain("import './modules/ride/ride.css';");
+    expect(registry).toContain("route: '/ride'");
+    expect(registry).toContain("navLabel: 'Ride'");
+    expect(registry).toContain('showInNavigation: true');
+  });
+
+  it('links Ride to Driver / Partner through the ASTRA-derived mobility experience', () => {
     render(<MemoryRouter><RideHomePage /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: /atlas ride/i })).toBeInTheDocument();
+    expect(document.querySelector('.module-experience-page')).toBeTruthy();
+    expect(screen.getByText('Driver readiness, compliance evidence and governed mobility operations.')).toBeInTheDocument();
     const rideNav = screen.getByRole('navigation', { name: /atlas ride/i });
     expect(within(rideNav).getByRole('link', { name: /driver.*partner/i })).toHaveAttribute('href', '/ride/driver');
+    expect(screen.getByText('Dispatch & Trips').closest('[aria-disabled="true"]')).toBeTruthy();
   });
 
   it('links Driver / Partner to compliance and documents to profile photo', () => {

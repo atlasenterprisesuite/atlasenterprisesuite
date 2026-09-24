@@ -19,13 +19,14 @@ type ReviewPanelProps = {
   nativeSubmitting: boolean;
   nativeReadinessState: 'loading' | 'ready' | 'error';
   nativeReadinessError: string;
+  nativeCapabilities: string[];
   onSubmit: () => void;
   onNativeSubmit: () => void;
 };
 
 export function ReviewPanel({
   spec, providers, permissions, validation, dirty, submitting,
-  nativeSubmitting, nativeReadinessState, nativeReadinessError,
+  nativeSubmitting, nativeReadinessState, nativeReadinessError, nativeCapabilities,
   onSubmit, onNativeSubmit
 }: ReviewPanelProps) {
   const selectedProvider = spec.providerPreference
@@ -49,7 +50,9 @@ export function ReviewPanel({
     dirty,
     validationStatus: validation.status,
     aspectRatio: spec.aspectRatio === 'adaptive' ? '9:16' : spec.aspectRatio,
-    audioEnabled: spec.audioEnabled
+    audioEnabled: spec.audioEnabled,
+    motionCompositionPresent: Boolean(spec.motionComposition),
+    nativeCapabilities
   });
   const canNativeGenerate = nativeGate.allowed && nativeReadinessState === 'ready' && !nativeSubmitting;
 
@@ -66,6 +69,7 @@ export function ReviewPanel({
       <p><strong>Zero-cost</strong> · self-hosted · local narration · burned captions · audio mix.</p>
       <p>No automatic fallback to paid media providers.</p>
       {nativeReadinessState === 'error' && <p><strong>Runtime:</strong> {nativeReadinessError || 'native_composer_unavailable'}</p>}
+      {spec.motionComposition && <p><strong>Motion capability:</strong> {nativeCapabilities.includes('motion-composition-v1') ? 'verified' : 'not advertised by runtime'}</p>}
       {nativeGate.reasons.length > 0 && <ul>{nativeGate.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}
       <button className="director-action generate" type="button" disabled={!canNativeGenerate} onClick={onNativeSubmit}>
         {nativeSubmitting ? 'Rendering with ATLAS Native…' : 'Generate with ATLAS Native · $0'}
@@ -105,6 +109,6 @@ export function ReviewPanel({
     <button className="director-action generate" type="button" disabled={!canGenerate} onClick={onSubmit}>
       {submitting ? 'Submitting…' : 'Generate with verified external provider'}
     </button>
-    <p className="director-context-note">Both render paths require creator.generate permission, a saved current version, and passing deterministic validation. External providers additionally require server-verified readiness.</p>
+    <p className="director-context-note">Both render paths require creator.generate permission, a saved current version, and passing deterministic validation. Motion compositions additionally require the native runtime to advertise motion-composition-v1.</p>
   </div>;
 }

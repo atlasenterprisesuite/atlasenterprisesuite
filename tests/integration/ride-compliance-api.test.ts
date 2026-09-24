@@ -20,9 +20,10 @@ describe('ATLAS Ride compliance browser API', () => {
     vi.restoreAllMocks();
     localStorage.clear();
     localStorage.setItem('atlas_access_token', 'test-token');
+    localStorage.setItem('atlas_org_id', '11111111-1111-4111-8111-111111111111');
   });
 
-  it('sends the active ATLAS token to the profile-photo endpoint', async () => {
+  it('sends the active ATLAS token and selected organization to the profile-photo endpoint', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({
       ok: true,
       requirement: null,
@@ -35,7 +36,10 @@ describe('ATLAS Ride compliance browser API', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/functions/v1/atlas-ride-compliance?api=profile-photo'),
       expect.objectContaining({
-        headers: expect.objectContaining({ authorization: 'Bearer test-token' })
+        headers: expect.objectContaining({
+          authorization: 'Bearer test-token',
+          'x-atlas-org-id': '11111111-1111-4111-8111-111111111111'
+        })
       })
     );
   });
@@ -54,6 +58,7 @@ describe('ATLAS Ride compliance browser API', () => {
     expect(init?.body).toBeInstanceOf(FormData);
     expect((init?.headers as Record<string, string>)['content-type']).toBeUndefined();
     expect((init?.headers as Record<string, string>).authorization).toBe('Bearer test-token');
+    expect((init?.headers as Record<string, string>)['x-atlas-org-id']).toBe('11111111-1111-4111-8111-111111111111');
   });
 
   it('encodes identifiers and sends review mutations as JSON', async () => {
@@ -79,6 +84,7 @@ describe('ATLAS Ride compliance browser API', () => {
 
   it.each([
     [403, 'authorization_denied'],
+    [403, 'organization_membership_required'],
     [409, 'state_conflict'],
     [500, 'internal_error']
   ])('preserves HTTP %s as an error', async (status, code) => {

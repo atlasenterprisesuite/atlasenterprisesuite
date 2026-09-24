@@ -1,5 +1,18 @@
 # ATLAS Enterprise Suite — Codex Instructions
 
+## Binding execution protocol
+
+The repository-wide operating contract is `docs/governance/ATLAS_MASTER_AUTONOMOUS_EXECUTION_PROTOCOL.md`.
+
+Execute ATLAS work continuously from inspection through verification without pausing for intermediate approval unless a genuine authorization, security, provider, billing/spend, irreversible-action, external-dependency, or unresolvable technical boundary exists. Do not create a parallel execution architecture.
+
+Provider roles are fixed unless the repository owner explicitly changes them:
+
+- GitHub: canonical source, change history, CI/review evidence, and release coordination.
+- Cloudflare: primary web/edge delivery and production verification boundary.
+- Gemini: governed intelligence/review provider through the existing `atlas-copilot` provider registry when runtime readiness is actually verified.
+- GitHub Copilot: optional engineering assistance only; it is not an orchestrator, source of truth, or production authority.
+
 ## Canonical repository
 
 This repository, `atlasenterprisesuite/atlasenterprisesuite`, is the canonical source of truth for ATLAS Enterprise Suite.

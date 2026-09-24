@@ -1,0 +1,19 @@
+name: ATLAS Motion Designer Mainline Verification
+on:
+  push:
+    branches: [feat/atlas-motion-designer-mainline]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx vitest run tests/unit/atlas-motion-domain.test.ts tests/unit/atlas-motion-operations.test.ts tests/unit/atlas-native-render-policy.test.ts tests/integration/atlas-motion-designer-route.test.tsx
+      - run: npm run test:unit
+      - run: npm run test:integration
+      - run: npm run build

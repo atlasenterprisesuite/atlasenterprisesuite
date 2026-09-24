@@ -14,11 +14,14 @@ describe('atlas-infra-status Supabase-first source contract', () => {
     expect(source).toContain("vercel: { state: vercel.state, required: false }");
   });
 
-  it('marks the Supabase-first production path as required', () => {
+  it('keeps GitHub optional while requiring the active production path', () => {
     expect(source).toContain("github: { state:");
-    expect(source).toContain("supabase: { state:");
-    expect(source).toContain("cloudflare: { state:");
-    expect(source).toContain("production: { state:");
+    expect(source).toContain("required: false },");
+    expect(source).toContain("supabase: { state: supabaseState, required: true }");
+    expect(source).toContain("cloudflare: { state: cloudflare.state, required: true }");
+    expect(source).toContain("production: { state: productionRoot.reachable ? 'ready' : 'public_site_unreachable', required: true }");
+    expect(source).toContain("provider_requirements: {");
+    expect(source).toContain("github: false");
   });
 
   it('preserves authenticated infrastructure-admin authorization', () => {

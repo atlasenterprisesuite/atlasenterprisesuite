@@ -3,7 +3,7 @@ name: Hospitality Self-Hosted CI
 on:
   push:
     branches:
-      - feat/hospitality-room-access
+      - 'feat/hospitality-*'
   workflow_dispatch:
 
 permissions:

@@ -14,6 +14,8 @@ const SAFE_CODES = new Set([
   'authentication_required',
   'invalid_session',
   'active_organization_required',
+  'invalid_organization',
+  'organization_membership_required',
   'authorization_denied',
   'requirement_not_found',
   'requirement_not_actionable',
@@ -52,10 +54,16 @@ export function normalizeComplianceError(error: unknown) {
   const message = error instanceof Error ? error.message : 'internal_error';
   if (!SAFE_CODES.has(message)) return { code: 'internal_error', status: 500 };
   if (message === 'authentication_required' || message === 'invalid_session') return { code: message, status: 401 };
-  if (message === 'active_organization_required' || message === 'authorization_denied') return { code: message, status: 403 };
+  if (
+    message === 'active_organization_required'
+    || message === 'organization_membership_required'
+    || message === 'authorization_denied'
+  ) return { code: message, status: 403 };
   if (message === 'requirement_not_found') return { code: message, status: 404 };
   if (message === 'state_conflict' || message === 'requirement_not_actionable') return { code: message, status: 409 };
-  if (message === 'supabase_runtime_not_configured' || message === 'server_secret_not_configured') return { code: message, status: 503 };
+  if (message === 'supabase_runtime_not_configured' || message === 'server_secret_not_configured') {
+    return { code: message, status: 503 };
+  }
   return { code: message, status: 400 };
 }
 
@@ -63,7 +71,7 @@ export function corsHeaders(origin: string | null) {
   if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
   return {
     'access-control-allow-origin': origin,
-    'access-control-allow-headers': 'authorization, apikey, content-type',
+    'access-control-allow-headers': 'authorization, apikey, content-type, x-atlas-org-id',
     'access-control-allow-methods': 'GET, POST, OPTIONS',
     'access-control-max-age': '86400',
     vary: 'Origin'

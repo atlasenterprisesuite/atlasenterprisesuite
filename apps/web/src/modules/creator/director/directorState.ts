@@ -8,16 +8,19 @@ import type {
   SubjectSpec
 } from '../../../../../../packages/creator/types';
 
+type MotionComposition = ProductionSpec['motionComposition'];
+
 export type DirectorState = { spec: ProductionSpec; dirty: boolean };
 
 type RootPatch = Partial<Pick<ProductionSpec,
   | 'title' | 'brief' | 'durationSeconds' | 'aspectRatio'
   | 'resolutionPreference' | 'audioEnabled' | 'environment'
-  | 'visualStyle' | 'cameraDefaults' | 'motionRules' | 'audioPlan'
+  | 'visualStyle' | 'cameraDefaults' | 'motionRules' | 'motionComposition' | 'audioPlan'
 >>;
 
 export type DirectorAction =
   | { type: 'root.patch'; patch: RootPatch }
+  | { type: 'motion.replace'; composition: MotionComposition }
   | { type: 'subject.add'; subject: SubjectSpec }
   | { type: 'subject.update'; subjectId: string; patch: Partial<SubjectSpec> }
   | { type: 'subject.remove'; subjectId: string }
@@ -66,6 +69,8 @@ export function directorReducer(state: DirectorState, action: DirectorAction): D
   switch (action.type) {
     case 'root.patch':
       return changed(state, { ...spec, ...action.patch });
+    case 'motion.replace':
+      return changed(state, { ...spec, motionComposition: action.composition });
     case 'subject.add':
       return changed(state, { ...spec, subjects: [...spec.subjects, action.subject] });
     case 'subject.update':

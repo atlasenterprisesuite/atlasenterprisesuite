@@ -11,13 +11,15 @@ describe('ATLAS Supabase-first production workflow', () => {
     expect(workflow).not.toContain('Install Vercel CLI');
   });
 
-  it('watches Supabase control-plane source changes', () => {
-    expect(workflow).toContain('- "supabase/functions/**"');
-    expect(workflow).toContain('- "docs/architecture/ATLAS_MANAGER_SPEC.md"');
+  it('runs the complete readiness gate for every main SHA without path filters', () => {
+    expect(workflow).toContain('push:');
+    expect(workflow).toContain('branches: ["main"]');
+    expect(workflow).toContain('Every main SHA must receive its own complete repository readiness evidence');
+    expect(workflow).not.toContain('    paths:');
   });
 
-  it('does not falsely claim Cloudflare deployment', () => {
+  it('does not falsely claim Cloudflare or Vercel deployment', () => {
     expect(workflow).toContain('Cloudflare production deployment: separate required stage; not claimed by this workflow');
-    expect(workflow).toContain('Vercel: optional; not part of this gate');
+    expect(workflow).toContain('Vercel: optional legacy adapter; not part of this gate');
   });
 });

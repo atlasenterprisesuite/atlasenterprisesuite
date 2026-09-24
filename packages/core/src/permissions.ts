@@ -24,11 +24,49 @@ export type IntegrationPermission =
   | 'integrations.write'
   | 'integrations.admin';
 
+export type CrmPermission =
+  | 'crm.read'
+  | 'crm.sync'
+  | 'crm.admin';
+
+export type CommercePermission =
+  | 'commerce.read'
+  | 'commerce.catalog.read'
+  | 'commerce.catalog.manage'
+  | 'commerce.orders.read'
+  | 'commerce.orders.manage'
+  | 'commerce.promotions.manage'
+  | 'commerce.storefront.manage'
+  | 'commerce.fulfillment.manage'
+  | 'commerce.returns.manage'
+  | 'commerce.refund'
+  | 'commerce.analytics.read'
+  | 'commerce.admin';
+
 export type AgentPermission =
   | 'agents.read'
   | 'agents.write'
   | 'agents.publish'
   | 'agents.admin';
+
+export type AdvisoryPermission =
+  | 'advisory.read'
+  | 'advisory.manage'
+  | 'advisory.write'
+  | 'advisory.billing'
+  | 'advisory.compliance'
+  | 'advisory.automations'
+  | 'advisory.admin';
+
+export type HrPermission =
+  | 'hr.read'
+  | 'hr.write';
+
+export type PayrollPermission =
+  | 'payroll.read'
+  | 'payroll.write'
+  | 'payroll.approve'
+  | 'payroll.self';
 
 export type SecurityPermission = 'security.admin';
 export type AuditPermission = 'audit.read';
@@ -37,18 +75,37 @@ export type AtlasPermission =
   | AccountingPermission
   | VoicePermission
   | IntegrationPermission
+  | CrmPermission
+  | CommercePermission
   | AgentPermission
+  | AdvisoryPermission
+  | HrPermission
+  | PayrollPermission
   | SecurityPermission
   | AuditPermission;
 
-export function hasPermission(
+export function hasAtlasPermission(
   granted: readonly AtlasPermission[],
   required: AtlasPermission
 ) {
   if (granted.includes(required)) return true;
   const namespace = required.split('.')[0];
-  const admin = `${namespace}.admin` as AtlasPermission;
+  const admin = (namespace + '.admin') as AtlasPermission;
   return granted.includes(admin);
+}
+
+export function hasPermission(
+  granted: readonly AtlasPermission[],
+  required: AtlasPermission
+) {
+  return hasAtlasPermission(granted, required);
+}
+
+export function hasLegacyIntegrationAdmin(granted: readonly string[]) {
+  return (
+    granted.includes('integrations.admin') ||
+    granted.includes('integrations.manage')
+  );
 }
 
 export type AuthorizationContext = {
@@ -67,7 +124,7 @@ export function authorize(
     return { ok: false, reason: 'scope_mismatch' };
   }
 
-  return hasPermission(actor.permissions, request.permission)
+  return hasAtlasPermission(actor.permissions, request.permission)
     ? { ok: true }
     : { ok: false, reason: 'permission_denied' };
 }

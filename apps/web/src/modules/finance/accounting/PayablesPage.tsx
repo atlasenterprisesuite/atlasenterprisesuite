@@ -319,9 +319,9 @@ function LivePayablesLedgerView() {
           <div className="payment-history">
             <div><h3>Vendor contact</h3><p>Live vendor directory values visible under the same organization scope.</p></div>
             <article><span>Email</span><strong>{selected.vendor?.email || 'Not set'}</strong><small>{selected.vendor?.status || 'Unknown status'}</small></article>
-            <article><span>Phone</span><strong>{selected.vendor?.phone || 'Not set'}</strong><small>Vendor ID {selected.vendor_id || 'not linked'}</small></article>
+            <article><span>Phone</span><strong>{selected.vendor?.phone || 'Not set'}</strong><small>Vendor ID {selected.vendor_id || selected.purchasing_vendor_id || 'not linked'}</small></article>
           </div>
-          <div className="connection-gate"><strong>Payment rail required</strong><span>This live ledger is read-only. ACH, check, card, approval mutation, and journal posting remain unavailable until their governed execution gates are implemented.</span></div>
+          <div className="connection-gate"><strong>Governed AP execution</strong><span>This ledger remains read-only for payment and approval mutations. PO/packing-slip matched bills created through Procure to Pay already carry their governed Inventory/AP journal posting; ACH, check and card rails remain provider-gated.</span></div>
         </section>
       )}
 

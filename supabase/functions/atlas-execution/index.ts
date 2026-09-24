@@ -7,7 +7,33 @@ import {
 } from '../../../packages/execution/src/types.ts';
 import { canTransitionTask, evaluateTaskCompletion } from '../../../packages/execution/src/state-machine.ts';
 import { digestApprovalPayload } from '../../../packages/execution/src/approvals.ts';
+import { parseAtlasWorkContext } from '../../../packages/execution/src/work-types.ts';
+import { selectWorkRuntime, type WorkRuntime } from '../../../packages/execution/src/work-runtime.ts';
 import { ManagerReadinessError, syncManagerReadiness } from './manager-readiness.ts';
+import { createWorkWorkflowPlan, listWorkWorkflows, WorkExecutionError } from './work.ts';
+import { evaluateWorkStepServer, WorkPolicyResolutionError } from './work-policy.ts';
+import {
+  listWorkConnections,
+  registerWorkConnectionRef,
+  revokeWorkConnectionRef,
+  WorkConnectionError
+} from './work-connections.ts';
+import {
+  claimWorkRuntimeJob,
+  completeWorkRuntimeJob,
+  enrollWorkRuntime,
+  enqueueWorkRuntimeJob,
+  heartbeatWorkRuntime,
+  listWorkRuntimes,
+  resolveRuntimeContext,
+  WorkRuntimeError
+} from './work-runtime.ts';
+import {
+  createOpenAiDomainTemplate,
+  executeOpenAiDomainStep,
+  resumeOpenAiDomainStep,
+  OpenAiDomainPilotError
+} from './openai-domain.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
@@ -22,6 +48,12 @@ const ALLOWED_ORIGINS = new Set([
   'http://127.0.0.1:5173'
 ]);
 
+const RUNTIME_OPERATIONS = new Set([
+  'heartbeat_work_runtime',
+  'claim_work_runtime_job',
+  'complete_work_runtime_job'
+]);
+
 const SUPPORTED_OPERATIONS = new Set([
   'get_state',
   'get_audit',
@@ -30,6 +62,21 @@ const SUPPORTED_OPERATIONS = new Set([
   'record_evidence',
   'request_approval',
   'decide_approval',
+  'create_workflow_plan',
+  'list_workflows',
+  'evaluate_work_step',
+  'list_work_connections',
+  'register_work_connection_ref',
+  'revoke_work_connection_ref',
+  'list_work_runtimes',
+  'enroll_work_runtime',
+  'enqueue_work_runtime_job',
+  'create_work_template',
+  'execute_work_step',
+  'resume_work_step',
+  'heartbeat_work_runtime',
+  'claim_work_runtime_job',
+  'complete_work_runtime_job',
   'sync_manager_readiness'
 ]);
 
@@ -41,6 +88,8 @@ const EXECUTION_PERMISSION_SET = new Set<ExecutionPermission>([
   'execution.admin'
 ]);
 
+const SENSITIVE_INPUT_KEY = /token|secret|password|cookie|authorization|recovery/i;
+
 class EdgeError extends Error {
   constructor(readonly code: string, readonly status: number) {
     super(code);
@@ -50,6 +99,7 @@ class EdgeError extends Error {
 type RequestContext = {
   userId: string;
   orgId: string;
+  tenantId: string;
   role: string;
   permissions: ExecutionPermission[];
 };
@@ -60,7 +110,7 @@ function corsHeaders(req: Request) {
   const origin = req.headers.get('origin') || '';
   return {
     'access-control-allow-origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://www.atlasenterprisesuite.com',
-    'access-control-allow-headers': 'authorization, apikey, content-type, x-request-id',
+    'access-control-allow-headers': 'authorization, apikey, content-type, x-request-id, x-atlas-runtime-id',
     'access-control-allow-methods': 'POST, OPTIONS',
     'cache-control': 'no-store',
     'content-type': 'application/json; charset=utf-8',
@@ -83,6 +133,10 @@ function requiredText(value: unknown, code: string, max = 500) {
   return result;
 }
 
+function record(value: unknown): JsonObject {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonObject : {};
+}
+
 function stringArray(value: unknown, maxItems = 40, maxItemLength = 120) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map((item) => clean(item, maxItemLength)).filter(Boolean))].slice(0, maxItems);
@@ -103,6 +157,17 @@ function riskLevel(value: unknown) {
   const result = clean(value, 20) || 'medium';
   if (!['low', 'medium', 'high', 'critical'].includes(result)) throw new EdgeError('invalid_risk_level', 422);
   return result;
+}
+
+function containsSensitiveInputKey(value: unknown, depth = 0): boolean {
+  if (depth > 8 || value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.some((item) => containsSensitiveInputKey(item, depth + 1));
+  if (typeof value !== 'object') return false;
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    if (SENSITIVE_INPUT_KEY.test(key)) return true;
+    if (containsSensitiveInputKey(nested, depth + 1)) return true;
+  }
+  return false;
 }
 
 function userClient(req: Request) {
@@ -138,9 +203,12 @@ async function resolveContext(req: Request, orgId: string): Promise<RequestConte
 
   if (membershipError || !membership?.org_id) throw new EdgeError('membership_required', 403);
   const role = String(membership.role || 'member');
+  const resolvedOrgId = String(membership.org_id);
   return {
     userId: data.user.id,
-    orgId: String(membership.org_id),
+    orgId: resolvedOrgId,
+    // Compatibility rule for the current canonical execution schema: tenant scope equals organization scope.
+    tenantId: resolvedOrgId,
     role,
     permissions: executionPermissionsForRole(role)
   };
@@ -293,7 +361,9 @@ async function getState(req: Request, body: JsonObject, context: RequestContext)
   }
 
   const [steps, dependencies, evidence, approvals] = await Promise.all([
-    admin.from('execution_steps').select('*').eq('org_id', context.orgId).in('task_id', taskIds).order('sequence'),
+    admin.from('execution_steps')
+      .select('id,org_id,tenant_id,task_id,sequence,module,action_type,status,completion_criteria,permissions_required,evidence_requirement,started_at,completed_at,created_at,updated_at')
+      .eq('org_id', context.orgId).in('task_id', taskIds).order('sequence'),
     admin.from('execution_dependencies').select('*').eq('org_id', context.orgId).in('task_id', taskIds),
     admin.from('execution_evidence').select('*').eq('org_id', context.orgId).in('task_id', taskIds).order('created_at'),
     admin.from('execution_approvals').select('*').eq('org_id', context.orgId).in('task_id', taskIds).order('created_at')
@@ -573,21 +643,14 @@ async function decideApproval(req: Request, body: JsonObject, context: RequestCo
   if (!approval) throw new EdgeError('approval_not_found', 404);
 
   const requiredPermission = String(approval.required_permission);
-  if (!requiredPermission.startsWith('execution.')) {
-    throw new EdgeError('domain_permission_resolver_required', 409);
-  }
-  if (!EXECUTION_PERMISSION_SET.has(requiredPermission as ExecutionPermission)) {
-    throw new EdgeError('permission_required', 403);
-  }
+  if (!requiredPermission.startsWith('execution.')) throw new EdgeError('domain_permission_resolver_required', 409);
+  if (!EXECUTION_PERMISSION_SET.has(requiredPermission as ExecutionPermission)) throw new EdgeError('permission_required', 403);
   requireExecutionPermission(context, requiredPermission as ExecutionPermission);
 
   const task = await loadTask(admin, context.orgId, String(approval.task_id));
   const step = await loadCurrentStep(admin, context.orgId, task);
   const currentVersion = Number(task.version);
-  const currentDigest = await digestApprovalPayload({
-    payloadVersion: currentVersion,
-    payload: reviewedAction(task, step)
-  });
+  const currentDigest = await digestApprovalPayload({ payloadVersion: currentVersion, payload: reviewedAction(task, step) });
   if (Number(approval.payload_version) !== currentVersion || String(approval.payload_digest) !== currentDigest) {
     throw new EdgeError('approval_binding_mismatch', 409);
   }
@@ -595,33 +658,162 @@ async function decideApproval(req: Request, body: JsonObject, context: RequestCo
   const decidedAt = new Date().toISOString();
   const { data: decided, error: decisionError } = await admin
     .from('execution_approvals')
-    .update({
-      status: decision,
-      decided_by: context.userId,
-      decision_reason: clean(body.decision_reason, 1000) || null,
-      decided_at: decidedAt
-    })
-    .eq('id', approvalId)
-    .eq('org_id', context.orgId)
-    .eq('status', 'pending')
-    .select('*')
-    .maybeSingle();
+    .update({ status: decision, decided_by: context.userId, decision_reason: clean(body.decision_reason, 1000) || null, decided_at: decidedAt })
+    .eq('id', approvalId).eq('org_id', context.orgId).eq('status', 'pending').select('*').maybeSingle();
   if (decisionError) throw new EdgeError('persistence_error', 500);
   if (!decided) throw new EdgeError('approval_already_decided', 409);
 
   await appendAudit(admin, {
-    orgId: context.orgId,
-    tenantId: String(task.tenant_id),
-    actorUserId: context.userId,
-    taskId: String(task.id),
-    workflowId: String(task.workflow_id),
-    module: String(task.module),
-    action: `execution.approval.${decision}`,
-    previousState: 'pending',
-    resultingState: decision,
-    correlationId: requestId
+    orgId: context.orgId, tenantId: String(task.tenant_id), actorUserId: context.userId,
+    taskId: String(task.id), workflowId: String(task.workflow_id), module: String(task.module),
+    action: `execution.approval.${decision}`, previousState: 'pending', resultingState: decision, correlationId: requestId
   });
   return json(req, { ok: true, approval: decided });
+}
+
+async function createWorkPlan(req: Request, body: JsonObject, context: RequestContext, requestId: string) {
+  requireExecutionPermission(context, 'execution.write');
+  const ownerModule = requiredText(body.owner_module, 'owner_module_required', 80);
+  const intent = requiredText(body.intent, 'work_intent_required', 2000);
+  const work = parseAtlasWorkContext({ work: body.work });
+  const admin = adminClient();
+  try {
+    const result = await createWorkWorkflowPlan({
+      admin, context: { userId: context.userId, orgId: context.orgId }, requestId, ownerModule, intent, work,
+      appendAudit: (input) => appendAudit(admin, input)
+    });
+    return json(req, { ok: true, workflow_id: result.workflowId, task_id: result.taskId }, 201);
+  } catch (error) {
+    if (error instanceof WorkExecutionError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
+async function listWorkflows(req: Request, context: RequestContext) {
+  requireExecutionPermission(context, 'execution.read');
+  const admin = adminClient();
+  try {
+    const workflows = await listWorkWorkflows({ admin, context: { userId: context.userId, orgId: context.orgId } });
+    return json(req, { ok: true, workflows });
+  } catch (error) {
+    if (error instanceof WorkExecutionError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
+async function evaluateWorkStep(req: Request, body: JsonObject, context: RequestContext) {
+  requireExecutionPermission(context, 'execution.read');
+  const taskId = requiredText(body.task_id, 'task_id_required', 80);
+  try {
+    const decision = await evaluateWorkStepServer({ admin: adminClient(), context, taskId });
+    return json(req, { ok: true, ...decision });
+  } catch (error) {
+    if (error instanceof WorkPolicyResolutionError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
+async function connectionOperation(req: Request, operation: string, body: JsonObject, context: RequestContext) {
+  const admin = adminClient();
+  try {
+    if (operation === 'list_work_connections') {
+      requireExecutionPermission(context, 'execution.read');
+      return json(req, { ok: true, connections: await listWorkConnections(admin, context) });
+    }
+    requireExecutionPermission(context, 'execution.admin');
+    if (operation === 'register_work_connection_ref') {
+      if (containsSensitiveInputKey(body)) throw new EdgeError('secret_material_not_allowed', 422);
+      const connection = await registerWorkConnectionRef(admin, context, {
+        provider: body.provider, mechanism: body.mechanism, externalRef: body.external_ref, capabilities: body.capabilities
+      });
+      return json(req, { ok: true, connection }, 201);
+    }
+    const connection = await revokeWorkConnectionRef(admin, context, requiredText(body.connection_id, 'connection_id_required', 80));
+    return json(req, { ok: true, connection });
+  } catch (error) {
+    if (error instanceof WorkConnectionError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
+async function runtimeUserOperation(req: Request, operation: string, body: JsonObject, context: RequestContext) {
+  const admin = adminClient();
+  try {
+    if (operation === 'list_work_runtimes') {
+      requireExecutionPermission(context, 'execution.read');
+      return json(req, { ok: true, runtimes: await listWorkRuntimes(admin, context) });
+    }
+    if (operation === 'enroll_work_runtime') {
+      requireExecutionPermission(context, 'execution.admin');
+      const result = await enrollWorkRuntime(admin, context, { kind: body.kind, label: body.label, capabilities: body.capabilities });
+      return json(req, { ok: true, runtime: result.runtime, runtime_token: result.runtimeToken }, 201);
+    }
+    if (operation === 'enqueue_work_runtime_job') {
+      requireExecutionPermission(context, 'execution.write');
+      const taskId = requiredText(body.task_id, 'task_id_required', 80);
+      const decision = await evaluateWorkStepServer({ admin, context, taskId });
+      if (decision.route.state !== 'ready' || decision.route.mechanism !== 'browser') throw new EdgeError('browser_route_not_ready', 409);
+      if (decision.approvalRequired || decision.policy.outcome !== 'allow') throw new EdgeError('approval_or_policy_required', 409);
+      const task = await loadTask(admin, context.orgId, taskId);
+      const step = await loadCurrentStep(admin, context.orgId, task);
+      const workflow = await loadWorkflow(admin, context.orgId, String(task.workflow_id));
+      const payload = record(step.action_payload);
+      const rawEnvelope = record(payload.execution_envelope);
+      const rawAction = record(payload.browser_action);
+      const work = parseAtlasWorkContext({ work: record(workflow.context).work });
+      const { data: runtimeRows, error: runtimeError } = await admin.from('execution_runtime_registrations')
+        .select('id,kind,status,capabilities,last_seen_at').eq('org_id', context.orgId).eq('tenant_id', context.tenantId).eq('status', 'online');
+      if (runtimeError) throw new EdgeError('persistence_error', 500);
+      const runtimes: WorkRuntime[] = (runtimeRows || []).map((runtime: any) => ({
+        id: String(runtime.id), kind: runtime.kind, status: runtime.status,
+        capabilities: stringArray(runtime.capabilities), lastSeenAt: runtime.last_seen_at ? String(runtime.last_seen_at) : null
+      }));
+      const selection = selectWorkRuntime({ preference: work.runtimePreference, requiredCapabilities: ['browser'], runtimes });
+      if (selection.state !== 'ready' || !selection.runtimeKind) throw new EdgeError('runtime_unavailable', 409);
+      const envelope = {
+        workflowId: String(workflow.id), stepId: String(step.id), tenantId: context.tenantId, organizationId: context.orgId,
+        allowedDomains: stringArray(rawEnvelope.allowedDomains ?? rawEnvelope.allowed_domains, 20, 253),
+        allowedActions: stringArray(rawEnvelope.allowedActions ?? rawEnvelope.allowed_actions, 40, 120),
+        deniedActions: stringArray(rawEnvelope.deniedActions ?? rawEnvelope.denied_actions, 40, 120),
+        autonomyLevel: work.autonomyLevel,
+        expiresAt: requiredText(rawEnvelope.expiresAt ?? rawEnvelope.expires_at, 'execution_envelope_required', 80)
+      };
+      const job = await enqueueWorkRuntimeJob(admin, context, {
+        workflowId: String(workflow.id), taskId, stepId: String(step.id), runtimeKind: selection.runtimeKind,
+        envelope, action: rawAction as any, route: decision.route, policy: decision.policy
+      });
+      return json(req, { ok: true, job }, 201);
+    }
+  } catch (error) {
+    if (error instanceof WorkRuntimeError) throw new EdgeError(error.code, error.status);
+    if (error instanceof WorkPolicyResolutionError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+  throw new EdgeError('unsupported_operation', 400);
+}
+
+async function pilotOperation(req: Request, operation: string, body: JsonObject, context: RequestContext, requestId: string) {
+  requireExecutionPermission(context, 'execution.write');
+  const admin = adminClient();
+  const deps = {
+    admin, context, requestId,
+    appendAudit: (input: any) => appendAudit(admin, input)
+  };
+  try {
+    if (operation === 'create_work_template') {
+      const templateId = requiredText(body.template_id, 'template_id_required', 120);
+      const result = await createOpenAiDomainTemplate(deps, templateId, record(body.inputs));
+      return json(req, { ok: true, workflow_id: result.workflowId, task_id: result.taskId }, 201);
+    }
+    const taskId = requiredText(body.task_id, 'task_id_required', 80);
+    const result = operation === 'execute_work_step'
+      ? await executeOpenAiDomainStep(deps, taskId)
+      : await resumeOpenAiDomainStep(deps, taskId);
+    return json(req, { ok: true, result });
+  } catch (error) {
+    if (error instanceof OpenAiDomainPilotError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
 }
 
 async function syncReadiness(req: Request, context: RequestContext, requestId: string) {
@@ -645,14 +837,21 @@ async function syncReadiness(req: Request, context: RequestContext, requestId: s
   }
 }
 
+function errorResponse(req: Request, error: unknown) {
+  if (error instanceof EdgeError) return json(req, { ok: false, error: error.code }, error.status);
+  if (error instanceof WorkRuntimeError) return json(req, { ok: false, error: error.code }, error.status);
+  if (error instanceof WorkConnectionError) return json(req, { ok: false, error: error.code }, error.status);
+  if (error instanceof WorkPolicyResolutionError) return json(req, { ok: false, error: error.code }, error.status);
+  if (error instanceof OpenAiDomainPilotError) return json(req, { ok: false, error: error.code }, error.status);
+  return json(req, { ok: false, error: 'internal_error' }, 500);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
   if (!req.headers.get('authorization')) return json(req, { ok: false, error: 'authentication_required' }, 401);
   const declaredLength = Number(req.headers.get('content-length') || 0);
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
-    return json(req, { ok: false, error: 'payload_too_large' }, 413);
-  }
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) return json(req, { ok: false, error: 'payload_too_large' }, 413);
 
   let body: JsonObject;
   try {
@@ -665,6 +864,29 @@ Deno.serve(async (req: Request) => {
 
   const operation = clean(body.operation, 80);
   if (!SUPPORTED_OPERATIONS.has(operation)) return json(req, { ok: false, error: 'unsupported_operation' }, 400);
+
+  if (RUNTIME_OPERATIONS.has(operation)) {
+    try {
+      const runtimeId = requiredText(req.headers.get('x-atlas-runtime-id'), 'runtime_id_required', 80);
+      const runtimeToken = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+      const admin = adminClient();
+      const context = await resolveRuntimeContext(admin, runtimeId, runtimeToken);
+      if (operation === 'heartbeat_work_runtime') return json(req, { ok: true, runtime: await heartbeatWorkRuntime(admin, context) });
+      if (operation === 'claim_work_runtime_job') return json(req, { ok: true, job: await claimWorkRuntimeJob(admin, context) });
+      const state = clean(body.state, 40);
+      if (!['completed', 'waiting_human', 'failed'].includes(state)) throw new EdgeError('invalid_runtime_job_state', 422);
+      const job = await completeWorkRuntimeJob(admin, context, {
+        jobId: requiredText(body.job_id, 'runtime_job_id_required', 80),
+        leaseId: requiredText(body.lease_id, 'runtime_lease_required', 80),
+        state: state as 'completed' | 'waiting_human' | 'failed',
+        result: body.result
+      });
+      return json(req, { ok: true, job });
+    } catch (error) {
+      return errorResponse(req, error);
+    }
+  }
+
   const orgId = clean(body.organization_id, 80);
   if (!orgId) return json(req, { ok: false, error: 'organization_id_required' }, 422);
 
@@ -678,10 +900,15 @@ Deno.serve(async (req: Request) => {
     if (operation === 'record_evidence') return await recordEvidence(req, body, context, requestId);
     if (operation === 'request_approval') return await requestApproval(req, body, context, requestId);
     if (operation === 'decide_approval') return await decideApproval(req, body, context, requestId);
+    if (operation === 'create_workflow_plan') return await createWorkPlan(req, body, context, requestId);
+    if (operation === 'list_workflows') return await listWorkflows(req, context);
+    if (operation === 'evaluate_work_step') return await evaluateWorkStep(req, body, context);
+    if (['list_work_connections', 'register_work_connection_ref', 'revoke_work_connection_ref'].includes(operation)) return await connectionOperation(req, operation, body, context);
+    if (['list_work_runtimes', 'enroll_work_runtime', 'enqueue_work_runtime_job'].includes(operation)) return await runtimeUserOperation(req, operation, body, context);
+    if (['create_work_template', 'execute_work_step', 'resume_work_step'].includes(operation)) return await pilotOperation(req, operation, body, context, requestId);
     if (operation === 'sync_manager_readiness') return await syncReadiness(req, context, requestId);
     return json(req, { ok: false, error: 'unsupported_operation' }, 400);
   } catch (error) {
-    if (error instanceof EdgeError) return json(req, { ok: false, error: error.code }, error.status);
-    return json(req, { ok: false, error: 'internal_error' }, 500);
+    return errorResponse(req, error);
   }
 });

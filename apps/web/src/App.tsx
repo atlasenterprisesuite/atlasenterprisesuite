@@ -12,10 +12,19 @@ import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
+import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
+import { TaxRoutes } from './modules/tax/TaxRoutes';
+import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
+import { EventsRoutes } from './modules/events/EventsRoutes';
+import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
+import { Gps4DPage } from './modules/gps/Gps4DPage';
+import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -43,10 +52,13 @@ function EnterpriseHome() {
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
-        <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting and financial operations, beginning with working Accounts Payable.</p></Link>
+        <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting operations with live Accounts Payable, Accounts Receivable and governed financial reporting.</p></Link>
+        <Link className="module-card enabled" to="/tax"><span>Finance • Compliance</span><strong>ATLAS Tax</strong><p>Connected personal and business return preparation with governed source-document mapping.</p></Link>
         <Link className="module-card enabled" to="/payroll"><span>People • Pay • Progress</span><strong>ATLAS Payroll</strong><p>Governed payroll workspace with real configuration boundaries and no fabricated metrics.</p></Link>
         <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tooling with explicit evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
+        <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
@@ -71,7 +83,10 @@ function FinanceHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Finance" title="Finance" description="Governed finance operations with Accounting as the first enterprise domain." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Advisory · Client planning</span><strong>Financial Guidance</strong><p>Explainable 30-day liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting</span><strong>Accounts Receivable</strong><p>Live customers, invoices, line items, balances, issuance and payment recording.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · Purchasing · AP</span><strong>Procure to Pay</strong><p>PO receiving, packing slips, three-way matching, inventory costing, AP and margin pricing.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting / Reports</span><strong>Automotive Sales</strong><p>Vehicle, F&I, fixed operations, inventory and floorplan financial reporting.</p></Link>
       </div>
     </section>
@@ -84,6 +99,8 @@ function AccountingHome() {
       <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Working accounting slices share the same governed tenant scope and reporting contracts." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging and payment application state.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Operations</span><strong>Accounts Receivable</strong><p>Customer invoicing, open balances, aging inputs and governed payment recording.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · AP</span><strong>Procure to Pay</strong><p>Receive by PO, match packing slips and vendor invoices, calculate cost and post inventory/AP.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Reports</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed ops, inventory and floorplan controls.</p></Link>
       </div>
     </section>
@@ -245,6 +262,11 @@ function NotFound() {
 export function App() {
   const location = useLocation();
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
+  if (location.pathname.startsWith('/events')) return <EventsRoutes />;
+  if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
+  if (location.pathname.startsWith('/insurance')) return <InsuranceRoutes />;
+  const publicAdvisoryHost = typeof window !== 'undefined' && ['atlasenterprisesuite.com','www.atlasenterprisesuite.com','localhost','127.0.0.1'].includes(window.location.hostname);
+  if (location.pathname === '/advisory/business-launch-360' && publicAdvisoryHost) return <PublicBusinessLaunch360Page />;
   const extension = resolveAtlasExtension(location.pathname);
   if (extension) return <AtlasShell>{extension}</AtlasShell>;
 
@@ -260,12 +282,17 @@ export function App() {
         <Route path="/studio/library" element={<RequireAtlasIdentity><CreatorLibrary /></RequireAtlasIdentity>} />
         <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
+        <Route path="/studio/teleprompter" element={<RequireAtlasIdentity><TeleprompterPage /></RequireAtlasIdentity>} />
         <Route path="/business" element={<BusinessHome />} />
-        <Route path="/business/growth/social-publisher" element={<SocialPublisherPage />} />
+        <Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />
+        <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
+        <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
+        <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />} />
+        <Route path="/tax/*" element={<TaxRoutes />} />
         <Route path="/payroll/*" element={<PayrollRoutes />} />
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
