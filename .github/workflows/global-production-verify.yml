@@ -78,6 +78,7 @@ jobs:
           console.log(`critical_network_routes_reachable=${result.checks?.critical_network_routes_reachable === true}`);
           console.log(`protected_routes_enforced=${result.checks?.protected_routes_enforced === true}`);
           console.log(`production_commit_sha_verified=${result.checks?.production_commit_sha_verified === true}`);
+          console.log(`classified_required_route_challenge_deferred=${result.checks?.classified_required_route_challenge_deferred === true}`);
           console.log(`classified_root_challenge_deferred=${result.checks?.classified_root_challenge_deferred === true}`);
           NODE
 
@@ -122,6 +123,8 @@ jobs:
           AUTHORIZED_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.ok===true))")"
           AUTHORIZED_VERIFIER_VERSION="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.verifier_version||''))")"
           TARGET_SHA="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.target_sha||''))")"
+          STATUS_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.status_route_reachable===true))")"
+          MODULES_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.all_module_routes_reachable===true))")"
           HOME_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.public_home_reachable===true))")"
           SUITE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.suite_route_reachable===true))")"
           IDENTITY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.identity_route_reachable===true))")"
@@ -145,8 +148,10 @@ jobs:
 
           if [ "$HTTP_STATUS" = "200" ] && \
              [ "$AUTHORIZED_OK" = "true" ] && \
-             [ "$AUTHORIZED_VERIFIER_VERSION" = "22" ] && \
+             [ "$AUTHORIZED_VERIFIER_VERSION" = "24" ] && \
              [ "$TARGET_SHA" = "$GITHUB_SHA" ] && \
+             [ "$STATUS_OK" = "true" ] && \
+             [ "$MODULES_OK" = "true" ] && \
              [ "$HOME_OK" = "true" ] && \
              [ "$SUITE_OK" = "true" ] && \
              [ "$IDENTITY_OK" = "true" ] && \
@@ -168,6 +173,8 @@ jobs:
              [ "$NETWORK_OK" = "true" ] && \
              [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
             echo "verified=true" >> "$GITHUB_OUTPUT"
+            echo "status_route_reachable=true" >> "$GITHUB_OUTPUT"
+            echo "all_module_routes_reachable=true" >> "$GITHUB_OUTPUT"
             echo "manager_readiness_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "Authorized ATLAS runtime verified the canonical production domain, ATLAS Manager readiness, ATLAS GPS 4D, Knowledge Atlas, critical ATLAS Work routes, A-Z directory, ATLAS Health Jaque Mate + Sentinel, and critical ATLAS Network routes while edge security remained active." >> "$GITHUB_STEP_SUMMARY"
           else

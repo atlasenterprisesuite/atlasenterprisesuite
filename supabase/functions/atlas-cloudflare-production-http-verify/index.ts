@@ -9,9 +9,41 @@ const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 23;
+const VERSION = 24;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const CANONICAL_MODULE_ROUTES = [
+  '/',
+  '/suite',
+  '/work',
+  '/assistant',
+  '/knowledge',
+  '/business',
+  '/advisory',
+  '/finance',
+  '/tax',
+  '/crm',
+  '/commerce',
+  '/inventory/procure-to-pay',
+  '/analytics',
+  '/connect',
+  '/payroll',
+  '/learning',
+  '/health',
+  '/studio',
+  '/voice',
+  '/events',
+  '/frontier',
+  '/hospitality',
+  '/ride',
+  '/mobility/aviation',
+  '/galaxy',
+  '/device-os',
+  '/execution/manager/readiness',
+  '/finance/accounting/accounts-payable',
+  '/finance/accounting/accounts-receivable',
+  '/finance/accounting/reports/automotive-sales'
+] as const;
 
 const baseHeaders = {
   'cache-control': 'no-store',
@@ -312,6 +344,17 @@ Deno.serve(async (req: Request) => {
     probe('/deployment.json', false)
   ]);
 
+  const [statusRoute, canonicalModuleProbeEntries] = await Promise.all([
+    probe('/status'),
+    Promise.all(
+      CANONICAL_MODULE_ROUTES.map(async (path) => [path, await probe(path)] as const)
+    )
+  ]);
+  const statusRouteOk = statusRoute.status === 200;
+  const canonicalModuleRoutesOk = canonicalModuleProbeEntries
+    .every(([, result]) => result.status === 200);
+  const canonicalModuleRoutes = Object.fromEntries(canonicalModuleProbeEntries);
+
   const publicShellOk =
     home.status === 200 &&
     suite.status === 200 &&
@@ -374,7 +417,9 @@ Deno.serve(async (req: Request) => {
     workConnections,
     workRuntimes,
     workPolicies,
-    workComputerOperations
+    workComputerOperations,
+    statusRoute,
+    ...canonicalModuleProbeEntries.map(([, result]) => result)
   ];
   const criticalNetworkRoutesOk = [
     network,
@@ -397,7 +442,17 @@ Deno.serve(async (req: Request) => {
     routedProbes.every((result) =>
       Boolean(result.atlas_version_id) && result.atlas_version_tag === caller.claims.sha
     );
-  const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && criticalNetworkRoutesOk && workRoutesOk && deploymentPathProtected && productionCommitVerified;
+  const verified =
+    publicShellOk &&
+    statusRouteOk &&
+    canonicalModuleRoutesOk &&
+    commerceRouteOk &&
+    revenueRouteOk &&
+    analyticsRouteOk &&
+    criticalNetworkRoutesOk &&
+    workRoutesOk &&
+    deploymentPathProtected &&
+    productionCommitVerified;
 
   return json(
     {
@@ -414,6 +469,9 @@ Deno.serve(async (req: Request) => {
       edge_security_preserved: true,
       checks: {
         public_home_reachable: home.status === 200,
+        status_route_reachable: statusRouteOk,
+        all_module_routes_reachable: canonicalModuleRoutesOk,
+        canonical_module_route_count: CANONICAL_MODULE_ROUTES.length,
         suite_route_reachable: suite.status === 200,
         business_launch_360_route_reachable: launch360.status === 200,
         identity_route_reachable: identity.status === 200,
@@ -450,6 +508,8 @@ Deno.serve(async (req: Request) => {
         network_payouts_route_reachable: networkPayouts.status === 200,
         network_compliance_route_reachable: networkCompliance.status === 200,
         deployment_path_protected: deploymentPathProtected,
+        status: statusRoute,
+        canonical_module_routes: canonicalModuleRoutes,
         home,
         suite,
         business_launch_360: launch360,

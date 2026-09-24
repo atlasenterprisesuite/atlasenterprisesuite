@@ -418,6 +418,8 @@ jobs:
           AUTHORIZED_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.ok===true))")"
           AUTHORIZED_VERIFIER_VERSION="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.verifier_version||''))")"
           TARGET_SHA="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.target_sha||''))")"
+          STATUS_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.status_route_reachable===true))")"
+          MODULES_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.all_module_routes_reachable===true))")"
           OBSERVED_VERSION_ID="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.observed_version_id||''))")"
           OBSERVED_VERSION_TAG="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.observed_version_tag||''))")"
           COMMIT_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.production_commit_sha_verified===true))")"
@@ -439,8 +441,10 @@ jobs:
           WORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.work_routes_reachable===true))")"
           NETWORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.critical_network_routes_reachable===true))")"
           DEPLOYMENT_PROTECTED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.deployment_path_protected===true))")"
-          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "22" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MANAGER_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$ACCOUNTING_OK" = "true" ] && [ "$PAYABLES_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$PROCURE_TO_PAY_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
+          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "24" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ "$STATUS_OK" = "true" ] && [ "$MODULES_OK" = "true" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MANAGER_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$ACCOUNTING_OK" = "true" ] && [ "$PAYABLES_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$PROCURE_TO_PAY_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
             echo "verified=true" >> "$GITHUB_OUTPUT"
+            echo "status_route_reachable=true" >> "$GITHUB_OUTPUT"
+            echo "all_module_routes_reachable=true" >> "$GITHUB_OUTPUT"
             echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "manager_readiness_route_reachable=true" >> "$GITHUB_OUTPUT"
@@ -467,6 +471,8 @@ jobs:
             echo "Production commit SHA verified: $OBSERVED_VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "verified=false" >> "$GITHUB_OUTPUT"
+            echo "status_route_reachable=false" >> "$GITHUB_OUTPUT"
+            echo "all_module_routes_reachable=false" >> "$GITHUB_OUTPUT"
             echo "public_home_reachable=false" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "manager_readiness_route_reachable=false" >> "$GITHUB_OUTPUT"
