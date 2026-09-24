@@ -138,6 +138,7 @@ export function PayrollPage() {
   const [lineDrafts, setLineDrafts] = useState<Record<string, PayrollLineDraft>>({});
 
   const readyIdentity = identity.status === 'ready' ? identity : null;
+  const organizationId = readyIdentity?.organizationId ?? '';
   const canWrite = Boolean(readyIdentity && writeService && hasPermission(readyIdentity.permissions, 'payroll.write'));
   const canApprove = Boolean(readyIdentity && writeService && hasPermission(readyIdentity.permissions, 'payroll.approve'));
 
@@ -190,7 +191,7 @@ export function PayrollPage() {
     if (!writeService || !canWrite) return;
     const saved = await runWrite(
       () => writeService.createPayrollRun({
-        organizationId: readyIdentity.organizationId,
+        organizationId: organizationId,
         periodStart: runDraft.periodStart,
         periodEnd: runDraft.periodEnd,
         payDate: runDraft.payDate,
@@ -222,7 +223,7 @@ export function PayrollPage() {
     if (!compensationRepository) return;
 
     try {
-      const history = await compensationRepository.listCompensation(readyIdentity.organizationId, employeeId);
+      const history = await compensationRepository.listCompensation(organizationId, employeeId);
       const compensation = selectCompensation(history, run.periodEnd);
 
       setLineDrafts((current) => {
@@ -308,7 +309,7 @@ export function PayrollPage() {
 
     await runWrite(
       () => writeService.savePayrollLine({
-        organizationId: readyIdentity.organizationId,
+        organizationId: organizationId,
         payrollRunId: run.id,
         employeeId: draft.employeeId,
         calculationInput,
@@ -328,7 +329,7 @@ export function PayrollPage() {
             aria-label={`Calculate payroll ${run.id}`}
             disabled={writeState.status === 'saving' || lineCount === 0}
             onClick={() => void runWrite(
-              () => writeService.calculatePayrollRun({ organizationId: readyIdentity.organizationId, payrollRunId: run.id }),
+              () => writeService.calculatePayrollRun({ organizationId: organizationId, payrollRunId: run.id }),
               'Payroll calculated',
             )}
           >Calculate</button>
@@ -339,7 +340,7 @@ export function PayrollPage() {
             aria-label={`Approve payroll ${run.id}`}
             disabled={writeState.status === 'saving'}
             onClick={() => void runWrite(
-              () => writeService.approvePayrollRun({ organizationId: readyIdentity.organizationId, payrollRunId: run.id }),
+              () => writeService.approvePayrollRun({ organizationId: organizationId, payrollRunId: run.id }),
               'Payroll approved',
             )}
           >Approve</button>
@@ -350,7 +351,7 @@ export function PayrollPage() {
             aria-label={`Lock payroll ${run.id}`}
             disabled={writeState.status === 'saving'}
             onClick={() => void runWrite(
-              () => writeService.lockPayrollRun({ organizationId: readyIdentity.organizationId, payrollRunId: run.id }),
+              () => writeService.lockPayrollRun({ organizationId: organizationId, payrollRunId: run.id }),
               'Payroll locked',
             )}
           >Lock</button>
@@ -369,7 +370,7 @@ export function PayrollPage() {
               disabled={writeState.status === 'saving' || !(voidReasons[run.id] ?? '').trim()}
               onClick={() => void runWrite(
                 () => writeService.voidPayrollRun({
-                  organizationId: readyIdentity.organizationId,
+                  organizationId: organizationId,
                   payrollRunId: run.id,
                   reason: voidReasons[run.id] ?? '',
                 }),
