@@ -295,6 +295,12 @@ Deno.serve(async (req: Request) => {
     commerce,
     revenue,
     analytics,
+    crm,
+    crmContacts,
+    crmCompanies,
+    crmDeals,
+    crmService,
+    crmHubspotIntegration,
     network,
     networkPricing,
     networkCommissions,
@@ -330,6 +336,12 @@ Deno.serve(async (req: Request) => {
     probe('/commerce'),
     probe('/revenue'),
     probe('/analytics'),
+    probe('/crm'),
+    probe('/crm/contacts'),
+    probe('/crm/companies'),
+    probe('/crm/deals'),
+    probe('/crm/service'),
+    probe('/crm/integrations/hubspot'),
     probe('/business/network'),
     probe('/business/network/pricing'),
     probe('/business/network/commissions'),
@@ -407,6 +419,12 @@ Deno.serve(async (req: Request) => {
     commerce,
     revenue,
     analytics,
+    crm,
+    crmContacts,
+    crmCompanies,
+    crmDeals,
+    crmService,
+    crmHubspotIntegration,
     network,
     networkPricing,
     networkCommissions,
@@ -421,6 +439,14 @@ Deno.serve(async (req: Request) => {
     statusRoute,
     ...canonicalModuleProbeEntries.map(([, result]) => result)
   ];
+  const criticalCrmRoutesOk = [
+    crm,
+    crmContacts,
+    crmCompanies,
+    crmDeals,
+    crmService,
+    crmHubspotIntegration
+  ].every((result) => result.status === 200);
   const criticalNetworkRoutesOk = [
     network,
     networkPricing,
@@ -449,6 +475,7 @@ Deno.serve(async (req: Request) => {
     commerceRouteOk &&
     revenueRouteOk &&
     analyticsRouteOk &&
+    criticalCrmRoutesOk &&
     criticalNetworkRoutesOk &&
     workRoutesOk &&
     deploymentPathProtected &&
@@ -493,6 +520,13 @@ Deno.serve(async (req: Request) => {
         commerce_route_reachable: commerce.status === 200,
         revenue_route_reachable: revenue.status === 200,
         analytics_route_reachable: analytics.status === 200,
+        critical_crm_routes_reachable: criticalCrmRoutesOk,
+        crm_route_reachable: crm.status === 200,
+        crm_contacts_route_reachable: crmContacts.status === 200,
+        crm_companies_route_reachable: crmCompanies.status === 200,
+        crm_deals_route_reachable: crmDeals.status === 200,
+        crm_service_route_reachable: crmService.status === 200,
+        crm_hubspot_integration_route_reachable: crmHubspotIntegration.status === 200,
         critical_network_routes_reachable: criticalNetworkRoutesOk,
         work_routes_reachable: workRoutesOk,
         work_command_center_reachable: work.status === 200,
@@ -531,6 +565,12 @@ Deno.serve(async (req: Request) => {
         commerce,
         revenue,
         analytics,
+        crm,
+        crm_contacts: crmContacts,
+        crm_companies: crmCompanies,
+        crm_deals: crmDeals,
+        crm_service: crmService,
+        crm_hubspot_integration: crmHubspotIntegration,
         network,
         network_pricing: networkPricing,
         network_commissions: networkCommissions,
