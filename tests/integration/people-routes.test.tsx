@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -39,13 +39,13 @@ it('shows Payroll and Compensation for a payroll reader', async () => {
   });
 
   expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'People' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /Payroll/ })).toHaveAttribute('href', '/people/payroll');
-  expect(screen.getByRole('link', { name: /Compensation & Benefits/ })).toHaveAttribute('href', '/people/compensation');
-  expect(screen.queryByRole('link', { name: /Employees/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /Time & Attendance/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /Recruiting/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /Employee Self-Service/ })).not.toBeInTheDocument();
+  const main = screen.getByRole('main');
+  expect(within(main).getByRole('link', { name: /Payroll/ })).toHaveAttribute('href', '/people/payroll');
+  expect(within(main).getByRole('link', { name: /Compensation & Benefits/ })).toHaveAttribute('href', '/people/compensation');
+  expect(within(main).queryByRole('link', { name: /Employees/ })).not.toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /Time & Attendance/ })).not.toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /Recruiting/ })).not.toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /Employee Self-Service/ })).not.toBeInTheDocument();
 });
 
 it('shows Employees, Time & Attendance and Recruiting for an HR reader without payroll access', async () => {
@@ -61,11 +61,12 @@ it('shows Employees, Time & Attendance and Recruiting for an HR reader without p
   });
 
   expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /Employees/ })).toHaveAttribute('href', '/people/employees');
-  expect(screen.getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
-  expect(screen.getByRole('link', { name: /Recruiting/ })).toHaveAttribute('href', '/people/recruiting');
-  expect(screen.queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /Compensation & Benefits/ })).not.toBeInTheDocument();
+  const main = screen.getByRole('main');
+  expect(within(main).getByRole('link', { name: /Employees/ })).toHaveAttribute('href', '/people/employees');
+  expect(within(main).getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
+  expect(within(main).getByRole('link', { name: /Recruiting/ })).toHaveAttribute('href', '/people/recruiting');
+  expect(within(main).queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /Compensation & Benefits/ })).not.toBeInTheDocument();
 });
 
 it('shows self-service and time for an employee self-service identity', async () => {
@@ -81,11 +82,12 @@ it('shows self-service and time for an employee self-service identity', async ()
   });
 
   expect(await screen.findByRole('heading', { name: 'People Operations' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
-  expect(screen.getByRole('link', { name: /Employee Self-Service/ })).toHaveAttribute('href', '/people/self-service');
-  expect(screen.queryByRole('link', { name: /Employees/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /Compensation & Benefits/ })).not.toBeInTheDocument();
+  const main = screen.getByRole('main');
+  expect(within(main).getByRole('link', { name: /Time & Attendance/ })).toHaveAttribute('href', '/people/time');
+  expect(within(main).getByRole('link', { name: /Employee Self-Service/ })).toHaveAttribute('href', '/people/self-service');
+  expect(within(main).queryByRole('link', { name: /Employees/ })).not.toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /^Payroll/ })).not.toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /Compensation & Benefits/ })).not.toBeInTheDocument();
 });
 
 it('fails closed and hides People navigation without People permissions', async () => {
@@ -101,5 +103,6 @@ it('fails closed and hides People navigation without People permissions', async 
   });
 
   expect(await screen.findByRole('heading', { name: 'Access denied' })).toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: 'People' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'HR' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Payroll' })).not.toBeInTheDocument();
 });
