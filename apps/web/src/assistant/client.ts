@@ -1,4 +1,6 @@
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSession';
+import { collectAssistantPageContext, serializeAssistantPageContext } from './pageContext';
+import { serializeAssistantElementContext, type AssistantElementContext } from './elementContext';
 import { resolveAssistantModule } from './routeContext';
 
 export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign' | 'council';
@@ -259,17 +261,21 @@ export async function sendAssistantMessage(input: {
   pathname: string;
   conversationId?: string | null;
   modality: 'text' | 'voice';
+  elementContext?: AssistantElementContext | null;
 }): Promise<AssistantChatResponse> {
   const message = input.message.trim();
   if (!message) throw new Error('assistant_message_required');
 
   const { organization, headers } = await assistantHeaders();
+  const pageContext = collectAssistantPageContext(input.pathname);
+  const selectedElement = input.elementContext ? serializeAssistantElementContext(input.elementContext) : '';
   const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=chat', {
     method: 'POST',
     headers,
     body: JSON.stringify({
       organization_id: organization.id,
       module: resolveAssistantModule(input.pathname),
+      context: [serializeAssistantPageContext(pageContext), selectedElement ? `Selected element (structural metadata only):\n${selectedElement}` : ''].filter(Boolean).join('\n\n'),
       intent: 'balanced',
       mode: 'auto',
       message,
@@ -277,7 +283,10 @@ export async function sendAssistantMessage(input: {
       capabilities_requested: ['generation'],
       client_metadata: {
         modality: input.modality,
-        surface: 'atlas-assistant'
+        surface: 'atlas-assistant',
+        route: input.pathname,
+        context_scope: 'structural-no-form-values',
+        selected_element: input.elementContext || null
       }
     })
   });

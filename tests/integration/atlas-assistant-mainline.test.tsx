@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   getActiveAtlasOrganization: vi.fn(),
   getAssistantStatus: vi.fn(),
   sendAssistantMessage: vi.fn(),
+  enqueueAssistantRepair: vi.fn(),
+  getAssistantRepairs: vi.fn(),
   startMicrophone: vi.fn(),
   startVoiceTurn: vi.fn(),
   stopMicrophone: vi.fn(),
@@ -31,6 +33,11 @@ vi.mock('../../apps/web/src/assistant/client', async () => {
     sendAssistantMessage: mocks.sendAssistantMessage
   };
 });
+
+vi.mock('../../apps/web/src/assistant/repairClient', () => ({
+  enqueueAssistantRepair: mocks.enqueueAssistantRepair,
+  getAssistantRepairs: mocks.getAssistantRepairs
+}));
 
 vi.mock('../../apps/web/src/assistant/useAssistantVoice', () => ({
   useAssistantVoice: () => ({
@@ -76,6 +83,19 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       ok: true,
       text: 'Voice answer',
       conversation_id: 'conv-1'
+    });
+    mocks.enqueueAssistantRepair.mockReset().mockResolvedValue({
+      ok: true,
+      job: { id: 'repair-1', status: 'pending' },
+      execution: 'supabase-native',
+      github_required: false
+    });
+    mocks.getAssistantRepairs.mockReset().mockResolvedValue({
+      ok: true,
+      jobs: [
+        { id: 'repair-1', status: 'pending', request_text: 'Fix mobile approval controls' }
+      ],
+      execution: 'supabase-native'
     });
     mocks.startMicrophone.mockReset();
     mocks.startVoiceTurn.mockReset().mockImplementation(async (onFinal, onError) => {
@@ -128,7 +148,8 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     render(<MemoryRouter><AtlasAssistant /></MemoryRouter>);
     const launcher = await screen.findByRole('button', { name: /Intelligence configuration required/i });
     fireEvent.click(launcher);
-    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
+    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Speak to ATLAS' })).toBeDisabled();
     expect(screen.queryByText('ATLAS Assistant is ready. How can I help in this workspace?')).not.toBeInTheDocument();
   });
@@ -183,11 +204,92 @@ describe('ATLAS Assistant on current mainline architecture', () => {
       message: 'Summarize overdue payables',
       pathname: '/finance/accounting/accounts-payable',
       conversationId: null,
-      modality: 'voice'
+      modality: 'voice',
+      elementContext: null
     }));
 
     expect(await screen.findByText('Summarize overdue payables')).toBeInTheDocument();
     expect(await screen.findByText('Voice answer')).toBeInTheDocument();
+  });
+
+  it('offers one-tap current-screen explain, check, and repair actions', async () => {
+    render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>);
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
+    fireEvent.click(launcher);
+
+    expect(screen.getByText('Current screen · safe structural context')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain screen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Check screen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Repair this screen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Repair queue' })).toBeEnabled();
+    await waitFor(() => expect(mocks.getAssistantRepairs).toHaveBeenCalled());
+    expect(await screen.findByText('Repairs · 1 active · 0 failed')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Explain screen' }));
+    await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: '/finance/accounting/accounts-payable',
+      message: expect.stringContaining('Explain the current ATLAS screen')
+    })));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Repair this screen' }));
+    await waitFor(() => expect(mocks.enqueueAssistantRepair).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: '/finance/accounting/accounts-payable',
+      message: expect.stringContaining('Inspect and repair verified defects on the current ATLAS screen')
+    })));
+
+    const repairStatusCalls = mocks.getAssistantRepairs.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Repair queue' }));
+    await waitFor(() => expect(mocks.getAssistantRepairs.mock.calls.length).toBeGreaterThan(repairStatusCalls));
+    expect(await screen.findByText(/Recent repair tasks:/)).toBeInTheDocument();
+    expect(screen.getByText(/PENDING — Fix mobile approval controls · repair-1/)).toBeInTheDocument();
+  });
+
+  it('selects a concrete page element and repairs only its structural target', async () => {
+    render(
+      <>
+        <button data-atlas-component="approvalAction" aria-label="Approve payment">Approve</button>
+        <MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>
+      </>
+    );
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
+    fireEvent.click(launcher);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select element' }));
+    expect(screen.getByRole('button', { name: 'Cancel selection' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve payment' }));
+
+    expect(await screen.findByText('Selected · approvalAction')).toBeInTheDocument();
+    expect(await screen.findByText(/Selected element: approvalAction/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Repair selected' }));
+
+    await waitFor(() => expect(mocks.enqueueAssistantRepair).toHaveBeenCalledWith(expect.objectContaining({
+      pathname: '/finance/accounting/accounts-payable',
+      message: expect.stringContaining('selected ATLAS element'),
+      elementContext: expect.objectContaining({
+        component: 'approvalAction',
+        tag: 'button'
+      })
+    })));
+  });
+
+  it('queues a governed repair from the current ATLAS screen', async () => {
+    render(<MemoryRouter initialEntries={['/finance/accounting/accounts-payable']}><AtlasAssistant /></MemoryRouter>);
+    const launcher = await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
+    fireEvent.click(launcher);
+
+    const input = screen.getByLabelText('Message ATLAS Assistant');
+    fireEvent.change(input, { target: { value: 'The approval actions are clipped on mobile' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Queue repair' }));
+
+    await waitFor(() => expect(mocks.enqueueAssistantRepair).toHaveBeenCalledWith({
+      message: 'The approval actions are clipped on mobile',
+      pathname: '/finance/accounting/accounts-payable',
+      conversationId: null,
+      elementContext: null
+    }));
+    expect(await screen.findByText(/Repair task repair-1 queued securely/)).toBeInTheDocument();
   });
 
   it('surfaces recognition failures without sending a request', async () => {

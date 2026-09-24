@@ -16,6 +16,7 @@ export function AtlasAssistantLauncher({ state, textCapability, providerLabel, o
       onClick={onOpen}
     >
       <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
+      <span className="atlas-assistant-launcher-label">Ask ATLAS</span>
       <span className="atlas-assistant-launcher-status" aria-hidden="true" />
     </button>
   );
