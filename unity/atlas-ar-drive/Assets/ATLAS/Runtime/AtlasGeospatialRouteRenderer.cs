@@ -16,7 +16,8 @@ namespace Atlas.ArDrive
         [SerializeField] private GameObject arrowPrefab;
         [SerializeField, Range(3f, 20f)] private float arrowSpacingM = 8f;
         [SerializeField, Range(40f, 250f)] private float maxAheadM = 140f;
-        [SerializeField] private float arrowHeightOffsetM = 0.08f;
+        [SerializeField, Range(0.6f, 2.4f)] private float cameraHeightAboveRoadM = 1.35f;
+        [SerializeField] private float arrowHeightOffsetM = 0.05f;
 
         private readonly List<ARGeospatialAnchor> anchors = new();
         private readonly List<GameObject> arrows = new();
@@ -43,18 +44,21 @@ namespace Atlas.ArDrive
                 return false;
 
             var sampled = RouteResampler.EveryMeters(route, arrowSpacingM, maxAheadM);
+            double roadAltitude = earthManager.CameraGeospatialPose.Altitude
+                - cameraHeightAboveRoadM
+                + arrowHeightOffsetM;
+
             for (int i = 0; i < sampled.Count; i++)
             {
                 GeoPoint point = sampled[i];
                 GeoPoint next = sampled[Mathf.Min(i + 1, sampled.Count - 1)];
                 float bearing = GeoMath.BearingDegrees(point, next);
 
-                double altitude = earthManager.CameraGeospatialPose.Altitude + arrowHeightOffsetM;
                 ARGeospatialAnchor anchor = ARAnchorManagerExtensions.AddAnchor(
                     anchorManager,
                     point.lat,
                     point.lon,
-                    altitude,
+                    roadAltitude,
                     Quaternion.identity
                 );
 
@@ -62,7 +66,7 @@ namespace Atlas.ArDrive
 
                 var arrow = Instantiate(arrowPrefab, anchor.transform);
                 arrow.transform.localPosition = Vector3.zero;
-                arrow.transform.localRotation = Quaternion.Euler(90f, bearing, 0f);
+                arrow.transform.localRotation = Quaternion.Euler(0f, bearing, 0f);
                 anchors.Add(anchor);
                 arrows.Add(arrow);
             }

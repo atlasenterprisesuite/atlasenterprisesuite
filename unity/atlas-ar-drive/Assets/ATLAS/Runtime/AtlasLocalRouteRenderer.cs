@@ -31,8 +31,8 @@ namespace Atlas.ArDrive
                 Vector2 local = GeoMath.ToLocalMeters(origin, point);
                 float bearing = GeoMath.BearingDegrees(point, next);
                 var arrow = Instantiate(arrowPrefab, localOrigin);
-                arrow.transform.localPosition = new Vector3(local.x, 0.08f, local.y);
-                arrow.transform.localRotation = Quaternion.Euler(90f, bearing, 0f);
+                arrow.transform.localPosition = new Vector3(local.x, 0.05f, local.y);
+                arrow.transform.localRotation = Quaternion.Euler(0f, bearing, 0f);
                 arrows.Add(arrow);
             }
             return arrows.Count > 0;
