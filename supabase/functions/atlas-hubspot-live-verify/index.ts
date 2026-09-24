@@ -13,7 +13,7 @@ import {
   introspectHubSpotToken,
   revokeHubSpotToken
 } from '../_shared/hubspot-oauth.ts';
-import { HubSpotCrmAdapter } from '../_shared/hubspot-crm.ts';
+import { HubSpotCrmAdapter, type CrmProviderContext } from '../_shared/hubspot-crm.ts';
 import {
   destroyCredentialPayload,
   openCredential
@@ -195,6 +195,10 @@ function scopeMismatch(granted: readonly string[]): boolean {
   return HUBSPOT_P0_SCOPES.some((scope) => !actual.has(scope));
 }
 
+function providerContext(token: string): CrmProviderContext {
+  return Object.fromEntries([['accessToken', token]]) as CrmProviderContext;
+}
+
 function lifecycleDeps(
   store: SupabaseHubSpotConnectionStore,
   config: Awaited<ReturnType<typeof configuration>>
@@ -219,7 +223,7 @@ async function readAllObjects(
     let pages = 0;
     do {
       const page = await adapter.listObjects(
-        { accessToken: token },
+        providerContext(token),
         { objectType, limit: 100, cursor: nextCursor }
       );
       recordsObserved += page.records.length;
@@ -285,7 +289,7 @@ async function verifyLive(expectedAccountId: string | null) {
     }
 
     const adapter = new HubSpotCrmAdapter();
-    const readiness = await adapter.readiness({ accessToken: credential.accessToken });
+    const readiness = await adapter.readiness(providerContext(credential.accessToken));
     if (!readiness.ready || !readiness.account || readiness.account.id !== introspection.hubId) {
       return { ok: false as const, status: 502, code: 'provider_account_mismatch' as SafeFailureCode };
     }
