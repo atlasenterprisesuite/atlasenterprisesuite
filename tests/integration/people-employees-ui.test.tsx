@@ -85,8 +85,8 @@ it('renders the authorized employee directory with real filters', async () => {
   });
 
   expect(await screen.findByRole('heading', { name: 'Employees' })).toBeInTheDocument();
-  expect(screen.getByText('Ada Rivera')).toBeInTheDocument();
-  expect(screen.getByText('Grace Torres')).toBeInTheDocument();
+  expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
+  expect(await screen.findByText('Grace Torres')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'New employee' })).not.toBeInTheDocument();
 
   fireEvent.change(screen.getByLabelText('Search employees'), { target: { value: 'operations' } });
