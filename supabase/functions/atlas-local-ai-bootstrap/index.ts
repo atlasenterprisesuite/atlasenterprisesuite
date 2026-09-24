@@ -17,8 +17,8 @@ const ACCESS_TOKEN_NAME = 'ATLAS Local AI Service Auth';
 const MODEL_HF_REPO = 'ggml-org/Qwen3.5-0.8B-GGUF:Q4_0';
 const MODEL_ALIAS = 'atlas-local-default';
 const LOCAL_CONTEXT = 8192;
-const RENDER_LOCAL_CONTEXT = 8192;
-const VERSION = 3;
+const RENDER_LOCAL_CONTEXT = 4096;
+const VERSION = 4;
 
 const HEADERS = {
   'content-type': 'application/json; charset=utf-8',
