@@ -190,6 +190,7 @@ jobs:
           ROOT_VERSION="$(probe_worker '/' 'root')"
           SUITE_VERSION="$(probe_worker '/suite' 'suite')"
           IDENTITY_VERSION="$(probe_worker '/identity?app=%2Ffinance' 'identity')"
+          MANAGER_VERSION="$(probe_worker '/execution/manager/readiness' 'manager-readiness')"
           MODULE_VERSION="$(probe_worker '/finance' 'finance')"
           ACCOUNTING_VERSION="$(probe_worker '/finance/accounting' 'finance-accounting')"
           PAYABLES_VERSION="$(probe_worker '/finance/accounting/accounts-payable' 'accounts-payable')"
@@ -207,9 +208,10 @@ jobs:
           WORK_POLICIES_VERSION="$(probe_worker '/work/policies' 'work-policies')"
           DIRECT_VERSION_ID="${ROOT_VERSION%%|*}"
           DIRECT_VERSION_TAG="${ROOT_VERSION#*|}"
-          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MODULE_VERSION" "$ACCOUNTING_VERSION" "$PAYABLES_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$PROCURE_TO_PAY_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
+          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MANAGER_VERSION" "$MODULE_VERSION" "$ACCOUNTING_VERSION" "$PAYABLES_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$PROCURE_TO_PAY_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
           test "${SUITE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${IDENTITY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
+          test "${MANAGER_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${MODULE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${ACCOUNTING_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${PAYABLES_VERSION#*|}" = "$GITHUB_SHA" || exit 1
@@ -228,6 +230,7 @@ jobs:
           echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
           echo "suite_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
+          echo "manager_readiness_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
           echo "finance_accounting_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "accounts_payable_route_reachable=true" >> "$GITHUB_OUTPUT"
@@ -350,6 +353,7 @@ jobs:
           }
           probe_route "Public home" "/" "public_home_reachable"
           probe_route "ATLAS Identity" "/identity?app=%2Ffinance" "identity_route_reachable"
+          probe_route "ATLAS Manager readiness" "/execution/manager/readiness" "manager_readiness_route_reachable"
           probe_route "Module SPA shell" "/finance" "module_spa_shell_reachable"
           probe_route "ATLAS Accounting" "/finance/accounting" "finance_accounting_route_reachable"
           probe_route "ATLAS Accounts Payable" "/finance/accounting/accounts-payable" "accounts_payable_route_reachable"
@@ -419,6 +423,7 @@ jobs:
           COMMIT_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.production_commit_sha_verified===true))")"
           HOME_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.public_home_reachable===true))")"
           IDENTITY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.identity_route_reachable===true))")"
+          MANAGER_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.manager_readiness_route_reachable===true))")"
           MODULE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.module_spa_shell_reachable===true))")"
           ACCOUNTING_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.finance_accounting_route_reachable===true))")"
           PAYABLES_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.accounts_payable_route_reachable===true))")"
@@ -434,10 +439,11 @@ jobs:
           WORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.work_routes_reachable===true))")"
           NETWORK_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.critical_network_routes_reachable===true))")"
           DEPLOYMENT_PROTECTED="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-edge.json','utf8'))}catch{};process.stdout.write(String(j.checks?.deployment_path_protected===true))")"
-          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "21" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$ACCOUNTING_OK" = "true" ] && [ "$PAYABLES_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$PROCURE_TO_PAY_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
+          if [ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ] && [ "$AUTHORIZED_VERIFIER_VERSION" = "22" ] && [ "$TARGET_SHA" = "$GITHUB_SHA" ] && [ -n "$OBSERVED_VERSION_ID" ] && [ "$OBSERVED_VERSION_TAG" = "$GITHUB_SHA" ] && [ "$COMMIT_OK" = "true" ] && [ "$HOME_OK" = "true" ] && [ "$IDENTITY_OK" = "true" ] && [ "$MANAGER_OK" = "true" ] && [ "$MODULE_OK" = "true" ] && [ "$ACCOUNTING_OK" = "true" ] && [ "$PAYABLES_OK" = "true" ] && [ "$AUTOMOTIVE_OK" = "true" ] && [ "$RECEIVABLES_OK" = "true" ] && [ "$PROCURE_TO_PAY_OK" = "true" ] && [ "$HEALTH_OK" = "true" ] && [ "$JAQUE_MATE_SENTINEL_OK" = "true" ] && [ "$WEB_LAUNCH_OK" = "true" ] && [ "$COMMERCE_OK" = "true" ] && [ "$REVENUE_OK" = "true" ] && [ "$ANALYTICS_OK" = "true" ] && [ "$WORK_OK" = "true" ] && [ "$NETWORK_OK" = "true" ] && [ "$DEPLOYMENT_PROTECTED" = "true" ]; then
             echo "verified=true" >> "$GITHUB_OUTPUT"
             echo "public_home_reachable=true" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=true" >> "$GITHUB_OUTPUT"
+            echo "manager_readiness_route_reachable=true" >> "$GITHUB_OUTPUT"
             echo "module_spa_shell_reachable=true" >> "$GITHUB_OUTPUT"
           echo "finance_accounting_route_reachable=true" >> "$GITHUB_OUTPUT"
           echo "accounts_payable_route_reachable=true" >> "$GITHUB_OUTPUT"
@@ -463,6 +469,7 @@ jobs:
             echo "verified=false" >> "$GITHUB_OUTPUT"
             echo "public_home_reachable=false" >> "$GITHUB_OUTPUT"
             echo "identity_route_reachable=false" >> "$GITHUB_OUTPUT"
+            echo "manager_readiness_route_reachable=false" >> "$GITHUB_OUTPUT"
             echo "module_spa_shell_reachable=false" >> "$GITHUB_OUTPUT"
              echo "finance_accounting_route_reachable=false" >> "$GITHUB_OUTPUT"
              echo "accounts_payable_route_reachable=false" >> "$GITHUB_OUTPUT"
@@ -485,6 +492,7 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           DIRECT_HOME_REACHABLE: ${{ steps.direct_edge.outputs.public_home_reachable }}
           DIRECT_IDENTITY_REACHABLE: ${{ steps.direct_edge.outputs.identity_route_reachable }}
+          DIRECT_MANAGER_REACHABLE: ${{ steps.direct_edge.outputs.manager_readiness_route_reachable }}
           DIRECT_MODULE_SHELL_REACHABLE: ${{ steps.direct_edge.outputs.module_spa_shell_reachable }}
           DIRECT_HEALTH_REACHABLE: ${{ steps.direct_edge.outputs.health_route_reachable }}
           DIRECT_JAQUE_MATE_SENTINEL_REACHABLE: ${{ steps.direct_edge.outputs.jaque_mate_sentinel_route_reachable }}
@@ -499,6 +507,7 @@ jobs:
           NATIVE_VERIFIED: ${{ steps.native.outputs.cloudflare_native_build_verified }}
           PUBLIC_HOME_REACHABLE: ${{ steps.production_edge.outputs.public_home_reachable }}
           IDENTITY_ROUTE_REACHABLE: ${{ steps.production_edge.outputs.identity_route_reachable }}
+          PUBLIC_MANAGER_REACHABLE: ${{ steps.production_edge.outputs.manager_readiness_route_reachable }}
           MODULE_SPA_SHELL_REACHABLE: ${{ steps.production_edge.outputs.module_spa_shell_reachable }}
           PUBLIC_HEALTH_REACHABLE: ${{ steps.production_edge.outputs.health_route_reachable }}
           PUBLIC_JAQUE_MATE_SENTINEL_REACHABLE: ${{ steps.production_edge.outputs.jaque_mate_sentinel_route_reachable }}
@@ -514,6 +523,7 @@ jobs:
           AUTHORIZED_EDGE_VERIFIED: ${{ steps.authorized_edge.outputs.verified }}
           AUTHORIZED_HOME_REACHABLE: ${{ steps.authorized_edge.outputs.public_home_reachable }}
           AUTHORIZED_IDENTITY_REACHABLE: ${{ steps.authorized_edge.outputs.identity_route_reachable }}
+          AUTHORIZED_MANAGER_REACHABLE: ${{ steps.authorized_edge.outputs.manager_readiness_route_reachable }}
           AUTHORIZED_MODULE_SHELL_REACHABLE: ${{ steps.authorized_edge.outputs.module_spa_shell_reachable }}
           AUTHORIZED_HEALTH_REACHABLE: ${{ steps.authorized_edge.outputs.health_route_reachable }}
           AUTHORIZED_JAQUE_MATE_SENTINEL_REACHABLE: ${{ steps.authorized_edge.outputs.jaque_mate_sentinel_route_reachable }}
@@ -533,6 +543,7 @@ jobs:
 
           if [ "${EDGE_CHALLENGE_DETECTED:-false}" = "true" ]; then
             test "${AUTHORIZED_EDGE_VERIFIED:-false}" = "true" || { echo "::error::Production verification was challenged and the authorized runtime did not verify it"; exit 1; }
+            test "${AUTHORIZED_MANAGER_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Manager readiness"; exit 1; }
             test "${AUTHORIZED_HEALTH_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Health"; exit 1; }
             test "${AUTHORIZED_JAQUE_MATE_SENTINEL_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Health Jaque Mate + Sentinel"; exit 1; }
             test "${AUTHORIZED_WEB_LAUNCH_REACHABLE:-false}" = "true" || { echo "::error::Authorized runtime did not verify ATLAS Web Launch"; exit 1; }
@@ -544,9 +555,11 @@ jobs:
             PRODUCTION_VERSION_ID="$AUTHORIZED_VERSION_ID"
             PRODUCTION_VERSION_TAG="$AUTHORIZED_VERSION_TAG"
             PRODUCTION_VERIFICATION_SOURCE="atlas-authorized-supabase-runtime"
+            MANAGER_READINESS_ROUTE_REACHABLE="$AUTHORIZED_MANAGER_REACHABLE"
           else
             test "$PUBLIC_HOME_REACHABLE" = "true" || { echo "::error::Public production home was not verified"; exit 1; }
             test "$IDENTITY_ROUTE_REACHABLE" = "true" || { echo "::error::Public ATLAS Identity route was not verified"; exit 1; }
+            test "$PUBLIC_MANAGER_REACHABLE" = "true" || { echo "::error::Public ATLAS Manager readiness route was not verified"; exit 1; }
             test "$MODULE_SPA_SHELL_REACHABLE" = "true" || { echo "::error::Production module SPA shell was not verified"; exit 1; }
             test "$PUBLIC_HEALTH_REACHABLE" = "true" || { echo "::error::ATLAS Health production route was not verified"; exit 1; }
             test "$PUBLIC_JAQUE_MATE_SENTINEL_REACHABLE" = "true" || { echo "::error::ATLAS Health Jaque Mate + Sentinel production route was not verified"; exit 1; }
@@ -560,11 +573,12 @@ jobs:
             PRODUCTION_VERSION_ID="$PUBLIC_VERSION_ID"
             PRODUCTION_VERSION_TAG="$PUBLIC_VERSION_TAG"
             PRODUCTION_VERIFICATION_SOURCE="github-actions-public-edge"
+            MANAGER_READINESS_ROUTE_REACHABLE="$PUBLIC_MANAGER_REACHABLE"
           fi
           test -n "$PRODUCTION_VERSION_ID" || { echo "::error::Production Version ID evidence is missing"; exit 1; }
           test "$PRODUCTION_VERSION_TAG" = "$GITHUB_SHA" || { echo "::error::Production Version Tag evidence does not match workflow SHA"; exit 1; }
           DEPLOYMENT_PROBE="$PRODUCTION_VERSION_TAG"
-          export DEPLOYMENT_PROBE BUILD_COMMIT_SHA PRODUCTION_COMMIT_SHA_VERIFIED PRODUCTION_VERIFICATION_SOURCE PRODUCTION_VERSION_ID PRODUCTION_VERSION_TAG
+          export DEPLOYMENT_PROBE BUILD_COMMIT_SHA PRODUCTION_COMMIT_SHA_VERIFIED PRODUCTION_VERIFICATION_SOURCE PRODUCTION_VERSION_ID PRODUCTION_VERSION_TAG MANAGER_READINESS_ROUTE_REACHABLE
 
           OIDC_RESPONSE="$(curl --fail --silent --show-error \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
@@ -575,6 +589,7 @@ jobs:
           if [ "$DEPLOYMENT_MODE" = "direct-wrangler" ]; then
             test "$DIRECT_HOME_REACHABLE" = "true" || { echo "::error::Direct public home verification missing"; exit 1; }
             test "$DIRECT_IDENTITY_REACHABLE" = "true" || { echo "::error::Direct Identity verification missing"; exit 1; }
+            test "$DIRECT_MANAGER_REACHABLE" = "true" || { echo "::error::Direct ATLAS Manager readiness verification missing"; exit 1; }
             test "$DIRECT_MODULE_SHELL_REACHABLE" = "true" || { echo "::error::Direct module shell verification missing"; exit 1; }
             test "$DIRECT_HEALTH_REACHABLE" = "true" || { echo "::error::Direct Health route verification missing"; exit 1; }
             test "$DIRECT_JAQUE_MATE_SENTINEL_REACHABLE" = "true" || { echo "::error::Direct Jaque Mate + Sentinel route verification missing"; exit 1; }
@@ -582,10 +597,10 @@ jobs:
             test "$DIRECT_COMMERCE_REACHABLE" = "true" || { echo "::error::Direct Commerce route verification missing"; exit 1; }
             test -n "$DIRECT_VERSION_ID" || { echo "::error::Direct workers.dev Version ID evidence missing"; exit 1; }
             test "$DIRECT_VERSION_TAG" = "$GITHUB_SHA" || { echo "::error::Direct workers.dev Version Tag mismatch"; exit 1; }
-            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,health_route_reachable:true,jaque_mate_sentinel_route_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,work_routes_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG},metadata:{deployment_mode:'direct-wrangler',deployment_url:process.env.DEPLOYMENT_URL,production_domain:'https://www.atlasenterprisesuite.com',production_domain_cutover:true,module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{workers_dev_reachable:true,public_home_reachable:true,identity_route_reachable:true,manager_readiness_route_reachable:process.env.MANAGER_READINESS_ROUTE_REACHABLE==='true',module_spa_shell_reachable:true,health_route_reachable:true,jaque_mate_sentinel_route_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,work_routes_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG},metadata:{deployment_mode:'direct-wrangler',deployment_url:process.env.DEPLOYMENT_URL,production_domain:'https://www.atlasenterprisesuite.com',production_domain_cutover:true,module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
           else
             test "$NATIVE_VERIFIED" = "true" || { echo "::error::Native Cloudflare deployment was not verified"; exit 1; }
-            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{cloudflare_native_build_verified:true,cloudflare_check_run_id:process.env.NATIVE_CHECK_ID,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG,cloudflare_provider_version_id:process.env.NATIVE_VERSION_ID,cloudflare_build_id:process.env.NATIVE_BUILD_ID||null,public_home_reachable:true,identity_route_reachable:true,module_spa_shell_reachable:true,health_route_reachable:true,jaque_mate_sentinel_route_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'cloudflare-native-github-app',provider_check_details_url:process.env.NATIVE_DETAILS_URL,production_domain:'https://www.atlasenterprisesuite.com',module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
+            EVIDENCE_JSON="$(node -e "console.log(JSON.stringify({provider:'cloudflare',status:'passed',verification_type:'infrastructure-deployment',target_service:'atlas-enterprise-suite-web',target_version:process.env.GITHUB_SHA,provider_state:'verified',storage_state:'configured',checks:{cloudflare_native_build_verified:true,cloudflare_check_run_id:process.env.NATIVE_CHECK_ID,cloudflare_version_id:process.env.PRODUCTION_VERSION_ID,cloudflare_version_tag:process.env.PRODUCTION_VERSION_TAG,cloudflare_provider_version_id:process.env.NATIVE_VERSION_ID,cloudflare_build_id:process.env.NATIVE_BUILD_ID||null,public_home_reachable:true,identity_route_reachable:true,manager_readiness_route_reachable:process.env.MANAGER_READINESS_ROUTE_REACHABLE==='true',module_spa_shell_reachable:true,health_route_reachable:true,jaque_mate_sentinel_route_reachable:true,studio_web_launch_route_reachable:true,commerce_route_reachable:true,critical_network_routes_reachable:true,production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true',github_edge_challenge_detected:process.env.EDGE_CHALLENGE_DETECTED==='true',authorized_runtime_verified:process.env.AUTHORIZED_EDGE_VERIFIED==='true',deployment_path_protected:process.env.AUTHORIZED_DEPLOYMENT_PROTECTED==='true'?true:null,deployment_probe:process.env.DEPLOYMENT_PROBE},metadata:{deployment_mode:'cloudflare-native-github-app',provider_check_details_url:process.env.NATIVE_DETAILS_URL,production_domain:'https://www.atlasenterprisesuite.com',module_authorization_boundary:'atlas-identity',verification_source:process.env.PRODUCTION_VERIFICATION_SOURCE}}))")"
           fi
 
           curl --fail --silent --show-error \
@@ -596,6 +611,51 @@ jobs:
             --data "$EVIDENCE_JSON" \
             > /tmp/atlas-infra-evidence.json
           echo "Cloudflare deployment evidence recorded in Supabase ATLAS Manager." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify ATLAS Manager post-deployment canary
+        run: |
+          set -euo pipefail
+          test -s /tmp/atlas-infra-evidence.json || { echo "::error::ATLAS Manager evidence response is missing"; exit 1; }
+          node - <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/atlas-infra-evidence.json', 'utf8'));
+          const evidence = payload?.evidence || {};
+          const required = {
+            ok: payload?.ok === true,
+            verification_type: evidence.verification_type === 'infrastructure-deployment',
+            target_service: evidence.target_service === 'atlas-enterprise-suite-web',
+            target_version: evidence.target_version === process.env.GITHUB_SHA,
+            status: evidence.status === 'passed',
+            provider: evidence.provider === 'cloudflare',
+            persisted: Boolean(evidence.id && evidence.created_at)
+          };
+          const failed = Object.entries(required).filter(([, value]) => value !== true);
+          if (failed.length) {
+            console.error('ATLAS Manager evidence canary failed:', failed.map(([key]) => key).join(','));
+            process.exit(1);
+          }
+          NODE
+
+          curl --fail --silent --show-error \
+            "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=readiness" \
+            > /tmp/atlas-manager-control-plane-readiness.json
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/atlas-manager-control-plane-readiness.json', 'utf8'));
+          const ok =
+            payload?.ok === true &&
+            payload?.service === 'atlas-infra-evidence' &&
+            payload?.evidence_store === 'atlas_runtime_verification_runs' &&
+            Array.isArray(payload?.verification_types) &&
+            payload.verification_types.includes('infrastructure-deployment');
+          if (!ok) {
+            console.error('ATLAS Manager control-plane readiness canary failed.');
+            process.exit(1);
+          }
+          NODE
+
+          echo "ATLAS Manager post-deployment canary: evidence persisted, control plane reachable, readiness route verified for $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
 
   global-production-verification:
     needs: validate-deploy-verify

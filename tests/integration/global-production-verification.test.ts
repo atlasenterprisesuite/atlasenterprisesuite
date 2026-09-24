@@ -35,6 +35,7 @@ describe('ATLAS global production verification', () => {
       '/finance/accounting/reports/automotive-sales',
       '/finance/accounting/accounts-receivable',
       '/inventory/procure-to-pay',
+      '/execution/manager/readiness',
       '/assistant',
       '/knowledge',
       '/voice',
@@ -81,6 +82,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).not.toContain('passed-edge-secured');
     expect(verifier).toContain('challenge-deferred');
     expect(verifier).toContain('classified_root_challenge_deferred');
+    expect(verifier).toContain('manager_readiness_route_reachable');
     expect(verifier).toContain('const verified = directlyVerified;');
     expect(verifier).toContain('AbortSignal.timeout');
     expect(verifier).toContain("redirect: 'manual'");
@@ -140,6 +142,9 @@ describe('ATLAS global production verification', () => {
     expect(cloudflareWorkflow).toContain('branches: ["main"]');
     expect(cloudflareWorkflow).not.toContain('    paths:');
     expect(cloudflareWorkflow).toContain('Every main SHA must receive its own production deployment evidence');
+    expect(cloudflareWorkflow).toContain('Verify ATLAS Manager post-deployment canary');
+    expect(cloudflareWorkflow).toContain('/execution/manager/readiness');
+    expect(cloudflareWorkflow).toContain('manager_readiness_route_reachable');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
@@ -180,6 +185,8 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
     expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
     expect(authorizedVerifier).toContain('suite_route_reachable');
+    expect(authorizedVerifier).toContain("'/execution/manager/readiness'");
+    expect(authorizedVerifier).toContain('manager_readiness_route_reachable');
     expect(authorizedVerifier).toContain("'/gps'");
     expect(authorizedVerifier).toContain('gps_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
