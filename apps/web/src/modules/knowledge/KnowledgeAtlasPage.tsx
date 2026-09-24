@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import {
   approveAtlasMemory,
   createAtlasMemoryDraft,
+  getAtlasLibraryStats,
+  listAtlasLibraryAssets,
   listAtlasMemory,
+  type AtlasLibraryAsset,
+  type AtlasLibraryStats,
   type AtlasMemoryKind,
   type AtlasMemoryRecord,
   type AtlasMemorySource
@@ -12,6 +16,68 @@ const KINDS: AtlasMemoryKind[] = ['decision','requirement','workflow','configura
 
 function splitList(value: string) {
   return [...new Set(value.split(',').map(item => item.trim()).filter(Boolean))].slice(0, 40);
+}
+
+
+function LibraryRegistryPanel() {
+  const [assets, setAssets] = useState<AtlasLibraryAsset[] | null>(null);
+  const [stats, setStats] = useState<AtlasLibraryStats | null>(null);
+  const [moduleFilter, setModuleFilter] = useState('');
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const [assetResponse, statsResponse] = await Promise.all([
+        listAtlasLibraryAssets({ q: query, module: moduleFilter }),
+        getAtlasLibraryStats()
+      ]);
+      setAssets(assetResponse.assets);
+      setStats(statsResponse.stats);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'library_unavailable');
+    }
+  }, [moduleFilter, query]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const moduleOptions = useMemo(
+    () => Object.keys(stats?.by_module || {}).sort(),
+    [stats]
+  );
+
+  return <section className="page-stack">
+    <div className="workspace-card">
+      <div>
+        <p className="eyebrow">ATLAS Library Registry</p>
+        <h2>Module-routed source assets</h2>
+        <p className="muted">Files imported from authorized library sources are indexed once, classified into owning ATLAS modules, and kept provenance-linked. Restricted records remain limited to owner/admin roles.</p>
+      </div>
+      <div className="metric-grid" aria-label="ATLAS Library status">
+        <article><span>Indexed assets</span><strong>{stats?.total_assets ?? '—'}</strong><small>Durable ATLAS source registry</small></article>
+        <article><span>Analyzed</span><strong>{stats?.by_status?.analyzed ?? 0}</strong><small>Content-enriched records</small></article>
+        <article><span>Needs review</span><strong>{stats?.by_status?.needs_review ?? 0}</strong><small>Ambiguous routing/content</small></article>
+        <article><span>Restricted</span><strong>{stats?.restricted_assets ?? 0}</strong><small>Owner/admin visibility</small></article>
+      </div>
+      <div className="toolbar">
+        <label className="field wide-field"><span>Search library</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search filenames, paths, modules or tags" /></label>
+        <label className="field"><span>Module</span><select value={moduleFilter} onChange={event => setModuleFilter(event.target.value)}><option value="">All modules</option>{moduleOptions.map(moduleId => <option key={moduleId} value={moduleId}>{moduleId}</option>)}</select></label>
+      </div>
+    </div>
+    {error ? <div className="work-error" role="alert">{error}</div> : null}
+    {assets === null && !error ? <p aria-busy="true">Loading ATLAS Library…</p> : null}
+    {assets?.length === 0 ? <div className="empty-state"><strong>No library assets match this view.</strong><span>Change the search or module filter.</span></div> : null}
+    {assets?.length ? <div className="module-grid" aria-label="ATLAS Library assets">
+      {assets.slice(0, 120).map(asset => <article className="module-card enabled" key={asset.id}>
+        <span>{asset.primary_module_id} · {asset.analysis_status}</span>
+        <strong>{asset.name}</strong>
+        <p>{asset.summary || asset.library_path || 'Indexed source asset'}</p>
+        <small className="muted">Modules: {asset.module_ids.join(', ')} · {asset.classification_basis} · {asset.sensitivity}</small>
+        <small className="muted">{asset.mime_type || 'unknown type'}{asset.size_bytes != null ? ` · ${asset.size_bytes.toLocaleString()} bytes` : ''}</small>
+      </article>)}
+    </div> : null}
+  </section>;
 }
 
 export function KnowledgeAtlasPage() {
@@ -122,6 +188,8 @@ export function KnowledgeAtlasPage() {
         <article><span>Superseded</span><strong>{counts.superseded}</strong><small>Retained for provenance</small></article>
         <article><span>Role</span><strong>{role}</strong><small>{canApprove ? 'Approval enabled' : 'Read and draft access'}</small></article>
       </div>
+
+      <LibraryRegistryPanel />
 
       <section className="workspace-card">
         <div className="toolbar">
