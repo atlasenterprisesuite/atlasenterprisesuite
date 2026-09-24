@@ -1,0 +1,66 @@
+name: ATLAS AR Drive Unity Device Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Build target
+        type: choice
+        options:
+          - Android
+          - iOS
+        default: Android
+
+permissions:
+  contents: read
+
+jobs:
+  unity-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Unity license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ]; then
+            echo "::error::UNITY_LICENSE secret is required for a real Unity build."
+            exit 1
+          fi
+
+      - name: Build Android
+        if: ${{ inputs.target == 'Android' }}
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          projectPath: unity/atlas-ar-drive
+          unityVersion: 6000.3.0f1
+          targetPlatform: Android
+          buildMethod: AtlasArDriveBuild.BuildAndroidCI
+
+      - name: Build iOS Xcode project
+        if: ${{ inputs.target == 'iOS' }}
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          projectPath: unity/atlas-ar-drive
+          unityVersion: 6000.3.0f1
+          targetPlatform: iOS
+          buildMethod: AtlasArDriveBuild.BuildIOSCI
+
+      - name: Upload Android artifact
+        if: ${{ inputs.target == 'Android' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-ar-drive-android
+          path: unity/atlas-ar-drive/Builds/Android
+
+      - name: Upload iOS Xcode artifact
+        if: ${{ inputs.target == 'iOS' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-ar-drive-ios-xcode
+          path: unity/atlas-ar-drive/Builds/iOS
