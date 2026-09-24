@@ -1,0 +1,128 @@
+name: ATLAS HubSpot Live Production Gate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 * * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/atlas-hubspot-live-verify/**"
+      - "supabase/functions/_shared/hubspot-connection-lifecycle.ts"
+      - "supabase/functions/_shared/hubspot-oauth.ts"
+      - "supabase/functions/_shared/hubspot-crm.ts"
+      - "supabase/functions/_shared/hubspot-connection-store.ts"
+      - "supabase/functions/_shared/integration-credential-vault.ts"
+      - "hubspot/atlas-crm-hubspot/**"
+      - ".github/workflows/hubspot-live-production-gate.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: atlas-hubspot-live-production-gate
+  cancel-in-progress: false
+
+env:
+  EXPECTED_ACCOUNT_ID: "247228429"
+  VERIFIER_URL: "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-hubspot-live-verify?api=verify"
+
+jobs:
+  verify-live-hubspot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Request scoped GitHub OIDC token
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_RESPONSE="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-hubspot-live-verifier")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_RESPONSE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value||''))")"
+          test -n "$OIDC_TOKEN" || { echo "::error::GitHub OIDC token was not issued for HubSpot live verification"; exit 1; }
+          echo "::add-mask::$OIDC_TOKEN"
+          printf '%s' "$OIDC_TOKEN" > /tmp/atlas-hubspot-live-oidc
+
+      - name: Verify HubSpot OAuth, scopes, account, and live CRM reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_TOKEN="$(cat /tmp/atlas-hubspot-live-oidc)"
+          HTTP_STATUS="$(curl --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" \
+            --output /tmp/atlas-hubspot-live.json \
+            --write-out '%{http_code}' \
+            "$VERIFIER_URL" \
+            --data "$(node -e "process.stdout.write(JSON.stringify({expectedAccountId:process.env.EXPECTED_ACCOUNT_ID}))")" || true)"
+          export HTTP_STATUS
+
+          node <<'NODE'
+          const fs = require('fs');
+          const status = process.env.HTTP_STATUS || '';
+          let body = {};
+          try { body = JSON.parse(fs.readFileSync('/tmp/atlas-hubspot-live.json', 'utf8')); } catch {}
+          const requiredScopes = [
+            'oauth',
+            'crm.objects.contacts.read',
+            'crm.objects.companies.read',
+            'crm.objects.deals.read',
+            'crm.objects.tickets.read'
+          ];
+          const failures = [];
+          if (status !== '200') failures.push('http_' + (status || 'missing'));
+          if (body.ok !== true) failures.push('verifier_not_ok');
+          if (body.provider_account_id !== process.env.EXPECTED_ACCOUNT_ID) failures.push('account_mismatch');
+          if (body.oauth_active !== true) failures.push('oauth_inactive');
+          if (body.introspection_verified !== true) failures.push('introspection_failed');
+          if (body.required_scopes_verified !== true) failures.push('scope_gate_failed');
+          if (body.secrets_returned !== false) failures.push('secret_contract_failed');
+          const scopes = new Set(Array.isArray(body.granted_scopes) ? body.granted_scopes : []);
+          for (const scope of requiredScopes) if (!scopes.has(scope)) failures.push('scope_missing:' + scope);
+          for (const type of ['contact','company','deal','ticket']) {
+            const item = body.objects?.[type];
+            if (!item || typeof item.records_observed !== 'number') failures.push('object_missing:' + type);
+            if (item?.nextCursor !== null) failures.push('object_truncated:' + type);
+          }
+          if (failures.length) {
+            console.error('ATLAS HubSpot live gate failed:', failures.join(','));
+            process.exit(1);
+          }
+          console.log(JSON.stringify({
+            ok: true,
+            provider_account_id: body.provider_account_id,
+            oauth_active: body.oauth_active,
+            introspection_verified: body.introspection_verified,
+            required_scopes_verified: body.required_scopes_verified,
+            objects: body.objects,
+            records_observed: body.records_observed,
+            credential_storage: body.credential_storage,
+            secrets_returned: body.secrets_returned,
+            target_sha: body.target_sha
+          }, null, 2));
+          NODE
+
+      - name: Publish safe summary
+        if: success()
+        shell: bash
+        run: |
+          node <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/atlas-hubspot-live.json', 'utf8'));
+          console.log('## ATLAS HubSpot Live Production Gate');
+          console.log('');
+          console.log('- Account: ' + body.provider_account_id);
+          console.log('- OAuth active: ' + body.oauth_active);
+          console.log('- Introspection verified: ' + body.introspection_verified);
+          console.log('- Required scopes verified: ' + body.required_scopes_verified);
+          for (const type of ['contact','company','deal','ticket']) {
+            console.log('- ' + type + ': ' + (body.objects?.[type]?.records_observed ?? 0) + ' real records observed');
+          }
+          console.log('- Provider credentials returned: false');
+          NODE
