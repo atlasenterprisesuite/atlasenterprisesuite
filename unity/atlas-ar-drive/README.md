@@ -1,6 +1,6 @@
-# ATLAS AR Drive — Unity Prototype
+# ATLAS AR Drive — Unity
 
-This project is the cross-platform AR rendering layer for ATLAS GPS 4D.
+Cross-platform augmented-reality navigation layer for ATLAS GPS 4D.
 
 ## Baseline
 
@@ -8,11 +8,32 @@ This project is the cross-platform AR rendering layer for ATLAS GPS 4D.
 - AR Foundation 6.3.1
 - ARCore XR Plugin 6.3.1
 - ARKit XR Plugin 6.3.1
-- Google ARCore Extensions for AR Foundation via the official #arf6 branch
+- XR Plugin Management 4.5.3
+- Google ARCore Extensions for AR Foundation via #arf6
 - URP
 - Input System
 
-## Architecture
+## Automated setup
+
+Open unity/atlas-ar-drive with Unity 6.3 LTS and run:
+
+ATLAS > AR Drive > Configure Project
+
+This command:
+- generates the AR scene, route-arrow prefab, neon material, mini-map material and Geospatial config;
+- creates AR Session, ARInputManager, XR Origin, AR camera, ARCore Extensions, Earth/Anchor managers and route renderers;
+- enables ARCore for Android and ARKit for iOS through XR Plugin Management;
+- configures iOS camera/location descriptions;
+- configures Android ARM64 + IL2CPP + API 26 minimum;
+- enables both input systems as required by the AR Foundation 6 upgrade guidance;
+- registers the generated scene in Build Settings;
+- runs a fail-closed project validation.
+
+Command-line build methods:
+- AtlasArDriveBuild.BuildAndroidCI
+- AtlasArDriveBuild.BuildIOSCI
+
+## Runtime flow
 
 ATLAS Navigation Engine / ATLAS GPS API
 → authenticated route response
@@ -24,33 +45,36 @@ ATLAS Navigation Engine / ATLAS GPS API
 → neon route arrows
 → lower route mini-map
 
-The Unity project does not contain provider secrets. The host app injects the ATLAS GPS Edge Function endpoint, active organization id, and short-lived user access token.
+## Consent and device readiness
 
-## Scene wiring
+`AtlasArDriveReadiness` keeps Geospatial disabled until the user explicitly allows AR camera/location use. It checks whether Geospatial mode is supported, starts precise location, waits for Earth tracking, and exposes a runtime state instead of pretending tracking is ready.
 
-Create a scene with AR Session, XR Origin (AR) + AR Camera, ARCore Extensions, AREarthManager, ARAnchorManager, AtlasRouteClient, AtlasGeospatialRouteRenderer, AtlasLocalRouteRenderer, AtlasMiniMapRouteRenderer, AtlasArDriveController, and two cameras wired into AtlasSplitScreenLayout.
+The generated Android manifest requests camera, precise/coarse location and internet and marks ARCore as required. iOS permission text is set by the project configurator.
 
-Top camera: AR camera feed and 3D arrows.
-Bottom camera: mini-map / map adapter.
+## Road alignment
+
+AR arrows are horizontal on the road plane and rotate only by route bearing. The first Geospatial implementation estimates road altitude by subtracting a configurable camera-above-road height from the current camera geospatial altitude. This is a bounded MVT approximation, not a claim of centimeter-level lane alignment.
+
+For supported devices/locations, Geospatial/VPS improves localization. If Earth tracking is unavailable, ATLAS can fall back to local-meter projection but must label that state as degraded/local rather than VPS verified.
+
+## Routing and secrets
+
+Unity does not call Google or Mapbox Routes directly. It calls the authenticated ATLAS GPS backend. Provider credentials remain server-side, preserving tenant/RBAC boundaries and allowing routing providers to be replaced without changing the client contract.
 
 ## Neon arrow
 
-Assets/ATLAS/Shaders/NeonArrow.shader is an additive URP shader with HDR-friendly color/intensity, Fresnel edge glow, time-based pulse, transparent additive blend, and disabled depth writes.
+`Assets/ATLAS/Shaders/NeonArrow.shader` uses URP additive blending, Fresnel glow, pulsing emission, double-sided rendering and no depth writes.
 
-Assign the shader to the arrow material and use the material on a low-poly arrow mesh.
+## Device build gate
 
-## Geospatial
+The repository now contains reproducible scene/build automation, but AR is not marked device-verified until a physical iOS/Android build passes:
+- camera permission;
+- precise location permission;
+- AR session tracking;
+- Geospatial support check;
+- Earth/VPS tracking where available;
+- route fetch with authenticated ATLAS session;
+- visible road-plane arrows;
+- outdoor alignment measurement.
 
-Enable ARCore Geospatial in the ARCore Extensions config. Check VPS availability before entering Geospatial AR. Prefer keyless authorization where available; do not commit API keys.
-
-The renderer only creates route anchors when Earth tracking is active. If Geospatial tracking is unavailable, ATLAS falls back to local meter projection from the current origin.
-
-## Routing
-
-Unity does not call Mapbox or Google Routes directly. It calls the authenticated ATLAS GPS backend. The backend may later change routing providers without changing the mobile client contract.
-
-This keeps provider tokens server-side, tenant/RBAC boundaries intact, routing providers replaceable, and paid fallback disabled unless explicitly authorized.
-
-## Current limit
-
-This is an MVT architecture and code scaffold. It still requires opening in Unity, creating the AR scene/prefabs/material assets, enabling platform XR providers, and device testing. ARCore Geospatial availability varies by device and location.
+The manual GitHub workflow `ATLAS AR Drive Unity Device Build` can generate Android/iOS build artifacts once a Unity license secret is configured.

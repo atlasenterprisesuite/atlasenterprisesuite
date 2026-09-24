@@ -24,7 +24,8 @@ Shader "ATLAS/AR/NeonArrow"
             Tags { "LightMode"="UniversalForward" }
             Blend One One
             ZWrite Off
-            Cull Back
+            ZTest LEqual
+            Cull Off
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -66,7 +67,7 @@ Shader "ATLAS/AR/NeonArrow"
             {
                 float3 n = normalize(input.normalWS);
                 float3 v = normalize(input.viewDirWS);
-                float fresnel = pow(1.0 - saturate(dot(n, v)), _FresnelPower);
+                float fresnel = pow(1.0 - saturate(abs(dot(n, v))), _FresnelPower);
                 float pulse = 1.0 + sin(_Time.y * _PulseSpeed) * _PulseAmount;
                 float alpha = saturate(_Color.a * (0.42 + fresnel * 0.58));
                 float3 emission = _Color.rgb * _Intensity * pulse * (0.55 + fresnel);
