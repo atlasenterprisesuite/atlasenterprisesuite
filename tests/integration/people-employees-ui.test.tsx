@@ -114,7 +114,7 @@ it('creates an employee only through the governed write service', async () => {
   }, service);
 
   await screen.findByRole('heading', { name: 'Employees' });
-  fireEvent.click(screen.getByRole('button', { name: 'New employee' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'New employee' }));
   fireEvent.change(screen.getByLabelText('Employee full name'), { target: { value: '  Lin Vega  ' } });
   fireEvent.change(screen.getByLabelText('Employee department'), { target: { value: '  Finance  ' } });
   fireEvent.change(screen.getByLabelText('Employee job title'), { target: { value: '  Staff Accountant  ' } });
