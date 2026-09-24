@@ -64,7 +64,7 @@ describe('ATLAS Private Oracle routes', () => {
       expect(screen.getByRole('button', { name: new RegExp(`^${label}`) })).toBeInTheDocument();
     }
     expect(await screen.findByText('No private readings yet.')).toBeInTheDocument();
-    expect(screen.getByText(/symbolic reflection/i)).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(/symbolic reflection/i);
   });
 
   it('shows the verified deck as incomplete at seven of forty-four', async () => {
