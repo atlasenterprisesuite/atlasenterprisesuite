@@ -9,6 +9,7 @@ describe('ATLAS GPS fused mobile experience', () => {
     expect(page).toContain("const [engineState");
     expect(page).toContain("const [layerState");
     expect(page).toContain('Motor MapLibre no disponible');
+    expect(page).toContain("setEngineState('ready')");
     expect(page).toContain('La capa seleccionada no respondió');
     expect(page).toContain('Usar otra capa');
   });

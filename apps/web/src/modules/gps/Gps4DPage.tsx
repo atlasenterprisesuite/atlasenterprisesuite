@@ -161,6 +161,9 @@ export function Gps4DPage() {
         maxPitch: 85,
         attributionControl: true
       });
+      setEngineState('ready');
+      setLayerState('loading');
+      setLayerMessage('Cargando Street map…');
       instance.addControl(new module.NavigationControl({ visualizePitch: true }), 'top-right');
       if (module.GlobeControl) instance.addControl(new module.GlobeControl(), 'top-right');
       instance.on('load', () => {
@@ -173,11 +176,6 @@ export function Gps4DPage() {
         setLayerMessage('Capa de mapa lista');
       });
       instance.on('error', (event: any) => {
-        if (!instance.loaded()) {
-          setEngineState('error');
-          setLayerMessage('Motor MapLibre no disponible');
-          return;
-        }
         const message = String(event?.error?.message || '');
         if (!instance.isStyleLoaded?.() || /style|source|sprite|glyph/i.test(message)) {
           setLayerState('error');
