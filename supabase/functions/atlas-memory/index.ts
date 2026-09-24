@@ -3,7 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 const URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const VERSION = '2026-09-22.1';
+const VERSION = '2026-09-24.2';
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
   'https://www.atlasenterprisesuite.com',
@@ -101,6 +101,12 @@ function safeText(value: unknown, max: number) {
   return String(value ?? '').trim().slice(0, max);
 }
 
+function boundedInt(value: string | null, fallback: number, max: number) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, max);
+}
+
 function normalizeDraft(input: Record<string, any>) {
   const kind = safeText(input.kind, 40);
   const sourceType = safeText(input.source_type ?? input.sourceType, 40);
@@ -143,31 +149,48 @@ async function audit(ctx: MemoryContext, action: string, recordId: string | null
 }
 
 async function listRecords(ctx: MemoryContext, url: URL) {
-  const sb = adminClient();
-  let query = sb
-    .from('atlas_memory_records')
-    .select('id,organization_id,created_by,approved_by,kind,status,title,summary,content_json,source_type,source_ref,module_ids,tags,sensitivity,version,supersedes_id,approved_at,created_at,updated_at')
-    .eq('organization_id', ctx.orgId)
-    .order('updated_at', { ascending: false })
-    .limit(250);
-
+  const q = safeText(url.searchParams.get('q'), 200);
   const kind = safeText(url.searchParams.get('kind'), 40);
   const status = safeText(url.searchParams.get('status'), 40);
-  if (kind && KINDS.has(kind)) query = query.eq('kind', kind);
-  if (status && ['draft','approved','superseded'].includes(status)) query = query.eq('status', status);
-  if (!ADMIN_ROLES.has(ctx.role)) query = query.eq('sensitivity', 'organization');
-
-  const { data, error } = await query;
-  if (error) throw fail('memory_read_failed', 500);
-  const q = safeText(url.searchParams.get('q'), 200).toLowerCase();
   const moduleId = safeText(url.searchParams.get('module'), 100);
-  const records = (data || []).filter((row: any) => {
-    const searchable = [row.title, row.summary, ...(row.tags || []), ...(row.module_ids || [])].join(' ').toLowerCase();
-    const qMatches = !q || searchable.includes(q);
-    const moduleMatches = !moduleId || (Array.isArray(row.module_ids) && row.module_ids.includes(moduleId));
-    return qMatches && moduleMatches;
+  const limit = Math.max(1, boundedInt(url.searchParams.get('limit'), 50, 100));
+  const offset = boundedInt(url.searchParams.get('offset'), 0, 1_000_000);
+
+  const { data, error } = await adminClient().rpc('atlas_memory_search', {
+    p_org_id: ctx.orgId,
+    p_role: ctx.role,
+    p_q: q,
+    p_kind: kind && KINDS.has(kind) ? kind : '',
+    p_status: status && ['draft','approved','superseded'].includes(status) ? status : '',
+    p_module: moduleId,
+    p_limit: limit,
+    p_offset: offset
   });
-  return { organization_id: ctx.orgId, role: ctx.role, records };
+  if (error) throw fail('memory_read_failed', 500);
+
+  const rows = (data || []) as Array<Record<string, any>>;
+  const total = rows.length ? Number(rows[0].total_count || 0) : 0;
+  const records = rows.map(({ total_count: _totalCount, ...row }) => row);
+  return {
+    organization_id: ctx.orgId,
+    role: ctx.role,
+    records,
+    total,
+    limit,
+    offset,
+    has_more: offset + records.length < total
+  };
+}
+
+async function memoryStats(ctx: MemoryContext, url: URL) {
+  const moduleId = safeText(url.searchParams.get('module'), 100);
+  const { data, error } = await adminClient().rpc('atlas_memory_stats', {
+    p_org_id: ctx.orgId,
+    p_role: ctx.role,
+    p_module: moduleId
+  });
+  if (error) throw fail('memory_read_failed', 500);
+  return data || { total_records: 0, approved: 0, draft: 0, superseded: 0 };
 }
 
 async function getRecord(ctx: MemoryContext, url: URL) {
@@ -285,65 +308,51 @@ async function importRecords(ctx: MemoryContext, input: Record<string, any>) {
 
 
 async function listLibraryAssets(ctx: MemoryContext, url: URL) {
-  const sb = adminClient();
-  let query = sb
-    .from('atlas_library_assets')
-    .select('id,organization_id,source_system,source_file_id,source_library_file_id,source_version_id,name,library_path,mime_type,size_bytes,source_created_at,source_modified_at,model_generated,file_provider,primary_module_id,module_ids,tags,sensitivity,classification_basis,analysis_status,summary,content_excerpt,content_hash,duplicate_of,memory_record_id,source_metadata,indexed_at,analyzed_at,updated_at')
-    .eq('organization_id', ctx.orgId)
-    .order('updated_at', { ascending: false })
-    .limit(500);
-
+  const q = safeText(url.searchParams.get('q'), 200);
   const moduleId = safeText(url.searchParams.get('module'), 100);
   const status = safeText(url.searchParams.get('analysis_status'), 40);
-  if (moduleId) query = query.contains('module_ids', [moduleId]);
-  if (status && ['indexed','analyzed','duplicate','needs_review','error'].includes(status)) {
-    query = query.eq('analysis_status', status);
-  }
-  if (!ADMIN_ROLES.has(ctx.role)) query = query.eq('sensitivity', 'organization');
+  const limit = Math.max(1, boundedInt(url.searchParams.get('limit'), 50, 100));
+  const offset = boundedInt(url.searchParams.get('offset'), 0, 1_000_000);
 
-  const { data, error } = await query;
-  if (error) throw fail('library_read_failed', 500);
-  const q = safeText(url.searchParams.get('q'), 200).toLowerCase();
-  const assets = (data || []).filter((row: any) => {
-    if (!q) return true;
-    const searchable = [
-      row.name,
-      row.library_path,
-      row.primary_module_id,
-      row.summary,
-      ...(row.tags || []),
-      ...(row.module_ids || [])
-    ].join(' ').toLowerCase();
-    return searchable.includes(q);
+  const { data, error } = await adminClient().rpc('atlas_library_search', {
+    p_org_id: ctx.orgId,
+    p_role: ctx.role,
+    p_q: q,
+    p_module: moduleId,
+    p_analysis_status: status && ['indexed','analyzed','duplicate','needs_review','error'].includes(status) ? status : '',
+    p_limit: limit,
+    p_offset: offset
   });
-  return { organization_id: ctx.orgId, role: ctx.role, assets };
+  if (error) throw fail('library_read_failed', 500);
+
+  const rows = (data || []) as Array<Record<string, any>>;
+  const total = rows.length ? Number(rows[0].total_count || 0) : 0;
+  const assets = rows.map(({ total_count: _totalCount, ...row }) => row);
+  return {
+    organization_id: ctx.orgId,
+    role: ctx.role,
+    assets,
+    total,
+    limit,
+    offset,
+    has_more: offset + assets.length < total
+  };
 }
 
-async function libraryStats(ctx: MemoryContext) {
-  const { data, error } = await adminClient()
-    .from('atlas_library_assets')
-    .select('primary_module_id,analysis_status,sensitivity,size_bytes')
-    .eq('organization_id', ctx.orgId);
+async function libraryStats(ctx: MemoryContext, url: URL) {
+  const moduleId = safeText(url.searchParams.get('module'), 100);
+  const { data, error } = await adminClient().rpc('atlas_library_stats', {
+    p_org_id: ctx.orgId,
+    p_role: ctx.role,
+    p_module: moduleId
+  });
   if (error) throw fail('library_read_failed', 500);
-  const rows = data || [];
-  const byModule: Record<string, number> = {};
-  const byStatus: Record<string, number> = {};
-  let totalBytes = 0;
-  let restricted = 0;
-  for (const row of rows as any[]) {
-    const moduleId = String(row.primary_module_id || 'knowledge');
-    const status = String(row.analysis_status || 'indexed');
-    byModule[moduleId] = (byModule[moduleId] || 0) + 1;
-    byStatus[status] = (byStatus[status] || 0) + 1;
-    totalBytes += Number(row.size_bytes || 0);
-    if (row.sensitivity === 'restricted') restricted += 1;
-  }
-  return {
-    total_assets: rows.length,
-    total_bytes: totalBytes,
-    restricted_assets: restricted,
-    by_module: byModule,
-    by_status: byStatus
+  return data || {
+    total_assets: 0,
+    total_bytes: 0,
+    restricted_assets: 0,
+    by_module: {},
+    by_status: {}
   };
 }
 
@@ -355,9 +364,12 @@ async function route(req: Request, origin: string | null) {
   if (api === 'list' && req.method === 'GET') {
     return json({ ok: true, ...(await listRecords(ctx, url)) }, 200, origin);
   }
+  if (api === 'memory-stats' && req.method === 'GET') {
+    return json({ ok: true, organization_id: ctx.orgId, role: ctx.role, stats: await memoryStats(ctx, url) }, 200, origin);
+  }
   if (api === 'record' && req.method === 'GET') return json({ ok: true, record: await getRecord(ctx, url) }, 200, origin);
   if (api === 'library' && req.method === 'GET') return json({ ok: true, ...(await listLibraryAssets(ctx, url)) }, 200, origin);
-  if (api === 'library-stats' && req.method === 'GET') return json({ ok: true, organization_id: ctx.orgId, role: ctx.role, stats: await libraryStats(ctx) }, 200, origin);
+  if (api === 'library-stats' && req.method === 'GET') return json({ ok: true, organization_id: ctx.orgId, role: ctx.role, stats: await libraryStats(ctx, url) }, 200, origin);
   if (api === 'save' && req.method === 'POST') return json({ ok: true, record: await saveDraft(ctx, await body(req)) }, 201, origin);
   if (api === 'approve' && req.method === 'POST') return json({ ok: true, record: await approve(ctx, await body(req)) }, 200, origin);
   if (api === 'import' && req.method === 'POST') return json({ ok: true, records: await importRecords(ctx, await body(req)) }, 201, origin);
