@@ -26,6 +26,39 @@ export type AtlasMemoryRecord = {
   updated_at: string;
 };
 
+
+export type AtlasLibraryAsset = {
+  id: string;
+  organization_id: string;
+  source_system: string;
+  source_file_id: string;
+  source_library_file_id: string | null;
+  name: string;
+  library_path: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  primary_module_id: string;
+  module_ids: string[];
+  tags: string[];
+  sensitivity: 'organization' | 'restricted';
+  classification_basis: 'path' | 'name' | 'content' | 'manual' | 'fallback';
+  analysis_status: 'indexed' | 'analyzed' | 'duplicate' | 'needs_review' | 'error';
+  summary: string;
+  content_excerpt: string;
+  duplicate_of: string | null;
+  indexed_at: string;
+  analyzed_at: string | null;
+  updated_at: string;
+};
+
+export type AtlasLibraryStats = {
+  total_assets: number;
+  total_bytes: number;
+  restricted_assets: number;
+  by_module: Record<string, number>;
+  by_status: Record<string, number>;
+};
+
 type MemoryListResponse = {
   ok: boolean;
   organization_id: string;
@@ -62,6 +95,23 @@ export async function listAtlasMemory(filters: {
   if (filters.status) params.set('status', filters.status);
   if (filters.module?.trim()) params.set('module', filters.module.trim());
   return request(`?${params.toString()}`, { method: 'GET' }) as Promise<MemoryListResponse>;
+}
+
+
+export async function listAtlasLibraryAssets(filters: {
+  q?: string;
+  module?: string;
+  analysisStatus?: string;
+} = {}): Promise<{ ok: true; organization_id: string; role: string; assets: AtlasLibraryAsset[] }> {
+  const params = new URLSearchParams({ api: 'library' });
+  if (filters.q?.trim()) params.set('q', filters.q.trim());
+  if (filters.module?.trim()) params.set('module', filters.module.trim());
+  if (filters.analysisStatus?.trim()) params.set('analysis_status', filters.analysisStatus.trim());
+  return request(`?${params.toString()}`, { method: 'GET' }) as Promise<{ ok: true; organization_id: string; role: string; assets: AtlasLibraryAsset[] }>;
+}
+
+export async function getAtlasLibraryStats(): Promise<{ ok: true; organization_id: string; role: string; stats: AtlasLibraryStats }> {
+  return request('?api=library-stats', { method: 'GET' }) as Promise<{ ok: true; organization_id: string; role: string; stats: AtlasLibraryStats }>;
 }
 
 export async function createAtlasMemoryDraft(input: {
