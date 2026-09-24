@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ getOracleStatus: vi.fn() }));
 
@@ -11,9 +11,8 @@ vi.mock('../../apps/web/src/lib/oracleApi', () => ({
 import { RequireOracleEntitlement } from '../../apps/web/src/modules/oracle/RequireOracleEntitlement';
 
 describe('RequireOracleEntitlement', () => {
-  beforeEach(() => mocks.getOracleStatus.mockReset());
-
   it('shows private content only for the entitled account', async () => {
+    mocks.getOracleStatus.mockReset();
     mocks.getOracleStatus.mockResolvedValue({ ok: true, entitled: true, deck: null });
     render(<RequireOracleEntitlement><div>Private Oracle</div></RequireOracleEntitlement>);
     expect(screen.getByText(/checking private oracle access/i)).toBeTruthy();
@@ -21,6 +20,7 @@ describe('RequireOracleEntitlement', () => {
   });
 
   it('does not leak route contents to a non-entitled account', async () => {
+    mocks.getOracleStatus.mockReset();
     mocks.getOracleStatus.mockResolvedValue({ ok: true, entitled: false, deck: null });
     render(<RequireOracleEntitlement><div>Private Oracle</div></RequireOracleEntitlement>);
     await waitFor(() => expect(screen.getByText('This private ATLAS capability is not enabled for this account.')).toBeTruthy());
@@ -28,6 +28,7 @@ describe('RequireOracleEntitlement', () => {
   });
 
   it('shows a retryable error without rendering private content', async () => {
+    mocks.getOracleStatus.mockReset();
     let rejectStatus: (cause: Error) => void = () => undefined;
     mocks.getOracleStatus.mockImplementation(() => new Promise((_resolve, reject) => {
       rejectStatus = reject;
