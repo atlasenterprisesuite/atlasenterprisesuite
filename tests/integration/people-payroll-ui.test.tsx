@@ -273,7 +273,7 @@ it('does not invent a salary-period amount from annual compensation', async () =
   }, service, compensationRepository);
 
   await screen.findByRole('heading', { name: 'Payroll' });
-  fireEvent.change(screen.getByLabelText('Payroll line employee payroll-draft'), { target: { value: 'employee-a' } });
+  fireEvent.change(await screen.findByLabelText('Payroll line employee payroll-draft'), { target: { value: 'employee-a' } });
 
   await waitFor(() => expect(screen.getByLabelText('Pay type payroll-draft')).toHaveValue('salary'));
   expect(screen.getByLabelText('Salary period amount payroll-draft')).toHaveValue(null);
