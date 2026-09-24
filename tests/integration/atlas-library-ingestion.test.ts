@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration=readFileSync('supabase/migrations/20260924005000_atlas_library_ingestion.sql','utf8');
+const hardening=readFileSync('supabase/migrations/20260924205000_atlas_knowledge_audit_hardening.sql','utf8');
 const edge=readFileSync('supabase/functions/atlas-memory/index.ts','utf8');
 const api=readFileSync('apps/web/src/modules/knowledge/memoryApi.ts','utf8');
 const page=readFileSync('apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx','utf8');
@@ -18,7 +19,8 @@ describe('ATLAS Library ingestion contract', () => {
   it('exposes module-filtered assets through ATLAS Memory', () => {
     expect(edge).toContain("api === 'library'");
     expect(edge).toContain("api === 'library-stats'");
-    expect(edge).toContain(".contains('module_ids', [moduleId])");
+    expect(edge).toContain("rpc('atlas_library_search'");
+    expect(hardening).toContain("a.module_ids @> array[trim(p_module)]::text[]");
     expect(api).toContain('listAtlasLibraryAssets');
     expect(api).toContain('getAtlasLibraryStats');
     expect(page).toContain('ATLAS Library Registry');
