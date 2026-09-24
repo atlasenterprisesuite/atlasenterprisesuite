@@ -19,6 +19,9 @@ describe('Cloudflare authorized production HTTP verifier', () => {
   });
 
   it('checks the public shell while preserving the protected deployment path', () => {
+    expect(verifier).toContain("'/status'");
+    expect(verifier).toContain('status_route_reachable');
+    expect(verifier).toContain('all_module_routes_reachable');
     expect(verifier).toContain("'/identity?app=%2Ffinance'");
     expect(verifier).toContain("'/execution/manager/readiness'");
     expect(verifier).toContain('manager_readiness_route_reachable');
@@ -66,12 +69,14 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
     expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
-    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "22" ]');
+    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "24" ]');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');
     expect(workflow).toContain('AUTHORIZED_JAQUE_MATE_SENTINEL_REACHABLE');
     expect(workflow).toContain('AUTHORIZED_MANAGER_REACHABLE');
+    expect(workflow).toContain('status_route_reachable');
+    expect(workflow).toContain('all_module_routes_reachable');
   });
 
   it('verifies the production domain after either deployment mode and covers critical ATLAS Network routes', () => {
