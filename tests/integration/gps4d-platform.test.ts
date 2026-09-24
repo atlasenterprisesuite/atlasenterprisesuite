@@ -95,3 +95,13 @@ describe('ATLAS GPS 4D platform', () => {
     expect(domain).toContain("id: 'native-location'");
   });
 });
+
+
+describe('ATLAS Navigation Engine', () => {
+  it('includes route-constrained map matching instead of trusting raw browser GPS alone', () => {
+    expect(domain).toContain('matchPositionToRoute');
+    expect(domain).toContain('snapThresholdM');
+    expect(domain).toContain('distance_to_route_m');
+    expect(domain).toContain('navigationBearing');
+  });
+});
