@@ -2,21 +2,11 @@ name: ATLAS Build + Production Readiness Gate
 
 on:
   workflow_dispatch:
+  # Every main SHA must receive its own complete repository readiness evidence.
+  # Do not path-filter this trigger: production readiness must never be inherited
+  # from an older commit, regardless of which subsystem changed.
   push:
     branches: ["main"]
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "data/**"
-      - "services/**"
-      - "scripts/**"
-      - "supabase/functions/**"
-      - "supabase/migrations/**"
-      - "worker/**"
-      - "docs/architecture/ATLAS_MANAGER_SPEC.md"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/production-deploy.yml"
 
 concurrency:
   group: atlas-production-readiness

@@ -7,7 +7,7 @@ const ALLOWED_WORKFLOWS = new Set([
 ]);
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 21;
+const VERSION = 22;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -244,6 +244,8 @@ Deno.serve(async (req: Request) => {
     suite,
     launch360,
     identity,
+    managerReadiness,
+    gps,
     finance,
     accounting,
     payables,
@@ -277,6 +279,8 @@ Deno.serve(async (req: Request) => {
     probe('/suite'),
     probe('/advisory/business-launch-360'),
     probe('/identity?app=%2Ffinance'),
+    probe('/execution/manager/readiness'),
+    probe('/gps'),
     probe('/finance'),
     probe('/finance/accounting'),
     probe('/finance/accounting/accounts-payable'),
@@ -312,6 +316,8 @@ Deno.serve(async (req: Request) => {
     suite.status === 200 &&
     launch360.status === 200 &&
     identity.status === 200 &&
+    managerReadiness.status === 200 &&
+    gps.status === 200 &&
     finance.status === 200 &&
     accounting.status === 200 &&
     payables.status === 200 &&
@@ -339,6 +345,8 @@ Deno.serve(async (req: Request) => {
     suite,
     launch360,
     identity,
+    managerReadiness,
+    gps,
     finance,
     accounting,
     payables,
@@ -408,6 +416,8 @@ Deno.serve(async (req: Request) => {
         suite_route_reachable: suite.status === 200,
         business_launch_360_route_reachable: launch360.status === 200,
         identity_route_reachable: identity.status === 200,
+        manager_readiness_route_reachable: managerReadiness.status === 200,
+        gps_route_reachable: gps.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         finance_accounting_route_reachable: accounting.status === 200,
         accounts_payable_route_reachable: payables.status === 200,
@@ -443,6 +453,7 @@ Deno.serve(async (req: Request) => {
         suite,
         business_launch_360: launch360,
         identity,
+        manager_readiness: managerReadiness,
         finance,
         finance_accounting: accounting,
         accounts_payable: payables,

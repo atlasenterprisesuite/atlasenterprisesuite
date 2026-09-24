@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadFinanceControlCenter, type FinanceControlCenterSnapshot } from '../../lib/financeApi';
+import { EnterpriseAccountingPanel } from './EnterpriseAccountingPanel';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const dateTime = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
@@ -176,6 +177,7 @@ export function FinanceControlCenterPanel() {
           <span>Use Refresh finance to read the active organization. No financial totals are requested until you explicitly open the live snapshot.</span>
         </div>
       )}
+      <EnterpriseAccountingPanel />
     </section>
   );
 }

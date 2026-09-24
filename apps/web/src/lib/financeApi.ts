@@ -18,6 +18,34 @@ type PeriodRow = {
 type BudgetRow = { id: string; status: string | null };
 type FxRow = { id: string; evidence_state: string | null };
 type ConsolidationRow = { id: string; status: string | null };
+export type IntercompanyCandidateRow = {
+  line_id: string;
+  journal_id: string;
+  entry_number: string;
+  entry_date: string;
+  entity_id: string;
+  entity_code: string;
+  entity_name: string;
+  account_id: string;
+  account_number: string;
+  account_name: string;
+  debit: number | string;
+  credit: number | string;
+  functional_currency: string;
+  reporting_currency: string;
+  reporting_amount: number | string;
+  latest_match_id: string | null;
+  latest_match_reference: string | null;
+  latest_match_status: string | null;
+};
+
+export type IntercompanyWorkspaceSnapshot = {
+  source: 'supabase_rls_live';
+  organizationId: string;
+  groupId: string;
+  loadedAt: string;
+  candidates: IntercompanyCandidateRow[];
+};
 type BankRow = { id: string };
 type ReconciliationRow = { id: string; status: string | null };
 
@@ -99,5 +127,38 @@ export async function loadFinanceControlCenter(): Promise<FinanceControlCenterSn
     consolidations,
     bankAccounts,
     reconciliations
+  };
+}
+
+
+export async function loadIntercompanyWorkspace(
+  groupId: string,
+  options: { startDate?: string; endDate?: string } = {}
+): Promise<IntercompanyWorkspaceSnapshot> {
+  const organization = await getActiveAtlasOrganization();
+  const body = {
+    organization_uuid: organization.id,
+    group_uuid: groupId,
+    start_date_value: options.startDate || null,
+    end_date_value: options.endDate || null
+  };
+
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/get_accounting_intercompany_candidates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw new Error(`intercompany_candidates_http_${response.status}`);
+  }
+
+  const rows = await response.json();
+  return {
+    source: 'supabase_rls_live',
+    organizationId: organization.id,
+    groupId,
+    loadedAt: new Date().toISOString(),
+    candidates: Array.isArray(rows) ? rows as IntercompanyCandidateRow[] : []
   };
 }

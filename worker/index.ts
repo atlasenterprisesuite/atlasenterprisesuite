@@ -1,10 +1,12 @@
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "connect-src 'self' https://ggmanzcgtlrvqfoccgsh.supabase.co wss://ggmanzcgtlrvqfoccgsh.supabase.co",
+  "connect-src 'self' https://ggmanzcgtlrvqfoccgsh.supabase.co wss://ggmanzcgtlrvqfoccgsh.supabase.co https://unpkg.com https://tiles.openfreemap.org https://basemap.nationalmap.gov https://tiles.mapterhorn.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
-  "style-src 'self' 'unsafe-inline'",
-  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://unpkg.com",
+  "script-src 'self' https://unpkg.com",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
   "font-src 'self' data:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -112,7 +114,7 @@ function withSecurityHeaders(
   headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  headers.set('Permissions-Policy', 'camera=(), geolocation=(), payment=(), usb=(), xr-spatial-tracking=(self)');
+  headers.set('Permissions-Policy', 'camera=(), geolocation=(self), payment=(), usb=(), xr-spatial-tracking=(self)');
   headers.set('X-Frame-Options', 'DENY');
   if (version?.id) headers.set('X-Atlas-Version-Id', version.id);
   const effectiveTag = canonicalCommitSha(version?.tag) || canonicalCommitSha(commitSha);

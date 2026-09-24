@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom';
+import { FuturisticEnterpriseHome } from '../components/FuturisticEnterpriseHome';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { AviationRoutes } from '../modules/aviation/AviationRoutes';
@@ -96,7 +97,7 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><WorkRoutes /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/') return <EnterpriseExperiencePage />;
+  if (pathname === '/') return <FuturisticEnterpriseHome />;
 
   if (pathname === '/advisory' || pathname.startsWith('/advisory/')) {
     return <RequireAtlasIdentity><AdvisoryRoutes /></RequireAtlasIdentity>;

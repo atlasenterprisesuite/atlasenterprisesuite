@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const migration = readFileSync('supabase/migrations/20260912_manager_readiness_execution.sql', 'utf8');
 const edgeSource = readFileSync('supabase/functions/atlas-execution/index.ts', 'utf8');
 const managerSource = readFileSync('supabase/functions/atlas-execution/manager-readiness.ts', 'utf8');
+const infraStatusSource = readFileSync('supabase/functions/atlas-infra-status/index.ts', 'utf8');
 
 describe('Manager readiness Edge contract', () => {
   it('constrains one active readiness workflow per organization', () => {
@@ -30,6 +31,18 @@ describe('Manager readiness Edge contract', () => {
     expect(managerSource).toContain('execution.manager.readiness_synced');
     expect(managerSource).toContain("canTransitionTask('blocked', 'now')");
     expect(managerSource).toContain("canTransitionTask('now', 'completed')");
+  });
+
+  it('keeps the infra producer and manager consumer compatible', () => {
+    expect(infraStatusSource).toContain("github: false");
+    expect(infraStatusSource).toContain("supabase: true");
+    expect(infraStatusSource).toContain("cloudflare: true");
+    expect(infraStatusSource).toContain("production: true");
+    expect(managerSource).toContain("github: normalizeOptionalAwareProvider(providerStatus.github, providerRequirements.github)");
+    expect(managerSource).toContain("supabase: normalizeRequiredProvider(providerStatus.supabase, providerRequirements.supabase)");
+    expect(managerSource).toContain("cloudflare: normalizeRequiredProvider(providerStatus.cloudflare, providerRequirements.cloudflare)");
+    expect(managerSource).toContain("production: normalizeRequiredProvider(providerStatus.production, providerRequirements.production)");
+    expect(managerSource).toContain("evidence_requirement: step.required ? [step.evidenceKind] : []");
   });
 
   it('never embeds provider credentials in the readiness feature', () => {

@@ -311,3 +311,5 @@ export const demoAtlasContext = {
   permissions: ['accounting.read'] as AtlasPermission[],
   environment: 'demo' as const
 };
+
+export * from './libraryRouting';

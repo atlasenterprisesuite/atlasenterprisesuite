@@ -28,12 +28,14 @@ describe('ATLAS global production verification', () => {
       '/suite',
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
+      '/gps',
       '/finance',
       '/finance/accounting',
       '/finance/accounting/accounts-payable',
       '/finance/accounting/reports/automotive-sales',
       '/finance/accounting/accounts-receivable',
       '/inventory/procure-to-pay',
+      '/execution/manager/readiness',
       '/assistant',
       '/knowledge',
       '/voice',
@@ -80,6 +82,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).not.toContain('passed-edge-secured');
     expect(verifier).toContain('challenge-deferred');
     expect(verifier).toContain('classified_root_challenge_deferred');
+    expect(verifier).toContain('manager_readiness_route_reachable');
     expect(verifier).toContain('const verified = directlyVerified;');
     expect(verifier).toContain('AbortSignal.timeout');
     expect(verifier).toContain("redirect: 'manual'");
@@ -124,6 +127,9 @@ describe('ATLAS global production verification', () => {
     expect(workflow).toContain('--expected-sha "$GITHUB_SHA"');
     expect(workflow).toContain('audience=atlas-production-http-verifier');
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
+    expect(workflow).toContain('for ATTEMPT in 1 2 3 4 5; do');
+    expect(workflow).toContain('408|429|500|502|503|504');
+    expect(workflow).toContain('sleep "$((ATTEMPT * 2))"');
     expect(workflow).toContain('fail-closed');
 
     const cloudflareWorkflow = read('.github/workflows/cloudflare-deploy.yml');
@@ -132,8 +138,13 @@ describe('ATLAS global production verification', () => {
     expect(cloudflareWorkflow).toContain('suite_route_reachable=true');
     expect(cloudflareWorkflow).toContain('uses: ./.github/workflows/global-production-verify.yml');
     expect(cloudflareWorkflow).toContain('mode: fail-closed');
-    expect(cloudflareWorkflow).toContain('- "scripts/verify-global-production.mjs"');
-    expect(cloudflareWorkflow).toContain('- ".github/workflows/global-production-verify.yml"');
+    expect(cloudflareWorkflow).toContain('push:');
+    expect(cloudflareWorkflow).toContain('branches: ["main"]');
+    expect(cloudflareWorkflow).not.toContain('    paths:');
+    expect(cloudflareWorkflow).toContain('Every main SHA must receive its own production deployment evidence');
+    expect(cloudflareWorkflow).toContain('Verify ATLAS Manager post-deployment canary');
+    expect(cloudflareWorkflow).toContain('/execution/manager/readiness');
+    expect(cloudflareWorkflow).toContain('manager_readiness_route_reachable');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
@@ -174,6 +185,10 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
     expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
     expect(authorizedVerifier).toContain('suite_route_reachable');
+    expect(authorizedVerifier).toContain("'/execution/manager/readiness'");
+    expect(authorizedVerifier).toContain('manager_readiness_route_reachable');
+    expect(authorizedVerifier).toContain("'/gps'");
+    expect(authorizedVerifier).toContain('gps_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
     expect(authorizedVerifier).toContain("'/knowledge'");

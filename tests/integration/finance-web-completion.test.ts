@@ -7,6 +7,7 @@ const registry = readFileSync('apps/web/src/modules/registry.ts', 'utf8');
 const experiences = readFileSync('apps/web/src/modules/experience/AtlasModuleExperiences.tsx', 'utf8');
 const api = readFileSync('apps/web/src/lib/financeApi.ts', 'utf8');
 const panel = readFileSync('apps/web/src/modules/finance/FinanceControlCenterPanel.tsx', 'utf8');
+const enterprisePanel = readFileSync('apps/web/src/modules/finance/EnterpriseAccountingPanel.tsx', 'utf8');
 const productionContract = readFileSync('data/ops/global-production-verification.json', 'utf8');
 
 describe('ATLAS Finance web completion', () => {
@@ -52,6 +53,15 @@ describe('ATLAS Finance web completion', () => {
     expect(panel).toContain('to="/inventory/procure-to-pay"');
     expect(panel).toContain('to="/finance/accounting/reports/automotive-sales"');
     expect(registry).toContain("{ to: '/finance/accounting/accounts-receivable', label: 'Receivables' }");
+  });
+
+  it('integrates canonical intercompany evidence without creating a parallel finance store', () => {
+    expect(api).toContain('/rest/v1/rpc/get_accounting_intercompany_candidates');
+    expect(api).toContain('getActiveAtlasOrganization');
+    expect(panel).toContain('<EnterpriseAccountingPanel />');
+    expect(enterprisePanel).toContain('Intercompany & Consolidation Workspace');
+    expect(enterprisePanel).toContain('No synthetic intercompany records were generated');
+    expect(enterprisePanel).toContain("row.latest_match_status || 'unmatched'");
   });
 
   it('makes Finance landing, Accounting and AP mandatory production routes', () => {

@@ -15,6 +15,7 @@ import { AuditTimeline } from './AuditTimeline';
 import { ExecutionAssistantPanel } from './ExecutionAssistantPanel';
 import { ExecutionBreadcrumbs } from './ExecutionBreadcrumbs';
 import { humanizeExecutionValue } from './ExecutionStepRow';
+import { ManagerProductionStatusPanel } from './ManagerProductionStatusPanel';
 import { StepActionBar } from './StepActionBar';
 import { StepDetailPanel } from './StepDetailPanel';
 import { TaskGroup } from './TaskGroup';
@@ -211,6 +212,9 @@ export function GuidedExecutionPage() {
     <section className="page-stack execution-page">
       <ExecutionBreadcrumbs workflow={data.workflow} />
       <WorkflowHeader state={data} task={currentTask} />
+      {data.workflow.workflowType === 'manager.infrastructure_readiness'
+        ? <ManagerProductionStatusPanel workflow={data.workflow} />
+        : null}
       {actionError ? <div className="execution-action-error" role="alert">{actionError}</div> : null}
       <div className="execution-layout">
         <div className="execution-task-list" aria-label="Execution tasks">
