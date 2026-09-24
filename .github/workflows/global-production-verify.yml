@@ -78,6 +78,7 @@ jobs:
           console.log(`critical_network_routes_reachable=${result.checks?.critical_network_routes_reachable === true}`);
           console.log(`protected_routes_enforced=${result.checks?.protected_routes_enforced === true}`);
           console.log(`production_commit_sha_verified=${result.checks?.production_commit_sha_verified === true}`);
+          console.log(`classified_required_route_challenge_deferred=${result.checks?.classified_required_route_challenge_deferred === true}`);
           console.log(`classified_root_challenge_deferred=${result.checks?.classified_root_challenge_deferred === true}`);
           NODE
 
