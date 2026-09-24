@@ -20,7 +20,11 @@ describe('ATLAS Work fail-closed production verification', () => {
   it('checks Work through the authorized production verifier and exact-version route set', () => {
     for (const route of WORK_ROUTES) expect(authorizedVerifier).toContain(`probe('${route}')`);
     expect(authorizedVerifier).toContain('work_routes_reachable: workRoutesOk');
-    expect(authorizedVerifier).toContain('const verified = publicShellOk && commerceRouteOk && revenueRouteOk && analyticsRouteOk && criticalNetworkRoutesOk && workRoutesOk');
+    expect(authorizedVerifier).toContain('statusRouteOk');
+    expect(authorizedVerifier).toContain('canonicalModuleRoutesOk');
+    expect(authorizedVerifier).toContain('workRoutesOk');
+    expect(authorizedVerifier).toContain('criticalNetworkRoutesOk');
+    expect(authorizedVerifier).toContain('productionCommitVerified');
     expect(authorizedVerifier).toContain('routedProbes.every');
   });
 

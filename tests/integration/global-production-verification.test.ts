@@ -24,32 +24,46 @@ describe('ATLAS global production verification', () => {
     expect(contract.production_origin).toBe('https://www.atlasenterprisesuite.com');
     expect(contract.default_mode).toBe('fail-closed');
     expect(contract.public_routes).toEqual([
+      '/status',
       '/',
       '/suite',
+      '/work',
+      '/assistant',
+      '/knowledge',
+      '/business',
+      '/advisory',
+      '/finance',
+      '/tax',
+      '/crm',
+      '/commerce',
+      '/inventory/procure-to-pay',
+      '/analytics',
+      '/connect',
+      '/payroll',
+      '/learning',
+      '/health',
+      '/studio',
+      '/voice',
+      '/events',
+      '/frontier',
+      '/hospitality',
+      '/ride',
+      '/mobility/aviation',
+      '/galaxy',
+      '/device-os',
+      '/execution/manager/readiness',
+      '/finance/accounting/accounts-payable',
+      '/finance/accounting/accounts-receivable',
+      '/finance/accounting/reports/automotive-sales',
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
       '/gps',
-      '/finance',
       '/finance/accounting',
-      '/finance/accounting/accounts-payable',
-      '/finance/accounting/reports/automotive-sales',
-      '/finance/accounting/accounts-receivable',
-      '/inventory/procure-to-pay',
-      '/execution/manager/readiness',
-      '/assistant',
-      '/knowledge',
-      '/voice',
-      '/health',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
       '/studio/teleprompter',
       '/studio/web-launch',
       '/studio/write',
-      '/crm',
-      '/commerce',
       '/revenue',
-      '/analytics',
-      '/frontier',
-      '/work',
       '/work/new',
       '/work/connections',
       '/work/runtimes',
@@ -181,6 +195,9 @@ describe('ATLAS global production verification', () => {
       expect(authorizedVerifier, route).toContain(`'${route}'`);
     }
 
+    expect(authorizedVerifier).toContain("'/status'");
+    expect(authorizedVerifier).toContain('status_route_reachable');
+    expect(authorizedVerifier).toContain('all_module_routes_reachable');
     expect(authorizedVerifier).toContain("'/suite'");
     expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
     expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
