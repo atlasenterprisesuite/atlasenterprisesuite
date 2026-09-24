@@ -253,6 +253,8 @@ async function main() {
   const criticalResults = requiredResults.slice(contract.public_routes.length);
   const protectedRoutesEnforced = protectedResults.every((entry) => entry.ok);
   const criticalNetworkRoutesReachable = criticalResults.every((entry) => entry.ok);
+  const managerReadinessRouteReachable =
+    publicResults.find((entry) => entry.path === '/execution/manager/readiness')?.ok === true;
   const directlyVerified = failures.length === 0;
   const challengeOnlyOnRoot =
     challengeFailures.length === 1 &&
@@ -292,6 +294,7 @@ async function main() {
     edge_challenge_detected: challengeFailures.length > 0,
     checks: {
       public_routes_reachable: publicResults.every((entry) => entry.ok),
+      manager_readiness_route_reachable: managerReadinessRouteReachable,
       critical_network_routes_reachable: criticalNetworkRoutesReachable,
       protected_routes_enforced: protectedRoutesEnforced,
       production_commit_sha_verified: productionCommitShaVerified,
