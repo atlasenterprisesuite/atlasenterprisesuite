@@ -52,6 +52,7 @@ export function CompensationPage() {
   >({ status: 'idle' });
 
   const readyIdentity = identity.status === 'ready' ? identity : null;
+  const organizationId = readyIdentity?.organizationId ?? '';
   const canWrite = Boolean(
     readyIdentity
       && writeService
@@ -75,9 +76,9 @@ export function CompensationPage() {
 
     setState({ status: 'loading' });
     void Promise.all([
-      peopleRepository.listEmployees(readyIdentity.organizationId),
-      compensationRepository.listCompensation(readyIdentity.organizationId),
-      compensationRepository.listDeductions(readyIdentity.organizationId),
+      peopleRepository.listEmployees(organizationId),
+      compensationRepository.listCompensation(organizationId),
+      compensationRepository.listDeductions(organizationId),
     ])
       .then(([employees, compensation, deductions]) => {
         if (!active) return;
@@ -134,7 +135,7 @@ export function CompensationPage() {
     if (!writeService || !selectedEmployee) return;
     void runWrite(
       () => writeService.createCompensation({
-        organizationId: readyIdentity.organizationId,
+        organizationId: organizationId,
         employeeId: selectedEmployee.id,
         payType,
         hourlyRate: payType === 'hourly' ? requiredNumber(hourlyRate, 'Hourly rate') : null,
@@ -150,7 +151,7 @@ export function CompensationPage() {
     if (!writeService || !selectedEmployee) return;
     void runWrite(
       () => writeService.setDeduction({
-        organizationId: readyIdentity.organizationId,
+        organizationId: organizationId,
         employeeId: selectedEmployee.id,
         code: deductionCode,
         label: deductionLabel,
