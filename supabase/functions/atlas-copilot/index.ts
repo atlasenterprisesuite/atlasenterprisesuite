@@ -149,46 +149,71 @@ async function readinessFor(rt,profile='balanced'){
   const providers=await registry.readiness({profile});
   return {registry,providers,localAi};
 }
-async function diarizationReadiness(rt){
-  const configured=Boolean(rt.diarizationBaseUrl&&rt.diarizationToken);
-  if(!configured)return {state:'configuration-required',configured:false,verified:false,provider:rt.diarizationProvider,model:rt.diarizationModel,endpoint:null,error:null};
+function resolveDiarizationRuntime(rt,localAi){
+  if(rt.diarizationBaseUrl&&rt.diarizationToken){
+    return {
+      baseUrl:rt.diarizationBaseUrl.replace(/\/$/,''),
+      token:rt.diarizationToken,
+      provider:rt.diarizationProvider||'atlas-local-diarization',
+      model:rt.diarizationModel||null,
+      source:'explicit',
+    };
+  }
+  const localBase=clean(localAi?.baseUrl);
+  const localToken=clean(localAi?.token);
+  if(localAi?.source==='render-free'&&localBase&&localToken){
+    const root=localBase.replace(/\/local-ai\/?$/,'').replace(/\/$/,'');
+    return {
+      baseUrl:root+'/diarization',
+      token:localToken,
+      provider:'atlas-render-diarization',
+      model:'whisper-tiny+atlas-acoustic-v1',
+      source:'render-free',
+    };
+  }
+  return {baseUrl:null,token:'',provider:rt.diarizationProvider||'atlas-local-diarization',model:rt.diarizationModel||null,source:null};
+}
+async function diarizationReadiness(rt,localAi){
+  const resolved=resolveDiarizationRuntime(rt,localAi);
+  const configured=Boolean(resolved.baseUrl&&resolved.token);
+  if(!configured)return {state:'configuration-required',configured:false,verified:false,provider:resolved.provider,model:resolved.model,endpoint:null,source:resolved.source,error:null};
   try{
-    const base=rt.diarizationBaseUrl.replace(/\/$/,'');
-    const response=await fetch(base+'/health',{
+    const response=await fetch(resolved.baseUrl+'/health',{
       method:'GET',
-      headers:{authorization:'Bearer '+rt.diarizationToken,accept:'application/json'},
-      signal:AbortSignal.timeout(5000),
+      headers:{authorization:'Bearer '+resolved.token,accept:'application/json'},
+      signal:AbortSignal.timeout(resolved.source==='render-free'?90000:5000),
       cache:'no-store',
     });
     const payload=await response.json().catch(()=>({}));
     const state=String(payload?.state||payload?.status||'ready').toLowerCase();
     const verified=response.ok&&payload?.ok!==false&&['ready','verified','ok','healthy'].includes(state);
-    return {state:verified?'verified':'configured-unverified',configured:true,verified,provider:rt.diarizationProvider,model:rt.diarizationModel,endpoint:base,error:verified?null:'diarization_probe_failed'};
+    return {state:verified?'verified':'configured-unverified',configured:true,verified,provider:resolved.provider,model:resolved.model||payload?.model||null,endpoint:resolved.baseUrl,source:resolved.source,error:verified?null:'diarization_probe_failed'};
   }catch{
-    return {state:'unavailable',configured:true,verified:false,provider:rt.diarizationProvider,model:rt.diarizationModel,endpoint:rt.diarizationBaseUrl,error:'diarization_probe_failed'};
+    return {state:'unavailable',configured:true,verified:false,provider:resolved.provider,model:resolved.model,endpoint:resolved.baseUrl,source:resolved.source,error:'diarization_probe_failed'};
   }
 }
 async function handleDiarize(req){
   if(req.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
   const body=await parseJson(req),rt=runtime();
   await contextFor(req,body?.organization_id);
-  const readiness=await diarizationReadiness(rt);
-  if(!readiness.verified)return json({ok:false,error:'diarization_provider_unverified',diarization:readiness},503);
-  const audio=String(body?.audio_base64||'').trim(),mimeType=String(body?.mime_type||'audio/webm').trim();
-  if(!audio||audio.length>12000000||!mimeType.startsWith('audio/'))return json({ok:false,error:'invalid_input'},400);
+  const localAi=await resolveLocalAiRuntime(rt);
+  const resolved=resolveDiarizationRuntime(rt,localAi);
+  const readiness=await diarizationReadiness(rt,localAi);
+  if(!readiness.verified||!resolved.baseUrl||!resolved.token)return json({ok:false,error:'diarization_provider_unverified',diarization:readiness},503);
+  const audio=String(body?.audio_base64||'').trim(),mimeType=String(body?.mime_type||'audio/wav').trim(),sessionId=String(body?.session_id||'').trim();
+  if(!audio||audio.length>12000000||mimeType!=='audio/wav'||!/^[A-Za-z0-9._:-]{8,128}$/.test(sessionId))return json({ok:false,error:'invalid_input'},400);
   const languageHints=Array.isArray(body?.language_hints)?body.language_hints.map(v=>String(v||'').trim()).filter(Boolean).slice(0,4):[];
-  const base=rt.diarizationBaseUrl.replace(/\/$/,'');
   let response;
   try{
-    response=await fetch(base+'/diarize',{
+    response=await fetch(resolved.baseUrl+'/diarize',{
       method:'POST',
-      headers:{authorization:'Bearer '+rt.diarizationToken,'content-type':'application/json',accept:'application/json'},
-      body:JSON.stringify({audio_base64:audio,mime_type:mimeType,language_hints:languageHints,max_speakers:2,model:rt.diarizationModel}),
-      signal:AbortSignal.timeout(30000),
+      headers:{authorization:'Bearer '+resolved.token,'content-type':'application/json',accept:'application/json'},
+      body:JSON.stringify({audio_base64:audio,mime_type:mimeType,session_id:sessionId,language_hints:languageHints,max_speakers:2,model:resolved.model}),
+      signal:AbortSignal.timeout(resolved.source==='render-free'?90000:30000),
     });
   }catch{return json({ok:false,error:'diarization_provider_unavailable'},503);}
   const payload=await response.json().catch(()=>({}));
-  if(!response.ok||payload?.ok===false)return json({ok:false,error:String(payload?.error||'diarization_provider_failed')},502);
+  if(!response.ok||payload?.ok===false)return json({ok:false,error:String(payload?.error||'diarization_provider_failed')},response.status>=400&&response.status<500?response.status:502);
   const source=Array.isArray(payload?.segments)?payload.segments:[];
   const segments=source.slice(0,24).map((segment,index)=>({
     speaker_id:String(segment?.speaker_id??segment?.speaker??'speaker-'+index).trim(),
@@ -256,7 +281,7 @@ async function approvedMemoryForAssistant(rt,context,{message,module}={}){
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
 async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
 async function handleStatus(req){
-  const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced'),diarization=await diarizationReadiness(rt);
+  const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced'),diarization=await diarizationReadiness(rt,localAi);
   const openai=providers.find(p=>p.id==='openai');
   const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
   const emergencyConfigured=rt.costPolicy.emergency_openai_enabled===true&&rt.costPolicy.emergency_openai_daily_budget_usd>0&&rt.costPolicy.emergency_openai_reserve_usd>0;
@@ -302,7 +327,7 @@ async function handleRequest(req: Request){
   const url=new URL(req.url),api=url.searchParams.get('api');
   try{
     if(api==='readiness'){
-      const rt=runtime(),{providers,localAi}=await readinessFor(rt,'balanced'),diarization=await diarizationReadiness(rt),openai=providers.find(p=>p.id==='openai');
+      const rt=runtime(),{providers,localAi}=await readinessFor(rt,'balanced'),diarization=await diarizationReadiness(rt,localAi),openai=providers.find(p=>p.id==='openai');
       const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
       const emergencyConfigured=rt.costPolicy.emergency_openai_enabled===true&&rt.costPolicy.emergency_openai_daily_budget_usd>0&&rt.costPolicy.emergency_openai_reserve_usd>0;
       const emergencyReady=emergencyConfigured&&openai?.configured===true&&openai?.verified===true;
