@@ -55,6 +55,11 @@ export type ManagerProductionVerificationSummary = {
   regression_reasons: string[];
   previous_deployment_sha: string | null;
   previous_verified_at: string | null;
+  last_known_good_sha: string | null;
+  last_known_good_verified_at: string | null;
+  last_known_good_version_id: string | null;
+  green_streak_count: number;
+  green_streak_capped: boolean;
   history: Array<{
     evidence_id: string | null;
     deployment_sha: string | null;
@@ -156,6 +161,11 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
       regression_reasons: [],
       previous_deployment_sha: null,
       previous_verified_at: null,
+      last_known_good_sha: null,
+      last_known_good_verified_at: null,
+      last_known_good_version_id: null,
+      green_streak_count: 0,
+      green_streak_capped: false,
       history: [],
       critical_routes: MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) => ({
         ...definition,
@@ -184,6 +194,20 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
       critical_network_routes_reachable: rowChecks.critical_network_routes_reachable === true
     };
   });
+  const persistedHistoryHealthy = (row: any) => {
+    const rowChecks = plainRecord(row?.checks);
+    return Boolean(
+      row &&
+      row.status === 'passed' &&
+      row.provider_state === 'verified' &&
+      rowChecks.production_commit_sha_verified === true &&
+      rowChecks.manager_readiness_route_reachable === true &&
+      rowChecks.critical_network_routes_reachable === true
+    );
+  };
+  const previousHealthy = historyRows.slice(1).find((row: any) => persistedHistoryHealthy(row)) ?? null;
+  const previousHealthyChecks = plainRecord(previousHealthy?.checks);
+
   const criticalRoutes = await Promise.all(
     MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) =>
       probeManagerCriticalRoute(definition, deploymentSha)
@@ -197,6 +221,16 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
     checks.critical_network_routes_reachable === true;
   const allCriticalRoutesVerified = criticalRoutes.every((route) => route.state === 'verified');
   const canaryVerified = persistedEvidenceVerified && allCriticalRoutesVerified;
+
+  let greenStreakCount = 0;
+  if (canaryVerified) {
+    greenStreakCount = 1;
+    for (const row of historyRows.slice(1)) {
+      if (!persistedHistoryHealthy(row)) break;
+      greenStreakCount += 1;
+    }
+  }
+  const greenStreakCapped = greenStreakCount === historyRows.length && historyRows.length === 5;
 
   const previous = historyRows[1] ?? null;
   const previousChecks = plainRecord(previous?.checks);
@@ -232,6 +266,13 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
     regression_reasons: regressionReasons,
     previous_deployment_sha: typeof previous?.target_version === 'string' ? previous.target_version : null,
     previous_verified_at: typeof previous?.created_at === 'string' ? previous.created_at : null,
+    last_known_good_sha: typeof previousHealthy?.target_version === 'string' ? previousHealthy.target_version : null,
+    last_known_good_verified_at: typeof previousHealthy?.created_at === 'string' ? previousHealthy.created_at : null,
+    last_known_good_version_id: typeof previousHealthyChecks.cloudflare_version_id === 'string'
+      ? previousHealthyChecks.cloudflare_version_id
+      : null,
+    green_streak_count: greenStreakCount,
+    green_streak_capped: greenStreakCapped,
     history,
     critical_routes: criticalRoutes
   };
