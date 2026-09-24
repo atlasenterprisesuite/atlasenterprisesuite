@@ -1,5 +1,5 @@
 {
-  "version": 16,
+  "version": 17,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -14,6 +14,7 @@
     "/finance/accounting/reports/automotive-sales",
     "/finance/accounting/accounts-receivable",
     "/inventory/procure-to-pay",
+    "/execution/manager/readiness",
     "/assistant",
     "/knowledge",
     "/voice",
