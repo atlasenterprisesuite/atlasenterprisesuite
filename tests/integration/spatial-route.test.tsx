@@ -19,10 +19,12 @@ afterEach(() => {
 const readyIdentity: AtlasIdentityState = {
   status: 'ready',
   userId: 'spatial-test-user',
+  tenantId: 'spatial-test-tenant',
+  tenantName: 'Spatial Test Tenant',
   organizationId: 'spatial-test-org',
   organizationName: 'Spatial Test Organization',
   role: 'admin',
-  permissions: ['audit.read'],
+  permissions: ['audit.read', 'spatial.read'],
 };
 
 const source: AtlasIdentitySource = { resolve: async () => readyIdentity };
