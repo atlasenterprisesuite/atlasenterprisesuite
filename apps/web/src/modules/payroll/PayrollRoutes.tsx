@@ -1,102 +1,75 @@
-import { Link, Route, Routes } from 'react-router-dom';
-import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import type { ReactNode } from 'react';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
+import { HelpDrawer } from './HelpDrawer';
+import { PayrollHome } from './PayrollHome';
+import { PayrollRunsPage } from './PayrollRunsPage';
+import { PayrollSettingsPage } from './PayrollSettingsPage';
+import { PeoplePage } from './PeoplePage';
+import { SetupWizard } from './SetupWizard';
+import { TimePtoPage } from './TimePtoPage';
 import './payroll.css';
 
-const payrollTiles = [
-  { to: '/payroll/overview', eyebrow: 'Control', title: 'Payroll Overview', description: 'Payroll status and configuration.' },
-  { to: '/payroll/people', eyebrow: 'Workforce', title: 'People', description: 'Payroll-ready worker records.' },
-  { to: '/payroll/time-earnings', eyebrow: 'Inputs', title: 'Time & Earnings', description: 'Hours, earnings and adjustments.' },
-  { to: '/payroll/pay-runs', eyebrow: 'Execution', title: 'Pay Runs', description: 'Prepare and review payroll cycles.' }
+const nav=[
+  ['/payroll','Overview'],
+  ['/payroll/setup/company','Setup'],
+  ['/payroll/runs','Payroll runs'],
+  ['/payroll/people','People'],
+  ['/payroll/time','Time & PTO'],
+  ['/payroll/reports','Reports'],
+  ['/payroll/settings','Settings'],
+  ['/payroll/help','Help']
 ] as const;
 
-const payrollSections: ModuleExperienceSection[] = [
-  {
-    eyebrow: 'Payroll architecture',
-    title: 'People, inputs and pay-run execution',
-    description: 'Payroll workspaces remain organization-scoped and expose only implemented routes while production records stay gated behind authorized data configuration.',
-    cards: payrollTiles.map((tile) => ({
-      label: tile.eyebrow,
-      title: tile.title,
-      description: tile.description,
-      to: tile.to
-    }))
-  },
-  {
-    eyebrow: 'Governance',
-    title: 'Controlled payroll before money movement',
-    description: 'ATLAS keeps payroll readiness, source state and approvals explicit before any operational value can be treated as production data.',
-    cards: [
-      { label: 'Tenant', title: 'Organization scoped', description: 'People, time and payroll execution remain inside the authenticated ATLAS organization.' },
-      { label: 'Inputs', title: 'Source-backed earnings', description: 'Hours, earnings and adjustments must originate from authorized tenant data sources.' },
-      { label: 'Execution', title: 'Governed pay runs', description: 'Preparation and review stay separated from irreversible money movement and external filing dependencies.' }
-    ]
-  }
-];
-
-function PayrollHome() {
-  return (
-    <ModuleExperiencePage
-      eyebrow="ATLAS Enterprise Suite"
-      title="ATLAS PAYROLL"
-      description="Payroll intelligence, governed inputs and controlled execution."
-      narrative="People • Pay • Progress"
-      sections={payrollSections}
-      statusNote="Production payroll metrics stay hidden until governed people, time, earnings and payroll data sources are configured for the active organization."
-    >
-      <section className="payroll-console" aria-label="Payroll operations console">
-        <div className="payroll-laptop-frame">
-          <div className="payroll-laptop-bar" aria-hidden="true"><span /><span /><span /></div>
-          <div className="payroll-console-body">
-            <div className="payroll-console-heading">
-              <div>
-                <p>Payroll operations</p>
-                <h2>Ready for configuration</h2>
-              </div>
-              <span className="payroll-status">Not configured</span>
-            </div>
-            <div className="payroll-empty-state">
-              <div className="payroll-empty-globe" aria-hidden="true" />
-              <div>
-                <strong>Payroll data is not configured</strong>
-                <p>Connect governed people, time, earnings and payroll data sources before operational metrics are shown.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="payroll-laptop-base" aria-hidden="true" />
-      </section>
-    </ModuleExperiencePage>
-  );
+function PayrollLayout({children}:{children:ReactNode}) {
+  const location=useLocation();
+  return <div className="payroll-layout">
+    <nav className="payroll-nav" aria-label="Payroll">
+      {nav.map(([to,label])=>{
+        const active=to==='/payroll'?location.pathname==='/payroll':location.pathname.startsWith(to);
+        return <Link className={active?'active':''} key={to} to={to}>{label}</Link>;
+      })}
+    </nav>
+    <main className="payroll-content">{children}</main>
+  </div>;
 }
 
-function PayrollSection({ title, description }: { title: string; description: string }) {
-  return (
-    <section className="payroll-page payroll-section-page">
-      <header className="payroll-section-header">
-        <p className="payroll-kicker">ATLAS PAYROLL</p>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </header>
-      <div className="payroll-section-empty">
-        <strong>Configuration required</strong>
-        <p>No production payroll records are shown until an authorized tenant data source is connected.</p>
-      </div>
-      <Link className="payroll-back-link" to="/payroll">Back to Payroll</Link>
-    </section>
-  );
+function PayrollBoundaryPage({title,description}:{title:string;description:string}) {
+  return <section className="payroll-page payroll-operational-page">
+    <header className="payroll-section-header"><p className="payroll-kicker">ATLAS PAYROLL</p><h1>{title}</h1><p>{description}</p></header>
+    <div className="payroll-callout">
+      <div><strong>No external completion state is assumed.</strong><p>ATLAS exposes this governed boundary without claiming filing, payment, coverage, compliance or provider execution until authenticated evidence exists.</p></div>
+    </div>
+  </section>;
+}
+
+function Routed({children}:{children:ReactNode}) {
+  return <PayrollLayout>{children}</PayrollLayout>;
 }
 
 export function PayrollRoutes() {
-  return (
-    <RequireAtlasIdentity>
-      <Routes>
-        <Route index element={<PayrollHome />} />
-        <Route path="overview" element={<PayrollSection title="Payroll Overview" description="Governed payroll status and configuration." />} />
-        <Route path="people" element={<PayrollSection title="People" description="Payroll-scoped worker records and eligibility." />} />
-        <Route path="time-earnings" element={<PayrollSection title="Time & Earnings" description="Governed time, earnings and adjustment inputs." />} />
-        <Route path="pay-runs" element={<PayrollSection title="Pay Runs" description="Prepare, review and approve payroll cycles." />} />
-      </Routes>
-    </RequireAtlasIdentity>
-  );
+  return <RequireAtlasIdentity>
+    <Routes>
+      <Route index element={<Routed><PayrollHome /></Routed>} />
+      <Route path="overview" element={<Routed><PayrollHome title="Payroll Overview" showBack /></Routed>} />
+      <Route path="setup" element={<Navigate to="/payroll/setup/company" replace />} />
+      <Route path="setup/:step" element={<Routed><SetupWizard /></Routed>} />
+      <Route path="people" element={<Routed><PeoplePage /></Routed>} />
+      <Route path="contractors" element={<Routed><PeoplePage /></Routed>} />
+      <Route path="time" element={<Routed><TimePtoPage /></Routed>} />
+      <Route path="pto" element={<Routed><TimePtoPage /></Routed>} />
+      <Route path="time-earnings" element={<Routed><TimePtoPage title="Time & Earnings" /></Routed>} />
+      <Route path="runs" element={<Routed><PayrollRunsPage /></Routed>} />
+      <Route path="pay-runs" element={<Routed><PayrollRunsPage title="Pay Runs" /></Routed>} />
+      <Route path="taxes" element={<Routed><PayrollBoundaryPage title="Payroll taxes" description="Validated tax rules can calculate governed payroll. Filing and remittance require separately authenticated external rails." /></Routed>} />
+      <Route path="deductions" element={<Routed><PayrollBoundaryPage title="Deductions" description="Effective-dated worker deductions feed payroll calculation when configured." /></Routed>} />
+      <Route path="benefits" element={<Routed><PayrollBoundaryPage title="Benefits" description="Benefits administration does not imply insurance issuance or carrier transmission." /></Routed>} />
+      <Route path="reports" element={<Routed><PayrollBoundaryPage title="Payroll reports" description="Reports are generated only from persisted payroll runs and calculation snapshots." /></Routed>} />
+      <Route path="settings" element={<Routed><PayrollSettingsPage /></Routed>} />
+      <Route path="settings/permissions" element={<Routed><PayrollBoundaryPage title="Payroll permissions" description="Payroll authority is governed by organization membership and server-side role bindings." /></Routed>} />
+      <Route path="settings/billing" element={<Routed><PayrollSettingsPage /></Routed>} />
+      <Route path="help" element={<Routed><HelpDrawer /></Routed>} />
+      <Route path="*" element={<Navigate to="/payroll" replace />} />
+    </Routes>
+  </RequireAtlasIdentity>;
 }
