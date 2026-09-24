@@ -200,7 +200,7 @@ describe('Manager readiness launcher', () => {
     expect(await screen.findByLabelText('Production regression detected')).toHaveTextContent('Regression detected');
     expect(screen.getByRole('alert')).toHaveTextContent('manager_readiness_regressed');
     expect(screen.getByRole('alert')).toHaveTextContent('live_critical_route_regression');
-    expect(screen.getByText('previous-sha')).toBeInTheDocument();
+    expect(screen.getAllByText('previous-sha').length).toBeGreaterThanOrEqual(2);
   });
 
   it('shows the exact sync error and retries only when requested', async () => {
