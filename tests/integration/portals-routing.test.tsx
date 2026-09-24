@@ -54,7 +54,7 @@ describe('ATLAS Portals routing', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Health Health Partial/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Health Health Implemented/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Enter Health' }));
     expect(screen.getByRole('heading', { name: 'Health destination' })).toBeInTheDocument();
   });
