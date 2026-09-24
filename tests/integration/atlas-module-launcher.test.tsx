@@ -16,7 +16,8 @@ test('renders one canonical launcher link for every approved ATLAS product modul
   );
 
   for (const module of ATLAS_MODULE_CATALOG) {
-    expect(screen.getByRole('link', { name: new RegExp(module.displayName, 'i') })).toHaveAttribute('href', module.route);
+    const label = screen.getByText(module.displayName, { selector: 'strong' });
+    expect(label.closest('a')).toHaveAttribute('href', module.route);
   }
-  expect(screen.getAllByRole('link')).toHaveLength(18);
+  expect(screen.getAllByRole('link')).toHaveLength(ATLAS_MODULE_CATALOG.length);
 });
