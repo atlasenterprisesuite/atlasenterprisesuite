@@ -23,6 +23,9 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
   const criticalRoutes = Array.isArray(summary.critical_routes)
     ? summary.critical_routes.map(record)
     : [];
+  const history = Array.isArray(summary.history)
+    ? summary.history.map(record)
+    : [];
   const canaryVerified = summary.canary_verified === true;
   const deploymentSha = nullableString(summary.deployment_sha);
   const verifiedAt = nullableString(summary.verified_at);
@@ -64,6 +67,46 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
           <dd><code>{versionId ?? 'Unavailable'}</code></dd>
         </div>
       </dl>
+
+      <div className="manager-history-section">
+        <div className="manager-route-heading">
+          <h3>Recent production deployments</h3>
+          <span>{history.length} shown</span>
+        </div>
+        {history.length ? (
+          <ol className="manager-history-list">
+            {history.map((item, index) => {
+              const sha = nullableString(item.deployment_sha);
+              const status = nullableString(item.status) ?? 'unknown';
+              const itemProvider = nullableString(item.provider);
+              const itemProviderState = nullableString(item.provider_state);
+              const itemVerifiedAt = nullableString(item.verified_at);
+              const verified =
+                status === 'passed' &&
+                item.production_commit_sha_verified === true &&
+                item.manager_readiness_route_reachable === true &&
+                item.critical_network_routes_reachable === true;
+              return (
+                <li key={nullableString(item.evidence_id) ?? sha ?? String(index)}>
+                  <div className="manager-history-copy">
+                    <strong>{index === 0 ? 'Current deployment' : 'Previous deployment'}</strong>
+                    <code title={sha ?? undefined}>{sha ?? 'Unavailable'}</code>
+                    <span>{readableDate(itemVerifiedAt)}</span>
+                  </div>
+                  <div className="manager-history-status">
+                    <span className="manager-route-state" data-state={verified ? 'verified' : 'unverified'}>
+                      {verified ? 'Verified' : status}
+                    </span>
+                    <small>{itemProvider ? itemProvider + (itemProviderState ? ' · ' + itemProviderState : '') : 'Provider unavailable'}</small>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="manager-route-empty">No deployment history is available yet.</p>
+        )}
+      </div>
 
       <div className="manager-route-section">
         <div className="manager-route-heading">
