@@ -63,7 +63,7 @@ describe('ATLAS Render free local AI runtime contract', () => {
 
   it('allocates production context headroom for the Render local runtime', () => {
     expect(start).toContain('ATLAS_RENDER_LOCAL_AI_CONTEXT_SIZE');
-    expect(start).toContain("|| '8192'");
+    expect(start).toContain("|| '4096'");
     expect(start).toContain('Math.max(4096');
     expect(start).toContain("'-c', localContext");
     expect(start).not.toContain("'-c', '512'");
@@ -75,7 +75,7 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(bootstrap).toContain("inference_output_present: true");
     expect(bootstrap).toContain("productionContextInstructions");
     expect(bootstrap).toContain("production_context_verified: true");
-    expect(bootstrap).toContain("RENDER_LOCAL_CONTEXT = 8192");
+    expect(bootstrap).toContain("RENDER_LOCAL_CONTEXT = 4096");
     expect(bootstrap).toContain("status: 'verified'");
     expect(workflow).toContain('runs-on: ubuntu-latest');
     expect(workflow).toContain('audience=atlas-local-ai-bootstrap');
