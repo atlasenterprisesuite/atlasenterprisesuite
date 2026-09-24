@@ -97,11 +97,26 @@ function laneLabel(step: GpsRouteStep | null) {
   return [...new Set(labels)].join(' / ') || 'Carril válido indicado';
 }
 
+function maneuverSymbol(step: GpsRouteStep | null) {
+  const type = String(step?.instruction_type || '').toLowerCase();
+  const modifier = String(step?.modifier || '').toLowerCase();
+  if (type.includes('roundabout') || type.includes('rotary')) return '⟳';
+  if (modifier.includes('sharp left')) return '↶';
+  if (modifier.includes('sharp right')) return '↷';
+  if (modifier.includes('left')) return '↰';
+  if (modifier.includes('right')) return '↱';
+  if (modifier.includes('uturn')) return '↶';
+  return '↑';
+}
+
 export function Gps4DPage() {
   const mapNode = useRef<HTMLDivElement | null>(null);
+  const driveMapNode = useRef<HTMLDivElement | null>(null);
   const map = useRef<any>(null);
+  const driveMap = useRef<any>(null);
   const maplibre = useRef<any>(null);
   const currentMarker = useRef<any>(null);
+  const driveMarker = useRef<any>(null);
   const selectedMarker = useRef<any>(null);
   const watchId = useRef<number | null>(null);
   const activeRouteRef = useRef<GpsRoute | null>(null);
@@ -202,6 +217,45 @@ export function Gps4DPage() {
   }, []);
 
   useEffect(() => {
+    if (!navigationActive || !driveMapNode.current || !maplibre.current || driveMap.current) return;
+
+    const module = maplibre.current;
+    const center: [number, number] = current ? [current.lon, current.lat] : ORLANDO;
+    const instance = new module.Map({
+      container: driveMapNode.current,
+      style: STREET_STYLE,
+      center,
+      zoom: current ? 18.2 : 15.5,
+      pitch: 72,
+      bearing: current?.heading_deg ?? 0,
+      maxPitch: 85,
+      attributionControl: false,
+      interactive: false
+    });
+
+    driveMap.current = instance;
+    instance.on('load', () => {
+      renderRouteOn(instance, activeRouteRef.current, 'atlas-drive-route', false);
+      if (current) {
+        const markerElement = document.createElement('div');
+        markerElement.className = 'gps4d-vehicle-marker';
+        markerElement.textContent = '▲';
+        driveMarker.current = new module.Marker({
+          element: markerElement,
+          rotationAlignment: 'map',
+          pitchAlignment: 'map'
+        }).setLngLat([current.lon, current.lat]).addTo(instance);
+      }
+    });
+
+    return () => {
+      driveMap.current?.remove();
+      driveMap.current = null;
+      driveMarker.current = null;
+    };
+  }, [navigationActive]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const lat = Number(params.get('lat'));
     const lon = Number(params.get('lon'));
@@ -273,30 +327,48 @@ export function Gps4DPage() {
     renderRoute(activeRoute);
   }, [activeRoute]);
 
-  function renderRoute(route: GpsRoute | null) {
-    const instance = map.current;
+  function renderRouteOn(instance: any, route: GpsRoute | null, prefix: string, fitBounds: boolean) {
     if (!instance || !instance.isStyleLoaded?.()) return;
+    const sourceId = `${prefix}-source`;
+    const glowId = `${prefix}-glow`;
+    const lineId = `${prefix}-line`;
+
     try {
-      if (instance.getLayer('atlas-route-line')) instance.removeLayer('atlas-route-line');
-      if (instance.getSource('atlas-route')) instance.removeSource('atlas-route');
+      if (instance.getLayer(glowId)) instance.removeLayer(glowId);
+      if (instance.getLayer(lineId)) instance.removeLayer(lineId);
+      if (instance.getSource(sourceId)) instance.removeSource(sourceId);
       if (!route?.geometry) return;
-      instance.addSource('atlas-route', {
+
+      instance.addSource(sourceId, {
         type: 'geojson',
         data: { type: 'Feature', properties: {}, geometry: route.geometry }
       });
       instance.addLayer({
-        id: 'atlas-route-line',
+        id: glowId,
         type: 'line',
-        source: 'atlas-route',
+        source: sourceId,
         paint: {
-          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 4, 16, 8],
-          'line-color': '#30a2ff',
-          'line-opacity': 0.9
+          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 10, 18, 26],
+          'line-color': '#6f4cff',
+          'line-opacity': 0.36,
+          'line-blur': 4
         },
         layout: { 'line-cap': 'round', 'line-join': 'round' }
       });
+      instance.addLayer({
+        id: lineId,
+        type: 'line',
+        source: sourceId,
+        paint: {
+          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 4, 18, 11],
+          'line-color': '#35c8ff',
+          'line-opacity': 0.98
+        },
+        layout: { 'line-cap': 'round', 'line-join': 'round' }
+      });
+
       const coordinates = route.geometry.coordinates || [];
-      if (coordinates.length > 1) {
+      if (fitBounds && coordinates.length > 1 && maplibre.current) {
         const bounds = coordinates.reduce(
           (box: any, coordinate: [number, number]) => box.extend(coordinate),
           new maplibre.current.LngLatBounds(coordinates[0], coordinates[0])
@@ -304,8 +376,13 @@ export function Gps4DPage() {
         instance.fitBounds(bounds, { padding: 70, duration: 550 });
       }
     } catch {
-      // Style transitions can invalidate transient sources; the next route/mode update restores them.
+      // Style transitions can invalidate transient sources; the next route or map load restores them.
     }
+  }
+
+  function renderRoute(route: GpsRoute | null) {
+    renderRouteOn(map.current, route, 'atlas-overview-route', true);
+    renderRouteOn(driveMap.current, route, 'atlas-drive-route', false);
   }
 
   function updateNavigation(next: LivePosition) {
@@ -385,13 +462,39 @@ export function Gps4DPage() {
         if (center) {
           map.current.easeTo({
             center: [next.lon, next.lat],
-            zoom: Math.max(map.current.getZoom(), navigationActiveRef.current ? 16.5 : 15),
-            bearing: navigationActiveRef.current && next.heading_deg !== null ? next.heading_deg : map.current.getBearing(),
-            pitch: navigationActiveRef.current ? (viewMode === 'terrain3d' ? 62 : 45) : map.current.getPitch(),
+            zoom: Math.max(map.current.getZoom(), navigationActiveRef.current ? 15.5 : 15),
+            bearing: navigationActiveRef.current ? 0 : map.current.getBearing(),
+            pitch: navigationActiveRef.current ? 0 : map.current.getPitch(),
             duration: 450
           });
         }
       }
+
+      if (driveMap.current && maplibre.current) {
+        if (!driveMarker.current) {
+          const markerElement = document.createElement('div');
+          markerElement.className = 'gps4d-vehicle-marker';
+          markerElement.textContent = '▲';
+          driveMarker.current = new maplibre.current.Marker({
+            element: markerElement,
+            rotationAlignment: 'map',
+            pitchAlignment: 'map'
+          }).setLngLat([next.lon, next.lat]).addTo(driveMap.current);
+        } else {
+          driveMarker.current.setLngLat([next.lon, next.lat]);
+        }
+        if (typeof driveMarker.current.setRotation === 'function') {
+          driveMarker.current.setRotation(next.heading_deg ?? 0);
+        }
+        driveMap.current.easeTo({
+          center: [next.lon, next.lat],
+          zoom: 18.2,
+          bearing: next.heading_deg ?? driveMap.current.getBearing(),
+          pitch: 72,
+          duration: 350
+        });
+      }
+
       if (selectedRef.current) {
         const destinationDistance = metersBetween(next, selectedRef.current);
         if (destinationDistance <= 35) setArrivalState('arrived');
@@ -552,7 +655,7 @@ export function Gps4DPage() {
 
   return (
     <section className="gps4d-page">
-      <header className="gps4d-header">
+      <header className={`gps4d-header ${navigationActive ? 'gps4d-nav-hidden' : ''}`}>
         <div>
           <p className="eyebrow">ATLAS GPS 4D</p>
           <h1>Navigation & Spatial Intelligence</h1>
@@ -569,14 +672,14 @@ export function Gps4DPage() {
         Public map/routing services are capability-gated and are not presented as SLA-backed ATLAS providers. Live traffic, incidents, street-level imagery, realtime transit and offline world tiles remain blocked until authoritative providers or self-hosted data are verified.
       </div>
 
-      <nav className="gps4d-view-modes" aria-label="GPS map layers">
+      <nav className={`gps4d-view-modes ${navigationActive ? 'gps4d-nav-hidden' : ''}`} aria-label="GPS map layers">
         <button type="button" aria-pressed={viewMode === 'street'} onClick={() => setViewMode('street')}>Map</button>
         <button type="button" aria-pressed={viewMode === 'satellite'} onClick={() => setViewMode('satellite')}>Satellite</button>
         <button type="button" aria-pressed={viewMode === 'terrain3d'} onClick={() => setViewMode('terrain3d')}>3D</button>
         <span>{mapModeDetail}</span>
       </nav>
 
-      <div className="gps4d-toolbar">
+      <div className={`gps4d-toolbar ${navigationActive ? 'gps4d-nav-hidden' : ''}`}>
         <div className="gps4d-search">
           <input
             value={query}
@@ -611,9 +714,29 @@ export function Gps4DPage() {
         </button>
       </div>
 
-      <div className="gps4d-layout">
-        <div className="gps4d-map-wrap">
-          <div ref={mapNode} className="gps4d-map" aria-label="ATLAS GPS 4D map" />
+      <div className={`gps4d-layout ${navigationActive ? 'gps4d-layout-navigation' : ''}`}>
+        <div className={`gps4d-map-wrap ${navigationActive ? 'gps4d-map-wrap-navigation' : ''}`}>
+          {navigationActive && (
+            <div className="gps4d-drive-view">
+              <div ref={driveMapNode} className="gps4d-drive-map" aria-label="ATLAS 3D drive navigation view" />
+              <div className="gps4d-drive-brand">ATLAS <span>GPS 4D</span></div>
+              <div className="gps4d-drive-chip">
+                <strong>{speedMph === null ? '—' : `${Math.round(speedMph)} mph`}</strong>
+                <span>{current?.heading_deg === null || current?.heading_deg === undefined ? 'Rumbo —' : `Rumbo ${Math.round(current.heading_deg)}°`}</span>
+              </div>
+              <div className="gps4d-drive-controls">
+                <button type="button" disabled title="Street-level imagery requiere un proveedor autorizado">◉</button>
+                <button type="button" onClick={() => setVoiceEnabled((value) => !value)} title={voiceEnabled ? 'Silenciar guía' : 'Activar guía'}>
+                  {voiceEnabled ? '🔊' : '🔇'}
+                </button>
+              </div>
+              <div className="gps4d-drive-chevron" aria-hidden="true">
+                <span>▲</span><span>▲</span><span>▲</span>
+              </div>
+              <div className="gps4d-drive-source">3D vector drive view · Street-level imagery BLOCKED</div>
+            </div>
+          )}
+          <div ref={mapNode} className={`gps4d-map ${navigationActive ? 'gps4d-overview-map' : ''}`} aria-label="ATLAS GPS 4D map" />
           {engineState !== 'ready' && (
             <div className="gps4d-overlay">
               {engineState === 'loading' ? 'Cargando motor MapLibre…' : 'Motor MapLibre no disponible.'}
@@ -632,15 +755,23 @@ export function Gps4DPage() {
             </div>
           )}
           {navigationActive && (
-            <div className="gps4d-nav-banner" role="status">
-              <strong>{instructionLabel(activeStep)}</strong>
-              <span>{activeStep ? formatDistance(activeStep.distance_m) : '—'} · ETA {etaMinutes ?? '—'} min</span>
-              <span>Carril: {laneLabel(activeStep)}</span>
+            <div className="gps4d-turn-card" role="status">
+              <div className="gps4d-turn-icon">{maneuverSymbol(activeStep)}</div>
+              <div className="gps4d-turn-copy">
+                <span className="gps4d-turn-distance">{activeStep ? formatDistance(activeStep.distance_m) : '—'}</span>
+                <strong>{instructionLabel(activeStep)}</strong>
+                <span>Carril: {laneLabel(activeStep)}</span>
+              </div>
+              <div className="gps4d-trip-summary">
+                <strong>{etaMinutes ?? '—'} min</strong>
+                <span>{remainingM > 0 ? formatDistance(remainingM) : routeMessage}</span>
+                <button type="button" onClick={stopNavigation}>× End</button>
+              </div>
             </div>
           )}
         </div>
 
-        <aside className="gps4d-panel">
+        <aside className={`gps4d-panel ${navigationActive ? 'gps4d-panel-navigation-hidden' : ''}`}>
           <div className="gps4d-panel-heading">
             <h2>ATLAS Navigate</h2>
             <label className="gps4d-toggle">
@@ -729,7 +860,7 @@ export function Gps4DPage() {
         </aside>
       </div>
 
-      <section className="gps4d-capabilities" aria-labelledby="gps-capabilities-title">
+      <section className={`gps4d-capabilities ${navigationActive ? 'gps4d-nav-hidden' : ''}`} aria-labelledby="gps-capabilities-title">
         <div>
           <p className="eyebrow">Truthful capability registry</p>
           <h2 id="gps-capabilities-title">GPS 4D platform status</h2>

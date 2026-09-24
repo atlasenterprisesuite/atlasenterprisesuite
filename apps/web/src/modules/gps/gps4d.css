@@ -75,3 +75,132 @@
   .gps4d-layer-status { left:10px; bottom:10px; max-width:calc(100% - 20px); flex-wrap:wrap; }
   .gps4d-arrival { top:10px; max-width:calc(100% - 24px); text-align:center; }
 }
+
+.gps4d-nav-hidden { display:none !important; }
+.gps4d-layout-navigation { grid-template-columns:minmax(0,1fr); min-height:calc(100vh - 96px); }
+.gps4d-panel-navigation-hidden { display:none; }
+.gps4d-map-wrap-navigation {
+  display:grid;
+  grid-template-rows:minmax(340px,48vh) minmax(360px,52vh);
+  gap:0;
+  min-height:calc(100vh - 96px);
+  border-radius:22px;
+  background:#030814;
+}
+.gps4d-drive-view { position:relative; overflow:hidden; min-height:340px; border-bottom:1px solid rgba(67,193,255,.28); background:#06111f; }
+.gps4d-drive-map { position:absolute; inset:0; width:100%; height:100%; }
+.gps4d-overview-map { min-height:360px; height:100%; }
+.gps4d-drive-brand {
+  position:absolute; left:50%; top:14px; transform:translateX(-50%);
+  z-index:540; padding:9px 16px; border:1px solid rgba(82,190,255,.32);
+  border-radius:999px; background:rgba(3,10,24,.86); backdrop-filter:blur(16px);
+  font-weight:800; letter-spacing:.12em; box-shadow:0 8px 28px rgba(0,0,0,.24);
+}
+.gps4d-drive-brand span { color:#35c8ff; letter-spacing:.04em; margin-left:6px; }
+.gps4d-drive-chip {
+  position:absolute; left:14px; top:14px; z-index:540; display:grid; gap:1px;
+  min-width:108px; padding:9px 12px; border-radius:16px;
+  background:rgba(3,10,24,.82); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(14px);
+}
+.gps4d-drive-chip strong { font-size:18px; }
+.gps4d-drive-chip span { font-size:11px; opacity:.72; }
+.gps4d-drive-controls {
+  position:absolute; right:14px; top:14px; z-index:540; display:grid; gap:8px;
+}
+.gps4d-drive-controls button {
+  width:44px; height:44px; min-height:44px; padding:0; border-radius:50%;
+  border:1px solid rgba(255,255,255,.16); background:rgba(3,10,24,.84); backdrop-filter:blur(14px);
+}
+.gps4d-drive-controls button:disabled { opacity:.44; cursor:not-allowed; }
+.gps4d-drive-chevron {
+  position:absolute; left:50%; bottom:32px; transform:translateX(-50%);
+  z-index:525; display:grid; justify-items:center; gap:0; pointer-events:none;
+  filter:drop-shadow(0 0 12px rgba(53,200,255,.7));
+}
+.gps4d-drive-chevron span {
+  display:block; margin-top:-10px; color:#56d7ff; font-size:46px; line-height:.72;
+  text-shadow:0 0 10px rgba(111,76,255,.9);
+}
+.gps4d-drive-chevron span:nth-child(2) { opacity:.72; transform:scale(.85); }
+.gps4d-drive-chevron span:nth-child(3) { opacity:.42; transform:scale(.7); }
+.gps4d-drive-source {
+  position:absolute; left:12px; bottom:10px; z-index:530;
+  padding:5px 8px; border-radius:999px; font-size:10px; letter-spacing:.03em;
+  background:rgba(3,10,24,.72); border:1px solid rgba(255,255,255,.1); opacity:.82;
+}
+.gps4d-vehicle-marker {
+  width:34px; height:34px; display:grid; place-items:center; border-radius:50%;
+  color:#fff; background:linear-gradient(145deg,#1ca7ff,#704dff);
+  border:3px solid #fff; box-shadow:0 0 0 5px rgba(53,200,255,.24),0 8px 18px rgba(0,0,0,.32);
+  font-size:16px; transform-origin:center;
+}
+.gps4d-turn-card {
+  position:absolute; left:18px; right:18px; bottom:18px; z-index:560;
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:16px; align-items:center;
+  padding:16px 18px; border-radius:20px; color:#eef7ff;
+  background:linear-gradient(145deg,rgba(4,15,34,.96),rgba(8,19,39,.94));
+  border:1px solid rgba(53,200,255,.42); box-shadow:0 18px 44px rgba(0,0,0,.4);
+  backdrop-filter:blur(18px);
+}
+.gps4d-turn-icon {
+  width:74px; height:74px; display:grid; place-items:center; border-radius:18px;
+  background:radial-gradient(circle at 50% 35%,rgba(53,200,255,.26),rgba(111,76,255,.13));
+  color:#4fd3ff; font-size:48px; font-weight:800;
+}
+.gps4d-turn-copy { display:grid; min-width:0; gap:3px; }
+.gps4d-turn-copy strong { font-size:clamp(18px,2.4vw,30px); line-height:1.08; overflow-wrap:anywhere; }
+.gps4d-turn-copy > span:last-child { font-size:12px; opacity:.72; }
+.gps4d-turn-distance { color:#52d5ff; font-weight:800; font-size:16px; }
+.gps4d-trip-summary {
+  display:grid; gap:4px; justify-items:end; min-width:118px; padding-left:14px;
+  border-left:1px solid rgba(255,255,255,.12);
+}
+.gps4d-trip-summary > strong { color:#4fd3ff; font-size:22px; }
+.gps4d-trip-summary > span { font-size:12px; opacity:.72; }
+.gps4d-trip-summary button { min-height:38px; border-radius:12px; padding:0 14px; margin-top:4px; }
+.gps4d-map-wrap-navigation .gps4d-layer-status { bottom:auto; top:calc(48vh + 10px); }
+.gps4d-map-wrap-navigation .gps4d-arrival { top:calc(48vh + 12px); }
+
+@media (max-width:900px) {
+  .gps4d-layout-navigation { display:block; }
+  .gps4d-map-wrap-navigation {
+    grid-template-rows:minmax(300px,43vh) minmax(370px,57vh);
+    min-height:calc(100svh - 24px);
+    border-radius:18px;
+  }
+  .gps4d-map-wrap-navigation .gps4d-layer-status { top:calc(43vh + 8px); }
+  .gps4d-map-wrap-navigation .gps4d-arrival { top:calc(43vh + 10px); }
+}
+@media (max-width:640px) {
+  .gps4d-layout-navigation { min-height:100svh; }
+  .gps4d-map-wrap-navigation {
+    min-height:100svh;
+    grid-template-rows:42svh 58svh;
+    border-radius:0;
+    border-left:0;
+    border-right:0;
+  }
+  .gps4d-drive-view { min-height:42svh; }
+  .gps4d-overview-map { min-height:58svh; }
+  .gps4d-drive-brand { top:10px; padding:7px 11px; font-size:12px; }
+  .gps4d-drive-chip { left:10px; top:10px; min-width:88px; padding:7px 9px; }
+  .gps4d-drive-chip strong { font-size:15px; }
+  .gps4d-drive-controls { right:10px; top:10px; }
+  .gps4d-drive-controls button { width:38px; height:38px; min-height:38px; }
+  .gps4d-drive-chevron { bottom:24px; }
+  .gps4d-drive-chevron span { font-size:40px; }
+  .gps4d-drive-source { left:8px; bottom:7px; font-size:9px; max-width:75%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gps4d-turn-card {
+    left:10px; right:10px; bottom:12px; gap:10px; padding:12px;
+    grid-template-columns:54px minmax(0,1fr) auto; border-radius:17px;
+  }
+  .gps4d-turn-icon { width:54px; height:54px; border-radius:14px; font-size:34px; }
+  .gps4d-turn-copy strong { font-size:17px; }
+  .gps4d-turn-distance { font-size:14px; }
+  .gps4d-trip-summary { min-width:76px; padding-left:9px; }
+  .gps4d-trip-summary > strong { font-size:17px; }
+  .gps4d-trip-summary > span { max-width:82px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gps4d-trip-summary button { min-height:34px; padding:0 9px; font-size:12px; }
+  .gps4d-map-wrap-navigation .gps4d-layer-status { top:calc(42svh + 8px); bottom:auto; }
+  .gps4d-map-wrap-navigation .gps4d-arrival { top:calc(42svh + 10px); }
+}
