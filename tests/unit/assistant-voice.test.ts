@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createAssistantSpeechRecognition,
   detectAudioRecordingCapability,
+  detectPcmWavRecordingCapability,
   detectMicrophoneCapability,
   detectSpeechOutputCapability,
   detectSpeechRecognitionCapability,
+  encodePcm16Wav,
   requestMicrophoneCapture,
   speechRecognitionErrorCode,
   stopMicrophoneCapture
@@ -55,6 +57,24 @@ describe('ATLAS Assistant browser voice primitives', () => {
   it('fails closed when raw audio recording is unavailable', () => {
     vi.stubGlobal('MediaRecorder', undefined);
     expect(detectAudioRecordingCapability()).toBe('unavailable');
+  });
+
+  it('builds a 16-bit mono WAV payload for local diarization', async () => {
+    const blob = encodePcm16Wav(new Float32Array([0, 0.5, -0.5, 1, -1]), 16000);
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    expect(blob.type).toBe('audio/wav');
+    expect(String.fromCharCode(...bytes.slice(0, 4))).toBe('RIFF');
+    expect(String.fromCharCode(...bytes.slice(8, 12))).toBe('WAVE');
+    expect(bytes.length).toBe(54);
+  });
+
+  it('gates PCM capture on browser AudioContext and microphone support', () => {
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: vi.fn() } });
+    vi.stubGlobal('AudioContext', undefined);
+    expect(detectPcmWavRecordingCapability()).toBe('unavailable');
+
+    vi.stubGlobal('AudioContext', class {});
+    expect(detectPcmWavRecordingCapability()).toBe('ready');
   });
 
   it('reports browser speech recognition only when a constructor exists', () => {
