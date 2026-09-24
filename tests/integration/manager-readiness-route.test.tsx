@@ -76,6 +76,32 @@ describe('Manager readiness launcher', () => {
         provider_state: 'verified',
         version_id: '38b63eb1-6b04-4f32-8a00-96e93f519244',
         evidence_id: 'evidence-1',
+        history: [
+          {
+            evidence_id: 'evidence-1',
+            deployment_sha: 'a1ac03f22df4db95766167eee0962529ccf85634',
+            verified_at: '2026-09-24T07:11:46.336059Z',
+            status: 'passed',
+            provider: 'cloudflare',
+            provider_state: 'verified',
+            version_id: '38b63eb1-6b04-4f32-8a00-96e93f519244',
+            production_commit_sha_verified: true,
+            manager_readiness_route_reachable: true,
+            critical_network_routes_reachable: true
+          },
+          {
+            evidence_id: 'evidence-0',
+            deployment_sha: '8c0249b5d4f8141e8eb487d9f554d78a61e674b5',
+            verified_at: '2026-09-24T06:40:00Z',
+            status: 'passed',
+            provider: 'cloudflare',
+            provider_state: 'verified',
+            version_id: 'older-version',
+            production_commit_sha_verified: true,
+            manager_readiness_route_reachable: true,
+            critical_network_routes_reachable: true
+          }
+        ],
         critical_routes: [
           { label: 'ATLAS Network', path: '/business/network', state: 'verified', http_status: 200 },
           { label: 'Pricing', path: '/business/network/pricing', state: 'verified', http_status: 200 },
@@ -96,12 +122,16 @@ describe('Manager readiness launcher', () => {
 
     expect(await screen.findByRole('heading', { name: 'Production verification' })).toBeInTheDocument();
     expect(screen.getByLabelText('Production canary verified')).toHaveTextContent('Canary verified');
-    expect(screen.getByText('a1ac03f22df4db95766167eee0962529ccf85634')).toBeInTheDocument();
+    expect(screen.getAllByText('a1ac03f22df4db95766167eee0962529ccf85634').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('/business/network')).toBeInTheDocument();
     expect(screen.getByText('/business/network/pricing')).toBeInTheDocument();
     expect(screen.getByText('/business/network/commissions')).toBeInTheDocument();
     expect(screen.getByText('/business/network/payouts')).toBeInTheDocument();
     expect(screen.getByText('/business/network/compliance')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Recent production deployments' })).toBeInTheDocument();
+    expect(screen.getByText('Current deployment')).toBeInTheDocument();
+    expect(screen.getByText('Previous deployment')).toBeInTheDocument();
+    expect(screen.getByText('8c0249b5d4f8141e8eb487d9f554d78a61e674b5')).toBeInTheDocument();
   });
 
   it('shows the exact sync error and retries only when requested', async () => {
