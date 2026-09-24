@@ -112,9 +112,11 @@ describe('ATLAS CRM HubSpot resilience contract', () => {
     expect(edge).toContain("'connection.health'");
   });
 
-  it('fails closed on outbound CRM writes unless an explicit server policy enables them', () => {
-    expect(operations).toContain('input.deps.writesEnabled !== true');
-    expect(operations).toContain('crm_writes_disabled');
-    expect(edge).toContain("HUBSPOT_CRM_WRITES_ENABLED");
+  it('keeps HubSpot P0 business-data access strictly read-only', () => {
+    expect(operations).not.toContain("'crm.create'");
+    expect(operations).not.toContain('createObject');
+    expect(operations).not.toContain('writesEnabled');
+    expect(edge).not.toContain("'crm.create'");
+    expect(edge).not.toContain('HUBSPOT_CRM_WRITES_ENABLED');
   });
 });
