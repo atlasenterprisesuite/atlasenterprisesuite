@@ -6,7 +6,7 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const CANONICAL_REPO = Deno.env.get('ATLAS_CANONICAL_REPO') || 'atlasenterprisesuite/atlasenterprisesuite';
 const PRODUCTION_URL = Deno.env.get('ATLAS_PRODUCTION_URL') || 'https://www.atlasenterprisesuite.com';
-const VERSION = 6;
+const VERSION = 7;
 
 type Blocker = {
   stage: string;
@@ -367,7 +367,7 @@ Deno.serve(async (req: Request) => {
     releaseQ.error || runtimeQ.error || infraQ.error || controlQ.error ? 'degraded' : 'ready';
 
   const normalized = evaluateInfrastructure({
-    github: { state: ['ready', 'oidc_bridge_reachable_token_not_present'].includes(github.state) ? 'ready' : github.state, required: true },
+    github: { state: ['ready', 'oidc_bridge_reachable_token_not_present'].includes(github.state) ? 'ready' : github.state, required: false },
     supabase: { state: supabaseState, required: true },
     cloudflare: { state: cloudflare.state, required: true },
     production: { state: productionRoot.reachable ? 'ready' : 'public_site_unreachable', required: true },
@@ -460,7 +460,7 @@ Deno.serve(async (req: Request) => {
     target_public_route: '/atlas/infra/status',
     required_path: normalized.requiredPath,
     provider_requirements: {
-      github: true,
+      github: false,
       supabase: true,
       cloudflare: true,
       production: true,
