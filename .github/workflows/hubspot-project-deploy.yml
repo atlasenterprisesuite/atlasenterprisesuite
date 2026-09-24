@@ -25,30 +25,79 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify HubSpot deployment credential
-        shell: bash
-        run: |
-          if [ -z "$DEFAULT_PERSONAL_ACCESS_KEY" ]; then
-            echo "::error::GitHub Actions secret HUBSPOT_PERSONAL_ACCESS_KEY is not available to this workflow."
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate HubSpot project
+      - name: Validate HubSpot project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const base = 'hubspot/atlas-crm-hubspot';
+          const files = [
+            `${base}/hsproject.json`,
+            `${base}/src/app/app-hsmeta.json`,
+            `${base}/src/app/webhooks/atlas-crm-hubspot-webhooks-hsmeta.json`
+          ];
+          for (const file of files) {
+            if (!fs.existsSync(file)) throw new Error(`missing HubSpot project file: ${file}`);
+            JSON.parse(fs.readFileSync(file, 'utf8'));
+          }
+          const app = JSON.parse(fs.readFileSync(`${base}/src/app/app-hsmeta.json`, 'utf8'));
+          const project = JSON.parse(fs.readFileSync(`${base}/hsproject.json`, 'utf8'));
+          const webhook = JSON.parse(fs.readFileSync(`${base}/src/app/webhooks/atlas-crm-hubspot-webhooks-hsmeta.json`, 'utf8'));
+          if (app.uid !== 'atlas_crm_hubspot_app') throw new Error('HubSpot app UID mismatch');
+          if (!app.config?.auth?.requiredScopes?.includes('crm.objects.tickets.read')) throw new Error('HubSpot ticket read scope missing');
+          if (app.config?.auth?.requiredScopes?.includes('tickets')) throw new Error('legacy HubSpot tickets scope present');
+          if (project.platformVersion !== '2026.09') throw new Error('HubSpot platform version mismatch');
+          if (webhook.type !== 'webhooks') throw new Error('HubSpot webhook metadata type mismatch');
+          console.log('ATLAS_HUBSPOT_PROJECT_SOURCE_OK');
+          NODE
+
+      - name: Evaluate HubSpot deployment credential
+        id: credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$DEFAULT_PERSONAL_ACCESS_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "HubSpot deployment credential: available" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          echo "HubSpot deployment credential: external-gated (not configured in GitHub Actions)" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "::error::Manual HubSpot deployment requested, but HUBSPOT_PERSONAL_ACCESS_KEY is not configured."
+            exit 1
+          fi
+
+          echo "::warning::HubSpot provider deploy skipped on push because HUBSPOT_PERSONAL_ACCESS_KEY is not configured. Source validation passed; provider state remains external-gated."
+
+      - name: Validate HubSpot project with provider tooling
+        if: steps.credential.outputs.available == 'true'
         uses: HubSpot/hubspot-project-actions/project-validate@v1.1.2
         with:
           project_dir: "./hubspot/atlas-crm-hubspot"
 
       - name: Upload HubSpot project
+        if: steps.credential.outputs.available == 'true'
         id: upload
         uses: HubSpot/hubspot-project-actions/project-upload@v1.1.2
         with:
           project_dir: "./hubspot/atlas-crm-hubspot"
 
       - name: Deploy HubSpot project
+        if: steps.credential.outputs.available == 'true'
         uses: HubSpot/hubspot-project-actions/project-deploy@v1.1.2
         with:
           build_id: ${{ steps.upload.outputs.build_id }}
           project_dir: "./hubspot/atlas-crm-hubspot"
+
+      - name: Record external provider gate
+        if: steps.credential.outputs.available != 'true' && github.event_name != 'workflow_dispatch'
+        shell: bash
+        run: |
+          echo "ATLAS_HUBSPOT_DEPLOY_EXTERNAL_GATED"
