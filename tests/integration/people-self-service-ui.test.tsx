@@ -78,7 +78,7 @@ it('shows only the authenticated employee self-service read model', async () => 
   expect(await screen.findByRole('heading', { name: 'Employee Self-Service' })).toBeInTheDocument();
   expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
   expect(screen.getByText('$22.00 / hour')).toBeInTheDocument();
-  expect(screen.getByText('Health Plan')).toBeInTheDocument();
+  expect(await screen.findByText(/Health Plan/)).toBeInTheDocument();
   expect(screen.getByText('$800.00')).toBeInTheDocument();
   expect(screen.getByText('8.00 h')).toBeInTheDocument();
   expect(screen.queryByText('Bob Other')).not.toBeInTheDocument();
