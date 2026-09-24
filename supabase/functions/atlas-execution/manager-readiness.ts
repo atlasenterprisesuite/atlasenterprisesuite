@@ -7,13 +7,14 @@ export class ManagerReadinessError extends Error {
 }
 
 type ProviderKey = 'github' | 'supabase' | 'cloudflare' | 'production';
-type ProviderStatus = { state: string; required: true };
-type OptionalProviderStatus = { state: string; required: false } | null;
+type RequiredProviderStatus = { state: string; required: true };
+type OptionalProviderStatus = { state: string; required: false };
+type ProviderStatus = RequiredProviderStatus | OptionalProviderStatus;
 
 type InfraBlocker = { stage: string; code: string; detail: string };
 
 export type ManagerInfraStatus = {
-  providers: Record<ProviderKey, ProviderStatus> & { vercel?: OptionalProviderStatus };
+  providers: Record<ProviderKey, ProviderStatus> & { vercel?: OptionalProviderStatus | null };
   blockers: InfraBlocker[];
   organizationId: string | null;
 };
@@ -29,13 +30,29 @@ function plainRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 }
 
-function normalizeRequiredProvider(value: unknown, requirement: unknown): ProviderStatus {
+function normalizeRequiredProvider(value: unknown, requirement: unknown): RequiredProviderStatus {
   const raw = plainRecord(value);
   const required = raw.required === true || (raw.required === undefined && requirement === true);
-  if (typeof raw.state !== 'string' || !raw.state.trim() || !required || raw.required === false) {
+  if (typeof raw.state !== 'string' || !raw.state.trim() || !required || raw.required === false || requirement === false) {
     throw new ManagerReadinessError('infra_status_contract_invalid', 502);
   }
   return { state: raw.state.trim(), required: true };
+}
+
+function normalizeOptionalAwareProvider(value: unknown, requirement: unknown): ProviderStatus {
+  const raw = plainRecord(value);
+  const hasRequired = raw.required === true || raw.required === false;
+  const hasRequirement = requirement === true || requirement === false;
+  if (typeof raw.state !== 'string' || !raw.state.trim() || (!hasRequired && !hasRequirement)) {
+    throw new ManagerReadinessError('infra_status_contract_invalid', 502);
+  }
+  if (hasRequired && hasRequirement && raw.required !== requirement) {
+    throw new ManagerReadinessError('infra_status_contract_invalid', 502);
+  }
+  const required = hasRequired ? raw.required === true : requirement === true;
+  return required
+    ? { state: raw.state.trim(), required: true }
+    : { state: raw.state.trim(), required: false };
 }
 
 export function normalizeManagerInfraStatus(value: unknown): ManagerInfraStatus {
@@ -52,7 +69,7 @@ export function normalizeManagerInfraStatus(value: unknown): ManagerInfraStatus 
   const scope = plainRecord(raw.scope);
 
   const providers: ManagerInfraStatus['providers'] = {
-    github: normalizeRequiredProvider(providerStatus.github, providerRequirements.github),
+    github: normalizeOptionalAwareProvider(providerStatus.github, providerRequirements.github),
     supabase: normalizeRequiredProvider(providerStatus.supabase, providerRequirements.supabase),
     cloudflare: normalizeRequiredProvider(providerStatus.cloudflare, providerRequirements.cloudflare),
     production: normalizeRequiredProvider(providerStatus.production, providerRequirements.production)
@@ -80,6 +97,7 @@ export type ProjectedManagerReadiness = {
     title: string;
     evidenceKind: string;
     providerState: string;
+    required: boolean;
     status: 'completed' | 'blocked';
   }>;
 };
@@ -87,10 +105,12 @@ export type ProjectedManagerReadiness = {
 export function projectManagerReadiness(status: ManagerInfraStatus): ProjectedManagerReadiness {
   const steps = REQUIRED_MANAGER_STEPS.map((definition) => {
     const provider = status.providers[definition.key];
+    const required = provider.required === true;
     return {
       ...definition,
       providerState: provider.state,
-      status: provider.state === 'ready' ? 'completed' as const : 'blocked' as const
+      required,
+      status: required && provider.state !== 'ready' ? 'blocked' as const : 'completed' as const
     };
   });
   const firstBlocked = steps.find((step) => step.status === 'blocked') ?? null;
@@ -136,8 +156,8 @@ type SyncDependencies = {
   appendAudit: (input: AuditInput) => Promise<void>;
 };
 
-async function digestEvidence(input: { provider: string; state: string; checkedAt: string }) {
-  const payload = JSON.stringify({ provider: input.provider, state: input.state, required: true, checkedAt: input.checkedAt });
+async function digestEvidence(input: { provider: string; state: string; required: boolean; checkedAt: string }) {
+  const payload = JSON.stringify({ provider: input.provider, state: input.state, required: input.required, checkedAt: input.checkedAt });
   const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
   return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
@@ -278,7 +298,7 @@ async function upsertSteps(deps: SyncDependencies, workflow: any, task: any, pro
     status: step.status,
     completion_criteria: [`${step.title} is reported ready by atlas-infra-status`],
     permissions_required: ['execution.read'],
-    evidence_requirement: [step.evidenceKind],
+    evidence_requirement: step.required ? [step.evidenceKind] : [],
     completed_at: step.status === 'completed' ? now : null,
     updated_at: now
   }));
@@ -293,7 +313,7 @@ async function recordProviderEvidence(deps: SyncDependencies, workflow: any, tas
     const step = steps.find((item) => Number(item.sequence) === definition.sequence);
     if (!step) throw new ManagerReadinessError('readiness_step_missing', 500);
     const provider = status.providers[definition.key];
-    const digest = await digestEvidence({ provider: definition.key, state: provider.state, checkedAt });
+    const digest = await digestEvidence({ provider: definition.key, state: provider.state, required: provider.required, checkedAt });
     const reference = `atlas-infra-status:${definition.key}:${digest}`;
     const { data: existing, error: findError } = await deps.admin
       .from('execution_evidence')
