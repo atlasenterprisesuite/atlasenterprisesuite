@@ -51,6 +51,7 @@ export function AppRouter() {
         <Route path="/app/education" element={<ModuleGatewayPage moduleId="education" />} />
         <Route path="/app/analytics" element={<ModuleGatewayPage moduleId="analytics" />} />
         <Route path="/app/connect" element={<ModuleGatewayPage moduleId="connect" />} />
+        <Route path="/app/telecom" element={<ModuleRouteGate moduleId="telecom"><Navigate to="/telecom/devices/mifi" replace /></ModuleRouteGate>} />
         <Route path="/app/documents" element={<ModuleGatewayPage moduleId="documents" />} />
         <Route path="/app/knowledge" element={<ModuleGatewayPage moduleId="knowledge" />} />
         <Route path="/app/security" element={<ModuleGatewayPage moduleId="security" />} />
