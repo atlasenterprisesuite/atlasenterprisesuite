@@ -42,6 +42,36 @@ export const MANAGER_CRITICAL_NETWORK_ROUTES = [
 
 type ManagerCriticalRouteState = 'verified' | 'failed' | 'challenge' | 'unavailable';
 
+export function isPersistedProductionEvidenceHealthy(value: unknown) {
+  const row = plainRecord(value);
+  const rowChecks = plainRecord(row.checks);
+  return Boolean(
+    row.status === 'passed' &&
+    row.provider_state === 'verified' &&
+    rowChecks.production_commit_sha_verified === true &&
+    rowChecks.manager_readiness_route_reachable === true &&
+    rowChecks.critical_network_routes_reachable === true
+  );
+}
+
+export function deriveProductionContinuity(historyRows: unknown[], canaryVerified: boolean) {
+  const rows = Array.isArray(historyRows) ? historyRows : [];
+  const lastKnownGood = rows.slice(1).find((row) => isPersistedProductionEvidenceHealthy(row)) ?? null;
+  let greenStreakCount = 0;
+  if (canaryVerified) {
+    greenStreakCount = 1;
+    for (const row of rows.slice(1)) {
+      if (!isPersistedProductionEvidenceHealthy(row)) break;
+      greenStreakCount += 1;
+    }
+  }
+  return {
+    lastKnownGood,
+    greenStreakCount,
+    greenStreakCapped: greenStreakCount === rows.length && rows.length === 5
+  };
+}
+
 export type ManagerProductionVerificationSummary = {
   state: 'verified' | 'unverified' | 'unavailable';
   canary_verified: boolean;
@@ -194,20 +224,6 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
       critical_network_routes_reachable: rowChecks.critical_network_routes_reachable === true
     };
   });
-  const persistedHistoryHealthy = (row: any) => {
-    const rowChecks = plainRecord(row?.checks);
-    return Boolean(
-      row &&
-      row.status === 'passed' &&
-      row.provider_state === 'verified' &&
-      rowChecks.production_commit_sha_verified === true &&
-      rowChecks.manager_readiness_route_reachable === true &&
-      rowChecks.critical_network_routes_reachable === true
-    );
-  };
-  const previousHealthy = historyRows.slice(1).find((row: any) => persistedHistoryHealthy(row)) ?? null;
-  const previousHealthyChecks = plainRecord(previousHealthy?.checks);
-
   const criticalRoutes = await Promise.all(
     MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) =>
       probeManagerCriticalRoute(definition, deploymentSha)
@@ -222,26 +238,15 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
   const allCriticalRoutesVerified = criticalRoutes.every((route) => route.state === 'verified');
   const canaryVerified = persistedEvidenceVerified && allCriticalRoutesVerified;
 
-  let greenStreakCount = 0;
-  if (canaryVerified) {
-    greenStreakCount = 1;
-    for (const row of historyRows.slice(1)) {
-      if (!persistedHistoryHealthy(row)) break;
-      greenStreakCount += 1;
-    }
-  }
-  const greenStreakCapped = greenStreakCount === historyRows.length && historyRows.length === 5;
+  const continuity = deriveProductionContinuity(historyRows, canaryVerified);
+  const previousHealthy = continuity.lastKnownGood;
+  const previousHealthyChecks = plainRecord((previousHealthy as any)?.checks);
+  const greenStreakCount = continuity.greenStreakCount;
+  const greenStreakCapped = continuity.greenStreakCapped;
 
   const previous = historyRows[1] ?? null;
   const previousChecks = plainRecord(previous?.checks);
-  const previousWasHealthy = Boolean(
-    previous &&
-    previous.status === 'passed' &&
-    previous.provider_state === 'verified' &&
-    previousChecks.production_commit_sha_verified === true &&
-    previousChecks.manager_readiness_route_reachable === true &&
-    previousChecks.critical_network_routes_reachable === true
-  );
+  const previousWasHealthy = isPersistedProductionEvidenceHealthy(previous);
   const regressionReasons: string[] = [];
   if (previousWasHealthy) {
     if (latest.status !== 'passed') regressionReasons.push('deployment_status_regressed');
