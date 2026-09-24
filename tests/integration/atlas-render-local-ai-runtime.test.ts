@@ -28,6 +28,11 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(install).toContain("sha256(archive) !== llamaSha256");
     expect(install).not.toContain('llama.app/install.sh');
     expect(install).toContain('SmolLM2-135M-Instruct-Q4_K_M.gguf');
+    expect(install).toContain('whisper-bin-ubuntu-x64.tar.gz');
+    expect(install).toContain('53e7fd8b5764edad916b8848dd0af6abb1ff1d3b86c899e79c78652412536c32');
+    expect(install).toContain('ggml-tiny.bin');
+    expect(install).toContain('bd577a113a864445d4c299885e0cb97d4ba92b5f');
+    expect(install).toContain("findFile(whisperRuntimeDir, 'whisper-cli')");
   });
 
   it('keeps llama on loopback and exposes only the authenticated proxy', () => {
@@ -38,6 +43,10 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(start).not.toContain("'--host', '0.0.0.0'");
     expect(http).toContain("req.url === '/local-ai/health'");
     expect(http).toContain("req.url === '/local-ai/v1/responses'");
+    expect(http).toContain("req.url === '/diarization/health'");
+    expect(http).toContain("req.url === '/diarization/diarize'");
+    expect(http).toContain('atlasDiarizationRuntimeState');
+    expect(http).toContain('diarizeWavTurn');
     expect(http).toContain('timingSafeEqual');
     expect(http).toContain('ATLAS_ORCHESTRATOR_PERSISTENCE_TOKEN');
     expect(http).toContain("internal.startsWith('http://127.0.0.1:')");
