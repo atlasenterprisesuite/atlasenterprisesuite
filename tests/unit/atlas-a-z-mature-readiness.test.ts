@@ -37,6 +37,8 @@ describe('ATLAS A-Z mature module readiness', () => {
     expect(file('apps/web/src/modules/insurance/InsuranceHome.tsx')).toContain('does not invent policy');
     expect(file('apps/web/src/modules/voice/VoiceHomePage.tsx')).toContain('true local wake word belongs in the native ATLAS device client');
     expect(file('apps/web/src/modules/hospitality/HospitalityOverviewPage.tsx')).toContain('payments are not presented as live yet');
-    expect(file('apps/web/src/modules/device-os/DeviceOSPage.tsx')).toContain('never reported as connected unless a real adapter is available');
+    const deviceOs=file('apps/web/src/modules/device-os/DeviceOSPage.tsx');
+    expect(deviceOs).toContain('never reported as connected unless a');
+    expect(deviceOs).toContain('real adapter is available');
   });
 });
