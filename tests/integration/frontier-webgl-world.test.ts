@@ -21,6 +21,18 @@ describe('ATLAS FRONTIER WebGL world contract', () => {
     expect(world).toContain('900');
   });
 
+  it('closes production 3D contracts for terrain, raycast, collision, physical progression and gamepad', () => {
+    expect(world).toContain('frontierTerrainHeight');
+    expect(world).toContain('resolveCollisionSafeMove');
+    expect(world).toContain('raycastResourceTarget');
+    expect(world).toContain('frontierGamepadState');
+    expect(world).toContain('state.powerCores > 0');
+    expect(world).toContain('activeGridNodes');
+    expect(world).toContain('FRONTIER_RENDER_DPR_LIMIT');
+    expect(world).toContain('FRONTIER_FRAME_DELTA_LIMIT_SECONDS');
+    expect(world).toContain('Keyboard + Pointer + Gamepad');
+  });
+
   it('keeps resource, spatial build and biome mutations behind governed callbacks', () => {
     expect(world).toContain('await onBuildHabitat(spatialPlacement)');
     expect(world).toContain('await onAction(target.action)');
