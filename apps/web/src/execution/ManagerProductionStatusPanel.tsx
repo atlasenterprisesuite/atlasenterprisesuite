@@ -32,6 +32,11 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
   const versionId = nullableString(summary.version_id);
   const provider = nullableString(summary.provider);
   const providerState = nullableString(summary.provider_state);
+  const regressionDetected = summary.regression_detected === true;
+  const regressionReasons = Array.isArray(summary.regression_reasons)
+    ? summary.regression_reasons.filter((value): value is string => typeof value === 'string' && Boolean(value))
+    : [];
+  const previousDeploymentSha = nullableString(summary.previous_deployment_sha);
 
   return (
     <section className="execution-panel manager-production-panel" aria-labelledby="manager-production-title">
@@ -40,13 +45,22 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
           <p className="manager-production-kicker">ATLAS Manager</p>
           <h2 id="manager-production-title">Production verification</h2>
         </div>
-        <span
-          className="manager-production-badge"
-          data-state={canaryVerified ? 'verified' : 'unverified'}
-          aria-label={canaryVerified ? 'Production canary verified' : 'Production canary unverified'}
-        >
-          {canaryVerified ? 'Canary verified' : 'Canary unverified'}
-        </span>
+        <div className="manager-production-badges">
+          <span
+            className="manager-production-badge"
+            data-state={canaryVerified ? 'verified' : 'unverified'}
+            aria-label={canaryVerified ? 'Production canary verified' : 'Production canary unverified'}
+          >
+            {canaryVerified ? 'Canary verified' : 'Canary unverified'}
+          </span>
+          <span
+            className="manager-production-badge"
+            data-state={regressionDetected ? 'regression' : 'verified'}
+            aria-label={regressionDetected ? 'Production regression detected' : 'No production regression detected'}
+          >
+            {regressionDetected ? 'Regression detected' : 'No regression'}
+          </span>
+        </div>
       </div>
 
       <dl className="manager-production-meta">
@@ -66,7 +80,18 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
           <dt>Version ID</dt>
           <dd><code>{versionId ?? 'Unavailable'}</code></dd>
         </div>
+        <div>
+          <dt>Compared with</dt>
+          <dd><code>{previousDeploymentSha ?? 'No previous verified deployment'}</code></dd>
+        </div>
       </dl>
+
+      {regressionDetected ? (
+        <div className="manager-regression-alert" role="alert">
+          <strong>Production regression detected</strong>
+          <span>{regressionReasons.join(' · ') || 'A required production verification regressed.'}</span>
+        </div>
+      ) : null}
 
       <div className="manager-history-section">
         <div className="manager-route-heading">
