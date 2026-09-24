@@ -10,8 +10,11 @@ const workflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8')
 describe('Cloudflare authorized production HTTP verifier', () => {
   it('accepts only scoped GitHub OIDC from the main Cloudflare deployment workflow', () => {
     expect(verifier).toContain("const AUDIENCE = 'atlas-production-http-verifier'");
-    expect(verifier).toContain(".github/workflows/cloudflare-deploy.yml@refs/heads/main");
-    expect(verifier).toContain("payload.repository !== REPO");
+    expect(verifier).toContain("'cloudflare-deploy.yml'");
+    expect(verifier).toContain("'global-production-verify.yml'");
+    expect(verifier).toContain(
+      "GITHUB_SCOPE.allowsRepository(payload.repository, payload.repository_owner)"
+    );
     expect(verifier).toContain("payload.ref !== 'refs/heads/main'");
   });
 
