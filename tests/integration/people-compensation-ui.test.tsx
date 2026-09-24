@@ -65,12 +65,12 @@ afterEach(cleanup);
 
 it('shows persisted compensation and deductions to payroll readers without write controls', async () => {
   renderCompensation({
-    status: 'ready', userId: 'reader-a', organizationId: 'org-a', organizationName: 'Test Organization',
+    status: 'ready', userId: 'reader-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
     role: 'accountant', permissions: ['payroll.read'],
   });
 
   expect(await screen.findByRole('heading', { name: 'Compensation & Benefits' })).toBeInTheDocument();
-  expect(screen.getByText('Ada Rivera')).toBeInTheDocument();
+  expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
   expect(screen.getByText('$22.00 / hour')).toBeInTheDocument();
   expect(screen.getByText(/Health Plan/)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Save compensation' })).not.toBeInTheDocument();
@@ -85,12 +85,12 @@ it('creates compensation only through the governed service when payroll.write is
   const service = new PeopleCompensationWriteService(gateway);
 
   renderCompensation({
-    status: 'ready', userId: 'writer-a', organizationId: 'org-a', organizationName: 'Test Organization',
+    status: 'ready', userId: 'writer-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
     role: 'admin', permissions: ['payroll.read', 'payroll.write'],
   }, service);
 
   await screen.findByRole('heading', { name: 'Compensation & Benefits' });
-  fireEvent.change(screen.getByLabelText('Hourly rate'), { target: { value: '25' } });
+  fireEvent.change(await screen.findByLabelText('Hourly rate'), { target: { value: '25' } });
   fireEvent.change(screen.getByLabelText('Effective start'), { target: { value: '2026-10-01' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save compensation' }));
 
@@ -107,7 +107,7 @@ it('creates compensation only through the governed service when payroll.write is
 
 it('denies Compensation management without payroll.read', async () => {
   renderCompensation({
-    status: 'ready', userId: 'hr-reader', organizationId: 'org-a', organizationName: 'Test Organization',
+    status: 'ready', userId: 'hr-reader', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
     role: 'manager', permissions: ['hr.read'],
   });
 
