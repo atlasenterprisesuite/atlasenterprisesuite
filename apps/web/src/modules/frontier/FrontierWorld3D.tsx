@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { actionAvailability, type FrontierActionId, type FrontierState } from './domain';
 import {
+  FRONTIER_FRAME_DELTA_LIMIT_SECONDS,
+  FRONTIER_RENDER_DPR_LIMIT,
   FRONTIER_RESOURCE_TARGETS,
   clampWorldPoint,
   distanceToTarget,
+  frontierTerrainHeight,
   moveWorldPoint,
+  nearestResourceTarget,
   normalizeRotationY,
+  raycastResourceTarget,
+  resolveCollisionSafeMove,
   screenToPlacement,
   toWorldPlacement,
   type FrontierStructure,
@@ -23,6 +29,7 @@ import {
 import {
   FRONTIER_CONTROLS,
   FRONTIER_MOVEMENT_KEYS,
+  frontierGamepadState,
   frontierMovementSpeed,
   frontierMovementVector
 } from './controls';
@@ -228,6 +235,12 @@ export function FrontierWorld3D({
   const animationRef = useRef<number | null>(null);
   const lastFrameRef = useRef(0);
   const keysRef = useRef(new Set<string>());
+  const gamepadButtonsRef = useRef({
+    extract: false,
+    craftPowerCore: false,
+    buildMode: false,
+    restoreSkyGrid: false
+  });
   const extractionTimerRef = useRef<number | null>(null);
   const holdTickerRef = useRef<number | null>(null);
   const transitionInFlightRef = useRef(false);
@@ -265,7 +278,8 @@ export function FrontierWorld3D({
 
   const attemptPlayerMove = useCallback((next: WorldPoint) => {
     const bounded = clampWorldPoint(next);
-    const movement = resolveFrontierBiomeMovement(playerRef.current, bounded, campaignStageRef.current);
+    const collisionSafe = resolveCollisionSafeMove(playerRef.current, bounded, structures);
+    const movement = resolveFrontierBiomeMovement(playerRef.current, collisionSafe, campaignStageRef.current);
 
     if (movement.blockedBiome) {
       if (blockedBiomeRef.current !== movement.blockedBiome.id) {
@@ -297,7 +311,7 @@ export function FrontierWorld3D({
       .finally(() => {
         transitionInFlightRef.current = false;
       });
-  }, [syncPlayer]);
+  }, [structures, syncPlayer]);
 
   const stepPlayer = useCallback((dx: number, dz: number) => {
     attemptPlayerMove(moveWorldPoint(playerRef.current, dx, dz, 0.65));
@@ -362,19 +376,41 @@ export function FrontierWorld3D({
 
       const render = (time: number) => {
         if (disposed) return;
-        const delta = Math.min(0.05, Math.max(0, (time - lastFrameRef.current) / 1000 || 0));
+        const delta = Math.min(FRONTIER_FRAME_DELTA_LIMIT_SECONDS, Math.max(0, (time - lastFrameRef.current) / 1000 || 0));
         lastFrameRef.current = time;
         const keys = keysRef.current;
-        const { horizontal, vertical } = frontierMovementVector(keys);
+        const keyboard = frontierMovementVector(keys);
+        const gamepad = typeof navigator !== 'undefined' && typeof navigator.getGamepads === 'function'
+          ? Array.from(navigator.getGamepads()).find(Boolean) ?? null
+          : null;
+        const pad = frontierGamepadState(gamepad);
+        const previousPad = gamepadButtonsRef.current;
+
+        if (pad.extract && !previousPad.extract) {
+          const target = nearestResourceTarget(playerRef.current, 4.2);
+          if (target) beginExtraction(target);
+        }
+        if (pad.craftPowerCore && !previousPad.craftPowerCore && runtimeReady) void onAction('craft_power_core');
+        if (pad.restoreSkyGrid && !previousPad.restoreSkyGrid && runtimeReady) void onAction('restore_sky_grid');
+        if (pad.buildMode && !previousPad.buildMode) onBuildModeChange(!buildMode);
+        gamepadButtonsRef.current = {
+          extract: pad.extract,
+          craftPowerCore: pad.craftPowerCore,
+          buildMode: pad.buildMode,
+          restoreSkyGrid: pad.restoreSkyGrid
+        };
+
+        const horizontal = Math.max(-1, Math.min(1, keyboard.horizontal + pad.horizontal));
+        const vertical = Math.max(-1, Math.min(1, keyboard.vertical + pad.vertical));
         if (horizontal || vertical) {
           const length = Math.hypot(horizontal, vertical) || 1;
-          const speed = frontierMovementSpeed(keys);
+          const speed = pad.sprint ? 6.8 : frontierMovementSpeed(keys);
           const next = moveWorldPoint(playerRef.current, horizontal / length, vertical / length, delta * speed);
           if (next.x !== playerRef.current.x || next.z !== playerRef.current.z) attemptPlayerMove(next);
         }
 
         const rect = canvas.getBoundingClientRect();
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const dpr = Math.min(FRONTIER_RENDER_DPR_LIMIT, window.devicePixelRatio || 1);
         const width = Math.max(1, Math.round(rect.width * dpr));
         const height = Math.max(1, Math.round(rect.height * dpr));
         if (canvas.width !== width || canvas.height !== height) {
@@ -390,19 +426,25 @@ export function FrontierWorld3D({
         gl.bindVertexArray(runtime.vao);
 
         const p = playerRef.current;
+        const terrainY = frontierTerrainHeight(p);
         const projection = perspective(Math.PI / 3.15, width / height, 0.1, 100);
-        const view = lookAt([p.x + 8.2, 7.2, p.z + 10.5], [p.x, 0.5, p.z - 1.3], [0,1,0]);
+        const view = lookAt([p.x + 8.2, terrainY + 7.2, p.z + 10.5], [p.x, terrainY + 0.5, p.z - 1.3], [0,1,0]);
         const viewProjection = multiply(projection, view);
         viewProjectionRef.current = viewProjection;
 
-        drawCube(runtime, viewProjection, [0,-0.5,0], [19,0.75,19], [0.018,0.055,0.07,1]);
+        for (let tx = -8; tx <= 8; tx += 2) {
+          for (let tz = -8; tz <= 8; tz += 2) {
+            const y = frontierTerrainHeight({ x: tx, z: tz });
+            drawCube(runtime, viewProjection, [tx,y - 0.42,tz], [1.94,0.6,1.94], [0.018,0.055,0.07,1]);
+          }
+        }
         FRONTIER_BIOME_REGIONS.forEach((biome, index) => {
           const unlocked = isFrontierBiomeUnlocked(biome, state.campaignStage);
           const color = unlocked ? biome.color : [0.025,0.035,0.055,1] as const;
           drawCube(
             runtime,
             viewProjection,
-            [biome.center.x,-0.06,biome.center.z],
+            [biome.center.x,frontierTerrainHeight(biome.center) - 0.08,biome.center.z],
             [Math.max(0.25, biome.size.x - 0.08),0.18,Math.max(0.25, biome.size.z - 0.08)],
             color
           );
@@ -426,8 +468,9 @@ export function FrontierWorld3D({
 
         FRONTIER_RESOURCE_TARGETS.forEach((target, index) => {
           const pulse = 1 + Math.sin(time / 420 + index) * 0.12;
-          drawCube(runtime, viewProjection, [target.x,0.55,target.z], [0.85*pulse,1.1*pulse,0.85*pulse], target.color);
-          drawCube(runtime, viewProjection, [target.x,1.35,target.z], [0.18,0.18,0.18], [0.82,0.96,1,1]);
+          const targetY = frontierTerrainHeight(target);
+          drawCube(runtime, viewProjection, [target.x,targetY + 0.55,target.z], [0.85*pulse,1.1*pulse,0.85*pulse], target.color);
+          drawCube(runtime, viewProjection, [target.x,targetY + 1.35,target.z], [0.18,0.18,0.18], [0.82,0.96,1,1]);
         });
 
         structures.forEach((structure) => {
@@ -442,11 +485,25 @@ export function FrontierWorld3D({
           drawCube(runtime, viewProjection, [placement.x,1.42,placement.z], [1.3,0.38,1.05], [0.45,0.95,1,0.58], rotationY);
         }
 
-        drawCube(runtime, viewProjection, [p.x,0.72,p.z], [0.5,1.25,0.48], [0.08,0.55,0.76,1]);
-        drawCube(runtime, viewProjection, [p.x,1.55,p.z], [0.42,0.42,0.42], [0.28,0.84,1,1]);
+        if (state.powerCores > 0) {
+          const corePulse = 0.9 + Math.sin(time / 260) * 0.12;
+          drawCube(runtime, viewProjection, [p.x + 1.25,terrainY + 0.42,p.z + 0.8], [0.42*corePulse,0.42*corePulse,0.42*corePulse], [0.34,0.92,1,0.96]);
+          drawCube(runtime, viewProjection, [p.x + 1.25,terrainY + 0.42,p.z + 0.8], [0.68,0.08,0.68], [0.82,0.96,1,0.72]);
+        }
+
+        drawCube(runtime, viewProjection, [p.x,terrainY + 0.72,p.z], [0.5,1.25,0.48], [0.08,0.55,0.76,1]);
+        drawCube(runtime, viewProjection, [p.x,terrainY + 1.55,p.z], [0.42,0.42,0.42], [0.28,0.84,1,1]);
 
         const gridStrength = Math.max(0.08, state.skyGridIntegrity / 100);
-        for (let i = -6; i <= 6; i += 3) drawCube(runtime, viewProjection, [i,4.5,-7.7], [2.5,0.03,0.03], [0.2,0.75,1,gridStrength]);
+        const gridNodes = [-6,-3,0,3,6];
+        const activeGridNodes = Math.ceil((Math.max(0, state.skyGridIntegrity) / 100) * gridNodes.length);
+        gridNodes.forEach((x, index) => {
+          const active = index < activeGridNodes;
+          drawCube(runtime, viewProjection, [x,4.15,-7.7], [0.24,0.72,0.24], active ? [0.28,0.9,1,0.95] : [0.15,0.22,0.3,0.5]);
+          if (index < gridNodes.length - 1) {
+            drawCube(runtime, viewProjection, [x + 1.5,4.5,-7.7], [2.72,0.03,0.03], [0.2,0.75,1,active ? gridStrength : 0.08]);
+          }
+        });
 
         animationRef.current = window.requestAnimationFrame(render);
       };
@@ -467,7 +524,7 @@ export function FrontierWorld3D({
       }
       runtimeRef.current = null;
     };
-  }, [attemptPlayerMove, buildMode, cancelHold, placement, rotationY, state.campaignStage, state.skyGridIntegrity, structures]);
+  }, [attemptPlayerMove, beginExtraction, buildMode, cancelHold, onAction, onBuildModeChange, placement, rotationY, runtimeReady, state.campaignStage, state.powerCores, state.skyGridIntegrity, structures]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -553,6 +610,9 @@ export function FrontierWorld3D({
     const rect = canvas.getBoundingClientRect();
     const px = event.clientX - rect.left;
     const py = event.clientY - rect.top;
+    const aim = screenToPlacement(px, py, rect.width, rect.height);
+    const spatialHit = raycastResourceTarget(playerRef.current, aim, 9, 1.15);
+    if (spatialHit) return spatialHit;
     let picked: ResourceTarget | null = null;
     let distance = 74;
     for (const target of FRONTIER_RESOURCE_TARGETS) {
@@ -622,7 +682,7 @@ export function FrontierWorld3D({
         ref={canvasRef}
         className="frontier-world3d-canvas"
         tabIndex={0}
-        aria-label="ATLAS FRONTIER interactive 3D world. Use WASD or arrow keys to move, point at resources and hold to extract."
+        aria-label="ATLAS FRONTIER interactive 3D world. Use keyboard, touch, pointer, or a standard gamepad to move and interact."
         onPointerDown={onPointerDown}
         onPointerUp={cancelHold}
         onPointerCancel={cancelHold}
@@ -670,7 +730,7 @@ export function FrontierWorld3D({
 
       {controlsOpen ? (
         <section className="frontier-hud-panel frontier-controls-panel" aria-label="ATLAS FRONTIER keyboard controls">
-          <header><span>CONTROL MATRIX</span><strong>Keyboard + Pointer</strong></header>
+          <header><span>CONTROL MATRIX</span><strong>Keyboard + Pointer + Gamepad</strong></header>
           <div className="frontier-controls-grid">
             {FRONTIER_CONTROLS.map((control) => (
               <article key={control.id}>
