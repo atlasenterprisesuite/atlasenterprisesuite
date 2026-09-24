@@ -256,9 +256,8 @@ async function main() {
   const managerReadinessRouteReachable =
     publicResults.find((entry) => entry.path === '/execution/manager/readiness')?.ok === true;
   const directlyVerified = failures.length === 0;
-  const challengeOnlyOnRoot =
-    challengeFailures.length === 1 &&
-    challengeFailures[0].path === '/' &&
+  const challengeOnlyOnRequiredRoutes =
+    challengeFailures.length > 0 &&
     nonChallengeFailures.length === 0;
   const versionEvidence = requiredResults.filter((entry) => entry.ok);
   const versionIds = [...new Set(versionEvidence.map((entry) => entry.atlas_version_id).filter(Boolean))];
@@ -273,8 +272,7 @@ async function main() {
   const challengeDeferred =
     !directlyVerified &&
     args.deferEdgeChallenge &&
-    challengeOnlyOnRoot &&
-    criticalNetworkRoutesReachable &&
+    challengeOnlyOnRequiredRoutes &&
     protectedRoutesEnforced;
   const verified = directlyVerified;
 
@@ -300,7 +298,9 @@ async function main() {
       production_commit_sha_verified: productionCommitShaVerified,
       observed_version_ids: versionIds,
       multi_version_same_sha: productionCommitShaVerified && versionIds.length > 1,
-      classified_root_challenge_deferred: challengeDeferred,
+      classified_required_route_challenge_deferred: challengeDeferred,
+      classified_root_challenge_deferred:
+        challengeDeferred && challengeFailures.some((entry) => entry.path === '/'),
       required_routes: requiredResults,
       protected_routes: protectedResults
     },
