@@ -22,7 +22,6 @@ const CRM_OBJECT_TYPES = [
 ] as const satisfies readonly CrmObjectType[];
 
 export type HubSpotCrmOperation =
-  | 'crm.create'
   | 'crm.list'
   | 'crm.search'
   | 'crm.get'
@@ -34,15 +33,13 @@ export type HubSpotCrmReadAdapter = Pick<
   'readiness' | 'listObjects' | 'searchObjects' | 'getObject' | 'listAssociations'
 >;
 
-export type HubSpotCrmOperationAdapter = HubSpotCrmReadAdapter &
-  Partial<Pick<HubSpotCrmAdapter, 'createObject'>>;
+export type HubSpotCrmOperationAdapter = HubSpotCrmReadAdapter;
 
 export type HubSpotCrmOperationDependencies = {
   store: HubSpotConnectionStore;
   lifecycle: HubSpotLifecycleDependencies;
   adapter?: HubSpotCrmOperationAdapter;
   now?: () => number;
-  writesEnabled?: boolean;
 };
 
 export type HubSpotCrmOperationResult = { status: number; body: unknown };
@@ -72,28 +69,6 @@ function requiredString(value: unknown, label: string): string {
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${label} is required`);
   return value.trim();
 }
-function optionalUuid(value: unknown): string | null {
-  if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
-    throw new Error('sourceThreadId must be a UUID');
-  }
-  return value;
-}
-function createFields(value: unknown): Record<string, string | number | boolean | null> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('CRM create fields are required');
-  }
-  const fields: Record<string, string | number | boolean | null> = {};
-  for (const [key, field] of Object.entries(value as Record<string, unknown>)) {
-    if (field !== null && typeof field !== 'string' && typeof field !== 'number' && typeof field !== 'boolean') {
-      throw new Error(`CRM field ${key} must be scalar`);
-    }
-    fields[key] = field as string | number | boolean | null;
-  }
-  if (Object.keys(fields).length === 0) throw new Error('CRM create fields are required');
-  return fields;
-}
-
 async function fingerprint(record: Pick<CrmRecord, 'objectType' | 'providerId' | 'updatedAt'>): Promise<string> {
   const source = `${record.objectType}:${record.providerId}:${record.updatedAt ?? ''}`;
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source)));
@@ -299,49 +274,6 @@ export async function executeHubSpotCrmOperation(input: {
 
     try {
       const context = providerContext(credential.accessToken);
-      if (input.operation === 'crm.create') {
-        if (input.deps.writesEnabled !== true) {
-          await recordEvidence(input.deps, {
-            organizationId: input.organizationId,
-            actorUserId: input.actorUserId,
-            operation: input.operation,
-            objectType,
-            status: 'denied',
-            errorCode: 'crm_writes_disabled'
-          });
-          return {
-            status: 403,
-            body: {
-              error: 'HubSpot CRM writes are disabled by ATLAS policy',
-              code: 'crm_writes_disabled'
-            }
-          };
-        }
-        const fields = createFields(input.body.fields);
-        const sourceThreadId = optionalUuid(input.body.sourceThreadId);
-        const writeAdapter = typeof adapter.createObject === 'function'
-          ? adapter
-          : new HubSpotCrmAdapter();
-        const record = await writeAdapter.createObject!(context, { objectType, fields });
-        await persistRecordLinks({
-          records: [record],
-          organizationId: input.organizationId,
-          providerAccountId: connection.provider_account_id!,
-          atlasObjectType: sourceThreadId ? 'social_thread' : null,
-          atlasObjectId: sourceThreadId,
-          deps: input.deps
-        });
-        await recordEvidence(input.deps, {
-          organizationId: input.organizationId,
-          actorUserId: input.actorUserId,
-          operation: input.operation,
-          objectType,
-          status: 'completed',
-          recordsObserved: 1
-        });
-        return { status: 201, body: { record } };
-      }
-
       if (input.operation === 'crm.list') {
         const page = await adapter.listObjects(context, { objectType, limit, cursor });
         await persistRecordLinks({ records: page.records, organizationId: input.organizationId,

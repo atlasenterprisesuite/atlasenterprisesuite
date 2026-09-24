@@ -37,7 +37,6 @@ const OPERATIONS = [
   'connection.status',
   'connection.health',
   'connection.disconnect',
-  'crm.create',
   'crm.list',
   'crm.search',
   'crm.get',
@@ -72,7 +71,6 @@ const PERMISSIONS: Record<
   'connection.status': ['integrations.read', 'integrations.admin', 'integrations.manage'],
   'connection.health': ['integrations.read', 'integrations.admin', 'integrations.manage', 'crm.read', 'crm.admin'],
   'connection.disconnect': ['integrations.admin', 'integrations.manage'],
-  'crm.create': ['crm.write', 'crm.admin'],
   'crm.list': ['crm.read', 'crm.admin'],
   'crm.search': ['crm.read', 'crm.admin'],
   'crm.get': ['crm.read', 'crm.admin'],
@@ -721,8 +719,7 @@ export async function handleAtlasCrmHubSpotRequest(
       store: connectionStore,
       lifecycle: lifecycleDeps,
       adapter: deps.crmAdapter,
-      now: deps.lifecycle?.now,
-      writesEnabled: env('HUBSPOT_CRM_WRITES_ENABLED', secretDeps).toLowerCase() === 'true'
+      now: deps.lifecycle?.now
     }
   });
   return json(req, secretDeps, result.status, result.body);
