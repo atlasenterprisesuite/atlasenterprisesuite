@@ -74,6 +74,8 @@ export interface PayrollLineRecord {
   updatedAt: string;
 }
 
+export type PayrollLine = PayrollLineRecord;
+
 export type ApplicationStage =
   | 'applied'
   | 'screening'
