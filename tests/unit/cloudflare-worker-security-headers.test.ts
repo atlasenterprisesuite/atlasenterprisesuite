@@ -94,6 +94,36 @@ describe('Cloudflare public Worker security headers', () => {
     expect(response.headers.get('X-Atlas-Commit-Sha')).toBeNull();
   });
 
+  it('serves a shallow no-secret production status response with release evidence', async () => {
+    const assetFetch = vi.fn(async () => new Response('ATLAS asset', { status: 200 }));
+    const commitSha = 'cccccccccccccccccccccccccccccccccccccccc';
+    const request = new Request('https://atlas.example/status');
+    const response = await worker.fetch(request, {
+      ASSETS: { fetch: assetFetch },
+      CF_VERSION_METADATA: {
+        id: 'status-version-789',
+        tag: commitSha,
+        timestamp: '2026-09-24T12:30:00.000Z',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toContain('application/json');
+    expect(response.headers.get('X-Atlas-Version-Id')).toBe('status-version-789');
+    expect(response.headers.get('X-Atlas-Version-Tag')).toBe(commitSha);
+    expect(await response.json()).toEqual({
+      ok: true,
+      status: 'ok',
+      service: 'atlas-enterprise-suite-web',
+      environment: 'production',
+      release: {
+        version_id: 'status-version-789',
+        commit_sha: commitSha,
+      },
+    });
+    expect(assetFetch).not.toHaveBeenCalled();
+  });
+
   it('preserves the current public-shell authorization architecture', () => {
     expect(source).not.toContain('CF-Access-Jwt-Assertion');
     expect(source).toContain('env.ASSETS.fetch(request)');
