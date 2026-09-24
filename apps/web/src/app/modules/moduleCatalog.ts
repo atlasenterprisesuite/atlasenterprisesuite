@@ -131,6 +131,17 @@ export const ATLAS_MODULE_CATALOG: readonly AtlasModuleDefinition[] = Object.fre
     implementationState: 'blocked',
   }),
   defineModule({
+    id: 'telecom',
+    displayName: 'ATLAS Telecom',
+    route: '/app/telecom',
+    category: 'connectivity',
+    description: 'Governed MiFi and telecom device operations with explicit adapter and provider readiness.',
+    moduleCodes: ['telecom'],
+    permissions: ['telecom.mifi.read'],
+    legacyRoute: '/telecom/devices/mifi',
+    implementationState: 'partial',
+  }),
+  defineModule({
     id: 'documents',
     displayName: 'ATLAS Documents',
     route: '/app/documents',
