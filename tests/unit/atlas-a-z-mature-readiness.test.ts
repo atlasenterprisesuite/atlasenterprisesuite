@@ -25,7 +25,7 @@ describe('ATLAS A-Z mature module readiness', () => {
     expect(page).toContain('Save draft');
     expect(page).toContain('Approve memory');
     expect(page).toContain('Personal conversations are not ingested automatically');
-    expect(api).toContain('atlas_memory');
+    expect(api).toContain('/functions/v1/atlas-memory');
   });
 
   it('Learning and Health preserve non-clinical boundaries', () => {
