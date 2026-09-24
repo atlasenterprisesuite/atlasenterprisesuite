@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync('supabase/migrations/20260922033000_atlas_memory_core.sql', 'utf8');
+const hardening = readFileSync('supabase/migrations/20260924205000_atlas_knowledge_audit_hardening.sql', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-memory/index.ts', 'utf8');
 const api = readFileSync('apps/web/src/modules/knowledge/memoryApi.ts', 'utf8');
 const page = readFileSync('apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx', 'utf8');
@@ -27,7 +28,8 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(edge).toContain("from('audit_logs')");
     expect(edge).toContain("table_name: 'atlas_memory_records'");
     expect(edge).toContain("new Set(['owner','admin','platform_admin'])");
-    expect(edge).toContain("query = query.eq('sensitivity', 'organization')");
+    expect(edge).toContain("rpc('atlas_memory_search'");
+    expect(hardening).toContain("p_role in ('owner','admin','platform_admin') or r.sensitivity = 'organization'");
     expect(edge).toContain('memory_restricted_role_required');
   });
 
@@ -43,6 +45,8 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');
     expect(api).toContain('/functions/v1/atlas-memory');
+    expect(api).toContain('getAtlasMemoryStats');
+    expect(api).toContain('signal?: AbortSignal');
     expect(api).not.toContain("from('atlas_memory_records')");
   });
 
