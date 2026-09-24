@@ -16,7 +16,9 @@ foreach ($file in @($appFile, $projectFile, $webhookFile)) {
 }
 New-Item -ItemType Directory -Path $webhookDir -Force | Out-Null
 
-$rawRoot = "https://raw.githubusercontent.com/atlasenterprisesuite/atlasenterprisesuite/main/hubspot/atlas-crm-hubspot"
+$canonicalRepo = if ($env:ATLAS_CANONICAL_REPO) { $env:ATLAS_CANONICAL_REPO.Trim() } else { "atlasenterprisesuite/atlasenterprisesuite" }
+if ($canonicalRepo -notmatch "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$") { throw "Invalid ATLAS_CANONICAL_REPO" }
+$rawRoot = "https://raw.githubusercontent.com/$canonicalRepo/main/hubspot/atlas-crm-hubspot"
 $downloads = @(
   @("$rawRoot/src/app/app-hsmeta.json", $appFile),
   @("$rawRoot/hsproject.json", $projectFile),
