@@ -19,7 +19,7 @@ const MODEL_HF_REPO = 'ggml-org/Qwen3.5-0.8B-GGUF:Q4_0';
 const MODEL_ALIAS = 'atlas-local-default';
 const LOCAL_CONTEXT = 8192;
 const RENDER_LOCAL_CONTEXT = 4096;
-const VERSION = 5;
+const VERSION = 6;
 
 const HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -537,6 +537,28 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
       throw Object.assign(new Error('local_ai_inference_failed'), { status: inference.status || 502 });
     }
 
+    let diarizationVerified = false;
+    let diarizationProvider: string | null = null;
+    let diarizationModel: string | null = null;
+    if (source === 'render-free') {
+      const renderRoot = endpoint.replace(/\/local-ai\/?$/, '').replace(/\/$/, '');
+      const diarization = await fetch(`${renderRoot}/diarization/health`, {
+        headers: localHeaders(cfg),
+        signal: AbortSignal.timeout(90_000),
+        cache: 'no-store',
+      });
+      const diarizationBody = await diarization.json().catch(() => ({}));
+      diarizationVerified = diarization.ok
+        && diarizationBody?.ok !== false
+        && String(diarizationBody?.status || '').toLowerCase() === 'ready'
+        && diarizationBody?.biometric_identity === false;
+      diarizationProvider = diarizationBody?.provider ? String(diarizationBody.provider) : null;
+      diarizationModel = diarizationBody?.model ? String(diarizationBody.model) : null;
+      if (!diarizationVerified) {
+        throw Object.assign(new Error('local_diarization_health_failed'), { status: diarization.status || 502 });
+      }
+    }
+
     await admin.from('atlas_local_ai_runtimes').update({
       status: 'verified',
       last_verified_at: new Date().toISOString(),
@@ -551,6 +573,9 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
         inference_verified: true,
         inference_output_present: true,
         production_context_verified: true,
+        diarization_verified: diarizationVerified,
+        diarization_provider: diarizationProvider,
+        diarization_model: diarizationModel,
         context_size: source === 'render-free'
           ? RENDER_LOCAL_CONTEXT
           : Number(cfg?.metadata?.context_size || LOCAL_CONTEXT),
@@ -567,6 +592,9 @@ async function verifyRuntime(req: Request, caller: Awaited<ReturnType<typeof ver
       health_verified: true,
       inference_verified: true,
       inference_output_present: true,
+      diarization_verified: diarizationVerified,
+      diarization_provider: diarizationProvider,
+      diarization_model: diarizationModel,
       automatic_api_cost_usd: 0,
       secret_output: false,
     });

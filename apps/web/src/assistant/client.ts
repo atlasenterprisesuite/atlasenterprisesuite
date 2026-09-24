@@ -206,6 +206,7 @@ export async function getAssistantConversation(id: string): Promise<{
 
 export async function diarizeAssistantAudio(input: {
   audio: Blob;
+  sessionId: string;
   languageHints?: string[];
 }): Promise<AssistantDiarizationResponse> {
   if (!input.audio.size) throw new Error('voice_no_speech');
@@ -217,7 +218,8 @@ export async function diarizeAssistantAudio(input: {
     body: JSON.stringify({
       organization_id: organization.id,
       audio_base64: audioBase64,
-      mime_type: input.audio.type || 'audio/webm',
+      mime_type: input.audio.type || 'audio/wav',
+      session_id: input.sessionId,
       language_hints: input.languageHints || []
     })
   });

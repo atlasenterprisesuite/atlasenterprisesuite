@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAssistantVoice } from '../../assistant/useAssistantVoice';
-import { detectAudioRecordingCapability, recordAssistantAudioChunk } from '../../assistant/voice';
+import { detectPcmWavRecordingCapability, recordAssistantPcmWavChunk } from '../../assistant/voice';
 import {
   getAssistantConversation,
   getAssistantStatus,
@@ -154,6 +154,7 @@ export function UnifiedAIChatPage() {
   const [automaticSpeakerDetection, setAutomaticSpeakerDetection] = useState(false);
   const conversationSessionRef = useRef(0);
   const conversationIdRef = useRef<string | null>(null);
+  const diarizationSessionIdRef = useRef('');
   const diarizationSpeakerMapRef = useRef(new Map<string, ConversationSpeaker>());
   const messageEnd = useRef<HTMLDivElement | null>(null);
   const voice = useAssistantVoice();
@@ -185,7 +186,7 @@ export function UnifiedAIChatPage() {
   const selectedMode = MODES.find((item) => item.value === mode) || MODES[0];
   const selectedProfile = PROFILES.find((item) => item.value === profile) || PROFILES[1];
   const diarizationVerified = status?.diarization?.verified === true && status?.diarization?.state === 'verified';
-  const audioRecordingReady = detectAudioRecordingCapability() === 'ready';
+  const audioRecordingReady = detectPcmWavRecordingCapability() === 'ready';
 
   useEffect(() => {
     let active = true;
@@ -431,10 +432,12 @@ export function UnifiedAIChatPage() {
   async function startDiarizedConversationSession(sessionId: number) {
     if (conversationSessionRef.current !== sessionId) return;
     try {
-      const audio = await recordAssistantAudioChunk(4200);
+      const audio = await recordAssistantPcmWavChunk(4200);
       if (conversationSessionRef.current !== sessionId) return;
+      if (!diarizationSessionIdRef.current) throw new Error('diarization_session_invalid');
       const result = await diarizeAssistantAudio({
         audio,
+        sessionId: diarizationSessionIdRef.current,
         languageHints: [participantALanguage, participantBLanguage]
       });
       if (conversationSessionRef.current !== sessionId) return;
@@ -514,6 +517,7 @@ export function UnifiedAIChatPage() {
 
   function stopConversationSession() {
     conversationSessionRef.current += 1;
+    diarizationSessionIdRef.current = '';
     diarizationSpeakerMapRef.current.clear();
     setConversationActive(false);
     voice.stopMicrophone();
@@ -550,6 +554,11 @@ export function UnifiedAIChatPage() {
 
     const sessionId = conversationSessionRef.current + 1;
     conversationSessionRef.current = sessionId;
+    diarizationSessionIdRef.current = automaticSpeakerDetection
+      ? (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : 'atlas-diarization-' + Date.now().toString(36))
+      : '';
     diarizationSpeakerMapRef.current.clear();
     setConversationActive(true);
     setConversationSpeaker('A');

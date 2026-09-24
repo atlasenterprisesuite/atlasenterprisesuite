@@ -25,6 +25,7 @@ import { createAtlasRuntime } from './runtime/container';
 import { resolveHttpActor } from './runtime/auth';
 import { resolvePersistence } from './runtime/persistence';
 import { verifyReadiness } from './runtime/readiness';
+import { atlasDiarizationRuntimeState, diarizeWavTurn } from './voice/diarization';
 
 const runtime = createAtlasRuntime({ persistence: resolvePersistence(process.env) });
 const port = Number(process.env.PORT ?? process.env.ATLAS_MCP_PORT ?? 8788);
@@ -97,6 +98,85 @@ function localAiAuthorized(authorization: string | undefined): boolean {
   const left = Buffer.from(supplied);
   const right = Buffer.from(expected);
   return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
+}
+
+async function handleDiarization(
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+): Promise<void> {
+  if (!localAiAuthorized(req.headers.authorization)) {
+    return json(res, 401, { error: 'diarization_authentication_required' });
+  }
+
+  if (req.method === 'GET' && req.url === '/diarization/health') {
+    const state = atlasDiarizationRuntimeState();
+    return json(res, state.ready ? 200 : 503, {
+      ok: state.ready,
+      status: state.ready ? 'ready' : 'unavailable',
+      provider: state.provider,
+      model: state.model,
+      mode: state.mode,
+      biometric_identity: state.biometricIdentity,
+      error: state.error,
+    });
+  }
+
+  if (req.method !== 'POST' || req.url !== '/diarization/diarize') {
+    return json(res, 404, { error: 'not_found' });
+  }
+
+  const runtimeState = atlasDiarizationRuntimeState();
+  if (!runtimeState.ready) {
+    return json(res, 503, { error: runtimeState.error || 'diarization_runtime_missing' });
+  }
+
+  let body: any;
+  try {
+    body = JSON.parse((await readBody(req, 12_500_000)).toString('utf8'));
+  } catch {
+    return json(res, 400, { error: 'invalid_input' });
+  }
+
+  const mimeType = String(body?.mime_type || '').trim().toLowerCase();
+  const sessionId = String(body?.session_id || '').trim();
+  const encoded = String(body?.audio_base64 || '').trim();
+  const maxSpeakers = Number(body?.max_speakers || 2);
+  const languageHints = Array.isArray(body?.language_hints)
+    ? body.language_hints.map((value: unknown) => String(value || '').trim()).filter(Boolean).slice(0, 4)
+    : [];
+
+  if (
+    mimeType !== 'audio/wav'
+    || !/^[A-Za-z0-9._:-]{8,128}$/.test(sessionId)
+    || !encoded
+    || encoded.length > 11_000_000
+    || maxSpeakers !== 2
+  ) {
+    return json(res, 400, { error: 'invalid_input' });
+  }
+
+  let audio: Buffer;
+  try {
+    audio = Buffer.from(encoded, 'base64');
+  } catch {
+    return json(res, 400, { error: 'invalid_input' });
+  }
+  if (!audio.length || audio.length > 8_000_000) {
+    return json(res, 400, { error: 'invalid_input' });
+  }
+
+  try {
+    const result = await diarizeWavTurn({ audio, sessionId, languageHints });
+    return json(res, 200, { ok: true, ...result });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : 'diarization_provider_failed';
+    const status = code === 'diarization_session_invalid' || code.startsWith('diarization_audio_')
+      ? 400
+      : code === 'diarization_runtime_missing'
+        ? 503
+        : 502;
+    return json(res, status, { error: code });
+  }
 }
 
 async function proxyLocalAi(
@@ -260,6 +340,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.url === '/local-ai/health' || req.url === '/local-ai/v1/responses') {
       return await proxyLocalAi(req, res);
+    }
+    if (req.url === '/diarization/health' || req.url === '/diarization/diarize') {
+      return await handleDiarization(req, res);
     }
     if (req.method !== 'POST' || req.url !== '/mcp') {
       return json(res, 404, { error: 'not_found' });
