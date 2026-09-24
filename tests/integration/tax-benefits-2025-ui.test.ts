@@ -14,7 +14,7 @@ describe('ATLAS Tax 2025 benefits workspace UI', () => {
 
   it('renders official credits and deductions from one governed registry', () => {
     expect(ui).toContain('FEDERAL_BENEFITS_2025');
-    expect(ui).toContain('Refundability');
+    expect(ui).toContain('benefit.refundability');
     expect(ui).toContain('IRS official source');
   });
 
