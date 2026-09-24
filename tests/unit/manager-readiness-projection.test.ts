@@ -48,6 +48,29 @@ describe('Manager readiness projection', () => {
     expect(projected.allRequiredReady).toBe(true);
   });
 
+  it('accepts optional GitHub in the active direct-deploy contract without weakening required providers', () => {
+    const directDeploy = status();
+    directDeploy.provider_requirements = {
+      github: false,
+      supabase: true,
+      cloudflare: true,
+      production: true,
+      vercel: false
+    };
+    directDeploy.provider_status.github = {
+      state: 'optional_provider_unconfigured',
+      required: false
+    };
+
+    const projected = projectManagerReadiness(normalizeManagerInfraStatus(directDeploy));
+    const github = projected.steps.find((step) => step.key === 'github');
+
+    expect(projected.allRequiredReady).toBe(true);
+    expect(github?.required).toBe(false);
+    expect(github?.status).toBe('completed');
+    expect(github?.providerState).toBe('optional_provider_unconfigured');
+  });
+
   it('rejects a malformed required provider contract', () => {
     expect(() => normalizeManagerInfraStatus({ ok: true, provider_status: {} })).toThrow('infra_status_contract_invalid');
     expect(() => normalizeManagerInfraStatus({
