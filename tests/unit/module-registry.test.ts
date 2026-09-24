@@ -13,29 +13,34 @@ describe('ATLAS canonical module registry', () => {
     }
   });
 
-  it('registers Commerce once with the canonical protected route', () => {
-    expect(source).toContain("id: 'commerce'");
-    expect(source).toContain("title: 'ATLAS Commerce'");
-    expect(source).toContain("navLabel: 'Commerce'");
-    expect(source).toContain("area: 'Business'");
-    expect(source).toContain("route: '/commerce'");
-    expect(source).toContain("readiness: 'partial'");
-    expect(source).toContain('requiresAuth: true');
-    expect(source).toContain('showInNavigation: true');
+  it('registers Commerce once with the canonical protected route and truthful provider gate', () => {
+    const start = source.indexOf("id: 'commerce'");
+    const end = source.indexOf('\n  {', start + 1);
+    const block = source.slice(start, end === -1 ? source.length : end);
+    expect(block).toContain("title: 'ATLAS Commerce'");
+    expect(block).toContain("navLabel: 'Commerce'");
+    expect(block).toContain("area: 'Business'");
+    expect(block).toContain("route: '/commerce'");
+    expect(block).toContain("readiness: 'external-gated'");
+    expect(block).toContain('requiresAuth: true');
+    expect(block).toContain('showInNavigation: true');
     expect((source.match(/id: 'commerce'/g) || []).length).toBe(1);
   });
 
   it('registers Inventory once with the canonical protected procure-to-pay route', () => {
-    expect(source).toContain("id: 'inventory'");
-    expect(source).toContain("title: 'ATLAS Inventory & Purchasing'");
-    expect(source).toContain("route: '/inventory/procure-to-pay'");
-    expect(source).toContain("readiness: 'implemented'");
+    const start = source.indexOf("id: 'inventory'");
+    const end = source.indexOf('\n  {', start + 1);
+    const block = source.slice(start, end === -1 ? source.length : end);
+    expect(block).toContain("title: 'ATLAS Inventory & Purchasing'");
+    expect(block).toContain("route: '/inventory/procure-to-pay'");
+    expect(block).toContain("readiness: 'implemented'");
     expect((source.match(/id: 'inventory'/g) || []).length).toBe(1);
   });
 
-  it('declares route, readiness and authentication metadata', () => {
+  it('declares route, readiness and authentication metadata without partial modules', () => {
     expect(source).toContain('route:');
     expect(source).toContain('readiness:');
     expect(source).toContain('requiresAuth:');
+    expect(source).not.toContain("readiness: 'partial'");
   });
 });

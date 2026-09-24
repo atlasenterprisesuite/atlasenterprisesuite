@@ -58,6 +58,16 @@ export type AdvisoryPermission =
   | 'advisory.automations'
   | 'advisory.admin';
 
+export type HrPermission =
+  | 'hr.read'
+  | 'hr.write';
+
+export type PayrollPermission =
+  | 'payroll.read'
+  | 'payroll.write'
+  | 'payroll.approve'
+  | 'payroll.self';
+
 export type SecurityPermission = 'security.admin';
 export type AuditPermission = 'audit.read';
 
@@ -69,6 +79,8 @@ export type AtlasPermission =
   | CommercePermission
   | AgentPermission
   | AdvisoryPermission
+  | HrPermission
+  | PayrollPermission
   | SecurityPermission
   | AuditPermission;
 

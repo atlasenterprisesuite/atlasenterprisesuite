@@ -30,7 +30,6 @@ describe('ATLAS A-Z canonical integration', () => {
     for (const component of [
       'AnalyticsIntegrationHub',
       'AutomationsIntegrationHub',
-      'PeopleIntegrationHub',
       'RevenueIntegrationHub',
       'SiteReviewIntegrationHub',
       'TelecomIntegrationHub',
@@ -39,6 +38,7 @@ describe('ATLAS A-Z canonical integration', () => {
       expect(hubs).toContain(`export function ${component}`);
       expect(resolver).toContain(`<RequireAtlasIdentity><${component} /></RequireAtlasIdentity>`);
     }
+    expect(resolver).toContain('<RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>');
   });
 
   it('registers modern Accounting and Insurance truthfully', () => {
@@ -46,7 +46,9 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(registry).toContain("route: '/finance/accounting'");
     expect(registry).toContain("id: 'insurance'");
     expect(registry).toContain("route: '/insurance'");
-    expect(registry).toContain("readiness: 'partial'");
+    const insuranceStart = registry.indexOf("id: 'insurance'");
+    const insuranceEnd = registry.indexOf('\n  {', insuranceStart + 1);
+    expect(registry.slice(insuranceStart, insuranceEnd)).toContain("readiness: 'external-gated'");
   });
 
   it('reconciles business commercial depth without bypassing governance', () => {
