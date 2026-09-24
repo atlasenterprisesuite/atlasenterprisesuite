@@ -234,7 +234,7 @@ function writeResult(path, result) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const requiredPaths = [...contract.public_routes, ...contract.critical_network_routes];
+  const requiredPaths = [...contract.public_routes, ...contract.critical_network_routes, ...contract.critical_crm_routes];
   const requiredResults = [];
 
   for (const path of requiredPaths) {
@@ -249,10 +249,14 @@ async function main() {
   const failures = [...requiredResults, ...protectedResults].filter((result) => !result.ok);
   const challengeFailures = failures.filter((result) => result.reason === 'cloudflare-edge-challenge');
   const nonChallengeFailures = failures.filter((result) => result.reason !== 'cloudflare-edge-challenge');
-  const publicResults = requiredResults.slice(0, contract.public_routes.length);
-  const criticalResults = requiredResults.slice(contract.public_routes.length);
+  const publicEnd = contract.public_routes.length;
+  const networkEnd = publicEnd + contract.critical_network_routes.length;
+  const publicResults = requiredResults.slice(0, publicEnd);
+  const criticalNetworkResults = requiredResults.slice(publicEnd, networkEnd);
+  const criticalCrmResults = requiredResults.slice(networkEnd);
   const protectedRoutesEnforced = protectedResults.every((entry) => entry.ok);
-  const criticalNetworkRoutesReachable = criticalResults.every((entry) => entry.ok);
+  const criticalNetworkRoutesReachable = criticalNetworkResults.every((entry) => entry.ok);
+  const criticalCrmRoutesReachable = criticalCrmResults.every((entry) => entry.ok);
   const managerReadinessRouteReachable =
     publicResults.find((entry) => entry.path === '/execution/manager/readiness')?.ok === true;
   const directlyVerified = failures.length === 0;
@@ -294,6 +298,7 @@ async function main() {
       public_routes_reachable: publicResults.every((entry) => entry.ok),
       manager_readiness_route_reachable: managerReadinessRouteReachable,
       critical_network_routes_reachable: criticalNetworkRoutesReachable,
+      critical_crm_routes_reachable: criticalCrmRoutesReachable,
       protected_routes_enforced: protectedRoutesEnforced,
       production_commit_sha_verified: productionCommitShaVerified,
       observed_version_ids: versionIds,

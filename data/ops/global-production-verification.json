@@ -1,5 +1,5 @@
 {
-  "version": 18,
+  "version": 19,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -55,6 +55,14 @@
     "/business/network/commissions",
     "/business/network/payouts",
     "/business/network/compliance"
+  ],
+  "critical_crm_routes": [
+    "/crm",
+    "/crm/contacts",
+    "/crm/companies",
+    "/crm/deals",
+    "/crm/service",
+    "/crm/integrations/hubspot"
   ],
   "protected_routes": [
     {

@@ -92,7 +92,7 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('export DEPLOYMENT_PROBE');
   });
 
-  it('verifies the public custom domain serves the website, Identity shell, and critical Network routes', () => {
+  it('verifies the public custom domain serves the website, Identity shell, and critical Network + CRM routes', () => {
     expect(workflow).toContain('PRODUCTION_URL: https://www.atlasenterprisesuite.com');
     expect(workflow).toContain('probe_route "Public home"');
     expect(workflow).toContain('probe_route "ATLAS Identity"');
@@ -100,7 +100,8 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('probe_route "Module SPA shell"');
     expect(workflow).toContain('probe_route "ATLAS Work" "/work"');
     expect(workflow).toContain('work_routes_reachable');
-    expect(workflow).toContain('Public ATLAS production domain, critical Work routes and critical Network routes verified.');
+    expect(workflow).toContain('critical_crm_routes_reachable');
+    expect(workflow).toContain('Public ATLAS production domain, critical Work, Network and CRM routes verified.');
     expect(workflow).toContain('Verify ATLAS Manager post-deployment canary');
     expect(workflow).toContain('ATLAS Manager post-deployment canary: evidence persisted, control plane reachable, readiness route verified');
   });
