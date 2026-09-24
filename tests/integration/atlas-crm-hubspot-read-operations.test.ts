@@ -69,7 +69,6 @@ class Adapter implements HubSpotCrmReadAdapter {
   listCalls = 0;
   searchCalls = 0;
   associationCalls = 0;
-  createCalls = 0;
   lastCursor: string | null | undefined;
   rateLimit = false;
 
@@ -128,17 +127,6 @@ class Adapter implements HubSpotCrmReadAdapter {
       nextCursor: null
     };
   }
-  async createObject(_context: unknown, request: { objectType: 'contact'; fields: Record<string, unknown> }) {
-    this.createCalls += 1;
-    return {
-      provider: 'hubspot' as const,
-      objectType: request.objectType,
-      providerId: 'created-901',
-      displayName: String(request.fields.firstName || 'Created contact'),
-      fields: request.fields,
-      updatedAt: '2026-09-19T04:30:00Z'
-    };
-  }
 }
 
 async function seededStore(organizationId = orgA) {
@@ -172,8 +160,7 @@ async function seededStore(organizationId = orgA) {
 function deps(
   store: Store,
   adapter: Adapter,
-  permissions: readonly string[] = ['crm.read'],
-  writesEnabled = false
+  permissions: readonly string[] = ['crm.read']
 ): AtlasCrmHubSpotDependencies {
   const granted = new Set(permissions);
   return {
@@ -185,8 +172,7 @@ function deps(
       SUPABASE_ANON_KEY: 'fake-publishable',
       HUBSPOT_CLIENT_ID: 'client',
       HUBSPOT_CLIENT_SECRET: 'fake-secret',
-      HUBSPOT_REDIRECT_URI: 'https://atlas.test/callback',
-      HUBSPOT_CRM_WRITES_ENABLED: writesEnabled ? 'true' : 'false'
+      HUBSPOT_REDIRECT_URI: 'https://atlas.test/callback'
     } as Record<string, string>)[name],
     fetchImpl: async (resource, init) => {
       const url = String(resource);
@@ -204,7 +190,7 @@ function deps(
 
 async function invoke(input: {
   store: Store; adapter: Adapter; operation: string; organizationId?: string;
-  body?: Record<string, unknown>; permissions?: readonly string[]; writesEnabled?: boolean;
+  body?: Record<string, unknown>; permissions?: readonly string[];
 }) {
   const request = new Request('https://atlas.test/functions/v1/atlas-crm-hubspot', {
     method: 'POST',
@@ -221,7 +207,7 @@ async function invoke(input: {
   });
   return handleAtlasCrmHubSpotRequest(
     request,
-    deps(input.store, input.adapter, input.permissions, input.writesEnabled === true)
+    deps(input.store, input.adapter, input.permissions)
   );
 }
 
@@ -300,59 +286,5 @@ describe('ATLAS CRM HubSpot tenant-safe read operations', () => {
     expect(store.evidence.at(-1)).toMatchObject({ status: 'rate_limited', error_code: 'rate_limited' });
   });
 
-  it('creates a CRM record only with crm.write and links the social source thread', async () => {
-    const store = await seededStore();
-    const adapter = new Adapter();
-    const response = await invoke({
-      store,
-      adapter,
-      operation: 'crm.create',
-      permissions: ['crm.write'],
-      writesEnabled: true,
-      body: {
-        objectType: 'contact',
-        fields: { firstName: 'Ada', lastName: 'Lovelace' },
-        sourceThreadId: '33333333-3333-4333-8333-333333333333'
-      }
-    });
-    expect(response.status).toBe(201);
-    expect(adapter.createCalls).toBe(1);
-    expect(store.links.at(-1)).toMatchObject({
-      org_id: orgA,
-      provider_object_type: 'contact',
-      provider_object_id: 'created-901',
-      atlas_object_type: 'social_thread',
-      atlas_object_id: '33333333-3333-4333-8333-333333333333'
-    });
-  });
-
-  it('fails closed on CRM writes even when the actor has crm.write until policy is enabled', async () => {
-    const store = await seededStore();
-    const adapter = new Adapter();
-    const response = await invoke({
-      store,
-      adapter,
-      operation: 'crm.create',
-      permissions: ['crm.write'],
-      body: { objectType: 'contact', fields: { firstName: 'Ada' } }
-    });
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({ code: 'crm_writes_disabled' });
-    expect(adapter.createCalls).toBe(0);
-  });
-
-  it('denies CRM creation when the actor only has crm.read', async () => {
-    const store = await seededStore();
-    const adapter = new Adapter();
-    const response = await invoke({
-      store,
-      adapter,
-      operation: 'crm.create',
-      permissions: ['crm.read'],
-      body: { objectType: 'contact', fields: { firstName: 'Ada' } }
-    });
-    expect(response.status).toBe(403);
-    expect(adapter.createCalls).toBe(0);
-  });
 
 });
