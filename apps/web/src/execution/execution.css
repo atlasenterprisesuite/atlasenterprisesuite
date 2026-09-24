@@ -322,6 +322,32 @@
   background: rgba(245, 158, 11, .1);
 }
 
+.manager-production-badge[data-state="regression"] {
+  border-color: rgba(239, 68, 68, .65);
+  background: rgba(239, 68, 68, .12);
+}
+
+.manager-production-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+
+.manager-regression-alert {
+  display: grid;
+  gap: .35rem;
+  padding: .85rem 1rem;
+  border: 1px solid rgba(239, 68, 68, .65);
+  border-radius: .8rem;
+  background: rgba(239, 68, 68, .1);
+}
+
+.manager-regression-alert span {
+  color: var(--execution-muted);
+  overflow-wrap: anywhere;
+}
+
 .manager-production-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -477,6 +503,10 @@
   .manager-production-badge,
   .manager-route-state {
     white-space: normal;
+  }
+
+  .manager-production-badges {
+    justify-content: flex-start;
   }
 }
 
