@@ -4,15 +4,23 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
 
-const membership = [{ org_id: 'org-1', role: 'owner', status: 'active' }];
-const emptyPayroll = (url: string) =>
-  url.includes('/rest/v1/') ? [] : membership;
+const membership = [{
+  org_id: 'org-1',
+  role: 'owner',
+  status: 'active',
+  organizations: { id: 'org-1', name: 'ATLAS Test', legal_name: null, active: true }
+}];
+const responseBody = (url: string) => {
+  if (url.includes('/rest/v1/organization_members')) return membership;
+  if (url.includes('/rest/v1/')) return [];
+  return {};
+};
 
 beforeEach(() => {
   window.localStorage.setItem('atlas_access_token', 'payroll-test-token');
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    return new Response(JSON.stringify(emptyPayroll(url)), {
+    return new Response(JSON.stringify(responseBody(url)), {
       status: 200,
       headers: { 'content-type': 'application/json' }
     });
