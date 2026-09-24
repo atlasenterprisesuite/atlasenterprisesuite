@@ -42,6 +42,12 @@ if (
     '--no-webui',
     '-c', localContext,
     '-np', '1',
+    '-b', '512',
+    '-ub', '128',
+    '-ctk', 'q8_0',
+    '-ctv', 'q8_0',
+    '--cache-ram', '0',
+    '--no-cache-idle-slots',
     '-t', '1',
   ], {
     stdio: 'inherit',
