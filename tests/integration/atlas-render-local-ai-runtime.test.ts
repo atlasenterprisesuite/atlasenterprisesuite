@@ -90,11 +90,15 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(bootstrap).toContain("inference_output_present: true");
     expect(bootstrap).toContain("productionContextInstructions");
     expect(bootstrap).toContain("production_context_verified: true");
+    expect(bootstrap).toContain("diarization_verified: diarizationVerified");
+    expect(bootstrap).toContain("/diarization/health");
+    expect(bootstrap).toContain("biometric_identity === false");
     expect(bootstrap).toContain("RENDER_LOCAL_CONTEXT = 4096");
     expect(bootstrap).toContain("status: 'verified'");
     expect(workflow).toContain('runs-on: ubuntu-latest');
     expect(workflow).toContain('audience=atlas-local-ai-bootstrap');
     expect(workflow).toContain('j.inference_verified===true');
+    expect(workflow).toContain('j.diarization_verified===true');
     expect(workflow).toContain('j.automatic_api_cost_usd===0');
     expect(workflow).not.toContain('secrets.');
   });
