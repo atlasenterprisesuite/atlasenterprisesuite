@@ -54,12 +54,12 @@ afterEach(cleanup);
 
 it('renders persisted recruiting evidence for an HR reader', async () => {
   renderRecruiting({
-    status: 'ready', userId: 'reader-a', organizationId: 'org-a', organizationName: 'Test Organization',
+    status: 'ready', userId: 'reader-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
     role: 'manager', permissions: ['hr.read'],
   });
 
   expect(await screen.findByRole('heading', { name: 'Recruiting' })).toBeInTheDocument();
-  expect(screen.getByText('Ada Rivera')).toBeInTheDocument();
+  expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
   expect(screen.getByText('Payroll Specialist')).toBeInTheDocument();
   expect(screen.getByText(/English · 84/)).toBeInTheDocument();
   expect(screen.getByLabelText('Candidate search')).toBeInTheDocument();
@@ -76,12 +76,12 @@ it('advances an application only through the governed service with HR write', as
   const service = new PeopleRecruitingWriteService(gateway);
 
   renderRecruiting({
-    status: 'ready', userId: 'manager-a', organizationId: 'org-a', organizationName: 'Test Organization',
+    status: 'ready', userId: 'manager-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
     role: 'manager', permissions: ['hr.read', 'hr.write'],
   }, service);
 
   await screen.findByRole('heading', { name: 'Recruiting' });
-  fireEvent.click(screen.getByRole('button', { name: 'Advance app-a to assessment' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Advance app-a to assessment' }));
 
   await waitFor(() => expect(advanceApplicationStage).toHaveBeenCalledWith({
     organizationId: 'org-a',
@@ -102,12 +102,12 @@ it('records explicit assessment evidence only through the governed service with 
   const service = new PeopleRecruitingWriteService(gateway);
 
   renderRecruiting({
-    status: 'ready', userId: 'manager-a', organizationId: 'org-a', organizationName: 'Test Organization',
+    status: 'ready', userId: 'manager-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
     role: 'manager', permissions: ['hr.read', 'hr.write'],
   }, service);
 
   await screen.findByRole('heading', { name: 'Recruiting' });
-  fireEvent.change(screen.getByLabelText('Assessment type app-a'), { target: { value: 'english' } });
+  fireEvent.change(await screen.findByLabelText('Assessment type app-a'), { target: { value: 'english' } });
   fireEvent.change(screen.getByLabelText('Assessment earned app-a'), { target: { value: '42' } });
   fireEvent.change(screen.getByLabelText('Assessment possible app-a'), { target: { value: '50' } });
   fireEvent.change(screen.getByLabelText('Assessment passing app-a'), { target: { value: '70' } });
@@ -128,7 +128,7 @@ it('records explicit assessment evidence only through the governed service with 
 
 it('denies Recruiting without hr.read', async () => {
   renderRecruiting({
-    status: 'ready', userId: 'viewer-a', organizationId: 'org-a', organizationName: 'Test Organization',
+    status: 'ready', userId: 'viewer-a', tenantId: 'tenant-a', tenantName: 'Test Tenant', organizationId: 'org-a', organizationName: 'Test Organization',
     role: 'viewer', permissions: ['payroll.read'],
   });
 
