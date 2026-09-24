@@ -95,28 +95,28 @@ async function parseOracleResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getOracleStatus(): Promise<OracleStatus> {
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-oracle?api=status', { method: 'GET' });
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=oracle-status', { method: 'GET' });
   return parseOracleResponse<OracleStatus>(response);
 }
 
 export async function getOracleDeck(): Promise<{ ok: true; deck: OracleDeckStatus; cards: OracleCardRecord[] }> {
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-oracle?api=deck', { method: 'GET' });
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=oracle-deck', { method: 'GET' });
   return parseOracleResponse(response);
 }
 
 export async function listOracleReadings(): Promise<{ ok: true; readings: OracleReadingSummary[] }> {
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-oracle?api=readings', { method: 'GET' });
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=oracle-readings', { method: 'GET' });
   return parseOracleResponse(response);
 }
 
 export async function getOracleReading(id: string): Promise<OracleReadingDetail> {
-  const response = await authorizedAtlasFetch(`/functions/v1/atlas-oracle?api=reading&id=${encodeURIComponent(id)}`, { method: 'GET' });
+  const response = await authorizedAtlasFetch(`/functions/v1/atlas-copilot?api=oracle-reading&id=${encodeURIComponent(id)}`, { method: 'GET' });
   return parseOracleResponse(response);
 }
 
 export async function createOracleReading(input: { reading_type: OracleReadingType; focus?: string }): Promise<OracleReadingDetail> {
   const organization = await getActiveAtlasOrganization();
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-oracle?api=create', {
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=oracle-create', {
     method: 'POST',
     body: JSON.stringify({
       reading_type: input.reading_type,
@@ -128,7 +128,7 @@ export async function createOracleReading(input: { reading_type: OracleReadingTy
 }
 
 export async function saveOracleNote(readingId: string, note: string) {
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-oracle?api=note', {
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=oracle-note', {
     method: 'POST',
     body: JSON.stringify({ reading_id: readingId, note })
   });
@@ -136,7 +136,7 @@ export async function saveOracleNote(readingId: string, note: string) {
 }
 
 export async function setOracleFavorite(cardId: string, favorite: boolean) {
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-oracle?api=favorite', {
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=oracle-favorite', {
     method: 'POST',
     body: JSON.stringify({ card_id: cardId, favorite })
   });
