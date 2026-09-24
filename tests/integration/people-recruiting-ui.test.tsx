@@ -60,9 +60,9 @@ it('renders persisted recruiting evidence for an HR reader', async () => {
 
   expect(await screen.findByRole('heading', { name: 'Recruiting' })).toBeInTheDocument();
   expect(await screen.findByText('Ada Rivera')).toBeInTheDocument();
-  expect(screen.getByText('Payroll Specialist')).toBeInTheDocument();
-  expect(screen.getByText(/English · 84/)).toBeInTheDocument();
-  expect(screen.getByLabelText('Candidate search')).toBeInTheDocument();
+  expect(await screen.findByText('Payroll Specialist')).toBeInTheDocument();
+  expect(await screen.findByText(/English · 84/)).toBeInTheDocument();
+  expect(await screen.findByLabelText('Candidate search')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Advance app-a to assessment' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Record assessment app-a' })).not.toBeInTheDocument();
 });
