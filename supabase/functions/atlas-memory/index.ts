@@ -283,6 +283,70 @@ async function importRecords(ctx: MemoryContext, input: Record<string, any>) {
   return results;
 }
 
+
+async function listLibraryAssets(ctx: MemoryContext, url: URL) {
+  const sb = adminClient();
+  let query = sb
+    .from('atlas_library_assets')
+    .select('id,organization_id,source_system,source_file_id,source_library_file_id,source_version_id,name,library_path,mime_type,size_bytes,source_created_at,source_modified_at,model_generated,file_provider,primary_module_id,module_ids,tags,sensitivity,classification_basis,analysis_status,summary,content_excerpt,content_hash,duplicate_of,memory_record_id,source_metadata,indexed_at,analyzed_at,updated_at')
+    .eq('organization_id', ctx.orgId)
+    .order('updated_at', { ascending: false })
+    .limit(500);
+
+  const moduleId = safeText(url.searchParams.get('module'), 100);
+  const status = safeText(url.searchParams.get('analysis_status'), 40);
+  if (moduleId) query = query.contains('module_ids', [moduleId]);
+  if (status && ['indexed','analyzed','duplicate','needs_review','error'].includes(status)) {
+    query = query.eq('analysis_status', status);
+  }
+  if (!ADMIN_ROLES.has(ctx.role)) query = query.eq('sensitivity', 'organization');
+
+  const { data, error } = await query;
+  if (error) throw fail('library_read_failed', 500);
+  const q = safeText(url.searchParams.get('q'), 200).toLowerCase();
+  const assets = (data || []).filter((row: any) => {
+    if (!q) return true;
+    const searchable = [
+      row.name,
+      row.library_path,
+      row.primary_module_id,
+      row.summary,
+      ...(row.tags || []),
+      ...(row.module_ids || [])
+    ].join(' ').toLowerCase();
+    return searchable.includes(q);
+  });
+  return { organization_id: ctx.orgId, role: ctx.role, assets };
+}
+
+async function libraryStats(ctx: MemoryContext) {
+  const { data, error } = await adminClient()
+    .from('atlas_library_assets')
+    .select('primary_module_id,analysis_status,sensitivity,size_bytes')
+    .eq('organization_id', ctx.orgId);
+  if (error) throw fail('library_read_failed', 500);
+  const rows = data || [];
+  const byModule: Record<string, number> = {};
+  const byStatus: Record<string, number> = {};
+  let totalBytes = 0;
+  let restricted = 0;
+  for (const row of rows as any[]) {
+    const moduleId = String(row.primary_module_id || 'knowledge');
+    const status = String(row.analysis_status || 'indexed');
+    byModule[moduleId] = (byModule[moduleId] || 0) + 1;
+    byStatus[status] = (byStatus[status] || 0) + 1;
+    totalBytes += Number(row.size_bytes || 0);
+    if (row.sensitivity === 'restricted') restricted += 1;
+  }
+  return {
+    total_assets: rows.length,
+    total_bytes: totalBytes,
+    restricted_assets: restricted,
+    by_module: byModule,
+    by_status: byStatus
+  };
+}
+
 async function route(req: Request, origin: string | null) {
   const ctx = await context(req);
   const url = new URL(req.url);
@@ -292,6 +356,8 @@ async function route(req: Request, origin: string | null) {
     return json({ ok: true, ...(await listRecords(ctx, url)) }, 200, origin);
   }
   if (api === 'record' && req.method === 'GET') return json({ ok: true, record: await getRecord(ctx, url) }, 200, origin);
+  if (api === 'library' && req.method === 'GET') return json({ ok: true, ...(await listLibraryAssets(ctx, url)) }, 200, origin);
+  if (api === 'library-stats' && req.method === 'GET') return json({ ok: true, organization_id: ctx.orgId, role: ctx.role, stats: await libraryStats(ctx) }, 200, origin);
   if (api === 'save' && req.method === 'POST') return json({ ok: true, record: await saveDraft(ctx, await body(req)) }, 201, origin);
   if (api === 'approve' && req.method === 'POST') return json({ ok: true, record: await approve(ctx, await body(req)) }, 200, origin);
   if (api === 'import' && req.method === 'POST') return json({ ok: true, records: await importRecords(ctx, await body(req)) }, 201, origin);
