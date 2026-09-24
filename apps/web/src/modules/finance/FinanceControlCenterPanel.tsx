@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadFinanceControlCenter, type FinanceControlCenterSnapshot } from '../../lib/financeApi';
 import { EnterpriseAccountingPanel } from './EnterpriseAccountingPanel';
+import { FpaControlCenterPanel } from './FpaControlCenterPanel';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const dateTime = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
@@ -178,6 +179,7 @@ export function FinanceControlCenterPanel() {
         </div>
       )}
       <EnterpriseAccountingPanel />
+      <FpaControlCenterPanel />
     </section>
   );
 }
