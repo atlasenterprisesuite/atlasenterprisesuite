@@ -28,6 +28,7 @@ describe('ATLAS global production verification', () => {
       '/suite',
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
+      '/execution/manager/readiness',
       '/gps',
       '/finance',
       '/finance/accounting',
