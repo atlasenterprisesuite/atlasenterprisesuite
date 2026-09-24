@@ -30,6 +30,149 @@ function plainRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 }
 
+
+const MANAGER_PRODUCTION_ORIGIN = 'https://www.atlasenterprisesuite.com';
+export const MANAGER_CRITICAL_NETWORK_ROUTES = [
+  { label: 'ATLAS Network', path: '/business/network' },
+  { label: 'Pricing', path: '/business/network/pricing' },
+  { label: 'Commissions', path: '/business/network/commissions' },
+  { label: 'Payouts', path: '/business/network/payouts' },
+  { label: 'Compliance', path: '/business/network/compliance' }
+] as const;
+
+type ManagerCriticalRouteState = 'verified' | 'failed' | 'challenge' | 'unavailable';
+
+export type ManagerProductionVerificationSummary = {
+  state: 'verified' | 'unverified' | 'unavailable';
+  canary_verified: boolean;
+  deployment_sha: string | null;
+  verified_at: string | null;
+  provider: string | null;
+  provider_state: string | null;
+  version_id: string | null;
+  evidence_id: string | null;
+  critical_routes: Array<{
+    label: string;
+    path: string;
+    state: ManagerCriticalRouteState;
+    http_status: number | null;
+    observed_sha: string | null;
+    observed_version_id: string | null;
+  }>;
+};
+
+async function probeManagerCriticalRoute(
+  definition: (typeof MANAGER_CRITICAL_NETWORK_ROUTES)[number],
+  expectedSha: string
+) {
+  if (!expectedSha) {
+    return {
+      ...definition,
+      state: 'unavailable' as const,
+      http_status: null,
+      observed_sha: null,
+      observed_version_id: null
+    };
+  }
+
+  try {
+    const response = await fetch(new URL(definition.path, MANAGER_PRODUCTION_ORIGIN), {
+      method: 'GET',
+      redirect: 'manual',
+      headers: {
+        'user-agent': 'ATLAS-Manager-Production-Panel/1.0',
+        'cache-control': 'no-cache, no-store'
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+    const observedSha = response.headers.get('x-atlas-version-tag');
+    const observedVersionId = response.headers.get('x-atlas-version-id');
+    const challenged =
+      response.status === 403 &&
+      String(response.headers.get('cf-mitigated') || '').toLowerCase() === 'challenge';
+    const verified =
+      response.status === 200 &&
+      observedSha === expectedSha &&
+      Boolean(observedVersionId);
+
+    return {
+      ...definition,
+      state: verified ? 'verified' as const : challenged ? 'challenge' as const : 'failed' as const,
+      http_status: response.status,
+      observed_sha: observedSha,
+      observed_version_id: observedVersionId
+    };
+  } catch {
+    return {
+      ...definition,
+      state: 'unavailable' as const,
+      http_status: null,
+      observed_sha: null,
+      observed_version_id: null
+    };
+  }
+}
+
+async function loadProductionVerificationSummary(deps: SyncDependencies): Promise<ManagerProductionVerificationSummary> {
+  const { data, error } = await deps.admin
+    .from('atlas_runtime_verification_runs')
+    .select('id,target_version,status,provider,provider_state,created_at,checks')
+    .eq('verification_type', 'infrastructure-deployment')
+    .eq('target_service', 'atlas-enterprise-suite-web')
+    .eq('environment', 'production')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return {
+      state: 'unavailable',
+      canary_verified: false,
+      deployment_sha: null,
+      verified_at: null,
+      provider: null,
+      provider_state: null,
+      version_id: null,
+      evidence_id: null,
+      critical_routes: MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) => ({
+        ...definition,
+        state: 'unavailable',
+        http_status: null,
+        observed_sha: null,
+        observed_version_id: null
+      }))
+    };
+  }
+
+  const checks = plainRecord(data.checks);
+  const deploymentSha = typeof data.target_version === 'string' ? data.target_version : '';
+  const criticalRoutes = await Promise.all(
+    MANAGER_CRITICAL_NETWORK_ROUTES.map((definition) =>
+      probeManagerCriticalRoute(definition, deploymentSha)
+    )
+  );
+  const persistedEvidenceVerified =
+    data.status === 'passed' &&
+    data.provider_state === 'verified' &&
+    checks.production_commit_sha_verified === true &&
+    checks.manager_readiness_route_reachable === true &&
+    checks.critical_network_routes_reachable === true;
+  const allCriticalRoutesVerified = criticalRoutes.every((route) => route.state === 'verified');
+  const canaryVerified = persistedEvidenceVerified && allCriticalRoutesVerified;
+
+  return {
+    state: canaryVerified ? 'verified' : 'unverified',
+    canary_verified: canaryVerified,
+    deployment_sha: deploymentSha || null,
+    verified_at: typeof data.created_at === 'string' ? data.created_at : null,
+    provider: typeof data.provider === 'string' ? data.provider : null,
+    provider_state: typeof data.provider_state === 'string' ? data.provider_state : null,
+    version_id: typeof checks.cloudflare_version_id === 'string' ? checks.cloudflare_version_id : null,
+    evidence_id: typeof data.id === 'string' ? data.id : null,
+    critical_routes: criticalRoutes
+  };
+}
+
 function normalizeRequiredProvider(value: unknown, requirement: unknown): RequiredProviderStatus {
   const raw = plainRecord(value);
   const required = raw.required === true || (raw.required === undefined && requirement === true);
@@ -363,11 +506,21 @@ async function completionEligibility(deps: SyncDependencies, task: any, steps: a
   });
 }
 
-async function mirrorWorkflowState(deps: SyncDependencies, workflow: any, task: any, status: 'now' | 'blocked' | 'completed') {
+async function mirrorWorkflowState(
+  deps: SyncDependencies,
+  workflow: any,
+  task: any,
+  status: 'now' | 'blocked' | 'completed',
+  productionVerification: ManagerProductionVerificationSummary
+) {
   const patch: Record<string, unknown> = {
     status,
     current_task_id: String(task.id),
     current_module: 'manager',
+    context: {
+      ...plainRecord(workflow.context),
+      production_verification: productionVerification
+    },
     updated_at: new Date().toISOString(),
     version: Number(workflow.version || 1) + 1,
     completed_at: status === 'completed' ? new Date().toISOString() : null
@@ -382,6 +535,7 @@ export async function syncManagerReadiness(deps: SyncDependencies) {
   const checkedAt = new Date().toISOString();
   const status = await fetchInfrastructureStatus(deps);
   const projection = projectManagerReadiness(status);
+  const productionVerification = await loadProductionVerificationSummary(deps);
   let workflow = await createOrLoadWorkflow(deps);
   let task = await createOrLoadTask(deps, workflow);
   task = await normalizeTaskForSync(deps, task);
@@ -401,7 +555,7 @@ export async function syncManagerReadiness(deps: SyncDependencies) {
         blocked_reason: projection.blockedReason
       }, 'execution.manager.readiness_transition');
     }
-    workflow = await mirrorWorkflowState(deps, workflow, task, 'blocked');
+    workflow = await mirrorWorkflowState(deps, workflow, task, 'blocked', productionVerification);
   } else {
     if (String(task.status) !== 'now') {
       if (!canTransitionTask(String(task.status) as any, 'now')) throw new ManagerReadinessError('invalid_transition', 409);
@@ -420,9 +574,9 @@ export async function syncManagerReadiness(deps: SyncDependencies) {
     if (gate.eligible) {
       if (!canTransitionTask('now', 'completed')) throw new ManagerReadinessError('invalid_transition', 409);
       task = await updateTaskState(deps, task, 'completed', { next_action: null, blocked_reason: null }, 'execution.manager.readiness_transition');
-      workflow = await mirrorWorkflowState(deps, workflow, task, 'completed');
+      workflow = await mirrorWorkflowState(deps, workflow, task, 'completed', productionVerification);
     } else {
-      workflow = await mirrorWorkflowState(deps, workflow, task, 'now');
+      workflow = await mirrorWorkflowState(deps, workflow, task, 'now', productionVerification);
     }
   }
 
