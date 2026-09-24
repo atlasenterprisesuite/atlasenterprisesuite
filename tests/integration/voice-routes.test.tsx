@@ -10,6 +10,8 @@ const source: AtlasIdentitySource = {
   resolve: async () => ({
     status: 'ready',
     userId: 'voice-owner-a',
+    tenantId: 'tenant-a',
+    tenantName: 'Test Tenant',
     organizationId: 'org-a',
     organizationName: 'Test Organization',
     role: 'staff',
@@ -32,7 +34,7 @@ afterEach(cleanup);
 it('renders ATLAS Voice from the canonical shell', async () => {
   renderRoute('/voice');
   expect(await screen.findByRole('heading', { name: 'ATLAS Voice' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /Personal Voice/ })).toHaveAttribute('href', '/voice/personal-voice');
+  expect(screen.getByText('Personal Voice', { selector: 'strong' }).closest('a')).toHaveAttribute('href', '/voice/personal-voice');
 });
 
 it('keeps Personal Voice generation truthfully unavailable without a provider', async () => {
