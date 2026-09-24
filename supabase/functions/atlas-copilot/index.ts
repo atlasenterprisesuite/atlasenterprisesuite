@@ -10,6 +10,7 @@ import {createProviderRegistry} from './provider-registry.mjs';
 import {createCouncilOrchestrator} from './council-orchestrator.mjs';
 import {createToolGateway} from './tool-gateway.mjs';
 import {detectOracleIntent} from './oracle-intent.mjs';
+import {createOracleRuntime} from './oracle-runtime.mjs';
 import {renderAtlasCopilotPage} from './ui.mjs';
 
 const U='https://ggmanzcgtlrvqfoccgsh.supabase.co';
@@ -17,14 +18,14 @@ const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
-const ORACLE='/functions/v1/atlas-oracle';
-const VERSION=13;
+const VERSION=14;
 const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','codex-sovereign'];
 const DEFAULT_OPENAI_MODEL='gpt-6-astra';
 const DEFAULT_BEDROCK_REGION='us-west-2';
 const DEFAULT_BEDROCK_ENDPOINT='runtime';
 const DEFAULT_BEDROCK_RUNTIME_MODEL='us.openai.gpt-6-astra';
 const DEFAULT_BEDROCK_MANTLE_MODEL='openai.gpt-6-astra';
+const oracleRuntime=createOracleRuntime({supabaseUrl:U,publishableKey:K,fetchFn:fetch});
 
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
 function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null,defaultModel=null){
@@ -264,17 +265,25 @@ async function handleStatus(req){
   return json({ok:true,authenticated:true,local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning','private-oracle'],profiles:['fast','balanced','deep'],cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'github-actions-oidc-queue'});
 }
 async function handleOracle(req,body,message,oracleIntent,resolved){
-  const authorization=req.headers.get('authorization')||'';
-  const response=await fetch(`${U}${ORACLE}?api=create`,{
-    method:'POST',
-    headers:{apikey:K,authorization,'content-type':'application/json','x-atlas-org-id':String(resolved.context.organization_id)},
-    body:JSON.stringify({reading_type:oracleIntent.readingType,focus:message,organization_id:resolved.context.organization_id})
+  const result=await oracleRuntime.createFromIntent({
+    request:req,
+    readingType:oracleIntent.readingType,
+    focus:message,
+    organizationId:resolved.context.organization_id
   });
-  let result={};
-  try{result=await response.json();}catch{result={ok:false,error:`oracle_request_failed_${response.status}`};}
-  if(!response.ok)return json({ok:false,error:result?.error||'oracle_request_failed',oracle:true},response.status);
   const lines=Array.isArray(result?.interpretation)?result.interpretation.map(item=>`${item?.position?.label||'Reflection'} — ${item?.card?.title||'Card'}: ${item?.reflection||''}`):[];
   return json({ok:true,oracle:true,reading:result?.reading||null,cards:result?.selected_cards||result?.cards||[],interpretation:result?.interpretation||[],disclaimer:result?.disclaimer||null,text:lines.join('\n\n'),provider_state:'not_used',execution:{repositoryMutation:false,mode:'private-oracle'}});
+}
+async function handleOracleApi(req,url,api){
+  const action=String(api||'').replace(/^oracle-/,'');
+  try{
+    const result=await oracleRuntime.handleApi({request:req,url,action});
+    return json(result.body,result.status);
+  }catch(error){
+    const code=error?.code||error?.message||'oracle_request_failed';
+    const status=Number(error?.status||500);
+    return json({ok:false,error:code},status>=400&&status<600?status:500);
+  }
 }
 
 async function handleChat(req){
@@ -306,8 +315,9 @@ async function handleRequest(req: Request){
       const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
       const emergencyConfigured=rt.costPolicy.emergency_openai_enabled===true&&rt.costPolicy.emergency_openai_daily_budget_usd>0&&rt.costPolicy.emergency_openai_reserve_usd>0;
       const emergencyReady=emergencyConfigured&&openai?.configured===true&&openai?.verified===true;
-      return json({ok:true,state:'ready',service:'atlas-copilot',local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'github-actions-oidc-queue',repairBridge:REPAIR,oracle:ORACLE,checkedAt:new Date().toISOString()});
+      return json({ok:true,state:'ready',service:'atlas-copilot',local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'github-actions-oidc-queue',repairBridge:REPAIR,oracle:SELF,oracle_runtime:'embedded-zero-cost',checkedAt:new Date().toISOString()});
     }
+    if(api?.startsWith('oracle-'))return await handleOracleApi(req,url,api);
     if(api==='status')return await handleStatus(req);
     if(api==='history')return await handleHistory(req);
     if(api==='conversation')return await handleConversation(req,url);
