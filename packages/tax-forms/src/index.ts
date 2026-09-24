@@ -89,6 +89,7 @@ export const TAX_FORM_CATALOG: readonly TaxFormCatalogItem[] = [
   { id: '940', title: 'Form 940', audience: 'business', category: 'Payroll', purpose: 'Federal unemployment tax return.' },
   { id: 'W-2', title: 'Form W-2 / W-3', audience: 'both', category: 'Source document', purpose: 'Wage and tax statement and transmittal.' },
   { id: '1099', title: 'Forms 1099 / 1096', audience: 'both', category: 'Information returns', purpose: 'Information return family and transmittal.' },
+  { id: '1098-VLI', title: 'Form 1098-VLI', audience: 'both', category: 'Information returns', purpose: 'Vehicle Loan Interest Statement for section 6050AA reporting and taxpayer deduction workflow.' },
   { id: 'K-1', title: 'Schedules K-1 / K-2 / K-3', audience: 'both', category: 'Pass-through', purpose: 'Owner and international pass-through reporting.' },
   { id: '4562', title: 'Form 4562', audience: 'both', category: 'Assets', purpose: 'Depreciation and amortization.' },
   { id: '4797', title: 'Form 4797', audience: 'both', category: 'Assets', purpose: 'Sales of business property.' },
@@ -216,3 +217,5 @@ export * from './depthSourceDocuments';
 export * from './individual1040Engine';
 
 export * from './scheduleA2025';
+
+export * from './taxAuthorityRules2026';
