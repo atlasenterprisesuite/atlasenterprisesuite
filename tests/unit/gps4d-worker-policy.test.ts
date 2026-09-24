@@ -16,7 +16,7 @@ describe('ATLAS GPS browser security boundary', () => {
   it('uses a pinned MapLibre release and a narrow CSP allowlist instead of wildcard script execution', () => {
     expect(page).toContain('maplibre-gl@6.11.1');
     expect(worker).toContain("script-src 'self' https://unpkg.com");
-    expect(worker).not.toContain("script-src 'self' https:");
+    expect(worker).not.toContain('"script-src \'self\' https:"');
     expect(worker).toContain('https://tiles.openfreemap.org');
     expect(worker).toContain('https://basemap.nationalmap.gov');
     expect(worker).toContain('https://tiles.mapterhorn.com');
