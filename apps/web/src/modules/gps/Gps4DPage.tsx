@@ -32,7 +32,7 @@ type LivePosition = GpsPoint & {
 const ORLANDO: [number, number] = [-81.3789, 28.5384];
 const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.css';
 const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.mjs';
-const STREET_STYLE = 'https://tiles.openfreemap.org/styles/bright';
+const STREET_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const USGS_TILE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
 const TERRAIN_TILEJSON = 'https://tiles.mapterhorn.com/tilejson.json';
 const REROUTE_THRESHOLD_M = 80;
@@ -112,7 +112,9 @@ export function Gps4DPage() {
   const spokenStepIdRef = useRef('');
   const lastRerouteAt = useRef(0);
 
-  const [providerState, setProviderState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [engineState, setEngineState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [layerState, setLayerState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [layerMessage, setLayerMessage] = useState('Cargando mapa…');
   const [gpsState, setGpsState] = useState<'pending' | 'active' | 'blocked'>('pending');
   const [viewMode, setViewMode] = useState<GpsViewMode>('street');
   const [current, setCurrent] = useState<LivePosition | null>(null);
@@ -131,6 +133,8 @@ export function Gps4DPage() {
   const [remainingM, setRemainingM] = useState(0);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [saved, setSaved] = useState<GpsSavedPlace[]>([]);
+  const [stops, setStops] = useState<GpsPoint[]>([]);
+  const [arrivalState, setArrivalState] = useState<'idle' | 'approaching' | 'arrived'>('idle');
   const [persistenceState, setPersistenceState] = useState<'loading' | 'ready' | 'blocked'>('loading');
 
   const activeRoute = routes[activeRouteIndex] || null;
@@ -159,9 +163,26 @@ export function Gps4DPage() {
       });
       instance.addControl(new module.NavigationControl({ visualizePitch: true }), 'top-right');
       if (module.GlobeControl) instance.addControl(new module.GlobeControl(), 'top-right');
-      instance.on('load', () => setProviderState('ready'));
-      instance.on('error', () => {
-        if (!instance.loaded()) setProviderState('error');
+      instance.on('load', () => {
+        setEngineState('ready');
+        setLayerState('ready');
+        setLayerMessage('Street map listo');
+      });
+      instance.on('style.load', () => {
+        setLayerState('ready');
+        setLayerMessage('Capa de mapa lista');
+      });
+      instance.on('error', (event: any) => {
+        if (!instance.loaded()) {
+          setEngineState('error');
+          setLayerMessage('Motor MapLibre no disponible');
+          return;
+        }
+        const message = String(event?.error?.message || '');
+        if (!instance.isStyleLoaded?.() || /style|source|sprite|glyph/i.test(message)) {
+          setLayerState('error');
+          setLayerMessage('La capa seleccionada no respondió. Cambia de capa o reintenta.');
+        }
       });
       instance.on('click', (event: any) => {
         setSelected({
@@ -171,7 +192,7 @@ export function Gps4DPage() {
         });
       });
       map.current = instance;
-    }).catch(() => setProviderState('error'));
+    }).catch(() => { setEngineState('error'); setLayerState('error'); setLayerMessage('Motor MapLibre no disponible'); });
 
     return () => {
       cancelled = true;
@@ -180,6 +201,15 @@ export function Gps4DPage() {
       map.current = null;
       maplibre.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const lat = Number(params.get('lat'));
+    const lon = Number(params.get('lon'));
+    if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      setSelected({ lat, lon, label: params.get('label') || 'Destino compartido' });
+    }
   }, []);
 
   useEffect(() => {
@@ -205,6 +235,8 @@ export function Gps4DPage() {
     const instance = map.current;
     const applyMode = () => {
       try {
+        setLayerState('loading');
+        setLayerMessage(viewMode === 'street' ? 'Cargando Street map…' : viewMode === 'satellite' ? 'Cargando satélite…' : 'Cargando 3D…');
         if (viewMode === 'street') {
           if (instance.setProjection) instance.setProjection({ type: 'mercator' });
           instance.setTerrain?.(null);
@@ -224,14 +256,16 @@ export function Gps4DPage() {
               instance.easeTo({ pitch: 62, zoom: Math.max(instance.getZoom(), 12.5), duration: 650 });
               renderRoute(activeRouteRef.current);
             } catch {
-              setProviderState('error');
+              setLayerState('error');
+              setLayerMessage('La capa 3D no respondió.');
             }
           });
           return;
         }
         instance.once('style.load', () => renderRoute(activeRouteRef.current));
       } catch {
-        setProviderState('error');
+        setLayerState('error');
+      setLayerMessage('La capa seleccionada no respondió.');
       }
     };
     applyMode();
@@ -360,6 +394,12 @@ export function Gps4DPage() {
           });
         }
       }
+      if (selectedRef.current) {
+        const destinationDistance = metersBetween(next, selectedRef.current);
+        if (destinationDistance <= 35) setArrivalState('arrived');
+        else if (destinationDistance <= 180) setArrivalState('approaching');
+        else setArrivalState('idle');
+      }
       updateNavigation(next);
     }, () => setGpsState('blocked'), {
       enableHighAccuracy: true,
@@ -399,6 +439,36 @@ export function Gps4DPage() {
   async function loadRoute(from: GpsPoint, destination: GpsPoint, reroute = false) {
     setRoutingState('loading');
     try {
+      if (stops.length > 0 && !reroute) {
+        const waypoints = [from, ...stops, destination];
+        const legs = [];
+        for (let index = 1; index < waypoints.length; index += 1) {
+          const leg = await calculateGpsRoute(waypoints[index - 1], waypoints[index]);
+          const route = leg.routes?.[0];
+          if (!route) throw new Error('route_leg_missing');
+          legs.push(route);
+        }
+        const combined: GpsRoute = {
+          id: 'multi-stop',
+          distance_m: legs.reduce((sum, leg) => sum + leg.distance_m, 0),
+          duration_s: legs.reduce((sum, leg) => sum + leg.duration_s, 0),
+          geometry: {
+            type: 'LineString',
+            coordinates: legs.flatMap((leg, index) => index === 0 ? leg.geometry.coordinates : leg.geometry.coordinates.slice(1))
+          },
+          steps: legs.flatMap((leg) => leg.steps)
+        };
+        setRoutes([combined]);
+        setActiveRouteIndex(0);
+        setCurrentStepIndex(0);
+        currentStepIndexRef.current = 0;
+        spokenStepIdRef.current = '';
+        activeRouteRef.current = combined;
+        setRouteMessage(`${formatDistance(combined.distance_m)} · ${formatDuration(combined.duration_s)} · ${stops.length} parada${stops.length === 1 ? '' : 's'}`);
+        renderRoute(combined);
+        setRoutingState('idle');
+        return;
+      }
       const result = await calculateGpsRoute(from, destination);
       setRoutes(result.routes || []);
       setActiveRouteIndex(0);
@@ -520,10 +590,16 @@ export function Gps4DPage() {
           {searchResults.length > 0 && (
             <div className="gps4d-search-results">
               {searchResults.map((place, index) => (
-                <button key={`${place.lat}-${place.lon}-${index}`} type="button" onClick={() => chooseDestination(place)}>
-                  <strong>{place.label}</strong>
-                  {place.category && <small>{place.category}</small>}
-                </button>
+                <div className="gps4d-search-result" key={`${place.lat}-${place.lon}-${index}`}>
+                  <button type="button" onClick={() => chooseDestination(place)}>
+                    <strong>{place.label}</strong>
+                    {place.category && <small>{place.category}</small>}
+                  </button>
+                  <button type="button" className="gps4d-add-stop" onClick={() => {
+                    setStops((items) => [...items, place].slice(0, 8));
+                    setSearchResults([]);
+                  }}>+ Parada</button>
+                </div>
               ))}
             </div>
           )}
@@ -540,9 +616,21 @@ export function Gps4DPage() {
       <div className="gps4d-layout">
         <div className="gps4d-map-wrap">
           <div ref={mapNode} className="gps4d-map" aria-label="ATLAS GPS 4D map" />
-          {providerState !== 'ready' && (
+          {engineState !== 'ready' && (
             <div className="gps4d-overlay">
-              {providerState === 'loading' ? 'Cargando motor espacial…' : 'Motor de mapas externo no disponible.'}
+              {engineState === 'loading' ? 'Cargando motor MapLibre…' : 'Motor MapLibre no disponible.'}
+            </div>
+          )}
+          {engineState === 'ready' && (
+            <div className={`gps4d-layer-status ${layerState}`} role="status">
+              <strong>MapLibre {engineState === 'ready' ? '✓' : '×'}</strong>
+              <span>{layerMessage}</span>
+              {layerState === 'error' && <button type="button" onClick={() => setViewMode(viewMode === 'street' ? 'satellite' : 'street')}>Usar otra capa</button>}
+            </div>
+          )}
+          {arrivalState !== 'idle' && (
+            <div className={`gps4d-arrival ${arrivalState}`}>
+              {arrivalState === 'arrived' ? 'Llegaste a tu destino' : 'Estás llegando · revisa entrada y estacionamiento'}
             </div>
           )}
           {navigationActive && (
@@ -556,7 +644,7 @@ export function Gps4DPage() {
 
         <aside className="gps4d-panel">
           <div className="gps4d-panel-heading">
-            <h2>Navigation</h2>
+            <h2>ATLAS Navigate</h2>
             <label className="gps4d-toggle">
               <input type="checkbox" checked={voiceEnabled} onChange={(event) => setVoiceEnabled(event.target.checked)} />
               Voice
@@ -577,7 +665,11 @@ export function Gps4DPage() {
           {routes.length > 1 && (
             <div className="gps4d-alternatives">
               <h3>Rutas</h3>
-              {routes.map((route, index) => (
+              {routes.map((route, index) => {
+                const fastest = Math.min(...routes.map((item) => item.duration_s));
+                const shortest = Math.min(...routes.map((item) => item.distance_m));
+                const tradeoff = route.duration_s === fastest ? 'Más rápida' : route.distance_m === shortest ? 'Menos distancia' : 'Alternativa';
+                return (
                 <button
                   key={route.id}
                   type="button"
@@ -588,9 +680,22 @@ export function Gps4DPage() {
                     currentStepIndexRef.current = 0;
                   }}
                 >
-                  {index === 0 ? 'Principal' : `Alternativa ${index}`} · {formatDistance(route.distance_m)} · {formatDuration(route.duration_s)}
+                  {index === 0 ? 'Principal' : `Alternativa ${index}`} · {tradeoff} · {formatDistance(route.distance_m)} · {formatDuration(route.duration_s)}
                 </button>
+              )})}
+            </div>
+          )}
+
+          {stops.length > 0 && (
+            <div className="gps4d-stops">
+              <h3>Paradas ({stops.length})</h3>
+              {stops.map((stop, index) => (
+                <div key={`${stop.lat}-${stop.lon}-${index}`}>
+                  <span>{index + 1}. {stop.label}</span>
+                  <button type="button" onClick={() => setStops((items) => items.filter((_, i) => i !== index))}>×</button>
+                </div>
               ))}
+              <button type="button" onClick={() => setStops([])}>Limpiar paradas</button>
             </div>
           )}
 
@@ -598,6 +703,11 @@ export function Gps4DPage() {
             <button type="button" disabled={!activeRoute || !current || navigationActive} onClick={beginNavigation}>Iniciar navegación</button>
             <button type="button" disabled={!navigationActive} onClick={stopNavigation}>Detener</button>
             <button type="button" disabled={!selected || persistenceState !== 'ready'} onClick={() => void saveSelected()}>Guardar punto</button>
+            <button type="button" disabled={!selected} onClick={() => {
+              const text = selected ? `ATLAS GPS · ${selected.label} · https://www.atlasenterprisesuite.com/gps?lat=${selected.lat.toFixed(6)}&lon=${selected.lon.toFixed(6)}` : '';
+              if (navigator.share && text) void navigator.share({ title: 'ATLAS GPS', text });
+              else if (navigator.clipboard && text) void navigator.clipboard.writeText(text);
+            }}>Compartir</button>
             <button type="button" disabled={!activeRoute} onClick={() => {
               setRoutes([]);
               activeRouteRef.current = null;

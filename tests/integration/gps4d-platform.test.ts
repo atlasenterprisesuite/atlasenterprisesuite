@@ -32,12 +32,28 @@ describe('ATLAS GPS 4D platform', () => {
   it('implements street, USGS satellite and 3D terrain views without claiming unavailable live providers', () => {
     expect(page).toContain("type GpsViewMode");
     expect(page).toContain("STREET_STYLE");
+    expect(page).toContain('styles/liberty');
+    expect(page).toContain('engineState');
+    expect(page).toContain('layerState');
     expect(page).toContain('basemap.nationalmap.gov');
     expect(page).toContain('tiles.mapterhorn.com');
     expect(domain).toContain("id: 'traffic'");
     expect(domain).toContain("id: 'incidents'");
     expect(domain).toContain("id: 'streetview'");
     expect(domain).toContain("state: 'blocked'");
+  });
+
+  it('adds fused navigation behaviors inspired by modern map products without inventing live data', () => {
+    expect(page).toContain("id: 'multi-stop'");
+    expect(page).toContain('stops.length > 0');
+    expect(page).toContain('navigator.share');
+    expect(page).toContain('arrivalState');
+    expect(page).toContain('Más rápida');
+    expect(domain).toContain("id: 'multistop'");
+    expect(domain).toContain("id: 'route-tradeoffs'");
+    expect(domain).toContain("id: 'share'");
+    expect(domain).toContain("id: 'arrival'");
+    expect(domain).toContain('Street-level / Look Around imagery');
   });
 
   it('implements navigation steps, lane evidence, voice and bounded automatic rerouting', () => {
