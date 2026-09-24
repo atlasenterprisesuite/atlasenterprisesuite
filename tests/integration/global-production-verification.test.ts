@@ -180,6 +180,8 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
     expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
     expect(authorizedVerifier).toContain('suite_route_reachable');
+    expect(authorizedVerifier).toContain("'/execution/manager/readiness'");
+    expect(authorizedVerifier).toContain('manager_readiness_route_reachable');
     expect(authorizedVerifier).toContain("'/gps'");
     expect(authorizedVerifier).toContain('gps_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");

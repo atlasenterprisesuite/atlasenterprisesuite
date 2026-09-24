@@ -124,6 +124,7 @@ jobs:
           HOME_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.public_home_reachable===true))")"
           SUITE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.suite_route_reachable===true))")"
           IDENTITY_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.identity_route_reachable===true))")"
+          MANAGER_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.manager_readiness_route_reachable===true))")"
           GPS_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.gps_route_reachable===true))")"
           MODULE_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.module_spa_shell_reachable===true))")"
           ACCOUNTING_OK="$(node -e "const fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync('/tmp/atlas-authorized-global-production.json','utf8'))}catch{};process.stdout.write(String(j.checks?.finance_accounting_route_reachable===true))")"
@@ -143,11 +144,12 @@ jobs:
 
           if [ "$HTTP_STATUS" = "200" ] && \
              [ "$AUTHORIZED_OK" = "true" ] && \
-             [ "$AUTHORIZED_VERIFIER_VERSION" = "21" ] && \
+             [ "$AUTHORIZED_VERIFIER_VERSION" = "22" ] && \
              [ "$TARGET_SHA" = "$GITHUB_SHA" ] && \
              [ "$HOME_OK" = "true" ] && \
              [ "$SUITE_OK" = "true" ] && \
              [ "$IDENTITY_OK" = "true" ] && \
+             [ "$MANAGER_OK" = "true" ] && \
              [ "$GPS_OK" = "true" ] && \
              [ "$MODULE_OK" = "true" ] && \
              [ "$ACCOUNTING_OK" = "true" ] && \
