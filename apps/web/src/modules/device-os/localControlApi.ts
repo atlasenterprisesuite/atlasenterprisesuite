@@ -94,30 +94,6 @@ export async function revokeLocalAgent(agentId: string) {
   return post<{ ok: true }>('agents.revoke', { agent_id: agentId });
 }
 
-export async function bindLocalAgentMtls(input: {
-  agentId: string;
-  fingerprintSha256: string;
-  serial: string;
-  expiresAt: string;
-}) {
-  return post<{
-    ok: true;
-    agent: Pick<
-      AtlasLocalAgent,
-      'id' |
-      'mtls_status' |
-      'mtls_cert_fingerprint_sha256' |
-      'mtls_cert_serial' |
-      'mtls_cert_expires_at'
-    >;
-  }>('agents.mtls.bind', {
-    agent_id: input.agentId,
-    fingerprint_sha256: input.fingerprintSha256,
-    serial: input.serial,
-    expires_at: input.expiresAt
-  });
-}
-
 export async function revokeLocalAgentMtls(agentId: string) {
   return post<{ ok: true }>('agents.mtls.revoke', { agent_id: agentId });
 }

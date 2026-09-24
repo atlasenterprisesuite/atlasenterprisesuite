@@ -5,6 +5,7 @@ const edge = readFileSync('supabase/functions/atlas-local-control/index.ts','utf
 const agent = readFileSync('tools/local-agent/atlas-local-agent.mjs','utf8');
 const panel = readFileSync('apps/web/src/modules/device-os/LocalControlPlanePanel.tsx','utf8');
 const localAi = readFileSync('tools/local-agent/atlas-local-ai-runtime.mjs','utf8');
+const trustMigration = readFileSync('supabase/migrations/20260920111500_device_os_trust_hardening.sql','utf8');
 
 describe('ATLAS Local Control Plane runtime contract', () => {
   it('uses one-time enrollment and short-lived hash-backed sessions', () => {
@@ -53,11 +54,27 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(localAi).not.toContain("'--api-key'");
   });
 
+  it('keeps mTLS trust provider-backed and enrollment truthfully offline until heartbeat', () => {
+    expect(edge).not.toContain("operation === 'agents.mtls.bind'");
+    expect(edge).not.toContain("if (operation === 'agents.mtls.bind')");
+    expect(edge).toContain("status: 'offline'");
+    expect(edge).toContain("status: 'online', last_seen_at: now");
+    expect(edge).toContain('mtls_cloudflare_cert_id: certificateId');
+    expect(edge).toContain("eventType: 'agent.mtls.provider_issued'");
+    expect(edge).toContain("rpc('has_identity_permission'");
+    expect(trustMigration).toContain("alter column status set default 'offline'");
+    expect(trustMigration).toContain("status <> 'online' or last_seen_at is not null");
+    expect(trustMigration).toContain('atlas_local_agents_active_mtls_requires_provider_evidence');
+    expect(trustMigration).toContain('mtls_cloudflare_cert_id is not null');
+  });
+
   it('surfaces enrollment, agents, devices and commands in Device OS', () => {
     expect(panel).toContain('Create one-time enrollment');
     expect(panel).toContain('Registered agents');
     expect(panel).toContain('Devices');
     expect(panel).toContain('Recent commands');
     expect(panel).toContain('High/critical actions remain bound to ATLAS Approval Center');
+    expect(panel).toContain('Device OS Trust Posture');
+    expect(panel).not.toContain('Bind mTLS certificate');
   });
 });

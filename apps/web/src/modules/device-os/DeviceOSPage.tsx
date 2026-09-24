@@ -20,15 +20,15 @@ export function DeviceOSPage() {
         <h1>One Core. Every Device.</h1>
         <p>
           A governed device layer for mobile, desktop, wearables, smart spaces and mobility.
-          Software capabilities are live in ATLAS; physical hardware functions remain explicitly
-          gated until an authorized adapter is connected.
+          Canonical ATLAS software contracts and physical runtime evidence are reported separately,
+          so code presence is never presented as proof that a device or adapter is connected.
         </p>
       </header>
 
       <div className="notice strong">
-        Production truth: this module exposes the ATLAS software control plane. Hardware radios,
-        sensors, secure elements and vehicle interfaces are never reported as connected unless a
-        real adapter is available.
+        Production truth: “implemented core” means the capability exists in the canonical ATLAS
+        codebase. It does not mean a device is online. Hardware radios, sensors, secure elements,
+        native OS bridges and vehicle interfaces remain unverified until real runtime evidence exists.
       </div>
 
       <div className="module-grid compact" aria-label="ATLAS device profiles">
@@ -54,22 +54,22 @@ export function DeviceOSPage() {
             <h2>{selected.name}</h2>
           </div>
           <span className="status-chip neutral">
-            {readiness.softwareReady}/{readiness.total} software-ready
+            {readiness.implementedCore}/{readiness.total} core implemented
           </span>
         </div>
         <p>{selected.description}</p>
         <div className="module-grid compact">
           {selected.capabilities.map((capability) => (
             <div className="module-card" key={capability.id}>
-              <span>{capability.status === 'software-ready' ? 'ATLAS Core' : 'Hardware boundary'}</span>
+              <span>{capability.status === 'implemented-core' ? 'Canonical ATLAS core' : 'External hardware boundary'}</span>
               <strong>{capability.label}</strong>
               <p>
-                {capability.status === 'software-ready'
-                  ? 'Available through the shared governed ATLAS software layer.'
+                {capability.status === 'implemented-core'
+                  ? 'Implemented in the shared governed ATLAS codebase; runtime connectivity is evaluated separately.'
                   : 'Requires a signed, authorized physical-device adapter before live execution.'}
               </p>
-              <span className={capability.status === 'software-ready' ? 'status-chip' : 'status-chip warning'}>
-                {capability.status === 'software-ready' ? 'Ready' : 'Adapter required'}
+              <span className={capability.status === 'implemented-core' ? 'status-chip' : 'status-chip warning'}>
+                {capability.status === 'implemented-core' ? 'Ready' : 'Adapter required'}
               </span>
             </div>
           ))}
@@ -77,7 +77,7 @@ export function DeviceOSPage() {
       </article>
 
       <div className="stat-grid" aria-label="Selected device readiness">
-        <article><strong>{readiness.softwareReady}</strong><span>software capabilities ready</span></article>
+        <article><strong>{readiness.implementedCore}</strong><span>canonical core capabilities implemented</span></article>
         <article><strong>{readiness.adapterRequired}</strong><span>hardware adapters required</span></article>
         <article><strong>{ATLAS_DEVICE_PROFILES.length}</strong><span>device profiles</span></article>
         <article><strong>Zero Trust</strong><span>permission boundary</span></article>
