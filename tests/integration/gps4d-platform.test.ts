@@ -57,9 +57,9 @@ describe('ATLAS GPS 4D platform', () => {
   });
 
   it('implements navigation steps, lane evidence, voice and bounded automatic rerouting', () => {
-    expect(page).toContain('REROUTE_THRESHOLD_M = 80');
     expect(page).toContain('REROUTE_COOLDOWN_MS = 15_000');
-    expect(page).toContain('routeDeviationMeters');
+    expect(page).toContain('AtlasNavigationEngine');
+    expect(page).toContain('observation.reroute_suggested');
     expect(page).toContain('speechSynthesis');
     expect(page).toContain('laneLabel');
     expect(edge).toContain("url.searchParams.set('steps', 'true')");
@@ -91,5 +91,7 @@ describe('ATLAS GPS 4D platform', () => {
     expect(edge).toContain("transit_realtime: { state: 'blocked'");
     expect(edge).toContain("offline_world_tiles: { state: 'blocked'");
     expect(domain).toContain('authorized live traffic provider');
+    expect(domain).toContain("id: 'map-matching'");
+    expect(domain).toContain("id: 'native-location'");
   });
 });
