@@ -1236,3 +1236,75 @@
     display: none;
   }
 }
+
+
+.tax-client-intake {
+  gap: 20px;
+}
+
+.tax-intake-section {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(92, 190, 244, .14);
+  border-radius: 16px;
+  background: rgba(4, 27, 44, .34);
+}
+
+.tax-intake-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.tax-intake-title > div,
+.tax-intake-title:not(:has(> div)) {
+  gap: 4px;
+}
+
+.tax-intake-title strong {
+  display: block;
+}
+
+.tax-intake-title span {
+  color: rgba(193, 224, 242, .62);
+  font-size: .76rem;
+}
+
+.tax-security-note {
+  padding: 12px 14px;
+  border: 1px solid rgba(100, 205, 255, .24);
+  border-radius: 12px;
+  background: rgba(40, 137, 196, .08);
+  color: rgba(218, 239, 251, .82);
+  font-size: .78rem;
+  line-height: 1.5;
+}
+
+.tax-household-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tax-household-card {
+  display: grid;
+  gap: 14px;
+  padding: 15px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 14px;
+  background: rgba(255,255,255,.018);
+}
+
+.tax-client-intake textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 96px;
+}
+
+@media (max-width: 700px) {
+  .tax-intake-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

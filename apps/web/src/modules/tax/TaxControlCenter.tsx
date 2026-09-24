@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { TaxClientIntake } from './TaxClientIntake';
 import {
   createTaxReturn,
   listTaxReturns,
@@ -34,6 +35,7 @@ export function TaxControlCenter() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
+  const [showClientIntake, setShowClientIntake] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -101,6 +103,35 @@ export function TaxControlCenter() {
           <article><small>Rejected</small><strong>{counts.rejected}</strong><p>Reject resolution queue.</p></article>
         </div>
       </section>
+
+      <section className="tax-panel">
+        <div className="tax-panel-heading">
+          <div>
+            <p className="eyebrow">Clients</p>
+            <h2>Tax client intake</h2>
+            <p>Create a complete individual tax profile before opening the return.</p>
+          </div>
+          <button type="button" className="primary-action" onClick={() => setShowClientIntake((current) => !current)}>
+            {showClientIntake ? 'Close intake' : 'Add tax client'}
+          </button>
+        </div>
+        <div className="tax-pro-summary">
+          <div><small>Firm clients</small><strong>{clients.length}</strong><span>Available for return creation.</span></div>
+          <div><small>Identity</small><strong>Protected</strong><span>Full SSN/ITIN is not stored in ordinary tables.</span></div>
+          <div><small>Household</small><strong>Linked</strong><span>Spouse and dependents feed filing-status and credit workflows.</span></div>
+          <div><small>Filing profile</small><strong>Governed</strong><span>Single, MFJ, MFS, HOH and qualifying surviving spouse.</span></div>
+        </div>
+      </section>
+
+      {showClientIntake ? (
+        <TaxClientIntake
+          onSaved={(savedClientId) => {
+            setClientId(savedClientId);
+            setShowClientIntake(false);
+            void refresh();
+          }}
+        />
+      ) : null}
 
       <section className="tax-panel">
         <p className="eyebrow">New return</p>

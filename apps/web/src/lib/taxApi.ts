@@ -5,6 +5,109 @@ import {
   type AdvisoryClientRow
 } from './advisoryApi';
 
+
+export type TaxClientProfileRow = {
+  id: string;
+  org_id: string;
+  firm_id: string;
+  client_id: string;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  suffix: string | null;
+  preferred_name: string | null;
+  mpc_number: string | null;
+  date_of_birth: string;
+  occupation: string | null;
+  marital_status: 'single' | 'married' | 'divorced' | 'widowed' | 'separated' | 'unknown';
+  filing_status:
+    | 'single'
+    | 'married_filing_jointly'
+    | 'married_filing_separately'
+    | 'head_of_household'
+    | 'qualifying_surviving_spouse'
+    | 'undetermined';
+  residency_status: 'us_citizen' | 'resident_alien' | 'nonresident_alien' | 'dual_status' | 'unknown';
+  taxpayer_id_type: 'ssn' | 'itin' | 'other' | 'none';
+  taxpayer_id_last4: string | null;
+  taxpayer_id_secret_reference: string | null;
+  ip_pin_required: boolean;
+  ip_pin_secret_reference: string | null;
+  email: string | null;
+  phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_region: string | null;
+  postal_code: string | null;
+  country_code: string;
+  county: string | null;
+  prior_year_filed: boolean | null;
+  prior_year_filing_status: string | null;
+  identity_verified: boolean;
+  intake_status: 'draft' | 'needs_information' | 'ready_for_return' | 'reviewed';
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TaxClientHouseholdMemberInput = {
+  relationship:
+    | 'spouse' | 'son' | 'daughter' | 'stepchild' | 'foster_child' | 'sibling'
+    | 'parent' | 'grandchild' | 'other_relative' | 'other';
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth?: string;
+  taxpayerIdType?: 'ssn' | 'itin' | 'atin' | 'other' | 'none';
+  taxpayerIdLast4?: string;
+  taxpayerIdSecretReference?: string;
+  monthsLivedWithTaxpayer?: number | null;
+  fullTimeStudent?: boolean;
+  permanentlyDisabled?: boolean;
+  grossIncome?: number | null;
+  taxpayerProvidedSupportPercent?: number | null;
+  childcareExpenses?: number | null;
+  qualifyingChildCandidate?: boolean;
+  qualifyingRelativeCandidate?: boolean;
+  notes?: string;
+};
+
+export type TaxClientIntakeInput = {
+  clientId?: string | null;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  suffix?: string;
+  preferredName?: string;
+  mpcNumber?: string;
+  dateOfBirth: string;
+  occupation?: string;
+  maritalStatus: TaxClientProfileRow['marital_status'];
+  filingStatus: TaxClientProfileRow['filing_status'];
+  residencyStatus: TaxClientProfileRow['residency_status'];
+  taxpayerIdType: TaxClientProfileRow['taxpayer_id_type'];
+  taxpayerIdLast4?: string;
+  taxpayerIdSecretReference?: string;
+  ipPinRequired?: boolean;
+  ipPinSecretReference?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  stateRegion?: string;
+  postalCode?: string;
+  countryCode?: string;
+  county?: string;
+  priorYearFiled?: boolean | null;
+  priorYearFilingStatus?: string;
+  identityVerified?: boolean;
+  intakeStatus?: TaxClientProfileRow['intake_status'];
+  notes?: string;
+  household?: TaxClientHouseholdMemberInput[];
+};
+
 export type TaxReturnRow = {
   id: string;
   org_id: string;
@@ -198,6 +301,81 @@ async function orgId() {
   const organization = await getActiveAtlasOrganization();
   if (!organization.id) throw new Error('no_active_organization');
   return organization.id;
+}
+
+
+export async function listTaxClientProfiles(): Promise<TaxClientProfileRow[]> {
+  const organizationId = await orgId();
+  const response = await authorizedAtlasFetch(
+    '/rest/v1/tax_client_profiles?org_id=eq.' + encodeURIComponent(organizationId) +
+    '&select=*&order=last_name.asc,first_name.asc',
+    { method: 'GET' }
+  );
+  return parseJson<TaxClientProfileRow[]>(response);
+}
+
+export async function upsertTaxClientIntake(input: TaxClientIntakeInput): Promise<TaxClientProfileRow> {
+  const firm = await bootstrapAdvisoryFirm();
+  const household = (input.household || []).map((member) => ({
+    relationship: member.relationship,
+    first_name: member.firstName,
+    middle_name: member.middleName || '',
+    last_name: member.lastName,
+    date_of_birth: member.dateOfBirth || '',
+    taxpayer_id_type: member.taxpayerIdType || 'ssn',
+    taxpayer_id_last4: member.taxpayerIdLast4 || '',
+    taxpayer_id_secret_reference: member.taxpayerIdSecretReference || '',
+    months_lived_with_taxpayer: member.monthsLivedWithTaxpayer ?? '',
+    full_time_student: Boolean(member.fullTimeStudent),
+    permanently_disabled: Boolean(member.permanentlyDisabled),
+    gross_income: member.grossIncome ?? '',
+    taxpayer_provided_support_percent: member.taxpayerProvidedSupportPercent ?? '',
+    childcare_expenses: member.childcareExpenses ?? '',
+    qualifying_child_candidate: Boolean(member.qualifyingChildCandidate),
+    qualifying_relative_candidate: Boolean(member.qualifyingRelativeCandidate),
+    notes: member.notes || ''
+  }));
+
+  const rows = await rpcRows<TaxClientProfileRow>('tax_upsert_client_intake', {
+    p_firm_id: firm.id,
+    p_client_id: input.clientId || null,
+    p_profile: {
+      first_name: input.firstName,
+      middle_name: input.middleName || '',
+      last_name: input.lastName,
+      suffix: input.suffix || '',
+      preferred_name: input.preferredName || '',
+      mpc_number: input.mpcNumber || '',
+      date_of_birth: input.dateOfBirth,
+      occupation: input.occupation || '',
+      marital_status: input.maritalStatus,
+      filing_status: input.filingStatus,
+      residency_status: input.residencyStatus,
+      taxpayer_id_type: input.taxpayerIdType,
+      taxpayer_id_last4: input.taxpayerIdLast4 || '',
+      taxpayer_id_secret_reference: input.taxpayerIdSecretReference || '',
+      ip_pin_required: Boolean(input.ipPinRequired),
+      ip_pin_secret_reference: input.ipPinSecretReference || '',
+      email: input.email || '',
+      phone: input.phone || '',
+      address_line1: input.addressLine1 || '',
+      address_line2: input.addressLine2 || '',
+      city: input.city || '',
+      state_region: input.stateRegion || '',
+      postal_code: input.postalCode || '',
+      country_code: input.countryCode || 'US',
+      county: input.county || '',
+      prior_year_filed: input.priorYearFiled,
+      prior_year_filing_status: input.priorYearFilingStatus || '',
+      identity_verified: Boolean(input.identityVerified),
+      intake_status: input.intakeStatus || 'draft',
+      notes: input.notes || ''
+    },
+    p_household: household
+  });
+
+  if (!rows[0]) throw new Error('tax_client_intake_save_failed');
+  return rows[0];
 }
 
 export async function listTaxReturns(): Promise<TaxReturnRow[]> {
