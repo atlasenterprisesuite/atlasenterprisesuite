@@ -238,6 +238,15 @@ async function calculateRoute(input: Json) {
     distance_m: Number(route.distance || 0),
     duration_s: Number(route.duration || 0),
     geometry: route.geometry,
+    waypoints: Array.isArray(route.geometry?.coordinates)
+      ? route.geometry.coordinates.map((coordinate: unknown) => {
+          const pair = Array.isArray(coordinate) ? coordinate : [];
+          return {
+            lat: Number(pair[1]),
+            lon: Number(pair[0])
+          };
+        }).filter((point: { lat: number; lon: number }) => Number.isFinite(point.lat) && Number.isFinite(point.lon))
+      : [],
     steps: Array.isArray(route.legs)
       ? route.legs.flatMap((leg: any) => Array.isArray(leg.steps) ? leg.steps : []).map((step: any, stepIndex: number) => ({
           id: `${routeIndex + 1}-${stepIndex + 1}`,

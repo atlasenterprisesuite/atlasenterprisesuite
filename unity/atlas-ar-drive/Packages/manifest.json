@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "com.google.ar.core.arfoundation.extensions": "https://github.com/google-ar/arcore-unity-extensions.git#arf6",
+    "com.unity.inputsystem": "1.16.0",
+    "com.unity.render-pipelines.universal": "17.3.0",
+    "com.unity.xr.arcore": "6.3.1",
+    "com.unity.xr.arfoundation": "6.3.1",
+    "com.unity.xr.arkit": "6.3.1",
+    "com.unity.xr.management": "4.5.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.unity.modules.ui": "1.0.0"
+  }
+}
