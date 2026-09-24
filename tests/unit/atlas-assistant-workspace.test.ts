@@ -80,7 +80,7 @@ describe('ATLAS Assistant workspace', () => {
     expect(page).toContain('diarizationVerified');
     expect(page).toContain('startDiarizedConversationSession');
     expect(page).toContain('diarizeAssistantAudio');
-    expect(page).toContain('recordAssistantAudioChunk');
+    expect(page).toContain('recordAssistantPcmWavChunk');
     expect(page).toContain('Person A');
     expect(page).toContain('Person B');
     expect(page).toContain('Speaker identity detection is not verified.');
@@ -118,10 +118,14 @@ describe('ATLAS Assistant workspace', () => {
 
     expect(client).toContain('/functions/v1/atlas-copilot?api=diarize');
     expect(client).toContain('organization_id: organization.id');
-    expect(voice).toContain('recordAssistantAudioChunk');
-    expect(voice).toContain('MediaRecorder');
+    expect(voice).toContain('recordAssistantPcmWavChunk');
+    expect(voice).toContain("type: 'audio/wav'");
+    expect(voice).toContain('16000');
     expect(backend).toContain("ATLAS_DIARIZATION_URL");
     expect(backend).toContain("ATLAS_DIARIZATION_TOKEN");
+    expect(backend).toContain("localAi?.source==='render-free'");
+    expect(backend).toContain("atlas-render-diarization");
+    expect(backend).toContain("whisper-tiny+atlas-acoustic-v1");
     expect(backend).toContain("api==='diarize'");
     expect(backend).toContain("diarization_provider_unverified");
     expect(backend).toContain("max_speakers:2");
