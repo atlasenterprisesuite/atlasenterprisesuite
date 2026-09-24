@@ -37,6 +37,8 @@ export function EmployeesPage() {
   const [writeState, setWriteState] = useState<WriteState>({ status: 'idle' });
 
   const readyIdentity = identity.status === 'ready' ? identity : null;
+  const tenantId = readyIdentity?.tenantId ?? '';
+  const organizationId = readyIdentity?.organizationId ?? '';
   const canWrite = Boolean(
     readyIdentity
       && writeService
@@ -53,7 +55,7 @@ export function EmployeesPage() {
     }
 
     setState({ status: 'loading' });
-    void repository.listEmployees(readyIdentity.organizationId)
+    void repository.listEmployees(organizationId)
       .then((employees) => {
         if (active) setState({ status: 'ready', employees });
       })
@@ -128,8 +130,8 @@ export function EmployeesPage() {
 
     const mutation = {
       scope: {
-        tenantId: readyIdentity.tenantId,
-        organizationId: readyIdentity.organizationId,
+        tenantId: tenantId,
+        organizationId: organizationId,
       },
       fullName,
       department: department || null,
