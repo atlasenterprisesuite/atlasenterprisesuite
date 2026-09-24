@@ -260,7 +260,7 @@ async function githubState() {
 }
 
 async function cloudflareState() {
-  const token = Deno.env.get('CLOUDFLARE_API_TOKEN') || Deno.env.get('CF_API_TOKEN') || '';
+  const token = Deno.env.get('CLOUDFLARE_API_TOKEN') || '';
   const zoneId = Deno.env.get('CLOUDFLARE_ZONE_ID') || '';
   const publicEdge = await probe(`${PRODUCTION_URL}/status`);
 
