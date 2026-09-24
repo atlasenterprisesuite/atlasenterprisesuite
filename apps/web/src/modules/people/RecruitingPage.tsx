@@ -48,6 +48,7 @@ export function RecruitingPage() {
   >({ status: 'idle' });
 
   const readyIdentity = identity.status === 'ready' ? identity : null;
+  const organizationId = readyIdentity?.organizationId ?? '';
   const canWrite = Boolean(readyIdentity && writeService && hasPermission(readyIdentity.permissions, 'hr.write'));
 
   const candidateById = useMemo(() => {
@@ -109,7 +110,7 @@ export function RecruitingPage() {
     if (!writeService) return;
     void runWrite(
       () => writeService.advanceApplicationStage({
-        organizationId: readyIdentity.organizationId,
+        organizationId: organizationId,
         applicationId: application.id,
         currentStage: application.stage,
         nextStage,
@@ -135,7 +136,7 @@ export function RecruitingPage() {
     const draft = assessmentDraft(applicationId);
     void runWrite(
       () => writeService.recordAssessmentResult({
-        organizationId: readyIdentity.organizationId,
+        organizationId: organizationId,
         applicationId,
         assessmentType: draft.type,
         earned: Number(draft.earned),
