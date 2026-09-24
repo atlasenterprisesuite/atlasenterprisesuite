@@ -2,19 +2,11 @@ name: ATLAS Render Free AI Verify
 
 on:
   workflow_dispatch:
+  # Exact-SHA production invariant: every main revision must re-attest
+  # the protected zero-cost ATLAS Local runtime. Never inherit a green
+  # local-runtime state from an older repository SHA.
   push:
     branches: ["main"]
-    paths:
-      - "apps/atlas-orchestrator/**"
-      - "packages/atlas-mcp/**"
-      - "packages/ai-core/**"
-      - "scripts/install-render-local-ai.mjs"
-      - "scripts/start-atlas-orchestrator.mjs"
-      - "supabase/functions/atlas-local-ai-bootstrap/**"
-      - "supabase/functions/atlas-copilot/**"
-      - "supabase/migrations/20260919034000_atlas_render_free_local_ai.sql"
-      - ".github/workflows/atlas-render-local-ai-verify.yml"
-      - "package.json"
 
 permissions:
   contents: read
