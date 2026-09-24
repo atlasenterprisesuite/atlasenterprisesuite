@@ -6,6 +6,7 @@ import {
   peopleMutations,
   type PeopleWorkspace
 } from './peopleApi';
+import { PeopleKnowledgePage } from './PeopleKnowledgePage';
 
 type WorkspaceState =
   | { status: 'loading' }
@@ -33,7 +34,7 @@ function Layout({ children }: { children: ReactNode }) {
       <nav className="module-experience-actions" aria-label="People navigation">
         <Link to="/people">Overview</Link><Link to="/people/workers">Workers</Link><Link to="/people/time">Time</Link>
         <Link to="/people/recruiting">Recruiting</Link><Link to="/people/compensation">Compensation</Link>
-        <Link to="/people/self-service">Self-Service</Link><Link to="/payroll">Payroll</Link>
+        <Link to="/people/knowledge">Knowledge</Link><Link to="/people/self-service">Self-Service</Link><Link to="/payroll">Payroll</Link>
       </nav>
     </header>
     {children}
@@ -144,6 +145,7 @@ export function PeopleRoutes() {
     <Route path="/people/time" element={<Time />} />
     <Route path="/people/recruiting" element={<Recruiting />} />
     <Route path="/people/compensation" element={<Compensation />} />
+    <Route path="/people/knowledge" element={<PeopleKnowledgePage />} />
     <Route path="/people/self-service" element={<SelfService />} />
     <Route path="*" element={<Navigate to="/people" replace />} />
   </Routes>;

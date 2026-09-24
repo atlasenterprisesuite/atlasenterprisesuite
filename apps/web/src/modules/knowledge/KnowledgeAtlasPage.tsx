@@ -19,10 +19,10 @@ function splitList(value: string) {
 }
 
 
-function LibraryRegistryPanel() {
+function LibraryRegistryPanel({ moduleScope = '' }: { moduleScope?: string }) {
   const [assets, setAssets] = useState<AtlasLibraryAsset[] | null>(null);
   const [stats, setStats] = useState<AtlasLibraryStats | null>(null);
-  const [moduleFilter, setModuleFilter] = useState('');
+  const [moduleFilter, setModuleFilter] = useState(moduleScope);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -80,7 +80,17 @@ function LibraryRegistryPanel() {
   </section>;
 }
 
-export function KnowledgeAtlasPage() {
+export function KnowledgeAtlasPage({
+  moduleScope = '',
+  eyebrow = 'Knowledge Atlas',
+  heading = 'ATLAS Memory',
+  description = 'Persistent organizational knowledge shared across ATLAS. Imported conversations remain drafts until an authorized owner or administrator approves them. Personal conversations are not ingested automatically.'
+}: {
+  moduleScope?: string;
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+} = {}) {
   const [records, setRecords] = useState<AtlasMemoryRecord[] | null>(null);
   const [role, setRole] = useState('member');
   const [query, setQuery] = useState('');
@@ -104,13 +114,13 @@ export function KnowledgeAtlasPage() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const response = await listAtlasMemory({ q: query, kind: kindFilter, status: statusFilter });
+      const response = await listAtlasMemory({ q: query, kind: kindFilter, status: statusFilter, module: moduleScope });
       setRecords(response.records);
       setRole(response.role);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'memory_unavailable');
     }
-  }, [kindFilter, query, statusFilter]);
+  }, [kindFilter, moduleScope, query, statusFilter]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -134,14 +144,14 @@ export function KnowledgeAtlasPage() {
         content: content.trim(),
         sourceType,
         sourceRef: sourceRef.trim() || undefined,
-        moduleIds: splitList(modules),
+        moduleIds: [...new Set([...(moduleScope ? [moduleScope] : []), ...splitList(modules)])],
         tags: splitList(tags),
         sensitivity
       });
       setTitle('');
       setSummary('');
       setContent('');
-      setModules('');
+      setModules(moduleScope);
       setTags('');
       setSourceRef('');
       setSourceType('user_entry');
@@ -174,12 +184,9 @@ export function KnowledgeAtlasPage() {
   return (
     <section className="page-stack">
       <header className="page-header">
-        <p className="eyebrow">Knowledge Atlas</p>
-        <h1>ATLAS Memory</h1>
-        <p>
-          Persistent organizational knowledge shared across ATLAS. Imported conversations remain drafts until an authorized
-          owner or administrator approves them. Personal conversations are not ingested automatically.
-        </p>
+        <p className="eyebrow">{eyebrow}</p>
+        <h1>{heading}</h1>
+        <p>{description}</p>
       </header>
 
       <div className="metric-grid" aria-label="ATLAS Memory status">
@@ -189,7 +196,7 @@ export function KnowledgeAtlasPage() {
         <article><span>Role</span><strong>{role}</strong><small>{canApprove ? 'Approval enabled' : 'Read and draft access'}</small></article>
       </div>
 
-      <LibraryRegistryPanel />
+      <LibraryRegistryPanel moduleScope={moduleScope} />
 
       <section className="workspace-card">
         <div className="toolbar">
@@ -234,7 +241,7 @@ export function KnowledgeAtlasPage() {
             </select>
           </label>
           <label><span>Sensitivity</span><select value={sensitivity} onChange={event => setSensitivity(event.target.value as 'organization' | 'restricted')}><option value="organization">Organization</option><option value="restricted">Restricted</option></select></label>
-          <label><span>Modules</span><input value={modules} onChange={event => setModules(event.target.value)} placeholder="accounting, inventory, finance" /></label>
+          <label><span>Modules</span><input value={moduleScope || modules} onChange={event => setModules(event.target.value)} placeholder="accounting, inventory, finance" readOnly={Boolean(moduleScope)} /></label>
           <label><span>Tags</span><input value={tags} onChange={event => setTags(event.target.value)} placeholder="3-way-match, AP, COGS" /></label>
           <label><span>Source reference</span><input value={sourceRef} onChange={event => setSourceRef(event.target.value)} placeholder={sourceType === 'chat_import' ? 'Required conversation/reference ID' : 'Optional URL or record reference'} required={sourceType === 'chat_import'} /></label>
         </div>
