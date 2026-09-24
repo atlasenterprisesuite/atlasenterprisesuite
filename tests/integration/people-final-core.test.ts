@@ -8,6 +8,8 @@ const routes = read('apps/web/src/modules/people/PeopleRoutes.tsx');
 const resolver = read('apps/web/src/extensions/resolveAtlasExtension.tsx');
 const permissions = read('packages/core/src/permissions.ts');
 const registry = read('apps/web/src/modules/registry.ts');
+const peopleKnowledge = read('apps/web/src/modules/people/PeopleKnowledgePage.tsx');
+const knowledgePage = read('apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx');
 
 describe('ATLAS People final core', () => {
   it('persists governed organization-scoped People domains with RLS', () => {
@@ -38,10 +40,18 @@ describe('ATLAS People final core', () => {
   it('mounts the complete People route family on current ATLAS Identity', () => {
     expect(resolver).toContain("pathname === '/people' || pathname.startsWith('/people/')");
     expect(resolver).toContain('<RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>');
-    for (const route of ['/people/workers','/people/time','/people/recruiting','/people/compensation','/people/self-service']) {
+    for (const route of ['/people/workers','/people/time','/people/recruiting','/people/compensation','/people/knowledge','/people/self-service']) {
       expect(routes).toContain(`path="${route}"`);
     }
     expect(routes).toContain('No local or simulated records are substituted.');
+  });
+
+  it('reuses governed ATLAS Memory for HR Knowledge instead of a parallel store', () => {
+    expect(peopleKnowledge).toContain('moduleScope="people"');
+    expect(peopleKnowledge).toContain('HR Knowledge');
+    expect(knowledgePage).toContain('module: moduleScope');
+    expect(knowledgePage).toContain('moduleScope ? [moduleScope] : []');
+    expect(routes).toContain('to="/people/knowledge"');
   });
 
   it('uses typed HR and payroll permissions and closes registry readiness', () => {
