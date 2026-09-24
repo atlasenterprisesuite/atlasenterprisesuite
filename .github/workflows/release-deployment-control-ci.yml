@@ -1,0 +1,50 @@
+name: ATLAS Release & Deployment Control CI
+
+on:
+  push:
+    branches: ["chore/release-deployment-control-backfill"]
+    paths:
+      - "supabase/functions/atlas-release-control/**"
+      - "supabase/functions/atlas-release-control-auth-verifier/**"
+      - "supabase/migrations/20260923235300_release_deployment_control_backfill.sql"
+      - "supabase/migrations/20260923235400_release_deployment_control_completion_gate.sql"
+      - "tests/integration/release-deployment-control-backfill.test.ts"
+      - ".github/workflows/release-deployment-control-ci.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "supabase/functions/atlas-release-control/**"
+      - "supabase/functions/atlas-release-control-auth-verifier/**"
+      - "supabase/migrations/20260923235300_release_deployment_control_backfill.sql"
+      - "supabase/migrations/20260923235400_release_deployment_control_completion_gate.sql"
+      - "tests/integration/release-deployment-control-backfill.test.ts"
+      - ".github/workflows/release-deployment-control-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-deployment-control-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Release Control backfill verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runtime
+        run: |
+          node --version
+          npm --version
+      - name: Install
+        run: npm ci
+      - name: Focused release-control contract
+        run: npx vitest run tests/integration/release-deployment-control-backfill.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Full integration suite
+        run: npm run test:integration
+      - name: Production build
+        run: npm run build
