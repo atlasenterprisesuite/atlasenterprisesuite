@@ -24,7 +24,7 @@ describe('ATLAS GPS 4D drive navigation UI', () => {
 
   it('follows GPS heading in drive view while keeping overview readable', () => {
     expect(page).toContain('driveMap.current.easeTo');
-    expect(page).toContain('bearing: next.heading_deg');
+    expect(page).toContain('bearing: course');
     expect(page).toContain('pitch: 72');
     expect(page).toContain("bearing: navigationActiveRef.current ? 0");
     expect(page).toContain("pitch: navigationActiveRef.current ? 0");
