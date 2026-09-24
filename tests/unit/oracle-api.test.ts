@@ -37,14 +37,14 @@ describe('oracleApi', () => {
     mocks.authorizedAtlasFetch.mockResolvedValue(response({ ok: true, entitled: true, deck: { verified_card_count: 7 } }));
     const result = await getOracleStatus();
     expect(result.entitled).toBe(true);
-    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-oracle?api=status', { method: 'GET' });
+    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-copilot?api=oracle-status', { method: 'GET' });
   });
 
   it('creates a reading with the active organization context', async () => {
     mocks.authorizedAtlasFetch.mockResolvedValue(response({ ok: true, reading: { id: 'reading-1' } }, 201));
     const result = await createOracleReading({ reading_type: 'daily', focus: 'today' });
     expect(result.reading.id).toBe('reading-1');
-    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-oracle?api=create', expect.objectContaining({
+    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-copilot?api=oracle-create', expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ reading_type: 'daily', focus: 'today', organization_id: 'org-1' })
     }));
@@ -53,19 +53,19 @@ describe('oracleApi', () => {
   it('uses owned endpoints for history, detail, notes and favorites', async () => {
     mocks.authorizedAtlasFetch.mockResolvedValueOnce(response({ ok: true, readings: [] }));
     await listOracleReadings();
-    expect(mocks.authorizedAtlasFetch).toHaveBeenLastCalledWith('/functions/v1/atlas-oracle?api=readings', { method: 'GET' });
+    expect(mocks.authorizedAtlasFetch).toHaveBeenLastCalledWith('/functions/v1/atlas-copilot?api=oracle-readings', { method: 'GET' });
 
     mocks.authorizedAtlasFetch.mockResolvedValueOnce(response({ ok: true, reading: { id: 'r1' } }));
     await getOracleReading('r1');
-    expect(mocks.authorizedAtlasFetch).toHaveBeenLastCalledWith('/functions/v1/atlas-oracle?api=reading&id=r1', { method: 'GET' });
+    expect(mocks.authorizedAtlasFetch).toHaveBeenLastCalledWith('/functions/v1/atlas-copilot?api=oracle-reading&id=r1', { method: 'GET' });
 
     mocks.authorizedAtlasFetch
       .mockResolvedValueOnce(response({ ok: true, note: { id: 'n1', note: 'private note' } }))
       .mockResolvedValueOnce(response({ ok: true, favorite: true }));
     await saveOracleNote('r1', 'private note');
     await setOracleFavorite('c1', true);
-    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-oracle?api=note', expect.objectContaining({ method: 'POST' }));
-    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-oracle?api=favorite', expect.objectContaining({ method: 'POST' }));
+    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-copilot?api=oracle-note', expect.objectContaining({ method: 'POST' }));
+    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-copilot?api=oracle-favorite', expect.objectContaining({ method: 'POST' }));
   });
 
   it('preserves the service error code for entitlement denial', async () => {
