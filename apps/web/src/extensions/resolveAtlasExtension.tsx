@@ -28,6 +28,7 @@ import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
+import { OracleRoutes } from '../modules/oracle/OracleRoutes';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
@@ -79,6 +80,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/release/gestation') {
     return <RequireAtlasIdentity><AtlasGestationPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname.startsWith('/assistant/oracle')) {
+    return <RequireAtlasIdentity><OracleRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/assistant') {
