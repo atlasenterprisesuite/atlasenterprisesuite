@@ -128,22 +128,24 @@ async function writeCache(cacheKey: string, provider: GpsProvider, payload: unkn
   });
 }
 
-async function acquireProviderSlot(provider: 'nominatim' | 'overpass', minIntervalMs: number) {
+async function acquireNominatimSlot() {
   const admin = adminClient();
   const { data, error } = await admin.rpc('atlas_gps_acquire_provider_slot', {
-    p_provider: provider,
-    p_min_interval_ms: minIntervalMs
+    p_provider: 'nominatim',
+    p_min_interval_ms: 1000
   });
   if (error) throw new EdgeError('provider_throttle_unavailable', 503);
   return data === true;
 }
 
-async function acquireNominatimSlot() {
-  return acquireProviderSlot('nominatim', 1000);
-}
-
 async function acquireOverpassSlot() {
-  return acquireProviderSlot('overpass', 2000);
+  const admin = adminClient();
+  const { data, error } = await admin.rpc('atlas_gps_acquire_provider_slot', {
+    p_provider: 'overpass',
+    p_min_interval_ms: 2000
+  });
+  if (error) throw new EdgeError('provider_throttle_unavailable', 503);
+  return data === true;
 }
 
 function capabilities() {
