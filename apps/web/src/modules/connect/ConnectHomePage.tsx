@@ -11,6 +11,10 @@ export function ConnectHomePage() {
       </header>
 
       <div className="module-grid">
+        <Link className="module-card enabled" to="/connect/chat">
+          <span>Messaging · Governed</span><strong>ATLAS Chat</strong>
+          <p>Organization-scoped realtime messaging with durable history, ordered delivery, RBAC, audit and polling recovery.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/channel">
           <span>Broadcast · Configured</span><strong>ATLAS Network</strong>
           <p>Official bilingual ATLAS broadcast feed with notifications, reactions and governed handoff to Social Publisher.</p>
