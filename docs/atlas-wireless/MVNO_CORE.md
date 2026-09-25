@@ -23,6 +23,20 @@ Those capabilities may only move from design contract to operational state after
 
 Production route reachability is not carrier readiness and MUST NOT promote provider or subscriber state.
 
+## Owned-network transition
+
+ATLAS Wireless is the canonical service provider. The long-term network model is no longer limited to a permanent wholesale MVNO dependency.
+
+The owned-network foundation is defined in `docs/atlas-wireless/OWNED_NETWORK_FOUNDATION.md` and `supabase/functions/_shared/atlas-wireless-network.ts`.
+
+ATLAS may operate in:
+
+- `atlas-owned` mode where ATLAS controls the verified access/core network;
+- `hybrid` mode during coverage build-out;
+- `wholesale-fallback` mode where an external network supplies access.
+
+An ATLAS-owned or hybrid mode must not be inferred from branding. It requires evidence for core, RAN, spectrum, backhaul and the remaining public-service gates before public activation.
+
 ## Subscriber lifecycle
 
 `order -> pending_provider -> provisioning -> active | degraded | offline -> suspended -> revoked`
@@ -41,7 +55,7 @@ The server contract enforces explicit lifecycle edges. `revoked` is terminal; on
 4. A technical onboarding contact is assigned.
 5. Provision, activate, status/usage, suspend/reconnect and revoke interfaces are documented.
 6. Voice, SMS/MMS, mobile data and hotspot are validated.
-7. E911 responsibility and coordinated validation procedure are documented.
+7. E911 responsibility and coordinated test procedure are documented.
 8. End-to-end evidence is captured before any commercial activation.
 
 ## Provider adapter contract
