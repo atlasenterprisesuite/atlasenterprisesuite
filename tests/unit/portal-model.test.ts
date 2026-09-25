@@ -6,8 +6,8 @@ describe('ATLAS Portals model', () => {
   it('derives portal destinations from the canonical module registry', () => {
     const destinations = buildPortalDestinations({ modules: ATLAS_MODULES, hasIdentity: true });
     expect(destinations.find((item) => item.id === 'finance')?.route).toBe('/finance');
-    expect(destinations.find((item) => item.id === 'payroll')?.status).toBe('external-gated');
-    expect(destinations.find((item) => item.id === 'crm')?.status).toBe('external-gated');
+    expect(destinations.find((item) => item.id === 'payroll')?.status).toBe('pending-gate');
+    expect(destinations.find((item) => item.id === 'crm')?.status).toBe('pending-gate');
   });
 
   it('does not create a recursive Galaxy portal', () => {
@@ -19,7 +19,7 @@ describe('ATLAS Portals model', () => {
     const destinations = buildPortalDestinations({ modules: ATLAS_MODULES, hasIdentity: false });
     const crm = destinations.find((item) => item.id === 'crm');
     expect(crm?.status).toBe('blocked');
-    expect(crm?.statusLabel).toBe('Identity required');
+    expect(crm?.statusLabel).toBe('Blocked · identity gate pending');
     expect(crm?.navigable).toBe(false);
   });
 
