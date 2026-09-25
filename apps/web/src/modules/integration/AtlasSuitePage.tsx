@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { ATLAS_MODULES, type AtlasModuleReadiness } from '../registry';
 
 const READINESS_LABELS: Record<AtlasModuleReadiness, string> = {
-  implemented: 'Implemented',
+  implemented: 'Integrated',
   partial: 'Integrated / partial',
-  'external-gated': 'External gate'
+  'external-gated': 'Pending external gate'
 };
 
 export function AtlasSuitePage() {
@@ -47,9 +47,9 @@ export function AtlasSuitePage() {
 
       <div className="metric-grid" aria-label="ATLAS module readiness summary">
         <article><span>Registered modules</span><strong>{ATLAS_MODULES.length}</strong><small>One canonical registry</small></article>
-        <article><span>Implemented</span><strong>{implemented}</strong><small>Verified application slices</small></article>
+        <article><span>Integrated</span><strong>{implemented}</strong><small>Canonical application slices; production verification is separate</small></article>
         <article><span>Integrated / partial</span><strong>{partial}</strong><small>Usable with explicit boundaries</small></article>
-        <article><span>External gates</span><strong>{externalGated}</strong><small>Provider verification required</small></article>
+        <article><span>Pending external gates</span><strong>{externalGated}</strong><small>Provider verification required</small></article>
       </div>
 
       <section className="workspace-card" aria-label="Filter ATLAS modules">
@@ -77,9 +77,9 @@ export function AtlasSuitePage() {
               onChange={(event) => setReadiness(event.target.value as 'all' | AtlasModuleReadiness)}
             >
               <option value="all">All states</option>
-              <option value="implemented">Implemented</option>
+              <option value="implemented">Integrated</option>
               <option value="partial">Integrated / partial</option>
-              <option value="external-gated">External gate</option>
+              <option value="external-gated">Pending external gate</option>
             </select>
           </label>
         </div>
@@ -107,7 +107,8 @@ export function AtlasSuitePage() {
 
       <div className="notice strong">
         “Integrated” describes canonical routing and governed module composition. External providers, irreversible actions,
-        production data and regulated workflows remain unavailable until their own verification gates pass.
+        production data and regulated workflows remain unavailable until their own verification gates pass. A module can be Integrated while
+        its production state is Pending Gate or Blocked; only current machine-verifiable gate evidence can yield Production Verified.
       </div>
     </section>
   );
