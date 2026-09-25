@@ -46,6 +46,9 @@ describe('ATLAS global production verification', () => {
       '/analytics',
       '/connect',
       '/connect/chat',
+      '/connect/channel',
+      '/connect/wireless',
+      '/connect/google-fi',
       '/payroll',
       '/learning',
       '/health',
@@ -228,6 +231,9 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
     expect(authorizedVerifier).toContain("'/knowledge'");
+    for (const route of ['/connect', '/connect/chat', '/connect/channel', '/connect/wireless', '/connect/google-fi']) {
+      expect(authorizedVerifier).toContain(`'${route}'`);
+    }
     expect(authorizedVerifier).toContain("'/voice'");
     expect(authorizedVerifier).toContain("'/health'");
     expect(authorizedVerifier).toContain("'/frontier'");
