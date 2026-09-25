@@ -29,7 +29,7 @@ describe('CodeQL security regression contracts', () => {
   });
 
   it('limits the Advisory workflow token permissions', () => {
-    expect(advisoryWorkflow).toContain('permissions:\\n  contents: read');
+    expect(advisoryWorkflow).toContain('permissions:\n  contents: read');
   });
 
   it('keeps provider exceptions out of the sign-interpret HTTP response', () => {
