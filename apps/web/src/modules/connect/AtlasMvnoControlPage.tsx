@@ -1,4 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  getWirelessMvnoReadiness,
+  type WirelessMvnoReadiness
+} from '../../lib/wirelessMvnoApi';
 
 const lifecycle = [
   'Order',
@@ -22,7 +27,33 @@ const pilotChecks = [
   'E911 responsibility and coordinated test procedure documented',
 ];
 
+const FALLBACK_STATE = 'pending_provider';
+
 export function AtlasMvnoControlPage() {
+  const [readiness, setReadiness] = useState<WirelessMvnoReadiness | null>(null);
+  const [readinessError, setReadinessError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    getWirelessMvnoReadiness()
+      .then((next) => {
+        if (!active) return;
+        setReadiness(next);
+        setReadinessError('');
+      })
+      .catch((error) => {
+        if (!active) return;
+        setReadiness(null);
+        setReadinessError(error instanceof Error ? error.message : 'readiness_unavailable');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const state = readiness?.state ?? FALLBACK_STATE;
+  const blocker = readiness?.blocker ?? (readinessError || 'provider_not_verified');
+
   return (
     <section className="page-stack" aria-labelledby="atlas-mvno-title">
       <header className="page-header">
@@ -32,14 +63,25 @@ export function AtlasMvnoControlPage() {
       </header>
 
       <div className="notice" role="status">
-        Pilot state: pending_provider. No mock, fixture or static UI state can satisfy activation.
+        Pilot state: {state}. No mock, fixture or static UI state can satisfy activation.
+        {blocker ? ` Blocker: ${blocker}.` : ''}
       </div>
 
       <div className="stat-grid" aria-label="MVNO pilot status">
         <article><strong>1</strong><span>internal pilot line target</span></article>
-        <article><strong>Fail-closed</strong><span>provider state policy</span></article>
-        <article><strong>Provider-neutral</strong><span>adapter contract</span></article>
+        <article><strong>{readiness?.provider_verified ? 'Verified' : 'Fail-closed'}</strong><span>provider state policy</span></article>
+        <article><strong>{readiness?.activation_enabled ? 'Enabled' : 'Blocked'}</strong><span>subscriber activation</span></article>
       </div>
+
+      <article className="feature-card">
+        <p className="eyebrow">Server readiness</p>
+        <h2>{readiness ? state : 'Fail-closed fallback'}</h2>
+        <p>
+          {readiness
+            ? `ATLAS server gate checked ${readiness.checked_at}. Provider secret values returned: no.`
+            : 'Authenticated server readiness is unavailable. Carrier mutations remain disabled.'}
+        </p>
+      </article>
 
       <article className="feature-card">
         <p className="eyebrow">Subscriber lifecycle</p>
