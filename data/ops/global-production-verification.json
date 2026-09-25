@@ -1,5 +1,5 @@
 {
-  "version": 21,
+  "version": 22,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -25,6 +25,9 @@
     "/analytics",
     "/connect",
     "/connect/chat",
+    "/connect/channel",
+    "/connect/wireless",
+    "/connect/google-fi",
     "/payroll",
     "/learning",
     "/health",
