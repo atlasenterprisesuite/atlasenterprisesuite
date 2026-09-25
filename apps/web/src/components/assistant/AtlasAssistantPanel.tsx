@@ -123,10 +123,10 @@ export function AtlasAssistantPanel({
               </div>
 
               <div className="atlas-assistant-account-strip">
-                <strong>Connected accounts</strong>
+                <strong>Connected accounts · {internalControl?.connections?.length || 0}</strong>
                 {internalControl?.connections?.length ? (
                   <div>
-                    {internalControl.connections.slice(0, 8).map((connection) => (
+                    {internalControl.connections.map((connection) => (
                       <span key={connection.id} className={`connection-${connection.status}`}>
                         {connection.provider} · {connection.status}
                       </span>
