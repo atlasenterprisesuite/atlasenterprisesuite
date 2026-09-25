@@ -95,6 +95,11 @@ describe('ATLAS Render free local AI runtime contract', () => {
     expect(bootstrap).toContain("biometric_identity === false");
     expect(bootstrap).toContain("RENDER_LOCAL_CONTEXT = 4096");
     expect(bootstrap).toContain("status: 'verified'");
+    expect(workflow).toContain('workflow_call:');
+    expect(workflow).toContain('attested_sha:');
+    expect(workflow).toContain('value: ${{ jobs.verify.outputs.verified }}');
+    expect(workflow).toContain('echo "verified=true" >> "$GITHUB_OUTPUT"');
+    expect(workflow).toContain('echo "attested_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"');
     expect(workflow).toContain('runs-on: ubuntu-latest');
     expect(workflow).toContain('audience=atlas-local-ai-bootstrap');
     expect(workflow).toContain('j.inference_verified===true');
