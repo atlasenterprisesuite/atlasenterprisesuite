@@ -97,13 +97,19 @@ async function cloudRequest<T>(
   return body as T;
 }
 
-function CloudSubnav() {
+export function CloudSubnav() {
   return (
     <nav className="atlas-cloud-subnav" aria-label="Atlas Cloud control surfaces">
       <Link to="/cloud">Overview</Link>
       <Link to="/cloud/api-explorer">API Explorer</Link>
       <Link to="/cloud/observability">Observability</Link>
       <Link to="/cloud/resources">Resource Manager</Link>
+      <Link to="/cloud/service-graph">Service Graph</Link>
+      <Link to="/cloud/releases">Releases</Link>
+      <Link to="/cloud/iam">IAM & Policy</Link>
+      <Link to="/cloud/config">Secrets & Config</Link>
+      <Link to="/cloud/finops">FinOps</Link>
+      <Link to="/cloud/incidents">Reliability</Link>
       <Link to="/cloud/docs">Documentation</Link>
     </nav>
   );
