@@ -61,7 +61,7 @@ Commercial public activation remains blocked until every public-service layer is
 - interconnect;
 - emergency services.
 
-The source contract refuses `publicServiceReady` if any required layer is missing, unverified or has no evidence reference.
+The source contract refuses `technicalPublicReady` if any required layer is missing, unverified, stale, cross-organization, duplicated or lacks a nonblank organization-scoped evidence reference. Technical readiness alone is not public launch authority.
 
 ## Spectrum strategy
 
@@ -131,7 +131,7 @@ ATLAS must control or contract the subscriber identity/profile lifecycle appropr
 
 Public service is a separate gate from private/lab operation.
 
-ATLAS must not enable `publicServiceReady` until emergency-services obligations and the required network/interconnect evidence are verified. The repository intentionally treats emergency services as a required public-service component.
+ATLAS must not enable `technicalPublicReady` until emergency-services obligations and the required network/interconnect evidence are verified. Final activation separately requires current commercial/regulatory launch authorization, billing/tax readiness, staging verification and end-to-end evidence.
 
 ## Hybrid transition
 
@@ -140,7 +140,7 @@ ATLAS may operate in `hybrid` mode during build-out:
 - ATLAS-owned network where coverage exists;
 - wholesale/fallback roaming or MVNO connectivity elsewhere.
 
-The fallback must remain logically separate from claims about owned RF coverage.
+The fallback must remain logically separate from claims about owned RF coverage. Hybrid and wholesale-fallback modes also remain blocked until the existing MVNO/provider readiness gate is verified.
 
 ## Repository implementation
 
@@ -152,7 +152,9 @@ The first owned-network foundation consists of:
   - core profile;
   - spectrum authorization;
   - backhaul resources;
-  - fail-closed lab/public readiness evaluation.
+  - fail-closed lab/technical-public readiness evaluation;
+  - tenant-scoped evidence, duplicate rejection and freshness enforcement;
+  - final activation gate that recomputes readiness and requires commercial/regulatory launch authorization.
 - `supabase/migrations/20260925174500_atlas_wireless_owned_network_permissions.sql`
   - explicit network infrastructure RBAC.
 - `tests/unit/atlas-wireless-owned-network.test.ts`
