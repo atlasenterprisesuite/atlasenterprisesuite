@@ -1,5 +1,5 @@
 {
-  "version": 19,
+  "version": 20,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -21,6 +21,7 @@
     "/inventory/procure-to-pay",
     "/analytics",
     "/connect",
+    "/connect/chat",
     "/payroll",
     "/learning",
     "/health",
