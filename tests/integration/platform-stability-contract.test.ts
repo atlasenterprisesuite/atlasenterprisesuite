@@ -5,6 +5,7 @@ const adapter = readFileSync('supabase/functions/atlas-copilot/atlas-local-respo
 const verifier = readFileSync('supabase/functions/atlas-runtime-verifier/index.ts', 'utf8');
 const bootstrap = readFileSync('.github/workflows/atlas-local-ai-bootstrap.yml', 'utf8');
 const reconcile = readFileSync('.github/workflows/cloudflare-builds-reconcile.yml', 'utf8');
+const tokenSelfHeal = readFileSync('.github/workflows/cloudflare-token-self-heal.yml', 'utf8');
 
 describe('ATLAS platform stability contract', () => {
   it('retries transient local runtime health and inference failures without enabling a paid fallback', () => {
@@ -25,6 +26,14 @@ describe('ATLAS platform stability contract', () => {
     expect(bootstrap).toContain('workflow_dispatch:');
     expect(bootstrap).not.toContain('  push:');
     expect(bootstrap).toContain('runs-on: self-hosted');
+  });
+
+  it('uses the immutable Cloudflare Worker tag for Builds API self-heal', () => {
+    expect(tokenSelfHeal).toContain('/workers/scripts');
+    expect(tokenSelfHeal).toContain("String(x?.tag||'')");
+    expect(tokenSelfHeal).toContain('/builds/workers/$LEGACY_TAG/triggers');
+    expect(tokenSelfHeal).toContain('Legacy Worker is already absent; no Workers Builds trigger can remain.');
+    expect(tokenSelfHeal).not.toContain('process.stdout.write(process.env.LEGACY_WORKER');
   });
 
   it('disconnects only the legacy Cloudflare build trigger and preserves the canonical Worker', () => {
