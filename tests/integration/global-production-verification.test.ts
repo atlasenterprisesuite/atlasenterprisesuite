@@ -138,6 +138,9 @@ describe('ATLAS global production verification', () => {
 
     expect(workflow).toContain('workflow_call:');
     expect(workflow).toContain('workflow_dispatch:');
+    expect(workflow).toContain('atlas-local-runtime-verification:');
+    expect(workflow).toContain('uses: ./.github/workflows/atlas-render-local-ai-verify.yml');
+    expect(workflow).toContain('needs: atlas-local-runtime-verification');
     expect(workflow).not.toContain('deployment_status:');
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('verify:production:global');
