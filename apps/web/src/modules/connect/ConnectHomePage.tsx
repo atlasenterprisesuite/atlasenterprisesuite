@@ -23,6 +23,10 @@ export function ConnectHomePage() {
           <span>Wireless · Pre-launch</span><strong>ATLAS Wireless</strong>
           <p>$39/month target architecture for unlimited mobile service, eSIM, ATLAS Home Hub and satellite fallback. Provider functions remain gated until verified.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/wireless/mvno">
+          <span>Wireless · Pilot control</span><strong>ATLAS MVNO</strong>
+          <p>Provider-neutral subscriber lifecycle for the first internal test line, with fail-closed provisioning and audit evidence.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/google-fi">
           <span>Wireless · External-gated</span><strong>Google Fi Wireless</strong>
           <p>Official account portal and local statement staging without claiming unsupported private carrier APIs.</p>
