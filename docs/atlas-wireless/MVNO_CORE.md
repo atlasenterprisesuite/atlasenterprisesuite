@@ -25,7 +25,7 @@ No mock, static fixture, or UI action may move a subscriber into `active`.
 
 ## Provider adapter contract
 
-Every carrier integration must implement a provider-neutral adapter. Credentials must never be committed to source control. Provider errors must fail closed and preserve the last verified state.
+Every carrier integration must implement a provider-neutral adapter. Credentials must never be committed to source control. Provider errors must fail closed and preserve the last verified state. eSIM activation material stays server/provider-side; browser surfaces receive only non-secret references.
 
 ## Commercial separation
 
