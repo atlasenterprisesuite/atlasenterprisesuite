@@ -11,15 +11,8 @@ export type AtlasChatReadiness = {
   authenticated: boolean;
   organization_id: string;
   user_id?: string;
-  realtime: {
-    transport: string;
-    fallback: string;
-  };
-  attachments: {
-    schema_ready: boolean;
-    upload_enabled: boolean;
-    reason: string | null;
-  };
+  realtime: { transport: string; fallback: string };
+  attachments: { schema_ready: boolean; upload_enabled: boolean; reason: string | null };
   privacy?: {
     export_enabled: boolean;
     deletion_request_enabled: boolean;
@@ -59,10 +52,7 @@ export type AtlasChatMessage = {
   client_message_id: string;
   sequence: number;
   trace_id?: string;
-  content: {
-    text?: string;
-    [key: string]: unknown;
-  };
+  content: { text?: string; [key: string]: unknown };
   reply_to_message_id: string | null;
   edited_at: string | null;
   deleted_at: string | null;
@@ -83,35 +73,30 @@ async function parse<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
-async function chatContext() {
+async function callChatRpc<T>(api: string, payload: Record<string, unknown> = {}): Promise<T> {
   const organization = await getActiveAtlasOrganization();
-  return {
-    organization,
-    headers: { 'x-atlas-org-id': organization.id }
-  };
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/atlas_chat_api', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_api: api,
+      p_org_id: organization.id,
+      p_payload: payload
+    })
+  });
+  return parse<T>(response);
 }
 
-export async function getChatReadiness(): Promise<AtlasChatReadiness> {
-  const { headers } = await chatContext();
-  return parse<AtlasChatReadiness>(await authorizedAtlasFetch('/functions/v1/atlas-chat?api=readiness', {
-    method: 'GET',
-    headers
-  }));
+export function getChatReadiness(): Promise<AtlasChatReadiness> {
+  return callChatRpc<AtlasChatReadiness>('readiness');
 }
 
 export async function listChatMembers(): Promise<AtlasChatMember[]> {
-  const { headers } = await chatContext();
-  const payload = await parse<{ ok: boolean; members?: AtlasChatMember[] }>(
-    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=members', { method: 'GET', headers })
-  );
+  const payload = await callChatRpc<{ ok: boolean; members?: AtlasChatMember[] }>('members');
   return Array.isArray(payload.members) ? payload.members : [];
 }
 
 export async function listChatConversations(): Promise<AtlasChatConversation[]> {
-  const { headers } = await chatContext();
-  const payload = await parse<{ ok: boolean; conversations?: AtlasChatConversation[] }>(
-    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=conversations', { method: 'GET', headers })
-  );
+  const payload = await callChatRpc<{ ok: boolean; conversations?: AtlasChatConversation[] }>('conversations');
   return Array.isArray(payload.conversations) ? payload.conversations : [];
 }
 
@@ -119,15 +104,10 @@ export async function listChatMessages(
   conversationId: string,
   afterSequence = 0
 ): Promise<AtlasChatMessage[]> {
-  const { headers } = await chatContext();
-  const query = new URLSearchParams({
-    api: 'messages',
+  const payload = await callChatRpc<{ ok: boolean; messages?: AtlasChatMessage[] }>('messages', {
     conversation_id: conversationId,
-    after_sequence: String(Math.max(0, afterSequence))
+    after_sequence: Math.max(0, afterSequence)
   });
-  const payload = await parse<{ ok: boolean; messages?: AtlasChatMessage[] }>(
-    await authorizedAtlasFetch(`/functions/v1/atlas-chat?${query.toString()}`, { method: 'GET', headers })
-  );
   return Array.isArray(payload.messages) ? payload.messages : [];
 }
 
@@ -137,19 +117,12 @@ export async function createChatConversation(input: {
   classification: AtlasChatConversation['classification'];
   participantUserIds: string[];
 }): Promise<AtlasChatConversation> {
-  const { headers } = await chatContext();
-  const payload = await parse<{ ok: boolean; conversation: AtlasChatConversation }>(
-    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=conversation', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        title: input.title,
-        channel: input.channel,
-        classification: input.classification,
-        participant_user_ids: input.participantUserIds
-      })
-    })
-  );
+  const payload = await callChatRpc<{ ok: boolean; conversation: AtlasChatConversation }>('conversation', {
+    title: input.title,
+    channel: input.channel,
+    classification: input.classification,
+    participant_user_ids: input.participantUserIds
+  });
   return payload.conversation;
 }
 
@@ -158,64 +131,43 @@ export async function sendChatMessage(input: {
   text: string;
   clientMessageId: string;
 }): Promise<AtlasChatMessage> {
-  const { headers } = await chatContext();
-  const payload = await parse<{ ok: boolean; message: AtlasChatMessage }>(
-    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=message', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        conversation_id: input.conversationId,
-        text: input.text,
-        client_message_id: input.clientMessageId
-      })
-    })
-  );
+  const payload = await callChatRpc<{ ok: boolean; message: AtlasChatMessage }>('message', {
+    conversation_id: input.conversationId,
+    text: input.text,
+    client_message_id: input.clientMessageId
+  });
   return payload.message;
 }
 
-export async function markChatRead(conversationId: string, sequence: number) {
-  const { headers } = await chatContext();
-  return parse<{ ok: boolean; receipt: { conversation_id: string; last_read_sequence: number } }>(
-    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=read', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ conversation_id: conversationId, sequence })
-    })
-  );
+export function markChatRead(conversationId: string, sequence: number) {
+  return callChatRpc<{ ok: boolean; receipt: { conversation_id: string; last_read_sequence: number } }>('read', {
+    conversation_id: conversationId,
+    sequence
+  });
 }
 
-export async function addChatParticipant(conversationId: string, userId: string) {
-  const { headers } = await chatContext();
-  return parse<{ ok: boolean; participant: { conversation_id: string; user_id: string } }>(
-    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=participant', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ conversation_id: conversationId, user_id: userId })
-    })
-  );
+export function addChatParticipant(conversationId: string, userId: string) {
+  return callChatRpc<{ ok: boolean; participant: { conversation_id: string; user_id: string } }>('participant', {
+    conversation_id: conversationId,
+    user_id: userId
+  });
 }
 
 export async function exportChatConversation(conversationId: string) {
-  const { headers } = await chatContext();
-  const query = new URLSearchParams({ api: 'export', conversation_id: conversationId });
-  const payload = await parse<{ ok: boolean; export: Record<string, unknown> }>(
-    await authorizedAtlasFetch(`/functions/v1/atlas-chat?${query.toString()}`, {
-      method: 'GET',
-      headers
-    })
-  );
+  const payload = await callChatRpc<{ ok: boolean; export: Record<string, unknown> }>('export', {
+    conversation_id: conversationId
+  });
   return payload.export;
 }
 
 export async function requestChatDeletion(conversationId: string, reason = '') {
-  const { headers } = await chatContext();
-  const payload = await parse<{ ok: boolean; deletion_request: { id: string; status: string; created_at: string } }>(
-    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=deletion-request', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ conversation_id: conversationId, reason })
-    })
-  );
+  const payload = await callChatRpc<{
+    ok: boolean;
+    deletion_request: { id: string; status: string; created_at: string };
+  }>('deletion-request', {
+    conversation_id: conversationId,
+    reason
+  });
   return payload.deletion_request;
 }
 
@@ -276,7 +228,7 @@ export async function connectChatRealtime(
       const payload = JSON.parse(message.data);
       if (payload && typeof payload === 'object') handlers.onMessage(payload);
     } catch {
-      // Ignore malformed realtime hints. The database/polling path remains authoritative.
+      // Ignore malformed realtime hints. Persistent Postgres state is authoritative.
     }
   });
   const fallback = () => {
@@ -287,6 +239,8 @@ export async function connectChatRealtime(
 
   return () => {
     closed = true;
-    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(1000, 'view_closed');
+    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      socket.close(1000, 'view_closed');
+    }
   };
 }
