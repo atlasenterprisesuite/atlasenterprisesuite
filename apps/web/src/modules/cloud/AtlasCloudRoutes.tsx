@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ATLAS_MODULES } from '../registry';
 import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManager } from './AtlasCloudNextLevel';
+import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
 
 type CloudService = {
   id: string;
@@ -234,6 +235,30 @@ function ConsoleHome() {
           <span>Resources</span><strong>Resource Manager</strong>
           <p>Manage organization projects and inspect the canonical ATLAS service registry.</p>
         </Link>
+        <Link to="/cloud/service-graph">
+          <span>Topology</span><strong>Service Graph</strong>
+          <p>Visualize services by canonical backend authority and verified registry state.</p>
+        </Link>
+        <Link to="/cloud/releases">
+          <span>Delivery</span><strong>Deployment & Release Center</strong>
+          <p>Separate source, deployment and production verification using Release Control truth.</p>
+        </Link>
+        <Link to="/cloud/iam">
+          <span>Governance</span><strong>IAM & Policy</strong>
+          <p>Inspect tenant scope, role boundaries and inherited policy surfaces.</p>
+        </Link>
+        <Link to="/cloud/config">
+          <span>Configuration</span><strong>Secrets & Config</strong>
+          <p>Inspect secret boundaries and runtime readiness without exposing secret values.</p>
+        </Link>
+        <Link to="/cloud/finops">
+          <span>Cost</span><strong>FinOps</strong>
+          <p>Govern billing integration, budgets and cost evidence with fail-closed totals.</p>
+        </Link>
+        <Link to="/cloud/incidents">
+          <span>Reliability</span><strong>Incident Center</strong>
+          <p>Read canonical incidents and correlate operational state with releases and telemetry.</p>
+        </Link>
         <Link to="/execution/manager/readiness">
           <span>Infrastructure</span><strong>Manager Readiness</strong>
           <p>Evaluate provider requirements and real blockers before any deployment claim.</p>
@@ -283,5 +308,11 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/api-explorer') return <AtlasCloudApiExplorer />;
   if (pathname === '/cloud/observability') return <AtlasCloudObservability />;
   if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
+  if (pathname === '/cloud/service-graph') return <AtlasCloudServiceGraph />;
+  if (pathname === '/cloud/releases') return <AtlasCloudReleaseCenter />;
+  if (pathname === '/cloud/iam') return <AtlasCloudIamPolicy />;
+  if (pathname === '/cloud/config') return <AtlasCloudSecretsConfig />;
+  if (pathname === '/cloud/finops') return <AtlasCloudFinOps />;
+  if (pathname === '/cloud/incidents') return <AtlasCloudReliability />;
   return <ConsoleHome />;
 }
