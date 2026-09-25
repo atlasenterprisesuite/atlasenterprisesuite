@@ -64,6 +64,7 @@ create table if not exists public.atlas_chat_messages (
     check (actor_type in ('human','assistant','agent','automation','system','external')),
   client_message_id uuid not null,
   sequence bigint not null check (sequence > 0),
+  trace_id uuid not null default gen_random_uuid(),
   content jsonb not null,
   reply_to_message_id uuid null references public.atlas_chat_messages(id) on delete set null,
   edited_at timestamptz null,
@@ -115,6 +116,28 @@ create table if not exists public.atlas_chat_attachments (
   created_at timestamptz not null default now(),
   unique (org_id, storage_bucket, storage_path)
 );
+
+create table if not exists public.atlas_chat_deletion_requests (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null,
+  conversation_id uuid null references public.atlas_chat_conversations(id) on delete set null,
+  requested_by uuid not null,
+  reason text null check (reason is null or char_length(reason) <= 1000),
+  status text not null default 'pending'
+    check (status in ('pending','approved','rejected','completed')),
+  reviewed_by uuid null,
+  reviewed_at timestamptz null,
+  review_reason text null check (review_reason is null or char_length(review_reason) <= 1000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists atlas_chat_deletion_pending_idx
+  on public.atlas_chat_deletion_requests(org_id, conversation_id, requested_by)
+  where status = 'pending';
+
+create index if not exists atlas_chat_deletion_org_status_idx
+  on public.atlas_chat_deletion_requests(org_id, status, created_at desc);
 
 create or replace function public.atlas_chat_purge_expired()
 returns integer
@@ -379,6 +402,7 @@ alter table public.atlas_chat_messages enable row level security;
 alter table public.atlas_chat_message_receipts enable row level security;
 alter table public.atlas_chat_message_reactions enable row level security;
 alter table public.atlas_chat_attachments enable row level security;
+alter table public.atlas_chat_deletion_requests enable row level security;
 
 drop policy if exists atlas_chat_retention_read on public.atlas_chat_retention_policies;
 create policy atlas_chat_retention_read
@@ -423,6 +447,20 @@ on public.atlas_chat_message_reactions
 for select to authenticated
 using (public.atlas_chat_can_access(org_id, conversation_id, auth.uid()));
 
+drop policy if exists atlas_chat_deletion_read on public.atlas_chat_deletion_requests;
+create policy atlas_chat_deletion_read
+on public.atlas_chat_deletion_requests
+for select to authenticated
+using (
+  requested_by = auth.uid()
+  and exists (
+    select 1 from public.organization_members om
+    where om.org_id = atlas_chat_deletion_requests.org_id
+      and om.user_id = auth.uid()
+      and om.status = 'active'
+  )
+);
+
 drop policy if exists atlas_chat_attachment_read on public.atlas_chat_attachments;
 create policy atlas_chat_attachment_read
 on public.atlas_chat_attachments
@@ -439,7 +477,8 @@ revoke all on table
   public.atlas_chat_messages,
   public.atlas_chat_message_receipts,
   public.atlas_chat_message_reactions,
-  public.atlas_chat_attachments
+  public.atlas_chat_attachments,
+  public.atlas_chat_deletion_requests
 from anon;
 
 revoke insert, update, delete on table
@@ -449,7 +488,8 @@ revoke insert, update, delete on table
   public.atlas_chat_messages,
   public.atlas_chat_message_receipts,
   public.atlas_chat_message_reactions,
-  public.atlas_chat_attachments
+  public.atlas_chat_attachments,
+  public.atlas_chat_deletion_requests
 from authenticated;
 
 grant select on table
@@ -459,7 +499,8 @@ grant select on table
   public.atlas_chat_messages,
   public.atlas_chat_message_receipts,
   public.atlas_chat_message_reactions,
-  public.atlas_chat_attachments
+  public.atlas_chat_attachments,
+  public.atlas_chat_deletion_requests
 to authenticated;
 
 grant all on table
@@ -469,7 +510,8 @@ grant all on table
   public.atlas_chat_messages,
   public.atlas_chat_message_receipts,
   public.atlas_chat_message_reactions,
-  public.atlas_chat_attachments
+  public.atlas_chat_attachments,
+  public.atlas_chat_deletion_requests
 to service_role;
 
 revoke all on function public.atlas_chat_purge_expired() from public, anon, authenticated;
