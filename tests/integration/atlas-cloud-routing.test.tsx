@@ -37,7 +37,8 @@ describe('ATLAS Cloud routing and product boundaries', () => {
     expect(nextLevel).toContain('ATLAS Cloud · Developer Control');
     expect(nextLevel).toContain('ATLAS Cloud · Native Telemetry');
     expect(nextLevel).toContain('ATLAS Cloud · Resource Hierarchy');
-    expect(nextLevel).toContain('atlas-cloud-control');
+    expect(nextLevel).toContain('atlas-observability');
+    expect(nextLevel).not.toContain('atlas-cloud-control');
   });
 
   it('loads Atlas Cloud styles from the primary web entry point', () => {
