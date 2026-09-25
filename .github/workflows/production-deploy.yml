@@ -12,7 +12,8 @@ on:
     branches: ["main"]
 
 concurrency:
-  group: atlas-production-readiness
+  # Exact-SHA isolation prevents unrelated PR/main runs from cancelling a pending readiness proof.
+  group: atlas-production-readiness-${{ github.sha }}
   cancel-in-progress: false
 
 permissions:
