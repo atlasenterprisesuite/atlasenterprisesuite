@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { htmlToVisibleText } from '../packages/tax-irs-monitor/src/html-to-visible-text.mjs';
 
 const BASELINE_DATE = Date.parse('2026-09-15T23:59:59Z');
 const CHANGELOG_URL = 'https://developers.hubspot.com/changelog';
@@ -60,12 +61,7 @@ function decodeKnownHtmlEntity(entity) {
 }
 
 function toText(html) {
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, ' ')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, ' ')
-    .replace(/<\/(?:h\d|p|div|li|article|section)\s*>/gi, '\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
+  return htmlToVisibleText(html)
     .replace(/&(amp|quot|#39|nbsp);/gi, decodeKnownHtmlEntity)
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n');
