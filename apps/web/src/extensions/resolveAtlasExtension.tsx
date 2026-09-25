@@ -5,6 +5,7 @@ import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { AviationRoutes } from '../modules/aviation/AviationRoutes';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
+import { AtlasCloudRoutes } from '../modules/cloud/AtlasCloudRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { EventsHomePage } from '../modules/events/EventsHomePage';
@@ -48,6 +49,14 @@ const JAQUE_MATE_SENTINEL_V2 = '/health/jaque-mate/sentinel/v2';
 const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
 
 export function resolveAtlasExtension(pathname: string) {
+  if (pathname === '/cloud/docs' || pathname.startsWith('/cloud/docs/')) {
+    return <AtlasCloudRoutes />;
+  }
+
+  if (pathname === '/cloud' || pathname.startsWith('/cloud/')) {
+    return <RequireAtlasIdentity><AtlasCloudRoutes /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/suite') return <AtlasSuitePage />;
 
   if (pathname === '/automations') {
