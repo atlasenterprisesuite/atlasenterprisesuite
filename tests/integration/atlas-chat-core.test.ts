@@ -99,21 +99,15 @@ describe('ATLAS Chat Core', () => {
     expect(client).toContain("handlers.onState?.('polling')");
   });
 
-  it('routes the native workspace through ATLAS Connect with honest states', () => {
+  it('keeps the legacy chat URL only as a compatibility redirect and removes the module card', () => {
     expect(existsSync(pagePath)).toBe(true);
     expect(read(routesPath)).toContain('path="/connect/chat"');
-    expect(read(homePath)).toContain('to="/connect/chat"');
-    const page = read(pagePath);
-    expect(page).toContain('ATLAS Chat');
-    expect(page).toContain('Polling fallback');
-    expect(page).toContain('security gate pending');
-    expect(page).toContain('Export JSON');
-    expect(page).toContain('Request deletion');
-    expect(page).toContain('Messages are persisted before realtime notification is emitted');
+    expect(read(routesPath)).toContain('<Navigate to="/connect" replace />');
+    expect(read(homePath)).not.toContain('to="/connect/chat"');
   });
 
-  it('adds ATLAS Chat to both fail-closed production route verifiers', () => {
-    expect(read(productionContractPath)).toContain('"/connect/chat"');
+  it('keeps compatibility probing without classifying chat as a canonical module route', () => {
+    expect(read(productionContractPath)).not.toContain('"/connect/chat"');
     expect(read(authorizedVerifierPath)).toContain("'/connect/chat'");
   });
 });
