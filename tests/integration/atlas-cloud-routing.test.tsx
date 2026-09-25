@@ -6,6 +6,7 @@ const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx
 const routes = readFileSync('apps/web/src/modules/cloud/AtlasCloudRoutes.tsx', 'utf8');
 const nextLevel = readFileSync('apps/web/src/modules/cloud/AtlasCloudNextLevel.tsx', 'utf8');
 const main = readFileSync('apps/web/src/main.tsx', 'utf8');
+const backend = readFileSync('supabase/functions/atlas-observability/index.ts', 'utf8');
 
 describe('ATLAS Cloud routing and product boundaries', () => {
   it('registers Atlas Cloud as a first-class module', () => {
@@ -39,6 +40,18 @@ describe('ATLAS Cloud routing and product boundaries', () => {
     expect(nextLevel).toContain('ATLAS Cloud · Resource Hierarchy');
     expect(nextLevel).toContain('atlas-observability');
     expect(nextLevel).not.toContain('atlas-cloud-control');
+  });
+
+  it('reuses the existing observability runtime for organization-scoped Cloud control APIs', () => {
+    expect(backend).toContain("api==='cloud-openapi'");
+    expect(backend).toContain("api==='cloud-resources'");
+    expect(backend).toContain("api==='cloud-project'");
+    expect(backend).toContain("api==='cloud-project-create'");
+    expect(backend).toContain("api==='cloud-observability'");
+    expect(backend).toContain("requirePermission(ctx,'projects.read')");
+    expect(backend).toContain("requirePermission(ctx,'projects.write')");
+    expect(backend).toContain("org_id=eq.");
+    expect(backend).toContain("duplicated_registry_created:false");
   });
 
   it('loads Atlas Cloud styles from the primary web entry point', () => {
