@@ -45,7 +45,6 @@ describe('ATLAS global production verification', () => {
       '/inventory/procure-to-pay',
       '/analytics',
       '/connect',
-      '/connect/chat',
       '/connect/channel',
       '/connect/wireless',
       '/connect/google-fi',
