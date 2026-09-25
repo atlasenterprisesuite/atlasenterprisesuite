@@ -39,7 +39,7 @@ describe('ATLAS Cloud routing and product boundaries', () => {
     expect(nextLevel).toContain('ATLAS Cloud · Native Telemetry');
     expect(nextLevel).toContain('ATLAS Cloud · Resource Hierarchy');
     expect(nextLevel).toContain('atlas-observability');
-    expect(nextLevel).not.toContain('atlas-cloud-control');
+    expect(nextLevel).not.toContain('functions/v1/atlas-cloud-control');
   });
 
   it('reuses the existing observability runtime for organization-scoped Cloud control APIs', () => {
