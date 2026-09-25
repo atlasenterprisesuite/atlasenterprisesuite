@@ -141,7 +141,7 @@ export function AtlasChatPage() {
     }
 
     let disposed = false;
-    let closeRealtime = () => undefined;
+    let closeRealtime: () => void = () => {};
     setRealtimeState('connecting');
     refreshMessages(conversationId).catch(() => undefined);
 
