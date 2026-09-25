@@ -18,6 +18,7 @@ describe('Manager readiness Edge contract', () => {
     expect(edgeSource).toContain("'sync_manager_readiness'");
     expect(edgeSource).toContain('execution.audit');
     expect(edgeSource).toContain('ATLAS_PLATFORM_TENANT_ID');
+    expect(edgeSource).toContain('platformTenantId: ATLAS_PLATFORM_TENANT_ID || context.orgId');
     expect(managerSource).toContain('/functions/v1/atlas-infra-status');
   });
 

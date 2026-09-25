@@ -827,7 +827,7 @@ async function syncReadiness(req: Request, context: RequestContext, requestId: s
       admin,
       supabaseUrl: SUPABASE_URL,
       publishableKey: PUBLISHABLE_KEY,
-      platformTenantId: ATLAS_PLATFORM_TENANT_ID,
+      platformTenantId: ATLAS_PLATFORM_TENANT_ID || context.orgId,
       appendAudit: (input) => appendAudit(admin, input)
     });
     return json(req, { ok: true, ...result });
