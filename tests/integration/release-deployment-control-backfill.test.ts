@@ -13,6 +13,10 @@ const evidenceRegistry = readFileSync(
   'supabase/migrations/20260925072000_atlas_master_evidence_registry.sql',
   'utf8'
 );
+const evidenceIndexHardening = readFileSync(
+  'supabase/migrations/20260925072500_atlas_master_evidence_registry_index_hardening.sql',
+  'utf8'
+);
 const edge = readFileSync('supabase/functions/atlas-release-control/index.ts', 'utf8');
 const authVerifier = readFileSync(
   'supabase/functions/atlas-release-control-auth-verifier/index.ts',
@@ -72,6 +76,13 @@ describe('ATLAS Release & Deployment Control backfill', () => {
     ]) {
       expect(evidenceRegistry).toContain(status);
     }
+  });
+
+  it('adds covering indexes for evidence registry foreign keys', () => {
+    expect(evidenceIndexHardening).toContain('idx_atlas_master_evidence_deployment');
+    expect(evidenceIndexHardening).toContain('idx_atlas_master_evidence_created_by');
+    expect(evidenceIndexHardening).toContain('deployment_id');
+    expect(evidenceIndexHardening).toContain('created_by');
   });
 
   it('exposes governed evidence read/write through Release Control', () => {
