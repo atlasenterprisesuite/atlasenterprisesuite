@@ -27,7 +27,14 @@ permissions:
   id-token: write
 
 jobs:
+  atlas-local-runtime-verification:
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/atlas-render-local-ai-verify.yml
+
   verify-production:
+    needs: atlas-local-runtime-verification
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
