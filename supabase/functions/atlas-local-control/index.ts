@@ -414,6 +414,20 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     return json(req, { ok: true, commands: data || [] });
   }
 
+  if (operation === 'events.list') {
+    requirePermission(context, 'device.agent.read');
+    const deviceId = clean(body.device_id, 80);
+    let query = admin.from('atlas_local_device_events')
+      .select('id,org_id,agent_id,device_id,command_id,event_type,severity,success,safe_detail,created_at')
+      .eq('org_id', context.orgId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (deviceId) query = query.eq('device_id', deviceId);
+    const { data, error } = await query;
+    if (error) throw new EdgeError('persistence_error', 500);
+    return json(req, { ok: true, events: data || [] });
+  }
+
   if (operation === 'agents.mtls.bind') {
     requirePermission(context, 'device.agent.admin');
     const agentId = requiredText(body.agent_id, 'agent_id_required', 80);

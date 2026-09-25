@@ -40,6 +40,19 @@ export type AtlasLocalDevice = {
   metadata: Record<string, unknown>;
 };
 
+export type AtlasLocalDeviceEvent = {
+  id: string;
+  org_id: string;
+  agent_id: string | null;
+  device_id: string | null;
+  command_id: string | null;
+  event_type: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  success: boolean | null;
+  safe_detail: Record<string, unknown>;
+  created_at: string;
+};
+
 export type AtlasLocalCommand = {
   id: string;
   org_id: string;
@@ -80,6 +93,12 @@ export async function listLocalDevices() {
 
 export async function listLocalCommands() {
   return (await post<{ ok: true; commands: AtlasLocalCommand[] }>('commands.list')).commands;
+}
+
+export async function listLocalDeviceEvents(deviceId?: string) {
+  return (await post<{ ok: true; events: AtlasLocalDeviceEvent[] }>('events.list', {
+    ...(deviceId ? { device_id: deviceId } : {})
+  })).events;
 }
 
 export async function createLocalAgentEnrollment(agentName: string) {
