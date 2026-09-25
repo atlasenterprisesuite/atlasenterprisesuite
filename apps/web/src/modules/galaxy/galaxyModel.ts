@@ -84,12 +84,12 @@ export const GALAXY_NODE_DEFINITIONS: readonly GalaxyNodeDefinition[] = [
 
 function readinessState(module: AtlasModuleDefinition): Pick<GalaxyNodeView, 'status' | 'statusLabel'> {
   if (module.readiness === 'implemented') {
-    return { status: 'active', statusLabel: 'Implemented' };
+    return { status: 'available', statusLabel: 'Integrated · production gate pending' };
   }
   if (module.readiness === 'partial') {
-    return { status: 'warning', statusLabel: 'Partial' };
+    return { status: 'warning', statusLabel: 'Integrated / partial · production gate pending' };
   }
-  return { status: 'available', statusLabel: 'External connection required' };
+  return { status: 'warning', statusLabel: 'Pending external gate' };
 }
 
 export function buildGalaxyNodes(input: {
