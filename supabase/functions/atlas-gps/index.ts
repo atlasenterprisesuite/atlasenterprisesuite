@@ -8,6 +8,7 @@ const PUBLISHABLE_KEY =
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const OSRM_BASE_URL = (Deno.env.get('ATLAS_GPS_OSRM_BASE_URL') || 'https://router.project-osrm.org').replace(/\/$/, '');
 const NOMINATIM_BASE_URL = (Deno.env.get('ATLAS_GPS_NOMINATIM_BASE_URL') || 'https://nominatim.openstreetmap.org').replace(/\/$/, '');
+const OVERPASS_BASE_URL = (Deno.env.get('ATLAS_GPS_OVERPASS_BASE_URL') || 'https://overpass-api.de/api/interpreter').replace(/\/$/, '');
 const MAX_REQUEST_BYTES = 32 * 1024;
 
 const ALLOWED_ORIGINS = new Set([
@@ -102,7 +103,9 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function readCache(provider: 'nominatim' | 'osrm', keyMaterial: string) {
+type GpsProvider = 'nominatim' | 'osrm' | 'overpass';
+
+async function readCache(provider: GpsProvider, keyMaterial: string) {
   const admin = adminClient();
   const cacheKey = await sha256(provider + ':' + keyMaterial);
   const { data } = await admin
@@ -114,7 +117,7 @@ async function readCache(provider: 'nominatim' | 'osrm', keyMaterial: string) {
   return { cacheKey, payload: data?.payload || null };
 }
 
-async function writeCache(cacheKey: string, provider: 'nominatim' | 'osrm', payload: unknown, ttlSeconds: number) {
+async function writeCache(cacheKey: string, provider: GpsProvider, payload: unknown, ttlSeconds: number) {
   const admin = adminClient();
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
   await admin.from('atlas_gps_provider_cache').upsert({
@@ -125,14 +128,22 @@ async function writeCache(cacheKey: string, provider: 'nominatim' | 'osrm', payl
   });
 }
 
-async function acquireNominatimSlot() {
+async function acquireProviderSlot(provider: 'nominatim' | 'overpass', minIntervalMs: number) {
   const admin = adminClient();
   const { data, error } = await admin.rpc('atlas_gps_acquire_provider_slot', {
-    p_provider: 'nominatim',
-    p_min_interval_ms: 1000
+    p_provider: provider,
+    p_min_interval_ms: minIntervalMs
   });
   if (error) throw new EdgeError('provider_throttle_unavailable', 503);
   return data === true;
+}
+
+async function acquireNominatimSlot() {
+  return acquireProviderSlot('nominatim', 1000);
+}
+
+async function acquireOverpassSlot() {
+  return acquireProviderSlot('overpass', 2000);
 }
 
 function capabilities() {
@@ -150,7 +161,14 @@ function capabilities() {
       turn_by_turn: { state: 'available_from_route_steps' },
       lane_guidance: { state: 'available_when_upstream_route_intersections_include_lanes' },
       rerouting: { state: 'client_navigation_logic' },
-      voice_guidance: { state: 'browser_speech_synthesis' }
+      voice_guidance: { state: 'browser_speech_synthesis' },
+      indoor_osm: {
+        state: 'external_gated',
+        provider: 'OpenStreetMap Simple Indoor Tagging via public Overpass default unless ATLAS_GPS_OVERPASS_BASE_URL is configured',
+        verified_sla: false,
+        cache: '6 hours',
+        scope: 'bounded building-area lookup only'
+      }
     },
     gated: {
       realtime_traffic: { state: 'blocked', reason: 'authorized_live_traffic_provider_required' },
@@ -201,6 +219,143 @@ async function searchPlaces(queryText: string, language: string) {
 
   await writeCache(cached.cacheKey, 'nominatim', results, 24 * 60 * 60);
   return { source: 'nominatim', results };
+}
+
+
+function normalizeIndoorTags(tags: Record<string, unknown> | undefined) {
+  if (!tags) return {};
+  const allowed = [
+    'indoor',
+    'level',
+    'level:ref',
+    'name',
+    'ref',
+    'room',
+    'highway',
+    'entrance',
+    'door',
+    'wheelchair',
+    'access',
+    'conveying',
+    'repeat_on',
+    'building',
+    'building:part'
+  ];
+  return Object.fromEntries(
+    allowed
+      .filter((key) => tags[key] !== undefined)
+      .map((key) => [key, clean(tags[key], 160)])
+  );
+}
+
+function splitIndoorLevels(value: unknown) {
+  const raw = clean(value, 160);
+  if (!raw) return [];
+  const levels = new Set<string>();
+  for (const token of raw.split(';').map((item) => item.trim()).filter(Boolean)) {
+    const range = token.match(/^(-?\d+)-(-?\d+)$/);
+    if (range) {
+      const start = Number(range[1]);
+      const end = Number(range[2]);
+      if (Number.isInteger(start) && Number.isInteger(end) && Math.abs(end - start) <= 30) {
+        const step = start <= end ? 1 : -1;
+        for (let value = start; value !== end + step; value += step) levels.add(String(value));
+        continue;
+      }
+    }
+    levels.add(token);
+  }
+  return [...levels].slice(0, 64);
+}
+
+async function lookupIndoor(input: Json) {
+  const latitude = finiteNumber(input.latitude, 'latitude_invalid');
+  const longitude = finiteNumber(input.longitude, 'longitude_invalid');
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+    throw new EdgeError('coordinates_out_of_range', 422);
+  }
+
+  const requestedRadius = Number(input.radius_m ?? 90);
+  const radiusM = Number.isFinite(requestedRadius)
+    ? Math.min(180, Math.max(20, Math.round(requestedRadius)))
+    : 90;
+
+  const keyMaterial = [latitude.toFixed(5), longitude.toFixed(5), String(radiusM)].join(',');
+  const cached = await readCache('overpass', keyMaterial);
+  if (cached.payload) return { source: 'cache', ...(cached.payload as Json) };
+
+  if (!await acquireOverpassSlot()) throw new EdgeError('overpass_rate_limited', 429);
+
+  const query = [
+    '[out:json][timeout:10];',
+    '(',
+    `nwr(around:${radiusM},${latitude},${longitude})["indoor"];`,
+    `nwr(around:${radiusM},${latitude},${longitude})["entrance"];`,
+    `nwr(around:${radiusM},${latitude},${longitude})["highway"="elevator"];`,
+    `nwr(around:${radiusM},${latitude},${longitude})["highway"="steps"];`,
+    ');',
+    'out center tags;'
+  ].join('');
+
+  const response = await fetch(OVERPASS_BASE_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+      'user-agent': 'ATLAS-GPS-4D/1.0 (https://www.atlasenterprisesuite.com/gps)'
+    },
+    body: new URLSearchParams({ data: query }),
+    signal: AbortSignal.timeout(12_000)
+  });
+
+  if (response.status === 429) throw new EdgeError('overpass_rate_limited', 429);
+  if (!response.ok) throw new EdgeError('overpass_unavailable', 502);
+
+  const payload = await response.json().catch(() => null) as any;
+  const rawElements = Array.isArray(payload?.elements) ? payload.elements.slice(0, 600) : [];
+  const features = rawElements.map((element: any) => {
+    const tags = normalizeIndoorTags(element.tags);
+    const lat = Number(element.lat ?? element.center?.lat);
+    const lon = Number(element.lon ?? element.center?.lon);
+    return {
+      id: `${clean(element.type, 16)}/${String(element.id ?? '')}`,
+      osm_type: clean(element.type, 16),
+      lat: Number.isFinite(lat) ? lat : null,
+      lon: Number.isFinite(lon) ? lon : null,
+      tags
+    };
+  });
+
+  const levelSet = new Set<string>();
+  for (const feature of features) {
+    for (const level of splitIndoorLevels((feature.tags as Record<string, unknown>).level)) {
+      levelSet.add(level);
+    }
+  }
+
+  const coverage = {
+    available: features.some((feature: any) => Boolean(feature.tags.indoor)),
+    feature_count: features.length,
+    levels: [...levelSet].sort((a, b) => Number(a) - Number(b)),
+    rooms: features.filter((feature: any) => feature.tags.indoor === 'room').length,
+    corridors: features.filter((feature: any) => feature.tags.indoor === 'corridor').length,
+    entrances: features.filter((feature: any) => Boolean(feature.tags.entrance)).length,
+    vertical_connections: features.filter((feature: any) =>
+      feature.tags.highway === 'elevator' || feature.tags.highway === 'steps'
+    ).length
+  };
+
+  const normalized = {
+    provider: 'openstreetmap-overpass',
+    provider_state: 'external_gated',
+    verified_sla: false,
+    center: { lat: latitude, lon: longitude },
+    radius_m: radiusM,
+    coverage,
+    features
+  };
+
+  await writeCache(cached.cacheKey, 'overpass', normalized, 6 * 60 * 60);
+  return { source: 'overpass', ...normalized };
 }
 
 async function calculateRoute(input: Json) {
@@ -346,6 +501,10 @@ Deno.serve(async (req: Request) => {
     }
     if (operation === 'route') {
       const result = await calculateRoute(body);
+      return json(req, { ok: true, organization_id: context.orgId, ...result });
+    }
+    if (operation === 'indoor.lookup') {
+      const result = await lookupIndoor(body);
       return json(req, { ok: true, organization_id: context.orgId, ...result });
     }
     if (operation === 'saved.list') {
