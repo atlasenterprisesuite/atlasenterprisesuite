@@ -72,6 +72,7 @@ The current `atlas-core` project already contains ATLAS Manager building blocks 
 - `atlas-enterprise-web`
 - `atlas_release_registry`
 - `atlas_runtime_verification_runs`
+- `atlas_master_evidence_registry` — append-only provenance and supersession ledger for release/module claims
 - `atlas_approvals`
 - `atlas_integration_connections`
 - ATLAS audit, identity, permissions, workflow, observability, and AI governance tables
@@ -184,6 +185,7 @@ Responsibilities:
 - validate tenant isolation and RLS policies;
 - maintain runtime verification evidence;
 - maintain release registry evidence;
+- maintain the append-only Master Evidence Registry and evidence-precedence relationships;
 - maintain infrastructure audit evidence;
 - coordinate approvals and privileged infrastructure actions;
 - expose normalized provider state to ATLAS Manager;

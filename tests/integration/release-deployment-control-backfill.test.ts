@@ -9,6 +9,10 @@ const completion = readFileSync(
   'supabase/migrations/20260923235400_release_deployment_control_completion_gate.sql',
   'utf8'
 );
+const evidenceRegistry = readFileSync(
+  'supabase/migrations/20260925072000_atlas_master_evidence_registry.sql',
+  'utf8'
+);
 const edge = readFileSync('supabase/functions/atlas-release-control/index.ts', 'utf8');
 const authVerifier = readFileSync(
   'supabase/functions/atlas-release-control-auth-verifier/index.ts',
@@ -50,6 +54,33 @@ describe('ATLAS Release & Deployment Control backfill', () => {
       expect(schema).toContain(component);
     }
     expect(schema).toContain('8899f6231a5b159a7770946fa533008f0e74b8e60e7a16f9d1628516f54ed5f9');
+  });
+
+  it('adds an append-only, tenant-scoped master evidence registry', () => {
+    expect(evidenceRegistry).toContain('public.atlas_master_evidence_registry');
+    expect(evidenceRegistry).toContain('enable row level security');
+    expect(evidenceRegistry).toContain('organization_members');
+    expect(evidenceRegistry).toContain("has_identity_permission(org_id, 'releases.read')");
+    expect(evidenceRegistry).toContain('atlas_master_evidence_immutable');
+    expect(evidenceRegistry).toContain('supersedes_id');
+    for (const status of [
+      'VIGENTE',
+      'IMPLEMENTADA',
+      'PENDIENTE',
+      'SUPERADA',
+      'REQUIERE_REVERIFICACION'
+    ]) {
+      expect(evidenceRegistry).toContain(status);
+    }
+  });
+
+  it('exposes governed evidence read/write through Release Control', () => {
+    expect(edge).toContain("api==='evidence'");
+    expect(edge).toContain("api==='evidence-record'");
+    expect(edge).toContain('atlas_master_evidence_registry');
+    expect(edge).toContain("requirePermission(ctx,'releases.manage')");
+    expect(edge).toContain('cleanEvidenceRecord');
+    expect(edge).toContain('SERVICE_ROLE');
   });
 
   it('keeps release control authenticated and tenant-scoped', () => {
