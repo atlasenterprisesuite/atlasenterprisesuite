@@ -242,7 +242,7 @@ function ConsoleHome() {
         </Link>
         <Link to="/cloud/production-verification">
           <span>Integrity</span><strong>Production Verification</strong>
-          <p>Verify security, build, deployment, runtime and exact-SHA evidence with fail-closed truth.</p>
+          <p>Verify security, build, deployment, runtime and exact-SHA evidence without fabricating green state.</p>
         </Link>
         <Link to="/cloud/releases">
           <span>Delivery</span><strong>Deployment & Release Center</strong>
