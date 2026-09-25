@@ -9,7 +9,7 @@ const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 27;
+const VERSION = 28;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CANONICAL_MODULE_ROUTES = [
@@ -36,6 +36,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/connect/chat',
   '/connect/channel',
   '/connect/wireless',
+  '/connect/wireless/network',
   '/connect/wireless/mvno',
   '/connect/google-fi',
   '/payroll',
