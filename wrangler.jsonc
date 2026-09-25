@@ -20,11 +20,19 @@
       {
         "name": "LOCAL_REALTIME_BUS",
         "class_name": "AtlasLocalRealtimeBus"
+      },
+      {
+        "name": "CHAT_REALTIME_BUS",
+        "class_name": "AtlasChatRealtimeBus"
       }
     ]
   },
   "exports": {
     "AtlasLocalRealtimeBus": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    },
+    "AtlasChatRealtimeBus": {
       "type": "durable-object",
       "storage": "sqlite"
     }
