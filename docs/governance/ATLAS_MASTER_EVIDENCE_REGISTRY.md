@@ -21,7 +21,7 @@ Highest authority wins only when it is current for the same environment and rele
 5. product specifications and technical blueprints;
 6. operational runbooks;
 7. historical audits/baselines;
-8. personal or symbolic material, which never participates in production readiness.
+8. non-technical or personal material is excluded from this registry entirely and never participates in production readiness.
 
 A newer document does not silently erase an older one. Historical evidence remains immutable and a newer record points to the record it supersedes.
 
@@ -75,9 +75,9 @@ The table is append-only. Corrections and updated conclusions create a new recor
 - Writes are performed only through a server-side ATLAS control-plane action after authorization.
 - Raw secrets, credentials, bearer tokens, private keys, recovery codes and sensitive provider payloads are forbidden in `claim`, `source_ref` and metadata.
 
-## Document classification baseline
+## Technical source classification baseline
 
-The current nine-document review maps as follows:
+Only technical ATLAS sources are eligible for this registry:
 
 | Source class | Registry role | Production authority |
 | --- | --- | --- |
@@ -88,10 +88,8 @@ The current nine-document review maps as follows:
 | ATLAS Voice/WebRTC research | P1 product blueprint | Architecture input; requires implementation/E2E evidence |
 | OpenCode + Cloudflare manual | P1 runbook | Operational procedure; cannot certify production by itself |
 | General ATLAS architecture/module audit | P2 historical baseline | Historical planning evidence; later machine evidence supersedes status claims |
-| Personal consumer/background document | PERSONAL | Excluded from ATLAS technical production readiness |
-| Symbolic/tarot document | SYMBOLIC | Excluded from ATLAS technical production readiness |
 
-Personal and symbolic material must remain isolated from release, security and production decisions.
+Personal, employment-screening, health, legal, financial, symbolic, divination, or other non-technical user material must not be ingested into the production evidence registry unless a separate, explicitly approved product requirement and privacy model exists.
 
 ## Resolution algorithm
 
