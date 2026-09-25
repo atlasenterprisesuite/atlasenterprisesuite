@@ -60,6 +60,8 @@ Authenticated lifecycle operations are reserved at the same Edge Function:
 
 Until provider verification exists, each lifecycle operation remains fail-closed with HTTP 503 and a non-secret blocker code.
 
+Repository merge and Cloudflare web deployment do not prove this Edge Function is live in Supabase. The function must be deployed separately with JWT verification enabled and its deployed version/readiness must be verified before the web surface can treat server readiness as available.
+
 ## Commercial separation
 
 The pilot does not authorize public commercial service. Billing, telecom tax, E911, Home Hub, satellite/D2D, staging, carrier acceptance and exact provider-side end-to-end verification remain separate launch gates.
