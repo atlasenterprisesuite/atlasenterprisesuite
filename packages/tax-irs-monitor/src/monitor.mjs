@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { htmlToVisibleText } from "./html-to-visible-text.mjs";
 
 export const MATERIAL_TERMS = [
   "effective date", "tax year", "filing season", "deadline", "due date",
@@ -29,12 +30,7 @@ export function normalizeOfficialUrl(value) {
 }
 
 export function normalizeContent(content) {
-  return content
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
-    .replace(/<!--([\s\S]*?)-->/g, " ")
-    .replace(/<br\s*\/?>|<\/(?:p|li|h[1-6]|tr|div|section|article)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
+  return htmlToVisibleText(content)
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&amp;/gi, "&")
     .split(/\n+/)
