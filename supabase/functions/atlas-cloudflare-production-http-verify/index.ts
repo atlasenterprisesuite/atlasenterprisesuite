@@ -15,6 +15,9 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CANONICAL_MODULE_ROUTES = [
   '/',
   '/suite',
+  '/cloud',
+  '/cloud/docs',
+  '/cloud/docs/catalog',
   '/work',
   '/assistant',
   '/knowledge',
