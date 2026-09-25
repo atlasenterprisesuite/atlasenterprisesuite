@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   reconcile-legacy-build:
@@ -38,7 +39,8 @@ jobs:
           if [ "$TOKEN_HTTP" != "200" ] || [ "$TOKEN_ACTIVE" != "true" ]; then
             echo "::warning::Cloudflare Workers Builds reconciliation is permission-blocked: CLOUDFLARE_API_TOKEN must be a user-scoped token with Workers CI Read/Write."
             echo "Reconciliation state: permission_blocked. Canonical production deploy/verification remains authoritative and fail-closed; no Cloudflare resource was modified." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::Legacy Workers Builds reconciliation cannot be verified with the current Cloudflare credential."
+            exit 1
           fi
 
           SCRIPTS_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cloudflare-scripts.json             --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts" || true)"
@@ -60,7 +62,8 @@ jobs:
           if [ "$TRIGGERS_HTTP" != "200" ] || [ "$TRIGGERS_OK" != "true" ]; then
             echo "::warning::Unable to read legacy Workers Builds triggers with the current token. Cleanup is permission-blocked, not a production deployment failure."
             echo "Reconciliation state: permission_blocked. Grant Workers CI Read/Write to the user-scoped token to remove the legacy trigger; canonical deployment remains governed by ATLAS Cloudflare Worker Deploy + Global Production Verification." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::Legacy Workers Builds trigger state is unverified; failing closed."
+            exit 1
           fi
 
           node - /tmp/cloudflare-triggers.json "$GITHUB_REPOSITORY_OWNER" "${GITHUB_REPOSITORY#*/}" > /tmp/legacy-trigger-ids.txt <<'NODE'
@@ -98,4 +101,19 @@ jobs:
           REMAINING="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cloudflare-triggers-after.json','utf8'));const owner=process.argv[1],repo=process.argv[2];const n=(j.result||[]).filter(t=>{const c=t?.repo_connection||{};return String(c.provider_type||'').toLowerCase()==='github'&&String(c.repo_name||'')===repo&&(!c.provider_account_name||String(c.provider_account_name)===owner)}).length;process.stdout.write(String(n))" "$GITHUB_REPOSITORY_OWNER" "${GITHUB_REPOSITORY#*/}")"
           test "$REMAINING" = "0" || { echo "::error::Legacy Workers Builds trigger still exists after reconciliation."; exit 1; }
 
-          echo "Disconnected the noncanonical $LEGACY_WORKER Workers Builds trigger for $GITHUB_REPOSITORY. Canonical Worker $CANONICAL_WORKER was not modified." >> "$GITHUB_STEP_SUMMARY"
+          POST_SCRIPTS_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cloudflare-scripts-after.json             --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'Content-Type: application/json'             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts" || true)"
+          test "$POST_SCRIPTS_HTTP" = "200"
+          POST_CANONICAL_TAG="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cloudflare-scripts-after.json','utf8'));const x=(j.result||[]).find(v=>String(v.id||v.name||'')===process.argv[1]);process.stdout.write(String(x?.tag||''))" "$CANONICAL_WORKER")"
+          test -n "$POST_CANONICAL_TAG" || { echo "::error::Canonical Cloudflare Worker disappeared during reconciliation."; exit 1; }
+          test "$POST_CANONICAL_TAG" = "$CANONICAL_TAG" || { echo "::error::Canonical Cloudflare Worker identity changed during reconciliation."; exit 1; }
+
+          echo "Disconnected the noncanonical $LEGACY_WORKER Workers Builds trigger for $GITHUB_REPOSITORY. Canonical Worker $CANONICAL_WORKER was re-queried and remained unchanged." >> "$GITHUB_STEP_SUMMARY"
+
+  global-production-verification:
+    needs: reconcile-legacy-build
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/global-production-verify.yml
+    with:
+      mode: fail-closed
