@@ -8,6 +8,7 @@ const experiences = readFileSync('apps/web/src/modules/experience/AtlasModuleExp
 const api = readFileSync('apps/web/src/lib/financeApi.ts', 'utf8');
 const panel = readFileSync('apps/web/src/modules/finance/FinanceControlCenterPanel.tsx', 'utf8');
 const enterprisePanel = readFileSync('apps/web/src/modules/finance/EnterpriseAccountingPanel.tsx', 'utf8');
+const fpaPanel = readFileSync('apps/web/src/modules/finance/FpaControlCenterPanel.tsx', 'utf8');
 const productionContract = readFileSync('data/ops/global-production-verification.json', 'utf8');
 
 describe('ATLAS Finance web completion', () => {
@@ -62,6 +63,15 @@ describe('ATLAS Finance web completion', () => {
     expect(enterprisePanel).toContain('Intercompany & Consolidation Workspace');
     expect(enterprisePanel).toContain('No synthetic intercompany records were generated');
     expect(enterprisePanel).toContain("row.latest_match_status || 'unmatched'");
+  });
+
+  it('surfaces canonical FP&A budget versions without fabricating forecasts or variance', () => {
+    expect(api).toContain("'accounting_budget_lines'");
+    expect(api).toContain('loadFpaWorkspace');
+    expect(panel).toContain('<FpaControlCenterPanel />');
+    expect(fpaPanel).toContain('Budget & Scenario Control Center');
+    expect(fpaPanel).toContain('Actual-vs-budget and rolling forecast remain fail-closed');
+    expect(fpaPanel).toContain('ATLAS will not manufacture planning totals');
   });
 
   it('makes Finance landing, Accounting and AP mandatory production routes', () => {

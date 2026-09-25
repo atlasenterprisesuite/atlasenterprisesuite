@@ -15,7 +15,32 @@ type PeriodRow = {
   period_start: string | null;
   period_end: string | null;
 };
-type BudgetRow = { id: string; status: string | null };
+export type BudgetRow = {
+  id: string;
+  entity_id: string | null;
+  name: string;
+  fiscal_year: number;
+  version: number;
+  scenario: string;
+  status: string | null;
+  base_currency: string;
+};
+export type BudgetLineRow = {
+  id: string;
+  budget_id: string;
+  account_id: string;
+  period_start: string;
+  period_end: string;
+  amount: number | string;
+  dimension: Record<string, unknown> | null;
+};
+export type FpaWorkspaceSnapshot = {
+  source: 'supabase_rls_live';
+  organizationId: string;
+  loadedAt: string;
+  budgets: BudgetRow[];
+  lines: BudgetLineRow[];
+};
 type FxRow = { id: string; evidence_state: string | null };
 type ConsolidationRow = { id: string; status: string | null };
 export type IntercompanyCandidateRow = {
@@ -107,7 +132,7 @@ export async function loadFinanceControlCenter(): Promise<FinanceControlCenterSn
     readCapability<BalanceRow>('invoices', 'balance_due,status', organization.id),
     readCapability<JournalRow>('journal_entries', 'id,status', organization.id),
     readCapability<PeriodRow>('accounting_periods', 'id,status,close_readiness,period_start,period_end', organization.id),
-    readCapability<BudgetRow>('accounting_budgets', 'id,status', organization.id),
+    readCapability<BudgetRow>('accounting_budgets', 'id,entity_id,name,fiscal_year,version,scenario,status,base_currency', organization.id),
     readCapability<FxRow>('accounting_fx_rates', 'id,evidence_state', organization.id),
     readCapability<ConsolidationRow>('accounting_consolidation_groups', 'id,status', organization.id),
     readCapability<BankRow>('accounting_bank_accounts', 'id', organization.id),
@@ -160,5 +185,33 @@ export async function loadIntercompanyWorkspace(
     groupId,
     loadedAt: new Date().toISOString(),
     candidates: Array.isArray(rows) ? rows as IntercompanyCandidateRow[] : []
+  };
+}
+
+
+export async function loadFpaWorkspace(): Promise<FpaWorkspaceSnapshot> {
+  const organization = await getActiveAtlasOrganization();
+  const [budgets, lines] = await Promise.all([
+    readCapability<BudgetRow>(
+      'accounting_budgets',
+      'id,entity_id,name,fiscal_year,version,scenario,status,base_currency',
+      organization.id
+    ),
+    readCapability<BudgetLineRow>(
+      'accounting_budget_lines',
+      'id,budget_id,account_id,period_start,period_end,amount,dimension',
+      organization.id
+    )
+  ]);
+
+  if (!budgets.available) throw new Error(budgets.error || 'budgets_unavailable');
+  if (!lines.available) throw new Error(lines.error || 'budget_lines_unavailable');
+
+  return {
+    source: 'supabase_rls_live',
+    organizationId: organization.id,
+    loadedAt: new Date().toISOString(),
+    budgets: budgets.rows,
+    lines: lines.rows
   };
 }
