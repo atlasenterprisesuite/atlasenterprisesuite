@@ -707,7 +707,7 @@ export function Gps4DPage() {
     if (viewMode === 'street') return 'OpenFreeMap + OpenStreetMap';
     if (viewMode === 'satellite') return 'USGS The National Map imagery · U.S. coverage';
     return 'USGS imagery + Mapterhorn elevation · 3D globe';
-  }, [viewMode]);
+  }, [viewMode, photorealistic3D]);
 
   return (
     <section className="gps4d-page">
@@ -830,9 +830,12 @@ export function Gps4DPage() {
           )}
           {engineState === 'ready' && (
             <div className={`gps4d-layer-status ${layerState}`} role="status">
-              <strong>MapLibre {engineState === 'ready' ? '✓' : '×'}</strong>
+              <strong>{photorealistic3D ? 'Cesium' : 'MapLibre'} {layerState === 'error' ? '×' : '✓'}</strong>
               <span>{layerMessage}</span>
-              {layerState === 'error' && <button type="button" onClick={() => setViewMode(viewMode === 'street' ? 'satellite' : 'street')}>Usar otra capa</button>}
+              {layerState === 'error' && <button type="button" onClick={() => {
+                setPhotorealistic3D(false);
+                setViewMode(viewMode === 'street' ? 'satellite' : 'street');
+              }}>Usar otra capa</button>}
             </div>
           )}
           {arrivalState !== 'idle' && (
