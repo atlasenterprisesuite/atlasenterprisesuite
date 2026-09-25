@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   repair-cloudflare-token:
@@ -42,7 +43,8 @@ jobs:
           if [ "$DETAIL_HTTP" != "200" ] || [ "$GROUPS_HTTP" != "200" ]; then
             echo "state=external_admin_gate" >> "$GITHUB_STEP_SUMMARY"
             echo "Cloudflare token cannot read/manage its own policy. A Cloudflare user token with User > API Tokens > Write must perform the permission update." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::Cloudflare token policy is not self-repairable; failing closed."
+            exit 1
           fi
 
           node - "$ACCOUNT_ID" <<'NODE'
@@ -86,7 +88,8 @@ jobs:
           if [ "$UPDATE_HTTP" != "200" ]; then
             echo "state=external_admin_gate" >> "$GITHUB_STEP_SUMMARY"
             echo "Cloudflare refused self-update. Existing token lacks User > API Tokens > Write; provider-side administrator action is required." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::Cloudflare token permission repair was refused; failing closed."
+            exit 1
           fi
 
           LEGACY_TAG="$(node -e "const fs=require('fs');const c=fs.readFileSync('wrangler.jsonc','utf8');const m=c.match(/\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"/);process.stdout.write(process.env.LEGACY_WORKER||m?.[1]||'')")"
@@ -118,3 +121,13 @@ jobs:
           echo "state=repaired" >> "$GITHUB_STEP_SUMMARY"
           echo "Cloudflare token permission policy repaired and noncanonical legacy GitHub Workers Builds trigger removed when present." >> "$GITHUB_STEP_SUMMARY"
           echo "Canonical Worker $CANONICAL_WORKER was not modified." >> "$GITHUB_STEP_SUMMARY"
+
+
+  global-production-verification:
+    needs: repair-cloudflare-token
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/global-production-verify.yml
+    with:
+      mode: fail-closed
