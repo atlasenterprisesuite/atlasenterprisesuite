@@ -15,7 +15,8 @@ const CONTENT_SECURITY_POLICY = [
 
 const LOCAL_CONTROL_URL = 'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-local-control';
 const LOCAL_BUS_PREFIX = '/_atlas/local-bus/';
-const CHAT_CONTROL_URL = 'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-chat';
+const CHAT_CONTROL_URL = 'https://ggmanzcgtlrvqfoccgsh.supabase.co/rest/v1/rpc/atlas_chat_api';
+const CHAT_PUBLISHABLE_KEY = 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 const CHAT_BUS_PREFIX = '/_atlas/chat/';
 
 interface AssetsBinding {
@@ -188,23 +189,30 @@ async function chatControlPost(request: Request, api: string, body: Record<strin
   if (!authorization) {
     return { ok: false as const, status: 401, error: 'authentication_required', payload: null as any };
   }
+  const orgId = clean(request.headers.get('x-atlas-org-id'), 80);
+  if (!orgId) {
+    return { ok: false as const, status: 422, error: 'organization_required', payload: null as any };
+  }
   const headers = new Headers({
+    apikey: CHAT_PUBLISHABLE_KEY,
     'content-type': 'application/json',
     authorization
   });
-  const orgId = clean(request.headers.get('x-atlas-org-id'), 80);
-  if (orgId) headers.set('x-atlas-org-id', orgId);
-  const response = await fetch(`${CHAT_CONTROL_URL}?api=${encodeURIComponent(api)}`, {
+  const response = await fetch(CHAT_CONTROL_URL, {
     method: 'POST',
     headers,
-    body: JSON.stringify(body)
+    body: JSON.stringify({
+      p_api: api,
+      p_org_id: orgId,
+      p_payload: body
+    })
   });
   const payload = await response.json().catch(() => null) as any;
   if (!response.ok || payload?.ok !== true) {
     return {
       ok: false as const,
       status: response.status,
-      error: clean(payload?.error, 120) || 'chat_authorization_failed',
+      error: clean(payload?.message || payload?.error, 120) || 'chat_authorization_failed',
       payload
     };
   }

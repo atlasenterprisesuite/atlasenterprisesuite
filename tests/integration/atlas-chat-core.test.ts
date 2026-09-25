@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => existsSync(path) ? readFileSync(path, 'utf8') : '';
 
 const migrationPath = 'supabase/migrations/20260925031000_atlas_chat_core.sql';
-const edgePath = 'supabase/functions/atlas-chat/index.ts';
+const runtimeMigrationPath = 'supabase/migrations/20260925093000_atlas_chat_postgrest_runtime.sql';
 const workerPath = 'worker/index.ts';
 const wranglerPath = 'wrangler.jsonc';
 const routesPath = 'apps/web/src/modules/connect/ConnectRoutes.tsx';
@@ -34,6 +34,9 @@ describe('ATLAS Chat Core', () => {
     expect(sql).toContain('atlas_chat_purge_expired');
     expect(sql).toContain("cron.schedule(");
     expect(sql).toContain("'atlas-chat-retention-daily'");
+    expect(sql).toContain('as $$');
+    expect(sql).toContain('do $$');
+    expect(sql).not.toMatch(/^as \\$$/m);
     expect(sql).toContain("raise exception 'chat_rate_limited'");
   });
 
@@ -49,28 +52,31 @@ describe('ATLAS Chat Core', () => {
     expect(sql).toContain('to service_role');
   });
 
-  it('exposes an authenticated API without logging message content', () => {
-    const edge = read(edgePath);
-    expect(edge).toContain("req.headers.get('authorization')");
-    expect(edge).toContain("req.headers.get('x-atlas-org-id')");
-    expect(edge).toContain("'organization_members'");
-    expect(edge).toContain("api === 'conversations'");
-    expect(edge).toContain("api === 'messages'");
-    expect(edge).toContain("api === 'export'");
-    expect(edge).toContain("api === 'deletion-request'");
-    expect(edge).toContain("api === 'deletion-review'");
-    expect(edge).toContain("api === 'message'");
-    expect(edge).toContain("api === 'authorize-realtime'");
-    expect(edge).toContain("api === 'publish-authorize'");
-    expect(edge).toContain("'communications.chat.message.created'");
-    expect(edge).toContain("'communications.chat.conversation.read'");
-    expect(edge).toContain("'communications.chat.conversation.exported'");
-    expect(edge).toContain("'communications.chat.deletion.requested'");
-    expect(edge).toContain("'communications.chat.deletion.approved'");
-    expect(edge).toContain("throw fail('chat_rate_limited', 429)");
-    expect(edge).not.toContain("new_data: { text:");
-    expect(edge).toContain("upload_enabled: false");
-    expect(edge).toContain("reason: 'malware_scan_not_configured'");
+  it('exposes one authenticated PostgREST RPC without consuming another Edge Function slot', () => {
+    const runtime = read(runtimeMigrationPath);
+    const client = read(apiPath);
+    const worker = read(workerPath);
+    expect(runtime).toContain('create or replace function public.atlas_chat_api');
+    expect(runtime).toContain('v_user uuid := auth.uid()');
+    expect(runtime).toContain("om.status = 'active'");
+    expect(runtime).toContain("p_api = 'conversations'");
+    expect(runtime).toContain("p_api = 'messages'");
+    expect(runtime).toContain("p_api = 'export'");
+    expect(runtime).toContain("p_api = 'deletion-request'");
+    expect(runtime).toContain("p_api = 'deletion-review'");
+    expect(runtime).toContain("p_api = 'authorize-realtime'");
+    expect(runtime).toContain("p_api = 'publish-authorize'");
+    expect(runtime).toContain("'communications.chat.message.created'");
+    expect(runtime).toContain("'communications.chat.conversation.read'");
+    expect(runtime).toContain("'communications.chat.conversation.exported'");
+    expect(runtime).toContain("'communications.chat.deletion.requested'");
+    expect(runtime).toContain("'communications.chat.deletion.approved'");
+    expect(runtime).toContain("'malware_scan_not_configured'");
+    expect(runtime).toContain('grant execute on function public.atlas_chat_api');
+    expect(client).toContain("'/rest/v1/rpc/atlas_chat_api'");
+    expect(worker).toContain('/rest/v1/rpc/atlas_chat_api');
+    expect(client).not.toContain('/functions/v1/atlas-chat');
+    expect(worker).not.toContain('/functions/v1/atlas-chat');
   });
 
   it('uses one-time realtime tickets and a hibernating Durable Object with polling recovery', () => {
