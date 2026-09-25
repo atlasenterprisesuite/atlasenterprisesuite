@@ -8,6 +8,7 @@ on:
       - "supabase/functions/atlas-release-control-auth-verifier/**"
       - "supabase/migrations/20260923235300_release_deployment_control_backfill.sql"
       - "supabase/migrations/20260923235400_release_deployment_control_completion_gate.sql"
+      - "supabase/migrations/20260925072000_atlas_master_evidence_registry.sql"
       - "tests/integration/release-deployment-control-backfill.test.ts"
       - ".github/workflows/release-deployment-control-ci.yml"
   pull_request:
@@ -17,6 +18,7 @@ on:
       - "supabase/functions/atlas-release-control-auth-verifier/**"
       - "supabase/migrations/20260923235300_release_deployment_control_backfill.sql"
       - "supabase/migrations/20260923235400_release_deployment_control_completion_gate.sql"
+      - "supabase/migrations/20260925072000_atlas_master_evidence_registry.sql"
       - "tests/integration/release-deployment-control-backfill.test.ts"
       - ".github/workflows/release-deployment-control-ci.yml"
 
