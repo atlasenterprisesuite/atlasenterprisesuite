@@ -199,7 +199,7 @@ async function listMessages(ctx: ChatContext, url: URL) {
   const afterSequence = boundedInt(url.searchParams.get('after_sequence'), 0, Number.MAX_SAFE_INTEGER);
   let query = adminClient()
     .from('atlas_chat_messages')
-    .select('id,org_id,conversation_id,sender_id,actor_type,client_message_id,sequence,content,reply_to_message_id,edited_at,deleted_at,created_at')
+    .select('id,org_id,conversation_id,sender_id,actor_type,client_message_id,sequence,trace_id,content,reply_to_message_id,edited_at,deleted_at,created_at')
     .eq('org_id', ctx.orgId)
     .eq('conversation_id', conversationId)
     .gt('sequence', afterSequence)
@@ -271,6 +271,7 @@ async function sendMessage(ctx: ChatContext, input: Record<string, unknown>) {
   await audit(ctx, 'communications.chat.message.created', String(saved.id), {
     conversation_id: conversationId,
     sequence: Number(saved.sequence || 0),
+    trace_id: String(saved.trace_id || ''),
     actor_type: 'human'
   });
   return saved;
@@ -339,6 +340,169 @@ async function addParticipant(ctx: ChatContext, input: Record<string, unknown>) 
   return { conversation_id: conversationId, user_id: userId };
 }
 
+async function exportConversation(ctx: ChatContext, url: URL) {
+  const conversationId = text(url.searchParams.get('conversation_id'), 80);
+  await participant(ctx, conversationId);
+  const sb = adminClient();
+
+  const [conversationResult, participantResult, messageResult, attachmentResult] = await Promise.all([
+    sb.from('atlas_chat_conversations')
+      .select('id,org_id,created_by,title,channel,status,classification,legal_hold,last_sequence,last_message_at,created_at,updated_at')
+      .eq('org_id', ctx.orgId)
+      .eq('id', conversationId)
+      .maybeSingle(),
+    sb.from('atlas_chat_participants')
+      .select('user_id,participant_role,joined_at,left_at,last_read_sequence')
+      .eq('org_id', ctx.orgId)
+      .eq('conversation_id', conversationId)
+      .order('joined_at', { ascending: true }),
+    sb.from('atlas_chat_messages')
+      .select('id,sender_id,actor_type,client_message_id,sequence,trace_id,content,reply_to_message_id,edited_at,deleted_at,created_at')
+      .eq('org_id', ctx.orgId)
+      .eq('conversation_id', conversationId)
+      .order('sequence', { ascending: true }),
+    sb.from('atlas_chat_attachments')
+      .select('id,message_id,mime_type,size_bytes,sha256,scan_status,created_at')
+      .eq('org_id', ctx.orgId)
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+  ]);
+
+  if (conversationResult.error || !conversationResult.data) throw fail('chat_conversation_not_found', 404);
+  if (participantResult.error || messageResult.error || attachmentResult.error) throw fail('chat_export_failed', 500);
+
+  await audit(ctx, 'communications.chat.conversation.exported', conversationId, {
+    message_count: (messageResult.data || []).length,
+    attachment_count: (attachmentResult.data || []).length
+  });
+
+  return {
+    schema: 'atlas.chat.export.v1',
+    exported_at: new Date().toISOString(),
+    organization_id: ctx.orgId,
+    conversation: conversationResult.data,
+    participants: participantResult.data || [],
+    messages: messageResult.data || [],
+    attachments: attachmentResult.data || []
+  };
+}
+
+async function requestDeletion(ctx: ChatContext, input: Record<string, unknown>) {
+  const conversationId = text(input.conversation_id, 80);
+  await participant(ctx, conversationId);
+  const reason = text(input.reason, 1000) || null;
+  const sb = adminClient();
+
+  const { data: existing, error: existingError } = await sb
+    .from('atlas_chat_deletion_requests')
+    .select('*')
+    .eq('org_id', ctx.orgId)
+    .eq('conversation_id', conversationId)
+    .eq('requested_by', ctx.userId)
+    .eq('status', 'pending')
+    .maybeSingle();
+  if (existingError) throw fail('chat_deletion_request_read_failed', 500);
+  if (existing) return existing;
+
+  const { data, error } = await sb
+    .from('atlas_chat_deletion_requests')
+    .insert({
+      org_id: ctx.orgId,
+      conversation_id: conversationId,
+      requested_by: ctx.userId,
+      reason,
+      status: 'pending'
+    })
+    .select('*')
+    .single();
+  if (error || !data) throw fail('chat_deletion_request_failed', 500);
+
+  await audit(ctx, 'communications.chat.deletion.requested', String(data.id), {
+    conversation_id: conversationId
+  });
+  return data;
+}
+
+async function reviewDeletion(ctx: ChatContext, input: Record<string, unknown>) {
+  if (!ADMIN_ROLES.has(ctx.role)) throw fail('chat_deletion_review_role_required', 403);
+  const requestId = text(input.request_id, 80);
+  if (!isUuid(requestId)) throw fail('chat_deletion_request_id_required', 422);
+  const decision = text(input.decision, 20);
+  if (!['approve', 'reject'].includes(decision)) throw fail('chat_deletion_decision_invalid', 422);
+  const reviewReason = text(input.review_reason, 1000) || null;
+  const sb = adminClient();
+
+  const { data: requestRow, error: requestError } = await sb
+    .from('atlas_chat_deletion_requests')
+    .select('*')
+    .eq('org_id', ctx.orgId)
+    .eq('id', requestId)
+    .eq('status', 'pending')
+    .maybeSingle();
+  if (requestError) throw fail('chat_deletion_request_read_failed', 500);
+  if (!requestRow) throw fail('chat_deletion_request_not_found', 404);
+
+  const now = new Date().toISOString();
+  if (decision === 'reject') {
+    const { data, error } = await sb
+      .from('atlas_chat_deletion_requests')
+      .update({
+        status: 'rejected',
+        reviewed_by: ctx.userId,
+        reviewed_at: now,
+        review_reason: reviewReason,
+        updated_at: now
+      })
+      .eq('org_id', ctx.orgId)
+      .eq('id', requestId)
+      .select('*')
+      .single();
+    if (error || !data) throw fail('chat_deletion_review_failed', 500);
+    await audit(ctx, 'communications.chat.deletion.rejected', requestId, {
+      conversation_id: requestRow.conversation_id
+    });
+    return data;
+  }
+
+  const conversationId = text(requestRow.conversation_id, 80);
+  if (!conversationId) throw fail('chat_conversation_not_found', 404);
+  const { data: conversation, error: conversationError } = await sb
+    .from('atlas_chat_conversations')
+    .select('id,legal_hold')
+    .eq('org_id', ctx.orgId)
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (conversationError || !conversation) throw fail('chat_conversation_not_found', 404);
+  if (conversation.legal_hold) throw fail('chat_legal_hold_active', 409);
+
+  await audit(ctx, 'communications.chat.deletion.approved', requestId, {
+    conversation_id: conversationId
+  });
+
+  const { error: deleteError } = await sb
+    .from('atlas_chat_conversations')
+    .delete()
+    .eq('org_id', ctx.orgId)
+    .eq('id', conversationId);
+  if (deleteError) throw fail('chat_deletion_failed', 500);
+
+  const { data, error } = await sb
+    .from('atlas_chat_deletion_requests')
+    .update({
+      status: 'completed',
+      reviewed_by: ctx.userId,
+      reviewed_at: now,
+      review_reason: reviewReason,
+      updated_at: now
+    })
+    .eq('org_id', ctx.orgId)
+    .eq('id', requestId)
+    .select('*')
+    .single();
+  if (error || !data) throw fail('chat_deletion_review_failed', 500);
+  return data;
+}
+
 async function realtimeAuthorization(ctx: ChatContext, input: Record<string, unknown>) {
   const conversationId = text(input.conversation_id, 80);
   await participant(ctx, conversationId);
@@ -357,7 +521,7 @@ async function publishAuthorization(ctx: ChatContext, input: Record<string, unkn
 
   const { data, error } = await adminClient()
     .from('atlas_chat_messages')
-    .select('id,conversation_id,sender_id,sequence')
+    .select('id,conversation_id,sender_id,sequence,trace_id')
     .eq('org_id', ctx.orgId)
     .eq('conversation_id', conversationId)
     .eq('id', messageId)
@@ -370,7 +534,8 @@ async function publishAuthorization(ctx: ChatContext, input: Record<string, unkn
     user_id: ctx.userId,
     conversation_id: conversationId,
     message_id: String(data.id),
-    sequence: Number(data.sequence || 0)
+    sequence: Number(data.sequence || 0),
+    trace_id: String(data.trace_id || '')
   };
 }
 
@@ -393,7 +558,8 @@ Deno.serve(async (req: Request) => {
         organization_id: ctx.orgId,
         user_id: ctx.userId,
         realtime: { transport: 'cloudflare-durable-object', fallback: 'polling' },
-        attachments: { schema_ready: true, upload_enabled: false, reason: 'malware_scan_not_configured' }
+        attachments: { schema_ready: true, upload_enabled: false, reason: 'malware_scan_not_configured' },
+        privacy: { export_enabled: true, deletion_request_enabled: true, legal_hold_enforced: true }
       }, 200, origin);
     }
 
@@ -407,6 +573,10 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === 'GET' && api === 'messages') {
       return json({ ok: true, messages: await listMessages(ctx, url) }, 200, origin);
+    }
+
+    if (req.method === 'GET' && api === 'export') {
+      return json({ ok: true, export: await exportConversation(ctx, url) }, 200, origin);
     }
 
     if (req.method === 'POST' && api === 'conversation') {
@@ -423,6 +593,14 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === 'POST' && api === 'participant') {
       return json({ ok: true, participant: await addParticipant(ctx, await requestBody(req)) }, 200, origin);
+    }
+
+    if (req.method === 'POST' && api === 'deletion-request') {
+      return json({ ok: true, deletion_request: await requestDeletion(ctx, await requestBody(req)) }, 201, origin);
+    }
+
+    if (req.method === 'POST' && api === 'deletion-review') {
+      return json({ ok: true, deletion_request: await reviewDeletion(ctx, await requestBody(req)) }, 200, origin);
     }
 
     if (req.method === 'POST' && api === 'authorize-realtime') {
