@@ -29,6 +29,10 @@ describe('ATLAS Chat Core', () => {
     expect(sql).toContain("scan_status = 'clean'");
     expect(sql).toContain('legal_hold boolean not null default false');
     expect(sql).toContain('retention_days integer null');
+    expect(sql).toContain('atlas_chat_purge_expired');
+    expect(sql).toContain("cron.schedule(");
+    expect(sql).toContain("'atlas-chat-retention-daily'");
+    expect(sql).toContain("raise exception 'chat_rate_limited'");
   });
 
   it('enforces RLS, organization membership and participant-scoped access', () => {
@@ -54,6 +58,8 @@ describe('ATLAS Chat Core', () => {
     expect(edge).toContain("api === 'authorize-realtime'");
     expect(edge).toContain("api === 'publish-authorize'");
     expect(edge).toContain("'communications.chat.message.created'");
+    expect(edge).toContain("'communications.chat.conversation.read'");
+    expect(edge).toContain("throw fail('chat_rate_limited', 429)");
     expect(edge).not.toContain("new_data: { text:");
     expect(edge).toContain("upload_enabled: false");
     expect(edge).toContain("reason: 'malware_scan_not_configured'");
