@@ -48,17 +48,25 @@ const RISK_TERMS = [
   'client secret'
 ];
 
+const HTML_ENTITIES = Object.freeze({
+  '&amp;': '&',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&nbsp;': ' '
+});
+
+function decodeKnownHtmlEntity(entity) {
+  return HTML_ENTITIES[entity.toLowerCase()] ?? entity;
+}
+
 function toText(html) {
   return html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<\/(?:h\d|p|div|li|article|section)>/gi, '\n')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, ' ')
+    .replace(/<\/(?:h\d|p|div|li|article|section)\s*>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&(amp|quot|#39|nbsp);/gi, decodeKnownHtmlEntity)
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n');
 }

@@ -58,5 +58,5 @@ Deno.serve(async (req: Request) => {
     const detectedSigning = Boolean(result?.detected_signing); const providerText = String(result?.text || '').trim(); const needsClarification = !detectedSigning || Boolean(result?.needs_clarification) || !providerText; const safeText = needsClarification ? '' : providerText;
     const clarification = !detectedSigning ? 'No detecté una seña intencional con suficiente claridad. Coloca manos y rostro dentro del encuadre y vuelve a intentarlo.' : String(result?.clarification || (needsClarification ? 'Repite la seña más despacio y dentro del encuadre.' : ''));
     return json({ ok:true, text:safeText, signed_language:result?.signed_language || 'UNKNOWN', confidence:detectedSigning ? Number(result?.confidence || 0) : 0, detected_signing:detectedSigning, needs_clarification:needsClarification, clarification, model:data?.model || model, requestId }, 200, corsHeaders);
-  } catch (error) { return json({ ok:false, error:'provider_unreachable', message:String(error?.message || error) }, 502, corsHeaders); }
+  } catch { return json({ ok:false, error:'provider_unreachable' }, 502, corsHeaders); }
 });
