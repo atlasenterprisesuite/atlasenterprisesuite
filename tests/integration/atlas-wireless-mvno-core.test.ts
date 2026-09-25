@@ -38,5 +38,7 @@ describe('ATLAS Wireless MVNO pilot core', () => {
       expect(types).toContain(`'${capability}'`);
     }
     expect(types).not.toMatch(/api[_-]?key|client[_-]?secret|bearer[_-]?token/i);
+    expect(types).not.toContain('activationCode');
+    expect(types).toContain('activationReference');
   });
 });
