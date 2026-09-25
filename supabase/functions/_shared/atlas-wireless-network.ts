@@ -29,22 +29,48 @@ export type AtlasWirelessNetworkLayer =
   | 'emergency_services'
   | 'observability';
 
+export interface AtlasWirelessEvidenceRef {
+  organizationId: string;
+  reference: string;
+}
+
 export interface AtlasWirelessComponentReadiness {
+  organizationId: string;
   layer: AtlasWirelessNetworkLayer;
   state: AtlasWirelessComponentState;
   blocker: string | null;
   checkedAt: string;
-  evidenceRefs: readonly string[];
+  evidenceRefs: readonly AtlasWirelessEvidenceRef[];
 }
 
 export interface AtlasWirelessOwnedNetworkReadiness {
+  organizationId: string;
   serviceProvider: 'atlas-wireless';
   networkMode: AtlasWirelessNetworkMode;
   labReady: boolean;
-  publicServiceReady: boolean;
+  technicalPublicReady: boolean;
   blockers: readonly string[];
   components: readonly AtlasWirelessComponentReadiness[];
 }
+
+export interface AtlasWirelessLaunchAuthorization {
+  organizationId: string;
+  commercialAuthorized: boolean;
+  regulatoryAuthorized: boolean;
+  billingAndTaxReady: boolean;
+  stagingVerified: boolean;
+  endToEndVerified: boolean;
+  checkedAt: string;
+  evidenceRefs: readonly AtlasWirelessEvidenceRef[];
+}
+
+export interface AtlasWirelessReadinessOptions {
+  nowMs?: number;
+  maxAgeMs?: number;
+  wholesaleProviderReady?: boolean;
+}
+
+export const ATLAS_WIRELESS_MAX_READINESS_AGE_MS = 5 * 60 * 1000;
 
 const LAB_REQUIRED: readonly AtlasWirelessNetworkLayer[] = [
   'core',
@@ -61,57 +87,180 @@ const PUBLIC_REQUIRED: readonly AtlasWirelessNetworkLayer[] = [
   'emergency_services'
 ];
 
-function componentMap(
+function nonBlank(value: string): boolean {
+  return value.trim().length > 0;
+}
+
+function checkedAtIsFresh(
+  checkedAt: string,
+  nowMs: number,
+  maxAgeMs: number
+): boolean {
+  const checkedAtMs = Date.parse(checkedAt);
+  return Number.isFinite(checkedAtMs) &&
+    checkedAtMs <= nowMs &&
+    nowMs - checkedAtMs <= maxAgeMs;
+}
+
+function evidenceIsUsable(
+  organizationId: string,
+  evidenceRefs: readonly AtlasWirelessEvidenceRef[]
+): boolean {
+  return evidenceRefs.some((evidence) =>
+    evidence.organizationId === organizationId && nonBlank(evidence.reference)
+  );
+}
+
+function componentIndex(
+  organizationId: string,
   components: readonly AtlasWirelessComponentReadiness[]
-): ReadonlyMap<AtlasWirelessNetworkLayer, AtlasWirelessComponentReadiness> {
-  return new Map(components.map((component) => [component.layer, component]));
+): {
+  byLayer: ReadonlyMap<AtlasWirelessNetworkLayer, AtlasWirelessComponentReadiness>;
+  blockers: string[];
+} {
+  const byLayer = new Map<AtlasWirelessNetworkLayer, AtlasWirelessComponentReadiness>();
+  const blockers: string[] = [];
+
+  for (const component of components) {
+    if (component.organizationId !== organizationId) {
+      blockers.push(`organization_mismatch:${component.layer}`);
+      continue;
+    }
+
+    if (byLayer.has(component.layer)) {
+      blockers.push(`duplicate_layer:${component.layer}`);
+      continue;
+    }
+
+    byLayer.set(component.layer, component);
+  }
+
+  return { byLayer, blockers };
 }
 
 function missingOrUnready(
+  organizationId: string,
   required: readonly AtlasWirelessNetworkLayer[],
-  components: ReadonlyMap<AtlasWirelessNetworkLayer, AtlasWirelessComponentReadiness>
+  components: ReadonlyMap<AtlasWirelessNetworkLayer, AtlasWirelessComponentReadiness>,
+  nowMs: number,
+  maxAgeMs: number
 ): string[] {
   const blockers: string[] = [];
+
   for (const layer of required) {
     const component = components.get(layer);
+
     if (!component) {
       blockers.push(`missing:${layer}`);
       continue;
     }
+
     if (component.state !== 'ready') {
       blockers.push(component.blocker || `not_ready:${layer}:${component.state}`);
       continue;
     }
-    if (component.evidenceRefs.length === 0) {
+
+    if (!checkedAtIsFresh(component.checkedAt, nowMs, maxAgeMs)) {
+      blockers.push(`stale_verification:${layer}`);
+      continue;
+    }
+
+    if (!evidenceIsUsable(organizationId, component.evidenceRefs)) {
       blockers.push(`evidence_required:${layer}`);
     }
   }
+
   return blockers;
 }
 
-export function evaluateAtlasOwnedNetworkReadiness(
+function wholesaleModeBlockers(
   networkMode: AtlasWirelessNetworkMode,
-  components: readonly AtlasWirelessComponentReadiness[]
+  wholesaleProviderReady: boolean
+): string[] {
+  if (networkMode === 'atlas-owned') return [];
+  return wholesaleProviderReady ? [] : ['mvno_provider_readiness_required'];
+}
+
+export function evaluateAtlasOwnedNetworkReadiness(
+  organizationId: string,
+  networkMode: AtlasWirelessNetworkMode,
+  components: readonly AtlasWirelessComponentReadiness[],
+  options: AtlasWirelessReadinessOptions = {}
 ): AtlasWirelessOwnedNetworkReadiness {
-  const byLayer = componentMap(components);
-  const labBlockers = missingOrUnready(LAB_REQUIRED, byLayer);
-  const publicBlockers = missingOrUnready(PUBLIC_REQUIRED, byLayer);
+  const nowMs = options.nowMs ?? Date.now();
+  const maxAgeMs = options.maxAgeMs ?? ATLAS_WIRELESS_MAX_READINESS_AGE_MS;
+  const indexed = componentIndex(organizationId, components);
+  const sharedBlockers = indexed.blockers;
+  const labBlockers = [
+    ...sharedBlockers,
+    ...missingOrUnready(organizationId, LAB_REQUIRED, indexed.byLayer, nowMs, maxAgeMs)
+  ];
+  const publicBlockers = [
+    ...sharedBlockers,
+    ...missingOrUnready(organizationId, PUBLIC_REQUIRED, indexed.byLayer, nowMs, maxAgeMs),
+    ...wholesaleModeBlockers(networkMode, options.wholesaleProviderReady === true)
+  ];
 
   return {
+    organizationId,
     serviceProvider: 'atlas-wireless',
     networkMode,
     labReady: labBlockers.length === 0,
-    publicServiceReady: publicBlockers.length === 0,
+    technicalPublicReady: publicBlockers.length === 0,
     blockers: publicBlockers,
     components
   };
 }
 
+function launchAuthorizationBlockers(
+  organizationId: string,
+  authorization: AtlasWirelessLaunchAuthorization,
+  nowMs: number,
+  maxAgeMs: number
+): string[] {
+  const blockers: string[] = [];
+
+  if (authorization.organizationId !== organizationId) {
+    blockers.push('launch_authorization_organization_mismatch');
+  }
+  if (!authorization.commercialAuthorized) blockers.push('commercial_authorization_required');
+  if (!authorization.regulatoryAuthorized) blockers.push('regulatory_authorization_required');
+  if (!authorization.billingAndTaxReady) blockers.push('billing_tax_readiness_required');
+  if (!authorization.stagingVerified) blockers.push('staging_verification_required');
+  if (!authorization.endToEndVerified) blockers.push('end_to_end_verification_required');
+  if (!checkedAtIsFresh(authorization.checkedAt, nowMs, maxAgeMs)) {
+    blockers.push('launch_authorization_stale');
+  }
+  if (!evidenceIsUsable(organizationId, authorization.evidenceRefs)) {
+    blockers.push('launch_authorization_evidence_required');
+  }
+
+  return blockers;
+}
+
 export function assertAtlasPublicWirelessActivationAllowed(
-  readiness: AtlasWirelessOwnedNetworkReadiness
+  organizationId: string,
+  networkMode: AtlasWirelessNetworkMode,
+  components: readonly AtlasWirelessComponentReadiness[],
+  authorization: AtlasWirelessLaunchAuthorization,
+  options: AtlasWirelessReadinessOptions = {}
 ): void {
-  if (!readiness.publicServiceReady) {
-    throw new Error(`atlas_wireless_public_service_blocked:${readiness.blockers.join(',')}`);
+  const nowMs = options.nowMs ?? Date.now();
+  const maxAgeMs = options.maxAgeMs ?? ATLAS_WIRELESS_MAX_READINESS_AGE_MS;
+  const readiness = evaluateAtlasOwnedNetworkReadiness(
+    organizationId,
+    networkMode,
+    components,
+    { ...options, nowMs, maxAgeMs }
+  );
+
+  const blockers = [
+    ...readiness.blockers,
+    ...launchAuthorizationBlockers(organizationId, authorization, nowMs, maxAgeMs)
+  ];
+
+  if (!readiness.technicalPublicReady || blockers.length > 0) {
+    throw new Error(`atlas_wireless_public_service_blocked:${blockers.join(',')}`);
   }
 }
 
@@ -124,7 +273,7 @@ export interface AtlasRanSite {
   radioTechnology: '5g-nr' | 'lte';
   spectrumAccess: 'cbrs-gaa' | 'cbrs-pal' | 'licensed' | 'unlicensed-lab';
   state: AtlasWirelessComponentState;
-  evidenceRefs: readonly string[];
+  evidenceRefs: readonly AtlasWirelessEvidenceRef[];
 }
 
 export interface AtlasCoreNetworkProfile {
@@ -136,7 +285,7 @@ export interface AtlasCoreNetworkProfile {
   policyControlReady: boolean;
   lawfulAndEmergencyBoundaryVerified: boolean;
   state: AtlasWirelessComponentState;
-  evidenceRefs: readonly string[];
+  evidenceRefs: readonly AtlasWirelessEvidenceRef[];
 }
 
 export interface AtlasSpectrumAuthorization {
@@ -147,7 +296,7 @@ export interface AtlasSpectrumAuthorization {
   authorizationReference: string | null;
   sasProvider: string | null;
   state: AtlasWirelessComponentState;
-  evidenceRefs: readonly string[];
+  evidenceRefs: readonly AtlasWirelessEvidenceRef[];
 }
 
 export interface AtlasBackhaulLink {
@@ -157,7 +306,7 @@ export interface AtlasBackhaulLink {
   medium: 'fiber' | 'ethernet' | 'microwave' | 'fixed-wireless' | 'satellite';
   redundant: boolean;
   state: AtlasWirelessComponentState;
-  evidenceRefs: readonly string[];
+  evidenceRefs: readonly AtlasWirelessEvidenceRef[];
 }
 
 export interface AtlasWirelessNetworkAdapter {
