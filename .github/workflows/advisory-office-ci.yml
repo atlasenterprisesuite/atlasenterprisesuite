@@ -18,6 +18,10 @@ on:
       - 'tests/integration/root-router-sanity.test.ts'
       - '.github/workflows/advisory-office-ci.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest

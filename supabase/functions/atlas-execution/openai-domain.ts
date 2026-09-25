@@ -508,10 +508,15 @@ async function resolveDnsProvider(domain: string, fetchImpl: typeof fetch = fetc
   const nameservers = Array.isArray(body?.Answer)
     ? body.Answer.filter((answer: any) => Number(answer?.type) === 2 && typeof answer?.data === 'string').map((answer: any) => String(answer.data).toLowerCase().replace(/\.$/, ''))
     : [];
-  const joined = nameservers.join(' ');
-  if (joined.includes('cloudflare.com')) return { provider: 'cloudflare', browserDomain: 'dash.cloudflare.com', nameservers };
-  if (joined.includes('domaincontrol.com')) return { provider: 'godaddy', browserDomain: 'godaddy.com', nameservers };
-  if (joined.includes('registrar-servers.com')) return { provider: 'namecheap', browserDomain: 'namecheap.com', nameservers };
+  if (nameservers.some((hostname: string) => hostname === 'cloudflare.com' || hostname.endsWith('.cloudflare.com'))) {
+    return { provider: 'cloudflare', browserDomain: 'dash.cloudflare.com', nameservers };
+  }
+  if (nameservers.some((hostname: string) => hostname === 'domaincontrol.com' || hostname.endsWith('.domaincontrol.com'))) {
+    return { provider: 'godaddy', browserDomain: 'godaddy.com', nameservers };
+  }
+  if (nameservers.some((hostname: string) => hostname === 'registrar-servers.com' || hostname.endsWith('.registrar-servers.com'))) {
+    return { provider: 'namecheap', browserDomain: 'namecheap.com', nameservers };
+  }
   return { provider: 'unknown', browserDomain: null, nameservers };
 }
 
