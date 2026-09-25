@@ -33,7 +33,6 @@ const CANONICAL_MODULE_ROUTES = [
   '/inventory/procure-to-pay',
   '/analytics',
   '/connect',
-  '/connect/chat',
   '/connect/channel',
   '/connect/wireless',
   '/connect/google-fi',
