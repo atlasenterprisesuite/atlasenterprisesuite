@@ -21,3 +21,6 @@ verify_jwt = true
 
 [functions.atlas-wireless-mvno]
 verify_jwt = true
+
+[functions.atlas-wireless-network]
+verify_jwt = true
