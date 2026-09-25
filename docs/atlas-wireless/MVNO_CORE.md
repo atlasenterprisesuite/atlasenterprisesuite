@@ -6,6 +6,12 @@ Status: pre-launch, fail-closed.
 
 ATLAS Wireless owns the customer-facing MVNO control plane while one primary wholesale carrier provides authorized network access. Specialized providers are allowed only where the primary carrier cannot supply a required capability.
 
+## Current implementation boundary
+
+The merged ATLAS slice is a provider-neutral control-plane surface, route, lifecycle type contract, fail-closed state model and production-route verification. It does **not** yet expose live server endpoints such as `/provision`, `/activate`, `/suspend`, `/reconnect` or `/revoke`, and it does not yet connect to a carrier, MVNE, SM-DP+, SM-SR, IMSI/MSISDN inventory or production billing feed.
+
+Those capabilities may only move from design contract to operational state after an authorized provider supplies documented interfaces, credentials, test inventory and acceptance evidence. Research or planning documents must not describe those external operations as already implemented.
+
 ## Subscriber lifecycle
 
 `order -> pending_provider -> provisioning -> active | degraded | offline -> suspended -> revoked`
