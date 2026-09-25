@@ -62,7 +62,10 @@ export function AtlasWirelessPage() {
         <p>Preferred commercial model: one primary wholesale carrier, with specialized providers added only where technically or contractually necessary.</p>
       </article>
 
-      <Link className="text-link" to="/connect">Back to ATLAS Connect</Link>
+      <div className="row-actions">
+        <Link className="text-link" to="/connect/wireless/mvno">Open MVNO pilot control</Link>
+        <Link className="text-link" to="/connect">Back to ATLAS Connect</Link>
+      </div>
     </section>
   );
 }
