@@ -41,7 +41,7 @@ export interface MvnoProvisionRequest {
 
 export interface MvnoProvisionResult {
   subscriber: MvnoSubscriber;
-  activationCode?: string;
+  activationReference?: string;
 }
 
 export interface MvnoProviderAdapter {
