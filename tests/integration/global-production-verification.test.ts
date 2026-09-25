@@ -45,6 +45,7 @@ describe('ATLAS global production verification', () => {
       '/inventory/procure-to-pay',
       '/analytics',
       '/connect',
+      '/connect/chat',
       '/payroll',
       '/learning',
       '/health',
