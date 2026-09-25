@@ -20,6 +20,11 @@ export type AtlasChatReadiness = {
     upload_enabled: boolean;
     reason: string | null;
   };
+  privacy?: {
+    export_enabled: boolean;
+    deletion_request_enabled: boolean;
+    legal_hold_enforced: boolean;
+  };
 };
 
 export type AtlasChatMember = {
@@ -53,6 +58,7 @@ export type AtlasChatMessage = {
   actor_type: 'human' | 'assistant' | 'agent' | 'automation' | 'system' | 'external';
   client_message_id: string;
   sequence: number;
+  trace_id?: string;
   content: {
     text?: string;
     [key: string]: unknown;
@@ -187,6 +193,30 @@ export async function addChatParticipant(conversationId: string, userId: string)
       body: JSON.stringify({ conversation_id: conversationId, user_id: userId })
     })
   );
+}
+
+export async function exportChatConversation(conversationId: string) {
+  const { headers } = await chatContext();
+  const query = new URLSearchParams({ api: 'export', conversation_id: conversationId });
+  const payload = await parse<{ ok: boolean; export: Record<string, unknown> }>(
+    await authorizedAtlasFetch(`/functions/v1/atlas-chat?${query.toString()}`, {
+      method: 'GET',
+      headers
+    })
+  );
+  return payload.export;
+}
+
+export async function requestChatDeletion(conversationId: string, reason = '') {
+  const { headers } = await chatContext();
+  const payload = await parse<{ ok: boolean; deletion_request: { id: string; status: string; created_at: string } }>(
+    await authorizedAtlasFetch('/functions/v1/atlas-chat?api=deletion-request', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ conversation_id: conversationId, reason })
+    })
+  );
+  return payload.deletion_request;
 }
 
 async function workerContext() {
