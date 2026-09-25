@@ -6,6 +6,7 @@ const verifier = readFileSync(
   'utf8'
 );
 const workflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8');
+const globalWorkflow = readFileSync('.github/workflows/global-production-verify.yml', 'utf8');
 
 describe('Cloudflare authorized production HTTP verifier', () => {
   it('accepts only scoped GitHub OIDC from the main Cloudflare deployment workflow', () => {
@@ -69,7 +70,15 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
     expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
-    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "24" ]');
+    expect(workflow).toContain('EXPECTED_AUTHORIZED_VERIFIER_VERSION');
+    expect(workflow).toContain('supabase/functions/atlas-cloudflare-production-http-verify/index.ts');
+    expect(workflow).toContain(
+      '[ "$AUTHORIZED_VERIFIER_VERSION" = "$EXPECTED_AUTHORIZED_VERIFIER_VERSION" ]'
+    );
+    expect(globalWorkflow).toContain('EXPECTED_AUTHORIZED_VERIFIER_VERSION');
+    expect(globalWorkflow).toContain(
+      '[ "$AUTHORIZED_VERIFIER_VERSION" = "$EXPECTED_AUTHORIZED_VERIFIER_VERSION" ]'
+    );
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');
