@@ -1,0 +1,424 @@
+.atlas-chat-page {
+  --chat-line: rgba(89, 183, 255, 0.2);
+  --chat-panel: rgba(5, 18, 31, 0.88);
+  --chat-panel-strong: rgba(5, 25, 42, 0.96);
+  --chat-text: #eff8ff;
+  --chat-muted: #91aabd;
+  --chat-accent: #67dcff;
+  --chat-ok: #70e8b5;
+  min-height: calc(100vh - 92px);
+  padding: clamp(16px, 3vw, 34px);
+  color: var(--chat-text);
+}
+
+.atlas-chat-header,
+.atlas-chat-thread-head,
+.atlas-chat-sidebar-head,
+.atlas-chat-composer-actions,
+.atlas-chat-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.atlas-chat-header {
+  max-width: 1500px;
+  margin: 0 auto 18px;
+}
+
+.atlas-chat-header h1,
+.atlas-chat-thread-head h2 {
+  margin: 4px 0;
+}
+
+.atlas-chat-header p,
+.atlas-chat-thread-head span,
+.atlas-chat-footer,
+.atlas-chat-conversation-meta,
+.atlas-chat-conversations time {
+  color: var(--chat-muted);
+}
+
+.atlas-chat-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--chat-line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  color: var(--chat-muted);
+  background: rgba(4, 18, 31, 0.78);
+}
+
+.atlas-chat-live span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.atlas-chat-live.live {
+  color: var(--chat-ok);
+}
+
+.atlas-chat-live.connecting {
+  color: #ffd88a;
+}
+
+.atlas-chat-error {
+  max-width: 1500px;
+  margin: 0 auto 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid rgba(255, 126, 147, 0.42);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(70, 13, 27, 0.44);
+  color: #ffd8df;
+}
+
+.atlas-chat-error button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.atlas-chat-shell {
+  max-width: 1500px;
+  min-height: 650px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(270px, 350px) minmax(0, 1fr);
+  border: 1px solid var(--chat-line);
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(8, 30, 50, 0.9), rgba(2, 11, 20, 0.97));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+}
+
+.atlas-chat-sidebar {
+  min-width: 0;
+  border-right: 1px solid var(--chat-line);
+  background: rgba(4, 15, 27, 0.72);
+}
+
+.atlas-chat-sidebar-head,
+.atlas-chat-thread-head {
+  min-height: 76px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--chat-line);
+}
+
+.atlas-chat-sidebar-head > div,
+.atlas-chat-thread-head > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.atlas-chat-sidebar-head span,
+.atlas-chat-thread-head span {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.atlas-chat-primary {
+  border: 1px solid rgba(112, 225, 255, 0.5);
+  border-radius: 11px;
+  padding: 9px 13px;
+  background: linear-gradient(135deg, #72e5ff, #4a95ff);
+  color: #03111d;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.atlas-chat-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.atlas-chat-create {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid var(--chat-line);
+  background: rgba(5, 31, 50, 0.72);
+}
+
+.atlas-chat-create label,
+.atlas-chat-create fieldset {
+  display: grid;
+  gap: 6px;
+  color: var(--chat-muted);
+  font-size: 0.78rem;
+}
+
+.atlas-chat-create input,
+.atlas-chat-create select,
+.atlas-chat-composer textarea {
+  width: 100%;
+  border: 1px solid var(--chat-line);
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: #04111d;
+  color: var(--chat-text);
+  font: inherit;
+}
+
+.atlas-chat-create-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.atlas-chat-create fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 9px;
+  border: 1px solid var(--chat-line);
+  border-radius: 10px;
+}
+
+.atlas-chat-member-picker {
+  max-height: 150px;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.atlas-chat-member-picker label {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 6px;
+  border-radius: 7px;
+}
+
+.atlas-chat-member-picker label:hover {
+  background: rgba(75, 178, 239, 0.08);
+}
+
+.atlas-chat-member-picker input {
+  width: auto;
+}
+
+.atlas-chat-member-picker small {
+  color: #698399;
+}
+
+.atlas-chat-conversations {
+  max-height: 650px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.atlas-chat-conversations > button {
+  width: 100%;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--chat-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.atlas-chat-conversations > button:hover,
+.atlas-chat-conversations > button.active {
+  border-color: var(--chat-line);
+  background: rgba(65, 177, 239, 0.09);
+}
+
+.atlas-chat-conversation-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.atlas-chat-conversation-top b {
+  min-width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--chat-accent);
+  color: #02111d;
+  font-size: 0.7rem;
+}
+
+.atlas-chat-conversation-meta,
+.atlas-chat-conversations time {
+  font-size: 0.74rem;
+}
+
+.atlas-chat-empty-small,
+.atlas-chat-empty-thread,
+.atlas-chat-no-selection,
+.atlas-chat-state {
+  display: grid;
+  gap: 6px;
+  place-items: center;
+  text-align: center;
+  color: var(--chat-muted);
+}
+
+.atlas-chat-empty-small {
+  padding: 32px 12px;
+}
+
+.atlas-chat-thread {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: radial-gradient(circle at 70% 0%, rgba(22, 117, 167, 0.11), transparent 42%);
+}
+
+.atlas-chat-thread-flags {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.atlas-chat-thread-flags span {
+  border: 1px solid var(--chat-line);
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 0.67rem;
+  color: var(--chat-muted);
+}
+
+.atlas-chat-messages {
+  min-height: 420px;
+  max-height: 68vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: clamp(16px, 3vw, 30px);
+}
+
+.atlas-chat-message {
+  width: min(78%, 760px);
+  border: 1px solid var(--chat-line);
+  border-radius: 16px;
+  padding: 11px 13px;
+  background: rgba(8, 29, 47, 0.88);
+}
+
+.atlas-chat-message.mine {
+  align-self: flex-end;
+  background: linear-gradient(145deg, rgba(17, 72, 119, 0.86), rgba(13, 49, 80, 0.92));
+}
+
+.atlas-chat-message.theirs {
+  align-self: flex-start;
+}
+
+.atlas-chat-message p {
+  margin: 7px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.atlas-chat-message small {
+  color: var(--chat-muted);
+}
+
+.atlas-chat-message-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--chat-muted);
+  font-size: 0.71rem;
+}
+
+.atlas-chat-message-meta strong {
+  color: var(--chat-text);
+}
+
+.atlas-chat-empty-thread,
+.atlas-chat-no-selection {
+  margin: auto;
+  padding: 36px;
+}
+
+.atlas-chat-composer {
+  padding: 13px;
+  border-top: 1px solid var(--chat-line);
+  background: rgba(3, 14, 24, 0.86);
+}
+
+.atlas-chat-composer textarea {
+  resize: vertical;
+  min-height: 82px;
+  max-height: 220px;
+}
+
+.atlas-chat-composer-actions {
+  margin-top: 8px;
+}
+
+.atlas-chat-composer-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--chat-muted);
+  font-size: 0.72rem;
+}
+
+.atlas-chat-attachment-gate {
+  border-left: 1px solid var(--chat-line);
+  padding-left: 10px;
+}
+
+.atlas-chat-footer {
+  max-width: 1500px;
+  margin: 10px auto 0;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 850px) {
+  .atlas-chat-page {
+    padding: 12px;
+  }
+
+  .atlas-chat-header,
+  .atlas-chat-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .atlas-chat-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-chat-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--chat-line);
+  }
+
+  .atlas-chat-conversations {
+    max-height: 240px;
+  }
+
+  .atlas-chat-message {
+    width: 92%;
+  }
+
+  .atlas-chat-create-row {
+    grid-template-columns: 1fr;
+  }
+}
