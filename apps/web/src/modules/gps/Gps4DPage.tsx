@@ -21,6 +21,8 @@ import {
 import { AtlasNavigationEngine, type NavigationEngineObservation } from './navigationEngine';
 import { createNavigationLocationSource, type NavigationLocationSourceKind } from './navigationLocation';
 import { Photorealistic3DView } from './Photorealistic3DView';
+import { IndoorNavigationPanel } from './IndoorNavigationPanel';
+import { validateIndoorBuilding, type IndoorBuilding } from './immersiveSpatial';
 import './gps4d.css';
 
 type LivePosition = GpsPoint & {
@@ -159,6 +161,16 @@ export function Gps4DPage() {
   const [photorealistic3D, setPhotorealistic3D] = useState(false);
   const googleMapTilesKey = String((import.meta as any).env?.VITE_ATLAS_GOOGLE_MAP_TILES_KEY || '');
   const photorealisticConfigured = googleMapTilesKey.trim().length > 0;
+  const indoorBuilding = useMemo<IndoorBuilding | null>(() => {
+    const raw = String((import.meta as any).env?.VITE_ATLAS_INDOOR_BUILDING_JSON || '').trim();
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as IndoorBuilding;
+      return validateIndoorBuilding(parsed).ok ? parsed : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const activeRoute = routes[activeRouteIndex] || null;
   const activeStep = activeRoute?.steps?.[currentStepIndex] || null;
@@ -919,6 +931,12 @@ export function Gps4DPage() {
               <button type="button" onClick={() => setStops([])}>Limpiar paradas</button>
             </div>
           )}
+
+          <IndoorNavigationPanel
+            building={indoorBuilding}
+            enterLabel="Entrar al edificio"
+            floorLabel="Piso"
+          />
 
           <div className="gps4d-actions">
             <button type="button" disabled={!activeRoute || !current || navigationActive} onClick={beginNavigation}>Iniciar navegación</button>
