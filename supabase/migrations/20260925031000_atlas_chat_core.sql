@@ -144,7 +144,7 @@ returns integer
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   v_deleted integer := 0;
 begin
@@ -169,9 +169,9 @@ begin
 
   return v_deleted;
 end;
-$;
+$$;
 
-do $
+do $$
 declare
   v_job_id bigint;
 begin
@@ -192,7 +192,7 @@ begin
     );
   end if;
 end;
-$;
+$$;
 
 create or replace function public.atlas_chat_can_access(
   p_org_id uuid,
