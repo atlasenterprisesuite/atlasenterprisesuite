@@ -12,7 +12,7 @@ ATLAS now contains three internal MVNO layers:
 
 1. the authenticated web route at `/connect/wireless/mvno`;
 2. a provider-neutral lifecycle type contract;
-3. an authenticated Supabase Edge Function gate, `atlas-wireless-mvno`, with `readiness`, `status`, `provision`, `activate`, `suspend`, `reconnect` and `revoke` operation names.
+3. authenticated Wireless operations hosted inside the existing `atlas-platform-controls` Edge Function: `wireless-mvno-readiness`, `wireless-mvno-status`, `wireless-mvno-provision`, `wireless-mvno-activate`, `wireless-mvno-suspend`, `wireless-mvno-reconnect` and `wireless-mvno-revoke`.
 
 The server gate is intentionally non-operational for carrier mutations. It resolves organization scope, reads only server-side provider-configuration evidence, returns no provider secret values, and rejects lifecycle mutations with `provider_not_ready` until a real authorized provider adapter is implemented and verified.
 
@@ -47,20 +47,20 @@ The current server function may detect that provider configuration exists, but c
 
 The browser reads readiness from:
 
-`GET /functions/v1/atlas-wireless-mvno?api=readiness`
+`GET /functions/v1/atlas-platform-controls?api=wireless-mvno-readiness`
 
 Authenticated lifecycle operations are reserved at the same Edge Function:
 
-- `GET ?api=status`
-- `POST ?api=provision`
-- `POST ?api=activate`
-- `POST ?api=suspend`
-- `POST ?api=reconnect`
-- `POST ?api=revoke`
+- `GET ?api=wireless-mvno-status`
+- `POST ?api=wireless-mvno-provision`
+- `POST ?api=wireless-mvno-activate`
+- `POST ?api=wireless-mvno-suspend`
+- `POST ?api=wireless-mvno-reconnect`
+- `POST ?api=wireless-mvno-revoke`
 
 Until provider verification exists, each lifecycle operation remains fail-closed with HTTP 503 and a non-secret blocker code.
 
-Repository merge and Cloudflare web deployment do not prove this Edge Function is live in Supabase. The function must be deployed separately with JWT verification enabled and its deployed version/readiness must be verified before the web surface can treat server readiness as available.
+The active Supabase project reached its Edge Function-count limit when ATLAS attempted to deploy a separate `atlas-wireless-mvno` function. ATLAS therefore reuses the already-deployed, JWT-protected `atlas-platform-controls` control plane instead of paying for or creating a parallel runtime. Repository merge and Cloudflare web deployment still do not prove the new Wireless operations are live: the updated `atlas-platform-controls` version must be deployed and verified independently before the web surface can treat server readiness as available.
 
 ## Commercial separation
 
