@@ -116,6 +116,61 @@ create table if not exists public.atlas_chat_attachments (
   unique (org_id, storage_bucket, storage_path)
 );
 
+create or replace function public.atlas_chat_purge_expired()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_deleted integer := 0;
+begin
+  with expired as (
+    select c.id
+    from public.atlas_chat_conversations c
+    join public.atlas_chat_retention_policies p
+      on p.id = c.retention_policy_id
+     and p.org_id = c.org_id
+    where c.legal_hold = false
+      and p.retention_days is not null
+      and coalesce(c.last_message_at, c.updated_at, c.created_at)
+        < now() - make_interval(days => p.retention_days)
+  ),
+  deleted as (
+    delete from public.atlas_chat_conversations c
+    using expired
+    where c.id = expired.id
+    returning c.id
+  )
+  select count(*) into v_deleted from deleted;
+
+  return v_deleted;
+end;
+$;
+
+do $
+declare
+  v_job_id bigint;
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    select jobid into v_job_id
+    from cron.job
+    where jobname = 'atlas-chat-retention-daily'
+    limit 1;
+
+    if v_job_id is not null then
+      perform cron.unschedule(v_job_id);
+    end if;
+
+    perform cron.schedule(
+      'atlas-chat-retention-daily',
+      '17 4 * * *',
+      'select public.atlas_chat_purge_expired();'
+    );
+  end if;
+end;
+$;
+
 create or replace function public.atlas_chat_can_access(
   p_org_id uuid,
   p_conversation_id uuid,
@@ -274,6 +329,17 @@ begin
     raise exception 'chat_conversation_not_active' using errcode = '55000';
   end if;
 
+  if (
+    select count(*)
+    from public.atlas_chat_messages
+    where org_id = p_org_id
+      and conversation_id = p_conversation_id
+      and sender_id = p_user_id
+      and created_at > now() - interval '1 second'
+  ) >= 5 then
+    raise exception 'chat_rate_limited' using errcode = '57014';
+  end if;
+
   insert into public.atlas_chat_messages(
     org_id,
     conversation_id,
@@ -405,6 +471,9 @@ grant all on table
   public.atlas_chat_message_reactions,
   public.atlas_chat_attachments
 to service_role;
+
+revoke all on function public.atlas_chat_purge_expired() from public, anon, authenticated;
+grant execute on function public.atlas_chat_purge_expired() to service_role;
 
 revoke all on function public.atlas_chat_create_conversation(uuid,uuid,text,text,text,uuid[]) from public, anon, authenticated;
 revoke all on function public.atlas_chat_append_message(uuid,uuid,uuid,uuid,jsonb,text) from public, anon, authenticated;
