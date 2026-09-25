@@ -291,6 +291,38 @@
   justify-content: flex-end;
 }
 
+.atlas-chat-thread-actions {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.atlas-chat-privacy-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.atlas-chat-privacy-actions button {
+  border: 1px solid var(--chat-line);
+  border-radius: 9px;
+  padding: 6px 8px;
+  background: rgba(8, 29, 47, 0.75);
+  color: var(--chat-text);
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.atlas-chat-privacy-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.atlas-chat-thread-actions small {
+  color: var(--chat-muted);
+}
+
+
 .atlas-chat-thread-flags span {
   border: 1px solid var(--chat-line);
   border-radius: 999px;
