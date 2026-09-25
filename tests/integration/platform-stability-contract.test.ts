@@ -36,6 +36,12 @@ describe('ATLAS platform stability contract', () => {
     expect(reconcile).toContain('GITHUB_REPOSITORY_OWNER');
     expect(reconcile).toContain('Reconciliation state: permission_blocked');
     expect(reconcile).toContain('::warning::Unable to read legacy Workers Builds triggers');
+    expect(reconcile).toContain('Legacy Workers Builds trigger state is unverified; failing closed.');
+    expect(reconcile).toContain('POST_CANONICAL_TAG');
+    expect(reconcile).toContain('Canonical Cloudflare Worker identity changed during reconciliation.');
+    expect(reconcile).toContain('global-production-verification:');
+    expect(reconcile).toContain('uses: ./.github/workflows/global-production-verify.yml');
+    expect(reconcile).toContain('mode: fail-closed');
     expect(reconcile).not.toContain('/workers/scripts/$LEGACY_WORKER');
   });
 });
