@@ -98,3 +98,40 @@ export async function saveGpsPlace(place: GpsPoint) {
 export async function deleteGpsPlace(id: string) {
   return request<{ ok: true; deleted: true }>('saved.delete', { id });
 }
+
+
+export type GpsIndoorFeature = {
+  id: string;
+  osm_type: string;
+  lat: number | null;
+  lon: number | null;
+  tags: Record<string, string>;
+};
+
+export type GpsIndoorLookup = {
+  ok: true;
+  source: 'cache' | 'overpass';
+  provider: 'openstreetmap-overpass';
+  provider_state: 'external_gated';
+  verified_sla: false;
+  center: { lat: number; lon: number };
+  radius_m: number;
+  coverage: {
+    available: boolean;
+    feature_count: number;
+    levels: string[];
+    rooms: number;
+    corridors: number;
+    entrances: number;
+    vertical_connections: number;
+  };
+  features: GpsIndoorFeature[];
+};
+
+export async function lookupGpsIndoor(point: Pick<GpsPoint, 'lat' | 'lon'>, radiusM = 90) {
+  return request<GpsIndoorLookup>('indoor.lookup', {
+    latitude: point.lat,
+    longitude: point.lon,
+    radius_m: radiusM
+  });
+}
