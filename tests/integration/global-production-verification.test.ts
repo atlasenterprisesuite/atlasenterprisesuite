@@ -261,6 +261,14 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('work_routes_reachable');
   });
 
+  it('isolates build readiness concurrency by exact SHA', () => {
+    const workflow = read('.github/workflows/production-deploy.yml');
+
+    expect(workflow).toContain('group: atlas-production-readiness-${{ github.sha }}');
+    expect(workflow).not.toContain('group: atlas-production-readiness\n');
+    expect(workflow).toContain('cancel-in-progress: false');
+  });
+
   it('authorizes only the canonical Cloudflare and global verification workflows through OIDC', () => {
     const authorizedVerifier = read(authorizedVerifierPath);
 
