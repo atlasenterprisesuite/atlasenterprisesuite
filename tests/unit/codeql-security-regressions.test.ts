@@ -8,11 +8,11 @@ const advisoryWorkflow = readFileSync('.github/workflows/advisory-office-ci.yml'
 const signInterpret = readFileSync('supabase/functions/atlas-sign-interpret/index.ts', 'utf8');
 
 describe('CodeQL security regression contracts', () => {
-  it('handles whitespace before script and style end-tag closers', () => {
-    expect(taxMonitor).toContain('<\\/script\\b[^>]*>');
-    expect(taxMonitor).toContain('<\\/style\\b[^>]*>');
-    expect(hubspotWatch).toContain('<\\/script\\b[^>]*>');
-    expect(hubspotWatch).toContain('<\\/style\\b[^>]*>');
+  it('does not use regex-based script/style filtering in operational HTML normalizers', () => {
+    expect(taxMonitor).toContain('htmlToVisibleText(content)');
+    expect(hubspotWatch).toContain('htmlToVisibleText(html)');
+    expect(taxMonitor).not.toContain('script\\\\b[^>]*');
+    expect(hubspotWatch).not.toContain('script\\\\b[^>]*');
   });
 
   it('decodes only one known HTML entity layer per pass', () => {
