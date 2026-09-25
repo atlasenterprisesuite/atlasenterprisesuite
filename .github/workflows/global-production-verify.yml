@@ -157,7 +157,7 @@ jobs:
 
           if [ "$HTTP_STATUS" = "200" ] && \
              [ "$AUTHORIZED_OK" = "true" ] && \
-             [ "$AUTHORIZED_VERIFIER_VERSION" = "25" ] && \
+             [ "$AUTHORIZED_VERIFIER_VERSION" = "27" ] && \
              [ "$TARGET_SHA" = "$GITHUB_SHA" ] && \
              [ "$STATUS_OK" = "true" ] && \
              [ "$MODULES_OK" = "true" ] && \
