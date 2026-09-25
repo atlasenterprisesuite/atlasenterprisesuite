@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import type { MvnoPermission } from '../_shared/mvno.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY =
@@ -25,6 +26,16 @@ type RequestContext = {
   userId: string;
   orgId: string;
   role: string;
+};
+
+const OPERATION_PERMISSION: Readonly<Record<Operation, MvnoPermission>> = {
+  readiness: 'wireless.mvno.read',
+  status: 'wireless.mvno.read',
+  provision: 'wireless.mvno.provision',
+  activate: 'wireless.mvno.activate',
+  suspend: 'wireless.mvno.suspend',
+  reconnect: 'wireless.mvno.reconnect',
+  revoke: 'wireless.mvno.revoke'
 };
 
 const ALLOWED_ORIGINS = new Set([
@@ -130,6 +141,20 @@ async function resolveContext(req: Request): Promise<RequestContext> {
   };
 }
 
+async function requireOperationPermission(
+  req: Request,
+  ctx: RequestContext,
+  operation: Operation
+) {
+  const permission = OPERATION_PERMISSION[operation];
+  const sb = userClient(req);
+  const { data, error } = await sb.rpc('has_identity_permission', {
+    o: ctx.orgId,
+    p: permission
+  });
+  if (error || data !== true) throw new Error('authorization_denied');
+}
+
 function adminClient() {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return null;
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -214,12 +239,6 @@ async function providerReadiness(ctx: RequestContext) {
   }
 }
 
-function requireManageRole(ctx: RequestContext) {
-  if (!['owner', 'admin', 'platform_admin'].includes(ctx.role)) {
-    throw new Error('authorization_denied');
-  }
-}
-
 async function auditBlockedOperation(
   ctx: RequestContext,
   operation: Operation,
@@ -246,6 +265,7 @@ async function auditBlockedOperation(
 }
 
 async function readinessResponse(req: Request, ctx: RequestContext) {
+  await requireOperationPermission(req, ctx, 'readiness');
   const readiness = await providerReadiness(ctx);
   return json(req, {
     ok: true,
@@ -261,7 +281,7 @@ async function readinessResponse(req: Request, ctx: RequestContext) {
 }
 
 async function blockedProviderOperation(req: Request, ctx: RequestContext, operation: Operation) {
-  if (operation !== 'status') requireManageRole(ctx);
+  await requireOperationPermission(req, ctx, operation);
 
   const readiness = await providerReadiness(ctx);
   await auditBlockedOperation(ctx, operation, readiness);
