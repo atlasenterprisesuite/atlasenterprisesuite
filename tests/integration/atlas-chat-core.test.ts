@@ -34,6 +34,9 @@ describe('ATLAS Chat Core', () => {
     expect(sql).toContain('atlas_chat_purge_expired');
     expect(sql).toContain("cron.schedule(");
     expect(sql).toContain("'atlas-chat-retention-daily'");
+    expect(sql).toContain('as $');
+    expect(sql).toContain('do $');
+    expect(sql).not.toMatch(/^as \\$/m);
     expect(sql).toContain("raise exception 'chat_rate_limited'");
   });
 
