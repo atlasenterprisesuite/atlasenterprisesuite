@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ATLAS_MODULES } from '../registry';
+import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManager } from './AtlasCloudNextLevel';
 
 type CloudService = {
   id: string;
@@ -221,6 +222,18 @@ function ConsoleHome() {
       />
 
       <div className="atlas-cloud-console-grid">
+        <Link to="/cloud/api-explorer">
+          <span>Developer</span><strong>API Explorer</strong>
+          <p>Inspect the live OpenAPI contract and run approved read-only cloud operations.</p>
+        </Link>
+        <Link to="/cloud/observability">
+          <span>Operations</span><strong>Observability</strong>
+          <p>View native incidents, traces, metrics and runtime verification evidence.</p>
+        </Link>
+        <Link to="/cloud/resources">
+          <span>Resources</span><strong>Resource Manager</strong>
+          <p>Manage organization projects and inspect the canonical ATLAS service registry.</p>
+        </Link>
         <Link to="/execution/manager/readiness">
           <span>Infrastructure</span><strong>Manager Readiness</strong>
           <p>Evaluate provider requirements and real blockers before any deployment claim.</p>
@@ -267,5 +280,8 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/docs/get-started') return <DocumentationArticle kind="get-started" />;
   if (pathname === '/cloud/docs/architecture') return <DocumentationArticle kind="architecture" />;
   if (pathname === '/cloud/docs/operations') return <DocumentationArticle kind="operations" />;
+  if (pathname === '/cloud/api-explorer') return <AtlasCloudApiExplorer />;
+  if (pathname === '/cloud/observability') return <AtlasCloudObservability />;
+  if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
   return <ConsoleHome />;
 }
