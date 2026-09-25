@@ -24,6 +24,21 @@ describe('ATLAS Wireless MVNO server gate', () => {
     expect(source).toContain("provider_adapter_not_verified");
   });
 
+  it('enforces least-privilege MVNO permissions before blocked provider operations', () => {
+    const source = read(edgePath);
+
+    expect(source).toContain("import type { MvnoPermission } from '../_shared/mvno.ts'");
+    expect(source).toContain("readiness: 'wireless.mvno.read'");
+    expect(source).toContain("status: 'wireless.mvno.read'");
+    expect(source).toContain("provision: 'wireless.mvno.provision'");
+    expect(source).toContain("activate: 'wireless.mvno.activate'");
+    expect(source).toContain("suspend: 'wireless.mvno.suspend'");
+    expect(source).toContain("reconnect: 'wireless.mvno.reconnect'");
+    expect(source).toContain("revoke: 'wireless.mvno.revoke'");
+    expect(source).toContain("sb.rpc('has_identity_permission'");
+    expect(source).not.toContain('requireManageRole');
+  });
+
   it('keeps provider credentials server-side and never claims verified readiness from configuration alone', () => {
     const source = read(edgePath);
 
