@@ -2,7 +2,15 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const CONTROL_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-cloud-control';
+  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-observability';
+
+const CLOUD_API_ALIASES: Record<string, string> = {
+  openapi: 'cloud-openapi',
+  resources: 'cloud-resources',
+  project: 'cloud-project',
+  'project-create': 'cloud-project-create',
+  observability: 'cloud-observability'
+};
 
 type CloudProject = {
   id: string;
@@ -73,7 +81,7 @@ async function cloudRequest<T>(
   params: Record<string, string> = {}
 ): Promise<T> {
   const url = new URL(CONTROL_URL);
-  url.searchParams.set('api', api);
+  url.searchParams.set('api', CLOUD_API_ALIASES[api] || api);
   for (const [key, value] of Object.entries(params)) {
     if (value) url.searchParams.set(key, value);
   }
