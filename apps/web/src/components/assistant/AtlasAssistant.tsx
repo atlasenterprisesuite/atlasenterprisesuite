@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   assistantProviderSummary,
   getAssistantStatus,
   hasVerifiedAssistantProvider,
+  listAssistantRepairJobs,
+  queueAssistantRepair,
   sendAssistantMessage,
   type AssistantStatusResponse
 } from '../../assistant/client';
+import { loadAtlasInternalControl, type AtlasInternalControlSnapshot } from '../../assistant/internalControl';
 import { resolveAssistantModule } from '../../assistant/routeContext';
 import { markGreetingSeen, readGreetingSeen } from '../../assistant/storage';
 import type { AtlasAssistantMessage, AtlasAssistantUiState, AtlasCapabilityState } from '../../assistant/types';
@@ -77,6 +80,7 @@ function providerCapability(status: AssistantStatusResponse): { capability: Atla
 
 export function AtlasAssistant() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [authorized, setAuthorized] = useState(false);
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<AtlasAssistantUiState>('closed');
@@ -84,6 +88,11 @@ export function AtlasAssistant() {
   const [providerError, setProviderError] = useState('');
   const [textCapability, setTextCapability] = useState<AtlasCapabilityState>('configuration-required');
   const [providerLabel, setProviderLabel] = useState('checking');
+  const [assistantRole, setAssistantRole] = useState<string | null>(null);
+  const [internalControl, setInternalControl] = useState<AtlasInternalControlSnapshot | null>(null);
+  const [repairJobs, setRepairJobs] = useState<Array<{ id: string; request_text: string; status: string }>>([]);
+  const [internalLoading, setInternalLoading] = useState(false);
+  const [internalError, setInternalError] = useState('');
   const [messages, setMessages] = useState<AtlasAssistantMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const sequence = useRef(0);
@@ -103,6 +112,8 @@ export function AtlasAssistant() {
       setTextCapability(mapped.capability);
       setProviderLabel(mapped.label);
       setProviderError(mapped.message);
+      setAssistantRole(status.role || null);
+      return status;
     } catch (cause) {
       if (identityFailure(cause)) throw cause;
       const message = errorMessage(cause);
@@ -110,11 +121,38 @@ export function AtlasAssistant() {
         setTextCapability('permission-required');
         setProviderLabel('permission required');
         setProviderError(message);
-        return;
+        setAssistantRole(null);
+        return null;
       }
       setTextCapability('unavailable');
       setProviderLabel('unavailable');
       setProviderError(message);
+      setAssistantRole(null);
+      return null;
+    }
+  }, []);
+
+  const refreshInternalControl = useCallback(async (role: string | null) => {
+    const privileged = ['owner', 'admin', 'platform_admin'].includes(String(role || ''));
+    if (!privileged) {
+      setInternalControl(null);
+      setRepairJobs([]);
+      setInternalError('');
+      return;
+    }
+    setInternalLoading(true);
+    setInternalError('');
+    try {
+      const [snapshot, jobs] = await Promise.all([
+        loadAtlasInternalControl(role),
+        ['owner', 'admin'].includes(String(role || '')) ? listAssistantRepairJobs() : Promise.resolve([])
+      ]);
+      setInternalControl(snapshot);
+      setRepairJobs(jobs);
+    } catch (cause) {
+      setInternalError(errorMessage(cause));
+    } finally {
+      setInternalLoading(false);
     }
   }, []);
 
@@ -122,7 +160,8 @@ export function AtlasAssistant() {
     try {
       await getActiveAtlasOrganization();
       setAuthorized(true);
-      await refreshProviderStatus();
+      const status = await refreshProviderStatus();
+      await refreshInternalControl(status?.role || null);
     } catch {
       voice.stopMicrophone();
       voice.stopSpeech();
@@ -132,9 +171,13 @@ export function AtlasAssistant() {
       setProviderLabel('checking');
       setTextCapability('configuration-required');
       setProviderError('');
+      setAssistantRole(null);
+      setInternalControl(null);
+      setRepairJobs([]);
+      setInternalError('');
       setError('');
     }
-  }, [refreshProviderStatus, voice.stopMicrophone, voice.stopSpeech]);
+  }, [refreshInternalControl, refreshProviderStatus, voice.stopMicrophone, voice.stopSpeech]);
 
   useEffect(() => {
     void refreshAuthorization();
@@ -146,7 +189,7 @@ export function AtlasAssistant() {
   useEffect(() => {
     if (!authorized || textCapability === 'ready' || textCapability === 'permission-required') return;
     const timer = window.setInterval(() => {
-      void refreshProviderStatus().catch(() => void refreshAuthorization());
+      void refreshProviderStatus().then((status) => refreshInternalControl(status?.role || assistantRole)).catch(() => void refreshAuthorization());
     }, 30_000);
     return () => window.clearInterval(timer);
   }, [authorized, refreshAuthorization, refreshProviderStatus, textCapability]);
@@ -219,6 +262,33 @@ export function AtlasAssistant() {
       } else {
         void refreshProviderStatus();
       }
+    }
+  }
+
+  async function queueInternalRepair(request: string) {
+    if (!['owner', 'admin'].includes(String(assistantRole || ''))) {
+      setInternalError('Owner or admin role is required for the internal repair queue.');
+      return;
+    }
+    setInternalLoading(true);
+    setInternalError('');
+    try {
+      const job = await queueAssistantRepair({
+        request,
+        pathname: location.pathname,
+        module: moduleName
+      });
+      setRepairJobs((current) => [job, ...current.filter((item) => item.id !== job.id)].slice(0, 8));
+      setMessages((current) => [...current, {
+        id: nextId('assistant'),
+        role: 'assistant',
+        text: `Internal repair queued as ${job.id}. ATLAS will keep it inside the governed repair pipeline with audit and fail-closed controls.`
+      }]);
+      await refreshInternalControl(assistantRole);
+    } catch (cause) {
+      setInternalError(errorMessage(cause));
+    } finally {
+      setInternalLoading(false);
     }
   }
 
@@ -296,6 +366,14 @@ export function AtlasAssistant() {
           onClose={closeAssistant}
           onSubmit={submit}
           onToggleMicrophone={toggleMicrophone}
+          assistantRole={assistantRole}
+          internalControl={internalControl}
+          repairJobs={repairJobs}
+          internalLoading={internalLoading}
+          internalError={internalError}
+          onRefreshInternal={() => refreshInternalControl(assistantRole)}
+          onQueueRepair={queueInternalRepair}
+          onNavigate={(target) => navigate(target)}
           onSpeechPreference={voice.setSpeechEnabled}
         />
       ) : (
