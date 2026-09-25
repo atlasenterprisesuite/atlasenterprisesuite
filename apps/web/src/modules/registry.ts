@@ -14,6 +14,17 @@ export type AtlasModuleDefinition = {
 
 export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
   {
+    id: 'cloud',
+    title: 'ATLAS Cloud',
+    navLabel: 'Cloud',
+    area: 'Platform',
+    route: '/cloud',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Documentation, service discovery and governed administrative control over the existing ATLAS ecosystem.',
+    showInNavigation: true
+  },
+  {
     id: 'work',
     title: 'ATLAS Work Soberano',
     navLabel: 'Work',
