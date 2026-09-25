@@ -92,7 +92,17 @@ jobs:
             exit 1
           fi
 
-          LEGACY_TAG="$(node -e "const fs=require('fs');const c=fs.readFileSync('wrangler.jsonc','utf8');const m=c.match(/\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"/);process.stdout.write(process.env.LEGACY_WORKER||m?.[1]||'')")"
+          SCRIPTS_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cf-workers-scripts.json --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts" || true)"
+          test "$SCRIPTS_HTTP" = "200" || { echo "::error::Unable to resolve Cloudflare Worker tags after token repair"; exit 1; }
+
+          LEGACY_TAG="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/cf-workers-scripts.json','utf8'));const x=(j.result||[]).find(v=>String(v.id||v.name||'')===process.env.LEGACY_WORKER);process.stdout.write(String(x?.tag||''))")"
+          if [ -z "$LEGACY_TAG" ]; then
+            echo "state=repaired" >> "$GITHUB_STEP_SUMMARY"
+            echo "Legacy Worker is already absent; no Workers Builds trigger can remain." >> "$GITHUB_STEP_SUMMARY"
+            echo "Canonical Worker $CANONICAL_WORKER was not modified." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
           TRIGGERS_HTTP="$(curl --silent --show-error --max-time 30             --output /tmp/cf-triggers.json --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/builds/workers/$LEGACY_TAG/triggers" || true)"
           test "$TRIGGERS_HTTP" = "200" || { echo "::error::Workers Builds API still unavailable after token update"; exit 1; }
 
