@@ -16,13 +16,21 @@ describe('ATLAS Wireless owned-network foundation', () => {
     expect(source).toContain("'wholesale-fallback'");
   });
 
-  it('requires evidence for core, RAN, spectrum and backhaul readiness', () => {
+  it('requires tenant-scoped, fresh evidence and recomputed technical readiness', () => {
     const source = read(contractPath);
     for (const layer of ['core', 'ran', 'spectrum', 'backhaul', 'observability']) {
       expect(source).toContain(`'${layer}'`);
     }
+    expect(source).toContain('organizationId: string');
     expect(source).toContain('evidence_required:');
-    expect(source).toContain('publicServiceReady');
+    expect(source).toContain('stale_verification:');
+    expect(source).toContain('duplicate_layer:');
+    expect(source).toContain('organization_mismatch:');
+    expect(source).toContain('technicalPublicReady');
+    expect(source).toContain('mvno_provider_readiness_required');
+    expect(source).toContain('regulatory_authorization_required');
+    expect(source).toContain('commercial_authorization_required');
+    expect(source).toContain('evaluateAtlasOwnedNetworkReadiness(');
     expect(source).toContain('atlas_wireless_public_service_blocked');
   });
 
@@ -49,7 +57,8 @@ describe('ATLAS Wireless owned-network foundation', () => {
     expect(docs).toContain('5G Standalone');
     expect(docs).toContain('CBRS');
     expect(docs).toContain('SAS');
-    expect(docs).toContain('publicServiceReady');
+    expect(docs).toContain('technicalPublicReady');
+    expect(docs).toContain('commercial/regulatory launch authorization');
     expect(docs).toContain('Physical procurement, RF installation, spectrum/SAS onboarding and site commissioning remain external execution steps');
   });
 });
