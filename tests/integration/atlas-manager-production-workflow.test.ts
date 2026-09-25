@@ -11,10 +11,11 @@ describe('ATLAS Supabase-first production workflow', () => {
     expect(workflow).not.toContain('Install Vercel CLI');
   });
 
-  it('runs the complete readiness gate for every main SHA without path filters', () => {
-    expect(workflow).toContain('push:');
-    expect(workflow).toContain('branches: ["main"]');
-    expect(workflow).toContain('Every main SHA must receive its own complete repository readiness evidence');
+  it('runs the complete readiness gate before merge and again for every merged main SHA', () => {
+    expect(workflow).toMatch(/pull_request:\s*\n\s+branches: \["main"\]/);
+    expect(workflow).toMatch(/push:\s*\n\s+branches: \["main"\]/);
+    expect(workflow).toContain('Pull requests to main must prove full repository readiness before merge');
+    expect(workflow).toContain('Every merged main SHA must then receive fresh readiness evidence again');
     expect(workflow).not.toContain('    paths:');
   });
 

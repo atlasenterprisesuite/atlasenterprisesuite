@@ -21,9 +21,9 @@ The protected release line must require the applicable exact-head checks, includ
 
 - `ATLAS 3-of-3 Consensus`
 - `CodeQL Advanced` language analysis required for changed/runtime languages
-- `ATLAS Build + Production Readiness Gate`
+- `ATLAS Build + Production Readiness Gate` — exact GitHub check context: `verify-build-readiness`
 
-Feature-specific CI may add additional required checks for affected paths. A passing build is not equivalent to a passing production deployment.
+Feature-specific CI may add additional required checks for affected paths. The build/readiness workflow must run on pull requests to `main` as well as on `main` pushes so the required check is enforceable before merge and independently re-proven after merge. A passing build is not equivalent to a passing production deployment.
 
 ## Production completion
 
