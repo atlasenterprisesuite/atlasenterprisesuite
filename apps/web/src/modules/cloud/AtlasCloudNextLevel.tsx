@@ -1,8 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-
-const CONTROL_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-cloud-control';
+import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../../lib/atlasSession';
 
 type CloudProject = {
   id: string;
@@ -57,36 +55,135 @@ type OpenApiPayload = {
   paths?: Record<string, Record<string, { summary?: string }>>;
 };
 
-function sessionHeaders(json = false) {
-  const token = localStorage.getItem('atlas_access_token') || '';
-  const orgId = localStorage.getItem('atlas_org_id') || '';
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (orgId) headers['x-atlas-org-id'] = orgId;
-  if (json) headers['content-type'] = 'application/json';
-  return headers;
+const OPENAPI_SPEC: OpenApiPayload = {
+  openapi: '3.1.0',
+  info: {
+    title: 'ATLAS Cloud Governed Browser API',
+    version: '1',
+    description:
+      'Organization-scoped ATLAS Cloud operations over the canonical Supabase Data API and existing observability function. Existing RLS remains authoritative.'
+  },
+  paths: {
+    '/rest/v1/projects': {
+      get: { summary: 'List organization projects through existing RLS' },
+      post: { summary: 'Create an organization project through existing RLS' }
+    },
+    '/rest/v1/atlas_module_registry': {
+      get: { summary: 'List canonical ATLAS services for the active organization' }
+    },
+    '/functions/v1/atlas-observability?api=summary': {
+      get: { summary: 'Read native ATLAS observability evidence' }
+    }
+  }
+};
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  const data = await response.json().catch(() => ({ error: 'invalid_response' }));
+  if (!response.ok) {
+    throw new Error(String((data as { error?: string; message?: string })?.error
+      || (data as { message?: string })?.message
+      || `request_failed_${response.status}`));
+  }
+  return data as T;
 }
 
-async function cloudRequest<T>(
-  api: string,
-  init: RequestInit = {},
-  params: Record<string, string> = {}
-): Promise<T> {
-  const url = new URL(CONTROL_URL);
-  url.searchParams.set('api', api);
-  for (const [key, value] of Object.entries(params)) {
-    if (value) url.searchParams.set(key, value);
+async function getResources(): Promise<ResourcePayload> {
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(organization.id);
+  const [projectsResponse, servicesResponse] = await Promise.all([
+    authorizedAtlasFetch(
+      `/rest/v1/projects?org_id=eq.${org}&select=id,name,description,status,priority,owner_user_id,start_date,due_date,completed_at,updated_at&order=updated_at.desc&limit=200`,
+      { method: 'GET' }
+    ),
+    authorizedAtlasFetch(
+      `/rest/v1/atlas_module_registry?org_id=eq.${org}&select=module_code,enabled,launch_status,data_backend,updated_at&order=module_code.asc&limit=300`,
+      { method: 'GET' }
+    )
+  ]);
+
+  const [projects, services] = await Promise.all([
+    parseResponse<CloudProject[]>(projectsResponse),
+    parseResponse<CloudService[]>(servicesResponse)
+  ]);
+
+  return {
+    ok: true,
+    projects,
+    services,
+    truth: {
+      project_authority: 'public.projects',
+      service_authority: 'public.atlas_module_registry',
+      duplicated_registry_created: false
+    }
+  };
+}
+
+function assertUuid(value: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error('invalid_project_id');
   }
-  const response = await fetch(url, {
-    ...init,
-    cache: 'no-store',
-    headers: { ...sessionHeaders(Boolean(init.body)), ...(init.headers || {}) }
+}
+
+async function getProjectDetail(id: string): Promise<Record<string, unknown>> {
+  assertUuid(id);
+  const organization = await getActiveAtlasOrganization();
+  const org = encodeURIComponent(organization.id);
+  const project = encodeURIComponent(id);
+  const [projectResponse, tasksResponse, milestonesResponse] = await Promise.all([
+    authorizedAtlasFetch(
+      `/rest/v1/projects?org_id=eq.${org}&id=eq.${project}&select=id,name,description,status,priority,owner_user_id,start_date,due_date,completed_at,updated_at&limit=1`,
+      { method: 'GET' }
+    ),
+    authorizedAtlasFetch(
+      `/rest/v1/project_tasks?org_id=eq.${org}&project_id=eq.${project}&select=id,title,description,status,priority,assigned_user_id,due_date,completed_at,updated_at&order=updated_at.desc`,
+      { method: 'GET' }
+    ),
+    authorizedAtlasFetch(
+      `/rest/v1/project_milestones?org_id=eq.${org}&project_id=eq.${project}&select=id,name,status,due_date,completed_at,updated_at&order=due_date.asc`,
+      { method: 'GET' }
+    )
+  ]);
+  const [projects, tasks, milestones] = await Promise.all([
+    parseResponse<CloudProject[]>(projectResponse),
+    parseResponse<Array<Record<string, unknown>>>(tasksResponse),
+    parseResponse<Array<Record<string, unknown>>>(milestonesResponse)
+  ]);
+  if (!projects[0]) throw new Error('project_not_found');
+  return { ok: true, project: projects[0], tasks, milestones };
+}
+
+async function createProjectRecord(form: { name: string; description: string; priority: string }) {
+  const organization = await getActiveAtlasOrganization();
+  const name = form.name.trim().slice(0, 160);
+  if (!name) throw new Error('project_name_required');
+  const priority = ['low', 'medium', 'high', 'critical'].includes(form.priority)
+    ? form.priority
+    : 'medium';
+
+  const response = await authorizedAtlasFetch('/rest/v1/projects', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({
+      org_id: organization.id,
+      name,
+      description: form.description.trim().slice(0, 2000) || null,
+      status: 'planned',
+      priority
+    })
   });
-  const body = await response.json().catch(() => ({ error: 'invalid_response' }));
-  if (!response.ok) {
-    throw new Error(String(body?.error || `request_failed_${response.status}`));
-  }
-  return body as T;
+  const rows = await parseResponse<CloudProject[]>(response);
+  if (!rows[0]) throw new Error('project_create_failed');
+  return rows[0];
+}
+
+async function getObservability(): Promise<ObservabilityPayload> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-observability?api=summary', {
+    method: 'GET',
+    headers: { 'x-atlas-org-id': organization.id }
+  });
+  const observability = await parseResponse<NonNullable<ObservabilityPayload['observability']>>(response);
+  return { ok: true, observability };
 }
 
 function CloudSubnav() {
@@ -119,16 +216,10 @@ function StatePanel({
 }
 
 export function AtlasCloudApiExplorer() {
-  const [spec, setSpec] = useState<OpenApiPayload | null>(null);
+  const spec = OPENAPI_SPEC;
   const [result, setResult] = useState('');
   const [running, setRunning] = useState('');
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    cloudRequest<OpenApiPayload>('openapi')
-      .then(setSpec)
-      .catch((reason) => setError(reason instanceof Error ? reason.message : 'openapi_unavailable'));
-  }, []);
 
   const operations = useMemo(() => {
     if (!spec?.paths) return [];
@@ -145,7 +236,7 @@ export function AtlasCloudApiExplorer() {
     setRunning(api);
     setError('');
     try {
-      const response = await cloudRequest<unknown>(api);
+      const response = api === 'resources' ? await getResources() : await getObservability();
       setResult(JSON.stringify(response, null, 2));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'request_failed');
@@ -161,7 +252,7 @@ export function AtlasCloudApiExplorer() {
         <p className="eyebrow">ATLAS Cloud · Developer Control</p>
         <h1>API Explorer</h1>
         <p>
-          Discover the governed ATLAS Cloud control API from its live OpenAPI contract. Interactive
+          Discover the governed ATLAS Cloud browser API from its OpenAPI contract. Interactive
           execution is limited to approved read-only operations and uses the current ATLAS identity.
         </p>
       </header>
@@ -220,7 +311,7 @@ export function AtlasCloudObservability() {
   async function load() {
     setError('');
     try {
-      setData(await cloudRequest<ObservabilityPayload>('observability'));
+      setData(await getObservability());
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'observability_unavailable');
     }
@@ -318,7 +409,7 @@ export function AtlasCloudResourceManager() {
   async function load() {
     setError('');
     try {
-      setData(await cloudRequest<ResourcePayload>('resources'));
+      setData(await getResources());
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'resource_inventory_unavailable');
     }
@@ -333,10 +424,7 @@ export function AtlasCloudResourceManager() {
     setCreating(true);
     setError('');
     try {
-      await cloudRequest('project-create', {
-        method: 'POST',
-        body: JSON.stringify(form)
-      });
+      await createProjectRecord(form);
       setForm({ name: '', description: '', priority: 'medium' });
       await load();
     } catch (reason) {
@@ -349,7 +437,7 @@ export function AtlasCloudResourceManager() {
   async function openProject(id: string) {
     setError('');
     try {
-      setSelected(await cloudRequest<Record<string, unknown>>('project', {}, { id }));
+      setSelected(await getProjectDetail(id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'project_unavailable');
     }
