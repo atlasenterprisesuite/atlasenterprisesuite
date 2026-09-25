@@ -2,12 +2,14 @@ import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 import {
   connectChatRealtime,
   createChatConversation,
+  exportChatConversation,
   getChatReadiness,
   listChatConversations,
   listChatMembers,
   listChatMessages,
   markChatRead,
   publishChatRealtime,
+  requestChatDeletion,
   sendChatMessage,
   type AtlasChatConversation,
   type AtlasChatMember,
@@ -68,6 +70,7 @@ export function AtlasChatPage() {
   const [newClassification, setNewClassification] = useState<AtlasChatConversation['classification']>('organization');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [privacyStatus, setPrivacyStatus] = useState('');
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const currentConversation = useMemo(
@@ -228,6 +231,41 @@ export function AtlasChatPage() {
     }
   }
 
+  async function exportCurrentConversation() {
+    if (!conversationId) return;
+    setError('');
+    setPrivacyStatus('Preparing export…');
+    try {
+      const data = await exportChatConversation(conversationId);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `atlas-chat-${conversationId}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setPrivacyStatus('Export ready.');
+    } catch (cause) {
+      setPrivacyStatus('');
+      setError(cause instanceof Error ? cause.message : 'chat_export_failed');
+    }
+  }
+
+  async function requestCurrentConversationDeletion() {
+    if (!conversationId || currentConversation?.legal_hold) return;
+    setError('');
+    setPrivacyStatus('Submitting deletion request…');
+    try {
+      const request = await requestChatDeletion(conversationId);
+      setPrivacyStatus(`Deletion request ${request.status}.`);
+    } catch (cause) {
+      setPrivacyStatus('');
+      setError(cause instanceof Error ? cause.message : 'chat_deletion_request_failed');
+    }
+  }
+
   function toggleMember(id: string) {
     setSelectedMembers((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
@@ -365,9 +403,23 @@ export function AtlasChatPage() {
                   <span>{currentConversation.channel} · {currentConversation.classification}</span>
                   <h2>{currentConversation.title || 'Untitled conversation'}</h2>
                 </div>
-                <div className="atlas-chat-thread-flags">
-                  {currentConversation.legal_hold ? <span>Legal hold</span> : null}
-                  <span>{currentConversation.status}</span>
+                <div className="atlas-chat-thread-actions">
+                  <div className="atlas-chat-thread-flags">
+                    {currentConversation.legal_hold ? <span>Legal hold</span> : null}
+                    <span>{currentConversation.status}</span>
+                  </div>
+                  <div className="atlas-chat-privacy-actions">
+                    <button type="button" onClick={exportCurrentConversation}>Export JSON</button>
+                    <button
+                      type="button"
+                      onClick={requestCurrentConversationDeletion}
+                      disabled={currentConversation.legal_hold}
+                      title={currentConversation.legal_hold ? 'Deletion is blocked by legal hold.' : 'Request governed deletion review'}
+                    >
+                      Request deletion
+                    </button>
+                  </div>
+                  {privacyStatus ? <small aria-live="polite">{privacyStatus}</small> : null}
                 </div>
               </header>
 
