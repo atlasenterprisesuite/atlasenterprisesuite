@@ -52,7 +52,10 @@ type ObservabilityPayload = {
 type OpenApiPayload = {
   openapi?: string;
   info?: { title?: string; version?: string; description?: string };
-  paths?: Record<string, Record<string, { summary?: string }>>;
+  paths?: Record<string, Record<string, { summary?: string; security?: Array<Record<string, never[]>> }>>;
+  components?: {
+    securitySchemes?: Record<string, { type: string; scheme: string; bearerFormat?: string }>;
+  };
 };
 
 const OPENAPI_SPEC: OpenApiPayload = {
@@ -65,14 +68,19 @@ const OPENAPI_SPEC: OpenApiPayload = {
   },
   paths: {
     '/rest/v1/projects': {
-      get: { summary: 'List organization projects through existing RLS' },
-      post: { summary: 'Create an organization project through existing RLS' }
+      get: { summary: 'List organization projects through existing RLS', security: [{ atlasBearer: [] }] },
+      post: { summary: 'Create an organization project through existing RLS', security: [{ atlasBearer: [] }] }
     },
     '/rest/v1/atlas_module_registry': {
-      get: { summary: 'List canonical ATLAS services for the active organization' }
+      get: { summary: 'List canonical ATLAS services for the active organization', security: [{ atlasBearer: [] }] }
     },
     '/functions/v1/atlas-observability?api=summary': {
-      get: { summary: 'Read native ATLAS observability evidence' }
+      get: { summary: 'Read native ATLAS observability evidence', security: [{ atlasBearer: [] }] }
+    }
+  },
+  components: {
+    securitySchemes: {
+      atlasBearer: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
     }
   }
 };
