@@ -226,6 +226,50 @@ export async function diarizeAssistantAudio(input: {
   return parseCopilotResponse<AssistantDiarizationResponse>(response);
 }
 
+export type AssistantRepairJob = {
+  id: string;
+  request_text: string;
+  status: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export async function queueAssistantRepair(input: {
+  request: string;
+  pathname: string;
+  module: string;
+}): Promise<AssistantRepairJob> {
+  const request = input.request.trim();
+  if (!request) throw new Error('repair_request_required');
+  const { organization, headers } = await assistantHeaders();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-repair-bridge?api=enqueue', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      request,
+      context: {
+        requestedFrom: 'atlas-assistant-popup',
+        pathname: input.pathname,
+        module: input.module,
+        organization_id: organization.id
+      }
+    })
+  });
+  const data = await parseCopilotResponse<{ ok: boolean; job?: AssistantRepairJob }>(response);
+  if (!data.job?.id) throw new Error('repair_job_missing');
+  return data.job;
+}
+
+export async function listAssistantRepairJobs(): Promise<AssistantRepairJob[]> {
+  const { headers } = await assistantHeaders();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-repair-bridge?api=status', {
+    method: 'GET',
+    headers
+  });
+  const data = await parseCopilotResponse<{ ok: boolean; jobs?: AssistantRepairJob[] }>(response);
+  return Array.isArray(data.jobs) ? data.jobs : [];
+}
+
 export async function sendAssistantWorkspaceMessage(input: {
   message: string;
   conversationId?: string | null;

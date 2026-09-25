@@ -1,5 +1,5 @@
 {
-  "version": 23,
+  "version": 24,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -24,7 +24,6 @@
     "/inventory/procure-to-pay",
     "/analytics",
     "/connect",
-    "/connect/chat",
     "/connect/channel",
     "/connect/wireless",
     "/connect/wireless/mvno",
