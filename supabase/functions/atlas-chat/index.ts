@@ -383,6 +383,7 @@ Deno.serve(async (req: Request) => {
         version: VERSION,
         authenticated: true,
         organization_id: ctx.orgId,
+        user_id: ctx.userId,
         realtime: { transport: 'cloudflare-durable-object', fallback: 'polling' },
         attachments: { schema_ready: true, upload_enabled: false, reason: 'malware_scan_not_configured' }
       }, 200, origin);
