@@ -1,3 +1,5 @@
+// Describes canonical implementation/integration coverage only.
+// It is never a production-verification verdict. Production readiness is derived from current gate evidence.
 export type AtlasModuleReadiness = 'implemented' | 'partial' | 'external-gated';
 
 export type AtlasModuleDefinition = {

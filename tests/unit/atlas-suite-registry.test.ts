@@ -67,5 +67,8 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(hubs).toContain('External gate');
     expect(hubs).toContain('remain fail-closed');
     expect(suite).toContain('never present external or incomplete capabilities as live');
+    expect(suite).toContain("implemented: 'Integrated'");
+    expect(suite).toContain("Pending external gate");
+    expect(suite).toContain('only current machine-verifiable gate evidence can yield Production Verified');
   });
 });

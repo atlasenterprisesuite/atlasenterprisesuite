@@ -38,7 +38,7 @@ export const ATLAS_GESTATION_PHASES: readonly GestationPhase[] = [
     atlasLayer: 'Domain backends',
     status: 'in-progress',
     exitGate: 'Every canonical module has a real backend contract or an explicit external gate; no represented action is a placeholder.',
-    evidence: ['Implemented modules exist', 'Partial modules remain visible as partial', 'Provider-backed modules remain external-gated']
+    evidence: ['Integrated modules exist; production verification remains evidence-gated', 'Partial modules remain visible as partial', 'Provider-backed modules remain external-gated']
   },
   {
     id: 'circulation',

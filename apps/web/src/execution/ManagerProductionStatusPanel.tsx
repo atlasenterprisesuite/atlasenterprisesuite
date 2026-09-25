@@ -1,4 +1,5 @@
 import type { GuidedWorkflow } from './types';
+import { deriveProductionReadiness, type AtlasReadinessGateStatus } from '../modules/readiness';
 
 type RawRecord = Record<string, unknown>;
 
@@ -44,6 +45,22 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
     ? Math.max(0, Math.trunc(summary.green_streak_count))
     : 0;
   const greenStreakCapped = summary.green_streak_capped === true;
+  const exactRuntimeVerified = summary.production_commit_sha_verified === true;
+  const criticalRouteState: AtlasReadinessGateStatus = criticalRoutes.length === 0
+    ? 'pending'
+    : criticalRoutes.every((route) => nullableString(route.state) === 'verified')
+      ? 'passed'
+      : 'failed';
+  const productionReadiness = deriveProductionReadiness({
+    gates: [
+      { key: 'canary', required: true, status: canaryVerified ? 'passed' : 'pending' },
+      { key: 'exact-runtime', required: true, status: exactRuntimeVerified ? 'passed' : 'pending' },
+      { key: 'critical-routes', required: true, status: criticalRouteState },
+      { key: 'no-regression', required: true, status: regressionDetected ? 'failed' : 'passed' }
+    ],
+    requiredGateKeys: ['canary', 'exact-runtime', 'critical-routes', 'no-regression'],
+    requireExactSha: false
+  });
 
   return (
     <section className="execution-panel manager-production-panel" aria-labelledby="manager-production-title">
@@ -53,6 +70,14 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
           <h2 id="manager-production-title">Production verification</h2>
         </div>
         <div className="manager-production-badges">
+          <span
+            className="manager-production-badge"
+            data-state={productionReadiness.status === 'production-verified' ? 'verified' : productionReadiness.status === 'blocked' ? 'regression' : 'unverified'}
+            aria-label={`Production readiness: ${productionReadiness.label}`}
+            title={productionReadiness.reasons.join(' · ') || 'All mandatory production gates passed'}
+          >
+            {productionReadiness.label}
+          </span>
           <span
             className="manager-production-badge"
             data-state={canaryVerified ? 'verified' : 'unverified'}
