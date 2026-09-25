@@ -2,9 +2,12 @@ name: ATLAS Build + Production Readiness Gate
 
 on:
   workflow_dispatch:
-  # Every main SHA must receive its own complete repository readiness evidence.
-  # Do not path-filter this trigger: production readiness must never be inherited
-  # from an older commit, regardless of which subsystem changed.
+  # Pull requests to main must prove full repository readiness before merge.
+  # Every merged main SHA must then receive fresh readiness evidence again.
+  # Do not path-filter either trigger: readiness must never be inherited from
+  # an older commit, regardless of which subsystem changed.
+  pull_request:
+    branches: ["main"]
   push:
     branches: ["main"]
 
