@@ -192,7 +192,7 @@ export function AtlasAssistant() {
       void refreshProviderStatus().then((status) => refreshInternalControl(status?.role || assistantRole)).catch(() => void refreshAuthorization());
     }, 30_000);
     return () => window.clearInterval(timer);
-  }, [authorized, refreshAuthorization, refreshProviderStatus, textCapability]);
+  }, [assistantRole, authorized, refreshAuthorization, refreshInternalControl, refreshProviderStatus, textCapability]);
 
   useEffect(() => {
     if (!authorized || textCapability !== 'ready' || readGreetingSeen()) return;
@@ -328,7 +328,9 @@ export function AtlasAssistant() {
     setOpen(true);
     setError('');
     setState(voice.microphoneActive ? 'listening' : 'idle');
-    void refreshProviderStatus().catch(() => void refreshAuthorization());
+    void refreshProviderStatus()
+      .then((status) => refreshInternalControl(status?.role || assistantRole))
+      .catch(() => void refreshAuthorization());
 
     if (!greetingSpoken.current && voice.speechEnabled && voice.speechCapability === 'ready' && messages.some((message) => message.role === 'assistant' && message.text === GREETING)) {
       greetingSpoken.current = true;
