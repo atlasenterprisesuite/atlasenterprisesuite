@@ -254,3 +254,65 @@
     font-size: 11px;
   }
 }
+
+
+/* Governed indoor navigation */
+.gps4d-indoor-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(126, 154, 255, 0.28);
+  border-radius: 16px;
+  background: rgba(8, 13, 28, 0.72);
+}
+
+.gps4d-indoor-panel > div:first-child,
+.gps4d-indoor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gps4d-indoor-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.gps4d-indoor-heading span,
+.gps4d-indoor-route span {
+  color: var(--muted, #9aa9c8);
+  font-size: 12px;
+}
+
+.gps4d-indoor-blocked {
+  opacity: 0.86;
+}
+
+.gps4d-indoor-floor {
+  display: grid;
+  gap: 6px;
+}
+
+.gps4d-indoor-floor select {
+  width: 100%;
+}
+
+.gps4d-indoor-destinations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gps4d-indoor-route ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 720px) {
+  .gps4d-indoor-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
