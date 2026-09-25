@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ATLAS_MODULES } from '../registry';
 import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManager } from './AtlasCloudNextLevel';
+import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
 
 type CloudService = {
@@ -239,6 +240,10 @@ function ConsoleHome() {
           <span>Topology</span><strong>Service Graph</strong>
           <p>Visualize services by canonical backend authority and verified registry state.</p>
         </Link>
+        <Link to="/cloud/production-verification">
+          <span>Integrity</span><strong>Production Verification</strong>
+          <p>Verify security, build, deployment, runtime and exact-SHA evidence with fail-closed truth.</p>
+        </Link>
         <Link to="/cloud/releases">
           <span>Delivery</span><strong>Deployment & Release Center</strong>
           <p>Separate source, deployment and production verification using Release Control truth.</p>
@@ -310,6 +315,7 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
   if (pathname === '/cloud/service-graph') return <AtlasCloudServiceGraph />;
   if (pathname === '/cloud/releases') return <AtlasCloudReleaseCenter />;
+  if (pathname === '/cloud/production-verification') return <AtlasCloudProductionVerification />;
   if (pathname === '/cloud/iam') return <AtlasCloudIamPolicy />;
   if (pathname === '/cloud/config') return <AtlasCloudSecretsConfig />;
   if (pathname === '/cloud/finops') return <AtlasCloudFinOps />;
