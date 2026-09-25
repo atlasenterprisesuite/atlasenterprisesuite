@@ -21,11 +21,12 @@ describe('ATLAS Wireless MVNO pilot core', () => {
     const page = read(pagePath);
     const docs = read(docsPath);
 
-    expect(page).toContain('Pilot state: pending_provider');
+    expect(page).toContain("FALLBACK_STATE = 'pending_provider'");
     expect(page).toContain('No mock, fixture or static UI state can satisfy activation');
     expect(page).not.toContain('Pilot state: active');
-    expect(docs).toContain('No mock, static fixture, or UI action may move a subscriber into `active`');
+    expect(docs).toContain('No mock, static fixture, browser state, configured secret or UI action may move a subscriber into `active`');
     expect(docs).toMatch(/credentials must never be committed to source control/i);
+    expect(docs).toContain('configuration alone produces `configured_unverified`, never `ready`');
   });
 
   it('defines a provider-neutral subscriber lifecycle contract without provider secrets', () => {
