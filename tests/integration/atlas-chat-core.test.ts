@@ -23,8 +23,10 @@ describe('ATLAS Chat Core', () => {
     expect(sql).toContain('create table if not exists public.atlas_chat_message_receipts');
     expect(sql).toContain('create table if not exists public.atlas_chat_message_reactions');
     expect(sql).toContain('create table if not exists public.atlas_chat_attachments');
+    expect(sql).toContain('create table if not exists public.atlas_chat_deletion_requests');
     expect(sql).toContain('unique (conversation_id, client_message_id)');
     expect(sql).toContain('unique (conversation_id, sequence)');
+    expect(sql).toContain('trace_id uuid not null default gen_random_uuid()');
     expect(sql).toContain('set last_sequence = last_sequence + 1');
     expect(sql).toContain("scan_status = 'clean'");
     expect(sql).toContain('legal_hold boolean not null default false');
@@ -54,11 +56,17 @@ describe('ATLAS Chat Core', () => {
     expect(edge).toContain("'organization_members'");
     expect(edge).toContain("api === 'conversations'");
     expect(edge).toContain("api === 'messages'");
+    expect(edge).toContain("api === 'export'");
+    expect(edge).toContain("api === 'deletion-request'");
+    expect(edge).toContain("api === 'deletion-review'");
     expect(edge).toContain("api === 'message'");
     expect(edge).toContain("api === 'authorize-realtime'");
     expect(edge).toContain("api === 'publish-authorize'");
     expect(edge).toContain("'communications.chat.message.created'");
     expect(edge).toContain("'communications.chat.conversation.read'");
+    expect(edge).toContain("'communications.chat.conversation.exported'");
+    expect(edge).toContain("'communications.chat.deletion.requested'");
+    expect(edge).toContain("'communications.chat.deletion.approved'");
     expect(edge).toContain("throw fail('chat_rate_limited', 429)");
     expect(edge).not.toContain("new_data: { text:");
     expect(edge).toContain("upload_enabled: false");
@@ -93,6 +101,8 @@ describe('ATLAS Chat Core', () => {
     expect(page).toContain('ATLAS Chat');
     expect(page).toContain('Polling fallback');
     expect(page).toContain('security gate pending');
+    expect(page).toContain('Export JSON');
+    expect(page).toContain('Request deletion');
     expect(page).toContain('Messages are persisted before realtime notification is emitted');
   });
 
