@@ -16,11 +16,9 @@ create table if not exists public.atlas_master_evidence_registry (
     'module_audit',
     'product_blueprint',
     'runbook',
-    'historical_baseline',
-    'personal_document',
-    'symbolic_content'
+    'historical_baseline'
   )),
-  evidence_level text not null check (evidence_level in ('P0','P1','P2','PERSONAL','SYMBOLIC')),
+  evidence_level text not null check (evidence_level in ('P0','P1','P2')),
   status text not null check (status in (
     'VIGENTE',
     'IMPLEMENTADA',
@@ -29,7 +27,7 @@ create table if not exists public.atlas_master_evidence_registry (
     'REQUIERE_REVERIFICACION'
   )),
   environment text not null default 'reference' check (environment in (
-    'development','staging','production','reference','personal'
+    'development','staging','production','reference'
   )),
   expected_sha text check (expected_sha is null or expected_sha ~ '^[0-9a-f]{40}$'),
   deployed_sha text check (deployed_sha is null or deployed_sha ~ '^[0-9a-f]{40}$'),
