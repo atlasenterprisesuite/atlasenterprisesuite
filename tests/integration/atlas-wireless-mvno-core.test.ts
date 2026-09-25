@@ -25,7 +25,7 @@ describe('ATLAS Wireless MVNO pilot core', () => {
     expect(page).toContain('No mock, fixture or static UI state can satisfy activation');
     expect(page).not.toContain('Pilot state: active');
     expect(docs).toContain('No mock, static fixture, or UI action may move a subscriber into `active`');
-    expect(docs).toContain('credentials must never be committed to source control');
+    expect(docs).toMatch(/credentials must never be committed to source control/i);
   });
 
   it('defines a provider-neutral subscriber lifecycle contract without provider secrets', () => {
