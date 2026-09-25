@@ -9,10 +9,10 @@ const signInterpret = readFileSync('supabase/functions/atlas-sign-interpret/inde
 
 describe('CodeQL security regression contracts', () => {
   it('handles whitespace before script and style end-tag closers', () => {
-    expect(taxMonitor).toContain('<\\/script\\s*>');
-    expect(taxMonitor).toContain('<\\/style\\s*>');
-    expect(hubspotWatch).toContain('<\\/script\\s*>');
-    expect(hubspotWatch).toContain('<\\/style\\s*>');
+    expect(taxMonitor).toContain('<\\/script\\b[^>]*>');
+    expect(taxMonitor).toContain('<\\/style\\b[^>]*>');
+    expect(hubspotWatch).toContain('<\\/script\\b[^>]*>');
+    expect(hubspotWatch).toContain('<\\/style\\b[^>]*>');
   });
 
   it('decodes only one known HTML entity layer per pass', () => {

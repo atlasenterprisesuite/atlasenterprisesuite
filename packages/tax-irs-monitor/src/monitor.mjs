@@ -30,8 +30,8 @@ export function normalizeOfficialUrl(value) {
 
 export function normalizeContent(content) {
   return content
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
     .replace(/<!--([\s\S]*?)-->/g, " ")
     .replace(/<br\s*\/?>|<\/(?:p|li|h[1-6]|tr|div|section|article)>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
