@@ -13,10 +13,10 @@ const COMPONENT_FIELDS='id,release_id,component_type,component_key,artifact_ref,
 const DEPLOYMENT_FIELDS='id,release_id,environment,deployment_kind,status,provider_execution_state,health_state,attempt,approval_id,started_at,completed_at,verified_at,trace_id,error_code,created_at,updated_at';
 const GATE_FIELDS='id,deployment_id,gate_key,gate_type,required,status,verification_run_id,approval_id,evidence_ref,evaluated_at,expires_at,error_code,created_at,updated_at';
 const EVIDENCE_FIELDS='id,org_id,release_id,deployment_id,module,claim,source_type,evidence_level,status,environment,expected_sha,deployed_sha,verified_at,source_ref,supersedes_id,production_impact,metadata,created_by,created_at';
-const EVIDENCE_SOURCE_TYPES=new Set(['machine_verification','production_standard','operational_snapshot','module_audit','product_blueprint','runbook','historical_baseline','personal_document','symbolic_content']);
-const EVIDENCE_LEVELS=new Set(['P0','P1','P2','PERSONAL','SYMBOLIC']);
+const EVIDENCE_SOURCE_TYPES=new Set(['machine_verification','production_standard','operational_snapshot','module_audit','product_blueprint','runbook','historical_baseline']);
+const EVIDENCE_LEVELS=new Set(['P0','P1','P2']);
 const EVIDENCE_STATUSES=new Set(['VIGENTE','IMPLEMENTADA','PENDIENTE','SUPERADA','REQUIERE_REVERIFICACION']);
-const EVIDENCE_ENVIRONMENTS=new Set(['development','staging','production','reference','personal']);
+const EVIDENCE_ENVIRONMENTS=new Set(['development','staging','production','reference']);
 const EVIDENCE_IMPACTS=new Set(['blocking','gating','informational','none']);
 const SHA40=/^[0-9a-f]{40}$/;
 
