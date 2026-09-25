@@ -262,6 +262,7 @@ async function sendMessage(ctx: ChatContext, input: Record<string, unknown>) {
     if (message.includes('chat_access_denied')) throw fail('chat_access_denied', 403);
     if (message.includes('chat_conversation_not_active')) throw fail('chat_conversation_not_active', 409);
     if (message.includes('chat_message_length_invalid')) throw fail('chat_message_length_invalid', 422);
+    if (message.includes('chat_rate_limited')) throw fail('chat_rate_limited', 429);
     throw fail('chat_message_write_failed', 500);
   }
   const saved = Array.isArray(data) ? data[0] : data;
@@ -279,14 +280,21 @@ async function markRead(ctx: ChatContext, input: Record<string, unknown>) {
   const conversationId = text(input.conversation_id, 80);
   const sequence = Math.max(0, Number(input.sequence || 0));
   const current = await participant(ctx, conversationId);
-  const nextSequence = Math.max(Number(current.last_read_sequence || 0), Number.isFinite(sequence) ? sequence : 0);
-  const { error } = await adminClient()
-    .from('atlas_chat_participants')
-    .update({ last_read_sequence: nextSequence })
-    .eq('org_id', ctx.orgId)
-    .eq('conversation_id', conversationId)
-    .eq('user_id', ctx.userId);
-  if (error) throw fail('chat_receipt_write_failed', 500);
+  const previousSequence = Number(current.last_read_sequence || 0);
+  const nextSequence = Math.max(previousSequence, Number.isFinite(sequence) ? sequence : 0);
+  if (nextSequence > previousSequence) {
+    const { error } = await adminClient()
+      .from('atlas_chat_participants')
+      .update({ last_read_sequence: nextSequence })
+      .eq('org_id', ctx.orgId)
+      .eq('conversation_id', conversationId)
+      .eq('user_id', ctx.userId);
+    if (error) throw fail('chat_receipt_write_failed', 500);
+    await audit(ctx, 'communications.chat.conversation.read', conversationId, {
+      previous_sequence: previousSequence,
+      last_read_sequence: nextSequence
+    });
+  }
   return { conversation_id: conversationId, last_read_sequence: nextSequence };
 }
 
