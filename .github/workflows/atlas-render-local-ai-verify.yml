@@ -1,12 +1,19 @@
 name: ATLAS Render Free AI Verify
 
 on:
+  workflow_call:
+    outputs:
+      verified:
+        description: Whether ATLAS Local passed the protected zero-cost runtime attestation.
+        value: ${{ jobs.verify.outputs.verified }}
+      attested_sha:
+        description: Git SHA attested by the ATLAS Local runtime check.
+        value: ${{ jobs.verify.outputs.attested_sha }}
   workflow_dispatch:
-  # Exact-SHA production invariant: every main revision must re-attest
-  # the protected zero-cost ATLAS Local runtime. Never inherit a green
-  # local-runtime state from an older repository SHA.
-  push:
-    branches: ["main"]
+
+# Exact-SHA production invariant: this workflow is called by the universal
+# production verifier, so every deployment verification re-attests ATLAS Local.
+# Manual dispatch remains available for isolated diagnostics.
 
 permissions:
   contents: read
@@ -16,10 +23,14 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    outputs:
+      verified: ${{ steps.verify_runtime.outputs.verified }}
+      attested_sha: ${{ steps.verify_runtime.outputs.attested_sha }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Verify real zero-cost inference
+        id: verify_runtime
         env:
           BOOTSTRAP_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-local-ai-bootstrap
         shell: bash
@@ -45,4 +56,6 @@ jobs:
 
           rm -f "$RUNNER_TEMP/atlas-render-local-ai-verify.json"
           test "$VERIFIED" = "true" || { echo "::error::ATLAS Render local inference did not verify"; exit 1; }
-          echo "ATLAS Local produced a real protected inference and verified the authenticated zero-cost diarization runtime with automatic model API cost USD 0." >> "$GITHUB_STEP_SUMMARY"
+          echo "verified=true" >> "$GITHUB_OUTPUT"
+          echo "attested_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "ATLAS Local produced a real protected inference and verified the authenticated zero-cost diarization runtime with automatic model API cost USD 0 for $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
