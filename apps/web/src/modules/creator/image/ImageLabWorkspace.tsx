@@ -153,7 +153,16 @@ export function ImageLabWorkspace({ engines }: Props) {
     setSubmissionState('running');
     setNotice('');
     try {
-      await submitImageEdit(sourceFile, request);
+      const result = await submitImageEdit(sourceFile, request);
+      const asset = result?.asset;
+      const persisted = Boolean(
+        asset &&
+        typeof asset === 'object' &&
+        typeof (asset as { id?: unknown }).id === 'string' &&
+        ((asset as { id: string }).id).trim() &&
+        (typeof (asset as { storagePath?: unknown }).storagePath === 'string' || typeof (asset as { storage_path?: unknown }).storage_path === 'string')
+      );
+      if (!persisted) throw new Error('image_asset_not_persisted');
       setSubmissionState('success');
       setNotice('Image edit submitted and persisted successfully.');
     } catch (error) {
