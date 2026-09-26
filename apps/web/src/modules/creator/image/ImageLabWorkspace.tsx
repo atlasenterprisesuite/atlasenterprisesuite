@@ -7,7 +7,7 @@ import {
   type ImageEditRequest,
   type ImageEditVisibility
 } from '../../../../../../packages/creator/image_edit';
-import { submitImageEdit } from '../../../lib/creatorApi';
+import { exportCreatorPrompt, submitImageEdit } from '../../../lib/creatorApi';
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -31,6 +31,8 @@ export function ImageLabWorkspace({ engines }: Props) {
   const [points, setPoints] = useState<ImageEditPoint[]>([]);
   const [notice, setNotice] = useState('');
   const [submissionState, setSubmissionState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [promptExport, setPromptExport] = useState<{ prompt: string; adaptationNotes: string[] } | null>(null);
+  const [promptExportState, setPromptExportState] = useState<'idle' | 'running' | 'error'>('idle');
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -42,6 +44,7 @@ export function ImageLabWorkspace({ engines }: Props) {
     engine.executionClass !== 'prompt-export-only'
   ) ?? null, [engines]);
 
+  const promptExportReady = engines.some(engine => engine.engineId === 'prompt-export' && engine.ready && engine.mediaKinds.includes('image'));
   const hasInstruction = globalInstruction.trim().length > 0 || points.some(point => point.instruction.trim().length > 0);
   const canGenerate = Boolean(sourceFile && hasInstruction && executableEngine && submissionState !== 'running');
 
@@ -97,6 +100,34 @@ export function ImageLabWorkspace({ engines }: Props) {
 
   function removePoint(id: string) {
     setPoints(current => current.filter(point => point.id !== id));
+  }
+
+  async function exportPromptPackage() {
+    if (!hasInstruction || !promptExportReady) return;
+    setPromptExportState('running');
+    setNotice('');
+    const pointInstructions = points
+      .filter(point => point.instruction.trim())
+      .map((point, index) => `Point ${index + 1} at (${point.x.toFixed(3)}, ${point.y.toFixed(3)}): ${point.instruction.trim()}`);
+    const brief = [
+      globalInstruction.trim(),
+      preserveIdentity ? 'Preserve faces and identity unless explicitly targeted.' : '',
+      ...pointInstructions
+    ].filter(Boolean).join('\n');
+    try {
+      const exported = await exportCreatorPrompt({
+        mediaKind: 'image',
+        brief,
+        aspectRatio,
+        language: 'English',
+        negativeConstraints: preserveIdentity ? ['Do not alter untargeted faces or identity.'] : []
+      });
+      setPromptExport({ prompt: exported.prompt, adaptationNotes: exported.adaptationNotes });
+      setPromptExportState('idle');
+    } catch (error) {
+      setPromptExportState('error');
+      setNotice(error instanceof Error ? error.message : 'prompt_export_failed');
+    }
   }
 
   async function generate() {
@@ -161,9 +192,15 @@ export function ImageLabWorkspace({ engines }: Props) {
           <span>{executableEngine ? 'Verified readiness · generation available' : 'Generation remains fail-closed until readiness is verified.'}</span>
         </div>
 
-        <button className="creator-primary" type="button" onClick={generate} disabled={!canGenerate}>
-          {submissionState === 'running' ? 'Generating…' : 'Generate design'}
-        </button>
+        <div className="creator-actions">
+          <button className="creator-primary" type="button" onClick={generate} disabled={!canGenerate}>
+            {submissionState === 'running' ? 'Generating…' : 'Generate design'}
+          </button>
+          <button type="button" onClick={exportPromptPackage} disabled={!hasInstruction || !promptExportReady || promptExportState === 'running'}>
+            {promptExportState === 'running' ? 'Exporting…' : 'Export prompt package'}
+          </button>
+        </div>
+        {promptExport && <div className="creator-export-preview"><h3>Prompt export</h3><pre>{promptExport.prompt}</pre>{promptExport.adaptationNotes.map(note => <p key={note}>{note}</p>)}</div>}
         {notice && <p className="creator-notice" role="status">{notice}</p>}
       </section>
 
