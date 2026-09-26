@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CreativeEngineReadiness } from '../../../../../../packages/creator/creative_engine';
 import {
   normalizeImageEditPoint,
@@ -16,9 +16,9 @@ type Props = {
   engines: CreativeEngineReadiness[];
 };
 
-function newPointId(index: number) {
+function newPointId(sequence: number) {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  return `image-point-${index + 1}`;
+  return `image-point-${sequence}`;
 }
 
 export function ImageLabWorkspace({ engines }: Props) {
@@ -33,10 +33,17 @@ export function ImageLabWorkspace({ engines }: Props) {
   const [submissionState, setSubmissionState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [promptExport, setPromptExport] = useState<{ prompt: string; adaptationNotes: string[] } | null>(null);
   const [promptExportState, setPromptExportState] = useState<'idle' | 'running' | 'error'>('idle');
+  const pointSequence = useRef(0);
+  const previewImageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+
+  useEffect(() => {
+    setPromptExport(null);
+    if (promptExportState === 'error') setPromptExportState('idle');
+  }, [sourceFile, globalInstruction, preserveIdentity, aspectRatio, visibility, points]);
 
   const executableEngine = useMemo(() => engines.find(engine =>
     engine.ready &&
@@ -78,25 +85,47 @@ export function ImageLabWorkspace({ engines }: Props) {
     setPreviewUrl(nextUrl);
   }
 
+  function appendPoint(x: number, y: number) {
+    pointSequence.current += 1;
+    setPoints(current => [...current, {
+      id: newPointId(pointSequence.current),
+      x,
+      y,
+      instruction: ''
+    }]);
+  }
+
   function addPoint(event: React.MouseEvent<HTMLDivElement>) {
     if (!sourceFile) return;
-    const rect = event.currentTarget.getBoundingClientRect();
+    const image = previewImageRef.current;
+    if (!image) return;
+    const rect = image.getBoundingClientRect();
+    if (
+      event.clientX < rect.left || event.clientX > rect.right ||
+      event.clientY < rect.top || event.clientY > rect.bottom
+    ) return;
     const normalized = normalizeImageEditPoint(
       event.clientX - rect.left,
       event.clientY - rect.top,
       rect.width,
       rect.height
     );
-    setPoints(current => [...current, {
-      id: newPointId(current.length),
-      x: normalized.x,
-      y: normalized.y,
-      instruction: ''
-    }]);
+    appendPoint(normalized.x, normalized.y);
+  }
+
+  function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!sourceFile || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    appendPoint(0.5, 0.5);
   }
 
   function updatePoint(id: string, instruction: string) {
     setPoints(current => current.map(point => point.id === id ? { ...point, instruction } : point));
+  }
+
+  function updatePointCoordinate(id: string, axis: 'x' | 'y', percentage: number) {
+    const normalized = Math.min(1, Math.max(0, percentage / 100));
+    setPoints(current => current.map(point => point.id === id ? { ...point, [axis]: normalized } : point));
   }
 
   function removePoint(id: string) {
@@ -215,8 +244,16 @@ export function ImageLabWorkspace({ engines }: Props) {
       </section>
 
       <section className="image-lab-stage-panel">
-        {sourceFile && safePreviewUrl ? <div className="image-lab-canvas" data-testid="image-edit-canvas" onClick={addPoint}>
-          <img src={safePreviewUrl} alt="Source preview" />
+        {sourceFile && safePreviewUrl ? <div
+          className="image-lab-canvas"
+          data-testid="image-edit-canvas"
+          role="button"
+          tabIndex={0}
+          aria-label="Image edit canvas. Press Enter to add a point at center."
+          onClick={addPoint}
+          onKeyDown={handleCanvasKeyDown}
+        >
+          <img ref={previewImageRef} src={safePreviewUrl} alt="Source preview" />
           {points.map((point, index) => <button
             key={point.id}
             type="button"
@@ -242,6 +279,10 @@ export function ImageLabWorkspace({ engines }: Props) {
             <span>{Math.round(point.x * 100)}% × {Math.round(point.y * 100)}%</span>
           </div>
           <label><span>Instruction</span><input aria-label={`Edit point ${index + 1} instruction`} value={point.instruction} onChange={event=>updatePoint(point.id, event.target.value)} placeholder="What should change here?" /></label>
+          <div className="image-lab-point-position">
+            <label><span>Horizontal %</span><input aria-label={`Edit point ${index + 1} horizontal position`} type="number" min="0" max="100" step="1" value={Math.round(point.x * 100)} onChange={event=>updatePointCoordinate(point.id, 'x', Number(event.target.value))} /></label>
+            <label><span>Vertical %</span><input aria-label={`Edit point ${index + 1} vertical position`} type="number" min="0" max="100" step="1" value={Math.round(point.y * 100)} onChange={event=>updatePointCoordinate(point.id, 'y', Number(event.target.value))} /></label>
+          </div>
           <button type="button" className="image-lab-remove" aria-label={`Remove edit point ${index + 1}`} onClick={()=>removePoint(point.id)}>Remove point</button>
         </article>)}
       </aside>
