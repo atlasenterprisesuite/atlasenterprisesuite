@@ -19,3 +19,37 @@
 .creator-export-preview h3,.creator-preview h3{margin:16px 0 8px}
 @media(max-width:1050px){.creator-unified-workbench{grid-template-columns:1fr 1fr}.creator-outline{grid-column:1/-1}.creator-composer{grid-column:1}.creator-preview{grid-column:2}}
 @media(max-width:760px){.creator-unified-workbench{grid-template-columns:1fr}.creator-outline,.creator-composer,.creator-preview{grid-column:1}.creator-accessibility{grid-template-columns:1fr}.creator-actions{display:grid}.creator-actions button{width:100%}}
+
+
+/* ATLAS Image Lab */
+.image-lab-page{max-width:1440px}
+.image-lab-hero{background:radial-gradient(circle at 80% 20%,rgba(52,185,255,.3),transparent 24%),radial-gradient(circle at 75% 75%,rgba(233,176,72,.18),transparent 28%),linear-gradient(145deg,#061522,#091a2a 60%,#111b29)}
+.image-lab-layout{display:grid;grid-template-columns:minmax(260px,.72fr) minmax(0,1.55fr) minmax(260px,.72fr);gap:16px;align-items:start}
+.image-lab-panel,.image-lab-stage-panel{border:1px solid rgba(111,184,240,.15);border-radius:20px;background:rgba(8,22,34,.84);padding:20px}
+.image-lab-controls{display:grid;gap:16px}
+.image-lab-controls label,.image-lab-points label{display:grid;gap:8px}
+.image-lab-controls label>span,.image-lab-points label>span,.image-lab-upload>span{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#7892a6}
+.image-lab-controls textarea,.image-lab-controls select,.image-lab-points input{width:100%;border:1px solid rgba(112,184,239,.2);border-radius:12px;background:#07131e;color:#e5f1f9;padding:12px;font:inherit;outline:none}
+.image-lab-controls textarea:focus,.image-lab-controls select:focus,.image-lab-points input:focus{border-color:#61caff;box-shadow:0 0 0 3px rgba(72,180,255,.09)}
+.image-lab-upload{display:grid;gap:8px;padding:16px;border:1px dashed rgba(105,206,250,.28);border-radius:14px;background:rgba(7,19,30,.55)}
+.image-lab-upload input{font:inherit;color:#bcd0dd}
+.image-lab-upload small{color:#6f899c}
+.image-lab-check{display:flex!important;align-items:center;gap:10px!important;padding:12px;border-radius:12px;background:rgba(105,206,250,.06)}
+.image-lab-check input{width:auto}
+.image-lab-check span{font-size:13px!important;text-transform:none!important;letter-spacing:0!important;color:#c9d9e4!important}
+.image-engine-state{display:grid;gap:4px;padding:13px 14px;border-radius:12px;border:1px solid rgba(111,184,240,.14);background:#07131e}
+.image-engine-state strong{color:#e5f1f9}.image-engine-state span{font-size:12px;color:#7892a6;line-height:1.45}
+.image-lab-stage-panel{min-height:520px;display:grid;align-content:start;gap:12px;padding:14px}
+.image-lab-canvas{position:relative;overflow:hidden;border-radius:16px;min-height:320px;background:#03080d;cursor:crosshair}
+.image-lab-canvas img{display:block;width:100%;height:auto;max-height:720px;object-fit:contain;margin:auto;user-select:none;pointer-events:none}
+.image-lab-marker{position:absolute;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;border:2px solid #f6fbff;background:#0b8fd3;color:#fff;font-weight:900;box-shadow:0 0 0 6px rgba(72,180,255,.18),0 8px 22px rgba(0,0,0,.45);cursor:pointer}
+.image-lab-empty{min-height:420px;border:1px dashed rgba(111,184,240,.18);border-radius:16px;display:grid;place-content:center;text-align:center;gap:7px;color:#7892a6}
+.image-lab-empty strong{color:#dceaf3;font-size:20px}
+.image-lab-file-meta{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#7892a6;padding:4px 4px 0}
+.image-lab-file-meta strong{color:#bcd0dd;overflow-wrap:anywhere}
+.image-lab-points{display:grid;gap:12px}.image-lab-points h2{margin:0}.image-lab-points>p{color:#7d96aa;line-height:1.55}
+.image-lab-points article{display:grid;gap:10px;padding:13px;border:1px solid rgba(111,184,240,.12);border-radius:14px;background:#07131e}
+.image-lab-point-heading{display:flex;justify-content:space-between;gap:8px}.image-lab-point-heading span{font-size:12px;color:#69cefa}
+.image-lab-remove{justify-self:start;border:1px solid rgba(255,145,119,.2);border-radius:999px;background:rgba(255,96,70,.07);color:#f0a28e;padding:7px 10px;cursor:pointer}
+@media(max-width:1120px){.image-lab-layout{grid-template-columns:1fr 1.4fr}.image-lab-points{grid-column:1/-1}}
+@media(max-width:760px){.image-lab-layout{grid-template-columns:1fr}.image-lab-points{grid-column:1}.image-lab-stage-panel{min-height:0}.image-lab-empty{min-height:300px}.image-lab-file-meta{flex-direction:column}.image-lab-canvas{min-height:240px}}
