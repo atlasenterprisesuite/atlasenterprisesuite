@@ -83,6 +83,7 @@ export function AtlasWirelessNetworkPage() {
       </div>
 
       <div className="row-actions">
+        <Link className="text-link" to="/connect/wireless/commissioning">Open physical commissioning</Link>
         <Link className="text-link" to="/connect/wireless/mvno">Open MVNO control</Link>
         <Link className="text-link" to="/connect/wireless">Back to ATLAS Wireless</Link>
       </div>

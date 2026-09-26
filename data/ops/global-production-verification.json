@@ -1,5 +1,5 @@
 {
-  "version": 24,
+  "version": 25,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -28,6 +28,7 @@
     "/connect/channel",
     "/connect/wireless",
     "/connect/wireless/network",
+    "/connect/wireless/commissioning",
     "/connect/wireless/mvno",
     "/connect/google-fi",
     "/payroll",

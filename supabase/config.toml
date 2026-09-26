@@ -24,3 +24,6 @@ verify_jwt = true
 
 [functions.atlas-wireless-network]
 verify_jwt = true
+
+[functions.atlas-wireless-commissioning]
+verify_jwt = true
