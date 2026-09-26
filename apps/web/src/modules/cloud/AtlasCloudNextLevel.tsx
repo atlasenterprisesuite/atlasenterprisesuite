@@ -104,6 +104,7 @@ export function CloudSubnav() {
       <Link to="/cloud/api-explorer">API Explorer</Link>
       <Link to="/cloud/observability">Observability</Link>
       <Link to="/cloud/resources">Resource Manager</Link>
+      <Link to="/cloud/domains">Domains & DNS</Link>
       <Link to="/cloud/service-graph">Service Graph</Link>
       <Link to="/cloud/releases">Releases</Link>
       <Link to="/cloud/production-verification">Production Verify</Link>
