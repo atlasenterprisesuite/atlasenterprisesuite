@@ -1,3 +1,4 @@
+import { verifyDnsTxt } from '../../../packages/execution/src/dns-verification.ts';
 const U='https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 const SELF='/functions/v1/atlas-observability';
@@ -82,6 +83,52 @@ async function incidentDetail(ctx:any,id:string){
 }
 
 
+function validHostname(value:string){
+  const hostname=String(value||'').trim().toLowerCase();
+  if(!hostname||hostname.length>253)throw fail('invalid_hostname',400);
+  if(!/^(?=.{1,253}$)(?:_?[a-z0-9](?:[a-z0-9_-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(hostname))throw fail('invalid_hostname',400);
+  return hostname;
+}
+
+async function cloudDomainVerify(ctx:any,url:URL){
+  await requirePermission(ctx,'projects.read');
+  const hostname=validHostname(url.searchParams.get('hostname')||'');
+  const expected=String(url.searchParams.get('expected')||'').trim();
+  if(!expected||expected.length>2048)throw fail('invalid_expected_value',400);
+
+  let response:Response;
+  try{
+    response=await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=TXT`,{
+      headers:{accept:'application/dns-json'},
+      cache:'no-store'
+    });
+  }catch{
+    throw fail('dns_resolver_unavailable',502);
+  }
+  if(!response.ok)throw fail('dns_resolver_unavailable',502);
+
+  const payload=await response.json().catch(()=>null);
+  if(!payload)throw fail('dns_resolver_unavailable',502);
+  const rawAnswers=Array.isArray(payload?.Answer)
+    ? payload.Answer
+        .filter((answer:any)=>Number(answer?.type)===16&&typeof answer?.data==='string')
+        .map((answer:any)=>String(answer.data))
+    : [];
+  const verification=verifyDnsTxt(expected,rawAnswers);
+
+  return {
+    ok:true,
+    organization_id:ctx.orgId,
+    hostname,
+    record_type:'TXT',
+    verified:verification.verified,
+    answers:verification.answers,
+    authority:'public DNS via Cloudflare DNS-over-HTTPS',
+    mutation_capability:'blocked_without_authorized_adapter',
+    checkedAt:new Date().toISOString()
+  };
+}
+
 function cloudOpenApi(){
   return {
     openapi:'3.1.0',
@@ -91,6 +138,7 @@ function cloudOpenApi(){
       '/?api=cloud-resources':{get:{summary:'List organization projects and registered ATLAS services',security:[{atlasBearer:[]}],responses:{'200':{description:'Resource inventory'}}}},
       '/?api=cloud-project&id={projectId}':{get:{summary:'Read one project with tasks and milestones',security:[{atlasBearer:[]}],responses:{'200':{description:'Project detail'}}}},
       '/?api=cloud-observability':{get:{summary:'Read the native ATLAS observability summary',security:[{atlasBearer:[]}],responses:{'200':{description:'Sanitized observability summary'}}}},
+      '/?api=cloud-domain-verify&hostname={hostname}&expected={txtValue}':{get:{summary:'Verify public TXT DNS evidence without provider mutation',security:[{atlasBearer:[]}],responses:{'200':{description:'DNS verification evidence'},'502':{description:'Public resolver unavailable'}}}},
       '/?api=cloud-project-create':{post:{summary:'Create an organization project through projects.write plus RLS',security:[{atlasBearer:[]}],responses:{'201':{description:'Project created'},'403':{description:'Project write permission required'}}}}
     },
     components:{securitySchemes:{atlasBearer:{type:'http',scheme:'bearer',bearerFormat:'JWT'}}}
@@ -160,6 +208,7 @@ Deno.serve(async(req:Request)=>{
     if(req.method==='GET'&&api==='cloud-resources')return json(req,await cloudResources(ctx));
     if(req.method==='GET'&&api==='cloud-project')return json(req,await cloudProject(ctx,String(url.searchParams.get('id')||'')));
     if(req.method==='GET'&&api==='cloud-observability')return json(req,{ok:true,observability:await summary(ctx)});
+    if(req.method==='GET'&&api==='cloud-domain-verify')return json(req,await cloudDomainVerify(ctx,url));
     if(req.method==='POST'&&api==='cloud-project-create')return json(req,await cloudProjectCreate(ctx,req),201);
     if(req.method!=='GET')return json(req,{ok:false,error:'method_not_allowed'},405);
     if(api==='summary')return json(req,await summary(ctx));
