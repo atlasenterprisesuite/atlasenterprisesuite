@@ -364,22 +364,21 @@ async function handleImageEdit(req: Request) {
   const requestRaw = String(form.get('request') || '').trim();
   if (!requestRaw) throw creatorError('image_edit_request_required', 422);
 
-  let imageEditRequest: ImageEditRequest;
+  let imageEditRequestRaw: unknown;
   try {
-    imageEditRequest = JSON.parse(requestRaw) as ImageEditRequest;
+    imageEditRequestRaw = JSON.parse(requestRaw) as unknown;
   } catch {
     throw creatorError('image_edit_request_invalid', 422);
   }
 
-  const validation = validateImageEditRequest(imageEditRequest);
+  const validation = validateImageEditRequest(imageEditRequestRaw);
   if (!validation.ok) throw creatorError(validation.error, 422);
+  const imageEditRequest = imageEditRequestRaw as ImageEditRequest;
 
   const providers = await listProviderReadiness(ctx.orgId);
-  const imageEngineReady = providers.some(provider =>
-    provider.connectionState === 'ready' &&
-    provider.capability &&
-    provider.capability.modes.some(mode => String(mode).toLowerCase().includes('image'))
-  );
+  const imageEngineReady = providers
+    .map(adaptProviderToCreativeEngine)
+    .some(engine => engine.ready && engine.mediaKinds.includes('image') && engine.executionClass !== 'prompt-export-only');
 
   await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.image.edit.requested', null, {
     source_mime_type: source.type,
