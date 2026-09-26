@@ -204,3 +204,115 @@
   .gps4d-map-wrap-navigation .gps4d-layer-status { top:calc(42svh + 8px); bottom:auto; }
   .gps4d-map-wrap-navigation .gps4d-arrival { top:calc(42svh + 10px); }
 }
+
+
+/* Immersive photorealistic 3D */
+.gps4d-photorealistic-shell {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  background: #05080f;
+}
+
+.gps4d-photorealistic-view {
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+}
+
+.gps4d-photorealistic-badge {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 5;
+  max-width: min(460px, calc(100% - 28px));
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(3, 8, 18, 0.78);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.gps4d-map-underlay {
+  visibility: hidden;
+}
+
+.gps4d-provider-blocked {
+  opacity: 0.58;
+}
+
+@media (max-width: 720px) {
+  .gps4d-photorealistic-view {
+    min-height: 430px;
+  }
+
+  .gps4d-photorealistic-badge {
+    border-radius: 12px;
+    font-size: 11px;
+  }
+}
+
+
+/* Governed indoor navigation */
+.gps4d-indoor-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(126, 154, 255, 0.28);
+  border-radius: 16px;
+  background: rgba(8, 13, 28, 0.72);
+}
+
+.gps4d-indoor-panel > div:first-child,
+.gps4d-indoor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gps4d-indoor-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.gps4d-indoor-heading span,
+.gps4d-indoor-route span {
+  color: var(--muted, #9aa9c8);
+  font-size: 12px;
+}
+
+.gps4d-indoor-blocked {
+  opacity: 0.86;
+}
+
+.gps4d-indoor-floor {
+  display: grid;
+  gap: 6px;
+}
+
+.gps4d-indoor-floor select {
+  width: 100%;
+}
+
+.gps4d-indoor-destinations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gps4d-indoor-route ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 720px) {
+  .gps4d-indoor-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

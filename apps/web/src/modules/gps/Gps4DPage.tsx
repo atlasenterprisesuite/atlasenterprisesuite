@@ -20,6 +20,9 @@ import {
 } from './gpsDomain';
 import { AtlasNavigationEngine, type NavigationEngineObservation } from './navigationEngine';
 import { createNavigationLocationSource, type NavigationLocationSourceKind } from './navigationLocation';
+import { Photorealistic3DView } from './Photorealistic3DView';
+import { IndoorNavigationPanel } from './IndoorNavigationPanel';
+import { validateIndoorBuilding, type IndoorBuilding } from './immersiveSpatial';
 import './gps4d.css';
 
 type LivePosition = GpsPoint & {
@@ -155,6 +158,19 @@ export function Gps4DPage() {
   const [stops, setStops] = useState<GpsPoint[]>([]);
   const [arrivalState, setArrivalState] = useState<'idle' | 'approaching' | 'arrived'>('idle');
   const [persistenceState, setPersistenceState] = useState<'loading' | 'ready' | 'blocked'>('loading');
+  const [photorealistic3D, setPhotorealistic3D] = useState(false);
+  const googleMapTilesKey = String((import.meta as any).env?.VITE_ATLAS_GOOGLE_MAP_TILES_KEY || '');
+  const photorealisticConfigured = googleMapTilesKey.trim().length > 0;
+  const indoorBuilding = useMemo<IndoorBuilding | null>(() => {
+    const raw = String((import.meta as any).env?.VITE_ATLAS_INDOOR_BUILDING_JSON || '').trim();
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as IndoorBuilding;
+      return validateIndoorBuilding(parsed).ok ? parsed : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const activeRoute = routes[activeRouteIndex] || null;
   const activeStep = activeRoute?.steps?.[currentStepIndex] || null;
@@ -330,7 +346,7 @@ export function Gps4DPage() {
       }
     };
     applyMode();
-  }, [viewMode]);
+  }, [viewMode, photorealistic3D]);
 
   useEffect(() => {
     renderRoute(activeRoute);
@@ -699,10 +715,11 @@ export function Gps4DPage() {
   }, []);
 
   const mapModeDetail = useMemo(() => {
+    if (photorealistic3D) return 'Google Photorealistic 3D Tiles · external-gated';
     if (viewMode === 'street') return 'OpenFreeMap + OpenStreetMap';
     if (viewMode === 'satellite') return 'USGS The National Map imagery · U.S. coverage';
     return 'USGS imagery + Mapterhorn elevation · 3D globe';
-  }, [viewMode]);
+  }, [viewMode, photorealistic3D]);
 
   return (
     <section className="gps4d-page">
@@ -724,9 +741,26 @@ export function Gps4DPage() {
       </div>
 
       <nav className={`gps4d-view-modes ${navigationActive ? 'gps4d-nav-hidden' : ''}`} aria-label="GPS map layers">
-        <button type="button" aria-pressed={viewMode === 'street'} onClick={() => setViewMode('street')}>Map</button>
-        <button type="button" aria-pressed={viewMode === 'satellite'} onClick={() => setViewMode('satellite')}>Satellite</button>
-        <button type="button" aria-pressed={viewMode === 'terrain3d'} onClick={() => setViewMode('terrain3d')}>3D</button>
+        <button type="button" aria-pressed={!photorealistic3D && viewMode === 'street'} onClick={() => { setPhotorealistic3D(false); setViewMode('street'); }}>Map</button>
+        <button type="button" aria-pressed={!photorealistic3D && viewMode === 'satellite'} onClick={() => { setPhotorealistic3D(false); setViewMode('satellite'); }}>Satellite</button>
+        <button type="button" aria-pressed={!photorealistic3D && viewMode === 'terrain3d'} onClick={() => { setPhotorealistic3D(false); setViewMode('terrain3d'); }}>3D</button>
+        <button
+          type="button"
+          aria-pressed={photorealistic3D}
+          className={!photorealisticConfigured ? 'gps4d-provider-blocked' : undefined}
+          title={photorealisticConfigured ? 'Google Photorealistic 3D Tiles' : 'BLOCKED: VITE_ATLAS_GOOGLE_MAP_TILES_KEY no configurada'}
+          onClick={() => {
+            if (!photorealisticConfigured) {
+              setPhotorealistic3D(false);
+              setLayerState('error');
+              setLayerMessage('Photorealistic 3D BLOCKED: Google Map Tiles provider no configurado.');
+              return;
+            }
+            setPhotorealistic3D((value) => !value);
+          }}
+        >
+          Photorealistic
+        </button>
         <span>{mapModeDetail}</span>
       </nav>
 
@@ -787,7 +821,20 @@ export function Gps4DPage() {
               <div className="gps4d-drive-source">3D vector drive view · Street-level imagery BLOCKED</div>
             </div>
           )}
-          <div ref={mapNode} className={`gps4d-map ${navigationActive ? 'gps4d-overview-map' : ''}`} aria-label="ATLAS GPS 4D map" />
+          <Photorealistic3DView
+            enabled={photorealistic3D && !navigationActive}
+            apiKey={googleMapTilesKey}
+            center={selected || current || { lat: ORLANDO[1], lon: ORLANDO[0] }}
+            onState={(state, message) => {
+              setLayerState(state === 'ready' ? 'ready' : state === 'error' ? 'error' : 'loading');
+              setLayerMessage(message);
+            }}
+          />
+          <div
+            ref={mapNode}
+            className={`gps4d-map ${navigationActive ? 'gps4d-overview-map' : ''} ${photorealistic3D && !navigationActive ? 'gps4d-map-underlay' : ''}`}
+            aria-label="ATLAS GPS 4D map"
+          />
           {engineState !== 'ready' && (
             <div className="gps4d-overlay">
               {engineState === 'loading' ? 'Cargando motor MapLibre…' : 'Motor MapLibre no disponible.'}
@@ -795,9 +842,12 @@ export function Gps4DPage() {
           )}
           {engineState === 'ready' && (
             <div className={`gps4d-layer-status ${layerState}`} role="status">
-              <strong>MapLibre {engineState === 'ready' ? '✓' : '×'}</strong>
+              <strong>{photorealistic3D ? 'Cesium' : 'MapLibre'} {layerState === 'error' ? '×' : '✓'}</strong>
               <span>{layerMessage}</span>
-              {layerState === 'error' && <button type="button" onClick={() => setViewMode(viewMode === 'street' ? 'satellite' : 'street')}>Usar otra capa</button>}
+              {layerState === 'error' && <button type="button" onClick={() => {
+                setPhotorealistic3D(false);
+                setViewMode(viewMode === 'street' ? 'satellite' : 'street');
+              }}>Usar otra capa</button>}
             </div>
           )}
           {arrivalState !== 'idle' && (
@@ -881,6 +931,12 @@ export function Gps4DPage() {
               <button type="button" onClick={() => setStops([])}>Limpiar paradas</button>
             </div>
           )}
+
+          <IndoorNavigationPanel
+            building={indoorBuilding}
+            enterLabel="Entrar al edificio"
+            floorLabel="Piso"
+          />
 
           <div className="gps4d-actions">
             <button type="button" disabled={!activeRoute || !current || navigationActive} onClick={beginNavigation}>Iniciar navegación</button>
