@@ -19,6 +19,10 @@ export function ConnectHomePage() {
           <span>Broadcast · Configured</span><strong>ATLAS Network</strong>
           <p>Official bilingual ATLAS broadcast feed with notifications, reactions and governed handoff to Social Publisher.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/mail">
+          <span>Email · Provider-gated</span><strong>ATLAS Mail Provisioning</strong>
+          <p>Create governed departmental aliases only after Cloudflare Email Routing is authenticated and verified server-side.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/wireless">
           <span>Wireless · Pre-launch</span><strong>ATLAS Wireless</strong>
           <p>$39/month target architecture for unlimited mobile service, eSIM, ATLAS Home Hub and satellite fallback. Provider functions remain gated until verified.</p>
