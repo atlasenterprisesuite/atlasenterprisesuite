@@ -31,4 +31,15 @@ describe('ATLAS Image Lab domain contract', () => {
       points: [{ id: 'p1', x: 1.2, y: 0.4, instruction: '' }]
     })).toEqual({ ok: false, error: 'image_edit_instruction_required' });
   });
+
+  it('rejects malformed runtime payloads without throwing', () => {
+    expect(validateImageEditRequest({} as ImageEditRequest)).toEqual({
+      ok: false,
+      error: 'image_edit_instruction_required'
+    });
+    expect(validateImageEditRequest(null as unknown as ImageEditRequest)).toEqual({
+      ok: false,
+      error: 'image_edit_instruction_required'
+    });
+  });
 });
