@@ -355,4 +355,39 @@ describe('ATLAS Creator', () => {
     createObjectURL.mockRestore();
   });
 
+
+  it('invalidates an exported image prompt when the edit plan changes', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['image'],
+      capabilityNotes: ['planning-only'],
+      lastVerifiedAt: null
+    }]);
+    vi.spyOn(creatorApi, 'exportCreatorPrompt').mockResolvedValue({
+      status: 'prompt-ready',
+      engineId: 'prompt-export',
+      mediaKind: 'image',
+      prompt: 'MEDIA: image\nOBJECTIVE: Remove the person on the right.',
+      parameters: { language: 'English', negativeConstraints: [] },
+      adaptationNotes: ['No media was generated.']
+    });
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Global instruction'), {
+      target: { value: 'Remove the person on the right.' }
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Export prompt package' }));
+    expect(await screen.findByText(/OBJECTIVE: Remove the person on the right/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Global instruction'), {
+      target: { value: 'Remove the person on the left instead.' }
+    });
+
+    expect(screen.queryByText(/OBJECTIVE: Remove the person on the right/)).not.toBeInTheDocument();
+  });
+
 });
