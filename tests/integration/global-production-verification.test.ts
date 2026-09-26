@@ -49,6 +49,7 @@ describe('ATLAS global production verification', () => {
       '/connect/channel',
       '/connect/wireless',
       '/connect/wireless/network',
+      '/connect/wireless/commissioning',
       '/connect/wireless/mvno',
       '/connect/google-fi',
       '/payroll',
@@ -233,7 +234,7 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
     expect(authorizedVerifier).toContain("'/knowledge'");
-    for (const route of ['/connect', '/connect/chat', '/connect/channel', '/connect/wireless', '/connect/wireless/network', '/connect/wireless/mvno', '/connect/google-fi']) {
+    for (const route of ['/connect', '/connect/chat', '/connect/channel', '/connect/wireless', '/connect/wireless/network', '/connect/wireless/commissioning', '/connect/wireless/mvno', '/connect/google-fi']) {
       expect(authorizedVerifier).toContain(`'${route}'`);
     }
     expect(authorizedVerifier).toContain("'/voice'");
