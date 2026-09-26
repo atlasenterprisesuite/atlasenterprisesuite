@@ -277,7 +277,8 @@ describe('ATLAS Creator', () => {
     fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
 
     const canvas = await screen.findByTestId('image-edit-canvas');
-    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+    const image = screen.getByAltText('Source preview');
+    vi.spyOn(image, 'getBoundingClientRect').mockReturnValue({
       x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 100,
       width: 200, height: 100, toJSON: () => ({})
     } as DOMRect);
@@ -290,6 +291,25 @@ describe('ATLAS Creator', () => {
     });
     expect(screen.getByLabelText('Edit point 1 instruction')).toHaveValue('Remove this hand.');
     expect(screen.getByRole('button', { name: 'Remove edit point 1' })).toBeInTheDocument();
+    createObjectURL.mockRestore();
+  });
+
+  it('supports keyboard point placement and explicit coordinate adjustment', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([]);
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:atlas-image-lab');
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+
+    const file = new File(['image-bytes'], 'keyboard.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
+
+    const canvas = await screen.findByTestId('image-edit-canvas');
+    expect(canvas).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+
+    expect(screen.getByLabelText('Edit point 1 horizontal position')).toHaveValue(50);
+    expect(screen.getByLabelText('Edit point 1 vertical position')).toHaveValue(50);
+    fireEvent.change(screen.getByLabelText('Edit point 1 horizontal position'), { target: { value: '75' } });
+    expect(screen.getByText('75% × 50%')).toBeInTheDocument();
     createObjectURL.mockRestore();
   });
 
