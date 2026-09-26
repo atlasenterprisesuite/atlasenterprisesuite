@@ -156,6 +156,7 @@ export function ImageLabWorkspace({ engines }: Props) {
   function handlePreviewError() {
     setPreviewDecoded(false);
     setSourceFile(null);
+    setPreviewUrl('');
     setPoints([]);
     setNotice('The selected file could not be decoded as a valid image.');
   }
