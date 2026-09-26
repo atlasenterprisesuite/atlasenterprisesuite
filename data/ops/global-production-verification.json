@@ -1,5 +1,5 @@
 {
-  "version": 25,
+  "version": 26,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -12,6 +12,7 @@
     "/cloud/api-explorer",
     "/cloud/observability",
     "/cloud/resources",
+    "/cloud/domains",
     "/work",
     "/assistant",
     "/knowledge",

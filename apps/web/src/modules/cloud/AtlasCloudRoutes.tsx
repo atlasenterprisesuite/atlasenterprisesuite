@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { ATLAS_MODULES } from '../registry';
 import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManager } from './AtlasCloudNextLevel';
 import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
+import { AtlasCloudDomains } from './AtlasCloudDomains';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
 
 type CloudService = {
@@ -236,6 +237,10 @@ function ConsoleHome() {
           <span>Resources</span><strong>Resource Manager</strong>
           <p>Manage organization projects and inspect the canonical ATLAS service registry.</p>
         </Link>
+        <Link to="/cloud/domains">
+          <span>Network</span><strong>Domains & DNS</strong>
+          <p>Verify public DNS evidence while provider mutations remain fail-closed.</p>
+        </Link>
         <Link to="/cloud/service-graph">
           <span>Topology</span><strong>Service Graph</strong>
           <p>Visualize services by canonical backend authority and verified registry state.</p>
@@ -313,6 +318,7 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/api-explorer') return <AtlasCloudApiExplorer />;
   if (pathname === '/cloud/observability') return <AtlasCloudObservability />;
   if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
+  if (pathname === '/cloud/domains') return <AtlasCloudDomains />;
   if (pathname === '/cloud/service-graph') return <AtlasCloudServiceGraph />;
   if (pathname === '/cloud/releases') return <AtlasCloudReleaseCenter />;
   if (pathname === '/cloud/production-verification') return <AtlasCloudProductionVerification />;
