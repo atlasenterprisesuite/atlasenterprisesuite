@@ -42,4 +42,15 @@ describe('ATLAS Image Lab domain contract', () => {
       error: 'image_edit_instruction_required'
     });
   });
+  it('rejects malformed request shapes before dereferencing fields', () => {
+    expect(validateImageEditRequest({})).toEqual({ ok: false, error: 'image_edit_request_invalid' });
+    expect(validateImageEditRequest({
+      globalInstruction: 'Remove the object.',
+      preserveIdentity: 'yes',
+      aspectRatio: 'adaptive',
+      visibility: 'private',
+      points: []
+    })).toEqual({ ok: false, error: 'image_edit_request_invalid' });
+  });
+
 });
