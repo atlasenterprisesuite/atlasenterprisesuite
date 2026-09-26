@@ -275,7 +275,7 @@ export function ImageLabWorkspace({ engines }: Props) {
           aria-label="Image edit canvas. Press Enter to add a point at center."
           onKeyDown={handleCanvasKeyDown}
         >
-          <div className="image-lab-image-frame" onClick={addPoint}>
+          <div className="image-lab-image-frame" data-testid="image-edit-frame" onClick={addPoint}>
             <img
               src={safePreviewUrl}
               alt="Source preview"
