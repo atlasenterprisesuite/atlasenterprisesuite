@@ -304,4 +304,35 @@ describe('ATLAS Creator', () => {
     expect(screen.getByRole('button', { name: 'Generate design' })).toBeDisabled();
   });
 
+
+  it('does not claim persistence when an image engine response lacks a persisted asset', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'provider:image-ready',
+      displayName: 'Verified Image Engine',
+      executionClass: 'free-tier',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['image'],
+      capabilityNotes: ['image-edit'],
+      lastVerifiedAt: '2026-09-26T22:00:00Z'
+    }]);
+    vi.spyOn(creatorApi, 'submitImageEdit').mockResolvedValue({ ok: true, asset: null });
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:atlas-image-lab');
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+    const file = new File(['image-bytes'], 'graduation.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText('Global instruction'), {
+      target: { value: 'Remove the person on the right.' }
+    });
+
+    const generate = await screen.findByRole('button', { name: 'Generate design' });
+    expect(generate).toBeEnabled();
+    fireEvent.click(generate);
+
+    expect(await screen.findByRole('status')).toHaveTextContent('image_asset_not_persisted');
+    expect(screen.queryByText('Image edit submitted and persisted successfully.')).not.toBeInTheDocument();
+    createObjectURL.mockRestore();
+  });
+
 });
