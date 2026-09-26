@@ -5,6 +5,7 @@ import type { CreativePlan } from '../../../packages/creator/creative_plan.ts';
 import type { ContentWorkspaceState } from '../../../packages/creator/content_intelligence.ts';
 import type { WebLaunchBlueprint } from '../../../packages/creator/web_launch.ts';
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
+import { validateImageEditRequest, type ImageEditRequest } from '../../../packages/creator/image_edit.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
 import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts';
 import {
@@ -32,7 +33,9 @@ import {
   writeCreatorAudit
 } from './_shared/repository.ts';
 
-const VERSION = '2026-09-18.3';
+const VERSION = '2026-09-26.1';
+const IMAGE_EDIT_MAX_BYTES = 15 * 1024 * 1024;
+const IMAGE_EDIT_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const PROVIDER_IDS = new Set<ProviderId>(['seedance', 'veo', 'kling', 'wan', 'minimax']);
 
 function json(body: unknown, status = 200) {
@@ -348,6 +351,50 @@ async function handleRecordingDownload(req: Request, url: URL) {
   });
 }
 
+
+async function handleImageEdit(req: Request) {
+  const ctx = await creatorContext(req, 'creator.generate');
+  const form = await req.formData().catch(() => { throw creatorError('invalid_form_data', 400); });
+  const files = form.getAll('source').filter((value): value is File => value instanceof File);
+  if (files.length !== 1) throw creatorError('image_source_required', 422);
+  const source = files[0];
+  if (!IMAGE_EDIT_MIME_TYPES.has(source.type)) throw creatorError('image_source_type_invalid', 415);
+  if (source.size <= 0 || source.size > IMAGE_EDIT_MAX_BYTES) throw creatorError('image_source_size_invalid', 413);
+
+  const requestRaw = String(form.get('request') || '').trim();
+  if (!requestRaw) throw creatorError('image_edit_request_required', 422);
+
+  let imageEditRequest: ImageEditRequest;
+  try {
+    imageEditRequest = JSON.parse(requestRaw) as ImageEditRequest;
+  } catch {
+    throw creatorError('image_edit_request_invalid', 422);
+  }
+
+  const validation = validateImageEditRequest(imageEditRequest);
+  if (!validation.ok) throw creatorError(validation.error, 422);
+
+  const providers = await listProviderReadiness(ctx.orgId);
+  const imageEngineReady = providers.some(provider =>
+    provider.connectionState === 'ready' &&
+    provider.capability &&
+    provider.capability.modes.some(mode => String(mode).toLowerCase().includes('image'))
+  );
+
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.image.edit.requested', null, {
+    source_mime_type: source.type,
+    source_size_bytes: source.size,
+    point_count: imageEditRequest.points.length,
+    preserve_identity: imageEditRequest.preserveIdentity,
+    aspect_ratio: imageEditRequest.aspectRatio,
+    visibility: imageEditRequest.visibility,
+    image_engine_ready: imageEngineReady
+  });
+
+  if (!imageEngineReady) throw creatorError('image_engine_not_ready', 409);
+  throw creatorError('image_engine_adapter_not_configured', 503);
+}
+
 async function handleSubmit(req: Request): Promise<never> {
   const ctx = await creatorContext(req, 'creator.generate');
   const body = await bodyJson(req);
@@ -392,6 +439,7 @@ async function route(req: Request) {
   if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
   if (api === 'assets') return handleAssets(req, url);
   if (api === 'asset-preview' && req.method === 'GET') return handleAssetPreview(req, url);
+  if (api === 'image-edit' && req.method === 'POST') return handleImageEdit(req);
   if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
   if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
   if (api === 'recording-download' && req.method === 'GET') return handleRecordingDownload(req, url);
