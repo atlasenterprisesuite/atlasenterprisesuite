@@ -1,0 +1,38 @@
+name: ATLAS Image Lab CI
+
+on:
+  push:
+    branches: [feat/atlas-image-lab]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/creator/image_edit.ts'
+      - 'apps/web/src/modules/creator/image/**'
+      - 'apps/web/src/modules/creator/CreatorStudioPage.tsx'
+      - 'apps/web/src/modules/creator/creator.css'
+      - 'apps/web/src/lib/creatorApi.ts'
+      - 'supabase/functions/atlas-creator/**'
+      - 'tests/unit/creator-image-edit*.test.ts'
+      - 'tests/integration/atlas-creator-route.test.tsx'
+      - '.github/workflows/atlas-image-lab-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  image-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Image Lab domain tests
+        run: npx vitest run tests/unit/creator-image-edit.test.ts
+      - name: Creator integration tests
+        run: npx vitest run tests/integration/atlas-creator-route.test.tsx --environment jsdom
+      - name: Typecheck
+        run: npm run typecheck
