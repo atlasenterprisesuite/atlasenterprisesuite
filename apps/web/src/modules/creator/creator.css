@@ -40,9 +40,12 @@
 .image-engine-state{display:grid;gap:4px;padding:13px 14px;border-radius:12px;border:1px solid rgba(111,184,240,.14);background:#07131e}
 .image-engine-state strong{color:#e5f1f9}.image-engine-state span{font-size:12px;color:#7892a6;line-height:1.45}
 .image-lab-stage-panel{min-height:520px;display:grid;align-content:start;gap:12px;padding:14px}
-.image-lab-canvas{position:relative;overflow:hidden;border-radius:16px;min-height:320px;background:#03080d;cursor:crosshair}
-.image-lab-canvas img{display:block;width:100%;height:auto;max-height:720px;object-fit:contain;margin:auto;user-select:none;pointer-events:none}
-.image-lab-marker{position:absolute;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;border:2px solid #f6fbff;background:#0b8fd3;color:#fff;font-weight:900;box-shadow:0 0 0 6px rgba(72,180,255,.18),0 8px 22px rgba(0,0,0,.45);cursor:pointer}
+.image-lab-canvas{position:relative;overflow:hidden;border-radius:16px;min-height:320px;background:#03080d;display:grid;place-items:center;outline:none}
+.image-lab-canvas:focus-visible{box-shadow:0 0 0 3px rgba(72,180,255,.28)}
+.image-lab-image-frame{position:relative;display:inline-block;max-width:100%;line-height:0;cursor:crosshair}
+.image-lab-image-frame img{display:block;max-width:100%;width:auto;height:auto;max-height:720px;object-fit:contain;user-select:none;pointer-events:none}
+.image-lab-marker{position:absolute;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;border:2px solid #f6fbff;background:#0b8fd3;color:#fff;font-weight:900;box-shadow:0 0 0 6px rgba(72,180,255,.18),0 8px 22px rgba(0,0,0,.45);cursor:pointer;line-height:1}
+.image-lab-marker:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .image-lab-empty{min-height:420px;border:1px dashed rgba(111,184,240,.18);border-radius:16px;display:grid;place-content:center;text-align:center;gap:7px;color:#7892a6}
 .image-lab-empty strong{color:#dceaf3;font-size:20px}
 .image-lab-file-meta{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#7892a6;padding:4px 4px 0}

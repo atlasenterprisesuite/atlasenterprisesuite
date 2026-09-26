@@ -24,6 +24,7 @@ function newPointId(sequence: number) {
 export function ImageLabWorkspace({ engines }: Props) {
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [previewDecoded, setPreviewDecoded] = useState(false);
   const [globalInstruction, setGlobalInstruction] = useState('');
   const [preserveIdentity, setPreserveIdentity] = useState(true);
   const [aspectRatio, setAspectRatio] = useState<ImageEditRequest['aspectRatio']>('adaptive');
@@ -34,16 +35,35 @@ export function ImageLabWorkspace({ engines }: Props) {
   const [promptExport, setPromptExport] = useState<{ prompt: string; adaptationNotes: string[] } | null>(null);
   const [promptExportState, setPromptExportState] = useState<'idle' | 'running' | 'error'>('idle');
   const pointSequence = useRef(0);
-  const previewImageRef = useRef<HTMLImageElement>(null);
+  const promptExportRequestSequence = useRef(0);
+  const pointEditorRefs = useRef(new Map<string, HTMLInputElement>());
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
+  const pointInstructions = useMemo(() => points
+    .filter(point => point.instruction.trim())
+    .map((point, index) => `Point ${index + 1} at (${point.x.toFixed(3)}, ${point.y.toFixed(3)}): ${point.instruction.trim()}`), [points]);
+
+  const promptBrief = useMemo(() => [
+    globalInstruction.trim(),
+    preserveIdentity ? 'Preserve faces and identity unless explicitly targeted.' : '',
+    ...pointInstructions
+  ].filter(Boolean).join('\n'), [globalInstruction, preserveIdentity, pointInstructions]);
+
+  const promptPlanKey = useMemo(() => JSON.stringify({
+    source: sourceFile ? [sourceFile.name, sourceFile.size, sourceFile.type, sourceFile.lastModified] : null,
+    promptBrief,
+    aspectRatio,
+    visibility
+  }), [sourceFile, promptBrief, aspectRatio, visibility]);
+
   useEffect(() => {
+    promptExportRequestSequence.current += 1;
     setPromptExport(null);
-    if (promptExportState === 'error') setPromptExportState('idle');
-  }, [sourceFile, globalInstruction, preserveIdentity, aspectRatio, visibility, points]);
+    setPromptExportState('idle');
+  }, [promptPlanKey]);
 
   const executableEngine = useMemo(() => engines.find(engine =>
     engine.ready &&
@@ -54,12 +74,14 @@ export function ImageLabWorkspace({ engines }: Props) {
   const promptExportReady = engines.some(engine => engine.engineId === 'prompt-export' && engine.ready && engine.mediaKinds.includes('image'));
   const safePreviewUrl = previewUrl.startsWith('blob:') ? encodeURI(previewUrl) : '';
   const hasInstruction = globalInstruction.trim().length > 0 || points.some(point => point.instruction.trim().length > 0);
-  const canGenerate = Boolean(sourceFile && hasInstruction && executableEngine && submissionState !== 'running');
+  const canExportPrompt = hasInstruction && promptExportReady && promptBrief.trim().length >= 8 && promptExportState !== 'running';
+  const canGenerate = Boolean(sourceFile && previewDecoded && hasInstruction && executableEngine && submissionState !== 'running');
 
   function selectSource(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setNotice('');
     setSubmissionState('idle');
+    setPreviewDecoded(false);
     setPoints([]);
 
     if (!file) {
@@ -96,14 +118,8 @@ export function ImageLabWorkspace({ engines }: Props) {
   }
 
   function addPoint(event: React.MouseEvent<HTMLDivElement>) {
-    if (!sourceFile) return;
-    const image = previewImageRef.current;
-    if (!image) return;
-    const rect = image.getBoundingClientRect();
-    if (
-      event.clientX < rect.left || event.clientX > rect.right ||
-      event.clientY < rect.top || event.clientY > rect.bottom
-    ) return;
+    if (!sourceFile || !previewDecoded) return;
+    const rect = event.currentTarget.getBoundingClientRect();
     const normalized = normalizeImageEditPoint(
       event.clientX - rect.left,
       event.clientY - rect.top,
@@ -114,7 +130,7 @@ export function ImageLabWorkspace({ engines }: Props) {
   }
 
   function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (!sourceFile || (event.key !== 'Enter' && event.key !== ' ')) return;
+    if (!sourceFile || !previewDecoded || (event.key !== 'Enter' && event.key !== ' ')) return;
     event.preventDefault();
     appendPoint(0.5, 0.5);
   }
@@ -129,32 +145,40 @@ export function ImageLabWorkspace({ engines }: Props) {
   }
 
   function removePoint(id: string) {
+    pointEditorRefs.current.delete(id);
     setPoints(current => current.filter(point => point.id !== id));
   }
 
+  function focusPointEditor(id: string) {
+    pointEditorRefs.current.get(id)?.focus();
+  }
+
+  function handlePreviewError() {
+    setPreviewDecoded(false);
+    setSourceFile(null);
+    setPreviewUrl('');
+    setPoints([]);
+    setNotice('The selected file could not be decoded as a valid image.');
+  }
+
   async function exportPromptPackage() {
-    if (!hasInstruction || !promptExportReady) return;
+    if (!canExportPrompt) return;
+    const requestId = ++promptExportRequestSequence.current;
     setPromptExportState('running');
     setNotice('');
-    const pointInstructions = points
-      .filter(point => point.instruction.trim())
-      .map((point, index) => `Point ${index + 1} at (${point.x.toFixed(3)}, ${point.y.toFixed(3)}): ${point.instruction.trim()}`);
-    const brief = [
-      globalInstruction.trim(),
-      preserveIdentity ? 'Preserve faces and identity unless explicitly targeted.' : '',
-      ...pointInstructions
-    ].filter(Boolean).join('\n');
     try {
       const exported = await exportCreatorPrompt({
         mediaKind: 'image',
-        brief,
+        brief: promptBrief,
         aspectRatio,
         language: 'English',
         negativeConstraints: preserveIdentity ? ['Do not alter untargeted faces or identity.'] : []
       });
+      if (promptExportRequestSequence.current !== requestId) return;
       setPromptExport({ prompt: exported.prompt, adaptationNotes: exported.adaptationNotes });
       setPromptExportState('idle');
     } catch (error) {
+      if (promptExportRequestSequence.current !== requestId) return;
       setPromptExportState('error');
       setNotice(error instanceof Error ? error.message : 'prompt_export_failed');
     }
@@ -235,7 +259,7 @@ export function ImageLabWorkspace({ engines }: Props) {
           <button className="creator-primary" type="button" onClick={generate} disabled={!canGenerate}>
             {submissionState === 'running' ? 'Generating…' : 'Generate design'}
           </button>
-          <button type="button" onClick={exportPromptPackage} disabled={!hasInstruction || !promptExportReady || promptExportState === 'running'}>
+          <button type="button" onClick={exportPromptPackage} disabled={!canExportPrompt}>
             {promptExportState === 'running' ? 'Exporting…' : 'Export prompt package'}
           </button>
         </div>
@@ -250,18 +274,24 @@ export function ImageLabWorkspace({ engines }: Props) {
           role="button"
           tabIndex={0}
           aria-label="Image edit canvas. Press Enter to add a point at center."
-          onClick={addPoint}
           onKeyDown={handleCanvasKeyDown}
         >
-          <img ref={previewImageRef} src={safePreviewUrl} alt="Source preview" />
-          {points.map((point, index) => <button
-            key={point.id}
-            type="button"
-            className="image-lab-marker"
-            style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
-            aria-label={`Edit point ${index + 1}`}
-            onClick={event=>event.stopPropagation()}
-          >{index + 1}</button>)}
+          <div className="image-lab-image-frame" data-testid="image-edit-frame" onClick={addPoint}>
+            <img
+              src={safePreviewUrl}
+              alt="Source preview"
+              onLoad={()=>setPreviewDecoded(true)}
+              onError={handlePreviewError}
+            />
+            {points.map((point, index) => <button
+              key={point.id}
+              type="button"
+              className="image-lab-marker"
+              style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
+              aria-label={`Edit point ${index + 1}`}
+              onClick={event=>{ event.stopPropagation(); focusPointEditor(point.id); }}
+            >{index + 1}</button>)}
+          </div>
         </div> : <div className="image-lab-empty">
           <strong>Upload a source photo</strong>
           <span>Then click directly on the image to place edit points.</span>
@@ -278,7 +308,13 @@ export function ImageLabWorkspace({ engines }: Props) {
             <strong>Point {index + 1}</strong>
             <span>{Math.round(point.x * 100)}% × {Math.round(point.y * 100)}%</span>
           </div>
-          <label><span>Instruction</span><input aria-label={`Edit point ${index + 1} instruction`} value={point.instruction} onChange={event=>updatePoint(point.id, event.target.value)} placeholder="What should change here?" /></label>
+          <label><span>Instruction</span><input
+            ref={element=>{ if (element) pointEditorRefs.current.set(point.id, element); else pointEditorRefs.current.delete(point.id); }}
+            aria-label={`Edit point ${index + 1} instruction`}
+            value={point.instruction}
+            onChange={event=>updatePoint(point.id, event.target.value)}
+            placeholder="What should change here?"
+          /></label>
           <div className="image-lab-point-position">
             <label><span>Horizontal %</span><input aria-label={`Edit point ${index + 1} horizontal position`} type="number" min="0" max="100" step="1" value={Math.round(point.x * 100)} onChange={event=>updatePointCoordinate(point.id, 'x', Number(event.target.value))} /></label>
             <label><span>Vertical %</span><input aria-label={`Edit point ${index + 1} vertical position`} type="number" min="0" max="100" step="1" value={Math.round(point.y * 100)} onChange={event=>updatePointCoordinate(point.id, 'y', Number(event.target.value))} /></label>
