@@ -76,6 +76,7 @@ async function probe(target) {
         ? {
             status: payload.status ?? null,
             ready: payload.ready ?? null,
+            reason: payload.reason ?? null,
             durable: payload.durable ?? null,
             service: payload.service ?? null,
           }
