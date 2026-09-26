@@ -45,6 +45,7 @@ export function ImageLabWorkspace({ engines }: Props) {
   ) ?? null, [engines]);
 
   const promptExportReady = engines.some(engine => engine.engineId === 'prompt-export' && engine.ready && engine.mediaKinds.includes('image'));
+  const safePreviewUrl = previewUrl.startsWith('blob:') ? encodeURI(previewUrl) : '';
   const hasInstruction = globalInstruction.trim().length > 0 || points.some(point => point.instruction.trim().length > 0);
   const canGenerate = Boolean(sourceFile && hasInstruction && executableEngine && submissionState !== 'running');
 
@@ -205,8 +206,8 @@ export function ImageLabWorkspace({ engines }: Props) {
       </section>
 
       <section className="image-lab-stage-panel">
-        {sourceFile && previewUrl ? <div className="image-lab-canvas" data-testid="image-edit-canvas" onClick={addPoint}>
-          <img src={previewUrl} alt="Source preview" />
+        {sourceFile && safePreviewUrl ? <div className="image-lab-canvas" data-testid="image-edit-canvas" onClick={addPoint}>
+          <img src={safePreviewUrl} alt="Source preview" />
           {points.map((point, index) => <button
             key={point.id}
             type="button"
