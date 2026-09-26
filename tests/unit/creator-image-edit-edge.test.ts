@@ -8,6 +8,9 @@ describe('ATLAS Image Lab edge contract', () => {
     expect(source).toContain("creator.generate");
     expect(source).toContain("image_engine_not_ready");
     expect(source).toContain("creator.image.edit.requested");
+    expect(source).toContain('let imageEditRequestRaw: unknown');
+    expect(source).toContain('.map(adaptProviderToCreativeEngine)');
+    expect(source).toContain("engine.mediaKinds.includes('image')");
   });
 
   it('exposes a typed multipart client wrapper for image edits', () => {
