@@ -126,14 +126,14 @@ describe('ATLAS Creator', () => {
     });
 
     render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
-    fireEvent.change(screen.getByLabelText('Creative brief'), {
+    fireEvent.change(screen.getByLabelText('Global instruction'), {
       target: { value: 'Futuristic ATLAS finance hero image' }
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Export prompt package' }));
 
     expect(await screen.findByText(/MEDIA: image/)).toBeInTheDocument();
     expect(screen.getByText(/No media was generated/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Generate image' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generate design' })).toBeDisabled();
   });
 
   it('shows prompt export and verified native readiness as distinct engine classes', async () => {
