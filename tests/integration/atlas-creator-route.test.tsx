@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as creatorApi from '../../apps/web/src/lib/creatorApi';
@@ -277,12 +277,14 @@ describe('ATLAS Creator', () => {
     fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
 
     const canvas = await screen.findByTestId('image-edit-canvas');
+    const frame = await screen.findByTestId('image-edit-frame');
     const image = screen.getByAltText('Source preview');
-    vi.spyOn(image, 'getBoundingClientRect').mockReturnValue({
+    fireEvent.load(image);
+    vi.spyOn(frame, 'getBoundingClientRect').mockReturnValue({
       x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 100,
       width: 200, height: 100, toJSON: () => ({})
     } as DOMRect);
-    fireEvent.click(canvas, { clientX: 100, clientY: 50 });
+    fireEvent.click(frame, { clientX: 100, clientY: 50 });
 
     expect(screen.getByLabelText('Edit point 1 instruction')).toBeInTheDocument();
     expect(screen.getByText('50% × 50%')).toBeInTheDocument();
@@ -303,6 +305,7 @@ describe('ATLAS Creator', () => {
     fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
 
     const canvas = await screen.findByTestId('image-edit-canvas');
+    fireEvent.load(screen.getByAltText('Source preview'));
     expect(canvas).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(canvas, { key: 'Enter' });
 
@@ -342,6 +345,7 @@ describe('ATLAS Creator', () => {
     render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
     const file = new File(['image-bytes'], 'graduation.jpg', { type: 'image/jpeg' });
     fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
+    fireEvent.load(screen.getByAltText('Source preview'));
     fireEvent.change(screen.getByLabelText('Global instruction'), {
       target: { value: 'Remove the person on the right.' }
     });
@@ -389,5 +393,106 @@ describe('ATLAS Creator', () => {
 
     expect(screen.queryByText(/OBJECTIVE: Remove the person on the right/)).not.toBeInTheDocument();
   });
+
+  it('anchors markers to the rendered image frame and marker activation focuses its editor', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([]);
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:atlas-image-lab');
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+
+    const file = new File(['image-bytes'], 'panorama.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
+    const frame = await screen.findByTestId('image-edit-frame');
+    fireEvent.load(screen.getByAltText('Source preview'));
+    vi.spyOn(frame, 'getBoundingClientRect').mockReturnValue({
+      x: 20, y: 40, left: 20, top: 40, right: 220, bottom: 140,
+      width: 200, height: 100, toJSON: () => ({})
+    } as DOMRect);
+    fireEvent.click(frame, { clientX: 120, clientY: 90 });
+
+    const marker = screen.getByRole('button', { name: 'Edit point 1' });
+    expect(marker.parentElement).toBe(frame);
+    expect(marker).toHaveStyle({ left: '50%', top: '50%' });
+
+    const editor = screen.getByLabelText('Edit point 1 instruction');
+    fireEvent.click(marker);
+    expect(editor).toHaveFocus();
+    createObjectURL.mockRestore();
+  });
+
+  it('rejects a selected image when browser decoding fails', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([]);
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:atlas-corrupt');
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+
+    const file = new File(['not-really-jpeg'], 'corrupt.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText('Source image'), { target: { files: [file] } });
+    const image = await screen.findByAltText('Source preview');
+    fireEvent.error(image);
+
+    expect(await screen.findByRole('status')).toHaveTextContent('could not be decoded as a valid image');
+    expect(screen.queryByAltText('Source preview')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate design' })).toBeDisabled();
+    createObjectURL.mockRestore();
+  });
+
+  it('keeps prompt export disabled when the actual brief is below the minimum length', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['image'],
+      capabilityNotes: ['planning-only'],
+      lastVerifiedAt: null
+    }]);
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.click(screen.getByLabelText('Preserve faces and identity'));
+    fireEvent.change(screen.getByLabelText('Global instruction'), { target: { value: 'short' } });
+
+    expect(await screen.findByRole('button', { name: 'Export prompt package' })).toBeDisabled();
+  });
+
+  it('discards an in-flight prompt export after the edit plan changes', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['image'],
+      capabilityNotes: ['planning-only'],
+      lastVerifiedAt: null
+    }]);
+
+    let resolveExport!: (value: Awaited<ReturnType<typeof creatorApi.exportCreatorPrompt>>) => void;
+    vi.spyOn(creatorApi, 'exportCreatorPrompt').mockImplementation(() => new Promise(resolve => { resolveExport = resolve; }));
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=image']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Global instruction'), {
+      target: { value: 'Remove the person on the right.' }
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Export prompt package' }));
+    fireEvent.change(screen.getByLabelText('Global instruction'), {
+      target: { value: 'Remove the person on the left instead.' }
+    });
+
+    await act(async () => {
+      resolveExport({
+        status: 'prompt-ready',
+        engineId: 'prompt-export',
+        mediaKind: 'image',
+        prompt: 'MEDIA: image\nOBJECTIVE: Remove the person on the right.',
+        parameters: { language: 'English', negativeConstraints: [] },
+        adaptationNotes: ['No media was generated.']
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(/OBJECTIVE: Remove the person on the right/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Export prompt package' })).toBeEnabled();
+  });
+
 
 });
