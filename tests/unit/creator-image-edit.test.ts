@@ -35,11 +35,11 @@ describe('ATLAS Image Lab domain contract', () => {
   it('rejects malformed runtime payloads without throwing', () => {
     expect(validateImageEditRequest({} as ImageEditRequest)).toEqual({
       ok: false,
-      error: 'image_edit_instruction_required'
+      error: 'image_edit_request_invalid'
     });
     expect(validateImageEditRequest(null as unknown as ImageEditRequest)).toEqual({
       ok: false,
-      error: 'image_edit_instruction_required'
+      error: 'image_edit_request_invalid'
     });
   });
   it('rejects malformed request shapes before dereferencing fields', () => {
