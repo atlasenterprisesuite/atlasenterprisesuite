@@ -31,29 +31,39 @@ export function CoverageControlPanel({ center }: Props) {
   const [state, setState] = useState<'idle' | 'loading' | 'running' | 'error'>('loading');
   const [message, setMessage] = useState('Cargando progreso…');
   const [radiusKm, setRadiusKm] = useState(1);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const localBounds = useMemo(
     () => center ? boundsAround(center, radiusKm) : null,
     [center, radiusKm]
   );
 
-  async function refresh() {
-    setState('loading');
+  async function refresh(silent = false) {
+    if (!silent) setState('loading');
     try {
       const result = await listGpsCoverageRuns();
       setRuns(result.runs || []);
-      setState('idle');
-      setMessage(result.runs?.length
-        ? 'Progreso persistente disponible.'
-        : 'No hay barridos guardados todavía.');
+      setLastSyncedAt(new Date());
+      if (!silent) {
+        setState('idle');
+        setMessage(result.runs?.length
+          ? 'Progreso persistente disponible.'
+          : 'No hay barridos guardados todavía.');
+      }
     } catch {
-      setState('error');
-      setMessage('Persistencia de cobertura no disponible.');
+      if (!silent) {
+        setState('error');
+        setMessage('Persistencia de cobertura no disponible.');
+      }
     }
   }
 
   useEffect(() => {
     void refresh();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh(true);
+    }, 5000);
+    return () => window.clearInterval(timer);
   }, []);
 
   async function runBatch() {
@@ -131,6 +141,8 @@ export function CoverageControlPanel({ center }: Props) {
         <strong>{center ? `${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}` : 'Selecciona o activa ubicación'}</strong>
         <span>Último guardado</span>
         <strong>{latest ? `${latest.progress_pct}% · ${latest.status}` : '—'}</strong>
+        <span>Sincronización</span>
+        <strong>{lastSyncedAt ? lastSyncedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}</strong>
       </div>
 
       <div className="gps4d-coverage-actions">
@@ -144,7 +156,7 @@ export function CoverageControlPanel({ center }: Props) {
         <button
           type="button"
           disabled={state === 'running'}
-          onClick={() => void refresh()}
+          onClick={() => void refresh(false)}
         >
           Actualizar
         </button>
