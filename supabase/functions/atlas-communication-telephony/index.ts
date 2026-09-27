@@ -343,6 +343,9 @@ async function originate(req: Request, ctx: RequestContext) {
     JSON.stringify({ session_id: session.id, org_id: ctx.orgId })
   );
 
+  const webhookUrl = new URL(loaded.config.webhookUrl);
+  webhookUrl.searchParams.set('org_id', ctx.orgId);
+
   const response = await fetch('https://api.telnyx.com/v2/calls', {
     method: 'POST',
     headers: {
@@ -354,7 +357,7 @@ async function originate(req: Request, ctx: RequestContext) {
       connection_id: loaded.config.connectionId,
       from: loaded.config.fromNumber,
       to,
-      webhook_url: loaded.config.webhookUrl,
+      webhook_url: webhookUrl.toString(),
       webhook_url_method: 'POST',
       client_state: clientState
     }),
