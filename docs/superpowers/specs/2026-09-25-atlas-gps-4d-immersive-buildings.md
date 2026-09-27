@@ -129,3 +129,8 @@ Next integration slice:
 - add an Enter Building transition and floor selector;
 - add organization-scoped persistence for private indoor maps;
 - verify desktop/mobile performance and production CSP.
+
+
+## Verification refresh
+
+After the pull request was moved out of draft, the branch is intentionally re-synchronized through a documentation-only commit so protected-branch required checks evaluate the current review-ready head SHA. This does not change runtime capability claims or relax any fail-closed provider gate.
