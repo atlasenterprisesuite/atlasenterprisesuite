@@ -360,6 +360,81 @@ async function lookupIndoor(input: Json) {
   return { source: 'overpass', ...normalized };
 }
 
+async function lookupStreetSegments(input: Json) {
+  const south = finiteNumber(input.south, 'south_invalid');
+  const west = finiteNumber(input.west, 'west_invalid');
+  const north = finiteNumber(input.north, 'north_invalid');
+  const east = finiteNumber(input.east, 'east_invalid');
+
+  if (south < -85 || north > 85 || west < -180 || east > 180 || south >= north || west >= east) {
+    throw new EdgeError('street_bounds_invalid', 422);
+  }
+  if ((north - south) > 0.05 || (east - west) > 0.05) {
+    throw new EdgeError('street_bounds_too_large', 422);
+  }
+
+  const keyMaterial = ['street', south, west, north, east]
+    .map((value) => typeof value === 'number' ? value.toFixed(5) : value)
+    .join(',');
+  const cached = await readCache('overpass', keyMaterial);
+  if (cached.payload) return { source: 'cache', ...(cached.payload as Json) };
+
+  if (!await acquireOverpassSlot()) throw new EdgeError('overpass_rate_limited', 429);
+
+  const query = [
+    '[out:json][timeout:12];',
+    '(',
+    `way["highway"](${south},${west},${north},${east});`,
+    ');',
+    'out tags geom;'
+  ].join('');
+
+  const response = await fetch(OVERPASS_BASE_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+      'user-agent': 'ATLAS-GPS-4D/1.0 (https://www.atlasenterprisesuite.com/gps)'
+    },
+    body: new URLSearchParams({ data: query }),
+    signal: AbortSignal.timeout(15_000)
+  });
+
+  if (response.status === 429) throw new EdgeError('overpass_rate_limited', 429);
+  if (!response.ok) throw new EdgeError('overpass_unavailable', 502);
+
+  const payload = await response.json().catch(() => null) as any;
+  const raw = Array.isArray(payload?.elements) ? payload.elements.slice(0, 1200) : [];
+  const segments = raw.map((element: any) => {
+    const geometry = Array.isArray(element.geometry)
+      ? element.geometry.map((point: any) => [Number(point.lon), Number(point.lat)])
+          .filter((pair: number[]) =>
+            pair.length === 2 &&
+            Number.isFinite(pair[0]) &&
+            Number.isFinite(pair[1]) &&
+            Math.abs(pair[0]) <= 180 &&
+            Math.abs(pair[1]) <= 90
+          )
+      : [];
+    return {
+      id: 'osm-way-' + String(element.id || ''),
+      label: clean(element.tags?.name || element.tags?.ref || 'Unnamed road', 160),
+      highway: clean(element.tags?.highway, 80),
+      coordinates: geometry
+    };
+  }).filter((segment: any) => segment.coordinates.length >= 2);
+
+  const normalized = {
+    provider: 'openstreetmap-overpass',
+    provider_state: 'external_gated',
+    verified_sla: false,
+    bounds: { south, west, north, east },
+    segment_count: segments.length,
+    segments
+  };
+  await writeCache(cached.cacheKey, 'overpass', normalized, 12 * 60 * 60);
+  return { source: 'overpass', ...normalized };
+}
+
 async function calculateRoute(input: Json) {
   const fromLat = finiteNumber(input.from_lat, 'from_lat_invalid');
   const fromLon = finiteNumber(input.from_lon, 'from_lon_invalid');
@@ -582,6 +657,10 @@ Deno.serve(async (req: Request) => {
     }
     if (operation === 'indoor.lookup') {
       const result = await lookupIndoor(body);
+      return json(req, { ok: true, organization_id: context.orgId, ...result });
+    }
+    if (operation === 'street.coverage.lookup') {
+      const result = await lookupStreetSegments(body);
       return json(req, { ok: true, organization_id: context.orgId, ...result });
     }
     if (operation === 'saved.list') {
