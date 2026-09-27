@@ -175,3 +175,29 @@ export async function deleteGpsCoverageRun(coverageKey: string) {
     coverage_key: coverageKey
   });
 }
+
+
+export type GpsStreetCoverageSegment = {
+  id: string;
+  label: string;
+  highway: string;
+  coordinates: Array<[number, number]>;
+};
+
+export async function lookupGpsStreetCoverage(bounds: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}) {
+  return request<{
+    ok: true;
+    source: 'cache' | 'overpass';
+    provider: 'openstreetmap-overpass';
+    provider_state: 'external_gated';
+    verified_sla: false;
+    bounds: typeof bounds;
+    segment_count: number;
+    segments: GpsStreetCoverageSegment[];
+  }>('street.coverage.lookup', bounds);
+}
