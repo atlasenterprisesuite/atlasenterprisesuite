@@ -19,6 +19,10 @@ export function ConnectHomePage() {
           <span>Broadcast · Configured</span><strong>ATLAS Network</strong>
           <p>Official bilingual ATLAS broadcast feed with notifications, reactions and governed handoff to Social Publisher.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/calling">
+          <span>Voice · Provider-gated</span><strong>ATLAS Calling</strong>
+          <p>Governed outbound calling with live provider verification, RBAC, consent controls and signed lifecycle evidence.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/wireless">
           <span>Wireless · Pre-launch</span><strong>ATLAS Wireless</strong>
           <p>$39/month target architecture for unlimited mobile service, eSIM, ATLAS Home Hub and satellite fallback. Provider functions remain gated until verified.</p>
