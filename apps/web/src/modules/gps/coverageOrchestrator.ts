@@ -173,7 +173,24 @@ export function advanceCoverageSector(
   };
 }
 
-export function coverageCheckpoint(state: CoverageOrchestratorState) {
+export type CoverageCheckpoint = {
+  coverage_key: string;
+  label: string;
+  status: 'pending' | 'in-progress' | 'complete' | 'blocked';
+  progress_pct: number;
+  last_probe_id: string | null;
+  last_sector_id: string | null;
+  state: {
+    grid: CoverageGrid;
+    activeStreetPlan: StreetCoveragePlan | null;
+  };
+  metadata: {
+    street_summary: ReturnType<typeof summarizeStreetCoverage> | null;
+    grid_summary: ReturnType<typeof summarizeCoverageGrid>;
+  };
+};
+
+export function coverageCheckpoint(state: CoverageOrchestratorState): CoverageCheckpoint {
   const gridSummary = summarizeCoverageGrid(state.grid);
   const streetSummary = state.activeStreetPlan
     ? summarizeStreetCoverage(state.activeStreetPlan)
