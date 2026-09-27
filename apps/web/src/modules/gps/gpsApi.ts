@@ -135,3 +135,43 @@ export async function lookupGpsIndoor(point: Pick<GpsPoint, 'lat' | 'lon'>, radi
     radius_m: radiusM
   });
 }
+
+
+export type GpsCoverageRun = {
+  id: string;
+  coverage_key: string;
+  label: string;
+  scope: 'street' | 'sector' | 'city' | 'region' | 'country' | 'continent' | 'globe';
+  status: 'pending' | 'in-progress' | 'complete' | 'blocked';
+  state: Record<string, unknown>;
+  progress_pct: number;
+  last_probe_id: string | null;
+  last_sector_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listGpsCoverageRuns() {
+  return request<{ ok: true; runs: GpsCoverageRun[] }>('coverage.list');
+}
+
+export async function saveGpsCoverageRun(input: {
+  coverage_key: string;
+  label: string;
+  scope: GpsCoverageRun['scope'];
+  status: GpsCoverageRun['status'];
+  state: Record<string, unknown>;
+  progress_pct: number;
+  last_probe_id?: string | null;
+  last_sector_id?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  return request<{ ok: true; run: GpsCoverageRun }>('coverage.save', input);
+}
+
+export async function deleteGpsCoverageRun(coverageKey: string) {
+  return request<{ ok: true; deleted: true }>('coverage.delete', {
+    coverage_key: coverageKey
+  });
+}
