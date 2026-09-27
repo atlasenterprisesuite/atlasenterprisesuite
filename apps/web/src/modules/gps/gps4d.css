@@ -316,3 +316,55 @@
     flex-direction: column;
   }
 }
+
+
+/* Resumable street coverage engine */
+.gps4d-coverage-panel {
+  display:grid;
+  gap:12px;
+  margin:16px 0;
+  padding:14px;
+  border:1px solid rgba(53,200,255,.24);
+  border-radius:16px;
+  background:rgba(6,14,30,.7);
+}
+.gps4d-coverage-heading {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.gps4d-coverage-heading h3 { margin:2px 0 0; }
+.gps4d-coverage-radius {
+  display:grid;
+  gap:6px;
+  font-size:12px;
+}
+.gps4d-coverage-radius select { width:100%; }
+.gps4d-coverage-metrics {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:6px 12px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+}
+.gps4d-coverage-metrics span {
+  color:var(--muted,#9aa9c8);
+  font-size:12px;
+}
+.gps4d-coverage-metrics strong {
+  min-width:0;
+  overflow-wrap:anywhere;
+  font-size:12px;
+}
+.gps4d-coverage-actions {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+}
+.gps4d-coverage-error { color:#ffb020; margin:0; font-size:12px; }
+@media (max-width:640px) {
+  .gps4d-coverage-heading { flex-direction:column; }
+  .gps4d-coverage-actions { grid-template-columns:1fr; }
+}
