@@ -482,6 +482,81 @@ async function deletePlace(context: Context, id: string) {
   return { deleted: true };
 }
 
+async function listCoverageRuns(context: Context) {
+  const admin = adminClient();
+  const { data, error } = await admin
+    .from('atlas_gps_coverage_runs')
+    .select('id,coverage_key,label,scope,status,state,progress_pct,last_probe_id,last_sector_id,metadata,created_at,updated_at')
+    .eq('org_id', context.orgId)
+    .eq('user_id', context.userId)
+    .order('updated_at', { ascending: false })
+    .limit(100);
+  if (error) throw new EdgeError('coverage_runs_unavailable', 503);
+  return data || [];
+}
+
+async function upsertCoverageRun(context: Context, input: Json) {
+  const coverageKey = clean(input.coverage_key, 160);
+  const label = clean(input.label, 240);
+  const scope = clean(input.scope, 32);
+  const status = clean(input.status || 'pending', 32);
+  if (!coverageKey) throw new EdgeError('coverage_key_required', 422);
+  if (!label) throw new EdgeError('coverage_label_required', 422);
+  if (!['street','sector','city','region','country','continent','globe'].includes(scope)) {
+    throw new EdgeError('coverage_scope_invalid', 422);
+  }
+  if (!['pending','in-progress','complete','blocked'].includes(status)) {
+    throw new EdgeError('coverage_status_invalid', 422);
+  }
+
+  const progressPct = Math.min(100, Math.max(0, Number(input.progress_pct || 0)));
+  if (!Number.isFinite(progressPct)) throw new EdgeError('coverage_progress_invalid', 422);
+
+  const state = input.state && typeof input.state === 'object' && !Array.isArray(input.state)
+    ? input.state
+    : {};
+  const metadata = input.metadata && typeof input.metadata === 'object' && !Array.isArray(input.metadata)
+    ? input.metadata
+    : {};
+
+  const admin = adminClient();
+  const { data, error } = await admin
+    .from('atlas_gps_coverage_runs')
+    .upsert({
+      org_id: context.orgId,
+      user_id: context.userId,
+      coverage_key: coverageKey,
+      label,
+      scope,
+      status,
+      state,
+      progress_pct: progressPct,
+      last_probe_id: clean(input.last_probe_id, 240) || null,
+      last_sector_id: clean(input.last_sector_id, 240) || null,
+      metadata,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'org_id,user_id,coverage_key' })
+    .select('id,coverage_key,label,scope,status,state,progress_pct,last_probe_id,last_sector_id,metadata,created_at,updated_at')
+    .single();
+
+  if (error || !data) throw new EdgeError('coverage_save_failed', 503);
+  return data;
+}
+
+async function deleteCoverageRun(context: Context, coverageKeyRaw: unknown) {
+  const coverageKey = clean(coverageKeyRaw, 160);
+  if (!coverageKey) throw new EdgeError('coverage_key_required', 422);
+  const admin = adminClient();
+  const { error } = await admin
+    .from('atlas_gps_coverage_runs')
+    .delete()
+    .eq('org_id', context.orgId)
+    .eq('user_id', context.userId)
+    .eq('coverage_key', coverageKey);
+  if (error) throw new EdgeError('coverage_delete_failed', 503);
+  return { deleted: true };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { ok: false, error: 'method_not_allowed' }, 405);
@@ -517,6 +592,15 @@ Deno.serve(async (req: Request) => {
     }
     if (operation === 'saved.delete') {
       return json(req, { ok: true, organization_id: context.orgId, ...(await deletePlace(context, clean(body.id, 80))) });
+    }
+    if (operation === 'coverage.list') {
+      return json(req, { ok: true, organization_id: context.orgId, runs: await listCoverageRuns(context) });
+    }
+    if (operation === 'coverage.save') {
+      return json(req, { ok: true, organization_id: context.orgId, run: await upsertCoverageRun(context, body) });
+    }
+    if (operation === 'coverage.delete') {
+      return json(req, { ok: true, organization_id: context.orgId, ...(await deleteCoverageRun(context, body.coverage_key)) });
     }
     throw new EdgeError('unsupported_operation', 404);
   } catch (error) {
