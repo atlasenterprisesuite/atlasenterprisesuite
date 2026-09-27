@@ -22,6 +22,7 @@ import { AtlasNavigationEngine, type NavigationEngineObservation } from './navig
 import { createNavigationLocationSource, type NavigationLocationSourceKind } from './navigationLocation';
 import { Photorealistic3DView } from './Photorealistic3DView';
 import { IndoorNavigationPanel } from './IndoorNavigationPanel';
+import { CoverageControlPanel } from './CoverageControlPanel';
 import { validateIndoorBuilding, type IndoorBuilding } from './immersiveSpatial';
 import './gps4d.css';
 
@@ -937,6 +938,8 @@ export function Gps4DPage() {
             enterLabel="Entrar al edificio"
             floorLabel="Piso"
           />
+
+          <CoverageControlPanel center={selected || current} />
 
           <div className="gps4d-actions">
             <button type="button" disabled={!activeRoute || !current || navigationActive} onClick={beginNavigation}>Iniciar navegación</button>
