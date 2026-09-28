@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ATLAS_SESSION_EVENT,
   getAtlasAccessToken,
@@ -7,6 +7,16 @@ import {
   type AtlasShellOrganization
 } from '../lib/atlasSession';
 import { ATLAS_NAV_ITEMS } from '../modules/registry';
+import {
+  ATLAS_ACCESSIBILITY_PROFILE_EVENT,
+  loadAccessibilityProfile,
+  loadAccessibilityProfileRemote,
+  resolveAccessibilityUserId,
+  saveAccessibilityProfile,
+  syncAccessibilityProfileRemote
+} from '../services/accessibilityProfile';
+import type { AccessibilityAction, AccessibilityProfile } from '../types/accessibility';
+import { AtlasAccessibility } from './AtlasAccessibility';
 import { AtlasAssistant } from './assistant/AtlasAssistant';
 
 export function AtlasShell({ children }: { children: ReactNode }) {
@@ -16,16 +26,50 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [accessibilityProfile, setAccessibilityProfile] = useState<AccessibilityProfile>(() =>
+    loadAccessibilityProfile(resolveAccessibilityUserId())
+  );
 
   useEffect(() => {
     const handleSessionChange = () => {
       setOrganization(getCachedAtlasShellOrganization());
+      const userId = resolveAccessibilityUserId();
+      setAccessibilityProfile(loadAccessibilityProfile(userId));
     };
 
     window.addEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     return () => {
       window.removeEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleProfileChange = (event: Event) => {
+      const updated = (event as CustomEvent<AccessibilityProfile>).detail;
+      if (updated?.userId === accessibilityProfile.userId) setAccessibilityProfile(updated);
+    };
+    window.addEventListener(ATLAS_ACCESSIBILITY_PROFILE_EVENT, handleProfileChange);
+    return () => window.removeEventListener(ATLAS_ACCESSIBILITY_PROFILE_EVENT, handleProfileChange);
+  }, [accessibilityProfile.userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadAccessibilityProfileRemote(accessibilityProfile.userId)
+      .then((remoteProfile) => {
+        if (!cancelled && remoteProfile) setAccessibilityProfile(saveAccessibilityProfile(remoteProfile));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [accessibilityProfile.userId]);
+
+  const updateAccessibilityProfile = useCallback((updated: AccessibilityProfile) => {
+    const normalized = saveAccessibilityProfile(updated);
+    setAccessibilityProfile(normalized);
+    void syncAccessibilityProfileRemote(normalized);
+  }, []);
+
+  const dispatchAccessibilityAction = useCallback((action: AccessibilityAction, payload?: Record<string, unknown>) => {
+    window.dispatchEvent(new CustomEvent('atlas-accessibility-action', { detail: { action, payload: payload || {} } }));
   }, []);
 
   useEffect(() => {
@@ -75,6 +119,12 @@ export function AtlasShell({ children }: { children: ReactNode }) {
       ? 'Verifying organization'
       : 'Public workspace';
   const roleLabel = organization ? organization.role.toUpperCase() : hasSession ? 'CHECKING' : 'PUBLIC';
+  const shellClassName = [
+    'atlas-shell',
+    'atlas-shell-futuristic',
+    accessibilityProfile.highContrast ? 'accessibility-high-contrast' : '',
+    accessibilityProfile.motionReduced ? 'accessibility-reduced-motion' : ''
+  ].filter(Boolean).join(' ');
   const organizationInitials = organizationName
     .split(/\s+/)
     .filter(Boolean)
@@ -104,7 +154,12 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="atlas-shell atlas-shell-futuristic">
+    <div
+      className={shellClassName}
+      style={{ fontSize: `${accessibilityProfile.textSizeScale * 100}%` }}
+      data-screen-reader-optimized={accessibilityProfile.screenReaderOptimized ? 'true' : 'false'}
+      data-braille-preferred={accessibilityProfile.brailleMode ? 'true' : 'false'}
+    >
       <aside
         id="atlas-primary-navigation"
         className={mobileNavOpen ? 'atlas-sidebar is-open' : 'atlas-sidebar'}
@@ -143,6 +198,14 @@ export function AtlasShell({ children }: { children: ReactNode }) {
               <span>{item.label}</span>
             </NavLink>
           ))}
+          <NavLink
+            to="/settings/accessibility/communication"
+            className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+            onClick={closeMobileNav}
+          >
+            <span className="atlas-nav-glyph" aria-hidden="true">A11Y</span>
+            <span>Accessibility</span>
+          </NavLink>
         </nav>
 
         {organization ? (
@@ -237,6 +300,11 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         <main>{children}</main>
         {organization && !voiceOwnsAssistantSurface ? <AtlasAssistant /> : null}
       </div>
+      <AtlasAccessibility
+        initialProfile={accessibilityProfile}
+        onProfileChange={updateAccessibilityProfile}
+        onActionTriggered={dispatchAccessibilityAction}
+      />
     </div>
   );
 }

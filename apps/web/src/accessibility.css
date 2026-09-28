@@ -1,0 +1,236 @@
+.atlas-accessibility-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 14px 40px rgba(2, 6, 23, 0.35);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.atlas-accessibility-launcher:focus-visible,
+.atlas-accessibility-dialog button:focus-visible,
+.atlas-accessibility-dialog a:focus-visible,
+.atlas-accessibility-dialog select:focus-visible,
+.accessibility-settings-section input:focus-visible,
+.accessibility-settings-section select:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+.atlas-accessibility-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.atlas-accessibility-dialog {
+  width: min(920px, 100%);
+  max-height: min(88vh, 880px);
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 22px;
+  padding: 24px;
+  background: #0b1220;
+  color: #f8fafc;
+  box-shadow: 0 24px 90px rgba(2, 6, 23, 0.55);
+}
+
+.atlas-accessibility-heading,
+.accessibility-transcript-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.atlas-accessibility-heading h2,
+.accessibility-provider-boundary h3,
+.accessibility-transcript h3 {
+  margin: 0;
+}
+
+.atlas-accessibility-heading p:last-child {
+  color: #cbd5e1;
+}
+
+.atlas-accessibility-dialog .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 24px;
+}
+
+.accessibility-mode-summary,
+.accessibility-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.accessibility-mode-summary > span,
+.accessibility-capability {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.74);
+}
+
+.accessibility-mode-summary strong,
+.accessibility-capability span {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.accessibility-capability strong[data-state="available"] { color: #86efac; }
+.accessibility-capability strong[data-state="unavailable"] { color: #fca5a5; }
+.accessibility-capability strong[data-state="not_configured"] { color: #fde68a; }
+
+.accessibility-provider-boundary,
+.accessibility-transcript,
+.accessibility-settings-notice {
+  margin-top: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.accessibility-boundary-note {
+  margin: 12px 0 0;
+  color: #cbd5e1;
+  font-size: 0.92rem;
+}
+
+.accessibility-decision {
+  margin-top: 14px;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.accessibility-decision.warning {
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(120, 53, 15, 0.28);
+}
+
+.accessibility-decision.blocked {
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: rgba(127, 29, 29, 0.26);
+}
+
+.accessibility-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.accessibility-quick-actions button,
+.accessibility-quick-actions .text-link,
+.accessibility-inline-field select {
+  min-height: 42px;
+}
+
+.accessibility-inline-field {
+  display: grid;
+  gap: 5px;
+}
+
+.atlas-live-captions {
+  position: fixed;
+  left: 50%;
+  bottom: 78px;
+  z-index: 8500;
+  display: flex;
+  gap: 10px;
+  width: min(780px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #f8fafc;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.32);
+}
+
+.accessibility-settings-section .settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.accessibility-toggle-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.accessibility-toggle-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.atlas-shell.accessibility-high-contrast {
+  filter: contrast(1.2);
+}
+
+.atlas-shell.accessibility-high-contrast .atlas-workspace,
+.atlas-shell.accessibility-high-contrast .atlas-sidebar {
+  border-color: currentColor;
+}
+
+.atlas-shell.accessibility-reduced-motion *,
+.atlas-shell.accessibility-reduced-motion *::before,
+.atlas-shell.accessibility-reduced-motion *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (max-width: 760px) {
+  .atlas-accessibility-backdrop { padding: 0; }
+  .atlas-accessibility-dialog {
+    width: 100%;
+    max-height: 100vh;
+    min-height: 100vh;
+    border-radius: 0;
+    padding: 18px;
+  }
+  .accessibility-mode-summary,
+  .accessibility-capability-grid,
+  .accessibility-settings-section .settings-grid { grid-template-columns: 1fr; }
+  .atlas-accessibility-launcher {
+    right: 12px;
+    bottom: 12px;
+  }
+  .atlas-live-captions { bottom: 68px; }
+}
