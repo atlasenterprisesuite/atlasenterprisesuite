@@ -42,6 +42,6 @@ describe('Accessibility Communication Settings route', () => {
     );
 
     expect(screen.getByText(/Braille hardware support requires a compatible detected device/i)).toBeInTheDocument();
-    expect(screen.getByText(/sign-language recognition and avatar rendering require configured providers/i)).toBeInTheDocument();
+    expect(screen.getByText(/sign-language recognition and avatar rendering require a provider validated for the specific selected language/i)).toBeInTheDocument();
   });
 });
