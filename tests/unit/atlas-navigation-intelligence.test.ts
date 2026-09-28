@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveAssistantModule } from '../../apps/web/src/assistant/routeContext';
 import {
   ATLAS_NAVIGATION_GRAPH,
   getAtlasNavigationInstructions,
@@ -31,6 +32,11 @@ describe('ATLAS navigation intelligence', () => {
     expect(searchAtlasNavigation('cuentas por cobrar')[0]?.id).toBe('receivables');
     expect(searchAtlasNavigation('proveedores')[0]?.id).toBe('payables');
     expect(searchAtlasNavigation('accesibilidad')[0]?.id).toBe('accessibility');
+  });
+
+  it('feeds canonical navigation context into the assistant for routes not hard-coded there', () => {
+    expect(resolveAssistantModule('/gps')).toBe('gps');
+    expect(resolveAssistantModule('/cloud')).toBe('cloud');
   });
 
   it('fails truthfully for unknown routes instead of inventing navigation', () => {
