@@ -26,6 +26,9 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [accessibilityProfile, setAccessibilityProfile] = useState<AccessibilityProfile>(() =>
+    loadAccessibilityProfile(resolveAccessibilityUserId())
+  );
 
   useEffect(() => {
     const handleSessionChange = () => {
