@@ -154,6 +154,7 @@ export function EnterpriseExperiencePage() {
       title="One governed enterprise ecosystem"
       description="Finance, CRM, Payroll, Health, Creator and operational verticals share one shell, organization context and execution boundary."
       narrative="One operating system for governed enterprise work."
+      visualReference="universe"
       actions={[
         { label: 'Open Finance', to: '/finance' },
         { label: 'Open CRM', to: '/crm', variant: 'secondary' }
@@ -171,6 +172,7 @@ export function BusinessExperiencePage() {
       title="Business Suite"
       description="Connected growth, customer, creative and publishing operations inside one governed organization."
       narrative="Growth operations, customer workflows and governed publishing under one enterprise context."
+      visualReference="modules"
       actions={[
         { label: 'Open Publishing Workspace', to: '/business/growth/social-publisher' },
         { label: 'Open CRM', to: '/crm', variant: 'secondary' }
@@ -188,6 +190,7 @@ export function FinanceExperiencePage() {
       title="Finance"
       description="Governed financial operations inside the shared ATLAS organization and permission model."
       narrative="Finance intelligence, execution and control."
+      visualReference="modules"
       actions={[{ label: 'Open Accounting', to: '/finance/accounting' }]}
       sections={financeSections}
       statusNote="Finance totals and readiness state are shown only when they come from the authenticated organization through Supabase RLS. External banking and payment execution remain fail-closed until the organization authorizes and verifies those providers."
@@ -204,6 +207,7 @@ export function AccountingExperiencePage() {
       title="Accounting"
       description="Working accounting slices use the same governed tenant scope, permissions and reporting contracts as the rest of ATLAS."
       narrative="Accounting intelligence with governed execution."
+      visualReference="modules"
       actions={[
         { label: 'Accounts Payable', to: '/finance/accounting/accounts-payable' },
         { label: 'Automotive Sales Report', to: '/finance/accounting/reports/automotive-sales', variant: 'secondary' }
