@@ -110,6 +110,12 @@ describe('ATLAS Chat Core', () => {
     expect(page).toContain('Export JSON');
     expect(page).toContain('Request deletion');
     expect(page).toContain('Messages are persisted before realtime notification is emitted');
+    expect(page).toContain('Conversation date filters');
+    expect(page).toContain('Last activity');
+    expect(page).toContain('Created');
+    expect(page).toContain('Newest first');
+    expect(page).toContain('Oldest first');
+    expect(page).toContain('No conversations match this filter');
   });
 
   it('adds ATLAS Chat to both fail-closed production route verifiers', () => {
