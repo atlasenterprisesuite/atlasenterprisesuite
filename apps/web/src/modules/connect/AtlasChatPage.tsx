@@ -145,6 +145,14 @@ export function AtlasChatPage() {
 
   const filterActive = datePreset !== 'all' || dateField !== 'activity' || conversationSort !== 'newest';
 
+  useEffect(() => {
+    setConversationId((current) => {
+      if (!filteredConversations.length) return null;
+      if (current && filteredConversations.some((conversation) => conversation.id === current)) return current;
+      return filteredConversations[0].id;
+    });
+  }, [filteredConversations]);
+
   function applyPreset(next: ConversationDatePreset) {
     setDatePreset(next);
     if (next === 'all') {
