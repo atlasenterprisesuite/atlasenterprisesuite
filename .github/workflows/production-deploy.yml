@@ -33,6 +33,14 @@ jobs:
 
       - name: Install native media verification dependencies
         run: |
+          # GitHub-hosted Ubuntu images can inherit optional third-party APT
+          # sources. A 4xx from one of those sources must not prevent ATLAS
+          # from installing the Ubuntu-native packages required by this gate.
+          for source in /etc/apt/sources.list.d/*; do
+            if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
           ffmpeg -version
