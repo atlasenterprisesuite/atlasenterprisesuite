@@ -335,6 +335,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'gps',
+    title: 'ATLAS GPS 4D',
+    navLabel: 'GPS 4D',
+    area: 'Mobility',
+    route: '/gps',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Governed live mapping, route intelligence and location-aware mobility surface.',
+    showInNavigation: true
+  },
+  {
     id: 'aviation',
     title: 'ATLAS Aviation',
     navLabel: 'Aviation',
