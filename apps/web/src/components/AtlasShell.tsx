@@ -7,6 +7,7 @@ import {
   type AtlasShellOrganization
 } from '../lib/atlasSession';
 import { ATLAS_NAV_ITEMS } from '../modules/registry';
+import { searchAtlasNavigation } from '../navigation/atlasNavigation';
 import {
   ATLAS_ACCESSIBILITY_PROFILE_EVENT,
   loadAccessibilityProfile,
@@ -136,13 +137,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
     || location.pathname === '/voice'
     || location.pathname.startsWith('/voice/');
 
-  const searchResults = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return [];
-    return ATLAS_NAV_ITEMS
-      .filter((item) => item.label.toLowerCase().includes(query) || item.to.toLowerCase().includes(query))
-      .slice(0, 7);
-  }, [searchQuery]);
+  const searchResults = useMemo(() => searchAtlasNavigation(searchQuery), [searchQuery]);
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -278,7 +273,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
                       searchRef.current?.blur();
                     }}
                   >
-                    <span>{item.label}</span><small>{item.to}</small>
+                    <span>{item.label}</span><small>{item.area} · {item.to}</small>
                   </button>
                 ))}
               </div>
