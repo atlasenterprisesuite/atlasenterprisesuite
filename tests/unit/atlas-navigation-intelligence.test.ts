@@ -46,8 +46,19 @@ describe('ATLAS navigation intelligence', () => {
     expect(resolveAssistantModule('/cloud')).toBe('cloud');
   });
 
-  it('fails truthfully for unknown routes instead of inventing navigation', () => {
+  it('keeps every parent relationship resolvable', () => {
+    for (const node of ATLAS_NAVIGATION_GRAPH) {
+      if (!node.parentId) continue;
+      expect(ATLAS_NAVIGATION_GRAPH.some((candidate) => candidate.id === node.parentId), node.id).toBe(true);
+    }
+  });
+
+  it('fails truthfully for unknown routes and descendants instead of inventing navigation', () => {
     expect(getAtlasNavigationNode('/does-not-exist')).toBeUndefined();
+    expect(getAtlasNavigationNode('/gps/missing')).toBeUndefined();
+    expect(getAtlasNavigationNode('/finance/accounting/accounts-payable/missing')).toBeUndefined();
     expect(getAtlasNavigationInstructions('/does-not-exist')).toBe('');
+    expect(getAtlasNavigationInstructions('/gps/missing')).toBe('');
+    expect(getAtlasNavigationInstructions('/settings/accessibility/communication')).toBe('Home → Accessibility');
   });
 });
