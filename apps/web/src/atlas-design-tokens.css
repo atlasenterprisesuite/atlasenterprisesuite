@@ -1,0 +1,93 @@
+:root {
+  color-scheme: dark;
+
+  /* Core palette */
+  --atlas-bg: #020811;
+  --atlas-bg-deep: #020a14;
+  --atlas-surface-1: rgba(5, 22, 42, 0.9);
+  --atlas-surface-2: rgba(8, 30, 51, 0.74);
+  --atlas-surface-3: rgba(13, 34, 52, 0.65);
+  --atlas-surface-solid: #091522;
+
+  --atlas-text-strong: #f4fbff;
+  --atlas-text: #e8f0f8;
+  --atlas-text-muted: #91a8bc;
+  --atlas-text-subtle: #6f90a8;
+
+  --atlas-cyan: #2edbff;
+  --atlas-cyan-bright: #3addff;
+  --atlas-blue: #2187ff;
+  --atlas-blue-strong: #176cf4;
+  --atlas-violet: #765cff;
+
+  --atlas-success: #35e6bc;
+  --atlas-warning: #ffb454;
+  --atlas-danger: #ff7f73;
+  --atlas-info: #64cfff;
+
+  /* Borders and focus */
+  --atlas-border-subtle: rgba(118, 188, 255, 0.12);
+  --atlas-border: rgba(118, 188, 255, 0.18);
+  --atlas-border-strong: rgba(58, 211, 255, 0.4);
+  --atlas-focus: #33d9ff;
+  --atlas-focus-ring: 0 0 0 3px rgba(51, 217, 255, 0.16);
+
+  /* Radius */
+  --atlas-radius-xs: 8px;
+  --atlas-radius-sm: 10px;
+  --atlas-radius-md: 12px;
+  --atlas-radius-lg: 16px;
+  --atlas-radius-xl: 20px;
+  --atlas-radius-2xl: 24px;
+  --atlas-radius-pill: 999px;
+
+  /* Spacing */
+  --atlas-space-1: 4px;
+  --atlas-space-2: 8px;
+  --atlas-space-3: 12px;
+  --atlas-space-4: 16px;
+  --atlas-space-5: 20px;
+  --atlas-space-6: 24px;
+  --atlas-space-8: 32px;
+  --atlas-space-10: 40px;
+  --atlas-space-12: 48px;
+
+  /* Typography */
+  --atlas-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --atlas-font-size-xs: 0.6875rem;
+  --atlas-font-size-sm: 0.75rem;
+  --atlas-font-size-md: 0.875rem;
+  --atlas-font-size-base: 1rem;
+  --atlas-font-size-lg: 1.125rem;
+  --atlas-font-size-xl: 1.5rem;
+  --atlas-font-size-2xl: clamp(1.875rem, 4vw, 3.25rem);
+
+  /* Depth */
+  --atlas-shadow-soft: 0 12px 36px rgba(0, 0, 0, 0.22);
+  --atlas-shadow-panel: 0 22px 55px rgba(0, 0, 0, 0.42);
+  --atlas-glow-cyan: 0 0 24px rgba(46, 219, 255, 0.12);
+
+  /* Motion */
+  --atlas-duration-fast: 120ms;
+  --atlas-duration-base: 180ms;
+  --atlas-duration-slow: 260ms;
+  --atlas-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout */
+  --atlas-shell-sidebar: 224px;
+  --atlas-content-max: 1680px;
+  --atlas-touch-target: 44px;
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--atlas-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --atlas-duration-fast: 0ms;
+    --atlas-duration-base: 0ms;
+    --atlas-duration-slow: 0ms;
+  }
+}
