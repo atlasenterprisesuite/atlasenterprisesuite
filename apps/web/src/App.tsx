@@ -21,6 +21,7 @@ import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
+import { AccessibilityCommunicationSettingsPage } from './modules/settings/AccessibilityCommunicationSettings';
 import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { Gps4DPage } from './modules/gps/Gps4DPage';
@@ -297,6 +298,7 @@ export function App() {
         <Route path="/health" element={<HealthHome />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
+        <Route path="/settings/accessibility/communication" element={<AccessibilityCommunicationSettingsPage />} />
         <Route path={labBase} element={<LabLayout />}>
           <Route index element={<LabOverview />} />
           <Route path="diseases" element={<DiseasesPage />} />

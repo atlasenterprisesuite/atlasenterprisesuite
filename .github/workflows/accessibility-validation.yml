@@ -1,0 +1,89 @@
+name: ATLAS Accessibility Validation
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/web/**"
+      - "data/accessibility/**"
+      - "tests/**accessibility**"
+      - "tests/unit/sign-language-registry.test.ts"
+      - "docs/validation/**"
+      - ".github/workflows/accessibility-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-accessibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  automated-a11y:
+    name: WCAG 2.2 AA automated gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: TypeScript and production build
+        run: |
+          npm run typecheck
+          npm run build
+      - name: Start production preview
+        run: |
+          cd apps/web
+          npx vite preview --host 127.0.0.1 --port 4173 > /tmp/atlas-accessibility-preview.log 2>&1 &
+          echo $! > /tmp/atlas-accessibility-preview.pid
+      - name: Wait for preview
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/atlas-accessibility-preview.log
+          exit 1
+      - name: Axe WCAG A and AA plus best-practice scan
+        shell: bash
+        run: |
+          routes=(
+            "/"
+            "/finance"
+            "/health"
+            "/settings/accessibility/communication"
+          )
+          for route in "${routes[@]}"; do
+            echo "Auditing ${route}"
+            npx --yes @axe-core/cli@4.13.0 \
+              "http://127.0.0.1:4173${route}" \
+              --tags wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22a,wcag22aa,best-practice \
+              --chrome-options="no-sandbox,disable-setuid-sandbox,disable-dev-shm-usage" \
+              --exit \
+              --verbose
+          done
+      - name: Focused accessibility tests
+        run: >-
+          npx vitest run
+          tests/unit/accessibility-confidence.test.ts
+          tests/unit/accessibility-profile.test.ts
+          tests/unit/accessibility-device-capabilities.test.ts
+          tests/unit/sign-language-registry.test.ts
+          tests/integration/atlas-accessibility-shell.test.tsx
+          tests/integration/accessibility-settings-route.test.tsx
+          tests/integration/accessibility-validation-contract.test.ts
+      - name: Upload preview log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-accessibility-preview-log
+          path: /tmp/atlas-accessibility-preview.log
+          if-no-files-found: ignore
