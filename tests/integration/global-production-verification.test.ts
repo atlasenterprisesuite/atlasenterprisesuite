@@ -66,6 +66,7 @@ describe('ATLAS global production verification', () => {
       '/galaxy',
       '/device-os',
       '/execution/manager/readiness',
+      '/settings/accessibility/communication',
       '/finance/accounting/accounts-payable',
       '/finance/accounting/accounts-receivable',
       '/finance/accounting/reports/automotive-sales',
@@ -177,6 +178,8 @@ describe('ATLAS global production verification', () => {
     expect(cloudflareWorkflow).toContain('Verify ATLAS Manager post-deployment canary');
     expect(cloudflareWorkflow).toContain('/execution/manager/readiness');
     expect(cloudflareWorkflow).toContain('manager_readiness_route_reachable');
+    expect(cloudflareWorkflow).toContain('/settings/accessibility/communication');
+    expect(cloudflareWorkflow).toContain('accessibility_route_reachable');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
@@ -230,6 +233,8 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('suite_route_reachable');
     expect(authorizedVerifier).toContain("'/execution/manager/readiness'");
     expect(authorizedVerifier).toContain('manager_readiness_route_reachable');
+    expect(authorizedVerifier).toContain("'/settings/accessibility/communication'");
+    expect(authorizedVerifier).toContain('accessibility_route_reachable');
     expect(authorizedVerifier).toContain("'/gps'");
     expect(authorizedVerifier).toContain('gps_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
