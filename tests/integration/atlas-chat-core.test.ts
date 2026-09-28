@@ -5,6 +5,7 @@ const read = (path: string) => existsSync(path) ? readFileSync(path, 'utf8') : '
 
 const migrationPath = 'supabase/migrations/20260925031000_atlas_chat_core.sql';
 const runtimeMigrationPath = 'supabase/migrations/20260925093000_atlas_chat_postgrest_runtime.sql';
+const filtersMigrationPath = 'supabase/migrations/20260928214500_atlas_chat_conversation_filters.sql';
 const workerPath = 'worker/index.ts';
 const wranglerPath = 'wrangler.jsonc';
 const routesPath = 'apps/web/src/modules/connect/ConnectRoutes.tsx';
@@ -77,6 +78,29 @@ describe('ATLAS Chat Core', () => {
     expect(worker).toContain('/rest/v1/rpc/atlas_chat_api');
     expect(client).not.toContain('/functions/v1/atlas-chat');
     expect(worker).not.toContain('/functions/v1/atlas-chat');
+  });
+
+  it('filters historical conversations server-side with tenant and membership enforcement', () => {
+    const sql = read(filtersMigrationPath);
+    const client = read(apiPath);
+    const page = read(pagePath);
+
+    expect(sql).toContain('create or replace function public.atlas_chat_list_conversations');
+    expect(sql).toContain('auth.uid()');
+    expect(sql).toContain("om.status = 'active'");
+    expect(sql).toContain("p_date_field not in ('activity','created')");
+    expect(sql).toContain("p_sort not in ('newest','oldest')");
+    expect(sql).toContain('p_from is null');
+    expect(sql).toContain('p_to is null');
+    expect(sql).toContain('grant execute on function public.atlas_chat_list_conversations');
+    expect(client).toContain("'/rest/v1/rpc/atlas_chat_list_conversations'");
+    expect(client).toContain('p_date_field');
+    expect(client).toContain('p_from');
+    expect(client).toContain('p_to');
+    expect(page).toContain('CHAT_FILTER_STORAGE_KEY');
+    expect(page).toContain('window.localStorage.setItem');
+    expect(page).toContain('conversationDateBounds');
+    expect(page).toContain('limit: 2000');
   });
 
   it('uses one-time realtime tickets and a hibernating Durable Object with polling recovery', () => {
