@@ -9,7 +9,7 @@ const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 30;
+const VERSION = 31;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CANONICAL_MODULE_ROUTES = [
@@ -54,6 +54,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/galaxy',
   '/device-os',
   '/execution/manager/readiness',
+  '/settings/accessibility/communication',
   '/finance/accounting/accounts-payable',
   '/finance/accounting/accounts-receivable',
   '/finance/accounting/reports/automotive-sales'
@@ -292,6 +293,7 @@ Deno.serve(async (req: Request) => {
     launch360,
     identity,
     managerReadiness,
+    accessibility,
     gps,
     finance,
     accounting,
@@ -333,6 +335,7 @@ Deno.serve(async (req: Request) => {
     probe('/advisory/business-launch-360'),
     probe('/identity?app=%2Ffinance'),
     probe('/execution/manager/readiness'),
+    probe('/settings/accessibility/communication'),
     probe('/gps'),
     probe('/finance'),
     probe('/finance/accounting'),
@@ -387,6 +390,7 @@ Deno.serve(async (req: Request) => {
     launch360.status === 200 &&
     identity.status === 200 &&
     managerReadiness.status === 200 &&
+    accessibility.status === 200 &&
     gps.status === 200 &&
     finance.status === 200 &&
     accounting.status === 200 &&
@@ -416,6 +420,7 @@ Deno.serve(async (req: Request) => {
     launch360,
     identity,
     managerReadiness,
+    accessibility,
     gps,
     finance,
     accounting,
@@ -517,6 +522,7 @@ Deno.serve(async (req: Request) => {
         business_launch_360_route_reachable: launch360.status === 200,
         identity_route_reachable: identity.status === 200,
         manager_readiness_route_reachable: managerReadiness.status === 200,
+        accessibility_route_reachable: accessibility.status === 200,
         gps_route_reachable: gps.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         finance_accounting_route_reachable: accounting.status === 200,
@@ -563,6 +569,7 @@ Deno.serve(async (req: Request) => {
         business_launch_360: launch360,
         identity,
         manager_readiness: managerReadiness,
+        accessibility,
         finance,
         finance_accounting: accounting,
         accounts_payable: payables,
