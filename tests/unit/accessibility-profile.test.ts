@@ -71,7 +71,7 @@ describe('accessibility profile persistence', () => {
         default_org_id: defaultOrgId,
         preferences: { locale: 'en-US', theme: 'dark' }
       }]), { status: 200, headers: { 'content-type': 'application/json' } }))
-      .mockResolvedValueOnce(new Response('', { status: 204 }));
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(syncAccessibilityProfileRemote(profile)).resolves.toBe('synced');
