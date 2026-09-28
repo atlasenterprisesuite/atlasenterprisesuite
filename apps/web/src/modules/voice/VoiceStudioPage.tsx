@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AtlasVisualReference } from '../../components/AtlasVisualReference';
 import { AtlasVoicePage } from './AtlasVoicePage';
 import './voiceStudio.css';
 
@@ -13,6 +14,8 @@ export function VoiceStudioPage() {
         </div>
         <Link className="voice-studio-personal-link" to="/voice/personal-voice">Personal Voice</Link>
       </header>
+
+      <AtlasVisualReference reference="voice" compact />
 
       <div className="voice-capability-strip" aria-label="Voice capability status">
         <span><i className="is-live" aria-hidden="true" />Identity protected</span>
