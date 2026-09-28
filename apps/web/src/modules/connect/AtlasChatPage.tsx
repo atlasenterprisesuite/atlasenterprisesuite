@@ -282,13 +282,17 @@ export function AtlasChatPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CHAT_FILTER_STORAGE_KEY, JSON.stringify({
-        dateField,
-        datePreset,
-        dateFrom,
-        dateTo,
-        conversationSort
-      }));
+      try {
+        window.localStorage.setItem(CHAT_FILTER_STORAGE_KEY, JSON.stringify({
+          dateField,
+          datePreset,
+          dateFrom,
+          dateTo,
+          conversationSort
+        }));
+      } catch {
+        // Filter persistence is optional; chat functionality must remain available.
+      }
     }
     if (!loading) {
       refreshConversations().catch((cause) => {
@@ -585,7 +589,7 @@ export function AtlasChatPage() {
             ) : null}
 
             <div className="atlas-chat-filter-summary" aria-live="polite">
-              <span>{filteredConversations.length} of {conversations.length} conversations</span>
+              <span>{filteredConversations.length} {filteredConversations.length === 1 ? 'conversation' : 'conversations'}</span>
               {filterActive ? <button type="button" onClick={clearConversationFilters}>Reset</button> : null}
             </div>
           </div>
