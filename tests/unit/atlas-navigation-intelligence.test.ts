@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveAssistantModule } from '../../apps/web/src/assistant/routeContext';
+import { ATLAS_NAV_ITEMS } from '../../apps/web/src/modules/registry';
 import {
   ATLAS_NAVIGATION_GRAPH,
   getAtlasNavigationInstructions,
@@ -9,6 +10,12 @@ import {
 } from '../../apps/web/src/navigation/atlasNavigation';
 
 describe('ATLAS navigation intelligence', () => {
+  it('prevents visible menu items from drifting outside the canonical graph', () => {
+    for (const item of ATLAS_NAV_ITEMS) {
+      expect(ATLAS_NAVIGATION_GRAPH.some((node) => node.to === item.to), item.to).toBe(true);
+    }
+  });
+
   it('keeps GPS 4D discoverable through the canonical graph', () => {
     const gps = ATLAS_NAVIGATION_GRAPH.find((node) => node.id === 'gps');
     expect(gps?.to).toBe('/gps');
