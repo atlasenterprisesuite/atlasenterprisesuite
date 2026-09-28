@@ -16,7 +16,7 @@ const STATIC_NODES: readonly AtlasNavigationNode[] = [
   { id: 'payables', label: 'Payables', to: '/finance/accounting/accounts-payable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ap', 'accounts payable', 'cuentas por pagar', 'vendors', 'proveedores'] },
   { id: 'receivables', label: 'Receivables', to: '/finance/accounting/accounts-receivable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ar', 'accounts receivable', 'cuentas por cobrar', 'customers', 'clientes'] },
   { id: 'automotive-reporting', label: 'Automotive', to: '/finance/accounting/reports/automotive-sales', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['automotive', 'dealer', 'vehicle', 'sales report', 'autos'] },
-  { id: 'accessibility', label: 'Accessibility', to: '/settings/accessibility/communication', area: 'Platform', parentId: 'settings', keywords: ['a11y', 'accessibility', 'accesibilidad', 'captions', 'screen reader', 'braille', 'sign language'] }
+  { id: 'accessibility', label: 'Accessibility', to: '/settings/accessibility/communication', area: 'Platform', keywords: ['a11y', 'accessibility', 'accesibilidad', 'captions', 'screen reader', 'braille', 'sign language'] }
 ];
 
 const MODULE_NODES: readonly AtlasNavigationNode[] = ATLAS_MODULES.map((module) => ({
@@ -81,12 +81,10 @@ export function searchAtlasNavigation(query: string, limit = 7) {
 
 export function getAtlasNavigationNode(pathname: string) {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/';
-  return [...ATLAS_NAVIGATION_GRAPH]
-    .sort((a, b) => b.to.length - a.to.length)
-    .find((node) => {
-      const route = node.to.replace(/\/+$/, '') || '/';
-      return normalizedPath === route || (route !== '/' && normalizedPath.startsWith(route + '/'));
-    });
+  return ATLAS_NAVIGATION_GRAPH.find((node) => {
+    const route = node.to.replace(/\/+$/, '') || '/';
+    return normalizedPath === route;
+  });
 }
 
 export function getAtlasNavigationTrail(pathname: string) {
