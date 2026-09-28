@@ -52,6 +52,8 @@ jobs:
           done
           cat /tmp/atlas-accessibility-preview.log
           exit 1
+      - name: Install synchronized browser driver
+        run: npx --yes browser-driver-manager install chrome
       - name: Axe WCAG A and AA plus best-practice scan
         shell: bash
         run: |
