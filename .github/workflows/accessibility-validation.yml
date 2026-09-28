@@ -10,6 +10,15 @@ on:
       - "tests/unit/sign-language-registry.test.ts"
       - "docs/validation/**"
       - ".github/workflows/accessibility-validation.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/web/**"
+      - "data/accessibility/**"
+      - "tests/**accessibility**"
+      - "tests/unit/sign-language-registry.test.ts"
+      - "docs/validation/**"
+      - ".github/workflows/accessibility-validation.yml"
   workflow_dispatch:
 
 permissions:

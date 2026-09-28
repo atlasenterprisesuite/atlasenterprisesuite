@@ -1,5 +1,5 @@
 {
-  "version": 26,
+  "version": 27,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -45,6 +45,7 @@
     "/galaxy",
     "/device-os",
     "/execution/manager/readiness",
+    "/settings/accessibility/communication",
     "/finance/accounting/accounts-payable",
     "/finance/accounting/accounts-receivable",
     "/finance/accounting/reports/automotive-sales",
