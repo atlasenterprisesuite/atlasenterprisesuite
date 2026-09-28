@@ -22,6 +22,15 @@ type RealtimeState = 'connecting' | 'live' | 'polling';
 type ConversationDateField = 'activity' | 'created';
 type ConversationDatePreset = 'all' | 'today' | '7d' | '30d' | 'custom';
 type ConversationSort = 'newest' | 'oldest';
+type ConversationFilterSettings = {
+  dateField: ConversationDateField;
+  datePreset: ConversationDatePreset;
+  dateFrom: string;
+  dateTo: string;
+  conversationSort: ConversationSort;
+};
+
+const CHAT_FILTER_STORAGE_KEY = 'atlas.chat.conversationFilters.v1';
 
 function messageText(message: AtlasChatMessage) {
   return typeof message.content?.text === 'string' ? message.content.text : '';
@@ -52,6 +61,52 @@ function conversationDateValue(conversation: AtlasChatConversation, field: Conve
     : conversation.last_message_at || conversation.updated_at;
 }
 
+function conversationDateBounds(preset: ConversationDatePreset, dateFrom: string, dateTo: string) {
+  const now = new Date();
+  let from: Date | null = null;
+  let to: Date | null = null;
+
+  if (preset === 'today') {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  } else if (preset === '7d' || preset === '30d') {
+    const days = preset === '7d' ? 7 : 30;
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+    to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  } else if (preset === 'custom') {
+    from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+    to = dateTo ? new Date(`${dateTo}T00:00:00`) : null;
+    if (to) to = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
+  }
+
+  return { from, to };
+}
+
+function loadConversationFilterSettings(): ConversationFilterSettings {
+  const fallback: ConversationFilterSettings = {
+    dateField: 'activity',
+    datePreset: 'all',
+    dateFrom: '',
+    dateTo: '',
+    conversationSort: 'newest'
+  };
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(CHAT_FILTER_STORAGE_KEY) || '{}');
+    return {
+      dateField: stored.dateField === 'created' ? 'created' : 'activity',
+      datePreset: ['all', 'today', '7d', '30d', 'custom'].includes(stored.datePreset)
+        ? stored.datePreset
+        : 'all',
+      dateFrom: typeof stored.dateFrom === 'string' ? stored.dateFrom : '',
+      dateTo: typeof stored.dateTo === 'string' ? stored.dateTo : '',
+      conversationSort: stored.conversationSort === 'oldest' ? 'oldest' : 'newest'
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 function humanizeError(value: string) {
   const map: Record<string, string> = {
     authentication_required: 'Your ATLAS session is required to use Chat.',
@@ -69,6 +124,7 @@ function humanizeError(value: string) {
 }
 
 export function AtlasChatPage() {
+  const initialFilters = useMemo(() => loadConversationFilterSettings(), []);
   const [readiness, setReadiness] = useState<AtlasChatReadiness | null>(null);
   const [members, setMembers] = useState<AtlasChatMember[]>([]);
   const [conversations, setConversations] = useState<AtlasChatConversation[]>([]);
@@ -87,11 +143,11 @@ export function AtlasChatPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [privacyStatus, setPrivacyStatus] = useState('');
-  const [dateField, setDateField] = useState<ConversationDateField>('activity');
-  const [datePreset, setDatePreset] = useState<ConversationDatePreset>('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [conversationSort, setConversationSort] = useState<ConversationSort>('newest');
+  const [dateField, setDateField] = useState<ConversationDateField>(initialFilters.dateField);
+  const [datePreset, setDatePreset] = useState<ConversationDatePreset>(initialFilters.datePreset);
+  const [dateFrom, setDateFrom] = useState(initialFilters.dateFrom);
+  const [dateTo, setDateTo] = useState(initialFilters.dateTo);
+  const [conversationSort, setConversationSort] = useState<ConversationSort>(initialFilters.conversationSort);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const currentConversation = useMemo(
@@ -110,22 +166,7 @@ export function AtlasChatPage() {
   );
 
   const filteredConversations = useMemo(() => {
-    const now = new Date();
-    let from: Date | null = null;
-    let to: Date | null = null;
-
-    if (datePreset === 'today') {
-      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    } else if (datePreset === '7d' || datePreset === '30d') {
-      const days = datePreset === '7d' ? 7 : 30;
-      from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
-      to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    } else if (datePreset === 'custom') {
-      from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
-      to = dateTo ? new Date(`${dateTo}T00:00:00`) : null;
-      if (to) to = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
-    }
+    const { from, to } = conversationDateBounds(datePreset, dateFrom, dateTo);
 
     return conversations
       .filter((conversation) => {
@@ -184,14 +225,21 @@ export function AtlasChatPage() {
   }
 
   const refreshConversations = useCallback(async () => {
-    const next = await listChatConversations();
+    const { from, to } = conversationDateBounds(datePreset, dateFrom, dateTo);
+    const next = await listChatConversations({
+      dateField,
+      from: from?.toISOString() || null,
+      to: to?.toISOString() || null,
+      sort: conversationSort,
+      limit: 2000
+    });
     setConversations(next);
     setConversationId((current) => {
       if (current && next.some((conversation) => conversation.id === current)) return current;
       return next[0]?.id || null;
     });
     return next;
-  }, []);
+  }, [conversationSort, dateField, dateFrom, datePreset, dateTo]);
 
   const refreshMessages = useCallback(async (id: string, quiet = false) => {
     if (!quiet) setThreadLoading(true);
@@ -231,6 +279,23 @@ export function AtlasChatPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(CHAT_FILTER_STORAGE_KEY, JSON.stringify({
+        dateField,
+        datePreset,
+        dateFrom,
+        dateTo,
+        conversationSort
+      }));
+    }
+    if (!loading) {
+      refreshConversations().catch((cause) => {
+        setError(cause instanceof Error ? cause.message : 'chat_request_failed');
+      });
+    }
+  }, [conversationSort, dateField, dateFrom, datePreset, dateTo, loading, refreshConversations]);
 
   useEffect(() => {
     if (!conversationId) {
