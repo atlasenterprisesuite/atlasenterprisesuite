@@ -19,6 +19,9 @@ import {
 import './atlas-chat.css';
 
 type RealtimeState = 'connecting' | 'live' | 'polling';
+type ConversationDateField = 'activity' | 'created';
+type ConversationDatePreset = 'all' | 'today' | '7d' | '30d' | 'custom';
+type ConversationSort = 'newest' | 'oldest';
 
 function messageText(message: AtlasChatMessage) {
   return typeof message.content?.text === 'string' ? message.content.text : '';
@@ -34,6 +37,19 @@ function timeLabel(value: string | null) {
     hour: 'numeric',
     minute: '2-digit'
   }).format(date);
+}
+
+function toLocalDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function conversationDateValue(conversation: AtlasChatConversation, field: ConversationDateField) {
+  return field === 'created'
+    ? conversation.created_at
+    : conversation.last_message_at || conversation.updated_at;
 }
 
 function humanizeError(value: string) {
@@ -71,6 +87,11 @@ export function AtlasChatPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [privacyStatus, setPrivacyStatus] = useState('');
+  const [dateField, setDateField] = useState<ConversationDateField>('activity');
+  const [datePreset, setDatePreset] = useState<ConversationDatePreset>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [conversationSort, setConversationSort] = useState<ConversationSort>('newest');
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const currentConversation = useMemo(
@@ -87,6 +108,72 @@ export function AtlasChatPage() {
     () => members.filter((member) => member.user_id !== readiness?.user_id),
     [members, readiness?.user_id]
   );
+
+  const filteredConversations = useMemo(() => {
+    const now = new Date();
+    let from: Date | null = null;
+    let to: Date | null = null;
+
+    if (datePreset === 'today') {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    } else if (datePreset === '7d' || datePreset === '30d') {
+      const days = datePreset === '7d' ? 7 : 30;
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+      to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    } else if (datePreset === 'custom') {
+      from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+      to = dateTo ? new Date(`${dateTo}T00:00:00`) : null;
+      if (to) to = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
+    }
+
+    return conversations
+      .filter((conversation) => {
+        const raw = conversationDateValue(conversation, dateField);
+        const value = new Date(raw);
+        if (Number.isNaN(value.getTime())) return false;
+        if (from && value < from) return false;
+        if (to && value >= to) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const aValue = new Date(conversationDateValue(a, dateField)).getTime();
+        const bValue = new Date(conversationDateValue(b, dateField)).getTime();
+        return conversationSort === 'newest' ? bValue - aValue : aValue - bValue;
+      });
+  }, [conversations, dateField, dateFrom, datePreset, dateTo, conversationSort]);
+
+  const filterActive = datePreset !== 'all' || dateField !== 'activity' || conversationSort !== 'newest';
+
+  function applyPreset(next: ConversationDatePreset) {
+    setDatePreset(next);
+    if (next === 'all') {
+      setDateFrom('');
+      setDateTo('');
+      return;
+    }
+    if (next === 'today') {
+      const today = toLocalDateInput(new Date());
+      setDateFrom(today);
+      setDateTo(today);
+      return;
+    }
+    if (next === '7d' || next === '30d') {
+      const now = new Date();
+      const days = next === '7d' ? 7 : 30;
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+      setDateFrom(toLocalDateInput(start));
+      setDateTo(toLocalDateInput(now));
+    }
+  }
+
+  function clearConversationFilters() {
+    setDateField('activity');
+    setDatePreset('all');
+    setDateFrom('');
+    setDateTo('');
+    setConversationSort('newest');
+  }
 
   const refreshConversations = useCallback(async () => {
     const next = await listChatConversations();
@@ -363,8 +450,75 @@ export function AtlasChatPage() {
             </form>
           ) : null}
 
+          <div className="atlas-chat-filters" aria-label="Conversation date filters">
+            <div className="atlas-chat-filter-pills" role="group" aria-label="Quick date filters">
+              {([
+                ['all', 'All'],
+                ['today', 'Today'],
+                ['7d', '7 days'],
+                ['30d', '30 days'],
+                ['custom', 'Custom']
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={datePreset === value ? 'active' : ''}
+                  onClick={() => applyPreset(value)}
+                  aria-pressed={datePreset === value}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="atlas-chat-filter-grid">
+              <label>
+                Date basis
+                <select value={dateField} onChange={(event) => setDateField(event.target.value as ConversationDateField)}>
+                  <option value="activity">Last activity</option>
+                  <option value="created">Created</option>
+                </select>
+              </label>
+              <label>
+                Sort
+                <select value={conversationSort} onChange={(event) => setConversationSort(event.target.value as ConversationSort)}>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
+              </label>
+            </div>
+
+            {datePreset === 'custom' ? (
+              <div className="atlas-chat-filter-grid">
+                <label>
+                  From
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={(event) => setDateFrom(event.target.value)}
+                  />
+                </label>
+                <label>
+                  To
+                  <input
+                    type="date"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(event) => setDateTo(event.target.value)}
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <div className="atlas-chat-filter-summary" aria-live="polite">
+              <span>{filteredConversations.length} of {conversations.length} conversations</span>
+              {filterActive ? <button type="button" onClick={clearConversationFilters}>Reset</button> : null}
+            </div>
+          </div>
+
           <div className="atlas-chat-conversations">
-            {conversations.length ? conversations.map((conversation) => {
+            {filteredConversations.length ? filteredConversations.map((conversation) => {
               const unread = Math.max(0, Number(conversation.last_sequence || 0) - Number(conversation.last_read_sequence || 0));
               return (
                 <button
@@ -388,8 +542,8 @@ export function AtlasChatPage() {
               );
             }) : (
               <div className="atlas-chat-empty-small">
-                <strong>No conversations yet</strong>
-                <span>Create the first organization-scoped thread.</span>
+                <strong>{conversations.length ? 'No conversations match this filter' : 'No conversations yet'}</strong>
+                <span>{conversations.length ? 'Adjust the date criteria or reset the filter.' : 'Create the first organization-scoped thread.'}</span>
               </div>
             )}
           </div>
