@@ -16,7 +16,7 @@ describe('ATLAS A-Z readiness closure', () => {
   it.each([
     ['automations', '/automations', 'AutomationsIntegrationHub'],
     ['revenue', '/revenue', 'RevenueIntegrationHub'],
-    ['analytics', '/analytics', 'AnalyticsIntegrationHub'],
+    ['analytics', '/analytics', 'AnalyticsRoutes'],
     ['site-review', '/site-review', 'SiteReviewIntegrationHub'],
   ])('%s has a canonical implemented orchestration surface', (id, route, component) => {
     expect(moduleBlock(id)).toContain("readiness: 'implemented'");
