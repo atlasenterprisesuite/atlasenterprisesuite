@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const registry = readFileSync('apps/web/src/modules/registry.ts', 'utf8');
 const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
 const hubs = readFileSync('apps/web/src/modules/integration/AtlasIntegrationHubs.tsx', 'utf8');
+const analytics = readFileSync('apps/web/src/modules/analytics/AnalyticsRoutes.tsx', 'utf8');
 
 function moduleBlock(id: string) {
   const start = registry.indexOf(`id: '${id}'`);
@@ -16,13 +17,21 @@ describe('ATLAS A-Z readiness closure', () => {
   it.each([
     ['automations', '/automations', 'AutomationsIntegrationHub'],
     ['revenue', '/revenue', 'RevenueIntegrationHub'],
-    ['analytics', '/analytics', 'AnalyticsIntegrationHub'],
     ['site-review', '/site-review', 'SiteReviewIntegrationHub'],
   ])('%s has a canonical implemented orchestration surface', (id, route, component) => {
     expect(moduleBlock(id)).toContain("readiness: 'implemented'");
     expect(resolver).toContain(`pathname === '${route}'`);
     expect(resolver).toContain(`<RequireAtlasIdentity><${component} /></RequireAtlasIdentity>`);
     expect(hubs).toContain(`export function ${component}`);
+  });
+
+  it('analytics has a dedicated governed module surface', () => {
+    expect(moduleBlock('analytics')).toContain("readiness: 'implemented'");
+    expect(resolver).toContain("pathname === '/analytics' || pathname.startsWith('/analytics/')");
+    expect(resolver).toContain('<RequireAtlasIdentity><AnalyticsRoutes /></RequireAtlasIdentity>');
+    expect(analytics).toContain('export function AnalyticsRoutes');
+    expect(analytics).toContain('/analytics/metrics');
+    expect(analytics).toContain('/analytics/governance');
   });
 
   it.each([

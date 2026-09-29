@@ -71,6 +71,12 @@ export type PayrollPermission =
 export type SecurityPermission = 'security.admin';
 export type AuditPermission = 'audit.read';
 
+export type AnalyticsPermission =
+  | 'analytics.read'
+  | 'analytics.manage'
+  | 'analytics.export'
+  | 'analytics.admin';
+
 export type AtlasPermission =
   | AccountingPermission
   | VoicePermission
@@ -82,7 +88,8 @@ export type AtlasPermission =
   | HrPermission
   | PayrollPermission
   | SecurityPermission
-  | AuditPermission;
+  | AuditPermission
+  | AnalyticsPermission;
 
 export function hasAtlasPermission(
   granted: readonly AtlasPermission[],
