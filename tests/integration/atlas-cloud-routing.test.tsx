@@ -5,6 +5,7 @@ const registry = readFileSync('apps/web/src/modules/registry.ts', 'utf8');
 const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
 const routes = readFileSync('apps/web/src/modules/cloud/AtlasCloudRoutes.tsx', 'utf8');
 const truthStatus = readFileSync('apps/web/src/modules/cloud/truthStatus.ts', 'utf8');
+const commandCenter = readFileSync('apps/web/src/modules/cloud/AtlasCloudCommandCenter.tsx', 'utf8');
 const nextLevel = readFileSync('apps/web/src/modules/cloud/AtlasCloudNextLevel.tsx', 'utf8');
 const main = readFileSync('apps/web/src/main.tsx', 'utf8');
 const backend = readFileSync('supabase/functions/atlas-observability/index.ts', 'utf8');
@@ -27,9 +28,21 @@ describe('ATLAS Cloud routing and product boundaries', () => {
     expect(routes).toContain("ATLAS_MODULES");
     expect(routes).toContain("Search services");
     expect(routes).toContain("Service catalog");
-    expect(routes).toContain("Manager Readiness");
-    expect(routes).toContain("Release Control");
-    expect(routes).toContain("ATLAS Automations");
+  });
+
+  it('renders the command-center home without duplicating provider backends', () => {
+    expect(routes).toContain('AtlasCloudCommandCenter');
+    expect(commandCenter).toContain('ATLAS CLOUD');
+    expect(commandCenter).toContain('System Health');
+    expect(commandCenter).toContain('Resource Explorer');
+    expect(commandCenter).toContain('Command Center');
+    expect(commandCenter).toContain('Adapter registry');
+    expect(commandCenter).toContain('ATLAS Galaxy');
+    expect(commandCenter).toContain('ATLAS Assistant');
+    expect(commandCenter).toContain('/cloud/production-verification');
+    expect(commandCenter).toContain('/execution/manager/readiness');
+    expect(commandCenter).toContain('/release');
+    expect(commandCenter).not.toContain('connected: true');
   });
 
   it('routes the next-level control surfaces behind Atlas identity', () => {
@@ -58,6 +71,7 @@ describe('ATLAS Cloud routing and product boundaries', () => {
   it('normalizes service readiness into the approved evidence-backed truth states', () => {
     expect(routes).toContain('atlasCloudTruthBadge');
     expect(routes).toContain('atlas-cloud-truth-badge');
+    expect(commandCenter).toContain('atlasCloudTruthBadge');
     for (const label of ['VERIFIED', 'IN PROGRESS', 'WARNING', 'BLOCKED', 'NEEDS AUTHORIZATION']) {
       expect(truthStatus).toContain(label);
     }
