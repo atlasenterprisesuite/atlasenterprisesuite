@@ -39,6 +39,7 @@ import {
   suggestInvoiceNumber
 } from '../../lib/receivablesApi';
 import { ClientFinancialGuidancePage } from './ClientFinancialGuidancePage';
+import { EnterpriseAutomationPage } from './EnterpriseAutomationPage';
 import './advisory.css';
 
 const advisoryNav = [
@@ -46,6 +47,7 @@ const advisoryNav = [
   ['/advisory/clients','Clients'],
   ['/advisory/engagements','Engagements'],
   ['/advisory/financial-guidance','Financial Guidance'],
+  ['/advisory/enterprise-automation','Enterprise Automation'],
   ['/advisory/business-launch-360/workspace','Business Launch 360'],
   ['/advisory/tasks','Tasks'],
   ['/advisory/calendar','Calendar'],
@@ -577,6 +579,7 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/clients" element={<ClientsPage />} />
     <Route path="/advisory/engagements" element={<EngagementsPage />} />
     <Route path="/advisory/financial-guidance" element={<ClientFinancialGuidancePage />} />
+    <Route path="/advisory/enterprise-automation" element={<AdvisoryLayout><EnterpriseAutomationPage /></AdvisoryLayout>} />
     <Route path="/advisory/business-launch-360" element={<LaunchPage />} />
     <Route path="/advisory/business-launch-360/workspace" element={<LaunchPage />} />
     <Route path="/advisory/tasks" element={<BoundaryPage title="Tasks" description="Task orchestration will reuse the canonical ATLAS execution/work layer rather than create a parallel task source of truth." />} />

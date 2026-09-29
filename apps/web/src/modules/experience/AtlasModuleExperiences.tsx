@@ -78,6 +78,14 @@ const businessSections: ModuleExperienceSection[] = [
 
 const financeSections: ModuleExperienceSection[] = [
   {
+    eyebrow: 'Enterprise advisory',
+    title: 'Measure the operating cycle',
+    description: 'Explore the cross-module process and estimate recoverable capacity with transparent, editable assumptions.',
+    cards: [
+      { label: 'Scenario', title: 'Enterprise Automation', description: 'Model AP, AR, reconciliation, close, people, stock, purchasing and administration across legal entities. Projections are not production measurements.', to: '/advisory/enterprise-automation' }
+    ]
+  },
+  {
     eyebrow: 'Financial architecture',
     title: 'Accounting is the operational core',
     description: 'Current finance routes expose implemented accounting workflows while broader commercial domains stay gated until their canonical contracts exist.',
