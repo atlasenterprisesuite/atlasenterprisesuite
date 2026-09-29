@@ -5,6 +5,7 @@ import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManag
 import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
 import { AtlasCloudDomains } from './AtlasCloudDomains';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
+import { AtlasCloudCommandCenter } from './AtlasCloudCommandCenter';
 import { atlasCloudTruthBadge } from './truthStatus';
 
 type CloudService = {
@@ -222,95 +223,7 @@ function CatalogPage() {
 }
 
 function ConsoleHome() {
-  return (
-    <section className="atlas-cloud-page atlas-cloud-console">
-      <CloudHeader
-        eyebrow="ATLAS Cloud Console"
-        title="Operate Atlas from one control surface"
-        description="The console reuses existing ATLAS control planes. It does not duplicate secrets, provider state, release truth or infrastructure ownership."
-      />
-
-      <div className="atlas-cloud-console-grid">
-        <Link to="/cloud/api-explorer">
-          <span>Developer</span><strong>API Explorer</strong>
-          <p>Inspect the live OpenAPI contract and run approved read-only cloud operations.</p>
-        </Link>
-        <Link to="/cloud/observability">
-          <span>Operations</span><strong>Observability</strong>
-          <p>View native incidents, traces, metrics and runtime verification evidence.</p>
-        </Link>
-        <Link to="/cloud/resources">
-          <span>Resources</span><strong>Resource Manager</strong>
-          <p>Manage organization projects and inspect the canonical ATLAS service registry.</p>
-        </Link>
-        <Link to="/cloud/domains">
-          <span>Network</span><strong>Domains & DNS</strong>
-          <p>Verify public DNS evidence while provider mutations remain fail-closed.</p>
-        </Link>
-        <Link to="/cloud/service-graph">
-          <span>Topology</span><strong>Service Graph</strong>
-          <p>Visualize services by canonical backend authority and verified registry state.</p>
-        </Link>
-        <Link to="/cloud/production-verification">
-          <span>Integrity</span><strong>Production Verification</strong>
-          <p>Verify security, build, deployment, runtime and exact-SHA evidence without fabricating green state.</p>
-        </Link>
-        <Link to="/cloud/releases">
-          <span>Delivery</span><strong>Deployment & Release Center</strong>
-          <p>Separate source, deployment and production verification using Release Control truth.</p>
-        </Link>
-        <Link to="/cloud/iam">
-          <span>Governance</span><strong>IAM & Policy</strong>
-          <p>Inspect tenant scope, role boundaries and inherited policy surfaces.</p>
-        </Link>
-        <Link to="/cloud/config">
-          <span>Configuration</span><strong>Secrets & Config</strong>
-          <p>Inspect secret boundaries and runtime readiness without exposing secret values.</p>
-        </Link>
-        <Link to="/cloud/finops">
-          <span>Cost</span><strong>FinOps</strong>
-          <p>Govern billing integration, budgets and cost evidence with fail-closed totals.</p>
-        </Link>
-        <Link to="/cloud/incidents">
-          <span>Reliability</span><strong>Incident Center</strong>
-          <p>Read canonical incidents and correlate operational state with releases and telemetry.</p>
-        </Link>
-        <Link to="/execution/manager/readiness">
-          <span>Infrastructure</span><strong>Manager Readiness</strong>
-          <p>Evaluate provider requirements and real blockers before any deployment claim.</p>
-        </Link>
-        <Link to="/release">
-          <span>Release</span><strong>Release Control</strong>
-          <p>Inspect governed release state, gates, evidence and production verification.</p>
-        </Link>
-        <Link to="/automations">
-          <span>Automation</span><strong>ATLAS Automations</strong>
-          <p>Run governed workflows through existing ATLAS execution boundaries.</p>
-        </Link>
-        <Link to="/knowledge">
-          <span>Knowledge</span><strong>Knowledge Atlas</strong>
-          <p>Use approved organizational decisions, requirements and evidence as operational context.</p>
-        </Link>
-      </div>
-
-      <section className="atlas-cloud-topology" aria-label="Atlas Cloud configured authorities">
-        <div className="atlas-cloud-section-heading"><div><p className="eyebrow">Control plane</p><h2>Configured authorities</h2></div></div>
-        <div className="atlas-cloud-topology-grid">
-          <article><strong>GitHub</strong><span>Canonical source, change history, CI and release coordination</span></article>
-          <article><strong>Supabase</strong><span>Primary database, identity, storage and backend control plane</span></article>
-          <article><strong>Cloudflare</strong><span>Primary web edge and production verification boundary</span></article>
-          <article><strong>ATLAS Manager</strong><span>Infrastructure readiness and deployment orchestration authority</span></article>
-        </div>
-        <p className="atlas-cloud-truth-note">Provider connectivity must be proven by the existing readiness and release evidence surfaces. This page does not infer a live connection from configuration alone.</p>
-      </section>
-
-      <div className="atlas-cloud-section-heading">
-        <div><p className="eyebrow">Inventory</p><h2>Registered services</h2></div>
-        <Link to="/cloud/docs/catalog">Open documentation catalog</Link>
-      </div>
-      <ServiceCatalog compact />
-    </section>
-  );
+  return <AtlasCloudCommandCenter />;
 }
 
 export function AtlasCloudRoutes() {
