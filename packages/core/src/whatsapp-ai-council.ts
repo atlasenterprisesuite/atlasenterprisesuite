@@ -45,3 +45,54 @@ export function authorizeWhatsAppSource(
 ) {
   return allowlist.includes(event.sourcePhone);
 }
+
+
+export type AdvisoryOutput = {
+  provider: string;
+  content: string;
+};
+
+export type ChatGPTFinalSynthesis = {
+  model: 'chatgpt';
+  content: string;
+};
+
+export type FinalizeAtlasDecisionInput = {
+  runId: string;
+  advisoryOutputs: readonly AdvisoryOutput[];
+  chatgptFinal?: ChatGPTFinalSynthesis;
+};
+
+export type AtlasCouncilDecision = {
+  runId: string;
+  authority: 'chatgpt';
+  content: string;
+  advisoryOutputs: readonly AdvisoryOutput[];
+};
+
+export class MessageDeduplicator {
+  private readonly seen = new Set<string>();
+
+  accept(providerMessageId: string) {
+    if (this.seen.has(providerMessageId)) {
+      return false;
+    }
+    this.seen.add(providerMessageId);
+    return true;
+  }
+}
+
+export function finalizeAtlasDecision(
+  input: FinalizeAtlasDecisionInput,
+): AtlasCouncilDecision {
+  if (!input.chatgptFinal?.content.trim()) {
+    throw new Error('ChatGPT final synthesis is required before an ATLAS decision can be emitted');
+  }
+
+  return {
+    runId: input.runId,
+    authority: 'chatgpt',
+    content: input.chatgptFinal.content,
+    advisoryOutputs: input.advisoryOutputs,
+  };
+}
