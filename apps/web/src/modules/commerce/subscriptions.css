@@ -1,0 +1,38 @@
+.subscriptions-page {
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.subscriptions-hero {
+  padding: clamp(1rem, 4vw, 3rem) 0;
+}
+
+.subscriptions-hero h1 {
+  max-width: 16ch;
+  margin: .6rem 0;
+  font-size: clamp(2.2rem, 6vw, 4.8rem);
+  line-height: 1.02;
+}
+
+.subscriptions-hero > p:last-child {
+  max-width: 48rem;
+  color: #9bb0c0;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.subscriptions-provider-card {
+  gap: 1.25rem;
+  padding: clamp(1.1rem, 3vw, 2rem);
+}
+
+.subscriptions-provider-card p {
+  color: #8ea5b7;
+  line-height: 1.6;
+}
+
+.subscriptions-primary-action {
+  border-color: rgba(77, 183, 255, .55);
+  background: linear-gradient(135deg, rgba(77, 183, 255, .2), rgba(116, 232, 220, .12));
+  font-weight: 750;
+}
