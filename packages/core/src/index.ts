@@ -28,3 +28,5 @@ export const demoAtlasContext = {
   permissions: ['accounting.read'] as AccountingPermission[],
   environment: 'demo' as const
 };
+
+export * from './whatsapp-ai-council';
