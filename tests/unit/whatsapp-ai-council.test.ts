@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   authorizeWhatsAppSource,
   normalizeWhatsAppEvent,
+  MessageDeduplicator,
+  finalizeAtlasDecision,
 } from '../../packages/core/src/whatsapp-ai-council';
 
 describe('ATLAS WhatsApp AI Council inbound gate', () => {
@@ -52,5 +54,41 @@ describe('ATLAS WhatsApp AI Council inbound gate', () => {
 
     expect(authorizeWhatsAppSource(event, ['+14075550111'])).toBe(false);
     expect(authorizeWhatsAppSource(event, ['+17867849945'])).toBe(true);
+  });
+});
+
+describe('ATLAS WhatsApp AI Council authority and idempotency', () => {
+  it('rejects duplicate provider message IDs', () => {
+    const deduplicator = new MessageDeduplicator();
+
+    expect(deduplicator.accept('wamid.dup')).toBe(true);
+    expect(deduplicator.accept('wamid.dup')).toBe(false);
+  });
+
+  it('does not finalize an advisory-only run', () => {
+    expect(() =>
+      finalizeAtlasDecision({
+        runId: 'run-1',
+        advisoryOutputs: [
+          { provider: 'gemini', content: 'proposal' },
+          { provider: 'copilot', content: 'implementation note' },
+        ],
+      }),
+    ).toThrow(/ChatGPT/i);
+  });
+
+  it('emits a decision only when ChatGPT provides the final synthesis', () => {
+    const decision = finalizeAtlasDecision({
+      runId: 'run-2',
+      advisoryOutputs: [{ provider: 'gemini', content: 'research' }],
+      chatgptFinal: {
+        model: 'chatgpt',
+        content: 'ATLAS final conclusion',
+      },
+    });
+
+    expect(decision.authority).toBe('chatgpt');
+    expect(decision.content).toBe('ATLAS final conclusion');
+    expect(decision.runId).toBe('run-2');
   });
 });
