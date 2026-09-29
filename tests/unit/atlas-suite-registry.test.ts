@@ -28,7 +28,7 @@ describe('ATLAS A-Z canonical integration', () => {
     }
 
     for (const component of [
-      'AnalyticsIntegrationHub',
+      'AnalyticsRoutes',
       'AutomationsIntegrationHub',
       'RevenueIntegrationHub',
       'SiteReviewIntegrationHub',
