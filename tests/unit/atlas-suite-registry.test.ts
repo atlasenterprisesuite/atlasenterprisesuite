@@ -7,6 +7,7 @@ const registry = read('apps/web/src/modules/registry.ts');
 const resolver = read('apps/web/src/extensions/resolveAtlasExtension.tsx');
 const suite = read('apps/web/src/modules/integration/AtlasSuitePage.tsx');
 const hubs = read('apps/web/src/modules/integration/AtlasIntegrationHubs.tsx');
+const analytics = read('apps/web/src/modules/analytics/AnalyticsRoutes.tsx');
 const app = read('apps/web/src/App.tsx');
 const experiences = read('apps/web/src/modules/experience/AtlasModuleExperiences.tsx');
 
@@ -28,7 +29,6 @@ describe('ATLAS A-Z canonical integration', () => {
     }
 
     for (const component of [
-      'AnalyticsRoutes',
       'AutomationsIntegrationHub',
       'RevenueIntegrationHub',
       'SiteReviewIntegrationHub',
@@ -39,6 +39,8 @@ describe('ATLAS A-Z canonical integration', () => {
       expect(resolver).toContain(`<RequireAtlasIdentity><${component} /></RequireAtlasIdentity>`);
     }
     expect(resolver).toContain('<RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>');
+    expect(resolver).toContain('<RequireAtlasIdentity><AnalyticsRoutes /></RequireAtlasIdentity>');
+    expect(analytics).toContain('export function AnalyticsRoutes');
   });
 
   it('registers modern Accounting and Insurance truthfully', () => {
