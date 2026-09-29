@@ -22,6 +22,7 @@ export function AdvisoryOfficePage() {
       <article><strong>001</strong><span>firm number</span></article>
     </div>
     <div className="module-grid">
+      <Link className="module-card enabled" to="/advisory/enterprise-automation"><span>Enterprise advisory</span><strong>Automation business case</strong><p>Navigate the operating cycle and calculate an editable multi-company workload and ROI scenario without presenting projections as actual savings.</p></Link>
       <article className="module-card enabled"><span>Firm operations</span><strong>Clients & Engagements</strong><p>Firm → Client → Engagement is the governed Advisory hierarchy. Persistence is gated until the organization-scoped backend is wired.</p></article>
       <article className="module-card enabled"><span>Service catalog</span><strong>{BUSINESS_LAUNCH_360.name}</strong><p>{BUSINESS_LAUNCH_360.phases.length} evidence-driven phases from foundation through the 30-day review.</p></article>
       <article className="module-card enabled"><span>Physical + digital</span><strong>Brand, Print & Promotional Launch</strong><p>{BRAND_PRINT_PROMO_DELIVERABLES.length} approved deliverable categories with proof approval required before vendor ordering.</p></article>
