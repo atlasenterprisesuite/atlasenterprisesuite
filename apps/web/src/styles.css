@@ -90,3 +90,39 @@ body{background:radial-gradient(circle at 72% -8%,rgba(38,99,255,.2),transparent
 }
 @media(max-width:650px){.atlas-top-actions{display:none}.atlas-global-search kbd{display:none}.atlas-profile-chip{display:none}.atlas-global-search{height:40px}.atlas-shell-futuristic main{padding-left:10px;padding-right:10px}}
 @media(max-width:420px){.atlas-mobile-nav-toggle{width:38px!important;height:38px!important;min-height:38px!important}.atlas-global-search{min-width:0}}
+
+
+/* ATLAS holographic interference menu — controlled moiré, not camera artifact */
+.atlas-shell-futuristic .atlas-sidebar{isolation:isolate}
+.atlas-shell-futuristic .nav-item{position:relative;isolation:isolate;overflow:hidden;transition:color .18s ease,background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.atlas-shell-futuristic .nav-item::before{
+  content:"";position:absolute;inset:-55% -20%;z-index:-1;pointer-events:none;opacity:0;
+  background:
+    repeating-radial-gradient(ellipse at 18% 50%,rgba(46,219,255,.20) 0 1px,transparent 1px 5px),
+    repeating-linear-gradient(102deg,transparent 0 7px,rgba(118,92,255,.12) 8px,rgba(46,219,255,.13) 9px,transparent 10px 16px);
+  background-size:135% 135%,180% 100%;
+  mix-blend-mode:screen;filter:saturate(1.35) contrast(1.08);
+  transform:translate3d(-7%,0,0) rotate(-2deg);
+  transition:opacity .18s ease;
+}
+.atlas-shell-futuristic .nav-item::after{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:0;
+  background:linear-gradient(105deg,transparent 12%,rgba(46,219,255,.08) 35%,rgba(118,92,255,.13) 50%,rgba(255,70,220,.08) 63%,transparent 84%);
+  transform:translateX(-65%);transition:opacity .18s ease;
+}
+.atlas-shell-futuristic .nav-item:hover::before,.atlas-shell-futuristic .nav-item:focus-visible::before{opacity:.72;animation:atlas-moire-drift 2.8s linear infinite}
+.atlas-shell-futuristic .nav-item:hover::after,.atlas-shell-futuristic .nav-item:focus-visible::after{opacity:1;animation:atlas-spectrum-sweep 1.25s ease-out both}
+.atlas-shell-futuristic .nav-item.active::before{opacity:.42;animation:atlas-moire-breathe 5.4s ease-in-out infinite}
+.atlas-shell-futuristic .nav-item.active::after{opacity:.52;animation:atlas-spectrum-idle 6.8s ease-in-out infinite}
+.atlas-shell-futuristic .nav-item:hover{transform:translateX(2px);text-shadow:-.5px 0 rgba(255,70,220,.28),.5px 0 rgba(46,219,255,.34)}
+@keyframes atlas-moire-drift{0%{background-position:0 0,0 0;transform:translate3d(-7%,0,0) rotate(-2deg)}50%{background-position:22px 9px,-30px 0;transform:translate3d(2%,1%,0) rotate(1deg)}100%{background-position:44px 18px,-60px 0;transform:translate3d(-7%,0,0) rotate(-2deg)}}
+@keyframes atlas-spectrum-sweep{from{transform:translateX(-65%)}to{transform:translateX(65%)}}
+@keyframes atlas-moire-breathe{0%,100%{filter:saturate(1.2);transform:translate3d(-4%,0,0)}50%{filter:saturate(1.55);transform:translate3d(2%,0,0)}}
+@keyframes atlas-spectrum-idle{0%,100%{transform:translateX(-45%);opacity:.25}50%{transform:translateX(45%);opacity:.58}}
+@media (prefers-reduced-motion:reduce){
+  .atlas-shell-futuristic .nav-item,.atlas-shell-futuristic .nav-item::before,.atlas-shell-futuristic .nav-item::after{animation:none!important;transition:none!important;transform:none!important}
+  .atlas-shell-futuristic .nav-item:hover::before,.atlas-shell-futuristic .nav-item:focus-visible::before,.atlas-shell-futuristic .nav-item.active::before{opacity:.18}
+  .atlas-shell-futuristic .nav-item:hover::after,.atlas-shell-futuristic .nav-item:focus-visible::after,.atlas-shell-futuristic .nav-item.active::after{opacity:.16}
+}
+.accessibility-reduced-motion .nav-item,.accessibility-reduced-motion .nav-item::before,.accessibility-reduced-motion .nav-item::after{animation:none!important;transition:none!important;transform:none!important}
+.accessibility-reduced-motion .nav-item::before{opacity:.12!important}.accessibility-reduced-motion .nav-item::after{opacity:.10!important}
