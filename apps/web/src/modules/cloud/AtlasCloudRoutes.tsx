@@ -5,6 +5,7 @@ import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManag
 import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
 import { AtlasCloudDomains } from './AtlasCloudDomains';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
+import { atlasCloudTruthBadge } from './truthStatus';
 
 type CloudService = {
   id: string;
@@ -83,11 +84,15 @@ function ServiceCatalog({ compact = false }: { compact?: boolean }) {
         </div>
       ) : (
         <div className={compact ? 'atlas-cloud-service-grid compact' : 'atlas-cloud-service-grid'}>
-          {results.map((service) => (
+          {results.map((service) => {
+            const truth = atlasCloudTruthBadge(service.readiness);
+            return (
             <article key={service.id} className="atlas-cloud-service-card">
               <div className="atlas-cloud-service-meta">
                 <span>{service.category}</span>
-                <span>{service.readiness}</span>
+                <span className={`atlas-cloud-truth-badge ${truth.state}`} title={`Source readiness: ${service.readiness}`}>
+                  <span aria-hidden="true">{truth.symbol}</span> {truth.label}
+                </span>
               </div>
               <h3>{service.name}</h3>
               <p>{service.description}</p>
@@ -97,7 +102,8 @@ function ServiceCatalog({ compact = false }: { compact?: boolean }) {
               </div>
               <Link to={service.route}>Open service</Link>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
