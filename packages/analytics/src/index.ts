@@ -176,16 +176,18 @@ export function evaluateMetricReadiness(
   metric: MetricDefinition,
   sources: readonly AnalyticsSource[] = ANALYTICS_SOURCES
 ) {
-  const required = metric.requiredSources.map((id) => sources.find((source) => source.id === id));
-  const missing = required.filter((source) => !source);
-  const blocked = required.filter(
-    (source) => source && source.state !== 'verified' && source.state !== 'demo'
+  const missingSourceIds = metric.requiredSources.filter(
+    (id) => !sources.some((source) => source.id === id)
   );
+  const blockedSourceIds = metric.requiredSources.filter((id) => {
+    const source = sources.find((candidate) => candidate.id === id);
+    return Boolean(source && source.state !== 'verified' && source.state !== 'demo');
+  });
 
   return {
-    ready: missing.length === 0 && blocked.length === 0,
-    missingSourceIds: missing.map((_, index) => metric.requiredSources[index]),
-    blockedSourceIds: blocked.map((source) => source?.id).filter(Boolean) as string[]
+    ready: missingSourceIds.length === 0 && blockedSourceIds.length === 0,
+    missingSourceIds,
+    blockedSourceIds
   };
 }
 
