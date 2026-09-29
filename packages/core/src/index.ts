@@ -30,3 +30,5 @@ export const demoAtlasContext = {
 };
 
 export * from './whatsapp-ai-council';
+
+export * from './whatsapp-provider';
