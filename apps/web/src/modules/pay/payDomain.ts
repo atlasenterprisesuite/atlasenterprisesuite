@@ -104,6 +104,7 @@ export function formatMinorAmount(amountMinor: number | null, currency: string):
       currency: currency.toUpperCase()
     });
     const digits = formatter.resolvedOptions().maximumFractionDigits;
+    if (typeof digits !== 'number') return null;
     return formatter.format(amountMinor / (10 ** digits));
   } catch {
     return null;
