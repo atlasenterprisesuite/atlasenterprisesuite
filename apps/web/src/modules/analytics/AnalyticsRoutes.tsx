@@ -5,7 +5,7 @@ import {
   analyticsReadinessSummary,
   evaluateMetricReadiness,
   sourceById
-} from '../../../../../../packages/analytics/src/index';
+} from '../../../../../packages/analytics/src/index';
 import './analytics.css';
 
 const NAV = [
