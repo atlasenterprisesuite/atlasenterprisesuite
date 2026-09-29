@@ -54,6 +54,7 @@ export function PaymentsSettingsPage() {
       {error ? <div className="notice strong" role="alert">{error}</div> : null}
 
       {data ? (
+        <>
         <section className="commerce-panel payment-provider-card">
           <div className="payment-provider-heading">
             <div>
@@ -87,6 +88,25 @@ export function PaymentsSettingsPage() {
             Open Authorize.net merchant account
           </a>
         </section>
+        <section className="commerce-panel payment-provider-card">
+          <div className="payment-provider-heading">
+            <div>
+              <span className="eyebrow">Hosted subscriptions</span>
+              <h2>Polar</h2>
+            </div>
+            <strong className="provider-blocked">Verification required</strong>
+          </div>
+          <dl className="payment-provider-facts">
+            <div><dt>Checkout</dt><dd>Configured</dd></div>
+            <div><dt>Card data</dt><dd>Provider hosted</dd></div>
+            <div><dt>Entitlements</dt><dd>Webhook not verified</dd></div>
+          </dl>
+          <div className="notice">
+            The hosted checkout is available, but ATLAS does not represent a subscription as active until a signed Polar webhook is configured and verified server-side.
+          </div>
+          <a className="commerce-provider-link" href="/subscriptions">Open ATLAS subscription checkout</a>
+        </section>
+        </>
       ) : null}
     </section>
   );
