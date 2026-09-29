@@ -33,8 +33,8 @@ import { OracleRoutes } from '../modules/oracle/OracleRoutes';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
+import { AnalyticsRoutes } from '../modules/analytics/AnalyticsRoutes';
 import {
-  AnalyticsIntegrationHub,
   AutomationsIntegrationHub,
   ReleaseControlIntegrationHub,
   RevenueIntegrationHub,
@@ -63,8 +63,8 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><AutomationsIntegrationHub /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/analytics') {
-    return <RequireAtlasIdentity><AnalyticsIntegrationHub /></RequireAtlasIdentity>;
+  if (pathname === '/analytics' || pathname.startsWith('/analytics/')) {
+    return <RequireAtlasIdentity><AnalyticsRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/people' || pathname.startsWith('/people/')) {
