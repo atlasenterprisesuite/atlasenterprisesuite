@@ -2,6 +2,61 @@ import { ModuleExperiencePage, type ModuleExperienceSection } from '../../compon
 
 const creatorSections: ModuleExperienceSection[] = [
   {
+    eyebrow: 'AI Universe',
+    title: 'One governed launchpad for multimodal AI',
+    description: 'Discover the right ATLAS capability by outcome instead of memorizing provider names. Each entry reuses the existing identity, tenant, audit, storage and provider-readiness boundaries.',
+    cards: [
+      {
+        label: 'AI Chat',
+        title: 'Multi-provider Assistant',
+        description: 'Use one ATLAS conversation surface with governed provider routing, reasoning profiles and truthful readiness states.',
+        to: '/assistant'
+      },
+      {
+        label: 'Image',
+        title: 'Generate & Edit Images',
+        description: 'Create, edit and annotate images while keeping provider execution and saved-result provenance explicit.',
+        to: '/studio/create?type=image'
+      },
+      {
+        label: 'Video',
+        title: 'Generate & Direct Video',
+        description: 'Plan scenes, shots, continuity and provider-aware video generation through ATLAS Director.',
+        to: '/studio/create?type=video'
+      },
+      {
+        label: 'Music',
+        title: 'Music & Sound',
+        description: 'Prepare governed music requests and route execution only when a compatible engine is actually verified.',
+        to: '/studio/create?type=music'
+      },
+      {
+        label: 'Voice',
+        title: 'Voice Studio & Agents',
+        description: 'Create governed voice and conversational experiences through the existing ATLAS Voice workspace.',
+        to: '/studio/voice'
+      },
+      {
+        label: 'Text',
+        title: 'Writing Desk',
+        description: 'Draft, transform and organize text using the same authenticated ATLAS intelligence bus.',
+        to: '/studio/write'
+      },
+      {
+        label: 'Trends',
+        title: 'Content Intelligence',
+        description: 'Turn audience and creator context into ideas, hooks, structured drafts, channel variants and reusable creative directions.',
+        to: '/studio/content'
+      },
+      {
+        label: 'Models',
+        title: 'Provider & Model Readiness',
+        description: 'Inspect which creative and intelligence providers are configured and verified before ATLAS allows execution.',
+        to: '/studio/providers'
+      }
+    ]
+  },
+  {
     eyebrow: 'Creative engines',
     title: 'One Studio, multiple governed creation modes',
     description: 'ATLAS Studio keeps content, image, video, music and voice workflows inside the same organization and execution boundary.',
@@ -113,11 +168,11 @@ export function CreatorExperiencePage() {
       description="Writing, content intelligence, imagery, video, sound and voice share one governed creative workspace connected to ATLAS Identity and organization context."
       narrative="One governed creative operating system for content, media, voice and provider-aware execution."
       actions={[
-        { label: 'Open Writing Desk', to: '/studio/write' },
-        { label: 'Open Smart Teleprompter', to: '/studio/teleprompter', variant: 'secondary' },
-        { label: 'Start with Content Intelligence', to: '/studio/content', variant: 'secondary' },
-        { label: 'Plan a website launch', to: '/studio/web-launch', variant: 'secondary' },
-        { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' }
+        { label: 'Open AI Assistant', to: '/assistant' },
+        { label: 'Create an image', to: '/studio/create?type=image', variant: 'secondary' },
+        { label: 'Create a video', to: '/studio/create?type=video', variant: 'secondary' },
+        { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' },
+        { label: 'Check provider readiness', to: '/studio/providers', variant: 'secondary' }
       ]}
       sections={creatorSections}
       statusNote="External generation remains unavailable until verified provider readiness, organization authorization and the required storage boundary are present. Local planning remains available without fabricating provider output."
