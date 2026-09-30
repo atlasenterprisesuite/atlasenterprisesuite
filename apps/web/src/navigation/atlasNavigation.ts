@@ -20,7 +20,9 @@ const STATIC_NODES: readonly AtlasNavigationNode[] = [
   { id: 'accessibility', label: 'Accessibility', to: '/settings/accessibility/communication', area: 'Platform', keywords: ['a11y', 'accessibility', 'accesibilidad', 'captions', 'screen reader', 'braille', 'sign language'] }
 ];
 
-const MODULE_NODES: readonly AtlasNavigationNode[] = ATLAS_MODULES.map((module) => ({
+const MODULE_NODES: readonly AtlasNavigationNode[] = ATLAS_MODULES
+  .filter((module) => !module.internalOnly)
+  .map((module) => ({
   id: module.id,
   label: module.navLabel,
   to: module.route,
