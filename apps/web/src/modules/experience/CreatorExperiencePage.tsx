@@ -15,7 +15,7 @@ const creatorSections: ModuleExperienceSection[] = [
       {
         label: 'Image',
         title: 'Generate & Edit Images',
-        description: 'Create, edit and annotate images through Image Lab while keeping provider execution and saved-result provenance explicit.',
+        description: 'Create, edit and annotate images while keeping provider execution and saved-result provenance explicit.',
         to: '/studio/create?type=image'
       },
       {
@@ -32,7 +32,7 @@ const creatorSections: ModuleExperienceSection[] = [
       },
       {
         label: 'Voice',
-        title: 'Voice & Agents',
+        title: 'Voice Studio & Agents',
         description: 'Create governed voice and conversational experiences through the existing ATLAS Voice workspace.',
         to: '/studio/voice'
       },
