@@ -198,6 +198,16 @@ export async function getAssistantStatus(): Promise<AssistantStatusResponse> {
   return parseCopilotResponse<AssistantStatusResponse>(response);
 }
 
+export async function getAssistantUsage(days = 30): Promise<AssistantUsageSummary> {
+  const { headers } = await assistantHeaders();
+  const safeDays = Math.min(90, Math.max(1, Math.trunc(days) || 30));
+  const response = await authorizedAtlasFetch(`/functions/v1/atlas-copilot?api=usage&days=${safeDays}`, {
+    method: 'GET',
+    headers
+  });
+  return parseCopilotResponse<AssistantUsageSummary>(response);
+}
+
 export async function listAssistantConversations(): Promise<AssistantConversation[]> {
   const { headers } = await assistantHeaders();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=history', {
