@@ -12,11 +12,11 @@ describe('ATLAS Device OS model', () => {
     ]);
   });
 
-  it('keeps hardware dependencies fail-closed', () => {
+  it('keeps code maturity separate from hardware/runtime readiness', () => {
     const phone = getAtlasDeviceProfile('phone');
     const readiness = summarizeDeviceReadiness(phone);
 
-    expect(readiness.softwareReady).toBeGreaterThan(0);
+    expect(readiness.implementedCore).toBeGreaterThan(0);
     expect(readiness.adapterRequired).toBeGreaterThan(0);
     expect(phone.capabilities.some((capability) => capability.status === 'adapter-required')).toBe(true);
   });

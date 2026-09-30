@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  bindLocalAgentMtls,
   createLocalAgentEnrollment,
   enqueueLocalDeviceCommand,
   listLocalAgents,
@@ -12,16 +11,33 @@ import {
   type AtlasLocalCommand,
   type AtlasLocalDevice
 } from './localControlApi';
+import {
+  buildDeviceOsPosture,
+  evaluateAgentTrust
+} from './deviceOSControlTower';
 
 function errorMessage(error: unknown) {
   const code = error instanceof Error ? error.message : 'local_control_failed';
   const known: Record<string, string> = {
     permission_required: 'Your ATLAS role does not permit this Local Control action.',
+    permission_lookup_failed: 'ATLAS could not verify the current Device OS permission set.',
     approved_execution_approval_required: 'High-risk device actions require an approved ATLAS Execution approval.',
     capability_not_declared: 'The selected device did not declare that capability.',
     device_not_found: 'The registered device is no longer available.'
   };
   return known[code] || code.replaceAll('_', ' ');
+}
+
+function trustLabel(state: ReturnType<typeof evaluateAgentTrust>) {
+  const labels: Record<ReturnType<typeof evaluateAgentTrust>, string> = {
+    'verified-active': 'Verified active',
+    'connected-unverified': 'Connected · trust incomplete',
+    'enrolled-unverified': 'Enrolled · not verified',
+    stale: 'Stale heartbeat',
+    'certificate-expired': 'Certificate expired',
+    revoked: 'Revoked'
+  };
+  return labels[state];
 }
 
 export function LocalControlPlanePanel() {
@@ -32,10 +48,7 @@ export function LocalControlPlanePanel() {
   const [enrollmentCode, setEnrollmentCode] = useState<string | null>(null);
   const [enrollmentExpires, setEnrollmentExpires] = useState<string | null>(null);
   const [status, setStatus] = useState('Loading Local Control Plane…');
-  const [mtlsAgentId, setMtlsAgentId] = useState('');
-  const [mtlsFingerprint, setMtlsFingerprint] = useState('');
-  const [mtlsSerial, setMtlsSerial] = useState('');
-  const [mtlsExpires, setMtlsExpires] = useState('');
+  const [observedAt, setObservedAt] = useState(() => new Date().toISOString());
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
@@ -48,6 +61,7 @@ export function LocalControlPlanePanel() {
       setAgents(nextAgents);
       setDevices(nextDevices);
       setCommands(nextCommands);
+      setObservedAt(new Date().toISOString());
       setStatus(
         `${nextAgents.length} agent(s), ${nextDevices.length} device(s), ${nextCommands.filter(
           (command) => command.status === 'queued' || command.status === 'claimed'
@@ -65,6 +79,11 @@ export function LocalControlPlanePanel() {
   const agentById = useMemo(
     () => new Map(agents.map((agent) => [agent.id, agent])),
     [agents]
+  );
+
+  const posture = useMemo(
+    () => buildDeviceOsPosture({ agents, devices, commands, now: observedAt }),
+    [agents, devices, commands, observedAt]
   );
 
   async function createEnrollment() {
@@ -99,28 +118,7 @@ export function LocalControlPlanePanel() {
     try {
       await revokeLocalAgentMtls(agentId);
       await refresh();
-      setStatus('ATLAS mTLS binding revoked. Revoke the provider certificate through the ATLAS Local Agent mTLS workflow as well.');
-    } catch (error) {
-      setStatus(errorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function bindMtls() {
-    setBusy(true);
-    try {
-      await bindLocalAgentMtls({
-        agentId: mtlsAgentId,
-        fingerprintSha256: mtlsFingerprint,
-        serial: mtlsSerial,
-        expiresAt: new Date(mtlsExpires).toISOString()
-      });
-      setMtlsFingerprint('');
-      setMtlsSerial('');
-      setMtlsExpires('');
-      await refresh();
-      setStatus('mTLS certificate metadata bound. Realtime opens only when Cloudflare validates that exact certificate.');
+      setStatus('ATLAS mTLS trust revoked locally. Provider revocation must also complete through the signed certificate workflow.');
     } catch (error) {
       setStatus(errorMessage(error));
     } finally {
@@ -163,7 +161,9 @@ export function LocalControlPlanePanel() {
           <p className="eyebrow">ATLAS Local Control Plane</p>
           <h2 id="local-control-title">Agents & Devices</h2>
         </div>
-        <span className="status-chip neutral">Zero Trust</span>
+        <span className={posture.state === 'operational' ? 'status-chip' : 'status-chip neutral'}>
+          {posture.state === 'empty' ? 'No runtime evidence' : posture.state === 'operational' ? 'Evidence healthy' : 'Attention'}
+        </span>
       </div>
 
       <p>
@@ -175,6 +175,34 @@ export function LocalControlPlanePanel() {
         No LAN scanning. No device is shown as connected unless a registered agent reports it.
         High/critical actions remain bound to ATLAS Approval Center.
       </div>
+
+      <section aria-labelledby="device-os-trust-posture">
+        <div className="card-heading">
+          <div>
+            <p className="eyebrow">Evidence plane</p>
+            <h3 id="device-os-trust-posture">Device OS Trust Posture</h3>
+          </div>
+          <span className="status-chip neutral">Observed {new Date(observedAt).toLocaleTimeString()}</span>
+        </div>
+        <div className="stat-grid">
+          <article><strong>{posture.verifiedAgents}</strong><span>provider-verified active agents</span></article>
+          <article><strong>{posture.reportedDevices}</strong><span>reported registered devices</span></article>
+          <article><strong>{posture.activeCommands}</strong><span>queued or claimed commands</span></article>
+          <article><strong>{posture.failedCommands}</strong><span>failed commands in loaded evidence</span></article>
+        </div>
+        {posture.state === 'empty' ? (
+          <div className="notice">
+            No Local Agent, device or command evidence exists yet. ATLAS therefore does not claim a live Device OS runtime.
+          </div>
+        ) : null}
+        {posture.issues.map((issue) => (
+          <div className={issue.severity === 'critical' ? 'notice strong' : 'notice'} key={issue.code}>
+            <strong>{issue.title}</strong>
+            <p>{issue.detail}</p>
+            <small>{issue.remediation}</small>
+          </div>
+        ))}
+      </section>
 
       <div className="filter-row">
         <label>
@@ -218,94 +246,57 @@ export function LocalControlPlanePanel() {
 
       <div className="notice" role="status">{status}</div>
 
-      <h3>mTLS certificate binding</h3>
-      <div className="filter-row">
-        <label>
-          Agent
-          <select value={mtlsAgentId} onChange={(event) => setMtlsAgentId(event.target.value)}>
-            <option value="">Select agent</option>
-            {agents
-              .filter((agent) => agent.status !== 'revoked')
-              .map((agent) => (
-                <option key={agent.id} value={agent.id}>{agent.name}</option>
-              ))}
-          </select>
-        </label>
-        <label>
-          SHA-256 fingerprint
-          <input
-            value={mtlsFingerprint}
-            onChange={(event) => setMtlsFingerprint(event.target.value.toLowerCase())}
-            placeholder="64 hex characters"
-          />
-        </label>
-        <label>
-          Certificate serial
-          <input value={mtlsSerial} onChange={(event) => setMtlsSerial(event.target.value)} />
-        </label>
-        <label>
-          Expires at
-          <input
-            type="datetime-local"
-            value={mtlsExpires}
-            onChange={(event) => setMtlsExpires(event.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={
-            busy ||
-            !mtlsAgentId ||
-            !/^[a-f0-9]{64}$/.test(mtlsFingerprint) ||
-            !mtlsSerial ||
-            !mtlsExpires
-          }
-          onClick={() => void bindMtls()}
-        >
-          Bind mTLS certificate
-        </button>
+      <h3>mTLS trust chain</h3>
+      <div className="notice strong">
+        Active mTLS trust is provider-backed only. Cloudflare certificate issuance is synchronized
+        through the signed GitHub OIDC workflow; entering a fingerprint in the browser cannot make
+        an agent trusted. Realtime control remains fail-closed until the provider certificate and a
+        fresh agent heartbeat are both evidenced.
       </div>
 
       <h3>Registered agents</h3>
       <div className="module-grid compact">
-        {agents.map((agent) => (
-          <div className="module-card" key={agent.id}>
-            <span>{agent.platform} · {agent.agent_version}</span>
-            <strong>{agent.name}</strong>
-            <p>
-              {agent.capabilities.length
-                ? agent.capabilities.join(', ')
-                : 'No capabilities reported yet.'}
-            </p>
-            <p>
-              mTLS: {agent.mtls_status}
-              {agent.mtls_cert_expires_at
-                ? ` · expires ${new Date(agent.mtls_cert_expires_at).toLocaleDateString()}`
-                : ''}
-            </p>
-            <p>
-              Realtime:{' '}
-              {agent.realtime_last_connected_at
-                ? `last authorized ${new Date(agent.realtime_last_connected_at).toLocaleString()}`
-                : 'not yet authorized'}
-            </p>
-            <span className={agent.status === 'online' ? 'status-chip' : 'status-chip warning'}>
-              {agent.status}
-            </span>
-            {agent.mtls_status === 'active' ? (
-              <button type="button" disabled={busy} onClick={() => void revokeMtls(agent.id)}>
-                Revoke ATLAS mTLS binding
+        {agents.map((agent) => {
+          const trust = evaluateAgentTrust(agent, observedAt);
+          return (
+            <div className="module-card" key={agent.id}>
+              <span>{agent.platform} · {agent.agent_version}</span>
+              <strong>{agent.name}</strong>
+              <p>
+                {agent.capabilities.length
+                  ? agent.capabilities.join(', ')
+                  : 'No capabilities reported yet.'}
+              </p>
+              <p>
+                mTLS: {agent.mtls_status}
+                {agent.mtls_cert_expires_at
+                  ? ` · expires ${new Date(agent.mtls_cert_expires_at).toLocaleDateString()}`
+                  : ''}
+              </p>
+              <p>
+                Realtime:{' '}
+                {agent.realtime_last_connected_at
+                  ? `last authorized ${new Date(agent.realtime_last_connected_at).toLocaleString()}`
+                  : 'not yet authorized'}
+              </p>
+              <span className={trust === 'verified-active' ? 'status-chip' : 'status-chip warning'}>
+                {trustLabel(trust)}
+              </span>
+              {agent.mtls_status === 'active' ? (
+                <button type="button" disabled={busy} onClick={() => void revokeMtls(agent.id)}>
+                  Revoke ATLAS mTLS trust
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={busy || agent.status === 'revoked'}
+                onClick={() => void revoke(agent.id)}
+              >
+                Revoke agent
               </button>
-            ) : null}
-            <button
-              type="button"
-              disabled={busy || agent.status === 'revoked'}
-              onClick={() => void revoke(agent.id)}
-            >
-              Revoke agent
-            </button>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       <h3>Devices</h3>
