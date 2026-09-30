@@ -75,7 +75,23 @@ export type AssistantStatusResponse = {
   };
 };
 
-export type AssistantUsageSummary = {\n  ok: boolean;\n  scope: 'organization' | 'actor';\n  days: number;\n  period_start: string;\n  period_end: string;\n  total_requests: number;\n  completed_requests: number;\n  failed_requests: number;\n  average_latency_ms: number | null;\n  automatic_api_cost_usd: number;\n  tokens: { input: number; output: number; total: number };\n  providers: Array<{ provider: string; requests: number; completed: number; failed: number; average_latency_ms: number | null; automatic_api_cost_usd: number }>;\n  models: Array<{ model: string; requests: number }>;\n};\n\nexport type AssistantConversation = {
+export type AssistantUsageSummary = {
+  ok: boolean;
+  scope: 'organization' | 'actor';
+  days: number;
+  period_start: string;
+  period_end: string;
+  total_requests: number;
+  completed_requests: number;
+  failed_requests: number;
+  average_latency_ms: number | null;
+  automatic_api_cost_usd: number;
+  tokens: { input: number; output: number; total: number };
+  providers: Array<{ provider: string; requests: number; completed: number; failed: number; average_latency_ms: number | null; automatic_api_cost_usd: number }>;
+  models: Array<{ model: string; requests: number }>;
+};
+
+export type AssistantConversation = {
   id: string;
   title: string | null;
   module: string;
