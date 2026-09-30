@@ -5,16 +5,17 @@ import {
   buildAIUniverseCatalog,
   recommendAIUniverseEntries
 } from '../../packages/creator/ai_universe';
+import type { CreativeEngineReadiness } from '../../packages/creator/creative_engine';
 
 describe('ATLAS AI Universe phase 2', () => {
-  const creative = [
+  const creative: CreativeEngineReadiness[] = [
     {
       engineId: 'atlas-native',
       displayName: 'ATLAS Native',
       executionClass: 'self-hosted' as const,
       connectionState: 'ready' as const,
       ready: true,
-      mediaKinds: ['video'] as const,
+      mediaKinds: ['video'],
       capabilityNotes: ['motion-composition-v1'],
       lastVerifiedAt: '2026-09-30T20:00:00.000Z'
     },
@@ -24,7 +25,7 @@ describe('ATLAS AI Universe phase 2', () => {
       executionClass: 'prompt-export-only' as const,
       connectionState: 'ready' as const,
       ready: true,
-      mediaKinds: ['image', 'video'] as const,
+      mediaKinds: ['image', 'video'],
       capabilityNotes: ['planning-only'],
       lastVerifiedAt: null
     }
