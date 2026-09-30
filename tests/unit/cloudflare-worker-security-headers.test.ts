@@ -18,6 +18,8 @@ describe('Cloudflare public Worker security headers', () => {
     expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
     expect(response.headers.get('Permissions-Policy')).toContain('xr-spatial-tracking=(self)');
+    expect(response.headers.get('Content-Security-Policy')).toContain('https://tile.googleapis.com');
+    expect(response.headers.get('Content-Security-Policy')).toContain('https://ajax.googleapis.com');
     expect(assetFetch).toHaveBeenCalledOnce();
     expect(assetFetch).toHaveBeenCalledWith(request);
   });
