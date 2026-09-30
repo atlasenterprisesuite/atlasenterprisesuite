@@ -313,6 +313,17 @@ export function AIUniversePage() {
         <article><strong>2 · Authorize</strong><p>Organization policy, allowlists, zero-cost rules and paid-call gates determine whether a configured provider may execute.</p></article>
         <article><strong>3 · Verify</strong><p>Readiness probes must succeed before the provider becomes executable. Use refresh verification after an administrator completes setup.</p></article>
       </div>
+      <div className="ai-universe-policy">
+        <h3>Current intelligence policy</h3>
+        <dl className="ai-universe-facts">
+          <div><dt>Allowed providers</dt><dd>{status?.cost_policy?.allowed_providers?.length ? status.cost_policy.allowed_providers.join(', ') : 'Server default / not reported'}</dd></div>
+          <div><dt>Zero-cost providers</dt><dd>{status?.cost_policy?.zero_cost_providers?.length ? status.cost_policy.zero_cost_providers.join(', ') : 'None reported'}</dd></div>
+          <div><dt>Paid single-provider calls</dt><dd>{status?.cost_policy?.allow_paid_single ? 'Allowed by policy' : 'Blocked by policy'}</dd></div>
+          <div><dt>Council mode</dt><dd>{status?.cost_policy?.allow_council ? 'Allowed by policy' : 'Blocked by policy'}</dd></div>
+          <div><dt>Emergency fallback daily budget</dt><dd>{status?.cost_policy?.emergency_openai_fallback?.enabled ? fmtCost(status.cost_policy.emergency_openai_fallback.daily_budget_usd ?? null) : 'Disabled'}</dd></div>
+          <div><dt>Automatic API cost policy</dt><dd>{status?.cost_policy?.automatic_api_cost_usd === null || status?.cost_policy?.automatic_api_cost_usd === undefined ? 'Approval / route dependent' : fmtCost(status.cost_policy.automatic_api_cost_usd)}</dd></div>
+        </dl>
+      </div>
       <div className="provider-list">{catalog.map(entry => <article key={`onboarding:${entry.id}`}><div><h3>{entry.displayName}</h3><p>{entry.configured ? 'Configured' : 'Configuration required'} · {entry.verified ? 'verified' : 'not verified'} · {entry.costClass}</p><small>{entry.model || entry.providerId}</small></div><span className="provider-state">{entry.connectionState}</span></article>)}</div>
       <div className="creator-actions"><Link className="creator-primary" to="/studio/providers">Open provider readiness</Link>{roleCanManage && <Link className="ai-universe-secondary" to="/assistant">Open Assistant policy surface</Link>}</div>
     </section>
