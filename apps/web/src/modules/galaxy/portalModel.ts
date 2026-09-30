@@ -4,7 +4,7 @@ import {
   type AtlasModuleReadiness
 } from '../registry';
 
-export type PortalStatus = 'active' | 'partial' | 'external-gated' | 'blocked';
+export type PortalStatus = 'integrated' | 'partial' | 'pending-gate' | 'blocked';
 
 export type PortalDestination = {
   id: string;
@@ -26,15 +26,15 @@ function resolvePortalState(
   if (module.requiresAuth && !hasIdentity) {
     return {
       status: 'blocked',
-      statusLabel: 'Identity required',
+      statusLabel: 'Blocked · identity gate pending',
       navigable: false
     };
   }
 
   if (module.readiness === 'implemented') {
     return {
-      status: 'active',
-      statusLabel: 'Implemented',
+      status: 'integrated',
+      statusLabel: 'Integrated · production verification pending',
       navigable: true
     };
   }
@@ -42,14 +42,14 @@ function resolvePortalState(
   if (module.readiness === 'partial') {
     return {
       status: 'partial',
-      statusLabel: 'Partial',
+      statusLabel: 'Integrated / partial · production verification pending',
       navigable: true
     };
   }
 
   return {
-    status: 'external-gated',
-    statusLabel: 'External connection required',
+    status: 'pending-gate',
+    statusLabel: 'Pending external verification gate',
     navigable: true
   };
 }
