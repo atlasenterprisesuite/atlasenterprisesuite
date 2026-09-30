@@ -168,7 +168,7 @@ export function CreatorExperiencePage() {
       description="Writing, content intelligence, imagery, video, sound and voice share one governed creative workspace connected to ATLAS Identity and organization context."
       narrative="One governed creative operating system for content, media, voice and provider-aware execution."
       actions={[
-        { label: 'Open AI Assistant', to: '/assistant' },
+        { label: 'Open AI Universe', to: '/studio/ai-universe' },
         { label: 'Create an image', to: '/studio/create?type=image', variant: 'secondary' },
         { label: 'Create a video', to: '/studio/create?type=video', variant: 'secondary' },
         { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' },
