@@ -63,3 +63,35 @@ Canonical entry points:
 ## Verification boundary
 
 This change establishes the launchpad and canonical navigation only. It does not claim that every listed third-party model is integrated or commercially available through ATLAS. Individual execution remains governed by the existing provider readiness and generation contracts.
+
+
+## Phase 2 — control center
+
+Implemented surfaces:
+
+- authenticated route: `/studio/ai-universe`;
+- dynamic catalog built only from `atlas-copilot` provider readiness and Creator engine readiness;
+- deterministic recommendation for cost policy, observed latency, and a bounded quality proxy based on completion history plus capability fit;
+- side-by-side comparison for up to three catalog entries;
+- authenticated 30-day usage summary sourced from persisted `atlas_ai_requests` telemetry;
+- unified recent-history view across Assistant conversations, Creator productions, and persisted Creator assets;
+- ATLAS-original reusable template gallery;
+- provider onboarding/readiness surface that keeps credentials server-side and requires explicit readiness verification.
+
+### Telemetry truth boundary
+
+`atlas-copilot?api=usage` aggregates only persisted request telemetry for the authenticated organization scope. Non-manager users receive their own actor scope. The summary reports request counts, completion/failure counts, observed latency, provider/model usage, provider-reported token fields when available, and `automatic_api_cost_usd` recorded by the ATLAS routing policy.
+
+The UI renders unavailable telemetry as unavailable. It does not infer missing counts or costs.
+
+### Recommendation truth boundary
+
+The recommendation engine never selects an unverified provider. Executable verified engines outrank planning-only fallbacks. The quality option is explicitly a proxy using observed completion history and capability fit; it is not a subjective media-quality score.
+
+### Trend/template truth boundary
+
+The gallery contains ATLAS-original reusable patterns. It does not claim that a template is a current social-media trend. Live trend status remains unavailable until an authorized external signal source is connected and its provenance is retained.
+
+### Provider onboarding boundary
+
+Provider secrets are never collected by the AI Universe browser page. Administrators configure credentials/model identifiers through approved server-side secret/configuration boundaries, organization policy authorizes the provider, and readiness probes must verify it before execution becomes available.
