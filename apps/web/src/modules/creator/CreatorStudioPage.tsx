@@ -22,6 +22,7 @@ function newCreativePlanId() {
 }
 
 export const studioEntryPoints = [
+  { title: 'AI Universe', route: '/studio/ai-universe' },
   { title: 'Writing Desk', route: '/studio/write' },
   { title: 'Content Intelligence', route: '/studio/content' },
   { title: 'Social Command Center', route: '/studio/social' },

@@ -7,6 +7,12 @@ const creatorSections: ModuleExperienceSection[] = [
     description: 'Discover the right ATLAS capability by outcome instead of memorizing provider names. Each entry reuses the existing identity, tenant, audit, storage and provider-readiness boundaries.',
     cards: [
       {
+        label: 'Control center',
+        title: 'AI Universe Control Center',
+        description: 'Search the live catalog, compare providers, inspect evidence-based recommendations, review usage and govern onboarding.',
+        to: '/studio/ai-universe'
+      },
+      {
         label: 'AI Chat',
         title: 'Multi-provider Assistant',
         description: 'Use one ATLAS conversation surface with governed provider routing, reasoning profiles and truthful readiness states.',
@@ -168,7 +174,7 @@ export function CreatorExperiencePage() {
       description="Writing, content intelligence, imagery, video, sound and voice share one governed creative workspace connected to ATLAS Identity and organization context."
       narrative="One governed creative operating system for content, media, voice and provider-aware execution."
       actions={[
-        { label: 'Open AI Assistant', to: '/assistant' },
+        { label: 'Open AI Universe', to: '/studio/ai-universe' },
         { label: 'Create an image', to: '/studio/create?type=image', variant: 'secondary' },
         { label: 'Create a video', to: '/studio/create?type=video', variant: 'secondary' },
         { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' },
