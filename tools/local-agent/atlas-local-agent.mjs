@@ -20,7 +20,7 @@ const REALTIME_URL = String(
   'wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect'
 ).trim();
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const HEARTBEAT_MS = 30_000;
 const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
@@ -115,7 +115,7 @@ async function enroll() {
     platform: PLATFORM,
     agent_version: VERSION,
     installer_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'],
+    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp','browser.cdp.telemetry'],
     modules: ['device-os','connect','hospitality','browser-operator']
   }, false);
   sessionToken = String(result.session_token || '');
@@ -145,7 +145,7 @@ async function heartbeat() {
   const result = await post('agent.heartbeat', {
     platform: PLATFORM,
     agent_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'],
+    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp','browser.cdp.telemetry'],
     modules: ['device-os','connect','hospitality','browser-operator']
   });
   if (result.session_token || result.session_expires_at) await persistSession(result);
@@ -158,15 +158,32 @@ async function execute(command) {
   if (device.adapter === 'browser-cdp' && command.capability === 'browser.control') {
     try {
       const outcome = await executeBrowserCdpAction(device,String(command.action || ''),command.action_payload || {});
+      const telemetry = outcome?.result?.telemetry && typeof outcome.result.telemetry === 'object'
+        ? outcome.result.telemetry
+        : null;
       await post('agent.events.append', {
         device_id: String(command.device_id),
-        event_type: 'browser.action.completed',
-        severity: 'info',
+        event_type: command.action === 'diagnose' ? 'browser.diagnostics.completed' : 'browser.action.completed',
+        severity: telemetry && (
+          (Array.isArray(telemetry.consoleErrors) && telemetry.consoleErrors.length) ||
+          (Array.isArray(telemetry.jsExceptions) && telemetry.jsExceptions.length) ||
+          (Array.isArray(telemetry.httpFailures) && telemetry.httpFailures.length) ||
+          (Array.isArray(telemetry.networkFailures) && telemetry.networkFailures.length)
+        ) ? 'warning' : 'info',
         success: true,
         safe_detail: {
           action: String(command.action || '').slice(0,120),
           url: String(outcome?.result?.url || '').slice(0,1500),
-          title: String(outcome?.result?.title || '').slice(0,500)
+          title: String(outcome?.result?.title || '').slice(0,500),
+          ...(telemetry ? {
+            observation_ms: Number(telemetry.observationMs || 0),
+            reloaded: telemetry.reloaded === true,
+            console_error_count: Array.isArray(telemetry.consoleErrors) ? telemetry.consoleErrors.length : 0,
+            js_exception_count: Array.isArray(telemetry.jsExceptions) ? telemetry.jsExceptions.length : 0,
+            http_failure_count: Array.isArray(telemetry.httpFailures) ? telemetry.httpFailures.length : 0,
+            network_failure_count: Array.isArray(telemetry.networkFailures) ? telemetry.networkFailures.length : 0,
+            metrics: telemetry.metrics && typeof telemetry.metrics === 'object' ? telemetry.metrics : {}
+          } : {})
         }
       });
       return {success:true};

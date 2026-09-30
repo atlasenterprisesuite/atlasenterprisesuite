@@ -6,6 +6,7 @@ export type BrowserActionType =
   | 'click'
   | 'type'
   | 'submit'
+  | 'diagnose'
   | 'create_dns_txt'
   | 'click_openai_check';
 

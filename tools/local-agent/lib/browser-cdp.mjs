@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const DEFAULT_PORT = 9222;
-const DEFAULT_ALLOWED_ACTIONS = new Set(['navigate','read_text','click','type','submit','oauth_consent']);
+const DEFAULT_ALLOWED_ACTIONS = new Set(['navigate','read_text','click','type','submit','oauth_consent','diagnose']);
 const SENSITIVE_TARGET = /password|passwd|passcode|secret|token|otp|one.?time|verification.?code|mfa|2fa|credit.?card|cvv|cvc|ssn|social.?security/i;
 const OAUTH_CONSENT_TEXT = /\b(authorize|allow|grant|choose account|connect(?: app)?|approve|consent)\b/i;
 const INTERACTIVE_SELECTOR = 'button,a,[role="button"],input[type="button"],input[type="submit"]';
@@ -113,6 +113,7 @@ class CdpSession {
     this.url = url;
     this.nextId = 1;
     this.pending = new Map();
+    this.listeners = new Map();
     this.socket = null;
   }
   async connect() {
@@ -125,7 +126,11 @@ class CdpSession {
     this.socket.addEventListener('message',(event)=>{
       let message;
       try { message=JSON.parse(String(event.data || '')); } catch { return; }
-      if (!message?.id) return;
+      if (!message?.id) {
+        const handlers=this.listeners.get(String(message?.method || '')) || [];
+        for (const handler of handlers) { try { handler(message.params || {}); } catch {} }
+        return;
+      }
       const pending=this.pending.get(message.id);
       if (!pending) return;
       this.pending.delete(message.id);
@@ -148,7 +153,13 @@ class CdpSession {
       this.socket.send(JSON.stringify({id,method,params}));
     });
   }
-  close() { try { this.socket?.close(); } catch {} }
+  on(method,handler) {
+    const key=String(method || '');
+    const current=this.listeners.get(key) || [];
+    current.push(handler);
+    this.listeners.set(key,current);
+  }
+  close() { try { this.socket?.close(); } catch {} this.listeners.clear(); }
 }
 
 async function evaluate(session,expression) {
@@ -189,6 +200,160 @@ function safePublicUrl(value) {
   } catch {
     return '[redacted-url]';
   }
+}
+
+
+function safeTelemetryUrl(value) {
+  try {
+    const url=new URL(String(value || ''));
+    url.username='';
+    url.password='';
+    url.search='';
+    url.hash='';
+    return `${url.origin}${url.pathname}`.slice(0,1500);
+  } catch {
+    return '[redacted-url]';
+  }
+}
+
+function normalizeObservationMs(value) {
+  const parsed=Number(value ?? 1200);
+  if (!Number.isFinite(parsed)) return 1200;
+  return Math.min(5000,Math.max(250,Math.round(parsed)));
+}
+
+async function collectCdpTelemetry(session,payload,allowedDomains) {
+  const before=await currentLocation(session);
+  assertLocationAllowed(before,allowedDomains);
+  assertExpectedDomain(before,expectedDomain(payload,allowedDomains));
+
+  const consoleErrors=[];
+  const jsExceptions=[];
+  const httpFailures=[];
+  const networkFailures=[];
+  const requestUrls=new Map();
+
+  const pushLimited=(items,value,limit=50)=>{ if(items.length<limit)items.push(value); };
+
+  session.on('Log.entryAdded',(event)=>{
+    const entry=event?.entry || {};
+    if (!['error','warning'].includes(String(entry.level || '').toLowerCase())) return;
+    pushLimited(consoleErrors,{
+      level:String(entry.level || '').slice(0,40),
+      source:String(entry.source || '').slice(0,80),
+      url:safeTelemetryUrl(entry.url),
+      line:Number.isFinite(Number(entry.lineNumber)) ? Number(entry.lineNumber) : null
+    });
+  });
+  session.on('Runtime.exceptionThrown',(event)=>{
+    const details=event?.exceptionDetails || {};
+    pushLimited(jsExceptions,{
+      text:String(details.text || 'javascript_exception').slice(0,160),
+      url:safeTelemetryUrl(details.url),
+      line:Number.isFinite(Number(details.lineNumber)) ? Number(details.lineNumber) : null,
+      column:Number.isFinite(Number(details.columnNumber)) ? Number(details.columnNumber) : null
+    });
+  });
+  session.on('Network.requestWillBeSent',(event)=>{
+    const requestId=String(event?.requestId || '');
+    if (requestId) requestUrls.set(requestId,safeTelemetryUrl(event?.request?.url));
+  });
+  session.on('Network.responseReceived',(event)=>{
+    const response=event?.response || {};
+    const status=Number(response.status || 0);
+    if (status < 400) return;
+    pushLimited(httpFailures,{
+      status,
+      type:String(event?.type || '').slice(0,60),
+      url:safeTelemetryUrl(response.url),
+      mimeType:String(response.mimeType || '').slice(0,120)
+    });
+  });
+  session.on('Network.loadingFailed',(event)=>{
+    pushLimited(networkFailures,{
+      type:String(event?.type || '').slice(0,60),
+      url:requestUrls.get(String(event?.requestId || '')) || '[redacted-url]',
+      error:String(event?.errorText || 'network_loading_failed').slice(0,160),
+      canceled:Boolean(event?.canceled),
+      blockedReason:String(event?.blockedReason || '').slice(0,80) || null
+    });
+  });
+
+  await session.send('Log.enable');
+  await session.send('Network.enable');
+  await session.send('Runtime.enable');
+  await session.send('Page.enable');
+
+  if (payload?.reload === true) {
+    await session.send('Page.reload',{ignoreCache:true});
+  }
+  await new Promise((resolve)=>setTimeout(resolve,normalizeObservationMs(payload?.observation_ms)));
+
+  const metrics=await evaluate(session,`(async()=> {
+    const nav=performance.getEntriesByType('navigation')[0];
+    let lcp=null;
+    let cls=0;
+    try {
+      await new Promise((resolve)=>{
+        let pending=2;
+        const done=()=>{ pending-=1; if(pending<=0)resolve(); };
+        try {
+          const observer=new PerformanceObserver((list)=>{
+            const entries=list.getEntries();
+            if(entries.length) lcp=entries[entries.length-1].startTime;
+          });
+          observer.observe({type:'largest-contentful-paint',buffered:true});
+          setTimeout(()=>{observer.disconnect();done();},150);
+        } catch { done(); }
+        try {
+          const observer=new PerformanceObserver((list)=>{
+            for(const entry of list.getEntries()){
+              if(!entry.hadRecentInput) cls+=entry.value||0;
+            }
+          });
+          observer.observe({type:'layout-shift',buffered:true});
+          setTimeout(()=>{observer.disconnect();done();},150);
+        } catch { done(); }
+      });
+    } catch {}
+    return {
+      ttfb:nav ? nav.responseStart : null,
+      domContentLoaded:nav ? nav.domContentLoadedEventEnd : null,
+      load:nav ? nav.loadEventEnd : null,
+      lcp,
+      cls,
+      resourceCount:performance.getEntriesByType('resource').length
+    };
+  })()`);
+
+  const location=await currentLocation(session);
+  assertLocationAllowed(location,allowedDomains);
+  assertExpectedDomain(location,expectedDomain(payload,allowedDomains));
+
+  return {
+    success:true,
+    result:{
+      url:safePublicUrl(location.url),
+      title:String(location.title || '').slice(0,500),
+      telemetry:{
+        observedAt:new Date().toISOString(),
+        observationMs:normalizeObservationMs(payload?.observation_ms),
+        reloaded:payload?.reload === true,
+        consoleErrors,
+        jsExceptions,
+        httpFailures,
+        networkFailures,
+        metrics:{
+          ttfb:Number.isFinite(Number(metrics?.ttfb)) ? Math.round(Number(metrics.ttfb)) : null,
+          domContentLoaded:Number.isFinite(Number(metrics?.domContentLoaded)) ? Math.round(Number(metrics.domContentLoaded)) : null,
+          load:Number.isFinite(Number(metrics?.load)) ? Math.round(Number(metrics.load)) : null,
+          lcp:Number.isFinite(Number(metrics?.lcp)) ? Math.round(Number(metrics.lcp)) : null,
+          cls:Number.isFinite(Number(metrics?.cls)) ? Number(metrics.cls.toFixed(4)) : null,
+          resourceCount:Number.isFinite(Number(metrics?.resourceCount)) ? Number(metrics.resourceCount) : null
+        }
+      }
+    }
+  };
 }
 
 function targetSpec(target) {
@@ -268,6 +433,14 @@ export function validateBrowserCommand(action,payload,allowedDomains) {
     targetSpec(payload.target);
     expectedDomain(payload,allowedDomains);
   }
+  if (action === 'diagnose') {
+    expectedDomain(payload,allowedDomains);
+    if (payload.reload !== undefined && typeof payload.reload !== 'boolean') throw new Error('browser_diagnose_reload_invalid');
+    if (payload.observation_ms !== undefined) {
+      const observationMs=Number(payload.observation_ms);
+      if (!Number.isFinite(observationMs) || observationMs < 250 || observationMs > 5000) throw new Error('browser_diagnose_observation_invalid');
+    }
+  }
   if (action === 'type') {
     if (SENSITIVE_TARGET.test(String(payload.target || ''))) throw new Error('browser_sensitive_input_requires_human');
     if (payload.value === undefined || String(payload.value).length > 4000) throw new Error('browser_type_value_invalid');
@@ -287,6 +460,8 @@ export async function executeBrowserCdpAction(device,action,payload={}) {
     if (action === 'navigate') {
       await session.send('Page.navigate',{url:String(payload.url)});
       await new Promise((resolve)=>setTimeout(resolve,700));
+    } else if (action === 'diagnose') {
+      return await collectCdpTelemetry(session,payload,allowedDomains);
     } else {
       const before=await currentLocation(session);
       assertLocationAllowed(before,allowedDomains);

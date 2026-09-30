@@ -32,3 +32,22 @@ it('requires every DOM action to declare its expected allowed domain', () => {
   expect(() => validateBrowserCommand('click',{target:'text:Choose Account'},['hubspot.com']))
     .toThrow('browser_expected_domain_required');
 });
+
+it('accepts bounded read-only CDP diagnostics for an allowed domain', () => {
+  expect(() => validateBrowserCommand('diagnose',{
+    domain:'www.atlasenterprisesuite.com',
+    observation_ms:1500,
+    reload:false
+  },['atlasenterprisesuite.com'])).not.toThrow();
+});
+
+it('rejects unbounded or malformed CDP diagnostic observation windows', () => {
+  expect(() => validateBrowserCommand('diagnose',{
+    domain:'www.atlasenterprisesuite.com',
+    observation_ms:10
+  },['atlasenterprisesuite.com'])).toThrow('browser_diagnose_observation_invalid');
+  expect(() => validateBrowserCommand('diagnose',{
+    domain:'www.atlasenterprisesuite.com',
+    reload:'yes'
+  },['atlasenterprisesuite.com'])).toThrow('browser_diagnose_reload_invalid');
+});
