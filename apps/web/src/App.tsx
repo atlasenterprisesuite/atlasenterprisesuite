@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
+import { PublicHome } from './components/PublicHome';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
@@ -264,6 +265,7 @@ function NotFound() {
 
 export function App() {
   const location = useLocation();
+  if (location.pathname === '/') return <PublicHome />;
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
   if (location.pathname.startsWith('/events')) return <EventsRoutes />;
   if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
@@ -276,7 +278,7 @@ export function App() {
   return (
     <AtlasShell>
       <Routes>
-        <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/platform" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
