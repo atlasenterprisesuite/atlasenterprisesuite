@@ -11,6 +11,12 @@ const membership = [{
   organizations: { id: 'org-1', name: 'ATLAS Test', legal_name: null, active: true }
 }];
 const responseBody = (url: string) => {
+  if (url.includes('/rest/v1/rpc/atlas_module_access_snapshot')) {
+    return [{
+      module_id: 'payroll', allowed: true, reason: 'allowed',
+      entitlement_status: 'active', permission_granted: true
+    }];
+  }
   if (url.includes('/rest/v1/organization_members')) return membership;
   if (url.includes('/rest/v1/')) return [];
   return {};
