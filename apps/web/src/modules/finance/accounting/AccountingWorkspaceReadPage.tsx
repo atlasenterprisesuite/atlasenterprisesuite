@@ -165,10 +165,8 @@ function AccountingNav({ active }: { active: AccountingSection }) {
           {item.label}
         </Link>
       ))}
-      <Link className="accounting-nav-link" to="/finance/accounting/budgeting">Budgeting</Link>
-      <Link className="accounting-nav-link" to="/finance/accounting/forecast">Forecast</Link>
-      <Link className="accounting-nav-link" to="/finance/accounting/consolidation">Consolidation</Link>
-      <Link className="accounting-nav-link" to="/finance/accounting/accounts-payable">Payables + AI</Link>
+      <Link className="accounting-nav-link" to="/finance/accounting/accounts-payable">Payables</Link>
+      <Link className="accounting-nav-link" to="/inventory/procure-to-pay">Procure to Pay</Link>
     </nav>
   );
 }
