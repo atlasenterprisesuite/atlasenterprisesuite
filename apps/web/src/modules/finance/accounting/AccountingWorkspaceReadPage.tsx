@@ -76,7 +76,6 @@ const sections: Array<{ slug: AccountingSection; label: string }> = [
   { slug: 'accounts-receivable', label: 'Receivables' },
   { slug: 'bank-cash', label: 'Bank & Cash' },
   { slug: 'reconciliation', label: 'Reconciliation' },
-  { slug: 'fixed-assets', label: 'Fixed Assets' },
   { slug: 'period-close', label: 'Period Close' },
   { slug: 'reports', label: 'Reports' },
   { slug: 'audit-trail', label: 'Audit Trail' },
