@@ -20,14 +20,23 @@ export function AtlasSuitePage() {
 
   const filteredModules = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return ATLAS_MODULES.filter((module) => {
+    const matches = (module: (typeof ATLAS_MODULES)[number]) => {
       const matchesQuery = !normalizedQuery
         || [module.title, module.navLabel, module.area, module.description, module.route]
           .some((value) => value.toLowerCase().includes(normalizedQuery));
       const matchesReadiness = readiness === 'all' || module.readiness === readiness;
       const matchesArea = area === 'all' || module.area === area;
       return matchesQuery && matchesReadiness && matchesArea;
-    });
+    };
+
+    return ATLAS_MODULES
+      .filter((module) => !module.parentId)
+      .map((module) => ({
+        module,
+        selfMatches: matches(module),
+        children: ATLAS_MODULES.filter((child) => child.parentId === module.id && matches(child))
+      }))
+      .filter(({ selfMatches, children }) => selfMatches || children.length > 0);
   }, [area, query, readiness]);
 
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
@@ -40,8 +49,8 @@ export function AtlasSuitePage() {
         <p className="eyebrow">ATLAS Enterprise Suite</p>
         <h1>ATLAS Suite A-Z</h1>
         <p>
-          One canonical directory for every registered ATLAS domain. Routes open the current implementation;
-          readiness labels remain fail-closed and never present external or incomplete capabilities as live.
+          One canonical directory for every registered ATLAS ecosystem. Child domains stay inside their parent
+          ecosystem instead of appearing as parallel top-level products; readiness labels remain fail-closed.
         </p>
       </header>
 
@@ -87,15 +96,25 @@ export function AtlasSuitePage() {
 
       {filteredModules.length ? (
         <div className="module-grid" aria-label="ATLAS A-Z modules">
-          {filteredModules.map((module) => (
-            <Link className="module-card enabled" to={module.route} key={module.id}>
+          {filteredModules.map(({ module, children }) => (
+            <article className="module-card enabled" key={module.id}>
               <span>{module.area} · {READINESS_LABELS[module.readiness]}</span>
-              <strong>{module.title}</strong>
+              <strong><Link className="text-link" to={module.route}>{module.title}</Link></strong>
               <p>{module.description}</p>
               <small className="muted">
                 {module.requiresAuth ? 'ATLAS Identity required' : 'Public entry'} · {module.route}
               </small>
-            </Link>
+              {children.length > 0 && (
+                <div className="page-stack compact" aria-label={`${module.title} child domains`}>
+                  <small className="muted">Inside this ecosystem</small>
+                  {children.map((child) => (
+                    <Link className="text-link" to={child.route} key={child.id}>
+                      {child.title} · {READINESS_LABELS[child.readiness]}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </article>
           ))}
         </div>
       ) : (
