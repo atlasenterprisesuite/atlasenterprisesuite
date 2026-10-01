@@ -218,9 +218,12 @@ export function UnifiedAIChatPage() {
     conversationIdRef.current = conversationId;
   }, [conversationId]);
 
-  useEffect(() => () => {
-    conversationSessionRef.current += 1;
-    pageActiveRef.current = false;
+  useEffect(() => {
+    pageActiveRef.current = true;
+    return () => {
+      conversationSessionRef.current += 1;
+      pageActiveRef.current = false;
+    };
   }, []);
 
   async function refreshStatus() {
@@ -332,7 +335,7 @@ export function UnifiedAIChatPage() {
               meta: metaOf(stored)
             })));
           }
-          await Promise.all([refreshHistory(), refreshStatus()]);
+          void refreshHistory();
           return;
         }
         setMessages((current) => current.filter((item) => item.key !== placeholderKey));
@@ -388,7 +391,7 @@ export function UnifiedAIChatPage() {
           }
         ]);
         void pollBackgroundResult(result.trace_id, result.conversation_id, placeholderKey);
-        await Promise.all([refreshHistory(), refreshStatus()]);
+        void refreshHistory();
         return;
       }
       const reply = (result.output || result.text || '').trim();
@@ -410,7 +413,7 @@ export function UnifiedAIChatPage() {
           setError('speech_unavailable');
         }
       }
-      await Promise.all([refreshHistory(), refreshStatus()]);
+      void refreshHistory();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
     } finally {
@@ -478,7 +481,7 @@ export function UnifiedAIChatPage() {
         await voice.speak(reply, targetLanguageCode);
       }
 
-      await Promise.all([refreshHistory(), refreshStatus()]);
+      void refreshHistory();
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
