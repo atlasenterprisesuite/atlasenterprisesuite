@@ -554,7 +554,7 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     requirePermission(context, 'device.agent.use');
     const deviceId = requiredText(body.device_id, 'device_id_required', 80);
     const mode = clean(body.mode, 20) || 'view';
-    if (!['view', 'control'].includes(mode)) throw new EdgeError('remote_mode_invalid', 422);
+    if (mode !== 'view') throw new EdgeError('remote_view_only_required', 422);
 
     const { data: device, error: deviceError } = await admin.from('atlas_local_devices')
       .select('id,agent_id,adapter,capabilities')
