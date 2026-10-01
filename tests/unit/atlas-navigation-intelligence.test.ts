@@ -27,12 +27,37 @@ describe('ATLAS navigation intelligence', () => {
     expect(node?.id).toBe('payables');
     expect(getAtlasNavigationTrail('/finance/accounting/accounts-payable').map((item) => item.id)).toEqual([
       'home',
+      'finance',
       'accounting',
       'payables'
     ]);
     expect(getAtlasNavigationInstructions('/finance/accounting/accounts-payable')).toBe(
-      'Home → Accounting → Payables'
+      'Home → Finance → Accounting → Payables'
     );
+  });
+
+  it('nests finance-owned domains instead of exposing them as parallel roots', () => {
+    expect(getAtlasNavigationTrail('/finance/accounting').map((item) => item.id)).toEqual([
+      'home',
+      'finance',
+      'accounting'
+    ]);
+    expect(getAtlasNavigationTrail('/tax').map((item) => item.id)).toEqual([
+      'home',
+      'finance',
+      'tax'
+    ]);
+  });
+
+  it('resolves general ledger through the Accounting temple', () => {
+    expect(getAtlasNavigationTrail('/finance/accounting/general-ledger').map((item) => item.id)).toEqual([
+      'home',
+      'finance',
+      'accounting',
+      'general-ledger'
+    ]);
+    expect(searchAtlasNavigation('libro mayor')[0]?.id).toBe('general-ledger');
+    expect(searchAtlasNavigation('conciliacion bancaria')[0]?.id).toBe('reconciliation');
   });
 
   it('searches English and Spanish operational aliases', () => {

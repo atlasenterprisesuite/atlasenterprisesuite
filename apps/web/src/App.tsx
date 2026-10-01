@@ -12,6 +12,7 @@ import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
 import { NetworkPublicPage } from './modules/business/network/NetworkPublicPage';
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
+import { AccountingWorkspacePage as AccountingWorkspaceReadPage } from './modules/finance/accounting/AccountingWorkspaceReadPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
 import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
@@ -88,13 +89,13 @@ function BusinessHome() {
 function FinanceHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Finance" title="Finance" description="Governed finance operations with Accounting as the first enterprise domain." />
+      <PageHeader eyebrow="ATLAS Finance" title="Finance" description="One governed financial ecosystem. Accounting is the system of record; tax, advisory, payroll and purchasing connect to it without duplicating ledgers." />
       <div className="module-grid">
-        <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Advisory · Client planning</span><strong>Financial Guidance</strong><p>Explainable 30-day liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting</span><strong>Accounts Receivable</strong><p>Live customers, invoices, line items, balances, issuance and payment recording.</p></Link>
-        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · Purchasing · AP</span><strong>Procure to Pay</strong><p>PO receiving, packing slips, three-way matching, inventory costing, AP and margin pricing.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting / Reports</span><strong>Automotive Sales</strong><p>Vehicle, F&I, fixed operations, inventory and floorplan financial reporting.</p></Link>
+        <Link className="module-card enabled accent" to="/finance/accounting"><span>Finance core</span><strong>Accounting Ecosystem</strong><p>Enter the canonical ledger domain for payables, receivables, reporting and governed accounting workflows.</p></Link>
+        <Link className="module-card enabled" to="/tax"><span>Finance · Connected domain</span><strong>ATLAS Tax</strong><p>Tax preparation and filing boundaries consume governed accounting evidence without becoming a parallel ledger.</p></Link>
+        <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Finance · Advisory</span><strong>Financial Guidance</strong><p>Explainable liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Operations → Accounting</span><strong>Procure to Pay</strong><p>Purchasing, receiving and three-way matching feed controlled AP and inventory accounting flows.</p></Link>
+        <Link className="module-card enabled" to="/payroll"><span>People → Accounting</span><strong>Payroll Integration</strong><p>Payroll remains a workforce domain while its approved financial impact flows into Accounting through governed postings.</p></Link>
       </div>
     </section>
   );
@@ -103,12 +104,34 @@ function FinanceHome() {
 function AccountingHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Working accounting slices share the same governed tenant scope and reporting contracts." />
+      <PageHeader eyebrow="ATLAS Finance / Accounting" title="Accounting Ecosystem" description="The financial temple inside ATLAS Finance: one accounting source of truth with operational workspaces and connected domains around the same tenant, permissions and audit boundaries." />
+
+      <div className="notice strong">
+        Canonical accounting status: AP and AR remain operational workspaces. Chart of Accounts, General Ledger, Journals, Bank/Cash, Reconciliation, Period Close, Reports, Audit and Settings are restored as authenticated RLS-backed read workspaces. Mutating actions remain fail-closed unless their current RPC contract is verified.
+      </div>
+
       <div className="module-grid">
-        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging and payment application state.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Operations</span><strong>Accounts Receivable</strong><p>Customer invoicing, open balances, aging inputs and governed payment recording.</p></Link>
-        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · AP</span><strong>Procure to Pay</strong><p>Receive by PO, match packing slips and vendor invoices, calculate cost and post inventory/AP.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Reports</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed ops, inventory and floorplan controls.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting · Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging, approvals and payment application state.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting · Operations</span><strong>Accounts Receivable</strong><p>Customer invoicing, open balances, aging inputs and governed payment recording.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Accounting · Connected operations</span><strong>Procure to Pay</strong><p>PO receiving, packing-slip evidence, three-way matching, inventory costing and AP handoff.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting · Reporting</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed operations, inventory and floorplan controls.</p></Link>
+
+        <Link className="module-card enabled accent" to="/finance/accounting/dashboard"><span>Accounting · Command</span><strong>Accounting Command Center</strong><p>Authenticated organization scope across ledger, cash, close and reporting evidence.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/chart-of-accounts"><span>Accounting · Ledger core</span><strong>Chart of Accounts</strong><p>RLS-backed account structure with active/inactive state and governed organization scope.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/general-ledger"><span>Accounting · Ledger core</span><strong>General Ledger</strong><p>Posted debit and credit activity derived from the same journals used by financial statements.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/journal-entries"><span>Accounting · Posting</span><strong>Journal Entries</strong><p>Read posted and draft journals, balanced lines and reversal lineage. Writes remain gated until current RPC verification.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/bank-cash"><span>Accounting · Treasury</span><strong>Bank & Cash</strong><p>Authenticated account and imported transaction evidence with connection state shown as recorded.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/reconciliation"><span>Accounting · Treasury</span><strong>Reconciliation</strong><p>Statement-to-ledger sessions, variance, readiness and unresolved exceptions from organization-scoped data.</p></Link>
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Assets</span><strong>Fixed Assets</strong><p>The historical workspace was recovered, but activation stays closed until the current canonical table and depreciation-posting path are verified.</p></div>
+        <Link className="module-card enabled" to="/finance/accounting/period-close"><span>Accounting · Close</span><strong>Period Close</strong><p>Period readiness and close checklist evidence without claiming a period is closed unless the backend records it.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/reports"><span>Accounting · Statements</span><strong>Financial Reports</strong><p>Trial Balance, Profit & Loss and Balance Sheet calculated from the same posted ledger source.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/audit-trail"><span>Accounting · Governance</span><strong>Audit Trail</strong><p>Organization-scoped change evidence for accounting records.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/settings"><span>Accounting · Governance</span><strong>Settings</strong><p>Fiscal year, base currency, accounting basis and control-account configuration in read mode.</p></Link>
+      </div>
+
+      <div className="module-grid compact">
+        <Link className="module-card enabled" to="/tax"><span>Connected ecosystem</span><strong>Tax</strong><p>Consumes governed accounting evidence and preserves filing-specific controls.</p></Link>
+        <Link className="module-card enabled" to="/payroll"><span>Connected ecosystem</span><strong>Payroll</strong><p>Workforce calculations stay in Payroll; approved financial impact posts into Accounting.</p></Link>
       </div>
     </section>
   );
@@ -302,6 +325,16 @@ export function App() {
         <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
+        <Route path="/finance/accounting/dashboard" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="dashboard" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/chart-of-accounts" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="chart-of-accounts" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/general-ledger" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="general-ledger" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/journal-entries" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="journal-entries" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/bank-cash" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="bank-cash" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/reconciliation" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="reconciliation" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/period-close" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="period-close" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/reports" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="reports" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/audit-trail" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="audit-trail" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/settings" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="settings" /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
         <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />

@@ -1,9 +1,30 @@
+import type { AccountingTable } from '../../../../packages/accounting/src';
 import { clearSessionStorage, readAccessToken, readRefreshToken, writeSession } from './atlasSessionStorage';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 
 export const ATLAS_SESSION_EVENT = 'atlas-session-changed';
+
+const ACCOUNTING_REST_TABLES = new Set<AccountingTable>([
+  'chart_of_accounts',
+  'journal_entries',
+  'journal_lines',
+  'customers',
+  'vendors',
+  'invoices',
+  'payments',
+  'accounting_bills',
+  'accounting_bank_accounts',
+  'accounting_transactions',
+  'accounting_reconciliation_sessions',
+  'accounting_reconciliation_items',
+  'accounting_fixed_assets',
+  'accounting_periods',
+  'accounting_close_tasks',
+  'organization_settings',
+  'audit_logs'
+]);
 
 export type AtlasOrganization = {
   id: string;
@@ -184,6 +205,25 @@ export async function authorizedAtlasFetch(path: string, init: RequestInit = {})
 export async function atlasAuthorizedJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await authorizedAtlasFetch(path, init);
   return parseResponse(response) as Promise<T>;
+}
+
+export async function atlasRestSelect<T>(
+  table: AccountingTable,
+  columns: string,
+  organizationId: string
+): Promise<T[]> {
+  const orgId = organizationId.trim();
+  if (!orgId) throw new Error('organizationId is required');
+  if (!ACCOUNTING_REST_TABLES.has(table)) throw new Error('accounting_table_not_allowed');
+
+  const params = new URLSearchParams({
+    select: columns,
+    org_id: `eq.${orgId}`
+  });
+  const response = await authorizedAtlasFetch(`/rest/v1/${table}?${params.toString()}`, { method: 'GET' });
+  const data = await parseResponse(response);
+  if (!Array.isArray(data)) throw new Error(`Accounting query returned an invalid payload for ${table}`);
+  return data as T[];
 }
 
 export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
