@@ -23,10 +23,7 @@ const REALTIME_URL = String(
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
 const VERSION = '1.3.0';
 const HEARTBEAT_MS = 30_000;
-const FALLBACK_POLL_MS = Math.max(
-  500,
-  Math.min(30_000, Number(process.env.ATLAS_AGENT_FALLBACK_POLL_MS || 30_000))
-);
+const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
 const DEVICE_DNA_REFRESH_MS = 5 * 60_000;
 const DEVICE_DNA_ENABLED = process.platform === 'linux' &&
