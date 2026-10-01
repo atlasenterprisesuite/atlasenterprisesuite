@@ -632,9 +632,10 @@ async function connectRemoteViewer(request: Request, env: Env) {
     return json({ ok: false, error: 'remote_bus_authorization_mismatch' }, 403);
   }
 
-  const headers = new Headers();
-  headers.set('upgrade', 'websocket');
-  headers.set('connection', 'Upgrade');
+  const headers = new Headers(request.headers);
+  headers.delete('authorization');
+  headers.delete('cookie');
+  headers.delete('sec-websocket-protocol');
   headers.set('x-atlas-remote-role', 'viewer');
   headers.set('x-atlas-remote-session-id', sessionId);
   headers.set('x-atlas-remote-org-id', clean(bus.org_id, 80));
