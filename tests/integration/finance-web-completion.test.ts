@@ -46,6 +46,11 @@ describe('ATLAS Finance web completion', () => {
     }
     expect(api).toContain("source: 'supabase_rls_live'");
     expect(panel).toContain("return available ? value : 'Unavailable'");
+    expect(api).toContain('export type BankAccountRow');
+    expect(api).toContain('current_balance,balance_as_of,metadata');
+    expect(panel).toContain('Linked financial accounts');
+    expect(panel).toContain('Balance timestamp unavailable');
+    expect(panel).toContain('provider synchronization evidence is displayed separately');
   });
 
   it('keeps implemented finance workflows directly reachable', () => {
