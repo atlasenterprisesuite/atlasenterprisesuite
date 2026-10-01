@@ -3,6 +3,7 @@ import { FuturisticEnterpriseHome } from '../components/FuturisticEnterpriseHome
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { AviationRoutes } from '../modules/aviation/AviationRoutes';
+import { BusinessEcosystemPage } from '../modules/business/BusinessEcosystemPage';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { AtlasCloudRoutes } from '../modules/cloud/AtlasCloudRoutes';
@@ -17,8 +18,7 @@ import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDes
 import { WebLaunchPage } from '../modules/creator/web/WebLaunchPage';
 import {
   AccountingExperiencePage,
-  BusinessExperiencePage,
-  EnterpriseExperiencePage,
+    EnterpriseExperiencePage,
   FinanceExperiencePage
 } from '../modules/experience/AtlasModuleExperiences';
 import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
@@ -129,7 +129,11 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><AviationRoutes /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/business') return <BusinessExperiencePage />;
+  if (pathname === '/business/insights') {
+    return <RequireAtlasIdentity><AnalyticsRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/business') return <BusinessEcosystemPage />;
   if (pathname === '/finance') return <FinanceExperiencePage />;
   if (pathname === '/finance/accounting') return <AccountingExperiencePage />;
 
