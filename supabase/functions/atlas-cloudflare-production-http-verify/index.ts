@@ -27,6 +27,12 @@ const CANONICAL_MODULE_ROUTES = [
   '/knowledge',
   '/business',
   '/advisory',
+  '/advisory/clients',
+  '/advisory/engagements',
+  '/advisory/business-launch-360/workspace',
+  '/advisory/reports',
+  '/advisory/providers',
+  '/advisory/readiness',
   '/finance',
   '/tax',
   '/crm',
@@ -291,6 +297,12 @@ Deno.serve(async (req: Request) => {
     home,
     suite,
     launch360,
+    advisoryClients,
+    advisoryEngagements,
+    advisoryLaunchWorkspace,
+    advisoryReports,
+    advisoryProviders,
+    advisoryReadiness,
     identity,
     managerReadiness,
     accessibility,
@@ -394,6 +406,12 @@ Deno.serve(async (req: Request) => {
     home.status === 200 &&
     suite.status === 200 &&
     launch360.status === 200 &&
+    advisoryClients.status === 200 &&
+    advisoryEngagements.status === 200 &&
+    advisoryLaunchWorkspace.status === 200 &&
+    advisoryReports.status === 200 &&
+    advisoryProviders.status === 200 &&
+    advisoryReadiness.status === 200 &&
     identity.status === 200 &&
     managerReadiness.status === 200 &&
     accessibility.status === 200 &&
@@ -424,6 +442,12 @@ Deno.serve(async (req: Request) => {
     home,
     suite,
     launch360,
+    advisoryClients,
+    advisoryEngagements,
+    advisoryLaunchWorkspace,
+    advisoryReports,
+    advisoryProviders,
+    advisoryReadiness,
     identity,
     managerReadiness,
     accessibility,
@@ -464,6 +488,15 @@ Deno.serve(async (req: Request) => {
     statusRoute,
     ...canonicalModuleProbeEntries.map(([, result]) => result)
   ];
+  const advisoryRoutesOk = [
+    launch360,
+    advisoryClients,
+    advisoryEngagements,
+    advisoryLaunchWorkspace,
+    advisoryReports,
+    advisoryProviders,
+    advisoryReadiness
+  ].every((result) => result.status === 200);
   const criticalCrmRoutesOk = [
     crm,
     crmContacts,
@@ -500,6 +533,7 @@ Deno.serve(async (req: Request) => {
     commerceRouteOk &&
     revenueRouteOk &&
     analyticsRouteOk &&
+    advisoryRoutesOk &&
     criticalCrmRoutesOk &&
     criticalNetworkRoutesOk &&
     workRoutesOk &&
@@ -526,6 +560,13 @@ Deno.serve(async (req: Request) => {
         canonical_module_route_count: CANONICAL_MODULE_ROUTES.length,
         suite_route_reachable: suite.status === 200,
         business_launch_360_route_reachable: launch360.status === 200,
+        advisory_routes_reachable: advisoryRoutesOk,
+        advisory_clients_route_reachable: advisoryClients.status === 200,
+        advisory_engagements_route_reachable: advisoryEngagements.status === 200,
+        advisory_launch_workspace_route_reachable: advisoryLaunchWorkspace.status === 200,
+        advisory_reports_route_reachable: advisoryReports.status === 200,
+        advisory_providers_route_reachable: advisoryProviders.status === 200,
+        advisory_readiness_route_reachable: advisoryReadiness.status === 200,
         identity_route_reachable: identity.status === 200,
         manager_readiness_route_reachable: managerReadiness.status === 200,
         accessibility_route_reachable: accessibility.status === 200,
@@ -573,6 +614,12 @@ Deno.serve(async (req: Request) => {
         home,
         suite,
         business_launch_360: launch360,
+        advisory_clients: advisoryClients,
+        advisory_engagements: advisoryEngagements,
+        advisory_launch_workspace: advisoryLaunchWorkspace,
+        advisory_reports: advisoryReports,
+        advisory_providers: advisoryProviders,
+        advisory_readiness: advisoryReadiness,
         identity,
         manager_readiness: managerReadiness,
         accessibility,
