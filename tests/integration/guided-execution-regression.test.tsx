@@ -3,6 +3,19 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
+vi.mock('../../apps/web/src/access/moduleAccess', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/access/moduleAccess')>('../../apps/web/src/access/moduleAccess');
+  const row = {
+    module_id: 'studio', allowed: true, reason: 'allowed' as const,
+    entitlement_status: 'active', permission_granted: true
+  };
+  return {
+    ...actual,
+    canAccessAtlasModule: vi.fn(async () => row),
+    getAtlasModuleAccessSnapshot: vi.fn(async () => [row])
+  };
+});
+
 
 vi.mock('../../apps/web/src/lib/atlasSession', async () => {
   const actual = await vi.importActual<typeof import('../../apps/web/src/lib/atlasSession')>('../../apps/web/src/lib/atlasSession');
