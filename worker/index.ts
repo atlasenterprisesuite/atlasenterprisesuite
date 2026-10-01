@@ -15,6 +15,7 @@ const CONTENT_SECURITY_POLICY = [
 
 const LOCAL_CONTROL_URL = 'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-local-control';
 const LOCAL_BUS_PREFIX = '/_atlas/local-bus/';
+const REMOTE_BUS_PREFIX = '/_atlas/remote-bus/';
 const CHAT_CONTROL_URL = 'https://ggmanzcgtlrvqfoccgsh.supabase.co/rest/v1/rpc/atlas_chat_api';
 const CHAT_PUBLISHABLE_KEY = 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
 const CHAT_BUS_PREFIX = '/_atlas/chat/';
@@ -42,6 +43,7 @@ interface Env {
   ASSETS: AssetsBinding;
   CF_VERSION_METADATA?: WorkerVersionMetadata;
   LOCAL_REALTIME_BUS: DurableObjectNamespace;
+  REMOTE_REALTIME_BUS: DurableObjectNamespace;
   CHAT_REALTIME_BUS: DurableObjectNamespace;
 }
 
@@ -555,6 +557,93 @@ async function publishChat(request: Request, env: Env) {
   return json({ ok: true, delivered: Number(result.delivered || 0), sequence }, 202);
 }
 
+
+function remoteRealtimeStub(env: Env, sessionId: string) {
+  const id = env.REMOTE_REALTIME_BUS.idFromName(sessionId);
+  return env.REMOTE_REALTIME_BUS.get(id);
+}
+
+async function connectRemoteAgent(request: CloudflareRequest, env: Env) {
+  if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+    return json({ ok: false, error: 'websocket_upgrade_required' }, 426);
+  }
+  const url = new URL(request.url);
+  const sessionId = clean(url.searchParams.get('session_id'), 80);
+  if (!sessionId) return json({ ok: false, error: 'remote_session_id_required' }, 422);
+
+  const tls = request.cf?.tlsClientAuth;
+  const fingerprint = clean(tls?.certFingerprintSHA256, 64).toLowerCase();
+  const serial = clean(tls?.certSerial, 160);
+  if (!tls || tls.certVerified !== 'SUCCESS' || tls.certRevoked === '1' || !/^[a-f0-9]{64}$/.test(fingerprint) || !serial) {
+    return json({ ok: false, error: 'mtls_required' }, 401);
+  }
+
+  const agentToken = clean(request.headers.get('x-atlas-agent-token'), 500);
+  if (!agentToken) return json({ ok: false, error: 'agent_authentication_required' }, 401);
+
+  const authorization = await controlPost(request, {
+    operation: 'agent.remote.verify',
+    session_id: sessionId,
+    mtls_cert_verified: true,
+    mtls_cert_fingerprint_sha256: fingerprint,
+    mtls_cert_serial: serial
+  }, agentToken);
+  if (!authorization.ok) {
+    return json({ ok: false, error: authorization.error }, authorization.status === 401 ? 401 : 403);
+  }
+
+  const bus = authorization.payload?.bus || {};
+  if (clean(bus.session_id, 80) !== sessionId || !clean(bus.org_id, 80) || !clean(bus.agent_id, 80)) {
+    return json({ ok: false, error: 'remote_bus_authorization_mismatch' }, 403);
+  }
+
+  const headers = new Headers(request.headers);
+  headers.delete('authorization');
+  headers.delete('x-atlas-agent-token');
+  headers.set('x-atlas-remote-role', 'agent');
+  headers.set('x-atlas-remote-session-id', sessionId);
+  headers.set('x-atlas-remote-org-id', clean(bus.org_id, 80));
+  headers.set('x-atlas-remote-agent-id', clean(bus.agent_id, 80));
+  headers.set('x-atlas-remote-mode', clean(bus.mode, 20));
+  const internal = new Request('https://atlas.remote/connect', { method: 'GET', headers });
+  return remoteRealtimeStub(env, sessionId).fetch(internal);
+}
+
+async function connectRemoteViewer(request: Request, env: Env) {
+  if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+    return json({ ok: false, error: 'websocket_upgrade_required' }, 426);
+  }
+  if (!sameOriginRequest(request)) return json({ ok: false, error: 'origin_denied' }, 403);
+
+  const url = new URL(request.url);
+  const sessionId = clean(url.searchParams.get('session_id'), 80);
+  const ticket = clean(url.searchParams.get('ticket'), 500);
+  if (!sessionId || !ticket) return json({ ok: false, error: 'remote_viewer_parameters_required' }, 422);
+
+  const authorization = await controlPost(request, {
+    operation: 'remote.viewer.verify',
+    session_id: sessionId,
+    viewer_ticket: ticket
+  });
+  if (!authorization.ok) return json({ ok: false, error: authorization.error }, authorization.status);
+
+  const bus = authorization.payload?.bus || {};
+  if (clean(bus.session_id, 80) !== sessionId || !clean(bus.org_id, 80)) {
+    return json({ ok: false, error: 'remote_bus_authorization_mismatch' }, 403);
+  }
+
+  const headers = new Headers();
+  headers.set('upgrade', 'websocket');
+  headers.set('connection', 'Upgrade');
+  headers.set('x-atlas-remote-role', 'viewer');
+  headers.set('x-atlas-remote-session-id', sessionId);
+  headers.set('x-atlas-remote-org-id', clean(bus.org_id, 80));
+  headers.set('x-atlas-remote-agent-id', clean(bus.agent_id, 80));
+  headers.set('x-atlas-remote-mode', clean(bus.mode, 20));
+  const internal = new Request('https://atlas.remote/connect', { method: 'GET', headers });
+  return remoteRealtimeStub(env, sessionId).fetch(internal);
+}
+
 function realtimeStub(env: Env, orgId: string, agentId: string) {
   const id = env.LOCAL_REALTIME_BUS.idFromName(`${orgId}:${agentId}`);
   return env.LOCAL_REALTIME_BUS.get(id);
@@ -750,6 +839,110 @@ export class AtlasChatRealtimeBus {
   }
 }
 
+
+export class AtlasRemoteRealtimeBus {
+  constructor(private readonly state: DurableState) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === '/connect') {
+      if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+        return json({ ok: false, error: 'websocket_upgrade_required' }, 426);
+      }
+
+      const role = clean(request.headers.get('x-atlas-remote-role'), 20);
+      const sessionId = clean(request.headers.get('x-atlas-remote-session-id'), 80);
+      const orgId = clean(request.headers.get('x-atlas-remote-org-id'), 80);
+      const agentId = clean(request.headers.get('x-atlas-remote-agent-id'), 80);
+      const mode = clean(request.headers.get('x-atlas-remote-mode'), 20);
+      if (!['agent', 'viewer'].includes(role) || !sessionId || !orgId || !agentId || !['view', 'control'].includes(mode)) {
+        return json({ ok: false, error: 'remote_internal_identity_required' }, 403);
+      }
+
+      const existing = this.state.getWebSockets().filter((socket) => {
+        try {
+          return (socket.deserializeAttachment() as any)?.role === role;
+        } catch {
+          return false;
+        }
+      });
+      for (const socket of existing) {
+        try { socket.close(1000, 'role_replaced'); } catch {}
+      }
+
+      const pair = new WebSocketPair();
+      const client = pair[0];
+      const server = pair[1];
+      server.serializeAttachment({ role, sessionId, orgId, agentId, mode, connectedAt: new Date().toISOString() });
+      this.state.acceptWebSocket(server);
+      server.send(JSON.stringify({ event: 'remote.ready', role, session_id: sessionId, mode }));
+      return new Response(null, { status: 101, webSocket: client } as any);
+    }
+
+    return json({ ok: false, error: 'not_found' }, 404);
+  }
+
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
+    if (typeof message !== 'string' || message.length > 300_000) {
+      try { socket.close(1009, 'remote_message_too_large'); } catch {}
+      return;
+    }
+
+    let event: any;
+    try { event = JSON.parse(message); } catch {
+      try { socket.close(1003, 'remote_json_required'); } catch {}
+      return;
+    }
+
+    const attachment = socket.deserializeAttachment() as any;
+    const role = clean(attachment?.role, 20);
+    const eventName = clean(event?.event, 80);
+
+    if (eventName === 'ping') {
+      socket.send(JSON.stringify({ event: 'pong' }));
+      return;
+    }
+
+    const agentAllowed = new Set(['remote.key','remote.frame','remote.status','remote.end']);
+    const viewerAllowed = new Set(['remote.key','remote.control','remote.end']);
+    const allowed = role === 'agent' ? agentAllowed : viewerAllowed;
+    if (!allowed.has(eventName)) {
+      try { socket.close(1008, 'remote_event_not_allowed'); } catch {}
+      return;
+    }
+
+    if (eventName === 'remote.control' && attachment?.mode !== 'control') {
+      socket.send(JSON.stringify({ event: 'remote.status', state: 'view-only' }));
+      return;
+    }
+
+    const opposite = role === 'agent' ? 'viewer' : 'agent';
+    for (const peer of this.state.getWebSockets()) {
+      if (peer === socket) continue;
+      try {
+        const peerAttachment = peer.deserializeAttachment() as any;
+        if (clean(peerAttachment?.role, 20) === opposite) peer.send(message);
+      } catch {
+        // Ephemeral relay only. A stale peer is ignored and no payload is persisted.
+      }
+    }
+
+    if (eventName === 'remote.end') {
+      for (const peer of this.state.getWebSockets()) {
+        try { peer.close(1000, 'remote_session_ended'); } catch {}
+      }
+    }
+  }
+
+  async webSocketClose(_socket: WebSocket, _code: number, _reason: string, _wasClean: boolean) {
+    // Remote payloads are intentionally not persisted.
+  }
+
+  async webSocketError(socket: WebSocket) {
+    try { socket.close(1011, 'remote_websocket_error'); } catch {}
+  }
+}
+
 export class AtlasLocalRealtimeBus {
   constructor(private readonly state: DurableState) {}
 
@@ -839,6 +1032,8 @@ export default {
     }
     if (url.pathname === `${LOCAL_BUS_PREFIX}connect`) return connectLocalBus(request as CloudflareRequest, env);
     if (url.pathname === `${LOCAL_BUS_PREFIX}publish`) return publishLocalBus(request, env);
+    if (url.pathname === `${REMOTE_BUS_PREFIX}agent`) return connectRemoteAgent(request as CloudflareRequest, env);
+    if (url.pathname === `${REMOTE_BUS_PREFIX}viewer`) return connectRemoteViewer(request, env);
     if (url.pathname === `${CHAT_BUS_PREFIX}ticket`) return createChatTicket(request, env);
     if (url.pathname === `${CHAT_BUS_PREFIX}connect`) return connectChat(request, env);
     if (url.pathname === `${CHAT_BUS_PREFIX}publish`) return publishChat(request, env);
