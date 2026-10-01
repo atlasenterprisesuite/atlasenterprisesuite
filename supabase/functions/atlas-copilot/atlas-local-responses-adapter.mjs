@@ -113,7 +113,7 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     }
     return {configured:true,verified:false,provider:'atlas-local',model,error:lastError};
   }
-  async function execute({route,instructions,input,max_output_tokens=3000}={}){
+  async function execute({route,instructions,input,max_output_tokens=3000,background=false}={}){
     const profile=route?.profile||'balanced';
     const model=resolved[profile];
     if(!configured||!model)throw fail('provider_not_configured',503,{provider:'atlas-local'});
@@ -126,11 +126,12 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     const localInstructions=compactInstructions(instructions);
     const body={model,instructions:`${localInstructions}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false};
     let response;
-    for(let attempt=1;attempt<=boundedExecutionAttempts;attempt+=1){
+    const executionLimit=background?1:boundedExecutionAttempts;
+    for(let attempt=1;attempt<=executionLimit;attempt+=1){
       try{
         response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
       }catch{
-        if(attempt<boundedExecutionAttempts){await sleep(boundedRetryDelayMs*attempt);continue;}
+        if(attempt<executionLimit){await sleep(boundedRetryDelayMs*attempt);continue;}
         throw fail('provider_unavailable',502,{provider:'atlas-local'});
       }
       if(response.ok)break;
