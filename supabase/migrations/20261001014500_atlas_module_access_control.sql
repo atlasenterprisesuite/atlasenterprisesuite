@@ -115,6 +115,22 @@ create trigger atlas_module_entitlements_audit
 after insert or update or delete on public.atlas_module_entitlements
 for each row execute function private.audit_atlas_module_entitlement();
 
+create or replace function private.prevent_atlas_module_entitlement_audit_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  raise exception 'ATLAS module entitlement audit is immutable';
+end;
+$;
+
+drop trigger if exists atlas_module_entitlement_audit_immutable on public.atlas_module_entitlement_audit;
+create trigger atlas_module_entitlement_audit_immutable
+before update or delete on public.atlas_module_entitlement_audit
+for each row execute function private.prevent_atlas_module_entitlement_audit_mutation();
+
 -- Preserve the effective module availability existing organizations had before
 -- this entitlement layer. New organizations remain fail-closed until provisioned.
 insert into public.atlas_module_entitlements(org_id, module_id, status, source, metadata)
