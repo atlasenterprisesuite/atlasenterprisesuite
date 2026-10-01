@@ -6,6 +6,7 @@ describe('ATLAS Cloud production verification dashboard', () => {
   const next = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/AtlasCloudNextLevel.tsx', 'utf8');
   const page = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/AtlasCloudProductionVerification.tsx', 'utf8');
   const css = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/cloud.css', 'utf8');
+  const api = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/cloudApi.ts', 'utf8');
 
   it('routes and exposes the production verification surface', () => {
     expect(routes).toContain('/cloud/production-verification');
@@ -14,8 +15,10 @@ describe('ATLAS Cloud production verification dashboard', () => {
   });
 
   it('uses canonical live authorities rather than hard-coded poster state', () => {
-    expect(page).toContain('atlas-observability');
-    expect(page).toContain('atlas-release-control');
+    expect(page).toContain('cloudControlRequest');
+    expect(page).toContain('cloudReleaseRequest');
+    expect(api).toContain('atlas-observability');
+    expect(api).toContain('atlas-release-control');
     expect(page).toContain('latest_verifications');
     expect(page).toContain('source_ref');
     expect(page).toContain('status values are never hard-coded');
