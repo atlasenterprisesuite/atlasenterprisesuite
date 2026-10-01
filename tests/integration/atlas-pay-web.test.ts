@@ -5,6 +5,8 @@ const app = readFileSync('apps/web/src/App.tsx', 'utf8');
 const registry = readFileSync('apps/web/src/modules/registry.ts', 'utf8');
 const page = readFileSync('apps/web/src/modules/finance/pay/AtlasPayPage.tsx', 'utf8');
 const core = readFileSync('packages/pay/src/index.ts', 'utf8');
+const payApi = readFileSync('apps/web/src/lib/payApi.ts', 'utf8');
+const productionContract = JSON.parse(readFileSync('data/ops/global-production-verification.json', 'utf8')) as { public_routes: string[] };
 
 describe('ATLAS Pay web integration', () => {
   it('exposes ATLAS Pay from Finance behind identity', () => {
@@ -23,6 +25,14 @@ describe('ATLAS Pay web integration', () => {
     expect(core).toContain('UnavailableIssuingAdapter');
     expect(core).toContain('UnavailablePayoutAdapter');
     expect(core).toContain('regulatoryCoverageVerified');
+  });
+
+  it('reads provider readiness from organization-scoped Supabase evidence', () => {
+    expect(payApi).toContain('authorizedAtlasFetch');
+    expect(payApi).toContain('getActiveAtlasOrganization');
+    expect(payApi).toContain('atlas_pay_provider_connections');
+    expect(page).toContain('No regulated capability is treated as ready');
+    expect(productionContract.public_routes).toContain('/finance/pay');
   });
 
   it('preserves Accounting as the canonical ledger', () => {
