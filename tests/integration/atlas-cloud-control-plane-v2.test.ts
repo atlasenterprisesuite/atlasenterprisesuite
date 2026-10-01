@@ -5,6 +5,7 @@ describe('ATLAS Cloud control plane v2', () => {
   const routes = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/AtlasCloudRoutes.tsx', 'utf8');
   const next = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/AtlasCloudNextLevel.tsx', 'utf8');
   const ops = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/AtlasCloudOperations.tsx', 'utf8');
+  const api = readFileSync(process.cwd() + '/apps/web/src/modules/cloud/cloudApi.ts', 'utf8');
 
   it('routes every approved next-level control surface', () => {
     for (const path of [
@@ -21,10 +22,10 @@ describe('ATLAS Cloud control plane v2', () => {
   });
 
   it('reuses canonical ATLAS authorities instead of creating a second backend', () => {
-    expect(ops).toContain('atlas-observability');
-    expect(ops).toContain('atlas-release-control');
-    expect(ops).toContain('atlas_module_registry');
-    expect(ops).toContain('atlas_incidents');
+    expect(api).toContain('atlas-observability');
+    expect(api).toContain('atlas-release-control');
+    expect(ops).toContain('cloudControlRequest');
+    expect(ops).toContain('cloudReleaseRequest');
     expect(ops).not.toContain('create table');
     expect(ops).not.toContain('localStorage.setItem');
   });
@@ -55,7 +56,8 @@ describe('ATLAS Cloud control plane v2', () => {
   });
 
   it('reads reliability state from canonical incidents', () => {
-    expect(ops).toContain('api=incidents&limit=100');
+    expect(ops).toContain("'incidents'");
+    expect(ops).toContain("{ limit: '100' }");
     expect(ops).toContain('Incident & Reliability Center');
   });
 });
