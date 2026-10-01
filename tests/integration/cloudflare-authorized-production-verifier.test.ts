@@ -6,6 +6,7 @@ const verifier = readFileSync(
   'utf8'
 );
 const workflow = readFileSync('.github/workflows/cloudflare-deploy.yml', 'utf8');
+const globalWorkflow = readFileSync('.github/workflows/global-production-verify.yml', 'utf8');
 
 describe('Cloudflare authorized production HTTP verifier', () => {
   it('accepts only scoped GitHub OIDC from the main Cloudflare deployment workflow', () => {
@@ -80,6 +81,23 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('AUTHORIZED_ACCESSIBILITY_REACHABLE');
     expect(workflow).toContain('status_route_reachable');
     expect(workflow).toContain('all_module_routes_reachable');
+  });
+
+
+  it('retries transient semantic authorized-verifier failures without weakening fail-closed checks', () => {
+    for (const source of [workflow, globalWorkflow]) {
+      expect(source).toContain('AUTHORIZED_OK="false"');
+      expect(source).toContain('for ATTEMPT in 1 2 3 4 5; do');
+      expect(source).toContain('[ "$HTTP_STATUS" = "200" ] && [ "$AUTHORIZED_OK" = "true" ]');
+      expect(source).toContain('HTTP 200 with ok=false');
+      expect(source).toContain('retrying transient route verification without weakening fail-closed checks');
+      expect(source).toContain('FAILED_CHECKS=');
+      expect(source).toContain('Authorized production verifier failed checks: $FAILED_CHECKS');
+    }
+
+    expect(globalWorkflow).toContain('default: fail-closed');
+    expect(globalWorkflow).toContain("steps.policy.outputs.mode == 'fail-closed'");
+    expect(globalWorkflow).toContain('ATLAS production verification is fail-closed');
   });
 
   it('verifies the production domain after either deployment mode and covers critical ATLAS Network routes', () => {
