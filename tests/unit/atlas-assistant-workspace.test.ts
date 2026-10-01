@@ -35,7 +35,12 @@ describe('ATLAS Assistant workspace', () => {
     expect(client).toContain('/functions/v1/atlas-copilot?api=history');
     expect(client).toContain('/functions/v1/atlas-copilot?api=conversation');
     expect(client).toContain('/functions/v1/atlas-copilot?api=chat');
+    expect(client).toContain('/functions/v1/atlas-copilot?api=background&trace_id=');
+    expect(client).toContain("execution_mode: input.executionMode || 'auto'");
     expect(client).toContain("surface: 'atlas-assistant-workspace'");
+    expect(page).toContain('getAssistantBackgroundStatus');
+    expect(page).toContain('Working in background…');
+    expect(page).toContain('assistant_empty_response');
     expect(page).toContain("status?.local_runtime?.state === 'verified'");
     expect(page).toContain("localProvider?.verified === true");
   });
