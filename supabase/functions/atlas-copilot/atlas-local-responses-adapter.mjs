@@ -135,7 +135,7 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
         throw fail('provider_unavailable',502,{provider:'atlas-local'});
       }
       if(response.ok)break;
-      if(retryableStatus(response.status)&&attempt<boundedExecutionAttempts){await sleep(boundedRetryDelayMs*attempt);continue;}
+      if(retryableStatus(response.status)&&attempt<executionLimit){await sleep(boundedRetryDelayMs*attempt);continue;}
       throw errorForStatus(response.status);
     }
     if(!response?.ok)throw fail('provider_unavailable',502,{provider:'atlas-local'});
