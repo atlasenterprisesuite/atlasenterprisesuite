@@ -12,6 +12,7 @@ export type AtlasModuleDefinition = {
   requiresAuth: boolean;
   description: string;
   showInNavigation: boolean;
+  parentId?: string;
 };
 
 export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
@@ -120,10 +121,11 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Accounting',
     area: 'Finance',
     route: '/finance/accounting',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: false,
-    description: 'Canonical accounting entry point across payable, receivable, inventory, reporting and governed finance workflows.',
-    showInNavigation: false
+    description: 'Canonical accounting ecosystem. AP, AR, procure-to-pay integration and automotive reporting are active; ledger, journals, treasury, reconciliation, fixed assets and close remain evidence-gated until their UI flows are complete.',
+    showInNavigation: false,
+    parentId: 'finance'
   },
   {
     id: 'tax',
@@ -134,7 +136,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'Versioned personal and business tax preparation with source-document mapping, jurisdiction gates and filing boundaries.',
-    showInNavigation: true
+    showInNavigation: false,
+    parentId: 'finance'
   },
   {
     id: 'crm',
