@@ -19,7 +19,7 @@ const REALTIME_URL = String(
   'wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect'
 ).trim();
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const HEARTBEAT_MS = 30_000;
 const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
