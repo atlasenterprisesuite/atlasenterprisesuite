@@ -63,7 +63,7 @@ export function WorkBoardPage() {
                 {items.length ? items.map(workflow => (
                   <Link className="module-card enabled" to={'/execution/' + encodeURIComponent(workflow.id)} key={workflow.id}>
                     <span>{workflow.ownerModule || 'work'} · {String(workflow.status)}</span>
-                    <strong>{workflow.work?.intent || 'Governed ATLAS Work'}</strong>
+                    <strong>{workflow.intent || 'Governed ATLAS Work'}</strong>
                     <p>Runtime: {workflow.work?.runtimePreference || 'auto'} · Autonomy: {workflow.work?.autonomyLevel || 'guided'}</p>
                   </Link>
                 )) : <p className="muted">No workflows in this lane.</p>}
