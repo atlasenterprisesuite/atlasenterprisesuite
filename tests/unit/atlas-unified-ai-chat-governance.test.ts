@@ -65,6 +65,31 @@ describe('ATLAS provider registry', () => {
     expect(JSON.stringify(readiness)).not.toContain('secret');
   });
 
+  it('probes configured providers concurrently while preserving canonical result order', async () => {
+    let started = 0;
+    let release: (() => void) | null = null;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const concurrentAdapter = (id: 'openai' | 'gemini') => ({
+      descriptor: () => ({
+        id,
+        configured: true,
+        capabilities: ['generation'],
+        profiles: ['balanced'],
+        model: id + '-model',
+      }),
+      probe: async () => {
+        started += 1;
+        if (started === 2) release?.();
+        await gate;
+        return { configured: true, verified: true, provider: id, model: id + '-model', error: null };
+      },
+    });
+    const registry = createProviderRegistry({ providers: [concurrentAdapter('openai'), concurrentAdapter('gemini')] });
+    const readiness = await registry.readiness({ profile: 'balanced' });
+    expect(started).toBe(2);
+    expect(readiness.filter((item: any) => item.verified).map((item: any) => item.id)).toEqual(['openai', 'gemini']);
+  });
+
   it('returns an adapter by provider id without exposing credentials', () => {
     const openai = adapter('openai');
     const registry = createProviderRegistry({ providers: [openai] });
