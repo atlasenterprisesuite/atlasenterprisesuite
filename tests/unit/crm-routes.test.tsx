@@ -4,6 +4,28 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+
+vi.mock('../../apps/web/src/lib/atlasSession', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/lib/atlasSession')>('../../apps/web/src/lib/atlasSession');
+  return {
+    ...actual,
+    getCachedAtlasShellOrganization: () => ({ id: 'org-1', role: 'owner', name: 'ATLAS Test', legalName: null, active: true })
+  };
+});
+
+vi.mock('../../apps/web/src/access/moduleAccess', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/access/moduleAccess')>('../../apps/web/src/access/moduleAccess');
+  const row = {
+    module_id: 'crm', allowed: true, reason: 'allowed' as const,
+    entitlement_status: 'active', permission_granted: true
+  };
+  return {
+    ...actual,
+    canAccessAtlasModule: vi.fn(async () => row),
+    getAtlasModuleAccessSnapshot: vi.fn(async () => [row])
+  };
+});
+
 vi.mock('../../apps/web/src/modules/business/crm/crmApi', () => {
   class MockCrmApiError extends Error {
     status: number;
@@ -141,9 +163,9 @@ afterEach(() => {
 });
 
 describe('ATLAS CRM routing and provider-backed UI', () => {
-  it('adds CRM to the canonical ATLAS shell navigation', () => {
+  it('adds CRM to the canonical ATLAS shell navigation for an entitled organization', async () => {
     render(<MemoryRouter initialEntries={['/crm']}><AtlasShell><div>CRM route body</div></AtlasShell></MemoryRouter>);
-    expect(screen.getByRole('link', { name: 'CRM' })).toHaveAttribute('href', '/crm');
+    expect(await screen.findByRole('link', { name: 'CRM' })).toHaveAttribute('href', '/crm');
   });
 
   it.each([
