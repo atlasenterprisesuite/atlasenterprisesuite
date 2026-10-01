@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
-import { executeBrowserCdpAction } from './lib/browser-cdp.mjs';
-import { collectLinuxDeviceDnaReport, deviceDnaLocalDevice } from './lib/device-dna-linux.mjs';
 import {
   consumeEnrollmentFile,
   loadAgentState,
@@ -28,6 +26,8 @@ const REALTIME_RETRY_MAX_MS = 60_000;
 const DEVICE_DNA_REFRESH_MS = 5 * 60_000;
 const DEVICE_DNA_ENABLED = process.platform === 'linux' &&
   String(process.env.ATLAS_DEVICE_DNA_DISABLED || '').trim().toLowerCase() !== 'true';
+const BROWSER_CDP_ENABLED = process.platform !== 'win32' &&
+  String(process.env.ATLAS_BROWSER_CDP_DISABLED || '').trim().toLowerCase() !== 'true';
 
 let state = await loadAgentState();
 let sessionToken = String(process.env.ATLAS_AGENT_SESSION_TOKEN || state.sessionToken || '').trim();
@@ -64,6 +64,7 @@ async function readDeviceConfig() {
       metadata: item.metadata && typeof item.metadata === 'object' && !Array.isArray(item.metadata) ? item.metadata : {}
     };
     if (adapter === 'browser-cdp') {
+      if (!BROWSER_CDP_ENABLED) throw new Error(`Device ${index} browser-cdp adapter is not enabled on this platform`);
       const allowed = Array.isArray(base.metadata.allowed_domains)
         ? base.metadata.allowed_domains.map((value)=>String(value || '').trim().toLowerCase()).filter(Boolean)
         : [];
@@ -79,13 +80,22 @@ async function readDeviceConfig() {
 }
 
 function agentCapabilities() {
-  const capabilities = ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'];
-  return DEVICE_DNA_ENABLED ? [...capabilities, 'device.dna.read'] : capabilities;
+  const capabilities = ['heartbeat','device.inventory','command.poll','command.realtime','http-health'];
+  if (BROWSER_CDP_ENABLED) capabilities.push('browser.cdp');
+  if (DEVICE_DNA_ENABLED) capabilities.push('device.dna.read');
+  return capabilities;
+}
+
+function agentModules() {
+  const modules = ['device-os','connect','hospitality'];
+  if (BROWSER_CDP_ENABLED) modules.push('browser-operator');
+  return modules;
 }
 
 async function buildRuntimeDevices() {
   const configured = await readDeviceConfig();
   if (!DEVICE_DNA_ENABLED) return configured;
+  const { collectLinuxDeviceDnaReport, deviceDnaLocalDevice } = await import('./lib/device-dna-linux.mjs');
   const report = await collectLinuxDeviceDnaReport();
   return [deviceDnaLocalDevice(report), ...configured];
 }
@@ -132,7 +142,7 @@ async function enroll() {
     agent_version: VERSION,
     installer_version: VERSION,
     capabilities: agentCapabilities(),
-    modules: ['device-os','connect','hospitality','browser-operator']
+    modules: agentModules()
   }, false);
   sessionToken = String(result.session_token || '');
   if (!sessionToken) throw new Error('enrollment_did_not_return_session');
@@ -163,7 +173,7 @@ async function heartbeat() {
     platform: PLATFORM,
     agent_version: VERSION,
     capabilities: agentCapabilities(),
-    modules: ['device-os','connect','hospitality','browser-operator']
+    modules: agentModules()
   });
   if (result.session_token || result.session_expires_at) await persistSession(result);
 }
@@ -217,6 +227,8 @@ async function execute(command) {
 
   if (device.adapter === 'browser-cdp' && command.capability === 'browser.control') {
     try {
+      if (!BROWSER_CDP_ENABLED) throw new Error('browser_cdp_not_enabled');
+      const { executeBrowserCdpAction } = await import('./lib/browser-cdp.mjs');
       const outcome = await executeBrowserCdpAction(device,String(command.action || ''),command.action_payload || {});
       await post('agent.events.append', {
         device_id: String(command.device_id),
@@ -351,7 +363,7 @@ async function main() {
   void realtimeLoop();
   await drainCommands();
 
-  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}.\n`);
+  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}; browser CDP is ${BROWSER_CDP_ENABLED ? 'enabled' : 'not enabled'}.\n`);
   await new Promise(()=>{});
 }
 
