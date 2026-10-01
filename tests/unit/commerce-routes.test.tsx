@@ -4,6 +4,28 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+
+vi.mock('../../apps/web/src/lib/atlasSession', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/lib/atlasSession')>('../../apps/web/src/lib/atlasSession');
+  return {
+    ...actual,
+    getCachedAtlasShellOrganization: () => ({ id: 'org-1', role: 'owner', name: 'ATLAS Test', legalName: null, active: true })
+  };
+});
+
+vi.mock('../../apps/web/src/access/moduleAccess', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/access/moduleAccess')>('../../apps/web/src/access/moduleAccess');
+  const row = {
+    module_id: 'commerce', allowed: true, reason: 'allowed' as const,
+    entitlement_status: 'active', permission_granted: true
+  };
+  return {
+    ...actual,
+    canAccessAtlasModule: vi.fn(async () => row),
+    getAtlasModuleAccessSnapshot: vi.fn(async () => [row])
+  };
+});
+
 vi.mock('../../apps/web/src/modules/commerce/commerceApi', () => ({
   commerceApi: vi.fn()
 }));
@@ -85,13 +107,13 @@ afterEach(() => {
 });
 
 describe('ATLAS Commerce routing and workspace UI', () => {
-  it('adds Commerce to canonical shell navigation', () => {
+  it('adds Commerce to canonical shell navigation for an entitled organization', async () => {
     render(
       <MemoryRouter initialEntries={['/commerce']}>
         <AtlasShell><div>Commerce route body</div></AtlasShell>
       </MemoryRouter>
     );
-    expect(screen.getByRole('link', { name: 'Commerce' })).toHaveAttribute('href', '/commerce');
+    expect(await screen.findByRole('link', { name: 'Commerce' })).toHaveAttribute('href', '/commerce');
   });
 
   it.each([
