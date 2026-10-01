@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync('supabase/migrations/20261001160000_atlas_remote_sessions.sql', 'utf8');
+const migration = readFileSync('supabase/migrations/20261001203000_atlas_remote_sessions.sql', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-local-control/index.ts', 'utf8');
 const worker = readFileSync('worker/index.ts', 'utf8');
 const wrangler = readFileSync('wrangler.jsonc', 'utf8');
