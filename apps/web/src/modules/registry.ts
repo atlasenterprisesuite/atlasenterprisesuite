@@ -126,6 +126,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: false
   },
   {
+    id: 'pay',
+    title: 'ATLAS Pay',
+    navLabel: 'Pay',
+    area: 'Finance',
+    route: '/finance/pay',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Provider-neutral wallet, issuing and payout orchestration with regulated providers and rails fail-closed until verified.',
+    showInNavigation: true
+  },
+  {
     id: 'tax',
     title: 'ATLAS Tax',
     navLabel: 'Tax',
