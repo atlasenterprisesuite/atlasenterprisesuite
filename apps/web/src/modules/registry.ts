@@ -67,7 +67,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/knowledge',
     readiness: 'implemented',
     requiresAuth: true,
-    description: 'Governed organizational memory for approved decisions, requirements, workflows, configuration and evidence.',
+    description: 'Governed organizational memory plus Course Forge for converting authorized conversations and knowledge into instructor-ready teaching packages.',
     showInNavigation: true
   },
   {
@@ -232,7 +232,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/learning',
     readiness: 'implemented',
     requiresAuth: false,
-    description: 'Structured learning, practice and measurable progress.',
+    description: 'Approved course delivery, instructor-ready teaching packages, structured practice and measurable progress.',
     showInNavigation: true
   },
   {
