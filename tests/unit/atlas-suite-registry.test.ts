@@ -43,6 +43,14 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(analytics).toContain('export function AnalyticsRoutes');
   });
 
+  it('renders registered child domains inside their parent ecosystem', () => {
+    expect(registry).toContain("parentId?: string");
+    expect(registry).toContain("parentId: 'finance'");
+    expect(suite).toContain(".filter((module) => !module.parentId)");
+    expect(suite).toContain("child.parentId === module.id");
+    expect(suite).toContain('Inside this ecosystem');
+  });
+
   it('registers modern Accounting and Insurance truthfully', () => {
     expect(registry).toContain("id: 'accounting'");
     expect(registry).toContain("route: '/finance/accounting'");
