@@ -8,7 +8,7 @@ create table if not exists public.atlas_remote_sessions (
   device_id uuid not null references public.atlas_local_devices(id) on delete cascade,
   agent_id uuid not null references public.atlas_local_agents(id) on delete cascade,
   requested_by uuid not null,
-  mode text not null check (mode in ('view','control')),
+  mode text not null check (mode = 'view'),
   status text not null default 'pending' check (status in ('pending','active','denied','ended','expired')),
   viewer_ticket_hash text,
   viewer_ticket_expires_at timestamptz,
