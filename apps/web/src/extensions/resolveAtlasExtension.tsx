@@ -24,6 +24,7 @@ import {
 import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
 import { AtlasPortalsPage } from '../modules/galaxy/AtlasPortalsPage';
 import { ProcureToPayPage } from '../modules/inventory/ProcureToPayPage';
+import { AccountingOperationsPage } from '../modules/finance/AccountingOperationsPage';
 import { PeopleRoutes } from '../modules/people/PeopleRoutes';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
@@ -141,6 +142,9 @@ export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/business') return <BusinessEcosystemPage />;
   if (pathname === '/finance') return <FinanceExperiencePage />;
   if (pathname === '/finance/accounting') return <AccountingExperiencePage />;
+  if (pathname === '/finance/accounting/general-ledger') return <RequireAtlasIdentity><AccountingOperationsPage view="ledger" /></RequireAtlasIdentity>;
+  if (pathname === '/finance/accounting/reconciliation') return <RequireAtlasIdentity><AccountingOperationsPage view="reconciliation" /></RequireAtlasIdentity>;
+  if (pathname === '/finance/accounting/close') return <RequireAtlasIdentity><AccountingOperationsPage view="close" /></RequireAtlasIdentity>;
 
   if (pathname === '/galaxy/portals') {
     return <RequireAtlasIdentity><AtlasPortalsPage /></RequireAtlasIdentity>;
