@@ -168,6 +168,26 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
+  it('uses one bounded ATLAS Local attempt for detached background execution', async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ error: 'warming' }), { status: 503 }));
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      token: 'local-secret',
+      models: { balanced: 'local-model' },
+      fetchFn,
+      executionAttempts: 4,
+      retryDelayMs: 0,
+    });
+    await expect(adapter.execute({
+      context,
+      route,
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'continue' }],
+      background: true,
+    })).rejects.toMatchObject({ code: 'provider_unavailable' });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
   it('fails closed when ATLAS Local has no authenticated runtime configuration', async () => {
     const adapter = createAtlasLocalResponsesAdapter({
       baseUrl: 'https://local-ai.example',
