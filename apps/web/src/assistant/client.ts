@@ -130,6 +130,14 @@ export type AssistantChatResponse = {
   status?: string;
   persisted?: boolean;
   error?: string | null;
+  handoff_required?: boolean;
+  work_handoff?: {
+    workflow_id: string;
+    task_id?: string | null;
+    state?: string;
+    reason?: string;
+    created_at?: string;
+  } | null;
 };
 
 export type AssistantBackgroundActivity = {
