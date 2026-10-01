@@ -21,6 +21,25 @@ describe('ATLAS Finance web completion', () => {
     expect(api).toContain('getActiveAtlasOrganization');
   });
 
+  it('restores the nested Accounting record-to-report workspace without opening unverified writes', () => {
+    for (const route of [
+      '/finance/accounting/dashboard',
+      '/finance/accounting/chart-of-accounts',
+      '/finance/accounting/general-ledger',
+      '/finance/accounting/journal-entries',
+      '/finance/accounting/bank-cash',
+      '/finance/accounting/reconciliation',
+      '/finance/accounting/period-close',
+      '/finance/accounting/reports',
+      '/finance/accounting/audit-trail',
+      '/finance/accounting/settings'
+    ]) {
+      expect(app).toContain(`path="${route}"`);
+    }
+    expect(experiences).toContain('One set of books. Many governed workflows. No parallel ledgers.');
+    expect(experiences).toContain('Fixed Assets remains gated');
+  });
+
   it('surfaces the live Finance control center from the canonical experience page', () => {
     expect(experiences).toContain("import { FinanceControlCenterPanel } from '../finance/FinanceControlCenterPanel'");
     expect(experiences).toContain('<FinanceControlCenterPanel />');
