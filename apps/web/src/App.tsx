@@ -12,6 +12,7 @@ import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
 import { NetworkPublicPage } from './modules/business/network/NetworkPublicPage';
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
+import { AccountingWorkspacePage as AccountingWorkspaceReadPage } from './modules/finance/accounting/AccountingWorkspaceReadPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
 import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
@@ -106,7 +107,7 @@ function AccountingHome() {
       <PageHeader eyebrow="ATLAS Finance / Accounting" title="Accounting Ecosystem" description="The financial temple inside ATLAS Finance: one accounting source of truth with operational workspaces and connected domains around the same tenant, permissions and audit boundaries." />
 
       <div className="notice strong">
-        Canonical accounting status: AP, AR, procure-to-pay integration and automotive reporting are surfaced. Ledger, journals, bank/cash, reconciliation, fixed assets and period close stay visibly evidence-gated until their executable UI flows are complete.
+        Canonical accounting status: AP and AR remain operational workspaces. Chart of Accounts, General Ledger, Journals, Bank/Cash, Reconciliation, Period Close, Reports, Audit and Settings are restored as authenticated RLS-backed read workspaces. Mutating actions remain fail-closed unless their current RPC contract is verified.
       </div>
 
       <div className="module-grid">
@@ -115,12 +116,17 @@ function AccountingHome() {
         <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Accounting · Connected operations</span><strong>Procure to Pay</strong><p>PO receiving, packing-slip evidence, three-way matching, inventory costing and AP handoff.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting · Reporting</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed operations, inventory and floorplan controls.</p></Link>
 
-        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Ledger core</span><strong>General Ledger + Chart of Accounts</strong><p>Canonical contracts exist, but this surface remains closed until executable ledger and account workflows are wired and tested.</p></div>
-        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Posting</span><strong>Journal Entries</strong><p>Balanced draft, posting, reversal and locked-period controls remain gated until the complete UI path is verified.</p></div>
-        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Treasury</span><strong>Bank, Cash + Reconciliation</strong><p>Bank registry and reconciliation contracts are defined; no connected-bank or completed-reconciliation claim is shown without verified flows.</p></div>
-        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Assets</span><strong>Fixed Assets</strong><p>Asset and depreciation behavior remains gated until the register, schedule and posting workflow are executable end to end.</p></div>
-        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Close</span><strong>Period Close</strong><p>Close governance exists in the backend, but the operator workspace remains closed until checklist, authorization and lock evidence are surfaced.</p></div>
-        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Statements</span><strong>Financial Reports</strong><p>Trial Balance, Profit & Loss, Balance Sheet and ledger detail will open only when all totals derive from the same verified accounting source.</p></div>
+        <Link className="module-card enabled accent" to="/finance/accounting/dashboard"><span>Accounting · Command</span><strong>Accounting Command Center</strong><p>Authenticated organization scope across ledger, cash, close and reporting evidence.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/chart-of-accounts"><span>Accounting · Ledger core</span><strong>Chart of Accounts</strong><p>RLS-backed account structure with active/inactive state and governed organization scope.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/general-ledger"><span>Accounting · Ledger core</span><strong>General Ledger</strong><p>Posted debit and credit activity derived from the same journals used by financial statements.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/journal-entries"><span>Accounting · Posting</span><strong>Journal Entries</strong><p>Read posted and draft journals, balanced lines and reversal lineage. Writes remain gated until current RPC verification.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/bank-cash"><span>Accounting · Treasury</span><strong>Bank & Cash</strong><p>Authenticated account and imported transaction evidence with connection state shown as recorded.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/reconciliation"><span>Accounting · Treasury</span><strong>Reconciliation</strong><p>Statement-to-ledger sessions, variance, readiness and unresolved exceptions from organization-scoped data.</p></Link>
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Assets</span><strong>Fixed Assets</strong><p>The historical workspace was recovered, but activation stays closed until the current canonical table and depreciation-posting path are verified.</p></div>
+        <Link className="module-card enabled" to="/finance/accounting/period-close"><span>Accounting · Close</span><strong>Period Close</strong><p>Period readiness and close checklist evidence without claiming a period is closed unless the backend records it.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/reports"><span>Accounting · Statements</span><strong>Financial Reports</strong><p>Trial Balance, Profit & Loss and Balance Sheet calculated from the same posted ledger source.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/audit-trail"><span>Accounting · Governance</span><strong>Audit Trail</strong><p>Organization-scoped change evidence for accounting records.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/settings"><span>Accounting · Governance</span><strong>Settings</strong><p>Fiscal year, base currency, accounting basis and control-account configuration in read mode.</p></Link>
       </div>
 
       <div className="module-grid compact">
@@ -319,6 +325,16 @@ export function App() {
         <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
+        <Route path="/finance/accounting/dashboard" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="dashboard" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/chart-of-accounts" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="chart-of-accounts" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/general-ledger" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="general-ledger" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/journal-entries" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="journal-entries" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/bank-cash" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="bank-cash" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/reconciliation" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="reconciliation" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/period-close" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="period-close" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/reports" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="reports" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/audit-trail" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="audit-trail" /></RequireAtlasIdentity>} />
+        <Route path="/finance/accounting/settings" element={<RequireAtlasIdentity><AccountingWorkspaceReadPage section="settings" /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
         <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />
