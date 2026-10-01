@@ -4,6 +4,7 @@ import { useAssistantVoice } from '../../assistant/useAssistantVoice';
 import { detectPcmWavRecordingCapability, recordAssistantPcmWavChunk } from '../../assistant/voice';
 import {
   getAssistantConversation,
+  getAssistantBackgroundStatus,
   getAssistantStatus,
   listAssistantConversations,
   diarizeAssistantAudio,
@@ -117,7 +118,11 @@ function humanizeError(value: string) {
     diarization_provider_failed: 'Speaker detection failed for that audio turn.',
     diarization_speaker_limit_exceeded: 'More than two speakers were detected. Two-person translation stopped safely.',
     audio_recording_unavailable: 'Raw audio recording is unavailable in this browser.',
-    audio_recording_failed: 'ATLAS could not capture the audio segment.'
+    audio_recording_failed: 'ATLAS could not capture the audio segment.',
+    assistant_empty_response: 'ATLAS received an empty provider response and stopped instead of showing a blank answer.',
+    background_provider_unavailable: 'Background execution is not available under the current verified provider and cost policy.',
+    background_failed: 'The background task did not complete successfully.',
+    background_timeout: 'The background task is still running. Reopen this conversation to reconcile its latest state.'
   };
   return errors[value] || value.replaceAll('_', ' ');
 }
@@ -157,6 +162,7 @@ export function UnifiedAIChatPage() {
   const diarizationSessionIdRef = useRef('');
   const diarizationSpeakerMapRef = useRef(new Map<string, ConversationSpeaker>());
   const messageEnd = useRef<HTMLDivElement | null>(null);
+  const pageActiveRef = useRef(true);
   const voice = useAssistantVoice();
 
   const providers = status?.providers || [];
@@ -212,8 +218,12 @@ export function UnifiedAIChatPage() {
     conversationIdRef.current = conversationId;
   }, [conversationId]);
 
-  useEffect(() => () => {
-    conversationSessionRef.current += 1;
+  useEffect(() => {
+    pageActiveRef.current = true;
+    return () => {
+      conversationSessionRef.current += 1;
+      pageActiveRef.current = false;
+    };
   }, []);
 
   async function refreshStatus() {
@@ -299,6 +309,48 @@ export function UnifiedAIChatPage() {
     ].join('\n');
   }
 
+  async function pollBackgroundResult(traceId: string, targetConversationId: string, placeholderKey: string) {
+    let transientFailures = 0;
+    for (let attempt = 0; attempt < 300 && pageActiveRef.current; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      if (!pageActiveRef.current) return;
+      try {
+        const state = await getAssistantBackgroundStatus(traceId);
+        transientFailures = 0;
+        if (state.status === 'queued' || state.status === 'in_progress') {
+          setMessages((current) => current.map((item) =>
+            item.key === placeholderKey
+              ? { ...item, meta: 'Background · ' + (state.status === 'queued' ? 'Queued' : 'Running') }
+              : item
+          ));
+          continue;
+        }
+        if (state.status === 'completed') {
+          const payload = await getAssistantConversation(targetConversationId);
+          if (conversationIdRef.current === targetConversationId) {
+            setMessages((payload.messages || []).map((stored, index) => ({
+              key: stored.id || stored.role + '-' + index,
+              role: stored.role === 'user' ? 'user' : 'assistant',
+              text: textOf(stored),
+              meta: metaOf(stored)
+            })));
+          }
+          void refreshHistory();
+          return;
+        }
+        setMessages((current) => current.filter((item) => item.key !== placeholderKey));
+        setError(state.error || 'background_failed');
+        return;
+      } catch (cause) {
+        transientFailures += 1;
+        if (transientFailures < 3) continue;
+        setError(cause instanceof Error ? cause.message : 'background_failed');
+        return;
+      }
+    }
+    if (pageActiveRef.current) setError('background_timeout');
+  }
+
   async function executeMessage(message: string) {
     const value = message.trim();
     if (!value || busy || !routeReady) return;
@@ -316,7 +368,8 @@ export function UnifiedAIChatPage() {
         message: translationRequest(value),
         conversationId: conversationIdRef.current,
         mode,
-        profile
+        profile,
+        executionMode: 'auto'
       });
       if (result.conversation_id) {
         setConversationId(result.conversation_id);
@@ -325,7 +378,24 @@ export function UnifiedAIChatPage() {
       const providersUsed = Array.isArray(result.providers) && result.providers.length
         ? result.providers.join(' + ')
         : result.provider || 'ATLAS';
-      const reply = result.output || result.text || '';
+      if (result.background && result.status !== 'completed') {
+        if (!result.trace_id || !result.conversation_id) throw new Error('background_failed');
+        const placeholderKey = 'background-' + result.trace_id;
+        setMessages((current) => [
+          ...current,
+          {
+            key: placeholderKey,
+            role: 'assistant',
+            text: 'Working in background…',
+            meta: 'Background · ' + (result.status === 'queued' ? 'Queued' : 'Running') + ' · via ' + providersUsed
+          }
+        ]);
+        void pollBackgroundResult(result.trace_id, result.conversation_id, placeholderKey);
+        void refreshHistory();
+        return;
+      }
+      const reply = (result.output || result.text || '').trim();
+      if (!reply) throw new Error('assistant_empty_response');
       setMessages((current) => [
         ...current,
         {
@@ -343,7 +413,7 @@ export function UnifiedAIChatPage() {
           setError('speech_unavailable');
         }
       }
-      await Promise.all([refreshHistory(), refreshStatus()]);
+      void refreshHistory();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
     } finally {
@@ -380,7 +450,8 @@ export function UnifiedAIChatPage() {
         message: conversationTranslationRequest(value, speaker),
         conversationId: conversationIdRef.current,
         mode,
-        profile
+        profile,
+        executionMode: 'interactive'
       });
       if (result.conversation_id) {
         setConversationId(result.conversation_id);
@@ -410,7 +481,7 @@ export function UnifiedAIChatPage() {
         await voice.speak(reply, targetLanguageCode);
       }
 
-      await Promise.all([refreshHistory(), refreshStatus()]);
+      void refreshHistory();
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');

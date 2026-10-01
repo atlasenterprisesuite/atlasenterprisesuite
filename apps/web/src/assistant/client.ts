@@ -3,6 +3,7 @@ import { resolveAssistantModule } from './routeContext';
 
 export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign' | 'council';
 export type AssistantProfile = 'fast' | 'balanced' | 'deep';
+export type AssistantExecutionMode = 'auto' | 'interactive' | 'background';
 
 export type AssistantProviderState =
   | 'verified_for_request'
@@ -125,6 +126,10 @@ export type AssistantChatResponse = {
   profile?: AssistantProfile;
   fallback_used?: boolean;
   contributions?: Array<{ provider: string; model: string | null; text: string }>;
+  background?: boolean;
+  status?: string;
+  persisted?: boolean;
+  error?: string | null;
 };
 
 export type AssistantDiarizationSegment = {
@@ -257,6 +262,7 @@ export async function sendAssistantWorkspaceMessage(input: {
   conversationId?: string | null;
   mode: AssistantMode;
   profile: AssistantProfile;
+  executionMode?: AssistantExecutionMode;
 }): Promise<AssistantChatResponse> {
   const message = input.message.trim();
   if (!message) throw new Error('assistant_message_required');
@@ -270,6 +276,7 @@ export async function sendAssistantWorkspaceMessage(input: {
       module: 'assistant',
       intent: input.profile,
       mode: input.mode,
+      execution_mode: input.executionMode || 'auto',
       message,
       conversation_id: input.conversationId || null,
       capabilities_requested: ['generation', 'reasoning'],
@@ -278,6 +285,17 @@ export async function sendAssistantWorkspaceMessage(input: {
         surface: 'atlas-assistant-workspace'
       }
     })
+  });
+  return parseCopilotResponse<AssistantChatResponse>(response);
+}
+
+export async function getAssistantBackgroundStatus(traceId: string): Promise<AssistantChatResponse> {
+  const trace = traceId.trim();
+  if (!trace) throw new Error('background_trace_required');
+  const { headers } = await assistantHeaders();
+  const response = await authorizedAtlasFetch(`/functions/v1/atlas-copilot?api=background&trace_id=${encodeURIComponent(trace)}`, {
+    method: 'GET',
+    headers
   });
   return parseCopilotResponse<AssistantChatResponse>(response);
 }

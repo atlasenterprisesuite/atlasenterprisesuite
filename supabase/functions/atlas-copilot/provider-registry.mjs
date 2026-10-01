@@ -22,13 +22,12 @@ export function createProviderRegistry({providers=[]}={}){
   for(const adapter of providers){const d=safeDescriptor(adapter);if(ORDER.includes(d.id)&&!map.has(d.id))map.set(d.id,adapter);}
   const get=id=>map.get(id)||null;
   async function readiness({profile='balanced'}={}){
-    const result=[];
-    for(const id of ORDER){
+    return Promise.all(ORDER.map(async id=>{
       const adapter=get(id);
-      if(!adapter){result.push({id,state:'configuration-required',configured:false,verified:false,model:null,capabilities:[],profiles:[],error:'provider_not_configured'});continue;}
+      if(!adapter)return {id,state:'configuration-required',configured:false,verified:false,model:null,capabilities:[],profiles:[],error:'provider_not_configured'};
       const descriptor=safeDescriptor(adapter);let probe;
       try{probe=await adapter.probe({profile});}catch(error){probe={configured:descriptor.configured,verified:false,provider:id,model:descriptor.model||descriptor.models?.[profile]||null,error:error?.code||'provider_unavailable'};}
-      result.push({
+      return {
         id,
         state:stateFor(probe),
         configured:probe?.configured===true,
@@ -43,9 +42,8 @@ export function createProviderRegistry({providers=[]}={}){
         feature_support:descriptor.feature_support,
         prompt_cache:descriptor.prompt_cache,
         error:probe?.error||null
-      });
-    }
-    return result;
+      };
+    }));
   }
   return Object.freeze({get,readiness,ids:()=>ORDER.filter(id=>map.has(id))});
 }

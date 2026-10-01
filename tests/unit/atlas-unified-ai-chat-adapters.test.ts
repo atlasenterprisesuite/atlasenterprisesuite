@@ -168,6 +168,26 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
+  it('uses one bounded ATLAS Local attempt for detached background execution', async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ error: 'warming' }), { status: 503 }));
+    const adapter = createAtlasLocalResponsesAdapter({
+      baseUrl: 'https://local-ai.example',
+      token: 'local-secret',
+      models: { balanced: 'local-model' },
+      fetchFn,
+      executionAttempts: 4,
+      retryDelayMs: 0,
+    });
+    await expect(adapter.execute({
+      context,
+      route,
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'continue' }],
+      background: true,
+    })).rejects.toMatchObject({ code: 'provider_unavailable' });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
   it('fails closed when ATLAS Local has no authenticated runtime configuration', async () => {
     const adapter = createAtlasLocalResponsesAdapter({
       baseUrl: 'https://local-ai.example',
@@ -179,6 +199,46 @@ describe('ATLAS Unified AI provider adapters', () => {
       verified: false,
       error: 'provider_not_configured',
     });
+  });
+
+  it('starts and retrieves an OpenAI background response without blocking the request', async () => {
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        const body = JSON.parse(String(init.body));
+        expect(url).toBe('https://api.openai.com/v1/responses');
+        expect(body.background).toBe(true);
+        expect(body.store).toBe(false);
+        return new Response(JSON.stringify({
+          id: 'resp_background_1',
+          status: 'queued',
+          model: 'configured-openai-model',
+          usage: {}
+        }), { status: 200 });
+      }
+      expect(url).toBe('https://api.openai.com/v1/responses/resp_background_1');
+      return new Response(JSON.stringify({
+        id: 'resp_background_1',
+        status: 'completed',
+        model: 'configured-openai-model',
+        output: [{ content: [{ type: 'output_text', text: 'background-ok' }] }],
+        usage: { output_tokens: 3 }
+      }), { status: 200 });
+    });
+    const adapter = createOpenAIResponsesAdapter({
+      apiKey: 'secret',
+      models: { balanced: 'configured-openai-model' },
+      fetchFn,
+    });
+    expect(adapter.descriptor().feature_support?.background).toBe(true);
+    const started = await adapter.startBackground({
+      context,
+      route,
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'long task' }],
+    });
+    expect(started).toMatchObject({ response_id: 'resp_background_1', status: 'queued', text: null });
+    const completed = await adapter.retrieveBackground({ response_id: started.response_id });
+    expect(completed).toMatchObject({ status: 'completed', text: 'background-ok' });
   });
 
   it('does not invent an OpenAI model when none is configured', () => {
