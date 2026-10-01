@@ -161,8 +161,13 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   const canSurfaceModule = useCallback((moduleId?: string) => {
     if (!moduleId) return true;
     const module = ATLAS_MODULES.find((candidate) => candidate.id === moduleId);
-    if (!module?.requiresAuth) return true;
-    return Boolean(organization && accessibleModuleIds?.has(moduleId));
+    if (!module) return false;
+
+    // Public landing pages stay discoverable before sign-in. Once an
+    // organization is active, the shell becomes an entitlement-filtered
+    // workspace and only modules in the verified access snapshot surface.
+    if (!organization) return !module.requiresAuth;
+    return Boolean(accessibleModuleIds?.has(moduleId));
   }, [accessibleModuleIds, organization]);
 
   const visibleNavItems = useMemo(
