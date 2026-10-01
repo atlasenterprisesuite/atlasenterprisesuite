@@ -27,12 +27,26 @@ describe('ATLAS navigation intelligence', () => {
     expect(node?.id).toBe('payables');
     expect(getAtlasNavigationTrail('/finance/accounting/accounts-payable').map((item) => item.id)).toEqual([
       'home',
+      'finance',
       'accounting',
       'payables'
     ]);
     expect(getAtlasNavigationInstructions('/finance/accounting/accounts-payable')).toBe(
-      'Home → Accounting → Payables'
+      'Home → Finance → Accounting → Payables'
     );
+  });
+
+  it('nests finance-owned domains instead of exposing them as parallel roots', () => {
+    expect(getAtlasNavigationTrail('/finance/accounting').map((item) => item.id)).toEqual([
+      'home',
+      'finance',
+      'accounting'
+    ]);
+    expect(getAtlasNavigationTrail('/tax').map((item) => item.id)).toEqual([
+      'home',
+      'finance',
+      'tax'
+    ]);
   });
 
   it('searches English and Spanish operational aliases', () => {
