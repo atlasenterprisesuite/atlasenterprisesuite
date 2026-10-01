@@ -71,7 +71,18 @@ export type IntercompanyWorkspaceSnapshot = {
   loadedAt: string;
   candidates: IntercompanyCandidateRow[];
 };
-type BankRow = { id: string };
+export type BankAccountRow = {
+  id: string;
+  provider: string | null;
+  display_name: string;
+  account_type: string | null;
+  currency: string;
+  mask: string | null;
+  connection_state: string;
+  current_balance: number | string | null;
+  balance_as_of: string | null;
+  metadata: Record<string, unknown> | null;
+};
 type ReconciliationRow = { id: string; status: string | null };
 
 export type FinanceControlCenterSnapshot = {
@@ -85,7 +96,7 @@ export type FinanceControlCenterSnapshot = {
   budgets: CapabilityRows<BudgetRow>;
   fxRates: CapabilityRows<FxRow>;
   consolidations: CapabilityRows<ConsolidationRow>;
-  bankAccounts: CapabilityRows<BankRow>;
+  bankAccounts: CapabilityRows<BankAccountRow>;
   reconciliations: CapabilityRows<ReconciliationRow>;
 };
 
@@ -135,7 +146,7 @@ export async function loadFinanceControlCenter(): Promise<FinanceControlCenterSn
     readCapability<BudgetRow>('accounting_budgets', 'id,entity_id,name,fiscal_year,version,scenario,status,base_currency', organization.id),
     readCapability<FxRow>('accounting_fx_rates', 'id,evidence_state', organization.id),
     readCapability<ConsolidationRow>('accounting_consolidation_groups', 'id,status', organization.id),
-    readCapability<BankRow>('accounting_bank_accounts', 'id', organization.id),
+    readCapability<BankAccountRow>('accounting_bank_accounts', 'id,provider,display_name,account_type,currency,mask,connection_state,current_balance,balance_as_of,metadata', organization.id),
     readCapability<ReconciliationRow>('accounting_reconciliation_sessions', 'id,status', organization.id)
   ]);
 
