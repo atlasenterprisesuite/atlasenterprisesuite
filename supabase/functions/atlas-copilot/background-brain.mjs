@@ -19,7 +19,7 @@ function terminalFailure(status){
   return ['failed','cancelled','incomplete'].includes(String(status||'').toLowerCase());
 }
 
-export function createBackgroundBrain({router,registry,store,costPolicy,clock=Date.now}={}){
+export function createBackgroundBrain({router,registry,store,costPolicy,runDetached=null,clock=Date.now}={}){
   if(!registry||!store)throw new TypeError('background_brain_dependencies_required');
 
   async function finalize({context,requestRow,providerResult,routing}){
@@ -70,7 +70,9 @@ export function createBackgroundBrain({router,registry,store,costPolicy,clock=Da
     let selected=null,costDecision=null;
     for(const providerId of candidates){
       const adapter=registry.get(providerId);
-      if(!adapter||typeof adapter.startBackground!=='function')continue;
+      const nativeBackground=typeof adapter?.startBackground==='function';
+      const detachedBackground=typeof runDetached==='function'&&typeof adapter?.execute==='function';
+      if(!adapter||(!nativeBackground&&!detachedBackground))continue;
       const decision=evaluateIntelligenceCostPolicy({
         mode:route.mode==='auto'?'auto':route.mode,
         providers:[providerId],
@@ -118,31 +120,76 @@ export function createBackgroundBrain({router,registry,store,costPolicy,clock=Da
       background:true
     };
     try{
-      const result=await selected.adapter.startBackground({
-        context,
-        route:candidateRoute,
-        instructions:buildSovereignBrainInstructions({module:normalized.module,mode:candidateRoute.mode,intent:normalized.intent}),
-        input:history,
-        max_output_tokens:3000
-      });
+      const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:candidateRoute.mode,intent:normalized.intent});
+      if(typeof selected.adapter.startBackground==='function'){
+        const result=await selected.adapter.startBackground({
+          context,
+          route:candidateRoute,
+          instructions,
+          input:history,
+          max_output_tokens:3000
+        });
+        await store.markBackgroundStarted({
+          context,
+          id:telemetry.id,
+          provider:result.provider||selected.providerId,
+          model:result.model||null,
+          usage:{...(result.usage||{}),atlas_background:{response_id:result.response_id,status:result.status||'queued',kind:'provider-native'},atlas_routing:routing}
+        });
+        const requestRow={...telemetry,provider:result.provider||selected.providerId,model:result.model||null,usage:{atlas_background:{response_id:result.response_id,status:result.status||'queued',kind:'provider-native'},atlas_routing:routing}};
+        if(result.status==='completed'){
+          return finalize({context,requestRow,providerResult:result,routing});
+        }
+        return {
+          status:result.status||'queued',
+          background:true,
+          trace_id:traceId,
+          conversation_id:conversation.id,
+          provider:result.provider||selected.providerId,
+          model:result.model||null,
+          text:''
+        };
+      }
+
+      const responseId=`atlas-detached:${traceId}`;
       await store.markBackgroundStarted({
         context,
         id:telemetry.id,
-        provider:result.provider||selected.providerId,
-        model:result.model||null,
-        usage:{...(result.usage||{}),atlas_background:{response_id:result.response_id,status:result.status||'queued'},atlas_routing:routing}
+        provider:selected.providerId,
+        model:null,
+        usage:{atlas_background:{response_id:responseId,status:'in_progress',kind:'edge-detached'},atlas_routing:routing}
       });
-      const requestRow={...telemetry,provider:result.provider||selected.providerId,model:result.model||null,usage:{atlas_background:{response_id:result.response_id,status:result.status||'queued'},atlas_routing:routing}};
-      if(result.status==='completed'){
-        return finalize({context,requestRow,providerResult:result,routing});
-      }
+      const requestRow={...telemetry,provider:selected.providerId,model:null,usage:{atlas_background:{response_id:responseId,status:'in_progress',kind:'edge-detached'},atlas_routing:routing}};
+      const task=(async()=>{
+        try{
+          const result=await selected.adapter.execute({
+            context,
+            route:candidateRoute,
+            instructions,
+            input:history,
+            max_output_tokens:3000,
+            background:true
+          });
+          await finalize({
+            context,
+            requestRow:{...requestRow,model:result.model||null},
+            providerResult:{...result,response_id:responseId,status:'completed'},
+            routing
+          });
+        }catch(error){
+          const startedAt=new Date(String(requestRow.created_at||'')).getTime();
+          const latency=Number.isFinite(startedAt)?Math.max(0,clock()-startedAt):0;
+          await store.failRequest({context,id:requestRow.id,error_code:error?.code||'background_failed',latency_ms:latency}).catch(()=>{});
+        }
+      })();
+      runDetached(task);
       return {
-        status:result.status||'queued',
+        status:'in_progress',
         background:true,
         trace_id:traceId,
         conversation_id:conversation.id,
-        provider:result.provider||selected.providerId,
-        model:result.model||null,
+        provider:selected.providerId,
+        model:null,
         text:''
       };
     }catch(error){
@@ -161,6 +208,9 @@ export function createBackgroundBrain({router,registry,store,costPolicy,clock=Da
     const background=requestRow?.usage?.atlas_background;
     const responseId=String(background?.response_id||'').trim();
     const providerId=String(requestRow.provider||'').trim();
+    if(background?.kind==='edge-detached'){
+      return {status:'in_progress',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:providerId,model:requestRow.model||null,text:null};
+    }
     const adapter=registry.get(providerId);
     if(!responseId||!adapter||typeof adapter.retrieveBackground!=='function')throw fail('background_request_invalid',409);
     let providerResult;
