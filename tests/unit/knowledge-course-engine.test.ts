@@ -46,7 +46,7 @@ describe('ATLAS Course Forge engine', () => {
   });
 
   it('accepts fenced provider JSON without trusting surrounding prose', () => {
-    const course = parseGeneratedCourse('\\`\\`\\`json\n' + fixture + '\n\\`\\`\\`');
+    const course = parseGeneratedCourse(['```json', fixture, '```'].join('\n'));
     expect(course.title).toBe('Practical Accounting');
   });
 
