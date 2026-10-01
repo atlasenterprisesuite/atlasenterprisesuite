@@ -13,6 +13,7 @@ import {detectOracleIntent} from './oracle-intent.mjs';
 import {renderAtlasCopilotPage} from './ui.mjs';
 import {createBackgroundBrain,shouldRunInBackground} from './background-brain.mjs';
 import {sha256Hex,verifyOpenAIWebhook} from './openai-webhook.mjs';
+import {createStreamingGateway} from './streaming-gateway.mjs';
 
 const U='https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
@@ -406,6 +407,46 @@ async function handleOracle(req,body,message,oracleIntent,resolved){
   return json({ok:true,oracle:true,reading:result?.reading||null,cards:result?.selected_cards||result?.cards||[],interpretation:result?.interpretation||[],disclaimer:result?.disclaimer||null,text:lines.join('\n\n'),provider_state:'not_used',execution:{repositoryMutation:false,mode:'private-oracle'}});
 }
 
+async function handleChatStream(req){
+  if(req.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
+  const body=await parseJson(req),resolved=await contextFor(req,body?.organization_id),rt=runtime(),store=storeFor(rt.serviceRoleKey),message=String(body?.message||'').trim();
+  if(!message)return json({ok:false,error:'invalid_input'},400);
+  const oracleIntent=detectOracleIntent(message);
+  if(oracleIntent)return await handleOracle(req,body,message,oracleIntent,resolved);
+  const requestedModule=body?.context!==undefined&&body?.module===undefined?'workbench':String(body?.module||'atlas');
+  const clientLegacy=String(body?.context||'').trim().slice(0,4000),intent=String(body?.intent||'balanced'),mode=String(body?.mode||'auto'),requestedExecutionMode=String(body?.execution_mode||'auto'),executionMode=['auto','interactive','background'].includes(requestedExecutionMode)?requestedExecutionMode:'auto';
+  const memory=await approvedMemoryForAssistant(rt,resolved.context,{message,module:requestedModule});
+  const legacy=[clientLegacy,memory.text].filter(Boolean).join('\n\n').slice(0,12000);
+  const {registry,providers}=await readinessFor(rt,intent);
+  const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers,preferredProviders:rt.costPolicy.zero_cost_providers});
+  const request=body?.context!==undefined&&body?.module===undefined
+    ?{module:'workbench',intent:'balanced',mode,message,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy),atlas_memory_records:memory.recordIds},legacy_context:legacy}
+    :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:{...(body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{}),atlas_memory_records:memory.recordIds},legacy_context:legacy};
+
+  if(shouldRunInBackground({executionMode,message,profile:intent})){
+    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,runDetached:edgeBackgroundRunner()});
+    try{
+      const background=await brain.start({context:resolved.context,request});
+      return json({ok:true,...background,text:background.text||'',provider_state:'verified_for_request',provider_readiness:providers,memory:{approved_records_used:memory.recordIds.length,record_ids:memory.recordIds},execution:{repositoryMutation:false,repairQueue:'available',mode:'background'}},background.status==='completed'?200:202);
+    }catch(error){
+      if(executionMode==='background'||error?.code!=='background_provider_unavailable')throw error;
+    }
+  }
+
+  const streaming=createStreamingGateway({router,registry,store,costPolicy:rt.costPolicy});
+  const result=await streaming.prepare({context:resolved.context,request});
+  return new Response(result.stream,{
+    status:200,
+    headers:headers({
+      'content-type':'text/event-stream; charset=utf-8',
+      'connection':'keep-alive',
+      'x-accel-buffering':'no',
+      'x-atlas-trace-id':result.trace_id,
+      'x-atlas-conversation-id':result.conversation_id
+    })
+  });
+}
+
 async function handleChat(req){
   if(req.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
   const body=await parseJson(req),resolved=await contextFor(req,body?.organization_id),rt=runtime(),store=storeFor(rt.serviceRoleKey),message=String(body?.message||'').trim();
@@ -453,6 +494,7 @@ async function handleRequest(req: Request){
     if(api==='background')return await handleBackground(req,url);
     if(api==='background-activity')return await handleBackgroundActivity(req,url);
     if(api==='openai-webhook')return await handleOpenAIWebhook(req);
+    if(api==='chat-stream')return await handleChatStream(req);
     if(api==='chat')return await handleChat(req);
     if(api==='diarize')return await handleDiarize(req);
     const html=renderAtlasCopilotPage({supabaseUrl:U,publishableKey:K,selfPath:SELF,repairPath:REPAIR,livePath:LIVE,version:VERSION});
