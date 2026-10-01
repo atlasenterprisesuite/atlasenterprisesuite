@@ -1,5 +1,5 @@
 {
-  "version": 29,
+  "version": 30,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -20,6 +20,7 @@
     "/business/insights",
     "/advisory",
     "/finance",
+    "/finance/pay",
     "/tax",
     "/crm",
     "/commerce",

@@ -35,6 +35,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/advisory/providers',
   '/advisory/readiness',
   '/finance',
+  '/finance/pay',
   '/tax',
   '/crm',
   '/commerce',
