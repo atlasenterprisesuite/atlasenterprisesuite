@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { WorkCommandCenter } from './WorkCommandCenter';
 import { WorkComposerPage } from './WorkComposerPage';
+import { WorkBoardPage } from './WorkBoardPage';
+import { WorkDrivePage } from './WorkDrivePage';
+import { WorkFormsPage } from './WorkFormsPage';
 import { WorkConnectionsPage } from './WorkConnectionsPage';
 import { WorkComputerOperationsPage } from './WorkComputerOperationsPage';
 import { WorkListPage } from './WorkListPage';
@@ -16,6 +19,9 @@ export function WorkRoutes() {
       <Route path="/work" element={<WorkCommandCenter />} />
       <Route path="/work/os" element={<WorkOSPage />} />
       <Route path="/work/new" element={<WorkComposerPage />} />
+      <Route path="/work/board" element={<WorkBoardPage />} />
+      <Route path="/work/forms" element={<WorkFormsPage />} />
+      <Route path="/work/drive" element={<WorkDrivePage />} />
       <Route path="/work/active" element={<WorkListPage view="active" />} />
       <Route path="/work/approvals" element={<WorkListPage view="approvals" />} />
       <Route path="/work/history" element={<WorkListPage view="history" />} />
