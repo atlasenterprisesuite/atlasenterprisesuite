@@ -460,3 +460,43 @@ export async function closeAccountingPeriod(periodId: string) {
     period_uuid: periodId
   });
 }
+
+
+export async function createAccountingPeriod(input: { periodStart: string; periodEnd: string; entityId?: string | null }) {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/accounting_periods?select=id,entity_id,period_start,period_end,status,close_readiness,filing_readiness,closed_at', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', prefer: 'return=representation' },
+    body: JSON.stringify({
+      org_id: organization.id,
+      entity_id: input.entityId || null,
+      period_start: input.periodStart,
+      period_end: input.periodEnd,
+      status: 'open'
+    })
+  });
+  if (!response.ok) throw new Error(`accounting_period_create_http_${response.status}`);
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows[0] as AccountingClosePeriod : null;
+}
+
+export async function updateAccountingCloseTask(input: {
+  taskId: string;
+  status: 'open' | 'blocked' | 'in_progress' | 'complete' | 'waived';
+  blocker?: string | null;
+}) {
+  const organization = await getActiveAtlasOrganization();
+  const params = new URLSearchParams({ id: `eq.${input.taskId}`, org_id: `eq.${organization.id}`, select: 'id,period_id,task_key,name,task_group,owner_label,status,blocker,due_at,weight,completed_at' });
+  const response = await authorizedAtlasFetch(`/rest/v1/accounting_close_tasks?${params.toString()}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', prefer: 'return=representation' },
+    body: JSON.stringify({
+      status: input.status,
+      blocker: input.blocker || null,
+      completed_at: ['complete', 'waived'].includes(input.status) ? new Date().toISOString() : null
+    })
+  });
+  if (!response.ok) throw new Error(`accounting_close_task_update_http_${response.status}`);
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows[0] as AccountingCloseTask : null;
+}
