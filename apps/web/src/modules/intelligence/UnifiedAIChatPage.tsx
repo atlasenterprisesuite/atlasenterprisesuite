@@ -447,7 +447,8 @@ export function UnifiedAIChatPage() {
         message: conversationTranslationRequest(value, speaker),
         conversationId: conversationIdRef.current,
         mode,
-        profile
+        profile,
+        executionMode: 'interactive'
       });
       if (result.conversation_id) {
         setConversationId(result.conversation_id);
