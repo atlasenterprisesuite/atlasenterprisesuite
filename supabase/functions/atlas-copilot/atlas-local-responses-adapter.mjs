@@ -86,7 +86,7 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     feature_support:{
       local_inference:true,
       responses_api:true,
-      streaming:false,
+      streaming:true,
       tool_calling:false,
       computer_use:false,
       mid_turn_steering:false
@@ -144,5 +144,31 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     if(!text)throw fail('internal_error',500,{provider:'atlas-local'});
     return {provider:'atlas-local',model:data?.model||model,response_id:data?.id||null,text,capabilities_used:[...(route?.capabilities||['generation'])],usage:data?.usage||{},provenance:[],tool_calls:[]};
   }
-  return Object.freeze({descriptor,probe,execute});
+  async function executeStream({route,instructions,input,max_output_tokens=3000}={}){
+    const profile=route?.profile||'balanced';
+    const model=resolved[profile];
+    if(!configured||!model)throw fail('provider_not_configured',503,{provider:'atlas-local'});
+    const profileInstruction=profile==='deep'
+      ?'Use the deepest available local reasoning budget and verify important conclusions before answering.'
+      :profile==='fast'
+        ?'Prefer a fast, concise local answer unless more reasoning is required for correctness.'
+        :'Use a balanced local reasoning budget.';
+    const boundedMaxOutput=Math.max(64,Math.min(LOCAL_MAX_OUTPUT_TOKENS,Number(max_output_tokens)||LOCAL_MAX_OUTPUT_TOKENS));
+    const localInstructions=compactInstructions(instructions);
+    const body={model,instructions:`${localInstructions}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false,stream:true};
+    let response;
+    try{
+      response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
+    }catch{throw fail('provider_unavailable',502,{provider:'atlas-local'});}
+    if(!response.ok)throw errorForStatus(response.status);
+    const contentType=String(response.headers.get('content-type')||'').toLowerCase();
+    if(contentType.includes('text/event-stream')&&response.body){
+      return {kind:'stream',provider:'atlas-local',model,stream:response.body,capabilities_used:[...(route?.capabilities||['generation'])],provenance:[]};
+    }
+    const data=await response.json().catch(()=>({}));
+    const text=outputText(data);
+    if(!text)throw fail('streaming_unavailable',409,{provider:'atlas-local'});
+    return {kind:'complete',provider:'atlas-local',model:data?.model||model,text,usage:data?.usage||{},provenance:[]};
+  }
+  return Object.freeze({descriptor,probe,execute,executeStream});
 }
