@@ -17,25 +17,31 @@ export function LearningCourseLibraryPage() {
 
   useEffect(() => {
     let active = true;
-    listAtlasMemory({ status: 'approved', kind: 'workflow', module: 'learning', limit: 50, offset: 0 })
-      .then(response => {
-        if (!active) return;
-        const courses = response.records
-          .filter(record => record.tags.includes('atlas-course'))
-          .flatMap(record => {
-            try {
-              return [{ record, course: parseGeneratedCourse(String(record.content_json?.text || '')) }];
-            } catch {
-              return [];
-            }
-          });
-        setRecords(courses);
-      })
-      .catch(caught => {
-        if (!active) return;
-        setError(caught instanceof Error ? caught.message : 'course_library_unavailable');
-        setRecords([]);
-      });
+    async function loadApprovedCourses() {
+      const collected: AtlasMemoryRecord[] = [];
+      let offset = 0;
+      for (let page = 0; page < 10; page += 1) {
+        const response = await listAtlasMemory({ status: 'approved', kind: 'workflow', module: 'learning', limit: 50, offset });
+        collected.push(...response.records);
+        if (!response.has_more || !response.records.length) break;
+        offset += response.records.length;
+      }
+      const courses = collected
+        .filter(record => record.tags.includes('atlas-course'))
+        .flatMap(record => {
+          try {
+            return [{ record, course: parseGeneratedCourse(String(record.content_json?.text || '')) }];
+          } catch {
+            return [];
+          }
+        });
+      if (active) setRecords(courses);
+    }
+    loadApprovedCourses().catch(caught => {
+      if (!active) return;
+      setError(caught instanceof Error ? caught.message : 'course_library_unavailable');
+      setRecords([]);
+    });
     return () => { active = false; };
   }, []);
 
