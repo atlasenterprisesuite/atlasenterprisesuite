@@ -1,7 +1,7 @@
 # ATLAS Productivity Pro
 
 Date: 2026-10-01
-Status: Implemented in feature branch; production status requires CI, merge and public verification.
+Status: Merged into main; production status still requires deployment evidence and public verification.
 Owner: ATLAS Studio / Intelligence Platform
 
 ## Purpose
@@ -40,3 +40,8 @@ A future Microsoft bridge must add:
 ## Verification
 
 Unit coverage checks route registration, Studio discoverability, use of the existing Assistant bus, fail-closed provider readiness and Microsoft connectivity truth boundaries.
+
+
+## Work OS integration
+
+ATLAS Productivity Pro is now mapped into the broader ATLAS Work OS architecture at `/work/os`. The Work OS launcher reuses this page as the deep research/analysis productivity surface while preserving the same provider-readiness and external-Microsoft truth boundaries.
