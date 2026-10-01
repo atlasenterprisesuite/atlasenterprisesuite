@@ -26,6 +26,7 @@ const MODULE_NODES: readonly AtlasNavigationNode[] = ATLAS_MODULES.map((module) 
   to: module.route,
   area: module.area,
   moduleId: module.id,
+  parentId: module.parentId,
   keywords: [
     module.title,
     module.description,
