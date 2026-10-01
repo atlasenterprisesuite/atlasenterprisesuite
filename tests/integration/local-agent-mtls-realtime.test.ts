@@ -84,6 +84,22 @@ describe('ATLAS Local Agent mTLS + realtime contract', () => {
     expect(windows).toContain('rsa_keygen_bits:3072');
   });
 
+  it('keeps optional runtime modules bundle-complete and platform truthful', () => {
+    for (const library of ['browser-cdp.mjs','device-dna-linux.mjs']) {
+      expect(linux).toContain(library);
+      expect(mac).toContain(library);
+    }
+    expect(linux).toContain('Missing Local Agent runtime library');
+    expect(mac).toContain('Missing Local Agent runtime library');
+
+    expect(agent).toContain("await import('./lib/browser-cdp.mjs')");
+    expect(agent).toContain("await import('./lib/device-dna-linux.mjs')");
+    expect(agent).toContain("process.platform !== 'win32'");
+    expect(agent).toContain("process.platform === 'linux'");
+    expect(agent).toContain("if (BROWSER_CDP_ENABLED) capabilities.push('browser.cdp')");
+    expect(agent).toContain("if (DEVICE_DNA_ENABLED) capabilities.push('device.dna.read')");
+  });
+
   it('keeps private keys on the agent and provisions only from a public CSR', () => {
     expect(workflow).toContain('csr_base64');
     expect(workflow).toContain('BEGIN CERTIFICATE REQUEST');
