@@ -196,17 +196,28 @@ export function UnifiedAIChatPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([getAssistantStatus(), listAssistantConversations()])
-      .then(([nextStatus, nextConversations]) => {
+
+    void getAssistantStatus()
+      .then((nextStatus) => {
         if (!active) return;
         setStatus(nextStatus);
-        setConversations(nextConversations);
         setError('');
       })
       .catch((cause) => {
         if (!active) return;
         setError(cause instanceof Error ? cause.message : 'assistant_unavailable');
       });
+
+    void listAssistantConversations()
+      .then((nextConversations) => {
+        if (!active) return;
+        setConversations(nextConversations);
+      })
+      .catch(() => {
+        if (!active) return;
+        setConversations([]);
+      });
+
     return () => { active = false; };
   }, []);
 
@@ -326,15 +337,38 @@ export function UnifiedAIChatPage() {
           continue;
         }
         if (state.status === 'completed') {
-          const payload = await getAssistantConversation(targetConversationId);
-          if (conversationIdRef.current === targetConversationId) {
-            setMessages((payload.messages || []).map((stored, index) => ({
-              key: stored.id || stored.role + '-' + index,
-              role: stored.role === 'user' ? 'user' : 'assistant',
-              text: textOf(stored),
-              meta: metaOf(stored)
-            })));
+          const completedText = String(state.output || state.text || '').trim();
+          if (completedText && conversationIdRef.current === targetConversationId) {
+            setMessages((current) => current.map((item) =>
+              item.key === placeholderKey
+                ? {
+                    ...item,
+                    text: completedText,
+                    meta: 'Background · Completed'
+                      + (state.provider ? ' · via ' + state.provider : '')
+                      + (state.model ? ' · ' + state.model : '')
+                  }
+                : item
+            ));
           }
+
+          try {
+            const payload = await getAssistantConversation(targetConversationId);
+            if (conversationIdRef.current === targetConversationId) {
+              setMessages((payload.messages || []).map((stored, index) => ({
+                key: stored.id || stored.role + '-' + index,
+                role: stored.role === 'user' ? 'user' : 'assistant',
+                text: textOf(stored),
+                meta: metaOf(stored)
+              })));
+            }
+          } catch {
+            if (!completedText) {
+              setMessages((current) => current.filter((item) => item.key !== placeholderKey));
+              setError('history_unavailable');
+            }
+          }
+
           void refreshHistory();
           return;
         }

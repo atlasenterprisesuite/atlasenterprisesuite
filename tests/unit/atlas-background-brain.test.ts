@@ -140,7 +140,7 @@ describe('ATLAS Background Brain', () => {
     expect(store.completeRequest).toHaveBeenCalledTimes(1);
 
     const secondPoll = await brain.poll({ context, traceId: started.trace_id });
-    expect(secondPoll).toMatchObject({ status: 'completed', persisted: true });
+    expect(secondPoll).toMatchObject({ status: 'completed', persisted: true, text: 'Background result' });
     expect(store.messages.filter((message: any) => message.role === 'assistant')).toHaveLength(1);
   });
 

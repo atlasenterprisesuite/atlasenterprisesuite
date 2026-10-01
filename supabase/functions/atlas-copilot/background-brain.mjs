@@ -203,7 +203,15 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
   async function poll({context,traceId}){
     if(!has(context,'intelligence.use'))throw fail('permission_denied',403);
     const requestRow=await store.getRequestByTrace({context,trace_id:traceId});
-    if(requestRow.status==='completed')return {status:'completed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,model:requestRow.model||null,text:null,persisted:true};
+    if(requestRow.status==='completed'){
+      const persisted=await store.findAssistantMessageByTrace({
+        context,
+        conversation_id:String(requestRow.conversation_id||''),
+        trace_id:traceId
+      });
+      const text=String(persisted?.content?.text||'').trim()||null;
+      return {status:'completed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,model:requestRow.model||null,text,persisted:true};
+    }
     if(requestRow.status==='failed')return {status:'failed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,error:requestRow.error_code||'background_failed'};
     const background=requestRow?.usage?.atlas_background;
     const responseId=String(background?.response_id||'').trim();
