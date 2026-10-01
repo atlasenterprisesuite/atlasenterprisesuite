@@ -61,6 +61,5 @@ $env:ATLAS_AGENT_MTLS_KEY_FILE = $key
 $env:ATLAS_LOCAL_CONTROL_URL = "https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-local-control"
 $env:ATLAS_AGENT_REALTIME_URL = "wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect"
 $env:ATLAS_REMOTE_DESKTOP_ENABLED = "true"
-$env:ATLAS_AGENT_FALLBACK_POLL_MS = "1500"
 
 & $node (Join-Path $runtime "atlas-local-agent.mjs")
