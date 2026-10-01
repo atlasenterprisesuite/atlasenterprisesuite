@@ -53,7 +53,7 @@ describe('ATLAS Finance web completion', () => {
     expect(panel).toContain('to="/finance/accounting/accounts-receivable"');
     expect(panel).toContain('to="/inventory/procure-to-pay"');
     expect(panel).toContain('to="/finance/accounting/reports/automotive-sales"');
-    expect(registry).toContain("{ to: '/finance/accounting/accounts-receivable', label: 'Receivables' }");
+    expect(registry).toContain("{ to: '/finance/accounting/accounts-receivable', label: 'Receivables', moduleId: 'accounting' }");
   });
 
   it('integrates canonical intercompany evidence without creating a parallel finance store', () => {
