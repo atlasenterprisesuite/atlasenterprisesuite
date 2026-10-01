@@ -19,13 +19,15 @@ function terminalFailure(status){
   return ['failed','cancelled','incomplete'].includes(String(status||'').toLowerCase());
 }
 
-export function createBackgroundBrain({router,registry,store,costPolicy,runDetached=null,clock=Date.now}={}){
+export function createBackgroundBrain({router,registry,store,costPolicy,runDetached=null,clock=Date.now,staleAfterMs=180000}={}){
   if(!registry||!store)throw new TypeError('background_brain_dependencies_required');
 
   async function finalize({context,requestRow,providerResult,routing}){
     const conversationId=String(requestRow.conversation_id||'');
     const traceId=String(requestRow.trace_id||'');
     if(!conversationId||!traceId)throw fail('background_request_invalid',500);
+    const latest=await store.getRequestByTrace({context,trace_id:traceId});
+    if(latest.status==='cancelled')return {status:'cancelled',background:true,trace_id:traceId,conversation_id:conversationId,provider:latest.provider||requestRow.provider||null,text:null};
     const existing=await store.findAssistantMessageByTrace({context,conversation_id:conversationId,trace_id:traceId});
     const text=String(providerResult?.text||'').trim();
     if(!text)throw fail('internal_error',500,{provider:providerResult?.provider||requestRow.provider||null});
@@ -213,10 +215,17 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
       return {status:'completed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,model:requestRow.model||null,text,persisted:true};
     }
     if(requestRow.status==='failed')return {status:'failed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,error:requestRow.error_code||'background_failed'};
+    if(requestRow.status==='cancelled')return {status:'cancelled',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,error:requestRow.error_code||'background_cancelled'};
     const background=requestRow?.usage?.atlas_background;
     const responseId=String(background?.response_id||'').trim();
     const providerId=String(requestRow.provider||'').trim();
     if(background?.kind==='edge-detached'){
+      const startedAt=new Date(String(requestRow.created_at||'')).getTime();
+      const ageMs=Number.isFinite(startedAt)?Math.max(0,clock()-startedAt):0;
+      if(ageMs>=Math.max(60000,Number(staleAfterMs)||180000)){
+        await store.failRequest({context,id:requestRow.id,error_code:'background_stale',latency_ms:ageMs});
+        return {status:'failed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:providerId,model:requestRow.model||null,text:null,error:'background_stale',handoff_required:true};
+      }
       return {status:'in_progress',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:providerId,model:requestRow.model||null,text:null};
     }
     const adapter=registry.get(providerId);
@@ -245,6 +254,42 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
     return {status:providerResult.status||'in_progress',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:providerId,model:providerResult.model||requestRow.model||null,text:null};
   }
 
+  async function cancel({context,traceId}){
+    if(!has(context,'intelligence.use'))throw fail('permission_denied',403);
+    const requestRow=await store.getRequestByTrace({context,trace_id:traceId});
+    if(['completed','failed','cancelled','denied'].includes(String(requestRow.status||''))){
+      return {status:requestRow.status,background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,error:requestRow.error_code||null};
+    }
+    const background=requestRow?.usage?.atlas_background;
+    const responseId=String(background?.response_id||'').trim();
+    const providerId=String(requestRow.provider||'').trim();
+    const adapter=registry.get(providerId);
+    if(background?.kind==='provider-native'&&responseId&&adapter&&typeof adapter.cancelBackground==='function'){
+      await adapter.cancelBackground({response_id:responseId});
+    }
+    const startedAt=new Date(String(requestRow.created_at||'')).getTime();
+    const latency=Number.isFinite(startedAt)?Math.max(0,clock()-startedAt):0;
+    await store.cancelRequest({context,id:requestRow.id,error_code:'background_cancelled',latency_ms:latency});
+    return {status:'cancelled',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:providerId||null,error:'background_cancelled'};
+  }
+
+  async function activity({context,limit=50}={}){
+    if(!has(context,'intelligence.use'))throw fail('permission_denied',403);
+    const rows=await store.listBackgroundActivity({context,limit});
+    return rows.map(row=>({
+      trace_id:String(row.trace_id||''),
+      conversation_id:row.conversation_id?String(row.conversation_id):null,
+      status:String(row.status||'started'),
+      provider:row.provider?String(row.provider):null,
+      model:row.model?String(row.model):null,
+      created_at:row.created_at?String(row.created_at):null,
+      completed_at:row.completed_at?String(row.completed_at):null,
+      latency_ms:Number.isFinite(Number(row.latency_ms))?Number(row.latency_ms):null,
+      error:row.error_code?String(row.error_code):null,
+      kind:String(row?.usage?.atlas_background?.kind||'background')
+    }));
+  }
+
   async function reconcileConversation({context,conversationId,limit=8}){
     const pending=await store.listBackgroundRequests({context,conversation_id:conversationId,limit});
     const results=[];
@@ -255,5 +300,5 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
     return results;
   }
 
-  return Object.freeze({start,poll,reconcileConversation});
+  return Object.freeze({start,poll,cancel,activity,reconcileConversation,finalize});
 }
