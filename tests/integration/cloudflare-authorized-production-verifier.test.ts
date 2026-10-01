@@ -29,6 +29,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain('accessibility_route_reachable');
     expect(verifier).toContain("'/gps'");
     expect(verifier).toContain('gps_route_reachable');
+    expect(verifier).toContain("'/business/insights'");
     expect(verifier).toContain("'/finance'");
     expect(verifier).toContain("'/finance/accounting'");
     expect(verifier).toContain("'/finance/accounting/accounts-payable'");
