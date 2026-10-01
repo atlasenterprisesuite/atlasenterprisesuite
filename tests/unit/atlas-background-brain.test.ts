@@ -144,6 +144,63 @@ describe('ATLAS Background Brain', () => {
     expect(store.messages.filter((message: any) => message.role === 'assistant')).toHaveLength(1);
   });
 
+  it('detaches verified zero-cost local inference from the HTTP response path', async () => {
+    const store = createStore();
+    let detached: Promise<unknown> | null = null;
+    const localAdapter = {
+      execute: vi.fn(async () => ({
+        provider: 'atlas-local',
+        model: 'atlas-local-free',
+        text: 'Local background result',
+        capabilities_used: ['generation'],
+        usage: { output_tokens: 5 },
+        provenance: [],
+        tool_calls: []
+      }))
+    };
+    const registry = { get: (id: string) => id === 'atlas-local' ? localAdapter : null };
+    const router = {
+      route: () => ({
+        mode: 'auto',
+        providers: ['atlas-local'],
+        fallback_providers: [],
+        provider: 'atlas-local',
+        profile: 'deep',
+        capabilities: ['generation'],
+        fallback_used: false,
+        reason: 'auto_zero_cost_verified_provider'
+      })
+    };
+    const brain = createBackgroundBrain({
+      router,
+      registry,
+      store,
+      runDetached: (promise: Promise<unknown>) => { detached = promise; },
+      costPolicy: {
+        allowed_providers: ['atlas-local'],
+        enforce_zero_cost: true,
+        allow_paid_single: false,
+        zero_cost_providers: ['atlas-local']
+      }
+    });
+    const started = await brain.start({
+      context,
+      request: {
+        module: 'assistant',
+        intent: 'deep',
+        mode: 'auto',
+        message: 'Research this thoroughly',
+        capabilities_requested: ['generation']
+      }
+    });
+    expect(started).toMatchObject({ status: 'in_progress', provider: 'atlas-local', background: true });
+    expect(detached).not.toBeNull();
+    await detached;
+    expect(localAdapter.execute).toHaveBeenCalledWith(expect.objectContaining({ background: true }));
+    expect(store.request.status).toBe('completed');
+    expect(store.messages.filter((message: any) => message.role === 'assistant').map((message: any) => message.content.text)).toContain('Local background result');
+  });
+
   it('does not bypass zero-cost policy to force a paid background provider', async () => {
     const store = createStore();
     const registry = {
