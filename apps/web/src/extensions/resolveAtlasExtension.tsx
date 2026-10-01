@@ -18,7 +18,7 @@ import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDes
 import { WebLaunchPage } from '../modules/creator/web/WebLaunchPage';
 import {
   AccountingExperiencePage,
-    EnterpriseExperiencePage,
+  EnterpriseExperiencePage,
   FinanceExperiencePage
 } from '../modules/experience/AtlasModuleExperiences';
 import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
