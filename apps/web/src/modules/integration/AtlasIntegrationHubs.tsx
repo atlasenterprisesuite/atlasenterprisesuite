@@ -54,7 +54,7 @@ export function PeopleIntegrationHub() {
           ]
         }
       ]}
-      statusNote="People is integrated as the canonical entry point. Historical workforce writes remain fail-closed until their modern tenant, permission and persistence contracts are revalidated."
+      statusNote="People is the canonical tenant-scoped HR entry point with governed workers, time, recruiting, compensation, knowledge and self-service. Payroll tax filing, remittance and direct-deposit rails remain provider-gated until separately authorized and verified."
     />
   );
 }
