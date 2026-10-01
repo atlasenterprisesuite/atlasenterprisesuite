@@ -19,6 +19,12 @@ const creatorSections: ModuleExperienceSection[] = [
         to: '/assistant'
       },
       {
+        label: 'Productivity',
+        title: 'ATLAS Productivity Pro',
+        description: 'Run Researcher, Analyst, Writer and Executive Brief modes through verified deep-reasoning providers, then continue into ATLAS documents, analytics and knowledge.',
+        to: '/studio/productivity-pro'
+      },
+      {
         label: 'Image',
         title: 'Generate & Edit Images',
         description: 'Create, edit and annotate images while keeping provider execution and saved-result provenance explicit.',
@@ -175,6 +181,7 @@ export function CreatorExperiencePage() {
       narrative="One governed creative operating system for content, media, voice and provider-aware execution."
       actions={[
         { label: 'Open AI Universe', to: '/studio/ai-universe' },
+        { label: 'Open Productivity Pro', to: '/studio/productivity-pro', variant: 'secondary' },
         { label: 'Create an image', to: '/studio/create?type=image', variant: 'secondary' },
         { label: 'Create a video', to: '/studio/create?type=video', variant: 'secondary' },
         { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' },
