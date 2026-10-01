@@ -11,7 +11,9 @@ describe('ATLAS Neuroplasticity routes', () => {
     render(<MemoryRouter initialEntries={['/learning']}><App /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: 'Learning' })).toBeInTheDocument();
     expect(document.querySelector('.module-experience-page')).toBeTruthy();
-    expect(screen.getByText('Practice, recovery and measurable progress under one governed learning context.')).toBeInTheDocument();
+    expect(screen.getByText('Knowledge becomes teachable curriculum; approved curriculum becomes structured learning and measurable practice.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Approved instructor-led courses/i })).toHaveAttribute('href', '/learning/courses');
+    expect(screen.getByRole('link', { name: /Create a course from ChatGPT or ATLAS knowledge/i })).toHaveAttribute('href', '/knowledge/course-studio');
     expect(screen.getByRole('link', { name: /Neuroplasticity Program/i })).toHaveAttribute('href', '/learning/neuroplasticity');
     expect(screen.getByText('Clinical diagnosis & treatment').closest('[aria-disabled="true"]')).toBeTruthy();
   });
