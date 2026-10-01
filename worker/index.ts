@@ -904,17 +904,13 @@ export class AtlasRemoteRealtimeBus {
     }
 
     const agentAllowed = new Set(['remote.key','remote.frame','remote.status','remote.end']);
-    const viewerAllowed = new Set(['remote.key','remote.control','remote.end']);
+    const viewerAllowed = new Set(['remote.key','remote.end']);
     const allowed = role === 'agent' ? agentAllowed : viewerAllowed;
     if (!allowed.has(eventName)) {
       try { socket.close(1008, 'remote_event_not_allowed'); } catch {}
       return;
     }
 
-    if (eventName === 'remote.control' && attachment?.mode !== 'control') {
-      socket.send(JSON.stringify({ event: 'remote.status', state: 'view-only' }));
-      return;
-    }
 
     const opposite = role === 'agent' ? 'viewer' : 'agent';
     for (const peer of this.state.getWebSockets()) {
