@@ -22,7 +22,7 @@ function errorForStatus(status){if(status===401||status===403)return fail('provi
 export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
   const resolved=Object.freeze({fast:cleanModel(models?.fast),balanced:cleanModel(models?.balanced),deep:cleanModel(models?.deep)});
   const configured=Boolean(apiKey)&&Object.values(resolved).some(Boolean);
-  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),background:true,async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false}});
+  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),background:true,streaming:true,async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false}});
   async function execute({context,route,instructions,input,max_output_tokens=3000}={}){
     const model=resolved[route?.profile];
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
@@ -43,6 +43,32 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
     const data=await providerJson(response),text=outputText(data);
     if(!text)throw fail('internal_error',500,{provider:'openai'});
     return {provider:'openai',model:data.model||model,response_id:data.id||null,text,capabilities_used:[...(route.capabilities||['generation'])],usage:data.usage||{},provenance:[],tool_calls:[]};
+  }
+  async function executeStream({context,route,instructions,input,max_output_tokens=3000}={}){
+    const model=resolved[route?.profile];
+    if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
+    const headers={authorization:`Bearer ${apiKey}`,'content-type':'application/json','OpenAI-Safety-Identifier':await safetyId(context)};
+    const body={
+      model,
+      instructions,
+      input:withReasoningConfiguration(input,route.profile,model),
+      reasoning:{effort:isAstra(model)?EFFORT.fast:(EFFORT[route.profile]||EFFORT.balanced)},
+      max_output_tokens,
+      store:false,
+      stream:true,
+      prompt_cache_key:await promptCacheKey(context,route,model),
+      prompt_cache_options:{ttl:PROMPT_CACHE_TTL},
+    };
+    let response;
+    try{response=await fetchFn('https://api.openai.com/v1/responses',{method:'POST',headers,body:JSON.stringify(body)});}catch{throw fail('provider_unavailable',502,{provider:'openai'});}
+    if(!response.ok)throw errorForStatus(response.status);
+    const contentType=String(response.headers.get('content-type')||'').toLowerCase();
+    if(contentType.includes('text/event-stream')&&response.body){
+      return {kind:'stream',provider:'openai',model,stream:response.body,capabilities_used:[...(route?.capabilities||['generation'])],provenance:[]};
+    }
+    const data=await providerJson(response),text=outputText(data);
+    if(!text)throw fail('streaming_unavailable',409,{provider:'openai'});
+    return {kind:'complete',provider:'openai',model:data.model||model,text,usage:data.usage||{},provenance:[]};
   }
   async function startBackground({context,route,instructions,input,max_output_tokens=3000}={}){
     const model=resolved[route?.profile];
@@ -109,5 +135,5 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
     const e=errorForStatus(response.status);
     return {configured:true,verified:false,provider:'openai',model,error:e.code};
   }
-  return Object.freeze({descriptor,execute,startBackground,retrieveBackground,cancelBackground,probe});
+  return Object.freeze({descriptor,execute,executeStream,startBackground,retrieveBackground,cancelBackground,probe});
 }
