@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { loadFinanceControlCenter, type FinanceControlCenterSnapshot } from '../../lib/financeApi';
+import { loadFinanceControlCenter, type BankAccountRow, type FinanceControlCenterSnapshot } from '../../lib/financeApi';
 import { EnterpriseAccountingPanel } from './EnterpriseAccountingPanel';
 import { FpaControlCenterPanel } from './FpaControlCenterPanel';
 
@@ -20,6 +20,27 @@ function openBalance(rows: Array<{ balance_due: number | string | null; status: 
 
 function capabilityValue(available: boolean, value: string) {
   return available ? value : 'Unavailable';
+}
+
+function bankAccountBalance(rows: BankAccountRow[], accountTypes: string[]) {
+  return rows
+    .filter((row) => accountTypes.includes(String(row.account_type || '').toLowerCase()))
+    .reduce((sum, row) => sum + numeric(row.current_balance), 0);
+}
+
+function metadataString(row: BankAccountRow, key: string) {
+  const value = row.metadata?.[key];
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function sourceEvidenceLabel(row: BankAccountRow) {
+  if (row.balance_as_of) {
+    return `Balance as of ${dateTime.format(new Date(row.balance_as_of))}`;
+  }
+  const sourceSync = metadataString(row, 'source_last_successful_update');
+  return sourceSync
+    ? `Balance timestamp unavailable · provider sync evidence ${dateTime.format(new Date(sourceSync))}`
+    : 'Balance timestamp unavailable';
 }
 
 export function FinanceControlCenterPanel() {
@@ -48,6 +69,9 @@ export function FinanceControlCenterPanel() {
     const verifiedFx = snapshot.fxRates.rows.filter((row) => String(row.evidence_state || '').toLowerCase() === 'verified').length;
     const activeConsolidations = snapshot.consolidations.rows.filter((row) => String(row.status || '').toLowerCase() !== 'archived').length;
     const openReconciliations = snapshot.reconciliations.rows.filter((row) => !['reconciled', 'locked'].includes(String(row.status || '').toLowerCase())).length;
+    const depositoryNet = bankAccountBalance(snapshot.bankAccounts.rows, ['checking', 'savings']);
+    const cardBalance = bankAccountBalance(snapshot.bankAccounts.rows, ['credit_card', 'credit card']);
+    const connectedAccounts = snapshot.bankAccounts.rows.filter((row) => String(row.connection_state || '').toLowerCase() === 'connected').length;
     return {
       payableBalance: openBalance(snapshot.payables.rows),
       receivableBalance: openBalance(snapshot.receivables.rows),
@@ -56,7 +80,10 @@ export function FinanceControlCenterPanel() {
       activeBudgets,
       verifiedFx,
       activeConsolidations,
-      openReconciliations
+      openReconciliations,
+      depositoryNet,
+      cardBalance,
+      connectedAccounts
     };
   }, [snapshot]);
 
@@ -151,7 +178,7 @@ export function FinanceControlCenterPanel() {
               <p>Registered bank and reconciliation state only. No banking connection is claimed from this screen.</p>
               <small className="module-experience-card-status">
                 {snapshot.bankAccounts.available && snapshot.reconciliations.available
-                  ? `${snapshot.bankAccounts.rows.length} bank records · ${derived.openReconciliations} open reconciliations`
+                  ? `${derived.connectedAccounts}/${snapshot.bankAccounts.rows.length} connected · ${currency.format(derived.depositoryNet)} deposit account net · ${currency.format(derived.cardBalance)} card balance · ${derived.openReconciliations} open reconciliations`
                   : 'Unavailable'}
               </small>
             </article>
@@ -163,8 +190,25 @@ export function FinanceControlCenterPanel() {
             </Link>
           </div>
 
+          {snapshot.bankAccounts.available ? (
+            <div className="module-experience-grid" aria-label="Linked financial accounts">
+              {snapshot.bankAccounts.rows.map((account) => {
+                const freshness = metadataString(account, 'balance_freshness') || 'unknown';
+                return (
+                  <article className="module-experience-card is-active" key={account.id}>
+                    <span className="module-experience-card-label">{String(account.account_type || 'account').replaceAll('_', ' ')}</span>
+                    <strong>{account.display_name}</strong>
+                    <p>{account.mask ? `•••• ${account.mask}` : 'Masked account'} · {account.connection_state}</p>
+                    <span className="module-experience-card-status">{currency.format(numeric(account.current_balance))}</span>
+                    <small>{sourceEvidenceLabel(account)} · freshness {freshness}</small>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+
           <div className="notice" role="note">
-            Financial mutations remain inside their existing governed workflows. This control center reads live state; it does not auto-post journals, close periods, move cash or execute bank payments.
+            Financial mutations remain inside their existing governed workflows. This control center reads live state; it does not auto-post journals, close periods, move cash or execute bank payments. Provider synchronization evidence is displayed separately and never treated as proof of balance age.
           </div>
         </>
       ) : loading ? (
