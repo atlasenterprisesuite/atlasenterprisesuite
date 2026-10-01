@@ -34,6 +34,8 @@ Default locations:
 
 Linux uses systemd, macOS uses a LaunchDaemon, and Windows uses a SYSTEM startup scheduled task with restricted ACLs.
 
+Runtime packaging is capability-aware. Linux and macOS installers copy the Browser CDP adapter plus the Linux Device DNA module and fail closed if a required runtime library is missing. The Windows 1.2.1 runtime does not advertise Browser CDP or Linux Device DNA; those optional modules are loaded only on supported platforms, so the core Windows agent can still enroll, heartbeat, synchronize explicit non-browser devices and use the governed command plane without false capability claims.
+
 ## Issue the mTLS certificate
 
 1. Generate the key/CSR with the installer. Keep `agent.key` on the machine.
@@ -122,7 +124,7 @@ ATLAS does not mark the runtime ready merely because variables exist. The `/heal
 
 ## ATLAS Browser Operator
 
-The Local Agent can expose an explicitly configured Chrome/Chromium browser as an audited `browser-cdp` device. It uses the same enrollment, tenant isolation, command queue, realtime mTLS bus, approval gates and audit stream as other local devices.
+The 1.2.1 reference Browser Operator is enabled on Linux and macOS. Windows does not advertise `browser.cdp` until its browser runtime packaging is separately validated. The Local Agent can expose an explicitly configured Chrome/Chromium browser as an audited `browser-cdp` device. It uses the same enrollment, tenant isolation, command queue, realtime mTLS bus, approval gates and audit stream as other local devices.
 
 Example `devices.json` entry:
 
