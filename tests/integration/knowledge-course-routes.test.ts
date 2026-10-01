@@ -24,6 +24,13 @@ describe('Knowledge Atlas Course Forge integration', () => {
     expect(studio).toContain("tags: ['atlas-course'");
   });
 
+  it('keeps restricted Knowledge fail-closed and preserves selected source provenance', () => {
+    expect(studio).toContain("record.sensitivity === 'restricted'");
+    expect(studio).toContain('verified local/sovereign data-policy gate');
+    expect(studio).toContain('selectedSourceIds.slice(0, 20)');
+    expect(studio).toContain('source:${id}');
+  });
+
   it('keeps publication explicit and approved-only', () => {
     expect(library).toContain("status: 'approved'");
     expect(library).toContain("record.tags.includes('atlas-course')");
