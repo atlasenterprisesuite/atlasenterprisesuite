@@ -29,6 +29,10 @@ const routes = readFileSync(
   'apps/web/src/modules/cloud/AtlasCloudRoutes.tsx',
   'utf8'
 );
+const productionContract = JSON.parse(readFileSync(
+  'data/ops/global-production-verification.json',
+  'utf8'
+)) as { public_routes: string[] };
 
 describe('ATLAS Cloud final audit contract', () => {
   it('uses one authenticated session client for protected Cloud API calls', () => {
@@ -92,5 +96,28 @@ describe('ATLAS Cloud final audit contract', () => {
     expect(commandCenter).not.toContain("state: 'warning'");
     expect(commandCenter).not.toContain('Live control path');
     expect(commandCenter).not.toContain('Recent Activity');
+  });
+  it('covers every ATLAS Cloud route in the fail-closed production contract', () => {
+    for (const route of [
+      '/cloud',
+      '/cloud/docs',
+      '/cloud/docs/catalog',
+      '/cloud/docs/get-started',
+      '/cloud/docs/architecture',
+      '/cloud/docs/operations',
+      '/cloud/api-explorer',
+      '/cloud/observability',
+      '/cloud/resources',
+      '/cloud/domains',
+      '/cloud/service-graph',
+      '/cloud/releases',
+      '/cloud/production-verification',
+      '/cloud/iam',
+      '/cloud/config',
+      '/cloud/finops',
+      '/cloud/incidents'
+    ]) {
+      expect(productionContract.public_routes).toContain(route);
+    }
   });
 });
