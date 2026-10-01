@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { LocalNetworkAccessPanel } from './LocalNetworkAccessPanel';
 import { LocalControlPlanePanel } from './LocalControlPlanePanel';
+import { DeviceEvolutionPanel } from './DeviceEvolutionPanel';
 import {
   ATLAS_DEVICE_PROFILES,
   getAtlasDeviceProfile,
@@ -83,6 +84,7 @@ export function DeviceOSPage() {
         <article><strong>Zero Trust</strong><span>permission boundary</span></article>
       </div>
 
+      <DeviceEvolutionPanel />
       <LocalNetworkAccessPanel />
       <LocalControlPlanePanel />
     </section>

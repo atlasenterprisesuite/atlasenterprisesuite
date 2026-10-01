@@ -375,7 +375,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/device-os',
     readiness: 'external-gated',
     requiresAuth: true,
-    description: 'Governed software control plane for ATLAS phones, desktops, wearables, smart spaces and mobility hardware.',
+    description: 'Governed software control plane for ATLAS devices, Device DNA, Phoenix recovery, adaptive computing and future modular hardware.',
     showInNavigation: true
   },
   {
