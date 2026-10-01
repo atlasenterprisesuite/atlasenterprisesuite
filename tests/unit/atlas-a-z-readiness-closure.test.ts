@@ -35,16 +35,18 @@ describe('ATLAS A-Z readiness closure', () => {
   });
 
   it.each([
-    'knowledge',
     'advisory',
     'accounting',
-    'learning',
     'health',
     'frontier',
     'aviation',
     'release-control'
   ])('%s is release-complete for its current governed scope', (id) => {
     expect(moduleBlock(id)).toContain("readiness: 'implemented'");
+  });
+
+  it.each(['knowledge','learning'])('%s remains partial while declared lifecycle work is open', (id) => {
+    expect(moduleBlock(id)).toContain("readiness: 'partial'");
   });
 
   it.each([
