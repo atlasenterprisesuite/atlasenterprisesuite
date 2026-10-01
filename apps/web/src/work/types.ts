@@ -10,6 +10,7 @@ export type WorkWorkflow = {
   id: string;
   organizationId: string;
   ownerModule: string;
+  intent: string;
   status: ExecutionStatus;
   currentTaskId: string | null;
   currentModule: string;
