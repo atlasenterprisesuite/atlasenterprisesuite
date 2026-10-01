@@ -44,6 +44,7 @@ export function normalizeWorkWorkflow(rawValue: unknown): WorkWorkflow {
     id: String(raw.id || ''),
     organizationId: String(raw.organization_id ?? raw.org_id ?? raw.organizationId ?? ''),
     ownerModule,
+    intent: String(raw.intent ?? rawContext.intent ?? ''),
     status: String(raw.status || 'draft') as WorkWorkflow['status'],
     currentTaskId: nullableString(raw.current_task_id ?? raw.currentTaskId),
     currentModule: String(raw.current_module ?? raw.currentModule ?? ownerModule),
