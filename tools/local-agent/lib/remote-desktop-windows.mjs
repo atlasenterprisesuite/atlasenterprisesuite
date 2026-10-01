@@ -33,7 +33,7 @@ function sessionIdFrom(payload) {
 
 function modeFrom(payload) {
   const value = String(payload?.mode || 'view').trim().toLowerCase();
-  if (!['view', 'control'].includes(value)) throw new Error('remote_mode_invalid');
+  if (value !== 'view') throw new Error('remote_view_only_required');
   return value;
 }
 
@@ -83,7 +83,7 @@ export function createWindowsRemoteDesktopController() {
   async function requestConsent(payload) {
     const sessionId = sessionIdFrom(payload);
     const mode = modeFrom(payload);
-    const requestLabel = mode === 'control' ? 'view and control this computer' : 'view this computer';
+    const requestLabel = 'view this computer';
     const script = `
 Add-Type -AssemblyName System.Windows.Forms
 $caption = 'ATLAS Remote'
