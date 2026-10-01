@@ -60,7 +60,8 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(experiences).toContain("title: 'Revenue Operations'");
     expect(experiences).toContain("to: '/revenue'");
     expect(experiences).toContain("to: '/commerce'");
-    expect(experiences).toContain("to: '/analytics'");
+    expect(experiences).toContain("to: '/business/insights'");
+    expect(resolver).toContain("pathname === '/business/insights'");
     expect(experiences).toContain('aggregation gated');
   });
 

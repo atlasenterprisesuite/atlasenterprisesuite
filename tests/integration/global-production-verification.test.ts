@@ -38,6 +38,7 @@ describe('ATLAS global production verification', () => {
       '/assistant',
       '/knowledge',
       '/business',
+      '/business/insights',
       '/advisory',
       '/finance',
       '/tax',
@@ -234,6 +235,7 @@ describe('ATLAS global production verification', () => {
     expect(authorizedVerifier).toContain('status_route_reachable');
     expect(authorizedVerifier).toContain('all_module_routes_reachable');
     expect(authorizedVerifier).toContain("'/suite'");
+    expect(authorizedVerifier).toContain("'/business/insights'");
     expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
     expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
     expect(authorizedVerifier).toContain('suite_route_reachable');

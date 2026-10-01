@@ -78,7 +78,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/business',
     readiness: 'implemented',
     requiresAuth: false,
-    description: 'Growth, publishing and connected business operations.',
+    description: 'Executive business command center connecting customers, revenue, finance, people, purchasing, advisory, analytics and governed growth operations.',
     showInNavigation: true
   },
   {
@@ -177,8 +177,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/analytics',
     readiness: 'implemented',
     requiresAuth: true,
-    description: 'Canonical source-backed analytics hub with cross-module aggregation kept fail-closed until metric contracts and lineage are verified.',
-    showInNavigation: true
+    description: 'Source-backed Business Insights capability surfaced through Business while the canonical analytics route remains available for compatibility.',
+    showInNavigation: false
   },
   {
     id: 'connect',

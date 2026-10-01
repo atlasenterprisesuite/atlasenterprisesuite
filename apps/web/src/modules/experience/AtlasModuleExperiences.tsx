@@ -71,7 +71,7 @@ const businessSections: ModuleExperienceSection[] = [
     cards: [
       { label: 'Sales', title: 'Revenue Operations', description: 'Canonical revenue operations compose CRM, commerce, growth and finance without duplicating their sources of truth.', to: '/revenue', status: 'Canonical hub active' },
       { label: 'Commerce', title: 'Commerce Core', description: 'Catalog, products, orders and payment settings are available through ATLAS Commerce; POS and inventory adapters remain gated until separately verified.', to: '/commerce', status: 'Canonical core active · adapters gated' },
-      { label: 'Analytics', title: 'Business Analytics', description: 'A canonical analytics hub now composes existing source-backed reporting surfaces; universal KPI aggregation remains source-gated.', to: '/analytics', status: 'Canonical hub active · aggregation gated' }
+      { label: 'Analytics', title: 'Business Analytics', description: 'A canonical analytics hub now composes existing source-backed reporting surfaces; universal KPI aggregation remains source-gated.', to: '/business/insights', status: 'Business Insights active · aggregation gated' }
     ]
   }
 ];

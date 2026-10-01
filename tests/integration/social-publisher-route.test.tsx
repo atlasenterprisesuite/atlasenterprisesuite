@@ -7,13 +7,13 @@ import { resolveAtlasIdentityTarget } from '../../apps/web/src/identity/Identity
 import { SocialPublisherPage } from '../../apps/web/src/modules/business/social/SocialPublisherPage';
 
 describe('Business Suite social publishing route', () => {
-  it('renders an ASTRA-derived Business Suite home with truthful channel gating', () => {
+  it('renders the interactive Business ecosystem home with governed module navigation', () => {
     render(<MemoryRouter initialEntries={['/business']}><App /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: 'Business Suite' })).toBeInTheDocument();
-    expect(document.querySelector('.module-experience-page')).toBeTruthy();
-    expect(screen.getByText('Growth operations, customer workflows and governed publishing under one enterprise context.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Social Publisher/i })).toHaveAttribute('href', '/business/growth/social-publisher');
-    expect(screen.getByText('Channel connections').closest('[aria-disabled="true"]')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Ecosistema de Módulos' })).toBeInTheDocument();
+    expect(document.querySelector('.business-map-page')).toBeTruthy();
+    expect(screen.getByText('Una vista funcional para entender qué hace cada módulo y entrar directamente a sus herramientas reales.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Publisher' })).toHaveAttribute('href', '/business/growth/social-publisher');
+    expect(screen.getByText(/solo se consideran activos cuando existe evidencia autenticada/i)).toBeInTheDocument();
   });
 
   it('requires ATLAS Identity and preserves the publisher return target', async () => {

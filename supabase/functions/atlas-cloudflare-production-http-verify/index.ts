@@ -26,6 +26,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/assistant',
   '/knowledge',
   '/business',
+  '/business/insights',
   '/advisory',
   '/advisory/clients',
   '/advisory/engagements',
