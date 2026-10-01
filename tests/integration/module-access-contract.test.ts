@@ -32,6 +32,8 @@ describe('ATLAS canonical module access contract', () => {
     expect(migration).toContain('atlas_module_entitlement_audit');
     expect(migration).toContain('after insert or update or delete');
     expect(migration).toContain('actor_user_id');
+    expect(migration).toContain('atlas_module_entitlement_audit_immutable');
+    expect(migration).toContain('ATLAS module entitlement audit is immutable');
     expect(migration.indexOf('create trigger atlas_module_entitlements_audit')).toBeLessThan(migration.indexOf("select o.id, r.module_id, 'active', 'legacy_migration'"));
   });
 
