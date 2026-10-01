@@ -1,8 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-
-const CONTROL_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-observability';
+import { cloudControlRequest } from './cloudApi';
 
 const CLOUD_API_ALIASES: Record<string, string> = {
   openapi: 'cloud-openapi',
@@ -65,36 +63,12 @@ type OpenApiPayload = {
   paths?: Record<string, Record<string, { summary?: string }>>;
 };
 
-function sessionHeaders(json = false) {
-  const token = localStorage.getItem('atlas_access_token') || '';
-  const orgId = localStorage.getItem('atlas_org_id') || '';
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (orgId) headers['x-atlas-org-id'] = orgId;
-  if (json) headers['content-type'] = 'application/json';
-  return headers;
-}
-
 async function cloudRequest<T>(
   api: string,
   init: RequestInit = {},
   params: Record<string, string> = {}
 ): Promise<T> {
-  const url = new URL(CONTROL_URL);
-  url.searchParams.set('api', CLOUD_API_ALIASES[api] || api);
-  for (const [key, value] of Object.entries(params)) {
-    if (value) url.searchParams.set(key, value);
-  }
-  const response = await fetch(url, {
-    ...init,
-    cache: 'no-store',
-    headers: { ...sessionHeaders(Boolean(init.body)), ...(init.headers || {}) }
-  });
-  const body = await response.json().catch(() => ({ error: 'invalid_response' }));
-  if (!response.ok) {
-    throw new Error(String(body?.error || `request_failed_${response.status}`));
-  }
-  return body as T;
+  return cloudControlRequest<T>(CLOUD_API_ALIASES[api] || api, init, params);
 }
 
 export function CloudSubnav() {
