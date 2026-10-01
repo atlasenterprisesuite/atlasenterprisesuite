@@ -25,8 +25,10 @@ fi
 install -d -m 0755 "$INSTALL_DIR" "$INSTALL_DIR/lib"
 install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$CONFIG_DIR" "$STATE_DIR"
 install -m 0755 "$SOURCE_DIR/atlas-local-agent.mjs" "$INSTALL_DIR/atlas-local-agent.mjs"
-install -m 0644 "$SOURCE_DIR/lib/realtime-client.mjs" "$INSTALL_DIR/lib/realtime-client.mjs"
-install -m 0644 "$SOURCE_DIR/lib/secure-state.mjs" "$INSTALL_DIR/lib/secure-state.mjs"
+for runtime_lib in realtime-client.mjs secure-state.mjs browser-cdp.mjs device-dna-linux.mjs; do
+  test -f "$SOURCE_DIR/lib/$runtime_lib" || { echo "Missing Local Agent runtime library: $runtime_lib" >&2; exit 1; }
+  install -m 0644 "$SOURCE_DIR/lib/$runtime_lib" "$INSTALL_DIR/lib/$runtime_lib"
+done
 
 if [ ! -f "$CONFIG_DIR/agent.key" ]; then
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out "$CONFIG_DIR/agent.key"
