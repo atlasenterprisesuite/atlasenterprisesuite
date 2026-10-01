@@ -1,4 +1,5 @@
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { EventsOperationsPanel } from './EventsOperationsPanel';
 import {
   EVENT_STATUS_TRANSITIONS,
   EVENTS_EXTERNAL_BOUNDARIES
@@ -90,7 +91,9 @@ export function EventsHomePage() {
       description="Governed live-entertainment operations for promoters, producers, venues, talent, vendors and settlement workflows."
       narrative="Plan the event, connect authorized providers, execute under one ATLAS organization."
       sections={sections}
-      statusNote="The Events domain and lifecycle contract are active. No live event inventory, ticketing, booking or payment connection is claimed until authorized provider data exists."
-    />
+      statusNote="The Events operational core, tenant-scoped lifecycle, assignments and production tasks are active. Ticketing, artist booking and external payment execution remain gated until an authorized provider is verified."
+    >
+      <EventsOperationsPanel />
+    </ModuleExperiencePage>
   );
 }
