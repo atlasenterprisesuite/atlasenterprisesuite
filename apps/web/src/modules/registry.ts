@@ -123,7 +123,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/finance/accounting',
     readiness: 'implemented',
     requiresAuth: false,
-    description: 'Canonical accounting ecosystem with truthful capability gates: AP, AR, procure-to-pay integration and automotive reporting are surfaced while ledger, journals, treasury, reconciliation, fixed assets and close remain unavailable until their UI flows are complete.',
+    description: 'Canonical accounting ecosystem with AP, AR, procure-to-pay integration, chart of accounts, ledger, journals, treasury, reconciliation, close, reporting, audit and settings surfaces; mutation-only capabilities remain evidence-gated.',
     showInNavigation: false,
     parentId: 'finance'
   },
