@@ -102,7 +102,7 @@ function agentCapabilities() {
   const capabilities = ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'];
   if (DEVICE_DNA_ENABLED) capabilities.push('device.dna.read');
   if (REMOTE_DESKTOP_ENABLED) {
-    capabilities.push('remote.session','remote.desktop.stream','remote.input.pointer','remote.input.keyboard');
+    capabilities.push('remote.session','remote.desktop.stream');
   }
   return capabilities;
 }
@@ -261,7 +261,7 @@ async function execute(command) {
 
     const sessionId = String(command.action_payload?.session_id || '').trim();
     const mode = String(command.action_payload?.mode || 'view').trim().toLowerCase();
-    if (!/^[a-zA-Z0-9_-]{8,80}$/.test(sessionId) || !['view','control'].includes(mode)) {
+    if (!/^[a-zA-Z0-9_-]{8,80}$/.test(sessionId) || mode !== 'view') {
       return {success:false,error_code:'remote_session_payload_invalid'};
     }
 
