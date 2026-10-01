@@ -44,6 +44,9 @@ values
   ('automations', '{}'::text[], true, true),
   ('assistant', '{}'::text[], true, true),
   ('knowledge', '{}'::text[], true, true),
+  ('business', '{}'::text[], true, true),
+  ('finance', array['accounting.read','accounting.write','accounting.post','accounting.close','accounting.admin'], true, true),
+  ('accounting', array['accounting.read','accounting.write','accounting.post','accounting.close','accounting.admin'], true, true),
   ('revenue', array['accounting.read','accounting.write','accounting.admin','crm.read','crm.admin','commerce.read','commerce.admin'], true, true),
   ('advisory', array['advisory.read','advisory.manage','advisory.write','advisory.billing','advisory.compliance','advisory.automations','advisory.admin'], true, true),
   ('tax', '{}'::text[], true, true),
@@ -55,6 +58,8 @@ values
   ('telecom', array['integrations.read','integrations.write','integrations.admin'], true, true),
   ('people', array['hr.read','hr.write','payroll.read','payroll.write','payroll.approve','payroll.self'], true, true),
   ('payroll', array['payroll.read','payroll.write','payroll.approve','payroll.self'], true, true),
+  ('learning', '{}'::text[], true, true),
+  ('health', '{}'::text[], true, true),
   ('insurance', '{}'::text[], true, true),
   ('studio', '{}'::text[], true, true),
   ('site-review', '{}'::text[], true, true),
@@ -74,16 +79,6 @@ on conflict (module_id) do update set
   entitlement_required = excluded.entitlement_required,
   enabled = excluded.enabled,
   updated_at = now();
-
--- Preserve the effective module availability existing organizations had before
--- this entitlement layer. New organizations remain fail-closed until provisioned.
-insert into public.atlas_module_entitlements(org_id, module_id, status, source, metadata)
-select o.id, r.module_id, 'active', 'legacy_migration', jsonb_build_object('reason','preserve_pre_entitlement_access')
-from public.organizations o
-cross join public.atlas_module_access_rules r
-where o.active = true
-  and r.enabled = true
-on conflict (org_id, module_id) do nothing;
 
 create or replace function private.audit_atlas_module_entitlement()
 returns trigger
@@ -117,6 +112,16 @@ create trigger atlas_module_entitlements_audit
 after insert or update or delete on public.atlas_module_entitlements
 for each row execute function private.audit_atlas_module_entitlement();
 
+-- Preserve the effective module availability existing organizations had before
+-- this entitlement layer. New organizations remain fail-closed until provisioned.
+insert into public.atlas_module_entitlements(org_id, module_id, status, source, metadata)
+select o.id, r.module_id, 'active', 'legacy_migration', jsonb_build_object('reason','preserve_pre_entitlement_access')
+from public.organizations o
+cross join public.atlas_module_access_rules r
+where o.active = true
+  and r.enabled = true
+on conflict (org_id, module_id) do nothing;
+
 create or replace function public.atlas_module_access_snapshot()
 returns table (
   module_id text,
@@ -146,7 +151,6 @@ begin
   where om.user_id = v_user_id
     and om.status = 'active'
     and o.active = true
-  order by om.created_at asc
   limit 1;
 
   if v_org_id is null then
