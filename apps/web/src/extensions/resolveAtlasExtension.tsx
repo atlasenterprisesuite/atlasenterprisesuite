@@ -32,6 +32,8 @@ import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityP
 import { OracleRoutes } from '../modules/oracle/OracleRoutes';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
+import { KnowledgeCourseStudioPage } from '../modules/knowledge/KnowledgeCourseStudioPage';
+import { LearningCourseLibraryPage } from '../modules/knowledge/LearningCourseLibraryPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
 import { AnalyticsRoutes } from '../modules/analytics/AnalyticsRoutes';
 import {
@@ -97,6 +99,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/assistant') {
     return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/knowledge/course-studio') {
+    return <RequireAtlasIdentity><KnowledgeCourseStudioPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/knowledge') {
@@ -182,6 +188,7 @@ export function resolveAtlasExtension(pathname: string) {
   if (pathname === JAQUE_MATE_SENTINEL_V2 || pathname === JAQUE_MATE_SENTINEL_CANONICAL) return <JaqueMateSentinelPage />;
   if (pathname === '/health/wellbeing/neuroplasticity') return <NeuroplasticityProgramPage entry="health" />;
   if (pathname === '/learning/neuroplasticity') return <NeuroplasticityProgramPage entry="learning" />;
+  if (pathname === '/learning/courses') return <RequireAtlasIdentity><LearningCourseLibraryPage /></RequireAtlasIdentity>;
   if (pathname === '/learning') return <LearningExperiencePage />;
   return null;
 }
