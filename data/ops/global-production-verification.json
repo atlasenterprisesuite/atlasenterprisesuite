@@ -1,5 +1,5 @@
 {
-  "version": 27,
+  "version": 28,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
@@ -62,7 +62,13 @@
     "/work/connections",
     "/work/runtimes",
     "/work/policies",
-    "/work/computer-operations"
+    "/work/computer-operations",
+    "/advisory/clients",
+    "/advisory/engagements",
+    "/advisory/business-launch-360/workspace",
+    "/advisory/reports",
+    "/advisory/providers",
+    "/advisory/readiness"
   ],
   "critical_network_routes": [
     "/business/network",
