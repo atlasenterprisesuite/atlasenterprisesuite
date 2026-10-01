@@ -204,10 +204,19 @@ async function proxyLocalAi(
     body,
     signal: AbortSignal.timeout(isHealth ? 10_000 : 120_000),
   });
-  const payload = Buffer.from(await upstream.arrayBuffer());
   res.statusCode = upstream.status;
-  res.setHeader('content-type', upstream.headers.get('content-type') || 'application/json; charset=utf-8');
+  const contentType = upstream.headers.get('content-type') || 'application/json; charset=utf-8';
+  res.setHeader('content-type', contentType);
   res.setHeader('cache-control', 'no-store');
+  if (contentType.toLowerCase().includes('text/event-stream') && upstream.body) {
+    res.setHeader('x-accel-buffering', 'no');
+    res.setHeader('connection', 'keep-alive');
+    for await (const chunk of upstream.body) {
+      res.write(Buffer.from(chunk));
+    }
+    return res.end();
+  }
+  const payload = Buffer.from(await upstream.arrayBuffer());
   res.end(payload);
 }
 
