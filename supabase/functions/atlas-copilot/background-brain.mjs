@@ -214,7 +214,11 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
       const text=String(persisted?.content?.text||'').trim()||null;
       return {status:'completed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,model:requestRow.model||null,text,persisted:true};
     }
-    if(requestRow.status==='failed')return {status:'failed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,error:requestRow.error_code||'background_failed'};
+    if(requestRow.status==='failed'){
+      const workHandoff=requestRow?.usage?.atlas_background?.work_handoff||null;
+      const error=String(requestRow.error_code||'background_failed');
+      return {status:'failed',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,error,handoff_required:error==='background_stale'&&!workHandoff,work_handoff:workHandoff};
+    }
     if(requestRow.status==='cancelled')return {status:'cancelled',background:true,trace_id:traceId,conversation_id:requestRow.conversation_id,provider:requestRow.provider,error:requestRow.error_code||'background_cancelled'};
     const background=requestRow?.usage?.atlas_background;
     const responseId=String(background?.response_id||'').trim();
