@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const hardening = readFileSync(
-  'supabase/migrations/20261001172914_atlas_pay_fk_index_hardening.sql',
+  'supabase/migrations/20261001173100_atlas_pay_fk_index_hardening.sql',
   'utf8'
 );
 
