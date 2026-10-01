@@ -60,6 +60,7 @@ function withCors(response,origin){
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers:nextHeaders});
 }
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:headers({'content-type':'application/json; charset=utf-8'})});}
+function edgeBackgroundRunner(){const edgeRuntime=(globalThis as any).EdgeRuntime;return edgeRuntime&&typeof edgeRuntime.waitUntil==='function'?(promise)=>edgeRuntime.waitUntil(promise):null;}
 function safeError(error){const n=normalizeIntelligenceError(error);return json({ok:false,error:n.code,trace_id:error?.trace_id||n.trace_id||null},n.status);}
 function authRequest(req,organization_id){if(!organization_id||req.headers.get('x-atlas-org-id'))return req;const h=new Headers(req.headers);h.set('x-atlas-org-id',String(organization_id));return new Request(req.url,{method:req.method,headers:h});}
 function runtime(){
@@ -334,7 +335,7 @@ async function handleChat(req){
     ?{module:'workbench',intent:'balanced',mode,message,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy),atlas_memory_records:memory.recordIds},legacy_context:legacy}
     :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:{...(body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{}),atlas_memory_records:memory.recordIds},legacy_context:legacy};
   if(shouldRunInBackground({executionMode,message,profile:intent})){
-    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy});
+    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,runDetached:edgeBackgroundRunner()});
     try{
       const background=await brain.start({context:resolved.context,request});
       return json({ok:true,...background,text:background.text||'',provider_state:'verified_for_request',provider_readiness:providers,memory:{approved_records_used:memory.recordIds.length,record_ids:memory.recordIds},execution:{repositoryMutation:false,repairQueue:'available',mode:'background'}},background.status==='completed'?200:202);
