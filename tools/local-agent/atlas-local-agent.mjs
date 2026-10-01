@@ -2,8 +2,6 @@
 import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
 import { executeBrowserCdpAction } from './lib/browser-cdp.mjs';
 import { collectLinuxDeviceDnaReport, deviceDnaLocalDevice } from './lib/device-dna-linux.mjs';
-import { createWindowsRemoteDesktopController, windowsRemoteDesktopLocalDevice } from './lib/remote-desktop-windows.mjs';
-import { startRemoteRelaySession } from './lib/remote-session-client.mjs';
 import {
   consumeEnrollmentFile,
   loadAgentState,
@@ -42,8 +40,21 @@ let realtimeConnected = false;
 let realtimeClient = null;
 let realtimeRetryMs = 2_000;
 let draining = false;
-const remoteDesktopController = REMOTE_DESKTOP_ENABLED ? createWindowsRemoteDesktopController() : null;
+let remoteDesktopController = null;
+let remoteDesktopDeviceFactory = null;
+let startRemoteRelaySessionFn = null;
 const activeRemoteSessions = new Map();
+
+async function initializeRemoteDesktop() {
+  if (!REMOTE_DESKTOP_ENABLED) return;
+  const [desktopModule, relayModule] = await Promise.all([
+    import('./lib/remote-desktop-windows.mjs'),
+    import('./lib/remote-session-client.mjs')
+  ]);
+  remoteDesktopController = desktopModule.createWindowsRemoteDesktopController();
+  remoteDesktopDeviceFactory = desktopModule.windowsRemoteDesktopLocalDevice;
+  startRemoteRelaySessionFn = relayModule.startRemoteRelaySession;
+}
 
 function localHostname(hostname) {
   const h = hostname.replace(/^\[/,'').replace(/\]$/,'').toLowerCase();
@@ -99,7 +110,9 @@ function agentCapabilities() {
 async function buildRuntimeDevices() {
   const configured = await readDeviceConfig();
   const runtimeDevices = [...configured];
-  if (REMOTE_DESKTOP_ENABLED) runtimeDevices.unshift(windowsRemoteDesktopLocalDevice());
+  if (REMOTE_DESKTOP_ENABLED && remoteDesktopDeviceFactory) {
+    runtimeDevices.unshift(remoteDesktopDeviceFactory());
+  }
   if (DEVICE_DNA_ENABLED) {
     const report = await collectLinuxDeviceDnaReport();
     runtimeDevices.unshift(deviceDnaLocalDevice(report));
@@ -272,7 +285,8 @@ async function execute(command) {
       const previous = activeRemoteSessions.get(sessionId);
       try { previous?.close('replaced'); } catch {}
 
-      const relay = await startRemoteRelaySession({
+      if (!startRemoteRelaySessionFn) throw new Error('remote_relay_runtime_unavailable');
+      const relay = await startRemoteRelaySessionFn({
         baseUrl: REALTIME_URL,
         sessionId,
         sessionToken,
@@ -445,6 +459,7 @@ async function realtimeLoop() {
 }
 
 async function main() {
+  await initializeRemoteDesktop();
   await enroll();
   await syncDevices();
   await heartbeat();
