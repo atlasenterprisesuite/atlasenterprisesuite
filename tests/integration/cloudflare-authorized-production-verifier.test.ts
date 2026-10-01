@@ -95,7 +95,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
       expect(source).toContain('Authorized production verifier failed checks: $FAILED_CHECKS');
     }
 
-    expect(globalWorkflow).toContain('mode: fail-closed');
+    expect(globalWorkflow).toContain('default: fail-closed');
+    expect(globalWorkflow).toContain("steps.policy.outputs.mode == 'fail-closed'");
     expect(globalWorkflow).toContain('ATLAS production verification is fail-closed');
   });
 
