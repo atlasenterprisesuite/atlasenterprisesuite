@@ -50,7 +50,8 @@ export function AtlasSuitePage() {
         <h1>ATLAS Suite A-Z</h1>
         <p>
           One canonical directory for every registered ATLAS ecosystem. Child domains stay inside their parent
-          ecosystem instead of appearing as parallel top-level products; readiness labels remain fail-closed.
+          ecosystem instead of appearing as parallel top-level products. Readiness labels remain fail-closed and
+          never present external or incomplete capabilities as live.
         </p>
       </header>
 
