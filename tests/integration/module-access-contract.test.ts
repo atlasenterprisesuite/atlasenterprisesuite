@@ -28,6 +28,7 @@ describe('ATLAS canonical module access contract', () => {
     expect(migration).toContain('atlas_module_entitlement_audit');
     expect(migration).toContain('after insert or update or delete');
     expect(migration).toContain('actor_user_id');
+    expect(migration.indexOf('create trigger atlas_module_entitlements_audit')).toBeLessThan(migration.indexOf("'legacy_migration'"));
   });
 
   it('filters protected navigation and guards direct protected routes', () => {
@@ -35,6 +36,7 @@ describe('ATLAS canonical module access contract', () => {
     expect(shell).toContain('getAtlasModuleAccessSnapshot');
     expect(shell).toContain('visibleNavItems');
     expect(guard).toContain('canAccessAtlasModule');
+    expect(guard).toContain('if (module)');
     expect(guard).toContain("state === 'forbidden'");
   });
 });
