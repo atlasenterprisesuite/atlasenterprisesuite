@@ -212,8 +212,10 @@ export function RemoteAssistPage() {
     if (!selected || busy) return;
     setBusy(true);
     setFrameUrl(null);
+    let createdSessionId = '';
     try {
       const created = await createScreenShareSession(selected.id);
+      createdSessionId = created.session.id;
       setSession(created.session);
       const queued = await enqueueLocalDeviceCommand({
         deviceId: selected.id,
@@ -229,6 +231,10 @@ export function RemoteAssistPage() {
           : 'Request queued. The visible Windows agent will pick it up through its polling fallback.'
       );
     } catch (error) {
+      if (createdSessionId) {
+        await endScreenShareSession(createdSessionId).catch(() => undefined);
+        setSession(null);
+      }
       setStatus(error instanceof Error ? error.message : 'Unable to start attended screen sharing.');
     } finally {
       setBusy(false);
@@ -358,11 +364,25 @@ export function RemoteAssistPage() {
       <article className="feature-card wide">
         <p className="eyebrow">Windows setup boundary</p>
         <h2>Local user action is required once per device enrollment</h2>
+        <ol>
+          <li>Create a one-time Local Agent enrollment in Device OS.</li>
+          <li>
+            On the Windows PC, run <code>tools/local-agent/start-windows-remote.ps1</code> from the ATLAS repository.
+            The launcher remains visible, requests the enrollment code securely, and prints the public CSR path.
+          </li>
+          <li>
+            Base64-encode only <code>agent.csr</code>, then run the existing
+            <strong> ATLAS Local Agent mTLS </strong> GitHub workflow with action <code>issue</code>,
+            the ATLAS organization ID, agent ID, and CSR. The private key stays on the PC.
+          </li>
+          <li>
+            Save the issued <code>atlas-local-agent.crt</code> artifact as
+            <code> %LOCALAPPDATA%\ATLAS\RemoteAgent\config\agent.crt </code>, then restart the visible launcher.
+          </li>
+          <li>Every viewing session still requires a fresh on-screen Yes/No approval on the Windows PC.</li>
+        </ol>
         <p>
-          Create a one-time Local Agent enrollment in Device OS, then run
-          <code> tools/local-agent/start-windows-remote.ps1 </code>
-          from the ATLAS repository on the Windows PC. The launcher remains visible, requests the one-time code
-          securely, and stops when the user closes it or presses Ctrl+C.
+          Closing the launcher or pressing Ctrl+C stops Remote Assist. No background autostart or unattended mode is installed.
         </p>
       </article>
     </section>
