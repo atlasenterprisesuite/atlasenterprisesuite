@@ -50,17 +50,12 @@ export function KnowledgeCourseStudioPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      getAssistantStatus(),
-      getAtlasMemoryStats()
-    ]).then(([status, memory]) => {
-      if (!active) return;
-      setAssistantStatus(status);
-      setRole(memory.role);
-    }).catch(error => {
-      if (!active) return;
-      setMessage(error instanceof Error ? error.message : 'course_studio_readiness_unavailable');
-    });
+    getAssistantStatus()
+      .then(status => { if (active) setAssistantStatus(status); })
+      .catch(error => { if (active) setMessage(error instanceof Error ? error.message : 'assistant_status_unavailable'); });
+    getAtlasMemoryStats()
+      .then(memory => { if (active) setRole(memory.role); })
+      .catch(error => { if (active) setMessage(error instanceof Error ? error.message : 'knowledge_role_unavailable'); });
     return () => { active = false; };
   }, []);
 
