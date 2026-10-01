@@ -3,6 +3,19 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
+vi.mock('../../apps/web/src/access/moduleAccess', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/access/moduleAccess')>('../../apps/web/src/access/moduleAccess');
+  const row = {
+    module_id: 'execution', allowed: true, reason: 'allowed' as const,
+    entitlement_status: 'active', permission_granted: true
+  };
+  return {
+    ...actual,
+    canAccessAtlasModule: vi.fn(async () => row),
+    getAtlasModuleAccessSnapshot: vi.fn(async () => [row])
+  };
+});
+
 import {
   loadGuidedExecutionAudit,
   loadGuidedExecutionState,

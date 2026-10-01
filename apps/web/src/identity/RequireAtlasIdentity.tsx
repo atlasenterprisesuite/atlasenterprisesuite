@@ -1,12 +1,13 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import {
   clearAtlasSession,
   getActiveAtlasOrganization,
   getAtlasAccessToken
 } from '../lib/atlasSession';
+import { canAccessAtlasModule, resolveAtlasModuleForPath } from '../access/moduleAccess';
 
-type GateState = 'checking' | 'authorized' | 'denied';
+type GateState = 'checking' | 'authorized' | 'denied' | 'forbidden' | 'error';
 
 export function RequireAtlasIdentity({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -25,24 +26,66 @@ export function RequireAtlasIdentity({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false;
+    setState('checking');
     void (async () => {
       try {
         await getActiveAtlasOrganization();
+        const module = resolveAtlasModuleForPath(location.pathname);
+        // This component is itself the protected-route boundary. If the route belongs
+        // to a registered module, enforce that module even when its top-level landing
+        // page is intentionally public.
+        if (module) {
+          const access = await canAccessAtlasModule(module.id);
+          if (!cancelled) setState(access?.allowed ? 'authorized' : 'forbidden');
+          return;
+        }
         if (!cancelled) setState('authorized');
-      } catch {
+      } catch (cause) {
         if (cancelled) return;
-        clearAtlasSession();
-        setState('denied');
+        const message = cause instanceof Error ? cause.message : '';
+        if (message === 'authentication_required' || message === 'session_expired' || message === 'invalid_session' || message === 'no_active_organization') {
+          clearAtlasSession();
+          setState('denied');
+          return;
+        }
+        setState('error');
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [returnTarget]);
+  }, [location.pathname, returnTarget]);
 
   if (!hasToken || state === 'denied') {
     return <Navigate to={identityUrl} replace />;
+  }
+
+  if (state === 'forbidden') {
+    return (
+      <section className="page-stack" aria-labelledby="atlas-access-denied-title">
+        <div className="identity-checking" role="alert">
+          <div>
+            <strong id="atlas-access-denied-title">Module access unavailable</strong>
+            <p>This organization or role is not entitled to open this ATLAS module.</p>
+            <Link className="text-link" to="/">Return to ATLAS Home</Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <section className="page-stack" aria-labelledby="atlas-access-error-title">
+        <div className="identity-checking" role="alert">
+          <div>
+            <strong id="atlas-access-error-title">Access verification unavailable</strong>
+            <p>ATLAS could not verify module entitlement and permission. Access remains closed.</p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   if (state === 'checking') {

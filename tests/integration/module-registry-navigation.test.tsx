@@ -12,6 +12,6 @@ describe('ATLAS shell module-registry navigation contract', () => {
 
   it('keeps Automotive Sales Financial Reporting directly discoverable from the shared shell', () => {
     const registry = readFileSync(`${process.cwd()}/apps/web/src/modules/registry.ts`, 'utf8');
-    expect(registry).toContain("{ to: '/finance/accounting/reports/automotive-sales', label: 'Automotive' }");
+    expect(registry).toContain("{ to: '/finance/accounting/reports/automotive-sales', label: 'Automotive', moduleId: 'accounting' }");
   });
 });

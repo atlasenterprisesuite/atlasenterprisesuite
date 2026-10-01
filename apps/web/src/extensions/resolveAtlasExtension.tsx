@@ -57,7 +57,7 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><AtlasCloudRoutes /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/suite') return <AtlasSuitePage />;
+  if (pathname === '/suite') return <RequireAtlasIdentity><AtlasSuitePage /></RequireAtlasIdentity>;
 
   if (pathname === '/automations') {
     return <RequireAtlasIdentity><AutomationsIntegrationHub /></RequireAtlasIdentity>;

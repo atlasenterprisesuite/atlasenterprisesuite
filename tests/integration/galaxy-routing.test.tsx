@@ -4,6 +4,19 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AtlasShell } from '../../apps/web/src/components/AtlasShell';
+vi.mock('../../apps/web/src/access/moduleAccess', async () => {
+  const actual = await vi.importActual<typeof import('../../apps/web/src/access/moduleAccess')>('../../apps/web/src/access/moduleAccess');
+  const row = {
+    module_id: 'galaxy', allowed: true, reason: 'allowed' as const,
+    entitlement_status: 'active', permission_granted: true
+  };
+  return {
+    ...actual,
+    canAccessAtlasModule: vi.fn(async () => row),
+    getAtlasModuleAccessSnapshot: vi.fn(async () => [row])
+  };
+});
+
 import { AtlasGalaxyPage } from '../../apps/web/src/modules/galaxy/AtlasGalaxyPage';
 
 vi.mock('../../apps/web/src/lib/atlasSession', async () => {
