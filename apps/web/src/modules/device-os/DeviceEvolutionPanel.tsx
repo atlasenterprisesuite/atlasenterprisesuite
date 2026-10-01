@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { DeviceDnaEvidencePanel } from './DeviceDnaEvidencePanel';
 import {
   ATLAS_BOOT_PIPELINE,
   ATLAS_HARDWARE_CONCEPTS,
@@ -65,6 +66,8 @@ export function DeviceEvolutionPanel() {
           ))}
         </div>
       </article>
+
+      <DeviceDnaEvidencePanel />
 
       <article className="feature-card wide">
         <div className="card-heading">
