@@ -61,6 +61,11 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(deviceDnaPanel).toContain("capability: 'device.dna.read'");
     expect(deviceDnaPanel).toContain("action: 'report.read'");
     expect(deviceDnaPanel).toContain('not hardware attestation');
+    expect(edge).toContain('device_dna_digest_mismatch');
+    expect(edge).toContain('device_dna_hardware_attestation_not_supported');
+    expect(edge).toContain('device_dna_identity_metadata_rejected');
+    expect(edge).toContain("adapter === 'device-dna-linux'");
+    expect(edge).toContain("deviceType !== 'computer'");
   });
 
   it('keeps the local AI runtime loopback-bound with environment-backed authentication', () => {
