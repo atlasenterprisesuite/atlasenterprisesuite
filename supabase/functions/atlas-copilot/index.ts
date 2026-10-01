@@ -296,12 +296,46 @@ async function approvedMemoryForAssistant(rt,context,{message,module}={}){
 async function handleUsage(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),url=new URL(req.url),days=Math.min(90,Math.max(1,Number(url.searchParams.get('days'))||30)),summary=await store.usageSummary({context:resolved.context,days});return json({ok:true,...summary});}
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
 async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});await brain.reconcileConversation({context:resolved.context,conversationId:id}).catch(()=>[]);const conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
+async function handoffBackgroundToWork(req,context,store,traceId){
+  const requestRow=await store.getRequestByTrace({context,trace_id:traceId});
+  const existing=requestRow?.usage?.atlas_background?.work_handoff;
+  if(existing?.workflow_id)return existing;
+  if(String(requestRow?.error_code||'')!=='background_stale')return null;
+  const messageRow=await store.findUserMessageByTrace({context,conversation_id:String(requestRow.conversation_id||''),trace_id:traceId});
+  const original=String(messageRow?.content?.text||'').trim();
+  if(!original)return null;
+  const authorization=req.headers.get('authorization')||'';
+  if(!authorization)return null;
+  const response=await fetch(`${U}/functions/v1/atlas-execution`,{
+    method:'POST',
+    headers:{apikey:K,authorization,'content-type':'application/json','x-request-id':traceId},
+    body:JSON.stringify({
+      organization_id:context.organization_id,
+      operation:'create_workflow_plan',
+      owner_module:'assistant',
+      intent:`Continue the ATLAS Assistant task after its background edge-runtime limit. Preserve the original goal and verify the final outcome before completion. Original request:\n\n${original}`.slice(0,2000),
+      work:{executionMode:'hybrid',autonomyLevel:'guided',runtimePreference:'auto',budgetLimit:0,connectionRefs:[]}
+    })
+  });
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok||payload?.ok!==true)return null;
+  const handoff={workflow_id:String(payload.workflow_id||''),task_id:String(payload.task_id||''),state:'created',reason:'background_edge_limit',created_at:new Date().toISOString()};
+  if(!handoff.workflow_id)return null;
+  const usage={...(requestRow.usage&&typeof requestRow.usage==='object'?requestRow.usage:{}),atlas_background:{...(requestRow?.usage?.atlas_background||{}),work_handoff:handoff}};
+  await store.markBackgroundHandoff({context,id:requestRow.id,usage});
+  return handoff;
+}
+
 async function handleBackground(req,url){
   const traceId=String(url.searchParams.get('trace_id')||'').trim();
   if(!traceId)return json({ok:false,error:'invalid_input'},400);
   const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});
   if(req.method==='GET'){
-    const result=await brain.poll({context:resolved.context,traceId});
+    let result=await brain.poll({context:resolved.context,traceId});
+    if(result?.handoff_required===true){
+      const workHandoff=await handoffBackgroundToWork(req,resolved.context,store,traceId).catch(()=>null);
+      if(workHandoff)result={...result,handoff_required:false,work_handoff:workHandoff};
+    }
     return json({ok:true,...result});
   }
   if(req.method==='POST'){
