@@ -90,6 +90,16 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
       error:data?.error?.code||data?.error?.message||null
     };
   }
+  async function cancelBackground({response_id}={}){
+    const responseId=typeof response_id==='string'&&response_id.trim()?response_id.trim():null;
+    if(!apiKey||!responseId)throw fail('invalid_input',400,{provider:'openai'});
+    let response;
+    try{response=await fetchFn(`https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}/cancel`,{method:'POST',headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'}});}catch{throw fail('provider_unavailable',502,{provider:'openai'});}
+    if(!response.ok)throw errorForStatus(response.status);
+    const data=await providerJson(response);
+    const status=typeof data?.status==='string'&&data.status.trim()?data.status.trim():'cancelled';
+    return {provider:'openai',model:data?.model||null,response_id:responseId,status};
+  }
   async function probe({profile='balanced'}={}){
     const model=resolved[profile];
     if(!apiKey||!model)return {configured:false,verified:false,provider:'openai',model:model||null,error:'provider_not_configured'};
@@ -99,5 +109,5 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
     const e=errorForStatus(response.status);
     return {configured:true,verified:false,provider:'openai',model,error:e.code};
   }
-  return Object.freeze({descriptor,execute,startBackground,retrieveBackground,probe});
+  return Object.freeze({descriptor,execute,startBackground,retrieveBackground,cancelBackground,probe});
 }
