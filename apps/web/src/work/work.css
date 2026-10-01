@@ -292,3 +292,246 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ATLAS Work OS */
+.work-os-page {
+  --work-os-glow: rgba(46, 219, 255, 0.22);
+}
+
+.work-os-hero {
+  max-width: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.4rem;
+  border: 1px solid rgba(71, 184, 255, 0.2);
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(circle at 85% 15%, rgba(65, 92, 255, 0.18), transparent 32%),
+    linear-gradient(145deg, rgba(7, 28, 49, 0.92), rgba(4, 15, 29, 0.78));
+  box-shadow: inset 0 1px rgba(255,255,255,0.03), 0 24px 70px rgba(0,0,0,0.18);
+}
+
+.work-os-hero > div:first-child {
+  max-width: 900px;
+}
+
+.work-os-hero h1 {
+  max-width: 850px;
+}
+
+.work-os-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.work-os-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(108, 190, 255, 0.25);
+  border-radius: 0.8rem;
+  color: inherit;
+  text-decoration: none;
+  background: rgba(10, 31, 50, 0.72);
+}
+
+.work-os-secondary-link:hover {
+  border-color: rgba(46, 219, 255, 0.5);
+}
+
+.work-os-runtime {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr);
+  gap: 1rem;
+  padding: 1.2rem;
+  border: 1px solid rgba(73, 181, 255, 0.18);
+  border-radius: 1.2rem;
+  background: linear-gradient(145deg, rgba(8, 27, 45, 0.78), rgba(4, 14, 27, 0.76));
+}
+
+.work-os-runtime h2 {
+  margin: 0.35rem 0 0.55rem;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+}
+
+.work-os-runtime p {
+  margin: 0;
+  color: rgba(213, 231, 243, 0.74);
+  line-height: 1.6;
+}
+
+.work-os-fabric {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.work-os-fabric span {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid rgba(77, 188, 255, 0.15);
+  border-radius: 0.8rem;
+  background: rgba(9, 29, 47, 0.76);
+  color: rgba(219, 243, 255, 0.88);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.work-os-summary-static {
+  cursor: default;
+}
+
+.work-os-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.work-os-group .work-section-heading p:not(.eyebrow) {
+  margin: 0.3rem 0 0;
+  max-width: 900px;
+  color: rgba(202, 222, 236, 0.7);
+}
+
+.work-os-app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+  gap: 0.85rem;
+}
+
+.work-os-app-card {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(98, 176, 233, 0.15);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(13, 34, 52, 0.78), rgba(6, 20, 34, 0.72));
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.work-os-app-card.is-active:hover {
+  transform: translateY(-2px);
+  border-color: rgba(46, 219, 255, 0.42);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.16), 0 0 28px rgba(46, 219, 255, 0.06);
+}
+
+.work-os-app-card.is-gated {
+  border-style: dashed;
+  background: rgba(8, 23, 38, 0.52);
+}
+
+.work-os-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.work-os-card-heading div {
+  min-width: 0;
+}
+
+.work-os-card-heading small,
+.work-os-card-heading strong {
+  display: block;
+}
+
+.work-os-card-heading small {
+  margin-bottom: 0.25rem;
+  color: rgba(139, 176, 199, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+}
+
+.work-os-card-heading strong {
+  font-size: 1rem;
+}
+
+.work-os-app-card p {
+  margin: 0;
+  color: rgba(199, 221, 235, 0.72);
+  line-height: 1.5;
+}
+
+.work-os-status {
+  flex: 0 0 auto;
+  padding: 0.28rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.64rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.work-os-status.is-active {
+  color: #7fe5c5;
+}
+
+.work-os-status.is-gated {
+  color: #efbf77;
+}
+
+.work-os-boundary {
+  color: rgba(239, 191, 119, 0.84);
+  line-height: 1.45;
+}
+
+.work-os-principles {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.work-os-principles h2 {
+  margin: 0.2rem 0 0;
+}
+
+.work-os-principles ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: rgba(210, 228, 240, 0.78);
+}
+
+.work-os-principles li + li {
+  margin-top: 0.45rem;
+}
+
+@media (max-width: 980px) {
+  .work-os-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .work-os-runtime {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .work-os-fabric {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .work-os-app-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .work-os-hero-actions {
+    width: 100%;
+  }
+
+  .work-os-hero-actions a {
+    width: 100%;
+  }
+}
