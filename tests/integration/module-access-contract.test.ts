@@ -23,7 +23,9 @@ describe('ATLAS canonical module access contract', () => {
   it('preserves existing organizations while new organizations are fail-closed', () => {
     expect(migration).toContain("'legacy_migration'");
     expect(migration).toContain('preserve_pre_entitlement_access');
-    expect(migration).not.toContain('default true');
+    expect(migration).toContain("select o.id, r.module_id, 'active', 'legacy_migration'");
+    expect(migration).toContain('from public.organizations o');
+    expect(migration).not.toContain('after insert on public.organizations');
   });
 
   it('audits entitlement changes', () => {
