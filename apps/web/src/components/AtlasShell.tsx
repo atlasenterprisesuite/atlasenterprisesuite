@@ -1,4 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { getAtlasModuleAccessSnapshot } from '../access/moduleAccess';
 import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ATLAS_SESSION_EVENT,
@@ -6,7 +7,7 @@ import {
   getCachedAtlasShellOrganization,
   type AtlasShellOrganization
 } from '../lib/atlasSession';
-import { ATLAS_NAV_ITEMS } from '../modules/registry';
+import { ATLAS_MODULES, ATLAS_NAV_ITEMS } from '../modules/registry';
 import { searchAtlasNavigation } from '../navigation/atlasNavigation';
 import {
   ATLAS_ACCESSIBILITY_PROFILE_EVENT,
@@ -27,6 +28,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [accessibleModuleIds, setAccessibleModuleIds] = useState<Set<string> | null>(null);
   const [accessibilityProfile, setAccessibilityProfile] = useState<AccessibilityProfile>(() =>
     loadAccessibilityProfile(resolveAccessibilityUserId())
   );
@@ -43,6 +45,25 @@ export function AtlasShell({ children }: { children: ReactNode }) {
       window.removeEventListener(ATLAS_SESSION_EVENT, handleSessionChange);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!organization) {
+      setAccessibleModuleIds(null);
+      return () => { cancelled = true; };
+    }
+
+    setAccessibleModuleIds(null);
+    void getAtlasModuleAccessSnapshot()
+      .then((rows) => {
+        if (!cancelled) setAccessibleModuleIds(new Set(rows.filter((row) => row.allowed).map((row) => row.module_id)));
+      })
+      .catch(() => {
+        if (!cancelled) setAccessibleModuleIds(new Set());
+      });
+
+    return () => { cancelled = true; };
+  }, [organization?.id, organization?.role]);
 
   useEffect(() => {
     const handleProfileChange = (event: Event) => {
@@ -137,7 +158,22 @@ export function AtlasShell({ children }: { children: ReactNode }) {
     || location.pathname === '/voice'
     || location.pathname.startsWith('/voice/');
 
-  const searchResults = useMemo(() => searchAtlasNavigation(searchQuery), [searchQuery]);
+  const canSurfaceModule = useCallback((moduleId?: string) => {
+    if (!moduleId) return true;
+    const module = ATLAS_MODULES.find((candidate) => candidate.id === moduleId);
+    if (!module?.requiresAuth) return true;
+    return Boolean(organization && accessibleModuleIds?.has(moduleId));
+  }, [accessibleModuleIds, organization]);
+
+  const visibleNavItems = useMemo(
+    () => ATLAS_NAV_ITEMS.filter((item) => !('moduleId' in item) || canSurfaceModule(item.moduleId)),
+    [canSurfaceModule]
+  );
+
+  const searchResults = useMemo(
+    () => searchAtlasNavigation(searchQuery).filter((node) => canSurfaceModule(node.moduleId)),
+    [canSurfaceModule, searchQuery]
+  );
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -181,7 +217,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav aria-label="ATLAS modules">
-          {ATLAS_NAV_ITEMS.map((item, index) => (
+          {visibleNavItems.map((item, index) => (
             <NavLink
               key={item.to}
               to={item.to}
