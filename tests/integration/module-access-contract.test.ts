@@ -15,6 +15,8 @@ describe('ATLAS canonical module access contract', () => {
     expect(migration).toContain('atlas_module_access_snapshot');
     expect(migration).toContain("e.status in ('active','trial')");
     expect(migration).toContain('permission_ok');
+    expect(migration).toContain("array['tax.read','tax.prepare','tax.review','tax.file','tax.admin']");
+    expect(migration).toContain("array['frontier.read','frontier.play','frontier.manage']");
     expect(migration).toContain('revoke all on public.atlas_module_entitlements from public, anon, authenticated');
   });
 
@@ -28,7 +30,7 @@ describe('ATLAS canonical module access contract', () => {
     expect(migration).toContain('atlas_module_entitlement_audit');
     expect(migration).toContain('after insert or update or delete');
     expect(migration).toContain('actor_user_id');
-    expect(migration.indexOf('create trigger atlas_module_entitlements_audit')).toBeLessThan(migration.indexOf("'legacy_migration'"));
+    expect(migration.indexOf('create trigger atlas_module_entitlements_audit')).toBeLessThan(migration.indexOf("select o.id, r.module_id, 'active', 'legacy_migration'"));
   });
 
   it('filters protected navigation and guards direct protected routes', () => {
