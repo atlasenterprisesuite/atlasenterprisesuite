@@ -1244,6 +1244,9 @@ export function UnifiedAIChatPage() {
                       <Link to="/work" onClick={() => setToolsOpen(false)}>
                         <strong>Projects</strong><span>Governed long-running work</span>
                       </Link>
+                      <Link to="/assistant/activity" onClick={() => setToolsOpen(false)}>
+                        <strong>Background</strong><span>Queued, running and completed AI work</span>
+                      </Link>
                       <Link to="/suite" onClick={() => setToolsOpen(false)}>
                         <strong>Modules</strong><span>Enterprise workspace</span>
                       </Link>
