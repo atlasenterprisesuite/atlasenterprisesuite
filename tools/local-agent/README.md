@@ -159,3 +159,35 @@ Optional environment variables:
 - `ATLAS_BROWSER_HEADLESS=true`: optional headless execution. Interactive OAuth usually needs the visible browser profile.
 
 ATLAS must not claim a browser action occurred unless the Local Agent reports the audited command as succeeded.
+
+## ATLAS Device DNA — Linux reference collector
+
+On Linux, Local Agent 1.2 automatically registers one read-only host adapter named `device-dna-linux` with capability `device.dna.read`. It collects a bounded Device DNA v1 report from Node OS APIs and Linux sysfs and syncs that report through the existing organization-scoped Local Control Plane.
+
+Observed fields include:
+
+- manufacturer/product name when DMI exposes them;
+- CPU model and logical core count;
+- total memory;
+- Linux architecture and kernel release;
+- UEFI versus legacy-or-unknown boot mode;
+- Secure Boot state when EFI variables are readable;
+- TPM presence;
+- bounded disk inventory from `/sys/block`;
+- battery presence/state/capacity when exported by sysfs;
+- the deterministic ATLAS Lite / Standard runtime recommendation.
+
+The report is labeled `agent-observed`. Its SHA-256 content digest detects accidental mutation, but it is **not** hardware attestation and must not be represented as TPM-signed or manufacturer-certified evidence.
+
+Privacy is fail-closed: Device DNA v1 intentionally excludes serial numbers, product UUIDs, MAC/IP addresses, usernames, hostnames and mount paths.
+
+The host report refreshes periodically and can also be requested from Device OS using the low-risk `device.dna.read / report.read` command. The resulting observation is written to the Local Control Plane audit stream.
+
+To disable automatic Linux Device DNA collection:
+
+```bash
+ATLAS_DEVICE_DNA_DISABLED=true
+```
+
+macOS and Windows remain evidence-gated until dedicated collectors are implemented and tested. No compatibility is inferred from the Linux collector.
+
