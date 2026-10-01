@@ -52,15 +52,13 @@ export function windowsRemoteDesktopLocalDevice() {
     adapter: 'remote-desktop-windows',
     capabilities: [
       'remote.session',
-      'remote.desktop.stream',
-      'remote.input.pointer',
-      'remote.input.keyboard'
+      'remote.desktop.stream'
     ],
     health_status: 'healthy',
     metadata: {
       consent: 'local-user-required',
       capture: 'windows-gdi',
-      input: 'windows-sendinput',
+      input: 'local-user-only',
       transport: 'atlas-remote-relay',
       persistence: 'none'
     }
@@ -168,135 +166,10 @@ try {
     };
   }
 
-  async function pointerClick(sessionId, payload) {
-    assertSession(sessionId, true);
-    const x = clampNumber(payload?.x, 0, 1, 0.5);
-    const y = clampNumber(payload?.y, 0, 1, 0.5);
-    const button = String(payload?.button || 'left').toLowerCase();
-    if (!['left', 'right'].includes(button)) throw new Error('remote_pointer_button_invalid');
-    const count = Math.round(clampNumber(payload?.count, 1, 2, 1));
-    const down = button === 'right' ? '0x0008' : '0x0002';
-    const up = button === 'right' ? '0x0010' : '0x0004';
-    const script = `
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public static class AtlasPointer {
-  [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
-  [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
-}
-"@
-$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$px = $bounds.X + [int][Math]::Round((${x}) * [Math]::Max(0, $bounds.Width - 1))
-$py = $bounds.Y + [int][Math]::Round((${y}) * [Math]::Max(0, $bounds.Height - 1))
-[AtlasPointer]::SetCursorPos($px, $py) | Out-Null
-for ($i = 0; $i -lt ${count}; $i++) {
-  [AtlasPointer]::mouse_event(${down}, 0, 0, 0, [UIntPtr]::Zero)
-  [AtlasPointer]::mouse_event(${up}, 0, 0, 0, [UIntPtr]::Zero)
-  if (${count} -gt 1) { Start-Sleep -Milliseconds 80 }
-}
-'ok'
-`;
-    await runPowerShell(script, 10_000);
-  }
-
-  async function keyboardText(sessionId, payload) {
-    assertSession(sessionId, true);
-    const text = String(payload?.text || '');
-    if (!text || text.length > 512) throw new Error('remote_keyboard_text_invalid');
-    const encoded = Buffer.from(text, 'utf8').toString('base64');
-    const script = `
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public static class AtlasKeyboard {
-  [StructLayout(LayoutKind.Sequential)]
-  public struct KEYBDINPUT {
-    public ushort wVk;
-    public ushort wScan;
-    public uint dwFlags;
-    public uint time;
-    public UIntPtr dwExtraInfo;
-  }
-  [StructLayout(LayoutKind.Explicit)]
-  public struct INPUTUNION {
-    [FieldOffset(0)] public KEYBDINPUT ki;
-  }
-  [StructLayout(LayoutKind.Sequential)]
-  public struct INPUT {
-    public uint type;
-    public INPUTUNION U;
-  }
-  [DllImport("user32.dll", SetLastError=true)]
-  static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-  public static void SendText(string text) {
-    foreach (char ch in text) {
-      var down = new INPUT();
-      down.type = 1;
-      down.U.ki.wScan = ch;
-      down.U.ki.dwFlags = 0x0004;
-      var up = down;
-      up.U.ki.dwFlags = 0x0004 | 0x0002;
-      var inputs = new INPUT[] { down, up };
-      if (SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT))) != 2) {
-        throw new InvalidOperationException("send_input_failed");
-      }
-    }
-  }
-}
-"@
-$text = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encoded}'))
-[AtlasKeyboard]::SendText($text)
-'ok'
-`;
-    await runPowerShell(script, 10_000);
-  }
-
-  async function keyboardKey(sessionId, payload) {
-    assertSession(sessionId, true);
-    const key = String(payload?.key || '').trim().toLowerCase();
-    const keys = {
-      enter: 0x0d,
-      backspace: 0x08,
-      tab: 0x09,
-      escape: 0x1b,
-      delete: 0x2e,
-      arrowleft: 0x25,
-      arrowup: 0x26,
-      arrowright: 0x27,
-      arrowdown: 0x28
-    };
-    const virtualKey = keys[key];
-    if (!virtualKey) throw new Error('remote_keyboard_key_invalid');
-    const script = `
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public static class AtlasKey {
-  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
-}
-"@
-[AtlasKey]::keybd_event(${virtualKey}, 0, 0, [UIntPtr]::Zero)
-[AtlasKey]::keybd_event(${virtualKey}, 0, 2, [UIntPtr]::Zero)
-'ok'
-`;
-    await runPowerShell(script, 10_000);
-  }
-
-  async function executeControl(sessionId, event) {
-    const kind = String(event?.kind || '');
-    if (kind === 'pointer.click') return pointerClick(sessionId, event);
-    if (kind === 'keyboard.text') return keyboardText(sessionId, event);
-    if (kind === 'keyboard.key') return keyboardKey(sessionId, event);
-    throw new Error('remote_control_event_unsupported');
-  }
-
   return {
     requestConsent,
     endSession,
     hasSession,
-    captureFrame,
-    executeControl
+    captureFrame
   };
 }
