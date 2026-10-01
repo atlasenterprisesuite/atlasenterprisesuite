@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ATLAS_PAY_PRINCIPLES } from '../../../../../packages/pay/src';
+import { ATLAS_PAY_PRINCIPLES } from '../../../../../../packages/pay/src';
 import { loadAtlasPaySnapshot, type AtlasPaySnapshot } from '../../../lib/payApi';
 
 const CAPABILITIES = [
