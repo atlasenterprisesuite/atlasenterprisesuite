@@ -123,34 +123,41 @@ const financeSections: ModuleExperienceSection[] = [
 
 const accountingSections: ModuleExperienceSection[] = [
   {
-    eyebrow: 'Accounting architecture',
-    title: 'Working books, governed workflows',
-    description: 'The current Accounting surface links directly to the implemented operational slices and keeps unfinished commercial breadth explicit.',
+    eyebrow: 'Accounting temple',
+    title: 'Record to Report',
+    description: 'One governed ledger domain for the organization: accounts, journals, posted ledger, close, statements and audit evidence.',
     cards: [
-      { label: 'Operations', title: 'Accounts Payable', description: 'Vendor obligations, aging, approvals and payment application state.', to: '/finance/accounting/accounts-payable' },
-      { label: 'Inventory', title: 'Procure to Pay', description: 'Receive inventory by PO, preserve packing-slip evidence, three-way match vendor invoices and post Inventory/AP.', to: '/inventory/procure-to-pay' },
-      { label: 'AR', title: 'Accounts Receivable', description: 'Customer invoices can relieve inventory and post Revenue, COGS and gross-margin evidence when products are inventory-backed.', to: '/finance/accounting/accounts-receivable' },
-      { label: 'Reports', title: 'Automotive Sales Financial Reporting', description: 'Departmental dealership reporting with F&I, fixed operations, inventory and floorplan controls.', to: '/finance/accounting/reports/automotive-sales' }
+      { label: 'Command', title: 'Accounting Command Center', description: 'Authenticated view of accounting state across the same organization boundary.', to: '/finance/accounting/dashboard' },
+      { label: 'COA', title: 'Chart of Accounts', description: 'Canonical account structure and active state.', to: '/finance/accounting/chart-of-accounts' },
+      { label: 'GL', title: 'General Ledger', description: 'Posted debit and credit activity derived from journal lines.', to: '/finance/accounting/general-ledger' },
+      { label: 'Journals', title: 'Journal Entries', description: 'Journal state, balanced lines and reversal lineage in read mode while current write RPCs remain gated.', to: '/finance/accounting/journal-entries' },
+      { label: 'Close', title: 'Period Close', description: 'Period readiness and close-task evidence from the canonical accounting scope.', to: '/finance/accounting/period-close' },
+      { label: 'Statements', title: 'Financial Reports', description: 'Trial Balance, Profit & Loss and Balance Sheet from the same posted ledger.', to: '/finance/accounting/reports' }
     ]
   },
   {
-    eyebrow: 'Accounting engine',
-    title: 'Next canonical accounting capabilities',
-    description: 'These capabilities are required for commercial completeness but remain gated until implementation, data contracts and tests converge in the canonical route graph.',
+    eyebrow: 'Accounting operations',
+    title: 'Money in, money out, cash and evidence',
+    description: 'Operational workflows stay inside their proper domain but converge on the same Accounting source of truth.',
     cards: [
-      { label: 'GL', title: 'General Ledger', description: 'Journal and ledger domain work requires final route and workflow reconciliation.', status: 'Reconciliation required' },
-      { label: 'Cash', title: 'Bank Reconciliation', description: 'Cash and bank matching remains gated until verified accounting capability is recovered into the current architecture.', status: 'Canonical route not active' },
-      { label: 'Close', title: 'Period Close', description: 'A complete governed close workflow is not yet proven in the canonical product surface.', status: 'Commercial workflow incomplete' }
+      { label: 'AP', title: 'Accounts Payable', description: 'Vendor obligations, aging, approvals and payment application state.', to: '/finance/accounting/accounts-payable' },
+      { label: 'AR', title: 'Accounts Receivable', description: 'Customer invoicing, balances and governed payment recording.', to: '/finance/accounting/accounts-receivable' },
+      { label: 'P2P', title: 'Procure to Pay', description: 'Purchasing and inventory receiving connect to Accounting without duplicating the ledger.', to: '/inventory/procure-to-pay' },
+      { label: 'Treasury', title: 'Bank & Cash', description: 'Registered bank/cash records and imported transaction evidence.', to: '/finance/accounting/bank-cash' },
+      { label: 'Reconcile', title: 'Bank Reconciliation', description: 'Statement-to-ledger sessions, readiness and unresolved exceptions.', to: '/finance/accounting/reconciliation' },
+      { label: 'Industry', title: 'Automotive Sales Reporting', description: 'Dealership reporting using Accounting reporting contracts.', to: '/finance/accounting/reports/automotive-sales' }
     ]
   },
   {
-    eyebrow: 'Governance',
-    title: 'Auditability before automation',
-    description: 'Accounting automation must preserve tenant scope, authorization, evidence and traceable state transitions.',
+    eyebrow: 'Governance and connected finance',
+    title: 'One source of truth, multiple governed consumers',
+    description: 'Tax, Payroll, FP&A, consolidation and operating modules consume Accounting evidence without becoming parallel books.',
     cards: [
-      { label: 'Controls', title: 'Permission boundary', description: 'Existing ATLAS identity and role controls remain the authorization source.' },
-      { label: 'Audit', title: 'Traceable actions', description: 'Sensitive operations continue to require auditable execution paths.' },
-      { label: 'Data', title: 'No invented balances', description: 'Financial values must originate from configured records and authorized integrations.' }
+      { label: 'Audit', title: 'Audit Trail', description: 'Organization-scoped accounting changes and traceable record history.', to: '/finance/accounting/audit-trail' },
+      { label: 'Settings', title: 'Accounting Settings', description: 'Fiscal year, base currency, basis and control-account configuration in read mode.', to: '/finance/accounting/settings' },
+      { label: 'Tax', title: 'ATLAS Tax', description: 'Tax remains a finance compliance domain connected to governed accounting evidence.', to: '/tax' },
+      { label: 'Payroll', title: 'ATLAS Payroll', description: 'Payroll remains a people/pay domain whose approved financial impact connects to Accounting.', to: '/payroll' },
+      { label: 'Assets', title: 'Fixed Assets', description: 'Recovered historical surface remains closed until the current canonical asset table and depreciation posting path are verified.', status: 'Evidence gate active' }
     ]
   }
 ];
@@ -211,17 +218,17 @@ export function FinanceExperiencePage() {
 export function AccountingExperiencePage() {
   return (
     <ModuleExperiencePage
-      eyebrow="ATLAS Accounting"
-      title="Accounting"
-      description="Working accounting slices use the same governed tenant scope, permissions and reporting contracts as the rest of ATLAS."
-      narrative="Accounting intelligence with governed execution."
+      eyebrow="ATLAS Finance / Accounting"
+      title="Accounting Ecosystem"
+      description="The financial temple inside ATLAS Finance: one governed accounting source of truth with operational workspaces and connected finance domains around the same tenant, permissions and audit boundary."
+      narrative="One set of books. Many governed workflows. No parallel ledgers."
       visualReference="modules"
       actions={[
-        { label: 'Accounts Payable', to: '/finance/accounting/accounts-payable' },
-        { label: 'Automotive Sales Report', to: '/finance/accounting/reports/automotive-sales', variant: 'secondary' }
+        { label: 'Open Accounting Command Center', to: '/finance/accounting/dashboard' },
+        { label: 'Open General Ledger', to: '/finance/accounting/general-ledger', variant: 'secondary' }
       ]}
       sections={accountingSections}
-      statusNote="Inactive accounting capabilities are shown as readiness gates instead of links so ATLAS never implies a workflow exists before it is implemented and verified."
+      statusNote="Read surfaces use authenticated organization-scoped data. Mutation-only capabilities remain fail-closed unless their current backend/RPC contract is verified; Fixed Assets remains gated pending canonical data-path evidence."
     />
   );
 }
