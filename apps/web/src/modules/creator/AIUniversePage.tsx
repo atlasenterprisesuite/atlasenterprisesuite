@@ -213,6 +213,36 @@ export function AIUniversePage() {
       </div>
     </header>
 
+    <section className="ai-universe-launch-showcase" aria-labelledby="ai-universe-launch-visual-title">
+      <figure className="ai-universe-launch-art">
+        <div className="ai-universe-launch-art-frame">
+          <img
+            src="/atlas/ai-universe-phase2-live.webp"
+            width="480"
+            height="600"
+            loading="eager"
+            decoding="async"
+            alt="ATLAS AI Universe Phase 2 release artwork illustrating the control-center concept; values shown inside the artwork are illustrative, not live telemetry."
+          />
+          <span className="ai-universe-art-label">Concept artwork · illustrative values</span>
+        </div>
+        <figcaption>Release artwork only. Live provider counts, latency, usage and cost remain the authenticated values rendered below.</figcaption>
+      </figure>
+      <div className="ai-universe-launch-copy">
+        <p className="eyebrow">Phase 2 visual identity</p>
+        <h2 id="ai-universe-launch-visual-title">The AI Universe control center, now part of the module.</h2>
+        <p>This launch visual represents the ATLAS direction for catalog discovery, comparison, telemetry, history, templates and governed onboarding.</p>
+        <div className="ai-universe-launch-badges" aria-label="Release capabilities">
+          <span>Dynamic catalog</span>
+          <span>Recommendations</span>
+          <span>Comparison</span>
+          <span>Telemetry</span>
+          <span>Governance</span>
+        </div>
+        <p className="ai-universe-launch-truth"><strong>Truth boundary:</strong> numbers embedded in the artwork are illustrative design content. Runtime data shown elsewhere on this page remains authoritative.</p>
+      </div>
+    </section>
+
     {loadState === 'loading' && <div className="creator-empty" role="status"><strong>Loading AI Universe…</strong><span>Reading authenticated provider, Creator and telemetry sources.</span></div>}
     {loadState === 'partial' && <div className="creator-notice" role="status">{loadNote}</div>}
 

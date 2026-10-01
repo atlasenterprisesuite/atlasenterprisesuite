@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ATLAS_AI_UNIVERSE_TEMPLATES,
@@ -118,6 +118,15 @@ describe('ATLAS AI Universe phase 2', () => {
     expect(ATLAS_AI_UNIVERSE_TEMPLATES.every(item => item.source === 'atlas-original')).toBe(true);
     const page = readFileSync('apps/web/src/modules/creator/AIUniversePage.tsx', 'utf8');
     expect(page).toContain('No live social trend signal is claimed');
+  });
+
+  it('integrates the Phase 2 release artwork without presenting illustrative values as live telemetry', () => {
+    const page = readFileSync('apps/web/src/modules/creator/AIUniversePage.tsx', 'utf8');
+
+    expect(existsSync('apps/web/public/atlas/ai-universe-phase2-live.webp')).toBe(true);
+    expect(page).toContain('/atlas/ai-universe-phase2-live.webp');
+    expect(page).toContain('Concept artwork · illustrative values');
+    expect(page).toContain('Runtime data shown elsewhere on this page remains authoritative');
   });
 
   it('wires the authenticated control center, telemetry endpoint and fail-closed onboarding', () => {
