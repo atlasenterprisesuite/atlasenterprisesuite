@@ -25,10 +25,10 @@ const enterpriseSections: ModuleExperienceSection[] = [
       { label: 'Hospitality', title: 'Hospitality', description: 'Hotel and hospitality access, operations and governed integration surfaces.', to: '/hospitality/access' },
       { label: 'Mobility', title: 'Ride', description: 'Driver, compliance and mobility operations with truthful provider boundaries.', to: '/ride' },
       { label: 'Entertainment', title: 'ATLAS FRONTIER', description: 'Explore, extract, craft, build and restore the Sky Grid through a governed server-authoritative vertical slice.', to: '/frontier' },
-      { label: 'People', title: 'HR & Time', description: 'Commercial HR, time and recruiting depth is still being reconciled into the canonical suite.', status: 'Canonical module depth in progress' },
+      { label: 'People', title: 'HR & Time', description: 'Canonical People operations cover workers, time, recruiting, compensation, knowledge and self-service under tenant-scoped RBAC and audited writes.', to: '/people', status: 'Canonical People active' },
       { label: 'Commerce', title: 'Inventory & Purchasing', description: 'Canonical PO receiving, packing-slip evidence, three-way invoice matching, inventory costing and margin pricing.', to: '/inventory/procure-to-pay', status: 'Canonical procure-to-pay active' },
-      { label: 'Operations', title: 'POS & Projects', description: 'Shared execution concepts exist; complete commercial module surfaces are not yet represented as active routes.', status: 'Canonical module depth in progress' },
-      { label: 'Intelligence', title: 'Analytics', description: 'Reporting exists across modules, while the universal analytics hub remains a gated commercial capability.', status: 'Universal hub not yet active' }
+      { label: 'Operations', title: 'Projects & POS boundary', description: 'Projects run through canonical ATLAS Work. POS/payment execution remains gated until a verified commerce/payment adapter is authorized.', to: '/work/active', status: 'Projects active · POS provider-gated' },
+      { label: 'Intelligence', title: 'Analytics', description: 'Canonical Business Analytics is active with source contracts, lineage and fail-closed source readiness; unavailable source KPIs remain visibly gated.', to: '/analytics', status: 'Canonical Analytics active · sources gated' }
     ]
   },
   {
