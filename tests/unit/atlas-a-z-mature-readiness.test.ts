@@ -13,11 +13,11 @@ function readiness(id: string) {
 }
 
 describe('ATLAS A-Z mature module readiness', () => {
-  it.each(['advisory','tax','health','events','frontier','aviation','release-control'])
+  it.each(['tax','health','events','frontier','release-control'])
     ('%s is implemented within its declared product scope', (id) => expect(readiness(id)).toBe('implemented'));
 
-  it.each(['knowledge','learning'])
-    ('%s remains partial until its declared knowledge-to-learning lifecycle is complete', (id) => expect(readiness(id)).toBe('partial'));
+  it.each(['cloud','knowledge','advisory','accounting','learning','aviation'])
+    ('%s remains partial while evidenced internal scope is still open', (id) => expect(readiness(id)).toBe('partial'));
 
   it.each(['commerce','insurance','voice','hospitality','device-os'])
     ('%s truthfully remains external-gated', (id) => expect(readiness(id)).toBe('external-gated'));
