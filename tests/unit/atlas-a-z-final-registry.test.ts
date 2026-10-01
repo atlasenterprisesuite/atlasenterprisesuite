@@ -19,7 +19,8 @@ describe('ATLAS A-Z final registry closure',()=>{
   });
 
   it('keeps incomplete Knowledge and Learning visible as partial instead of forcing a false implemented state',()=>{
-    expect(moduleReadiness('knowledge')).toBe('partial');
-    expect(moduleReadiness('learning')).toBe('partial');
+    for (const id of ['cloud','knowledge','advisory','accounting','learning','aviation']) {
+      expect(moduleReadiness(id)).toBe('partial');
+    }
   });
 });
