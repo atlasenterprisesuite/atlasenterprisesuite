@@ -49,13 +49,13 @@ values
   ('accounting', array['accounting.read','accounting.write','accounting.post','accounting.close','accounting.admin'], true, true),
   ('revenue', array['accounting.read','accounting.write','accounting.admin','crm.read','crm.admin','commerce.read','commerce.admin'], true, true),
   ('advisory', array['advisory.read','advisory.manage','advisory.write','advisory.billing','advisory.compliance','advisory.automations','advisory.admin'], true, true),
-  ('tax', '{}'::text[], true, true),
+  ('tax', array['tax.read','tax.prepare','tax.review','tax.file','tax.admin'], true, true),
   ('crm', array['crm.read','crm.sync','crm.admin'], true, true),
   ('commerce', array['commerce.read','commerce.catalog.read','commerce.catalog.manage','commerce.orders.read','commerce.orders.manage','commerce.promotions.manage','commerce.storefront.manage','commerce.fulfillment.manage','commerce.returns.manage','commerce.refund','commerce.analytics.read','commerce.admin'], true, true),
   ('inventory', '{}'::text[], true, true),
   ('analytics', array['analytics.read','analytics.manage','analytics.export','analytics.admin'], true, true),
-  ('connect', array['integrations.read','integrations.write','integrations.admin'], true, true),
-  ('telecom', array['integrations.read','integrations.write','integrations.admin'], true, true),
+  ('connect', '{}'::text[], true, true),
+  ('telecom', '{}'::text[], true, true),
   ('people', array['hr.read','hr.write','payroll.read','payroll.write','payroll.approve','payroll.self'], true, true),
   ('payroll', array['payroll.read','payroll.write','payroll.approve','payroll.self'], true, true),
   ('learning', '{}'::text[], true, true),
@@ -65,14 +65,14 @@ values
   ('site-review', '{}'::text[], true, true),
   ('voice', array['voice.personal.read','voice.personal.create','voice.personal.record','voice.personal.generate','voice.personal.use','voice.personal.delete','voice.apple.request','voice.apple.use','voice.integration.manage','voice.transcript.read'], true, true),
   ('events', '{}'::text[], true, true),
-  ('frontier', '{}'::text[], true, true),
+  ('frontier', array['frontier.read','frontier.play','frontier.manage'], true, true),
   ('hospitality', '{}'::text[], true, true),
   ('ride', '{}'::text[], true, true),
   ('gps', '{}'::text[], true, true),
   ('aviation', '{}'::text[], true, true),
   ('galaxy', '{}'::text[], true, true),
   ('device-os', '{}'::text[], true, true),
-  ('release-control', array['security.admin','audit.read'], true, true),
+  ('release-control', '{}'::text[], true, true),
   ('execution', '{}'::text[], true, true)
 on conflict (module_id) do update set
   permission_codes = excluded.permission_codes,
@@ -103,7 +103,10 @@ begin
     case when tg_op in ('UPDATE','DELETE') then to_jsonb(old) else null end,
     case when tg_op in ('INSERT','UPDATE') then to_jsonb(new) else null end
   );
-  return coalesce(new, old);
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
 end;
 $$;
 
