@@ -46,7 +46,7 @@ External OpenTelemetry/Grafana export remains an optional extension. It is not r
 - `public.project_tasks` and `public.project_milestones` for project detail;
 - `public.atlas_module_registry` as the service authority.
 
-Project creation is performed through `atlas-cloud-control` with the authenticated user's JWT. Existing RLS decides whether the operation is allowed.
+Project creation is performed through the organization-scoped `atlas-observability` Cloud API with the authenticated user's JWT. Existing permission checks and RLS decide whether the operation is allowed.
 
 No service-role credential is used by the control API.
 
@@ -85,3 +85,8 @@ A build or merge is not production evidence. The routes are production-verified 
 - Destructive resource operations.
 
 These remain optional later phases and are not blockers for the native ATLAS Cloud control surfaces delivered by this increment.
+
+
+## Final reconciliation — 2026-10-01
+
+Live Supabase Edge Function inventory confirms that `atlas-observability` and `atlas-release-control` are active authorities while the old duplicate Cloud control function is not deployed. The obsolete duplicate source and its isolated test were removed so ATLAS Cloud has one backend control path. Protected browser calls now use the shared ATLAS session client with token refresh and explicit organization scope.

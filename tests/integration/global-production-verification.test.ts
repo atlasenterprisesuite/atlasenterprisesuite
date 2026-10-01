@@ -30,10 +30,20 @@ describe('ATLAS global production verification', () => {
       '/cloud',
       '/cloud/docs',
       '/cloud/docs/catalog',
+      '/cloud/docs/get-started',
+      '/cloud/docs/architecture',
+      '/cloud/docs/operations',
       '/cloud/api-explorer',
       '/cloud/observability',
       '/cloud/resources',
       '/cloud/domains',
+      '/cloud/service-graph',
+      '/cloud/releases',
+      '/cloud/production-verification',
+      '/cloud/iam',
+      '/cloud/config',
+      '/cloud/finops',
+      '/cloud/incidents',
       '/work',
       '/assistant',
       '/knowledge',
@@ -222,7 +232,25 @@ describe('ATLAS global production verification', () => {
     }
 
     expect(authorizedVerifier).toContain("'/status'");
-    for (const route of ['/cloud', '/cloud/docs', '/cloud/docs/catalog', '/cloud/api-explorer', '/cloud/observability', '/cloud/resources', '/cloud/domains']) {
+    for (const route of [
+      '/cloud',
+      '/cloud/docs',
+      '/cloud/docs/catalog',
+      '/cloud/docs/get-started',
+      '/cloud/docs/architecture',
+      '/cloud/docs/operations',
+      '/cloud/api-explorer',
+      '/cloud/observability',
+      '/cloud/resources',
+      '/cloud/domains',
+      '/cloud/service-graph',
+      '/cloud/releases',
+      '/cloud/production-verification',
+      '/cloud/iam',
+      '/cloud/config',
+      '/cloud/finops',
+      '/cloud/incidents'
+    ]) {
       expect(authorizedVerifier).toContain(`'${route}'`);
     }
     expect(authorizedVerifier).toContain('status_route_reachable');
