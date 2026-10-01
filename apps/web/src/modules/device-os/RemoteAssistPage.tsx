@@ -74,6 +74,7 @@ export function RemoteAssistPage() {
   const [busy, setBusy] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const frameKeyRef = useRef<CryptoKey | null>(null);
+  const frameUrlRef = useRef<string | null>(null);
   const agreementRef = useRef<Awaited<ReturnType<typeof viewerKeyAgreement>> | null>(null);
 
   const eligible = useMemo(
@@ -173,6 +174,7 @@ export function RemoteAssistPage() {
                 const nextUrl = URL.createObjectURL(new Blob([decrypted], { type: 'image/jpeg' }));
                 setFrameUrl((previous) => {
                   if (previous) URL.revokeObjectURL(previous);
+                  frameUrlRef.current = nextUrl;
                   return nextUrl;
                 });
                 return;
@@ -203,8 +205,8 @@ export function RemoteAssistPage() {
 
   useEffect(() => () => {
     try { socketRef.current?.close(); } catch {}
-    if (frameUrl) URL.revokeObjectURL(frameUrl);
-  }, [frameUrl]);
+    if (frameUrlRef.current) URL.revokeObjectURL(frameUrlRef.current);
+  }, []);
 
   async function begin() {
     if (!selected || busy) return;
@@ -249,6 +251,7 @@ export function RemoteAssistPage() {
       setStatus('Attended screen sharing ended.');
       setFrameUrl((previous) => {
         if (previous) URL.revokeObjectURL(previous);
+        frameUrlRef.current = null;
         return null;
       });
     } finally {
