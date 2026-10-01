@@ -132,6 +132,19 @@ export type AssistantChatResponse = {
   error?: string | null;
 };
 
+export type AssistantBackgroundActivity = {
+  trace_id: string;
+  conversation_id: string | null;
+  status: string;
+  provider: string | null;
+  model: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+  latency_ms: number | null;
+  error: string | null;
+  kind: string;
+};
+
 export type AssistantDiarizationSegment = {
   speaker_id: string;
   text: string;
@@ -298,6 +311,29 @@ export async function getAssistantBackgroundStatus(traceId: string): Promise<Ass
     headers
   });
   return parseCopilotResponse<AssistantChatResponse>(response);
+}
+
+export async function cancelAssistantBackground(traceId: string): Promise<AssistantChatResponse> {
+  const trace = traceId.trim();
+  if (!trace) throw new Error('background_trace_required');
+  const { headers } = await assistantHeaders();
+  const response = await authorizedAtlasFetch(`/functions/v1/atlas-copilot?api=background&trace_id=${encodeURIComponent(trace)}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action: 'cancel' })
+  });
+  return parseCopilotResponse<AssistantChatResponse>(response);
+}
+
+export async function listAssistantBackgroundActivity(limit = 50): Promise<AssistantBackgroundActivity[]> {
+  const { headers } = await assistantHeaders();
+  const safeLimit = Math.min(100, Math.max(1, Math.trunc(limit) || 50));
+  const response = await authorizedAtlasFetch(`/functions/v1/atlas-copilot?api=background-activity&limit=${safeLimit}`, {
+    method: 'GET',
+    headers
+  });
+  const payload = await parseCopilotResponse<{ ok: boolean; items?: AssistantBackgroundActivity[] }>(response);
+  return Array.isArray(payload.items) ? payload.items : [];
 }
 
 export async function sendAssistantMessage(input: {
