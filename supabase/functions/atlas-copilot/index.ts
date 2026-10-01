@@ -12,6 +12,7 @@ import {createToolGateway} from './tool-gateway.mjs';
 import {detectOracleIntent} from './oracle-intent.mjs';
 import {renderAtlasCopilotPage} from './ui.mjs';
 import {createBackgroundBrain,shouldRunInBackground} from './background-brain.mjs';
+import {sha256Hex,verifyOpenAIWebhook} from './openai-webhook.mjs';
 
 const U='https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
@@ -19,7 +20,7 @@ const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const ORACLE='/functions/v1/atlas-oracle';
-const VERSION=15;
+const VERSION=16;
 const READINESS_CACHE_TTL_MS=15_000;
 const readinessCache=new Map();
 const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','codex-sovereign'];
@@ -73,6 +74,7 @@ function runtime(){
   const localAiAllowUnauthenticated=boolEnv('ATLAS_LOCAL_AI_ALLOW_UNAUTHENTICATED',false);
   const localAiAllowInsecure=boolEnv('ATLAS_LOCAL_AI_ALLOW_INSECURE',false);
   const openaiKey=Deno.env.get('OPENAI_API_KEY')||'';
+  const openaiWebhookSecret=Deno.env.get('OPENAI_WEBHOOK_SECRET')||'';
   const bedrockKey=Deno.env.get('AWS_BEARER_TOKEN_BEDROCK')||Deno.env.get('ATLAS_BEDROCK_API_KEY')||'';
   const geminiKey=Deno.env.get('GEMINI_API_KEY')||Deno.env.get('GOOGLE_AI_API_KEY')||'';
   const openaiModels=profileModels('ATLAS_OPENAI_MODEL','ATLAS_OPENAI_MODEL_FAST','ATLAS_OPENAI_MODEL_BALANCED','ATLAS_OPENAI_MODEL_DEEP','ATLAS_OPENAI_ASTRA_MODEL',DEFAULT_OPENAI_MODEL);
@@ -101,7 +103,7 @@ function runtime(){
     emergency_openai_reserve_usd:Math.max(0,numberEnv('ATLAS_AI_EMERGENCY_OPENAI_RESERVE_USD',0)),
     emergency_openai_max_output_tokens:Math.max(64,Math.min(3000,Math.trunc(numberEnv('ATLAS_AI_EMERGENCY_OPENAI_MAX_OUTPUT_TOKENS',512))||512)),
   };
-  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
+  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),openaiWebhookSecret,localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
 }
 async function resolveLocalAiRuntime(rt){
   let stored={};
@@ -294,7 +296,60 @@ async function approvedMemoryForAssistant(rt,context,{message,module}={}){
 async function handleUsage(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),url=new URL(req.url),days=Math.min(90,Math.max(1,Number(url.searchParams.get('days'))||30)),summary=await store.usageSummary({context:resolved.context,days});return json({ok:true,...summary});}
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
 async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});await brain.reconcileConversation({context:resolved.context,conversationId:id}).catch(()=>[]);const conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
-async function handleBackground(req,url){if(req.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);const traceId=String(url.searchParams.get('trace_id')||'').trim();if(!traceId)return json({ok:false,error:'invalid_input'},400);const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});const result=await brain.poll({context:resolved.context,traceId});return json({ok:true,...result});}
+async function handleBackground(req,url){
+  const traceId=String(url.searchParams.get('trace_id')||'').trim();
+  if(!traceId)return json({ok:false,error:'invalid_input'},400);
+  const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});
+  if(req.method==='GET'){
+    const result=await brain.poll({context:resolved.context,traceId});
+    return json({ok:true,...result});
+  }
+  if(req.method==='POST'){
+    const body=await parseJson(req);
+    if(String(body?.action||'')!=='cancel')return json({ok:false,error:'unsupported_operation'},400);
+    const result=await brain.cancel({context:resolved.context,traceId});
+    return json({ok:true,...result});
+  }
+  return json({ok:false,error:'method_not_allowed'},405);
+}
+async function handleBackgroundActivity(req,url){
+  if(req.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);
+  const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});
+  const limit=Math.min(100,Math.max(1,Number(url.searchParams.get('limit'))||50));
+  return json({ok:true,items:await brain.activity({context:resolved.context,limit})});
+}
+async function handleOpenAIWebhook(req){
+  if(req.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
+  const rt=runtime();
+  if(!rt.openaiWebhookSecret)return json({ok:false,error:'webhook_not_configured'},503);
+  const raw=await req.text();
+  const verified=await verifyOpenAIWebhook({body:raw,headers:req.headers,secret:rt.openaiWebhookSecret});
+  let event;
+  try{event=JSON.parse(raw);}catch{return json({ok:false,error:'invalid_input'},400);}
+  const eventType=String(event?.type||'').trim(),responseId=String(event?.data?.id||'').trim()||null;
+  const store=storeFor(rt.serviceRoleKey),payloadSha256=await sha256Hex(raw);
+  const receipt=await store.recordWebhookEvent({webhook_id:verified.webhookId,event_type:eventType,response_id:responseId,payload_sha256:payloadSha256});
+  if(!receipt)return json({ok:true,duplicate:true});
+  if(!responseId||!['response.completed','response.failed','response.incomplete','response.cancelled'].includes(eventType)){
+    await store.markWebhookEvent({webhook_id:verified.webhookId,processing_state:'ignored'});
+    return json({ok:true,ignored:true});
+  }
+  try{
+    const requestRow=await store.findBackgroundRequestByResponseId({response_id:responseId});
+    if(!requestRow){
+      await store.markWebhookEvent({webhook_id:verified.webhookId,processing_state:'ignored'});
+      return json({ok:true,ignored:true});
+    }
+    const localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});
+    const context={organization_id:String(requestRow.org_id),user_id:String(requestRow.actor_id),permissions:['intelligence.use'],roles:[]};
+    const result=await brain.poll({context,traceId:String(requestRow.trace_id)});
+    await store.markWebhookEvent({webhook_id:verified.webhookId,processing_state:'processed'});
+    return json({ok:true,status:result.status,trace_id:result.trace_id});
+  }catch(error){
+    await store.markWebhookEvent({webhook_id:verified.webhookId,processing_state:'failed',error_code:error?.code||'webhook_processing_failed'}).catch(()=>{});
+    throw error;
+  }
+}
 async function handleStatus(req){
   const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced',true),diarization=await diarizationReadiness(rt,localAi);
   const openai=providers.find(p=>p.id==='openai');
@@ -362,6 +417,8 @@ async function handleRequest(req: Request){
     if(api==='history')return await handleHistory(req);
     if(api==='conversation')return await handleConversation(req,url);
     if(api==='background')return await handleBackground(req,url);
+    if(api==='background-activity')return await handleBackgroundActivity(req,url);
+    if(api==='openai-webhook')return await handleOpenAIWebhook(req);
     if(api==='chat')return await handleChat(req);
     if(api==='diarize')return await handleDiarize(req);
     const html=renderAtlasCopilotPage({supabaseUrl:U,publishableKey:K,selfPath:SELF,repairPath:REPAIR,livePath:LIVE,version:VERSION});
