@@ -72,6 +72,21 @@ export async function startRemoteRelaySession({
   let closed = false;
   let client = null;
   let frameBusy = false;
+  let handshakeTimer = null;
+  let frameTimer = null;
+  let expiryTimer = null;
+
+  function finish(reason = 'ended') {
+    if (closed) return;
+    closed = true;
+    if (handshakeTimer) clearInterval(handshakeTimer);
+    if (frameTimer) clearInterval(frameTimer);
+    if (expiryTimer) clearInterval(expiryTimer);
+    controller.endSession(sessionId);
+    try { client?.sendText(JSON.stringify({ event: 'remote.status', state: reason })); } catch {}
+    try { client?.close(); } catch {}
+    onEnded(reason);
+  }
 
   async function handleMessage(message) {
     let event;
@@ -104,8 +119,7 @@ export async function startRemoteRelaySession({
     }
 
     if (event?.event === 'remote.end') {
-      closed = true;
-      try { client?.close(); } catch {}
+      finish('peer-ended');
     }
   }
 
@@ -118,7 +132,7 @@ export async function startRemoteRelaySession({
       void handleMessage(message);
     },
     onClose() {
-      closed = true;
+      finish('relay-closed');
     }
   });
 
@@ -129,18 +143,16 @@ export async function startRemoteRelaySession({
   });
   client.sendText(keyMessage);
 
-  const handshakeTimer = setInterval(() => {
+  handshakeTimer = setInterval(() => {
     if (!closed && !sharedKey) {
       try { client?.sendText(keyMessage); } catch {}
     }
   }, 2_000);
 
-  const frameTimer = setInterval(() => {
+  frameTimer = setInterval(() => {
     if (closed || !sharedKey || frameBusy) return;
     if (Date.now() >= new Date(expiresAt).getTime()) {
-      closed = true;
-      try { client?.sendText(JSON.stringify({ event: 'remote.status', state: 'expired' })); } catch {}
-      try { client?.close(); } catch {}
+      finish('expired');
       return;
     }
 
@@ -168,23 +180,14 @@ export async function startRemoteRelaySession({
     })();
   }, 550);
 
-  const expiryTimer = setInterval(() => {
+  expiryTimer = setInterval(() => {
     if (closed || Date.now() < new Date(expiresAt).getTime()) return;
-    closed = true;
-    try { client?.close(); } catch {}
+    finish('expired');
   }, 1_000);
 
   return {
     close(reason = 'ended') {
-      if (closed) return;
-      closed = true;
-      clearInterval(handshakeTimer);
-      clearInterval(frameTimer);
-      clearInterval(expiryTimer);
-      controller.endSession(sessionId);
-      try { client?.sendText(JSON.stringify({ event: 'remote.status', state: reason })); } catch {}
-      try { client?.close(); } catch {}
-      onEnded(reason);
+      finish(reason);
     },
     isClosed() {
       return closed;
