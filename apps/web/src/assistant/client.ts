@@ -278,6 +278,135 @@ export async function diarizeAssistantAudio(input: {
   return parseCopilotResponse<AssistantDiarizationResponse>(response);
 }
 
+export type AssistantStreamMeta = {
+  trace_id?: string;
+  conversation_id?: string;
+  provider?: string;
+  model?: string | null;
+  mode?: string;
+  profile?: string;
+};
+
+export type AssistantStreamHandlers = {
+  onMeta?: (meta: AssistantStreamMeta) => void;
+  onDelta?: (delta: string) => void;
+};
+
+function parseSseFrame(frame: string) {
+  let event = '';
+  const data: string[] = [];
+  for (const line of frame.replace(/\r\n/g, '\n').split('\n')) {
+    if (line.startsWith('event:')) event = line.slice(6).trim();
+    else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+  }
+  const raw = data.join('\n');
+  let payload: any = {};
+  if (raw) {
+    try { payload = JSON.parse(raw); } catch { payload = { raw }; }
+  }
+  return { event, payload };
+}
+
+export async function streamAssistantWorkspaceMessage(input: {
+  message: string;
+  conversationId?: string | null;
+  mode: AssistantMode;
+  profile: AssistantProfile;
+  executionMode?: AssistantExecutionMode;
+}, handlers: AssistantStreamHandlers = {}): Promise<AssistantChatResponse> {
+  const organization = await getActiveAtlasOrganization();
+  const message = input.message.trim();
+  if (!message) throw new Error('assistant_message_required');
+  const module = resolveAssistantModule(window.location.pathname);
+  const { headers } = await assistantHeaders();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=chat-stream', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      organization_id: organization.id,
+      module,
+      surface: 'atlas-assistant-workspace',
+      mode: input.mode,
+      execution_mode: input.executionMode || 'auto',
+      message,
+      conversation_id: input.conversationId || null,
+      intent: input.profile,
+      capabilities_requested: ['generation', 'reasoning'],
+      client_metadata: {
+        route: window.location.pathname,
+        requested_generation: 'stream',
+        requested_reasoning: input.profile,
+        source: 'atlas-assistant-workspace'
+      }
+    })
+  });
+
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.includes('text/event-stream')) {
+    return parseCopilotResponse<AssistantChatResponse>(response);
+  }
+  if (!response.ok) return parseCopilotResponse<AssistantChatResponse>(response);
+  if (!response.body) throw new Error('assistant_stream_unavailable');
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let meta: AssistantStreamMeta = {};
+  let completed: AssistantChatResponse | null = null;
+  let accumulated = '';
+
+  const consume = (frame: string) => {
+    const parsed = parseSseFrame(frame);
+    if (parsed.event === 'meta') {
+      meta = { ...meta, ...parsed.payload };
+      handlers.onMeta?.(meta);
+      return;
+    }
+    if (parsed.event === 'delta') {
+      const delta = String(parsed.payload?.delta || '');
+      if (delta) {
+        accumulated += delta;
+        handlers.onDelta?.(delta);
+      }
+      return;
+    }
+    if (parsed.event === 'error') {
+      throw new Error(String(parsed.payload?.error || 'assistant_stream_failed'));
+    }
+    if (parsed.event === 'completed') {
+      const text = String(parsed.payload?.text || accumulated).trim();
+      completed = {
+        ok: true,
+        status: 'completed',
+        text,
+        output: text,
+        trace_id: String(parsed.payload?.trace_id || meta.trace_id || ''),
+        conversation_id: String(parsed.payload?.conversation_id || meta.conversation_id || ''),
+        provider: String(parsed.payload?.provider || meta.provider || ''),
+        model: parsed.payload?.model || meta.model || null,
+        mode: (meta.mode || input.mode) as AssistantMode,
+        profile: (meta.profile || input.profile) as AssistantProfile
+      };
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+    let boundary;
+    while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+      const frame = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      if (frame.trim()) consume(frame);
+    }
+  }
+  buffer += decoder.decode();
+  if (buffer.trim()) consume(buffer);
+  if (!completed) throw new Error('assistant_stream_incomplete');
+  return completed;
+}
+
 export async function sendAssistantWorkspaceMessage(input: {
   message: string;
   conversationId?: string | null;
