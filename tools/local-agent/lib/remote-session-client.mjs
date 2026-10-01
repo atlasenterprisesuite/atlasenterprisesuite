@@ -44,14 +44,6 @@ async function encryptBytes(key, bytes) {
   return { iv: toBase64(iv), data: toBase64(encrypted) };
 }
 
-async function decryptBytes(key, envelope) {
-  const iv = fromBase64(envelope?.iv);
-  const data = fromBase64(envelope?.data);
-  if (iv.length !== 12 || !data.length) throw new Error('remote_envelope_invalid');
-  const clear = await subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-  return Buffer.from(clear);
-}
-
 export async function startRemoteRelaySession({
   baseUrl,
   sessionId,
@@ -102,18 +94,6 @@ export async function startRemoteRelaySession({
         client?.sendText(JSON.stringify({ event: 'remote.status', state: 'encrypted-channel-ready' }));
       } catch {
         client?.sendText(JSON.stringify({ event: 'remote.status', state: 'key-negotiation-failed' }));
-      }
-      return;
-    }
-
-    if (event?.event === 'remote.control' && sharedKey) {
-      try {
-        const clear = await decryptBytes(sharedKey, event);
-        const control = JSON.parse(clear.toString('utf8'));
-        await controller.executeControl(sessionId, control);
-      } catch (error) {
-        const code = String(error?.message || 'remote_control_failed').slice(0, 120);
-        client?.sendText(JSON.stringify({ event: 'remote.status', state: 'control-error', code }));
       }
       return;
     }
