@@ -34,7 +34,7 @@ export function AtlasSuitePage() {
   }, []);
 
   const availableModules = useMemo(
-    () => ATLAS_MODULES.filter((module) => !module.requiresAuth || Boolean(accessibleModuleIds?.has(module.id))),
+    () => ATLAS_MODULES.filter((module) => Boolean(accessibleModuleIds?.has(module.id))),
     [accessibleModuleIds]
   );
 
@@ -78,7 +78,7 @@ export function AtlasSuitePage() {
       </div>
 
       {accessLoading ? <div className="notice" role="status" aria-live="polite">Verifying module entitlements and role permissions…</div> : null}
-      {accessError ? <div className="notice strong" role="alert">Protected-module access could not be verified. ATLAS is showing only public entries.</div> : null}
+      {accessError ? <div className="notice strong" role="alert">Module access could not be verified. ATLAS remains fail-closed and is not exposing organization modules.</div> : null}
 
       <section className="workspace-card" aria-label="Filter ATLAS modules">
         <div className="toolbar">
