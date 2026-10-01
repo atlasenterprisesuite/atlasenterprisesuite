@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from 'react';
 import { ATLAS_PAY_PRINCIPLES } from '../../../../../packages/pay/src';
+import { loadAtlasPaySnapshot, type AtlasPaySnapshot } from '../../../lib/payApi';
 
 const CAPABILITIES = [
   {
@@ -23,7 +25,46 @@ const CAPABILITIES = [
   }
 ] as const;
 
+function formatTimestamp(value: string | null): string {
+  if (!value) return 'Not verified';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Recorded' : date.toLocaleString();
+}
+
 export function AtlasPayPage() {
+  const [snapshot, setSnapshot] = useState<AtlasPaySnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    loadAtlasPaySnapshot()
+      .then((result) => {
+        if (!active) return;
+        setSnapshot(result);
+        setError(null);
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setSnapshot(null);
+        setError(cause instanceof Error ? cause.message : 'atlas_pay_evidence_unavailable');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
+  }, []);
+
+  const verifiedProviders = useMemo(
+    () => snapshot?.providers.filter((provider) =>
+      provider.authorization_state === 'authorized'
+      && provider.regulatory_coverage_state === 'verified'
+      && Boolean(provider.credentials_verified_at)
+    ) || [],
+    [snapshot]
+  );
+
   return (
     <section className="page-stack">
       <header className="page-header">
@@ -41,6 +82,20 @@ export function AtlasPayPage() {
         access, deposit insurance, completed payout or settlement without authenticated provider evidence.
       </div>
 
+      {loading ? <div className="notice">Loading organization-scoped ATLAS Pay evidence…</div> : null}
+      {error ? (
+        <div className="notice strong" role="alert">
+          Live provider evidence unavailable ({error}). No regulated capability is treated as ready.
+        </div>
+      ) : null}
+
+      <div className="stat-grid" aria-label="ATLAS Pay live readiness">
+        <article><strong>{snapshot ? snapshot.providers.length : '—'}</strong><span>provider records</span></article>
+        <article><strong>{snapshot ? verifiedProviders.length : '—'}</strong><span>fully verified providers</span></article>
+        <article><strong>{snapshot ? snapshot.instrumentIntents.length : '—'}</strong><span>instrument intents</span></article>
+        <article><strong>{snapshot ? snapshot.payoutIntents.length : '—'}</strong><span>payout intents</span></article>
+      </div>
+
       <div className="module-grid">
         {CAPABILITIES.map((capability) => (
           <article className="module-card enabled" key={capability.label}>
@@ -50,6 +105,27 @@ export function AtlasPayPage() {
           </article>
         ))}
       </div>
+
+      <article className="feature-card wide">
+        <p className="eyebrow">Provider evidence</p>
+        <h2>Verified connections only</h2>
+        {!snapshot?.providers.length ? (
+          <p>No authorized provider evidence is currently available for this organization.</p>
+        ) : (
+          <div className="module-grid compact">
+            {snapshot.providers.map((provider) => (
+              <article className="module-card enabled" key={provider.id}>
+                <span>{provider.provider_kind} · {provider.environment}</span>
+                <strong>{provider.provider_key}</strong>
+                <p>Authorization: {provider.authorization_state}</p>
+                <p>Regulatory coverage: {provider.regulatory_coverage_state}</p>
+                <p>Credential evidence: {formatTimestamp(provider.credentials_verified_at)}</p>
+                <p>Last verified: {formatTimestamp(provider.last_verified_at)}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </article>
 
       <article className="feature-card wide">
         <p className="eyebrow">Canonical architecture</p>
