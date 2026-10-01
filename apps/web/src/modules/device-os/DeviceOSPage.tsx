@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { LocalNetworkAccessPanel } from './LocalNetworkAccessPanel';
 import { LocalControlPlanePanel } from './LocalControlPlanePanel';
 import { DeviceEvolutionPanel } from './DeviceEvolutionPanel';
@@ -83,6 +84,13 @@ export function DeviceOSPage() {
         <article><strong>{ATLAS_DEVICE_PROFILES.length}</strong><span>device profiles</span></article>
         <article><strong>Zero Trust</strong><span>permission boundary</span></article>
       </div>
+
+      <Link className="feature-card link-card accent" to="/device-os/remote">
+        <p className="eyebrow">ATLAS Remote Assist</p>
+        <h2>Attended Windows Screen Share</h2>
+        <p>Request a visible, locally approved, view-only encrypted screen session for a registered Windows device.</p>
+        <span className="action-link">Open Remote Assist</span>
+      </Link>
 
       <DeviceEvolutionPanel />
       <LocalNetworkAccessPanel />
