@@ -68,6 +68,23 @@ describe('Advisory production closure surfaces', () => {
     expect(operations).toContain('Revenue and cash are not inferred here');
   });
 
+  it('binds critical Advisory routes into fail-closed production verification', () => {
+    const verifier = read('supabase/functions/atlas-cloudflare-production-http-verify/index.ts');
+    for (const route of [
+      '/advisory/clients',
+      '/advisory/engagements',
+      '/advisory/business-launch-360/workspace',
+      '/advisory/reports',
+      '/advisory/providers',
+      '/advisory/readiness'
+    ]) {
+      expect(verifier).toContain(`probe('${route}')`);
+      expect(verifier).toContain(`'${route}'`);
+    }
+    expect(verifier).toContain('const advisoryRoutesOk = [');
+    expect(verifier).toContain('advisoryRoutesOk &&');
+  });
+
   it('exposes a truthful Advisory readiness route', () => {
     const routes = read('apps/web/src/modules/advisory/AdvisoryRoutes.tsx');
     const operations = read('apps/web/src/modules/advisory/AdvisoryOperationsPages.tsx');
