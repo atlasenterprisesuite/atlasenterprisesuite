@@ -133,7 +133,7 @@ export function AtlasCloudCommandCenter() {
             />
           </label>
           {query.trim() ? (
-            <div className="atlas-cloud-os-search-results" role="listbox" aria-label="ATLAS Cloud search results">
+            <div className="atlas-cloud-os-search-results" role="list" aria-label="ATLAS Cloud search results">
               {searchResults.length ? searchResults.map((result) => (
                 <Link key={`${result.route}-${result.label}`} to={result.route} onClick={() => setQuery('')}>
                   <strong>{result.label}</strong>
