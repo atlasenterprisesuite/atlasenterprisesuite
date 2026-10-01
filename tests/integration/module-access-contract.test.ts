@@ -41,6 +41,8 @@ describe('ATLAS canonical module access contract', () => {
     expect(registry).toContain('moduleId: module.id');
     expect(shell).toContain('getAtlasModuleAccessSnapshot');
     expect(shell).toContain('visibleNavItems');
+    expect(shell).toContain('if (!organization) return !module.requiresAuth');
+    expect(shell).toContain('accessibleModuleIds?.has(moduleId)');
     expect(shell).toContain("canSurfaceModule('assistant')");
     expect(shell).toContain("canSurfaceModule('connect')");
     expect(shell).toContain("canSurfaceModule('galaxy')");
