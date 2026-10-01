@@ -5,6 +5,8 @@ const edge = readFileSync('supabase/functions/atlas-local-control/index.ts','utf
 const agent = readFileSync('tools/local-agent/atlas-local-agent.mjs','utf8');
 const panel = readFileSync('apps/web/src/modules/device-os/LocalControlPlanePanel.tsx','utf8');
 const localAi = readFileSync('tools/local-agent/atlas-local-ai-runtime.mjs','utf8');
+const deviceDna = readFileSync('tools/local-agent/lib/device-dna-linux.mjs','utf8');
+const deviceDnaPanel = readFileSync('apps/web/src/modules/device-os/DeviceDnaEvidencePanel.tsx','utf8');
 
 describe('ATLAS Local Control Plane runtime contract', () => {
   it('uses one-time enrollment and short-lived hash-backed sessions', () => {
@@ -43,6 +45,22 @@ describe('ATLAS Local Control Plane runtime contract', () => {
     expect(agent).toContain("command.action !== 'status.read'");
     expect(agent).not.toMatch(/\bnmap\b|\barp\s+-/i);
     expect(agent).toContain("command.capability === 'browser.control'");
+  });
+
+
+  it('keeps Device DNA read-only, privacy-bounded and evidence-backed', () => {
+    expect(agent).toContain("device.adapter === 'device-dna-linux'");
+    expect(agent).toContain("command.capability === 'device.dna.read'");
+    expect(agent).toContain("command.action === 'report.read'");
+    expect(deviceDna).toContain("schema_version: 'atlas.device-dna.v1'");
+    expect(deviceDna).toContain("evidence_level: 'agent-observed'");
+    expect(deviceDna).toContain('hardware_attested: false');
+    expect(deviceDna).toContain("'/sys/block'");
+    expect(deviceDna).not.toMatch(/\bexecFile\b|\bspawn\b|\bsudo\b|\bdmidecode\b|\bsmartctl\b/);
+    expect(deviceDnaPanel).toContain('listLocalDevices');
+    expect(deviceDnaPanel).toContain("capability: 'device.dna.read'");
+    expect(deviceDnaPanel).toContain("action: 'report.read'");
+    expect(deviceDnaPanel).toContain('not hardware attestation');
   });
 
   it('keeps the local AI runtime loopback-bound with environment-backed authentication', () => {
