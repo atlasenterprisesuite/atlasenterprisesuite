@@ -317,9 +317,9 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           </form>
 
           <nav className="atlas-top-actions" aria-label="ATLAS quick access">
-            <NavLink to="/assistant" aria-label="ATLAS Assistant">AI</NavLink>
-            <NavLink to="/connect" aria-label="ATLAS Connect">↗</NavLink>
-            <NavLink to="/galaxy" aria-label="ATLAS Galaxy">◇</NavLink>
+            {canSurfaceModule('assistant') ? <NavLink to="/assistant" aria-label="ATLAS Assistant">AI</NavLink> : null}
+            {canSurfaceModule('connect') ? <NavLink to="/connect" aria-label="ATLAS Connect">↗</NavLink> : null}
+            {canSurfaceModule('galaxy') ? <NavLink to="/galaxy" aria-label="ATLAS Galaxy">◇</NavLink> : null}
           </nav>
 
           <NavLink className="atlas-profile-chip" to="/identity" aria-label="Open identity and organization">
@@ -329,7 +329,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </header>
 
         <main>{children}</main>
-        {organization && !voiceOwnsAssistantSurface ? <AtlasAssistant /> : null}
+        {organization && canSurfaceModule('assistant') && !voiceOwnsAssistantSurface ? <AtlasAssistant /> : null}
       </div>
       <AtlasAccessibility
         initialProfile={accessibilityProfile}
