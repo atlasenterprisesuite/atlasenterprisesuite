@@ -65,7 +65,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Knowledge',
     area: 'Intelligence',
     route: '/knowledge',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: true,
     description: 'Governed organizational memory plus Course Forge for converting authorized conversations and knowledge into instructor-ready teaching packages.',
     showInNavigation: true
@@ -230,7 +230,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Learning',
     area: 'People',
     route: '/learning',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: false,
     description: 'Approved course delivery, instructor-ready teaching packages, structured practice and measurable progress.',
     showInNavigation: true
