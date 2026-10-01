@@ -135,12 +135,12 @@ const accountingSections: ModuleExperienceSection[] = [
   },
   {
     eyebrow: 'Accounting engine',
-    title: 'Next canonical accounting capabilities',
-    description: 'These capabilities are required for commercial completeness but remain gated until implementation, data contracts and tests converge in the canonical route graph.',
+    title: 'Canonical books and close operations',
+    description: 'General Ledger, bank reconciliation and period close now resolve to the existing RLS-protected Accounting tables and server-enforced RPC controls.',
     cards: [
-      { label: 'GL', title: 'General Ledger', description: 'Journal and ledger domain work requires final route and workflow reconciliation.', status: 'Reconciliation required' },
-      { label: 'Cash', title: 'Bank Reconciliation', description: 'Cash and bank matching remains gated until verified accounting capability is recovered into the current architecture.', status: 'Canonical route not active' },
-      { label: 'Close', title: 'Period Close', description: 'A complete governed close workflow is not yet proven in the canonical product surface.', status: 'Commercial workflow incomplete' }
+      { label: 'GL', title: 'General Ledger', description: 'Read the canonical ledger, post balanced entries and create governed reversals.', to: '/finance/accounting/general-ledger', status: 'Canonical GL active' },
+      { label: 'Cash', title: 'Bank Reconciliation', description: 'Start, resolve and close organization-scoped reconciliation sessions without claiming an external bank connection unless its source state verifies it.', to: '/finance/accounting/reconciliation', status: 'Canonical reconciliation active' },
+      { label: 'Close', title: 'Period Close', description: 'Manage close checklist state and lock periods only after database-side readiness controls pass.', to: '/finance/accounting/close', status: 'Governed close active' }
     ]
   },
   {
@@ -217,11 +217,13 @@ export function AccountingExperiencePage() {
       narrative="Accounting intelligence with governed execution."
       visualReference="modules"
       actions={[
-        { label: 'Accounts Payable', to: '/finance/accounting/accounts-payable' },
-        { label: 'Automotive Sales Report', to: '/finance/accounting/reports/automotive-sales', variant: 'secondary' }
+        { label: 'General Ledger', to: '/finance/accounting/general-ledger' },
+        { label: 'Bank Reconciliation', to: '/finance/accounting/reconciliation', variant: 'secondary' },
+        { label: 'Period Close', to: '/finance/accounting/close', variant: 'secondary' },
+        { label: 'Accounts Payable', to: '/finance/accounting/accounts-payable', variant: 'secondary' }
       ]}
       sections={accountingSections}
-      statusNote="Inactive accounting capabilities are shown as readiness gates instead of links so ATLAS never implies a workflow exists before it is implemented and verified."
+      statusNote="Core ledger, reconciliation and close workflows use canonical Accounting contracts. External banking and payment-provider execution remains fail-closed until provider authorization is verified."
     />
   );
 }
