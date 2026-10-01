@@ -41,6 +41,8 @@ describe('ATLAS Assistant workspace', () => {
     expect(page).toContain('getAssistantBackgroundStatus');
     expect(page).toContain('Working in background…');
     expect(page).toContain('assistant_empty_response');
+    expect(page).not.toContain('Promise.all([getAssistantStatus(), listAssistantConversations()])');
+    expect(page).toContain('const completedText = String(state.output || state.text || \'\').trim()');
     expect(page).toContain("status?.local_runtime?.state === 'verified'");
     expect(page).toContain("localProvider?.verified === true");
   });
