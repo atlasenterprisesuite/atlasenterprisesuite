@@ -33,6 +33,10 @@ const productionContract = JSON.parse(readFileSync(
   'data/ops/global-production-verification.json',
   'utf8'
 )) as { public_routes: string[] };
+const authorizedVerifier = readFileSync(
+  'supabase/functions/atlas-cloudflare-production-http-verify/index.ts',
+  'utf8'
+);
 
 describe('ATLAS Cloud final audit contract', () => {
   it('uses one authenticated session client for protected Cloud API calls', () => {
@@ -118,6 +122,7 @@ describe('ATLAS Cloud final audit contract', () => {
       '/cloud/incidents'
     ]) {
       expect(productionContract.public_routes).toContain(route);
+      expect(authorizedVerifier).toContain(`'${route}'`);
     }
   });
 });
