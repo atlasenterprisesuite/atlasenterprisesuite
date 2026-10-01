@@ -88,13 +88,13 @@ function BusinessHome() {
 function FinanceHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Finance" title="Finance" description="Governed finance operations with Accounting as the first enterprise domain." />
+      <PageHeader eyebrow="ATLAS Finance" title="Finance" description="One governed financial ecosystem. Accounting is the system of record; tax, advisory, payroll and purchasing connect to it without duplicating ledgers." />
       <div className="module-grid">
-        <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Advisory · Client planning</span><strong>Financial Guidance</strong><p>Explainable 30-day liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting</span><strong>Accounts Receivable</strong><p>Live customers, invoices, line items, balances, issuance and payment recording.</p></Link>
-        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · Purchasing · AP</span><strong>Procure to Pay</strong><p>PO receiving, packing slips, three-way matching, inventory costing, AP and margin pricing.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting / Reports</span><strong>Automotive Sales</strong><p>Vehicle, F&I, fixed operations, inventory and floorplan financial reporting.</p></Link>
+        <Link className="module-card enabled accent" to="/finance/accounting"><span>Finance core</span><strong>Accounting Ecosystem</strong><p>Enter the canonical ledger domain for payables, receivables, reporting and governed accounting workflows.</p></Link>
+        <Link className="module-card enabled" to="/tax"><span>Finance · Connected domain</span><strong>ATLAS Tax</strong><p>Tax preparation and filing boundaries consume governed accounting evidence without becoming a parallel ledger.</p></Link>
+        <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Finance · Advisory</span><strong>Financial Guidance</strong><p>Explainable liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Operations → Accounting</span><strong>Procure to Pay</strong><p>Purchasing, receiving and three-way matching feed controlled AP and inventory accounting flows.</p></Link>
+        <Link className="module-card enabled" to="/payroll"><span>People → Accounting</span><strong>Payroll Integration</strong><p>Payroll remains a workforce domain while its approved financial impact flows into Accounting through governed postings.</p></Link>
       </div>
     </section>
   );
@@ -103,12 +103,29 @@ function FinanceHome() {
 function AccountingHome() {
   return (
     <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Working accounting slices share the same governed tenant scope and reporting contracts." />
+      <PageHeader eyebrow="ATLAS Finance / Accounting" title="Accounting Ecosystem" description="The financial temple inside ATLAS Finance: one accounting source of truth with operational workspaces and connected domains around the same tenant, permissions and audit boundaries." />
+
+      <div className="notice strong">
+        Canonical accounting status: AP, AR, procure-to-pay integration and automotive reporting are surfaced. Ledger, journals, bank/cash, reconciliation, fixed assets and period close stay visibly evidence-gated until their executable UI flows are complete.
+      </div>
+
       <div className="module-grid">
-        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging and payment application state.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Operations</span><strong>Accounts Receivable</strong><p>Customer invoicing, open balances, aging inputs and governed payment recording.</p></Link>
-        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · AP</span><strong>Procure to Pay</strong><p>Receive by PO, match packing slips and vendor invoices, calculate cost and post inventory/AP.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Reports</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed ops, inventory and floorplan controls.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting · Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging, approvals and payment application state.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting · Operations</span><strong>Accounts Receivable</strong><p>Customer invoicing, open balances, aging inputs and governed payment recording.</p></Link>
+        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Accounting · Connected operations</span><strong>Procure to Pay</strong><p>PO receiving, packing-slip evidence, three-way matching, inventory costing and AP handoff.</p></Link>
+        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting · Reporting</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed operations, inventory and floorplan controls.</p></Link>
+
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Ledger core</span><strong>General Ledger + Chart of Accounts</strong><p>Canonical contracts exist, but this surface remains closed until executable ledger and account workflows are wired and tested.</p></div>
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Posting</span><strong>Journal Entries</strong><p>Balanced draft, posting, reversal and locked-period controls remain gated until the complete UI path is verified.</p></div>
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Treasury</span><strong>Bank, Cash + Reconciliation</strong><p>Bank registry and reconciliation contracts are defined; no connected-bank or completed-reconciliation claim is shown without verified flows.</p></div>
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Assets</span><strong>Fixed Assets</strong><p>Asset and depreciation behavior remains gated until the register, schedule and posting workflow are executable end to end.</p></div>
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Close</span><strong>Period Close</strong><p>Close governance exists in the backend, but the operator workspace remains closed until checklist, authorization and lock evidence are surfaced.</p></div>
+        <div className="module-card disabled" aria-disabled="true"><span>Accounting · Statements</span><strong>Financial Reports</strong><p>Trial Balance, Profit & Loss, Balance Sheet and ledger detail will open only when all totals derive from the same verified accounting source.</p></div>
+      </div>
+
+      <div className="module-grid compact">
+        <Link className="module-card enabled" to="/tax"><span>Connected ecosystem</span><strong>Tax</strong><p>Consumes governed accounting evidence and preserves filing-specific controls.</p></Link>
+        <Link className="module-card enabled" to="/payroll"><span>Connected ecosystem</span><strong>Payroll</strong><p>Workforce calculations stay in Payroll; approved financial impact posts into Accounting.</p></Link>
       </div>
     </section>
   );
