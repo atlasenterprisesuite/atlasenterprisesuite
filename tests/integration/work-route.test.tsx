@@ -26,7 +26,13 @@ vi.mock('../../apps/web/src/work/api', async () => {
 
 vi.mock('../../apps/web/src/lib/atlasSession', async () => {
   const actual = await vi.importActual<typeof import('../../apps/web/src/lib/atlasSession')>('../../apps/web/src/lib/atlasSession');
-  return { ...actual, getActiveAtlasOrganization: vi.fn(async () => ({ id: 'org-1', role: 'owner' })) };
+  return {
+    ...actual,
+    getActiveAtlasOrganization: vi.fn(async () => ({ id: 'org-1', role: 'owner' })),
+    getCachedAtlasShellOrganization: vi.fn(() => ({
+      id: 'org-1', role: 'owner', name: 'ATLAS Test', legalName: null, active: true
+    }))
+  };
 });
 
 beforeEach(() => {
