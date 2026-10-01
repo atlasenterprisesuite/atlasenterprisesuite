@@ -43,6 +43,7 @@ export function KnowledgeCourseStudioPage() {
   const [sourceMaterial, setSourceMaterial] = useState('');
   const [knowledgeQuery, setKnowledgeQuery] = useState('');
   const [knowledgeResults, setKnowledgeResults] = useState<AtlasMemoryRecord[]>([]);
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const [course, setCourse] = useState<AtlasCoursePackage | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [runState, setRunState] = useState<'idle'|'running'|'success'|'error'>('idle');
@@ -80,6 +81,10 @@ export function KnowledgeCourseStudioPage() {
   }
 
   function addKnowledge(record: AtlasMemoryRecord) {
+    if (record.sensitivity === 'restricted') {
+      setMessage('Restricted Knowledge cannot be sent through Course Forge until a verified local/sovereign data-policy gate is available. The record remains protected.');
+      return;
+    }
     const provenance = [
       '',
       `[ATLAS KNOWLEDGE SOURCE: ${record.id} · ${record.title} · v${record.version}]`,
@@ -87,6 +92,7 @@ export function KnowledgeCourseStudioPage() {
       textOf(record)
     ].filter(Boolean).join('\n');
     setSourceMaterial(current => (current.trim() + '\n' + provenance).trim());
+    setSelectedSourceIds(current => current.includes(record.id) ? current : [...current, record.id]);
   }
 
   async function generateCourse() {
@@ -142,7 +148,7 @@ export function KnowledgeCourseStudioPage() {
         sourceType: 'atlas',
         sourceRef: conversationId ? `atlas-assistant:${conversationId}` : undefined,
         moduleIds: ['knowledge','learning'],
-        tags: ['atlas-course','course-studio', safeFilename(course.language), safeFilename(course.level)],
+        tags: ['atlas-course','course-studio', safeFilename(course.language), safeFilename(course.level), ...selectedSourceIds.slice(0, 20).map(id => `source:${id}`)],
         sensitivity: 'organization'
       });
       if (approve) {
@@ -197,7 +203,7 @@ export function KnowledgeCourseStudioPage() {
     </section>
 
     <section className="workspace-card page-stack" aria-labelledby="course-source-heading">
-      <div><p className="eyebrow">2 · Sources</p><h2 id="course-source-heading">Supply the knowledge ChatGPT/ATLAS should teach</h2><p className="muted">Paste a ChatGPT conversation, notes, research or source text. You can also pull already approved organizational knowledge below.</p></div>
+      <div><p className="eyebrow">2 · Sources</p><h2 id="course-source-heading">Supply the knowledge ChatGPT/ATLAS should teach</h2><p className="muted">Paste a ChatGPT conversation, notes, research or source text. You can also pull already approved organizational knowledge below. Restricted Knowledge is blocked from AI generation until a verified local/sovereign data-policy gate exists.</p></div>
       <label className="field"><span>Source material</span><textarea rows={14} value={sourceMaterial} onChange={event => setSourceMaterial(event.target.value)} placeholder="Paste the conversation or source material here…" /></label>
       {sourceTooLarge ? <p className="notice strong" role="alert">This source is larger than {MAX_SOURCE_CHARS.toLocaleString()} characters. This generation will use the first {MAX_SOURCE_CHARS.toLocaleString()} characters; split larger programs into governed source packs to avoid silent omission.</p> : null}
       <div className="toolbar">
