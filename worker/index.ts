@@ -856,7 +856,7 @@ export class AtlasRemoteRealtimeBus {
       const orgId = clean(request.headers.get('x-atlas-remote-org-id'), 80);
       const agentId = clean(request.headers.get('x-atlas-remote-agent-id'), 80);
       const mode = clean(request.headers.get('x-atlas-remote-mode'), 20);
-      if (!['agent', 'viewer'].includes(role) || !sessionId || !orgId || !agentId || !['view', 'control'].includes(mode)) {
+      if (!['agent', 'viewer'].includes(role) || !sessionId || !orgId || !agentId || mode !== 'view') {
         return json({ ok: false, error: 'remote_internal_identity_required' }, 403);
       }
 
