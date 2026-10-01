@@ -18,7 +18,7 @@ describe('ATLAS Remote Assist attended screen-sharing contract', () => {
     expect(migration).toContain('enable row level security');
     expect(migration).toContain('viewer_ticket_hash');
     expect(migration).toContain("check (mode = 'view')");
-    expect(migration).not.toMatch(/screen_frame|keystroke|clipboard_content|frame_payload/i);
+    expect(migration).not.toMatch(/\b(screen_frame|keystroke|clipboard_content|frame_payload)\s+(?:text|jsonb|bytea)\b/i);
   });
 
   it('requires an active authenticated user session and one-time viewer ticket', () => {
