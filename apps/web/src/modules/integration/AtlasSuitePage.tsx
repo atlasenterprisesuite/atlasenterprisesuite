@@ -15,6 +15,7 @@ export function AtlasSuitePage() {
   const [area, setArea] = useState('all');
   const [accessibleModuleIds, setAccessibleModuleIds] = useState<Set<string> | null>(null);
   const [accessError, setAccessError] = useState(false);
+  const accessLoading = accessibleModuleIds === null && !accessError;
 
   useEffect(() => {
     let cancelled = false;
@@ -70,12 +71,13 @@ export function AtlasSuitePage() {
       </header>
 
       <div className="metric-grid" aria-label="ATLAS module readiness summary">
-        <article><span>Available modules</span><strong>{availableModules.length}</strong><small>Entitlement + role filtered</small></article>
+        <article><span>Available modules</span><strong>{accessLoading ? '—' : availableModules.length}</strong><small>{accessLoading ? 'Verifying access' : 'Entitlement + role filtered'}</small></article>
         <article><span>Integrated</span><strong>{implemented}</strong><small>Canonical application slices; production verification is separate</small></article>
         <article><span>Integrated / partial</span><strong>{partial}</strong><small>Usable with explicit boundaries</small></article>
         <article><span>Pending external gates</span><strong>{externalGated}</strong><small>Provider verification required</small></article>
       </div>
 
+      {accessLoading ? <div className="notice" role="status" aria-live="polite">Verifying module entitlements and role permissions…</div> : null}
       {accessError ? <div className="notice strong" role="alert">Protected-module access could not be verified. ATLAS is showing only public entries.</div> : null}
 
       <section className="workspace-card" aria-label="Filter ATLAS modules">
@@ -111,7 +113,7 @@ export function AtlasSuitePage() {
         </div>
       </section>
 
-      {filteredModules.length ? (
+      {!accessLoading && filteredModules.length ? (
         <div className="module-grid" aria-label="ATLAS A-Z modules">
           {filteredModules.map((module) => (
             <Link className="module-card enabled" to={module.route} key={module.id}>
@@ -124,7 +126,7 @@ export function AtlasSuitePage() {
             </Link>
           ))}
         </div>
-      ) : (
+      ) : accessLoading ? null : (
         <div className="empty-state">
           <strong>No modules match these filters</strong>
           <span>Change the search, area or readiness filter.</span>
