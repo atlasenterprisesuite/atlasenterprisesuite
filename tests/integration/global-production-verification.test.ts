@@ -187,6 +187,10 @@ describe('ATLAS global production verification', () => {
     expect(cloudflareWorkflow).toContain('manager_readiness_route_reachable');
     expect(cloudflareWorkflow).toContain('/settings/accessibility/communication');
     expect(cloudflareWorkflow).toContain('accessibility_route_reachable');
+    expect(cloudflareWorkflow).toContain('AUTHORIZED_CONVERGED=false');
+    expect(cloudflareWorkflow).toContain('for ATTEMPT in 1 2 3 4 5; do');
+    expect(cloudflareWorkflow).toContain('Authorized production verification has not converged on attempt');
+    expect(cloudflareWorkflow).toContain('if [ "$AUTHORIZED_CONVERGED" = "true" ]; then');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
