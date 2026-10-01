@@ -31,7 +31,10 @@ export function RequireAtlasIdentity({ children }: { children: ReactNode }) {
       try {
         await getActiveAtlasOrganization();
         const module = resolveAtlasModuleForPath(location.pathname);
-        if (module?.requiresAuth) {
+        // This component is itself the protected-route boundary. If the route belongs
+        // to a registered module, enforce that module even when its top-level landing
+        // page is intentionally public.
+        if (module) {
           const access = await canAccessAtlasModule(module.id);
           if (!cancelled) setState(access?.allowed ? 'authorized' : 'forbidden');
           return;
