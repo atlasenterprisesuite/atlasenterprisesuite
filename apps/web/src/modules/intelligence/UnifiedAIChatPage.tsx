@@ -372,6 +372,19 @@ export function UnifiedAIChatPage() {
           void refreshHistory();
           return;
         }
+        if (state.work_handoff?.workflow_id) {
+          setMessages((current) => current.map((item) =>
+            item.key === placeholderKey
+              ? {
+                  ...item,
+                  text: 'Long-running work moved to ATLAS Work for durable continuation.',
+                  meta: 'Background · Handoff to Work · ' + state.work_handoff!.workflow_id.slice(0, 8)
+                }
+              : item
+          ));
+          void refreshHistory();
+          return;
+        }
         setMessages((current) => current.filter((item) => item.key !== placeholderKey));
         setError(state.error || 'background_failed');
         return;
