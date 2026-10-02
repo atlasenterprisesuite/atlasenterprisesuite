@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync('supabase/migrations/20261002184539_atlas_urban_twin_core.sql', 'utf8');
+const hardening = readFileSync('supabase/migrations/20261002184923_atlas_urban_twin_fk_index_hardening.sql', 'utf8');
 const repository = readFileSync('apps/web/src/modules/city/urbanTwinRepository.ts', 'utf8');
 const page = readFileSync('apps/web/src/modules/city/UrbanTwinPage.tsx', 'utf8');
 const app = readFileSync('apps/web/src/App.tsx', 'utf8');
@@ -18,6 +19,9 @@ describe('ATLAS Urban Twin Core', () => {
     expect(migration).toContain("city.twin.manage");
     expect(migration).toContain('revoke insert, update, delete on public.atlas_urban_twin_entities from authenticated');
     expect(migration).toContain('grant all on public.atlas_urban_twin_observations to service_role');
+    expect(hardening).toContain('atlas_urban_twin_entities_parent_scope_idx');
+    expect(hardening).toContain('atlas_urban_twin_bindings_entity_scope_idx');
+    expect(hardening).toContain('atlas_urban_twin_observations_binding_scope_idx');
   });
 
   it('loads only the active organization through the canonical authenticated session', () => {
