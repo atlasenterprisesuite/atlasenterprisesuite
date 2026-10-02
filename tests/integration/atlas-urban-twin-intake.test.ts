@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const edge = readFileSync('supabase/functions/atlas-urban-twin/index.ts', 'utf8');
+const edge = readFileSync('supabase/functions/atlas-platform-controls/index.ts', 'utf8');
 const config = readFileSync('supabase/config.toml', 'utf8');
 const migration = readFileSync('supabase/migrations/20261002190313_atlas_urban_twin_governed_intake.sql', 'utf8');
 const api = readFileSync('apps/web/src/modules/city/urbanTwinIntakeApi.ts', 'utf8');
@@ -10,9 +10,10 @@ const repository = readFileSync('apps/web/src/modules/city/urbanTwinRepository.t
 
 describe('ATLAS Urban Twin governed intake', () => {
   it('keeps the Edge Function authenticated and organization scoped', () => {
-    expect(config).toContain('[functions.atlas-urban-twin]');
+    expect(config).toContain('[functions.atlas-platform-controls]');
     expect(config).toContain('verify_jwt = true');
     expect(edge).toContain('auth.getUser(token)');
+    expect(edge).toContain("(api || '').startsWith('urban-twin-')");
     expect(edge).toContain("req.headers.get('x-atlas-org-id')");
     expect(edge).toContain(".from('organization_members')");
     expect(edge).toContain(".eq('status', 'active')");
@@ -23,8 +24,8 @@ describe('ATLAS Urban Twin governed intake', () => {
     expect(migration).toContain("('owner', 'city.twin.verify')");
     expect(migration).toContain("('admin', 'city.twin.verify')");
     expect(migration).not.toContain("('manager', 'city.twin.verify')");
-    expect(edge).toContain("requirePermission(req, ctx, 'city.twin.manage')");
-    expect(edge).toContain("requirePermission(req, ctx, 'city.twin.verify')");
+    expect(edge).toContain("urbanTwinPermission(ctx, 'city.twin.manage')");
+    expect(edge).toContain("urbanTwinPermission(ctx, 'city.twin.verify')");
   });
 
   it('creates all user-entered entities and bindings as unverified', () => {
@@ -41,7 +42,8 @@ describe('ATLAS Urban Twin governed intake', () => {
   });
 
   it('uses the control plane for writes while the repository remains read-only', () => {
-    expect(api).toContain('/functions/v1/atlas-urban-twin?api=');
+    expect(api).toContain('/functions/v1/atlas-platform-controls?api=');
+    expect(api).toContain('urban-twin-${api}');
     expect(api).toContain('registerUrbanTwinEntity');
     expect(api).toContain('verifyUrbanTwinTarget');
     expect(repository).not.toContain("method: 'POST'");
