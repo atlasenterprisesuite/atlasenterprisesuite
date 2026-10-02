@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import { webhooks as polarWebhooks } from 'npm:@polar-sh/sdk@1.0.1/2026-10';
 import {
   AuthorizeNetPaymentAdapter,
   CommercePaymentError,
@@ -24,6 +25,7 @@ const PUBLISHABLE_KEY =
   Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ||
   '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const POLAR_WEBHOOK_SECRET = Deno.env.get('POLAR_WEBHOOK_SECRET') || '';
 const ALLOW_ZERO_TOTAL_ORDERS =
   Deno.env.get('ATLAS_COMMERCE_ALLOW_ZERO_TOTAL_ORDERS') === 'true';
 const AUTHORIZE_NET_ECHECK_ENABLED =
@@ -90,6 +92,132 @@ function requiredText(value: unknown, code: string, max = 500) {
   const result = clean(value, max);
   if (!result) throw new EdgeError(code, 422);
   return result;
+}
+
+function requiredWebhookHeader(req: Request, name: string) {
+  const value = clean(req.headers.get(name), 500);
+  if (!value) throw new EdgeError('polar_webhook_headers_required', 400);
+  return value;
+}
+
+function polarHeaders(req: Request) {
+  return {
+    'webhook-id': requiredWebhookHeader(req, 'webhook-id'),
+    'webhook-timestamp': requiredWebhookHeader(req, 'webhook-timestamp'),
+    'webhook-signature': requiredWebhookHeader(req, 'webhook-signature')
+  };
+}
+
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function handlePolarWebhook(req: Request, raw: string) {
+  if (!POLAR_WEBHOOK_SECRET) {
+    throw new EdgeError('polar_webhook_not_configured', 503);
+  }
+
+  const headers = polarHeaders(req);
+  let event: any;
+  try {
+    event = polarWebhooks.validateEvent(raw, headers, POLAR_WEBHOOK_SECRET);
+  } catch (error) {
+    const name = error instanceof Error ? error.name : '';
+    if (name === 'PolarWebhookUnknownTypeError') {
+      return json(req, {
+        ok: true,
+        verified: true,
+        processed: false,
+        entitlementApplied: false,
+        reason: 'polar_event_type_not_supported'
+      }, 202);
+    }
+    throw new EdgeError('polar_webhook_signature_invalid', 403);
+  }
+
+  const providerEventId = headers['webhook-id'];
+  const eventType = requiredText(event?.type, 'polar_event_type_required', 120);
+  const subjectReference =
+    clean(event?.data?.id ?? event?.data?.subscription_id ?? event?.data?.order_id, 240) || null;
+  const payloadSha256 = await sha256Hex(raw);
+  const admin = adminClient();
+
+  const readExisting = async () => {
+    const result = await admin
+      .from('commerce_provider_events')
+      .select('id,event_type,payload_sha256')
+      .eq('provider', 'polar')
+      .eq('provider_event_id', providerEventId)
+      .maybeSingle();
+    if (result.error) throw new EdgeError('persistence_error', 500);
+    return result.data;
+  };
+
+  const existing = await readExisting();
+  if (existing) {
+    if (
+      String(existing.event_type) !== eventType ||
+      String(existing.payload_sha256) !== payloadSha256
+    ) {
+      throw new EdgeError('polar_webhook_replay_mismatch', 409);
+    }
+    return json(req, {
+      ok: true,
+      verified: true,
+      processed: true,
+      duplicate: true,
+      entitlementApplied: false,
+      eventId: providerEventId,
+      eventType
+    }, 202);
+  }
+
+  const { error } = await admin.from('commerce_provider_events').insert({
+    provider: 'polar',
+    provider_event_id: providerEventId,
+    event_type: eventType,
+    subject_reference: subjectReference,
+    payload_sha256: payloadSha256,
+    processing_state: 'verified_unbound',
+    verified_at: new Date().toISOString()
+  });
+
+  if (error) {
+    if (String((error as any).code || '') === '23505') {
+      const raced = await readExisting();
+      if (
+        raced &&
+        String(raced.event_type) === eventType &&
+        String(raced.payload_sha256) === payloadSha256
+      ) {
+        return json(req, {
+          ok: true,
+          verified: true,
+          processed: true,
+          duplicate: true,
+          entitlementApplied: false,
+          eventId: providerEventId,
+          eventType
+        }, 202);
+      }
+      throw new EdgeError('polar_webhook_replay_mismatch', 409);
+    }
+    throw new EdgeError('persistence_error', 500);
+  }
+
+  return json(req, {
+    ok: true,
+    verified: true,
+    processed: true,
+    duplicate: false,
+    entitlementApplied: false,
+    eventId: providerEventId,
+    eventType,
+    state: 'verified_unbound'
+  }, 202);
 }
 
 function userClient(req: Request) {
@@ -831,6 +959,11 @@ Deno.serve(async (req) => {
     const raw = await req.text();
     if (new TextEncoder().encode(raw).byteLength > MAX_REQUEST_BYTES) {
       throw new EdgeError('request_too_large', 413);
+    }
+
+    const requestUrl = new URL(req.url);
+    if (requestUrl.searchParams.get('provider') === 'polar-webhook') {
+      return await handlePolarWebhook(req, raw);
     }
 
     let body: JsonObject;
