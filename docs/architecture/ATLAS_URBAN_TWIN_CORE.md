@@ -46,3 +46,14 @@ Urban Twin stores relationships and verified evidence references between those s
 ## First production state
 
 The repository can legitimately contain zero entities, zero bindings and zero observations. An empty state means the foundation is available but no real physical twin has been registered. The UI must never replace an empty repository with fabricated operational metrics.
+
+## Governed physical intake
+
+The first-real-asset workflow is intentionally split:
+
+1. **Register** — creates an organization-scoped entity with `verification_state=unverified`.
+2. **Bind** — optionally links the entity to CleanScan, Device OS, GPS 4D, Work, a sensor, network or facility adapter; the binding is also `unverified`.
+3. **Review evidence** — owner/admin reviewers with `city.twin.verify` may promote an entity or binding only when non-secret evidence references are supplied.
+4. **Observe** — a verified entity/binding still does not imply live telemetry. Operational live state requires separately authenticated observations.
+
+Browser clients never receive table mutation authority. The `atlas-urban-twin` Edge Function validates the caller JWT, active organization membership and ATLAS permissions before using the server control plane for writes. Evidence references must never contain credentials, bearer tokens, API secrets or service-role material.
