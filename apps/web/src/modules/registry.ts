@@ -357,6 +357,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'city',
+    title: 'ATLAS Digital City',
+    navLabel: 'Digital City',
+    area: 'Spatial',
+    route: '/city',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Governed Orlando digital-district pilot that orchestrates spatial, mobility, device and network capabilities with explicit simulation/live boundaries.',
+    showInNavigation: true
+  },
+  {
     id: 'aviation',
     title: 'ATLAS Aviation',
     navLabel: 'Aviation',

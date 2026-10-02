@@ -1,0 +1,96 @@
+.atlas-district-page {
+  display:grid;
+  gap:18px;
+  min-height:calc(100vh - 96px);
+}
+.atlas-district-hero {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:24px;
+  padding:24px;
+  border:1px solid rgba(91,202,255,.16);
+  border-radius:22px;
+  background:
+    radial-gradient(circle at 78% 20%, rgba(45,168,255,.16), transparent 34%),
+    linear-gradient(135deg, rgba(5,16,34,.96), rgba(8,22,42,.86));
+  overflow:hidden;
+}
+.atlas-district-hero h1 { margin:2px 0 8px; font-size:clamp(34px,5vw,62px); line-height:.96; letter-spacing:-.045em; }
+.atlas-district-hero p:last-child { max-width:760px; margin-bottom:0; opacity:.78; }
+.atlas-district-mode { display:flex; gap:8px; padding:6px; border:1px solid rgba(255,255,255,.12); border-radius:999px; background:rgba(3,10,22,.62); }
+.atlas-district-mode button { min-height:38px; padding:0 16px; border-radius:999px; }
+.atlas-district-mode button[aria-pressed="true"] { outline:2px solid #44c8ff; outline-offset:1px; }
+.atlas-district-status-row { display:flex; flex-wrap:wrap; gap:8px; }
+.atlas-district-status { padding:7px 10px; border:1px solid rgba(255,255,255,.12); border-radius:999px; font-size:11px; letter-spacing:.055em; text-transform:uppercase; background:rgba(9,18,34,.7); }
+.atlas-district-status.ready,.atlas-district-status.simulation { border-color:rgba(67,211,255,.38); }
+.atlas-district-status.error,.atlas-district-status.gated { border-color:rgba(255,181,71,.5); }
+.atlas-district-status.live { border-color:rgba(43,224,136,.45); }
+.atlas-district-command-grid { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:16px; min-height:660px; }
+.atlas-district-map-shell { position:relative; min-height:660px; overflow:hidden; border:1px solid rgba(72,198,255,.22); border-radius:24px; background:#06101e; box-shadow:inset 0 0 80px rgba(22,127,255,.06); }
+.atlas-district-map { position:absolute; inset:0; }
+.atlas-district-map-overlay { position:absolute; inset:0; z-index:500; display:grid; place-items:center; padding:24px; text-align:center; background:rgba(4,11,23,.78); backdrop-filter:blur(10px); }
+.atlas-district-map-overlay.error { color:#ffd290; }
+.atlas-district-map-title { position:absolute; left:16px; top:16px; z-index:520; display:grid; gap:2px; padding:11px 13px; border:1px solid rgba(255,255,255,.13); border-radius:14px; background:rgba(4,12,27,.83); backdrop-filter:blur(14px); }
+.atlas-district-map-title span { font-size:10px; opacity:.66; letter-spacing:.08em; }
+.atlas-district-map-title strong { font-size:14px; }
+.atlas-district-sim-label,.atlas-district-live-gate { position:absolute; left:16px; bottom:16px; z-index:520; border-radius:14px; backdrop-filter:blur(14px); }
+.atlas-district-sim-label { padding:9px 12px; border:1px solid rgba(67,211,255,.28); background:rgba(4,12,27,.82); font-size:10px; letter-spacing:.09em; }
+.atlas-district-live-gate { right:16px; display:grid; gap:3px; padding:12px 14px; border:1px solid rgba(255,181,71,.38); background:rgba(31,18,4,.88); }
+.atlas-district-live-gate strong { color:#ffd290; font-size:11px; letter-spacing:.08em; }
+.atlas-district-live-gate span { font-size:12px; opacity:.8; }
+.atlas-district-marker { width:28px; height:28px; padding:0; border-radius:50%; border:2px solid rgba(255,255,255,.9); background:rgba(11,40,74,.9); box-shadow:0 0 0 7px rgba(55,196,255,.16),0 0 24px rgba(55,196,255,.48); cursor:pointer; }
+.atlas-district-marker span { display:block; width:8px; height:8px; margin:auto; border-radius:50%; background:#52d7ff; }
+.atlas-district-panel { display:grid; align-content:start; gap:14px; padding:18px; border:1px solid rgba(255,255,255,.1); border-radius:22px; background:linear-gradient(180deg,rgba(11,22,40,.9),rgba(6,14,28,.82)); }
+.atlas-district-panel-heading { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+.atlas-district-panel-heading h2 { margin:2px 0 0; }
+.atlas-district-panel-heading > span { padding:6px 8px; border-radius:999px; background:rgba(61,198,255,.12); font-size:12px; }
+.atlas-district-layer-list { display:grid; gap:8px; }
+.atlas-district-layer-list button { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; min-height:66px; padding:10px 12px; text-align:left; border:1px solid rgba(255,255,255,.08); border-radius:14px; background:rgba(255,255,255,.025); }
+.atlas-district-layer-list button.active { border-color:rgba(67,211,255,.24); background:rgba(67,211,255,.065); }
+.atlas-district-layer-list button > span:nth-child(2) { display:grid; gap:2px; }
+.atlas-district-layer-list button small { opacity:.62; line-height:1.25; }
+.atlas-district-layer-list button > span:last-child { font-size:10px; opacity:.7; }
+.atlas-district-layer-indicator { width:9px; height:9px; border-radius:50%; background:#465266; }
+.atlas-district-layer-list button.active .atlas-district-layer-indicator { background:#52d7ff; box-shadow:0 0 13px rgba(82,215,255,.75); }
+.atlas-district-truth-card { display:grid; gap:6px; margin-top:4px; padding:14px; border:1px solid rgba(255,255,255,.09); border-radius:16px; background:rgba(4,10,21,.62); }
+.atlas-district-truth-card span { font-size:10px; text-transform:uppercase; letter-spacing:.08em; opacity:.6; }
+.atlas-district-truth-card p { margin:0; font-size:12px; opacity:.7; }
+.atlas-district-foundation { display:grid; gap:14px; }
+.atlas-district-section-heading { display:flex; justify-content:space-between; align-items:end; gap:24px; }
+.atlas-district-section-heading h2 { margin:2px 0 0; }
+.atlas-district-section-heading > p { max-width:520px; margin:0; opacity:.65; text-align:right; }
+.atlas-district-link-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+.atlas-district-link-card { display:grid; align-content:start; gap:7px; min-height:170px; padding:16px; border:1px solid rgba(255,255,255,.09); border-radius:17px; background:linear-gradient(145deg,rgba(15,30,51,.72),rgba(7,15,29,.72)); text-decoration:none; color:inherit; }
+.atlas-district-link-card:hover { border-color:rgba(67,211,255,.3); transform:translateY(-1px); }
+.atlas-district-link-card > span,.atlas-district-link-card > small { font-size:10px; text-transform:uppercase; letter-spacing:.065em; opacity:.62; }
+.atlas-district-link-card strong { font-size:18px; }
+.atlas-district-link-card p { margin:0; font-size:12px; opacity:.7; }
+.atlas-district-link-card small { margin-top:auto; color:#64d9ff; opacity:1; }
+.atlas-district-roadmap { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; padding-bottom:8px; }
+.atlas-district-roadmap article { min-height:126px; padding:14px; border-top:2px solid rgba(79,207,255,.22); background:linear-gradient(180deg,rgba(45,162,255,.04),transparent); }
+.atlas-district-roadmap article > span { font-size:10px; opacity:.48; letter-spacing:.1em; }
+.atlas-district-roadmap article > strong { display:block; margin-top:7px; }
+.atlas-district-roadmap article > p { margin:6px 0 0; font-size:12px; opacity:.66; }
+@media (max-width:1180px) {
+  .atlas-district-command-grid { grid-template-columns:1fr; }
+  .atlas-district-panel { grid-template-columns:1fr 1fr; }
+  .atlas-district-panel-heading,.atlas-district-truth-card { grid-column:1 / -1; }
+  .atlas-district-link-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media (max-width:760px) {
+  .atlas-district-hero,.atlas-district-section-heading { display:grid; }
+  .atlas-district-section-heading > p { text-align:left; }
+  .atlas-district-mode { width:max-content; }
+  .atlas-district-command-grid,.atlas-district-map-shell { min-height:560px; }
+  .atlas-district-panel { grid-template-columns:1fr; }
+  .atlas-district-link-grid,.atlas-district-roadmap { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:520px) {
+  .atlas-district-hero { padding:18px; }
+  .atlas-district-map-shell { min-height:520px; border-radius:18px; }
+  .atlas-district-live-gate { right:10px; left:10px; bottom:10px; }
+  .atlas-district-sim-label { left:10px; bottom:10px; }
+  .atlas-district-map-title { left:10px; top:10px; }
+  .atlas-district-link-grid,.atlas-district-roadmap { grid-template-columns:1fr; }
+}
