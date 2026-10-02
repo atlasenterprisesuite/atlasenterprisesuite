@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   loadUrbanTwinSnapshot,
@@ -7,6 +7,7 @@ import {
   type UrbanTwinEntity,
   type UrbanTwinSnapshot
 } from './urbanTwinRepository';
+import { UrbanTwinIntakePanel } from './UrbanTwinIntakePanel';
 import './urbanTwin.css';
 
 const ENTITY_ORDER = ['district', 'site', 'building', 'floor', 'space', 'asset', 'infrastructure'] as const;
@@ -57,22 +58,22 @@ export function UrbanTwinPage() {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
+  const refresh = useCallback(async () => {
     setState('loading');
-    void loadUrbanTwinSnapshot()
-      .then((next) => {
-        if (cancelled) return;
-        setSnapshot(next);
-        setState('ready');
-      })
-      .catch((cause) => {
-        if (cancelled) return;
-        setError(cause instanceof Error ? cause.message : 'urban_twin_load_failed');
-        setState('error');
-      });
-    return () => { cancelled = true; };
+    setError('');
+    try {
+      const next = await loadUrbanTwinSnapshot();
+      setSnapshot(next);
+      setState('ready');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'urban_twin_load_failed');
+      setState('error');
+    }
   }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const summary = snapshot ? summarizeUrbanTwin(snapshot) : null;
   const entityById = useMemo(() => new Map((snapshot?.entities || []).map((entity) => [entity.id, entity.name])), [snapshot]);
@@ -122,6 +123,8 @@ export function UrbanTwinPage() {
             <article><strong>{summary.authenticatedObservations}</strong><span>authenticated observations</span></article>
             <article><strong>{summary.simulatedObservations}</strong><span>simulation observations</span></article>
           </section>
+
+          <UrbanTwinIntakePanel entities={snapshot.entities} bindings={snapshot.bindings} onChanged={refresh} />
 
           <section className="urban-twin-layout">
             <div className="urban-twin-main">
