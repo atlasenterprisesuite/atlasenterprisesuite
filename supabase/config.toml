@@ -28,5 +28,6 @@ verify_jwt = true
 [functions.atlas-wireless-commissioning]
 verify_jwt = true
 
-[functions.atlas-urban-twin]
+
+[functions.atlas-platform-controls]
 verify_jwt = true
