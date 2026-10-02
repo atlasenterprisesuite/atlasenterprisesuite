@@ -43,6 +43,56 @@ describe('ATLAS integration credential vault', () => {
     ).toEqual(original);
   });
 
+  it('supports provider-specific secret bundles while keeping them encrypted', async () => {
+    const original: ProviderCredentialPayload = {
+      secretValues: {
+        apiLoginId: 'fake-login-id',
+        transactionKey: 'fake-transaction-key'
+      }
+    };
+    const sealed = await sealCredential({
+      organizationId: 'org-a',
+      provider: 'authorize_net',
+      credential: original,
+      key
+    });
+
+    expect(JSON.stringify(sealed)).not.toContain('fake-login-id');
+    expect(JSON.stringify(sealed)).not.toContain('fake-transaction-key');
+    expect(await openCredential({
+      organizationId: 'org-a',
+      provider: 'authorize_net',
+      sealed,
+      key
+    })).toEqual(original);
+  });
+
+  it('supports the shared provider registry without treating unknown providers as valid', async () => {
+    for (const provider of ['cloudflare', 'stripe', 'openai', 'peach', 'onity'] as const) {
+      const sealed = await sealCredential({
+        organizationId: 'org-a',
+        provider,
+        credential: { accessToken: `fake-${provider}-token` },
+        key
+      });
+      expect(await openCredential({
+        organizationId: 'org-a',
+        provider,
+        sealed,
+        key
+      })).toEqual({ accessToken: `fake-${provider}-token` });
+    }
+
+    await expect(
+      sealCredential({
+        organizationId: 'org-a',
+        provider: 'unknown-provider' as any,
+        credential: credential(),
+        key
+      })
+    ).rejects.toThrow(/unsupported credential provider/i);
+  });
+
   it('binds ciphertext authentication to organization and provider', async () => {
     const sealed = await sealCredential({
       organizationId: 'org-a',
@@ -59,7 +109,7 @@ describe('ATLAS integration credential vault', () => {
     ).rejects.toThrow(/decryption/i);
   });
 
-  it('rejects malformed key and algorithm material', async () => {
+  it('rejects malformed key, algorithm and empty secret material', async () => {
     await expect(
       sealCredential({
         organizationId: 'org-a',
@@ -68,6 +118,15 @@ describe('ATLAS integration credential vault', () => {
         key: new Uint8Array(16)
       })
     ).rejects.toThrow(/32 bytes/i);
+
+    await expect(
+      sealCredential({
+        organizationId: 'org-a',
+        provider: 'stripe',
+        credential: { secretValues: {} },
+        key
+      })
+    ).rejects.toThrow(/secret values/i);
 
     const sealed = await sealCredential({
       organizationId: 'org-a',
@@ -87,11 +146,17 @@ describe('ATLAS integration credential vault', () => {
   });
 
   it('performs best-effort in-memory payload destruction after persistence/revocation work', () => {
-    const mutable = credential();
+    const mutable: ProviderCredentialPayload = {
+      ...credential(),
+      secretValues: {
+        apiKey: 'fake-api-key'
+      }
+    };
     destroyCredentialPayload(mutable);
     expect(mutable.accessToken).toBe('');
     expect(mutable.refreshToken).toBe('');
     expect(mutable.scopes).toEqual([]);
+    expect(mutable.secretValues).toEqual({ apiKey: '' });
     expect(mutable.expiresAt).toBeNull();
   });
 });
