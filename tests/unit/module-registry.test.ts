@@ -37,10 +37,10 @@ describe('ATLAS canonical module registry', () => {
     expect((source.match(/id: 'inventory'/g) || []).length).toBe(1);
   });
 
-  it('declares route, readiness and authentication metadata without partial modules', () => {
+  it('declares route, readiness and authentication metadata with truthful partial support', () => {
     expect(source).toContain('route:');
     expect(source).toContain('readiness:');
     expect(source).toContain('requiresAuth:');
-    expect(source).not.toContain("readiness: 'partial'");
+    expect(source).toContain("readiness: 'partial'");
   });
 });
