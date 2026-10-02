@@ -27,3 +27,8 @@ verify_jwt = true
 
 [functions.atlas-wireless-commissioning]
 verify_jwt = true
+
+[functions.atlas-commerce]
+# Public storefront reads and signed Polar webhooks share this function.
+# Workspace operations still authenticate and authorize inside atlas-commerce.
+verify_jwt = false
