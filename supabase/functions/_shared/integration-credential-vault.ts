@@ -1,4 +1,7 @@
-import type { IntegrationProvider } from '../../../packages/core/src/integrations.ts';
+import {
+  isIntegrationProvider,
+  type IntegrationProvider
+} from '../../../packages/core/src/integrations.ts';
 
 export type ProviderCredentialPayload = {
   accessToken: string;
@@ -6,6 +9,7 @@ export type ProviderCredentialPayload = {
   tokenType?: string;
   scopes?: string[];
   expiresAt?: number | null;
+  secretValues?: Record<string, string>;
 };
 
 export type SealedCredential = {
@@ -56,8 +60,28 @@ function normalizeKey(key: CredentialKey): Uint8Array {
 
 function assertScope(organizationId: string, provider: IntegrationProvider): void {
   if (!organizationId.trim()) throw new Error('Credential organization is required');
-  if (provider !== 'google' && provider !== 'hubspot') {
+  if (!isIntegrationProvider(provider)) {
     throw new Error('Unsupported credential provider');
+  }
+}
+
+function assertSecretValues(value: unknown): asserts value is Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Credential secret values are invalid');
+  }
+
+  const entries = Object.entries(value);
+  if (!entries.length || entries.length > 32) {
+    throw new Error('Credential secret values are invalid');
+  }
+
+  for (const [name, secret] of entries) {
+    if (!/^[A-Za-z0-9_.-]{1,80}$/.test(name)) {
+      throw new Error('Credential secret name is invalid');
+    }
+    if (typeof secret !== 'string' || !secret.trim() || secret.length > 16384) {
+      throw new Error('Credential secret value is invalid');
+    }
   }
 }
 
@@ -66,6 +90,7 @@ function assertCredential(value: unknown): asserts value is ProviderCredentialPa
     throw new Error('Credential payload is invalid');
   }
   const credential = value as ProviderCredentialPayload;
+
   if (typeof credential.accessToken !== 'string' || !credential.accessToken.trim()) {
     throw new Error('Credential access token is required');
   }
@@ -79,6 +104,9 @@ function assertCredential(value: unknown): asserts value is ProviderCredentialPa
     if (!Array.isArray(credential.scopes) || credential.scopes.some((scope) => typeof scope !== 'string')) {
       throw new Error('Credential scopes are invalid');
     }
+  }
+  if (credential.secretValues !== undefined) {
+    assertSecretValues(credential.secretValues);
   }
 }
 
@@ -185,5 +213,10 @@ export function destroyCredentialPayload(credential: ProviderCredentialPayload):
   credential.accessToken = '';
   if (credential.refreshToken !== undefined) credential.refreshToken = '';
   if (credential.scopes) credential.scopes.splice(0, credential.scopes.length);
+  if (credential.secretValues) {
+    for (const key of Object.keys(credential.secretValues)) {
+      credential.secretValues[key] = '';
+    }
+  }
   credential.expiresAt = null;
 }
