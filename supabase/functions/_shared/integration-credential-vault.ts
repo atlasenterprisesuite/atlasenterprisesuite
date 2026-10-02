@@ -4,7 +4,7 @@ import {
 } from '../../../packages/core/src/integrations.ts';
 
 export type ProviderCredentialPayload = {
-  accessToken?: string;
+  accessToken: string;
   refreshToken?: string;
   tokenType?: string;
   scopes?: string[];
@@ -91,18 +91,8 @@ function assertCredential(value: unknown): asserts value is ProviderCredentialPa
   }
   const credential = value as ProviderCredentialPayload;
 
-  const hasAccessToken =
-    typeof credential.accessToken === 'string' && Boolean(credential.accessToken.trim());
-  const hasSecretValues = credential.secretValues !== undefined;
-
-  if (!hasAccessToken && !hasSecretValues) {
-    throw new Error('Credential secret material is required');
-  }
-  if (
-    credential.accessToken !== undefined &&
-    typeof credential.accessToken !== 'string'
-  ) {
-    throw new Error('Credential access token is invalid');
+  if (typeof credential.accessToken !== 'string' || !credential.accessToken.trim()) {
+    throw new Error('Credential access token is required');
   }
   if (
     credential.refreshToken !== undefined &&
@@ -220,7 +210,7 @@ export async function openCredential(input: {
 }
 
 export function destroyCredentialPayload(credential: ProviderCredentialPayload): void {
-  if (credential.accessToken !== undefined) credential.accessToken = '';
+  credential.accessToken = '';
   if (credential.refreshToken !== undefined) credential.refreshToken = '';
   if (credential.scopes) credential.scopes.splice(0, credential.scopes.length);
   if (credential.secretValues) {
