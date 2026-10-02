@@ -25,6 +25,7 @@ const LAYERS: { id: DistrictLayer; label: string; detail: string }[] = [
 ];
 
 const COMMAND_LINKS = [
+  { to: '/city/twin', eyebrow: 'Physical twin', title: 'Urban Twin Core', description: 'Governed hierarchy and verified bindings for buildings, spaces and assets.' },
   { to: '/gps', eyebrow: 'Spatial intelligence', title: 'GPS 4D', description: 'Live mapping and navigation foundation.' },
   { to: '/ride', eyebrow: 'Mobility', title: 'Ride OS', description: 'Governed mobility and driver workflows.' },
   { to: '/connect', eyebrow: 'Communications', title: 'ATLAS Connect', description: 'Provider-aware communications control plane.' },

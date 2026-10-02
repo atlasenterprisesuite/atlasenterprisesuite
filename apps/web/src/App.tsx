@@ -30,6 +30,7 @@ import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { Gps4DPage } from './modules/gps/Gps4DPage';
 import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPage';
+import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
 import { FaithReflectionPage } from './modules/wellbeing/FaithReflectionPage';
 import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
 import { curabilityDefinitions } from '../../../packages/health/curability';
@@ -304,6 +305,7 @@ export function App() {
         <Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />
         <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/city" element={<RequireAtlasIdentity><AtlasDigitalDistrictPage /></RequireAtlasIdentity>} />
+        <Route path="/city/twin" element={<RequireAtlasIdentity><UrbanTwinPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/pay" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
