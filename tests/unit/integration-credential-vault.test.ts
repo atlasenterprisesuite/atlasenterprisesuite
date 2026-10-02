@@ -45,9 +45,9 @@ describe('ATLAS integration credential vault', () => {
 
   it('supports provider-specific secret bundles while keeping them encrypted', async () => {
     const original: ProviderCredentialPayload = {
+      accessToken: 'fake-transaction-key',
       secretValues: {
-        apiLoginId: 'fake-login-id',
-        transactionKey: 'fake-transaction-key'
+        apiLoginId: 'fake-login-id'
       }
     };
     const sealed = await sealCredential({
@@ -123,10 +123,10 @@ describe('ATLAS integration credential vault', () => {
       sealCredential({
         organizationId: 'org-a',
         provider: 'stripe',
-        credential: { secretValues: {} },
+        credential: { accessToken: '', secretValues: {} },
         key
       })
-    ).rejects.toThrow(/secret values/i);
+    ).rejects.toThrow(/access token/i);
 
     const sealed = await sealCredential({
       organizationId: 'org-a',
