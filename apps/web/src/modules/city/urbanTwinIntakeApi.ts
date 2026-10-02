@@ -3,7 +3,7 @@ import type { UrbanTwinEntityType } from './urbanTwinRepository';
 
 export type UrbanTwinIntakeCapabilities = {
   ok: true;
-  service: 'atlas-urban-twin';
+  service: 'atlas-platform-controls';
   can_manage: boolean;
   can_verify: boolean;
   role: string;
@@ -33,7 +33,7 @@ type VerifyInput = {
 
 async function request<T>(api: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
   const organization = await getActiveAtlasOrganization();
-  const response = await authorizedAtlasFetch(`/functions/v1/atlas-urban-twin?api=${encodeURIComponent(api)}`, {
+  const response = await authorizedAtlasFetch(`/functions/v1/atlas-platform-controls?api=${encodeURIComponent(`urban-twin-${api}`)}`, {
     method,
     headers: { 'x-atlas-org-id': organization.id },
     ...(body === undefined ? {} : { body: JSON.stringify(body) })
