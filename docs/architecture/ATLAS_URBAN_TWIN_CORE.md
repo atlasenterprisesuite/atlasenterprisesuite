@@ -56,4 +56,4 @@ The first-real-asset workflow is intentionally split:
 3. **Review evidence** — owner/admin reviewers with `city.twin.verify` may promote an entity or binding only when non-secret evidence references are supplied.
 4. **Observe** — a verified entity/binding still does not imply live telemetry. Operational live state requires separately authenticated observations.
 
-Browser clients never receive table mutation authority. The `atlas-urban-twin` Edge Function validates the caller JWT, active organization membership and ATLAS permissions before using the server control plane for writes. Evidence references must never contain credentials, bearer tokens, API secrets or service-role material.
+Browser clients never receive table mutation authority. The existing `atlas-platform-controls` Edge Function owns the Urban Twin mutation operations. It validates the caller JWT, active organization membership and ATLAS permissions before using the server control plane for writes. ATLAS does not create a parallel Edge Function solely for Urban Twin. Evidence references must never contain credentials, bearer tokens, API secrets or service-role material.
