@@ -112,6 +112,10 @@ describe('ATLAS Commerce routing and workspace UI', () => {
     expect(screen.getByText('Not stored')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Authorize.net merchant account' }))
       .toHaveAttribute('href', 'https://account.authorize.net/');
+    expect(screen.getByRole('heading', { name: 'Polar' })).toBeInTheDocument();
+    expect(screen.getByText('Webhook not verified')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open ATLAS subscription checkout' }))
+      .toHaveAttribute('href', '/subscriptions');
     await waitFor(() => expect(commerceApiMock).toHaveBeenCalledWith('payments.status'));
   });
 
