@@ -51,9 +51,10 @@ describe('ATLAS Work routes', () => {
     expect(await screen.findByRole('heading', { name: 'Work Command Center' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Work' })).toHaveAttribute('href', '/work');
     expect(await screen.findByText('Awaiting approval')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Needs attention' })).toBeInTheDocument();
 
-    const controlPlane = screen.getByRole('heading', { name: 'Control plane' }).closest('section');
+    const controlPlaneHeading = await screen.findByRole('heading', { name: 'Control plane' });
+    const controlPlane = controlPlaneHeading.closest('section');
     expect(controlPlane).not.toBeNull();
     const control = within(controlPlane as HTMLElement);
     expect(control.getByText('1 active of 1')).toBeInTheDocument();
@@ -68,9 +69,10 @@ describe('ATLAS Work routes', () => {
 
     expect(await screen.findByRole('heading', { name: 'Work Command Center' })).toBeInTheDocument();
     expect(await screen.findByText(/Live capability snapshot incomplete: connections_unavailable/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Needs attention' })).toBeInTheDocument();
 
-    const controlPlane = screen.getByRole('heading', { name: 'Control plane' }).closest('section');
+    const controlPlaneHeading = await screen.findByRole('heading', { name: 'Control plane' });
+    const controlPlane = controlPlaneHeading.closest('section');
     expect(controlPlane).not.toBeNull();
     expect(within(controlPlane as HTMLElement).getByText('Unavailable')).toBeInTheDocument();
   });
