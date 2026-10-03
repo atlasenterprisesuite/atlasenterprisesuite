@@ -13,14 +13,16 @@ export function AtlasSuitePage() {
   const [readiness, setReadiness] = useState<'all' | AtlasModuleReadiness>('all');
   const [area, setArea] = useState('all');
 
+  const visibleModules = useMemo(() => ATLAS_MODULES.filter((module) => !module.internalOnly), []);
+
   const areas = useMemo(
-    () => Array.from(new Set(ATLAS_MODULES.map((module) => module.area))).sort(),
+    () => Array.from(new Set(visibleModules.map((module) => module.area))).sort(),
     []
   );
 
   const filteredModules = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return ATLAS_MODULES.filter((module) => {
+    return visibleModules.filter((module) => {
       const matchesQuery = !normalizedQuery
         || [module.title, module.navLabel, module.area, module.description, module.route]
           .some((value) => value.toLowerCase().includes(normalizedQuery));
@@ -28,11 +30,11 @@ export function AtlasSuitePage() {
       const matchesArea = area === 'all' || module.area === area;
       return matchesQuery && matchesReadiness && matchesArea;
     });
-  }, [area, query, readiness]);
+  }, [area, query, readiness, visibleModules]);
 
-  const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
-  const partial = ATLAS_MODULES.filter((module) => module.readiness === 'partial').length;
-  const externalGated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
+  const implemented = visibleModules.filter((module) => module.readiness === 'implemented').length;
+  const partial = visibleModules.filter((module) => module.readiness === 'partial').length;
+  const externalGated = visibleModules.filter((module) => module.readiness === 'external-gated').length;
 
   return (
     <section className="page-stack">
@@ -46,7 +48,7 @@ export function AtlasSuitePage() {
       </header>
 
       <div className="metric-grid" aria-label="ATLAS module readiness summary">
-        <article><span>Registered modules</span><strong>{ATLAS_MODULES.length}</strong><small>One canonical registry</small></article>
+        <article><span>Available modules</span><strong>{visibleModules.length}</strong><small>User-facing ATLAS catalog</small></article>
         <article><span>Integrated</span><strong>{implemented}</strong><small>Canonical application slices; production verification is separate</small></article>
         <article><span>Integrated / partial</span><strong>{partial}</strong><small>Usable with explicit boundaries</small></article>
         <article><span>Pending external gates</span><strong>{externalGated}</strong><small>Provider verification required</small></article>

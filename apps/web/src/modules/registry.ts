@@ -12,6 +12,7 @@ export type AtlasModuleDefinition = {
   requiresAuth: boolean;
   description: string;
   showInNavigation: boolean;
+  internalOnly?: boolean;
 };
 
 export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
@@ -24,7 +25,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'Documentation, service discovery and governed administrative control over the existing ATLAS ecosystem.',
-    showInNavigation: true
+    showInNavigation: false,
+    internalOnly: true
   },
   {
     id: 'work',
@@ -409,7 +411,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'Internal release and production-readiness entry point for governed deployment evidence.',
-    showInNavigation: false
+    showInNavigation: false,
+    internalOnly: true
   },
   {
     id: 'execution',
@@ -420,7 +423,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'Guided execution, readiness and governed action orchestration.',
-    showInNavigation: true
+    showInNavigation: false,
+    internalOnly: true
   }
 ] as const;
 
