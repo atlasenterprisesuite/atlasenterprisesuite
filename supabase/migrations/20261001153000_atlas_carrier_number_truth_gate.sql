@@ -31,12 +31,10 @@ declare
   evidence_method text;
   evidence_digest text;
 begin
-  -- A discovered number is only inventory. It must not carry ownership proof.
   if new.state = 'discovered' then
     new.verified_at := null;
   end if;
 
-  -- Allocation and every stronger positive state require authenticated upstream identity/evidence.
   if new.state in ('allocated','verified','assigned','active') then
     if nullif(btrim(coalesce(new.upstream_provider, '')), '') is null
        or nullif(btrim(coalesce(new.external_resource_id, '')), '') is null then
@@ -68,23 +66,21 @@ begin
      where id = new.authorization_id
        and organization_id = new.organization_id;
 
+    -- Strict allow-list. Partner-path, pending, unknown and future states fail closed.
     if authorization_state is null
-       or authorization_state in ('not_started','fcc_application_pending','suspended','revoked') then
+       or authorization_state not in ('fcc_authorized','nanpa_ready') then
       raise exception 'atlas_number_authorization_not_ready';
     end if;
   end if;
 
-  -- VERIFIED and stronger states require an explicit server verification timestamp.
   if new.state in ('verified','assigned','active') and new.verified_at is null then
     raise exception 'atlas_number_server_verification_required';
   end if;
 
-  -- ACTIVE is a service claim, so it additionally requires a bound service.
   if new.state = 'active' and new.assigned_service is null then
     raise exception 'atlas_number_active_service_required';
   end if;
 
-  -- Prevent positive lifecycle rollback. Suspension/release remain allowed safety transitions.
   if tg_op = 'UPDATE'
      and old.state in ('allocated','verified','assigned','active')
      and new.state in ('discovered','reserved','ordered') then
@@ -103,4 +99,4 @@ before insert or update on public.atlas_number_resources
 for each row execute function public.atlas_enforce_number_resource_truth();
 
 comment on function public.atlas_enforce_number_resource_truth() is
-  'Fail-closed carrier numbering truth gate. Positive ownership/service states require authorization plus authenticated upstream allocation evidence.';
+  'Fail-closed carrier numbering truth gate. Positive ownership/service states require FCC-authorized or NANPA-ready authorization plus authenticated upstream allocation evidence.';
