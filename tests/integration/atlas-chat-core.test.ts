@@ -5,6 +5,7 @@ const read = (path: string) => existsSync(path) ? readFileSync(path, 'utf8') : '
 
 const migrationPath = 'supabase/migrations/20260925031000_atlas_chat_core.sql';
 const runtimeMigrationPath = 'supabase/migrations/20260925093000_atlas_chat_postgrest_runtime.sql';
+const filtersMigrationPath = 'supabase/migrations/20260928214500_atlas_chat_conversation_filters.sql';
 const workerPath = 'worker/index.ts';
 const wranglerPath = 'wrangler.jsonc';
 const routesPath = 'apps/web/src/modules/connect/ConnectRoutes.tsx';
@@ -79,6 +80,29 @@ describe('ATLAS Chat Core', () => {
     expect(worker).not.toContain('/functions/v1/atlas-chat');
   });
 
+  it('filters historical conversations server-side with tenant and membership enforcement', () => {
+    const sql = read(filtersMigrationPath);
+    const client = read(apiPath);
+    const page = read(pagePath);
+
+    expect(sql).toContain('create or replace function public.atlas_chat_list_conversations');
+    expect(sql).toContain('auth.uid()');
+    expect(sql).toContain("om.status = 'active'");
+    expect(sql).toContain("p_date_field not in ('activity','created')");
+    expect(sql).toContain("p_sort not in ('newest','oldest')");
+    expect(sql).toContain('p_from is null');
+    expect(sql).toContain('p_to is null');
+    expect(sql).toContain('grant execute on function public.atlas_chat_list_conversations');
+    expect(client).toContain("'/rest/v1/rpc/atlas_chat_list_conversations'");
+    expect(client).toContain('p_date_field');
+    expect(client).toContain('p_from');
+    expect(client).toContain('p_to');
+    expect(page).toContain('CHAT_FILTER_STORAGE_KEY');
+    expect(page).toContain('window.localStorage.setItem');
+    expect(page).toContain('conversationDateBounds');
+    expect(page).toContain('limit: 2000');
+  });
+
   it('uses one-time realtime tickets and a hibernating Durable Object with polling recovery', () => {
     const worker = read(workerPath);
     const wrangler = read(wranglerPath);
@@ -110,6 +134,12 @@ describe('ATLAS Chat Core', () => {
     expect(page).toContain('Export JSON');
     expect(page).toContain('Request deletion');
     expect(page).toContain('Messages are persisted before realtime notification is emitted');
+    expect(page).toContain('Conversation date filters');
+    expect(page).toContain('Last activity');
+    expect(page).toContain('Created');
+    expect(page).toContain('Newest first');
+    expect(page).toContain('Oldest first');
+    expect(page).toContain('No conversations match this filter');
   });
 
   it('adds ATLAS Chat to both fail-closed production route verifiers', () => {
