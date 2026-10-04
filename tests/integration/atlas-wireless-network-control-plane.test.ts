@@ -5,6 +5,7 @@ const read = (path: string) => existsSync(path) ? readFileSync(path, 'utf8') : '
 
 const migrationPath = 'supabase/migrations/20260925182000_atlas_wireless_network_control_plane.sql';
 const platformEdgePath = 'supabase/functions/atlas-platform-controls/index.ts';
+const sharedControlPath = 'supabase/functions/_shared/wireless-platform-control.ts';
 const legacyEdgePath = 'supabase/functions/atlas-wireless-network/index.ts';
 const configPath = 'supabase/config.toml';
 const routesPath = 'apps/web/src/modules/connect/ConnectRoutes.tsx';
@@ -34,20 +35,23 @@ describe('ATLAS Wireless network shared control plane', () => {
 
   it('exposes authenticated read operations through platform controls only', () => {
     const edge = read(platformEdgePath);
+    const source = read(sharedControlPath);
     const config = read(configPath);
 
     expect(existsSync(platformEdgePath)).toBe(true);
+    expect(existsSync(sharedControlPath)).toBe(true);
     expect(existsSync(legacyEdgePath)).toBe(false);
     expect(config).toContain('[functions.atlas-platform-controls]');
     expect(config).toMatch(/\[functions\.atlas-platform-controls\][\s\S]*?verify_jwt\s*=\s*true/);
     expect(config).not.toContain('[functions.atlas-wireless-network]');
-    expect(edge).toContain("req.headers.get('authorization')");
-    expect(edge).toContain("req.headers.get('x-atlas-org-id')");
-    expect(edge).toContain("'wireless-network-readiness'");
-    expect(edge).toContain("'wireless-network-inventory'");
-    expect(edge).toContain("'wireless.network.read'");
-    expect(edge).toContain('network_profile_not_configured');
-    expect(edge).toContain('technical_public_ready');
+    expect(edge).toContain("from '../_shared/wireless-platform-control.ts'");
+    expect(source).toContain("req.headers.get('authorization')");
+    expect(source).toContain("req.headers.get('x-atlas-org-id')");
+    expect(source).toContain("'wireless-network-readiness'");
+    expect(source).toContain("'wireless-network-inventory'");
+    expect(source).toContain("'wireless.network.read'");
+    expect(source).toContain('network_profile_not_configured');
+    expect(source).toContain('technical_public_ready');
   });
 
   it('routes the authenticated web surface through platform controls and never defaults to ready', () => {
