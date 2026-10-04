@@ -1,7 +1,7 @@
 # ATLAS Agent Capability + Missions Runtime — Design Specification
 
 Date: 2026-10-04
-Status: Approved written specification on 2026-10-04; ready for implementation planning
+Status: Approved written specification on 2026-10-04; implementation plan captured in `docs/superpowers/plans/2026-10-04-atlas-agent-capability-missions-runtime.md`
 Repository: `atlasenterprisesuite/atlasenterprisesuite`
 Design branch: `docs/agent-capability-missions-runtime`
 Owner layer: ATLAS shared platform / Universal Execution Engine
