@@ -34,6 +34,7 @@ import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
 import { AnalyticsRoutes } from '../modules/analytics/AnalyticsRoutes';
+import { MobileSettingsRoutes } from '../modules/settings/MobileSettingsRoutes';
 import {
   AutomationsIntegrationHub,
   ReleaseControlIntegrationHub,
@@ -109,6 +110,13 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/work' || pathname.startsWith('/work/')) {
     return <RequireAtlasIdentity><WorkRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (
+    (pathname === '/settings' || pathname.startsWith('/settings/'))
+    && pathname !== '/settings/accessibility/communication'
+  ) {
+    return <RequireAtlasIdentity><MobileSettingsRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/') return <FuturisticEnterpriseHome />;
