@@ -40,6 +40,19 @@ export type AtlasLocalDevice = {
   metadata: Record<string, unknown>;
 };
 
+export type AtlasScreenShareSession = {
+  id: string;
+  org_id: string;
+  device_id: string;
+  agent_id: string;
+  mode: 'view';
+  status: 'pending' | 'active' | 'denied' | 'ended' | 'expired';
+  consented_at: string | null;
+  expires_at: string;
+  ended_at: string | null;
+  created_at: string;
+};
+
 export type AtlasLocalCommand = {
   id: string;
   org_id: string;
@@ -177,4 +190,29 @@ export async function enqueueLocalDeviceCommand(input: {
     commandId: result.command.id
   });
   return { ...result, realtime };
+}
+
+
+export async function createScreenShareSession(deviceId: string) {
+  return post<{ ok: true; session: AtlasScreenShareSession }>('remote.sessions.create', {
+    device_id: deviceId,
+    mode: 'view'
+  });
+}
+
+export async function getScreenShareSessionStatus(sessionId: string) {
+  return post<{ ok: true; session: AtlasScreenShareSession }>('remote.sessions.status', {
+    session_id: sessionId
+  });
+}
+
+export async function createScreenShareViewerTicket(sessionId: string) {
+  return post<{ ok: true; viewer_ticket: string; expires_at: string }>(
+    'remote.sessions.viewer-ticket',
+    { session_id: sessionId }
+  );
+}
+
+export async function endScreenShareSession(sessionId: string) {
+  return post<{ ok: true }>('remote.sessions.end', { session_id: sessionId });
 }

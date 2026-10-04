@@ -9,6 +9,7 @@ import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { AtlasCloudRoutes } from '../modules/cloud/AtlasCloudRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
+import { RemoteAssistPage } from '../modules/device-os/RemoteAssistPage';
 import { EventsHomePage } from '../modules/events/EventsHomePage';
 import { FrontierRoutes } from '../modules/frontier/FrontierRoutes';
 import { AtlasGestationPage } from '../modules/release/AtlasGestationPage';
@@ -148,6 +149,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/galaxy') {
     return <RequireAtlasIdentity><AtlasGalaxyPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/device-os/remote') {
+    return <RequireAtlasIdentity><RemoteAssistPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/device-os') {
