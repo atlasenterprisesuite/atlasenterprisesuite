@@ -1,4 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import {
+  shouldApplyProviderState,
+  type AtlasCallState
+} from '../_shared/telephony-call-state.ts';
 import { verifyTelnyxWebhook } from '../_shared/telephony-webhook.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -41,7 +45,7 @@ function decodeClientState(value: unknown): Record<string, unknown> | null {
   }
 }
 
-function stateForEvent(eventType: string): string | null {
+function stateForEvent(eventType: string): AtlasCallState | null {
   if (eventType === 'call.initiated') return 'dialing';
   if (eventType === 'call.answered') return 'connected';
   if (eventType === 'call.hangup') return 'completed';
@@ -90,6 +94,11 @@ Deno.serve(async (req: Request) => {
   const clientState = decodeClientState(payload?.client_state);
   const sessionId = String(clientState?.session_id || '').trim();
   const state = stateForEvent(eventType);
+  const occurredAtRaw = String(event?.occurred_at || '').trim();
+  const occurredAtMs = Date.parse(occurredAtRaw);
+  const occurredAt = occurredAtRaw && Number.isFinite(occurredAtMs)
+    ? new Date(occurredAtMs).toISOString()
+    : null;
 
   if (!eventId || !eventType || !sessionId) {
     return json({ ok: false, error: 'webhook_event_incomplete' }, 400);
@@ -101,7 +110,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: session, error: sessionError } = await admin
     .from('atlas_call_sessions')
-    .select('id,organization_id,state')
+    .select('id,organization_id,state,provider_state_at,provider_state_event_id')
     .eq('id', sessionId)
     .eq('organization_id', orgId)
     .single();
@@ -118,35 +127,40 @@ Deno.serve(async (req: Request) => {
       provider_event_id: eventId,
       event_type: eventType,
       call_state: state,
-      provider_occurred_at: event?.occurred_at || null,
+      provider_occurred_at: occurredAt,
       evidence: {
         call_control_id: payload?.call_control_id || null,
         call_leg_id: payload?.call_leg_id || null,
         hangup_cause: payload?.hangup_cause || null,
-        hangup_source: payload?.hangup_source || null
+        hangup_source: payload?.hangup_source || null,
+        occurred_at_invalid: Boolean(occurredAtRaw && !occurredAt)
       }
     });
 
-  if (eventError) {
-    if (String(eventError.code || '') === '23505') return json({ ok: true, duplicate: true });
+  const duplicate = String(eventError?.code || '') === '23505';
+  if (eventError && !duplicate) {
     return json({ ok: false, error: 'event_persist_failed' }, 500);
   }
 
-  if (state) {
-    const patch: Record<string, unknown> = {
-      state,
-      provider_call_id: payload?.call_control_id || null,
-      updated_at: new Date().toISOString()
-    };
-    if (state === 'connected') patch.connected_at = event?.occurred_at || new Date().toISOString();
-    if (state === 'completed') patch.ended_at = event?.occurred_at || new Date().toISOString();
+  if (state && shouldApplyProviderState({
+    currentState: String(session.state) as AtlasCallState,
+    currentProviderStateAt: session.provider_state_at || null,
+    incomingState: state,
+    incomingOccurredAt: occurredAt
+  })) {
+    const { error: reconcileError } = await admin.rpc('atlas_apply_call_provider_state', {
+      p_organization_id: orgId,
+      p_call_session_id: sessionId,
+      p_event_id: eventId,
+      p_state: state,
+      p_occurred_at: occurredAt,
+      p_provider_call_id: payload?.call_control_id || null
+    });
 
-    await admin
-      .from('atlas_call_sessions')
-      .update(patch)
-      .eq('id', sessionId)
-      .eq('organization_id', orgId);
+    if (reconcileError) {
+      return json({ ok: false, error: 'state_reconcile_failed' }, 500);
+    }
   }
 
-  return json({ ok: true });
+  return json({ ok: true, duplicate });
 });
