@@ -37,6 +37,13 @@ describe('ATLAS Payroll control plane', () => {
     expect(migration).toContain('direct_deposit');
   });
 
+  it('requires immutable provider evidence before settled on insert or update', () => {
+    expect(migration).toContain('before insert or update on public.payroll_execution_intents');
+    expect(migration).toContain("tg_op = 'INSERT'");
+    expect(migration).toContain("e.normalized_state = 'settled'");
+    expect(migration).toContain("nullif(btrim(e.payload_hash),'') is not null");
+  });
+
   it('loads capability readiness from the governed RPC without inventing defaults', () => {
     expect(api).toContain('export type PayrollCapabilityState');
     expect(api).toContain('export type PayrollCapabilityReadiness');
