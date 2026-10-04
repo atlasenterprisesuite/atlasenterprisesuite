@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import {
   isE164,
   probeTelnyxVoice,
+  searchTelnyxAvailableNumbers,
   type TelnyxVoiceConfig
 } from '../_shared/telephony-telnyx.ts';
 
@@ -11,7 +12,7 @@ const PUBLISHABLE_KEY =
   Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ||
   '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const VERSION = 2;
+const VERSION = 3;
 
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
@@ -276,6 +277,70 @@ async function audit(
   }
 }
 
+async function searchNumbers(req: Request, ctx: RequestContext, url: URL) {
+  await requirePermission(req, ctx, 'communication.telephony.read');
+
+  const countryCode = clean(url.searchParams.get('country_code'), 2).toUpperCase();
+  const areaCode = clean(url.searchParams.get('area_code'), 8);
+  const rawLimit = clean(url.searchParams.get('limit'), 4);
+
+  if (countryCode && !/^[A-Z]{2}$/.test(countryCode)) {
+    throw new TelephonyError('number_search_country_invalid', 400);
+  }
+  if (areaCode && !/^\d{2,6}$/.test(areaCode)) {
+    throw new TelephonyError('number_search_area_invalid', 400);
+  }
+
+  let limit = 10;
+  if (rawLimit) {
+    const parsed = Number(rawLimit);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 20) {
+      throw new TelephonyError('number_search_limit_invalid', 400);
+    }
+    limit = parsed;
+  }
+
+  const loaded = await loadConfig(ctx);
+  if (loaded.provider !== 'telnyx' || !loaded.config) {
+    throw new TelephonyError('provider_not_ready', 503, {
+      blocker: 'provider_configuration_incomplete'
+    });
+  }
+
+  const readiness = await probeTelnyxVoice(loaded.config);
+  await persistReadiness(ctx, loaded.provider, readiness);
+  if (!readiness.verified) {
+    throw new TelephonyError('provider_not_ready', 503, {
+      blocker: readiness.blocker
+    });
+  }
+
+  const result = await searchTelnyxAvailableNumbers(loaded.config, {
+    ...(countryCode ? { countryCode } : {}),
+    ...(areaCode ? { areaCode } : {}),
+    limit
+  });
+
+  if (result.status === 'lookup_error') {
+    return json(req, {
+      ok: false,
+      provider: 'telnyx',
+      ownership: 'discovered_only',
+      ...result,
+      provider_secret_values_returned: false
+    }, result.statusCode === 429 ? 503 : 502);
+  }
+
+  return json(req, {
+    ok: true,
+    provider: 'telnyx',
+    ownership: 'discovered_only',
+    ...result,
+    provider_secret_values_returned: false,
+    checked_at: new Date().toISOString()
+  });
+}
+
 async function originate(req: Request, ctx: RequestContext) {
   await requirePermission(req, ctx, 'communication.telephony.call');
 
@@ -454,6 +519,10 @@ Deno.serve(async (req: Request) => {
         provider_secret_values_returned: false,
         checked_at: new Date().toISOString()
       });
+    }
+
+    if (operation === 'number-search' && req.method === 'GET') {
+      return await searchNumbers(req, ctx, url);
     }
 
     if (operation === 'call' && req.method === 'POST') {
