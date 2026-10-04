@@ -7,6 +7,8 @@ export * from './evidence';
 export * from './adapter';
 export * from './store';
 export * from './engine';
+export * from './capability-types';
+export * from './capability-registry';
 export * from './work-types';
 export * from './work-intent';
 export * from './work-routing';
