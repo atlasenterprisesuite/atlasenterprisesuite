@@ -25,6 +25,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/work',
   '/assistant',
   '/knowledge',
+  '/knowledge/bible',
   '/business',
   '/business/insights',
   '/advisory',
@@ -402,7 +403,8 @@ Deno.serve(async (req: Request) => {
   const statusRouteOk = statusRoute.status === 200;
   const canonicalModuleRoutesOk = canonicalModuleProbeEntries
     .every(([, result]) => result.status === 200);
-  const canonicalModuleRoutes = Object.fromEntries(canonicalModuleProbeEntries);
+  const canonicalModuleRoutes = Object.fromEntries(canonicalModuleProbeEntries) as Record<string, Probe>;
+  const bibleOS = canonicalModuleRoutes['/knowledge/bible'];
 
   const publicShellOk =
     home.status === 200 &&
@@ -425,6 +427,7 @@ Deno.serve(async (req: Request) => {
     receivables.status === 200 &&
     procureToPay.status === 200 &&
     knowledge.status === 200 &&
+    bibleOS.status === 200 &&
     voice.status === 200 &&
     health.status === 200 &&
     frontier.status === 200 &&
@@ -580,6 +583,7 @@ Deno.serve(async (req: Request) => {
         accounts_receivable_route_reachable: receivables.status === 200,
         procure_to_pay_route_reachable: procureToPay.status === 200,
         knowledge_route_reachable: knowledge.status === 200,
+        bible_os_route_reachable: bibleOS.status === 200,
         voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
         frontier_route_reachable: frontier.status === 200,
@@ -632,6 +636,7 @@ Deno.serve(async (req: Request) => {
         accounts_receivable: receivables,
         procure_to_pay: procureToPay,
         knowledge,
+        bible_os: bibleOS,
         voice,
         health,
         frontier,
