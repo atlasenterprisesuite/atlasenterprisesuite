@@ -33,6 +33,7 @@ import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPag
 import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
 import { FaithReflectionPage } from './modules/wellbeing/FaithReflectionPage';
 import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
+import { AtlasMaxPage } from './modules/atlas-max/AtlasMaxPage';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -69,6 +70,7 @@ function EnterpriseHome() {
         <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
         <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
+        <Link className="module-card enabled" to="/max"><span>Intelligence · Governed capacity</span><strong>ATLAS MAX</strong><p>Provider-neutral premium intelligence with evidence-backed entitlements, usage controls and Operators.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
     </section>
@@ -286,6 +288,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
         <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
