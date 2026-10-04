@@ -19,5 +19,16 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Run Payroll integration contracts only
-        run: npx vitest run tests/integration/payroll-route.test.tsx tests/integration/payroll-operations-workbench.test.ts --reporter=verbose
+      - name: Run full integration suite and print only failure summary
+        shell: bash
+        run: |
+          set +e
+          npm run test:integration > /tmp/vitest.log 2>&1
+          code=$?
+          echo '--- failure summary ---'
+          grep -E 'FAIL |Failed Tests|Test Files|Tests  |AssertionError|Error:' /tmp/vitest.log | tail -80 || true
+          if [ "$code" -ne 0 ]; then
+            echo '--- final context ---'
+            tail -80 /tmp/vitest.log
+          fi
+          exit "$code"
