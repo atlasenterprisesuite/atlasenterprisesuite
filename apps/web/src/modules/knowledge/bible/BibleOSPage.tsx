@@ -8,6 +8,7 @@ import {
   BIBLE_OS_VARIANTS,
   type BibleEvidenceState
 } from './bibleOsData';
+import './BibleOSPage.css';
 
 type BibleOSView = 'overview' | 'canon' | 'manuscripts' | 'variants' | 'graph';
 
@@ -90,6 +91,7 @@ function CanonMatrixPanel() {
             <strong>{profile.label}</strong>
             <p>{profile.note}</p>
             <EvidenceBadge state={profile.evidenceState} />
+            <SourceLinks sourceIds={profile.sourceIds} />
           </article>
         ))}
       </div>
@@ -116,6 +118,16 @@ function ManuscriptsPanel() {
               <p>{manuscript.scope}</p>
               <EvidenceBadge state={manuscript.evidenceState} />
               <small className="muted">Confidence: {manuscript.confidence}</small>
+              <dl className="bible-os-provenance-list">
+                <div><dt>Catalog</dt><dd>{manuscript.catalogIdentifiers.join(', ')}</dd></div>
+                <div><dt>Repository</dt><dd>{manuscript.repository}</dd></div>
+                <div><dt>Provenance</dt><dd>{manuscript.provenanceHistory}</dd></div>
+                <div><dt>Preserved scope</dt><dd>{manuscript.preservedPassages}</dd></div>
+                <div><dt>Lacunae</dt><dd>{manuscript.lacunae}</dd></div>
+                <div><dt>Corrections</dt><dd>{manuscript.corrections}</dd></div>
+                <div><dt>Rights</dt><dd>{manuscript.rightsLicense}</dd></div>
+              </dl>
+              <a href={manuscript.digitizationUrl} target="_blank" rel="noreferrer">Open digitization source</a>
               {source ? <a href={source.url} target="_blank" rel="noreferrer">Evidence source: {source.title}</a> : null}
             </article>
           );
@@ -155,7 +167,7 @@ function RelationshipGraphPanel() {
       <div className="workspace-card">
         <p className="eyebrow">Relationship Graph</p>
         <h2 id="bible-os-graph-heading">Connections with typed meaning and evidence</h2>
-        <p className="muted">The visual direction comes from large cross-reference arc maps, but every ATLAS edge must remain readable as text and expose its relation type, sources and confidence.</p>
+        <p className="muted">The visual direction comes from large cross-reference arc maps, but every ATLAS edge must remain readable as text and expose its relation type, sources, verification state and confidence.</p>
       </div>
       <div className="module-grid" aria-label="Bible OS relationship graph as accessible cards">
         {BIBLE_OS_RELATIONSHIPS.map(edge => (
@@ -163,7 +175,9 @@ function RelationshipGraphPanel() {
             <span>{edge.relation}</span>
             <strong>{edge.from} → {edge.to}</strong>
             <EvidenceBadge state={edge.evidenceState} />
-            <small className="muted">Confidence: {edge.confidence}</small>
+            <small className="muted">Confidence: {edge.confidence} · Verification: {edge.verificationStatus}</small>
+            <p>{edge.relationMethod}</p>
+            <small className="muted">Curated by {edge.creatorImporter} · verified {edge.verifiedAt}</small>
             <SourceLinks sourceIds={edge.sourceIds} />
           </article>
         ))}
@@ -187,7 +201,7 @@ export function BibleOSPage() {
         {VIEWS.map(item => (
           <button
             key={item.id}
-            className="execution-action"
+            className={`execution-action bible-os-view-button${view === item.id ? ' is-active' : ''}`}
             type="button"
             aria-pressed={view === item.id}
             onClick={() => setView(item.id)}
