@@ -43,13 +43,12 @@ export function evaluateTrustRequest(input: {
 }): TrustEvaluation {
   const { policy } = input;
   const risk = calculateRisk(input.serverReasons);
-  const mode: 'shadow' | 'enforce' = policy?.mode === 'enforce' ? 'enforce' : 'shadow';
   const minimumAssurance = policy?.minimum_assurance || baselineAssurance(input.actionClass);
   const policyId = policy?.id || 'platform-baseline-v1';
   const policyVersion = policy?.version || 1;
 
-  const result = evaluateTrustDecision({
-    mode,
+  const decisionInput = {
+    mode: policy?.mode === 'enforce' ? 'enforce' : 'shadow',
     actionClass: input.actionClass,
     minimumAssurance,
     observedAssurance: input.observedAssurance,
@@ -58,7 +57,8 @@ export function evaluateTrustRequest(input: {
     policyId,
     policyVersion,
     correlationId: input.correlationId
-  });
+  } as const;
+  const result = evaluateTrustDecision(decisionInput);
 
   return {
     decision: result.decision,
@@ -69,7 +69,7 @@ export function evaluateTrustRequest(input: {
     policyId,
     persistedPolicyId: policy?.id || null,
     policyVersion,
-    mode,
+    mode: decisionInput.mode,
     minimumAssurance
   };
 }
