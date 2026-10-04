@@ -21,7 +21,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Cloud',
     area: 'Platform',
     route: '/cloud',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: true,
     description: 'Documentation, service discovery and governed administrative control over the existing ATLAS ecosystem.',
     showInNavigation: true
@@ -65,9 +65,9 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Knowledge',
     area: 'Intelligence',
     route: '/knowledge',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: true,
-    description: 'Governed organizational memory for approved decisions, requirements, workflows, configuration and evidence.',
+    description: 'Governed organizational memory plus Course Forge for converting authorized conversations and knowledge into instructor-ready teaching packages.',
     showInNavigation: true
   },
   {
@@ -98,7 +98,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Advisory',
     area: 'Business',
     route: '/advisory',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: true,
     description: 'Firm, client, engagement and Business Launch 360 operations with governed external boundaries.',
     showInNavigation: true
@@ -120,7 +120,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Accounting',
     area: 'Finance',
     route: '/finance/accounting',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: false,
     description: 'Canonical accounting entry point across payable, receivable, inventory, reporting and governed finance workflows.',
     showInNavigation: false
@@ -241,9 +241,9 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Learning',
     area: 'People',
     route: '/learning',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: false,
-    description: 'Structured learning, practice and measurable progress.',
+    description: 'Approved course delivery, instructor-ready teaching packages, structured practice and measurable progress.',
     showInNavigation: true
   },
   {
@@ -373,7 +373,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Aviation',
     area: 'Mobility',
     route: '/mobility/aviation',
-    readiness: 'implemented',
+    readiness: 'partial',
     requiresAuth: true,
     description: 'Evidence-aware aircraft, certification and advanced-air-mobility intelligence.',
     showInNavigation: true

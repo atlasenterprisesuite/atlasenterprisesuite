@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   approveAtlasMemory,
   createAtlasMemoryDraft,
@@ -288,6 +289,11 @@ export function KnowledgeAtlasPage({
         <h1 id="knowledge-atlas-heading">{heading}</h1>
         <p>{description}</p>
       </header>
+
+      <div className="module-grid" aria-label="Knowledge Atlas actions">
+        <Link className="module-card enabled" to="/knowledge/course-studio"><span>Course Forge</span><strong>Turn knowledge into a complete course</strong><p>Use conversations, approved knowledge or pasted research to generate instructor scripts, exercises, assessments and an exportable teaching package.</p></Link>
+        <Link className="module-card enabled" to="/learning/courses"><span>ATLAS Learning</span><strong>Approved course library</strong><p>Deliver only explicitly approved Course Forge packages; drafts and unapproved AI output stay out of the learner library.</p></Link>
+      </div>
 
       <div className="metric-grid" aria-label="ATLAS Memory status" aria-live="polite">
         <article><span>Approved</span><strong>{memoryStats?.approved ?? '—'}</strong><small>Approved organizational knowledge</small></article>

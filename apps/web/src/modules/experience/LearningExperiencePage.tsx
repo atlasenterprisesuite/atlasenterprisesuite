@@ -4,8 +4,20 @@ const learningSections: ModuleExperienceSection[] = [
   {
     eyebrow: 'Practice Lab',
     title: 'Learning routines with visible boundaries',
-    description: 'ATLAS Learning exposes the implemented neuroplasticity practice route while broader learning intelligence remains explicit about what is and is not clinically measured.',
+    description: 'ATLAS Learning combines approved instructor-led course delivery with the existing neuroplasticity practice program while keeping learning evidence and clinical boundaries explicit.',
     cards: [
+      {
+        label: 'Course Library',
+        title: 'Approved instructor-led courses',
+        description: 'Open complete courses generated from governed knowledge. Only explicitly approved Course Forge packages appear in this library.',
+        to: '/learning/courses'
+      },
+      {
+        label: 'Course Forge',
+        title: 'Create a course from ChatGPT or ATLAS knowledge',
+        description: 'Turn a conversation, research pack or approved Knowledge record into lesson scripts, exercises, assessments and an instructor package.',
+        to: '/knowledge/course-studio'
+      },
       {
         label: 'Practice Lab',
         title: 'Neuroplasticity Program',
@@ -58,8 +70,8 @@ export function LearningExperiencePage() {
     <ModuleExperiencePage
       eyebrow="ATLAS Learning"
       title="Learning"
-      description="Structured practice, learning readiness and measurable activity progress inside the governed ATLAS ecosystem."
-      narrative="Practice, recovery and measurable progress under one governed learning context."
+      description="Approved courses, instructor-ready teaching packages, structured practice and measurable activity progress inside the governed ATLAS ecosystem."
+      narrative="Knowledge becomes teachable curriculum; approved curriculum becomes structured learning and measurable practice."
       visualReference="modules"
       sections={learningSections}
       statusNote="ATLAS Learning reports practice activity and program state only. It does not convert educational engagement into a clinical or neurological claim."
