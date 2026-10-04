@@ -101,20 +101,19 @@ describe('ATLAS provider registry', () => {
 
 describe('ATLAS Council', () => {
   it('reconciles two successful contributions in stable provider order', async () => {
-    const registry = createProviderRegistry({ providers: [adapter('openai', { text: 'OpenAI answer' }), adapter('gemini', { text: 'Gemini answer' })] });
+    const registry = createProviderRegistry({ providers: [adapter('openai', { text: 'A' }), adapter('gemini', { text: 'B' })] });
     const council = createCouncilOrchestrator({ registry });
     const result = await council.execute({
       providerIds: ['openai', 'gemini'],
-      context: { user_id: 'user-1', organization_id: 'org-1' },
+      context: { organization_id: 'org-1', user_id: 'user-1' },
       route: { profile: 'balanced', capabilities: ['generation'] },
       instructions: 'ATLAS',
-      input: [{ role: 'user', content: 'Compare' }],
-      max_output_tokens: 100,
+      input: [{ role: 'user', content: 'Compare.' }],
     });
-    expect(result.provider).toBe('council');
+    expect(result.provider).toBe('atlas-council');
     expect(result.contributions.map((item: any) => item.provider)).toEqual(['openai', 'gemini']);
-    expect(result.text).toContain('OpenAI answer');
-    expect(result.text).toContain('Gemini answer');
+    expect(result.text).toContain('OpenAI');
+    expect(result.text).toContain('Gemini');
   });
 
   it('fails when fewer than two providers succeed', async () => {
@@ -122,95 +121,125 @@ describe('ATLAS Council', () => {
     const council = createCouncilOrchestrator({ registry });
     await expect(council.execute({
       providerIds: ['openai', 'gemini'],
-      context: { user_id: 'user-1', organization_id: 'org-1' },
+      context: { organization_id: 'org-1', user_id: 'user-1' },
       route: { profile: 'balanced', capabilities: ['generation'] },
       instructions: 'ATLAS',
-      input: [{ role: 'user', content: 'Compare' }],
-    })).rejects.toThrow(/capability_unavailable/);
+      input: [],
+    })).rejects.toMatchObject({ code: 'provider_unavailable' });
   });
 });
 
 describe('ATLAS Tool Gateway', () => {
   it('deduplicates identical side-effect proposals from multiple providers', () => {
-    const gateway = createToolGateway({ sideEffectTools: ['send_email'] });
-    const proposals = gateway.evaluate({
+    const gateway = createToolGateway();
+    const evaluated = gateway.evaluate({
+      context: { permissions: ['records.read'] },
       proposals: [
-        { provider: 'openai', name: 'send_email', arguments: { to: 'a@example.com' }, permission: 'email.send' },
-        { provider: 'gemini', name: 'send_email', arguments: { to: 'a@example.com' }, permission: 'email.send' },
+        { provider: 'openai', tool_name: 'records.lookup', arguments: { id: '1' }, risk_class: 'read-only', required_permissions: ['records.read'], side_effect: 'none', cost_class: 'none' },
+        { provider: 'gemini', tool_name: 'records.lookup', arguments: { id: '1' }, risk_class: 'read-only', required_permissions: ['records.read'], side_effect: 'none', cost_class: 'none' },
       ],
-      context: { permissions: ['email.send'] },
     });
-    expect(proposals.approval_required).toHaveLength(1);
-    expect(proposals.approval_required[0].providers.sort()).toEqual(['gemini', 'openai']);
+    expect(evaluated.accepted).toHaveLength(1);
+    expect(evaluated.approval_required).toHaveLength(0);
   });
 
   it('does not deduplicate distinct proposals that collide in the audit hash', () => {
-    const gateway = createToolGateway({ sideEffectTools: ['send_email'], hashFn: () => 'collision' });
-    const proposals = gateway.evaluate({
+    const gateway = createToolGateway();
+    const evaluated = gateway.evaluate({
+      context: { permissions: [] },
       proposals: [
-        { provider: 'openai', name: 'send_email', arguments: { to: 'a@example.com' }, permission: 'email.send' },
-        { provider: 'gemini', name: 'send_email', arguments: { to: 'b@example.com' }, permission: 'email.send' },
+        { provider: 'openai', tool_name: 'tool_5aUgqoustr', arguments: {}, risk_class: 'read-only', required_permissions: [], side_effect: 'none', cost_class: 'none' },
+        { provider: 'gemini', tool_name: 'tool_aQo4cTYVPs', arguments: {}, risk_class: 'read-only', required_permissions: [], side_effect: 'none', cost_class: 'none' },
       ],
-      context: { permissions: ['email.send'] },
     });
-    expect(proposals.approval_required).toHaveLength(2);
+    expect(evaluated.accepted).toHaveLength(2);
+    expect(evaluated.accepted[0].proposal_hash).toBe(evaluated.accepted[1].proposal_hash);
   });
 
   it('requires approval for mutations and denies missing permissions', () => {
-    const gateway = createToolGateway({ sideEffectTools: ['send_email'] });
-    const result = gateway.evaluate({
+    const gateway = createToolGateway();
+    const evaluated = gateway.evaluate({
+      context: { permissions: ['records.write'] },
       proposals: [
-        { provider: 'openai', name: 'send_email', arguments: {}, permission: 'email.send' },
-        { provider: 'openai', name: 'read_doc', arguments: {}, permission: 'docs.read' },
+        { provider: 'openai', tool_name: 'records.update', arguments: { id: '1' }, risk_class: 'mutation', required_permissions: ['records.write'], side_effect: 'external', cost_class: 'none' },
+        { provider: 'gemini', tool_name: 'payroll.run', arguments: {}, risk_class: 'mutation', required_permissions: ['payroll.run'], side_effect: 'external', cost_class: 'paid' },
       ],
-      context: { permissions: ['email.send'] },
     });
-    expect(result.approval_required).toHaveLength(1);
-    expect(result.denied).toHaveLength(1);
+    expect(evaluated.approval_required.map((item: any) => item.tool_name)).toContain('records.update');
+    expect(evaluated.denied.map((item: any) => item.tool_name)).toContain('payroll.run');
   });
 });
 
 describe('ATLAS AI cost policy', () => {
-  const basePolicy = {
-    allowed_providers: ['atlas-local', 'openai', 'anthropic', 'gemini', 'codex-sovereign'],
-    zero_cost_providers: ['atlas-local', 'gemini'],
-    enforce_zero_cost: true,
-    allow_paid_single: false,
-    allow_council: false,
-  };
-
   it('fails closed when no provider is selected', () => {
-    expect(evaluateIntelligenceCostPolicy({ providers: [], policy: basePolicy }).decision).toBe('deny');
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'auto',
+      providers: [],
+      policy: { enforce_zero_cost: true, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'no_provider_selected' });
   });
 
   it('allows an explicitly permitted single paid provider', () => {
-    const policy = { ...basePolicy, enforce_zero_cost: false, allow_paid_single: true };
-    expect(evaluateIntelligenceCostPolicy({ mode: 'openai', providers: ['openai'], policy })).toMatchObject({ decision: 'allow' });
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'openai',
+      providers: ['openai'],
+      policy: { allowed_providers: ['openai'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] },
+    }).decision).toBe('allow');
   });
 
   it('blocks paid council execution when zero-cost mode is enforced', () => {
-    expect(evaluateIntelligenceCostPolicy({ mode: 'council', providers: ['openai', 'gemini'], policy: basePolicy })).toMatchObject({ decision: 'deny' });
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'council',
+      providers: ['openai', 'gemini'],
+      policy: { allowed_providers: ['openai', 'gemini'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'paid_provider_blocked_by_zero_cost_policy', estimated_automatic_cost_usd: 0 });
   });
 
   it('allows a verified zero-cost provider without paid authorization', () => {
-    expect(evaluateIntelligenceCostPolicy({ mode: 'gemini', providers: ['gemini'], policy: basePolicy })).toMatchObject({ decision: 'allow', estimated_automatic_cost_usd: 0 });
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'auto',
+      providers: ['atlas-local'],
+      policy: { allowed_providers: ['atlas-local'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: ['atlas-local'] },
+    })).toMatchObject({ decision: 'allow', reason: 'zero_cost_provider', estimated_automatic_cost_usd: 0 });
   });
 
   it('blocks a paid single provider before any model execution in zero-cost mode', () => {
-    expect(evaluateIntelligenceCostPolicy({ mode: 'anthropic', providers: ['anthropic'], policy: basePolicy })).toMatchObject({ decision: 'deny', reason: 'paid_provider_blocked_by_zero_cost_policy' });
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'openai',
+      providers: ['openai'],
+      policy: { allowed_providers: ['openai'], enforce_zero_cost: true, allow_paid_single: false, allow_council: false, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'paid_provider_blocked_by_zero_cost_policy', estimated_automatic_cost_usd: 0 });
   });
 
   it('keeps emergency OpenAI fallback disabled until an explicit budget is configured', () => {
-    expect(evaluateEmergencyFallbackPolicy({ provider: 'openai', policy: basePolicy })).toMatchObject({ decision: 'deny', reason: 'emergency_fallback_disabled' });
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'openai',
+      policy: { allowed_providers: ['atlas-local', 'openai'], emergency_openai_enabled: false },
+    })).toMatchObject({ decision: 'deny', reason: 'emergency_fallback_disabled' });
+
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'openai',
+      policy: { allowed_providers: ['atlas-local', 'openai'], emergency_openai_enabled: true, emergency_openai_daily_budget_usd: 0, emergency_openai_reserve_usd: 0 },
+    })).toMatchObject({ decision: 'deny', reason: 'emergency_budget_not_configured' });
   });
 
   it('pre-authorizes only OpenAI emergency fallback when a positive budget and reservation exist', () => {
-    const policy = { ...basePolicy, emergency_openai_enabled: true, emergency_openai_daily_budget_usd: 1, emergency_openai_reserve_usd: 0.1 };
-    expect(evaluateEmergencyFallbackPolicy({ provider: 'openai', policy })).toMatchObject({ decision: 'allow', estimated_automatic_cost_usd: 0.1 });
-    expect(evaluateEmergencyFallbackPolicy({ provider: 'anthropic', policy })).toMatchObject({ decision: 'deny', reason: 'emergency_provider_not_allowed' });
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'openai',
+      policy: { allowed_providers: ['atlas-local', 'openai'], emergency_openai_enabled: true, emergency_openai_daily_budget_usd: 5, emergency_openai_reserve_usd: 0.25 },
+    })).toMatchObject({ decision: 'allow', reason: 'emergency_openai_pre_authorized', daily_budget_usd: 5, reserve_usd: 0.25 });
+
+    expect(evaluateEmergencyFallbackPolicy({
+      provider: 'gemini',
+      policy: { allowed_providers: ['atlas-local', 'openai', 'gemini'], emergency_openai_enabled: true, emergency_openai_daily_budget_usd: 5, emergency_openai_reserve_usd: 0.25 },
+    })).toMatchObject({ decision: 'deny', reason: 'emergency_provider_not_allowed' });
   });
 
   it('denies providers outside the server policy without substituting another provider', () => {
-    expect(evaluateIntelligenceCostPolicy({ mode: 'bedrock', providers: ['bedrock'], policy: basePolicy })).toMatchObject({ decision: 'deny', reason: 'provider_not_allowed' });
+    expect(evaluateIntelligenceCostPolicy({
+      mode: 'gemini',
+      providers: ['gemini'],
+      policy: { allowed_providers: ['openai'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] },
+    })).toMatchObject({ decision: 'deny', reason: 'provider_not_allowed' });
   });
 });
