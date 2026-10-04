@@ -11,3 +11,7 @@ Pre-flight shared interfaces:
 - Evidence/Support -> Master closeout: persisted preferences, diagnostics and billing states consumed by final account/preferences/about and production checks. Clean.
 
 Global gate: no `verified`, `granted`, `paid`, `active`, `restored`, `connected` or equivalent success state without authenticated/current evidence.
+
+Foundation Task 1: Ruling: GitHub Contents commits each file mutation separately, so the task cannot be represented by one atomic implementation commit through this connector; preserve the exact RED→GREEN sequence and focused file set instead — cost if wrong: noisier history, not a runtime behavior change.
+
+Foundation Task 1: complete (RED head `e8547bb`: ATLAS Mobile CI run `37190368107` failed only because `packages/mobile-experience/runtime` and `permissions` did not exist; GREEN head `96a656e`: run `37190492605`, job `111401447161`, `npm ci` success, 2 test files / 8 tests passed).
