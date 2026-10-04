@@ -24,15 +24,17 @@ export function createProviderRegistry({providers=[]}={}){
   async function readiness({profile='balanced'}={}){
     return Promise.all(ORDER.map(async id=>{
       const adapter=get(id);
-      if(!adapter)return {id,state:'configuration-required',configured:false,verified:false,model:null,capabilities:[],profiles:[],error:'provider_not_configured'};
+      if(!adapter)return {id,state:'configuration-required',configured:false,verified:false,model:null,model_verification_state:'configuration-required',capabilities:[],profiles:[],error:'provider_not_configured'};
       const descriptor=safeDescriptor(adapter);let probe;
       try{probe=await adapter.probe({profile});}catch(error){probe={configured:descriptor.configured,verified:false,provider:id,model:descriptor.model||descriptor.models?.[profile]||null,error:error?.code||'provider_unavailable'};}
+      const state=stateFor(probe);
       return {
         id,
-        state:stateFor(probe),
+        state,
         configured:probe?.configured===true,
         verified:probe?.verified===true,
         model:probe?.model||descriptor.model||descriptor.models?.[profile]||null,
+        model_verification_state:probe?.verified===true?'verified':state,
         capabilities:descriptor.capabilities,
         profiles:descriptor.profiles,
         api:descriptor.api,
