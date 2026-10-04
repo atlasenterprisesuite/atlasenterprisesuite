@@ -3,11 +3,12 @@ import { createIntelligenceGateway, createIntelligenceRouter } from '../../supab
 import { createProviderRegistry } from '../../supabase/functions/atlas-copilot/provider-registry.mjs';
 import { createCouncilOrchestrator } from '../../supabase/functions/atlas-copilot/council-orchestrator.mjs';
 import { createToolGateway } from '../../supabase/functions/atlas-copilot/tool-gateway.mjs';
+import { createAgentRuntimeRegistry } from '../../supabase/functions/atlas-copilot/agent-runtime.mjs';
 
 function fakeAdapter(id: 'atlas-local' | 'openai' | 'gemini' | 'codex-sovereign', options: { failCode?: string } = {}) {
   return {
     descriptor: () => ({ id, configured: true, verified: false, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'], model: `${id}-model` }),
-    probe: async () => ({ configured: true, verified: true, provider: id, model: `${id}-model`, error: null }),
+    probe: async () => ({ configured: true, verified: true, provider: id, model: `${id}-model`, model_verification_state: 'verified', error: null }),
     execute: async () => {
       if (options.failCode) throw Object.assign(new Error(options.failCode), { code: options.failCode, status: options.failCode === 'provider_rate_limited' ? 429 : 502 });
       return { provider: id, model: `${id}-model`, text: `${id} reply`, capabilities_used: ['generation'], usage: {}, provenance: [], tool_calls: [] };
@@ -41,23 +42,25 @@ function fakeStore(options: { emergencyAllowed?: boolean } = {}) {
     },
     listMessages: async ({ conversation_id }: any) => messages.get(conversation_id) ?? [],
     startRequest: async (value: any) => {
-      const item = { id: `request-${++requestCount}`, ...value };
+      const item = { id: `request-${++requestCount}`, status: 'started', ...value };
       requests.set(item.id, item);
       return item;
     },
     reserveEmergencyBudget: async ({ reserve_usd, daily_budget_usd }: any) => options.emergencyAllowed
       ? { allowed: true, reason: 'emergency_budget_reserved', reservation_id: 'reservation-1', reserved_usd: reserve_usd, daily_budget_usd }
       : { allowed: false, reason: 'emergency_daily_budget_exhausted', remaining_usd: 0 },
-    completeRequest: async ({ id, ...patch }: any) => Object.assign(requests.get(id), patch),
-    failRequest: async ({ id, ...patch }: any) => Object.assign(requests.get(id), patch),
+    markBackgroundStarted: async ({ id, provider, model, usage }: any) => Object.assign(requests.get(id), { status: 'started', provider, model, usage }),
+    completeRequest: async ({ id, ...patch }: any) => Object.assign(requests.get(id), { ...patch, status: 'completed' }),
+    failRequest: async ({ id, ...patch }: any) => Object.assign(requests.get(id), { ...patch, status: 'failed' }),
     _messages: messages,
+    _requests: requests,
   };
 }
 
 const routeProviders = [
-  { id: 'openai', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'] },
-  { id: 'gemini', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'] },
-  { id: 'codex-sovereign', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'] },
+  { id: 'openai', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'], model: 'openai-model', model_verification_state: 'verified' },
+  { id: 'gemini', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'], model: 'gemini-model', model_verification_state: 'verified' },
+  { id: 'codex-sovereign', configured: true, verified: true, capabilities: ['generation', 'reasoning'], profiles: ['fast', 'balanced', 'deep'], model: 'codex-sovereign-model', model_verification_state: 'verified' },
 ];
 
 function makeGateway(costPolicy: any = { allowed_providers: ['openai', 'gemini', 'codex-sovereign'], allow_paid_single: true, allow_council: true, zero_cost_providers: ['codex-sovereign'] }) {
@@ -87,6 +90,66 @@ describe('ATLAS Unified AI gateway', () => {
     expect(first.provider).toBe('openai');
     expect(second.provider).toBe('gemini');
     expect(second.mode).toBe('gemini');
+    expect(first.runtime).toBe('native');
+  });
+
+  it('fails closed when an explicitly requested managed runtime is unavailable', async () => {
+    const { gateway } = makeGateway();
+    await expect(gateway.execute({
+      context: context('req-runtime-missing', ['intelligence.use']),
+      request: { message: 'Use managed execution', mode: 'openai', intent: 'balanced', runtime: 'openai-agents' },
+    })).rejects.toMatchObject({ code: 'runtime_unavailable' });
+  });
+
+  it('keeps managed required actions incomplete and routes their tool calls through ATLAS policy', async () => {
+    const openai = fakeAdapter('openai');
+    const registry = createProviderRegistry({ providers: [openai] });
+    const router = createIntelligenceRouter({ providers: [routeProviders[0]] });
+    const store = fakeStore();
+    const managedRuntime = {
+      descriptor: () => ({ id: 'openai-agents', provider: 'openai', enabled: true, configured: true }),
+      execute: async ({ route }: any) => ({
+        runtime: 'openai-agents',
+        provider: 'openai',
+        model: route.model,
+        provider_session_id: 'managed-session-1',
+        status: 'requires_action',
+        execution_state: 'requires_action',
+        text: null,
+        tool_calls: [{
+          provider: 'openai', runtime: 'openai-agents', tool_name: 'records.update', arguments: { id: '1' }, risk_class: 'mutation', required_permissions: ['records.write'], side_effect: 'external', cost_class: 'none', provider_session_id: 'managed-session-1',
+        }],
+        tools_executed: [],
+        capabilities_used: ['generation'],
+        usage: { total_tokens: 12 },
+        provenance: [],
+      }),
+    };
+    const runtimeRegistry = createAgentRuntimeRegistry({ runtimes: [managedRuntime] });
+    const gateway = createIntelligenceGateway({
+      router,
+      registry,
+      runtimeRegistry,
+      store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] },
+      toolGateway: createToolGateway(),
+    });
+    const result = await gateway.execute({
+      context: context('req-managed-action', ['intelligence.use', 'records.write']),
+      request: { message: 'Update through governed runtime', mode: 'openai', runtime: 'openai-agents' },
+    });
+    expect(result).toMatchObject({
+      runtime: 'openai-agents',
+      provider: 'openai',
+      provider_session_id: 'managed-session-1',
+      execution_state: 'requires_action',
+      status: 'requires_action',
+    });
+    expect(result.tool_proposals.approval_required).toHaveLength(1);
+    expect(result.tools_used).toEqual([]);
+    const requestRecord = [...store._requests.values()][0];
+    expect(requestRecord.status).toBe('started');
+    expect(requestRecord.usage?.atlas_runtime).toMatchObject({ runtime_backend: 'openai-agents', provider_session_id: 'managed-session-1', execution_state: 'requires_action' });
   });
 
   it('falls back from atlas-local to OpenAI after a transient runtime failure when policy allows it', async () => {
