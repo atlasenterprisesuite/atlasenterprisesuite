@@ -2,9 +2,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migrationPath = 'supabase/migrations/20261004190000_atlas_payroll_control_plane.sql';
+const settlementFixPath = 'supabase/migrations/20261004191500_atlas_payroll_settlement_guard.sql';
 const apiPath = 'apps/web/src/modules/payroll/payrollApi.ts';
 const routesPath = 'apps/web/src/modules/payroll/PayrollRoutes.tsx';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
+const settlementFix = existsSync(settlementFixPath) ? readFileSync(settlementFixPath, 'utf8') : '';
 const api = readFileSync(apiPath, 'utf8');
 const routes = readFileSync(routesPath, 'utf8');
 
@@ -38,10 +40,11 @@ describe('ATLAS Payroll control plane', () => {
   });
 
   it('requires immutable provider evidence before settled on insert or update', () => {
-    expect(migration).toContain('before insert or update on public.payroll_execution_intents');
-    expect(migration).toContain("tg_op = 'INSERT'");
-    expect(migration).toContain("e.normalized_state = 'settled'");
-    expect(migration).toContain("nullif(btrim(e.payload_hash),'') is not null");
+    expect(existsSync(settlementFixPath)).toBe(true);
+    expect(settlementFix).toContain("tg_op = 'INSERT'");
+    expect(settlementFix).toContain("e.normalized_state = 'settled'");
+    expect(settlementFix).toContain("nullif(btrim(e.payload_hash),'') is not null");
+    expect(settlementFix).toContain('before insert or update on public.payroll_execution_intents');
   });
 
   it('loads capability readiness from the governed RPC without inventing defaults', () => {
