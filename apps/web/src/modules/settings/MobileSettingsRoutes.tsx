@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { IdentityDiagnosticsPage } from './IdentityDiagnosticsPage';
 import { MobileSettingsLayout, MOBILE_SETTINGS_SECTIONS } from './MobileSettingsLayout';
 import './mobileSettings.css';
 
@@ -36,7 +37,7 @@ export function MobileSettingsRoutes() {
         <Route path="account" element={<UnavailableSettingsPage title="Account" description="Identity and organization account controls." />} />
         <Route path="preferences" element={<UnavailableSettingsPage title="Preferences" description="Personal application preferences." />} />
         <Route path="privacy" element={<UnavailableSettingsPage title="Privacy" description="Consent and device permission evidence." />} />
-        <Route path="security" element={<UnavailableSettingsPage title="Security" description="Identity and session diagnostics." />} />
+        <Route path="security" element={<IdentityDiagnosticsPage />} />
         <Route path="billing" element={<UnavailableSettingsPage title="Billing" description="Plan and entitlement evidence." />} />
         <Route path="diagnostics" element={<UnavailableSettingsPage title="Diagnostics" description="Runtime and support diagnostics." />} />
         <Route path="about" element={<UnavailableSettingsPage title="About" description="ATLAS app and runtime information." />} />
