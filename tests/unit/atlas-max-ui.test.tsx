@@ -10,7 +10,7 @@ describe('ATLAS MAX experience', () => {
     render(<AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} />);
     expect(screen.getByText('ATLAS Core')).toBeInTheDocument();
     expect(screen.getByText('ATLAS Pro')).toBeInTheDocument();
-    expect(screen.getByText('ATLAS MAX')).toBeInTheDocument();
+    expect(screen.getAllByText('ATLAS MAX')).toHaveLength(2);
     expect(screen.getByTestId('atlas-max-plan')).toHaveAttribute('aria-current', 'true');
   });
 
