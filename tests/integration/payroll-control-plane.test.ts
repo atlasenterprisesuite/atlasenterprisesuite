@@ -5,13 +5,16 @@ const migrationPath = 'supabase/migrations/20261004190000_atlas_payroll_control_
 const settlementFixPath = 'supabase/migrations/20261004191500_atlas_payroll_settlement_guard.sql';
 const readinessFixPath = 'supabase/migrations/20261004193000_atlas_payroll_readiness_security.sql';
 const providerGrantFixPath = 'supabase/migrations/20261004194500_atlas_payroll_provider_column_security.sql';
+const leastPrivilegeFixPath = 'supabase/migrations/20261004195000_atlas_people_payroll_least_privilege.sql';
 const apiPath = 'apps/web/src/modules/payroll/payrollApi.ts';
 const routesPath = 'apps/web/src/modules/payroll/PayrollRoutes.tsx';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
 const settlementFix = existsSync(settlementFixPath) ? readFileSync(settlementFixPath, 'utf8') : '';
 const readinessFix = existsSync(readinessFixPath) ? readFileSync(readinessFixPath, 'utf8') : '';
 const providerGrantFix = existsSync(providerGrantFixPath) ? readFileSync(providerGrantFixPath, 'utf8') : '';
+const leastPrivilegeFix = existsSync(leastPrivilegeFixPath) ? readFileSync(leastPrivilegeFixPath, 'utf8') : '';
 const normalizedProviderGrantFix = providerGrantFix.replace(/\s+/g, ' ').trim();
+const normalizedLeastPrivilegeFix = leastPrivilegeFix.replace(/\s+/g, ' ').trim();
 const api = readFileSync(apiPath, 'utf8');
 const routes = readFileSync(routesPath, 'utf8');
 
@@ -57,6 +60,19 @@ describe('ATLAS Payroll control plane', () => {
     expect(normalizedProviderGrantFix).toContain('grant select ( id, org_id, provider_key, environment, status, capabilities, last_verified_at, created_at, updated_at ) on public.payroll_provider_connections to authenticated');
     expect(normalizedProviderGrantFix).not.toContain('grant select ( credentials_ref');
     expect(normalizedProviderGrantFix).not.toContain('grant select ( verification_evidence_hash');
+  });
+
+  it('removes inherited destructive table privileges from anonymous and authenticated roles', () => {
+    expect(existsSync(leastPrivilegeFixPath)).toBe(true);
+    expect(normalizedLeastPrivilegeFix).toContain('revoke all privileges on table public.people_workers');
+    expect(normalizedLeastPrivilegeFix).toContain('revoke all privileges on table public.payroll_schedules');
+    expect(normalizedLeastPrivilegeFix).toContain('from anon');
+    expect(normalizedLeastPrivilegeFix).toContain('revoke truncate, references, trigger on table public.people_workers');
+    expect(normalizedLeastPrivilegeFix).toContain('revoke truncate, references, trigger on table public.payroll_execution_evidence');
+    expect(normalizedLeastPrivilegeFix).toContain('from authenticated');
+    expect(normalizedLeastPrivilegeFix).toContain('grant select on table public.people_workers');
+    expect(normalizedLeastPrivilegeFix).toContain('grant select on table public.payroll_execution_evidence');
+    expect(normalizedLeastPrivilegeFix).toContain('grant select ( id, org_id, provider_key, environment, status, capabilities, last_verified_at, created_at, updated_at ) on table public.payroll_provider_connections');
   });
 
   it('requires immutable provider evidence before settled on insert or update', () => {
