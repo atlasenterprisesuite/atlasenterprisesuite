@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 const migrationPath = 'supabase/migrations/20261004190000_atlas_payroll_control_plane.sql';
 const settlementFixPath = 'supabase/migrations/20261004191500_atlas_payroll_settlement_guard.sql';
 const readinessFixPath = 'supabase/migrations/20261004193000_atlas_payroll_readiness_security.sql';
+const providerGrantFixPath = 'supabase/migrations/20261004194500_atlas_payroll_provider_column_security.sql';
 const apiPath = 'apps/web/src/modules/payroll/payrollApi.ts';
 const routesPath = 'apps/web/src/modules/payroll/PayrollRoutes.tsx';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
 const settlementFix = existsSync(settlementFixPath) ? readFileSync(settlementFixPath, 'utf8') : '';
 const readinessFix = existsSync(readinessFixPath) ? readFileSync(readinessFixPath, 'utf8') : '';
+const providerGrantFix = existsSync(providerGrantFixPath) ? readFileSync(providerGrantFixPath, 'utf8') : '';
 const api = readFileSync(apiPath, 'utf8');
 const routes = readFileSync(routesPath, 'utf8');
 
@@ -46,6 +48,14 @@ describe('ATLAS Payroll control plane', () => {
     expect(readinessFix).toContain('alter function public.payroll_get_capability_readiness(uuid) security invoker');
     expect(readinessFix).toContain('payroll_provider_verified_evidence_check');
     expect(readinessFix).toContain("nullif(btrim(credentials_ref),'') is not null");
+  });
+
+  it('does not expose provider credential references to authenticated payroll readers', () => {
+    expect(existsSync(providerGrantFixPath)).toBe(true);
+    expect(providerGrantFix).toContain('revoke select on public.payroll_provider_connections from authenticated');
+    expect(providerGrantFix).toContain('grant select (id, org_id, provider_key, environment, status, capabilities, last_verified_at, created_at, updated_at)');
+    expect(providerGrantFix).not.toContain('grant select (credentials_ref');
+    expect(providerGrantFix).not.toContain('grant select (verification_evidence_hash');
   });
 
   it('requires immutable provider evidence before settled on insert or update', () => {
