@@ -15,8 +15,8 @@ create or replace function public.atlas_apply_call_provider_state(
 )
 returns boolean
 language plpgsql
-security definer
-set search_path = public, pg_temp
+security invoker
+set search_path = ''
 as $$
 declare
   v_state text;
