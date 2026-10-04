@@ -570,7 +570,7 @@ The design is implemented successfully only when automated tests and runtime evi
 4. cross-tenant execution is rejected;
 5. provider selection occurs only after policy evaluation;
 6. an unavailable provider cannot be represented as ready;
-7. a provider lookup error is distinguishable from a confirmed empty result;
+7. a provider lookup error is distinguishishable from a confirmed empty result;
 8. a repeated logical mutation reuses its idempotency key;
 9. a materially different payload using the same key is rejected as an idempotency conflict;
 10. an ambiguous provider write does not trigger a blind duplicate write;
