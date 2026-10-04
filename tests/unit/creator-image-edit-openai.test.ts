@@ -21,6 +21,12 @@ describe('ATLAS Image Lab live OpenAI adapter', () => {
     expect(source).toContain('createSignedUrl');
   });
 
+  it('keeps the deployable adapter self-contained instead of importing the full Creator repository graph', () => {
+    const source = readFileSync('supabase/functions/atlas-creator/_shared/openai_image.ts', 'utf8');
+    expect(source).not.toContain("from './repository.ts'");
+    expect(source).toContain("from('audit_logs').insert");
+  });
+
   it('exposes a dedicated authenticated edge route for verified readiness and edits', () => {
     const source = readFileSync('supabase/functions/atlas-image-edit/index.ts', 'utf8');
     expect(source).toContain("creator.read");
