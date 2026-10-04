@@ -7,7 +7,7 @@ function outputText(data){return (data?.candidates||[]).flatMap(c=>c?.content?.p
 export function createGeminiAdapter({apiKey,models,fetchFn=fetch}={}){
   const resolved=Object.freeze({fast:cleanModel(models?.fast),balanced:cleanModel(models?.balanced),deep:cleanModel(models?.deep)});
   const configured=Boolean(apiKey)&&Object.values(resolved).some(Boolean);
-  const descriptor=()=>({id:'gemini',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'generateContent',models:{...resolved}});
+  const descriptor=()=>({id:'gemini',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'generateContent',models:{...resolved},feature_support:{background:false,multi_agent:false,computer_use:false,function_calling:false,remote_mcp:false,programmatic_tool_calling:false,dynamic_workflows:false}});
   async function probe({profile='balanced'}={}){
     const model=resolved[profile];
     if(!apiKey||!model)return {configured:false,verified:false,provider:'gemini',model:model||null,error:'provider_not_configured'};
