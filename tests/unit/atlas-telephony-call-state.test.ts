@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { shouldApplyProviderState } from '../../supabase/functions/_shared/telephony-call-state';
 
 describe('ATLAS telephony provider-state reconciliation', () => {
-  it('advances state for a newer provider event', () => {
+  it('advances state for a newer provider event with equal or higher lifecycle rank', () => {
     expect(shouldApplyProviderState({
       currentState: 'dialing',
       currentProviderStateAt: '2026-10-04T12:00:00.000Z',
@@ -17,6 +17,15 @@ describe('ATLAS telephony provider-state reconciliation', () => {
       currentProviderStateAt: '2026-10-04T12:00:05.000Z',
       incomingState: 'dialing',
       incomingOccurredAt: '2026-10-04T12:00:00.000Z'
+    })).toBe(false);
+  });
+
+  it('rejects a newer event when its lifecycle rank would regress the call', () => {
+    expect(shouldApplyProviderState({
+      currentState: 'connected',
+      currentProviderStateAt: '2026-10-04T12:00:05.000Z',
+      incomingState: 'dialing',
+      incomingOccurredAt: '2026-10-04T12:00:06.000Z'
     })).toBe(false);
   });
 
