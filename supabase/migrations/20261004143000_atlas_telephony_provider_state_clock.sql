@@ -63,11 +63,15 @@ begin
     else 5
   end;
 
+  if v_incoming_rank < v_current_rank then
+    return false;
+  end if;
+
   if v_provider_state_at is null then
     null;
   elsif p_occurred_at > v_provider_state_at then
     null;
-  elsif p_occurred_at = v_provider_state_at and v_incoming_rank >= v_current_rank then
+  elsif p_occurred_at = v_provider_state_at then
     null;
   else
     return false;
