@@ -16,7 +16,7 @@
     "verify:python": "node scripts/verify-python.mjs",
     "verify:neural": "node scripts/verify-neural-integrity.mjs",
     "verify:navigation": "node scripts/verify-navigation-intelligence.mjs",
-    "verify:production:global": "node scripts/verify-global-production.mjs",
+    "verify:production:global": "node scripts/verify-production-p0.mjs && node scripts/verify-global-production.mjs",
     "verify:all": "npm audit --audit-level=high && npm run verify:design && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:python && npm run verify:neural && npm run verify:navigation && npm run build",
     "verify:cloudflare": "npm audit --audit-level=high && npm run verify:design && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:neural && npm run verify:navigation && npm run build",
     "atlas:mcp:http": "node scripts/start-atlas-orchestrator.mjs",
