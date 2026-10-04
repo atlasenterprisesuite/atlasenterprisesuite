@@ -6,11 +6,18 @@ import {
   type TelnyxVoiceConfig
 } from '../../supabase/functions/_shared/telephony-telnyx';
 
+function b64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 const config: TelnyxVoiceConfig = {
   apiKey: 'test-key',
   connectionId: 'connection-1',
   fromNumber: '+14075550100',
-  webhookUrl: 'https://www.atlasenterprisesuite.com/api/telephony/telnyx'
+  webhookUrl: 'https://www.atlasenterprisesuite.com/api/telephony/telnyx',
+  publicKey: b64(new Uint8Array(32))
 };
 
 describe('ATLAS Telnyx telephony adapter', () => {
@@ -25,6 +32,14 @@ describe('ATLAS Telnyx telephony adapter', () => {
     expect(validateTelnyxConfig({ ...config, apiKey: '' })).toBe('api_key_missing');
     expect(validateTelnyxConfig({ ...config, webhookUrl: 'http://example.test/hook' }))
       .toBe('webhook_url_must_be_https');
+    expect(validateTelnyxConfig({ ...config, publicKey: '' })).toBe('public_key_missing');
+  });
+
+  it('rejects malformed or wrong-length Telnyx signing keys locally', () => {
+    expect(validateTelnyxConfig({ ...config, publicKey: 'not-base64!!' }))
+      .toBe('public_key_invalid');
+    expect(validateTelnyxConfig({ ...config, publicKey: b64(new Uint8Array(31)) }))
+      .toBe('public_key_invalid');
   });
 
   it('marks the exact connection verified only after a successful provider probe', async () => {

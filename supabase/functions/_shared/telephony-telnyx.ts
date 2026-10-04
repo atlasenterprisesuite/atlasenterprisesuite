@@ -5,6 +5,7 @@ export type TelnyxVoiceConfig = {
   connectionId: string;
   fromNumber: string;
   webhookUrl: string;
+  publicKey: string;
 };
 
 export type TelnyxReadiness = {
@@ -19,6 +20,16 @@ export function isE164(value: string): boolean {
   return /^\+[1-9]\d{7,14}$/.test(value);
 }
 
+export function validateTelnyxPublicKey(value: string): boolean {
+  const normalized = value.trim();
+  if (!normalized) return false;
+  try {
+    return atob(normalized).length === 32;
+  } catch {
+    return false;
+  }
+}
+
 export function validateTelnyxConfig(config: Partial<TelnyxVoiceConfig>): string | null {
   if (!config.apiKey?.trim()) return 'api_key_missing';
   if (!config.connectionId?.trim()) return 'connection_id_missing';
@@ -31,6 +42,8 @@ export function validateTelnyxConfig(config: Partial<TelnyxVoiceConfig>): string
   } catch {
     return 'webhook_url_invalid';
   }
+  if (!config.publicKey?.trim()) return 'public_key_missing';
+  if (!validateTelnyxPublicKey(config.publicKey)) return 'public_key_invalid';
   return null;
 }
 

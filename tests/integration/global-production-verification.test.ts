@@ -149,7 +149,7 @@ describe('ATLAS global production verification', () => {
   it('exposes the portable verifier through package scripts', () => {
     const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
     expect(pkg.scripts?.['verify:production:global']).toBe(
-      'node scripts/verify-global-production.mjs'
+      'node scripts/verify-production-p0.mjs && node scripts/verify-global-production.mjs'
     );
   });
 

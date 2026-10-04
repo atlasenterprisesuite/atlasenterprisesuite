@@ -18,6 +18,7 @@ export type TelephonyReadiness = {
     connection_id: boolean;
     from_number: boolean;
     webhook_url: boolean;
+    public_key: boolean;
   };
   provider_secret_values_returned: false;
   checked_at: string;
