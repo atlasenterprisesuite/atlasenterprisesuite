@@ -71,6 +71,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'bible-os',
+    title: 'ATLAS Bible OS',
+    navLabel: 'Bible OS',
+    area: 'Intelligence',
+    route: '/knowledge/bible',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Evidence-first biblical textual research with canon comparison, manuscript provenance, textual variants and typed relationships.',
+    showInNavigation: false
+  },
+  {
     id: 'business',
     title: 'Business Suite',
     navLabel: 'Business',
