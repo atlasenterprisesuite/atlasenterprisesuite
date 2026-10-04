@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { getAtlasNavigationTrail } from '../../apps/web/src/navigation/atlasNavigation';
 import { MOBILE_SETTINGS_SECTIONS } from '../../apps/web/src/modules/settings/MobileSettingsRoutes';
 
 const routesSource = readFileSync('apps/web/src/modules/settings/MobileSettingsRoutes.tsx', 'utf8');
@@ -38,5 +39,13 @@ describe('ATLAS consolidated mobile settings routes', () => {
   it('adds searchable settings destinations to the canonical navigation graph', () => {
     for (const route of expectedRoutes) expect(navigationSource).toContain(`to: '${route}'`);
     expect(navigationSource).toContain("label: 'Settings'");
+  });
+
+  it('keeps Settings as the parent of Account instead of shadowing its route', () => {
+    expect(getAtlasNavigationTrail('/settings/account').map((node) => node.label)).toEqual([
+      'Home',
+      'Settings',
+      'Account'
+    ]);
   });
 });
