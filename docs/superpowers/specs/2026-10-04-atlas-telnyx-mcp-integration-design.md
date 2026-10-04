@@ -29,14 +29,15 @@ This design extends those assets. It must not create a second independent Telnyx
 
 ## 3. Canonical Telnyx discovery contract
 
-The Telnyx server card currently declares:
+The canonical Telnyx server card currently declares:
 
+- server-card schema: `2025-12-11`
+- Telnyx MCP package version: `0.2.2`
 - MCP server: `https://api.telnyx.com/v2/mcp`
 - transport: `streamable-http`
 - authentication: `Authorization: Bearer <TELNYX_API_KEY>`
 - protocol version: `2024-11-05`
 - server info: `telnyx_api` version `3.0.0`
-- canonical discovery card: `https://telnyx.com/.well-known/mcp/server-card.json`
 - lightweight discovery index: `https://telnyx.com/.well-known/mcp.json`
 - MCP Apps catalog: `https://api.telnyx.com/v2/mcp/apps`
 
@@ -93,11 +94,15 @@ This avoids unnecessary migration risk while gaining Telnyx's MCP discovery mode
 
 ## 6. Target code boundaries
 
-Implementation should converge toward the following boundaries without requiring a big-bang migration:
+`packages/atlas-mcp` is present on `main`. The previously designed generic `packages/integrations` workspace is not currently materialized as `packages/integrations/src/index.ts` on `main`; therefore it is a target boundary, not an existing implementation dependency.
+
+The implementation plan must first re-check the repository for an equivalent provider-integration package. If none exists, it will create only the minimum `packages/integrations` structure required by this Telnyx slice. It must not create a duplicate integration layer if an equivalent boundary appears before implementation.
+
+Target structure:
 
 ```text
 packages/
-  integrations/
+  integrations/                    # create only if no equivalent package exists
     src/
       telnyx/
         client.ts
@@ -115,13 +120,13 @@ packages/
 
 supabase/functions/
   _shared/
-    telephony-telnyx.ts          # existing; progressively delegates to shared adapter logic where safe
-    telephony-webhook.ts         # existing; remains authoritative for webhook verification
+    telephony-telnyx.ts            # existing
+    telephony-webhook.ts           # existing
 
 apps/atlas-orchestrator/
   src/
     integrations/
-      telnyx.ts                  # runtime wiring only, no provider business rules
+      telnyx.ts                    # runtime wiring only
 
 tests/
   unit/
@@ -133,7 +138,7 @@ tests/
     atlas-telnyx-governance.test.ts
 ```
 
-Exact file names may be adjusted during implementation to match current package conventions, but provider-specific logic must remain isolated from ATLAS domain state machines.
+Provider-specific logic must remain isolated from ATLAS domain state machines.
 
 ## 7. Remote MCP client contract
 
@@ -155,7 +160,7 @@ The generic remote MCP operations are internal adapter primitives, not public AT
 
 ATLAS adds a policy layer between Telnyx endpoint discovery and invocation.
 
-Each discovered endpoint is normalized into an internal record conceptually containing:
+Each discovered endpoint is normalized into an internal descriptor:
 
 ```ts
 interface TelnyxEndpointDescriptor {
@@ -185,7 +190,7 @@ Destructive or financially material operations require an explicit approval clas
 
 Do not expose Telnyx's generic `invoke_api_endpoint` directly to agents.
 
-ATLAS may expose curated tools such as:
+ATLAS may expose curated read tools such as:
 
 - `atlas.telnyx.capabilities.read`
 - `atlas.telnyx.endpoint.list`
@@ -194,7 +199,7 @@ ATLAS may expose curated tools such as:
 - `atlas.telnyx.voice.status.read`
 - `atlas.telnyx.usage.read`
 
-Write tools are capability-specific and mapped to existing ATLAS domain permissions, for example:
+Write tools are capability-specific and mapped to existing ATLAS domain permissions:
 
 - number ordering routes through ATLAS Carrier Control Plane;
 - outbound calling routes through ATLAS Communication;
@@ -238,9 +243,9 @@ Rules:
 - no Telnyx API key in audit payloads;
 - no Telnyx API key returned by readiness endpoints;
 - no raw authorization header persisted in logs;
-- tenant-specific provider credentials must resolve through the existing ATLAS secret mechanism;
-- secret lookup must occur after organization authorization, never before;
-- provider credentials must not be reused across organizations unless the configured ATLAS ownership model explicitly proves the shared provider account relationship.
+- tenant-specific provider credentials resolve through the existing ATLAS secret mechanism;
+- secret lookup occurs after organization authorization, never before;
+- provider credentials are not reused across organizations unless the configured ATLAS ownership model explicitly proves the shared provider account relationship.
 
 ## 12. Carrier and number truth model
 
@@ -252,7 +257,7 @@ A number may only advance through ATLAS lifecycle states when authenticated prov
 
 `discovered -> reserved -> ordered -> allocated -> verified -> active`
 
-Similarly, an eSIM must follow the existing ATLAS eSIM truth model and cannot be represented as network-verified solely because an activation artifact was returned.
+An eSIM follows the existing ATLAS eSIM truth model and cannot be represented as network-verified solely because an activation artifact was returned.
 
 Every material transition records provider resource ID, provider request/order ID where applicable, observed time, verification method, and evidence digest.
 
@@ -304,7 +309,7 @@ ATLAS may ingest these as provider metadata for research and routing decisions, 
 - provider-authored benchmark claims are evidence from the provider, not independent ATLAS verification;
 - comparison documents do not by themselves change routing priority;
 - cost/routing decisions use actual ATLAS-observed usage and contractual pricing when available;
-- stale provider metadata must be timestamped and refreshed before material decisions.
+- stale provider metadata is timestamped and refreshed before material decisions.
 
 ## 16. Failure and retry policy
 
@@ -327,7 +332,7 @@ Read-only calls may use bounded exponential backoff for transient 429/5xx/networ
 
 Write calls do not retry automatically unless the operation is proven idempotent or uses a provider-supported idempotency key and ATLAS has persisted the corresponding operation identity.
 
-A provider timeout after an ambiguous write outcome must enter `verification_required`, not `failed`, until ATLAS reconciles provider state.
+A provider timeout after an ambiguous write outcome enters `verification_required`, not `failed`, until ATLAS reconciles provider state.
 
 ## 17. Audit and evidence
 
@@ -454,7 +459,7 @@ The implementation is successful when:
 
 ## 23. Source references
 
-Canonical Telnyx sources used by this design:
+Canonical Telnyx sources:
 
 - `https://telnyx.com/.well-known/mcp/server-card.json`
 - `https://telnyx.com/.well-known/mcp.json`
@@ -462,6 +467,7 @@ Canonical Telnyx sources used by this design:
 - `https://api.telnyx.com/v2/mcp/apps`
 - `https://telnyx.com/openapi.json`
 - `https://telnyx.com/ai/capabilities.json`
+- `https://telnyx.com/.well-known/ai-capabilities.json`
 
 ATLAS repository sources:
 
