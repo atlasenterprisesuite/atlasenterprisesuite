@@ -47,10 +47,12 @@ export function shouldApplyProviderState(input: {
 
   if (TERMINAL_STATES.has(input.currentState)) return false;
 
+  const currentRank = STATE_RANK[input.currentState];
+  const incomingRank = STATE_RANK[input.incomingState];
+  if (incomingRank < currentRank) return false;
+
   const currentAt = timestamp(input.currentProviderStateAt);
   if (currentAt === null) return true;
-  if (incomingAt < currentAt) return false;
-  if (incomingAt > currentAt) return true;
 
-  return STATE_RANK[input.incomingState] >= STATE_RANK[input.currentState];
+  return incomingAt >= currentAt;
 }
