@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 const migrationPath = 'supabase/migrations/20261004190000_atlas_payroll_control_plane.sql';
 const settlementFixPath = 'supabase/migrations/20261004191500_atlas_payroll_settlement_guard.sql';
+const readinessFixPath = 'supabase/migrations/20261004193000_atlas_payroll_readiness_security.sql';
 const apiPath = 'apps/web/src/modules/payroll/payrollApi.ts';
 const routesPath = 'apps/web/src/modules/payroll/PayrollRoutes.tsx';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
 const settlementFix = existsSync(settlementFixPath) ? readFileSync(settlementFixPath, 'utf8') : '';
+const readinessFix = existsSync(readinessFixPath) ? readFileSync(readinessFixPath, 'utf8') : '';
 const api = readFileSync(apiPath, 'utf8');
 const routes = readFileSync(routesPath, 'utf8');
 
@@ -37,9 +39,13 @@ describe('ATLAS Payroll control plane', () => {
     expect(migration).toContain('tax_filing');
     expect(migration).toContain('tax_remittance');
     expect(migration).toContain('direct_deposit');
-    expect(migration).toContain(
-      'create or replace function public.payroll_get_capability_readiness(p_org_id uuid)\nreturns jsonb\nlanguage plpgsql\nsecurity invoker'
-    );
+  });
+
+  it('hardens readiness to invoker rights and verified providers to server-side credentials', () => {
+    expect(existsSync(readinessFixPath)).toBe(true);
+    expect(readinessFix).toContain('alter function public.payroll_get_capability_readiness(uuid) security invoker');
+    expect(readinessFix).toContain('payroll_provider_verified_evidence_check');
+    expect(readinessFix).toContain("nullif(btrim(credentials_ref),'') is not null");
   });
 
   it('requires immutable provider evidence before settled on insert or update', () => {
