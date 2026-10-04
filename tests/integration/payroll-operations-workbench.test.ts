@@ -45,7 +45,8 @@ describe('ATLAS Payroll operations workbench',()=>{
     for(const token of [
       'loadPayrollOperations','payroll_upsert_worker_jurisdiction','payroll_upsert_employer_tax_profile',
       'payroll_upsert_worker_deduction','payroll_record_garnishment_order','payroll_create_compliance_obligation',
-      'payroll_create_payment_batch','payroll_record_gl_posting','payroll_scan_run_variances'
+      'payroll_create_payment_batch','payroll_record_gl_posting','payroll_scan_run_variances',
+      'payroll_record_federal_w4_election','payroll_determine_us_federal_2026'
     ]) expect(api).toContain(token);
   });
 
@@ -53,7 +54,7 @@ describe('ATLAS Payroll operations workbench',()=>{
     expect(routes).toContain('to="/payroll/operations"');
     expect(routes).toContain('path="operations"');
     expect(routes).toContain('PayrollOperations');
-    for(const label of ['Jurisdictions','Benefits & deductions','Garnishments','Compliance queue','Payment batches','GL postings','Variance review']){
+    for(const label of ['Federal W-4 & tax determination','Jurisdictions','Benefits & deductions','Garnishments','Compliance queue','Payment batches','GL postings','Variance review']){
       expect(routes).toContain(label);
     }
   });
