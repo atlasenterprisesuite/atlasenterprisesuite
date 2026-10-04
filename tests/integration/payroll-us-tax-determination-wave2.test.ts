@@ -72,6 +72,19 @@ describe('ATLAS Payroll US federal tax determination Wave 2',()=>{
     expect(migration).toContain("'state_credit_status','evidence_required'");
   });
 
+  it('persists a governed immutable determination bound to run, worker, W-4 and rule evidence',()=>{
+    for(const token of [
+      'payroll_determine_us_federal_2026','payroll_run_not_found','payroll_line_not_found',
+      'w4_election_not_found','payroll_tax_determination_immutable','input_snapshot','output_snapshot',
+      'input_hash','rule_checksum','w4_election_id'
+    ]) expect(migration).toContain(token);
+    expect(migration).toContain('select public.payroll_calculate_us_federal_2026');
+    expect(migration).toContain("'w4_election_id',v_w4.id");
+    expect(migration).toContain("'run_id',p_run_id");
+    expect(migration).toContain('insert into public.payroll_tax_determinations');
+    expect(migration).toContain('payroll_write_required');
+  });
+
   it('keeps overall tax readiness blocked for a federal-only rule pack',()=>{
     expect(migration).toContain("parameters ->> 'coverage_level' = 'full_us_payroll_tax'");
     expect(migration).toContain('Federal 2026 determination is available, but required state/local payroll-tax coverage is not complete.');
