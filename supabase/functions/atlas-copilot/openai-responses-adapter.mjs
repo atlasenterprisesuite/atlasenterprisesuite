@@ -4,6 +4,7 @@ const PROMPT_CACHE_TTL='30m';
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function cleanModel(value){return typeof value==='string'&&value.trim()?value.trim():null;}
 function isAstra(model){return /^gpt-6-astra(?:$|-)/.test(String(model||''));}
+function modelForRoute(route,resolved){const verified=route?.model_verification_state==='verified'?cleanModel(route?.model):null;return verified||resolved[route?.profile];}
 function withReasoningConfiguration(input,profile,model){
   if(!isAstra(model)||profile==='fast'||!Array.isArray(input))return input;
   const update={type:'configuration_update',reasoning:{effort:EFFORT[profile]||EFFORT.balanced}};
@@ -24,7 +25,7 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
   const configured=Boolean(apiKey)&&Object.values(resolved).some(Boolean);
   const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),background:true,async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false}});
   async function execute({context,route,instructions,input,max_output_tokens=3000}={}){
-    const model=resolved[route?.profile];
+    const model=modelForRoute(route,resolved);
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
     const headers={authorization:`Bearer ${apiKey}`,'content-type':'application/json','OpenAI-Safety-Identifier':await safetyId(context)};
     const body={
@@ -45,7 +46,7 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
     return {provider:'openai',model:data.model||model,response_id:data.id||null,text,capabilities_used:[...(route.capabilities||['generation'])],usage:data.usage||{},provenance:[],tool_calls:[]};
   }
   async function startBackground({context,route,instructions,input,max_output_tokens=3000}={}){
-    const model=resolved[route?.profile];
+    const model=modelForRoute(route,resolved);
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
     const headers={authorization:`Bearer ${apiKey}`,'content-type':'application/json','OpenAI-Safety-Identifier':await safetyId(context)};
     const body={
@@ -90,14 +91,14 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
       error:data?.error?.code||data?.error?.message||null
     };
   }
-  async function probe({profile='balanced'}={}){
-    const model=resolved[profile];
-    if(!apiKey||!model)return {configured:false,verified:false,provider:'openai',model:model||null,error:'provider_not_configured'};
+  async function probe({profile='balanced',model:requestedModel=null}={}){
+    const model=cleanModel(requestedModel)||resolved[profile];
+    if(!apiKey||!model)return {configured:false,verified:false,provider:'openai',model:model||null,model_verification_state:'configuration-required',error:'provider_not_configured'};
     let response;
-    try{response=await fetchFn(`https://api.openai.com/v1/models/${encodeURIComponent(model)}`,{headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'}});}catch{return {configured:true,verified:false,provider:'openai',model,error:'provider_unavailable'};}
-    if(response.ok)return {configured:true,verified:true,provider:'openai',model,error:null};
+    try{response=await fetchFn(`https://api.openai.com/v1/models/${encodeURIComponent(model)}`,{headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'}});}catch{return {configured:true,verified:false,provider:'openai',model,model_verification_state:'unavailable',error:'provider_unavailable'};}
+    if(response.ok)return {configured:true,verified:true,provider:'openai',model,model_verification_state:'verified',error:null};
     const e=errorForStatus(response.status);
-    return {configured:true,verified:false,provider:'openai',model,error:e.code};
+    return {configured:true,verified:false,provider:'openai',model,model_verification_state:'unavailable',error:e.code};
   }
   return Object.freeze({descriptor,execute,startBackground,retrieveBackground,probe});
 }
