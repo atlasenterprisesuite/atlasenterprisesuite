@@ -30,8 +30,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Mobile contract tests
-        run: npx vitest run tests/unit/mobile-runtime.test.ts tests/unit/mobile-permissions.test.ts tests/unit/mobile-client.test.ts
+        run: npx vitest run tests/unit/mobile-runtime.test.ts tests/unit/mobile-permissions.test.ts tests/unit/mobile-client.test.ts tests/unit/mobile-identity-diagnostics.test.ts
       - name: Mobile gateway contract tests
         run: npx vitest run tests/integration/mobile-gateway-auth.test.ts tests/integration/mobile-gateway-evidence.test.ts
       - name: Mobile settings route tests
-        run: npx vitest run tests/integration/mobile-settings-routes.test.tsx tests/integration/atlas-mobile-shell.test.tsx
+        run: npx vitest run tests/integration/mobile-settings-routes.test.tsx tests/integration/atlas-mobile-shell.test.tsx tests/integration/mobile-identity-diagnostics-route.test.tsx
