@@ -31,8 +31,10 @@ verify_jwt = true
 [functions.atlas-platform-controls]
 verify_jwt = true
 
-[functions.atlas-communication-telephony]
+[functions.atlas-voice-provider]
 verify_jwt = true
 
-[functions.atlas-communication-telephony-webhook]
+# This verification gateway accepts Telnyx provider webhooks without a Supabase JWT.
+# Existing native verification requests remain authenticated inside the function.
+[functions.atlas-voice-native-verification]
 verify_jwt = false
