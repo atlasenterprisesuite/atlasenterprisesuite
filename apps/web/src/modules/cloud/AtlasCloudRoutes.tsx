@@ -18,7 +18,7 @@ type CloudService = {
 };
 
 const cloudServices: CloudService[] = ATLAS_MODULES
-  .filter((module) => module.id !== 'cloud')
+  .filter((module) => module.id !== 'cloud' && !module.internalOnly)
   .map((module) => ({
     id: module.id,
     name: module.title,
