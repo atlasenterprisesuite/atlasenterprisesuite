@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const source = readFileSync('supabase/functions/atlas-communication-telephony/index.ts', 'utf8');
-const migration = readFileSync('supabase/migrations/20261004_atlas_call_idempotency.sql', 'utf8');
+const callMigration = readFileSync('supabase/migrations/20261004_atlas_call_idempotency.sql', 'utf8');
+const numberMigration = readFileSync('supabase/migrations/20261004_atlas_number_provisioning_idempotency.sql', 'utf8');
 
 describe('ATLAS telephony capability API contract', () => {
   it('protects number discovery with the existing read permission and verified provider path', () => {
@@ -35,8 +36,8 @@ describe('ATLAS telephony capability API contract', () => {
     expect(source).toContain('request_digest');
     expect(source).toContain('classifyIdempotentReplay');
     expect(source).toContain('idempotency_conflict');
-    expect(migration).toContain('atlas_call_sessions_org_idempotency_uidx');
-    expect(migration).toContain('reconciliation_required');
+    expect(callMigration).toContain('atlas_call_sessions_org_idempotency_uidx');
+    expect(callMigration).toContain('reconciliation_required');
   });
 
   it('blocks unverified caller numbers before Telnyx call creation', () => {
@@ -51,5 +52,25 @@ describe('ATLAS telephony capability API contract', () => {
     expect(source).toContain('reconciliation_required: true');
     expect(source).toContain("reconciliation_reason: 'provider_transport_ambiguous'");
     expect(source).toContain("submission_state: 'ambiguous'");
+  });
+
+  it('keeps number provisioning disabled unless every P0 write-test gate is explicit', () => {
+    expect(source).toContain("Deno.env.get('ATLAS_TELNYX_WRITE_TESTS_ENABLED') === 'true'");
+    expect(source).toContain("Deno.env.get('ATLAS_TELNYX_WRITE_TEST_ENVIRONMENT') || ''");
+    expect(source).toContain("operation === 'number-provision-test'");
+    expect(source).toContain("operation === 'number-cleanup-test'");
+    expect(source).toContain("requirePermission(req, ctx, 'communication.telephony.provision')");
+    expect(source).toContain('test_scope');
+    expect(source).toContain('provisionTelnyxTestNumber');
+    expect(source).toContain('cleanupTelnyxTestNumber');
+    expect(numberMigration).toContain("'communication.telephony.provision'");
+    expect(numberMigration).toContain("('owner', 'communication.telephony.provision')");
+    expect(numberMigration).toContain("('admin', 'communication.telephony.provision')");
+  });
+
+  it('preserves the existing carrier truth gate instead of promoting ordered resources locally', () => {
+    expect(numberMigration).not.toContain('drop trigger');
+    expect(source).not.toContain("state: 'active', // test");
+    expect(source).not.toContain("state: 'verified', // test");
   });
 });
