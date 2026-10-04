@@ -1,7 +1,15 @@
 {
-  "version": 30,
+  "version": 31,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
+  "health_check": {
+    "path": "/api/v1/health",
+    "expected_status": "healthy"
+  },
+  "required_security_headers": [
+    "strict-transport-security",
+    "content-security-policy"
+  ],
   "public_routes": [
     "/status",
     "/",
