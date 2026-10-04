@@ -9,6 +9,7 @@ export * from './store';
 export * from './engine';
 export * from './capability-types';
 export * from './capability-registry';
+export * from './capability-policy';
 export * from './mission-projection';
 export * from './work-types';
 export * from './work-intent';
