@@ -4,8 +4,9 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => (existsSync(path) ? readFileSync(path, 'utf8') : '');
 
 const contractPath = 'data/ops/global-production-verification.json';
-const verifierPath = 'scripts/verify-global-production.mjs';
-const workerPath = 'worker/index.ts';
+const verifierPath = 'scripts/verify-production-p0.mjs';
+const workerEntryPath = 'worker/entry.ts';
+const workerCorePath = 'worker/index.ts';
 
 describe('ATLAS global production P0 hardening', () => {
   it('defines and serves a dedicated machine health contract without replacing Health OS', () => {
@@ -13,16 +14,22 @@ describe('ATLAS global production P0 hardening', () => {
       public_routes?: string[];
       health_check?: { path?: string; expected_status?: string };
     };
-    const worker = read(workerPath);
+    const workerEntry = read(workerEntryPath);
+    const workerCore = read(workerCorePath);
+    const wrangler = read('wrangler.jsonc');
 
     expect(contract.public_routes).toContain('/health');
     expect(contract.health_check).toEqual({
       path: '/api/v1/health',
       expected_status: 'healthy'
     });
-    expect(worker).toContain("url.pathname === '/api/v1/health'");
-    expect(worker).toContain("status: 'healthy'");
-    expect(worker).toContain('withSecurityHeaders(');
+    expect(wrangler).toContain('"main": "worker/entry.ts"');
+    expect(workerEntry).toContain("url.pathname === '/api/v1/health'");
+    expect(workerEntry).toContain("healthy ? 'healthy' : 'unhealthy'");
+    expect(workerEntry).toContain("new URL('/status', request.url)");
+    expect(workerCore).toContain('withSecurityHeaders(');
+    expect(workerEntry).toContain('AtlasLocalRealtimeBus');
+    expect(workerEntry).toContain('AtlasChatRealtimeBus');
   });
 
   it('fails closed unless health JSON and required security headers are verified', () => {
@@ -37,9 +44,17 @@ describe('ATLAS global production P0 hardening', () => {
     ]);
     expect(verifier).toContain('health_contract_verified');
     expect(verifier).toContain('security_headers_verified');
-    expect(verifier).toContain("expected_status");
-    expect(verifier).toContain("strict-transport-security");
-    expect(verifier).toContain("content-security-policy");
+    expect(verifier).toContain('expected_status');
+    expect(verifier).toContain('strict-transport-security');
+    expect(verifier).toContain('content-security-policy');
+    expect(verifier).toContain('process.exit(1)');
+  });
+
+  it('runs the P0 verifier before the existing global verifier', () => {
+    const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
+    expect(pkg.scripts?.['verify:production:global']).toBe(
+      'node scripts/verify-production-p0.mjs && node scripts/verify-global-production.mjs'
+    );
   });
 
   it('uses Node-24-compatible GitHub Action majors in adjacent production gates', () => {
