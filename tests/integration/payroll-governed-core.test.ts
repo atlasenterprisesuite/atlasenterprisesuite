@@ -34,11 +34,12 @@ describe('ATLAS Payroll governed core',()=>{
     expect(routes).toContain('Lock');
   });
 
-  it('keeps external payment and tax rails truthfully gated',()=>{
-    expect(routes).toContain('Tax determination & filing');
-    expect(routes).toContain('Not configured');
-    expect(routes).toContain('Direct deposit');
-    expect(routes).toContain('No bank transfer is represented as paid');
+  it('keeps external payment and tax rails evidence-driven and fail-closed',()=>{
+    expect(api).toContain('payroll_get_capability_readiness');
+    expect(routes).toContain('d.readiness.capabilities');
+    for(const label of ['Tax determination','Tax filing','Tax remittance','Direct deposit']) expect(routes).toContain(label);
+    expect(routes).toContain("state.status==='ready'?'Ready':'Blocked'");
+    expect(routes).toContain('No money movement');
     const start=registry.indexOf("id: 'payroll'");
     const block=registry.slice(start,registry.indexOf('\n  {',start+1));
     expect(block).toContain("readiness: 'external-gated'");

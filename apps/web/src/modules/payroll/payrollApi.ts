@@ -5,7 +5,9 @@ export type PayrollRun={id:string;org_id:string;schedule_id:string|null;period_s
 export type PayrollLine={id:string;org_id:string;run_id:string;worker_id:string;regular_hours:number;overtime_hours:number;hourly_rate:number|null;salary_period_amount:number|null;gross_pay:number;pretax_deductions:number;taxes_withheld:number;posttax_deductions:number;net_pay:number;calculation:Record<string,unknown>};
 export type PayrollWorker={id:string;full_name:string;worker_type:string;status:string;job_title:string|null};
 export type PayrollTimeEntry={id:string;worker_id:string;work_date:string;status:string;clock_in:string|null;clock_out:string|null;break_minutes:number};
-export type PayrollWorkspace={organizationId:string;schedules:PayrollSchedule[];runs:PayrollRun[];lines:PayrollLine[];workers:PayrollWorker[];timeEntries:PayrollTimeEntry[]};
+export type PayrollCapabilityState={status:'ready'|'blocked';severity:'P0_BLOCKER'|'INFO';reason:string;evidence_id?:string|null;provider_key?:string|null;provider_connection_id?:string|null;rule_pack_id?:string|null};
+export type PayrollCapabilityReadiness={as_of:string;pay_date:string;capabilities:{tax_determination:PayrollCapabilityState;tax_filing:PayrollCapabilityState;tax_remittance:PayrollCapabilityState;direct_deposit:PayrollCapabilityState}};
+export type PayrollWorkspace={organizationId:string;schedules:PayrollSchedule[];runs:PayrollRun[];lines:PayrollLine[];workers:PayrollWorker[];timeEntries:PayrollTimeEntry[];readiness: PayrollCapabilityReadiness};
 
 async function parse<T>(response:Response):Promise<T>{
   const text=await response.text(); let body:unknown=null;
@@ -18,6 +20,14 @@ async function parse<T>(response:Response):Promise<T>{
 }
 const q=(org:string)=>encodeURIComponent(`eq.${org}`);
 
+async function loadCapabilityReadiness(orgId:string):Promise<PayrollCapabilityReadiness>{
+  const response=await authorizedAtlasFetch('/rest/v1/rpc/payroll_get_capability_readiness',{
+    method:'POST',
+    body:JSON.stringify({ p_org_id: orgId })
+  });
+  return parse<PayrollCapabilityReadiness>(response);
+}
+
 export async function loadPayrollWorkspace():Promise<PayrollWorkspace>{
   const org=await getActiveAtlasOrganization(); const filter=q(org.id);
   const paths=[
@@ -27,12 +37,15 @@ export async function loadPayrollWorkspace():Promise<PayrollWorkspace>{
     `/rest/v1/people_workers?org_id=${filter}&select=id,full_name,worker_type,status,job_title&order=full_name.asc`,
     `/rest/v1/people_time_entries?org_id=${filter}&select=id,worker_id,work_date,status,clock_in,clock_out,break_minutes&order=work_date.desc`
   ];
-  const responses=await Promise.all(paths.map(path=>authorizedAtlasFetch(path,{method:'GET'})));
+  const [responses,readiness]=await Promise.all([
+    Promise.all(paths.map(path=>authorizedAtlasFetch(path,{method:'GET'}))),
+    loadCapabilityReadiness(org.id)
+  ]);
   const [schedules,runs,lines,workers,timeEntries]=await Promise.all([
     parse<PayrollSchedule[]>(responses[0]),parse<PayrollRun[]>(responses[1]),parse<PayrollLine[]>(responses[2]),
     parse<PayrollWorker[]>(responses[3]),parse<PayrollTimeEntry[]>(responses[4])
   ]);
-  return {organizationId:org.id,schedules,runs,lines,workers,timeEntries};
+  return {organizationId:org.id,schedules,runs,lines,workers,timeEntries,readiness};
 }
 
 async function rpc<T=string>(name:string,payload:Record<string,unknown>):Promise<T>{

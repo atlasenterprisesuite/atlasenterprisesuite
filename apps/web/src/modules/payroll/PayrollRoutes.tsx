@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
-import { loadPayrollWorkspace, payrollMutations, type PayrollWorkspace } from './payrollApi';
+import { loadPayrollWorkspace, payrollMutations, type PayrollCapabilityState, type PayrollWorkspace } from './payrollApi';
 import './payroll.css';
 
 type State={status:'loading'}|{status:'error';message:string}|{status:'ready';data:PayrollWorkspace};
@@ -21,11 +21,19 @@ function View({state,children}:{state:State;children:(d:PayrollWorkspace)=>React
  if(state.status==='error')return <div className="payroll-section-empty" role="alert"><strong>Payroll unavailable</strong><p>{state.message}</p><small>No simulated payroll data is substituted.</small></div>;
  return <>{children(state.data)}</>;
 }
+function CapabilityCard({label,state}:{label:string;state:PayrollCapabilityState}){
+ return <article className="module-experience-card is-active"><strong>{label}</strong><p>{state.status==='ready'?'Ready':'Blocked'}</p><small>{state.reason}</small></article>;
+}
 function Overview(){
  const {state}=usePayroll();
- return <Frame><View state={state}>{d=>{const active=d.runs.find(r=>!['locked','void'].includes(r.status));const total=d.lines.filter(l=>active&&l.run_id===active.id).reduce((n,l)=>n+l.net_pay,0);return <>
+ return <Frame><View state={state}>{d=>{const active=d.runs.find(r=>!['locked','void'].includes(r.status));const total=d.lines.filter(l=>active&&l.run_id===active.id).reduce((n,l)=>n+l.net_pay,0);const capabilities=d.readiness.capabilities;return <>
   <div className="metric-grid"><article><span>Workers</span><strong>{d.workers.filter(w=>w.status==='active').length}</strong></article><article><span>Pay runs</span><strong>{d.runs.length}</strong></article><article><span>Current net</span><strong>{money.format(total)}</strong></article><article><span>Execution</span><strong>Gated</strong><small>No money movement</small></article></div>
-  <div className="module-experience-grid"><article className="module-experience-card is-active"><strong>Tax determination & filing</strong><p>Not configured. Withholding entered in the core is governed input, not an ATLAS tax determination.</p></article><article className="module-experience-card is-active"><strong>Direct deposit</strong><p>Not configured. No bank transfer is represented as paid without an authorized payment rail.</p></article></div>
+  <div className="module-experience-grid">
+   <CapabilityCard label="Tax determination" state={capabilities.tax_determination}/>
+   <CapabilityCard label="Tax filing" state={capabilities.tax_filing}/>
+   <CapabilityCard label="Tax remittance" state={capabilities.tax_remittance}/>
+   <CapabilityCard label="Direct deposit" state={capabilities.direct_deposit}/>
+  </div>
  </>}}</View></Frame>;
 }
 function People(){
