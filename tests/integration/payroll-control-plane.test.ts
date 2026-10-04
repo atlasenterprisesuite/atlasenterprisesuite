@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 const migrationPath = 'supabase/migrations/20261004190000_atlas_payroll_control_plane.sql';
 const apiPath = 'apps/web/src/modules/payroll/payrollApi.ts';
+const routesPath = 'apps/web/src/modules/payroll/PayrollRoutes.tsx';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
 const api = readFileSync(apiPath, 'utf8');
+const routes = readFileSync(routesPath, 'utf8');
 
 describe('ATLAS Payroll control plane', () => {
   it('adds the evidence-driven payroll control-plane schema and readiness contract', () => {
@@ -41,5 +43,13 @@ describe('ATLAS Payroll control plane', () => {
     expect(api).toContain('readiness: PayrollCapabilityReadiness');
     expect(api).toContain("rpc/payroll_get_capability_readiness");
     expect(api).toContain('p_org_id: orgId');
+  });
+
+  it('renders the four backend readiness capabilities without manufacturing execution state', () => {
+    expect(routes).toContain('d.readiness.capabilities');
+    for (const label of ['Tax determination','Tax filing','Tax remittance','Direct deposit']) expect(routes).toContain(label);
+    expect(routes).toContain("state.status==='ready'?'Ready':'Blocked'");
+    expect(routes).toContain('{state.reason}');
+    expect(routes).toContain('No money movement');
   });
 });
