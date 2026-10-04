@@ -5,7 +5,7 @@ import {
 } from '../../supabase/functions/atlas-copilot/intelligence-gateway.mjs';
 
 type Provider = {
-  id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign';
+  id: 'atlas-local' | 'openai' | 'anthropic' | 'bedrock' | 'gemini' | 'codex-sovereign';
   configured: boolean;
   verified: boolean;
   capabilities: string[];
@@ -30,11 +30,11 @@ describe('ATLAS Unified AI routing', () => {
 
   it('routes an explicit provider without silent fallback', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('openai'), provider('bedrock'), provider('gemini'), provider('codex-sovereign')],
+      providers: [provider('openai'), provider('anthropic'), provider('bedrock'), provider('gemini'), provider('codex-sovereign')],
     });
-    expect(router.route({ mode: 'gemini', intent: 'deep', capabilities_requested: ['reasoning'] })).toMatchObject({
-      mode: 'gemini',
-      providers: ['gemini'],
+    expect(router.route({ mode: 'anthropic', intent: 'deep', capabilities_requested: ['reasoning'] })).toMatchObject({
+      mode: 'anthropic',
+      providers: ['anthropic'],
       profile: 'deep',
       capabilities: ['reasoning'],
       fallback_used: false,
@@ -66,13 +66,13 @@ describe('ATLAS Unified AI routing', () => {
 
   it('prefers an explicitly declared zero-cost provider before a paid primary in auto mode', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('atlas-local'), provider('openai'), provider('gemini'), provider('codex-sovereign')],
+      providers: [provider('atlas-local'), provider('openai'), provider('anthropic'), provider('gemini'), provider('codex-sovereign')],
       preferredProviders: ['atlas-local'],
     });
     expect(router.route({ mode: 'auto', intent: 'balanced', capabilities_requested: ['generation'] })).toMatchObject({
       mode: 'auto',
       providers: ['atlas-local'],
-      fallback_providers: ['openai', 'gemini', 'codex-sovereign'],
+      fallback_providers: ['openai', 'anthropic', 'gemini', 'codex-sovereign'],
       reason: 'auto_zero_cost_verified_provider',
       fallback_used: false,
     });
@@ -80,19 +80,19 @@ describe('ATLAS Unified AI routing', () => {
 
   it('selects only organization-allowed providers in auto mode', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('openai'), provider('gemini'), provider('codex-sovereign')],
-      allowedProviders: ['gemini'],
+      providers: [provider('openai'), provider('anthropic'), provider('gemini'), provider('codex-sovereign')],
+      allowedProviders: ['anthropic'],
     });
     expect(router.route({ mode: 'auto', intent: 'balanced', capabilities_requested: ['generation'] })).toMatchObject({
       mode: 'auto',
-      providers: ['gemini'],
+      providers: ['anthropic'],
       fallback_used: true,
     });
   });
 
   it('requires at least two verified providers for council mode', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('openai'), provider('gemini', { verified: false })],
+      providers: [provider('openai'), provider('anthropic', { verified: false })],
     });
     expect(() => router.route({ mode: 'council', intent: 'balanced', capabilities_requested: ['generation'] }))
       .toThrowError(/capability_unavailable/);
@@ -100,13 +100,21 @@ describe('ATLAS Unified AI routing', () => {
 
   it('returns all verified compatible providers in stable council order', () => {
     const router = createIntelligenceRouter({
-      providers: [provider('openai'), provider('bedrock'), provider('gemini'), provider('codex-sovereign')],
+      providers: [provider('openai'), provider('anthropic'), provider('bedrock'), provider('gemini'), provider('codex-sovereign')],
     });
     expect(router.route({ mode: 'council', intent: 'deep', capabilities_requested: ['reasoning'] })).toMatchObject({
       mode: 'council',
-      providers: ['openai', 'bedrock', 'gemini', 'codex-sovereign'],
+      providers: ['openai', 'anthropic', 'bedrock', 'gemini', 'codex-sovereign'],
       profile: 'deep',
       fallback_used: false,
     });
+  });
+
+  it('accepts computer-use and multi-agent as governed capabilities', () => {
+    const request = normalizeIntelligenceRequest({
+      message: 'Inspect the public UI.',
+      capabilities_requested: ['generation', 'computer_use', 'multi_agent'],
+    });
+    expect(request.capabilities_requested).toEqual(['generation', 'computer_use', 'multi_agent']);
   });
 });
