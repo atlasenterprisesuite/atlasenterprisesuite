@@ -3,7 +3,6 @@ import type { CreativeEngineReadiness } from '../../../../packages/creator/creat
 import type { ImageEditRequest } from '../../../../packages/creator/image_edit.ts';
 import type { CreatorContext } from './context.ts';
 import { creatorError } from './errors.ts';
-import { writeCreatorAudit } from './repository.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -18,6 +17,24 @@ function adminClient() {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
+}
+
+async function writeImageAudit(
+  sb: ReturnType<typeof createClient>,
+  ctx: CreatorContext,
+  action: string,
+  recordId: string | null,
+  payload: Record<string, unknown>
+) {
+  const { error } = await sb.from('audit_logs').insert({
+    org_id: ctx.orgId,
+    user_id: ctx.userId,
+    action,
+    table_name: 'creator_director',
+    record_id: recordId,
+    new_data: payload
+  });
+  if (error) throw creatorError('audit_failed', 500);
 }
 
 function unconfiguredEngine(): CreativeEngineReadiness {
@@ -224,7 +241,7 @@ export async function executeOpenAiImageEdit(ctx: CreatorContext, source: File, 
       updated_at: new Date().toISOString()
     }).eq('organization_id', ctx.orgId).eq('id', production.id);
 
-    await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.image.edit.completed', String(production.id), {
+    await writeImageAudit(sb, ctx, 'creator.image.edit.completed', String(production.id), {
       production_id: production.id,
       generation_job_id: job.id,
       asset_id: asset.id,
@@ -246,7 +263,7 @@ export async function executeOpenAiImageEdit(ctx: CreatorContext, source: File, 
       status: 'failed',
       updated_at: new Date().toISOString()
     }).eq('organization_id', ctx.orgId).eq('id', production.id);
-    await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.image.edit.failed', String(production.id), {
+    await writeImageAudit(sb, ctx, 'creator.image.edit.failed', String(production.id), {
       production_id: production.id,
       generation_job_id: job.id,
       provider: PROVIDER_ID,
