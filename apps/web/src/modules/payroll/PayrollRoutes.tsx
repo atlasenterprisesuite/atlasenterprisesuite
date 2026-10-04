@@ -2,19 +2,26 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useSta
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 import { loadPayrollWorkspace, payrollMutations, type PayrollCapabilityState, type PayrollWorkspace } from './payrollApi';
+import { loadPayrollOperations, payrollOperationsMutations, type PayrollOperations } from './payrollOperationsApi';
 import './payroll.css';
 
 type State={status:'loading'}|{status:'error';message:string}|{status:'ready';data:PayrollWorkspace};
+type OperationsState={status:'loading'}|{status:'error';message:string}|{status:'ready';data:PayrollOperations};
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
 
 function usePayroll(){
-  const [state,setState]=useState<State>({status:'loading'});
-  const reload=useCallback(()=>{setState({status:'loading'});void loadPayrollWorkspace().then(data=>setState({status:'ready',data})).catch(e=>setState({status:'error',message:e instanceof Error?e.message:'payroll_unavailable'}));},[]);
-  useEffect(reload,[reload]); return {state,reload};
+ const [state,setState]=useState<State>({status:'loading'});
+ const reload=useCallback(()=>{setState({status:'loading'});void loadPayrollWorkspace().then(data=>setState({status:'ready',data})).catch(e=>setState({status:'error',message:e instanceof Error?e.message:'payroll_unavailable'}));},[]);
+ useEffect(reload,[reload]); return {state,reload};
+}
+function usePayrollOperations(){
+ const [state,setState]=useState<OperationsState>({status:'loading'});
+ const reload=useCallback(()=>{setState({status:'loading'});void loadPayrollOperations().then(data=>setState({status:'ready',data})).catch(e=>setState({status:'error',message:e instanceof Error?e.message:'payroll_operations_unavailable'}));},[]);
+ useEffect(reload,[reload]); return {state,reload};
 }
 function Frame({children}:{children:ReactNode}){
- return <section className="payroll-page page-stack"><header className="payroll-section-header"><p className="payroll-kicker">ATLAS PAYROLL</p><h1>Payroll</h1><p>Governed payroll preparation and approval. Tax filing, remittance and direct deposit remain external-gated.</p>
- <nav className="module-experience-actions"><Link to="/payroll">Overview</Link><Link to="/payroll/people">People</Link><Link to="/payroll/time-earnings">Time & Earnings</Link><Link to="/payroll/pay-runs">Pay Runs</Link></nav></header>{children}</section>;
+ return <section className="payroll-page page-stack"><header className="payroll-section-header"><p className="payroll-kicker">ATLAS PAYROLL</p><h1>Payroll</h1><p>Governed payroll preparation, tax determination and operations. External filing, remittance and money movement require authenticated provider evidence.</p>
+ <nav className="module-experience-actions"><Link to="/payroll">Overview</Link><Link to="/payroll/people">People</Link><Link to="/payroll/time-earnings">Time & Earnings</Link><Link to="/payroll/pay-runs">Pay Runs</Link><Link to="/payroll/operations">Operations</Link></nav></header>{children}</section>;
 }
 function View({state,children}:{state:State;children:(d:PayrollWorkspace)=>ReactNode}){
  if(state.status==='loading')return <div className="payroll-section-empty" role="status">Loading authorized payroll records…</div>;
@@ -27,13 +34,8 @@ function CapabilityCard({label,state}:{label:string;state:PayrollCapabilityState
 function Overview(){
  const {state}=usePayroll();
  return <Frame><View state={state}>{d=>{const active=d.runs.find(r=>!['locked','void'].includes(r.status));const total=d.lines.filter(l=>active&&l.run_id===active.id).reduce((n,l)=>n+l.net_pay,0);const capabilities=d.readiness.capabilities;return <>
-  <div className="metric-grid"><article><span>Workers</span><strong>{d.workers.filter(w=>w.status==='active').length}</strong></article><article><span>Pay runs</span><strong>{d.runs.length}</strong></article><article><span>Current net</span><strong>{money.format(total)}</strong></article><article><span>Execution</span><strong>Gated</strong><small>No money movement</small></article></div>
-  <div className="module-experience-grid">
-   <CapabilityCard label="Tax determination" state={capabilities.tax_determination}/>
-   <CapabilityCard label="Tax filing" state={capabilities.tax_filing}/>
-   <CapabilityCard label="Tax remittance" state={capabilities.tax_remittance}/>
-   <CapabilityCard label="Direct deposit" state={capabilities.direct_deposit}/>
-  </div>
+  <div className="metric-grid"><article><span>Workers</span><strong>{d.workers.filter(w=>w.status==='active').length}</strong></article><article><span>Pay runs</span><strong>{d.runs.length}</strong></article><article><span>Current net</span><strong>{money.format(total)}</strong></article><article><span>Execution</span><strong>Gated</strong><small>Provider evidence required</small></article></div>
+  <div className="module-experience-grid"><CapabilityCard label="Tax determination" state={capabilities.tax_determination}/><CapabilityCard label="Tax filing" state={capabilities.tax_filing}/><CapabilityCard label="Tax remittance" state={capabilities.tax_remittance}/><CapabilityCard label="Direct deposit" state={capabilities.direct_deposit}/></div>
  </>}}</View></Frame>;
 }
 function People(){
@@ -58,6 +60,50 @@ function PayRuns(){
   {error?<p role="alert">{error}</p>:null}
  </>}</View></Frame>;
 }
+
+function PayrollOperations(){
+ const {state:payrollState}=usePayroll(); const {state:opsState,reload}=usePayrollOperations(); const [error,setError]=useState(''); const [notice,setNotice]=useState('');
+ async function run(action:()=>Promise<unknown>,form?:HTMLFormElement){setError('');setNotice('');try{await action();form?.reset();setNotice('Saved with governed audit controls.');reload();}catch(x){setError(x instanceof Error?x.message:'payroll_operation_failed');}}
+ return <Frame><View state={payrollState}>{d=>{
+  if(opsState.status==='loading')return <div className="payroll-section-empty" role="status">Loading payroll operations…</div>;
+  if(opsState.status==='error')return <div className="payroll-section-empty" role="alert">{opsState.message}</div>;
+  const o=opsState.data; const activeWorkers=d.workers.filter(w=>w.status==='active'); const runs=d.runs.filter(r=>r.status!=='void');
+  const workerName=(id:string|null)=>d.workers.find(w=>w.id===id)?.full_name||'Worker';
+  return <>
+   <div className="status-card"><strong>Execution boundary</strong><p>Preparing a compliance item or payment batch does not file a return or move money. Submitted, accepted and settled states require provider evidence.</p></div>
+
+   <section className="page-stack"><h2>Jurisdictions</h2>
+    <div className="module-experience-grid">{o.workerJurisdictions.map(j=><article className="module-experience-card is-active" key={j.id}><strong>{workerName(j.worker_id)}</strong><p>{j.residence_state} residence · {j.work_state} work</p><small>{j.remote_work?'Remote work':'On-site'}{j.local_code?` · ${j.local_code}`:''}</small></article>)}</div>
+    <form className="atlas-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run(()=>payrollOperationsMutations.upsertWorkerJurisdiction({workerId:String(f.get('workerId')),residenceState:String(f.get('residenceState')),workState:String(f.get('workState')),effectiveFrom:String(f.get('effectiveFrom')),evidenceHash:String(f.get('evidenceHash')),localCode:String(f.get('localCode')||''),remoteWork:f.get('remoteWork')==='on'}),e.currentTarget);}}><h3>Worker jurisdiction</h3><label>Worker<select name="workerId" required>{activeWorkers.map(w=><option key={w.id} value={w.id}>{w.full_name}</option>)}</select></label><label>Residence state<input name="residenceState" maxLength={2} required/></label><label>Work state<input name="workState" maxLength={2} required/></label><label>Local code<input name="localCode"/></label><label>Effective from<input name="effectiveFrom" type="date" required/></label><label>Evidence hash<input name="evidenceHash" required/></label><label><input name="remoteWork" type="checkbox"/> Remote work</label><button>Save jurisdiction</button></form>
+    <form className="atlas-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run(()=>payrollOperationsMutations.upsertEmployerTaxProfile({stateCode:'FL',taxKind:'reemployment',employerRate:Number(f.get('rate')),wageBase:7000,effectiveFrom:String(f.get('effectiveFrom')),evidenceHash:String(f.get('evidenceHash')),sourceUri:'https://floridarevenue.com/taxes/taxesfees/Pages/rt_rate.aspx'}),e.currentTarget);}}><h3>Florida reemployment tax profile</h3><p>Enter the employer-specific rate shown by Florida DOR. ATLAS will not invent it.</p><label>Employer rate<input name="rate" type="number" min="0.001" max="0.054" step="0.0001" defaultValue="0.027" required/></label><label>Effective from<input name="effectiveFrom" type="date" required/></label><label>Rate evidence hash<input name="evidenceHash" required/></label><button>Save Florida rate</button></form>
+   </section>
+
+   <section className="page-stack"><h2>Benefits & deductions</h2><div className="module-experience-grid">{o.workerDeductions.map(x=>{const def=o.deductionDefinitions.find(v=>v.id===x.deduction_definition_id);return <article className="module-experience-card is-active" key={x.id}><strong>{workerName(x.worker_id)}</strong><p>{def?.name||'Deduction'} · {x.amount_type} {x.amount}</p><small>{def?.taxability||'unclassified'}</small></article>;})}</div>
+    <form className="atlas-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run(()=>payrollOperationsMutations.upsertWorkerDeduction({workerId:String(f.get('workerId')),code:String(f.get('code')),name:String(f.get('name')),category:String(f.get('category')),taxability:String(f.get('taxability')),amountType:String(f.get('amountType')),amount:Number(f.get('amount')),effectiveFrom:String(f.get('effectiveFrom')),evidenceHash:String(f.get('evidenceHash'))}),e.currentTarget);}}><label>Worker<select name="workerId" required>{activeWorkers.map(w=><option key={w.id} value={w.id}>{w.full_name}</option>)}</select></label><label>Code<input name="code" required/></label><label>Name<input name="name" required/></label><label>Category<select name="category"><option value="health">Health</option><option value="retirement">Retirement</option><option value="benefit">Benefit</option><option value="other">Other</option></select></label><label>Taxability<select name="taxability"><option value="unclassified">Unclassified — blocked for tax automation</option><option value="pretax_fit_fica">Pre-tax FIT/FICA</option><option value="pretax_fit_only">Pre-tax FIT only</option><option value="posttax">Post-tax</option></select></label><label>Amount type<select name="amountType"><option value="fixed">Fixed</option><option value="percent">Percent</option></select></label><label>Amount<input name="amount" type="number" step="0.01" min="0" required/></label><label>Effective from<input name="effectiveFrom" type="date" required/></label><label>Evidence hash<input name="evidenceHash" required/></label><button>Save deduction</button></form>
+   </section>
+
+   <section className="page-stack"><h2>Garnishments</h2><div className="module-experience-grid">{o.garnishments.map(g=><article className="module-experience-card is-active" key={g.id}><strong>{workerName(g.worker_id)}</strong><p>{g.order_type} · {g.authority}</p><small>{g.case_reference} · priority {g.priority} · {g.status}</small></article>)}</div>
+    <form className="atlas-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run(()=>payrollOperationsMutations.recordGarnishment({workerId:String(f.get('workerId')),orderType:String(f.get('orderType')),authority:String(f.get('authority')),caseReference:String(f.get('caseReference')),amountType:String(f.get('amountType')),amount:Number(f.get('amount')),priority:Number(f.get('priority')),effectiveFrom:String(f.get('effectiveFrom')),evidenceHash:String(f.get('evidenceHash'))}),e.currentTarget);}}><label>Worker<select name="workerId" required>{activeWorkers.map(w=><option key={w.id} value={w.id}>{w.full_name}</option>)}</select></label><label>Order type<input name="orderType" required/></label><label>Authority<input name="authority" required/></label><label>Case reference<input name="caseReference" required/></label><label>Amount type<select name="amountType"><option value="fixed">Fixed</option><option value="percent">Percent</option></select></label><label>Amount<input name="amount" type="number" min="0" step="0.01" required/></label><label>Priority<input name="priority" type="number" defaultValue="100" min="1" required/></label><label>Effective from<input name="effectiveFrom" type="date" required/></label><label>Order evidence hash<input name="evidenceHash" required/></label><button>Record order</button></form>
+   </section>
+
+   <section className="page-stack"><h2>Compliance queue</h2><div className="module-experience-grid">{o.compliance.map(c=><article className="module-experience-card is-active" key={c.id}><strong>{c.form_code||c.obligation_type}</strong><p>{c.jurisdiction} · due {c.due_date}</p><small>{c.execution_status}{c.amount!=null?` · ${money.format(c.amount)}`:''}</small></article>)}</div>
+    <form className="atlas-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run(()=>payrollOperationsMutations.createComplianceObligation({runId:String(f.get('runId')||''),jurisdiction:String(f.get('jurisdiction')),obligationType:String(f.get('obligationType')),formCode:String(f.get('formCode')||''),dueDate:String(f.get('dueDate')),amount:f.get('amount')?Number(f.get('amount')):undefined,providerConnectionId:String(f.get('provider')||'')}),e.currentTarget);}}><label>Run<select name="runId"><option value="">Not run-specific</option>{runs.map(r=><option key={r.id} value={r.id}>{r.pay_date} · {r.status}</option>)}</select></label><label>Jurisdiction<input name="jurisdiction" defaultValue="US-FEDERAL" required/></label><label>Type<select name="obligationType"><option value="tax.file">Tax filing</option><option value="tax.remit">Tax remittance</option><option value="year_end.forms">Year-end forms</option><option value="state.report">State report</option></select></label><label>Form code<input name="formCode" placeholder="941 / 940 / W-2 / RT-6"/></label><label>Due date<input name="dueDate" type="date" required/></label><label>Amount<input name="amount" type="number" min="0" step="0.01"/></label><label>Verified provider<select name="provider"><option value="">None — prepare only</option>{o.providers.filter(p=>p.status==='verified'&&p.environment==='production').map(p=><option key={p.id} value={p.id}>{p.provider_key}</option>)}</select></label><button>Prepare obligation</button></form>
+   </section>
+
+   <section className="page-stack"><h2>Payment batches</h2><div className="module-experience-grid">{o.paymentBatches.map(b=><article className="module-experience-card is-active" key={b.id}><strong>{b.payment_kind.toUpperCase()}</strong><p>{money.format(b.amount)}</p><small>{b.execution_status} · run {b.run_id.slice(0,8)}</small></article>)}</div>
+    <form className="atlas-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run(()=>payrollOperationsMutations.createPaymentBatch({runId:String(f.get('runId')),paymentKind:String(f.get('kind')),amount:Number(f.get('amount')),providerConnectionId:String(f.get('provider')||'')}),e.currentTarget);}}><label>Run<select name="runId" required>{runs.map(r=><option key={r.id} value={r.id}>{r.pay_date} · {r.status}</option>)}</select></label><label>Kind<select name="kind"><option value="ach">ACH</option><option value="paycard">Pay card</option><option value="check">Check</option></select></label><label>Amount<input name="amount" type="number" min="0" step="0.01" required/></label><label>Verified provider<select name="provider"><option value="">None — prepare only</option>{o.providers.filter(p=>p.status==='verified'&&p.environment==='production').map(p=><option key={p.id} value={p.id}>{p.provider_key}</option>)}</select></label><button>Prepare payment batch</button></form>
+   </section>
+
+   <section className="page-stack"><h2>GL postings</h2><div className="module-experience-grid">{o.glPostings.map(g=><article className="module-experience-card is-active" key={g.id}><strong>{g.journal_ref}</strong><p>Debit {money.format(g.debit_total)} · Credit {money.format(g.credit_total)}</p><small>{g.status}</small></article>)}</div>
+    <form className="atlas-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run(()=>payrollOperationsMutations.recordGlPosting({runId:String(f.get('runId')),journalRef:String(f.get('journalRef')),debitTotal:Number(f.get('debit')),creditTotal:Number(f.get('credit')),status:String(f.get('status')),evidenceHash:String(f.get('evidenceHash')||'')}),e.currentTarget);}}><label>Run<select name="runId" required>{runs.map(r=><option key={r.id} value={r.id}>{r.pay_date} · {r.status}</option>)}</select></label><label>Journal reference<input name="journalRef" required/></label><label>Debit total<input name="debit" type="number" min="0" step="0.01" required/></label><label>Credit total<input name="credit" type="number" min="0" step="0.01" required/></label><label>Status<select name="status"><option value="draft">Draft</option><option value="posted">Posted — evidence required</option><option value="failed">Failed</option></select></label><label>Posting evidence hash<input name="evidenceHash"/></label><button>Record GL posting</button></form>
+   </section>
+
+   <section className="page-stack"><h2>Variance review</h2><div className="atlas-action-row">{runs.map(r=><button key={r.id} onClick={()=>void run(()=>payrollOperationsMutations.scanRunVariances(r.id))}>Scan {r.pay_date}</button>)}</div><div className="module-experience-grid">{o.varianceFindings.map(v=><article className="module-experience-card is-active" key={v.id}><strong>{v.finding_type.replaceAll('_',' ')}</strong><p>{workerName(v.worker_id)} · {v.severity}</p><small>{v.delta_percent!=null?`${v.delta_percent}% · `:''}{v.requires_review?'requires review':'reviewed'} · {v.status}</small></article>)}</div></section>
+   {notice?<p role="status">{notice}</p>:null}{error?<p role="alert">{error}</p>:null}
+  </>;
+ }}</View></Frame>;
+}
+
 export function PayrollRoutes(){
- return <RequireAtlasIdentity><Routes><Route index element={<Overview/>}/><Route path="overview" element={<Navigate to="/payroll" replace/>}/><Route path="people" element={<People/>}/><Route path="time-earnings" element={<TimeEarnings/>}/><Route path="pay-runs" element={<PayRuns/>}/></Routes></RequireAtlasIdentity>;
+ return <RequireAtlasIdentity><Routes><Route index element={<Overview/>}/><Route path="overview" element={<Navigate to="/payroll" replace/>}/><Route path="people" element={<People/>}/><Route path="time-earnings" element={<TimeEarnings/>}/><Route path="pay-runs" element={<PayRuns/>}/><Route path="operations" element={<PayrollOperations/>}/></Routes></RequireAtlasIdentity>;
 }
