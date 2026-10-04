@@ -2,7 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migrationPath = 'supabase/migrations/20261004190000_atlas_payroll_control_plane.sql';
+const apiPath = 'apps/web/src/modules/payroll/payrollApi.ts';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
+const api = readFileSync(apiPath, 'utf8');
 
 describe('ATLAS Payroll control plane', () => {
   it('adds the evidence-driven payroll control-plane schema and readiness contract', () => {
@@ -31,5 +33,13 @@ describe('ATLAS Payroll control plane', () => {
     expect(migration).toContain('tax_filing');
     expect(migration).toContain('tax_remittance');
     expect(migration).toContain('direct_deposit');
+  });
+
+  it('loads capability readiness from the governed RPC without inventing defaults', () => {
+    expect(api).toContain('export type PayrollCapabilityState');
+    expect(api).toContain('export type PayrollCapabilityReadiness');
+    expect(api).toContain('readiness: PayrollCapabilityReadiness');
+    expect(api).toContain("rpc/payroll_get_capability_readiness");
+    expect(api).toContain('p_org_id: orgId');
   });
 });
