@@ -27,7 +27,7 @@ jobs:
       verified: ${{ steps.verify_runtime.outputs.verified }}
       attested_sha: ${{ steps.verify_runtime.outputs.attested_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verify real zero-cost inference
         id: verify_runtime
