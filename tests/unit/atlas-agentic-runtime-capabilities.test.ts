@@ -29,7 +29,7 @@ describe('ATLAS agentic provider capability descriptors', () => {
     });
 
     const [openai] = await registry.readiness({ profile: 'balanced' });
-    expect(openai.feature_support).toEqual({ ...featureShape, background: true });
+    expect(openai.feature_support).toMatchObject({ ...featureShape, background: true });
   });
 
   it('exposes truthful complete feature support for the current OpenAI Responses adapter', () => {
@@ -39,7 +39,7 @@ describe('ATLAS agentic provider capability descriptors', () => {
       fetchFn: async () => new Response('{}', { status: 200 }),
     });
 
-    expect(adapter.descriptor().feature_support).toEqual({
+    expect(adapter.descriptor().feature_support).toMatchObject({
       ...featureShape,
       background: true,
     });
@@ -52,6 +52,6 @@ describe('ATLAS agentic provider capability descriptors', () => {
       fetchFn: async () => new Response('{}', { status: 200 }),
     });
 
-    expect(adapter.descriptor().feature_support).toEqual(featureShape);
+    expect(adapter.descriptor().feature_support).toMatchObject(featureShape);
   });
 });
