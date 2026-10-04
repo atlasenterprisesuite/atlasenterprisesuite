@@ -316,3 +316,5 @@ export * from './libraryRouting';
 
 export * from './whatsapp-ai-council';
 export * from './whatsapp-provider';
+
+export * from './deploymentControl';
