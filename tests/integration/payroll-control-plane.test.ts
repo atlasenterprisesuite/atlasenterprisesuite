@@ -11,6 +11,7 @@ const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8'
 const settlementFix = existsSync(settlementFixPath) ? readFileSync(settlementFixPath, 'utf8') : '';
 const readinessFix = existsSync(readinessFixPath) ? readFileSync(readinessFixPath, 'utf8') : '';
 const providerGrantFix = existsSync(providerGrantFixPath) ? readFileSync(providerGrantFixPath, 'utf8') : '';
+const normalizedProviderGrantFix = providerGrantFix.replace(/\s+/g, ' ').trim();
 const api = readFileSync(apiPath, 'utf8');
 const routes = readFileSync(routesPath, 'utf8');
 
@@ -52,10 +53,10 @@ describe('ATLAS Payroll control plane', () => {
 
   it('does not expose provider credential references to authenticated payroll readers', () => {
     expect(existsSync(providerGrantFixPath)).toBe(true);
-    expect(providerGrantFix).toContain('revoke select on public.payroll_provider_connections from authenticated');
-    expect(providerGrantFix).toContain('grant select (id, org_id, provider_key, environment, status, capabilities, last_verified_at, created_at, updated_at)');
-    expect(providerGrantFix).not.toContain('grant select (credentials_ref');
-    expect(providerGrantFix).not.toContain('grant select (verification_evidence_hash');
+    expect(normalizedProviderGrantFix).toContain('revoke select on public.payroll_provider_connections from authenticated');
+    expect(normalizedProviderGrantFix).toContain('grant select ( id, org_id, provider_key, environment, status, capabilities, last_verified_at, created_at, updated_at ) on public.payroll_provider_connections to authenticated');
+    expect(normalizedProviderGrantFix).not.toContain('grant select ( credentials_ref');
+    expect(normalizedProviderGrantFix).not.toContain('grant select ( verification_evidence_hash');
   });
 
   it('requires immutable provider evidence before settled on insert or update', () => {
