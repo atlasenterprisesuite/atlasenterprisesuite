@@ -6,7 +6,7 @@ describe('ATLAS Image Lab live OpenAI adapter', () => {
     const source = readFileSync('supabase/functions/atlas-creator/_shared/openai_image.ts', 'utf8');
     expect(source).toContain("Deno.env.get('OPENAI_API_KEY')");
     expect(source).toContain("'gpt-image-2.5-sunburst'");
-    expect(source).toContain('/v1/images/edits');
+    expect(source).toContain('/images/edits');
     expect(source).toContain('openAiImageEngineReadiness');
     expect(source).toContain('executeOpenAiImageEdit');
     expect(source).not.toContain('OPENAI_API_KEY=');
@@ -21,11 +21,22 @@ describe('ATLAS Image Lab live OpenAI adapter', () => {
     expect(source).toContain('createSignedUrl');
   });
 
-  it('wires verified readiness and removes the permanent adapter-not-configured terminal state', () => {
-    const source = readFileSync('supabase/functions/atlas-creator/index.ts', 'utf8');
+  it('exposes a dedicated authenticated edge route for verified readiness and edits', () => {
+    const source = readFileSync('supabase/functions/atlas-image-edit/index.ts', 'utf8');
+    expect(source).toContain("creator.read");
+    expect(source).toContain("creator.generate");
     expect(source).toContain('openAiImageEngineReadiness');
     expect(source).toContain('executeOpenAiImageEdit');
-    expect(source).not.toContain("throw creatorError('image_engine_adapter_not_configured', 503)");
+    expect(source).toContain("api === 'readiness'");
+    expect(source).toContain("api === 'edit'");
+  });
+
+  it('uses the dedicated image endpoint from the browser without exposing provider secrets', () => {
+    const source = readFileSync('apps/web/src/modules/creator/image/imageLabApi.ts', 'utf8');
+    expect(source).toContain('/functions/v1/atlas-image-edit');
+    expect(source).toContain('getImageEditReadiness');
+    expect(source).toContain('submitImageEdit');
+    expect(source).not.toContain('OPENAI_API_KEY');
   });
 
   it('renders a persisted generated design when the backend returns a signed URL', () => {
