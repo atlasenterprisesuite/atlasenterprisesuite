@@ -5,6 +5,10 @@ import {
   openAICustomVoiceCapabilities,
   providerErrorState
 } from './provider-core.mjs';
+import {
+  getTelephonyReadiness,
+  originateTelephonyCall
+} from '../_shared/telephony-runtime.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
@@ -314,6 +318,26 @@ async function status(req: Request) {
   return json({ok:true,provider:'openai_custom_voice',...access,capabilities:openAICustomVoiceCapabilities});
 }
 
+async function telephonyReadiness(req: Request) {
+  const ctx = await context(req,'communication.telephony.read');
+  const readiness = await getTelephonyReadiness(ctx);
+  return json({
+    ok:true,
+    service:'atlas-communication-telephony',
+    version:2,
+    organization_id:ctx.orgId,
+    role:ctx.role,
+    ...readiness,
+    provider_secret_values_returned:false,
+    checked_at:new Date().toISOString()
+  });
+}
+
+async function telephonyCall(req: Request) {
+  const ctx = await context(req,'communication.telephony.call');
+  return originateTelephonyCall(req,ctx);
+}
+
 async function handler(req: Request) {
   const url = new URL(req.url);
   const api = url.searchParams.get('api') || 'status';
@@ -322,6 +346,8 @@ async function handler(req: Request) {
   if (req.method === 'POST' && api === 'create-consent') return createProviderConsent(req);
   if (req.method === 'POST' && api === 'create-voice') return createProviderVoice(req);
   if (req.method === 'POST' && api === 'speech') return synthesize(req);
+  if (req.method === 'GET' && api === 'telephony-readiness') return telephonyReadiness(req);
+  if (req.method === 'POST' && api === 'telephony-call') return telephonyCall(req);
   return json({ok:false,error:'not_found'},404);
 }
 
