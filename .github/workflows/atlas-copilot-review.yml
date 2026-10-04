@@ -22,6 +22,7 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      COPILOT_REVIEWER: copilot-pull-request-reviewer[bot]
       requested_effort: balanced
 
     steps:
@@ -42,6 +43,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          echo "Requesting reviewer: $COPILOT_REVIEWER" >> "$GITHUB_STEP_SUMMARY"
           node scripts/atlas-copilot-review-evidence.mjs request \
             --repo "$GITHUB_REPOSITORY" \
             --pr "$PR_NUMBER" \
