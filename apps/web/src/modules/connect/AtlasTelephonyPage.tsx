@@ -43,10 +43,14 @@ export function AtlasTelephonyPage() {
   }, [refresh]);
 
   const callable = readiness?.verified === true && readiness.state === 'verified';
-  const credentialCount = useMemo(
-    () => readiness ? Object.values(readiness.credentials).filter(Boolean).length : 0,
-    [readiness]
-  );
+  const credentialSummary = useMemo(() => {
+    if (!readiness) return { present: 0, total: 6 };
+    const values = Object.values(readiness.credentials);
+    return {
+      present: values.filter(Boolean).length,
+      total: values.length
+    };
+  }, [readiness]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -102,7 +106,7 @@ export function AtlasTelephonyPage() {
 
       <div className="stat-grid" aria-label="ATLAS calling readiness">
         <article><strong>{readiness?.provider || 'None'}</strong><span>provider adapter</span></article>
-        <article><strong>{credentialCount}/5</strong><span>server settings present</span></article>
+        <article><strong>{credentialSummary.present}/{credentialSummary.total}</strong><span>server settings present</span></article>
         <article><strong>{callable ? 'Enabled' : 'Blocked'}</strong><span>outbound origination</span></article>
         <article><strong>Off</strong><span>recording by default</span></article>
       </div>
@@ -143,6 +147,7 @@ export function AtlasTelephonyPage() {
             <li>Authenticated ATLAS session and active organization</li>
             <li>Telephony RBAC permission</li>
             <li>Server-side provider credentials only</li>
+            <li>Telnyx webhook signing key configured server-side</li>
             <li>Exact Call Control connection readiness</li>
             <li>E.164 destination validation</li>
             <li>Purpose and consent reference</li>
