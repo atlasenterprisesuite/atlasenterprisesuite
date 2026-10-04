@@ -3,7 +3,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migrationPath='supabase/migrations/20261004203000_atlas_payroll_us_federal_tax_2026.sql';
+const persistencePath='supabase/migrations/20261004204500_atlas_payroll_us_federal_determination_persistence.sql';
 const migration=existsSync(migrationPath)?readFileSync(migrationPath,'utf8'):'';
+const persistence=existsSync(persistencePath)?readFileSync(persistencePath,'utf8'):'';
+const combined=`${migration}\n${persistence}`;
 
 function ruleParams(){
   const match=migration.match(/\$atlas_rule\$(\{.*?\})\$atlas_rule\$/s);
@@ -73,16 +76,18 @@ describe('ATLAS Payroll US federal tax determination Wave 2',()=>{
   });
 
   it('persists a governed immutable determination bound to run, worker, W-4 and rule evidence',()=>{
+    expect(existsSync(persistencePath)).toBe(true);
     for(const token of [
       'payroll_determine_us_federal_2026','payroll_run_not_found','payroll_line_not_found',
       'w4_election_not_found','payroll_tax_determination_immutable','input_snapshot','output_snapshot',
-      'input_hash','rule_checksum','w4_election_id'
-    ]) expect(migration).toContain(token);
-    expect(migration).toContain('select public.payroll_calculate_us_federal_2026');
-    expect(migration).toContain("'w4_election_id',v_w4.id");
-    expect(migration).toContain("'run_id',p_run_id");
-    expect(migration).toContain('insert into public.payroll_tax_determinations');
-    expect(migration).toContain('payroll_write_required');
+      'input_hash','rule_checksum','w4_election_id','unsupported_pretax_taxability','ytd_evidence_required'
+    ]) expect(combined).toContain(token);
+    expect(persistence).toContain('select public.payroll_calculate_us_federal_2026');
+    expect(persistence).toContain("'w4_election_id',v_w4.id");
+    expect(persistence).toContain("'run_id',p_run_id");
+    expect(persistence).toContain('insert into public.payroll_tax_determinations');
+    expect(persistence).toContain('payroll_write_required');
+    expect(persistence).toContain('extensions.digest');
   });
 
   it('keeps overall tax readiness blocked for a federal-only rule pack',()=>{
