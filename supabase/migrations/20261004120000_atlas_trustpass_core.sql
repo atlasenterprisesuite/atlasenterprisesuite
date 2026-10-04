@@ -205,11 +205,16 @@ create policy atlas_webauthn_credentials_actor_read
     )
   );
 
-revoke all on public.atlas_trust_policies from anon, authenticated;
-revoke all on public.atlas_trust_risk_events from anon, authenticated;
-revoke all on public.atlas_trust_challenges from anon, authenticated;
-revoke all on public.atlas_trust_grants from anon, authenticated;
-revoke all on public.atlas_webauthn_credentials from anon, authenticated;
+revoke all on public.atlas_trust_policies from anon;
+revoke all on public.atlas_trust_policies from authenticated;
+revoke all on public.atlas_trust_risk_events from anon;
+revoke all on public.atlas_trust_risk_events from authenticated;
+revoke all on public.atlas_trust_challenges from anon;
+revoke all on public.atlas_trust_challenges from authenticated;
+revoke all on public.atlas_trust_grants from anon;
+revoke all on public.atlas_trust_grants from authenticated;
+revoke all on public.atlas_webauthn_credentials from anon;
+revoke all on public.atlas_webauthn_credentials from authenticated;
 
 grant select (
   id, organization_id, policy_key, version, action_class, minimum_assurance,
