@@ -9,6 +9,7 @@ const allMigrations=`${migration}\n${applyTaxMigration}`;
 const apiPath='apps/web/src/modules/payroll/payrollOperationsApi.ts';
 const api=existsSync(apiPath)?readFileSync(apiPath,'utf8'):'';
 const routes=readFileSync('apps/web/src/modules/payroll/PayrollRoutes.tsx','utf8');
+const normalized=migration.replace(/\s+/g,' ').trim();
 
 describe('ATLAS Payroll operations workbench',()=>{
   it('creates governed operational artifacts for jurisdictions, deductions, garnishments, compliance, payments, GL and variance',()=>{
@@ -19,6 +20,14 @@ describe('ATLAS Payroll operations workbench',()=>{
       'payroll_payment_batches','payroll_gl_postings','payroll_variance_findings',
       'enable row level security','payroll.write','payroll.read'
     ]) expect(migration).toContain(token);
+  });
+
+  it('enforces tenant-safe worker and run references plus explicit previous-run state',()=>{
+    expect(normalized).toContain('create unique index if not exists people_workers_org_id_id_uq on public.people_workers(org_id,id)');
+    expect(normalized).toContain('create unique index if not exists payroll_runs_org_id_id_uq on public.payroll_runs(org_id,id)');
+    expect(normalized).toContain('foreign key (org_id,worker_id) references public.people_workers(org_id,id)');
+    expect(normalized).toContain('foreign key (org_id,run_id) references public.payroll_runs(org_id,id)');
+    for(const token of ['worker_not_found','payroll_run_not_found','v_prev_found boolean']) expect(migration).toContain(token);
   });
 
   it('supports Florida 2026 reemployment tax without inventing an employer-specific rate',()=>{
