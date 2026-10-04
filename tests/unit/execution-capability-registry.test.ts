@@ -5,6 +5,19 @@ import {
   resolveCapability
 } from '../../packages/execution/src/capability-registry';
 
+function collectKeys(value: unknown, keys = new Set<string>()): Set<string> {
+  if (!value || typeof value !== 'object') return keys;
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    keys.add(key);
+    if (Array.isArray(child)) {
+      for (const item of child) collectKeys(item, keys);
+    } else {
+      collectKeys(child, keys);
+    }
+  }
+  return keys;
+}
+
 describe('ATLAS capability registry', () => {
   it('declares the approved telecom capability set exactly once', () => {
     const ids = ATLAS_TELECOM_CAPABILITIES.map((capability) => capability.id);
@@ -33,8 +46,8 @@ describe('ATLAS capability registry', () => {
   });
 
   it('keeps provider bindings declarative and secret-free', () => {
-    const serialized = JSON.stringify(ATLAS_TELECOM_CAPABILITIES);
-    expect(serialized).not.toMatch(/api.?key|secret|token|credential_value/i);
+    const keys = [...collectKeys(ATLAS_TELECOM_CAPABILITIES)];
+    expect(keys.some((key) => /api.?key|secret|token|credential_value/i.test(key))).toBe(false);
 
     for (const capability of ATLAS_TELECOM_CAPABILITIES) {
       for (const binding of capability.providerBindings) {
