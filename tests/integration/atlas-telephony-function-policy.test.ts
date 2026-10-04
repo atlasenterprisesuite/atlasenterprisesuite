@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 const config = readFileSync('supabase/config.toml', 'utf8');
 
-describe('ATLAS telephony Edge Function JWT policy', () => {
-  it('requires ATLAS auth for the interactive telephony API', () => {
-    expect(config).toContain('[functions.atlas-communication-telephony]');
-    expect(config).toMatch(/\[functions\.atlas-communication-telephony\]\s*\nverify_jwt\s*=\s*true/);
+describe('ATLAS telephony Edge Function JWT policy under function quota', () => {
+  it('keeps the authenticated ATLAS Voice provider behind the JWT gateway', () => {
+    expect(config).toContain('[functions.atlas-voice-provider]');
+    expect(config).toMatch(/\[functions\.atlas-voice-provider\]\s*\nverify_jwt\s*=\s*true/);
   });
 
-  it('allows provider webhooks through the gateway for Ed25519 verification in-function', () => {
-    expect(config).toContain('[functions.atlas-communication-telephony-webhook]');
-    expect(config).toMatch(/\[functions\.atlas-communication-telephony-webhook\]\s*\nverify_jwt\s*=\s*false/);
+  it('opens only the verification gateway needed for signed Telnyx webhooks', () => {
+    expect(config).toContain('[functions.atlas-voice-native-verification]');
+    expect(config).toMatch(/\[functions\.atlas-voice-native-verification\]\s*\nverify_jwt\s*=\s*false/);
   });
 });
