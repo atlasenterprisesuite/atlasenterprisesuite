@@ -2,7 +2,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migrationPath='supabase/migrations/20261004213000_atlas_payroll_operations_workbench.sql';
+const applyTaxPath='supabase/migrations/20261004213500_atlas_payroll_apply_federal_tax.sql';
 const migration=existsSync(migrationPath)?readFileSync(migrationPath,'utf8'):'';
+const applyTaxMigration=existsSync(applyTaxPath)?readFileSync(applyTaxPath,'utf8'):'';
+const allMigrations=`${migration}\n${applyTaxMigration}`;
 const apiPath='apps/web/src/modules/payroll/payrollOperationsApi.ts';
 const api=existsSync(apiPath)?readFileSync(apiPath,'utf8'):'';
 const routes=readFileSync('apps/web/src/modules/payroll/PayrollRoutes.tsx','utf8');
@@ -41,8 +44,9 @@ describe('ATLAS Payroll operations workbench',()=>{
   });
 
   it('applies an immutable federal determination to the editable payroll line',()=>{
+    expect(existsSync(applyTaxPath)).toBe(true);
     for(const token of ['payroll_apply_federal_tax_to_line','federal_tax_determination_required','tax_source','federal_2026_determination','tax_determination_id']){
-      expect(migration).toContain(token);
+      expect(allMigrations).toContain(token);
     }
   });
 
