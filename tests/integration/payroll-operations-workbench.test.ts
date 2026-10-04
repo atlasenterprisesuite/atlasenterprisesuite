@@ -3,13 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 const migrationPath='supabase/migrations/20261004213000_atlas_payroll_operations_workbench.sql';
 const applyTaxPath='supabase/migrations/20261004213500_atlas_payroll_apply_federal_tax.sql';
+const hardeningPath='supabase/migrations/20261004214000_atlas_payroll_operations_tenant_hardening.sql';
 const migration=existsSync(migrationPath)?readFileSync(migrationPath,'utf8'):'';
 const applyTaxMigration=existsSync(applyTaxPath)?readFileSync(applyTaxPath,'utf8'):'';
-const allMigrations=`${migration}\n${applyTaxMigration}`;
+const hardening=existsSync(hardeningPath)?readFileSync(hardeningPath,'utf8'):'';
+const allMigrations=`${migration}\n${applyTaxMigration}\n${hardening}`;
 const apiPath='apps/web/src/modules/payroll/payrollOperationsApi.ts';
 const api=existsSync(apiPath)?readFileSync(apiPath,'utf8'):'';
 const routes=readFileSync('apps/web/src/modules/payroll/PayrollRoutes.tsx','utf8');
-const normalized=migration.replace(/\s+/g,' ').trim();
+const normalized=allMigrations.replace(/\s+/g,' ').trim();
 
 describe('ATLAS Payroll operations workbench',()=>{
   it('creates governed operational artifacts for jurisdictions, deductions, garnishments, compliance, payments, GL and variance',()=>{
@@ -23,11 +25,12 @@ describe('ATLAS Payroll operations workbench',()=>{
   });
 
   it('enforces tenant-safe worker and run references plus explicit previous-run state',()=>{
+    expect(existsSync(hardeningPath)).toBe(true);
     expect(normalized).toContain('create unique index if not exists people_workers_org_id_id_uq on public.people_workers(org_id,id)');
     expect(normalized).toContain('create unique index if not exists payroll_runs_org_id_id_uq on public.payroll_runs(org_id,id)');
     expect(normalized).toContain('foreign key (org_id,worker_id) references public.people_workers(org_id,id)');
     expect(normalized).toContain('foreign key (org_id,run_id) references public.payroll_runs(org_id,id)');
-    for(const token of ['worker_not_found','payroll_run_not_found','v_prev_found boolean']) expect(migration).toContain(token);
+    for(const token of ['worker_not_found','payroll_run_not_found','v_prev_found boolean']) expect(allMigrations).toContain(token);
   });
 
   it('supports Florida 2026 reemployment tax without inventing an employer-specific rate',()=>{
@@ -49,14 +52,12 @@ describe('ATLAS Payroll operations workbench',()=>{
     for(const token of [
       'payroll_scan_run_variances','net_pay_change','gross_pay_change','missing_tax_determination',
       'pretax_taxability_unclassified','requires_review'
-    ]) expect(migration).toContain(token);
+    ]) expect(allMigrations).toContain(token);
   });
 
   it('applies an immutable federal determination to the editable payroll line',()=>{
     expect(existsSync(applyTaxPath)).toBe(true);
-    for(const token of ['payroll_apply_federal_tax_to_line','federal_tax_determination_required','tax_source','federal_2026_determination','tax_determination_id']){
-      expect(allMigrations).toContain(token);
-    }
+    for(const token of ['payroll_apply_federal_tax_to_line','federal_tax_determination_required','tax_source','federal_2026_determination','tax_determination_id']) expect(allMigrations).toContain(token);
   });
 
   it('loads and mutates operations through governed API contracts',()=>{
@@ -73,8 +74,6 @@ describe('ATLAS Payroll operations workbench',()=>{
     expect(routes).toContain('to="/payroll/operations"');
     expect(routes).toContain('path="operations"');
     expect(routes).toContain('PayrollOperations');
-    for(const label of ['Federal W-4 & tax determination','Apply federal tax to line','Jurisdictions','Benefits & deductions','Garnishments','Compliance queue','Payment batches','GL postings','Variance review']){
-      expect(routes).toContain(label);
-    }
+    for(const label of ['Federal W-4 & tax determination','Apply federal tax to line','Jurisdictions','Benefits & deductions','Garnishments','Compliance queue','Payment batches','GL postings','Variance review']) expect(routes).toContain(label);
   });
 });
