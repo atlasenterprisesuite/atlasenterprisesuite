@@ -13,7 +13,10 @@ export function createOpenAIAgentRuntime({apiKey,model='gpt-6.1-sol',fetchFn=fet
   function requireConfigured(){if(!configured)throw fail('provider_not_configured',503,{provider:'openai'});}
   async function request(url,init={}){requireConfigured();let response;try{response=await fetchFn(url,{...init,headers:{...headers(apiKey),...(init.headers||{})}});}catch{throw fail('provider_unavailable',502,{provider:'openai'});}return decode(response);}
   async function createSession({instructions='',includeScreenshots=false}={}){
-    return request(BASE,{method:'POST',body:JSON.stringify({agent:{model:resolvedModel,instructions:String(instructions||''),tools:[{type:'computer_use',include_screenshots:Boolean(includeScreenshots)}]}})});
+    return request(BASE,{method:'POST',body:JSON.stringify({
+      agent:{model:resolvedModel,instructions:String(instructions||''),tools:[{type:'computer_use',include_screenshots:Boolean(includeScreenshots)}]},
+      environment:{type:'openai_hosted',desktop:{enabled:true},network:{access:'enabled'}}
+    })});
   }
   async function sendEvents({sessionId:rawSessionId,events}={}){
     if(!Array.isArray(events)||events.length===0)throw fail('invalid_input',400,{field:'events'});
