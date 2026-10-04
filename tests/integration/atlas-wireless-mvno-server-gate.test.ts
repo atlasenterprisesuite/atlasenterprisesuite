@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => existsSync(path) ? readFileSync(path, 'utf8') : '';
 
 const platformEdgePath = 'supabase/functions/atlas-platform-controls/index.ts';
+const sharedControlPath = 'supabase/functions/_shared/wireless-platform-control.ts';
 const legacyEdgePath = 'supabase/functions/atlas-wireless-mvno/index.ts';
 const clientPath = 'apps/web/src/lib/wirelessMvnoApi.ts';
 const pagePath = 'apps/web/src/modules/connect/AtlasMvnoControlPage.tsx';
@@ -12,8 +13,14 @@ const configPath = 'supabase/config.toml';
 describe('ATLAS Wireless MVNO shared control plane', () => {
   it('owns authenticated organization-scoped MVNO operations in platform controls only', () => {
     expect(existsSync(platformEdgePath)).toBe(true);
+    expect(existsSync(sharedControlPath)).toBe(true);
     expect(existsSync(legacyEdgePath)).toBe(false);
-    const source = read(platformEdgePath);
+    const edge = read(platformEdgePath);
+    const source = read(sharedControlPath);
+
+    expect(edge).toContain("from '../_shared/wireless-platform-control.ts'");
+    expect(edge).toContain('isWirelessPlatformApi(api)');
+    expect(edge).toContain('handleWirelessPlatformRequest(req, api)');
 
     for (const operation of [
       'wireless-mvno-readiness',
@@ -35,9 +42,9 @@ describe('ATLAS Wireless MVNO shared control plane', () => {
   });
 
   it('enforces least-privilege MVNO permissions before blocked provider operations', () => {
-    const source = read(platformEdgePath);
+    const source = read(sharedControlPath);
 
-    expect(source).toContain("import type { MvnoPermission } from '../_shared/mvno.ts'");
+    expect(source).toContain("import type { MvnoPermission } from './mvno.ts'");
     expect(source).toContain("'wireless-mvno-readiness': 'wireless.mvno.read'");
     expect(source).toContain("'wireless-mvno-status': 'wireless.mvno.read'");
     expect(source).toContain("'wireless-mvno-provision': 'wireless.mvno.provision'");
@@ -45,12 +52,12 @@ describe('ATLAS Wireless MVNO shared control plane', () => {
     expect(source).toContain("'wireless-mvno-suspend': 'wireless.mvno.suspend'");
     expect(source).toContain("'wireless-mvno-reconnect': 'wireless.mvno.reconnect'");
     expect(source).toContain("'wireless-mvno-revoke': 'wireless.mvno.revoke'");
-    expect(source).toContain("has_identity_permission");
+    expect(source).toContain('has_identity_permission');
     expect(source).not.toContain('requireManageRole');
   });
 
   it('keeps provider credentials server-side and never claims verified readiness from configuration alone', () => {
-    const source = read(platformEdgePath);
+    const source = read(sharedControlPath);
 
     expect(source).toContain('atlas_get_server_secret');
     expect(source).toContain('SECRET');
