@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => existsSync(path) ? readFileSync(path, 'utf8') : '';
 
 const migrationPath = 'supabase/migrations/20260925182000_atlas_wireless_network_control_plane.sql';
-const edgePath = 'supabase/functions/atlas-wireless-network/index.ts';
+const platformEdgePath = 'supabase/functions/atlas-platform-controls/index.ts';
+const legacyEdgePath = 'supabase/functions/atlas-wireless-network/index.ts';
 const configPath = 'supabase/config.toml';
 const routesPath = 'apps/web/src/modules/connect/ConnectRoutes.tsx';
 const pagePath = 'apps/web/src/modules/connect/AtlasWirelessNetworkPage.tsx';
@@ -12,7 +13,7 @@ const clientPath = 'apps/web/src/lib/wirelessNetworkApi.ts';
 const verifyContractPath = 'data/ops/global-production-verification.json';
 const authorizedVerifierPath = 'supabase/functions/atlas-cloudflare-production-http-verify/index.ts';
 
-describe('ATLAS Wireless network control plane', () => {
+describe('ATLAS Wireless network shared control plane', () => {
   it('creates tenant-scoped read-only persistence with RLS', () => {
     const sql = read(migrationPath);
     for (const table of [
@@ -31,23 +32,25 @@ describe('ATLAS Wireless network control plane', () => {
     expect(sql).toContain('grant select');
   });
 
-  it('exposes only authenticated read operations and permission checks', () => {
-    const edge = read(edgePath);
+  it('exposes authenticated read operations through platform controls only', () => {
+    const edge = read(platformEdgePath);
     const config = read(configPath);
 
-    expect(config).toContain('[functions.atlas-wireless-network]');
-    expect(config).toMatch(/\[functions\.atlas-wireless-network\][\s\S]*?verify_jwt\s*=\s*true/);
+    expect(existsSync(platformEdgePath)).toBe(true);
+    expect(existsSync(legacyEdgePath)).toBe(false);
+    expect(config).toContain('[functions.atlas-platform-controls]');
+    expect(config).toMatch(/\[functions\.atlas-platform-controls\][\s\S]*?verify_jwt\s*=\s*true/);
+    expect(config).not.toContain('[functions.atlas-wireless-network]');
     expect(edge).toContain("req.headers.get('authorization')");
     expect(edge).toContain("req.headers.get('x-atlas-org-id')");
-    expect(edge).toContain("p: 'wireless.network.read'");
-    expect(edge).toContain("['readiness', 'inventory']");
-    expect(edge).toContain("req.method !== 'GET'");
-    expect(edge).not.toContain("method: 'POST'");
+    expect(edge).toContain("'wireless-network-readiness'");
+    expect(edge).toContain("'wireless-network-inventory'");
+    expect(edge).toContain("'wireless.network.read'");
     expect(edge).toContain('network_profile_not_configured');
     expect(edge).toContain('technical_public_ready');
   });
 
-  it('routes the authenticated web surface and never defaults to ready', () => {
+  it('routes the authenticated web surface through platform controls and never defaults to ready', () => {
     const routes = read(routesPath);
     const page = read(pagePath);
     const client = read(clientPath);
@@ -55,11 +58,12 @@ describe('ATLAS Wireless network control plane', () => {
     expect(routes).toContain('path="/connect/wireless/network"');
     expect(page).toContain('ATLAS-Owned Network');
     expect(page).toContain('Authenticated network inventory is unavailable. All owned-network readiness remains fail-closed.');
-    expect(page).not.toContain("lab_ready: true");
-    expect(page).not.toContain("technical_public_ready: true");
+    expect(page).not.toContain('lab_ready: true');
+    expect(page).not.toContain('technical_public_ready: true');
     expect(client).toContain('authorizedAtlasFetch');
     expect(client).toContain('getActiveAtlasOrganization');
-    expect(client).toContain('/functions/v1/atlas-wireless-network?api=');
+    expect(client).toContain('/functions/v1/atlas-platform-controls?api=wireless-network-');
+    expect(client).not.toContain('/functions/v1/atlas-wireless-network');
   });
 
   it('includes the owned-network route in canonical production verification', () => {
