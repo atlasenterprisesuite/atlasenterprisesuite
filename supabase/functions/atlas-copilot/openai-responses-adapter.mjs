@@ -22,7 +22,7 @@ function errorForStatus(status){if(status===401||status===403)return fail('provi
 export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
   const resolved=Object.freeze({fast:cleanModel(models?.fast),balanced:cleanModel(models?.balanced),deep:cleanModel(models?.deep)});
   const configured=Boolean(apiKey)&&Object.values(resolved).some(Boolean);
-  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),background:true,async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false}});
+  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),background:true,async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false,computer_use:false,function_calling:false,dynamic_workflows:false}});
   async function execute({context,route,instructions,input,max_output_tokens=3000}={}){
     const model=resolved[route?.profile];
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
