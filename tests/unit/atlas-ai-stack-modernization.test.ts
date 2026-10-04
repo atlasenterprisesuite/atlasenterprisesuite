@@ -67,6 +67,11 @@ describe('ATLAS October 2026 AI stack modernization', () => {
         const body = JSON.parse(String(init.body));
         expect(body.agent.model).toBe('gpt-6.1-sol');
         expect(body.agent.tools).toEqual([{ type: 'computer_use', include_screenshots: false }]);
+        expect(body.environment).toEqual({
+          type: 'openai_hosted',
+          desktop: { enabled: true },
+          network: { access: 'enabled' },
+        });
         return new Response(JSON.stringify({ id: 'sess_1', status: 'ready', required_actions: [] }), { status: 200 });
       }
       if (url === 'https://api.openai.com/v1/agents/sessions/sess_1' && !init?.method) {
