@@ -52,7 +52,7 @@ describe('ATLAS Bible OS functional P0', () => {
 
     expect(contract.public_routes).toContain('/knowledge/bible');
     expect(authorizedVerifier).toContain("'/knowledge/bible'");
-    expect(authorizedVerifier).toContain("probe('/knowledge/bible')");
+    expect(authorizedVerifier).toContain("canonicalModuleRoutes['/knowledge/bible']");
     expect(authorizedVerifier).toContain('bible_os_route_reachable');
   });
 });
