@@ -28,8 +28,9 @@ describe('ATLAS agentic provider capability descriptors', () => {
       }],
     });
 
-    const [openai] = await registry.readiness({ profile: 'balanced' });
-    expect(openai.feature_support).toMatchObject({ ...featureShape, background: true });
+    const readiness = await registry.readiness({ profile: 'balanced' });
+    const openai = readiness.find(item => item.id === 'openai');
+    expect(openai?.feature_support).toMatchObject({ ...featureShape, background: true });
   });
 
   it('exposes truthful complete feature support for the current OpenAI Responses adapter', () => {
