@@ -30,3 +30,5 @@ jobs:
       - run: npm ci
       - name: Mobile contract tests
         run: npx vitest run tests/unit/mobile-runtime.test.ts tests/unit/mobile-permissions.test.ts
+      - name: Mobile gateway contract tests
+        run: npx vitest run tests/integration/mobile-gateway-auth.test.ts tests/integration/mobile-gateway-evidence.test.ts
