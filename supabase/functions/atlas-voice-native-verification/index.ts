@@ -1,3 +1,5 @@
+import { handleTelnyxWebhook } from '../_shared/telephony-webhook-runtime.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -158,7 +160,10 @@ Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin');
   if (req.method === 'OPTIONS') return new Response(null,{status:204,headers:baseHeaders(cors(origin))});
   try {
-    const response = await handler(req);
+    const api = new URL(req.url).searchParams.get('api');
+    const response = req.method === 'POST' && api === 'telnyx-webhook'
+      ? await handleTelnyxWebhook(req)
+      : await handler(req);
     const next = new Headers(response.headers);
     for (const [key,value] of Object.entries(cors(origin))) next.set(key,value);
     return new Response(response.body,{status:response.status,headers:next});
