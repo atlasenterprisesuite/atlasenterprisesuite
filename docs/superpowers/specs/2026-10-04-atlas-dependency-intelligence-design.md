@@ -1,6 +1,6 @@
 # ATLAS Dependency Intelligence — Architecture & Change Impact Graph
 
-Status: Design approved — written specification pending repository review  
+Status: Design approved — awaiting written-spec review  
 Date: 2026-10-04  
 Owner: ATLAS Manager / Release Control  
 Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`
@@ -76,24 +76,24 @@ The system must expose why a test, permission review, provider check or producti
 
 ## 4. Scope
 
-### 4.1 In scope for v1
+### 4.1 Production-capable v1 scope
 
-- canonical ATLAS modules;
-- web routes;
-- workspace packages;
-- Supabase Edge Functions;
-- database tables/views/functions referenced by ATLAS code or migrations;
-- RLS/policy relationships when discoverable from canonical migrations;
+The first production-capable version includes the reusable graph core plus the ATLAS Telephony vertical slice. It must support:
+
+- canonical ATLAS module extraction;
+- web route and workspace package relationships needed by the slice;
+- Supabase Edge Function relationships needed by the slice;
 - RBAC permission identifiers;
 - external provider adapters and readiness boundaries;
-- GitHub workflows used for CI, security, build, deploy and production verification;
-- test files and test suites;
-- evidence requirements;
-- runtime verification endpoints;
+- GitHub workflow/test relationships required to verify the slice;
+- evidence requirements and runtime-verification references;
 - direct and transitive impact analysis;
 - P0/P1/P2 risk classification;
 - required validation selection;
-- machine-readable PR/release impact report.
+- machine-readable PR/release impact report;
+- `/release/dependencies` UI for the modeled graph and impact report.
+
+After this vertical slice is verified, the same extractor and graph interfaces expand incrementally to database objects, RLS policies, additional providers, workflows and modules. That expansion is not a prerequisite for proving v1 architecture.
 
 ### 4.2 Explicit non-goals for v1
 
@@ -106,7 +106,8 @@ The system must expose why a test, permission review, provider check or producti
 - storing provider secrets;
 - attempting perfect whole-program static analysis;
 - automatically approving merges solely from a calculated risk score;
-- implementing a distributed service mesh.
+- implementing a distributed service mesh;
+- completing whole-repository data lineage in the first vertical slice.
 
 ## 5. Architecture
 
@@ -146,7 +147,7 @@ ATLAS Dependency Intelligence
           └──► future governed ATLAS agents
 ```
 
-The implementation should be a shared ATLAS capability, not a standalone product stack.
+The implementation is a shared ATLAS capability, not a standalone product stack.
 
 ## 6. Canonical graph model
 
@@ -154,7 +155,7 @@ The implementation should be a shared ATLAS capability, not a standalone product
 
 Each node has a stable `id`, `kind`, display metadata, provenance and optional organization/runtime scope.
 
-Required v1 node kinds:
+Required graph kinds for the reusable core:
 
 - `module`
 - `route`
@@ -173,6 +174,8 @@ Required v1 node kinds:
 - `evidence_requirement`
 - `secret_requirement`
 
+The telephony vertical slice only needs to populate the kinds relevant to that capability; unused kinds do not require synthetic placeholder data.
+
 Potential later node kinds:
 
 - `event`
@@ -184,7 +187,7 @@ Potential later node kinds:
 
 ### 6.2 Edge categories
 
-Required v1 relationship kinds:
+Required relationship kinds:
 
 - `contains`
 - `imports`
@@ -212,7 +215,7 @@ All edges must include a provenance class:
 - `evidence_registry`
 - `operator_override`
 
-Operator overrides must be audited and cannot silently contradict stronger authenticated runtime evidence.
+`operator_override` is limited to organization-scoped runtime annotations/associations. It cannot rewrite repository topology, permissions, module identity or authenticated production evidence.
 
 ## 7. Stable identifiers
 
@@ -231,7 +234,7 @@ Examples:
 
 Source-file nodes use repository-relative paths.
 
-Database object IDs must include schema, for example `database-object:public.atlas_releases`.
+Database object IDs include schema, for example `database-object:public.atlas_releases`.
 
 ## 8. Discovery strategy
 
@@ -239,7 +242,7 @@ The graph is built by combining deterministic extraction with explicit manifests
 
 ### 8.1 Deterministic extraction
 
-Extractors should inspect:
+Extractors may inspect:
 
 - workspace package metadata;
 - TypeScript/JavaScript imports;
@@ -251,6 +254,8 @@ Extractors should inspect:
 - provider registries/adapters;
 - workflow YAML;
 - test imports and test naming/targets.
+
+The v1 implementation only needs extractors required for the telephony slice plus reusable interfaces for later extractors.
 
 ### 8.2 Explicit dependency manifests
 
@@ -269,6 +274,8 @@ export const dependencyManifest = {
   }
 } as const;
 ```
+
+Repository manifests are source-controlled architecture declarations. They can only be changed through the normal Git branch/review/CI path; runtime UI actions cannot modify them.
 
 Manifests are supplemental declarations, not permission or readiness authorities.
 
@@ -290,17 +297,17 @@ The Impact Engine receives a change set and returns direct/transitive impact.
 Inputs include:
 
 - changed repository paths;
-- changed database migrations;
+- changed database migrations when modeled;
 - changed permission identifiers;
 - changed provider contracts;
-- changed API/event contracts when available;
+- changed API/event contracts when modeled;
 - changed workflows.
 
 Output example:
 
 ```json
 {
-  "risk": "medium",
+  "risk": "P1",
   "direct": ["module:connect", "package:communication"],
   "transitive": ["module:voice", "provider:telnyx"],
   "requiredVerification": [
@@ -370,7 +377,7 @@ Examples:
 - module route changed -> route smoke + navigation reachability + affected UI tests;
 - Cloudflare production workflow changed -> release/deployment verification + exact-SHA public production check.
 
-Every selected verification must include an explanation path.
+Every selected verification includes an explanation path.
 
 ## 12. Integration with Master Evidence Registry
 
@@ -401,8 +408,9 @@ Dependency Intelligence consumes normalized provider/runtime state from ATLAS Ma
 
 ## 14. PR and CI contract
 
-For every pull request, the graph engine should be able to generate an impact report containing:
+For an analyzed pull request/change set, the graph engine produces an impact report containing:
 
+- analyzed base/head SHA or exact commit boundary;
 - changed nodes;
 - directly affected capabilities;
 - transitively affected capabilities;
@@ -412,7 +420,7 @@ For every pull request, the graph engine should be able to generate an impact re
 - evidence still required;
 - merge recommendation state.
 
-Recommended machine states:
+Machine states:
 
 - `CLEAR`
 - `CLEAR_WITH_WARNINGS`
@@ -424,9 +432,9 @@ These are advisory/control inputs. Actual merge/deploy authority remains with re
 
 ## 15. UI surface
 
-The first UI should live under the existing internal platform/release experience rather than adding a top-level product module.
+The v1 UI lives under the existing internal release experience rather than adding a top-level product module.
 
-Recommended route:
+Canonical v1 route:
 
 `/release/dependencies`
 
@@ -434,9 +442,9 @@ Core views:
 
 1. Architecture Graph
    - module/capability-centric graph;
-   - filter by module, provider, permission, risk, environment.
+   - filter by module, provider, permission, risk, environment where available.
 2. Change Impact
-   - paste/select commit/PR/current change set;
+   - analyze an explicit commit/PR/change-set boundary supported by the backend;
    - direct/transitive impact;
    - required verification.
 3. Dependency Detail
@@ -448,40 +456,43 @@ Core views:
    - orphaned manifests;
    - unknown production-critical dependencies.
 
-The UI must use existing ATLAS design tokens, shell, responsive patterns, accessibility contract and truthful-state policy.
+The UI uses existing ATLAS design tokens, shell, responsive patterns, accessibility contract and truthful-state policy.
 
 ## 16. Permissions
 
-Suggested permission model:
+Required permission model:
 
 - `architecture.read`
   - view repository-global graph metadata available to the active organization.
 - `architecture.runtime.read`
   - view organization-scoped runtime/provider relationships and evidence references.
 - `architecture.manage`
-  - create/update explicit manifests or approved overrides through governed server-side workflows.
+  - manage organization-scoped runtime annotations/approved relationship overrides through governed server-side workflows.
 - `architecture.audit.read`
   - inspect provenance/drift/audit history.
 
-Privileged modifications must be server-authoritative and audited.
+`architecture.manage` cannot edit source-controlled dependency manifests. Manifest changes remain Git-reviewed repository changes.
 
-## 17. Persistence
+Privileged runtime modifications are server-authoritative and audited.
 
-The v1 graph should be reproducible from canonical repository sources.
+## 17. Persistence contract
 
-Recommended persistence pattern:
+Repository-global topology is reproducible from canonical repository sources and must not rely on browser persistence.
 
-- deterministic generated graph artifact for repository-global topology;
-- Supabase persistence for organization-scoped runtime associations, audited overrides, graph snapshots and analysis runs;
+V1 persistence pattern:
+
+- deterministic graph snapshot generated for the analyzed SHA;
+- machine-readable impact report retained as CI/release evidence or artifact with that SHA;
+- Supabase persistence only for organization-scoped runtime associations, audited runtime overrides and analysis history that must be queryable by ATLAS Manager/UI;
 - no browser-authoritative writes.
 
-If persistent graph tables are introduced, RLS must be enabled for organization-scoped rows and write access must be restricted to governed server-side functions.
+If persistent graph/runtime tables are introduced, RLS is enabled for organization-scoped rows and write access is restricted to governed server-side functions.
 
-Historical impact reports should retain the analyzed commit SHA so conclusions are not silently reused for later code.
+Historical impact reports retain the analyzed commit SHA so conclusions are not silently reused for later code.
 
 ## 18. Failure behavior
 
-Dependency Intelligence must return partial truthful results when possible.
+Dependency Intelligence returns partial truthful results when possible.
 
 Examples:
 
@@ -492,6 +503,8 @@ Examples:
 
 A graph-generation failure must not make an unsafe change look safe.
 
+For P0/P1 changes, unresolved required dependencies produce at least `HOLD_UNKNOWN_DEPENDENCY` until resolved or explicitly classified by an authorized, audited rule.
+
 ## 19. Security and privacy
 
 Required controls:
@@ -499,11 +512,11 @@ Required controls:
 - no secret values;
 - no private provider payload replication;
 - organization-scoped runtime metadata protected by RLS/RBAC;
-- audited privileged overrides;
+- audited privileged runtime overrides;
 - sanitized source references;
 - no ingestion of personal health, legal, tax, employment, symbolic or unrelated user data into architecture topology;
 - repository/source parsing treated as untrusted input for rendering;
-- UI must escape labels and metadata.
+- UI escapes labels and metadata.
 
 ## 20. Testing strategy
 
@@ -521,17 +534,17 @@ Required controls:
 ### Contract
 
 - ATLAS module registry extraction;
-- provider registry extraction;
-- permission extraction;
-- workflow extraction;
-- Supabase function/migration extraction.
+- telephony/provider registry extraction;
+- permission extraction required by the vertical slice;
+- workflow/test extraction required by the vertical slice;
+- additional extractor contracts as they are added.
 
 ### Integration
 
-- changed file -> affected module path;
+- changed telephony file -> communication package -> Connect module;
 - provider contract -> dependent modules -> required provider/E2E gates;
-- RLS migration -> affected database consumers -> tenant-isolation verification;
-- workflow change -> release-control impact.
+- permission change -> dependent capability -> RBAC verification;
+- workflow change affecting the slice -> release-control impact.
 
 ### Security
 
@@ -542,25 +555,25 @@ Required controls:
 
 ### E2E
 
-- PR/change set produces deterministic impact report;
+- explicit PR/change set produces deterministic impact report;
 - `/release/dependencies` renders graph and impact details;
 - evidence references resolve without fabricating status;
 - unresolved P0 dependency produces a hold state;
 - exact analyzed SHA is visible in report history.
 
-## 21. Initial vertical slice
+## 21. Initial vertical slice: ATLAS Telephony
 
-The first implementation slice should prove the architecture using one provider-backed capability with meaningful cross-module impact.
-
-Recommended slice: ATLAS Telephony.
+The first implementation slice proves the architecture using a provider-backed capability with meaningful cross-module impact.
 
 Target chain:
 
 `source files -> package:communication -> module:connect -> telephony provider -> permission -> provider readiness -> tests -> production route/evidence`
 
-This slice is preferred because the repository already has a telephony provider contract with explicit readiness semantics and Connect is externally gated. It exercises repository discovery, provider dependencies, RBAC, E2E verification and truthful external readiness without requiring a new provider architecture.
+This slice is selected because the repository already has a telephony provider contract with explicit readiness semantics and Connect is externally gated. It exercises repository discovery, provider dependencies, RBAC, E2E verification and truthful external readiness without requiring a new provider architecture.
 
-After the vertical slice passes, expand extractors to the rest of the repository.
+The slice is complete when a telephony-related change can produce a deterministic explainable impact report and the UI/CI consume the same graph result.
+
+After the vertical slice passes, extractors expand to the rest of the repository as separate incremental changes using the same contracts.
 
 ## 22. Future extensions
 
@@ -591,18 +604,19 @@ Run bounded failure simulations against the dependency graph without representin
 The first production-capable version is accepted only when:
 
 - existing ATLAS authorities remain canonical and are not duplicated;
-- the graph can identify canonical modules from the existing registry;
-- the graph can model source/package/module/provider/permission/test/evidence relationships;
+- the graph identifies canonical modules from the existing registry;
+- the graph models source/package/module/provider/permission/test/evidence relationships for the telephony slice;
 - every relationship exposes provenance;
 - impact traversal is deterministic and cycle-safe;
 - unresolved dependencies are explicit;
 - risk classification covers P0/P1/P2;
-- a change set produces required focused verification with explanations;
+- an explicit change boundary produces required focused verification with explanations;
 - mandatory global gates remain intact;
 - provider/readiness status is consumed from existing authoritative boundaries;
 - evidence references remain SHA/environment aware;
 - no secrets are stored or rendered;
 - runtime data preserves tenant/RBAC boundaries;
+- repository manifests are Git-controlled and cannot be mutated by runtime UI;
 - the telephony vertical slice works end-to-end;
 - CI can emit a machine-readable impact report;
 - `/release/dependencies` exposes the result without fake production state;
