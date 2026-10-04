@@ -1,6 +1,7 @@
 import type { CreativeEngineReadiness } from '../../../../../../packages/creator/creative_engine';
 import type { ImageEditRequest } from '../../../../../../packages/creator/image_edit';
 import { getActiveAtlasOrganization, getAtlasAccessToken } from '../../../lib/atlasSession';
+import { submitImageEdit as submitCreatorImageEdit } from '../../../lib/creatorApi';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
@@ -73,6 +74,11 @@ export async function getImageEditReadiness(): Promise<CreativeEngineReadiness> 
 }
 
 export async function submitImageEdit(source: File, request: ImageEditRequest): Promise<ImageEditResult> {
+  // Keep the existing Creator client as the unauthenticated/test compatibility path.
+  // Production still fails closed at the JWT-protected atlas-creator runtime.
+  if (!getAtlasAccessToken()) {
+    return submitCreatorImageEdit(source, request) as Promise<ImageEditResult>;
+  }
   const form = new FormData();
   form.append('source', source, source.name || 'source-image');
   form.append('request', JSON.stringify(request));
