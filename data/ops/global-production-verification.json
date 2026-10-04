@@ -1,5 +1,5 @@
 {
-  "version": 30,
+  "version": 31,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "public_routes": [
