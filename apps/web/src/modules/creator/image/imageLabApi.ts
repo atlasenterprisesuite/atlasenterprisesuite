@@ -1,11 +1,11 @@
 import type { CreativeEngineReadiness } from '../../../../../../packages/creator/creative_engine';
 import type { ImageEditRequest } from '../../../../../../packages/creator/image_edit';
 import { getActiveAtlasOrganization, getAtlasAccessToken } from '../../../lib/atlasSession';
-import { submitImageEdit as submitLegacyImageEdit } from '../../../lib/creatorApi';
+import { submitImageEdit as submitCreatorImageEdit } from '../../../lib/creatorApi';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
-const IMAGE_EDIT_URL = `${SUPABASE_URL}/functions/v1/atlas-image-edit`;
+const CREATOR_URL = `${SUPABASE_URL}/functions/v1/atlas-creator`;
 
 async function parseResponse(response: Response) {
   const data = await response.json().catch(() => ({ error: 'invalid_response' }));
@@ -47,7 +47,7 @@ async function authenticatedRequest<T>(url: string, init: RequestInit = {}): Pro
 
 export type ImageEditReadiness = {
   ok: true;
-  service: 'atlas-image-edit';
+  service: 'atlas-creator';
   version: string;
   organization_id: string;
   engine: CreativeEngineReadiness;
@@ -69,20 +69,20 @@ export type ImageEditResult = {
 };
 
 export async function getImageEditReadiness(): Promise<CreativeEngineReadiness> {
-  const data = await authenticatedRequest<ImageEditReadiness>(`${IMAGE_EDIT_URL}?api=readiness`);
+  const data = await authenticatedRequest<ImageEditReadiness>(`${CREATOR_URL}?api=image-edit-readiness`);
   return data.engine;
 }
 
 export async function submitImageEdit(source: File, request: ImageEditRequest): Promise<ImageEditResult> {
-  // Compatibility fallback is intentionally limited to sessions without an ATLAS token.
-  // Authenticated production traffic always uses the dedicated image endpoint.
+  // Keep the existing Creator client as the unauthenticated/test compatibility path.
+  // Production still fails closed at the JWT-protected atlas-creator runtime.
   if (!getAtlasAccessToken()) {
-    return submitLegacyImageEdit(source, request) as Promise<ImageEditResult>;
+    return submitCreatorImageEdit(source, request) as Promise<ImageEditResult>;
   }
   const form = new FormData();
   form.append('source', source, source.name || 'source-image');
   form.append('request', JSON.stringify(request));
-  return authenticatedRequest<ImageEditResult>(`${IMAGE_EDIT_URL}?api=edit`, {
+  return authenticatedRequest<ImageEditResult>(`${CREATOR_URL}?api=image-edit`, {
     method: 'POST',
     body: form
   });

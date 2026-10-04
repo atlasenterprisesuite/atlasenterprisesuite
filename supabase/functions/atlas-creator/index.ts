@@ -14,6 +14,7 @@ import {
   uploadCreatorRecording
 } from './_shared/recordings.ts';
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
+import { executeOpenAiImageEdit, openAiImageEngineReadiness } from './_shared/openai_image.ts';
 import {
   createAssetPreview,
   getContentWorkspace,
@@ -33,7 +34,7 @@ import {
   writeCreatorAudit
 } from './_shared/repository.ts';
 
-const VERSION = '2026-09-26.1';
+const VERSION = '2026-10-04.2';
 const IMAGE_EDIT_MAX_BYTES = 15 * 1024 * 1024;
 const IMAGE_EDIT_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const PROVIDER_IDS = new Set<ProviderId>(['seedance', 'veo', 'kling', 'wan', 'minimax']);
@@ -74,7 +75,6 @@ function workspaceIdFrom(url: URL, body?: Record<string, any>) {
 function creativePlanIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.creative_plan_id || body?.creativePlanId || url.searchParams.get('creative_plan_id') || url.searchParams.get('id') || '').trim();
 }
-
 
 function webLaunchBlueprintIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.blueprint_id || body?.blueprintId || url.searchParams.get('blueprint_id') || url.searchParams.get('id') || '').trim();
@@ -205,7 +205,6 @@ async function handleContentSave(req: Request) {
   });
   return json({ ok: true, workspace: saved });
 }
-
 
 async function handleWebLaunchBlueprints(req: Request) {
   const ctx = await creatorContext(req, 'creator.read');
@@ -351,6 +350,18 @@ async function handleRecordingDownload(req: Request, url: URL) {
   });
 }
 
+async function handleImageEditReadiness(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const engine = await openAiImageEngineReadiness();
+  return json({
+    ok: true,
+    service: 'atlas-creator',
+    version: VERSION,
+    organization_id: ctx.orgId,
+    engine,
+    checked_at: new Date().toISOString()
+  });
+}
 
 async function handleImageEdit(req: Request) {
   const ctx = await creatorContext(req, 'creator.generate');
@@ -374,11 +385,7 @@ async function handleImageEdit(req: Request) {
   const validation = validateImageEditRequest(imageEditRequestRaw);
   if (!validation.ok) throw creatorError(validation.error, 422);
   const imageEditRequest = imageEditRequestRaw as ImageEditRequest;
-
-  const providers = await listProviderReadiness(ctx.orgId);
-  const imageEngineReady = providers
-    .map(adaptProviderToCreativeEngine)
-    .some(engine => engine.ready && engine.mediaKinds.includes('image') && engine.executionClass !== 'prompt-export-only');
+  const readiness = await openAiImageEngineReadiness();
 
   await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.image.edit.requested', null, {
     source_mime_type: source.type,
@@ -387,11 +394,20 @@ async function handleImageEdit(req: Request) {
     preserve_identity: imageEditRequest.preserveIdentity,
     aspect_ratio: imageEditRequest.aspectRatio,
     visibility: imageEditRequest.visibility,
-    image_engine_ready: imageEngineReady
+    image_engine_ready: readiness.ready,
+    engine_id: readiness.engineId
   });
 
-  if (!imageEngineReady) throw creatorError('image_engine_not_ready', 409);
-  throw creatorError('image_engine_adapter_not_configured', 503);
+  if (!readiness.ready) throw creatorError('image_engine_not_ready', 409);
+  const result = await executeOpenAiImageEdit(ctx, source, imageEditRequest);
+  return json({
+    ok: true,
+    asset: result.asset,
+    signed_url: result.signedUrl,
+    production_id: result.production.id,
+    generation_job_id: result.job.id,
+    engine: result.engine
+  }, 201);
 }
 
 async function handleSubmit(req: Request): Promise<never> {
@@ -438,6 +454,7 @@ async function route(req: Request) {
   if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
   if (api === 'assets') return handleAssets(req, url);
   if (api === 'asset-preview' && req.method === 'GET') return handleAssetPreview(req, url);
+  if (api === 'image-edit-readiness' && req.method === 'GET') return handleImageEditReadiness(req);
   if (api === 'image-edit' && req.method === 'POST') return handleImageEdit(req);
   if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
   if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
