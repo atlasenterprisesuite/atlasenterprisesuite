@@ -11,7 +11,7 @@ const PUBLISHABLE_KEY =
   Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ||
   '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const VERSION = 1;
+const VERSION = 2;
 
 const ALLOWED_ORIGINS = new Set([
   'https://atlasenterprisesuite.com',
@@ -146,17 +146,19 @@ async function loadConfig(ctx: RequestContext): Promise<{
         api_key: false,
         connection_id: false,
         from_number: false,
-        webhook_url: false
+        webhook_url: false,
+        public_key: false
       }
     };
   }
 
-  const [provider, apiKey, connectionId, fromNumber, webhookUrl] = await Promise.all([
+  const [provider, apiKey, connectionId, fromNumber, webhookUrl, publicKey] = await Promise.all([
     readServerSecret(admin, secretName(ctx.orgId, 'provider')),
     readServerSecret(admin, secretName(ctx.orgId, 'api_key')),
     readServerSecret(admin, secretName(ctx.orgId, 'connection_id')),
     readServerSecret(admin, secretName(ctx.orgId, 'from_number')),
-    readServerSecret(admin, secretName(ctx.orgId, 'webhook_url'))
+    readServerSecret(admin, secretName(ctx.orgId, 'webhook_url')),
+    readServerSecret(admin, secretName(ctx.orgId, 'public_key'))
   ]);
 
   const configured = {
@@ -164,10 +166,11 @@ async function loadConfig(ctx: RequestContext): Promise<{
     api_key: Boolean(apiKey),
     connection_id: Boolean(connectionId),
     from_number: Boolean(fromNumber),
-    webhook_url: Boolean(webhookUrl)
+    webhook_url: Boolean(webhookUrl),
+    public_key: Boolean(publicKey)
   };
 
-  if (!provider || !apiKey || !connectionId || !fromNumber || !webhookUrl) {
+  if (!provider || !apiKey || !connectionId || !fromNumber || !webhookUrl || !publicKey) {
     return { provider, config: null, configured };
   }
 
@@ -177,7 +180,8 @@ async function loadConfig(ctx: RequestContext): Promise<{
       apiKey,
       connectionId,
       fromNumber,
-      webhookUrl
+      webhookUrl,
+      publicKey
     },
     configured
   };
@@ -197,12 +201,12 @@ async function persistReadiness(
       provider,
       state: readiness.verified ? 'verified' : 'degraded',
       capabilities: {
-        inbound: true,
-        outbound: true,
+        inbound: false,
+        outbound: readiness.verified,
         sms: false,
         recording: false,
-        realtime_audio: true,
-        transfer: true,
+        realtime_audio: false,
+        transfer: false,
         emergency_calling: false
       },
       last_verified_at: readiness.verified ? new Date().toISOString() : null,
