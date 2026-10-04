@@ -46,13 +46,13 @@ describe('ATLAS agentic provider capability descriptors', () => {
     });
   });
 
-  it('exposes truthful complete feature support for Gemini before tool execution is enabled', () => {
+  it('exposes truthful complete feature support for Gemini with governed function calling enabled', () => {
     const adapter = createGeminiAdapter({
       apiKey: 'test-key',
       models: { balanced: 'test-model' },
       fetchFn: async () => new Response('{}', { status: 200 }),
     });
 
-    expect(adapter.descriptor().feature_support).toMatchObject(featureShape);
+    expect(adapter.descriptor().feature_support).toMatchObject({ ...featureShape, function_calling: true });
   });
 });
