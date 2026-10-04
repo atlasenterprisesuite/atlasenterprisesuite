@@ -1,0 +1,23 @@
+name: Payroll Workbench Diagnostic
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/modules/payroll/**'
+      - 'supabase/migrations/20261004213*.sql'
+      - 'supabase/migrations/20261004214*.sql'
+      - 'tests/integration/payroll-*.test.ts*'
+      - '.github/workflows/payroll-workbench-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  payroll-workbench:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run Payroll integration contracts only
+        run: npx vitest run tests/integration/payroll-route.test.tsx tests/integration/payroll-operations-workbench.test.ts --reporter=verbose
