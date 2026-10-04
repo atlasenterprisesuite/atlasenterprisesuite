@@ -137,8 +137,8 @@ Deno.serve(async (req: Request) => {
       }
     });
 
-  if (eventError) {
-    if (String(eventError.code || '') === '23505') return json({ ok: true, duplicate: true });
+  const duplicate = String(eventError?.code || '') === '23505';
+  if (eventError && !duplicate) {
     return json({ ok: false, error: 'event_persist_failed' }, 500);
   }
 
@@ -148,22 +148,19 @@ Deno.serve(async (req: Request) => {
     incomingState: state,
     incomingOccurredAt: occurredAt
   })) {
-    const patch: Record<string, unknown> = {
-      state,
-      provider_call_id: payload?.call_control_id || null,
-      provider_state_at: occurredAt,
-      provider_state_event_id: eventId,
-      updated_at: new Date().toISOString()
-    };
-    if (state === 'connected') patch.connected_at = occurredAt;
-    if (state === 'completed') patch.ended_at = occurredAt;
+    const { error: reconcileError } = await admin.rpc('atlas_apply_call_provider_state', {
+      p_organization_id: orgId,
+      p_call_session_id: sessionId,
+      p_event_id: eventId,
+      p_state: state,
+      p_occurred_at: occurredAt,
+      p_provider_call_id: payload?.call_control_id || null
+    });
 
-    await admin
-      .from('atlas_call_sessions')
-      .update(patch)
-      .eq('id', sessionId)
-      .eq('organization_id', orgId);
+    if (reconcileError) {
+      return json({ ok: false, error: 'state_reconcile_failed' }, 500);
+    }
   }
 
-  return json({ ok: true });
+  return json({ ok: true, duplicate });
 });
