@@ -1,7 +1,15 @@
 {
-  "version": 23,
+  "version": 31,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
+  "health_check": {
+    "path": "/api/v1/health",
+    "expected_status": "healthy"
+  },
+  "required_security_headers": [
+    "strict-transport-security",
+    "content-security-policy"
+  ],
   "public_routes": [
     "/status",
     "/",
@@ -12,12 +20,16 @@
     "/cloud/api-explorer",
     "/cloud/observability",
     "/cloud/resources",
+    "/cloud/domains",
     "/work",
     "/assistant",
     "/knowledge",
+    "/knowledge/bible",
     "/business",
+    "/business/insights",
     "/advisory",
     "/finance",
+    "/finance/pay",
     "/tax",
     "/crm",
     "/commerce",
@@ -27,6 +39,8 @@
     "/connect/chat",
     "/connect/channel",
     "/connect/wireless",
+    "/connect/wireless/network",
+    "/connect/wireless/commissioning",
     "/connect/wireless/mvno",
     "/connect/google-fi",
     "/payroll",
@@ -42,6 +56,7 @@
     "/galaxy",
     "/device-os",
     "/execution/manager/readiness",
+    "/settings/accessibility/communication",
     "/finance/accounting/accounts-payable",
     "/finance/accounting/accounts-receivable",
     "/finance/accounting/reports/automotive-sales",
@@ -58,7 +73,13 @@
     "/work/connections",
     "/work/runtimes",
     "/work/policies",
-    "/work/computer-operations"
+    "/work/computer-operations",
+    "/advisory/clients",
+    "/advisory/engagements",
+    "/advisory/business-launch-360/workspace",
+    "/advisory/reports",
+    "/advisory/providers",
+    "/advisory/readiness"
   ],
   "critical_network_routes": [
     "/business/network",

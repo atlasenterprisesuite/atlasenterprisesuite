@@ -71,6 +71,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'bible-os',
+    title: 'ATLAS Bible OS',
+    navLabel: 'Bible OS',
+    area: 'Intelligence',
+    route: '/knowledge/bible',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Evidence-first biblical textual research with canon comparison, manuscript provenance, textual variants and typed relationships.',
+    showInNavigation: false
+  },
+  {
     id: 'business',
     title: 'Business Suite',
     navLabel: 'Business',
@@ -78,7 +89,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/business',
     readiness: 'implemented',
     requiresAuth: false,
-    description: 'Growth, publishing and connected business operations.',
+    description: 'Executive business command center connecting customers, revenue, finance, people, purchasing, advisory, analytics and governed growth operations.',
     showInNavigation: true
   },
   {
@@ -124,6 +135,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     requiresAuth: false,
     description: 'Canonical accounting entry point across payable, receivable, inventory, reporting and governed finance workflows.',
     showInNavigation: false
+  },
+  {
+    id: 'pay',
+    title: 'ATLAS Pay',
+    navLabel: 'Pay',
+    area: 'Finance',
+    route: '/finance/pay',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Provider-neutral wallet, issuing and payout orchestration with regulated providers and rails fail-closed until verified.',
+    showInNavigation: true
   },
   {
     id: 'tax',
@@ -177,8 +199,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/analytics',
     readiness: 'implemented',
     requiresAuth: true,
-    description: 'Canonical source-backed analytics hub with cross-module aggregation kept fail-closed until metric contracts and lineage are verified.',
-    showInNavigation: true
+    description: 'Source-backed Business Insights capability surfaced through Business while the canonical analytics route remains available for compatibility.',
+    showInNavigation: false
   },
   {
     id: 'connect',
@@ -335,6 +357,28 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'gps',
+    title: 'ATLAS GPS 4D',
+    navLabel: 'GPS 4D',
+    area: 'Mobility',
+    route: '/gps',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Governed live mapping, route intelligence and location-aware mobility surface.',
+    showInNavigation: true
+  },
+  {
+    id: 'city',
+    title: 'ATLAS Digital City',
+    navLabel: 'Digital City',
+    area: 'Spatial',
+    route: '/city',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Governed Orlando digital-district pilot that orchestrates spatial, mobility, device and network capabilities with explicit simulation/live boundaries.',
+    showInNavigation: true
+  },
+  {
     id: 'aviation',
     title: 'ATLAS Aviation',
     navLabel: 'Aviation',
@@ -364,7 +408,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/device-os',
     readiness: 'external-gated',
     requiresAuth: true,
-    description: 'Governed software control plane for ATLAS phones, desktops, wearables, smart spaces and mobility hardware.',
+    description: 'Governed software control plane for ATLAS devices, Device DNA, Phoenix recovery, adaptive computing and future modular hardware.',
     showInNavigation: true
   },
   {

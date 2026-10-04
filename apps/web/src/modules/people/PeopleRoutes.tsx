@@ -7,6 +7,7 @@ import {
   type PeopleWorkspace
 } from './peopleApi';
 import { PeopleKnowledgePage } from './PeopleKnowledgePage';
+import { parseCandidateImportCsv } from './candidateImport';
 
 type WorkspaceState =
   | { status: 'loading' }
@@ -104,16 +105,28 @@ function Time() {
 }
 
 function Recruiting() {
-  const { state,reload }=usePeopleWorkspace(); const [error,setError]=useState('');
+  const { state,reload }=usePeopleWorkspace(); const [error,setError]=useState(''); const [importSummary,setImportSummary]=useState('');
   async function addRequisition(event:FormEvent<HTMLFormElement>){event.preventDefault();const fd=new FormData(event.currentTarget);setError('');try{await peopleMutations.createRequisition({title:String(fd.get('title')),department:String(fd.get('department')||'')});event.currentTarget.reset();reload();}catch(e){setError(e instanceof Error?e.message:'requisition_failed');}}
   async function addCandidate(event:FormEvent<HTMLFormElement>){event.preventDefault();const fd=new FormData(event.currentTarget);setError('');try{await peopleMutations.createCandidate({fullName:String(fd.get('fullName')),email:String(fd.get('email')||''),phone:String(fd.get('phone')||'')});event.currentTarget.reset();reload();}catch(e){setError(e instanceof Error?e.message:'candidate_failed');}}
   async function addApplication(event:FormEvent<HTMLFormElement>){event.preventDefault();const fd=new FormData(event.currentTarget);setError('');try{await peopleMutations.createApplication(String(fd.get('requisitionId')),String(fd.get('candidateId')));reload();}catch(e){setError(e instanceof Error?e.message:'application_failed');}}
+  async function importCandidates(event:FormEvent<HTMLFormElement>){
+    event.preventDefault(); setError(''); setImportSummary('');
+    const fd=new FormData(event.currentTarget); const file=fd.get('candidateCsv');
+    if(!(file instanceof File)||file.size===0){setError('candidate_import_file_required');return;}
+    try{
+      const parsed=parseCandidateImportCsv(await file.text());
+      for(const candidate of parsed.candidates){await peopleMutations.createCandidate(candidate);}
+      setImportSummary(`Imported ${parsed.candidates.length} candidate(s).${parsed.unsupportedHeaders.length?` Ignored unsupported columns: ${parsed.unsupportedHeaders.join(', ')}.`:''}`);
+      event.currentTarget.reset(); reload();
+    }catch(e){setError(e instanceof Error?e.message:'candidate_import_failed');}
+  }
   return <Layout><State state={state}>{(data)=><>
     <div className="module-experience-grid">
       <form className="atlas-form" onSubmit={addRequisition}><h2>Open requisition</h2><label>Title<input name="title" required /></label><label>Department<input name="department" /></label><button type="submit">Open requisition</button></form>
       <form className="atlas-form" onSubmit={addCandidate}><h2>Add candidate</h2><label>Full name<input name="fullName" required /></label><label>Email<input name="email" type="email" /></label><label>Phone<input name="phone" /></label><button type="submit">Add candidate</button></form>
       <form className="atlas-form" onSubmit={addApplication}><h2>Create application</h2><label>Requisition<select name="requisitionId" required>{data.requisitions.filter(r=>r.status==='open').map(r=><option value={r.id} key={r.id}>{r.title}</option>)}</select></label><label>Candidate<select name="candidateId" required>{data.candidates.map(c=><option value={c.id} key={c.id}>{c.full_name}</option>)}</select></label><button type="submit">Create application</button></form>
-    </div>{error?<p role="alert">{error}</p>:null}
+      <form className="atlas-form" onSubmit={importCandidates}><h2>Import candidates</h2><label>CSV file<input name="candidateCsv" type="file" accept=".csv,text/csv" required /></label><small>Supported fields: name/full_name, email, phone. Unsupported RecruitPro columns are reported and not silently persisted.</small><button type="submit">Import CSV</button></form>
+    </div>{error?<p role="alert">{error}</p>:null}{importSummary?<p role="status">{importSummary}</p>:null}
     <div className="module-experience-grid">{data.applications.map(a=><article className="module-experience-card is-active" key={a.id}><strong>{data.candidates.find(c=>c.id===a.candidate_id)?.full_name||'Candidate'}</strong><p>{data.requisitions.find(r=>r.id===a.requisition_id)?.title||'Requisition'} · {a.stage}</p>
       {!['hired','rejected','withdrawn'].includes(a.stage)?<button type="button" onClick={()=>{const next={applied:'screening',screening:'interview',assessment:'interview',interview:'offer',offer:'hired'}[a.stage]||'screening';void peopleMutations.transitionApplication(a.id,next).then(reload)}}>Advance</button>:null}
     </article>)}</div>

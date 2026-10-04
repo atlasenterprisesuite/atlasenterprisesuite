@@ -5,6 +5,7 @@ import type { CreativePlan } from '../../../packages/creator/creative_plan.ts';
 import type { ContentWorkspaceState } from '../../../packages/creator/content_intelligence.ts';
 import type { WebLaunchBlueprint } from '../../../packages/creator/web_launch.ts';
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
+import { validateImageEditRequest, type ImageEditRequest } from '../../../packages/creator/image_edit.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
 import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts';
 import {
@@ -13,6 +14,7 @@ import {
   uploadCreatorRecording
 } from './_shared/recordings.ts';
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
+import { executeOpenAiImageEdit, openAiImageEngineReadiness } from './_shared/openai_image.ts';
 import {
   createAssetPreview,
   getContentWorkspace,
@@ -32,7 +34,9 @@ import {
   writeCreatorAudit
 } from './_shared/repository.ts';
 
-const VERSION = '2026-09-18.3';
+const VERSION = '2026-10-04.2';
+const IMAGE_EDIT_MAX_BYTES = 15 * 1024 * 1024;
+const IMAGE_EDIT_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const PROVIDER_IDS = new Set<ProviderId>(['seedance', 'veo', 'kling', 'wan', 'minimax']);
 
 function json(body: unknown, status = 200) {
@@ -71,7 +75,6 @@ function workspaceIdFrom(url: URL, body?: Record<string, any>) {
 function creativePlanIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.creative_plan_id || body?.creativePlanId || url.searchParams.get('creative_plan_id') || url.searchParams.get('id') || '').trim();
 }
-
 
 function webLaunchBlueprintIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.blueprint_id || body?.blueprintId || url.searchParams.get('blueprint_id') || url.searchParams.get('id') || '').trim();
@@ -202,7 +205,6 @@ async function handleContentSave(req: Request) {
   });
   return json({ ok: true, workspace: saved });
 }
-
 
 async function handleWebLaunchBlueprints(req: Request) {
   const ctx = await creatorContext(req, 'creator.read');
@@ -348,6 +350,66 @@ async function handleRecordingDownload(req: Request, url: URL) {
   });
 }
 
+async function handleImageEditReadiness(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const engine = await openAiImageEngineReadiness();
+  return json({
+    ok: true,
+    service: 'atlas-creator',
+    version: VERSION,
+    organization_id: ctx.orgId,
+    engine,
+    checked_at: new Date().toISOString()
+  });
+}
+
+async function handleImageEdit(req: Request) {
+  const ctx = await creatorContext(req, 'creator.generate');
+  const form = await req.formData().catch(() => { throw creatorError('invalid_form_data', 400); });
+  const files = form.getAll('source').filter((value): value is File => value instanceof File);
+  if (files.length !== 1) throw creatorError('image_source_required', 422);
+  const source = files[0];
+  if (!IMAGE_EDIT_MIME_TYPES.has(source.type)) throw creatorError('image_source_type_invalid', 415);
+  if (source.size <= 0 || source.size > IMAGE_EDIT_MAX_BYTES) throw creatorError('image_source_size_invalid', 413);
+
+  const requestRaw = String(form.get('request') || '').trim();
+  if (!requestRaw) throw creatorError('image_edit_request_required', 422);
+
+  let imageEditRequestRaw: unknown;
+  try {
+    imageEditRequestRaw = JSON.parse(requestRaw) as unknown;
+  } catch {
+    throw creatorError('image_edit_request_invalid', 422);
+  }
+
+  const validation = validateImageEditRequest(imageEditRequestRaw);
+  if (!validation.ok) throw creatorError(validation.error, 422);
+  const imageEditRequest = imageEditRequestRaw as ImageEditRequest;
+  const readiness = await openAiImageEngineReadiness();
+
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.image.edit.requested', null, {
+    source_mime_type: source.type,
+    source_size_bytes: source.size,
+    point_count: imageEditRequest.points.length,
+    preserve_identity: imageEditRequest.preserveIdentity,
+    aspect_ratio: imageEditRequest.aspectRatio,
+    visibility: imageEditRequest.visibility,
+    image_engine_ready: readiness.ready,
+    engine_id: readiness.engineId
+  });
+
+  if (!readiness.ready) throw creatorError('image_engine_not_ready', 409);
+  const result = await executeOpenAiImageEdit(ctx, source, imageEditRequest);
+  return json({
+    ok: true,
+    asset: result.asset,
+    signed_url: result.signedUrl,
+    production_id: result.production.id,
+    generation_job_id: result.job.id,
+    engine: result.engine
+  }, 201);
+}
+
 async function handleSubmit(req: Request): Promise<never> {
   const ctx = await creatorContext(req, 'creator.generate');
   const body = await bodyJson(req);
@@ -392,6 +454,8 @@ async function route(req: Request) {
   if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
   if (api === 'assets') return handleAssets(req, url);
   if (api === 'asset-preview' && req.method === 'GET') return handleAssetPreview(req, url);
+  if (api === 'image-edit-readiness' && req.method === 'GET') return handleImageEditReadiness(req);
+  if (api === 'image-edit' && req.method === 'POST') return handleImageEdit(req);
   if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
   if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
   if (api === 'recording-download' && req.method === 'GET') return handleRecordingDownload(req, url);

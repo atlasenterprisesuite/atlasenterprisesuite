@@ -11,7 +11,7 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => ({
   getActiveAtlasOrganization: mocks.getActiveAtlasOrganization
 }));
 
-import { getAssistantStatus, sendAssistantMessage } from '../../apps/web/src/assistant/client';
+import { getAssistantStatus, getAssistantUsage, sendAssistantMessage } from '../../apps/web/src/assistant/client';
 
 describe('ATLAS Assistant governed copilot client', () => {
   beforeEach(() => {
@@ -35,6 +35,32 @@ describe('ATLAS Assistant governed copilot client', () => {
     await getAssistantStatus();
 
     expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-copilot?api=status', {
+      method: 'GET',
+      headers: { 'x-atlas-org-id': 'org-1' }
+    });
+  });
+
+  it('uses the authenticated ATLAS fetch path for usage telemetry', async () => {
+    mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      scope: 'organization',
+      days: 30,
+      period_start: '2026-09-01T00:00:00.000Z',
+      period_end: '2026-09-30T00:00:00.000Z',
+      total_requests: 4,
+      completed_requests: 4,
+      failed_requests: 0,
+      average_latency_ms: 420,
+      automatic_api_cost_usd: 0,
+      tokens: { input: 10, output: 20, total: 30 },
+      providers: [],
+      models: []
+    }), { status: 200 }));
+
+    const result = await getAssistantUsage(30);
+
+    expect(result.total_requests).toBe(4);
+    expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-copilot?api=usage&days=30', {
       method: 'GET',
       headers: { 'x-atlas-org-id': 'org-1' }
     });

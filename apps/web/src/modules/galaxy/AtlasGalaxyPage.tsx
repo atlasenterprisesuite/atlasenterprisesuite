@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AtlasVisualReference } from '../../components/AtlasVisualReference';
 import {
   ATLAS_SESSION_EVENT,
   getCachedAtlasShellOrganization,
@@ -40,6 +41,8 @@ export function AtlasGalaxyPage() {
         <h1>ATLAS Galaxy</h1>
         <p>Navigate the enterprise ecosystem through a truthful spatial view of registered modules and protected destinations.</p>
       </header>
+
+      <AtlasVisualReference reference="universe" compact />
 
       <Link className="galaxy-portal-launcher" to="/galaxy/portals">
         <span>

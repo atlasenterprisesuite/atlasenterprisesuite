@@ -152,6 +152,236 @@ function json(data: unknown, status = 200) {
   });
 }
 
+const GEMINI_MCP_TOKEN_SHA256 = '931923afb99942b2dd10c2ae2a74fecfa773465a84775950950854d0ec7b4413';
+const MCP_MODERN_PROTOCOL = '2026-07-28';
+const MCP_LEGACY_PROTOCOL = '2025-11-25';
+const MCP_SERVER_INFO = { name: 'ATLAS Gemini MCP', version: '1.0.0' };
+const MCP_CONTROL_PLANE_READINESS =
+  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=readiness';
+
+const MCP_TOOLS = [
+  {
+    name: 'atlas.production.status',
+    description: 'Read the immutable ATLAS production release identity currently served by Cloudflare. Read-only.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  },
+  {
+    name: 'atlas.production.routes',
+    description: 'Verify the current ATLAS production SPA shell for a fixed allowlist of critical public routes. Read-only.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  },
+  {
+    name: 'atlas.control_plane.readiness',
+    description: 'Read the public ATLAS Manager control-plane readiness contract. Read-only.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  }
+] as const;
+
+function mcpRpcResult(id: unknown, result: unknown) {
+  return json({ jsonrpc: '2.0', id, result });
+}
+
+function mcpRpcError(id: unknown, code: number, message: string, data?: unknown, status = 200) {
+  return new Response(JSON.stringify({
+    jsonrpc: '2.0',
+    id: id ?? null,
+    error: { code, message, ...(data === undefined ? {} : { data }) }
+  }), {
+    status,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff'
+    }
+  });
+}
+
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function geminiMcpAuthorized(request: Request) {
+  const authorization = request.headers.get('authorization') || '';
+  if (!authorization.toLowerCase().startsWith('bearer ')) return false;
+  const token = authorization.slice(7).trim();
+  if (!token || token.length > 256) return false;
+  return (await sha256Hex(token)) === GEMINI_MCP_TOKEN_SHA256;
+}
+
+function mcpServerMeta() {
+  return { 'io.modelcontextprotocol/serverInfo': MCP_SERVER_INFO };
+}
+
+async function mcpProductionStatus(env: Env, request: Request) {
+  const commitSha = await deploymentCommitSha(env, request);
+  return {
+    service: 'atlas-enterprise-suite-web',
+    environment: 'production',
+    release: {
+      version_id: env.CF_VERSION_METADATA?.id || null,
+      commit_sha: canonicalCommitSha(env.CF_VERSION_METADATA?.tag) || canonicalCommitSha(commitSha)
+    },
+    verified_at: new Date().toISOString()
+  };
+}
+
+async function mcpProductionRoutes(env: Env, request: Request) {
+  const paths = ['/', '/identity', '/finance', '/health', '/work', '/execution/manager/readiness'];
+  const results = [];
+  for (const path of paths) {
+    const target = new URL(path, request.url);
+    const assetResponse = await env.ASSETS.fetch(new Request(target, {
+      method: 'GET',
+      headers: { 'cache-control': 'no-store' }
+    }));
+    results.push({
+      path,
+      reachable: assetResponse.ok,
+      status: assetResponse.status,
+      content_type: assetResponse.headers.get('content-type') || null
+    });
+  }
+  return {
+    service: 'atlas-enterprise-suite-web',
+    routes: results,
+    all_reachable: results.every(item => item.reachable),
+    verified_at: new Date().toISOString()
+  };
+}
+
+async function mcpControlPlaneReadiness() {
+  const response = await fetch(MCP_CONTROL_PLANE_READINESS, {
+    method: 'GET',
+    headers: { accept: 'application/json', 'cache-control': 'no-store' }
+  });
+  const payload = await response.json().catch(() => null);
+  return {
+    reachable: response.ok,
+    status: response.status,
+    payload: response.ok ? payload : null,
+    verified_at: new Date().toISOString()
+  };
+}
+
+async function executeMcpTool(name: string, env: Env, request: Request) {
+  if (name === 'atlas.production.status') return mcpProductionStatus(env, request);
+  if (name === 'atlas.production.routes') return mcpProductionRoutes(env, request);
+  if (name === 'atlas.control_plane.readiness') return mcpControlPlaneReadiness();
+  throw new Error('tool_not_found');
+}
+
+function mcpToolResult(data: unknown, modern: boolean) {
+  return {
+    content: [{ type: 'text', text: JSON.stringify(data) }],
+    structuredContent: data,
+    isError: false,
+    ...(modern ? { _meta: mcpServerMeta() } : {})
+  };
+}
+
+async function handleGeminiMcp(request: Request, env: Env) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers':
+          'authorization, content-type, accept, mcp-protocol-version, mcp-method, mcp-name',
+        'access-control-max-age': '86400'
+      }
+    });
+  }
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ ok: false, error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { 'content-type': 'application/json; charset=utf-8', allow: 'POST, OPTIONS' }
+    });
+  }
+  if (!(await geminiMcpAuthorized(request))) {
+    return new Response(JSON.stringify({ ok: false, error: 'authentication_required' }), {
+      status: 401,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'www-authenticate': 'Bearer realm="ATLAS Gemini MCP"'
+      }
+    });
+  }
+
+  const message = await request.json().catch(() => null) as any;
+  if (!message || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
+    return mcpRpcError(message?.id ?? null, -32600, 'Invalid Request', undefined, 400);
+  }
+
+  const method = message.method;
+  const protocolHeader = request.headers.get('mcp-protocol-version');
+  const modern = protocolHeader === MCP_MODERN_PROTOCOL;
+
+  if (modern) {
+    const routedMethod = request.headers.get('mcp-method');
+    const routedName = request.headers.get('mcp-name');
+    if (!routedMethod || routedMethod !== method) {
+      return mcpRpcError(message.id, -32020, 'HeaderMismatch', { field: 'Mcp-Method' }, 400);
+    }
+    if (method === 'tools/call' && (!routedName || routedName !== String(message?.params?.name || ''))) {
+      return mcpRpcError(message.id, -32020, 'HeaderMismatch', { field: 'Mcp-Name' }, 400);
+    }
+  }
+
+  if (method === 'server/discover') {
+    return mcpRpcResult(message.id, {
+      supportedVersions: [MCP_MODERN_PROTOCOL, MCP_LEGACY_PROTOCOL],
+      capabilities: { tools: {} },
+      instructions:
+        'ATLAS Gemini MCP exposes least-privilege, read-only production verification tools. It does not expose secrets, credentials, private tenant records, or write actions.',
+      _meta: mcpServerMeta()
+    });
+  }
+
+  if (method === 'initialize') {
+    return mcpRpcResult(message.id, {
+      protocolVersion: MCP_LEGACY_PROTOCOL,
+      capabilities: { tools: {} },
+      serverInfo: MCP_SERVER_INFO,
+      instructions: 'ATLAS Gemini MCP read-only production gateway.'
+    });
+  }
+
+  if (method === 'notifications/initialized' || method === 'notifications/cancelled') {
+    return new Response(null, { status: 202 });
+  }
+
+  if (method === 'ping') return mcpRpcResult(message.id, {});
+
+  if (method === 'tools/list') {
+    return mcpRpcResult(message.id, {
+      tools: MCP_TOOLS,
+      ...(modern ? { ttlMs: 30000, cacheScope: 'private', _meta: mcpServerMeta() } : {})
+    });
+  }
+
+  if (method === 'tools/call') {
+    const name = String(message?.params?.name || '');
+    try {
+      const data = await executeMcpTool(name, env, request);
+      return mcpRpcResult(message.id, mcpToolResult(data, modern));
+    } catch (error) {
+      const errorCode = clean((error as Error)?.message, 120) || 'tool_failed';
+      if (errorCode === 'tool_not_found') return mcpRpcError(message.id, -32601, 'Method not found');
+      return mcpRpcError(message.id, -32000, 'ATLAS tool failed', { code: errorCode });
+    }
+  }
+
+  return mcpRpcError(message.id, -32601, 'Method not found');
+}
+
 function clean(value: unknown, max = 500) {
   return String(value ?? '').trim().slice(0, max);
 }
@@ -580,6 +810,14 @@ export class AtlasLocalRealtimeBus {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === '/mcp') {
+      const commitSha = await deploymentCommitSha(env, request);
+      return withSecurityHeaders(
+        await handleGeminiMcp(request, env),
+        env.CF_VERSION_METADATA,
+        commitSha
+      );
+    }
     if (url.pathname === '/status' && request.method === 'GET') {
       const commitSha = await deploymentCommitSha(env, request);
       const effectiveCommitSha =

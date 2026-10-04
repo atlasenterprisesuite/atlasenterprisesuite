@@ -7,6 +7,7 @@ import { compileSpecializedPrompt, type PromptExportPackage } from '../../../../
 import { exportCreatorPrompt, listCreativeEngines, listCreatorAssets, listCreatorProductions, saveCreativePlan } from '../../lib/creatorApi';
 import { CreatorExperiencePage } from '../experience/CreatorExperiencePage';
 import { DirectorWorkspace } from './director/DirectorWorkspace';
+import { ImageLabWorkspace } from './image/ImageLabWorkspace';
 import './creator.css';
 
 const CREATIVE_MEDIA_KINDS: CreativeMediaKind[] = ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'];
@@ -21,6 +22,8 @@ function newCreativePlanId() {
 }
 
 export const studioEntryPoints = [
+  { title: 'AI Universe', route: '/studio/ai-universe' },
+  { title: 'Productivity Pro', route: '/studio/productivity-pro' },
   { title: 'Writing Desk', route: '/studio/write' },
   { title: 'Content Intelligence', route: '/studio/content' },
   { title: 'Social Command Center', route: '/studio/social' },
@@ -72,6 +75,7 @@ export function CreatorWorkspace() {
     return () => { active = false; };
   }, []);
 
+  if (kind === 'image') return <ImageLabWorkspace engines={engines} />;
   if (kind === 'video') return <DirectorWorkspace />;
 
   const executable = engines.some(engine =>

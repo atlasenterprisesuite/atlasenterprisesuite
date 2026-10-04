@@ -10,8 +10,10 @@ import { resolveAtlasExtension } from './extensions/resolveAtlasExtension';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
+import { NetworkPublicPage } from './modules/business/network/NetworkPublicPage';
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
+import { AtlasPayPage } from './modules/finance/pay/AtlasPayPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
 import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
@@ -19,11 +21,17 @@ import { TaxRoutes } from './modules/tax/TaxRoutes';
 import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { AIUniversePage } from './modules/creator/AIUniversePage';
+import { ProductivityProPage } from './modules/creator/ProductivityProPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
+import { AccessibilityCommunicationSettingsPage } from './modules/settings/AccessibilityCommunicationSettings';
 import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { Gps4DPage } from './modules/gps/Gps4DPage';
+import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPage';
+import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
+import { FaithReflectionPage } from './modules/wellbeing/FaithReflectionPage';
 import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
@@ -57,6 +65,7 @@ function EnterpriseHome() {
         <Link className="module-card enabled" to="/payroll"><span>People • Pay • Progress</span><strong>ATLAS Payroll</strong><p>Governed payroll workspace with real configuration boundaries and no fabricated metrics.</p></Link>
         <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tooling with explicit evidence boundaries.</p></Link>
+        <Link className="module-card enabled" to="/wellbeing/faith"><span>Wellbeing · Reflection</span><strong>ATLAS Faith & Reflection</strong><p>Guided prayer, symbolic sacred codes, a 45-count practice, real-world action and a 21-day evidence journal.</p></Link>
         <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
         <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
@@ -71,6 +80,7 @@ function BusinessHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Business Suite" title="Business Suite" description="Connected growth, customer, commerce and publishing operations under one governed organization." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/business/network"><span>Growth · Partner operations</span><strong>ATLAS Network</strong><p>Governed partner, pricing, commission, payout and compliance architecture with explicit data boundaries.</p></Link>
         <Link className="module-card enabled" to="/business/growth/social-publisher"><span>Growth · Creator Studio</span><strong>Social Publisher</strong><p>Attach photos and videos, select each platform format, validate assets and prepare governed publication.</p></Link>
         <div className="module-card disabled" aria-disabled="true"><span>Channel connections</span><strong>Authorization required</strong><p>External publishing remains unavailable until each organization authorizes its social accounts.</p></div>
       </div>
@@ -84,6 +94,7 @@ function FinanceHome() {
       <PageHeader eyebrow="ATLAS Finance" title="Finance" description="Governed finance operations with Accounting as the first enterprise domain." />
       <div className="module-grid">
         <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Advisory · Client planning</span><strong>Financial Guidance</strong><p>Explainable 30-day liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
+        <Link className="module-card enabled" to="/finance/pay"><span>Payments · Issuing</span><strong>ATLAS Pay</strong><p>Provider-neutral wallets, issuing and payout orchestration with regulated rails fail-closed until verified.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
         <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting</span><strong>Accounts Receivable</strong><p>Live customers, invoices, line items, balances, issuance and payment recording.</p></Link>
         <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · Purchasing · AP</span><strong>Procure to Pay</strong><p>PO receiving, packing slips, three-way matching, inventory costing, AP and margin pricing.</p></Link>
@@ -278,15 +289,25 @@ export function App() {
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
         <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
+        <Route path="/studio/ai-universe" element={<RequireAtlasIdentity><AIUniversePage /></RequireAtlasIdentity>} />
+        <Route path="/studio/productivity-pro" element={<RequireAtlasIdentity><ProductivityProPage /></RequireAtlasIdentity>} />
         <Route path="/studio/create" element={<RequireAtlasIdentity><CreatorWorkspace /></RequireAtlasIdentity>} />
         <Route path="/studio/library" element={<RequireAtlasIdentity><CreatorLibrary /></RequireAtlasIdentity>} />
         <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
         <Route path="/studio/teleprompter" element={<RequireAtlasIdentity><TeleprompterPage /></RequireAtlasIdentity>} />
         <Route path="/business" element={<BusinessHome />} />
+        <Route path="/business/network" element={<NetworkPublicPage section="network" />} />
+        <Route path="/business/network/pricing" element={<NetworkPublicPage section="pricing" />} />
+        <Route path="/business/network/commissions" element={<NetworkPublicPage section="commissions" />} />
+        <Route path="/business/network/payouts" element={<NetworkPublicPage section="payouts" />} />
+        <Route path="/business/network/compliance" element={<NetworkPublicPage section="compliance" />} />
         <Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />
         <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
+        <Route path="/city" element={<RequireAtlasIdentity><AtlasDigitalDistrictPage /></RequireAtlasIdentity>} />
+        <Route path="/city/twin" element={<RequireAtlasIdentity><UrbanTwinPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
+        <Route path="/finance/pay" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
@@ -295,8 +316,10 @@ export function App() {
         <Route path="/tax/*" element={<TaxRoutes />} />
         <Route path="/payroll/*" element={<PayrollRoutes />} />
         <Route path="/health" element={<HealthHome />} />
+        <Route path="/wellbeing/faith" element={<FaithReflectionPage />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
+        <Route path="/settings/accessibility/communication" element={<AccessibilityCommunicationSettingsPage />} />
         <Route path={labBase} element={<LabLayout />}>
           <Route index element={<LabOverview />} />
           <Route path="diseases" element={<DiseasesPage />} />

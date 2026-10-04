@@ -71,12 +71,20 @@ const businessSections: ModuleExperienceSection[] = [
     cards: [
       { label: 'Sales', title: 'Revenue Operations', description: 'Canonical revenue operations compose CRM, commerce, growth and finance without duplicating their sources of truth.', to: '/revenue', status: 'Canonical hub active' },
       { label: 'Commerce', title: 'Commerce Core', description: 'Catalog, products, orders and payment settings are available through ATLAS Commerce; POS and inventory adapters remain gated until separately verified.', to: '/commerce', status: 'Canonical core active · adapters gated' },
-      { label: 'Analytics', title: 'Business Analytics', description: 'A canonical analytics hub now composes existing source-backed reporting surfaces; universal KPI aggregation remains source-gated.', to: '/analytics', status: 'Canonical hub active · aggregation gated' }
+      { label: 'Analytics', title: 'Business Analytics', description: 'A canonical analytics hub now composes existing source-backed reporting surfaces; universal KPI aggregation remains source-gated.', to: '/business/insights', status: 'Business Insights active · aggregation gated' }
     ]
   }
 ];
 
 const financeSections: ModuleExperienceSection[] = [
+  {
+    eyebrow: 'Enterprise advisory',
+    title: 'Measure the operating cycle',
+    description: 'Explore the cross-module process and estimate recoverable capacity with transparent, editable assumptions.',
+    cards: [
+      { label: 'Scenario', title: 'Enterprise Automation', description: 'Model AP, AR, reconciliation, close, people, stock, purchasing and administration across legal entities. Projections are not production measurements.', to: '/advisory/enterprise-automation' }
+    ]
+  },
   {
     eyebrow: 'Financial architecture',
     title: 'Accounting is the operational core',
@@ -154,6 +162,7 @@ export function EnterpriseExperiencePage() {
       title="One governed enterprise ecosystem"
       description="Finance, CRM, Payroll, Health, Creator and operational verticals share one shell, organization context and execution boundary."
       narrative="One operating system for governed enterprise work."
+      visualReference="universe"
       actions={[
         { label: 'Open Finance', to: '/finance' },
         { label: 'Open CRM', to: '/crm', variant: 'secondary' }
@@ -171,6 +180,7 @@ export function BusinessExperiencePage() {
       title="Business Suite"
       description="Connected growth, customer, creative and publishing operations inside one governed organization."
       narrative="Growth operations, customer workflows and governed publishing under one enterprise context."
+      visualReference="modules"
       actions={[
         { label: 'Open Publishing Workspace', to: '/business/growth/social-publisher' },
         { label: 'Open CRM', to: '/crm', variant: 'secondary' }
@@ -188,6 +198,7 @@ export function FinanceExperiencePage() {
       title="Finance"
       description="Governed financial operations inside the shared ATLAS organization and permission model."
       narrative="Finance intelligence, execution and control."
+      visualReference="modules"
       actions={[{ label: 'Open Accounting', to: '/finance/accounting' }]}
       sections={financeSections}
       statusNote="Finance totals and readiness state are shown only when they come from the authenticated organization through Supabase RLS. External banking and payment execution remain fail-closed until the organization authorizes and verifies those providers."
@@ -204,6 +215,7 @@ export function AccountingExperiencePage() {
       title="Accounting"
       description="Working accounting slices use the same governed tenant scope, permissions and reporting contracts as the rest of ATLAS."
       narrative="Accounting intelligence with governed execution."
+      visualReference="modules"
       actions={[
         { label: 'Accounts Payable', to: '/finance/accounting/accounts-payable' },
         { label: 'Automotive Sales Report', to: '/finance/accounting/reports/automotive-sales', variant: 'secondary' }

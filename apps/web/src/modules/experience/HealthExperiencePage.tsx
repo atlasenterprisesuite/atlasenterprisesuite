@@ -64,6 +64,7 @@ export function HealthExperiencePage() {
       title="Health"
       description="A governed smart-health, biomedical research and wellbeing ecosystem that exposes only verified capabilities."
       narrative="Health intelligence, research and wellbeing with explicit evidence boundaries."
+      visualReference="modules"
       sections={healthSections}
       statusNote="ATLAS Health does not infer clinical readiness from design. Research, wellbeing, provider connectivity and hospital operations remain separate governed states."
     >

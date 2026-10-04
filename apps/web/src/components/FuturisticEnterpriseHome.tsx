@@ -1,6 +1,7 @@
 import { type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ATLAS_MODULES } from '../modules/registry';
+import { AtlasVisualReference } from './AtlasVisualReference';
 import './futuristic-enterprise-home.css';
 
 const readinessLabel = {
@@ -68,6 +69,22 @@ export function FuturisticEnterpriseHome() {
             <span>PERSONAS</span><span>PROCESOS</span><span>DATOS</span><span>RESULTADOS</span>
             <strong>CONTROL<br />SIN LÍMITES</strong>
           </div>
+        </div>
+      </section>
+
+      <section className="atlas-original-designs" aria-labelledby="atlas-original-designs-title">
+        <header>
+          <div>
+            <p className="atlas-command-eyebrow">DISEÑO CANÓNICO · BIBLIOTECA ATLAS</p>
+            <h2 id="atlas-original-designs-title">Los diseños originales ahora viven dentro del producto</h2>
+          </div>
+          <p>Estas referencias aprobadas gobiernan la composición visual de Dashboard, Universe, módulos y Voice. Cada una abre la superficie funcional correspondiente.</p>
+        </header>
+        <div className="atlas-original-design-grid">
+          <AtlasVisualReference reference="dashboard" compact />
+          <AtlasVisualReference reference="universe" compact />
+          <AtlasVisualReference reference="modules" compact />
+          <AtlasVisualReference reference="voice" compact />
         </div>
       </section>
 

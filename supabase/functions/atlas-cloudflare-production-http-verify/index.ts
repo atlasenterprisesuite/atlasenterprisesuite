@@ -9,7 +9,7 @@ const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 27;
+const VERSION = 31;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CANONICAL_MODULE_ROUTES = [
@@ -21,12 +21,22 @@ const CANONICAL_MODULE_ROUTES = [
   '/cloud/api-explorer',
   '/cloud/observability',
   '/cloud/resources',
+  '/cloud/domains',
   '/work',
   '/assistant',
   '/knowledge',
+  '/knowledge/bible',
   '/business',
+  '/business/insights',
   '/advisory',
+  '/advisory/clients',
+  '/advisory/engagements',
+  '/advisory/business-launch-360/workspace',
+  '/advisory/reports',
+  '/advisory/providers',
+  '/advisory/readiness',
   '/finance',
+  '/finance/pay',
   '/tax',
   '/crm',
   '/commerce',
@@ -36,6 +46,8 @@ const CANONICAL_MODULE_ROUTES = [
   '/connect/chat',
   '/connect/channel',
   '/connect/wireless',
+  '/connect/wireless/network',
+  '/connect/wireless/commissioning',
   '/connect/wireless/mvno',
   '/connect/google-fi',
   '/payroll',
@@ -51,6 +63,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/galaxy',
   '/device-os',
   '/execution/manager/readiness',
+  '/settings/accessibility/communication',
   '/finance/accounting/accounts-payable',
   '/finance/accounting/accounts-receivable',
   '/finance/accounting/reports/automotive-sales'
@@ -287,8 +300,15 @@ Deno.serve(async (req: Request) => {
     home,
     suite,
     launch360,
+    advisoryClients,
+    advisoryEngagements,
+    advisoryLaunchWorkspace,
+    advisoryReports,
+    advisoryProviders,
+    advisoryReadiness,
     identity,
     managerReadiness,
+    accessibility,
     gps,
     finance,
     accounting,
@@ -328,8 +348,15 @@ Deno.serve(async (req: Request) => {
     probe('/'),
     probe('/suite'),
     probe('/advisory/business-launch-360'),
+    probe('/advisory/clients'),
+    probe('/advisory/engagements'),
+    probe('/advisory/business-launch-360/workspace'),
+    probe('/advisory/reports'),
+    probe('/advisory/providers'),
+    probe('/advisory/readiness'),
     probe('/identity?app=%2Ffinance'),
     probe('/execution/manager/readiness'),
+    probe('/settings/accessibility/communication'),
     probe('/gps'),
     probe('/finance'),
     probe('/finance/accounting'),
@@ -376,14 +403,22 @@ Deno.serve(async (req: Request) => {
   const statusRouteOk = statusRoute.status === 200;
   const canonicalModuleRoutesOk = canonicalModuleProbeEntries
     .every(([, result]) => result.status === 200);
-  const canonicalModuleRoutes = Object.fromEntries(canonicalModuleProbeEntries);
+  const canonicalModuleRoutes = Object.fromEntries(canonicalModuleProbeEntries) as Record<string, Probe>;
+  const bibleOS = canonicalModuleRoutes['/knowledge/bible'];
 
   const publicShellOk =
     home.status === 200 &&
     suite.status === 200 &&
     launch360.status === 200 &&
+    advisoryClients.status === 200 &&
+    advisoryEngagements.status === 200 &&
+    advisoryLaunchWorkspace.status === 200 &&
+    advisoryReports.status === 200 &&
+    advisoryProviders.status === 200 &&
+    advisoryReadiness.status === 200 &&
     identity.status === 200 &&
     managerReadiness.status === 200 &&
+    accessibility.status === 200 &&
     gps.status === 200 &&
     finance.status === 200 &&
     accounting.status === 200 &&
@@ -392,6 +427,7 @@ Deno.serve(async (req: Request) => {
     receivables.status === 200 &&
     procureToPay.status === 200 &&
     knowledge.status === 200 &&
+    bibleOS.status === 200 &&
     voice.status === 200 &&
     health.status === 200 &&
     frontier.status === 200 &&
@@ -411,8 +447,15 @@ Deno.serve(async (req: Request) => {
     home,
     suite,
     launch360,
+    advisoryClients,
+    advisoryEngagements,
+    advisoryLaunchWorkspace,
+    advisoryReports,
+    advisoryProviders,
+    advisoryReadiness,
     identity,
     managerReadiness,
+    accessibility,
     gps,
     finance,
     accounting,
@@ -450,6 +493,15 @@ Deno.serve(async (req: Request) => {
     statusRoute,
     ...canonicalModuleProbeEntries.map(([, result]) => result)
   ];
+  const advisoryRoutesOk = [
+    launch360,
+    advisoryClients,
+    advisoryEngagements,
+    advisoryLaunchWorkspace,
+    advisoryReports,
+    advisoryProviders,
+    advisoryReadiness
+  ].every((result) => result.status === 200);
   const criticalCrmRoutesOk = [
     crm,
     crmContacts,
@@ -486,6 +538,7 @@ Deno.serve(async (req: Request) => {
     commerceRouteOk &&
     revenueRouteOk &&
     analyticsRouteOk &&
+    advisoryRoutesOk &&
     criticalCrmRoutesOk &&
     criticalNetworkRoutesOk &&
     workRoutesOk &&
@@ -512,8 +565,16 @@ Deno.serve(async (req: Request) => {
         canonical_module_route_count: CANONICAL_MODULE_ROUTES.length,
         suite_route_reachable: suite.status === 200,
         business_launch_360_route_reachable: launch360.status === 200,
+        advisory_routes_reachable: advisoryRoutesOk,
+        advisory_clients_route_reachable: advisoryClients.status === 200,
+        advisory_engagements_route_reachable: advisoryEngagements.status === 200,
+        advisory_launch_workspace_route_reachable: advisoryLaunchWorkspace.status === 200,
+        advisory_reports_route_reachable: advisoryReports.status === 200,
+        advisory_providers_route_reachable: advisoryProviders.status === 200,
+        advisory_readiness_route_reachable: advisoryReadiness.status === 200,
         identity_route_reachable: identity.status === 200,
         manager_readiness_route_reachable: managerReadiness.status === 200,
+        accessibility_route_reachable: accessibility.status === 200,
         gps_route_reachable: gps.status === 200,
         module_spa_shell_reachable: finance.status === 200,
         finance_accounting_route_reachable: accounting.status === 200,
@@ -522,6 +583,7 @@ Deno.serve(async (req: Request) => {
         accounts_receivable_route_reachable: receivables.status === 200,
         procure_to_pay_route_reachable: procureToPay.status === 200,
         knowledge_route_reachable: knowledge.status === 200,
+        bible_os_route_reachable: bibleOS.status === 200,
         voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
         frontier_route_reachable: frontier.status === 200,
@@ -558,8 +620,15 @@ Deno.serve(async (req: Request) => {
         home,
         suite,
         business_launch_360: launch360,
+        advisory_clients: advisoryClients,
+        advisory_engagements: advisoryEngagements,
+        advisory_launch_workspace: advisoryLaunchWorkspace,
+        advisory_reports: advisoryReports,
+        advisory_providers: advisoryProviders,
+        advisory_readiness: advisoryReadiness,
         identity,
         manager_readiness: managerReadiness,
+        accessibility,
         finance,
         finance_accounting: accounting,
         accounts_payable: payables,
@@ -567,6 +636,7 @@ Deno.serve(async (req: Request) => {
         accounts_receivable: receivables,
         procure_to_pay: procureToPay,
         knowledge,
+        bible_os: bibleOS,
         voice,
         health,
         frontier,

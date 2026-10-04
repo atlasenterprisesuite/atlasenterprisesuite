@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { evaluateTensor } from '../../../../../packages/health/jaque-mate/tensor';
 import type { TensorEvaluation } from '../../../../../packages/health/jaque-mate/types';
+import { getAtlasAccessToken } from '../../lib/atlasSession';
+import { getLiveHealthResearchSummary, type LiveHealthResearchSummary } from './healthResearchRepository';
 
 const SIMULATION_WATERMARK = 'SIMULATION — NOT CLINICAL EVIDENCE' as const;
 const LAB_ROOT = '/health/research/frontiers/disease-reconstruction';
@@ -49,6 +51,27 @@ function TensorField({
 export function JaqueMateSentinelPage() {
   const [tensor, setTensor] = useState<TensorFormState>(initialTensor);
   const [result, setResult] = useState<TensorEvaluation | null>(null);
+  const [liveSummary, setLiveSummary] = useState<LiveHealthResearchSummary | null>(null);
+  const [liveState, setLiveState] = useState<'signed-out' | 'loading' | 'ready' | 'error'>(() => (
+    getAtlasAccessToken() ? 'loading' : 'signed-out'
+  ));
+
+  useEffect(() => {
+    if (!getAtlasAccessToken()) return;
+    let active = true;
+    getLiveHealthResearchSummary()
+      .then((summary) => {
+        if (!active) return;
+        setLiveSummary(summary);
+        setLiveState('ready');
+      })
+      .catch(() => {
+        if (!active) return;
+        setLiveSummary(null);
+        setLiveState('error');
+      });
+    return () => { active = false; };
+  }, []);
 
   const updateDimension = (dimension: keyof TensorFormState, value: number) => {
     setTensor((current) => ({ ...current, [dimension]: value }));
@@ -83,6 +106,34 @@ export function JaqueMateSentinelPage() {
       <div className="notice strong" role="note">
         <strong>Research and simulation only.</strong> No automated clinical action is authorized or performed by this surface.
       </div>
+
+      <section className="feature-card wide" aria-labelledby="live-research-heading">
+        <p className="eyebrow">Live research backend · not clinical evidence</p>
+        <h2 id="live-research-heading">Tenant-scoped Supabase research telemetry</h2>
+        {liveState === 'signed-out' ? (
+          <div className="empty-state">
+            <strong>Authentication required</strong>
+            <span>Sign in to load organization-authorized research records protected by RLS.</span>
+          </div>
+        ) : null}
+        {liveState === 'loading' ? (
+          <div className="empty-state" aria-live="polite"><strong>Loading authorized records</strong><span>No cached or simulated values are shown while the backend is queried.</span></div>
+        ) : null}
+        {liveState === 'error' ? (
+          <div className="notice" role="alert"><strong>Live data unavailable.</strong> No backend values are being represented as current.</div>
+        ) : null}
+        {liveState === 'ready' && liveSummary ? (
+          <>
+            <div className="module-grid compact" aria-live="polite">
+              <article className="module-card enabled"><span>Latest run</span><strong>{liveSummary.latestRun?.status || 'NO RUN'}</strong><p>{liveSummary.latestRun ? new Date(liveSummary.latestRun.started_at).toLocaleString() : 'No persisted research run is available.'}</p></article>
+              <article className="module-card enabled"><span>Persisted sources</span><strong>{liveSummary.sourceCount}</strong><p>{liveSummary.diseaseCount} disease keys represented.</p></article>
+              <article className="module-card enabled"><span>Assessments</span><strong>{liveSummary.assessmentCount}</strong><p>{liveSummary.classifications.CONTRADICTED} contradicted · {liveSummary.classifications.INSUFFICIENT} insufficient.</p></article>
+              <article className="module-card enabled"><span>Human-review eligible</span><strong>{liveSummary.classifications.HUMAN_REVIEW_ELIGIBLE}</strong><p>{liveSummary.candidateCount} governed research candidates. Neither count represents a confirmed cure.</p></article>
+            </div>
+            <p>Source: authenticated Supabase records loaded {new Date(liveSummary.loadedAt).toLocaleString()}. RLS limits results to the active organization.</p>
+          </>
+        ) : null}
+      </section>
 
       <section className="feature-card wide" aria-labelledby="evidence-boundary-heading">
         <p className="eyebrow">Evidence boundary</p>

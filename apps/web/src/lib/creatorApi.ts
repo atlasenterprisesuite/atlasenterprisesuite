@@ -4,6 +4,7 @@ import type { WebLaunchBlueprint } from '../../../../packages/creator/web_launch
 import type { CreativePlan } from '../../../../packages/creator/creative_plan';
 import { adaptNativeReadiness, type CreativeEngineReadiness } from '../../../../packages/creator/creative_engine';
 import type { PromptExportPackage, PromptExportRequest } from '../../../../packages/creator/prompt_engine';
+import type { ImageEditRequest } from '../../../../packages/creator/image_edit';
 import type {
   CreatorAsset,
   CreatorReadinessResponse,
@@ -239,6 +240,17 @@ export async function exportCreatorPrompt(request: PromptExportRequest): Promise
     })
   });
   return data.prompt_package;
+}
+
+
+export async function submitImageEdit(source: File, request: ImageEditRequest) {
+  const form = new FormData();
+  form.append('source', source);
+  form.append('request', JSON.stringify(request));
+  return creatorRequest<{ ok: true; asset: unknown; signed_url?: string }>('image-edit', {}, {
+    method: 'POST',
+    body: form
+  });
 }
 
 export async function listCreatorProductions() {

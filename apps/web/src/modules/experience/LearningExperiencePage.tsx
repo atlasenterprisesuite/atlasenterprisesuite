@@ -60,6 +60,7 @@ export function LearningExperiencePage() {
       title="Learning"
       description="Structured practice, learning readiness and measurable activity progress inside the governed ATLAS ecosystem."
       narrative="Practice, recovery and measurable progress under one governed learning context."
+      visualReference="modules"
       sections={learningSections}
       statusNote="ATLAS Learning reports practice activity and program state only. It does not convert educational engagement into a clinical or neurological claim."
     />

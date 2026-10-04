@@ -25,8 +25,11 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain("'/identity?app=%2Ffinance'");
     expect(verifier).toContain("'/execution/manager/readiness'");
     expect(verifier).toContain('manager_readiness_route_reachable');
+    expect(verifier).toContain("'/settings/accessibility/communication'");
+    expect(verifier).toContain('accessibility_route_reachable');
     expect(verifier).toContain("'/gps'");
     expect(verifier).toContain('gps_route_reachable');
+    expect(verifier).toContain("'/business/insights'");
     expect(verifier).toContain("'/finance'");
     expect(verifier).toContain("'/finance/accounting'");
     expect(verifier).toContain("'/finance/accounting/accounts-payable'");
@@ -69,12 +72,13 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
     expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
-    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "25" ]');
+    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "31" ]');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');
     expect(workflow).toContain('AUTHORIZED_JAQUE_MATE_SENTINEL_REACHABLE');
     expect(workflow).toContain('AUTHORIZED_MANAGER_REACHABLE');
+    expect(workflow).toContain('AUTHORIZED_ACCESSIBILITY_REACHABLE');
     expect(workflow).toContain('status_route_reachable');
     expect(workflow).toContain('all_module_routes_reachable');
   });
@@ -106,6 +110,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
 
     expect(productionStep).toContain('/execution/manager/readiness');
     expect(productionStep).toContain('manager_readiness_route_reachable');
+    expect(workflow).toContain('/settings/accessibility/communication');
+    expect(workflow).toContain('accessibility_route_reachable');
     expect(productionStep).toContain('/finance/accounting');
     expect(productionStep).toContain('/finance/accounting/accounts-payable');
     expect(productionStep).toContain('/health');
