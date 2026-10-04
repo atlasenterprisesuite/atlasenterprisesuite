@@ -10,6 +10,7 @@ on:
       - "SECURITY.md"
       - "docs/security/**"
       - "scripts/verify-github-org-migration-readiness.mjs"
+      - "scripts/atlas-copilot-review-evidence.mjs"
       - "supabase/config.toml"
       - "supabase/functions/_shared/github-oidc-scope.ts"
       - "supabase/functions/atlas-cloudflare-production-http-verify/**"
@@ -91,6 +92,23 @@ jobs:
               exit 1
             }
           done
+
+      - name: Verify Copilot review workflow safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=.github/workflows/atlas-copilot-review.yml
+          test -f "$file"
+          for required in             'pull_request:'             'contents: read'             'pull-requests: write'             'copilot-pull-request-reviewer[bot]'             'requested_effort: balanced'; do
+            grep -Fq "$required" "$file" || {
+              echo "::error::atlas-copilot-review.yml is missing required advisory review contract: $required"
+              exit 1
+            }
+          done
+          ! grep -Fq 'pull_request_target:' "$file"
+          ! grep -Fq 'permissions: write-all' "$file"
+          grep -Fq 'github.event.pull_request.head.sha' "$file"
+          grep -Fq 'blocking_decision' scripts/atlas-copilot-review-evidence.mjs
 
       - name: Verify human identity security policy
         shell: bash
