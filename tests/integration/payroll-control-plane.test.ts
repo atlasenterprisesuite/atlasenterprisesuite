@@ -37,6 +37,9 @@ describe('ATLAS Payroll control plane', () => {
     expect(migration).toContain('tax_filing');
     expect(migration).toContain('tax_remittance');
     expect(migration).toContain('direct_deposit');
+    expect(migration).toContain(
+      'create or replace function public.payroll_get_capability_readiness(p_org_id uuid)\nreturns jsonb\nlanguage plpgsql\nsecurity invoker'
+    );
   });
 
   it('requires immutable provider evidence before settled on insert or update', () => {
