@@ -4,9 +4,21 @@ import { ResearchBadge } from '../../components/ResearchBadge';
 const healthSections: ModuleExperienceSection[] = [
   {
     eyebrow: 'Health architecture',
-    title: 'Research and wellbeing with explicit boundaries',
-    description: 'The current Health surface exposes implemented research and wellbeing routes while clinical and hospital-system claims remain gated until real integrations exist.',
+    title: 'Research, BioScan and wellbeing with explicit boundaries',
+    description: 'The current Health surface exposes implemented BioScan, Human Digital Twin, research and wellbeing routes while clinical and hospital-system claims remain gated until real integrations exist.',
     cards: [
+      {
+        label: 'BioScan · Camera foundation',
+        title: 'BioScan',
+        description: 'Consent-gated local camera capture with no raw-frame persistence and no fabricated measurements.',
+        to: '/health/bioscan'
+      },
+      {
+        label: 'BioScan · Immutable history',
+        title: 'Human Digital Twin',
+        description: 'Review authorized immutable BioScan snapshots with source and confidence metadata.',
+        to: '/health/body-twin'
+      },
       {
         label: 'Research & Innovation',
         title: 'Health Frontiers',
@@ -36,8 +48,13 @@ const healthSections: ModuleExperienceSection[] = [
   {
     eyebrow: 'Evidence',
     title: 'Research truth before clinical claims',
-    description: 'ATLAS Health distinguishes research tooling, wellbeing support and clinical operations so evidence strength and system readiness remain visible.',
+    description: 'ATLAS Health distinguishes capture evidence, research tooling, wellbeing support and clinical operations so provenance, evidence strength and system readiness remain visible.',
     cards: [
+      {
+        label: 'BioScan truth boundary',
+        title: 'NO DATA → NO CLAIM',
+        description: 'Camera-only capture never invents vital signs, body composition, depth data or clinical interpretation.'
+      },
       {
         label: 'Research',
         title: 'Evidence-aware models',
@@ -66,7 +83,7 @@ export function HealthExperiencePage() {
       narrative="Health intelligence, research and wellbeing with explicit evidence boundaries."
       visualReference="modules"
       sections={healthSections}
-      statusNote="ATLAS Health does not infer clinical readiness from design. Research, wellbeing, provider connectivity and hospital operations remain separate governed states."
+      statusNote="ATLAS Health does not infer clinical readiness from design. BioScan capture, research, wellbeing, provider connectivity and hospital operations remain separate governed states."
     >
       <ResearchBadge />
     </ModuleExperiencePage>
