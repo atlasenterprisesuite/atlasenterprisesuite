@@ -58,7 +58,8 @@
 .atlas-visual-home__brand,
 .atlas-visual-home__quick-links a,
 .atlas-visual-home__recent a,
-.atlas-visual-home__enter {
+.atlas-visual-home__enter,
+.atlas-home-surface-card {
   color: inherit;
   text-decoration: none;
 }
@@ -121,12 +122,12 @@
 }
 
 .atlas-visual-home__content {
-  width: min(800px, calc(100% - 2rem));
+  width: min(920px, calc(100% - 2rem));
   display: grid;
   justify-items: center;
   text-align: center;
-  margin-top: clamp(1rem, 6vh, 5rem);
-  padding: clamp(1.25rem, 3vw, 2rem);
+  margin-top: clamp(2.5rem, 7vh, 5.5rem);
+  padding: clamp(1.25rem, 3vw, 2rem) clamp(1rem, 2vw, 1.5rem) clamp(5rem, 8vh, 6rem);
   text-shadow: 0 3px 28px rgba(0, 0, 0, 0.82);
 }
 
@@ -141,7 +142,7 @@
 .atlas-visual-home__content h1 {
   margin: 0;
   max-width: 15ch;
-  font-size: clamp(2.35rem, 7vw, 6.2rem);
+  font-size: clamp(2.35rem, 6vw, 5.6rem);
   line-height: 0.93;
   letter-spacing: -0.055em;
   font-weight: 800;
@@ -150,7 +151,7 @@
 
 .atlas-visual-home__lede {
   max-width: 52rem;
-  margin: 1rem 0 clamp(1.15rem, 3vh, 2rem);
+  margin: 0.85rem 0 clamp(0.9rem, 2vh, 1.45rem);
   color: rgba(244, 249, 255, 0.9);
   font-size: clamp(0.95rem, 1.55vw, 1.16rem);
   line-height: 1.55;
@@ -210,10 +211,98 @@
 }
 
 .atlas-visual-home__search-status {
-  min-height: 1.25rem;
-  margin: 0.55rem 0 0;
+  min-height: 1.1rem;
+  margin: 0.4rem 0 0;
   color: rgba(247, 250, 255, 0.88);
   font-size: 0.8rem;
+}
+
+.atlas-home-surfaces {
+  width: min(860px, 100%);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.atlas-home-surface-card {
+  min-height: 4.2rem;
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 0.1rem;
+  padding: 0.62rem 2rem 0.62rem 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 0.9rem;
+  background: linear-gradient(145deg, rgba(5, 13, 23, 0.38), rgba(5, 13, 23, 0.2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(13px) saturate(1.08);
+  -webkit-backdrop-filter: blur(13px) saturate(1.08);
+  text-align: left;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.74);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.atlas-home-surface-card small {
+  color: rgba(235, 245, 255, 0.7);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.atlas-home-surface-card strong {
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
+}
+
+.atlas-home-surface-card > span {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(244, 250, 255, 0.7);
+}
+
+.atlas-home-surface-card:hover,
+.atlas-home-surface-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.48);
+  background: linear-gradient(145deg, rgba(6, 17, 29, 0.58), rgba(6, 17, 29, 0.32));
+  outline: none;
+}
+
+.atlas-home-status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.42rem;
+  margin-top: 0.7rem;
+  padding: 0.42rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(4, 10, 18, 0.3);
+  color: rgba(243, 249, 255, 0.82);
+  font-size: 0.68rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.atlas-home-status__label {
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.atlas-home-status strong {
+  color: #fff;
+  font-size: 0.72rem;
+}
+
+.atlas-home-status > span:last-child {
+  color: rgba(235, 244, 252, 0.68);
 }
 
 .atlas-visual-home__recent {
@@ -222,7 +311,7 @@
   justify-content: center;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.35rem;
+  margin-top: 0.55rem;
 }
 
 .atlas-visual-home__recent > span {
@@ -253,15 +342,15 @@
 .atlas-visual-home__enter {
   position: absolute;
   left: 50%;
-  bottom: clamp(1rem, 2.7vh, 1.75rem);
+  bottom: clamp(0.85rem, 2.2vh, 1.4rem);
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
   transform: translateX(-50%);
   padding: 0.65rem 0.9rem;
   border-radius: 999px;
-  background: rgba(4, 10, 18, 0.38);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(4, 10, 18, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -272,12 +361,12 @@
 
 .atlas-visual-home__enter:hover,
 .atlas-visual-home__enter:focus-visible {
-  background: rgba(4, 10, 18, 0.6);
+  background: rgba(4, 10, 18, 0.65);
   border-color: rgba(255, 255, 255, 0.52);
   outline: none;
 }
 
-#atlas-dashboard {
+#atlas-command-center {
   scroll-margin-top: 0;
 }
 
@@ -304,7 +393,8 @@
     scrollbar-width: none;
   }
 
-  .atlas-visual-home__quick-links::-webkit-scrollbar {
+  .atlas-visual-home__quick-links::-webkit-scrollbar,
+  .atlas-home-surfaces::-webkit-scrollbar {
     display: none;
   }
 
@@ -315,6 +405,10 @@
 
   .atlas-visual-home__quick-links small {
     display: none;
+  }
+
+  .atlas-home-surfaces {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -337,8 +431,9 @@
   }
 
   .atlas-visual-home__content {
-    margin-top: 0.5rem;
-    padding-inline: 0.75rem;
+    width: min(100%, calc(100vw - 1rem));
+    margin-top: 4.5rem;
+    padding: 0.75rem 0.25rem 5rem;
   }
 
   .atlas-visual-home__content h1 {
@@ -359,12 +454,39 @@
     width: 100%;
   }
 
+  .atlas-home-surfaces {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding: 0.1rem 0.15rem 0.35rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .atlas-home-surface-card {
+    flex: 0 0 min(42vw, 10.5rem);
+    min-height: 4.4rem;
+    scroll-snap-align: start;
+  }
+
+  .atlas-home-status {
+    max-width: 94vw;
+    border-radius: 1rem;
+  }
+
+  .atlas-home-status > span:last-child {
+    flex-basis: 100%;
+  }
+
   .atlas-visual-home__recent {
-    max-width: 90vw;
+    max-width: 92vw;
   }
 
   .atlas-visual-home__enter {
-    bottom: 0.75rem;
+    bottom: 0.65rem;
+    white-space: nowrap;
   }
 }
 
