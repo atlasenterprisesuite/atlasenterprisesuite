@@ -62,6 +62,10 @@ export function toBodyTwinSnapshotView(snapshot: HumanTwinSnapshot): BodyTwinSna
   };
 }
 
+export function loadBioScanCapabilities() {
+  return getBioScanCapabilities();
+}
+
 export async function loadBioScanWorkspace(input: BioScanTimelineRequest = { api_version: 1 }): Promise<BioScanWorkspaceSnapshot> {
   const [capabilities, timeline] = await Promise.all([
     getBioScanCapabilities(),
