@@ -1,0 +1,41 @@
+.bible-os-view-button {
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.bible-os-view-button.is-active {
+  font-weight: 700;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px currentColor inset;
+  opacity: 1;
+}
+
+.bible-os-view-button:not(.is-active) {
+  opacity: 0.78;
+}
+
+.bible-os-provenance-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.75rem 0;
+}
+
+.bible-os-provenance-list > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.bible-os-provenance-list dt {
+  font-weight: 700;
+}
+
+.bible-os-provenance-list dd {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bible-os-view-button {
+    transition: none;
+  }
+}
