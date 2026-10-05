@@ -4,6 +4,7 @@ import type { TenantScope } from './scope';
 
 export * from './scope';
 export * from './permissions';
+export * from './stewardship';
 export * from './audit';
 export * from './integrations';
 export * from './endpoints';
