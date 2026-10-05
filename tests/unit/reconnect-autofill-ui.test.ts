@@ -69,7 +69,7 @@ describe('ATLAS Reconnect popup and review UI', () => {
     const { popup, session } = await loadUi();
     const root = shell();
     popup.mountReconnectPopup(root, session.createSessionStore(), { fillRecord: vi.fn(), fillRecords: vi.fn(), clearReview: vi.fn() });
-    const partial = record({ id: 'ws-2', telephone: '407-555-0100' });
+    const partial = record({ id: 'ws-2', contactDate: '2026-09-30', telephone: '407-555-0100' });
     (root.querySelector('#recordsJson') as HTMLTextAreaElement).value = JSON.stringify([record(), partial]);
 
     (root.querySelector('#importRecords') as HTMLButtonElement).click();
