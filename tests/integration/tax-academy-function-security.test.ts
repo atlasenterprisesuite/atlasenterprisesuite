@@ -12,6 +12,7 @@ const rpcSignatures = [
   'tax_academy_complete_attempt(uuid)',
   'tax_academy_get_candidate_summary()',
   'tax_academy_record_reviewer_signoff(uuid,text,uuid,text,text)',
+  'tax_academy_list_exams()',
   'tax_academy_get_exam_payload(text)',
   'tax_academy_grade_attempt(uuid)'
 ] as const;
