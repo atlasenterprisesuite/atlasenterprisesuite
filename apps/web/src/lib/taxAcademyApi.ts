@@ -35,6 +35,42 @@ export type AcademyAttemptResult = {
   status: 'submitted';
 };
 
+export type AcademyExamOption = {
+  value: string;
+  label: string;
+};
+
+export type AcademyExamQuestion = {
+  questionId: string;
+  prompt: string;
+  options: AcademyExamOption[];
+};
+
+export type AcademyExamPayload = {
+  examId: string;
+  title: string;
+  version: string;
+  taxYear: number;
+  mode: 'exam' | 'manual_practical';
+  passingScore: number;
+  rulePackStatus: 'draft' | 'training_current' | 'production_certified' | 'retired';
+  questions: AcademyExamQuestion[];
+};
+
+export type AcademyExamSubmissionResult = {
+  attemptId: string;
+  status: 'submitted';
+  score: number | null;
+  passed: boolean | null;
+  criticalFailures: string[];
+};
+
+type AcademyExamGradeRow = {
+  score: number | null;
+  passed: boolean | null;
+  critical_failures: string[] | null;
+};
+
 export type AcademyCandidateSummary = {
   attempts: number;
   passed_practicals: number;
@@ -120,6 +156,23 @@ export async function submitAcademyAnswer(input: SubmitAnswerInput): Promise<Aca
 export async function completeAcademyAttempt(attemptId: string): Promise<AcademyAttemptResult> {
   await rpc<null>('tax_academy_complete_attempt', { p_attempt_id: attemptId });
   return { attemptId, status: 'submitted' };
+}
+
+export async function getAcademyExam(examId: string): Promise<AcademyExamPayload> {
+  return rpc<AcademyExamPayload>('tax_academy_get_exam_payload', { p_exam_id: examId });
+}
+
+export async function completeAcademyExamAttempt(attemptId: string): Promise<AcademyExamSubmissionResult> {
+  await completeAcademyAttempt(attemptId);
+  const rows = await rpc<AcademyExamGradeRow[]>('tax_academy_grade_attempt', { p_attempt_id: attemptId });
+  const grade = rows[0] || { score: null, passed: null, critical_failures: [] };
+  return {
+    attemptId,
+    status: 'submitted',
+    score: grade.score,
+    passed: grade.passed,
+    criticalFailures: grade.critical_failures || []
+  };
 }
 
 export async function getAcademyCandidateSummary(): Promise<AcademyCandidateSummary> {
