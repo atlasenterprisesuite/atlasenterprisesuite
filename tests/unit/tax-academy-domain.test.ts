@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   evaluateProfessionalLevel,
+  evaluateRecertification,
   evaluateSpecialtyBadges,
   scorePracticalReturn,
   scoreWrittenExam,
@@ -90,6 +91,25 @@ describe('ATLAS Tax Academy professional levels', () => {
     expect(decision.permittedReturnClasses).toContain('simple_individual');
   });
 
+  it('does not award A3 when a supervised return required a material negligence correction', () => {
+    const decision = evaluateProfessionalLevel({
+      writtenScore: 90,
+      intakePracticalScore: 94,
+      securityCriticalPassed: true,
+      simpleReturnPracticalScore: 94,
+      filingStatusPracticalScore: 94,
+      familyCreditsPracticalScore: 94,
+      form8867CriticalPassed: true,
+      supervisedAcceptedReturns: 3,
+      supervisedReturnMaterialCorrections: 1,
+      reviewerApproved: true,
+      criticalFailures: [],
+    });
+
+    expect(decision.currentLevel).toBe('A2');
+    expect(decision.missingRequirements).toContain('no material supervised-return correction attributable to preparer negligence');
+  });
+
   it('requires business practical, clean evidence gates and five supervised returns for A4', () => {
     const decision = evaluateProfessionalLevel({
       writtenScore: 90,
@@ -100,6 +120,7 @@ describe('ATLAS Tax Academy professional levels', () => {
       familyCreditsPracticalScore: 93,
       form8867CriticalPassed: true,
       supervisedAcceptedReturns: 3,
+      supervisedReturnMaterialCorrections: 0,
       businessPracticalScore: 92,
       criticalEvidenceGatesPassed: true,
       supervisedA4Returns: 5,
@@ -122,6 +143,7 @@ describe('ATLAS Tax Academy professional levels', () => {
       familyCreditsPracticalScore: 96,
       form8867CriticalPassed: true,
       supervisedAcceptedReturns: 3,
+      supervisedReturnMaterialCorrections: 0,
       businessPracticalScore: 96,
       criticalEvidenceGatesPassed: true,
       supervisedA4Returns: 5,
@@ -148,6 +170,7 @@ describe('ATLAS Tax Academy professional levels', () => {
       familyCreditsPracticalScore: 98,
       form8867CriticalPassed: true,
       supervisedAcceptedReturns: 3,
+      supervisedReturnMaterialCorrections: 0,
       businessPracticalScore: 98,
       criticalEvidenceGatesPassed: true,
       supervisedA4Returns: 5,
@@ -171,8 +194,23 @@ describe('ATLAS Tax Academy professional levels', () => {
     expect(decision.productionAuthorized).toBe(true);
     expect(decision.reviewerRequired).toBe(false);
   });
-});
 
+  it('fails closed for production when explicit annual recertification is expired', () => {
+    const decision = evaluateProfessionalLevel({
+      writtenScore: 90,
+      intakePracticalScore: 92,
+      securityCriticalPassed: true,
+      simpleReturnPracticalScore: 94,
+      filingStatusPracticalScore: 94,
+      reviewerApproved: true,
+      annualRecertificationCurrent: false,
+      criticalFailures: [],
+    });
+
+    expect(decision.currentLevel).toBe('A2');
+    expect(decision.productionAuthorized).toBe(false);
+  });
+});
 
 describe('ATLAS Tax Academy specialties and external credentials', () => {
   it('can grant an internal specialty without manufacturing an external credential', () => {
@@ -189,5 +227,71 @@ describe('ATLAS Tax Academy specialties and external credentials', () => {
       externalCredentials: { CPA: { externalCredentialVerified: true } },
     });
     expect(decisions).toContainEqual({ badge: 'CPA Verified', granted: true, internal: false });
+  });
+});
+
+describe('ATLAS Tax Academy annual recertification', () => {
+  it('requires law update, critical compliance, CE and applicable external preparer credentials', () => {
+    const decision = evaluateRecertification({
+      taxYear: 2027,
+      asOfDate: '2027-01-15',
+      dueDate: '2027-01-01',
+      rulePackStatus: 'production_certified',
+      lawUpdateCompleted: false,
+      criticalCompliancePassed: true,
+      ceHours: 32,
+      requiredCeHours: 32,
+      ptinRequired: true,
+      ptinVerified: true,
+      stateCredentialRequired: false,
+      stateCredentialVerified: false,
+    });
+
+    expect(decision.current).toBe(false);
+    expect(decision.productionAuthorized).toBe(false);
+    expect(decision.missingRequirements).toContain('current-year law update module');
+  });
+
+  it('keeps training-current rule packs blocked even when every person-level annual gate passes', () => {
+    const decision = evaluateRecertification({
+      taxYear: 2026,
+      asOfDate: '2026-10-05',
+      dueDate: '2027-01-01',
+      rulePackStatus: 'training_current',
+      lawUpdateCompleted: true,
+      criticalCompliancePassed: true,
+      ceHours: 40,
+      requiredCeHours: 32,
+      ptinRequired: true,
+      ptinVerified: true,
+      stateCredentialRequired: false,
+      stateCredentialVerified: false,
+    });
+
+    expect(decision.current).toBe(true);
+    expect(decision.productionAuthorized).toBe(false);
+    expect(decision.missingRequirements).toContain('production-certified tax-year rule pack');
+  });
+
+  it('authorizes the annual layer only when every applicable gate is current', () => {
+    const decision = evaluateRecertification({
+      taxYear: 2027,
+      asOfDate: '2026-12-20',
+      dueDate: '2027-12-31',
+      rulePackStatus: 'production_certified',
+      lawUpdateCompleted: true,
+      criticalCompliancePassed: true,
+      ceHours: 36,
+      requiredCeHours: 32,
+      ptinRequired: true,
+      ptinVerified: true,
+      stateCredentialRequired: true,
+      stateCredentialVerified: true,
+    });
+
+    expect(decision.current).toBe(true);
+    expect(decision.productionAuthorized).toBe(true);
+    expect(decision.missingRequirements).toEqual([]);
+    expect(decision.nextDueDate).toBe('2027-12-31');
   });
 });
