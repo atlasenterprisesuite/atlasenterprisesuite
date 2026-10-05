@@ -18,6 +18,7 @@ export function AIWorkspaceNav() {
             <NavLink
               key={node.id}
               to={node.to}
+              end
               data-atlas-ai-node={node.id}
               aria-current={isActive ? 'page' : undefined}
               className={isActive ? 'atlas-ai-workspace-link is-active' : 'atlas-ai-workspace-link'}
