@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = process.cwd();
 const shell = readFileSync(resolve(root, 'apps/web/src/components/AtlasShell.tsx'), 'utf8');
 const styles = readFileSync(resolve(root, 'apps/web/src/styles.css'), 'utf8');
+const aiWorkspaceStyles = readFileSync(resolve(root, 'apps/web/src/components/ai/aiWorkspaceNav.css'), 'utf8');
 
 describe('ATLAS responsive shell contract', () => {
   it('uses an accessible off-canvas navigation control on mobile', () => {
@@ -30,5 +31,15 @@ describe('ATLAS responsive shell contract', () => {
     expect(shell).toContain("'Public workspace'");
     expect(shell).toContain("'PUBLIC'");
     expect(shell).toContain('to="/identity"');
+  });
+
+  it('adds one responsive AI workspace bar without a second full-screen drawer', () => {
+    expect(shell).toContain('isAtlasAIWorkspacePath(location.pathname) ? <AIWorkspaceNav /> : null');
+    expect(aiWorkspaceStyles).toContain('.atlas-ai-workspace-nav');
+    expect(aiWorkspaceStyles).toContain('overflow-x:auto');
+    expect(aiWorkspaceStyles).toContain('@media(max-width:720px)');
+    expect(aiWorkspaceStyles).toContain(':focus-visible');
+    expect(aiWorkspaceStyles).toContain('prefers-reduced-motion: reduce');
+    expect(aiWorkspaceStyles).not.toContain('position:fixed');
   });
 });
