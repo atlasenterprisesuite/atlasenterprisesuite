@@ -28,13 +28,14 @@ export function CertificationProfile() {
         <article><h2>Reviewer signoff</h2><p>Required before production authority expands.</p></article>
         <article><h2>Specialties</h2><p>Family & Credits · Small Business · Marketplace · Retirement · Investments · Rental · International.</p></article>
         <article><h2>External credentials</h2><p>EA Verified · CPA Verified · Attorney Verified · AFSP Verified only after independent evidence verification.</p></article>
+        <article><h2>Annual recertification</h2><p>Rule pack: training_current. Next production activation requires current-year law update, annual exam, critical compliance, CE and external requirements.</p></article>
       </section>
 
       <section className="academy-level-path">
         {levels.map(([id, title]) => <article className={id === currentLevel ? 'active' : ''} key={id}><span>{id}</span><strong>{title}</strong></article>)}
       </section>
 
-      <section className="academy-card"><span>Next</span><h2>Missing requirements</h2>{missingRequirements.length ? <ul>{missingRequirements.map((item) => <li key={item}>{item}</li>)}</ul> : <p>Master internal requirements satisfied; external credential status remains separate.</p>}</section>
+      <section className="academy-card"><span>Next</span><h2>Missing requirements</h2>{missingRequirements.length ? <ul>{missingRequirements.map((item) => <li key={item}>{item}</li>)}</ul> : <p>Master internal requirements satisfied; external credential status remains separate.</p>}<p><strong>Roll-forward:</strong> recertification must be current before a new tax-year production pack can reactivate production authorization.</p></section>
     </div>
   );
 }
