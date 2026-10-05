@@ -5,10 +5,12 @@ const read = (path: string) => readFileSync(process.cwd() + path, 'utf8');
 
 describe('ATLAS Tax Academy UI contract', () => {
   it('wires Academy navigation and all approved routes', () => {
-    const routes = read('/apps/web/src/modules/tax/TaxRoutes.tsx');
-    expect(routes).toContain("/tax/academy");
-    expect(routes).toContain('Academy');
-    for (const route of ['practice','exams','results','certification','admin']) expect(routes).toContain(`path=\"academy/${route}`);
+    const taxRoutes = read('/apps/web/src/modules/tax/TaxRoutes.tsx');
+    const academyRoutes = read('/apps/web/src/modules/tax/academy/AcademyRoutes.tsx');
+    expect(taxRoutes).toContain('/tax/academy');
+    expect(taxRoutes).toContain('Academy');
+    expect(taxRoutes).toContain('path="academy/*"');
+    for (const route of ['practice','exams','results','certification','admin']) expect(academyRoutes).toContain(`path="${route}`);
   });
 
   it('surfaces training progress and fail-closed 2026 status', () => {
