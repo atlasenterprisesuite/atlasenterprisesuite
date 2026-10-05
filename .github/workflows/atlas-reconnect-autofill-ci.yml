@@ -22,7 +22,7 @@ permissions:
 jobs:
   reconnect-tdd:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,5 +30,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Reconnect TDD contracts
-        run: npx vitest run 'tests/unit/reconnect-autofill-*.test.ts' tests/integration/reconnect-autofill-flow.test.ts
+      - name: Focused Reconnect tests
+        run: npx vitest run tests/unit/reconnect-autofill-*.test.ts tests/integration/reconnect-autofill-flow.test.ts
+      - name: Verify Reconnect extension package
+        run: npm run verify:reconnect
+      - name: Existing web typecheck
+        run: npm run typecheck
+      - name: Canonical repository verification
+        run: npm run verify:all
+      - name: Upload verified extension bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-reconnect-autofill-extension
+          path: apps/reconnect-autofill-extension/dist
+          if-no-files-found: error
