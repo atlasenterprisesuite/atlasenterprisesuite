@@ -1,5 +1,5 @@
 {
-  "version": 31,
+  "version": 32,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "health_check": {
@@ -79,7 +79,8 @@
     "/advisory/business-launch-360/workspace",
     "/advisory/reports",
     "/advisory/providers",
-    "/advisory/readiness"
+    "/advisory/readiness",
+    "/release/stewardship"
   ],
   "critical_network_routes": [
     "/business/network",
