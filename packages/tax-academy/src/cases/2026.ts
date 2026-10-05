@@ -35,7 +35,6 @@ export const ACADEMY_2026_CASES: readonly AcademyCaseDefinition[] = themes.map((
     evidenceGates:['identity/status evidence','income completeness','current-year rule pack'],
     tasks:['determine filing status','route source documents','select forms','compute return','clear evidence gates'],
     criticalTraps:['do not fabricate evidence','do not omit material income','do not use stale-year rules after diagnostic'],
-    answerKeyRef:'instructor://tax-academy/2026/P'+String(index+1).padStart(2,'0'),
     rulePackStatus:'training_current',
     deidentified:true,
     goldenDerived:index===29,
