@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const source = readFileSync('supabase/migrations/20260912_atlas_work_runtime.sql', 'utf8');
+const gatewaySource = readFileSync('supabase/migrations/20261004_atlas_agent_gateway.sql', 'utf8');
 
 describe('ATLAS Work runtime persistence', () => {
   it('creates tenant and organization scoped support tables', () => {
@@ -23,6 +24,13 @@ describe('ATLAS Work runtime persistence', () => {
     expect(source).not.toMatch(/\bpassword\b/i);
     expect(source).not.toMatch(/\bcookie\b/i);
     expect(source).not.toMatch(/\bsecret\s+text/i);
+  });
+
+  it('extends connection readiness without replacing the canonical registry', () => {
+    expect(gatewaySource).toContain('alter table public.execution_connection_refs');
+    expect(gatewaySource).not.toMatch(/create\s+table[^;]*agent_gateway/i);
+    expect(gatewaySource).not.toMatch(/drop\s+table/i);
+    expect(source).toContain('external_ref text not null');
   });
 
   it('persists constrained job envelope and lease state', () => {
