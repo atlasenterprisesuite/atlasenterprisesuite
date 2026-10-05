@@ -49,7 +49,7 @@ The first commercial motion is sales-led. Self-service subscription checkout is 
 
 ## 4. Commercial state model
 
-Every customer-visible capability in a commercial offer MUST resolve to exactly one state.
+Every customer-visible capability in a commercial offer MUST resolve to exactly one catalog state.
 
 ### `SELLABLE`
 
@@ -71,7 +71,18 @@ The capability is available to ATLAS operators or engineering but is not part of
 
 The capability is intentionally excluded from the current commercial catalog.
 
-No default-to-sell behavior is permitted. Missing state or missing evidence resolves to `NOT_SELLABLE` at gate evaluation time.
+No default-to-sell behavior is permitted. A capability with missing catalog state is treated as `NOT_FOR_SALE` for commercial evaluation. A capability that is declared `SELLABLE` but lacks required evidence causes the evaluated offer to be `BLOCKED`; the evaluator does not silently rewrite the catalog.
+
+### 4.1 Release outcome model
+
+Capability catalog states and release outcomes are separate concepts.
+
+A commercial release evaluation has exactly one final outcome:
+
+- `SELLABLE` — every P0 condition for the evaluated offer passes;
+- `BLOCKED` — one or more P0 conditions fail.
+
+Warnings are recorded separately and never constitute a third success state.
 
 ## 5. Initial commercial-v1 candidate scope
 
@@ -173,7 +184,7 @@ P0 requirements:
 - HSTS and CSP requirements pass;
 - secrets are server-side;
 - provider readiness remains fail-closed;
-- known P0 security findings are zero or are explicitly classified as release blockers;
+- unresolved P0 security findings are zero; any unresolved P0 security finding blocks the release;
 - backup/restore policy exists and the release policy requires current evidence for the selected commercial tier;
 - production deployment identity matches the evaluated release evidence.
 
@@ -233,11 +244,11 @@ Pseudo-policy:
 5. validate enterprise-readiness policy;
 6. validate revenue-readiness policy;
 7. evaluate each included capability against its evidence policy;
-8. downgrade capabilities with missing evidence to non-sellable states;
+8. preserve declared capability states, but treat missing required evidence as a P0 blocker when the offer requires that capability to be sellable;
 9. fail the whole offer if a required capability is not sellable;
 10. allow optional capabilities to remain `PREVIEW`, `EXTERNAL_GATED`, `INTERNAL_ONLY`, or `NOT_FOR_SALE` only when the offer does not contractually depend on them;
 11. persist the complete result;
-12. return `SELLABLE` only when every P0 condition is true.
+12. return `SELLABLE` only when every P0 condition is true; otherwise return `BLOCKED`.
 
 Warnings MUST NOT override a failed P0 condition.
 
@@ -366,7 +377,7 @@ Examples:
 - required CRM route or tenant policy fails -> `BLOCKED` for an offer that includes CRM;
 - deployment succeeds but commercial evidence is stale or for another SHA -> `BLOCKED`;
 - payment provider is unavailable before an invoiced enterprise order where manual/approved invoicing is allowed -> evaluate against the configured sales-led billing policy rather than requiring self-service checkout;
-- capability has no explicit commercial state -> treat as not sellable.
+- capability has no explicit commercial state -> treat as `NOT_FOR_SALE` for the evaluation.
 
 ## 15. Testing strategy
 
