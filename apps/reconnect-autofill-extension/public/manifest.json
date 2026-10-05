@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "ATLAS Reconnect Autofill",
+  "version": "0.1.0",
+  "description": "Evidence-backed local autofill for Florida Reconnect work-search contacts. Never submits or certifies a claim.",
+  "permissions": ["activeTab"],
+  "host_permissions": ["https://connect.myflorida.com/*"],
+  "action": {
+    "default_title": "ATLAS Reconnect Autofill",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://connect.myflorida.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
