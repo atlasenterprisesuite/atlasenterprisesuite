@@ -15,7 +15,7 @@ describe('ATLAS Tax Academy UI contract', () => {
 
   it('surfaces training progress and fail-closed 2026 status', () => {
     const dashboard = read('/apps/web/src/modules/tax/academy/AcademyDashboard.tsx');
-    expect(dashboard).toContain('Practice & Exams');
+    expect(dashboard).toMatch(/Practice &(?:amp;)? Exams/);
     expect(dashboard).toContain('Continue training');
     expect(dashboard).toContain('training_current');
     expect(dashboard).toContain('Training only');
