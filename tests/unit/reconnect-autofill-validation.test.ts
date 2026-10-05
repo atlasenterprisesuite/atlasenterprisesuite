@@ -142,6 +142,23 @@ describe('ATLAS Reconnect work-search validation', () => {
     expect(result.issues).toContain('evidence_conflict:employerName');
   });
 
+  test('rejects manipulated contact, status, and evidence enum values instead of trusting imported JSON', async () => {
+    const { validation } = await loadCore();
+    const cases = [
+      [verifiedRecord({ contactType: 'carrier_pigeon' }), 'invalid_contact_type'],
+      [verifiedRecord({ contactMethod: 'telepathy' }), 'invalid_contact_method'],
+      [verifiedRecord({ verificationStatus: 'approved' }), 'invalid_verification_status'],
+      [verifiedRecord({ evidence: [{ sourceType: 'unknown-provider', capturedAt: '2026-10-01T19:58:34Z', factPaths: ['contactDate','contactType','contactMethod','employerName','websiteUrl','workType','jobTitle','referenceNumber','result'] }] }), 'invalid_evidence_source']
+    ] as const;
+
+    for (const [record, issue] of cases) {
+      const result = validation.validateWorkSearchRecord(record as any);
+      expect(result.status).toBe('unsupported');
+      expect(result.ready).toBe(false);
+      expect(result.issues).toContain(issue);
+    }
+  });
+
   test('normalizes duplicate fingerprints and marks later equivalents duplicate', async () => {
     const { validation, duplicates } = await loadCore();
     const first = verifiedRecord();
