@@ -35,6 +35,9 @@ export type AcademyAttemptResult = {
   status: 'submitted';
 };
 
+export type AcademyRulePackStatus = 'draft' | 'training_current' | 'production_certified' | 'retired';
+export type AcademyExamMode = 'exam' | 'manual_practical';
+
 export type AcademyExamOption = {
   value: string;
   label: string;
@@ -46,14 +49,25 @@ export type AcademyExamQuestion = {
   options: AcademyExamOption[];
 };
 
+export type AcademyExamSummary = {
+  examId: string;
+  title: string;
+  version: string;
+  taxYear: number;
+  mode: AcademyExamMode;
+  passingScore: number;
+  rulePackStatus: AcademyRulePackStatus;
+  questionCount: number;
+};
+
 export type AcademyExamPayload = {
   examId: string;
   title: string;
   version: string;
   taxYear: number;
-  mode: 'exam' | 'manual_practical';
+  mode: AcademyExamMode;
   passingScore: number;
-  rulePackStatus: 'draft' | 'training_current' | 'production_certified' | 'retired';
+  rulePackStatus: AcademyRulePackStatus;
   questions: AcademyExamQuestion[];
 };
 
@@ -156,6 +170,10 @@ export async function submitAcademyAnswer(input: SubmitAnswerInput): Promise<Aca
 export async function completeAcademyAttempt(attemptId: string): Promise<AcademyAttemptResult> {
   await rpc<null>('tax_academy_complete_attempt', { p_attempt_id: attemptId });
   return { attemptId, status: 'submitted' };
+}
+
+export async function listAcademyExams(): Promise<AcademyExamSummary[]> {
+  return rpc<AcademyExamSummary[]>('tax_academy_list_exams', {});
 }
 
 export async function getAcademyExam(examId: string): Promise<AcademyExamPayload> {
