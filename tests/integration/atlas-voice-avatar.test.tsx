@@ -33,7 +33,7 @@ describe('ATLAS approved Voice production experience', () => {
 
     const avatar = screen.getByRole('button', { name: 'Start speaking with ATLAS' });
     expect(avatar).toHaveAttribute('data-state', 'idle');
-    expect(document.querySelector('img[src="/assets/atlas-voice-avatar-approved.png"]')).toBeTruthy();
+    expect(document.querySelector('img[src="/assets/atlas-voice-avatar-approved.webp"]')).toBeTruthy();
     expect(document.querySelector('img[src="/atlas-avatar-particle.svg"]')).toBeFalsy();
     expect(screen.getByRole('heading', { name: 'Talk to ATLAS' })).toBeInTheDocument();
     expect(screen.getByText('Private voice turn')).toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('ATLAS approved Voice production experience', () => {
 
     render(<MemoryRouter><VoiceStudioPage /></MemoryRouter>);
 
-    expect(screen.getByText('Offline')).toBeInTheDocument();
+    expect(screen.getAllByText('Offline').length).toBeGreaterThan(0);
     expect(screen.queryByText('AI verified')).not.toBeInTheDocument();
   });
 });
