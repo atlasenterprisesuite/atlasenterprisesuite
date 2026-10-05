@@ -17,6 +17,7 @@ import './modules/cloud/cloud.css';
 import './modules/galaxy/portals.css';
 import './modules/hospitality/hospitality.css';
 import './modules/ride/ride.css';
+import './modules/release/stewardship-release.css';
 
 function RootRouter() {
   const location = useLocation();
