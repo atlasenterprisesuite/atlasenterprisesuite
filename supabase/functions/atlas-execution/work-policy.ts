@@ -11,6 +11,7 @@ export class WorkPolicyResolutionError extends Error {
 
 type ServerContext = {
   orgId: string;
+  tenantId: string;
   userId: string;
   permissions: string[];
 };
@@ -61,13 +62,13 @@ async function liveBrowserCapability(admin: any, context: ServerContext, actionT
     admin.from('execution_connection_refs')
       .select('id,provider,status')
       .eq('org_id', context.orgId)
-      .eq('tenant_id', context.orgId)
+      .eq('tenant_id', context.tenantId)
       .eq('status', 'active')
       .in('provider', requirement.providers),
     admin.from('execution_runtime_registrations')
       .select('id,kind,status,capabilities,last_seen_at')
       .eq('org_id', context.orgId)
-      .eq('tenant_id', context.orgId)
+      .eq('tenant_id', context.tenantId)
       .eq('status', 'online')
   ]);
   if (connectionsResult.error || runtimesResult.error) throw new WorkPolicyResolutionError('persistence_error', 500);
