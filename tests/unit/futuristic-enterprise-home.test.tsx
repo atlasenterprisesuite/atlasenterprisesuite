@@ -40,9 +40,9 @@ describe('FuturisticEnterpriseHome visual landing', () => {
     expect(screen.getByText('Finance destination')).toBeInTheDocument();
   });
 
-  it('ships the approved sunset photograph as a local reusable asset', () => {
-    const imagePath = resolve(process.cwd(), 'apps/web/public/assets/atlas-home-sunset.jpeg');
+  it('ships the approved sunset photograph as a local reusable optimized asset', () => {
+    const imagePath = resolve(process.cwd(), 'apps/web/public/assets/atlas-home-sunset.webp');
     expect(existsSync(imagePath)).toBe(true);
-    expect(statSync(imagePath).size).toBeGreaterThan(100_000);
+    expect(statSync(imagePath).size).toBeGreaterThan(20_000);
   });
 });
