@@ -111,6 +111,23 @@ export type AcademyRulePackStatus = 'training_current' | 'final_form_verified' |
 export type AcademyFilingStatus = 'single' | 'mfj' | 'mfs' | 'hoh' | 'qss';
 export type AcademyFormRef = { formId: string; reviewOnly?: boolean; catalogGap?: string };
 
+export type RecertificationEvidence = {
+  taxYear: number;
+  currentYearLawModulePassed: boolean;
+  annualExamScore: number;
+  criticalCompliancePassed: boolean;
+  ceHours: number;
+  requiredCeHours: number;
+  externalRequirementsVerified: boolean;
+  rulePackStatus: AcademyRulePackStatus;
+};
+
+export type RecertificationDecision = {
+  taxYear: number;
+  activeForProduction: boolean;
+  missingRequirements: string[];
+};
+
 /** Candidate-safe case metadata. Instructor answers live behind privileged persistence/RPC boundaries. */
 export type AcademyCaseDefinition = {
   id: string;
