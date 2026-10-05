@@ -47,7 +47,7 @@ create or replace function public.tax_academy_get_exam_payload(p_exam_id text)
 returns jsonb
 language plpgsql
 security definer
-set search_path=public,pg_temp
+set search_path=''
 as $$
 declare
   v_org uuid := public.tax_actor_org();
@@ -99,7 +99,7 @@ create or replace function public.tax_academy_complete_attempt(p_attempt_id uuid
 returns void
 language plpgsql
 security definer
-set search_path=public,pg_temp
+set search_path=''
 as $$
 declare
   v_org uuid := public.tax_actor_org();
@@ -128,7 +128,7 @@ create or replace function public.tax_academy_grade_attempt(p_attempt_id uuid)
 returns table(score numeric, passed boolean, critical_failures text[])
 language plpgsql
 security definer
-set search_path=public,pg_temp
+set search_path=''
 as $$
 declare
   v_org uuid := public.tax_actor_org();
@@ -215,6 +215,10 @@ begin
   return query select v_score, v_passed, v_critical;
 end
 $$;
+
+revoke execute on function public.tax_academy_get_exam_payload(text) from public, anon, authenticated;
+revoke execute on function public.tax_academy_complete_attempt(uuid) from public, anon, authenticated;
+revoke execute on function public.tax_academy_grade_attempt(uuid) from public, anon, authenticated;
 
 grant execute on function public.tax_academy_get_exam_payload(text) to authenticated;
 grant execute on function public.tax_academy_complete_attempt(uuid) to authenticated;
