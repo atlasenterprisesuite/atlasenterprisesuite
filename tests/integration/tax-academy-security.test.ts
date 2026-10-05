@@ -17,6 +17,14 @@ describe('ATLAS Tax Academy candidate/instructor isolation', () => {
     }
   });
 
+  it('keeps the exported candidate case catalog physically free of answer-key references', () => {
+    const catalog = read('/packages/tax-academy/src/cases/2026.ts');
+    const publicIndex = read('/packages/tax-academy/src/index.ts');
+    expect(catalog).not.toContain('answerKeyRef');
+    expect(catalog).not.toContain('instructor://');
+    expect(publicIndex).not.toMatch(/instructor.*answer|answer.*key/i);
+  });
+
   it('keeps admin/reviewer surfaces permission gated', () => {
     const admin = read('/apps/web/src/modules/tax/academy/AcademyAdmin.tsx');
     const review = read('/apps/web/src/modules/tax/academy/InstructorReviewQueue.tsx');
