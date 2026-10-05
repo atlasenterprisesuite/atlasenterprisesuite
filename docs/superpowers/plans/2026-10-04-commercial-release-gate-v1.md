@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-04-commercial-release-gate-v1-design.md`
 
+**Execution ruling:** Native/inline TDD is authorized by the project execution protocol. The local sandbox cannot resolve GitHub for a clone, so the isolated GitHub feature branch plus GitHub Actions is the authoritative TDD executor: each RED test commit must be observed failing in CI before its GREEN production commit is written. This preserves the test-first evidence requirement without pretending a local checkout exists.
+
 ## Global Constraints
 
 - `main` remains the only canonical production source; work lands through a feature branch and PR.
