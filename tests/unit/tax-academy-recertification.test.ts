@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateRecertification } from '../../packages/tax-academy/src';
+import { evaluateProfessionalLevel, evaluateRecertification } from '../../packages/tax-academy/src';
 
 describe('ATLAS Tax Academy annual recertification', () => {
   it('fails closed when the current-year rule pack is not production certified', () => {
@@ -30,5 +30,26 @@ describe('ATLAS Tax Academy annual recertification', () => {
     });
     expect(result.activeForProduction).toBe(true);
     expect(result.missingRequirements).toEqual([]);
+  });
+
+  it('does not authorize production when professional exams pass but annual recertification is expired', () => {
+    const decision = evaluateProfessionalLevel({
+      writtenScore: 90,
+      intakePracticalScore: 92,
+      securityCriticalPassed: true,
+      simpleReturnPracticalScore: 94,
+      filingStatusPracticalScore: 94,
+      familyCreditsPracticalScore: 93,
+      form8867CriticalPassed: true,
+      supervisedAcceptedReturns: 3,
+      businessPracticalScore: 92,
+      criticalEvidenceGatesPassed: true,
+      supervisedA4Returns: 5,
+      reviewerApproved: true,
+      annualRecertificationCurrent: false,
+      criticalFailures: []
+    });
+    expect(decision.currentLevel).toBe('A4');
+    expect(decision.productionAuthorized).toBe(false);
   });
 });
