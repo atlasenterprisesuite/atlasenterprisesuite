@@ -68,6 +68,7 @@ export type CertificationEvidence = {
   familyCreditsPracticalScore?: number;
   form8867CriticalPassed?: boolean;
   supervisedAcceptedReturns?: number;
+  supervisedReturnMaterialCorrections?: number;
   businessPracticalScore?: number;
   criticalEvidenceGatesPassed?: boolean;
   supervisedA4Returns?: number;
@@ -113,19 +114,29 @@ export type AcademyFormRef = { formId: string; reviewOnly?: boolean; catalogGap?
 
 export type RecertificationEvidence = {
   taxYear: number;
-  currentYearLawModulePassed: boolean;
-  annualExamScore: number;
+  rulePackStatus: AcademyRulePackStatus;
+  asOfDate?: string;
+  dueDate?: string;
+  lawUpdateCompleted?: boolean;
+  currentYearLawModulePassed?: boolean;
+  annualExamScore?: number;
   criticalCompliancePassed: boolean;
   ceHours: number;
   requiredCeHours: number;
-  externalRequirementsVerified: boolean;
-  rulePackStatus: AcademyRulePackStatus;
+  ptinRequired?: boolean;
+  ptinVerified?: boolean;
+  stateCredentialRequired?: boolean;
+  stateCredentialVerified?: boolean;
+  externalRequirementsVerified?: boolean;
 };
 
 export type RecertificationDecision = {
   taxYear: number;
+  current: boolean;
+  productionAuthorized: boolean;
   activeForProduction: boolean;
   missingRequirements: string[];
+  nextDueDate: string | null;
 };
 
 /** Candidate-safe case metadata. Instructor answers live behind privileged persistence/RPC boundaries. */
