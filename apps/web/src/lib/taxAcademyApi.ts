@@ -127,6 +127,15 @@ export async function getAcademyCandidateSummary(): Promise<AcademyCandidateSumm
   return rows[0] || { attempts: 0, passed_practicals: 0, current_level: null };
 }
 
+export async function hasAcademyPermission(permission: string): Promise<boolean> {
+  const orgId = await activeOrgId();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/has_identity_permission', {
+    method: 'POST',
+    body: JSON.stringify({ o: orgId, p: permission })
+  });
+  return parseJson<boolean>(response);
+}
+
 // INSTRUCTOR-ONLY SURFACE
 // Reviewer operations use distinct privileged RPCs. Candidate functions above never request instructor data.
 export async function listAcademyReviewQueue(): Promise<AcademyReviewQueueItem[]> {
