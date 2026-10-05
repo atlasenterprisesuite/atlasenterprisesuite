@@ -82,8 +82,8 @@ describe('ATLAS Dependency Intelligence graph engine', () => {
 
     expect(report.risk).toBe('P1');
     expect(report.requiredVerification.map((item) => item.id)).toEqual([
-      'provider-readiness:telnyx',
       'production-route:/connect',
+      'provider-readiness:telnyx',
       'typecheck',
       'unit:communication'
     ]);
