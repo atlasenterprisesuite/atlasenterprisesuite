@@ -94,6 +94,36 @@ begin
 end
 $$;
 
+-- Keep generic completion separate from grading so practical/candidate workflows remain compatible.
+create or replace function public.tax_academy_complete_attempt(p_attempt_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $$
+declare
+  v_org uuid := public.tax_actor_org();
+begin
+  if auth.uid() is null or v_org is null then
+    raise exception 'Authentication and active organization required';
+  end if;
+
+  update public.tax_academy_attempts
+     set status='submitted', completed_at=coalesce(completed_at,now())
+   where id=p_attempt_id
+     and org_id=v_org
+     and user_id=auth.uid()
+     and status='in_progress';
+
+  if not found and not exists (
+    select 1 from public.tax_academy_attempts
+     where id=p_attempt_id and org_id=v_org and user_id=auth.uid() and status='submitted'
+  ) then
+    raise exception 'Attempt unavailable';
+  end if;
+end
+$$;
+
 create or replace function public.tax_academy_grade_attempt(p_attempt_id uuid)
 returns table(score numeric, passed boolean, critical_failures text[])
 language plpgsql
@@ -187,4 +217,5 @@ end
 $$;
 
 grant execute on function public.tax_academy_get_exam_payload(text) to authenticated;
+grant execute on function public.tax_academy_complete_attempt(uuid) to authenticated;
 grant execute on function public.tax_academy_grade_attempt(uuid) to authenticated;
