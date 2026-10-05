@@ -40,6 +40,10 @@ const FACT_FIELDS = [
 ] as const;
 
 const EMPLOYER_CONTACT_FIELDS = ['streetAddress', 'websiteUrl', 'emailAddress', 'telephone', 'fax'] as const;
+const CONTACT_TYPES = new Set(['employer', 'agency', 'website', 'career_source']);
+const CONTACT_METHODS = new Set(['online', 'email', 'telephone', 'in_person', 'fax', 'other']);
+const VERIFICATION_STATUSES = new Set(['verified', 'partial', 'outside_week', 'duplicate', 'unsupported']);
+const EVIDENCE_SOURCE_TYPES = new Set(['gmail', 'manual', 'file', 'other']);
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -51,18 +55,34 @@ function validIsoDate(value: unknown): value is string {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
+function validTimestamp(value: unknown): value is string {
+  return isNonEmptyString(value) && Number.isFinite(Date.parse(value));
+}
+
 function unionEvidencePaths(record: WorkSearchRecord): Set<string> {
   const paths = new Set<string>();
   for (const evidence of Array.isArray(record.evidence) ? record.evidence : []) {
-    for (const path of Array.isArray(evidence.factPaths) ? evidence.factPaths : []) paths.add(path);
+    for (const path of Array.isArray(evidence.factPaths) ? evidence.factPaths : []) {
+      if (typeof path === 'string') paths.add(path);
+    }
   }
   return paths;
 }
 
-function conflictIssues(record: WorkSearchRecord): string[] {
+function evidenceIssues(record: WorkSearchRecord): string[] {
   const issues: string[] = [];
   for (const evidence of Array.isArray(record.evidence) ? record.evidence : []) {
-    for (const field of evidence.conflicts ?? []) issues.push(`evidence_conflict:${field}`);
+    if (!EVIDENCE_SOURCE_TYPES.has(String(evidence.sourceType))) issues.push('invalid_evidence_source');
+    if (!validTimestamp(evidence.capturedAt)) issues.push('invalid_evidence_timestamp');
+    if (!Array.isArray(evidence.factPaths) || evidence.factPaths.some((path) => !isNonEmptyString(path))) {
+      issues.push('invalid_evidence_fact_paths');
+    }
+    if (evidence.conflicts !== undefined && (!Array.isArray(evidence.conflicts) || evidence.conflicts.some((field) => !isNonEmptyString(field)))) {
+      issues.push('invalid_evidence_conflicts');
+    }
+    for (const field of Array.isArray(evidence.conflicts) ? evidence.conflicts : []) {
+      if (isNonEmptyString(field)) issues.push(`evidence_conflict:${field}`);
+    }
   }
   return [...new Set(issues)];
 }
@@ -81,10 +101,15 @@ export function validateWorkSearchRecord(record: WorkSearchRecord): WorkSearchVa
     issues.push('invalid_claim_week_range');
   }
 
-  if (!Array.isArray(record?.evidence) || record.evidence.length === 0) issues.push('missing_evidence');
+  if (!CONTACT_TYPES.has(String(record?.contactType))) issues.push('invalid_contact_type');
+  if (!CONTACT_METHODS.has(String(record?.contactMethod))) issues.push('invalid_contact_method');
+  if (!VERIFICATION_STATUSES.has(String(record?.verificationStatus))) issues.push('invalid_verification_status');
 
-  const conflicts = conflictIssues(record);
-  issues.push(...conflicts);
+  if (!Array.isArray(record?.evidence) || record.evidence.length === 0) {
+    issues.push('missing_evidence');
+  } else {
+    issues.push(...evidenceIssues(record));
+  }
 
   const evidencePaths = unionEvidencePaths(record);
   for (const field of FACT_FIELDS) {
