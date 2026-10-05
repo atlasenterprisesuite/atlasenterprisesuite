@@ -19,6 +19,7 @@ import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
 import { TaxRoutes } from './modules/tax/TaxRoutes';
 import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
+import { PolarSubscriptionsPage } from './modules/commerce/PolarSubscriptionsPage';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
 import { AIUniversePage } from './modules/creator/AIUniversePage';
@@ -70,6 +71,7 @@ function EnterpriseHome() {
         <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
         <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
+        <Link className="module-card enabled" to="/pricing"><span>Commerce · Subscriptions</span><strong>ATLAS Plans</strong><p>Provider-hosted Polar checkout with payment verification kept behind a fail-closed entitlement boundary.</p></Link>
         <Link className="module-card enabled" to="/max"><span>Intelligence · Governed capacity</span><strong>ATLAS MAX</strong><p>Provider-neutral premium intelligence with evidence-backed entitlements, usage controls and Operators.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
@@ -288,6 +290,9 @@ export function App() {
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/pricing" element={<PolarSubscriptionsPage />} />
+        <Route path="/subscriptions" element={<PolarSubscriptionsPage />} />
+        <Route path="/subscriptions/return" element={<PolarSubscriptionsPage />} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
