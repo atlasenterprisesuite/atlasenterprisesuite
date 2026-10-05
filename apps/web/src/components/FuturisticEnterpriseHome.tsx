@@ -11,13 +11,32 @@ const readinessLabel = {
   'external-gated': 'Conexión requerida'
 } as const;
 
-const quickLinks = [
-  { name: 'AI', eyebrow: 'Intelligence', path: '/assistant' },
-  { name: 'Enterprise', eyebrow: 'Core', path: '/suite' },
-  { name: 'Finance', eyebrow: 'Operations', path: '/finance' },
-  { name: 'Network', eyebrow: 'Connect', path: '/connect' },
-  { name: 'Spatial', eyebrow: 'Spatial', path: '/galaxy' }
+type PrimarySurfaceDefinition = {
+  name: string;
+  eyebrow: string;
+  moduleId?: string;
+  path?: string;
+};
+
+const primarySurfaceDefinitions: readonly PrimarySurfaceDefinition[] = [
+  { name: 'AI', eyebrow: 'Intelligence', moduleId: 'assistant' },
+  { name: 'Enterprise', eyebrow: 'Operations', path: '/suite' },
+  { name: 'Finance', eyebrow: 'Capital', moduleId: 'finance' },
+  { name: 'Network', eyebrow: 'Connections', moduleId: 'connect' },
+  { name: 'Spatial', eyebrow: 'Spatial', moduleId: 'galaxy' },
+  { name: 'Health', eyebrow: 'Health OS', moduleId: 'health' },
+  { name: 'Business', eyebrow: 'Growth', moduleId: 'business' },
+  { name: 'Creator', eyebrow: 'Studio', moduleId: 'studio' },
+  { name: 'Cloud', eyebrow: 'Platform', moduleId: 'cloud' }
 ] as const;
+
+const primarySurfaces = primarySurfaceDefinitions.flatMap((surface) => {
+  if (surface.path) return [{ ...surface, path: surface.path }];
+  const module = ATLAS_MODULES.find((candidate) => candidate.id === surface.moduleId);
+  return module ? [{ ...surface, path: module.route }] : [];
+});
+
+const quickLinks = primarySurfaces.slice(0, 5);
 
 function normalizeSearch(value: string) {
   return value.trim().toLocaleLowerCase();
@@ -120,6 +139,29 @@ export function FuturisticEnterpriseHome() {
           </form>
           <p className="atlas-visual-home__search-status" role="status" aria-live="polite">{searchMessage}</p>
 
+          <nav className="atlas-home-surfaces" aria-label="ATLAS primary surfaces">
+            {primarySurfaces.map((surface) => (
+              <Link
+                key={surface.name}
+                className="atlas-home-surface-card"
+                to={surface.path}
+                aria-label={`${surface.name} surface`}
+              >
+                <small>{surface.eyebrow}</small>
+                <strong>{surface.name}</strong>
+                <span aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </nav>
+
+          <div className="atlas-home-status" aria-label="ATLAS system status">
+            <span className="atlas-home-status__label">SYSTEM</span>
+            <strong>{implemented} operativos</strong>
+            <span aria-hidden="true">·</span>
+            <strong>{gated} conexiones</strong>
+            <span>Estado derivado del catálogo canónico</span>
+          </div>
+
           <div className="atlas-visual-home__recent" aria-label="Módulos recientes">
             <span>RECIENTES</span>
             {recentModules.map((module) => (
@@ -128,13 +170,13 @@ export function FuturisticEnterpriseHome() {
           </div>
         </div>
 
-        <a className="atlas-visual-home__enter" href="#atlas-dashboard">
-          <span>Entrar a ATLAS</span>
+        <a className="atlas-visual-home__enter" href="#atlas-command-center">
+          <span>Abrir Command Center</span>
           <span aria-hidden="true">↓</span>
         </a>
       </section>
 
-      <section id="atlas-dashboard" className="atlas-command-home" aria-labelledby="atlas-command-title">
+      <section id="atlas-command-center" className="atlas-command-home" aria-label="ATLAS Command Center">
         <div className="atlas-spatial-hint atlas-spatial-hint-top" aria-hidden="true">
           <span>⌃</span> Desliza arriba · más módulos
         </div>
