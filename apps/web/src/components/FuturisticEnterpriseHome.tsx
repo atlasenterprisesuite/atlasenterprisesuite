@@ -43,7 +43,11 @@ export function FuturisticEnterpriseHome() {
       return;
     }
 
-    const match = ATLAS_MODULES.find((module) =>
+    const exactMatch = ATLAS_MODULES.find((module) =>
+      [module.id, module.title, module.navLabel, module.area]
+        .some((field) => field.toLocaleLowerCase() === normalized)
+    );
+    const match = exactMatch ?? ATLAS_MODULES.find((module) =>
       [module.id, module.title, module.navLabel, module.area, module.description]
         .some((field) => field.toLocaleLowerCase().includes(normalized))
     );
