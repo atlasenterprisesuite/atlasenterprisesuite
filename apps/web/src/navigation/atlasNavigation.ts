@@ -7,6 +7,7 @@ export type AtlasNavigationNode = {
   area: string;
   moduleId?: string;
   parentId?: string;
+  aliases?: readonly string[];
   keywords: readonly string[];
 };
 
@@ -14,6 +15,10 @@ const STATIC_NODES: readonly AtlasNavigationNode[] = [
   { id: 'home', label: 'Home', to: '/', area: 'Platform', keywords: ['dashboard', 'inicio', 'main', 'principal'] },
   { id: 'suite', label: 'All Modules', to: '/suite', area: 'Platform', keywords: ['modules', 'modulos', 'suite', 'apps'] },
   { id: 'work-os', label: 'Work OS', to: '/work/os', area: 'Platform', moduleId: 'work', parentId: 'work', keywords: ['productivity', 'office', 'docs', 'sheets', 'present', 'mail', 'calendar', 'tasks', 'projects', 'forms', 'lists', 'notes', 'drive', 'meetings', 'automation', 'data fabric'] },
+  { id: 'ai-universe', label: 'AI Universe', to: '/studio/ai-universe', area: 'Creative', moduleId: 'studio', parentId: 'studio', keywords: ['ai universe', 'models', 'engines', 'providers', 'intelligence', 'catalog'] },
+  { id: 'studio-create', label: 'Create', to: '/studio/create?type=image', area: 'Creative', moduleId: 'studio', parentId: 'studio', keywords: ['create', 'image', 'video', 'music', 'voice', 'creative', 'generator'] },
+  { id: 'creator-library', label: 'Library', to: '/studio/library', area: 'Creative', moduleId: 'studio', parentId: 'studio', keywords: ['library', 'assets', 'outputs', 'productions', 'media'] },
+  { id: 'provider-readiness', label: 'Provider Readiness', to: '/studio/providers', area: 'Creative', moduleId: 'studio', parentId: 'studio', keywords: ['provider readiness', 'providers', 'engines', 'connections', 'verification'] },
   { id: 'payables', label: 'Payables', to: '/finance/accounting/accounts-payable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ap', 'accounts payable', 'cuentas por pagar', 'vendors', 'proveedores'] },
   { id: 'receivables', label: 'Receivables', to: '/finance/accounting/accounts-receivable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ar', 'accounts receivable', 'cuentas por cobrar', 'customers', 'clientes'] },
   { id: 'enterprise-automation', label: 'Enterprise Automation', to: '/advisory/enterprise-automation', area: 'Business', moduleId: 'advisory', parentId: 'advisory', keywords: ['automation', 'automatizacion', '15 companies', 'roi', 'accounts payable', 'human resources', 'inventory', 'operations'] },
@@ -27,6 +32,7 @@ const MODULE_NODES: readonly AtlasNavigationNode[] = ATLAS_MODULES.map((module) 
   to: module.route,
   area: module.area,
   moduleId: module.id,
+  aliases: module.id === 'voice' ? ['/studio/voice'] : undefined,
   keywords: [
     module.title,
     module.description,
@@ -41,6 +47,24 @@ export const ATLAS_NAVIGATION_GRAPH: readonly AtlasNavigationNode[] = [
   ...MODULE_NODES
 ];
 
+export const ATLAS_AI_WORKSPACE_NODE_IDS = [
+  'assistant',
+  'work',
+  'studio',
+  'ai-universe',
+  'studio-create',
+  'creator-library',
+  'provider-readiness',
+  'voice'
+] as const;
+
+const ATLAS_AI_WORKSPACE_NODE_ID_SET = new Set<string>(ATLAS_AI_WORKSPACE_NODE_IDS);
+
+export const ATLAS_AI_WORKSPACE_NAVIGATION: readonly AtlasNavigationNode[] = ATLAS_AI_WORKSPACE_NODE_IDS.flatMap((id) => {
+  const node = ATLAS_NAVIGATION_GRAPH.find((candidate) => candidate.id === id);
+  return node ? [node] : [];
+});
+
 function normalize(value: string) {
   return value
     .toLowerCase()
@@ -48,6 +72,13 @@ function normalize(value: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9/]+/g, ' ')
     .trim();
+}
+
+function normalizeAtlasPath(value: string) {
+  const withoutHash = value.split('#', 1)[0] || '/';
+  const withoutQuery = withoutHash.split('?', 1)[0] || '/';
+  const trimmed = withoutQuery.replace(/\/+$/, '') || '/';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
 function scoreNode(node: AtlasNavigationNode, query: string) {
@@ -82,11 +113,21 @@ export function searchAtlasNavigation(query: string, limit = 7) {
 }
 
 export function getAtlasNavigationNode(pathname: string) {
-  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  const normalizedPath = normalizeAtlasPath(pathname);
   return ATLAS_NAVIGATION_GRAPH.find((node) => {
-    const route = node.to.replace(/\/+$/, '') || '/';
-    return normalizedPath === route;
+    const route = normalizeAtlasPath(node.to);
+    if (normalizedPath === route) return true;
+    return node.aliases?.some((alias) => normalizeAtlasPath(alias) === normalizedPath) ?? false;
   });
+}
+
+export function getAtlasAIWorkspaceNode(pathname: string) {
+  const node = getAtlasNavigationNode(pathname);
+  return node && ATLAS_AI_WORKSPACE_NODE_ID_SET.has(node.id) ? node : undefined;
+}
+
+export function isAtlasAIWorkspacePath(pathname: string) {
+  return Boolean(getAtlasAIWorkspaceNode(pathname));
 }
 
 export function getAtlasNavigationTrail(pathname: string) {
