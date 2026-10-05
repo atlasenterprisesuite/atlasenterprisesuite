@@ -58,3 +58,52 @@ export type PracticalScore = {
   criticalFailures: CriticalFailureCode[];
   passed: boolean;
 };
+
+
+export type CertificationEvidence = {
+  writtenScore?: number;
+  intakePracticalScore?: number;
+  securityCriticalPassed?: boolean;
+  simpleReturnPracticalScore?: number;
+  filingStatusPracticalScore?: number;
+  familyCreditsPracticalScore?: number;
+  form8867CriticalPassed?: boolean;
+  supervisedAcceptedReturns?: number;
+  businessPracticalScore?: number;
+  criticalEvidenceGatesPassed?: boolean;
+  supervisedA4Returns?: number;
+  advancedPracticalScore?: number;
+  reviewedA4A5Returns?: number;
+  capstoneScore?: number;
+  secondCapstoneScore?: number;
+  reviewerCalibrationScore?: number;
+  criticalItemsPassed?: boolean;
+  domainCompetencies?: number;
+  annualRecertificationCurrent?: boolean;
+  ceHours?: number;
+  taxDirectorApproved?: boolean;
+  finalInternalApproval?: boolean;
+  masterPracticalScore?: number;
+  reviewerApproved?: boolean;
+  criticalFailures?: readonly CriticalFailureCode[];
+};
+
+export type ProfessionalLevelDecision = {
+  currentLevel: ProfessionalLevelId;
+  nextEligibleLevel: ProfessionalLevelId | null;
+  missingRequirements: string[];
+  permittedReturnClasses: string[];
+  reviewerRequired: boolean;
+  productionAuthorized: boolean;
+};
+
+export type SpecialtyEvidence = {
+  specialtyScores?: Readonly<Record<string, number>>;
+  externalCredentials?: Readonly<Record<string, { externalCredentialVerified: boolean }>>;
+};
+
+export type SpecialtyDecision = {
+  badge: string;
+  granted: boolean;
+  internal: boolean;
+};
