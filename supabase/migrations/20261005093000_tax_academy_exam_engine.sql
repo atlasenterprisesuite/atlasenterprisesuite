@@ -43,6 +43,43 @@ grant all on public.tax_academy_exams, public.tax_academy_questions to service_r
 create unique index if not exists tax_academy_practical_results_attempt_unique
   on public.tax_academy_practical_results(attempt_id);
 
+create or replace function public.tax_academy_list_exams()
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_org uuid := public.tax_actor_org();
+  v_exams jsonb;
+begin
+  if auth.uid() is null or v_org is null then
+    raise exception 'Authentication and active organization required';
+  end if;
+  if not public.has_identity_permission(v_org,'tax.read') then
+    raise exception 'Tax read permission required';
+  end if;
+
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'examId', e.id,
+      'title', e.title,
+      'version', e.version,
+      'taxYear', e.tax_year,
+      'mode', e.mode,
+      'passingScore', e.passing_score,
+      'rulePackStatus', e.rule_pack_status,
+      'questionCount', (select count(*) from public.tax_academy_questions q where q.exam_id=e.id)
+    ) order by e.tax_year, e.id
+  ), '[]'::jsonb)
+    into v_exams
+    from public.tax_academy_exams e
+   where e.active = true;
+
+  return v_exams;
+end
+$$;
+
 create or replace function public.tax_academy_get_exam_payload(p_exam_id text)
 returns jsonb
 language plpgsql
@@ -216,10 +253,12 @@ begin
 end
 $$;
 
+revoke execute on function public.tax_academy_list_exams() from public, anon, authenticated;
 revoke execute on function public.tax_academy_get_exam_payload(text) from public, anon, authenticated;
 revoke execute on function public.tax_academy_complete_attempt(uuid) from public, anon, authenticated;
 revoke execute on function public.tax_academy_grade_attempt(uuid) from public, anon, authenticated;
 
+grant execute on function public.tax_academy_list_exams() to authenticated;
 grant execute on function public.tax_academy_get_exam_payload(text) to authenticated;
 grant execute on function public.tax_academy_complete_attempt(uuid) to authenticated;
 grant execute on function public.tax_academy_grade_attempt(uuid) to authenticated;
