@@ -59,7 +59,6 @@ export type PracticalScore = {
   passed: boolean;
 };
 
-
 export type CertificationEvidence = {
   writtenScore?: number;
   intakePracticalScore?: number;
@@ -108,10 +107,11 @@ export type SpecialtyDecision = {
   internal: boolean;
 };
 
-
 export type AcademyRulePackStatus = 'training_current' | 'final_form_verified' | 'production_certified';
 export type AcademyFilingStatus = 'single' | 'mfj' | 'mfs' | 'hoh' | 'qss';
 export type AcademyFormRef = { formId: string; reviewOnly?: boolean; catalogGap?: string };
+
+/** Candidate-safe case metadata. Instructor answers live behind privileged persistence/RPC boundaries. */
 export type AcademyCaseDefinition = {
   id: string;
   version: string;
@@ -126,7 +126,6 @@ export type AcademyCaseDefinition = {
   evidenceGates: readonly string[];
   tasks: readonly string[];
   criticalTraps: readonly string[];
-  answerKeyRef: string;
   rulePackStatus: AcademyRulePackStatus;
   deidentified: boolean;
   goldenDerived?: boolean;
