@@ -19,12 +19,6 @@ verify_jwt = false
 [functions.atlas-infra-status]
 verify_jwt = true
 
-[functions.atlas-wireless-mvno]
-verify_jwt = true
-
-[functions.atlas-wireless-network]
-verify_jwt = true
-
 [functions.atlas-wireless-commissioning]
 verify_jwt = true
 

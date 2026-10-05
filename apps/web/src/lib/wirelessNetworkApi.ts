@@ -45,7 +45,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 async function wirelessNetworkRequest<T>(api: 'readiness' | 'inventory'): Promise<T> {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch(
-    `/functions/v1/atlas-wireless-network?api=${api}`,
+    `/functions/v1/atlas-platform-controls?api=wireless-network-${api}`,
     {
       method: 'GET',
       headers: {
