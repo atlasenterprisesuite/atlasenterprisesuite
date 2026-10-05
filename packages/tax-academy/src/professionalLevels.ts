@@ -41,6 +41,9 @@ function directRequirements(level: ProfessionalLevelId, e: CertificationEvidence
     score(e.familyCreditsPracticalScore, 92, 'family/credits practical');
     flag(e.form8867CriticalPassed, 'Form 8867 critical items passed');
     count(e.supervisedAcceptedReturns, 3, 'supervised accepted returns');
+    if ((e.supervisedReturnMaterialCorrections ?? 0) > 0) {
+      missing.push('no material supervised-return correction attributable to preparer negligence');
+    }
   } else if (level === 'A4') {
     score(e.writtenScore, 90, 'written score');
     score(e.businessPracticalScore, 92, 'Schedule C/SE/QBI practical');
@@ -115,6 +118,7 @@ export function evaluateProfessionalLevel(
   const productionAuthorized =
     index >= ORDER.indexOf('A2') &&
     evidence.reviewerApproved === true &&
+    evidence.annualRecertificationCurrent !== false &&
     clean(evidence);
 
   return {
