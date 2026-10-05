@@ -107,3 +107,28 @@ export type SpecialtyDecision = {
   granted: boolean;
   internal: boolean;
 };
+
+
+export type AcademyRulePackStatus = 'training_current' | 'final_form_verified' | 'production_certified';
+export type AcademyFilingStatus = 'single' | 'mfj' | 'mfs' | 'hoh' | 'qss';
+export type AcademyFormRef = { formId: string; reviewOnly?: boolean; catalogGap?: string };
+export type AcademyCaseDefinition = {
+  id: string;
+  version: string;
+  taxYear: number;
+  filingStatus: AcademyFilingStatus;
+  level: ProfessionalLevelId;
+  title: string;
+  facts: readonly string[];
+  sourceDocuments: readonly string[];
+  requiredForms: readonly AcademyFormRef[];
+  conditionalForms: readonly AcademyFormRef[];
+  evidenceGates: readonly string[];
+  tasks: readonly string[];
+  criticalTraps: readonly string[];
+  answerKeyRef: string;
+  rulePackStatus: AcademyRulePackStatus;
+  deidentified: boolean;
+  goldenDerived?: boolean;
+  practiceVariants: number;
+};
