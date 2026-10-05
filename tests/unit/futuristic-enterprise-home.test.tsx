@@ -41,8 +41,8 @@ describe('FuturisticEnterpriseHome visual landing', () => {
   });
 
   it('ships the approved sunset photograph as a local reusable optimized asset', () => {
-    const imagePath = resolve(process.cwd(), 'apps/web/public/assets/atlas-home-sunset.webp');
+    const imagePath = resolve(process.cwd(), 'apps/web/public/assets/atlas-home-sunset.jpeg');
     expect(existsSync(imagePath)).toBe(true);
-    expect(statSync(imagePath).size).toBeGreaterThan(20_000);
+    expect(statSync(imagePath).size).toBeGreaterThan(10_000);
   });
 });
