@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom';
 
-const releaseFacts = [
+type ReleaseFact = {
+  icon: string;
+  label: string;
+  value: string;
+  mono?: boolean;
+};
+
+const releaseFacts: readonly ReleaseFact[] = [
   { icon: '<>', label: 'Production SHA', value: '07ec921444137b656cffbe3123f42dd0d9b59aaf', mono: true },
   { icon: '△', label: 'TDD RED → GREEN', value: 'complete' },
   { icon: '⚙', label: 'Build + Production Readiness', value: 'SUCCESS' },
@@ -10,7 +17,7 @@ const releaseFacts = [
   { icon: '◇', label: 'Security headers verified', value: 'HSTS + CSP' },
   { icon: '▤', label: 'Exact-SHA attestation', value: 'verified' },
   { icon: '▥', label: 'Failure count', value: '0' }
-] as const;
+];
 
 const governanceFlow = [
   { mark: '◎', label: 'Purpose' },
