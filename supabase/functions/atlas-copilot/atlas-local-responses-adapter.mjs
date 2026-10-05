@@ -1,3 +1,4 @@
+import { ATLAS_CONVERSATION_POLICY } from './sovereign-brain-prompt.mjs';
 const PROFILES=Object.freeze(['fast','balanced','deep']);
 const LOCAL_INPUT_CHAR_BUDGET=6000;
 const LOCAL_MAX_OUTPUT_TOKENS=384;
@@ -41,7 +42,7 @@ function compactInstructions(value){
   const marker='CURRENT COGNITIVE CONTEXT';
   const index=raw.lastIndexOf(marker);
   const context=index>=0?raw.slice(index,index+800):'';
-  return `${LOCAL_SYSTEM_CORE}${context?`\n\n${context}`:''}`.slice(0,LOCAL_INSTRUCTION_CHAR_BUDGET).trim();
+  return `${LOCAL_SYSTEM_CORE}\n\n${ATLAS_CONVERSATION_POLICY}${context?`\n\n${context}`:''}`.slice(0,LOCAL_INSTRUCTION_CHAR_BUDGET).trim();
 }
 const sleep=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
 function retryableStatus(status){return status===429||status===500||status===502||status===503||status===504;}
