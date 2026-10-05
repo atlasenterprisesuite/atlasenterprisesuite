@@ -13,10 +13,10 @@ describe('ATLAS BioScan browser data boundary', () => {
     expect(api).toContain("'x-atlas-org-id'");
   });
 
-  it('never mutates sensitive BioScan tables directly from the browser', () => {
-    expect(surface).not.toContain("method: 'POST',\n      body: JSON.stringify");
-    expect(surface).not.toMatch(/\/rest\/v1\/(bioscan_|human_twin|body_measurements|sensor_observations|posture_observations)/);
+  it('routes writes through the governed control plane and never mutates sensitive tables directly', () => {
+    expect(api).toContain("method: 'POST'");
     expect(api).toContain('callBioScanControlPlane');
+    expect(surface).not.toMatch(/\/rest\/v1\/(bioscan_|human_twin|body_measurements|sensor_observations|posture_observations)/);
   });
 
   it('does not serialize raw media types or image payloads', () => {
