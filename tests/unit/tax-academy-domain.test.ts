@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   evaluateProfessionalLevel,
+  evaluateSpecialtyBadges,
   scorePracticalReturn,
   scoreWrittenExam,
 } from '../../packages/tax-academy/src/index';
@@ -169,5 +170,24 @@ describe('ATLAS Tax Academy professional levels', () => {
     expect(decision.currentLevel).toBe('A8');
     expect(decision.productionAuthorized).toBe(true);
     expect(decision.reviewerRequired).toBe(false);
+  });
+});
+
+
+describe('ATLAS Tax Academy specialties and external credentials', () => {
+  it('can grant an internal specialty without manufacturing an external credential', () => {
+    const decisions = evaluateSpecialtyBadges({
+      specialtyScores: { small_business: 95 },
+      externalCredentials: { EA: { externalCredentialVerified: false } },
+    });
+    expect(decisions).toContainEqual({ badge: 'Small Business / Schedule C', granted: true, internal: true });
+    expect(decisions).toContainEqual({ badge: 'EA Verified', granted: false, internal: false });
+  });
+
+  it('requires independent verification for external credential badges', () => {
+    const decisions = evaluateSpecialtyBadges({
+      externalCredentials: { CPA: { externalCredentialVerified: true } },
+    });
+    expect(decisions).toContainEqual({ badge: 'CPA Verified', granted: true, internal: false });
   });
 });
