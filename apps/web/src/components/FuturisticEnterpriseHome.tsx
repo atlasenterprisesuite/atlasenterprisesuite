@@ -142,7 +142,7 @@ export function FuturisticEnterpriseHome() {
         <section className="atlas-hero-command">
           <div className="atlas-hero-copy">
             <div className="atlas-core-orb" aria-hidden="true"><span>ATLAS</span></div>
-            <p className="atlas-command-eyebrow">ATLAS Enterprise Suite</p>
+            <p className="atlas-command-eyebrow">ATLAS COMMAND CENTER</p>
             <h2 id="atlas-command-title" aria-label="One governed enterprise ecosystem">Bienvenido a <span>ATLAS</span></h2>
             <p className="atlas-command-lede">
               Un sistema operativo empresarial conectado. Navega por módulos, datos y flujos desde un espacio
