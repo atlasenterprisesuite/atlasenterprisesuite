@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ATLAS Reconnect Autofill</title>
+  <link rel="stylesheet" href="/src/popup.css" />
+</head>
+<body>
+  <main id="atlas-reconnect-app" class="atlas-shell">
+    <header>
+      <p class="eyebrow">ATLAS • Evidence-backed assistance</p>
+      <h1>Reconnect Autofill</h1>
+      <p>Fill verified work-search facts. Review every value before continuing in Reconnect.</p>
+    </header>
+
+    <section aria-labelledby="claim-week-heading">
+      <h2 id="claim-week-heading">Claim Week</h2>
+      <div id="claimWeek" class="claim-week"></div>
+    </section>
+
+    <section aria-labelledby="evidence-heading">
+      <h2 id="evidence-heading">Evidence Records</h2>
+      <label for="recordsJson">Verified work-search JSON</label>
+      <textarea id="recordsJson" rows="7" spellcheck="false" placeholder='[{"id":"ws-1", ...}]'></textarea>
+      <button id="importRecords" type="button">Import</button>
+    </section>
+
+    <section aria-labelledby="validation-heading">
+      <h2 id="validation-heading">Validation Summary</h2>
+      <div id="summary"></div>
+      <div id="recordList" class="record-list"></div>
+    </section>
+
+    <section class="actions" aria-label="Autofill actions">
+      <button id="fillCurrent" type="button">Fill current record</button>
+      <button id="fillVerified" type="button">Fill verified contacts</button>
+      <button id="clearSession" class="secondary" type="button">Clear Session Data</button>
+    </section>
+
+    <div id="popupStatus" class="status" role="status" aria-live="polite" tabindex="-1"></div>
+    <p class="boundary">ATLAS never clicks Next, Submit, Certify, Acknowledge, or signs a benefit certification for you.</p>
+  </main>
+  <script type="module" src="/src/popup.ts"></script>
+</body>
+</html>
