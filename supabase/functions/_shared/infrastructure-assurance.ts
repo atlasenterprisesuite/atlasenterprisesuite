@@ -25,9 +25,9 @@ export type SupabaseAssuranceInput = {
   resilience: {
     readReplicaPresent: boolean | null;
     automaticCrossRegionFailoverSupported: boolean | null;
-    failoverRunbookVerified: boolean;
-    pitrConfigured: boolean;
-    restoreDrillVerified: boolean;
+    failoverRunbookVerified: boolean | null;
+    pitrConfigured: boolean | null;
+    restoreDrillVerified: boolean | null;
   };
   networking: {
     privateLinkDatabase: boolean | null;
@@ -307,7 +307,8 @@ export function buildSupabaseAssuranceSnapshot(
               : null,
           verified: null,
           status:
-            input.resilience.automaticCrossRegionFailoverSupported === null
+            input.resilience.automaticCrossRegionFailoverSupported === null ||
+            input.resilience.failoverRunbookVerified === null
               ? ('unknown' as const)
               : ('unverified' as const),
           evidence_refs: evidenceRefs
