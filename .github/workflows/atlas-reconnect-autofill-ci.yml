@@ -31,4 +31,4 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Reconnect TDD contracts
-        run: npx vitest run tests/unit/reconnect-autofill-validation.test.ts tests/unit/reconnect-autofill-adapter.test.ts
+        run: npx vitest run 'tests/unit/reconnect-autofill-*.test.ts'
