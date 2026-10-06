@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildWorkspaceCapabilities } from '../../supabase/functions/atlas-copilot/workspace-capabilities.mjs';
 
@@ -108,5 +109,11 @@ describe('ATLAS Assistant workspace capability manifest', () => {
 
     expect(stateOf(ready, 'voice')).toMatchObject({ state: 'ready' });
     expect(stateOf(unavailable, 'voice')).toMatchObject({ state: 'unavailable' });
+  });
+
+  it('attaches the manifest to authenticated server status rather than inventing readiness in the UI', () => {
+    const source = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
+    expect(source).toContain("import {buildWorkspaceCapabilities} from './workspace-capabilities.mjs'");
+    expect(source).toContain('workspace_capabilities:buildWorkspaceCapabilities');
   });
 });
