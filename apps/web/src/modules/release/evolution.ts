@@ -245,7 +245,7 @@ export function auditAtlasModuleRegistry(
 
   for (const module of modules) {
     const route = module.route.trim();
-    if (!route.startsWith('/')) {
+    if (module.route !== route || !route.startsWith('/')) {
       findings.push(finding({
         id: `registry:invalid-route:${module.id}`,
         targetId: module.id,
@@ -253,9 +253,9 @@ export function auditAtlasModuleRegistry(
         invariantId: 'canonical-source-of-truth',
         severity: 'P1',
         code: 'invalid-module-route',
-        message: `Module ${module.id} does not expose an absolute canonical route.`,
+        message: `Module ${module.id} does not expose an absolute canonical route without surrounding whitespace.`,
         evidence: [`route=${JSON.stringify(module.route)}`],
-        remediation: 'Declare an absolute route beginning with / and verify that navigation resolves it.'
+        remediation: 'Declare an absolute route beginning with /, remove surrounding whitespace and verify that navigation resolves it.'
       }));
     }
 
