@@ -1,4 +1,4 @@
-import type { ProviderId } from './types';
+import type { ProviderId } from './types.ts';
 
 const PROVIDERS: Record<ProviderId, { label: string; promptDialect: 'cinematic-structured' | 'shot-structured' }> = {
   seedance: { label: 'Seedance', promptDialect: 'cinematic-structured' },
