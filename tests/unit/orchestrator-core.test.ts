@@ -21,6 +21,16 @@ function task(state: AtlasTask['state'] = 'draft'): AtlasTask {
   };
 }
 
+function completionReadyTask(overrides: Partial<Pick<AtlasTask, 'tests' | 'approvals' | 'deployment'>> = {}): AtlasTask {
+  return {
+    ...task('verified'),
+    tests: [{ name: 'ATLAS verification suite', status: 'passed', evidence: 'ci://run/123' }],
+    approvals: [{ actorId: 'winder', result: 'approved', target: 'commit-sha', createdAt: '2026-10-06T18:00:00.000Z' }],
+    deployment: { id: 'deploy-1', status: 'verified', url: 'https://www.atlasenterprisesuite.com/' },
+    ...overrides
+  };
+}
+
 const provider: ProviderAdapter = {
   providerId: 'openai',
   async invoke(input) {
@@ -45,6 +55,59 @@ describe('ATLAS orchestrator', () => {
 
     await expect(orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human))
       .rejects.toThrow(/completion evidence/i);
+  });
+
+  it('blocks completion when any verification test failed', async () => {
+    const persistence = new InMemoryPersistence();
+    const orchestrator = new AtlasOrchestrator({ persistence, providers: [provider] });
+    await orchestrator.createTask(completionReadyTask({
+      tests: [{ name: 'ATLAS verification suite', status: 'failed', evidence: 'ci://run/failed' }]
+    }), human);
+
+    await expect(orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human))
+      .rejects.toThrow(/failed_test/);
+  });
+
+  it('blocks completion when a passing test has no evidence reference', async () => {
+    const persistence = new InMemoryPersistence();
+    const orchestrator = new AtlasOrchestrator({ persistence, providers: [provider] });
+    await orchestrator.createTask(completionReadyTask({
+      tests: [{ name: 'ATLAS verification suite', status: 'passed', evidence: null }]
+    }), human);
+
+    await expect(orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human))
+      .rejects.toThrow(/missing_test_evidence/);
+  });
+
+  it('blocks completion when human approval is absent or denied', async () => {
+    const persistence = new InMemoryPersistence();
+    const orchestrator = new AtlasOrchestrator({ persistence, providers: [provider] });
+    await orchestrator.createTask(completionReadyTask({
+      approvals: [{ actorId: 'winder', result: 'denied', target: 'commit-sha', createdAt: '2026-10-06T18:00:00.000Z' }]
+    }), human);
+
+    await expect(orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human))
+      .rejects.toThrow(/approval_not_satisfied/);
+  });
+
+  it('blocks completion until deployment evidence is verified', async () => {
+    const persistence = new InMemoryPersistence();
+    const orchestrator = new AtlasOrchestrator({ persistence, providers: [provider] });
+    await orchestrator.createTask(completionReadyTask({
+      deployment: { id: 'deploy-1', status: 'requested', url: null }
+    }), human);
+
+    await expect(orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human))
+      .rejects.toThrow(/deployment_not_verified/);
+  });
+
+  it('allows completion only after tests, approval, and deployment are verified', async () => {
+    const persistence = new InMemoryPersistence();
+    const orchestrator = new AtlasOrchestrator({ persistence, providers: [provider] });
+    await orchestrator.createTask(completionReadyTask(), human);
+
+    const completed = await orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human);
+    expect(completed.state).toBe('completed');
   });
 
   it('delegates through the registered provider without granting release permissions', async () => {
