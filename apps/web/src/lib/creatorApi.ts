@@ -60,7 +60,7 @@ async function requestWithToken(url: string, init: RequestInit, token: string) {
   });
 }
 
-async function authenticatedRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
+async function authenticatedResponse(url: string, init: RequestInit = {}) {
   let token = getAtlasAccessToken();
   if (!token) throw new Error('authentication_required');
   let response = await requestWithToken(url, init, token);
@@ -70,7 +70,11 @@ async function authenticatedRequest<T>(url: string, init: RequestInit = {}): Pro
     if (!token) throw new Error('session_expired');
     response = await requestWithToken(url, init, token);
   }
-  return parseResponse(response) as Promise<T>;
+  return response;
+}
+
+async function authenticatedRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
+  return parseResponse(await authenticatedResponse(url, init)) as Promise<T>;
 }
 
 export async function creatorRequest<T>(
@@ -236,10 +240,49 @@ export async function exportCreatorPrompt(request: PromptExportRequest): Promise
       aspect_ratio: request.aspectRatio,
       destination: request.destination,
       language: request.language,
-      negative_constraints: request.negativeConstraints
+      negative_constraints: request.negativeConstraints,
+      accessibility: request.accessibility
     })
   });
   return data.prompt_package;
+}
+
+
+export type GeneratedCreatorMusic = {
+  blob: Blob;
+  songId: string | null;
+  provider: string | null;
+  model: string | null;
+};
+
+export async function generateCreatorMusic(input: {
+  prompt: string;
+  durationSeconds?: number;
+  instrumental?: boolean;
+}): Promise<GeneratedCreatorMusic> {
+  const suffix = query({ api: 'music-generate' });
+  const response = await authenticatedResponse(`${SUPABASE_URL}/functions/v1/atlas-creator?${suffix}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      prompt: input.prompt,
+      duration_seconds: input.durationSeconds ?? 60,
+      instrumental: input.instrumental !== false
+    })
+  });
+  if (!response.ok) {
+    await parseResponse(response);
+    throw new Error('music_generation_failed');
+  }
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.startsWith('audio/')) throw new Error('music_provider_invalid_response');
+  const blob = await response.blob();
+  if (!blob.size) throw new Error('music_provider_empty_audio');
+  return {
+    blob,
+    songId: response.headers.get('x-atlas-song-id'),
+    provider: response.headers.get('x-atlas-provider'),
+    model: response.headers.get('x-atlas-model')
+  };
 }
 
 
