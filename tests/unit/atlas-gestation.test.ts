@@ -34,7 +34,10 @@ describe('ATLAS Gestation A-Z', () => {
   });
 
   it('tracks operational baseline and active evolution independently', () => {
-    const summary = summarizeGestation(ATLAS_MODULES);
+    const summary = summarizeGestation(ATLAS_MODULES) as ReturnType<typeof summarizeGestation> & {
+      activeEvolution?: number;
+      operationalBaseline?: number;
+    };
     const expectedActiveEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
     const expectedOperationalBaseline = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
 
