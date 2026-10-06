@@ -1,4 +1,4 @@
-import type { MotionCompositionSpec, MotionValidationIssue } from './types';
+import type { MotionCompositionSpec, MotionValidationIssue } from './types.ts';
 
 export function validateMotionComposition(spec: MotionCompositionSpec): MotionValidationIssue[] {
   const issues: MotionValidationIssue[] = [];
