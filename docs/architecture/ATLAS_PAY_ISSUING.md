@@ -106,3 +106,25 @@ Only after a separate charter, capital, management, compliance, insurance and ne
 ## Canonical invariant
 
 ATLAS Pay never creates a shadow general ledger. It owns regulated-action orchestration and evidence; Accounting owns financial books and journals.
+
+
+## Accounts Center and balance evidence
+
+Wave 1 adds an organization-scoped Accounts Center to the existing `/finance/pay` surface.
+
+The Accounts Center does not replace ATLAS Identity and does not create a second login/RBAC system. It associates financial product context with organization-scoped profiles such as person, organization, brand, creator and external profiles.
+
+Balance evidence is intentionally separated into four domains:
+
+- `wallet`
+- `earnings`
+- `rewards`
+- `credits`
+
+Each balance record is a source-backed snapshot with explicit currency, state, source kind, source reference and observation time. Historical snapshots are not treated as additive balances. The web layer reduces records to the latest observation per account/domain/currency/source before summarizing.
+
+`unavailable` evidence is excluded from displayed current summaries.
+
+This remains evidence, not custody and not a ledger. Accounting remains canonical for journals and books. ATLAS Pay may display source-backed financial state, but it does not infer available funds, settlement, insurance, issuing status or provider authorization from the existence of a row.
+
+The browser retains read-only access under the existing `pay.read`, `pay.manage`, and `pay.execute` RLS boundaries. Writes to Accounts Center and balance evidence remain revoked for authenticated browser clients and require a governed server-side persistence path.
