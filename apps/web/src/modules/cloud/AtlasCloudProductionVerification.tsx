@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { atlasAuthorizedJson } from '../../lib/atlasSession';
 import { CloudSubnav } from './AtlasCloudNextLevel';
 
-const OBSERVABILITY_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-observability';
-const RELEASE_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-release-control';
+const OBSERVABILITY_PATH = '/functions/v1/atlas-observability';
+const RELEASE_PATH = '/functions/v1/atlas-release-control';
 
 type VerificationEvidence = { status?: string; created_at?: string };
 type ObservabilityPayload = {
@@ -43,20 +42,8 @@ const REQUIRED_CHECKS: VerificationCard[] = [
   { id: 'hubspot-live', label: 'HubSpot Live Verification', detail: 'Third-party integration', required: false, aliases: ['hubspot-live', 'hubspot', 'atlas-hubspot-live-verify'] }
 ];
 
-function sessionHeaders() {
-  const token = localStorage.getItem('atlas_access_token') || '';
-  const orgId = localStorage.getItem('atlas_org_id') || '';
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (orgId) headers['x-atlas-org-id'] = orgId;
-  return headers;
-}
-
-async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { method: 'GET', cache: 'no-store', headers: sessionHeaders() });
-  const body = await response.json().catch(() => ({ error: 'invalid_response' }));
-  if (!response.ok) throw new Error(String(body?.error || `request_failed_${response.status}`));
-  return body as T;
+async function getJson<T>(path: string): Promise<T> {
+  return atlasAuthorizedJson<T>(path, { method: 'GET', cache: 'no-store' });
 }
 
 function normalizeStatus(status?: string) {
@@ -99,8 +86,8 @@ export function AtlasCloudProductionVerification() {
     setError('');
     try {
       const [observabilityResponse, releaseResponse] = await Promise.all([
-        getJson<ObservabilityPayload>(`${OBSERVABILITY_URL}?api=cloud-observability`),
-        getJson<{ ok: boolean; releases: ReleaseRow[] }>(`${RELEASE_URL}?api=releases`)
+        getJson<ObservabilityPayload>(`${OBSERVABILITY_PATH}?api=cloud-observability`),
+        getJson<{ ok: boolean; releases: ReleaseRow[] }>(`${RELEASE_PATH}?api=releases`)
       ]);
       setObservability(observabilityResponse);
       setReleases(releaseResponse.releases || []);
