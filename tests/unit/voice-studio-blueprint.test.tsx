@@ -12,6 +12,7 @@ describe('Voice Studio reference implementation', () => {
     vi.spyOn(atlasVoiceApi, 'elevenLabsStatus').mockResolvedValue({ state: 'access_verified', configured: true, synthesis_verified: false });
     const { container } = render(<MemoryRouter><VoiceStudioPage/></MemoryRouter>);
     expect(screen.getByRole('heading', {name:'Biblioteca de audio'})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'Generar MP3'})).toBeInTheDocument();
     expect(screen.getByRole('link',{name:'Biblioteca'})).toHaveAttribute('href','#biblioteca-audio');
     const tracks = Array.from(container.querySelectorAll('.studio-library audio')).map(audio => audio.getAttribute('src'));
     expect(tracks).toEqual(['/assets/voice/bienvenida_es.mp3','/assets/voice/bienvenida_en.mp3','/assets/voice/navegacion_es.mp3','/assets/voice/navegacion_en.mp3','/assets/voice/ayuda_es.mp3','/assets/voice/ayuda_en.mp3']);
