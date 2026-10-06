@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const catalogPath = 'data/commercial/catalog-v1.json';
 const contractPath = 'packages/core/src/commercial.ts';
+const coreIndexPath = 'packages/core/src/index.ts';
 const registryPath = 'apps/web/src/modules/registry.ts';
 const atlasMaxContractsPath = 'apps/web/src/services/atlas-max/contracts.ts';
 
@@ -24,6 +25,10 @@ describe('ATLAS Commercial Release catalog', () => {
   it('adds one versioned commercial catalog and typed contract', () => {
     expect(existsSync(catalogPath)).toBe(true);
     expect(existsSync(contractPath)).toBe(true);
+  });
+
+  it('exports the commercial contract through the canonical core package entrypoint', () => {
+    expect(read(coreIndexPath)).toContain("export * from './commercial';");
   });
 
   it('defines the three Enterprise Suite offers without reusing ATLAS MAX plan ids', () => {
