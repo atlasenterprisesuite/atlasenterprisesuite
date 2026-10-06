@@ -19,6 +19,9 @@ describe('ATLAS Cloud production verification dashboard', () => {
     expect(page).toContain('latest_verifications');
     expect(page).toContain('source_ref');
     expect(page).toContain('status values are never hard-coded');
+    expect(page).toContain('atlasAuthorizedJson');
+    expect(page).not.toContain('localStorage.getItem');
+    expect(page).not.toContain('.supabase.co/functions/v1/');
   });
 
   it('fails closed when mandatory evidence is absent or failed', () => {
