@@ -14,9 +14,10 @@ describe('ATLAS Pay public experience', () => {
 
   it('keeps the operational ATLAS Pay dashboard on a protected workspace route', () => {
     const app = read('apps/web/src/App.tsx');
+    const page = read('apps/web/src/modules/finance/pay/PublicAtlasPayPage.tsx');
     expect(app).toContain('path="/finance/pay/workspace"');
     expect(app).toContain('<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>');
-    expect(app).toContain('/identity?app=%2Ffinance%2Fpay%2Fworkspace');
+    expect(page).toContain('/identity?app=%2Ffinance%2Fpay%2Fworkspace');
   });
 
   it('shows the approved public capability architecture without exposing private financial state', () => {
