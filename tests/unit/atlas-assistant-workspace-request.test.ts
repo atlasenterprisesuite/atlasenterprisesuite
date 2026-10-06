@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeWorkspaceRequest } from '../../supabase/functions/atlas-copilot/workspace-request.mjs';
+import {
+  normalizeWorkspaceRequest,
+  normalizeWorkspaceResult
+} from '../../supabase/functions/atlas-copilot/workspace-request.mjs';
 
 const readyCapabilities = [
   { id: 'chat', state: 'ready' },
@@ -100,5 +103,75 @@ describe('ATLAS Assistant normalized workspace request', () => {
 
     expect(request.execution_mode).toBe('interactive');
     expect(request.requested_capabilities).toEqual(['voice']);
+  });
+
+  it('maps queued background work into one durable workspace result envelope', () => {
+    const request = normalizeWorkspaceRequest({
+      experience: 'work',
+      message: 'Run the reconciliation',
+      conversation_id: 'conv-22',
+      mode: 'auto',
+      profile: 'deep'
+    }, readyCapabilities);
+
+    const result = normalizeWorkspaceResult(request, {
+      status: 'queued',
+      trace_id: 'trace-22',
+      conversation_id: 'conv-22',
+      text: '',
+      provider: 'openai',
+      model: 'model-1'
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      conversation_id: 'conv-22',
+      execution_id: 'trace-22',
+      trace_id: 'trace-22',
+      experience: 'work',
+      state: 'queued',
+      text: null,
+      providers: ['openai'],
+      model: 'model-1',
+      profile: 'deep',
+      capability_ids: ['work'],
+      artifact_refs: [],
+      approval_refs: [],
+      provenance: [],
+      error: null
+    });
+  });
+
+  it('maps interactive provider output to completed without inventing artifacts or approvals', () => {
+    const request = normalizeWorkspaceRequest({
+      experience: 'chat',
+      message: 'Answer now',
+      mode: 'openai',
+      profile: 'balanced'
+    }, readyCapabilities);
+
+    const result = normalizeWorkspaceResult(request, {
+      output: 'Completed answer',
+      conversation_id: 'conv-23',
+      providers: ['openai'],
+      model: 'model-2',
+      provenance: [{ type: 'provider' }]
+    });
+
+    expect(result).toMatchObject({
+      conversation_id: 'conv-23',
+      execution_id: null,
+      experience: 'chat',
+      state: 'completed',
+      text: 'Completed answer',
+      providers: ['openai'],
+      model: 'model-2',
+      profile: 'balanced',
+      capability_ids: ['chat'],
+      artifact_refs: [],
+      approval_refs: [],
+      error: null
+    });
+    expect(result.provenance).toEqual([{ type: 'provider' }]);
   });
 });
