@@ -16,7 +16,7 @@ export function VoiceStudioPage() {
   const es = lang === 'es';
   return <section className="voice-studio-page voice-studio-blueprint">
     <aside className="studio-navigation" aria-label="Voice Studio navigation">
-      <Link to="/" className="studio-brand" aria-label="ATLAS home"><span className="studio-brand-symbol" aria-hidden="true">A</span><span>ATLAS</span></Link>
+      <Link to="/" className="studio-brand" aria-label="ATLAS home"><svg className="studio-brand-symbol" viewBox="72 70 56 56" aria-hidden="true"><image href="/assets/voice/studio-reference.png" width="1586" height="992"/></svg><span>ATLAS</span></Link>
       <nav>
         <Link to="/">⌂ <span>{es ? 'Inicio' : 'Home'}</span></Link>
         <a href="#crear-audio" aria-label={es ? 'Crear audio' : 'Create audio'} className="is-active">≋ <span>{es ? 'Crear audio' : 'Create audio'}</span></a>
