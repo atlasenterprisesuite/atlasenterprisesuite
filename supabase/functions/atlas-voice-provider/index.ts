@@ -5,11 +5,13 @@ import {
   openAICustomVoiceCapabilities,
   providerErrorState
 } from './provider-core.mjs';
+import { elevenLabsAccess, elevenLabsSpeech, elevenLabsVoice } from './elevenlabs.mjs';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
+const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY') || '';
 const OPENAI_BASE = 'https://api.openai.com/v1';
 const OPENAI_CONSENTS_URL = 'https://api.openai.com/v1/audio/voice_consents';
 const OPENAI_VOICES_URL = 'https://api.openai.com/v1/audio/voices';
@@ -314,9 +316,43 @@ async function status(req: Request) {
   return json({ok:true,provider:'openai_custom_voice',...access,capabilities:openAICustomVoiceCapabilities});
 }
 
+async function elevenLabsStatus(req: Request) {
+  await context(req,'voice.personal.read');
+  return json({ok:true,...await elevenLabsAccess(ELEVENLABS_API_KEY)});
+}
+
+async function elevenLabsNarration(req: Request) {
+  const ctx = await context(req,'voice.personal.use');
+  const body = await req.json().catch(()=>({}));
+  if (typeof body?.text !== 'string' || !body.text.trim() || body.text.trim().length > 1000) {
+    return json({ok:false,error:'invalid_input'},400);
+  }
+  if (!ELEVENLABS_API_KEY) return json({ok:false,error:'provider_not_configured'},503);
+  const requestId = crypto.randomUUID();
+  const audit = (action: string) => servicePost('audit_logs',{
+    org_id:ctx.orgId,user_id:ctx.userId,action,table_name:'atlas_voice_provider',record_id:null,
+    new_data:{request_id:requestId,provider:'elevenlabs',voice_id:elevenLabsVoice.id,model:elevenLabsVoice.model,characters:body.text.trim().length}
+  });
+  // Persist authorization evidence before a billable request; never store narration text.
+  await audit('voice.elevenlabs.speech.requested');
+  const response = await elevenLabsSpeech(ELEVENLABS_API_KEY,body.text);
+  try {
+    await audit('voice.elevenlabs.speech.accepted');
+  } catch (error) {
+    await response.body?.cancel();
+    throw error;
+  }
+  return response;
+}
+
 async function handler(req: Request) {
   const url = new URL(req.url);
   const api = url.searchParams.get('api') || 'status';
+  const provider = url.searchParams.get('provider');
+  if (provider && !['elevenlabs','openai_custom_voice'].includes(provider)) return json({ok:false,error:'unsupported_provider'},400);
+  if (req.method === 'GET' && api === 'status' && url.searchParams.get('provider') === 'elevenlabs') return elevenLabsStatus(req);
+  if (req.method === 'POST' && api === 'speech' && url.searchParams.get('provider') === 'elevenlabs') return elevenLabsNarration(req);
+  if (provider === 'elevenlabs') return json({ok:false,error:'unsupported_provider_operation'},400);
   if (req.method === 'GET' && api === 'status') return status(req);
   if (req.method === 'GET' && api === 'consent-phrases') return consentPhrases(req);
   if (req.method === 'POST' && api === 'create-consent') return createProviderConsent(req);

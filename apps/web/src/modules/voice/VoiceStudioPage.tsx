@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AtlasVoicePage } from './AtlasVoicePage';
+import { ElevenLabsNarration } from './ElevenLabsNarration';
 import './voiceStudio.css';
 
 const visuallyHiddenHeadingStyle = {
@@ -24,11 +25,12 @@ export function VoiceStudioPage() {
       </div>
 
       <AtlasVoicePage embedded />
+      <ElevenLabsNarration />
 
       <details className="voice-boundary-details voice-studio-boundaries">
         <summary>Provider & privacy boundaries</summary>
         <div>
-          <p>External voice generation, telephony, streaming, export, and native Personal Voice control stay disabled until a real provider or supported native bridge is verified.</p>
+          <p>ElevenLabs narration uses verified voice access and validates each generation. Other external voice capabilities require their own verified provider or supported native bridge.</p>
           <p><strong>Requires ATLAS iOS app:</strong> Apple Personal Voice authorization and local playback are native-device capabilities; the web client never claims to export or control the Apple voice model.</p>
         </div>
       </details>
