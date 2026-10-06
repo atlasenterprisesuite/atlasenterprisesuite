@@ -49,7 +49,7 @@ export function compilePromptExport(request: PromptExportRequest): PromptExportP
   ].filter(Boolean);
 
   const lines = [
-    `MEDIA: ${request.mediaKind.toUpperCase()}`,
+    `MEDIA: ${request.mediaKind}`,
     `OBJECTIVE: ${brief}`,
     request.destination ? `DESTINATION: ${request.destination.trim()}` : '',
     visualKinds.has(request.mediaKind) && request.aspectRatio ? `ASPECT RATIO: ${request.aspectRatio.trim()}` : '',
