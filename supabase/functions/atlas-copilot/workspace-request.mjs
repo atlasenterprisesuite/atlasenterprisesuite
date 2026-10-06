@@ -76,6 +76,20 @@ function normalizeSourceRefs(value, capabilities) {
   });
 }
 
+function normalizeExecutionState(result) {
+  const state = String(result?.state || result?.status || '').trim().toLowerCase();
+  if (state === 'queued') return 'queued';
+  if (state === 'running' || state === 'in_progress' || state === 'in-progress') return 'running';
+  if (state === 'failed' || state === 'error') return 'failed';
+  if (state === 'approval_required' || state === 'approval-required') return 'approval_required';
+  if (state === 'configuration_required' || state === 'configuration-required') return 'configuration_required';
+  return 'completed';
+}
+
+function stringArray(value) {
+  return Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
+}
+
 export function normalizeWorkspaceRequest(input = {}, capabilities = []) {
   const experience = String(input?.experience || 'chat').trim();
   if (!EXPERIENCES.has(experience)) throw workspaceError('invalid_input', 400);
@@ -102,5 +116,32 @@ export function normalizeWorkspaceRequest(input = {}, capabilities = []) {
     execution_mode: executionMode,
     source_refs: normalizeSourceRefs(input?.source_refs, capabilities),
     requested_capabilities: normalizeRequestedCapabilities(input?.requested_capabilities, capabilities)
+  };
+}
+
+export function normalizeWorkspaceResult(request, result = {}) {
+  const providerList = stringArray(result?.providers);
+  if (!providerList.length && result?.provider) providerList.push(String(result.provider));
+  const capabilityIds = [...new Set([request?.experience, ...(request?.requested_capabilities || [])])]
+    .filter((id) => CAPABILITY_IDS.has(id));
+  const rawText = String(result?.output ?? result?.text ?? '').trim();
+  const traceId = result?.trace_id ? String(result.trace_id) : null;
+
+  return {
+    ok: result?.ok === false ? false : true,
+    conversation_id: result?.conversation_id ? String(result.conversation_id) : request?.conversation_id || null,
+    execution_id: result?.execution_id ? String(result.execution_id) : traceId,
+    trace_id: traceId,
+    experience: request?.experience || 'chat',
+    state: normalizeExecutionState(result),
+    text: rawText || null,
+    providers: providerList,
+    model: result?.model ? String(result.model) : null,
+    profile: request?.profile || 'balanced',
+    capability_ids: capabilityIds,
+    artifact_refs: stringArray(result?.artifact_refs),
+    approval_refs: stringArray(result?.approval_refs),
+    provenance: Array.isArray(result?.provenance) ? result.provenance : [],
+    error: result?.error ? String(result.error) : null
   };
 }
