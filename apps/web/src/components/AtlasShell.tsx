@@ -121,6 +121,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
       : 'Public workspace';
   const roleLabel = organization ? organization.role.toUpperCase() : hasSession ? 'CHECKING' : 'PUBLIC';
   const shellClassName = [
+    location.pathname === '/voice/studio' ? 'atlas-shell-voice-studio' : '',
     'atlas-shell',
     'atlas-shell-futuristic',
     accessibilityProfile.highContrast ? 'accessibility-high-contrast' : '',
