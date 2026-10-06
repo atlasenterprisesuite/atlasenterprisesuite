@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ATLAS_MODULES, type AtlasModuleReadiness } from '../registry';
+import { ATLAS_SUITE_VISUAL, getModuleVisual } from './moduleVisuals';
 import './atlas-suite.css';
 
 const READINESS_LABELS: Record<AtlasModuleReadiness, string> = {
@@ -16,13 +17,6 @@ const READINESS_FILTERS: readonly { value: 'all' | AtlasModuleReadiness; label: 
   { value: 'external-gated', label: 'External Gate' }
 ];
 
-const COVER_ASSETS = [
-  '/atlas/design/atlas-module-gallery.webp',
-  '/atlas/design/atlas-universe.webp',
-  '/atlas/design/atlas-main-dashboard.webp',
-  '/atlas/design/atlas-voice.webp'
-] as const;
-
 type PrimarySystemDefinition = {
   label: string;
   eyebrow: string;
@@ -30,26 +24,24 @@ type PrimarySystemDefinition = {
   route?: string;
   title?: string;
   description?: string;
-  cover: number;
 };
 
 const PRIMARY_SYSTEMS: readonly PrimarySystemDefinition[] = [
-  { label: 'AI', eyebrow: 'Intelligence', moduleId: 'assistant', cover: 0 },
+  { label: 'AI', eyebrow: 'Intelligence', moduleId: 'assistant' },
   {
     label: 'Enterprise',
     eyebrow: 'Operations',
     route: '/suite',
     title: 'ATLAS Enterprise Suite',
-    description: 'Canonical product library for every governed ATLAS domain and workspace.',
-    cover: 2
+    description: 'Canonical product library for every governed ATLAS domain and workspace.'
   },
-  { label: 'Finance', eyebrow: 'Capital', moduleId: 'finance', cover: 0 },
-  { label: 'Network', eyebrow: 'Communications', moduleId: 'connect', cover: 3 },
-  { label: 'Spatial', eyebrow: 'Navigation', moduleId: 'galaxy', cover: 1 },
-  { label: 'Health', eyebrow: 'Research', moduleId: 'health', cover: 0 },
-  { label: 'Business', eyebrow: 'Operations', moduleId: 'business', cover: 2 },
-  { label: 'Creator', eyebrow: 'Studio', moduleId: 'studio', cover: 0 },
-  { label: 'Cloud', eyebrow: 'Platform', moduleId: 'cloud', cover: 1 }
+  { label: 'Finance', eyebrow: 'Capital', moduleId: 'finance' },
+  { label: 'Network', eyebrow: 'Communications', moduleId: 'connect' },
+  { label: 'Spatial', eyebrow: 'Navigation', moduleId: 'galaxy' },
+  { label: 'Health', eyebrow: 'Research', moduleId: 'health' },
+  { label: 'Business', eyebrow: 'Operations', moduleId: 'business' },
+  { label: 'Creator', eyebrow: 'Studio', moduleId: 'studio' },
+  { label: 'Cloud', eyebrow: 'Platform', moduleId: 'cloud' }
 ];
 
 export function AtlasSuitePage() {
@@ -75,7 +67,8 @@ export function AtlasSuitePage() {
       title: module?.title ?? definition.title ?? definition.label,
       description: module?.description ?? definition.description ?? '',
       readiness: module?.readiness,
-      evolution: module?.evolution
+      evolution: module?.evolution,
+      visual: module ? getModuleVisual(module.id) : ATLAS_SUITE_VISUAL
     }];
   }), []);
 
@@ -141,7 +134,7 @@ export function AtlasSuitePage() {
         <nav className="suite-primary-grid" aria-label="ATLAS primary systems">
           {primarySystems.map((system) => (
             <Link className="suite-primary-card" to={system.route} key={system.label}>
-              <img src={COVER_ASSETS[system.cover % COVER_ASSETS.length]} alt="" aria-hidden="true" loading="lazy" decoding="async" />
+              <img src={system.visual.master} alt="" aria-hidden="true" loading="lazy" decoding="async" />
               <span className="suite-card-shade" aria-hidden="true" />
               <span className="suite-primary-copy">
                 <small>{system.eyebrow}</small>
@@ -206,11 +199,11 @@ export function AtlasSuitePage() {
 
         {filteredModules.length ? (
           <div className="suite-module-grid" aria-label="ATLAS A-Z modules">
-            {filteredModules.map((module, index) => (
+            {filteredModules.map((module) => (
               <Link className="suite-module-card" to={module.route} key={module.id}>
                 <span className="suite-module-cover">
                   <img
-                    src={COVER_ASSETS[index % COVER_ASSETS.length]}
+                    src={getModuleVisual(module.id).master}
                     alt=""
                     aria-hidden="true"
                     loading="lazy"
