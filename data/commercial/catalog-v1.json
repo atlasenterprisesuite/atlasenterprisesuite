@@ -1,0 +1,96 @@
+{
+  "catalog_version": "2026.10.04-v1",
+  "effective_date": "2026-10-04",
+  "currency_policy": "usd-primary-v1",
+  "evidence_freshness_hours": 24,
+  "offers": [
+    {
+      "id": "atlas-business",
+      "name": "ATLAS Business",
+      "description": "Governed small and mid-market enterprise operations with a sales-led onboarding path.",
+      "pricing": {
+        "pricing_mode": "negotiated",
+        "currency": "USD",
+        "billing_period": "annual",
+        "minimum_term_months": 12,
+        "base_price": null,
+        "implementation_fee_mode": "negotiated",
+        "overage_policy": "contract-defined",
+        "discount_policy_id": "business-standard-v1",
+        "support_tier": "business"
+      },
+      "capabilities": [
+        { "module_id": "business", "state": "SELLABLE", "evidence_policy_id": "commercial-core-p0-v1" },
+        { "module_id": "finance", "state": "SELLABLE", "evidence_policy_id": "commercial-finance-p0-v1" },
+        { "module_id": "accounting", "state": "SELLABLE", "evidence_policy_id": "commercial-finance-p0-v1" },
+        { "module_id": "inventory", "state": "SELLABLE", "evidence_policy_id": "commercial-operations-p0-v1" },
+        { "module_id": "analytics", "state": "SELLABLE", "evidence_policy_id": "commercial-analytics-p0-v1" },
+        { "module_id": "work", "state": "SELLABLE", "evidence_policy_id": "commercial-work-p0-v1" }
+      ]
+    },
+    {
+      "id": "atlas-enterprise",
+      "name": "ATLAS Enterprise",
+      "description": "Advanced governed operations, people, revenue, integrations and enterprise controls.",
+      "pricing": {
+        "pricing_mode": "negotiated",
+        "currency": "USD",
+        "billing_period": "annual",
+        "minimum_term_months": 12,
+        "base_price": null,
+        "implementation_fee_mode": "negotiated",
+        "overage_policy": "contract-defined",
+        "discount_policy_id": "enterprise-governed-v1",
+        "support_tier": "enterprise"
+      },
+      "capabilities": [
+        { "module_id": "business", "state": "SELLABLE", "evidence_policy_id": "commercial-core-p0-v1" },
+        { "module_id": "finance", "state": "SELLABLE", "evidence_policy_id": "commercial-finance-p0-v1" },
+        { "module_id": "accounting", "state": "SELLABLE", "evidence_policy_id": "commercial-finance-p0-v1" },
+        { "module_id": "inventory", "state": "SELLABLE", "evidence_policy_id": "commercial-operations-p0-v1" },
+        { "module_id": "analytics", "state": "SELLABLE", "evidence_policy_id": "commercial-analytics-p0-v1" },
+        { "module_id": "work", "state": "SELLABLE", "evidence_policy_id": "commercial-work-p0-v1" },
+        { "module_id": "revenue", "state": "SELLABLE", "evidence_policy_id": "commercial-revenue-p0-v1" },
+        { "module_id": "advisory", "state": "SELLABLE", "evidence_policy_id": "commercial-advisory-p0-v1" },
+        { "module_id": "people", "state": "SELLABLE", "evidence_policy_id": "commercial-people-p0-v1" },
+        { "module_id": "crm", "state": "EXTERNAL_GATED", "evidence_policy_id": "commercial-crm-provider-v1" },
+        { "module_id": "payroll", "state": "EXTERNAL_GATED", "evidence_policy_id": "commercial-payroll-provider-v1" }
+      ]
+    },
+    {
+      "id": "atlas-custom",
+      "name": "ATLAS Custom",
+      "description": "Negotiated ATLAS scope for approved modules, implementation work and provider-gated integrations.",
+      "pricing": {
+        "pricing_mode": "negotiated",
+        "currency": "USD",
+        "billing_period": "custom",
+        "minimum_term_months": 1,
+        "base_price": null,
+        "implementation_fee_mode": "negotiated",
+        "overage_policy": "contract-defined",
+        "discount_policy_id": "custom-escalated-v1",
+        "support_tier": "custom"
+      },
+      "capabilities": [
+        { "module_id": "business", "state": "SELLABLE", "evidence_policy_id": "commercial-core-p0-v1" },
+        { "module_id": "finance", "state": "SELLABLE", "evidence_policy_id": "commercial-finance-p0-v1" },
+        { "module_id": "accounting", "state": "SELLABLE", "evidence_policy_id": "commercial-finance-p0-v1" },
+        { "module_id": "revenue", "state": "SELLABLE", "evidence_policy_id": "commercial-revenue-p0-v1" },
+        { "module_id": "advisory", "state": "SELLABLE", "evidence_policy_id": "commercial-advisory-p0-v1" },
+        { "module_id": "inventory", "state": "SELLABLE", "evidence_policy_id": "commercial-operations-p0-v1" },
+        { "module_id": "analytics", "state": "SELLABLE", "evidence_policy_id": "commercial-analytics-p0-v1" },
+        { "module_id": "work", "state": "SELLABLE", "evidence_policy_id": "commercial-work-p0-v1" },
+        { "module_id": "people", "state": "SELLABLE", "evidence_policy_id": "commercial-people-p0-v1" },
+        { "module_id": "crm", "state": "EXTERNAL_GATED", "evidence_policy_id": "commercial-crm-provider-v1" },
+        { "module_id": "payroll", "state": "EXTERNAL_GATED", "evidence_policy_id": "commercial-payroll-provider-v1" },
+        { "module_id": "pay", "state": "EXTERNAL_GATED", "evidence_policy_id": "regulated-financial-rails-v1" },
+        { "module_id": "connect", "state": "EXTERNAL_GATED", "evidence_policy_id": "communications-provider-v1" },
+        { "module_id": "telecom", "state": "EXTERNAL_GATED", "evidence_policy_id": "carrier-regulatory-v1" },
+        { "module_id": "tax", "state": "PREVIEW", "evidence_policy_id": "tax-filing-boundary-v1" },
+        { "module_id": "health", "state": "PREVIEW", "evidence_policy_id": "clinical-boundary-v1" },
+        { "module_id": "insurance", "state": "NOT_FOR_SALE", "evidence_policy_id": "insurance-regulatory-v1" }
+      ]
+    }
+  ]
+}

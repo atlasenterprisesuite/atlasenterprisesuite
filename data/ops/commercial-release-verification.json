@@ -1,0 +1,41 @@
+{
+  "gate_version": 1,
+  "default_mode": "fail-closed",
+  "evidence_freshness_hours": 24,
+  "allowed_offer_ids": [
+    "atlas-business",
+    "atlas-enterprise",
+    "atlas-custom"
+  ],
+  "required_public_routes": [
+    "/",
+    "/suite",
+    "/pricing",
+    "/request-demo",
+    "/contact",
+    "/terms",
+    "/privacy",
+    "/security",
+    "/status"
+  ],
+  "required_enterprise_checks": [
+    "tenant_isolation_verified",
+    "rbac_server_authoritative",
+    "audit_verified",
+    "privileged_auth_policy_verified",
+    "backup_restore_evidence_current"
+  ],
+  "required_revenue_checks": [
+    "lead_entrypoint_verified",
+    "authoritative_lead_workflow",
+    "price_order_semantics_verified",
+    "provisioning_governed"
+  ],
+  "required_legal_evidence": [
+    "terms_published",
+    "privacy_published",
+    "security_published",
+    "legal_review_verified",
+    "owner_verified"
+  ]
+}
