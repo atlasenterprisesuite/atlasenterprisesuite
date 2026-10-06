@@ -78,6 +78,12 @@ export function CreatorWorkspace() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (musicAudioUrl) URL.revokeObjectURL(musicAudioUrl);
+    };
+  }, [musicAudioUrl]);
+
   if (kind === 'image') return <ImageLabWorkspace engines={engines} />;
   if (kind === 'video') return <DirectorWorkspace />;
 
