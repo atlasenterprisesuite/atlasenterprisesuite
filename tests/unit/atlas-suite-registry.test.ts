@@ -21,6 +21,13 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(resolver).toContain('<AtlasSuitePage />');
   });
 
+  it('shows active evolution as an independent lifecycle axis', () => {
+    expect(suite).toContain("module.evolution === 'active'");
+    expect(suite).toContain('Operational baseline');
+    expect(suite).toContain('Active evolution');
+    expect(suite).not.toContain('Integrated / partial</span><strong>{partial}');
+  });
+
   it('reconciles historical A-Z domains onto the modern router without restoring the legacy shell', () => {
     const routes = ['/analytics', '/automations', '/people', '/revenue', '/site-review', '/telecom', '/release'];
     for (const route of routes) {
@@ -71,7 +78,7 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(hubs).toContain('remain fail-closed');
     expect(suite).toContain('never present external or incomplete capabilities as live');
     expect(suite).toContain("implemented: 'Integrated'");
-    expect(suite).toContain("Pending external gate");
+    expect(suite).toContain('Pending external gate');
     expect(suite).toContain('only current machine-verifiable gate evidence can yield Production Verified');
   });
 });
