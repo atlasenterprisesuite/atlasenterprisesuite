@@ -6,6 +6,7 @@ import { AviationRoutes } from '../modules/aviation/AviationRoutes';
 import { BusinessEcosystemPage } from '../modules/business/BusinessEcosystemPage';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
+import { CommercialRoutes } from '../modules/commercial/CommercialRoutes';
 import { AtlasCloudRoutes } from '../modules/cloud/AtlasCloudRoutes';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
@@ -49,8 +50,11 @@ import { WorkRoutes } from '../work/WorkRoutes';
 const JAQUE_MATE_SENTINEL_CANONICAL = '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel';
 const JAQUE_MATE_SENTINEL_V2 = '/health/jaque-mate/sentinel/v2';
 const JAQUE_MATE_SENTINEL_LEGACY = '/health/jaque-mate/sentinel';
+const COMMERCIAL_PUBLIC_ROUTES = new Set(['/pricing', '/request-demo', '/contact', '/terms', '/privacy', '/security']);
 
 export function resolveAtlasExtension(pathname: string) {
+  if (COMMERCIAL_PUBLIC_ROUTES.has(pathname)) return <CommercialRoutes />;
+
   if (pathname === '/cloud/docs' || pathname.startsWith('/cloud/docs/')) {
     return <AtlasCloudRoutes />;
   }
