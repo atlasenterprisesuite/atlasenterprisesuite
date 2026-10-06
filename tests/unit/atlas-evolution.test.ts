@@ -155,6 +155,19 @@ describe('ATLAS Evolution Kernel', () => {
     }));
   });
 
+  it('rejects route whitespace instead of silently normalizing canonical navigation', () => {
+    const audit = getAudit();
+    if (!audit) return;
+    const result = audit([moduleOf({ route: ' /alpha ' })]);
+    expect(result.findings).toContainEqual(expect.objectContaining({
+      id: 'registry:invalid-route:alpha',
+      targetId: 'alpha',
+      invariantId: 'canonical-source-of-truth',
+      severity: 'P1',
+      code: 'invalid-module-route'
+    }));
+  });
+
   it('flags blank canonical copy as P2 evidence debt', () => {
     const audit = getAudit();
     if (!audit) return;
