@@ -5,6 +5,28 @@ export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gem
 export type AssistantProfile = 'fast' | 'balanced' | 'deep';
 export type AssistantExecutionMode = 'auto' | 'interactive' | 'background';
 
+export type AtlasAssistantCapabilityId =
+  | 'chat'
+  | 'work'
+  | 'build'
+  | 'web-research'
+  | 'attachments'
+  | 'voice'
+  | 'apps'
+  | 'knowledge'
+  | 'artifacts'
+  | 'computer';
+
+export type AtlasAssistantCapabilityState = 'ready' | 'gated' | 'unavailable' | 'configuration_required';
+
+export type AtlasAssistantCapability = {
+  id: AtlasAssistantCapabilityId;
+  state: AtlasAssistantCapabilityState;
+  reason: string | null;
+  permissions: string[];
+  supports_background: boolean;
+};
+
 export type AssistantProviderState =
   | 'verified_for_request'
   | 'configured_unverified'
@@ -37,6 +59,7 @@ export type AssistantStatusResponse = {
   organization: string;
   role: string | null;
   capabilities: string[];
+  workspace_capabilities?: AtlasAssistantCapability[];
   providers?: AssistantProviderReadiness[];
   modes?: AssistantMode[];
   profiles?: AssistantProfile[];
@@ -192,6 +215,10 @@ export function assistantProviderSummary(status: AssistantStatusResponse): strin
   if (verified.length) return verified.join(', ');
   if (status.provider_state === 'verified_for_request') return status.provider || 'verified provider';
   return 'no verified provider';
+}
+
+export function assistantWorkspaceCapabilities(status: AssistantStatusResponse): AtlasAssistantCapability[] {
+  return Array.isArray(status.workspace_capabilities) ? status.workspace_capabilities : [];
 }
 
 export async function getAssistantStatus(): Promise<AssistantStatusResponse> {
