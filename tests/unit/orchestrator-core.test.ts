@@ -38,6 +38,15 @@ describe('ATLAS orchestrator', () => {
     await expect(orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human)).rejects.toThrow(/Illegal ATLAS task transition/);
   });
 
+  it('fails closed when completion is requested without verified evidence', async () => {
+    const persistence = new InMemoryPersistence();
+    const orchestrator = new AtlasOrchestrator({ persistence, providers: [provider] });
+    await orchestrator.createTask(task('verified'), human);
+
+    await expect(orchestrator.transitionTask(scope, 'ATL-2026-000002', 'completed', human))
+      .rejects.toThrow(/completion evidence/i);
+  });
+
   it('delegates through the registered provider without granting release permissions', async () => {
     const persistence = new InMemoryPersistence();
     const orchestrator = new AtlasOrchestrator({ persistence, providers: [provider] });
