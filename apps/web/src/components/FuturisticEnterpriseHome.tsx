@@ -47,7 +47,7 @@ export function FuturisticEnterpriseHome() {
   const [query, setQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
-  const partial = ATLAS_MODULES.filter((module) => module.readiness === 'partial').length;
+  const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
   const gated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
   const total = ATLAS_MODULES.length;
   const featured = ATLAS_MODULES.filter((module) => module.showInNavigation).slice(0, 8);
@@ -158,6 +158,8 @@ export function FuturisticEnterpriseHome() {
             <span className="atlas-home-status__label">SYSTEM</span>
             <strong>{implemented} operativos</strong>
             <span aria-hidden="true">·</span>
+            <strong>{activeEvolution} en evolución</strong>
+            <span aria-hidden="true">·</span>
             <strong>{gated} conexiones</strong>
             <span>Estado derivado del catálogo canónico</span>
           </div>
@@ -235,22 +237,22 @@ export function FuturisticEnterpriseHome() {
 
         <section className="atlas-command-metrics" aria-label="ATLAS module readiness summary">
           <article><span className="metric-icon">◇</span><small>MÓDULOS</small><strong>{total}</strong><p>Registrados en el catálogo ATLAS</p></article>
-          <article><span className="metric-icon">✓</span><small>OPERATIVOS</small><strong>{implemented}</strong><p>Implementación marcada como operativa</p></article>
-          <article><span className="metric-icon">↗</span><small>EN EVOLUCIÓN</small><strong>{partial}</strong><p>Capacidades parciales con límites visibles</p></article>
+          <article><span className="metric-icon">✓</span><small>OPERATIVOS</small><strong>{implemented}</strong><p>Baseline operativo comprobado</p></article>
+          <article><span className="metric-icon">↗</span><small>EN EVOLUCIÓN</small><strong>{activeEvolution}</strong><p>Siguiente versión en desarrollo o validación</p></article>
           <article><span className="metric-icon">◎</span><small>CONEXIONES</small><strong>{gated}</strong><p>Dependencias externas gobernadas</p></article>
         </section>
 
         <section className="atlas-command-lower">
           <article className="atlas-system-panel">
             <header>
-              <div><strong>Resumen general del sistema</strong><span>Estado real del catálogo de módulos</span></div>
+              <div><strong>Resumen general del sistema</strong><span>Estados independientes derivados del catálogo canónico</span></div>
               <Link to="/suite">Ver módulos →</Link>
             </header>
-            <div className="atlas-readiness-chart" role="img" aria-label={`${implemented} módulos operativos, ${partial} parciales y ${gated} con conexión externa requerida`}>
+            <div className="atlas-readiness-chart" role="img" aria-label={`${implemented} módulos con baseline operativo, ${activeEvolution} en evolución activa y ${gated} con conexión externa requerida`}>
               <div className="chart-grid" aria-hidden="true" />
               <div className="chart-bars">
                 <div><span style={{ height: `${Math.max(18, (implemented / total) * 100)}%` }} /><small>Operativos</small></div>
-                <div><span style={{ height: `${Math.max(18, (partial / total) * 100)}%` }} /><small>En evolución</small></div>
+                <div><span style={{ height: `${Math.max(18, (activeEvolution / total) * 100)}%` }} /><small>En evolución</small></div>
                 <div><span style={{ height: `${Math.max(18, (gated / total) * 100)}%` }} /><small>Conexión</small></div>
               </div>
             </div>
