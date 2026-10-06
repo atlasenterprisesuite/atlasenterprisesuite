@@ -7,6 +7,8 @@ import {
   quotePayout,
   resolveInstrumentEligibility,
   selectPayoutRoute,
+  summarizeBalanceEvidence,
+  type AtlasBalanceEvidence,
   type AtlasPayProviderReadiness
 } from '../../packages/pay/src';
 
@@ -127,5 +129,41 @@ describe('ATLAS Pay issuing and payout core', () => {
     });
 
     expect(() => quotePayout(100n, 50n, 50n)).toThrowError(AtlasPayError);
+  });
+
+  it('keeps balance domains and currencies separate while using only latest source evidence', () => {
+    const evidence: AtlasBalanceEvidence[] = [
+      {
+        id: 'old-wallet', accountId: 'acct-1', balanceKind: 'wallet', amountMinor: 1000n,
+        currency: 'USD', state: 'available', sourceKind: 'external_provider', sourceReference: 'wallet-main',
+        observedAt: '2026-10-06T10:00:00Z'
+      },
+      {
+        id: 'new-wallet', accountId: 'acct-1', balanceKind: 'wallet', amountMinor: 1500n,
+        currency: 'usd', state: 'available', sourceKind: 'external_provider', sourceReference: 'wallet-main',
+        observedAt: '2026-10-06T11:00:00Z'
+      },
+      {
+        id: 'earnings', accountId: 'acct-1', balanceKind: 'earnings', amountMinor: 700n,
+        currency: 'USD', state: 'pending', sourceKind: 'external_provider', sourceReference: 'creator-earnings',
+        observedAt: '2026-10-06T11:30:00Z'
+      },
+      {
+        id: 'rewards-eur', accountId: 'acct-1', balanceKind: 'rewards', amountMinor: 300n,
+        currency: 'EUR', state: 'available', sourceKind: 'external_provider', sourceReference: 'rewards',
+        observedAt: '2026-10-06T12:00:00Z'
+      },
+      {
+        id: 'unavailable-credit', accountId: 'acct-1', balanceKind: 'credits', amountMinor: 999n,
+        currency: 'USD', state: 'unavailable', sourceKind: 'manual_evidence', sourceReference: 'credit-note',
+        observedAt: '2026-10-06T12:30:00Z'
+      }
+    ];
+
+    expect(summarizeBalanceEvidence(evidence)).toEqual([
+      { balanceKind: 'earnings', currency: 'USD', state: 'pending', amountMinor: 700n, evidenceCount: 1 },
+      { balanceKind: 'rewards', currency: 'EUR', state: 'available', amountMinor: 300n, evidenceCount: 1 },
+      { balanceKind: 'wallet', currency: 'USD', state: 'available', amountMinor: 1500n, evidenceCount: 1 }
+    ]);
   });
 });
