@@ -235,7 +235,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
                 <details
                   key={`${group.area}-${groupActive ? 'active' : 'idle'}`}
                   className={groupActive ? 'atlas-nav-group is-active' : 'atlas-nav-group'}
-                  defaultOpen={groupActive}
+                  open={groupActive || undefined}
                 >
                   <summary className="atlas-nav-group-summary">
                     <span>{group.area}</span>
