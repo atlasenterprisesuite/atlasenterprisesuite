@@ -6,6 +6,7 @@ const read = (path: string) => (existsSync(path) ? readFileSync(path, 'utf8') : 
 const registry = read('apps/web/src/modules/registry.ts');
 const resolver = read('apps/web/src/extensions/resolveAtlasExtension.tsx');
 const suite = read('apps/web/src/modules/integration/AtlasSuitePage.tsx');
+const suiteStyles = read('apps/web/src/modules/integration/atlas-suite.css');
 const hubs = read('apps/web/src/modules/integration/AtlasIntegrationHubs.tsx');
 const analytics = read('apps/web/src/modules/analytics/AnalyticsRoutes.tsx');
 const app = read('apps/web/src/App.tsx');
@@ -19,6 +20,20 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(registry).toContain("{ to: '/suite', label: 'All Modules' }");
     expect(resolver).toContain("pathname === '/suite'");
     expect(resolver).toContain('<AtlasSuitePage />');
+  });
+
+  it('presents the suite as a visual product library before the A-Z directory', () => {
+    expect(suite).toContain('Primary Systems');
+    expect(suite).toContain('Explore A-Z');
+    expect(suite).toContain('suite-hero');
+    expect(suite).toContain('suite-primary-grid');
+    expect(suite).toContain('suite-filter-bar');
+    expect(suite).toContain('suite-module-card');
+    expect(suite).toContain('COVER_ASSETS');
+    expect(suite).toContain('/atlas/design/atlas-module-gallery.webp');
+    expect(suiteStyles).toContain('.suite-module-grid');
+    expect(suiteStyles).toContain('repeat(4,minmax(0,1fr))');
+    expect(suiteStyles).toContain('@media(max-width:760px)');
   });
 
   it('reconciles historical A-Z domains onto the modern router without restoring the legacy shell', () => {
