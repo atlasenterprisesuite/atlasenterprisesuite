@@ -27,6 +27,11 @@ describe('ATLAS Cloud control plane v2', () => {
     expect(ops).toContain('atlas_incidents');
     expect(ops).not.toContain('create table');
     expect(ops).not.toContain('localStorage.setItem');
+    expect(next).toContain('atlasAuthorizedJson');
+    expect(ops).toContain('atlasAuthorizedJson');
+    expect(next).not.toContain('localStorage.getItem');
+    expect(ops).not.toContain('localStorage.getItem');
+    expect(next + ops).not.toContain('.supabase.co/functions/v1/');
   });
 
   it('keeps release truth separate from deployment and production verification', () => {
