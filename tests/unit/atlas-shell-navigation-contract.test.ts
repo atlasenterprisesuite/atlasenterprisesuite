@@ -10,7 +10,7 @@ describe('ATLAS shell navigation and legibility contract', () => {
     expect(shell).toContain('ATLAS_MODULES');
     expect(shell).toContain('atlas-nav-group');
     expect(shell).toContain('<summary');
-    expect(shell).toContain('defaultOpen={groupActive}');
+    expect(shell).toContain('open={groupActive || undefined}');
     expect(shell).toContain('aria-label="ATLAS modules"');
   });
 
