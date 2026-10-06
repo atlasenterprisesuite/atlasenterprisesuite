@@ -15,7 +15,8 @@ import {
   assistantWorkspaceCapabilities,
   getAssistantStatus,
   getAssistantUsage,
-  sendAssistantMessage
+  sendAssistantMessage,
+  sendAssistantWorkspaceRequest
 } from '../../apps/web/src/assistant/client';
 
 describe('ATLAS Assistant governed copilot client', () => {
@@ -70,6 +71,59 @@ describe('ATLAS Assistant governed copilot client', () => {
 
     expect(assistantWorkspaceCapabilities(status)).toEqual(manifest);
     expect(assistantWorkspaceCapabilities({ ...status, workspace_capabilities: undefined })).toEqual([]);
+  });
+
+  it('sends one normalized workspace request and preserves the server execution envelope', async () => {
+    mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      conversation_id: 'conv-work-1',
+      execution_id: 'trace-work-1',
+      experience: 'work',
+      state: 'queued',
+      text: null,
+      providers: ['openai'],
+      model: 'server-selected',
+      profile: 'deep',
+      capability_ids: ['work'],
+      artifact_refs: [],
+      approval_refs: [],
+      provenance: [],
+      error: null
+    }), { status: 202 }));
+
+    const result = await sendAssistantWorkspaceRequest({
+      experience: 'work',
+      message: 'Reconcile the month end package',
+      conversationId: 'conv-work-1',
+      mode: 'auto',
+      profile: 'deep',
+      executionMode: 'background',
+      sourceRefs: [],
+      requestedCapabilities: ['work']
+    });
+
+    const [url, init] = mocks.authorizedAtlasFetch.mock.calls[0];
+    expect(url).toBe('/functions/v1/atlas-copilot?api=chat');
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      organization_id: 'org-1',
+      module: 'assistant',
+      experience: 'work',
+      message: 'Reconcile the month end package',
+      conversation_id: 'conv-work-1',
+      mode: 'auto',
+      profile: 'deep',
+      execution_mode: 'background',
+      source_refs: [],
+      requested_capabilities: ['work'],
+      client_metadata: { modality: 'text', surface: 'atlas-assistant-workspace' }
+    });
+    expect(result).toMatchObject({
+      conversation_id: 'conv-work-1',
+      execution_id: 'trace-work-1',
+      experience: 'work',
+      state: 'queued',
+      profile: 'deep'
+    });
   });
 
   it('uses the authenticated ATLAS fetch path for usage telemetry', async () => {
