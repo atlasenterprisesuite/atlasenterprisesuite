@@ -1,12 +1,56 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ATLAS_MODULES, type AtlasModuleReadiness } from '../registry';
+import './atlas-suite.css';
 
 const READINESS_LABELS: Record<AtlasModuleReadiness, string> = {
   implemented: 'Integrated',
   partial: 'Integrated / partial',
   'external-gated': 'Pending external gate'
 };
+
+const READINESS_FILTERS: readonly { value: 'all' | AtlasModuleReadiness; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'implemented', label: 'Operational' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'external-gated', label: 'External Gate' }
+];
+
+const COVER_ASSETS = [
+  '/atlas/design/atlas-module-gallery.webp',
+  '/atlas/design/atlas-universe.webp',
+  '/atlas/design/atlas-main-dashboard.webp',
+  '/atlas/design/atlas-voice.webp'
+] as const;
+
+type PrimarySystemDefinition = {
+  label: string;
+  eyebrow: string;
+  moduleId?: string;
+  route?: string;
+  title?: string;
+  description?: string;
+  cover: number;
+};
+
+const PRIMARY_SYSTEMS: readonly PrimarySystemDefinition[] = [
+  { label: 'AI', eyebrow: 'Intelligence', moduleId: 'assistant', cover: 0 },
+  {
+    label: 'Enterprise',
+    eyebrow: 'Operations',
+    route: '/suite',
+    title: 'ATLAS Enterprise Suite',
+    description: 'Canonical product library for every governed ATLAS domain and workspace.',
+    cover: 2
+  },
+  { label: 'Finance', eyebrow: 'Capital', moduleId: 'finance', cover: 0 },
+  { label: 'Network', eyebrow: 'Communications', moduleId: 'connect', cover: 3 },
+  { label: 'Spatial', eyebrow: 'Navigation', moduleId: 'galaxy', cover: 1 },
+  { label: 'Health', eyebrow: 'Research', moduleId: 'health', cover: 0 },
+  { label: 'Business', eyebrow: 'Operations', moduleId: 'business', cover: 2 },
+  { label: 'Creator', eyebrow: 'Studio', moduleId: 'studio', cover: 0 },
+  { label: 'Cloud', eyebrow: 'Platform', moduleId: 'cloud', cover: 1 }
+];
 
 export function AtlasSuitePage() {
   const [query, setQuery] = useState('');
@@ -18,6 +62,23 @@ export function AtlasSuitePage() {
     []
   );
 
+  const primarySystems = useMemo(() => PRIMARY_SYSTEMS.flatMap((definition) => {
+    const module = definition.moduleId
+      ? ATLAS_MODULES.find((candidate) => candidate.id === definition.moduleId)
+      : undefined;
+    const route = module?.route ?? definition.route;
+    if (!route) return [];
+
+    return [{
+      ...definition,
+      route,
+      title: module?.title ?? definition.title ?? definition.label,
+      description: module?.description ?? definition.description ?? '',
+      readiness: module?.readiness,
+      evolution: module?.evolution
+    }];
+  }), []);
+
   const filteredModules = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return ATLAS_MODULES.filter((module) => {
@@ -27,7 +88,7 @@ export function AtlasSuitePage() {
       const matchesReadiness = readiness === 'all' || module.readiness === readiness;
       const matchesArea = area === 'all' || module.area === area;
       return matchesQuery && matchesReadiness && matchesArea;
-    });
+    }).sort((left, right) => left.title.localeCompare(right.title));
   }, [area, query, readiness]);
 
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
@@ -35,84 +96,156 @@ export function AtlasSuitePage() {
   const externalGated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
 
   return (
-    <section className="page-stack">
-      <header className="page-header">
-        <p className="eyebrow">ATLAS Enterprise Suite</p>
-        <h1>ATLAS Suite A-Z</h1>
-        <p>
-          One canonical directory for every registered ATLAS domain. Operational baseline, active evolution and
-          external connection gates are independent lifecycle axes so a stable module can keep evolving without losing its verified baseline.
-        </p>
+    <section className="page-stack atlas-suite-page">
+      <header className="suite-hero">
+        <div className="suite-hero-backdrop" aria-hidden="true" />
+        <div className="suite-hero-content">
+          <p className="eyebrow">ATLAS Enterprise Suite</p>
+          <h1>ATLAS Suite A-Z</h1>
+          <p className="suite-hero-copy">
+            Discover, enter and continue across every canonical ATLAS system from one visual product library.
+            Operational baseline and active evolution are independent lifecycle axes; external readiness remains fail-closed.
+          </p>
+
+          <label className="suite-search">
+            <span>Search modules</span>
+            <div className="suite-search-control">
+              <span aria-hidden="true">⌕</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search Accounting, AI, People, Voice, Ride, CRM..."
+                type="search"
+              />
+            </div>
+          </label>
+
+          <div className="suite-status-strip" aria-label="ATLAS module readiness summary">
+            <span><strong>{ATLAS_MODULES.length}</strong> modules</span>
+            <span><strong>{implemented}</strong> operational baseline</span>
+            <span><strong>{activeEvolution}</strong> active evolution</span>
+            <span><strong>{externalGated}</strong> gated</span>
+          </div>
+        </div>
       </header>
 
-      <div className="metric-grid" aria-label="ATLAS module readiness summary">
-        <article><span>Registered modules</span><strong>{ATLAS_MODULES.length}</strong><small>One canonical registry</small></article>
-        <article><span>Operational baseline</span><strong>{implemented}</strong><small>Stable integrated capability; production verification remains separate</small></article>
-        <article><span>Active evolution</span><strong>{activeEvolution}</strong><small>Next version is in implementation or validation</small></article>
-        <article><span>Pending external gates</span><strong>{externalGated}</strong><small>Provider verification required</small></article>
-      </div>
+      <section className="suite-section" aria-labelledby="primary-systems-heading">
+        <div className="suite-section-heading">
+          <div>
+            <p className="eyebrow">Primary Systems</p>
+            <h2 id="primary-systems-heading">Enter ATLAS by capability</h2>
+          </div>
+          <p>Visual entry points resolve to the same canonical routes used across ATLAS.</p>
+        </div>
 
-      <section className="workspace-card" aria-label="Filter ATLAS modules">
-        <div className="toolbar">
-          <label className="field wide-field">
-            <span>Search modules</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search Accounting, People, Voice, Ride, CRM..."
-              type="search"
-            />
-          </label>
-          <label className="field">
+        <nav className="suite-primary-grid" aria-label="ATLAS primary systems">
+          {primarySystems.map((system) => (
+            <Link className="suite-primary-card" to={system.route} key={system.label}>
+              <img src={COVER_ASSETS[system.cover % COVER_ASSETS.length]} alt="" aria-hidden="true" loading="lazy" decoding="async" />
+              <span className="suite-card-shade" aria-hidden="true" />
+              <span className="suite-primary-copy">
+                <small>{system.eyebrow}</small>
+                <strong>{system.label}</strong>
+                <span>{system.title}</span>
+                {system.readiness ? (
+                  <em className={`suite-readiness-chip ${system.readiness}`}>
+                    {READINESS_LABELS[system.readiness]}{system.evolution === 'active' ? ' · Active evolution' : ''}
+                  </em>
+                ) : null}
+              </span>
+              <span className="suite-open-mark" aria-hidden="true">↗</span>
+            </Link>
+          ))}
+        </nav>
+      </section>
+
+      <section className="suite-section suite-directory" id="explore-a-z" aria-labelledby="explore-a-z-heading">
+        <div className="suite-section-heading">
+          <div>
+            <p className="eyebrow">Explore A-Z</p>
+            <h2 id="explore-a-z-heading">All registered modules</h2>
+          </div>
+          <p>Browse the canonical registry without hiding provider, production or evolution boundaries.</p>
+        </div>
+
+        <div className="suite-filter-bar" aria-label="Filter ATLAS modules">
+          <div className="suite-filter-chips" aria-label="Readiness filters">
+            {READINESS_FILTERS.map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                className={readiness === filter.value ? 'is-active' : ''}
+                aria-pressed={readiness === filter.value}
+                onClick={() => setReadiness(filter.value)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          <label className="suite-area-filter">
             <span>Area</span>
             <select value={area} onChange={(event) => setArea(event.target.value)}>
               <option value="all">All areas</option>
               {areas.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
-          <label className="field">
-            <span>Readiness</span>
-            <select
-              value={readiness}
-              onChange={(event) => setReadiness(event.target.value as 'all' | AtlasModuleReadiness)}
-            >
-              <option value="all">All states</option>
-              <option value="implemented">Integrated</option>
-              <option value="partial">Integrated / partial</option>
-              <option value="external-gated">Pending external gate</option>
-            </select>
+
+          <label className="suite-filter-search">
+            <span className="sr-only">Search modules</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Filter modules..."
+              type="search"
+            />
           </label>
+
+          <span className="suite-result-count" aria-live="polite">{filteredModules.length} results</span>
         </div>
+
+        {filteredModules.length ? (
+          <div className="suite-module-grid" aria-label="ATLAS A-Z modules">
+            {filteredModules.map((module, index) => (
+              <Link className="suite-module-card" to={module.route} key={module.id}>
+                <span className="suite-module-cover">
+                  <img
+                    src={COVER_ASSETS[index % COVER_ASSETS.length]}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span className="suite-card-shade" aria-hidden="true" />
+                  <span className={`suite-readiness-chip ${module.readiness}`}>
+                    {READINESS_LABELS[module.readiness]}{module.evolution === 'active' ? ' · Active evolution' : ''}
+                  </span>
+                </span>
+                <span className="suite-module-copy">
+                  <small>{module.area}</small>
+                  <strong>{module.title}</strong>
+                  <p>{module.description}</p>
+                  <span className="suite-module-meta">
+                    <span>{module.requiresAuth ? 'ATLAS Identity' : 'Public entry'}</span>
+                    <span className="suite-module-open">Open <span aria-hidden="true">↗</span></span>
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state suite-empty-state">
+            <strong>No modules match these filters</strong>
+            <span>Change the search, area or readiness filter.</span>
+          </div>
+        )}
       </section>
 
-      {filteredModules.length ? (
-        <div className="module-grid" aria-label="ATLAS A-Z modules">
-          {filteredModules.map((module) => (
-            <Link className="module-card enabled" to={module.route} key={module.id}>
-              <span>
-                {module.area} · {READINESS_LABELS[module.readiness]}
-                {module.evolution === 'active' ? ' · Active evolution' : ''}
-              </span>
-              <strong>{module.title}</strong>
-              <p>{module.description}</p>
-              <small className="muted">
-                {module.requiresAuth ? 'ATLAS Identity required' : 'Public entry'} · {module.route}
-              </small>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="empty-state">
-          <strong>No modules match these filters</strong>
-          <span>Change the search, area or readiness filter.</span>
-        </div>
-      )}
-
-      <div className="notice strong">
+      <div className="notice strong suite-governance-note">
         “Integrated” describes the Operational baseline: canonical routing and governed module composition. Active evolution is tracked
-        independently, so the same module can retain its stable baseline while its next version is implemented or validated. External providers,
-        irreversible actions, production data and regulated workflows remain unavailable until their own verification gates pass. A module can be
-        Integrated while its production state is Pending Gate or Blocked; only current machine-verifiable gate evidence can yield Production Verified.
+        independently, so a stable module can continue into its next implementation/validation cycle without losing its baseline. External providers,
+        irreversible actions, production data and regulated workflows remain unavailable until their own verification gates pass. Only current
+        machine-verifiable gate evidence can yield Production Verified.
       </div>
     </section>
   );
