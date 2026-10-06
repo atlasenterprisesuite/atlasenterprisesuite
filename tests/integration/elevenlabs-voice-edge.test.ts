@@ -41,12 +41,12 @@ describe('ElevenLabs authenticated Edge integration', () => {
   ])('blocks synthesis at the authorization/configuration/audit boundary $status', async ({ options, auth, status }) => {
     const app = edge(options);
     expect((await app.request(auth)).status).toBe(status);
-    expect(app.calls.some(({ url }) => url.includes('api.elevenlabs.io'))).toBe(false);
+    expect(app.calls.some(({ url }) => new URL(url).hostname === 'api.elevenlabs.io')).toBe(false);
   });
   it('rejects malformed text before spending', async () => {
     const app = edge();
     expect((await app.request(true, 123)).status).toBe(400);
-    expect(app.calls.some(({ url }) => url.includes('api.elevenlabs.io'))).toBe(false);
+    expect(app.calls.some(({ url }) => new URL(url).hostname === 'api.elevenlabs.io')).toBe(false);
   });
   it('audits the authenticated tenant before synthesis and returns disclosed audio', async () => {
     const app = edge();
