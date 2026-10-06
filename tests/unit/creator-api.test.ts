@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   exportCreatorPrompt,
+  generateCreatorMusic,
   listCreativeEngines,
   listCreativePlans,
   saveCreativePlan,
@@ -95,6 +96,37 @@ describe('ATLAS Creator browser API', () => {
     expect(result.status).toBe('prompt-ready');
     expect(String(fetchMock.mock.calls[0][0])).toContain('/functions/v1/atlas-creator?api=prompt-export');
     expect(String(fetchMock.mock.calls[0][0])).not.toContain('submit');
+  });
+
+  it('requests executable music as binary audio rather than parsing it as JSON', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array([73, 68, 51]), {
+      status: 200,
+      headers: {
+        'content-type': 'audio/mpeg',
+        'x-atlas-song-id': 'song-1',
+        'x-atlas-provider': 'elevenlabs',
+        'x-atlas-model': 'music_v2'
+      }
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generateCreatorMusic({
+      prompt: 'Wondering cinematic ambient score',
+      durationSeconds: 60,
+      instrumental: true
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/functions/v1/atlas-creator?api=music-generate');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({
+      prompt: 'Wondering cinematic ambient score',
+      duration_seconds: 60,
+      instrumental: true
+    });
+    expect(result.blob.size).toBeGreaterThan(0);
+    expect(result.songId).toBe('song-1');
+    expect(result.model).toBe('music_v2');
   });
 
   it('lists CreativePlans through the authenticated creator edge route', async () => {
