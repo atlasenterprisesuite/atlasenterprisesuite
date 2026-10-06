@@ -373,6 +373,26 @@ export class AtlasVoiceApi {
     );
   }
 
+  async elevenLabsStatus(): Promise<{ state: string; configured: boolean; synthesis_verified: boolean }> {
+    const { orgId } = await this.getContext();
+    return parseResponse(await this.transport('/functions/v1/atlas-voice-provider?api=status&provider=elevenlabs', {
+      method: 'GET', headers: { 'x-atlas-org-id': orgId }
+    }));
+  }
+
+  async synthesizeElevenLabs(text: string, signal?: AbortSignal): Promise<Blob> {
+    const { orgId } = await this.getContext();
+    const response = await this.transport('/functions/v1/atlas-voice-provider?api=speech&provider=elevenlabs', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-atlas-org-id': orgId },
+      body: JSON.stringify({ text }), signal
+    });
+    if (!response.ok) await parseResponse(response);
+    if (!response.headers.get('content-type')?.startsWith('audio/mpeg')) throw new Error('provider_invalid_response');
+    const blob = await response.blob();
+    if (!blob.size) throw new Error('provider_empty_audio');
+    return blob;
+  }
+
   async providerConsentPhrases(): Promise<VoiceProviderConsentPhrase[]> {
     const body = await parseResponse<{ ok: boolean; phrases?: unknown }>(
       await this.transport('/functions/v1/atlas-voice-provider?api=consent-phrases', { method: 'GET' })

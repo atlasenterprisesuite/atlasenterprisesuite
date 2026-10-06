@@ -1,39 +1,39 @@
 import { Link } from 'react-router-dom';
-import { AtlasVisualReference } from '../../components/AtlasVisualReference';
 import { AtlasVoicePage } from './AtlasVoicePage';
+import { ElevenLabsNarration } from './ElevenLabsNarration';
 import './voiceStudio.css';
+
+const visuallyHiddenHeadingStyle = {
+  position: 'absolute' as const,
+  width: '1px',
+  height: '1px',
+  padding: 0,
+  margin: '-1px',
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap' as const,
+  border: 0
+};
 
 export function VoiceStudioPage() {
   return (
-    <section className="page-stack voice-studio-page">
-      <header className="voice-studio-header">
-        <div>
-          <p className="eyebrow">ATLAS Voice</p>
-          <h1>Voice Studio</h1>
-          <p>One focused place to speak with ATLAS, review what it heard, and manage Personal Voice without exposing provider complexity in the primary experience.</p>
-        </div>
-        <Link className="voice-studio-personal-link" to="/voice/personal-voice">Personal Voice</Link>
-      </header>
+    <section className="page-stack voice-studio-page voice-studio-production">
+      <h1 style={visuallyHiddenHeadingStyle}>Voice Studio</h1>
 
-      <AtlasVisualReference reference="voice" compact />
-
-      <div className="voice-capability-strip" aria-label="Voice capability status">
-        <span><i className="is-live" aria-hidden="true" />Identity protected</span>
-        <span><i className="is-live" aria-hidden="true" />Browser voice available when supported</span>
-        <span><i className="is-gated" aria-hidden="true" />Apple bridge native-only</span>
+      <div className="voice-studio-utility-row">
+        <Link className="voice-studio-utility-link" to="/voice/personal-voice">Personal Voice</Link>
       </div>
 
-      <details className="voice-boundary-details">
+      <AtlasVoicePage embedded />
+      <ElevenLabsNarration />
+
+      <details className="voice-boundary-details voice-studio-boundaries">
         <summary>Provider & privacy boundaries</summary>
         <div>
-          <p>External voice generation, telephony, streaming, export, and native Personal Voice control stay disabled until a real provider or supported native bridge is verified.</p>
+          <p>ElevenLabs narration uses verified voice access and validates each generation. Other external voice capabilities require their own verified provider or supported native bridge.</p>
           <p><strong>Requires ATLAS iOS app:</strong> Apple Personal Voice authorization and local playback are native-device capabilities; the web client never claims to export or control the Apple voice model.</p>
         </div>
       </details>
-
-      <AtlasVoicePage embedded />
-
-      <Link className="text-link voice-studio-home-link" to="/">Return to ATLAS home</Link>
     </section>
   );
 }

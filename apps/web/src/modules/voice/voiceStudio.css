@@ -28,3 +28,26 @@
   .voice-capability-strip::-webkit-scrollbar{display:none}
   .voice-capability-strip>span{white-space:nowrap}
 }
+.voice-narration {
+  display: grid;
+  gap: 0.85rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 1rem;
+}
+.voice-narration textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border-color, #64748b);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  resize: vertical;
+}
+.voice-narration button { justify-self: start; padding: 0.75rem 1rem; }
+.voice-narration button:disabled { opacity: 0.6; cursor: not-allowed; }
+.voice-narration-output { display: grid; gap: 0.75rem; min-width: 0; }
+.voice-narration audio { width: 100%; max-width: 32rem; }

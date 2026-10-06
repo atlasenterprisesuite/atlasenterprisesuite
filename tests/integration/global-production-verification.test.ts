@@ -92,7 +92,8 @@ describe('ATLAS global production verification', () => {
       '/advisory/business-launch-360/workspace',
       '/advisory/reports',
       '/advisory/providers',
-      '/advisory/readiness'
+      '/advisory/readiness',
+      '/release/stewardship'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',

@@ -38,7 +38,12 @@ function loadCesium() {
       document.head.appendChild(script);
     }
 
+    const timeout = window.setTimeout(() => {
+      script.remove();
+      reject(new Error('cesium_runtime_timeout'));
+    }, 15_000);
     const finish = () => {
+      window.clearTimeout(timeout);
       const Cesium = (window as any).Cesium;
       if (Cesium) resolve(Cesium);
       else reject(new Error('cesium_runtime_missing'));
@@ -50,7 +55,11 @@ function loadCesium() {
     }
 
     script.addEventListener('load', finish, { once: true });
-    script.addEventListener('error', () => reject(new Error('cesium_runtime_load_failed')), { once: true });
+    script.addEventListener('error', () => {
+      window.clearTimeout(timeout);
+      script.remove();
+      reject(new Error('cesium_runtime_load_failed'));
+    }, { once: true });
   }).catch((error) => {
     cesiumLoadPromise = null;
     throw error;
@@ -108,9 +117,10 @@ export function Photorealistic3DView({
     }
 
     let cancelled = false;
+    let readinessTimeout: number | undefined;
     stateCallback.current?.('loading', 'Loading Google Photorealistic 3D Tiles…');
 
-    loadCesium().then((Cesium) => {
+    loadCesium().then(async (Cesium) => {
       if (cancelled || !node.current) return;
 
       Cesium.RequestScheduler.requestsByServer['tile.googleapis.com:443'] = 18;
@@ -130,22 +140,43 @@ export function Photorealistic3DView({
 
       viewer.scene.globe.show = false;
 
-      viewer.scene.primitives.add(new Cesium.Cesium3DTileset({
+      runtime.current = { viewer, Cesium };
+      const tileset = new Cesium.Cesium3DTileset({
         url: tilesetUrl(apiKey),
         showCreditsOnScreen: true
-      }));
+      });
+      viewer.scene.primitives.add(tileset);
+      let tileFailure = false;
+      tileset.tileFailed?.addEventListener(() => {
+        tileFailure = true;
+        if (!cancelled) stateCallback.current?.('error', 'Google 3D Tiles failed to load. Use another map layer.');
+      });
 
-      runtime.current = { viewer, Cesium };
+      if (!tileset.readyPromise) throw new Error('tileset_readiness_evidence_missing');
+      await Promise.race([
+        tileset.readyPromise,
+        new Promise((_, reject) => {
+          readinessTimeout = window.setTimeout(() => reject(new Error('tileset_readiness_timeout')), 15_000);
+        })
+      ]);
+      window.clearTimeout(readinessTimeout);
+      if (cancelled) return;
+      if (tileFailure) throw new Error('tileset_load_failed');
       flyTo(viewer, Cesium, initialCenter.current);
       stateCallback.current?.('ready', 'Google Photorealistic 3D Tiles ready · attribution enabled');
     }).catch(() => {
+      window.clearTimeout(readinessTimeout);
       if (!cancelled) {
+        const active = runtime.current?.viewer;
+        runtime.current = null;
+        if (active && !active.isDestroyed?.()) active.destroy();
         stateCallback.current?.('error', 'Photorealistic 3D provider did not initialize.');
       }
     });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(readinessTimeout);
       const active = runtime.current?.viewer;
       runtime.current = null;
       if (active && !active.isDestroyed?.()) active.destroy();

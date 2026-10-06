@@ -18,7 +18,7 @@ describe('ATLAS Assistant mobile layout', () => {
 
   it('retains safe-area-aware mobile placement', () => {
     expect(styles).toContain(
-      '.atlas-assistant-root{right:max(8px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom))}'
+      '.atlas-assistant-root{right:max(8px,env(safe-area-inset-right));bottom:calc(76px + env(safe-area-inset-bottom))}'
     );
   });
 });
