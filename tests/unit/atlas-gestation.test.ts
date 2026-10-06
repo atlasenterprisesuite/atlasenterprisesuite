@@ -32,4 +32,14 @@ describe('ATLAS Gestation A-Z', () => {
     expect(summary.birthReady).toBe(false);
     expect(summary.currentPhase.id).toBe('genome');
   });
+
+  it('tracks operational baseline and active evolution independently', () => {
+    const summary = summarizeGestation(ATLAS_MODULES);
+    const expectedActiveEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
+    const expectedOperationalBaseline = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
+
+    expect(expectedActiveEvolution).toBeGreaterThan(0);
+    expect(summary.activeEvolution).toBe(expectedActiveEvolution);
+    expect(summary.operationalBaseline).toBe(expectedOperationalBaseline);
+  });
 });
