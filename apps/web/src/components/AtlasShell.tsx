@@ -6,7 +6,7 @@ import {
   getCachedAtlasShellOrganization,
   type AtlasShellOrganization
 } from '../lib/atlasSession';
-import { ATLAS_NAV_ITEMS } from '../modules/registry';
+import { ATLAS_MODULES } from '../modules/registry';
 import { searchAtlasNavigation } from '../navigation/atlasNavigation';
 import {
   ATLAS_ACCESSIBILITY_PROFILE_EVENT,
@@ -142,6 +142,30 @@ export function AtlasShell({ children }: { children: ReactNode }) {
 
   const searchResults = useMemo(() => searchAtlasNavigation(searchQuery), [searchQuery]);
 
+  const navigationGroups = useMemo(() => {
+    const grouped = new Map<string, Array<{ to: string; label: string }>>();
+
+    for (const module of ATLAS_MODULES) {
+      if (!module.showInNavigation) continue;
+      const items = grouped.get(module.area) || [];
+      items.push({ to: module.route, label: module.navLabel });
+      grouped.set(module.area, items);
+    }
+
+    const financeItems = grouped.get('Finance') || [];
+    financeItems.push(
+      { to: '/finance/accounting/accounts-payable', label: 'Payables' },
+      { to: '/finance/accounting/accounts-receivable', label: 'Receivables' },
+      { to: '/finance/accounting/reports/automotive-sales', label: 'Automotive' }
+    );
+    grouped.set('Finance', financeItems);
+
+    return Array.from(grouped.entries()).map(([area, items]) => ({ area, items }));
+  }, []);
+
+  const isRouteActive = (to: string) =>
+    to === '/' ? location.pathname === '/' : location.pathname === to || location.pathname.startsWith(`${to}/`);
+
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const target = searchResults[0];
@@ -184,18 +208,58 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav aria-label="ATLAS modules">
-          {ATLAS_NAV_ITEMS.map((item, index) => (
+          <div className="atlas-nav-primary">
             <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
+              to="/"
+              end
               className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
               onClick={closeMobileNav}
             >
-              <span className="atlas-nav-glyph" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-              <span>{item.label}</span>
+              <span className="atlas-nav-glyph" aria-hidden="true">HM</span>
+              <span>Home</span>
             </NavLink>
-          ))}
+            <NavLink
+              to="/suite"
+              className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+              onClick={closeMobileNav}
+            >
+              <span className="atlas-nav-glyph" aria-hidden="true">ALL</span>
+              <span>All Modules</span>
+            </NavLink>
+          </div>
+
+          <div className="atlas-nav-groups">
+            {navigationGroups.map((group) => {
+              const groupActive = group.items.some((item) => isRouteActive(item.to));
+              return (
+                <details
+                  key={`${group.area}-${groupActive ? 'active' : 'idle'}`}
+                  className={groupActive ? 'atlas-nav-group is-active' : 'atlas-nav-group'}
+                  defaultOpen={groupActive}
+                >
+                  <summary className="atlas-nav-group-summary">
+                    <span>{group.area}</span>
+                    <small>{group.items.length}</small>
+                    <span className="atlas-nav-chevron" aria-hidden="true">⌄</span>
+                  </summary>
+                  <div className="atlas-nav-submenu">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+                        onClick={closeMobileNav}
+                      >
+                        <span className="atlas-nav-glyph" aria-hidden="true">{item.label.slice(0, 3).toUpperCase()}</span>
+                        <span>{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+
           <NavLink
             to="/settings/accessibility/communication"
             className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
