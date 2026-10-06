@@ -42,7 +42,7 @@ describe('ATLAS Prompt Export', () => {
       accessibility: { transcript: true, altText: true, audioDescription: true },
       negativeConstraints: ['No aggressive drums']
     });
-    expect(result.prompt).toContain('MEDIA: MUSIC');
+    expect(result.prompt).toContain('MEDIA: music');
     expect(result.prompt).toContain('OBJECTIVE: Wondering about the edge of the known universe');
     expect(result.prompt).toContain('ACCESSIBILITY: transcript, alt-text, audio-description');
     expect(result.prompt).not.toContain('ASPECT RATIO');
