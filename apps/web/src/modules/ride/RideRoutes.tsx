@@ -6,6 +6,7 @@ import { DocumentsPage } from './DocumentsPage';
 import { DriverHomePage } from './DriverHomePage';
 import { ProfilePhotoCompliancePage } from './ProfilePhotoCompliancePage';
 import { RideHomePage } from './RideHomePage';
+import { RoutePlanningPage } from './RoutePlanningPage';
 
 export function RideRoutes() {
   return (
@@ -13,6 +14,7 @@ export function RideRoutes() {
       <RequireAtlasIdentity>
         <Routes>
           <Route path="/ride" element={<RideHomePage />} />
+          <Route path="/ride/routes" element={<RoutePlanningPage />} />
           <Route path="/ride/driver" element={<DriverHomePage />} />
           <Route path="/ride/driver/compliance" element={<ComplianceHomePage />} />
           <Route path="/ride/driver/compliance/documents" element={<DocumentsPage />} />
