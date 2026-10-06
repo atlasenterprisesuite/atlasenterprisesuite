@@ -51,6 +51,22 @@ describe('FuturisticEnterpriseHome visual landing', () => {
     expect(status).toHaveTextContent(`${gated} conexiones`);
   });
 
+  it('counts active evolution independently from operational readiness', () => {
+    const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
+    expect(activeEvolution).toBeGreaterThan(0);
+
+    render(
+      <MemoryRouter>
+        <FuturisticEnterpriseHome />
+      </MemoryRouter>
+    );
+
+    const evolutionMetric = screen.getByText('EN EVOLUCIÓN').closest('article');
+    expect(evolutionMetric).not.toBeNull();
+    expect(evolutionMetric).toHaveTextContent(String(activeEvolution));
+    expect(evolutionMetric).toHaveTextContent('Siguiente versión en desarrollo o validación');
+  });
+
   it('exposes the technical dashboard as the dedicated ATLAS Command Center', () => {
     render(
       <MemoryRouter>
