@@ -59,6 +59,19 @@ Any interactive component that can reach production must implement the applicabl
 
 A visible control must perform a real action or navigation supported by the current architecture. No `href="#"`, console-only actions, fake connection states, or unsupported "Coming Soon" placeholders.
 
+## Typography, cards and navigation scale
+
+Shared ATLAS UI must remain readable without relying on browser zoom or the accessibility text-size override.
+
+Required:
+- operational labels and navigation text use the shared typography tokens and must not render below 12px at the default profile;
+- body/content text targets 14-16px or larger according to hierarchy;
+- controls preserve a minimum 44px interaction target, increasing to 48px on touch-oriented shell navigation;
+- shared cards use consistent radius, padding and minimum-height tokens so grids do not mix arbitrary box proportions;
+- menus and submenus expose clear collapsed, expanded, hover, focus-visible, active and disabled states;
+- primary navigation groups related modules by domain instead of presenting an unbounded flat list;
+- submenu behavior must remain usable with mouse, keyboard and touch, and active-route context must be visible.
+
 ## Responsive behavior
 
 Every shared component must remain usable at:
