@@ -15,7 +15,7 @@ function stateFromStatus(status) {
 }
 
 function failure(message, status = 503) {
-  return Object.assign(new Error(message), { status });
+  return Object.assign(new Error(message), { status, code: message });
 }
 
 export async function elevenLabsMusicReadiness(apiKey, fetcher = fetch) {
