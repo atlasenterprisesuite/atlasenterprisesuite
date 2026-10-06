@@ -13,5 +13,8 @@ describe('ATLAS Cloud Domain & DNS Manager', () => {
     expect(edge).toContain("api==='cloud-domain-verify'");
     expect(edge).toContain('verifyDnsTxt');
     expect(edge).not.toContain('cloud-domain-mutate');
+    expect(ui).toContain('atlasAuthorizedJson');
+    expect(ui).not.toContain('localStorage.getItem');
+    expect(ui).not.toContain('.supabase.co/functions/v1/');
   });
 });
