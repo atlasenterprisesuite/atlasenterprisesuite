@@ -43,6 +43,21 @@ interface Env {
   CF_VERSION_METADATA?: WorkerVersionMetadata;
   LOCAL_REALTIME_BUS: DurableObjectNamespace;
   CHAT_REALTIME_BUS: DurableObjectNamespace;
+  ATLAS_POLAR_CHECKOUT_URL?: string;
+}
+
+const DEFAULT_POLAR_CHECKOUT_URL =
+  'https://polar.sh/checkout/polar_c_7Uw8jpDTb0EGlA6ru00ihSm9t4WXxEiueEzRJ2G9hnX';
+
+function polarCheckoutUrl(env: Env) {
+  const configured = String(env.ATLAS_POLAR_CHECKOUT_URL || DEFAULT_POLAR_CHECKOUT_URL).trim();
+  try {
+    const target = new URL(configured);
+    if (target.protocol !== 'https:' || target.hostname !== 'polar.sh' || !target.pathname.startsWith('/checkout/')) return null;
+    return target;
+  } catch {
+    return null;
+  }
 }
 
 type TlsClientAuth = {
@@ -833,6 +848,29 @@ export default {
             commit_sha: effectiveCommitSha
           }
         }),
+        env.CF_VERSION_METADATA,
+        commitSha
+      );
+    }
+    if (url.pathname === '/checkout/polar') {
+      const commitSha = await deploymentCommitSha(env, request);
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return withSecurityHeaders(
+          new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD' } }),
+          env.CF_VERSION_METADATA,
+          commitSha
+        );
+      }
+      const target = polarCheckoutUrl(env);
+      if (!target) {
+        return withSecurityHeaders(
+          json({ ok: false, error: 'polar_checkout_not_configured' }, 503),
+          env.CF_VERSION_METADATA,
+          commitSha
+        );
+      }
+      return withSecurityHeaders(
+        new Response(null, { status: 303, headers: { location: target.toString(), 'cache-control': 'no-store' } }),
         env.CF_VERSION_METADATA,
         commitSha
       );
