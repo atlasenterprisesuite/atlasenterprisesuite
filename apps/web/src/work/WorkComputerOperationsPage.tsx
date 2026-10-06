@@ -11,6 +11,7 @@ import {
   probeComputerOperationsRoutes,
   type ComputerOperationsProbe
 } from './computerOperations';
+import { NetworkConnectivityPanel } from './NetworkConnectivityPanel';
 import { WorkSubnav } from './WorkSubnav';
 
 type ProbeScope = 'essential' | 'full';
@@ -192,6 +193,8 @@ export function WorkComputerOperationsPage() {
           </table>
         </div>
       </section>
+
+      <NetworkConnectivityPanel />
 
       <div className="work-card-grid">
         <article className="execution-panel">
