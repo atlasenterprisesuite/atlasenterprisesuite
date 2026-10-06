@@ -1,4 +1,4 @@
-import type { MotionCompositionSpec } from './motion/types';
+import type { MotionCompositionSpec } from './motion/types.ts';
 
 export type ProductionStatus = 'draft' | 'validating' | 'blocked' | 'ready' | 'submitting' | 'generating' | 'completed' | 'failed';
 export type CreatorPermission = 'creator.read' | 'creator.write' | 'creator.generate' | 'creator.manage_providers' | 'creator.publish' | 'creator.admin';

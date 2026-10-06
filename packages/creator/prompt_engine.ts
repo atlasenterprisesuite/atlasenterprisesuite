@@ -1,5 +1,5 @@
-import type { CreativeEngineReadiness, CreativeMediaKind } from './creative_engine';
-import type { CreativePlan, CreativePromptArtifact } from './creative_plan';
+import type { CreativeEngineReadiness, CreativeMediaKind } from './creative_engine.ts';
+import type { CreativePlan, CreativePromptArtifact } from './creative_plan.ts';
 
 export type PromptExportRequest = {
   mediaKind: CreativeMediaKind;
