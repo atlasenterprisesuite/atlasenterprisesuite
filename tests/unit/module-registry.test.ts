@@ -43,4 +43,13 @@ describe('ATLAS canonical module registry', () => {
     expect(source).toContain('requiresAuth:');
     expect(source).not.toContain("readiness: 'partial'");
   });
+
+  it('tracks active evolution independently from the operational baseline', () => {
+    expect(source).toContain("export type AtlasModuleEvolution = 'active' | 'continuous' | 'none';");
+    const start = source.indexOf("id: 'ride'");
+    const end = source.indexOf('\n  {', start + 1);
+    const block = source.slice(start, end === -1 ? source.length : end);
+    expect(block).toContain("readiness: 'implemented'");
+    expect(block).toContain("evolution: 'active'");
+  });
 });
