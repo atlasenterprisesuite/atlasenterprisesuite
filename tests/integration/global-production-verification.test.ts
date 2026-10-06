@@ -43,6 +43,7 @@ describe('ATLAS global production verification', () => {
       '/advisory',
       '/finance',
       '/finance/pay',
+      '/finance/pay/workspace',
       '/tax',
       '/crm',
       '/commerce',

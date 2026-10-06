@@ -14,6 +14,7 @@ import { NetworkPublicPage } from './modules/business/network/NetworkPublicPage'
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { AtlasPayPage } from './modules/finance/pay/AtlasPayPage';
+import { PublicAtlasPayPage } from './modules/finance/pay/PublicAtlasPayPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
 import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
@@ -278,8 +279,10 @@ export function App() {
   if (location.pathname.startsWith('/events')) return <EventsRoutes />;
   if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
   if (location.pathname.startsWith('/insurance')) return <InsuranceRoutes />;
-  const publicAdvisoryHost = typeof window !== 'undefined' && ['atlasenterprisesuite.com','www.atlasenterprisesuite.com','localhost','127.0.0.1'].includes(window.location.hostname);
+  const publicProductHost = typeof window !== 'undefined' && ['atlasenterprisesuite.com','www.atlasenterprisesuite.com','localhost','127.0.0.1'].includes(window.location.hostname);
+  const publicAdvisoryHost = publicProductHost;
   if (location.pathname === '/advisory/business-launch-360' && publicAdvisoryHost) return <PublicBusinessLaunch360Page />;
+  if (location.pathname === '/finance/pay' && publicProductHost) return <PublicAtlasPayPage />;
   const extension = resolveAtlasExtension(location.pathname);
   if (extension) return <AtlasShell>{extension}</AtlasShell>;
 
@@ -310,7 +313,8 @@ export function App() {
         <Route path="/city" element={<RequireAtlasIdentity><AtlasDigitalDistrictPage /></RequireAtlasIdentity>} />
         <Route path="/city/twin" element={<RequireAtlasIdentity><UrbanTwinPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
-        <Route path="/finance/pay" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
+        <Route path="/finance/pay" element={<Navigate to="/finance/pay/workspace" replace />} />
+        <Route path="/finance/pay/workspace" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
