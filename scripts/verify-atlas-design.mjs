@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { verifyModuleVisualCollection } from './verify-module-visuals.mjs';
 
 const root = new URL('../', import.meta.url);
 
@@ -67,10 +68,15 @@ if (!tokens.includes(':focus-visible')) {
   errors.push('design tokens must include a shared focus-visible treatment');
 }
 
+const moduleVisuals = await verifyModuleVisualCollection();
+for (const error of moduleVisuals.errors) {
+  errors.push(`module visuals: ${error}`);
+}
+
 if (errors.length) {
   console.error('ATLAS Design Intelligence gate failed:');
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATLAS Design Intelligence gate passed.');
+console.log(`ATLAS Design Intelligence gate passed with ${moduleVisuals.moduleCount} module visuals verified.`);
