@@ -1,10 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import { createGitHubOidcScope } from '../_shared/github-oidc-scope.ts';
 
-const URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const CREATOR = `${URL}/functions/v1/atlas-creator`;
+const CREATOR = `${SUPABASE_URL}/functions/v1/atlas-creator`;
 const EMAIL = 'atlas-creator-e2e@atlas.invalid';
 const ORG_NAME = 'ATLAS Creator E2E';
 const PURPOSE = 'creator-privileged-production-e2e';
@@ -12,7 +12,7 @@ const GITHUB_SCOPE = createGitHubOidcScope(['verify-creator-production-e2e.yml']
 const REPO = GITHUB_SCOPE.canonicalRepository;
 const OIDC_AUDIENCE = 'atlas-enterprise-suite-creator-e2e';
 const WORKFLOW_REFS = GITHUB_SCOPE.workflowRefs;
-const VERSION = 3;
+const VERSION = 4;
 
 function headers(extra: Record<string, string> = {}) {
   return {
@@ -158,8 +158,8 @@ async function request(
   return { response, payload: await parseJson(response) };
 }
 
-if (!URL || !SERVICE_ROLE || !ANON_KEY) throw new Error('creator_e2e_environment_missing');
-const admin = createClient(URL, SERVICE_ROLE, {
+if (!SUPABASE_URL || !SERVICE_ROLE || !ANON_KEY) throw new Error('creator_e2e_environment_missing');
+const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { autoRefreshToken: false, persistSession: false }
 });
 
@@ -304,7 +304,7 @@ async function runVerification() {
     userId = identity.userId;
     orgId = identity.orgId;
 
-    const auth = await request(`${URL}/auth/v1/token?grant_type=password`, {
+    const auth = await request(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST',
       headers: { apikey: ANON_KEY },
       payload: { email: EMAIL, password: identity.password }
@@ -325,7 +325,67 @@ async function runVerification() {
     if (!Array.isArray(readiness.payload?.permissions) || !readiness.payload.permissions.includes('creator.write')) {
       throw fail('creator_write_not_effective', 500);
     }
-    if (!(readiness.payload?.generation_enabled===false)) throw fail('generation_must_remain_disabled', 500);
+    if (!readiness.payload.permissions.includes('creator.generate')) {
+      throw fail('creator_generate_not_effective', 500);
+    }
+
+    const engines = await request(`${CREATOR}?api=engines`, { headers: authHeaders });
+    if (engines.response.status !== 200 || engines.payload?.ok !== true || !Array.isArray(engines.payload?.engines)) {
+      throw fail('engine_registry_failed', 500);
+    }
+    const engineRows = engines.payload.engines as Array<Record<string, any>>;
+    const promptExportEngine = engineRows.find(engine => engine?.engineId === 'prompt-export');
+    const musicEngine = engineRows.find(engine => engine?.engineId === 'elevenlabs-music-v2');
+    if (!promptExportEngine || promptExportEngine.executionClass !== 'prompt-export-only') {
+      throw fail('prompt_export_engine_missing', 500);
+    }
+    if (!musicEngine || !Array.isArray(musicEngine.mediaKinds) || !musicEngine.mediaKinds.includes('music')) {
+      throw fail('music_engine_missing', 500);
+    }
+    const expectedGenerationEnabled = engineRows.some(
+      engine => engine?.ready === true && engine?.executionClass !== 'prompt-export-only'
+    );
+    if (Boolean(readiness.payload?.generation_enabled) !== expectedGenerationEnabled) {
+      throw fail('generation_readiness_mismatch', 500);
+    }
+    if (
+      !readiness.payload?.music_engine ||
+      readiness.payload.music_engine.engineId !== musicEngine.engineId ||
+      Boolean(readiness.payload.music_engine.ready) !== Boolean(musicEngine.ready)
+    ) {
+      throw fail('music_readiness_mismatch', 500);
+    }
+
+    const musicExport = await request(`${CREATOR}?api=prompt-export`, {
+      method: 'POST',
+      headers: authHeaders,
+      payload: {
+        media_kind: 'music',
+        brief: 'Wondering cinematic ambient score for ATLAS exploration.',
+        aspect_ratio: 'adaptive',
+        language: 'English',
+        negative_constraints: ['No aggressive drums'],
+        accessibility: {
+          captions: false,
+          transcript: true,
+          altText: true,
+          audioDescription: true
+        }
+      }
+    });
+    const musicPrompt = String(musicExport.payload?.prompt_package?.prompt || '');
+    const countLabel = (label: string) => musicPrompt.split(label).length - 1;
+    if (
+      musicExport.response.status !== 200 ||
+      musicExport.payload?.ok !== true ||
+      countLabel('OBJECTIVE:') !== 1 ||
+      countLabel('LANGUAGE:') !== 1 ||
+      countLabel('MEDIA:') !== 1 ||
+      musicPrompt.includes('ASPECT RATIO:') ||
+      !musicPrompt.includes('ACCESSIBILITY: transcript, alt-text, audio-description')
+    ) {
+      throw fail('music_prompt_export_failed', 500);
+    }
 
     productionId = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -365,7 +425,14 @@ async function runVerification() {
       organization_id: orgId,
       role: readiness.payload.role,
       creator_write: true,
-      generation_enabled: false,
+      creator_generate: true,
+      generation_enabled: Boolean(readiness.payload.generation_enabled),
+      generation_enabled_consistent: true,
+      music_engine_ready: Boolean(musicEngine.ready),
+      music_engine_state: String(musicEngine.connectionState || 'unknown'),
+      engine_registry_verified: true,
+      music_prompt_export_verified: true,
+      billable_generation_attempted: false,
       save_status: saved.response.status,
       read_status: readBack.response.status,
       audit_verified: true,
@@ -400,7 +467,7 @@ async function runVerification() {
     }
 
     if (accessToken) {
-      const logout = await request(`${URL}/auth/v1/logout?scope=global`, {
+      const logout = await request(`${SUPABASE_URL}/auth/v1/logout?scope=global`, {
         method: 'POST',
         headers: { apikey: ANON_KEY, authorization: `Bearer ${accessToken}` }
       });
