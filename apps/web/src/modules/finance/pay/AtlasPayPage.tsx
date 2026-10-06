@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ATLAS_PAY_PRINCIPLES } from '../../../../../../packages/pay/src';
+import {
+  ATLAS_PAY_PRINCIPLES,
+  summarizeBalanceEvidence,
+  type AtlasBalanceEvidence
+} from '../../../../../../packages/pay/src';
 import { loadAtlasPaySnapshot, type AtlasPaySnapshot } from '../../../lib/payApi';
 
 const CAPABILITIES = [
   {
     label: 'ATLAS Wallet',
     state: 'Control plane',
-    description: 'Organization-scoped balances and wallet experience, with regulated custody remaining external-gated until verified.'
+    description: 'Organization-scoped wallet and instrument experience, with regulated custody remaining external-gated until verified.'
   },
   {
     label: 'ATLAS Issuing',
@@ -29,6 +33,10 @@ function formatTimestamp(value: string | null): string {
   if (!value) return 'Not verified';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 'Recorded' : date.toLocaleString();
+}
+
+function formatEvidenceAmount(amountMinor: bigint, currency: string): string {
+  return `${amountMinor.toString()} minor units · ${currency}`;
 }
 
 export function AtlasPayPage() {
@@ -65,21 +73,36 @@ export function AtlasPayPage() {
     [snapshot]
   );
 
+  const balanceSummaries = useMemo(() => {
+    const evidence: AtlasBalanceEvidence[] = (snapshot?.balanceEvidence || []).map((row) => ({
+      id: row.id,
+      accountId: row.account_id,
+      balanceKind: row.balance_kind,
+      amountMinor: BigInt(row.amount_minor_text),
+      currency: row.currency,
+      state: row.state,
+      sourceKind: row.source_kind,
+      sourceReference: row.source_reference,
+      observedAt: row.observed_at
+    }));
+    return summarizeBalanceEvidence(evidence);
+  }, [snapshot]);
+
   return (
     <section className="page-stack">
       <header className="page-header">
         <p className="eyebrow">ATLAS Finance · Pay</p>
         <h1>ATLAS Pay & Issuing</h1>
         <p>
-          Provider-neutral financial orchestration for wallets, issuing and payouts. ATLAS owns the
-          control plane while regulated issuers, sponsor banks, processors and payment rails remain
-          replaceable adapters.
+          Provider-neutral financial orchestration for accounts, wallets, source-backed balances,
+          issuing and payouts. ATLAS owns the control plane while regulated issuers, sponsor banks,
+          processors and payment rails remain replaceable adapters.
         </p>
       </header>
 
       <div className="notice strong">
         External-gated: this surface does not claim a bank charter, live card issuance, direct rail
-        access, deposit insurance, completed payout or settlement without authenticated provider evidence.
+        access, deposit insurance, completed payout, custody or settlement without authenticated provider evidence.
       </div>
 
       {loading ? <div className="notice">Loading organization-scoped ATLAS Pay evidence…</div> : null}
@@ -90,11 +113,55 @@ export function AtlasPayPage() {
       ) : null}
 
       <div className="stat-grid" aria-label="ATLAS Pay live readiness">
-        <article><strong>{snapshot ? snapshot.providers.length : '—'}</strong><span>provider records</span></article>
+        <article><strong>{snapshot ? snapshot.accounts.length : '—'}</strong><span>financial profiles</span></article>
+        <article><strong>{snapshot ? snapshot.balanceEvidence.length : '—'}</strong><span>balance evidence records</span></article>
         <article><strong>{snapshot ? verifiedProviders.length : '—'}</strong><span>fully verified providers</span></article>
-        <article><strong>{snapshot ? snapshot.instrumentIntents.length : '—'}</strong><span>instrument intents</span></article>
         <article><strong>{snapshot ? snapshot.payoutIntents.length : '—'}</strong><span>payout intents</span></article>
       </div>
+
+      <article className="feature-card wide">
+        <p className="eyebrow">Accounts Center</p>
+        <h2>Profiles without a duplicate identity system</h2>
+        <p>
+          Financial profiles organize person, organization, brand, creator and external contexts.
+          Authentication and authorization remain in canonical ATLAS Identity/RBAC.
+        </p>
+        {!snapshot?.accounts.length ? (
+          <p>No organization-scoped financial profiles are recorded yet.</p>
+        ) : (
+          <div className="module-grid compact">
+            {snapshot.accounts.map((account) => (
+              <article className="module-card enabled" key={account.id}>
+                <span>{account.account_kind} · {account.state}</span>
+                <strong>{account.display_label}</strong>
+                <p>Account key: {account.account_key}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </article>
+
+      <article className="feature-card wide">
+        <p className="eyebrow">Balance domains</p>
+        <h2>Wallet, earnings, rewards and credits stay separate</h2>
+        <p>
+          Amounts are source-backed evidence snapshots, not ATLAS ledger balances. Historical snapshots are
+          reduced to the latest observation per account/domain/currency/source before any summary is shown.
+        </p>
+        {!balanceSummaries.length ? (
+          <p>No current source-backed evidence is available for balance display.</p>
+        ) : (
+          <div className="module-grid compact">
+            {balanceSummaries.map((summary) => (
+              <article className="module-card enabled" key={`${summary.balanceKind}-${summary.currency}-${summary.state}`}>
+                <span>{summary.balanceKind} · {summary.state}</span>
+                <strong>{formatEvidenceAmount(summary.amountMinor, summary.currency)}</strong>
+                <p>{summary.evidenceCount} latest evidence source{summary.evidenceCount === 1 ? '' : 's'}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </article>
 
       <div className="module-grid">
         {CAPABILITIES.map((capability) => (
@@ -105,6 +172,34 @@ export function AtlasPayPage() {
           </article>
         ))}
       </div>
+
+      <article className="feature-card wide">
+        <p className="eyebrow">Payout Hub</p>
+        <h2>Intent, provider state and reconciliation remain explicit</h2>
+        {!snapshot?.payoutIntents.length ? (
+          <p>No payout intents are recorded for this organization.</p>
+        ) : (
+          <div className="module-grid compact">
+            {snapshot.payoutIntents.map((intent) => (
+              <article className="module-card enabled" key={intent.id}>
+                <span>payout intent</span>
+                <strong>{intent.state}</strong>
+                <p>Recorded: {formatTimestamp(intent.created_at)}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </article>
+
+      <article className="feature-card wide">
+        <p className="eyebrow">Security & permissions</p>
+        <h2>Canonical RBAC, RLS and server-only financial writes</h2>
+        <p>
+          Accounts Center does not create another login or permission model. Read access uses the existing
+          pay.read/pay.manage/pay.execute policy boundary. Consequential writes remain revoked in the browser
+          and must enter through governed server workflows with audit evidence.
+        </p>
+      </article>
 
       <article className="feature-card wide">
         <p className="eyebrow">Provider evidence</p>
