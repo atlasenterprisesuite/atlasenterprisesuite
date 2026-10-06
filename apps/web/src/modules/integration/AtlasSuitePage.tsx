@@ -31,7 +31,7 @@ export function AtlasSuitePage() {
   }, [area, query, readiness]);
 
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
-  const partial = ATLAS_MODULES.filter((module) => module.readiness === 'partial').length;
+  const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
   const externalGated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
 
   return (
@@ -40,15 +40,15 @@ export function AtlasSuitePage() {
         <p className="eyebrow">ATLAS Enterprise Suite</p>
         <h1>ATLAS Suite A-Z</h1>
         <p>
-          One canonical directory for every registered ATLAS domain. Routes open the current implementation;
-          readiness labels remain fail-closed and never present external or incomplete capabilities as live.
+          One canonical directory for every registered ATLAS domain. Operational baseline, active evolution and
+          external connection gates are independent lifecycle axes so a stable module can keep evolving without losing its verified baseline.
         </p>
       </header>
 
       <div className="metric-grid" aria-label="ATLAS module readiness summary">
         <article><span>Registered modules</span><strong>{ATLAS_MODULES.length}</strong><small>One canonical registry</small></article>
-        <article><span>Integrated</span><strong>{implemented}</strong><small>Canonical application slices; production verification is separate</small></article>
-        <article><span>Integrated / partial</span><strong>{partial}</strong><small>Usable with explicit boundaries</small></article>
+        <article><span>Operational baseline</span><strong>{implemented}</strong><small>Stable integrated capability; production verification remains separate</small></article>
+        <article><span>Active evolution</span><strong>{activeEvolution}</strong><small>Next version is in implementation or validation</small></article>
         <article><span>Pending external gates</span><strong>{externalGated}</strong><small>Provider verification required</small></article>
       </div>
 
@@ -89,7 +89,10 @@ export function AtlasSuitePage() {
         <div className="module-grid" aria-label="ATLAS A-Z modules">
           {filteredModules.map((module) => (
             <Link className="module-card enabled" to={module.route} key={module.id}>
-              <span>{module.area} · {READINESS_LABELS[module.readiness]}</span>
+              <span>
+                {module.area} · {READINESS_LABELS[module.readiness]}
+                {module.evolution === 'active' ? ' · Active evolution' : ''}
+              </span>
               <strong>{module.title}</strong>
               <p>{module.description}</p>
               <small className="muted">
@@ -106,9 +109,10 @@ export function AtlasSuitePage() {
       )}
 
       <div className="notice strong">
-        “Integrated” describes canonical routing and governed module composition. External providers, irreversible actions,
-        production data and regulated workflows remain unavailable until their own verification gates pass. A module can be Integrated while
-        its production state is Pending Gate or Blocked; only current machine-verifiable gate evidence can yield Production Verified.
+        “Integrated” describes the Operational baseline: canonical routing and governed module composition. Active evolution is tracked
+        independently, so the same module can retain its stable baseline while its next version is implemented or validated. External providers,
+        irreversible actions, production data and regulated workflows remain unavailable until their own verification gates pass. A module can be
+        Integrated while its production state is Pending Gate or Blocked; only current machine-verifiable gate evidence can yield Production Verified.
       </div>
     </section>
   );
