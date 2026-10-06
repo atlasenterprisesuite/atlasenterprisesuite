@@ -1,6 +1,7 @@
 // Describes canonical implementation/integration coverage only.
 // It is never a production-verification verdict. Production readiness is derived from current gate evidence.
 export type AtlasModuleReadiness = 'implemented' | 'partial' | 'external-gated';
+export type AtlasModuleEvolution = 'active' | 'continuous' | 'none';
 
 export type AtlasModuleDefinition = {
   id: string;
@@ -9,6 +10,7 @@ export type AtlasModuleDefinition = {
   area: string;
   route: string;
   readiness: AtlasModuleReadiness;
+  evolution?: AtlasModuleEvolution;
   requiresAuth: boolean;
   description: string;
   showInNavigation: boolean;
@@ -352,6 +354,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     area: 'Mobility',
     route: '/ride',
     readiness: 'implemented',
+    evolution: 'active',
     requiresAuth: true,
     description: 'Governed mobility and driver-compliance workflows.',
     showInNavigation: true

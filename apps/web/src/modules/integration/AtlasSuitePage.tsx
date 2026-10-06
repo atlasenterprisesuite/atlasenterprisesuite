@@ -74,7 +74,8 @@ export function AtlasSuitePage() {
       route,
       title: module?.title ?? definition.title ?? definition.label,
       description: module?.description ?? definition.description ?? '',
-      readiness: module?.readiness
+      readiness: module?.readiness,
+      evolution: module?.evolution
     }];
   }), []);
 
@@ -91,7 +92,7 @@ export function AtlasSuitePage() {
   }, [area, query, readiness]);
 
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
-  const partial = ATLAS_MODULES.filter((module) => module.readiness === 'partial').length;
+  const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
   const externalGated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
 
   return (
@@ -103,7 +104,7 @@ export function AtlasSuitePage() {
           <h1>ATLAS Suite A-Z</h1>
           <p className="suite-hero-copy">
             Discover, enter and continue across every canonical ATLAS system from one visual product library.
-            Routes open the current implementation; readiness labels remain fail-closed and never present external or incomplete capabilities as live.
+            Operational baseline and active evolution are independent lifecycle axes; external readiness remains fail-closed.
           </p>
 
           <label className="suite-search">
@@ -121,8 +122,8 @@ export function AtlasSuitePage() {
 
           <div className="suite-status-strip" aria-label="ATLAS module readiness summary">
             <span><strong>{ATLAS_MODULES.length}</strong> modules</span>
-            <span><strong>{implemented}</strong> integrated</span>
-            <span><strong>{partial}</strong> partial</span>
+            <span><strong>{implemented}</strong> operational baseline</span>
+            <span><strong>{activeEvolution}</strong> active evolution</span>
             <span><strong>{externalGated}</strong> gated</span>
           </div>
         </div>
@@ -147,7 +148,9 @@ export function AtlasSuitePage() {
                 <strong>{system.label}</strong>
                 <span>{system.title}</span>
                 {system.readiness ? (
-                  <em className={`suite-readiness-chip ${system.readiness}`}>{READINESS_LABELS[system.readiness]}</em>
+                  <em className={`suite-readiness-chip ${system.readiness}`}>
+                    {READINESS_LABELS[system.readiness]}{system.evolution === 'active' ? ' · Active evolution' : ''}
+                  </em>
                 ) : null}
               </span>
               <span className="suite-open-mark" aria-hidden="true">↗</span>
@@ -162,7 +165,7 @@ export function AtlasSuitePage() {
             <p className="eyebrow">Explore A-Z</p>
             <h2 id="explore-a-z-heading">All registered modules</h2>
           </div>
-          <p>Browse the canonical registry without hiding provider or production boundaries.</p>
+          <p>Browse the canonical registry without hiding provider, production or evolution boundaries.</p>
         </div>
 
         <div className="suite-filter-bar" aria-label="Filter ATLAS modules">
@@ -214,7 +217,9 @@ export function AtlasSuitePage() {
                     decoding="async"
                   />
                   <span className="suite-card-shade" aria-hidden="true" />
-                  <span className={`suite-readiness-chip ${module.readiness}`}>{READINESS_LABELS[module.readiness]}</span>
+                  <span className={`suite-readiness-chip ${module.readiness}`}>
+                    {READINESS_LABELS[module.readiness]}{module.evolution === 'active' ? ' · Active evolution' : ''}
+                  </span>
                 </span>
                 <span className="suite-module-copy">
                   <small>{module.area}</small>
@@ -237,9 +242,10 @@ export function AtlasSuitePage() {
       </section>
 
       <div className="notice strong suite-governance-note">
-        “Integrated” describes canonical routing and governed module composition. External providers, irreversible actions,
-        production data and regulated workflows remain unavailable until their own verification gates pass. A module can be Integrated while
-        its production state is Pending Gate or Blocked; only current machine-verifiable gate evidence can yield Production Verified.
+        “Integrated” describes the Operational baseline: canonical routing and governed module composition. Active evolution is tracked
+        independently, so a stable module can continue into its next implementation/validation cycle without losing its baseline. External providers,
+        irreversible actions, production data and regulated workflows remain unavailable until their own verification gates pass. Only current
+        machine-verifiable gate evidence can yield Production Verified.
       </div>
     </section>
   );
