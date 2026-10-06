@@ -1,8 +1,7 @@
 import { type FormEvent, useState } from 'react';
+import { atlasAuthorizedJson } from '../../lib/atlasSession';
 import { CloudSubnav } from './AtlasCloudNextLevel';
 
-const CONTROL_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-observability';
 
 type DomainVerification = {
   ok: boolean;
@@ -14,15 +13,6 @@ type DomainVerification = {
   mutation_capability: 'blocked_without_authorized_adapter';
   checkedAt: string;
 };
-
-function sessionHeaders() {
-  const token = localStorage.getItem('atlas_access_token') || '';
-  const orgId = localStorage.getItem('atlas_org_id') || '';
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (orgId) headers['x-atlas-org-id'] = orgId;
-  return headers;
-}
 
 export function AtlasCloudDomains() {
   const [hostname, setHostname] = useState('');
@@ -37,14 +27,16 @@ export function AtlasCloudDomains() {
     setError('');
     setResult(null);
     try {
-      const url = new URL(CONTROL_URL);
-      url.searchParams.set('api', 'cloud-domain-verify');
-      url.searchParams.set('hostname', hostname.trim());
-      url.searchParams.set('expected', expectedValue.trim());
-      const response = await fetch(url, { headers: sessionHeaders(), cache: 'no-store' });
-      const body = await response.json().catch(() => ({ error: 'invalid_response' }));
-      if (!response.ok) throw new Error(String(body?.error || `request_failed_${response.status}`));
-      setResult(body as DomainVerification);
+      const params = new URLSearchParams({
+        api: 'cloud-domain-verify',
+        hostname: hostname.trim(),
+        expected: expectedValue.trim()
+      });
+      const body = await atlasAuthorizedJson<DomainVerification>(
+        `/functions/v1/atlas-observability?${params.toString()}`,
+        { method: 'GET', cache: 'no-store' }
+      );
+      setResult(body);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'domain_verification_failed');
     } finally {
