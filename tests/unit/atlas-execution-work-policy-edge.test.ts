@@ -19,6 +19,13 @@ describe('ATLAS Work server policy evaluation', () => {
     expect(policySource).toContain('parseAtlasWorkContext');
   });
 
+  it('carries canonical tenant scope into live browser capability', () => {
+    expect(policySource).toContain('tenantId: string');
+    const tenantFilters = policySource.match(/\.eq\('tenant_id', context\.tenantId\)/g) ?? [];
+    expect(tenantFilters).toHaveLength(2);
+    expect(policySource).not.toContain(".eq('tenant_id', context.orgId)");
+  });
+
   it('derives permission and budget truth server-side', () => {
     expect(policySource).toContain('permissionsSatisfied');
     expect(policySource).toContain('context.permissions');

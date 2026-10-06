@@ -12,6 +12,8 @@ type UserContext = {
 
 type ConnectionMechanism = 'oauth' | 'session' | 'vault';
 
+const CONNECTION_SUMMARY_SELECT = 'id,provider,mechanism,status,capabilities,display_label,provider_account_ref,provider_tenant_ref,principal_label,transport_capabilities,health_state,verified_at,expires_at,last_checked_at,last_error_code,created_at,updated_at';
+
 function text(value: unknown, max = 500) {
   return String(value ?? '').trim().slice(0, max);
 }
@@ -24,7 +26,7 @@ function stringArray(value: unknown, max = 40) {
 export async function listWorkConnections(admin: any, context: UserContext) {
   const { data, error } = await admin
     .from('execution_connection_refs')
-    .select('id,provider,mechanism,status,capabilities,created_at,updated_at')
+    .select('id,provider,mechanism,status,capabilities,display_label,provider_account_ref,provider_tenant_ref,principal_label,transport_capabilities,health_state,verified_at,expires_at,last_checked_at,last_error_code,created_at,updated_at')
     .eq('org_id', context.orgId)
     .eq('tenant_id', context.tenantId)
     .order('updated_at', { ascending: false });
@@ -55,7 +57,7 @@ export async function registerWorkConnectionRef(admin: any, context: UserContext
     status: 'active',
     capabilities,
     created_by_user_id: context.userId
-  }).select('id,provider,mechanism,status,capabilities,created_at,updated_at').single();
+  }).select('id,provider,mechanism,status,capabilities,display_label,provider_account_ref,provider_tenant_ref,principal_label,transport_capabilities,health_state,verified_at,expires_at,last_checked_at,last_error_code,created_at,updated_at').single();
   if (error || !data) throw new WorkConnectionError('persistence_error', 500);
   return data;
 }
@@ -70,9 +72,11 @@ export async function revokeWorkConnectionRef(admin: any, context: UserContext, 
     .eq('org_id', context.orgId)
     .eq('tenant_id', context.tenantId)
     .eq('status', 'active')
-    .select('id,provider,mechanism,status,capabilities,created_at,updated_at')
+    .select('id,provider,mechanism,status,capabilities,display_label,provider_account_ref,provider_tenant_ref,principal_label,transport_capabilities,health_state,verified_at,expires_at,last_checked_at,last_error_code,created_at,updated_at')
     .maybeSingle();
   if (error) throw new WorkConnectionError('persistence_error', 500);
   if (!data) throw new WorkConnectionError('connection_not_found', 404);
   return data;
 }
+
+export const WORK_CONNECTION_SUMMARY_SELECT = CONNECTION_SUMMARY_SELECT;

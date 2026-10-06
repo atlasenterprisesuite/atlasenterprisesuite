@@ -22,9 +22,14 @@ describe('ATLAS Work runtime and connection Edge boundary', () => {
     expect(edgeSource).toContain("requireExecutionPermission(context, 'execution.admin')");
   });
 
-  it('uses opaque connection refs and never returns external_ref from list', () => {
+  it('uses opaque connection refs and returns only sanitized readiness metadata', () => {
     expect(connectionSource).toContain('external_ref');
-    expect(connectionSource).toContain("select('id,provider,mechanism,status,capabilities,created_at,updated_at')");
+    expect(connectionSource).toContain('health_state');
+    expect(connectionSource).toContain('transport_capabilities');
+    expect(connectionSource).toContain('verified_at');
+    const projections = [...connectionSource.matchAll(/\.select\('([^']+)'\)/g)].map((match) => match[1]);
+    expect(projections.length).toBeGreaterThan(0);
+    for (const projection of projections) expect(projection).not.toContain('external_ref');
     expect(connectionSource).not.toContain("select('*')");
   });
 
