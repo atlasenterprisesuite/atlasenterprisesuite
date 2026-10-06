@@ -28,6 +28,8 @@ import { ProcureToPayPage } from '../modules/inventory/ProcureToPayPage';
 import { PeopleRoutes } from '../modules/people/PeopleRoutes';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
+import { BioScanPage } from '../modules/health/bioscan/BioScanPage';
+import { BodyTwinPage } from '../modules/health/bioscan/BodyTwinPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 import { OracleRoutes } from '../modules/oracle/OracleRoutes';
@@ -191,6 +193,8 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><WebLaunchPage /></RequireAtlasIdentity>;
   }
 
+  if (pathname === '/health/bioscan') return <RequireAtlasIdentity><BioScanPage /></RequireAtlasIdentity>;
+  if (pathname === '/health/body-twin') return <RequireAtlasIdentity><BodyTwinPage /></RequireAtlasIdentity>;
   if (pathname === '/health') return <HealthExperiencePage />;
   if (pathname === JAQUE_MATE_SENTINEL_LEGACY) return <Navigate to={JAQUE_MATE_SENTINEL_V2} replace />;
   if (pathname === JAQUE_MATE_SENTINEL_V2 || pathname === JAQUE_MATE_SENTINEL_CANONICAL) return <JaqueMateSentinelPage />;

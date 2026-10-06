@@ -1,8 +1,11 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { App } from '../../apps/web/src/App';
+
+const extension = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
 
 describe('ATLAS Health governed routes', () => {
   it('renders the ASTRA-derived Health home without pretending clinical integrations are live', () => {
@@ -10,10 +13,24 @@ describe('ATLAS Health governed routes', () => {
     expect(screen.getByRole('heading', { name: 'Health' })).toBeInTheDocument();
     expect(document.querySelector('.module-experience-page')).toBeTruthy();
     expect(screen.getByText('Health intelligence, research and wellbeing with explicit evidence boundaries.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /BioScan/i })).toHaveAttribute('href', '/health/bioscan');
+    expect(screen.getByRole('link', { name: /Human Digital Twin/i })).toHaveAttribute('href', '/health/body-twin');
     expect(screen.getByRole('link', { name: /Health Frontiers/i })).toHaveAttribute('href', '/health/research');
     expect(screen.getByRole('link', { name: /Neuroplasticity Program/i })).toHaveAttribute('href', '/health/wellbeing/neuroplasticity');
     expect(screen.getByText('Clinical systems').closest('[aria-disabled="true"]')).toBeTruthy();
     expect(screen.getByText('Hospital operations').closest('[aria-disabled="true"]')).toBeTruthy();
+  });
+
+  it('registers BioScan and Body Twin behind the canonical identity gate', () => {
+    expect(extension).toContain("pathname === '/health/bioscan'");
+    expect(extension).toContain('<RequireAtlasIdentity><BioScanPage /></RequireAtlasIdentity>');
+    expect(extension).toContain("pathname === '/health/body-twin'");
+    expect(extension).toContain('<RequireAtlasIdentity><BodyTwinPage /></RequireAtlasIdentity>');
+  });
+
+  it('sends unauthenticated BioScan navigation through ATLAS Identity', () => {
+    render(<MemoryRouter initialEntries={['/health/bioscan']}><App /></MemoryRouter>);
+    expect(screen.getByRole('heading', { name: /ATLAS Identity/i })).toBeInTheDocument();
   });
 
   it('renders Disease Reconstruction Lab overview with repository-backed counts', () => {
