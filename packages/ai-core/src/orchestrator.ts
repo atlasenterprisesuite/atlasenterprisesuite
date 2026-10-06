@@ -17,32 +17,12 @@ import {
   type AtlasTaskState,
   type AtlasTestResult
 } from '../../task-protocol/src';
+import { assertCompletionEvidence } from './completionReadiness';
 import type { PersistencePort } from './persistence';
 import type { ProviderAdapter, ProviderResult } from './providers';
 
 function id(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function assertCompletionEvidence(task: AtlasTask): void {
-  const reasons: string[] = [];
-
-  if (task.tests.length === 0 || task.tests.some((test) => !test.evidence || !test.evidence.trim())) {
-    reasons.push('missing_test_evidence');
-  }
-  if (task.tests.some((test) => test.status !== 'passed')) {
-    reasons.push('failed_test');
-  }
-  if (task.approvals.length === 0 || task.approvals.some((approval) => approval.result !== 'approved')) {
-    reasons.push('approval_not_satisfied');
-  }
-  if (!task.deployment || task.deployment.status !== 'verified') {
-    reasons.push('deployment_not_verified');
-  }
-
-  if (reasons.length > 0) {
-    throw new Error(`ATLAS completion evidence incomplete: ${reasons.join(',')}`);
-  }
 }
 
 export class AtlasOrchestrator {
