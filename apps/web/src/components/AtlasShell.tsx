@@ -6,7 +6,7 @@ import {
   getCachedAtlasShellOrganization,
   type AtlasShellOrganization
 } from '../lib/atlasSession';
-import { ATLAS_MODULES } from '../modules/registry';
+import { ATLAS_MODULES, ATLAS_NAV_ITEMS } from '../modules/registry';
 import { searchAtlasNavigation } from '../navigation/atlasNavigation';
 import {
   ATLAS_ACCESSIBILITY_PROFILE_EVENT,
@@ -144,21 +144,21 @@ export function AtlasShell({ children }: { children: ReactNode }) {
 
   const navigationGroups = useMemo(() => {
     const grouped = new Map<string, Array<{ to: string; label: string }>>();
-
-    for (const module of ATLAS_MODULES) {
-      if (!module.showInNavigation) continue;
-      const items = grouped.get(module.area) || [];
-      items.push({ to: module.route, label: module.navLabel });
-      grouped.set(module.area, items);
-    }
-
-    const financeItems = grouped.get('Finance') || [];
-    financeItems.push(
-      { to: '/finance/accounting/accounts-payable', label: 'Payables' },
-      { to: '/finance/accounting/accounts-receivable', label: 'Receivables' },
-      { to: '/finance/accounting/reports/automotive-sales', label: 'Automotive' }
+    const moduleAreaByRoute = new Map(
+      ATLAS_MODULES
+        .filter((module) => module.showInNavigation)
+        .map((module) => [module.route, module.area] as const)
     );
-    grouped.set('Finance', financeItems);
+
+    for (const item of ATLAS_NAV_ITEMS) {
+      if (item.to === '/' || item.to === '/suite') continue;
+
+      const area = moduleAreaByRoute.get(item.to)
+        ?? (item.to.startsWith('/finance/') ? 'Finance' : 'Platform');
+      const items = grouped.get(area) || [];
+      items.push({ to: item.to, label: item.label });
+      grouped.set(area, items);
+    }
 
     return Array.from(grouped.entries()).map(([area, items]) => ({ area, items }));
   }, []);
