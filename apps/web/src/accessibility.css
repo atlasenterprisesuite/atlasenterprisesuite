@@ -229,8 +229,15 @@
   .accessibility-capability-grid,
   .accessibility-settings-section .settings-grid { grid-template-columns: 1fr; }
   .atlas-accessibility-launcher {
-    right: 12px;
-    bottom: 12px;
+    right: calc(12px + env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
   }
-  .atlas-live-captions { bottom: 68px; }
+  .atlas-accessibility-launcher > span:last-child { display: none; }
+  .atlas-live-captions { bottom: calc(68px + env(safe-area-inset-bottom)); }
 }
