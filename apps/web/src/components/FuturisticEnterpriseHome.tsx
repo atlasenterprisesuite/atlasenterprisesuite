@@ -50,6 +50,8 @@ export function FuturisticEnterpriseHome() {
               Ejecutar verificación funcional <span aria-hidden="true">→</span>
             </Link>
             <Link className="atlas-secondary-action" to="/suite">Explorar todos los módulos</Link>
+            <Link className="atlas-secondary-action" to="/pricing">View pricing</Link>
+            <Link className="atlas-secondary-action" to="/request-demo">Request a demo</Link>
           </div>
           <p className="atlas-contract-narrative">One operating system for governed enterprise work.</p>
           <p className="atlas-system-note">Orlando · Personas · Procesos · Datos · Resultados</p>
