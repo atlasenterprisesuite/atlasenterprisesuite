@@ -11,7 +11,12 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => ({
   getActiveAtlasOrganization: mocks.getActiveAtlasOrganization
 }));
 
-import { getAssistantStatus, getAssistantUsage, sendAssistantMessage } from '../../apps/web/src/assistant/client';
+import {
+  assistantWorkspaceCapabilities,
+  getAssistantStatus,
+  getAssistantUsage,
+  sendAssistantMessage
+} from '../../apps/web/src/assistant/client';
 
 describe('ATLAS Assistant governed copilot client', () => {
   beforeEach(() => {
@@ -38,6 +43,33 @@ describe('ATLAS Assistant governed copilot client', () => {
       method: 'GET',
       headers: { 'x-atlas-org-id': 'org-1' }
     });
+  });
+
+  it('preserves server-authored workspace capabilities and never fabricates them client-side', async () => {
+    const manifest = [{
+      id: 'chat',
+      state: 'ready',
+      reason: null,
+      permissions: [],
+      supports_background: false
+    }];
+    mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      authenticated: true,
+      provider: 'openai',
+      provider_state: 'verified_for_request',
+      model: 'model',
+      storage_state: 'configured',
+      organization: 'org-1',
+      role: 'owner',
+      capabilities: ['generation'],
+      workspace_capabilities: manifest
+    }), { status: 200 }));
+
+    const status = await getAssistantStatus();
+
+    expect(assistantWorkspaceCapabilities(status)).toEqual(manifest);
+    expect(assistantWorkspaceCapabilities({ ...status, workspace_capabilities: undefined })).toEqual([]);
   });
 
   it('uses the authenticated ATLAS fetch path for usage telemetry', async () => {
