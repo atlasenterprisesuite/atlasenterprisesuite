@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { atlasAuthorizedJson } from '../../lib/atlasSession';
 import { CloudSubnav } from './AtlasCloudNextLevel';
 
-const OBSERVABILITY_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-observability';
-const RELEASE_URL =
-  'https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-release-control';
+const OBSERVABILITY_PATH = '/functions/v1/atlas-observability';
+const RELEASE_PATH = '/functions/v1/atlas-release-control';
 
 type CloudService = {
   module_code: string;
@@ -54,24 +53,8 @@ type IncidentRow = {
   resolved_at: string | null;
 };
 
-function sessionHeaders() {
-  const token = localStorage.getItem('atlas_access_token') || '';
-  const orgId = localStorage.getItem('atlas_org_id') || '';
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (orgId) headers['x-atlas-org-id'] = orgId;
-  return headers;
-}
-
-async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, {
-    method: 'GET',
-    cache: 'no-store',
-    headers: sessionHeaders()
-  });
-  const body = await response.json().catch(() => ({ error: 'invalid_response' }));
-  if (!response.ok) throw new Error(String(body?.error || `request_failed_${response.status}`));
-  return body as T;
+async function getJson<T>(path: string): Promise<T> {
+  return atlasAuthorizedJson<T>(path, { method: 'GET', cache: 'no-store' });
 }
 
 function LoadingState({ title }: { title: string }) {
@@ -118,7 +101,7 @@ export function AtlasCloudServiceGraph() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    getJson<ResourcePayload>(`${OBSERVABILITY_URL}?api=cloud-resources`)
+    getJson<ResourcePayload>(`${OBSERVABILITY_PATH}?api=cloud-resources`)
       .then(setData)
       .catch((reason) => setError(reason instanceof Error ? reason.message : 'service_graph_unavailable'));
   }, []);
@@ -201,7 +184,7 @@ export function AtlasCloudReleaseCenter() {
   async function load() {
     setError('');
     try {
-      const data = await getJson<{ ok: boolean; releases: ReleaseRow[] }>(`${RELEASE_URL}?api=releases`);
+      const data = await getJson<{ ok: boolean; releases: ReleaseRow[] }>(`${RELEASE_PATH}?api=releases`);
       setReleases(data.releases || []);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'releases_unavailable');
@@ -273,7 +256,7 @@ export function AtlasCloudIamPolicy() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    getJson<ResourcePayload>(`${OBSERVABILITY_URL}?api=cloud-resources`)
+    getJson<ResourcePayload>(`${OBSERVABILITY_PATH}?api=cloud-resources`)
       .then(setData)
       .catch((reason) => setError(reason instanceof Error ? reason.message : 'identity_boundary_unavailable'));
   }, []);
@@ -402,7 +385,7 @@ export function AtlasCloudReliability() {
     setError('');
     try {
       const data = await getJson<{ ok: boolean; incidents: IncidentRow[] }>(
-        `${OBSERVABILITY_URL}?api=incidents&limit=100`
+        `${OBSERVABILITY_PATH}?api=incidents&limit=100`
       );
       setIncidents(data.incidents || []);
     } catch (reason) {
