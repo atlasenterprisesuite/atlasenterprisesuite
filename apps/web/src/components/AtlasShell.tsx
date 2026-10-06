@@ -134,7 +134,9 @@ export function AtlasShell({ children }: { children: ReactNode }) {
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'AT';
   const closeMobileNav = () => setMobileNavOpen(false);
-  const voiceOwnsAssistantSurface = location.pathname === '/studio/voice'
+  const routeOwnsAssistantSurface = location.pathname === '/assistant'
+    || location.pathname.startsWith('/assistant/')
+    || location.pathname === '/studio/voice'
     || location.pathname === '/voice'
     || location.pathname.startsWith('/voice/');
 
@@ -294,7 +296,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </header>
 
         <main>{children}</main>
-        {organization && !voiceOwnsAssistantSurface ? <AtlasAssistant /> : null}
+        {organization && !routeOwnsAssistantSurface ? <AtlasAssistant /> : null}
       </div>
       <AtlasAccessibility
         initialProfile={accessibilityProfile}

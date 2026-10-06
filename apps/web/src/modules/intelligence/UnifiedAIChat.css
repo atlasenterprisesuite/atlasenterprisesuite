@@ -1027,6 +1027,10 @@
   .atlas-ai-status-panel{
     left:10px;
     top:50px;
+    width:calc(100% - 20px);
+    max-height:min(62dvh,560px);
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
   }
 
   .atlas-ai-messages{
@@ -1102,7 +1106,7 @@
   }
 
   .atlas-ai-status-panel{
-    width:calc(100vw - 20px);
+    width:calc(100% - 20px);
   }
 
   .atlas-ai-select-row{
