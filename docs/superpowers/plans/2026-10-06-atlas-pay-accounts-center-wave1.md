@@ -12,13 +12,13 @@ Add a source-backed Accounts Center + Balance Evidence layer to the existing ATL
 
 - [x] Audit existing ATLAS Pay architecture, migration, web surface, API and tests.
 - [x] Confirm reuse of existing `/finance/pay`, `pay.read/manage/execute`, provider connections, instrument intents, payout intents and Accounting invariant.
-- [ ] RED: extend unit tests for balance-domain separation and latest-evidence deduplication.
-- [ ] RED: extend web integration tests for Accounts Center, Balance domains and Payout Hub.
-- [ ] Add pure balance evidence types + summarization helper to `packages/pay`.
-- [ ] Add migration for `atlas_pay_accounts` and `atlas_pay_balance_evidence`.
-- [ ] Extend ATLAS Pay API snapshot with accounts and balance evidence.
-- [ ] Extend `AtlasPayPage` with account/balance/payout/security surfaces.
-- [ ] Extend architecture documentation.
+- [x] RED: extend unit tests for balance-domain separation and latest-evidence deduplication. Confirmed failing at commit 104d77c: summarizeBalanceEvidence not yet implemented.
+- [x] RED: extend web integration tests for Accounts Center, Balance domains and Payout Hub.
+- [x] Add pure balance evidence types + summarization helper to `packages/pay`.
+- [x] Add migration for `atlas_pay_accounts` and `atlas_pay_balance_evidence`.
+- [x] Extend ATLAS Pay API snapshot with accounts and balance evidence.
+- [x] Extend `AtlasPayPage` with account/balance/payout/security surfaces.
+- [x] Extend architecture documentation.
 - [ ] Run CI and fix regressions.
 - [ ] Merge only after required checks are green.
 - [ ] Verify `https://www.atlasenterprisesuite.com/` and `/finance/pay` after deployment.
