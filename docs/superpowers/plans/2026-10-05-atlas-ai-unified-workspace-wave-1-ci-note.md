@@ -1,0 +1,1 @@
+Wave 1 uses the existing GitHub Actions pull-request runner as the TDD execution surface because the current chat container has no outbound DNS access to github.com. Test-only commits are expected to fail before implementation; implementation commits must turn the same checks green before merge.

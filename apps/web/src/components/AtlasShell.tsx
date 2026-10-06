@@ -7,7 +7,7 @@ import {
   type AtlasShellOrganization
 } from '../lib/atlasSession';
 import { ATLAS_NAV_ITEMS } from '../modules/registry';
-import { searchAtlasNavigation } from '../navigation/atlasNavigation';
+import { isAtlasAIWorkspacePath, searchAtlasNavigation } from '../navigation/atlasNavigation';
 import {
   ATLAS_ACCESSIBILITY_PROFILE_EVENT,
   loadAccessibilityProfile,
@@ -19,6 +19,7 @@ import {
 import type { AccessibilityAction, AccessibilityProfile } from '../types/accessibility';
 import { AtlasAccessibility } from './AtlasAccessibility';
 import { AtlasAssistant } from './assistant/AtlasAssistant';
+import { AIWorkspaceNav } from './ai/AIWorkspaceNav';
 
 export function AtlasShell({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -292,6 +293,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           </NavLink>
         </header>
 
+        {isAtlasAIWorkspacePath(location.pathname) ? <AIWorkspaceNav /> : null}
         <main>{children}</main>
         {organization && !voiceOwnsAssistantSurface ? <AtlasAssistant /> : null}
       </div>
