@@ -145,8 +145,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     area: 'Finance',
     route: '/finance/pay',
     readiness: 'external-gated',
-    requiresAuth: true,
-    description: 'Provider-neutral wallet, issuing and payout orchestration with regulated providers and rails fail-closed until verified.',
+    requiresAuth: false,
+    description: 'Public ATLAS Pay product experience with the operational wallet, balance evidence, issuing and payout workspace protected behind identity.',
     showInNavigation: true
   },
   {

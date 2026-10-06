@@ -1,5 +1,5 @@
 {
-  "version": 32,
+  "version": 33,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "health_check": {
@@ -30,6 +30,7 @@
     "/advisory",
     "/finance",
     "/finance/pay",
+    "/finance/pay/workspace",
     "/tax",
     "/crm",
     "/commerce",

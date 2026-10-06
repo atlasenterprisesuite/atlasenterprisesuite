@@ -10,13 +10,14 @@ const accountsMigration = readFileSync('supabase/migrations/20261006190000_atlas
 const productionContract = JSON.parse(readFileSync('data/ops/global-production-verification.json', 'utf8')) as { public_routes: string[] };
 
 describe('ATLAS Pay web integration', () => {
-  it('exposes ATLAS Pay from Finance behind identity', () => {
+  it('exposes ATLAS Pay publicly while keeping the operational workspace behind identity', () => {
     expect(app).toContain("import { AtlasPayPage } from './modules/finance/pay/AtlasPayPage'");
     expect(app).toContain('to="/finance/pay"');
-    expect(app).toContain('path="/finance/pay" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>}');
+    expect(app).toContain('path="/finance/pay/workspace" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>}');
     expect(registry).toContain("id: 'pay'");
     expect(registry).toContain("route: '/finance/pay'");
     expect(registry).toContain("readiness: 'external-gated'");
+    expect(registry).toContain("requiresAuth: false");
   });
 
   it('never represents regulated issuing or payout rails as live by default', () => {
