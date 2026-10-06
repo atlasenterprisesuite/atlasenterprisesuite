@@ -5,6 +5,64 @@ export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gem
 export type AssistantProfile = 'fast' | 'balanced' | 'deep';
 export type AssistantExecutionMode = 'auto' | 'interactive' | 'background';
 
+export type AtlasAssistantCapabilityId =
+  | 'chat'
+  | 'work'
+  | 'build'
+  | 'web-research'
+  | 'attachments'
+  | 'voice'
+  | 'apps'
+  | 'knowledge'
+  | 'artifacts'
+  | 'computer';
+
+export type AtlasAssistantCapabilityState = 'ready' | 'gated' | 'unavailable' | 'configuration_required';
+
+export type AtlasAssistantCapability = {
+  id: AtlasAssistantCapabilityId;
+  state: AtlasAssistantCapabilityState;
+  reason: string | null;
+  permissions: string[];
+  supports_background: boolean;
+};
+
+export type AtlasAssistantExperience = 'chat' | 'work' | 'build';
+
+export type AtlasContextSource = {
+  kind: 'module' | 'knowledge' | 'app' | 'attachment' | 'conversation' | 'project';
+  id: string;
+  label: string;
+  state: 'ready' | 'gated' | 'unavailable';
+  provenance?: Record<string, unknown>;
+};
+
+export type AtlasExecutionState =
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'approval_required'
+  | 'configuration_required';
+
+export type AtlasWorkspaceResult = {
+  ok?: boolean;
+  conversation_id: string | null;
+  execution_id: string | null;
+  trace_id?: string | null;
+  experience: AtlasAssistantExperience;
+  state: AtlasExecutionState;
+  text: string | null;
+  providers: string[];
+  model: string | null;
+  profile: AssistantProfile;
+  capability_ids: AtlasAssistantCapabilityId[];
+  artifact_refs: string[];
+  approval_refs: string[];
+  provenance: unknown[];
+  error: string | null;
+};
+
 export type AssistantProviderState =
   | 'verified_for_request'
   | 'configured_unverified'
@@ -37,6 +95,7 @@ export type AssistantStatusResponse = {
   organization: string;
   role: string | null;
   capabilities: string[];
+  workspace_capabilities?: AtlasAssistantCapability[];
   providers?: AssistantProviderReadiness[];
   modes?: AssistantMode[];
   profiles?: AssistantProfile[];
@@ -194,6 +253,10 @@ export function assistantProviderSummary(status: AssistantStatusResponse): strin
   return 'no verified provider';
 }
 
+export function assistantWorkspaceCapabilities(status: AssistantStatusResponse): AtlasAssistantCapability[] {
+  return Array.isArray(status.workspace_capabilities) ? status.workspace_capabilities : [];
+}
+
 export async function getAssistantStatus(): Promise<AssistantStatusResponse> {
   const { headers } = await assistantHeaders();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=status', {
@@ -255,6 +318,43 @@ export async function diarizeAssistantAudio(input: {
     })
   });
   return parseCopilotResponse<AssistantDiarizationResponse>(response);
+}
+
+export async function sendAssistantWorkspaceRequest(input: {
+  experience: AtlasAssistantExperience;
+  message: string;
+  conversationId?: string | null;
+  mode: AssistantMode;
+  profile: AssistantProfile;
+  executionMode?: AssistantExecutionMode;
+  sourceRefs?: AtlasContextSource[];
+  requestedCapabilities?: AtlasAssistantCapabilityId[];
+}): Promise<AtlasWorkspaceResult> {
+  const message = input.message.trim();
+  if (!message) throw new Error('assistant_message_required');
+
+  const { organization, headers } = await assistantHeaders();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=chat', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      organization_id: organization.id,
+      module: 'assistant',
+      experience: input.experience,
+      message,
+      conversation_id: input.conversationId || null,
+      mode: input.mode,
+      profile: input.profile,
+      execution_mode: input.executionMode || 'auto',
+      source_refs: input.sourceRefs || [],
+      requested_capabilities: input.requestedCapabilities || [],
+      client_metadata: {
+        modality: 'text',
+        surface: 'atlas-assistant-workspace'
+      }
+    })
+  });
+  return parseCopilotResponse<AtlasWorkspaceResult>(response);
 }
 
 export async function sendAssistantWorkspaceMessage(input: {

@@ -11,7 +11,13 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => ({
   getActiveAtlasOrganization: mocks.getActiveAtlasOrganization
 }));
 
-import { getAssistantStatus, getAssistantUsage, sendAssistantMessage } from '../../apps/web/src/assistant/client';
+import {
+  assistantWorkspaceCapabilities,
+  getAssistantStatus,
+  getAssistantUsage,
+  sendAssistantMessage,
+  sendAssistantWorkspaceRequest
+} from '../../apps/web/src/assistant/client';
 
 describe('ATLAS Assistant governed copilot client', () => {
   beforeEach(() => {
@@ -37,6 +43,86 @@ describe('ATLAS Assistant governed copilot client', () => {
     expect(mocks.authorizedAtlasFetch).toHaveBeenCalledWith('/functions/v1/atlas-copilot?api=status', {
       method: 'GET',
       headers: { 'x-atlas-org-id': 'org-1' }
+    });
+  });
+
+  it('preserves server-authored workspace capabilities and never fabricates them client-side', async () => {
+    const manifest = [{
+      id: 'chat',
+      state: 'ready',
+      reason: null,
+      permissions: [],
+      supports_background: false
+    }];
+    mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      authenticated: true,
+      provider: 'openai',
+      provider_state: 'verified_for_request',
+      model: 'model',
+      storage_state: 'configured',
+      organization: 'org-1',
+      role: 'owner',
+      capabilities: ['generation'],
+      workspace_capabilities: manifest
+    }), { status: 200 }));
+
+    const status = await getAssistantStatus();
+
+    expect(assistantWorkspaceCapabilities(status)).toEqual(manifest);
+    expect(assistantWorkspaceCapabilities({ ...status, workspace_capabilities: undefined })).toEqual([]);
+  });
+
+  it('sends one normalized workspace request and preserves the server execution envelope', async () => {
+    mocks.authorizedAtlasFetch.mockResolvedValue(new Response(JSON.stringify({
+      ok: true,
+      conversation_id: 'conv-work-1',
+      execution_id: 'trace-work-1',
+      experience: 'work',
+      state: 'queued',
+      text: null,
+      providers: ['openai'],
+      model: 'server-selected',
+      profile: 'deep',
+      capability_ids: ['work'],
+      artifact_refs: [],
+      approval_refs: [],
+      provenance: [],
+      error: null
+    }), { status: 202 }));
+
+    const result = await sendAssistantWorkspaceRequest({
+      experience: 'work',
+      message: 'Reconcile the month end package',
+      conversationId: 'conv-work-1',
+      mode: 'auto',
+      profile: 'deep',
+      executionMode: 'background',
+      sourceRefs: [],
+      requestedCapabilities: ['work']
+    });
+
+    const [url, init] = mocks.authorizedAtlasFetch.mock.calls[0];
+    expect(url).toBe('/functions/v1/atlas-copilot?api=chat');
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      organization_id: 'org-1',
+      module: 'assistant',
+      experience: 'work',
+      message: 'Reconcile the month end package',
+      conversation_id: 'conv-work-1',
+      mode: 'auto',
+      profile: 'deep',
+      execution_mode: 'background',
+      source_refs: [],
+      requested_capabilities: ['work'],
+      client_metadata: { modality: 'text', surface: 'atlas-assistant-workspace' }
+    });
+    expect(result).toMatchObject({
+      conversation_id: 'conv-work-1',
+      execution_id: 'trace-work-1',
+      experience: 'work',
+      state: 'queued',
+      profile: 'deep'
     });
   });
 
