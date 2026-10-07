@@ -1,5 +1,8 @@
 import { assertSameScope } from './context';
-import { missingEvidence } from './evidence';
+import {
+  requireControlPlaneEvidence,
+  type AtlasExecutionEvidenceRecord
+} from './evidence-bridge';
 import type { ExecutionActor, ExecutionScope } from './types';
 import type { WorkActionPolicyDecision } from './work-policy';
 
@@ -16,28 +19,28 @@ export type AtlasControlPlaneStage = (typeof ATLAS_CONTROL_PLANE_STAGES)[number]
 
 export const ATLAS_CONTROL_PLANE_OWNERS = Object.freeze({
   intent: Object.freeze({
-    path: 'supabase/functions/atlas-copilot/intelligence-gateway.mjs',
-    symbol: 'createIntelligenceRouter'
+    path: 'packages/execution/src/semantic-intent.ts',
+    symbol: 'routeSemanticIntent'
   }),
   context: Object.freeze({
-    path: 'supabase/functions/atlas-copilot/atlas-intelligence-auth.mjs',
-    symbol: 'resolveIntelligenceContext'
+    path: 'packages/execution/src/context-engine.ts',
+    symbol: 'resolveAtlasContext'
   }),
   policy: Object.freeze({
-    path: 'supabase/functions/atlas-execution/work-policy.ts',
-    symbol: 'evaluateWorkStepServer'
+    path: 'packages/execution/src/policy-fabric.ts',
+    symbol: 'evaluateAtlasPolicy'
   }),
   orchestrator: Object.freeze({
     path: 'packages/execution/src/engine.ts',
     symbol: 'ExecutionEngine'
   }),
   capability: Object.freeze({
-    path: 'packages/execution/src/adapter.ts',
-    symbol: 'ExecutionAdapterRegistry'
+    path: 'packages/execution/src/capability-catalog.ts',
+    symbol: 'createAtlasCapabilityCatalog'
   }),
   evidence: Object.freeze({
-    path: 'packages/execution/src/evidence.ts',
-    symbol: 'missingEvidence'
+    path: 'packages/execution/src/evidence-bridge.ts',
+    symbol: 'requireControlPlaneEvidence'
   })
 } satisfies Record<AtlasControlPlaneStage, { path: string; symbol: string }>);
 
@@ -85,11 +88,7 @@ export type AtlasEvidenceEnvelope = {
   requestId: string;
   correlationId: string;
   requiredKinds: readonly string[];
-  evidence: ReadonlyArray<{
-    kind: string;
-    reference: string;
-    verified: boolean;
-  }>;
+  evidence: readonly AtlasExecutionEvidenceRecord[];
   auditEventIds: readonly string[];
 };
 
@@ -192,20 +191,12 @@ function assertCapability(intent: AtlasIntentEnvelope, capability: AtlasCapabili
 function assertEvidence(intent: AtlasIntentEnvelope, evidence: AtlasEvidenceEnvelope) {
   assertLineage(intent, 'evidence', evidence.requestId);
   if (!nonEmpty(evidence.correlationId)) throw new Error('control_plane_correlation_required');
-  if (!evidence.auditEventIds.length || evidence.auditEventIds.some((id) => !nonEmpty(id))) {
-    throw new Error('control_plane_audit_required');
-  }
 
-  for (const item of evidence.evidence) {
-    if (item.verified && !nonEmpty(item.reference)) {
-      throw new Error(`control_plane_evidence_reference_required:${item.kind}`);
-    }
-  }
-
-  const missing = missingEvidence(evidence.requiredKinds, evidence.evidence);
-  if (missing.length) {
-    throw new Error(`control_plane_evidence_missing:${missing.join(',')}`);
-  }
+  requireControlPlaneEvidence({
+    requiredKinds: evidence.requiredKinds,
+    evidence: evidence.evidence,
+    auditEventIds: evidence.auditEventIds
+  });
 }
 
 export function validateAtlasControlPlaneHandoff(
