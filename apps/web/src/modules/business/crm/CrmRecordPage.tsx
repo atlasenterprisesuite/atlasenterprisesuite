@@ -6,14 +6,19 @@ import type {
   CrmObjectType,
   CrmRecord
 } from '../../../../../../packages/core/src/crm';
-import { CrmApiError, crmApi } from './crmApi';
+import { CrmApiError, crmApi, type CrmApiProvider } from './crmApi';
 
-function routeForObject(objectType: CrmObjectType, providerId: string): string | null {
+function routeForObject(
+  objectType: CrmObjectType,
+  providerId: string,
+  provider: CrmApiProvider
+): string | null {
   const encoded = encodeURIComponent(providerId);
-  if (objectType === 'contact') return `/crm/contacts/${encoded}`;
-  if (objectType === 'company') return `/crm/companies/${encoded}`;
-  if (objectType === 'deal') return `/crm/deals/${encoded}`;
-  if (objectType === 'ticket') return `/crm/service/${encoded}`;
+  const base = provider === 'salesforce' ? '/crm/salesforce' : '/crm';
+  if (objectType === 'contact') return `${base}/contacts/${encoded}`;
+  if (objectType === 'company') return `${base}/companies/${encoded}`;
+  if (objectType === 'deal') return `${base}/deals/${encoded}`;
+  if (objectType === 'ticket') return `${base}/service/${encoded}`;
   return null;
 }
 
@@ -24,11 +29,13 @@ function fieldLabel(key: string): string {
 export function CrmRecordPage({
   objectType,
   title,
-  associationTargets
+  associationTargets,
+  provider = 'hubspot'
 }: {
   objectType: CrmObjectType;
   title: string;
   associationTargets: readonly CrmObjectType[];
+  provider?: CrmApiProvider;
 }) {
   const { providerId = '' } = useParams();
   const [record, setRecord] = useState<CrmRecord | null>(null);
@@ -47,7 +54,7 @@ export function CrmRecordPage({
         const result = await crmApi<{ record: CrmRecord }>('crm.get', {
           objectType,
           providerId
-        });
+        }, provider);
         if (!active) return;
         setRecord(result.record);
 
@@ -62,7 +69,7 @@ export function CrmRecordPage({
                 providerId,
                 targetObjectType,
                 cursor
-              });
+              }, provider);
               pages.push(...result.associations.associations);
               const nextCursor: string | null = result.associations.nextCursor;
               if (!nextCursor) break;
@@ -102,12 +109,12 @@ export function CrmRecordPage({
     };
     void load();
     return () => { active = false; };
-  }, [objectType, providerId, associationTargets]);
+  }, [objectType, providerId, associationTargets, provider]);
 
   return (
     <section className="crm-page page-stack" aria-labelledby="crm-record-title">
       <header className="page-header">
-        <p className="eyebrow">ATLAS CRM · HubSpot</p>
+        <p className="eyebrow">ATLAS CRM · {provider === 'salesforce' ? 'Salesforce' : 'HubSpot'}</p>
         <h1 id="crm-record-title">{record?.displayName || title}</h1>
         <p>Provider-backed detail view. Only fields returned by the authorized provider are rendered.</p>
       </header>
@@ -118,7 +125,7 @@ export function CrmRecordPage({
       {!loading && !error && record ? (
         <>
           <div className="crm-record-meta">
-            <span className="crm-source">Source: HubSpot</span>
+            <span className="crm-source">Source: {provider === 'salesforce' ? 'Salesforce' : 'HubSpot'}</span>
             <span>Provider ID: {record.providerId}</span>
             {record.updatedAt ? <span>Updated: {new Date(record.updatedAt).toLocaleString()}</span> : null}
           </div>
@@ -143,7 +150,7 @@ export function CrmRecordPage({
             ) : (
               <ul>
                 {associations.map((association) => {
-                  const route = routeForObject(association.toObjectType, association.toProviderId);
+                  const route = routeForObject(association.toObjectType, association.toProviderId, provider);
                   const label = `${association.toObjectType} ${association.toProviderId}`;
                   return (
                     <li key={`${association.toObjectType}:${association.toProviderId}:${association.associationType ?? ''}`}>
