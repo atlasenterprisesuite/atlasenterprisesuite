@@ -91,7 +91,7 @@ export function WorkComputerOperationsPage() {
   return (
     <section className="work-page page-stack">
       <header className="page-header">
-        <p className="eyebrow">ATLAS Work Soberano</p>
+        <p className="eyebrow">ATLAS Work</p>
         <h1>Computer Operations Center</h1>
         <p>
           Browser execution readiness and production-route diagnostics. Browser probes are operational evidence only;
