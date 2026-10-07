@@ -9,6 +9,7 @@ import { WorkPoliciesPage } from './WorkPoliciesPage';
 import { WorkRuntimesPage } from './WorkRuntimesPage';
 import { WorkTeamPage } from './WorkTeamPage';
 import { WorkTemplatesPage } from './WorkTemplatesPage';
+import { UniversalTransferPage } from './UniversalTransferPage';
 
 export function WorkRoutes() {
   return (
@@ -21,6 +22,7 @@ export function WorkRoutes() {
       <Route path="/work/history" element={<WorkListPage view="history" />} />
       <Route path="/work/templates" element={<WorkTemplatesPage />} />
       <Route path="/work/connections" element={<WorkConnectionsPage />} />
+      <Route path="/work/transfer" element={<UniversalTransferPage />} />
       <Route path="/work/computer-operations" element={<WorkComputerOperationsPage />} />
       <Route path="/work/runtimes" element={<WorkRuntimesPage />} />
       <Route path="/work/policies" element={<WorkPoliciesPage />} />
