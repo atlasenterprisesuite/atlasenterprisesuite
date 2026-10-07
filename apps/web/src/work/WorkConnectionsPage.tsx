@@ -77,7 +77,7 @@ export function WorkConnectionsPage() {
 
   return (
     <section className="work-page page-stack">
-      <header className="page-header"><p className="eyebrow">ATLAS Work Soberano</p><h1>Connections</h1><p>Authorized provider, browser-session and vault references available to the active organization.</p></header>
+      <header className="page-header"><p className="eyebrow">ATLAS Work</p><h1>Connections</h1><p>Authorized provider, browser-session and vault references available to the active organization.</p></header>
       <WorkSubnav />
 
       <form className="execution-panel work-composer" onSubmit={(event) => void register(event)}>
