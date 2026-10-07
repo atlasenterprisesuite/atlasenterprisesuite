@@ -133,6 +133,7 @@ describe('ATLAS Council', () => {
             'ATLAS_FINAL:',
             'Refined ATLAS answer.',
           ].join('\n'),
+          finish_reason: 'STOP',
           capabilities_used: ['generation'],
           usage: { output_tokens: 12 },
           provenance: [],
@@ -177,6 +178,8 @@ describe('ATLAS Council', () => {
           '- Preserved the useful explanation.',
           'ATLAS_FINAL:',
           'Correct refined answer.',
+          'ATLAS_FINAL:',
+          'This standalone marker belongs to the requested final content.',
         ].join('\n'),
         finish_reason: 'STOP',
         capabilities_used: ['generation'],
@@ -198,7 +201,7 @@ describe('ATLAS Council', () => {
     });
 
     expect(result.review).toContain('Removed a stray ATLAS_FINAL: label');
-    expect(result.text).toBe('Correct refined answer.');
+    expect(result.text).toBe('Correct refined answer.\nATLAS_FINAL:\nThis standalone marker belongs to the requested final content.');
   });
 
   it('fails closed when Gemini finishes editorial review because of MAX_TOKENS', async () => {
@@ -211,6 +214,35 @@ describe('ATLAS Council', () => {
         model: 'gemini-model',
         text: 'ATLAS_REVIEW:\n- Valid review.\nATLAS_FINAL:\nPartial but nonempty final answer',
         finish_reason: 'MAX_TOKENS',
+        capabilities_used: ['generation'],
+        usage: {},
+        provenance: [],
+        tool_calls: [],
+      }),
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    await expect(council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain.' }],
+    })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+  });
+
+  it('fails closed on any abnormal Gemini finish reason, including SAFETY', async () => {
+    const openai = adapter('openai', { text: 'Initial draft.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async () => ({
+        provider: 'gemini',
+        model: 'gemini-model',
+        text: 'ATLAS_REVIEW:\n- Review text.\nATLAS_FINAL:\nApparently complete text.',
+        finish_reason: 'SAFETY',
         capabilities_used: ['generation'],
         usage: {},
         provenance: [],
