@@ -320,3 +320,5 @@ export * from './whatsapp-ai-council';
 export * from './whatsapp-provider';
 
 export * from './deploymentControl';
+
+export * from './universalTransfer';
