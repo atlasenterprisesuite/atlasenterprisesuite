@@ -12,12 +12,12 @@ function parseEditorialReview(value){
   const finalMarker='ATLAS_FINAL:';
   const reviewIndex=text.indexOf(reviewMarker);
   const finalIndex=text.indexOf(finalMarker);
-  if(finalIndex<0)return {review:null,final:text};
+  if(finalIndex<0)return {review:null,final:'',valid:false};
   const review=reviewIndex>=0&&reviewIndex<finalIndex
     ?cleanText(text.slice(reviewIndex+reviewMarker.length,finalIndex))
     :null;
   const final=cleanText(text.slice(finalIndex+finalMarker.length));
-  return {review:review||null,final:final||text};
+  return {review:review||null,final,valid:Boolean(final)};
 }
 function editorialInstructions(base){
   return `${String(base||'').trim()}
@@ -113,7 +113,7 @@ export function createCouncilOrchestrator({registry}={}){
     }
 
     const parsed=parseEditorialReview(reviewed.text);
-    if(!parsed.final)throw fail('internal_error',500,{provider:EDITORIAL_REVIEWER});
+    if(!parsed.valid||!parsed.final)throw fail('provider_invalid_output',502,{provider:EDITORIAL_REVIEWER,strategy:'editorial'});
     const contributions=[
       {...draft,provider:EDITORIAL_DRAFTER,role:'draft'},
       {...reviewed,provider:EDITORIAL_REVIEWER,role:'review'},
