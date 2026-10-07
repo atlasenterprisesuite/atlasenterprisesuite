@@ -136,6 +136,15 @@ async function validateDeviceDnaMetadata(metadata: JsonObject, agentPlatform: st
     throw new EdgeError('device_dna_digest_mismatch', 422);
   }
 
+  const environment = record(report.operating_environment);
+  const reportPlatform = clean(environment.platform, 40).toLowerCase();
+  if (adapter === 'device-dna-linux' && reportPlatform !== 'linux') {
+    throw new EdgeError('device_dna_report_platform_mismatch', 422);
+  }
+  if (adapter === 'device-dna-windows' && reportPlatform !== 'win32') {
+    throw new EdgeError('device_dna_report_platform_mismatch', 422);
+  }
+
   const compute = record(report.compute);
   const memoryGb = Number(compute.memory_gb);
   const logicalCores = Number(compute.logical_cores);
