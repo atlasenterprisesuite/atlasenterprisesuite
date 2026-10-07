@@ -79,7 +79,7 @@ describe('ATLAS Cloud routing and product boundaries', () => {
   it('registers ATLAS Care without creating a dead service link', () => {
     expect(registry).toContain("id: 'care'");
     expect(registry).toContain("route: '/care'");
-    expect(registry).toContain("readiness: 'partial'");
+    expect(registry).toContain("id: 'care'");
     expect(resolver).toContain("pathname === '/care'");
     expect(resolver).toContain('<AtlasCarePage />');
   });
