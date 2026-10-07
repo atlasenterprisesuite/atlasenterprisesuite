@@ -235,7 +235,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: true,
     description: 'People operations entry point spanning payroll, learning and governed workforce administration.',
-    showInNavigation: false
+    showInNavigation: true
   },
   {
     id: 'payroll',
@@ -290,7 +290,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'external-gated',
     requiresAuth: true,
     description: 'Secure insurance access, member and policy verification, and governed coverage workflows.',
-    showInNavigation: false
+    showInNavigation: true
   },
   {
     id: 'studio',
