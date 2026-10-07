@@ -37,7 +37,7 @@ const WORK_GROUPS: readonly WorkGroup[] = [
       { name: 'Notes', area: 'Knowledge', description: 'Promote approved notes, decisions and evidence into Knowledge Atlas.', to: '/knowledge', status: 'active' },
       { name: 'Board', area: 'Collaboration', description: 'Visual planning will reuse Work tasks and approvals instead of inventing another task model.', status: 'gated', boundary: 'Dedicated collaborative board UI is not yet implemented.' },
       { name: 'Scheduling', area: 'Operations', description: 'Scheduled execution is handled by Work policies, connections and automation runtime controls.', to: '/work/policies', status: 'active' },
-      { name: 'Drive', area: 'Files', description: 'Organization files require a governed storage surface with provenance, access control and audit.', status: 'gated', boundary: 'A canonical ATLAS Drive route is not yet registered.' },
+      { name: 'Drive', area: 'Files', description: 'Bring, upload and share organization files through Universal Transfer with provenance, access control and audit.', to: '/work/transfer', status: 'active' },
       { name: 'Meetings', area: 'Communication', description: 'Meetings and calls belong to ATLAS Connect with provider-truthful readiness.', to: '/connect', status: 'gated', boundary: 'A live meeting provider must be authorized before connected state is shown.' },
       { name: 'Media', area: 'Creative', description: 'Create and manage governed visual, video, audio and voice assets in ATLAS Studio.', to: '/studio', status: 'active' },
       { name: 'Design', area: 'Creative', description: 'Use Image Lab and Creator Studio for design work with provider provenance.', to: '/studio/create?type=image', status: 'active' }
