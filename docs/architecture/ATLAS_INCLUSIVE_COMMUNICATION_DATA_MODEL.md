@@ -14,7 +14,7 @@ The new database layer stores the orchestration, consent, accessibility, evidenc
 | `atlas_inclusive_communication_participants` | Human, interpreter, assistant, automation, system and external participation. |
 | `atlas_inclusive_communication_messages` | Ordered communication envelopes with modality, language, confidence and sensitivity state. |
 | `atlas_inclusive_communication_derivations` | Transcription, translation, captions, sign rendering, audio description, simplification, Braille and haptic derivations. |
-| `atlas_inclusive_consents` | Explicit consent records for recording, translation, interpreter handoff, voice clone, research, retention and assistive devices. |
+| `atlas_inclusive_consents` | Explicit consent records for recording, translation, interpreter handoff, research, retention and assistive devices. Personal Voice cloning consent remains exclusively in `atlas_voice_*`. |
 | `atlas_assistive_device_bindings` | User-owned device/capability records. Client-created records cannot self-promote to `verified`. |
 | `atlas_sign_language_readiness` | Per-organization language/provider rollout state. Verification requires Deaf-community validation. |
 | `atlas_interpreter_sessions` | Human interpreter handoff lifecycle and provider evidence. |
@@ -44,7 +44,7 @@ Communication sessions default to a 30-day retention window unless policy sets a
 ## Existing systems deliberately reused
 
 - `atlas_user_preferences`: accessibility/communication preferences.
-- `atlas_voice_*`: Personal Voice profiles, recordings, consent, generation and private voice storage.
+- `atlas_voice_*`: Personal Voice profiles, recordings, voice-cloning consent, generation and private voice storage.
 - `atlas_call_*`: telephony provider and call-state persistence.
 - `organization_members`: tenant membership.
 - Existing ATLAS authentication and downstream permission/RBAC functions.
