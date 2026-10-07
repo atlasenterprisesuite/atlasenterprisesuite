@@ -35,3 +35,23 @@ Canonical target: `main`
 No open PR is entitled to merge merely because it predates current `main` or previously passed a historical CI run. Before integration, compare it against current `main`, identify unique capability, discard duplicate/obsolete infrastructure assumptions, re-run the current verification contract, and preserve one canonical owner per capability.
 
 Large historical branches are evidence and salvage sources, not alternate production truth.
+
+
+## 2026-10-07 Rebirth convergence addendum
+
+The canonical source-level portfolio ruling is now maintained in `apps/web/src/modules/release/portfolio.ts` and the detailed recovery ledger is `docs/audit/2026-10-07-atlas-rebirth-sweep.md`.
+
+Current convergence principles:
+
+- route compatibility may remain while top-level product ownership converges;
+- Work owns Universal Execution and governed automation;
+- Cloud owns Release & Operations;
+- Finance owns Accounting;
+- Business owns Revenue Operations and Business Analytics;
+- Connect owns Telecom/Carrier/MVNO;
+- Studio owns Site Review, Image Lab, AI Universe and Creator Library;
+- Knowledge owns Bible OS;
+- Device OS owns Device DNA, Remote Assist, device recovery/security and spatial-device capability;
+- historical ideas without a verified implementation remain HOLD rather than being converted into fictional modules.
+
+This addendum supersedes older product-label decisions where the new portfolio map names a stronger canonical owner. Historical PR and branch classifications remain useful as provenance and salvage evidence.
