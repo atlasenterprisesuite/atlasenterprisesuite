@@ -23,7 +23,7 @@
     "atlas:mcp:stdio": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/stdio.ts",
     "postinstall": "node scripts/install-render-local-ai.mjs",
     "verify:design": "node scripts/verify-atlas-design.mjs",
-    "verify:evidence": "vitest run tests/unit/core-evidence.test.ts tests/unit/evidence-engine.test.ts && bash -n scripts/network/verify-openai-connectivity.sh && node --experimental-strip-types scripts/evidence/build-evidence-manifest.mjs tests/fixtures/evidence/openai-network-pass.json artifacts/evidence/openai-network-ci.json docs/network/evidence/2026-10-07-openai-connectivity-evidence.json"
+    "verify:evidence": "vitest run tests/unit/core-evidence.test.ts tests/unit/evidence-engine.test.ts tests/unit/provider-incident-evidence.test.ts && bash -n scripts/network/verify-openai-connectivity.sh && node --experimental-strip-types scripts/evidence/build-evidence-manifest.mjs tests/fixtures/evidence/openai-network-pass.json artifacts/evidence/openai-network-ci.json docs/network/evidence/2026-10-07-openai-connectivity-evidence.json"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
