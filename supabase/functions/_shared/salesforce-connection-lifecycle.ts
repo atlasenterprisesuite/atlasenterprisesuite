@@ -110,6 +110,15 @@ async function sha256Base64Url(value: string): Promise<string> {
   return bytesToBase64Url(new Uint8Array(digest));
 }
 
+async function salesforcePkceVerifier(
+  state: string,
+  deps: SalesforceLifecycleDependencies
+): Promise<string> {
+  return sha256Base64Url(
+    `atlas:salesforce:pkce:${required(deps.clientSecret, 'Salesforce client secret')}:${state}`
+  );
+}
+
 function assertStateFresh(row: SalesforceOAuthStateRow, now: number): void {
   if (row.consumed_at) throw new SalesforceLifecycleError('oauth_state_consumed', 400);
   const expiresAt = Date.parse(row.expires_at);
@@ -192,6 +201,8 @@ export async function prepareSalesforceConnection(input: {
   const nonceHash = await sha256Base64Url(state);
   const expiresAt = new Date(nowMs(input.deps) + 10 * 60 * 1000).toISOString();
   const scopes = [...SALESFORCE_P0_SCOPES];
+  const codeVerifier = await salesforcePkceVerifier(state, input.deps);
+  const codeChallenge = await sha256Base64Url(codeVerifier);
 
   await input.deps.store.createOAuthState({
     organizationId: input.organizationId,
@@ -206,7 +217,8 @@ export async function prepareSalesforceConnection(input: {
     redirectUri: required(input.deps.redirectUri, 'Salesforce redirect URI'),
     state,
     scopes,
-    loginBaseUrl: input.deps.loginBaseUrl
+    loginBaseUrl: input.deps.loginBaseUrl,
+    codeChallenge
   });
 
   await safeEvidence(input.deps, {
@@ -236,6 +248,7 @@ export async function completeSalesforceConnection(input: {
     throw new SalesforceLifecycleError('oauth_state_consumption_failed', 409);
   }
 
+  const codeVerifier = await salesforcePkceVerifier(state, input.deps);
   let token;
   try {
     token = await exchangeSalesforceCode({
@@ -244,6 +257,7 @@ export async function completeSalesforceConnection(input: {
       redirectUri: required(input.deps.redirectUri, 'Salesforce redirect URI'),
       code,
       loginBaseUrl: input.deps.loginBaseUrl,
+      codeVerifier,
       fetchImpl: input.deps.fetchImpl
     });
   } catch {
