@@ -13,6 +13,11 @@ export type AtlasNavigationNode = {
 const STATIC_NODES: readonly AtlasNavigationNode[] = [
   { id: 'home', label: 'Home', to: '/', area: 'Platform', keywords: ['dashboard', 'inicio', 'main', 'principal'] },
   { id: 'suite', label: 'All Modules', to: '/suite', area: 'Platform', keywords: ['modules', 'modulos', 'suite', 'apps'] },
+  { id: 'cloud-production', label: 'Verify production', to: '/cloud/production-verification', area: 'Platform', moduleId: 'cloud', parentId: 'cloud', keywords: ['production', 'verify', 'verification', 'p0', 'security headers', 'exact sha'] },
+  { id: 'cloud-releases', label: 'Release & Operations', to: '/cloud/releases', area: 'Platform', moduleId: 'cloud', parentId: 'cloud', keywords: ['release', 'deployment', 'rollback', 'readiness', 'evidence'] },
+  { id: 'cloud-observability', label: 'Observability', to: '/cloud/observability', area: 'Platform', moduleId: 'cloud', parentId: 'cloud', keywords: ['incidents', 'traces', 'metrics', 'runtime', 'telemetry'] },
+  { id: 'cloud-resources', label: 'Resource Manager', to: '/cloud/resources', area: 'Platform', moduleId: 'cloud', parentId: 'cloud', keywords: ['resources', 'services', 'registry', 'projects'] },
+  { id: 'cloud-domains', label: 'Domains & DNS', to: '/cloud/domains', area: 'Platform', moduleId: 'cloud', parentId: 'cloud', keywords: ['domain', 'dns', 'cloudflare', 'edge'] },
   { id: 'work-os', label: 'Work OS', to: '/work/os', area: 'Platform', moduleId: 'work', parentId: 'work', keywords: ['productivity', 'office', 'docs', 'sheets', 'present', 'mail', 'calendar', 'tasks', 'projects', 'forms', 'lists', 'notes', 'drive', 'meetings', 'automation', 'data fabric'] },
   { id: 'payables', label: 'Payables', to: '/finance/accounting/accounts-payable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ap', 'accounts payable', 'cuentas por pagar', 'vendors', 'proveedores'] },
   { id: 'receivables', label: 'Receivables', to: '/finance/accounting/accounts-receivable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ar', 'accounts receivable', 'cuentas por cobrar', 'customers', 'clientes'] },

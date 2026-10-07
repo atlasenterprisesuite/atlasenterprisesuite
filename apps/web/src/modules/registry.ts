@@ -271,6 +271,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'care',
+    title: 'ATLAS Care',
+    navLabel: 'Care',
+    area: 'Health',
+    route: '/care',
+    readiness: 'implemented',
+    requiresAuth: true,
+    description: 'Governed care coordination across eligibility, authorized caregivers, learning, care plans, time evidence, payroll, finance, insurance and audit.',
+    showInNavigation: true
+  },
+  {
     id: 'insurance',
     title: 'ATLAS Insurance',
     navLabel: 'Insurance',

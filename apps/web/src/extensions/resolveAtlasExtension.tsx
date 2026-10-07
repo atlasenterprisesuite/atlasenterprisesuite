@@ -7,6 +7,7 @@ import { BusinessEcosystemPage } from '../modules/business/BusinessEcosystemPage
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { AtlasCloudRoutes } from '../modules/cloud/AtlasCloudRoutes';
+import { AtlasCarePage } from '../modules/care/AtlasCarePage';
 import { ConnectRoutes } from '../modules/connect/ConnectRoutes';
 import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { EventsHomePage } from '../modules/events/EventsHomePage';
@@ -60,6 +61,10 @@ export function resolveAtlasExtension(pathname: string) {
   }
 
   if (pathname === '/suite') return <AtlasSuitePage />;
+
+  if (pathname === '/care') {
+    return <RequireAtlasIdentity><AtlasCarePage /></RequireAtlasIdentity>;
+  }
 
   if (pathname === '/automations') {
     return <RequireAtlasIdentity><AutomationsIntegrationHub /></RequireAtlasIdentity>;

@@ -17,6 +17,18 @@ type CloudService = {
   requiresAuth: boolean;
 };
 
+type ServiceDomain =
+  | 'Business'
+  | 'Finance'
+  | 'People'
+  | 'Intelligence'
+  | 'Platform'
+  | 'Network'
+  | 'Creative'
+  | 'Mobility'
+  | 'Health & Protection'
+  | 'Operations';
+
 const cloudServices: CloudService[] = ATLAS_MODULES
   .filter((module) => module.id !== 'cloud')
   .map((module) => ({
@@ -31,6 +43,19 @@ const cloudServices: CloudService[] = ATLAS_MODULES
 
 const categories = Array.from(new Set(cloudServices.map((service) => service.category))).sort();
 
+function serviceDomain(service: CloudService): ServiceDomain {
+  if (['Finance'].includes(service.category)) return 'Finance';
+  if (['People'].includes(service.category)) return 'People';
+  if (['Intelligence'].includes(service.category)) return 'Intelligence';
+  if (['Platform'].includes(service.category)) return 'Platform';
+  if (['Communications', 'Spatial'].includes(service.category)) return 'Network';
+  if (['Creative', 'Entertainment'].includes(service.category)) return 'Creative';
+  if (['Mobility'].includes(service.category)) return 'Mobility';
+  if (['Health', 'Protection'].includes(service.category)) return 'Health & Protection';
+  if (['Operations', 'Hospitality'].includes(service.category)) return 'Operations';
+  return 'Business';
+}
+
 function CloudHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
     <header className="atlas-cloud-header">
@@ -38,6 +63,27 @@ function CloudHeader({ eyebrow, title, description }: { eyebrow: string; title: 
       <h1>{title}</h1>
       <p>{description}</p>
     </header>
+  );
+}
+
+function ServiceCard({ service, compact }: { service: CloudService; compact: boolean }) {
+  const truth = atlasCloudTruthBadge(service.readiness);
+  return (
+    <article className={compact ? 'atlas-cloud-service-card compact' : 'atlas-cloud-service-card'}>
+      <div className="atlas-cloud-service-meta">
+        <span>{service.category}</span>
+        <span className={`atlas-cloud-truth-badge ${truth.state}`} title={`Source readiness: ${service.readiness}`}>
+          <span aria-hidden="true">{truth.symbol}</span> {truth.label}
+        </span>
+      </div>
+      <h3>{service.name}</h3>
+      {!compact ? <p>{service.description}</p> : null}
+      <div className="atlas-cloud-service-footer">
+        <code>{service.route}</code>
+        <span className="atlas-cloud-access-badge">{service.requiresAuth ? 'IDENTITY' : 'PUBLIC'}</span>
+      </div>
+      <Link to={service.route}>Open service</Link>
+    </article>
   );
 }
 
@@ -55,6 +101,15 @@ function ServiceCatalog({ compact = false }: { compact?: boolean }) {
       return matchesCategory && matchesQuery;
     });
   }, [query, category]);
+
+  const groupedResults = useMemo(() => {
+    const grouped = new Map<ServiceDomain, CloudService[]>();
+    for (const service of results) {
+      const domain = serviceDomain(service);
+      grouped.set(domain, [...(grouped.get(domain) || []), service]);
+    }
+    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [results]);
 
   return (
     <section className="atlas-cloud-catalog" aria-label="ATLAS Cloud service catalog">
@@ -82,28 +137,23 @@ function ServiceCatalog({ compact = false }: { compact?: boolean }) {
           <strong>No services match this search.</strong>
           <span>Clear the filters or use another ATLAS module name.</span>
         </div>
+      ) : compact ? (
+        <div className="atlas-cloud-domain-list">
+          {groupedResults.map(([domain, services]) => (
+            <section key={domain} className="atlas-cloud-domain-group">
+              <header>
+                <h3>{domain}</h3>
+                <span>{services.length} services</span>
+              </header>
+              <div className="atlas-cloud-service-grid compact">
+                {services.map((service) => <ServiceCard key={service.id} service={service} compact />)}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
-        <div className={compact ? 'atlas-cloud-service-grid compact' : 'atlas-cloud-service-grid'}>
-          {results.map((service) => {
-            const truth = atlasCloudTruthBadge(service.readiness);
-            return (
-            <article key={service.id} className="atlas-cloud-service-card">
-              <div className="atlas-cloud-service-meta">
-                <span>{service.category}</span>
-                <span className={`atlas-cloud-truth-badge ${truth.state}`} title={`Source readiness: ${service.readiness}`}>
-                  <span aria-hidden="true">{truth.symbol}</span> {truth.label}
-                </span>
-              </div>
-              <h3>{service.name}</h3>
-              <p>{service.description}</p>
-              <div className="atlas-cloud-service-footer">
-                <code>{service.route}</code>
-                <span>{service.requiresAuth ? 'Identity required' : 'Public entry available'}</span>
-              </div>
-              <Link to={service.route}>Open service</Link>
-            </article>
-            );
-          })}
+        <div className="atlas-cloud-service-grid">
+          {results.map((service) => <ServiceCard key={service.id} service={service} compact={false} />)}
         </div>
       )}
     </section>
@@ -121,7 +171,7 @@ function DocumentationHome() {
 
       <div className="atlas-cloud-hero-actions">
         <Link className="atlas-cloud-primary" to="/cloud/docs/catalog">Browse service catalog</Link>
-        <Link to="/cloud">Open Atlas Cloud Console</Link>
+        <Link to="/cloud">Open ATLAS Cloud Command Center</Link>
       </div>
 
       <div className="atlas-cloud-feature-grid">
@@ -177,7 +227,7 @@ function DocumentationArticle({ kind }: { kind: 'get-started' | 'architecture' |
       description: 'A connected control plane over the ATLAS ecosystem, not a separate replacement platform.',
       points: [
         ['Documentation plane', 'Public documentation and catalog routes expose original ATLAS guidance and real registry metadata.'],
-        ['Control plane', 'Atlas Cloud Console links infrastructure readiness, release control, automation and evidence surfaces.'],
+        ['Control plane', 'Atlas Cloud Command Center links infrastructure readiness, release control, automation and evidence surfaces.'],
         ['Data plane', 'Existing ATLAS modules continue using their established Supabase tables, APIs and provider adapters.'],
         ['Verification plane', 'Production truth remains separate from build success and requires provider plus public-route evidence.']
       ]
@@ -214,98 +264,114 @@ function CatalogPage() {
       <CloudHeader
         eyebrow="ATLAS Cloud"
         title="Service catalog"
-        description="Live source catalog generated from the canonical ATLAS module registry. Readiness labels describe repository state, not unverified provider connectivity."
+        description="Source catalog generated from the canonical ATLAS module registry. Repository readiness is not presented as production health."
       />
       <ServiceCatalog />
     </section>
   );
 }
 
+const globalStatus = [
+  { label: 'Production', state: 'VERIFY', to: '/cloud/production-verification' },
+  { label: 'Security', state: 'EVIDENCE', to: '/cloud/iam' },
+  { label: 'Release', state: 'CONTROL', to: '/cloud/releases' },
+  { label: 'Providers', state: 'READINESS', to: '/execution/manager/readiness' },
+  { label: 'Incidents', state: 'OBSERVE', to: '/cloud/incidents' },
+  { label: 'Cost', state: 'FINOPS', to: '/cloud/finops' }
+] as const;
+
+const commandCenter = [
+  { area: 'Developer', title: 'API Explorer', description: 'Inspect the governed OpenAPI contract and approved read operations.', to: '/cloud/api-explorer' },
+  { area: 'Operations', title: 'Observability', description: 'Inspect incidents, traces, metrics and runtime verification evidence.', to: '/cloud/observability' },
+  { area: 'Resources', title: 'Resource Manager', description: 'Manage organization projects and inspect the canonical service registry.', to: '/cloud/resources' },
+  { area: 'Network', title: 'Domains & DNS', description: 'Verify public DNS evidence with provider mutations remaining fail-closed.', to: '/cloud/domains' },
+  { area: 'Topology', title: 'Service Graph', description: 'Visualize canonical backend authority and registry state.', to: '/cloud/service-graph' },
+  { area: 'Governance', title: 'IAM & Policy', description: 'Inspect tenant scope, role boundaries and inherited policy surfaces.', to: '/cloud/iam' },
+  { area: 'Configuration', title: 'Secrets & Config', description: 'Inspect secret boundaries and runtime readiness without exposing values.', to: '/cloud/config' },
+  { area: 'Automation', title: 'ATLAS Automations', description: 'Run governed workflows through existing execution boundaries.', to: '/automations' }
+] as const;
+
+const authorities = [
+  ['GitHub', 'Canonical source, change history, CI and release coordination'],
+  ['Supabase', 'Primary database, identity, storage and backend control plane'],
+  ['Cloudflare', 'Primary web edge and production verification boundary'],
+  ['ATLAS Manager', 'Infrastructure readiness and deployment orchestration authority']
+] as const;
+
 function ConsoleHome() {
   return (
     <section className="atlas-cloud-page atlas-cloud-console">
       <CloudHeader
-        eyebrow="ATLAS Cloud Console"
-        title="Operate Atlas from one control surface"
-        description="The console reuses existing ATLAS control planes. It does not duplicate secrets, provider state, release truth or infrastructure ownership."
+        eyebrow="ATLAS Cloud Command Center"
+        title="One sovereign control plane for infrastructure, releases, services and production truth"
+        description="ATLAS reuses canonical control planes and fails closed when provider, release or production evidence is unavailable."
       />
 
-      <div className="atlas-cloud-console-grid">
-        <Link to="/cloud/api-explorer">
-          <span>Developer</span><strong>API Explorer</strong>
-          <p>Inspect the live OpenAPI contract and run approved read-only cloud operations.</p>
-        </Link>
-        <Link to="/cloud/observability">
-          <span>Operations</span><strong>Observability</strong>
-          <p>View native incidents, traces, metrics and runtime verification evidence.</p>
-        </Link>
-        <Link to="/cloud/resources">
-          <span>Resources</span><strong>Resource Manager</strong>
-          <p>Manage organization projects and inspect the canonical ATLAS service registry.</p>
-        </Link>
-        <Link to="/cloud/domains">
-          <span>Network</span><strong>Domains & DNS</strong>
-          <p>Verify public DNS evidence while provider mutations remain fail-closed.</p>
-        </Link>
-        <Link to="/cloud/service-graph">
-          <span>Topology</span><strong>Service Graph</strong>
-          <p>Visualize services by canonical backend authority and verified registry state.</p>
-        </Link>
-        <Link to="/cloud/production-verification">
-          <span>Integrity</span><strong>Production Verification</strong>
-          <p>Verify security, build, deployment, runtime and exact-SHA evidence without fabricating green state.</p>
-        </Link>
-        <Link to="/cloud/releases">
-          <span>Delivery</span><strong>Deployment & Release Center</strong>
-          <p>Separate source, deployment and production verification using Release Control truth.</p>
-        </Link>
-        <Link to="/cloud/iam">
-          <span>Governance</span><strong>IAM & Policy</strong>
-          <p>Inspect tenant scope, role boundaries and inherited policy surfaces.</p>
-        </Link>
-        <Link to="/cloud/config">
-          <span>Configuration</span><strong>Secrets & Config</strong>
-          <p>Inspect secret boundaries and runtime readiness without exposing secret values.</p>
-        </Link>
-        <Link to="/cloud/finops">
-          <span>Cost</span><strong>FinOps</strong>
-          <p>Govern billing integration, budgets and cost evidence with fail-closed totals.</p>
-        </Link>
-        <Link to="/cloud/incidents">
-          <span>Reliability</span><strong>Incident Center</strong>
-          <p>Read canonical incidents and correlate operational state with releases and telemetry.</p>
-        </Link>
-        <Link to="/execution/manager/readiness">
-          <span>Infrastructure</span><strong>Manager Readiness</strong>
-          <p>Evaluate provider requirements and real blockers before any deployment claim.</p>
-        </Link>
-        <Link to="/release">
-          <span>Release</span><strong>Release Control</strong>
-          <p>Inspect governed release state, gates, evidence and production verification.</p>
-        </Link>
-        <Link to="/automations">
-          <span>Automation</span><strong>ATLAS Automations</strong>
-          <p>Run governed workflows through existing ATLAS execution boundaries.</p>
-        </Link>
-        <Link to="/knowledge">
-          <span>Knowledge</span><strong>Knowledge Atlas</strong>
-          <p>Use approved organizational decisions, requirements and evidence as operational context.</p>
-        </Link>
-      </div>
-
-      <section className="atlas-cloud-topology" aria-label="Atlas Cloud configured authorities">
-        <div className="atlas-cloud-section-heading"><div><p className="eyebrow">Control plane</p><h2>Configured authorities</h2></div></div>
-        <div className="atlas-cloud-topology-grid">
-          <article><strong>GitHub</strong><span>Canonical source, change history, CI and release coordination</span></article>
-          <article><strong>Supabase</strong><span>Primary database, identity, storage and backend control plane</span></article>
-          <article><strong>Cloudflare</strong><span>Primary web edge and production verification boundary</span></article>
-          <article><strong>ATLAS Manager</strong><span>Infrastructure readiness and deployment orchestration authority</span></article>
+      <section className="atlas-cloud-global-status" aria-label="Global status">
+        <div className="atlas-cloud-status-heading">
+          <div><p className="eyebrow">Global status</p><strong>No green state without evidence</strong></div>
+          <Link to="/cloud/production-verification">Verify production</Link>
         </div>
-        <p className="atlas-cloud-truth-note">Provider connectivity must be proven by the existing readiness and release evidence surfaces. This page does not infer a live connection from configuration alone.</p>
+        <div className="atlas-cloud-status-strip">
+          {globalStatus.map((item) => (
+            <Link key={item.label} to={item.to}>
+              <span>{item.label}</span>
+              <strong>{item.state}</strong>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="atlas-cloud-release-operations" aria-label="Release and operations">
+        <div>
+          <p className="eyebrow">Release & Operations</p>
+          <h2>One release truth, multiple evidence views</h2>
+          <p>Readiness, deployment, production verification and rollback remain separate facts backed by their canonical surfaces.</p>
+        </div>
+        <nav aria-label="Release and operations shortcuts">
+          <Link to="/execution/manager/readiness">Readiness</Link>
+          <Link to="/cloud/releases">Deployments</Link>
+          <Link to="/cloud/production-verification">Production</Link>
+          <Link to="/release">Evidence & rollback</Link>
+        </nav>
       </section>
 
       <div className="atlas-cloud-section-heading">
-        <div><p className="eyebrow">Inventory</p><h2>Registered services</h2></div>
+        <div><p className="eyebrow">Critical operations</p><h2>Command Center</h2></div>
+        <Link to="/cloud/docs/operations">Operations guide</Link>
+      </div>
+
+      <div className="atlas-cloud-console-grid">
+        {commandCenter.map((item) => (
+          <Link key={item.title} to={item.to}>
+            <span>{item.area}</span>
+            <strong>{item.title}</strong>
+            <p>{item.description}</p>
+          </Link>
+        ))}
+      </div>
+
+      <section className="atlas-cloud-topology" aria-label="Atlas Cloud configured authorities">
+        <div className="atlas-cloud-section-heading">
+          <div><p className="eyebrow">Control plane</p><h2>Configured authorities</h2></div>
+          <Link to="/execution/manager/readiness">Open readiness evidence</Link>
+        </div>
+        <div className="atlas-cloud-topology-grid">
+          {authorities.map(([name, description]) => (
+            <article key={name}>
+              <div className="atlas-cloud-authority-heading">
+                <strong>{name}</strong>
+                <span className="atlas-cloud-evidence-badge">EVIDENCE REQUIRED</span>
+              </div>
+              <span>{description}</span>
+            </article>
+          ))}
+        </div>
+        <p className="atlas-cloud-truth-note">Configuration identifies authority only. Connectivity and health must be proven by current readiness, release and runtime evidence.</p>
+      </section>
+
+      <div className="atlas-cloud-section-heading">
+        <div><p className="eyebrow">Service inventory</p><h2>Registered services by domain</h2></div>
         <Link to="/cloud/docs/catalog">Open documentation catalog</Link>
       </div>
       <ServiceCatalog compact />
