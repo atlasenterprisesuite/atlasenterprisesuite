@@ -116,8 +116,8 @@ describe('ATLAS Council', () => {
     });
     expect(result.provider).toBe('atlas-council');
     expect(result.contributions.map((item: any) => item.provider)).toEqual(['openai', 'gemini']);
-    expect(result.text).toContain('OpenAI');
-    expect(result.text).toContain('Gemini');
+    expect(result.text).toContain('ATLAS Engine 01');
+    expect(result.text).toContain('ATLAS Engine 03');
   });
 
   it('fails when fewer than two providers succeed', async () => {
