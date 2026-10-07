@@ -1,17 +1,19 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { CrmObjectType, CrmPage } from '../../../../../../packages/core/src/crm';
-import { CrmApiError, crmApi } from './crmApi';
+import { CrmApiError, crmApi, type CrmApiProvider } from './crmApi';
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown, provider: CrmApiProvider): string {
+  const providerLabel = provider === 'salesforce' ? 'Salesforce' : 'HubSpot';
   if (!(error instanceof CrmApiError)) return 'CRM records are unavailable.';
   if (error.code === 'forbidden_scope') return 'Degraded connection: the provider did not grant the scope required for this workspace.';
-  if (error.code === 'expired_credential') return 'Expired connection: reconnect HubSpot before reading CRM records.';
+  if (error.code === 'expired_credential') return `Expired connection: reconnect ${providerLabel} before reading CRM records.`;
+  if (error.code === 'canonical_org_required') return 'Select the canonical Salesforce organization before reading CRM records.';
   if (error.code === 'connection_not_ready') return 'CRM connection is not ready for provider-backed reads.';
   if (error.code === 'rate_limited') {
     return error.retryAfterSeconds === null
-      ? 'HubSpot rate limit reached. Try again shortly.'
-      : `HubSpot rate limit reached. Retry after ${error.retryAfterSeconds} seconds.`;
+      ? `${providerLabel} rate limit reached. Try again shortly.`
+      : `${providerLabel} rate limit reached. Retry after ${error.retryAfterSeconds} seconds.`;
   }
   return error.message;
 }
@@ -20,12 +22,14 @@ export function CrmObjectListPage({
   objectType,
   title,
   description,
-  detailBase
+  detailBase,
+  provider = 'hubspot'
 }: {
   objectType: CrmObjectType;
   title: string;
   description: string;
   detailBase?: string;
+  provider?: CrmApiProvider;
 }) {
   const [page, setPage] = useState<CrmPage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,11 +47,11 @@ export function CrmObjectListPage({
         limit: 25,
         cursor,
         ...(query ? { query } : {})
-      });
+      }, provider);
       setPage(result.page);
     } catch (caught) {
       setPage(null);
-      setError(errorMessage(caught));
+      setError(errorMessage(caught, provider));
     } finally {
       setLoading(false);
     }
@@ -57,7 +61,7 @@ export function CrmObjectListPage({
     setSearchInput('');
     setActiveQuery('');
     void load('', null);
-  }, [objectType]);
+  }, [objectType, provider]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -75,7 +79,7 @@ export function CrmObjectListPage({
   return (
     <section className="crm-page page-stack" aria-labelledby={`crm-${objectType}-title`}>
       <header className="page-header">
-        <p className="eyebrow">ATLAS CRM · HubSpot</p>
+        <p className="eyebrow">ATLAS CRM · {provider === 'salesforce' ? 'Salesforce' : 'HubSpot'}</p>
         <h1 id={`crm-${objectType}-title`}>{title}</h1>
         <p>{description}</p>
       </header>
@@ -108,7 +112,7 @@ export function CrmObjectListPage({
       {!loading && !error && page && page.records.length > 0 ? (
         <div className="crm-table-wrap">
           <table className="crm-table">
-            <caption className="sr-only">{title} returned by HubSpot</caption>
+            <caption className="sr-only">{title} returned by {provider === 'salesforce' ? 'Salesforce' : 'HubSpot'}</caption>
             <thead><tr><th>Name</th><th>Source</th><th>Updated</th></tr></thead>
             <tbody>
               {page.records.map((record) => (
@@ -118,7 +122,7 @@ export function CrmObjectListPage({
                       <Link to={`${detailBase}/${encodeURIComponent(record.providerId)}`}>{record.displayName}</Link>
                     ) : record.displayName}
                   </td>
-                  <td><span className="crm-source">HubSpot</span></td>
+                  <td><span className="crm-source">{provider === 'salesforce' ? 'Salesforce' : 'HubSpot'}</span></td>
                   <td>{record.updatedAt ? new Date(record.updatedAt).toLocaleString() : 'Not provided'}</td>
                 </tr>
               ))}
@@ -149,7 +153,7 @@ const activityTypes = [
   ['email', 'Emails']
 ] as const satisfies readonly (readonly [CrmObjectType, string])[];
 
-export function CrmActivitiesPage() {
+export function CrmActivitiesPage({ provider = 'hubspot' }: { provider?: CrmApiProvider }) {
   const [objectType, setObjectType] = useState<CrmObjectType>('task');
   const label = activityTypes.find(([type]) => type === objectType)?.[1] ?? 'Activities';
 
@@ -166,6 +170,7 @@ export function CrmActivitiesPage() {
         objectType={objectType}
         title={label}
         description="Provider-backed activity history. ATLAS does not combine or invent activity records client-side."
+        provider={provider}
       />
     </div>
   );
