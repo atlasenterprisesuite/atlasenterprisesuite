@@ -184,6 +184,22 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
         }
       }
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
+      if(result.strategy==='editorial'){
+        if(!result.review||typeof store.appendAuditEvent!=='function')throw fail('audit_unavailable',503,{strategy:'editorial'});
+        await store.appendAuditEvent({
+          context:principal,
+          action:'intelligence.council.editorial.reviewed',
+          record_id:telemetry.id,
+          data:{
+            trace_id,
+            conversation_id:conversation.id,
+            request_id:telemetry.id,
+            strategy:'editorial',
+            providers:executionRoute.providers,
+            review:String(result.review).slice(0,12000)
+          }
+        });
+      }
       const latency=Math.max(0,clock()-started);
       const automaticApiCostUsd=Number.isFinite(executionCostDecision.estimated_automatic_cost_usd)?executionCostDecision.estimated_automatic_cost_usd:null;
       const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts,strategy:result.strategy||null};
