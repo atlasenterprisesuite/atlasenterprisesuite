@@ -9,6 +9,7 @@ const items = [
   { to: '/work/history', label: 'History' },
   { to: '/work/templates', label: 'Templates' },
   { to: '/work/connections', label: 'Connections' },
+  { to: '/work/transfer', label: 'Bring · Upload · Share' },
   { to: '/work/computer-operations', label: 'Computer' },
   { to: '/work/runtimes', label: 'Runtimes' },
   { to: '/work/policies', label: 'Policies' },
