@@ -76,6 +76,14 @@ describe('ATLAS Cloud routing and product boundaries', () => {
     expect(routes).toContain('atlas-cloud-access-badge');
   });
 
+  it('registers ATLAS Care without creating a dead service link', () => {
+    expect(registry).toContain("id: 'care'");
+    expect(registry).toContain("route: '/care'");
+    expect(registry).toContain("readiness: 'partial'");
+    expect(resolver).toContain("pathname === '/care'");
+    expect(resolver).toContain('<AtlasCarePage />');
+  });
+
   it('loads Atlas Cloud styles from the primary web entry point', () => {
     expect(main).toContain("./modules/cloud/cloud.css");
   });
