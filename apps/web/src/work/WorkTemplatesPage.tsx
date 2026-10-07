@@ -28,7 +28,7 @@ export function WorkTemplatesPage() {
 
   return (
     <section className="work-page page-stack">
-      <header className="page-header"><p className="eyebrow">ATLAS Work Soberano</p><h1>Templates</h1><p>Governed reusable workflows with server-owned steps and explicit verification criteria.</p></header>
+      <header className="page-header"><p className="eyebrow">ATLAS Work</p><h1>Templates</h1><p>Governed reusable workflows with server-owned steps and explicit verification criteria.</p></header>
       <WorkSubnav />
       <article className="execution-panel work-template-card">
         <p className="eyebrow">ATLAS Manager</p>
