@@ -115,6 +115,209 @@ describe('ATLAS Council', () => {
     expect(result.text).toContain('Gemini');
   });
 
+  it('runs editorial collaboration as OpenAI draft -> Gemini review and returns only the refined answer', async () => {
+    let reviewerInput: any[] = [];
+    const openai = adapter('openai', { text: 'Initial draft from OpenAI.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async ({ input }: { input: any[] }) => {
+        reviewerInput = input;
+        return {
+          provider: 'gemini',
+          model: 'gemini-model',
+          text: [
+            'ATLAS_REVIEW:',
+            '- Strong structure.',
+            '- Add one missing qualification.',
+            'ATLAS_FINAL:',
+            'Refined ATLAS answer.',
+          ].join('\n'),
+          finish_reason: 'STOP',
+          capabilities_used: ['generation'],
+          usage: { output_tokens: 12 },
+          provenance: [],
+          tool_calls: [],
+        };
+      },
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    const result = await council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain this clearly.' }],
+    });
+
+    expect(result.provider).toBe('atlas-council');
+    expect(result.strategy).toBe('editorial');
+    expect(result.text).toBe('Refined ATLAS answer.');
+    expect(result.review).toContain('Strong structure.');
+    expect(result.contributions.map((item: any) => [item.provider, item.role])).toEqual([
+      ['openai', 'draft'],
+      ['gemini', 'review'],
+    ]);
+    expect(JSON.stringify(reviewerInput)).toContain('Initial draft from OpenAI.');
+  });
+
+  it('parses only standalone editorial markers when review text mentions ATLAS_FINAL inline', async () => {
+    const openai = adapter('openai', { text: 'Initial draft.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async () => ({
+        provider: 'gemini',
+        model: 'gemini-model',
+        text: [
+          'ATLAS_REVIEW:',
+          '- Removed a stray ATLAS_FINAL: label from the draft.',
+          '- Preserved the useful explanation.',
+          'ATLAS_FINAL:',
+          'Correct refined answer.',
+          'ATLAS_FINAL:',
+          'This standalone marker belongs to the requested final content.',
+        ].join('\n'),
+        finish_reason: 'STOP',
+        capabilities_used: ['generation'],
+        usage: {},
+        provenance: [],
+        tool_calls: [],
+      }),
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    const result = await council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain.' }],
+    });
+
+    expect(result.review).toContain('Removed a stray ATLAS_FINAL: label');
+    expect(result.text).toBe('Correct refined answer.\nATLAS_FINAL:\nThis standalone marker belongs to the requested final content.');
+  });
+
+  it('fails closed when Gemini finishes editorial review because of MAX_TOKENS', async () => {
+    const openai = adapter('openai', { text: 'Initial draft.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async () => ({
+        provider: 'gemini',
+        model: 'gemini-model',
+        text: 'ATLAS_REVIEW:\n- Valid review.\nATLAS_FINAL:\nPartial but nonempty final answer',
+        finish_reason: 'MAX_TOKENS',
+        capabilities_used: ['generation'],
+        usage: {},
+        provenance: [],
+        tool_calls: [],
+      }),
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    await expect(council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain.' }],
+    })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+  });
+
+  it('fails closed on any abnormal Gemini finish reason, including SAFETY', async () => {
+    const openai = adapter('openai', { text: 'Initial draft.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async () => ({
+        provider: 'gemini',
+        model: 'gemini-model',
+        text: 'ATLAS_REVIEW:\n- Review text.\nATLAS_FINAL:\nApparently complete text.',
+        finish_reason: 'SAFETY',
+        capabilities_used: ['generation'],
+        usage: {},
+        provenance: [],
+        tool_calls: [],
+      }),
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    await expect(council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain.' }],
+    })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+  });
+
+  it('fails closed when the reviewer emits ATLAS_FINAL without a final body', async () => {
+    const openai = adapter('openai', { text: 'Initial draft.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async () => ({
+        provider: 'gemini',
+        model: 'gemini-model',
+        text: 'ATLAS_REVIEW:\n- Needs more detail.\nATLAS_FINAL:',
+        capabilities_used: ['generation'],
+        usage: {},
+        provenance: [],
+        tool_calls: [],
+      }),
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    await expect(council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain.' }],
+    })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+  });
+
+  it('fails closed when the reviewer omits a nonempty ATLAS_REVIEW section', async () => {
+    const openai = adapter('openai', { text: 'Initial draft.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async () => ({
+        provider: 'gemini',
+        model: 'gemini-model',
+        text: 'ATLAS_FINAL:\nRefined answer without an independent review.',
+        capabilities_used: ['generation'],
+        usage: {},
+        provenance: [],
+        tool_calls: [],
+      }),
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    await expect(council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain.' }],
+    })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+  });
+
   it('fails when fewer than two providers succeed', async () => {
     const registry = createProviderRegistry({ providers: [adapter('openai'), adapter('gemini', { fail: true })] });
     const council = createCouncilOrchestrator({ registry });

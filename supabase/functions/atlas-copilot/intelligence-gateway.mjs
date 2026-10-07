@@ -100,7 +100,8 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       const fallbackAttempts=[];
       if(route.mode==='council'){
         if(!council)throw fail('capability_unavailable',503,{mode:'council'});
-        result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000});
+        const councilStrategy=route.providers.length===2&&route.providers.includes('openai')&&route.providers.includes('gemini')?'editorial':'parallel';
+        result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000,strategy:councilStrategy});
       }else{
         const candidates=route.mode==='auto'
           ?[route.providers[0],...(Array.isArray(route.fallback_providers)?route.fallback_providers:[])]
@@ -183,12 +184,29 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
         }
       }
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
+      if(result.strategy==='editorial'){
+        if(!result.review||typeof store.appendAuditEvent!=='function')throw fail('audit_unavailable',503,{strategy:'editorial'});
+        await store.appendAuditEvent({
+          context:principal,
+          action:'intelligence.council.editorial.reviewed',
+          record_id:telemetry.id,
+          data:{
+            trace_id,
+            conversation_id:conversation.id,
+            request_id:telemetry.id,
+            strategy:'editorial',
+            providers:executionRoute.providers,
+            review:String(result.review)
+          }
+        });
+      }
       const latency=Math.max(0,clock()-started);
       const automaticApiCostUsd=Number.isFinite(executionCostDecision.estimated_automatic_cost_usd)?executionCostDecision.estimated_automatic_cost_usd:null;
-      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
-      await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
+      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts,strategy:result.strategy||null};
+      await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,collaboration:result.strategy?{strategy:result.strategy,review_present:Boolean(result.review)}:null,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,role:item.role||null}))||[]},provenance:result.provenance||[],trace_id});
       await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:{...(result.usage||{}),atlas_routing:routing},latency_ms:latency});
-      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
+      const publicContributions=result.contributions?.map(item=>result.strategy==='editorial'?{provider:item.provider,model:item.model,role:item.role||null}:{provider:item.provider,model:item.model,role:item.role||null,text:item.text})||[];
+      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,strategy:result.strategy||null,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:publicContributions,sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});
