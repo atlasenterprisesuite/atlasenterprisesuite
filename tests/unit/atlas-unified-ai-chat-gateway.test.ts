@@ -19,6 +19,7 @@ function fakeStore(options: { emergencyAllowed?: boolean } = {}) {
   const conversations = new Map<string, any>();
   const messages = new Map<string, any[]>();
   const requests = new Map<string, any>();
+  const auditEvents: any[] = [];
   let conversationCount = 0;
   let requestCount = 0;
   return {
@@ -48,9 +49,14 @@ function fakeStore(options: { emergencyAllowed?: boolean } = {}) {
     reserveEmergencyBudget: async ({ reserve_usd, daily_budget_usd }: any) => options.emergencyAllowed
       ? { allowed: true, reason: 'emergency_budget_reserved', reservation_id: 'reservation-1', reserved_usd: reserve_usd, daily_budget_usd }
       : { allowed: false, reason: 'emergency_daily_budget_exhausted', remaining_usd: 0 },
+    appendAuditEvent: async (event: any) => {
+      auditEvents.push(event);
+      return event;
+    },
     completeRequest: async ({ id, ...patch }: any) => Object.assign(requests.get(id), patch),
     failRequest: async ({ id, ...patch }: any) => Object.assign(requests.get(id), patch),
     _messages: messages,
+    _auditEvents: auditEvents,
   };
 }
 
@@ -316,6 +322,16 @@ describe('ATLAS Unified AI gateway', () => {
     expect(assistant?.content?.collaboration).toEqual({ strategy: 'editorial', review_present: true });
     expect(JSON.stringify(assistant?.content)).not.toContain('Improve precision.');
     expect(JSON.stringify(result)).not.toContain('Unrefined OpenAI draft.');
+    expect(store._auditEvents).toHaveLength(1);
+    expect(store._auditEvents[0]).toMatchObject({
+      action: 'intelligence.council.editorial.reviewed',
+      record_id: expect.any(String),
+      data: {
+        strategy: 'editorial',
+        providers: ['openai', 'gemini'],
+        review: '- Improve precision.',
+      },
+    });
   });
 
   it('requires cost approval when Council is not pre-authorized', async () => {
