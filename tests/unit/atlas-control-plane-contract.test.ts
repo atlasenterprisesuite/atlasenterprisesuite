@@ -62,7 +62,11 @@ const evidence: AtlasEvidenceEnvelope = {
     {
       kind: 'payroll_record',
       reference: 'payroll-77',
-      verified: true
+      verified: true,
+      authenticated: true,
+      authoritative: true,
+      source: 'payroll:canonical-record',
+      observedAt: '2026-10-07T00:00:00.000Z'
     }
   ],
   auditEventIds: ['audit-1']
@@ -181,9 +185,29 @@ describe('ATLAS control-plane contract', () => {
       capability,
       evidence: {
         ...evidence,
-        evidence: [{ kind: 'payroll_record', reference: 'payroll-77', verified: false }]
+        evidence: [{
+          ...evidence.evidence[0],
+          verified: false
+        }]
       }
-    })).toThrow('control_plane_evidence_missing:payroll_record');
+    })).toThrow('execution_evidence_unverified:payroll_record');
+  });
+
+  it('requires authenticated authoritative completion evidence', () => {
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent,
+      context,
+      policy,
+      orchestration,
+      capability,
+      evidence: {
+        ...evidence,
+        evidence: [{
+          ...evidence.evidence[0],
+          authenticated: false
+        }]
+      }
+    })).toThrow('authenticated_execution_evidence_required:payroll_record');
   });
 
   it('requires an immutable audit reference before completion can be reported', () => {
