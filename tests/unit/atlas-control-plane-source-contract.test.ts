@@ -24,6 +24,10 @@ describe('ATLAS control-plane canonical owners', () => {
       'supabase/functions/atlas-copilot/atlas-intelligence-auth.mjs',
       'utf8'
     );
+    const context = readFileSync(
+      'packages/execution/src/context-engine.ts',
+      'utf8'
+    );
     const execution = readFileSync(
       'packages/execution/src/engine.ts',
       'utf8'
@@ -32,13 +36,27 @@ describe('ATLAS control-plane canonical owners', () => {
     expect(auth).toContain('organization_members');
     expect(auth).toContain('identity_role_permissions');
     expect(auth).toContain('session_id');
+    expect(context).toContain("source: 'server'");
+    expect(context).toContain('atlas_context_untrusted');
     expect(execution).toContain('assertSameScope');
     expect(execution).toContain('permissionsRequired');
   });
 
   it('keeps policy, capability execution, verification, evidence and audit fail-closed', () => {
     const policy = readFileSync(
-      'supabase/functions/atlas-execution/work-policy.ts',
+      'packages/execution/src/policy-fabric.ts',
+      'utf8'
+    );
+    const workPolicy = readFileSync(
+      'packages/execution/src/work-policy.ts',
+      'utf8'
+    );
+    const capability = readFileSync(
+      'packages/execution/src/capability-catalog.ts',
+      'utf8'
+    );
+    const evidence = readFileSync(
+      'packages/execution/src/evidence-bridge.ts',
       'utf8'
     );
     const engine = readFileSync(
@@ -50,8 +68,12 @@ describe('ATLAS control-plane canonical owners', () => {
       'utf8'
     );
 
-    expect(policy).toContain("outcome: 'deny'");
-    expect(policy).toContain("outcome: 'require_approval'");
+    expect(workPolicy).toContain("outcome: 'deny'");
+    expect(workPolicy).toContain("outcome: 'require_approval'");
+    expect(policy).toContain('approvalMatchesPayload');
+    expect(policy).toContain("outcome: 'allow'");
+    expect(capability).toContain('capability_not_ready');
+    expect(evidence).toContain('authenticated_execution_evidence_required');
     expect(engine).toContain('adapter.authorize');
     expect(engine).toContain('adapter.execute');
     expect(engine).toContain('adapter.verify');
