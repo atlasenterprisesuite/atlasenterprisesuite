@@ -7,6 +7,7 @@ const registry = read('apps/web/src/modules/registry.ts');
 const resolver = read('apps/web/src/extensions/resolveAtlasExtension.tsx');
 const suite = read('apps/web/src/modules/integration/AtlasSuitePage.tsx');
 const suiteStyles = read('apps/web/src/modules/integration/atlas-suite.css');
+const covers = read('apps/web/src/modules/integration/moduleCovers.ts');
 const hubs = read('apps/web/src/modules/integration/AtlasIntegrationHubs.tsx');
 const analytics = read('apps/web/src/modules/analytics/AnalyticsRoutes.tsx');
 const app = read('apps/web/src/App.tsx');
@@ -29,11 +30,23 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(suite).toContain('suite-primary-grid');
     expect(suite).toContain('suite-filter-bar');
     expect(suite).toContain('suite-module-card');
-    expect(suite).toContain('COVER_ASSETS');
-    expect(suite).toContain('/atlas/design/atlas-module-gallery.webp');
+    expect(suite).toContain('MODULE_COVER_ASSETS');
+    expect(covers).toContain('export const MODULE_COVER_ASSETS');
     expect(suiteStyles).toContain('.suite-module-grid');
     expect(suiteStyles).toContain('repeat(4,minmax(0,1fr))');
     expect(suiteStyles).toContain('@media(max-width:760px)');
+  });
+
+  it('assigns a unique local cover asset to every canonical module id', () => {
+    const moduleIds = [...registry.matchAll(/\bid: '([^']+)'/g)].map((match) => match[1]);
+    const coverEntries = [...covers.matchAll(/\n\s{2}'([^']+)': '\/atlas\/covers\/([^']+)'/g)];
+    const coverIds = coverEntries.map((match) => match[1]);
+    const coverPaths = coverEntries.map((match) => match[2]);
+
+    expect(moduleIds.length).toBeGreaterThanOrEqual(38);
+    expect(new Set(coverIds)).toEqual(new Set(moduleIds));
+    expect(new Set(coverPaths).size).toBe(coverPaths.length);
+    expect(covers).toContain('getModuleCoverAsset');
   });
 
   it('shows active evolution as an independent lifecycle axis', () => {
