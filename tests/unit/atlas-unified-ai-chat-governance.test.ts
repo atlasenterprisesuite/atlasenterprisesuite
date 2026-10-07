@@ -191,6 +191,34 @@ describe('ATLAS Council', () => {
     })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
   });
 
+  it('fails closed when the reviewer omits a nonempty ATLAS_REVIEW section', async () => {
+    const openai = adapter('openai', { text: 'Initial draft.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async () => ({
+        provider: 'gemini',
+        model: 'gemini-model',
+        text: 'ATLAS_FINAL:\nRefined answer without an independent review.',
+        capabilities_used: ['generation'],
+        usage: {},
+        provenance: [],
+        tool_calls: [],
+      }),
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    await expect(council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain.' }],
+    })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+  });
+
   it('fails when fewer than two providers succeed', async () => {
     const registry = createProviderRegistry({ providers: [adapter('openai'), adapter('gemini', { fail: true })] });
     const council = createCouncilOrchestrator({ registry });
