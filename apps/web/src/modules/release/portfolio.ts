@@ -421,6 +421,21 @@ export function validateAtlasPortfolio(
         message: `Portfolio owner ${decision.ownerModuleId} for ${decision.moduleId} is not canonical.`
       });
     }
+
+    const module = modules.find((candidate) => candidate.id === decision.moduleId);
+    if (module) {
+      const shouldBePrimaryNavigation = decision.disposition === 'keep';
+      if (module.showInNavigation !== shouldBePrimaryNavigation) {
+        findings.push({
+          id: `portfolio:navigation-mismatch:${decision.moduleId}`,
+          severity: 'P1',
+          code: 'navigation-disposition-mismatch',
+          message: shouldBePrimaryNavigation
+            ? `Canonical owner ${decision.moduleId} must remain discoverable in primary module navigation.`
+            : `Converged module ${decision.moduleId} must not remain a duplicate primary navigation item.`
+        });
+      }
+    }
   }
 
   for (const module of modules) {
