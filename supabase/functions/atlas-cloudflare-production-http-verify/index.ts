@@ -9,7 +9,7 @@ const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 31;
+const VERSION = 32;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CANONICAL_MODULE_ROUTES = [
@@ -53,6 +53,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/payroll',
   '/learning',
   '/health',
+  '/care',
   '/studio',
   '/voice',
   '/events',
@@ -319,6 +320,7 @@ Deno.serve(async (req: Request) => {
     knowledge,
     voice,
     health,
+    care,
     frontier,
     jaqueMateSentinel,
     studioWebLaunch,
@@ -367,6 +369,7 @@ Deno.serve(async (req: Request) => {
     probe('/knowledge'),
     probe('/voice'),
     probe('/health'),
+    probe('/care'),
     probe('/frontier'),
     probe('/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'),
     probe('/studio/web-launch'),
@@ -430,6 +433,7 @@ Deno.serve(async (req: Request) => {
     bibleOS.status === 200 &&
     voice.status === 200 &&
     health.status === 200 &&
+    care.status === 200 &&
     frontier.status === 200 &&
     jaqueMateSentinel.status === 200 &&
     studioWebLaunch.status === 200 &&
@@ -466,6 +470,7 @@ Deno.serve(async (req: Request) => {
     knowledge,
     voice,
     health,
+    care,
     frontier,
     jaqueMateSentinel,
     studioWebLaunch,
@@ -586,6 +591,7 @@ Deno.serve(async (req: Request) => {
         bible_os_route_reachable: bibleOS.status === 200,
         voice_route_reachable: voice.status === 200,
         health_route_reachable: health.status === 200,
+        care_route_reachable: care.status === 200,
         frontier_route_reachable: frontier.status === 200,
         jaque_mate_sentinel_route_reachable: jaqueMateSentinel.status === 200,
         studio_web_launch_route_reachable: studioWebLaunch.status === 200,
@@ -639,6 +645,7 @@ Deno.serve(async (req: Request) => {
         bible_os: bibleOS,
         voice,
         health,
+        care,
         frontier,
         jaque_mate_sentinel: jaqueMateSentinel,
         studio_web_launch: studioWebLaunch,
