@@ -6,6 +6,7 @@ const api=readFileSync('apps/web/src/modules/care/careApi.ts','utf8');
 const routes=readFileSync('apps/web/src/modules/care/CareRoutes.tsx','utf8');
 const registry=readFileSync('apps/web/src/modules/registry.ts','utf8');
 const resolver=readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx','utf8');
+const permissions=readFileSync('packages/core/src/permissions.ts','utf8');
 
 describe('ATLAS Care governed core',()=>{
   it('persists care participants, caregivers, plans and timecards under RLS and audit',()=>{
@@ -15,6 +16,8 @@ describe('ATLAS Care governed core',()=>{
     expect(migration).toContain('enable row level security');
     expect(migration).toContain('public.audit_row_change()');
     expect(migration).toContain("public.has_identity_permission(org_id,'care.read')");
+    expect(migration).toContain("('owner','care.approve')");
+    for(const permission of ["'care.read'","'care.write'","'care.approve'"]) expect(permissions).toContain(permission);
   });
 
   it('fails closed on eligibility, caregiver credentials, overlap and weekly allowance',()=>{
