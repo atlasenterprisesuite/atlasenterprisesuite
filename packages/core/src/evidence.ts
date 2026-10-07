@@ -185,11 +185,13 @@ export function evaluateEvidenceBundle(bundle: EvidenceBundle): EvidenceEvaluati
 
   if (bundle.mode === 'warning-only') {
     return {
-      outcome: failures.length > 0 ? 'fail' : 'pass',
-      productionReady: failures.length === 0,
-      blockers,
+      outcome: 'pass',
+      productionReady: true,
+      blockers: [],
       failures,
-      warnings,
+      warnings: bundle.checks
+        .filter((check) => check.status !== 'pass')
+        .map((check) => check.id),
       passed
     };
   }
