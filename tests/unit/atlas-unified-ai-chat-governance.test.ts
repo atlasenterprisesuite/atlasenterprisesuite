@@ -4,7 +4,7 @@ import { createCouncilOrchestrator } from '../../supabase/functions/atlas-copilo
 import { createToolGateway } from '../../supabase/functions/atlas-copilot/tool-gateway.mjs';
 import { evaluateEmergencyFallbackPolicy, evaluateIntelligenceCostPolicy } from '../../supabase/functions/atlas-copilot/cost-policy.mjs';
 
-function adapter(id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign', options: {
+function adapter(id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'anthropic' | 'grok' | 'deepseek' | 'mistral' | 'qwen' | 'codex-sovereign', options: {
   configured?: boolean;
   verified?: boolean;
   text?: string;
@@ -60,6 +60,11 @@ describe('ATLAS provider registry', () => {
       ['openai', 'verified'],
       ['bedrock', 'unavailable'],
       ['gemini', 'configuration-required'],
+      ['anthropic', 'configuration-required'],
+      ['grok', 'configuration-required'],
+      ['deepseek', 'configuration-required'],
+      ['mistral', 'configuration-required'],
+      ['qwen', 'configuration-required'],
       ['codex-sovereign', 'unavailable'],
     ]);
     expect(JSON.stringify(readiness)).not.toContain('secret');
