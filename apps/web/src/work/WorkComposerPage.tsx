@@ -124,7 +124,7 @@ export function WorkComposerPage() {
     <section className="work-page page-stack">
       <WorkSubnav />
       <header className="page-header">
-        <p className="eyebrow">ATLAS Work Soberano</p>
+        <p className="eyebrow">ATLAS Work</p>
         <h1>Create work</h1>
         <p>Review organization scope, authorized capabilities and the execution envelope before ATLAS persists a canonical workflow.</p>
       </header>
