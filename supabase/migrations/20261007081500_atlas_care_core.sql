@@ -3,6 +3,20 @@
 -- This schema intentionally excludes diagnosis, clinical notes and EHR payloads.
 -- External payer/EHR connectivity remains fail-closed until separately configured and verified.
 
+insert into public.identity_permissions (code, description)
+values
+  ('care.read', 'Read organization-scoped ATLAS Care records.'),
+  ('care.write', 'Create and manage governed ATLAS Care participants, caregivers, plans and time entries.'),
+  ('care.approve', 'Approve or reject governed ATLAS Care time entries for downstream payroll handoff.')
+on conflict (code) do update set description = excluded.description;
+
+insert into public.identity_role_permissions (role, permission_code)
+values
+  ('owner','care.read'),('owner','care.write'),('owner','care.approve'),
+  ('admin','care.read'),('admin','care.write'),('admin','care.approve'),
+  ('manager','care.read'),('manager','care.write'),('manager','care.approve')
+on conflict do nothing;
+
 create table if not exists public.care_people (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations(id) on delete cascade,
