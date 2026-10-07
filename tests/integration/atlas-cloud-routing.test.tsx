@@ -55,13 +55,25 @@ describe('ATLAS Cloud routing and product boundaries', () => {
     expect(backend).toContain("duplicated_registry_created:false");
   });
 
-  it('normalizes service readiness into the approved evidence-backed truth states', () => {
+  it('normalizes repository readiness without inventing production health', () => {
     expect(routes).toContain('atlasCloudTruthBadge');
     expect(routes).toContain('atlas-cloud-truth-badge');
-    for (const label of ['VERIFIED', 'IN PROGRESS', 'WARNING', 'BLOCKED', 'NEEDS AUTHORIZATION']) {
+    for (const label of ['LIVE', 'BETA', 'IMPLEMENTING', 'BLOCKED', 'SIMULATION', 'PLANNED', 'DEGRADED', 'NEEDS AUTHORIZATION']) {
       expect(truthStatus).toContain(label);
     }
-    expect(truthStatus).toContain("return { state: 'in_progress'");
+    expect(truthStatus).toContain("value === 'implemented'");
+    expect(truthStatus).toContain("value === 'external_gated'");
+  });
+
+  it('presents Cloud as a command center instead of a flat technical catalog', () => {
+    expect(routes).toContain('ATLAS Cloud Command Center');
+    expect(routes).toContain('Global status');
+    expect(routes).toContain('Release & Operations');
+    expect(routes).toContain('Critical operations');
+    expect(routes).toContain('Control plane');
+    expect(routes).toContain('Service inventory');
+    expect(routes).toContain('serviceDomain');
+    expect(routes).toContain('atlas-cloud-access-badge');
   });
 
   it('loads Atlas Cloud styles from the primary web entry point', () => {
