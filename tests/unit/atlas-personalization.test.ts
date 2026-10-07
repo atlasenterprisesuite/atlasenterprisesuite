@@ -27,7 +27,7 @@ describe('ATLAS personalization profile', () => {
       startMode: 'recommended',
       progressiveDiscovery: false,
       pinnedModuleIds: ['finance', 'not-real', 'finance']
-    });
+    }, ATLAS_MODULES);
 
     expect(profile.objectives).toEqual(['business-growth']);
     expect(profile.workMode).toBe('solo');
