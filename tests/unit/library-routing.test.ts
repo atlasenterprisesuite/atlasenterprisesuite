@@ -3,6 +3,7 @@ import { classifyAtlasLibraryAsset } from '../../packages/core/src/libraryRoutin
 
 describe('ATLAS Library routing', () => {
   it('routes structured Library paths into owning modules', () => {
+    expect(classifyAtlasLibraryAsset({ name:'ATLAS Care Plan - Family A.pdf', path:'/ATLAS/Care/ATLAS Care Plan - Family A.pdf', mimeType:'application/pdf' }).primaryModuleId).toBe('care');
     expect(classifyAtlasLibraryAsset({ name:'01_Form_1040_2025_IRS_editable.pdf', path:'/ATLAS_LIBRARY_MASTER_2026-08-09/09_DOCUMENTS/01_FINANCE_TAX/01_Form_1040_2025_IRS_editable.pdf', mimeType:'application/pdf' }).primaryModuleId).toBe('tax');
     expect(classifyAtlasLibraryAsset({ name:'04_inventory.png', path:'/ATLAS/Inventory/04_inventory.png', mimeType:'image/png' }).moduleIds).toContain('inventory');
     expect(classifyAtlasLibraryAsset({ name:'03_gps_4t.mp3', path:'/ATLAS/Media/03_gps_4t.mp3', mimeType:'audio/mpeg' }).moduleIds).toContain('ride');
