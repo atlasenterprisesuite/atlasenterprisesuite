@@ -11,7 +11,7 @@ export type AtlasLibraryClassification = {
 const RESTRICTED_PATTERNS = [
   /(^|\/)(personal|registros personales|phone records|respaldos del teléfono|recuerdos familiares)(\/|$)/i,
   /(^|\/)(legal|loans|vivienda|housing)(\/|$)/i,
-  /(^|\/)(03_health|health)(\/|$)/i,
+  /(^|\/)(03_health|health|care)(\/|$)/i,
   /(^|\/)(01_finance_tax|finance|tax|irs|accounting)(\/|$)/i,
   /(resume|curriculum|winder_aranguren|1040|transcript|receipt|recibo|invoice|bank|loan|kia|lyft|unemployment|reemployment)/i
 ];
@@ -22,6 +22,7 @@ const RULES: Array<{ module: string; tags: string[]; patterns: RegExp[] }> = [
   { module: 'finance', tags: ['finance'], patterns: [/\bfinance\b/i,/financial/i,/business wallet/i,/invest(or|ment)/i] },
   { module: 'payroll', tags: ['payroll'], patterns: [/payroll/i,/timecard/i,/timesheet/i] },
   { module: 'people', tags: ['people','hr'], patterns: [/(^|[\/ _-])hr([\/ _-]|$)/i,/rrhh/i,/human resources/i,/resume/i,/career/i,/recruit/i] },
+  { module: 'care', tags: ['care','caregiving'], patterns: [/atlas[ _-]?care/i,/caregiver/i,/care[ _-]?plan/i,/home[ _-]?care/i,/elder[ _-]?care/i] },
   { module: 'health', tags: ['health'], patterns: [/health/i,/cancer/i,/medical/i,/disease/i,/hiv/i,/hospital/i] },
   { module: 'ride', tags: ['mobility'], patterns: [/ride/i,/lyft/i,/uber/i,/mobility/i,/gps/i,/vehicle/i,/kia/i,/cars/i,/transport/i] },
   { module: 'aviation', tags: ['aviation'], patterns: [/aviation/i,/aircraft/i,/flight/i] },
