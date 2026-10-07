@@ -41,6 +41,11 @@ const MODES: Array<{ value: AssistantMode; label: string; short: string }> = [
   { value: 'council', label: 'ATLAS Council', short: 'Council' }
 ];
 
+function atlasRouteLabel(value: string) {
+  if (value === 'atlas-council') return 'ATLAS Council';
+  return MODES.find((mode) => mode.value === value)?.label || 'ATLAS Engine';
+}
+
 const PROFILES: Array<{ value: AssistantProfile; label: string }> = [
   { value: 'fast', label: 'Fast' },
   { value: 'balanced', label: 'Balanced' },
@@ -96,7 +101,7 @@ function textOf(message: AssistantStoredMessage) {
 function metaOf(message: AssistantStoredMessage) {
   if (typeof message.content === 'string') return '';
   const providers = message.content?.routing?.providers;
-  return Array.isArray(providers) && providers.length ? 'via ' + providers.join(' + ') : '';
+  return Array.isArray(providers) && providers.length ? 'via ' + providers.map(atlasRouteLabel).join(' + ') : '';
 }
 
 function humanizeError(value: string) {
@@ -350,8 +355,7 @@ export function UnifiedAIChatPage() {
                     ...item,
                     text: completedText,
                     meta: 'Background · Completed'
-                      + (state.provider ? ' · via ' + state.provider : '')
-                      + (state.model ? ' · ' + state.model : '')
+                      + (state.provider ? ' · via ' + atlasRouteLabel(state.provider) : '')
                   }
                 : item
             ));
@@ -415,8 +419,8 @@ export function UnifiedAIChatPage() {
         conversationIdRef.current = result.conversation_id;
       }
       const providersUsed = Array.isArray(result.providers) && result.providers.length
-        ? result.providers.join(' + ')
-        : result.provider || 'ATLAS';
+        ? result.providers.map(atlasRouteLabel).join(' + ')
+        : result.provider ? atlasRouteLabel(result.provider) : 'ATLAS';
       if (result.background && result.status !== 'completed') {
         if (!result.trace_id || !result.conversation_id) throw new Error('background_failed');
         const placeholderKey = 'background-' + result.trace_id;
@@ -442,7 +446,7 @@ export function UnifiedAIChatPage() {
           role: 'assistant',
           text: reply,
           meta: (translatorEnabled ? 'translated to ' + translatorLanguageLabel(targetLanguage) + ' · ' : '')
-            + 'via ' + providersUsed + (result.model ? ' · ' + result.model : '')
+            + 'via ' + providersUsed
         }
       ]);
       if (translatorEnabled && voice.speechEnabled && voice.speechCapability === 'ready' && reply) {
@@ -952,13 +956,13 @@ export function UnifiedAIChatPage() {
               {providers.length ? (
                 <details className="atlas-ai-provider-details">
                   <summary>
-                    <span>Provider details</span>
+                    <span>ATLAS engine details</span>
                     <strong>{verifiedProviders.length}/{providers.length} verified</strong>
                   </summary>
                   <div className="atlas-ai-provider-list">
                     {providers.map((provider) => (
                       <div key={provider.id}>
-                        <span>{provider.id}</span>
+                        <span>{atlasRouteLabel(provider.id)}</span>
                         <strong className={provider.verified && provider.state === 'verified' ? 'ready' : ''}>
                           {providerStateLabel(provider.state)}
                         </strong>
