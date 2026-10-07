@@ -166,6 +166,7 @@ export function buildSalesforceAuthorizationUrl(input: {
   state: string;
   scopes: readonly string[];
   loginBaseUrl?: string;
+  codeChallenge?: string;
 }): string {
   const base = normalizeSalesforceLoginBaseUrl(input.loginBaseUrl);
   const requestedScopes = [...new Set(input.scopes.map((scope) => scope.trim()).filter(Boolean))];
@@ -177,6 +178,10 @@ export function buildSalesforceAuthorizationUrl(input: {
   url.searchParams.set('redirect_uri', required(input.redirectUri, 'Salesforce redirect URI'));
   url.searchParams.set('state', required(input.state, 'Salesforce OAuth state'));
   url.searchParams.set('scope', requestedScopes.join(' '));
+  if (input.codeChallenge?.trim()) {
+    url.searchParams.set('code_challenge', input.codeChallenge.trim());
+    url.searchParams.set('code_challenge_method', 'S256');
+  }
   return url.toString();
 }
 
@@ -186,6 +191,7 @@ export async function exchangeSalesforceCode(input: {
   redirectUri: string;
   code: string;
   loginBaseUrl?: string;
+  codeVerifier?: string;
   fetchImpl?: SalesforceFetch;
 }): Promise<SalesforceTokenResponse> {
   const base = normalizeSalesforceLoginBaseUrl(input.loginBaseUrl);
@@ -196,7 +202,8 @@ export async function exchangeSalesforceCode(input: {
       client_id: required(input.clientId, 'Salesforce client ID'),
       client_secret: required(input.clientSecret, 'Salesforce client secret'),
       redirect_uri: required(input.redirectUri, 'Salesforce redirect URI'),
-      code: required(input.code, 'Salesforce authorization code')
+      code: required(input.code, 'Salesforce authorization code'),
+      ...(input.codeVerifier?.trim() ? { code_verifier: input.codeVerifier.trim() } : {})
     },
     input.fetchImpl ?? fetch
   );
