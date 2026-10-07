@@ -18,6 +18,7 @@ const STATIC_NODES: readonly AtlasNavigationNode[] = [
   { id: 'receivables', label: 'Receivables', to: '/finance/accounting/accounts-receivable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ar', 'accounts receivable', 'cuentas por cobrar', 'customers', 'clientes'] },
   { id: 'enterprise-automation', label: 'Enterprise Automation', to: '/advisory/enterprise-automation', area: 'Business', moduleId: 'advisory', parentId: 'advisory', keywords: ['automation', 'automatizacion', '15 companies', 'roi', 'accounts payable', 'human resources', 'inventory', 'operations'] },
   { id: 'automotive-reporting', label: 'Automotive', to: '/finance/accounting/reports/automotive-sales', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['automotive', 'dealer', 'vehicle', 'sales report', 'autos'] },
+  { id: 'personalize-atlas', label: 'Personalize ATLAS', to: '/settings/personalize', area: 'Platform', keywords: ['personalize', 'personalizar', 'goals', 'objetivos', 'interests', 'intereses', 'onboarding', 'recommendations'] },
   { id: 'accessibility', label: 'Accessibility', to: '/settings/accessibility/communication', area: 'Platform', keywords: ['a11y', 'accessibility', 'accesibilidad', 'captions', 'screen reader', 'braille', 'sign language'] }
 ];
 
