@@ -12,6 +12,17 @@ import './creator.css';
 
 const CREATIVE_MEDIA_KINDS: CreativeMediaKind[] = ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'];
 
+function atlasCreatorEngineLabel(engineId: string | null | undefined) {
+  const id = String(engineId || '').toLowerCase();
+  if (!id || id === 'prompt-export') return id === 'prompt-export' ? 'Prompt Export' : 'ATLAS Engine';
+  if (id.includes('elevenlabs')) return 'ATLAS Audio Engine';
+  if (id.includes('openart')) return 'ATLAS Creative Engine';
+  if (id.includes('openai') || id.includes('gpt')) return 'ATLAS Engine 01';
+  if (id.includes('gemini') || id.includes('google')) return 'ATLAS Engine 03';
+  if (id.includes('anthropic') || id.includes('claude')) return 'ATLAS Engine 04';
+  return 'ATLAS Creative Engine';
+}
+
 function initialMediaKind(value: string | null): CreativeMediaKind {
   return CREATIVE_MEDIA_KINDS.includes(value as CreativeMediaKind) ? value as CreativeMediaKind : 'image';
 }
@@ -289,15 +300,15 @@ export function CreatorWorkspace() {
           <h2>Creative plan</h2>
           <p>{creativePlan.normalizedObjective}</p>
           <div className="creator-plan-deliverables">{creativePlan.deliverables.map(item => <span key={item.id}>{item.title}</span>)}</div>
-          {specializedPrompt && <><h3>{kind.toUpperCase()} prompt</h3><pre>{specializedPrompt.prompt}</pre><p>Engine: {specializedPrompt.providerOrEngineId === 'prompt-export' ? 'Prompt Export' : specializedPrompt.providerOrEngineId}</p></>}
+          {specializedPrompt && <><h3>{kind.toUpperCase()} prompt</h3><pre>{specializedPrompt.prompt}</pre><p>Engine: {atlasCreatorEngineLabel(specializedPrompt.providerOrEngineId)}</p></>}
         </> : <>
           <h2>Preview</h2>
           <p>Create a plan to inspect deliverables and the specialized prompt. ATLAS does not insert fabricated output.</p>
         </>}
         {promptPackage && <div className="creator-export-preview"><h3>Prompt export</h3><pre>{promptPackage.prompt}</pre>{promptPackage.adaptationNotes.map(note => <p key={note}>{note}</p>)}</div>}
-        {musicAudioUrl && <div className="creator-export-preview"><h3>Generated music</h3><audio controls src={musicAudioUrl} aria-label="Generated ATLAS music" /><a href={musicAudioUrl} download="atlas-music.mp3">Download MP3</a><p>AI-generated instrumental · {musicGenerationMeta?.provider || 'verified provider'} · {musicGenerationMeta?.model || 'verified model'}{musicGenerationMeta?.songId ? ` · Song ${musicGenerationMeta.songId}` : ''}</p></div>}
+        {musicAudioUrl && <div className="creator-export-preview"><h3>Generated music</h3><audio controls src={musicAudioUrl} aria-label="Generated ATLAS music" /><a href={musicAudioUrl} download="atlas-music.mp3">Download MP3</a><p>AI-generated instrumental · {atlasCreatorEngineLabel(musicGenerationMeta?.provider)}{musicGenerationMeta?.songId ? ` · Song ${musicGenerationMeta.songId}` : ''}</p></div>}
         <dl>
-          <div><dt>Engine</dt><dd>{executableEngine ? `${executableEngine.displayName} · verified executable` : 'No executable engine verified'}</dd></div>
+          <div><dt>Engine</dt><dd>{executableEngine ? `${atlasCreatorEngineLabel(executableEngine.engineId)} · verified executable` : 'No executable engine verified'}</dd></div>
           <div><dt>Prompt Export</dt><dd>{promptExportReady ? 'Ready · planning only' : 'Unavailable'}</dd></div>
           <div><dt>Plan version</dt><dd>{persistedVersion || 'Not saved'}</dd></div>
           <div><dt>Audit</dt><dd>Enabled</dd></div>
@@ -350,7 +361,7 @@ export function CreatorLibrary() {
         <dl><div><dt>Version</dt><dd>{production.version}</dd></div><div><dt>Updated</dt><dd>{production.updatedAt || 'Unknown'}</dd></div><div><dt>Output</dt><dd>{production.durationSeconds}s · {production.aspectRatio} · {production.resolutionPreference}</dd></div></dl>
       </article>)}
       {filteredAssets.map(asset => <article className="creator-library-card" key={`asset-${asset.id}`}>
-        <p className="eyebrow">Asset · {asset.mediaType}</p><h2>{asset.providerId || 'Provider not recorded'}</h2><p>{asset.mimeType || 'Media type not reported'}</p>
+        <p className="eyebrow">Asset · {asset.mediaType}</p><h2>{asset.providerId ? atlasCreatorEngineLabel(asset.providerId) : 'Engine not recorded'}</h2><p>{asset.mimeType || 'Media type not reported'}</p>
         <dl><div><dt>Production</dt><dd>{asset.productionId}</dd></div><div><dt>Updated</dt><dd>{asset.updatedAt || 'Unknown'}</dd></div><div><dt>Provenance</dt><dd><code>{JSON.stringify(asset.provenance)}</code></dd></div></dl>
       </article>)}
     </div>}
