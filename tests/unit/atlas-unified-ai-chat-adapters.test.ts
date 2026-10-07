@@ -4,6 +4,8 @@ import { createAtlasLocalResponsesAdapter } from '../../supabase/functions/atlas
 import { createAmazonBedrockResponsesAdapter } from '../../supabase/functions/atlas-copilot/amazon-bedrock-responses-adapter.mjs';
 import { createGeminiAdapter } from '../../supabase/functions/atlas-copilot/gemini-adapter.mjs';
 import { createCodexSovereignAdapter } from '../../supabase/functions/atlas-copilot/codex-sovereign-adapter.mjs';
+import { createAnthropicAdapter } from '../../supabase/functions/atlas-copilot/anthropic-adapter.mjs';
+import { createOpenAICompatibleChatAdapter } from '../../supabase/functions/atlas-copilot/openai-compatible-chat-adapter.mjs';
 
 const context = { organization_id: 'org-1', user_id: 'user-1' };
 const route = { profile: 'balanced', capabilities: ['generation'] };
@@ -362,6 +364,73 @@ describe('ATLAS Unified AI provider adapters', () => {
     const adapter = createGeminiAdapter({ apiKey: 'gemini-secret', models: { balanced: 'gemini-configured' }, fetchFn });
     expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
     expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('gemini-ok');
+  });
+
+
+  it('implements Anthropic Messages with model readiness verification', async () => {
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.get('x-api-key')).toBe('anthropic-secret');
+      expect(headers.get('anthropic-version')).toBe('2023-06-01');
+      if (init?.method !== 'POST') {
+        expect(url).toBe('https://api.anthropic.com/v1/models/claude-sonnet-5-5');
+        return new Response(JSON.stringify({ type: 'model', id: 'claude-sonnet-5-5' }), { status: 200 });
+      }
+      expect(url).toBe('https://api.anthropic.com/v1/messages');
+      const body = JSON.parse(String(init.body));
+      expect(body.model).toBe('claude-sonnet-5-5');
+      expect(body.output_config).toEqual({ effort: 'medium' });
+      expect(body.system).toBe('ATLAS');
+      return new Response(JSON.stringify({
+        id: 'msg_1',
+        model: 'claude-sonnet-5-5',
+        content: [{ type: 'text', text: 'claude-ok' }],
+        usage: { input_tokens: 4, output_tokens: 2 }
+      }), { status: 200 });
+    });
+    const adapter = createAnthropicAdapter({
+      apiKey: 'anthropic-secret',
+      models: { balanced: 'claude-sonnet-5-5' },
+      fetchFn,
+    });
+    expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
+    expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('claude-ok');
+  });
+
+  it('supports Grok, DeepSeek, Mistral and Qwen through one governed OpenAI-compatible contract', async () => {
+    const providers = [
+      { id: 'grok', baseUrl: 'https://api.x.ai/v1', model: 'grok-4.7' },
+      { id: 'deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-pro' },
+      { id: 'mistral', baseUrl: 'https://api.mistral.ai/v1', model: 'mistral-large-latest' },
+      { id: 'qwen', baseUrl: 'https://dashscope-us.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+    ];
+    for (const spec of providers) {
+      const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method !== 'POST') {
+          expect(url).toBe(spec.baseUrl + '/models');
+          return new Response(JSON.stringify({ data: [{ id: spec.model }] }), { status: 200 });
+        }
+        expect(url).toBe(spec.baseUrl + '/chat/completions');
+        const body = JSON.parse(String(init.body));
+        expect(body.model).toBe(spec.model);
+        expect(body.messages[0]).toEqual({ role: 'system', content: 'ATLAS' });
+        return new Response(JSON.stringify({
+          id: spec.id + '-1',
+          model: spec.model,
+          choices: [{ message: { content: spec.id + '-ok' } }],
+          usage: {}
+        }), { status: 200 });
+      });
+      const adapter = createOpenAICompatibleChatAdapter({
+        id: spec.id,
+        apiKey: 'provider-secret',
+        baseUrl: spec.baseUrl,
+        models: { balanced: spec.model },
+        fetchFn,
+      });
+      expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
+      expect((await adapter.execute({ route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe(spec.id + '-ok');
+    }
   });
 
   it('implements Codex Sovereign only when its runtime health probe verifies', async () => {
