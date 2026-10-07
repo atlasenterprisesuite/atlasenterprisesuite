@@ -248,7 +248,7 @@ describe('ATLAS Creator', () => {
 
     const generate = await screen.findByRole('button', { name: 'Generate music' });
     expect(generate).toBeEnabled();
-    expect(screen.getByText(/ElevenLabs Music v2 · verified executable/)).toBeInTheDocument();
+    expect(screen.getByText(/ATLAS Audio Engine · verified executable/)).toBeInTheDocument();
     fireEvent.click(generate);
 
     expect(await screen.findByText(/Music generated successfully/)).toBeInTheDocument();
