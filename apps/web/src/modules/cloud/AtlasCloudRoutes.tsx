@@ -4,6 +4,7 @@ import { ATLAS_MODULES } from '../registry';
 import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManager } from './AtlasCloudNextLevel';
 import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
 import { AtlasRuntimeIntegrityPage } from './AtlasRuntimeIntegrityPage';
+import { AtlasCloudReleaseOperations } from './AtlasCloudReleaseOperations';
 import { AtlasCloudDomains } from './AtlasCloudDomains';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
 import { atlasCloudTruthBadge } from './truthStatus';
@@ -256,13 +257,9 @@ function ConsoleHome() {
           <span>Topology</span><strong>Service Graph</strong>
           <p>Visualize services by canonical backend authority and verified registry state.</p>
         </Link>
-        <Link to="/cloud/production-verification">
-          <span>Integrity</span><strong>Production Verification</strong>
-          <p>Verify security, build, deployment, runtime and exact-SHA evidence without fabricating green state.</p>
-        </Link>
-        <Link to="/cloud/releases">
-          <span>Delivery</span><strong>Deployment & Release Center</strong>
-          <p>Separate source, deployment and production verification using Release Control truth.</p>
+        <Link to="/cloud/operations">
+          <span>Release</span><strong>Release & Operations</strong>
+          <p>Converge readiness, release control, deployment evidence, runtime integrity and exact-SHA production verification.</p>
         </Link>
         <Link to="/cloud/iam">
           <span>Governance</span><strong>IAM & Policy</strong>
@@ -280,14 +277,7 @@ function ConsoleHome() {
           <span>Reliability</span><strong>Incident Center</strong>
           <p>Read canonical incidents and correlate operational state with releases and telemetry.</p>
         </Link>
-        <Link to="/execution/manager/readiness">
-          <span>Infrastructure</span><strong>Manager Readiness</strong>
-          <p>Evaluate provider requirements and real blockers before any deployment claim.</p>
-        </Link>
-        <Link to="/release">
-          <span>Release</span><strong>Release Control</strong>
-          <p>Inspect governed release state, gates, evidence and production verification.</p>
-        </Link>
+
         <Link to="/automations">
           <span>Automation</span><strong>ATLAS Automations</strong>
           <p>Run governed workflows through existing ATLAS execution boundaries.</p>
@@ -329,6 +319,7 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/api-explorer') return <AtlasCloudApiExplorer />;
   if (pathname === '/cloud/observability') return <AtlasCloudObservability />;
   if (pathname === '/cloud/runtime-integrity') return <AtlasRuntimeIntegrityPage />;
+  if (pathname === '/cloud/operations') return <AtlasCloudReleaseOperations />;
   if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
   if (pathname === '/cloud/domains') return <AtlasCloudDomains />;
   if (pathname === '/cloud/service-graph') return <AtlasCloudServiceGraph />;
