@@ -276,7 +276,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Care',
     area: 'Health',
     route: '/care',
-    readiness: 'partial',
+    readiness: 'implemented',
     requiresAuth: true,
     description: 'Governed care coordination across eligibility, authorized caregivers, learning, care plans, time evidence, payroll, finance, insurance and audit.',
     showInNavigation: true
