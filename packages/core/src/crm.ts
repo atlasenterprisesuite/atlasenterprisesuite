@@ -1,5 +1,7 @@
 import type { IntegrationConnectionState } from './integrations';
 
+export type CrmProvider = 'hubspot' | 'salesforce';
+
 export type CrmObjectType =
   | 'contact'
   | 'company'
@@ -14,7 +16,7 @@ export type CrmObjectType =
 export type CrmFieldValue = string | number | boolean | null;
 
 export type CrmRecord = {
-  provider: 'hubspot';
+  provider: CrmProvider;
   objectType: CrmObjectType;
   providerId: string;
   displayName: string;
@@ -28,7 +30,7 @@ export type CrmPage = {
 };
 
 export type CrmAssociation = {
-  provider: 'hubspot';
+  provider: CrmProvider;
   fromObjectType: CrmObjectType;
   fromProviderId: string;
   toObjectType: CrmObjectType;
@@ -61,7 +63,7 @@ export type CrmProviderError = {
 };
 
 export type CrmConnectionView = {
-  provider: 'hubspot';
+  provider: CrmProvider;
   state: IntegrationConnectionState;
   providerAccountId: string | null;
   providerAccountLabel: string | null;

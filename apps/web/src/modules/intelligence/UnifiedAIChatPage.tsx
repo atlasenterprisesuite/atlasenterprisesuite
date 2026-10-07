@@ -904,7 +904,15 @@ export function UnifiedAIChatPage() {
                   <strong>AI controls</strong>
                   <span>Provider routing and governance</span>
                 </div>
-                <button type="button" onClick={refreshStatus}>Refresh</button>
+                <div className="atlas-ai-status-panel-actions">
+                  <button type="button" onClick={refreshStatus}>Refresh</button>
+                  <button
+                    type="button"
+                    className="atlas-ai-status-close"
+                    onClick={() => setStatusOpen(false)}
+                    aria-label="Close AI controls"
+                  >×</button>
+                </div>
               </div>
 
               <label className="atlas-ai-select-row">
@@ -937,16 +945,22 @@ export function UnifiedAIChatPage() {
               </div>
 
               {providers.length ? (
-                <div className="atlas-ai-provider-list">
-                  {providers.map((provider) => (
-                    <div key={provider.id}>
-                      <span>{provider.id}</span>
-                      <strong className={provider.verified && provider.state === 'verified' ? 'ready' : ''}>
-                        {providerStateLabel(provider.state)}
-                      </strong>
-                    </div>
-                  ))}
-                </div>
+                <details className="atlas-ai-provider-details">
+                  <summary>
+                    <span>Provider details</span>
+                    <strong>{verifiedProviders.length}/{providers.length} verified</strong>
+                  </summary>
+                  <div className="atlas-ai-provider-list">
+                    {providers.map((provider) => (
+                      <div key={provider.id}>
+                        <span>{provider.id}</span>
+                        <strong className={provider.verified && provider.state === 'verified' ? 'ready' : ''}>
+                          {providerStateLabel(provider.state)}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ) : null}
 
               <div className="atlas-ai-status-links">
