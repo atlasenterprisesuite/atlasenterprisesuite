@@ -30,3 +30,8 @@ verify_jwt = true
 
 [functions.atlas-platform-controls]
 verify_jwt = true
+
+
+# Public OAuth callback; the function enforces OAuth state, ATLAS session and RBAC internally.
+[functions.atlas-crm-salesforce]
+verify_jwt = false
