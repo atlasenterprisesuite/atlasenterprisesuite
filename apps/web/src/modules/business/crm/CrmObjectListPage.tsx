@@ -42,12 +42,15 @@ export function CrmObjectListPage({
     setError(null);
     try {
       const operation = query ? 'crm.search' : 'crm.list';
-      const result = await crmApi<{ page: CrmPage }>(operation, {
+      const request = {
         objectType,
         limit: 25,
         cursor,
         ...(query ? { query } : {})
-      }, provider);
+      };
+      const result = provider === 'hubspot'
+        ? await crmApi<{ page: CrmPage }>(operation, request)
+        : await crmApi<{ page: CrmPage }>(operation, request, provider);
       setPage(result.page);
     } catch (caught) {
       setPage(null);
