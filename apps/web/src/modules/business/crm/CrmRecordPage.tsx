@@ -51,10 +51,10 @@ export function CrmRecordPage({
       setError(null);
       setAssociationWarning(false);
       try {
-        const result = await crmApi<{ record: CrmRecord }>('crm.get', {
-          objectType,
-          providerId
-        }, provider);
+        const recordRequest = { objectType, providerId };
+        const result = provider === 'hubspot'
+          ? await crmApi<{ record: CrmRecord }>('crm.get', recordRequest)
+          : await crmApi<{ record: CrmRecord }>('crm.get', recordRequest, provider);
         if (!active) return;
         setRecord(result.record);
 
@@ -64,12 +64,15 @@ export function CrmRecordPage({
             const seenCursors = new Set<string>();
             let cursor: string | null = null;
             do {
-              const result: { associations: CrmAssociationPage } = await crmApi<{ associations: CrmAssociationPage }>('crm.associations', {
+              const associationRequest = {
                 objectType,
                 providerId,
                 targetObjectType,
                 cursor
-              }, provider);
+              };
+              const result: { associations: CrmAssociationPage } = provider === 'hubspot'
+                ? await crmApi<{ associations: CrmAssociationPage }>('crm.associations', associationRequest)
+                : await crmApi<{ associations: CrmAssociationPage }>('crm.associations', associationRequest, provider);
               pages.push(...result.associations.associations);
               const nextCursor: string | null = result.associations.nextCursor;
               if (!nextCursor) break;
