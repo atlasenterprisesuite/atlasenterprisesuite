@@ -252,6 +252,16 @@ export function FuturisticEnterpriseHome() {
               </Link>
               <Link className="atlas-secondary-action" to="/suite">Explorar todos los módulos</Link>
             </div>
+            {!personalization.completed ? (
+              <aside className="atlas-personalization-invite" aria-label="Personalize ATLAS">
+                <div>
+                  <small>ADAPTIVE ONBOARDING</small>
+                  <strong>Make ATLAS yours</strong>
+                  <span>Answer six short choices so Home, recommendations and discovery prioritize what matters to you.</span>
+                </div>
+                <Link to="/settings/personalize">Personalize ATLAS →</Link>
+              </aside>
+            ) : null}
             <p className="atlas-contract-narrative">One operating system for governed enterprise work.</p>
             <p className="atlas-system-note">Orlando · Personas · Procesos · Datos · Resultados</p>
           </div>
