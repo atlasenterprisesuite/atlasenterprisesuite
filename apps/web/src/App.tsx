@@ -16,7 +16,6 @@ import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { AtlasPayPage } from './modules/finance/pay/AtlasPayPage';
 import { PublicAtlasPayPage } from './modules/finance/pay/PublicAtlasPayPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
-import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
 import { TaxRoutes } from './modules/tax/TaxRoutes';
 import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
@@ -210,7 +209,6 @@ export function App() {
   return (
     <AtlasShell>
       <Routes>
-        <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
@@ -223,7 +221,6 @@ export function App() {
         <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
         <Route path="/studio/teleprompter" element={<RequireAtlasIdentity><TeleprompterPage /></RequireAtlasIdentity>} />
-        <Route path="/business" element={<BusinessHome />} />
         <Route path="/business/network" element={<NetworkPublicPage section="network" />} />
         <Route path="/business/network/pricing" element={<NetworkPublicPage section="pricing" />} />
         <Route path="/business/network/commissions" element={<NetworkPublicPage section="commissions" />} />
@@ -233,21 +230,18 @@ export function App() {
         <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/city" element={<RequireAtlasIdentity><AtlasDigitalDistrictPage /></RequireAtlasIdentity>} />
         <Route path="/city/twin" element={<RequireAtlasIdentity><UrbanTwinPage /></RequireAtlasIdentity>} />
-        <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/pay" element={<Navigate to="/finance/pay/workspace" replace />} />
         <Route path="/finance/pay/workspace" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
-        <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
-        <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />} />
         <Route path="/tax/*" element={<TaxRoutes />} />
         <Route path="/payroll/*" element={<PayrollRoutes />} />
-        <Route path="/health" element={<HealthHome />} />
         <Route path="/wellbeing/faith" element={<FaithReflectionPage />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
-        <Route path="/settings/personalize" element={<PersonalizeAtlasPage />} />\n        <Route path="/settings/accessibility/communication" element={<AccessibilityCommunicationSettingsPage />} />
+        <Route path="/settings/personalize" element={<PersonalizeAtlasPage />} />
+        <Route path="/settings/accessibility/communication" element={<AccessibilityCommunicationSettingsPage />} />
         <Route path={labBase} element={<LabLayout />}>
           <Route index element={<LabOverview />} />
           <Route path="diseases" element={<DiseasesPage />} />
