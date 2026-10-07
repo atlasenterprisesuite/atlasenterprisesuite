@@ -7,17 +7,18 @@ function reconcile(contributions){return contributions.map(item=>`### ${LABEL[it
 function cleanText(value){return typeof value==='string'?value.trim():'';}
 function parseEditorialReview(value){
   const text=cleanText(value);
-  if(!text)return {review:null,final:''};
-  const reviewMarker='ATLAS_REVIEW:';
-  const finalMarker='ATLAS_FINAL:';
-  const reviewIndex=text.indexOf(reviewMarker);
-  const finalIndex=text.indexOf(finalMarker);
-  if(finalIndex<0)return {review:null,final:'',valid:false};
-  const ordered=reviewIndex>=0&&finalIndex>reviewIndex;
+  if(!text)return {review:null,final:'',valid:false};
+  const reviewMatch=/^ATLAS_REVIEW:[ \t]*$/m.exec(text);
+  const finalMatches=[...text.matchAll(/^ATLAS_FINAL:[ \t]*$/gm)];
+  const finalMatch=reviewMatch?finalMatches.filter(match=>(match.index??-1)>reviewMatch.index).at(-1):null;
+  const cleanPrefix=reviewMatch?cleanText(text.slice(0,reviewMatch.index)):null;
+  const ordered=Boolean(reviewMatch&&finalMatch&&!cleanPrefix);
   const review=ordered
-    ?cleanText(text.slice(reviewIndex+reviewMarker.length,finalIndex))
+    ?cleanText(text.slice(reviewMatch.index+reviewMatch[0].length,finalMatch.index))
     :null;
-  const final=ordered?cleanText(text.slice(finalIndex+finalMarker.length)):'';
+  const final=ordered
+    ?cleanText(text.slice((finalMatch.index??0)+finalMatch[0].length))
+    :'';
   return {review:review||null,final,valid:Boolean(ordered&&review&&final)};
 }
 function editorialInstructions(base){
@@ -114,7 +115,8 @@ export function createCouncilOrchestrator({registry}={}){
     }
 
     const parsed=parseEditorialReview(reviewed.text);
-    if(!parsed.valid||!parsed.final)throw fail('provider_invalid_output',502,{provider:EDITORIAL_REVIEWER,strategy:'editorial'});
+    const finishReason=String(reviewed.finish_reason||'').toUpperCase();
+    if(finishReason==='MAX_TOKENS'||!parsed.valid||!parsed.final)throw fail('provider_invalid_output',502,{provider:EDITORIAL_REVIEWER,strategy:'editorial',finish_reason:finishReason||null});
     const contributions=[
       {...draft,provider:EDITORIAL_DRAFTER,role:'draft'},
       {...reviewed,provider:EDITORIAL_REVIEWER,role:'review'},
