@@ -300,7 +300,10 @@ async function authorize(
     userId: 'user-a',
     deps
   });
-  const state = new URL(prepared.authorizationUrl).searchParams.get('state');
+  const authorizationUrl = new URL(prepared.authorizationUrl);
+  const state = authorizationUrl.searchParams.get('state');
+  expect(authorizationUrl.searchParams.get('code_challenge_method')).toBe('S256');
+  expect(authorizationUrl.searchParams.get('code_challenge')).toMatch(/^[A-Za-z0-9_-]{43}$/);
   if (!state) throw new Error('state missing');
   return completeSalesforceConnection({ state, code, deps });
 }
