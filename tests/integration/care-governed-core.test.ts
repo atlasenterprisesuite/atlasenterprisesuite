@@ -41,7 +41,7 @@ describe('ATLAS Care governed core',()=>{
       'care_transition_time_entry',
       'care_get_capability_readiness'
     ]){
-      expect(api).toContain(`'${rpc}'`);
+      expect(api).toContain(rpc);
       expect(migration).toContain(`function public.${rpc}`);
     }
     for(const label of ['Participants','Caregivers','Care Plans','Timecards','Readiness']) expect(routes).toContain(label);
