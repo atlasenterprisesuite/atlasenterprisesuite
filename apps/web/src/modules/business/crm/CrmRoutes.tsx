@@ -3,6 +3,7 @@ import { CrmHomePage } from './CrmHomePage';
 import { CrmActivitiesPage, CrmObjectListPage } from './CrmObjectListPage';
 import { CrmRecordPage } from './CrmRecordPage';
 import { HubSpotIntegrationPage } from './HubSpotIntegrationPage';
+import { SalesforceIntegrationPage } from './SalesforceIntegrationPage';
 import { CrmSocialHandoffPage } from './CrmSocialHandoffPage';
 import './crm.css';
 
@@ -22,6 +23,9 @@ function CrmIntegrations() {
       <div className="module-grid compact">
         <Link className="module-card enabled" to="/crm/integrations/hubspot">
           <span>Provider</span><strong>HubSpot</strong><p>OAuth connection, verification and governed disconnect controls.</p>
+        </Link>
+        <Link className="module-card enabled" to="/crm/integrations/salesforce">
+          <span>Direct provider</span><strong>Salesforce</strong><p>ATLAS-owned OAuth, immutable org verification, inventory and read-only CRM access.</p>
         </Link>
       </div>
     </section>
@@ -57,9 +61,37 @@ export function CrmRoutes() {
         <CrmRecordPage objectType="ticket" title="Service Case" associationTargets={ticketAssociations} />
       } />
       <Route path="/crm/activities" element={<CrmActivitiesPage />} />
+
+      <Route path="/crm/salesforce/contacts" element={
+        <CrmObjectListPage provider="salesforce" objectType="contact" title="Contacts" description="Salesforce-backed contact records." detailBase="/crm/salesforce/contacts" />
+      } />
+      <Route path="/crm/salesforce/contacts/:providerId" element={
+        <CrmRecordPage provider="salesforce" objectType="contact" title="Contact" associationTargets={contactAssociations} />
+      } />
+      <Route path="/crm/salesforce/companies" element={
+        <CrmObjectListPage provider="salesforce" objectType="company" title="Accounts" description="Salesforce-backed account records." detailBase="/crm/salesforce/companies" />
+      } />
+      <Route path="/crm/salesforce/companies/:providerId" element={
+        <CrmRecordPage provider="salesforce" objectType="company" title="Account" associationTargets={companyAssociations} />
+      } />
+      <Route path="/crm/salesforce/deals" element={
+        <CrmObjectListPage provider="salesforce" objectType="deal" title="Opportunities" description="Salesforce-backed opportunity records." detailBase="/crm/salesforce/deals" />
+      } />
+      <Route path="/crm/salesforce/deals/:providerId" element={
+        <CrmRecordPage provider="salesforce" objectType="deal" title="Opportunity" associationTargets={dealAssociations} />
+      } />
+      <Route path="/crm/salesforce/service" element={
+        <CrmObjectListPage provider="salesforce" objectType="ticket" title="Service Cases" description="Salesforce-backed case records." detailBase="/crm/salesforce/service" />
+      } />
+      <Route path="/crm/salesforce/service/:providerId" element={
+        <CrmRecordPage provider="salesforce" objectType="ticket" title="Service Case" associationTargets={ticketAssociations} />
+      } />
+      <Route path="/crm/salesforce/activities" element={<CrmActivitiesPage provider="salesforce" />} />
+
       <Route path="/crm/social-handoff" element={<CrmSocialHandoffPage />} />
       <Route path="/crm/integrations" element={<CrmIntegrations />} />
       <Route path="/crm/integrations/hubspot" element={<HubSpotIntegrationPage />} />
+      <Route path="/crm/integrations/salesforce" element={<SalesforceIntegrationPage />} />
     </Routes>
   );
 }
