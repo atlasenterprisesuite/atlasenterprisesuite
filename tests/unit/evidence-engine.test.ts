@@ -52,6 +52,23 @@ describe('ATLAS Evidence Engine', () => {
     expect(result.failures).toEqual(['dns']);
   });
 
+
+  it('warning-only records failures but does not block deployment', () => {
+    const warningBundle = bundle([
+      { id: 'public-route', priority: 'P0', status: 'fail', observedAt: '2026-10-07T05:49:00.000Z' },
+      { id: 'voice', priority: 'P1', status: 'unverified', observedAt: '2026-10-07T05:49:00.000Z' }
+    ]);
+    warningBundle.mode = 'warning-only';
+
+    const result = evaluateEvidenceBundle(warningBundle);
+
+    expect(result.outcome).toBe('pass');
+    expect(result.productionReady).toBe(true);
+    expect(result.failures).toEqual(['public-route']);
+    expect(result.blockers).toEqual([]);
+    expect(result.warnings).toEqual(['public-route', 'voice']);
+  });
+
   it('allows a P1 check to become blocking when explicitly required', () => {
     const result = evaluateEvidenceBundle(bundle([
       { id: 'core', priority: 'P0', status: 'pass', observedAt: '2026-10-07T05:49:00.000Z' },
