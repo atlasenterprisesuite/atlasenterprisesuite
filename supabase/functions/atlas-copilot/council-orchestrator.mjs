@@ -13,11 +13,12 @@ function parseEditorialReview(value){
   const reviewIndex=text.indexOf(reviewMarker);
   const finalIndex=text.indexOf(finalMarker);
   if(finalIndex<0)return {review:null,final:'',valid:false};
-  const review=reviewIndex>=0&&reviewIndex<finalIndex
+  const ordered=reviewIndex>=0&&finalIndex>reviewIndex;
+  const review=ordered
     ?cleanText(text.slice(reviewIndex+reviewMarker.length,finalIndex))
     :null;
-  const final=cleanText(text.slice(finalIndex+finalMarker.length));
-  return {review:review||null,final,valid:Boolean(final)};
+  const final=ordered?cleanText(text.slice(finalIndex+finalMarker.length)):'';
+  return {review:review||null,final,valid:Boolean(ordered&&review&&final)};
 }
 function editorialInstructions(base){
   return `${String(base||'').trim()}
