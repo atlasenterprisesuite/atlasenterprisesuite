@@ -223,7 +223,7 @@ export function PersonalVoiceWizard({
         setProviderReferenceSampleId(providerReference?.id || '');
 
         if (status.state !== 'ready') {
-          setProviderMessage('OpenAI Custom Voice todavía no está habilitado para este proyecto de API.');
+          setProviderMessage('ATLAS Personal Voice todavía no está habilitado en el motor de voz configurado para este entorno.');
         } else if (!((spanish || providerPhrases[0])?.text)) {
           setProviderMessage('El proveedor está disponible, pero no devolvió una frase de consentimiento utilizable.');
         }
