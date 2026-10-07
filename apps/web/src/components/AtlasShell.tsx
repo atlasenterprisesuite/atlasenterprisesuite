@@ -261,6 +261,14 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           </div>
 
           <NavLink
+            to="/settings/personalize"
+            className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+            onClick={closeMobileNav}
+          >
+            <span className="atlas-nav-glyph" aria-hidden="true">YOU</span>
+            <span>Personalize ATLAS</span>
+          </NavLink>
+          <NavLink
             to="/settings/accessibility/communication"
             className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
             onClick={closeMobileNav}
