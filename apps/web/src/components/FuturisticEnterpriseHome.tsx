@@ -1,6 +1,15 @@
-import { type CSSProperties, type FormEvent, useState } from 'react';
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ATLAS_MODULES } from '../modules/registry';
+import {
+  ATLAS_PERSONALIZATION_EVENT,
+  loadAtlasPersonalizationProfile,
+  loadAtlasPersonalizationProfileRemote,
+  recommendAtlasModules,
+  resolvePersonalizationUserId,
+  saveAtlasPersonalizationProfile,
+  type AtlasPersonalizationProfile
+} from '../services/atlasPersonalization';
 import { AtlasVisualReference } from './AtlasVisualReference';
 import './futuristic-enterprise-home.css';
 import './atlas-visual-home.css';
@@ -46,13 +55,57 @@ export function FuturisticEnterpriseHome() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [searchMessage, setSearchMessage] = useState('');
+  const personalizationUserId = resolvePersonalizationUserId();
+  const [personalization, setPersonalization] = useState<AtlasPersonalizationProfile>(() =>
+    loadAtlasPersonalizationProfile(personalizationUserId, ATLAS_MODULES)
+  );
+
+  useEffect(() => {
+    const onPersonalization = (event: Event) => {
+      const next = (event as CustomEvent<AtlasPersonalizationProfile>).detail;
+      if (next?.userId === personalizationUserId) setPersonalization(next);
+    };
+    window.addEventListener(ATLAS_PERSONALIZATION_EVENT, onPersonalization);
+
+    let cancelled = false;
+    void loadAtlasPersonalizationProfileRemote(personalizationUserId, ATLAS_MODULES)
+      .then((remote) => {
+        if (!cancelled && remote) setPersonalization(saveAtlasPersonalizationProfile(remote, ATLAS_MODULES));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(ATLAS_PERSONALIZATION_EVENT, onPersonalization);
+    };
+  }, [personalizationUserId]);
+
+  const recommendationIds = useMemo(
+    () => personalization.completed ? recommendAtlasModules(personalization, ATLAS_MODULES, ATLAS_MODULES.length) : [],
+    [personalization]
+  );
+  const recommendationRank = useMemo(
+    () => new Map(recommendationIds.map((id, index) => [id, index] as const)),
+    [recommendationIds]
+  );
+  const prioritizedModules = useMemo(
+    () => [...ATLAS_MODULES].sort((left, right) => {
+      const leftRank = recommendationRank.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = recommendationRank.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftRank - rightRank || left.title.localeCompare(right.title);
+    }),
+    [recommendationRank]
+  );
+
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
   const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
   const gated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
   const total = ATLAS_MODULES.length;
-  const featured = ATLAS_MODULES.filter((module) => module.showInNavigation).slice(0, 8);
-  const operational = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').slice(0, 5);
-  const recentModules = featured.slice(0, 4);
+  const featured = prioritizedModules.filter((module) => module.showInNavigation).slice(0, 8);
+  const operational = prioritizedModules.filter((module) => module.readiness === 'implemented').slice(0, 5);
+  const recentModules = personalization.completed
+    ? prioritizedModules.filter((module) => recommendationRank.has(module.id)).slice(0, 4)
+    : featured.slice(0, 4);
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -164,11 +217,12 @@ export function FuturisticEnterpriseHome() {
             <span>Estado derivado del catálogo canónico</span>
           </div>
 
-          <div className="atlas-visual-home__recent" aria-label="Módulos recientes">
-            <span>RECIENTES</span>
+          <div className="atlas-visual-home__recent" aria-label={personalization.completed ? 'Módulos recomendados' : 'Módulos recientes'}>
+            <span>{personalization.completed ? 'PARA TI' : 'RECIENTES'}</span>
             {recentModules.map((module) => (
               <Link key={module.id} to={module.route}>{module.navLabel}</Link>
             ))}
+            <Link to="/settings/personalize">{personalization.completed ? 'Ajustar' : 'Personalizar'}</Link>
           </div>
         </div>
 
