@@ -115,6 +115,54 @@ describe('ATLAS Council', () => {
     expect(result.text).toContain('Gemini');
   });
 
+  it('runs editorial collaboration as OpenAI draft -> Gemini review and returns only the refined answer', async () => {
+    let reviewerInput: any[] = [];
+    const openai = adapter('openai', { text: 'Initial draft from OpenAI.' });
+    const geminiBase = adapter('gemini');
+    const gemini = {
+      ...geminiBase,
+      execute: async ({ input }: { input: any[] }) => {
+        reviewerInput = input;
+        return {
+          provider: 'gemini',
+          model: 'gemini-model',
+          text: [
+            'ATLAS_REVIEW:',
+            '- Strong structure.',
+            '- Add one missing qualification.',
+            'ATLAS_FINAL:',
+            'Refined ATLAS answer.',
+          ].join('\n'),
+          capabilities_used: ['generation'],
+          usage: { output_tokens: 12 },
+          provenance: [],
+          tool_calls: [],
+        };
+      },
+    };
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const council = createCouncilOrchestrator({ registry });
+
+    const result = await council.execute({
+      providerIds: ['openai', 'gemini'],
+      strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS',
+      input: [{ role: 'user', content: 'Explain this clearly.' }],
+    });
+
+    expect(result.provider).toBe('atlas-council');
+    expect(result.strategy).toBe('editorial');
+    expect(result.text).toBe('Refined ATLAS answer.');
+    expect(result.review).toContain('Strong structure.');
+    expect(result.contributions.map((item: any) => [item.provider, item.role])).toEqual([
+      ['openai', 'draft'],
+      ['gemini', 'review'],
+    ]);
+    expect(JSON.stringify(reviewerInput)).toContain('Initial draft from OpenAI.');
+  });
+
   it('fails when fewer than two providers succeed', async () => {
     const registry = createProviderRegistry({ providers: [adapter('openai'), adapter('gemini', { fail: true })] });
     const council = createCouncilOrchestrator({ registry });
