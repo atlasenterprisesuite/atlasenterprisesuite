@@ -30,7 +30,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
   },
   {
     id: 'work',
-    title: 'ATLAS Work Soberano',
+    title: 'ATLAS Work',
     navLabel: 'Work',
     area: 'Platform',
     route: '/work',
@@ -444,8 +444,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     route: '/execution/manager/readiness',
     readiness: 'implemented',
     requiresAuth: true,
-    description: 'Guided execution, readiness and governed action orchestration.',
-    showInNavigation: true
+    description: 'Internal guided execution, readiness and governed action orchestration surfaced through ATLAS Work and Cloud.',
+    showInNavigation: false
   }
 ] as const;
 
