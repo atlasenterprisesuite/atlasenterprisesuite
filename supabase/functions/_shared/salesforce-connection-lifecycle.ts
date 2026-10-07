@@ -43,6 +43,7 @@ export type SalesforceLifecycleErrorCode =
   | 'provider_account_mismatch'
   | 'connection_not_ready'
   | 'canonical_org_required'
+  | 'org_inventory_required'
   | 'credential_missing'
   | 'credential_refresh_failed'
   | 'credential_storage_failed'
@@ -666,6 +667,9 @@ export async function selectCanonicalSalesforceConnection(input: {
   if (!selected) throw new SalesforceLifecycleError('connection_not_found', 404);
   if (!selected.last_verified_at || !selected.provider_verified || selected.state !== 'connected') {
     throw new SalesforceLifecycleError('connection_not_ready', 409);
+  }
+  if (candidates.length > 1 && candidates.some((candidate) => !candidate.metadata?.inventoryProbedAt)) {
+    throw new SalesforceLifecycleError('org_inventory_required', 409);
   }
 
   let selectedRow: SalesforceConnectionRow | null = null;
