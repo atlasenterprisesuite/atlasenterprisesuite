@@ -288,9 +288,11 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           </NavLink>
         )}
 
-        <div className="atlas-sidebar-spatial" aria-hidden="true">
-          <span>←</span><div><strong>Explorar espacio</strong><small>Desliza en cualquier dirección</small></div><span>→</span>
-        </div>
+        {!location.pathname.startsWith('/cloud') ? (
+          <div className="atlas-sidebar-spatial" aria-hidden="true">
+            <span>←</span><div><strong>Explorar espacio</strong><small>Desliza en cualquier dirección</small></div><span>→</span>
+          </div>
+        ) : null}
       </aside>
 
       {mobileNavOpen ? (
@@ -322,7 +324,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
               ref={searchRef}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Buscar en ATLAS..."
+              placeholder="Buscar módulos, rutas y operaciones..."
               aria-label="Buscar módulos y rutas ATLAS"
               autoComplete="off"
             />
