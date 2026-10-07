@@ -501,8 +501,8 @@ export function UnifiedAIChatPage() {
         conversationIdRef.current = result.conversation_id;
       }
       const providersUsed = Array.isArray(result.providers) && result.providers.length
-        ? result.providers.join(' + ')
-        : result.provider || 'ATLAS';
+        ? result.providers.map(atlasRouteLabel).join(' + ')
+        : result.provider ? atlasRouteLabel(result.provider) : 'ATLAS';
       const reply = result.output || result.text || '';
       setMessages((current) => [
         ...current,
@@ -511,7 +511,7 @@ export function UnifiedAIChatPage() {
           role: 'assistant',
           text: reply,
           meta: 'for Person ' + listener + ' · ' + translatorLanguageLabel(targetLanguageCode)
-            + ' · via ' + providersUsed + (result.model ? ' · ' + result.model : '')
+            + ' · via ' + providersUsed
         }
       ]);
 
