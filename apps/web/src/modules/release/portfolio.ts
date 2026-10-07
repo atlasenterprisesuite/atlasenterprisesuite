@@ -281,6 +281,84 @@ export const ATLAS_CAPABILITY_CONVERGENCE: readonly AtlasCapabilityConvergence[]
     rationale: 'Gesture, device and spatial input capabilities belong to Device OS and may surface through Galaxy where navigation is spatial.'
   },
   {
+    id: 'work-command-center',
+    label: 'ATLAS Work Command Center',
+    state: 'merged',
+    ownerModuleId: 'work',
+    route: '/work',
+    rationale: 'Work Command Center is the canonical execution surface inside ATLAS Work, not a separate product.'
+  },
+  {
+    id: 'business-launch-360',
+    label: 'Business Launch 360',
+    state: 'merged',
+    ownerModuleId: 'advisory',
+    route: '/advisory/business-launch-360',
+    rationale: 'Business formation, launch planning and commercial readiness converge under ATLAS Advisory Office.'
+  },
+  {
+    id: 'ai-universe',
+    label: 'ATLAS AI Universe',
+    state: 'merged',
+    ownerModuleId: 'studio',
+    route: '/studio/ai-universe',
+    rationale: 'Creative provider discovery and orchestration remain a Studio capability while conversational intelligence stays in Assistant.'
+  },
+  {
+    id: 'creator-library',
+    label: 'ATLAS Creator Library',
+    state: 'merged',
+    ownerModuleId: 'studio',
+    route: '/studio/library',
+    rationale: 'Generated creative assets, versions and provenance stay inside the canonical Studio library.'
+  },
+  {
+    id: 'remote-assist',
+    label: 'ATLAS Remote Assist',
+    state: 'merged',
+    ownerModuleId: 'device-os',
+    route: '/device-os',
+    rationale: 'Remote assistance is a Device OS capability and remains fail-closed until an authorized native adapter is available.'
+  },
+  {
+    id: 'device-recovery-security',
+    label: 'ATLAS Device Recovery & Security',
+    state: 'merged',
+    ownerModuleId: 'device-os',
+    route: '/device-os',
+    rationale: 'Boot, storage, memory, driver, malware and recovery workflows converge into Device OS instead of a separate PC-care product.'
+  },
+  {
+    id: 'jaque-mate-sentinel',
+    label: 'Jaque Mate + Sentinel',
+    state: 'merged',
+    ownerModuleId: 'health',
+    route: '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
+    rationale: 'Health research falsification and cure-candidate surveillance remain inside ATLAS Health with evidence boundaries.'
+  },
+  {
+    id: 'atlas-partner-network',
+    label: 'ATLAS Partner Network',
+    state: 'merged',
+    ownerModuleId: 'business',
+    route: '/business/network',
+    rationale: 'Partner pricing, commissions, payouts and compliance are Business growth operations, distinct from carrier connectivity.'
+  },
+  {
+    id: 'atlas-drive',
+    label: 'ATLAS Drive',
+    state: 'hold',
+    ownerModuleId: 'work',
+    rationale: 'Historical storage concept recovered. Work remains the intended family, but no canonical ATLAS Drive route is registered yet.'
+  },
+  {
+    id: 'atlas-cars',
+    label: 'ATLAS Cars',
+    state: 'hold',
+    ownerModuleId: 'ride',
+    rationale: 'Vehicle-platform concept is retained for Ride and Device OS convergence, but no canonical production product surface is verified yet.'
+  },
+  {
     id: 'parks-global',
     label: 'ATLAS Parks Global',
     state: 'hold',
