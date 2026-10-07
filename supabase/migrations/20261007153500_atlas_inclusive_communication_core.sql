@@ -109,7 +109,7 @@ create table if not exists public.atlas_inclusive_consents (
   session_id uuid references public.atlas_inclusive_communication_sessions(id) on delete cascade,
   consent_type text not null
     check (consent_type in (
-      'recording','translation','human_interpreter','voice_clone',
+      'recording','translation','human_interpreter',
       'accessibility_research','data_retention','assistive_device'
     )),
   status text not null default 'declined'
@@ -275,8 +275,7 @@ create index if not exists atlas_inclusive_audit_org_idx
 
 create or replace function public.atlas_inclusive_can_access_session(
   p_org_id uuid,
-  p_session_id uuid,
-  p_user_id uuid
+  p_session_id uuid
 )
 returns boolean
 language sql
@@ -289,10 +288,10 @@ as $$
     from public.organization_members om
     join public.atlas_inclusive_communication_participants p
       on p.org_id = om.org_id
-     and p.user_id = p_user_id
+     and p.user_id = (select auth.uid())
      and p.left_at is null
     where om.org_id = p_org_id
-      and om.user_id = p_user_id
+      and om.user_id = (select auth.uid())
       and om.status = 'active'
       and p.session_id = p_session_id
   );
@@ -384,7 +383,7 @@ begin
     raise exception 'authentication_required' using errcode = '42501';
   end if;
 
-  if not public.atlas_inclusive_can_access_session(p_org_id, p_session_id, v_user) then
+  if not public.atlas_inclusive_can_access_session(p_org_id, p_session_id) then
     raise exception 'inclusive_session_access_denied' using errcode = '42501';
   end if;
 
@@ -465,6 +464,48 @@ begin
 end;
 $$;
 
+create or replace function public.atlas_inclusive_revoke_consent(
+  p_org_id uuid,
+  p_consent_id uuid
+)
+returns public.atlas_inclusive_consents
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_user uuid := auth.uid();
+  v_consent public.atlas_inclusive_consents;
+begin
+  if v_user is null then
+    raise exception 'authentication_required' using errcode = '42501';
+  end if;
+
+  update public.atlas_inclusive_consents
+  set status = 'revoked',
+      revoked_at = now(),
+      updated_at = now()
+  where id = p_consent_id
+    and org_id = p_org_id
+    and user_id = v_user
+    and status = 'granted'
+  returning * into v_consent;
+
+  if v_consent.id is null then
+    raise exception 'active_consent_not_found' using errcode = 'P0002';
+  end if;
+
+  insert into public.atlas_inclusive_audit_events(
+    org_id, session_id, actor_user_id, action, object_type, object_id
+  ) values (
+    p_org_id, v_consent.session_id, v_user,
+    'inclusive.consent.revoked', 'inclusive_consent', v_consent.id
+  );
+
+  return v_consent;
+end;
+$;
+
 create or replace function public.atlas_inclusive_purge_expired()
 returns integer
 language plpgsql
@@ -531,22 +572,22 @@ alter table public.atlas_inclusive_audit_events enable row level security;
 create policy atlas_inclusive_sessions_read
 on public.atlas_inclusive_communication_sessions
 for select to authenticated
-using (public.atlas_inclusive_can_access_session(org_id, id, (select auth.uid())));
+using (public.atlas_inclusive_can_access_session(org_id, id));
 
 create policy atlas_inclusive_participants_read
 on public.atlas_inclusive_communication_participants
 for select to authenticated
-using (public.atlas_inclusive_can_access_session(org_id, session_id, (select auth.uid())));
+using (public.atlas_inclusive_can_access_session(org_id, session_id));
 
 create policy atlas_inclusive_messages_read
 on public.atlas_inclusive_communication_messages
 for select to authenticated
-using (public.atlas_inclusive_can_access_session(org_id, session_id, (select auth.uid())));
+using (public.atlas_inclusive_can_access_session(org_id, session_id));
 
 create policy atlas_inclusive_derivations_read
 on public.atlas_inclusive_communication_derivations
 for select to authenticated
-using (public.atlas_inclusive_can_access_session(org_id, session_id, (select auth.uid())));
+using (public.atlas_inclusive_can_access_session(org_id, session_id));
 
 create policy atlas_inclusive_consents_read
 on public.atlas_inclusive_consents
@@ -564,20 +605,6 @@ using (
 create policy atlas_inclusive_consents_insert
 on public.atlas_inclusive_consents
 for insert to authenticated
-with check (
-  user_id = (select auth.uid())
-  and exists (
-    select 1 from public.organization_members om
-    where om.org_id = atlas_inclusive_consents.org_id
-      and om.user_id = (select auth.uid())
-      and om.status = 'active'
-  )
-);
-
-create policy atlas_inclusive_consents_update
-on public.atlas_inclusive_consents
-for update to authenticated
-using (user_id = (select auth.uid()))
 with check (
   user_id = (select auth.uid())
   and exists (
@@ -660,7 +687,7 @@ on public.atlas_interpreter_sessions
 for select to authenticated
 using (
   public.atlas_inclusive_can_access_session(
-    org_id, communication_session_id, (select auth.uid())
+    org_id, communication_session_id
   )
 );
 
@@ -695,7 +722,7 @@ using (
   actor_user_id = (select auth.uid())
   or (
     session_id is not null
-    and public.atlas_inclusive_can_access_session(org_id, session_id, (select auth.uid()))
+    and public.atlas_inclusive_can_access_session(org_id, session_id)
   )
 );
 
@@ -715,7 +742,7 @@ grant select on public.atlas_inclusive_communication_sessions to authenticated;
 grant select on public.atlas_inclusive_communication_participants to authenticated;
 grant select on public.atlas_inclusive_communication_messages to authenticated;
 grant select on public.atlas_inclusive_communication_derivations to authenticated;
-grant select, insert, update on public.atlas_inclusive_consents to authenticated;
+grant select, insert on public.atlas_inclusive_consents to authenticated;
 grant select, insert, update, delete on public.atlas_assistive_device_bindings to authenticated;
 grant select on public.atlas_sign_language_readiness to authenticated;
 grant select on public.atlas_interpreter_sessions to authenticated;
@@ -723,13 +750,15 @@ grant select on public.atlas_accessibility_validation_runs to authenticated;
 grant select on public.atlas_accessibility_validation_evidence to authenticated;
 grant select on public.atlas_inclusive_audit_events to authenticated;
 
-revoke all on function public.atlas_inclusive_can_access_session(uuid, uuid, uuid) from public;
+revoke all on function public.atlas_inclusive_can_access_session(uuid, uuid) from public;
 revoke all on function public.atlas_inclusive_create_session(uuid, text, text) from public;
 revoke all on function public.atlas_inclusive_append_message(uuid, uuid, uuid, text, jsonb, text, text, numeric, boolean, boolean, jsonb) from public;
+revoke all on function public.atlas_inclusive_revoke_consent(uuid, uuid) from public;
 revoke all on function public.atlas_inclusive_purge_expired() from public;
 
-grant execute on function public.atlas_inclusive_can_access_session(uuid, uuid, uuid) to authenticated;
+grant execute on function public.atlas_inclusive_can_access_session(uuid, uuid) to authenticated;
 grant execute on function public.atlas_inclusive_create_session(uuid, text, text) to authenticated;
 grant execute on function public.atlas_inclusive_append_message(uuid, uuid, uuid, text, jsonb, text, text, numeric, boolean, boolean, jsonb) to authenticated;
+grant execute on function public.atlas_inclusive_revoke_consent(uuid, uuid) to authenticated;
 
 -- Retention purge remains service/governance controlled. Authenticated clients cannot invoke it.
