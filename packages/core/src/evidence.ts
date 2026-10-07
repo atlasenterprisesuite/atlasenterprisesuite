@@ -210,3 +210,86 @@ export function evaluateEvidenceBundle(bundle: EvidenceBundle): EvidenceEvaluati
     passed
   };
 }
+
+
+export type ProviderIncidentStatus =
+  | 'investigating'
+  | 'identified'
+  | 'monitoring'
+  | 'resolved';
+
+export type ProviderIncidentImpact =
+  | 'degraded_performance'
+  | 'partial_outage'
+  | 'major_outage'
+  | 'maintenance';
+
+export type ProviderIncident = {
+  provider: string;
+  incidentId: string;
+  title: string;
+  status: ProviderIncidentStatus;
+  impact: ProviderIncidentImpact;
+  affectedComponents: string[];
+  observedAt: string;
+  source: string;
+};
+
+export type ProviderDependency = {
+  dependencyId: string;
+  criticality: EvidencePriority;
+  matchesAffectedComponent: boolean;
+};
+
+export type ProviderIncidentEvaluation = {
+  priority: EvidencePriority;
+  gate: 'none' | 'warning' | 'blocked';
+  attributedTo: 'provider';
+  resolved: boolean;
+  incidentId: string;
+  dependencyId: string;
+};
+
+export function evaluateProviderIncident(
+  incident: ProviderIncident,
+  dependency: ProviderDependency
+): ProviderIncidentEvaluation {
+  if (!incident.provider?.trim()) throw new Error('invalid_provider_incident_provider');
+  if (!incident.incidentId?.trim()) throw new Error('invalid_provider_incident_id');
+  if (!incident.source?.trim()) throw new Error('invalid_provider_incident_source');
+  if (!Number.isFinite(Date.parse(incident.observedAt))) {
+    throw new Error('invalid_provider_incident_observed_at');
+  }
+
+  const resolved = incident.status === 'resolved';
+  if (resolved || !dependency.matchesAffectedComponent) {
+    return {
+      priority: 'P1',
+      gate: 'none',
+      attributedTo: 'provider',
+      resolved,
+      incidentId: incident.incidentId,
+      dependencyId: dependency.dependencyId
+    };
+  }
+
+  if (dependency.criticality === 'P0') {
+    return {
+      priority: 'P0',
+      gate: 'blocked',
+      attributedTo: 'provider',
+      resolved: false,
+      incidentId: incident.incidentId,
+      dependencyId: dependency.dependencyId
+    };
+  }
+
+  return {
+    priority: 'P1',
+    gate: 'warning',
+    attributedTo: 'provider',
+    resolved: false,
+    incidentId: incident.incidentId,
+    dependencyId: dependency.dependencyId
+  };
+}
