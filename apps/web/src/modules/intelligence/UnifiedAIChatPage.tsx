@@ -29,16 +29,16 @@ type ConversationSpeaker = 'A' | 'B';
 const MODES: Array<{ value: AssistantMode; label: string; short: string }> = [
   { value: 'auto', label: 'Auto · $0 first', short: 'Auto' },
   { value: 'atlas-local', label: 'ATLAS Local · $0 API', short: 'ATLAS Local' },
-  { value: 'openai', label: 'OpenAI', short: 'OpenAI' },
-  { value: 'bedrock', label: 'OpenAI on AWS Bedrock', short: 'Bedrock' },
-  { value: 'gemini', label: 'Gemini', short: 'Gemini' },
-  { value: 'anthropic', label: 'Claude / Anthropic', short: 'Claude' },
-  { value: 'grok', label: 'Grok / xAI', short: 'Grok' },
-  { value: 'deepseek', label: 'DeepSeek', short: 'DeepSeek' },
-  { value: 'mistral', label: 'Mistral', short: 'Mistral' },
-  { value: 'qwen', label: 'Qwen', short: 'Qwen' },
-  { value: 'codex-sovereign', label: 'Codex Sovereign', short: 'Codex' },
-  { value: 'council', label: 'Council', short: 'Council' }
+  { value: 'openai', label: 'ATLAS Engine 01', short: 'Engine 01' },
+  { value: 'bedrock', label: 'ATLAS Engine 02', short: 'Engine 02' },
+  { value: 'gemini', label: 'ATLAS Engine 03', short: 'Engine 03' },
+  { value: 'anthropic', label: 'ATLAS Engine 04', short: 'Engine 04' },
+  { value: 'grok', label: 'ATLAS Engine 05', short: 'Engine 05' },
+  { value: 'deepseek', label: 'ATLAS Engine 06', short: 'Engine 06' },
+  { value: 'mistral', label: 'ATLAS Engine 07', short: 'Engine 07' },
+  { value: 'qwen', label: 'ATLAS Engine 08', short: 'Engine 08' },
+  { value: 'codex-sovereign', label: 'ATLAS Sovereign', short: 'Sovereign' },
+  { value: 'council', label: 'ATLAS Council', short: 'Council' }
 ];
 
 const PROFILES: Array<{ value: AssistantProfile; label: string }> = [
