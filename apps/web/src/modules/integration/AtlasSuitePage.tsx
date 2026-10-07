@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ATLAS_MODULES, type AtlasModuleReadiness } from '../registry';
-import { buildAtlasPortfolio, type AtlasPortfolioDisposition } from '../release/portfolio';
+import { ATLAS_CAPABILITY_CONVERGENCE, buildAtlasPortfolio, type AtlasPortfolioDisposition } from '../release/portfolio';
 import './atlas-suite.css';
 
 const READINESS_LABELS: Record<AtlasModuleReadiness, string> = {
@@ -171,6 +171,40 @@ export function AtlasSuitePage() {
             </Link>
           ))}
         </nav>
+      </section>
+
+
+      <section className="suite-section suite-recovered" aria-labelledby="recovered-capabilities-heading">
+        <div className="suite-section-heading">
+          <div>
+            <p className="eyebrow">Recovered from ATLAS history</p>
+            <h2 id="recovered-capabilities-heading">Converged and preserved capabilities</h2>
+          </div>
+          <p>Ideas recovered from prior ATLAS work are either merged into a canonical owner, kept private, or held without a fake production route.</p>
+        </div>
+
+        <div className="suite-recovered-grid">
+          {ATLAS_CAPABILITY_CONVERGENCE.map((capability) => {
+            const owner = capability.ownerModuleId
+              ? ATLAS_MODULES.find((module) => module.id === capability.ownerModuleId)
+              : null;
+            const content = (
+              <>
+                <span className={`suite-capability-state ${capability.state}`}>{capability.state}</span>
+                <small>{owner ? `Owner · ${owner.navLabel}` : 'No canonical owner yet'}</small>
+                <strong>{capability.label}</strong>
+                <p>{capability.rationale}</p>
+                <span className="suite-capability-action">
+                  {capability.route ? 'Open capability →' : 'Held until implementation evidence exists'}
+                </span>
+              </>
+            );
+
+            return capability.route
+              ? <Link className="suite-recovered-card" to={capability.route} key={capability.id}>{content}</Link>
+              : <article className="suite-recovered-card is-held" key={capability.id}>{content}</article>;
+          })}
+        </div>
       </section>
 
       <section className="suite-section suite-directory" id="explore-a-z" aria-labelledby="explore-a-z-heading">
