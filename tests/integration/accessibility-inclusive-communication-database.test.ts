@@ -39,7 +39,7 @@ describe('ATLAS Inclusive Communication database core', () => {
   it('requires tenant membership and session participation for communication access', () => {
     expect(sql).toContain('public.atlas_inclusive_can_access_session');
     expect(sql).toContain("om.status = 'active'");
-    expect(sql).toContain('p.user_id = p_user_id');
+    expect(sql).toContain('p.user_id = (select auth.uid())');
   });
 
   it('enables RLS and removes anonymous table access', () => {
@@ -58,6 +58,8 @@ describe('ATLAS Inclusive Communication database core', () => {
     expect(sql).toContain('public.atlas_inclusive_append_message');
     expect(sql).toContain('p_confidence < 0.74');
     expect(sql).toContain('p_sensitive and p_confirmed is not true');
+    expect(sql).toContain('public.atlas_inclusive_revoke_consent');
+    expect(sql).not.toContain("'voice_clone'");
   });
 
   it('persists evidence for assistive technology and human validation without converting blocked external gates into pass', () => {
