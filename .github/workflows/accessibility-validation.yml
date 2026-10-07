@@ -90,7 +90,7 @@ jobs:
           tests/unit/sign-language-registry.test.ts
           tests/integration/atlas-accessibility-shell.test.tsx
           tests/integration/accessibility-settings-route.test.tsx
-          tests/integration/accessibility-validation-contract.test.ts
+          tests/integration/accessibility-validation-contract.test.ts\n          tests/integration/accessibility-inclusive-communication-database.test.ts
       - name: Upload preview log on failure
         if: failure()
         uses: actions/upload-artifact@v4
