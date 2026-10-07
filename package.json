@@ -17,13 +17,14 @@
     "verify:neural": "node scripts/verify-neural-integrity.mjs",
     "verify:navigation": "node scripts/verify-navigation-intelligence.mjs",
     "verify:production:global": "node scripts/verify-production-p0.mjs && node scripts/verify-global-production.mjs",
-    "verify:all": "npm audit --audit-level=high && npm run verify:design && npm run verify:evidence && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:python && npm run verify:neural && npm run verify:navigation && npm run build",
+    "verify:all": "npm audit --audit-level=high && npm run verify:design && npm run verify:evidence && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:python && npm run verify:neural && npm run verify:navigation && npm run build && npm run verify:transfer",
     "verify:cloudflare": "npm audit --audit-level=high && npm run verify:design && npm run typecheck && npm run test:unit && npm run test:integration && npm run verify:edge && npm run verify:neural && npm run verify:navigation && npm run build",
     "atlas:mcp:http": "node scripts/start-atlas-orchestrator.mjs",
     "atlas:mcp:stdio": "node --experimental-strip-types --experimental-loader=./apps/atlas-orchestrator/atlas-ts-loader.mjs apps/atlas-orchestrator/src/stdio.ts",
     "postinstall": "node scripts/install-render-local-ai.mjs",
     "verify:design": "node scripts/verify-atlas-design.mjs",
-    "verify:evidence": "vitest run tests/unit/core-evidence.test.ts tests/unit/evidence-engine.test.ts tests/unit/provider-incident-evidence.test.ts && bash -n scripts/network/verify-openai-connectivity.sh && node --experimental-strip-types scripts/evidence/build-evidence-manifest.mjs tests/fixtures/evidence/openai-network-pass.json artifacts/evidence/openai-network-ci.json docs/network/evidence/2026-10-07-openai-connectivity-evidence.json"
+    "verify:evidence": "vitest run tests/unit/core-evidence.test.ts tests/unit/evidence-engine.test.ts tests/unit/provider-incident-evidence.test.ts && bash -n scripts/network/verify-openai-connectivity.sh && node --experimental-strip-types scripts/evidence/build-evidence-manifest.mjs tests/fixtures/evidence/openai-network-pass.json artifacts/evidence/openai-network-ci.json docs/network/evidence/2026-10-07-openai-connectivity-evidence.json",
+    "verify:transfer": "vitest run tests/unit/universal-transfer.test.ts"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
