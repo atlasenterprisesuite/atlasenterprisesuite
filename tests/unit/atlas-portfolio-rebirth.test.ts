@@ -66,6 +66,14 @@ describe('ATLAS Rebirth portfolio', () => {
     }));
   });
 
+  it('keeps canonical owners visible and converged compatibility modules out of primary navigation', () => {
+    const portfolio = buildAtlasPortfolio(ATLAS_MODULES);
+    for (const decision of portfolio) {
+      const module = ATLAS_MODULES.find((candidate) => candidate.id === decision.moduleId)!;
+      expect(module.showInNavigation).toBe(decision.disposition === 'keep');
+    }
+  });
+
   it('validates owner references and rejects ownership cycles', () => {
     const result = validateAtlasPortfolio(buildAtlasPortfolio(ATLAS_MODULES), ATLAS_MODULES);
     expect(result.findings).toEqual([]);
