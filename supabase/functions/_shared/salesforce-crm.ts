@@ -78,10 +78,10 @@ const DEFINITIONS: Record<CrmObjectType, SalesforceObjectDefinition> = {
   },
   deal: {
     objectName: 'Opportunity',
-    fields: ['Id', 'Name', 'Amount', 'CurrencyIsoCode', 'StageName', 'CloseDate', 'AccountId', 'LastModifiedDate'],
+    fields: ['Id', 'Name', 'Amount', 'StageName', 'CloseDate', 'AccountId', 'LastModifiedDate'],
     display: (record, id) => text(record.Name) ?? id,
     fieldMap: {
-      Name: 'name', Amount: 'amount', CurrencyIsoCode: 'currency', StageName: 'stage',
+      Name: 'name', Amount: 'amount', StageName: 'stage',
       CloseDate: 'closeDate', AccountId: 'companyId'
     },
     searchFields: ['Name']
