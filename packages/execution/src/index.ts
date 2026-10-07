@@ -18,3 +18,8 @@ export * from './browser-executor';
 export * from './dns-verification';
 export * from './work-templates';
 export * from './control-plane-contract';
+export * from './semantic-intent';
+export * from './context-engine';
+export * from './policy-fabric';
+export * from './capability-catalog';
+export * from './evidence-bridge';
