@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const provider = readFileSync('supabase/functions/atlas-voice-provider/index.ts', 'utf8');
 const nativeVerification = readFileSync('supabase/functions/atlas-voice-native-verification/index.ts', 'utf8');
 const api = readFileSync('apps/web/src/lib/telephonyApi.ts', 'utf8');
+const webhookRuntime = readFileSync('supabase/functions/_shared/telephony-webhook-runtime.ts', 'utf8');
 
 describe('ATLAS quota-safe Telnyx runtime consolidation', () => {
   it('routes authenticated telephony operations through atlas-voice-provider', () => {
@@ -17,7 +18,8 @@ describe('ATLAS quota-safe Telnyx runtime consolidation', () => {
 
   it('routes provider webhooks through the verification gateway and verifies Telnyx signatures', () => {
     expect(nativeVerification).toContain("api === 'telnyx-webhook'");
-    expect(nativeVerification).toContain('verifyTelnyxWebhook');
-    expect(nativeVerification).toContain('atlas_apply_call_provider_state');
+    expect(nativeVerification).toContain('handleTelnyxWebhook(req)');
+    expect(webhookRuntime).toContain('verifyTelnyxWebhook');
+    expect(webhookRuntime).toContain('atlas_apply_call_provider_state');
   });
 });
