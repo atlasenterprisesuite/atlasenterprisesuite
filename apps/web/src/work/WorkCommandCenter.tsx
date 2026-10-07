@@ -95,7 +95,7 @@ export function WorkCommandCenter() {
 
       <header className="page-header work-hero work-command-hero">
         <div>
-          <p className="eyebrow">ATLAS Work Soberano</p>
+          <p className="eyebrow">ATLAS Work</p>
           <h1>Work Command Center</h1>
           <p>One operational surface for intent, approvals, blockers, execution resources, evidence and resumable work.</p>
         </div>
