@@ -299,10 +299,37 @@ export async function completeSalesforceConnection(input: {
     }
 
     const existing = await input.deps.store.listConnections(stateRow.org_id);
-    const existingSame = existing.find((row) => row.provider_account_id === readiness.organization!.id);
-    const existingCanonical = existing.find((row) => row.metadata?.canonical === true && row.state !== 'revoked');
-    const canonical = Boolean(existingSame?.metadata?.canonical) || (!existingCanonical && existing.filter((row) => row.state !== 'revoked').length === 0);
+    const activeExisting = existing.filter((candidate) => candidate.state !== 'revoked');
+    const existingSame = activeExisting.find(
+      (candidate) => candidate.provider_account_id === readiness.organization!.id
+    );
+    const distinctExisting = activeExisting.filter(
+      (candidate) => candidate.provider_account_id !== readiness.organization!.id
+    );
+    const duplicateOrgDetected = distinctExisting.length > 0;
+    const canonical = !duplicateOrgDetected && existingSame?.metadata?.canonical === true;
     const timestamp = nowIso(input.deps);
+
+    // Discovery of a second immutable Salesforce Organization ID invalidates any
+    // previous implicit/explicit canonical assumption until the operator compares
+    // both inventories and selects one. This keeps duplicate-production handling
+    // fail-closed instead of silently keeping the first org authoritative.
+    if (duplicateOrgDetected) {
+      for (const candidate of distinctExisting) {
+        if (candidate.metadata?.canonical !== true && candidate.metadata?.classification === 'unknown') {
+          continue;
+        }
+        await input.deps.store.updateConnectionById(stateRow.org_id, candidate.id, {
+          metadata: {
+            ...candidate.metadata,
+            canonical: false,
+            classification: 'unknown'
+          },
+          last_error_code: 'canonical_org_required',
+          last_error_at: timestamp
+        });
+      }
+    }
 
     providerCredential = {
       accessToken: token.accessToken,
@@ -345,8 +372,8 @@ export async function completeSalesforceConnection(input: {
       endpoint_origin: token.instanceUrl,
       metadata: {
         ...(existingSame?.metadata ?? {}),
-        canonical,
-        classification: canonical ? 'canonical' : 'unknown',
+        canonical: duplicateOrgDetected ? false : canonical,
+        classification: canonical && !duplicateOrgDetected ? 'canonical' : 'unknown',
         instanceUrl: token.instanceUrl,
         userId: readiness.identity.userId,
         username: readiness.identity.username,
@@ -357,8 +384,8 @@ export async function completeSalesforceConnection(input: {
       },
       last_verified_at: timestamp,
       last_success_at: timestamp,
-      last_error_code: canonical ? null : 'canonical_org_required',
-      last_error_at: canonical ? null : timestamp,
+      last_error_code: duplicateOrgDetected ? 'canonical_org_required' : null,
+      last_error_at: duplicateOrgDetected ? timestamp : null,
       connected_by: stateRow.user_id,
       connected_at: existingSame?.connected_at ?? timestamp,
       revoked_at: null
@@ -385,7 +412,7 @@ export async function completeSalesforceConnection(input: {
     return {
       connection: connectionView(row),
       candidateCount: candidates.filter((candidate) => candidate.state !== 'revoked').length,
-      canonical
+      canonical: duplicateOrgDetected ? false : canonical
     };
   } catch (error) {
     if (credentialRow) {
