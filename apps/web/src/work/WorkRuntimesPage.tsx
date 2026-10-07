@@ -60,7 +60,7 @@ export function WorkRuntimesPage() {
 
   return (
     <section className="work-page page-stack">
-      <header className="page-header"><p className="eyebrow">ATLAS Work Soberano</p><h1>Runtimes</h1><p>Authorized Local, Self-Hosted and Cloud Ephemeral execution workers. Readiness requires a current authenticated heartbeat.</p></header>
+      <header className="page-header"><p className="eyebrow">ATLAS Work</p><h1>Runtimes</h1><p>Authorized Local, Self-Hosted and Cloud Ephemeral execution workers. Readiness requires a current authenticated heartbeat.</p></header>
       <WorkSubnav />
 
       <form className="execution-panel work-composer" onSubmit={(event) => void enroll(event)}>
