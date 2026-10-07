@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { CrmConnectionView } from '../../../../../../packages/core/src/crm';
 import { canDisplayEvidenceBackedState } from '../../../../../../packages/core/src/evidence';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../../components/ModuleExperiencePage';
-import { CrmApiError, crmApi } from './crmApi';
+import { crmApi } from './crmApi';
 
 const workspaces = [
   { to: '/crm/contacts', title: 'Contacts', description: 'Customer people and relationship context.' },
