@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ATLAS_MODULES, type AtlasModuleReadiness } from '../registry';
+import { buildAtlasPortfolio, type AtlasPortfolioDisposition } from '../release/portfolio';
 import './atlas-suite.css';
 
 const READINESS_LABELS: Record<AtlasModuleReadiness, string> = {
@@ -55,7 +56,14 @@ const PRIMARY_SYSTEMS: readonly PrimarySystemDefinition[] = [
 export function AtlasSuitePage() {
   const [query, setQuery] = useState('');
   const [readiness, setReadiness] = useState<'all' | AtlasModuleReadiness>('all');
+  const [convergence, setConvergence] = useState<'all' | AtlasPortfolioDisposition>('all');
   const [area, setArea] = useState('all');
+
+  const portfolio = useMemo(() => buildAtlasPortfolio(ATLAS_MODULES), []);
+  const portfolioByModule = useMemo(
+    () => new Map(portfolio.map((decision) => [decision.moduleId, decision] as const)),
+    [portfolio]
+  );
 
   const areas = useMemo(
     () => Array.from(new Set(ATLAS_MODULES.map((module) => module.area))).sort(),
@@ -86,14 +94,18 @@ export function AtlasSuitePage() {
         || [module.title, module.navLabel, module.area, module.description, module.route]
           .some((value) => value.toLowerCase().includes(normalizedQuery));
       const matchesReadiness = readiness === 'all' || module.readiness === readiness;
+      const matchesConvergence = convergence === 'all'
+        || portfolioByModule.get(module.id)?.disposition === convergence;
       const matchesArea = area === 'all' || module.area === area;
-      return matchesQuery && matchesReadiness && matchesArea;
+      return matchesQuery && matchesReadiness && matchesConvergence && matchesArea;
     }).sort((left, right) => left.title.localeCompare(right.title));
-  }, [area, query, readiness]);
+  }, [area, convergence, portfolioByModule, query, readiness]);
 
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
   const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
   const externalGated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
+  const kept = portfolio.filter((item) => item.disposition === 'keep').length;
+  const merged = portfolio.filter((item) => item.disposition === 'merge').length;
 
   return (
     <section className="page-stack atlas-suite-page">
@@ -125,6 +137,8 @@ export function AtlasSuitePage() {
             <span><strong>{implemented}</strong> operational baseline</span>
             <span><strong>{activeEvolution}</strong> active evolution</span>
             <span><strong>{externalGated}</strong> gated</span>
+            <span><strong>{kept}</strong> canonical owners</span>
+            <span><strong>{merged}</strong> converged capabilities</span>
           </div>
         </div>
       </header>
@@ -165,7 +179,7 @@ export function AtlasSuitePage() {
             <p className="eyebrow">Explore A-Z</p>
             <h2 id="explore-a-z-heading">All registered modules</h2>
           </div>
-          <p>Browse the canonical registry without hiding provider, production or evolution boundaries.</p>
+          <p>Browse the canonical registry with its rebirth decision: keep a distinct owner or converge the capability into a stronger ATLAS system.</p>
         </div>
 
         <div className="suite-filter-bar" aria-label="Filter ATLAS modules">
@@ -182,6 +196,17 @@ export function AtlasSuitePage() {
               </button>
             ))}
           </div>
+
+          <label className="suite-area-filter">
+            <span>Convergence</span>
+            <select value={convergence} onChange={(event) => setConvergence(event.target.value as 'all' | AtlasPortfolioDisposition)}>
+              <option value="all">All decisions</option>
+              <option value="keep">Canonical owners</option>
+              <option value="merge">Merged capabilities</option>
+              <option value="compatibility">Compatibility</option>
+              <option value="retire">Retired</option>
+            </select>
+          </label>
 
           <label className="suite-area-filter">
             <span>Area</span>
@@ -206,7 +231,12 @@ export function AtlasSuitePage() {
 
         {filteredModules.length ? (
           <div className="suite-module-grid" aria-label="ATLAS A-Z modules">
-            {filteredModules.map((module, index) => (
+            {filteredModules.map((module, index) => {
+              const decision = portfolioByModule.get(module.id);
+              const owner = decision?.ownerModuleId
+                ? ATLAS_MODULES.find((candidate) => candidate.id === decision.ownerModuleId)
+                : null;
+              return (
               <Link className="suite-module-card" to={module.route} key={module.id}>
                 <span className="suite-module-cover">
                   <img
@@ -220,6 +250,15 @@ export function AtlasSuitePage() {
                   <span className={`suite-readiness-chip ${module.readiness}`}>
                     {READINESS_LABELS[module.readiness]}{module.evolution === 'active' ? ' · Active evolution' : ''}
                   </span>
+                  {decision ? (
+                    <span className={`suite-convergence-chip ${decision.disposition}`}>
+                      {decision.disposition === 'merge' && owner
+                        ? `Integrated into ${owner.navLabel}`
+                        : decision.disposition === 'keep'
+                          ? 'Canonical owner'
+                          : decision.disposition}
+                    </span>
+                  ) : null}
                 </span>
                 <span className="suite-module-copy">
                   <small>{module.area}</small>
@@ -231,7 +270,8 @@ export function AtlasSuitePage() {
                   </span>
                 </span>
               </Link>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="empty-state suite-empty-state">
@@ -242,10 +282,9 @@ export function AtlasSuitePage() {
       </section>
 
       <div className="notice strong suite-governance-note">
-        “Integrated” describes the Operational baseline: canonical routing and governed module composition. Active evolution is tracked
-        independently, so a stable module can continue into its next implementation/validation cycle without losing its baseline. External providers,
-        irreversible actions, production data and regulated workflows remain unavailable until their own verification gates pass. Only current
-        machine-verifiable gate evidence can yield Production Verified.
+        Rebirth does not delete verified capability. “Canonical owner” means the system keeps a distinct product/domain boundary.
+        “Integrated into …” means the route remains compatible while ownership converges into a stronger ATLAS family. Readiness, provider
+        authorization and Production Verified remain separate evidence-backed states; this portfolio decision never upgrades them by itself.
       </div>
     </section>
   );
