@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { CrmConnectionView } from '../../../../../../packages/core/src/crm';
 import { CrmApiError, crmApi } from './crmApi';
 
@@ -369,10 +370,10 @@ export function SalesforceIntegrationPage() {
             Provider write operations remain disabled in this phase.
           </p>
           <div className="crm-actions">
-            <a className="text-link" href="/crm/salesforce/contacts">Contacts</a>
-            <a className="text-link" href="/crm/salesforce/companies">Accounts</a>
-            <a className="text-link" href="/crm/salesforce/deals">Opportunities</a>
-            <a className="text-link" href="/crm/salesforce/service">Cases</a>
+            <Link className="text-link" to="/crm/salesforce/contacts">Contacts</Link>
+            <Link className="text-link" to="/crm/salesforce/companies">Accounts</Link>
+            <Link className="text-link" to="/crm/salesforce/deals">Opportunities</Link>
+            <Link className="text-link" to="/crm/salesforce/service">Cases</Link>
           </div>
         </section>
       ) : null}
