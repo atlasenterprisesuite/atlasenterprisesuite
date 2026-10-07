@@ -100,7 +100,8 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       const fallbackAttempts=[];
       if(route.mode==='council'){
         if(!council)throw fail('capability_unavailable',503,{mode:'council'});
-        result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000});
+        const councilStrategy=route.providers.includes('openai')&&route.providers.includes('gemini')?'editorial':'parallel';
+        result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000,strategy:councilStrategy});
       }else{
         const candidates=route.mode==='auto'
           ?[route.providers[0],...(Array.isArray(route.fallback_providers)?route.fallback_providers:[])]
