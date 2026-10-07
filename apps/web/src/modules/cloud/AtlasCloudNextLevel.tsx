@@ -102,7 +102,8 @@ export function CloudSubnav() {
     <nav className="atlas-cloud-subnav" aria-label="Atlas Cloud control surfaces">
       <Link to="/cloud">Overview</Link>
       <Link to="/cloud/api-explorer">API Explorer</Link>
-      <Link to="/cloud/observability">Observability</Link>\n      <Link to="/cloud/runtime-integrity">Runtime Integrity</Link>
+      <Link to="/cloud/observability">Observability</Link>
+      <Link to="/cloud/runtime-integrity">Runtime Integrity</Link>
       <Link to="/cloud/resources">Resource Manager</Link>
       <Link to="/cloud/domains">Domains & DNS</Link>
       <Link to="/cloud/service-graph">Service Graph</Link>
