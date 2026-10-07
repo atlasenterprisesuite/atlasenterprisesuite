@@ -22,7 +22,7 @@ export function WorkTeamPage() {
 
   return (
     <section className="work-page page-stack">
-      <header className="page-header"><p className="eyebrow">ATLAS Work Soberano</p><h1>Team</h1><p>Current organization identity and execution permissions. This view does not invent team-management capabilities.</p></header>
+      <header className="page-header"><p className="eyebrow">ATLAS Work</p><h1>Team</h1><p>Current organization identity and execution permissions. This view does not invent team-management capabilities.</p></header>
       <WorkSubnav />
       {error ? <div role="alert" className="work-error">{error}</div> : null}
       {!organization && !error ? <p aria-busy="true">Loading organization access…</p> : null}
