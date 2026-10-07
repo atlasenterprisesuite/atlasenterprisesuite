@@ -10,7 +10,7 @@ function fakeAdapter(id: 'atlas-local' | 'openai' | 'gemini' | 'codex-sovereign'
     probe: async () => ({ configured: true, verified: true, provider: id, model: `${id}-model`, error: null }),
     execute: async () => {
       if (options.failCode) throw Object.assign(new Error(options.failCode), { code: options.failCode, status: options.failCode === 'provider_rate_limited' ? 429 : 502 });
-      return { provider: id, model: `${id}-model`, text: `${id} reply`, capabilities_used: ['generation'], usage: {}, provenance: [], tool_calls: [] };
+      return { provider: id, model: `${id}-model`, text: `${id} reply`, ...(id === 'gemini' ? { finish_reason: 'STOP' } : {}), capabilities_used: ['generation'], usage: {}, provenance: [], tool_calls: [] };
     },
   };
 }
@@ -284,6 +284,7 @@ describe('ATLAS Unified AI gateway', () => {
       provider: 'gemini',
       model: 'gemini-model',
       text: 'ATLAS_REVIEW:\n- Improve precision.\nATLAS_FINAL:\nRefined final answer.',
+      finish_reason: 'STOP',
       capabilities_used: ['generation'],
       usage: {},
       provenance: [],
@@ -332,6 +333,55 @@ describe('ATLAS Unified AI gateway', () => {
         review: '- Improve precision.',
       },
     });
+  });
+
+  it('persists the complete editorial review in audit storage without public exposure', async () => {
+    const longReview = 'R'.repeat(13050);
+    const openai = fakeAdapter('openai');
+    openai.execute = async () => ({
+      provider: 'openai',
+      model: 'openai-model',
+      text: 'Draft.',
+      capabilities_used: ['generation'],
+      usage: {},
+      provenance: [],
+      tool_calls: [],
+    });
+    const gemini = fakeAdapter('gemini');
+    gemini.execute = async () => ({
+      provider: 'gemini',
+      model: 'gemini-model',
+      text: `ATLAS_REVIEW:\n${longReview}\nATLAS_FINAL:\nFinal.`,
+      finish_reason: 'STOP',
+      capabilities_used: ['generation'],
+      usage: {},
+      provenance: [],
+      tool_calls: [],
+    });
+
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const router = createIntelligenceRouter({ providers: routeProviders.slice(0, 2) });
+    const store = fakeStore();
+    const council = createCouncilOrchestrator({ registry });
+    const gateway = createIntelligenceGateway({
+      router,
+      registry,
+      council,
+      store,
+      costPolicy: { allowed_providers: ['openai', 'gemini'], allow_paid_single: true, allow_council: true, zero_cost_providers: [] },
+      toolGateway: createToolGateway(),
+    });
+
+    const result = await gateway.execute({
+      context: context('req-council-long-review', ['intelligence.use']),
+      request: { message: 'Refine this', mode: 'council', intent: 'balanced' },
+    });
+
+    expect(result.output).toBe('Final.');
+    expect(store._auditEvents[0]?.data?.review).toBe(longReview);
+    expect(JSON.stringify(result)).not.toContain(longReview);
+    const stored = store._messages.get(result.conversation_id) ?? [];
+    expect(JSON.stringify(stored)).not.toContain(longReview);
   });
 
   it('requires cost approval when Council is not pre-authorized', async () => {
