@@ -196,7 +196,7 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
             request_id:telemetry.id,
             strategy:'editorial',
             providers:executionRoute.providers,
-            review:String(result.review).slice(0,12000)
+            review:String(result.review)
           }
         });
       }
