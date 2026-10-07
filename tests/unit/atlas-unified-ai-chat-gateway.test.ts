@@ -248,6 +248,76 @@ describe('ATLAS Unified AI gateway', () => {
     expect(result.tools_used).toEqual([]);
   });
 
+  it('keeps a three-provider Council in parallel mode so every routed provider participates', async () => {
+    const { gateway } = makeGateway();
+    const result = await gateway.execute({
+      context: context('req-council-parallel', ['intelligence.use']),
+      request: { message: 'Compare all providers', mode: 'council', intent: 'balanced' },
+    });
+
+    expect(result.strategy).toBe('parallel');
+    expect(result.providers).toEqual(['openai', 'gemini', 'codex-sovereign']);
+    expect(result.contributions).toHaveLength(3);
+    expect(result.contributions.map((item: any) => item.provider)).toEqual(['openai', 'gemini', 'codex-sovereign']);
+    expect(result.contributions.every((item: any) => typeof item.text === 'string')).toBe(true);
+  });
+
+  it('returns only sanitized contribution metadata for the two-provider editorial Council', async () => {
+    const openai = fakeAdapter('openai');
+    openai.execute = async () => ({
+      provider: 'openai',
+      model: 'openai-model',
+      text: 'Unrefined OpenAI draft.',
+      capabilities_used: ['generation'],
+      usage: {},
+      provenance: [],
+      tool_calls: [],
+    });
+    const gemini = fakeAdapter('gemini');
+    gemini.execute = async () => ({
+      provider: 'gemini',
+      model: 'gemini-model',
+      text: 'ATLAS_REVIEW:\n- Improve precision.\nATLAS_FINAL:\nRefined final answer.',
+      capabilities_used: ['generation'],
+      usage: {},
+      provenance: [],
+      tool_calls: [],
+    });
+
+    const registry = createProviderRegistry({ providers: [openai, gemini] });
+    const router = createIntelligenceRouter({
+      providers: routeProviders.slice(0, 2),
+    });
+    const store = fakeStore();
+    const council = createCouncilOrchestrator({ registry });
+    const gateway = createIntelligenceGateway({
+      router,
+      registry,
+      council,
+      store,
+      costPolicy: { allowed_providers: ['openai', 'gemini'], allow_paid_single: true, allow_council: true, zero_cost_providers: [] },
+      toolGateway: createToolGateway(),
+    });
+
+    const result = await gateway.execute({
+      context: context('req-council-editorial', ['intelligence.use']),
+      request: { message: 'Refine this', mode: 'council', intent: 'balanced' },
+    });
+
+    expect(result.strategy).toBe('editorial');
+    expect(result.output).toBe('Refined final answer.');
+    expect(result).not.toHaveProperty('review');
+    expect(result.contributions).toEqual([
+      { provider: 'openai', model: 'openai-model', role: 'draft' },
+      { provider: 'gemini', model: 'gemini-model', role: 'review' },
+    ]);
+    const stored = store._messages.get(result.conversation_id) ?? [];
+    const assistant = stored.find((item: any) => item.role === 'assistant');
+    expect(assistant?.content?.collaboration).toEqual({ strategy: 'editorial', review_present: true });
+    expect(JSON.stringify(assistant?.content)).not.toContain('Improve precision.');
+    expect(JSON.stringify(result)).not.toContain('Unrefined OpenAI draft.');
+  });
+
   it('requires cost approval when Council is not pre-authorized', async () => {
     const { gateway } = makeGateway({ allowed_providers: ['openai', 'gemini', 'codex-sovereign'], allow_paid_single: true, allow_council: false, zero_cost_providers: [] });
     await expect(gateway.execute({
