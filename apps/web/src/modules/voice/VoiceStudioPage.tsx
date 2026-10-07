@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AtlasVoicePage } from './AtlasVoicePage';
-import { ElevenLabsNarration } from './ElevenLabsNarration';
+import { AtlasVoiceNarration } from './AtlasVoiceNarration';
 import { StudioPlayer } from './StudioPlayer';
 import './voiceStudio.css';
 
@@ -29,11 +29,11 @@ export function VoiceStudioPage() {
     </aside>
     <div className="studio-content">
       <header className="studio-header"><div><h1>Voice Studio</h1><p>{es ? 'Tu voz. Tu universo.' : 'Your voice. Your universe.'}</p></div><div className="studio-header-actions"><div className="studio-language" aria-label="Interface language"><button type="button" aria-pressed={es} onClick={() => setLang('es')}>ES</button><span>/</span><button type="button" aria-pressed={!es} onClick={() => setLang('en')}>EN</button></div><Link to="/identity" className="studio-account"><span>A</span> ATLAS</Link></div></header>
-      <ElevenLabsNarration lang={lang} onLanguageChange={setLang}/>
+      <AtlasVoiceNarration lang={lang} onLanguageChange={setLang}/>
       <section className="studio-library" id="biblioteca-audio" aria-labelledby="studio-library-title"><h2 id="studio-library-title">{es ? 'Biblioteca de audio' : 'Audio library'}</h2><p>{es ? 'Bienvenida, navegación y ayuda' : 'Welcome, navigation and help'}</p><div className="studio-library-grid">{catalog.map(item => <article className="studio-audio-card" key={item.key}><div className={`studio-cover ${item.art}`} aria-hidden="true"><svg viewBox={item.crop}><image href="/assets/voice/studio-reference.png" width="1586" height="992"/></svg></div><div className="studio-card-content"><h3>{es ? item.es : item.en}</h3>{(['es','en'] as const).map((locale, i) => <div className="studio-track" key={locale}><span>{locale.toUpperCase()} · {item.times[i]} s</span><StudioPlayer compact src={`/assets/voice/${item.key}_${locale}.mp3`} title={`${es ? item.es : item.en} ${locale.toUpperCase()}`} lang={lang}/></div>)}</div></article>)}</div></section>
       <p className="studio-disclosure">✦ {es ? 'Voz generada con inteligencia artificial' : 'Voice generated with artificial intelligence'}</p>
       <section id="voice-assistant" className="studio-assistant"><AtlasVoicePage embedded/></section>
-      <details className="voice-boundary-details"><summary>Provider & privacy boundaries</summary><div><p>ElevenLabs narration uses verified voice access and validates each generation.</p><p><strong>Requires ATLAS iOS app:</strong> Apple Personal Voice authorization and local playback are native-device capabilities; the web client never claims to export or control the Apple voice model.</p></div></details>
+      <details className="voice-boundary-details"><summary>Provider & privacy boundaries</summary><div><p>ATLAS Voice uses a provider-neutral product contract. The current external narration adapter is ElevenLabs and each generation is validated before ATLAS reports success.</p><p><strong>Requires ATLAS iOS app:</strong> Apple Personal Voice authorization and local playback are native-device capabilities; the web client never claims to export or control the Apple voice model.</p></div></details>
     </div>
   </section>;
 }
