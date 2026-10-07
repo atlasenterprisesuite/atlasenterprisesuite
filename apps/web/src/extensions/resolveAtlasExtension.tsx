@@ -26,6 +26,7 @@ import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
 import { AtlasPortalsPage } from '../modules/galaxy/AtlasPortalsPage';
 import { ProcureToPayPage } from '../modules/inventory/ProcureToPayPage';
 import { PeopleRoutes } from '../modules/people/PeopleRoutes';
+import { CareRoutes } from '../modules/care/CareRoutes';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
@@ -71,6 +72,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/people' || pathname.startsWith('/people/')) {
     return <RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/care' || pathname.startsWith('/care/')) {
+    return <RequireAtlasIdentity><CareRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/revenue') {
