@@ -355,13 +355,13 @@ describe('ATLAS Unified AI provider adapters', () => {
   it('implements Gemini descriptor/probe/execute without a real provider call', async () => {
     const fetchFn = vi.fn(async (url: string) => {
       if (url.includes(':generateContent')) {
-        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'gemini-ok' }] } }], usageMetadata: {} }), { status: 200 });
+        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'gemini-ok' }] }, finishReason: 'STOP' }], usageMetadata: {} }), { status: 200 });
       }
       return new Response(JSON.stringify({ name: 'models/gemini-configured' }), { status: 200 });
     });
     const adapter = createGeminiAdapter({ apiKey: 'gemini-secret', models: { balanced: 'gemini-configured' }, fetchFn });
     expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
-    expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('gemini-ok');
+    await expect(adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).resolves.toMatchObject({ text: 'gemini-ok', finish_reason: 'STOP' });
   });
 
   it('implements Codex Sovereign only when its runtime health probe verifies', async () => {
