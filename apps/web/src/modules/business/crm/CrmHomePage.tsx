@@ -148,6 +148,26 @@ export function CrmHomePage() {
         </div>
       ) : null}
 
+      {hubSpot && !hubSpotVerified && hubSpot.state !== 'unconfigured' ? (
+        <div className={`crm-banner ${hubSpot.state}`} role="status">
+          <strong>HubSpot · {stateLabel[hubSpot.state]}</strong>
+          <span>
+            {hubSpot.state === 'degraded'
+              ? 'The provider is reachable, but one or more authorized CRM capabilities are unavailable.'
+              : hubSpot.state === 'expired'
+                ? 'The provider credential must be re-authorized before CRM records can be read.'
+                : hubSpot.state === 'revoked'
+                  ? 'This organization disconnected its CRM provider.'
+                  : hubSpot.state === 'authorizing'
+                    ? 'Provider authorization has started but is not yet verified.'
+                    : hubSpot.state === 'error'
+                      ? `Connection verification failed${hubSpot.safeErrorCode ? ` (${hubSpot.safeErrorCode})` : ''}.`
+                      : 'HubSpot verification is required before customer records are available.'}
+          </span>
+          <Link className="text-link" to="/crm/integrations/hubspot">Open HubSpot connection</Link>
+        </div>
+      ) : null}
+
       {!loading && !anyVerified && !salesforce?.canonicalRequired ? (
         <div className="crm-banner neutral" role="status">
           <strong>No verified CRM provider</strong>
