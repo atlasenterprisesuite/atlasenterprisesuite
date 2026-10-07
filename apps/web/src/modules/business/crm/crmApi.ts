@@ -3,18 +3,24 @@ import {
   getActiveAtlasOrganization
 } from '../../../lib/atlasSession';
 
+export type CrmApiProvider = 'hubspot' | 'salesforce';
+
 export type CrmApiOperation =
   | 'oauth.prepare'
   | 'oauth.configure'
   | 'connection.configuration'
   | 'connection.status'
   | 'connection.health'
+  | 'connection.verify'
   | 'connection.disconnect'
   | 'crm.list'
   | 'crm.search'
   | 'crm.get'
   | 'crm.associations'
-  | 'crm.refresh';
+  | 'crm.refresh'
+  | 'org.inventory'
+  | 'org.candidates'
+  | 'org.selectCanonical';
 
 export class CrmApiError extends Error {
   readonly status: number;
@@ -50,10 +56,14 @@ async function parseBody(response: Response): Promise<Record<string, unknown>> {
 
 export async function crmApi<T = Record<string, unknown>>(
   operation: CrmApiOperation,
-  payload: Record<string, unknown> = {}
+  payload: Record<string, unknown> = {},
+  provider: CrmApiProvider = 'hubspot'
 ): Promise<T> {
   const organization = await getActiveAtlasOrganization();
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-crm-hubspot', {
+  const endpoint = provider === 'salesforce'
+    ? '/functions/v1/atlas-crm-salesforce'
+    : '/functions/v1/atlas-crm-hubspot';
+  const response = await authorizedAtlasFetch(endpoint, {
     method: 'POST',
     body: JSON.stringify({
       operation,
