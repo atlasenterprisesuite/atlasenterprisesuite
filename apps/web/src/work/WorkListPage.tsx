@@ -50,7 +50,7 @@ export function WorkListPage({ view }: { view: Exclude<WorkView, 'all'> }) {
     <section className="work-page page-stack">
       <WorkSubnav />
       <header className="page-header">
-        <p className="eyebrow">ATLAS Work Soberano</p>
+        <p className="eyebrow">ATLAS Work</p>
         <h1>{copy.title}</h1>
         <p>{copy.description}</p>
       </header>
