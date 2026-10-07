@@ -27,6 +27,7 @@ import { ProductivityProPage } from './modules/creator/ProductivityProPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { AccessibilityCommunicationSettingsPage } from './modules/settings/AccessibilityCommunicationSettings';
+import { PersonalizeAtlasPage } from './modules/settings/PersonalizeAtlasPage';
 import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { Gps4DPage } from './modules/gps/Gps4DPage';
@@ -54,86 +55,6 @@ const labBase = '/health/research/frontiers/disease-reconstruction';
 
 function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return <header className="page-header"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></header>;
-}
-
-function EnterpriseHome() {
-  return (
-    <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
-      <div className="module-grid">
-        <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
-        <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting operations with live Accounts Payable, Accounts Receivable and governed financial reporting.</p></Link>
-        <Link className="module-card enabled" to="/tax"><span>Finance • Compliance</span><strong>ATLAS Tax</strong><p>Connected personal and business return preparation with governed source-document mapping.</p></Link>
-        <Link className="module-card enabled" to="/payroll"><span>People • Pay • Progress</span><strong>ATLAS Payroll</strong><p>Governed payroll workspace with real configuration boundaries and no fabricated metrics.</p></Link>
-        <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
-        <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tooling with explicit evidence boundaries.</p></Link>
-        <Link className="module-card enabled" to="/wellbeing/faith"><span>Wellbeing · Reflection</span><strong>ATLAS Faith & Reflection</strong><p>Guided prayer, symbolic sacred codes, a 45-count practice, real-world action and a 21-day evidence journal.</p></Link>
-        <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
-        <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
-        <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
-        <Link className="module-card enabled" to="/max"><span>Intelligence · Governed capacity</span><strong>ATLAS MAX</strong><p>Provider-neutral premium intelligence with evidence-backed entitlements, usage controls and Operators.</p></Link>
-      </div>
-      <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
-    </section>
-  );
-}
-
-function BusinessHome() {
-  return (
-    <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Business Suite" title="Business Suite" description="Connected growth, customer, commerce and publishing operations under one governed organization." />
-      <div className="module-grid">
-        <Link className="module-card enabled" to="/business/network"><span>Growth · Partner operations</span><strong>ATLAS Network</strong><p>Governed partner, pricing, commission, payout and compliance architecture with explicit data boundaries.</p></Link>
-        <Link className="module-card enabled" to="/business/growth/social-publisher"><span>Growth · Creator Studio</span><strong>Social Publisher</strong><p>Attach photos and videos, select each platform format, validate assets and prepare governed publication.</p></Link>
-        <div className="module-card disabled" aria-disabled="true"><span>Channel connections</span><strong>Authorization required</strong><p>External publishing remains unavailable until each organization authorizes its social accounts.</p></div>
-      </div>
-    </section>
-  );
-}
-
-function FinanceHome() {
-  return (
-    <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Finance" title="Finance" description="Governed finance operations with Accounting as the first enterprise domain." />
-      <div className="module-grid">
-        <Link className="module-card enabled" to="/advisory/financial-guidance"><span>Advisory · Client planning</span><strong>Financial Guidance</strong><p>Explainable 30-day liquidity, debt urgency and payment planning from confirmed client data.</p></Link>
-        <Link className="module-card enabled" to="/finance/pay"><span>Payments · Issuing</span><strong>ATLAS Pay</strong><p>Provider-neutral wallets, issuing and payout orchestration with regulated rails fail-closed until verified.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Accounting</span><strong>Accounts Payable</strong><p>Vendor bills, aging, balances, approvals and payment application state.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Accounting</span><strong>Accounts Receivable</strong><p>Live customers, invoices, line items, balances, issuance and payment recording.</p></Link>
-        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · Purchasing · AP</span><strong>Procure to Pay</strong><p>PO receiving, packing slips, three-way matching, inventory costing, AP and margin pricing.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Accounting / Reports</span><strong>Automotive Sales</strong><p>Vehicle, F&I, fixed operations, inventory and floorplan financial reporting.</p></Link>
-      </div>
-    </section>
-  );
-}
-
-function AccountingHome() {
-  return (
-    <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Finance" title="Accounting" description="Working accounting slices share the same governed tenant scope and reporting contracts." />
-      <div className="module-grid">
-        <Link className="module-card enabled" to="/finance/accounting/accounts-payable"><span>Operations</span><strong>Accounts Payable</strong><p>Vendor obligations, aging and payment application state.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/accounts-receivable"><span>Operations</span><strong>Accounts Receivable</strong><p>Customer invoicing, open balances, aging inputs and governed payment recording.</p></Link>
-        <Link className="module-card enabled" to="/inventory/procure-to-pay"><span>Inventory · AP</span><strong>Procure to Pay</strong><p>Receive by PO, match packing slips and vendor invoices, calculate cost and post inventory/AP.</p></Link>
-        <Link className="module-card enabled" to="/finance/accounting/reports/automotive-sales"><span>Reports</span><strong>Automotive Sales Financial Reporting</strong><p>Departmental dealership reporting with F&I, fixed ops, inventory and floorplan controls.</p></Link>
-      </div>
-    </section>
-  );
-}
-
-function HealthHome() {
-  return (
-    <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Health" title="Health" description="A governed smart-health and biomedical research ecosystem. This release candidate exposes research functions without pretending to be a live clinical system." />
-      <ResearchBadge />
-      <div className="module-grid">
-        <Link className="module-card enabled" to="/health/research"><span>Research & Innovation</span><strong>Health Frontiers</strong><p>Evidence registry, Neural Graph, falsification and transparent reconstruction models.</p></Link>
-        <Link className="module-card enabled" to="/health/wellbeing/neuroplasticity"><span>Wellbeing</span><strong>Neuroplasticity Program</strong><p>Build safe learning-readiness habits with visible non-clinical boundaries.</p></Link>
-        <div className="module-card disabled" aria-disabled="true"><span>Clinical systems</span><strong>Not configured</strong><p>No EHR, FHIR, HL7 or patient workflow is represented as connected.</p></div>
-        <div className="module-card disabled" aria-disabled="true"><span>Hospital operations</span><strong>No live connection</strong><p>No fabricated census, bed, staffing, pharmacy or facility metric is shown.</p></div>
-      </div>
-    </section>
-  );
 }
 
 function ResearchHome() {
@@ -326,7 +247,7 @@ export function App() {
         <Route path="/wellbeing/faith" element={<FaithReflectionPage />} />
         <Route path="/health/research" element={<ResearchHome />} />
         <Route path="/health/research/frontiers" element={<FrontiersHome />} />
-        <Route path="/settings/accessibility/communication" element={<AccessibilityCommunicationSettingsPage />} />
+        <Route path="/settings/personalize" element={<PersonalizeAtlasPage />} />\n        <Route path="/settings/accessibility/communication" element={<AccessibilityCommunicationSettingsPage />} />
         <Route path={labBase} element={<LabLayout />}>
           <Route index element={<LabOverview />} />
           <Route path="diseases" element={<DiseasesPage />} />
