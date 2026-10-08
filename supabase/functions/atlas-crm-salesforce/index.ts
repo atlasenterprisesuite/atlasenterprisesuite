@@ -20,6 +20,7 @@ import {
   type SalesforceCrmOperationAdapter
 } from '../_shared/salesforce-crm-operations.ts';
 import { getServerSecret, setServerSecret } from '../_shared/server-secret-store.ts';
+import { normalizeSalesforceLoginBaseUrl } from '../_shared/salesforce-oauth.ts';
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.atlasenterprisesuite.com',
@@ -136,6 +137,11 @@ function configuredLoginBaseUrl(environment: unknown): string {
   throw new Error('Salesforce environment must be production or sandbox');
 }
 
+function salesforceEnvironmentForLoginBaseUrl(value: string): 'production' | 'sandbox' {
+  const normalized = normalizeSalesforceLoginBaseUrl(value);
+  return new URL(normalized).hostname === 'test.salesforce.com' ? 'sandbox' : 'production';
+}
+
 async function resolvedSecretDeps(
   deps: AtlasCrmSalesforceDependencies
 ): Promise<AtlasCrmSalesforceDependencies> {
@@ -206,7 +212,7 @@ async function configureSalesforceOAuth(input: {
   }
 
   const loginBaseUrl = configuredLoginBaseUrl(input.environment);
-  const environment = loginBaseUrl.includes('test.salesforce.com') ? 'sandbox' : 'production';
+  const environment = salesforceEnvironmentForLoginBaseUrl(loginBaseUrl);
   const resolved = await resolvedSecretDeps(input.deps);
   const existingKey = env('ATLAS_INTEGRATION_CREDENTIAL_KEY', resolved);
   const credentialKey = existingKey || generatedCredentialKey();
@@ -537,7 +543,7 @@ export async function handleAtlasCrmSalesforceRequest(
     return json(req, deps, 200, {
       configured: salesforceConfigured(secretDeps),
       redirectUri: env('SALESFORCE_REDIRECT_URI', secretDeps) || canonicalRedirectUri(deps),
-      environment: loginBaseUrl.includes('test.salesforce.com') ? 'sandbox' : 'production',
+      environment: salesforceEnvironmentForLoginBaseUrl(loginBaseUrl),
       apiVersion: env('SALESFORCE_API_VERSION', secretDeps) || 'v68.0'
     });
   }
