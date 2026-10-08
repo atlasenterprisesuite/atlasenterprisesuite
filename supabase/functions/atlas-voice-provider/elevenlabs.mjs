@@ -1,6 +1,6 @@
 import { providerErrorState } from './provider-core.mjs';
 
-export const elevenLabsVoice = Object.freeze({ id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', model: 'eleven_multilingual_v2' });
+export const elevenLabsVoice = Object.freeze({ id: 'JBFqnCBsd6RMkjVDRZzb', name: 'Origin', model: 'eleven_multilingual_v2' });
 const BASE = 'https://api.elevenlabs.io/v1';
 
 function failure(message, status = 503) {

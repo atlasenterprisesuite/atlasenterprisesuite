@@ -488,7 +488,7 @@ export function AtlasChatPage() {
       </div>
 
       <footer className="atlas-chat-footer">
-        <span>Durable source of truth: Supabase · Realtime hints: Cloudflare Durable Objects</span>
+        <span>Durable ATLAS data layer · governed realtime synchronization</span>
         <span>Attachments remain fail-closed until malware scanning is configured.</span>
       </footer>
     </section>

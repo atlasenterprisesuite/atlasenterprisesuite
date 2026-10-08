@@ -86,9 +86,9 @@ describe('ATLAS Identity route', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'not-a-real-password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Voice Studio' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'ATLAS Voice Studio' })).toBeInTheDocument());
     expect(screen.getByText(/Requires ATLAS iOS app/i)).toBeInTheDocument();
-    await screen.findByText('ElevenLabs requires a server API key.');
+    await screen.findByText('ATLAS Voice requiere configurar un motor de síntesis en el servidor.');
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/functions/v1/atlas-copilot?api=status'))).toBe(true);
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('provider=elevenlabs'))).toBe(true);
   });
