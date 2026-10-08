@@ -69,7 +69,13 @@ describe('ATLAS 777 production matrix — live-probe contract with controlled HT
       ...contract.critical_crm_routes
     ];
     expect(contract.p1_routes.length).toBeGreaterThan(0);
-    expect(new Set([...p0, ...contract.p1_routes]).size).toBe(p0.length + contract.p1_routes.length);
+    const distinctP0 = new Set(p0);
+    const distinctP1 = new Set(contract.p1_routes);
+    // /crm is intentionally both a public route and a critical CRM route.
+    // Do not treat one shared endpoint as two distinct network probes.
+    expect(distinctP0.size).toBeLessThan(p0.length);
+    expect(distinctP1.size).toBe(contract.p1_routes.length);
+    expect(new Set([...distinctP0, ...distinctP1]).size).toBe(distinctP0.size + distinctP1.size);
   });
 
   it('passes clean P0 and P1 responses only when expected production SHA matches', () => {
@@ -79,6 +85,12 @@ describe('ATLAS 777 production matrix — live-probe contract with controlled HT
     expect(result.output.status).toBe('passed');
     expect(result.output.checks.production_commit_sha_verified).toBe(true);
     expect(result.output.p1_warning_count).toBe(0);
+    const distinctP0 = new Set([
+      ...contract.public_routes,
+      ...contract.critical_network_routes,
+      ...contract.critical_crm_routes
+    ]);
+    expect(result.output.checks.required_routes).toHaveLength(distinctP0.size);
   });
 
   it('fails closed on a real HTTP 404 on P0 Network payouts', () => {
