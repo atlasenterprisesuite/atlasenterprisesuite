@@ -111,6 +111,30 @@
 .accessibility-capability strong[data-state="unavailable"] { color: #fca5a5; }
 .accessibility-capability strong[data-state="not_configured"] { color: #fde68a; }
 
+.accessibility-preference-notice {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 14px;
+  background: rgba(8, 47, 73, 0.52);
+  color: #f8fafc;
+}
+
+.accessibility-preference-notice p {
+  margin: 8px 0;
+  color: #dbeafe;
+  line-height: 1.45;
+}
+
+.accessibility-preference-notice .text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 .accessibility-provider-boundary,
 .accessibility-transcript,
 .accessibility-settings-notice {
@@ -220,14 +244,21 @@
   .atlas-accessibility-backdrop { padding: 0; }
   .atlas-accessibility-dialog {
     width: 100%;
-    max-height: 100vh;
-    min-height: 100vh;
+    max-height: 100dvh;
+    min-height: 100dvh;
     border-radius: 0;
-    padding: 18px;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    scroll-padding-bottom: 24px;
+    overscroll-behavior: contain;
   }
   .accessibility-mode-summary,
-  .accessibility-capability-grid,
+  .accessibility-capability-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .accessibility-settings-section .settings-grid { grid-template-columns: 1fr; }
+  .accessibility-mode-summary > span,
+  .accessibility-capability { min-width: 0; padding: 12px; }
+  .accessibility-mode-summary strong,
+  .accessibility-capability span { font-size: 0.875rem; overflow-wrap: anywhere; }
+  .accessibility-capability strong { font-size: 1rem; overflow-wrap: anywhere; }
   .atlas-accessibility-launcher {
     right: calc(12px + env(safe-area-inset-right));
     bottom: calc(12px + env(safe-area-inset-bottom));
@@ -240,4 +271,9 @@
   }
   .atlas-accessibility-launcher > span:last-child { display: none; }
   .atlas-live-captions { bottom: calc(68px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 350px) {
+  .accessibility-mode-summary,
+  .accessibility-capability-grid { grid-template-columns: 1fr; }
 }
