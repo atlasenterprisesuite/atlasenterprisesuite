@@ -47,8 +47,13 @@ describe('FuturisticEnterpriseHome visual landing', () => {
     expect(screen.getByRole('link', { name: 'Cloud surface' })).toHaveAttribute('href', '/cloud');
 
     const status = screen.getByLabelText('ATLAS system status');
-    expect(status).toHaveTextContent(`${implemented} operativos`);
+    expect(status).toHaveTextContent(`${implemented} implementados`);
     expect(status).toHaveTextContent(`${gated} conexiones`);
+    expect(screen.getByText('IMPLEMENTADOS')).toBeInTheDocument();
+    expect(screen.getByText('Cobertura de código en el catálogo; no es certificación de producción')).toBeInTheDocument();
+    expect(screen.getByText('Capacidades con código registrado')).toBeInTheDocument();
+    expect(screen.queryByText('Baseline operativo comprobado')).not.toBeInTheDocument();
+    expect(screen.queryByText('Capacidades operativas')).not.toBeInTheDocument();
   });
 
   it('counts active evolution independently from operational readiness', () => {
