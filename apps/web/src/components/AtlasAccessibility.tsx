@@ -72,6 +72,7 @@ export function AtlasAccessibility({
   const [transcript, setTranscript] = useState('');
   const [confidence, setConfidence] = useState<number | null>(null);
   const [recognitionState, setRecognitionState] = useState<RecognitionState>('idle');
+  const [blockedReason, setBlockedReason] = useState<'low-confidence' | 'provider-unavailable' | null>(null);
   const [pendingRecognition, setPendingRecognition] = useState<AccessibilityRecognitionInput | null>(null);
 
   const capabilities = useMemo(
@@ -90,12 +91,28 @@ export function AtlasAccessibility({
 
   useEffect(() => {
     if (!recognitionInput) return;
+    // An injected recognition result is not sufficient evidence that an ASL provider
+    // is verified for the language deliberately selected by this user.
+    if (profile.preferredInput !== 'asl' || !selectedSignLanguage || capabilities.aslRecognition !== 'available') {
+      setTranscript('');
+      setConfidence(null);
+      setPendingRecognition(null);
+      setBlockedReason('provider-unavailable');
+      setRecognitionState('blocked');
+      onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', {
+        reason: 'sign_language_provider_not_verified',
+        signLanguage: profile.preferredSignLanguage
+      });
+      return;
+    }
+    setBlockedReason(null);
     const evaluation = AtlasConfidenceEngine.evaluate(recognitionInput.confidence);
     setTranscript(recognitionInput.text);
     setConfidence(recognitionInput.confidence);
 
     if (!evaluation.actionRecommended) {
       setPendingRecognition(recognitionInput);
+      setBlockedReason('low-confidence');
       setRecognitionState('blocked');
       onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', {
         text: recognitionInput.text,
@@ -121,7 +138,7 @@ export function AtlasAccessibility({
       confirmed: false,
       signLanguage: profile.preferredSignLanguage
     });
-  }, [recognitionInput, onActionTriggered, profile.preferredSignLanguage]);
+  }, [recognitionInput, onActionTriggered, profile.preferredInput, profile.preferredSignLanguage, selectedSignLanguage, capabilities.aslRecognition]);
 
   const closeAccessibilityCenter = () => {
     setIsOpen(false);
@@ -296,7 +313,9 @@ export function AtlasAccessibility({
               {recognitionState === 'blocked' && (
                 <div className="accessibility-decision blocked" role="alert">
                   <strong>Automation blocked</strong>
-                  <p>The recognition confidence is too low for ATLAS to execute the interpreted action.</p>
+                  <p>{blockedReason === 'provider-unavailable'
+                    ? 'No verified sign-language recognition provider is connected for the selected language. No action was executed.'
+                    : 'The recognition confidence is too low for ATLAS to execute the interpreted action.'}</p>
                 </div>
               )}
             </div>
