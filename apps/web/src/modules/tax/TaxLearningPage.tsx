@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import './taxLearning.css';
+import { TaxDepreciationPractice } from './TaxDepreciationPractice';
 
 const progressKey = 'atlas-tax-learning-2025-1099k-v1';
 const money = (amount: number) => '$' + amount.toLocaleString('en-US');
@@ -35,7 +36,8 @@ export function TaxLearningPage() {
 
   return (
     <div className="page-stack tax-learning">
-      <header className="tax-panel">
+      <nav className="tax-nav" aria-label="Lecciones de práctica"><a href="#receipts-practice">02 · Conciliación</a><a href="#depreciation-practice">03 · Depreciación y base</a></nav>
+      <header id="receipts-practice" className="tax-panel">
         <p className="eyebrow">Aprendizaje de taxes · práctica 02 · año tributario 2025</p>
         <h1>Conciliar el 1099-K con el Schedule C</h1>
         <p>Una sesión breve para preparar la declaración federal de una persona que trabaja por cuenta propia. Los importes son ficticios; esta práctica no crea ni envía una declaración.</p>
@@ -81,7 +83,7 @@ export function TaxLearningPage() {
         </form>
         {attempt && <div className="notice" role="status"><strong>{correct ? 'Correcto.' : 'Revisa tu cálculo.'}</strong> Ingresos brutos: {money(9000)} + {money(500)} = {money(9500)}. Comisiones: {money(1800)}. Ganancia neta: {money(7700)}. El depósito de {money(7200)} ya está incluido en el pago bruto del 1099-K; sumarlo de nuevo duplicaría ingresos.</div>}
       </section>
-      <p className="tax-learning-next">Siguiente práctica: base y depreciación de un activo usado en el negocio.</p>
+      <TaxDepreciationPractice />
     </div>
   );
 }
