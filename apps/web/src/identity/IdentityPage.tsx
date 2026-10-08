@@ -154,7 +154,7 @@ export function IdentityPage() {
               </div>
             </div>
           ) : mfaMode && mfaReady ? (
-            <AtlasMfaPanel />
+            <AtlasMfaPanel onSignOut={() => { clearAtlasSession(); setMfaReady(false); }} />
           ) : (
             <form className="identity-form" onSubmit={handleSubmit}>
               <label className="field">
