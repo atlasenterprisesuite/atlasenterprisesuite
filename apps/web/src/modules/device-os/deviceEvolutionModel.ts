@@ -40,7 +40,7 @@ export const ATLAS_HARDWARE_CONCEPTS: readonly AtlasHardwareConcept[] = [
     category: 'Firmware intelligence',
     purpose: 'Canonical hardware identity, capability inventory and truthful readiness model before higher-level ATLAS services execute.',
     status: 'software-surface',
-    dependency: 'Linux agent-observed Device DNA v1 is implemented; hardware attestation, pre-boot firmware access, macOS and Windows collectors remain gated.'
+    dependency: 'Linux and Windows agent-observed Device DNA v1 are implemented; hardware attestation, pre-boot firmware access and macOS collection remain gated.'
   },
   {
     id: 'phoenix',
@@ -120,7 +120,7 @@ export const ATLAS_HARDWARE_CONCEPTS: readonly AtlasHardwareConcept[] = [
     category: 'Performance',
     purpose: 'Capability-based runtime profiles that scale ATLAS from constrained legacy devices to high-performance workstations.',
     status: 'software-surface',
-    dependency: 'Live profile evidence may come from the authorized Linux Device DNA adapter; Performance still requires separately verified local-AI capability.'
+    dependency: 'Live profile evidence may come from authorized Linux or Windows Device DNA adapters; Performance still requires separately verified local-AI capability.'
   }
 ] as const;
 
