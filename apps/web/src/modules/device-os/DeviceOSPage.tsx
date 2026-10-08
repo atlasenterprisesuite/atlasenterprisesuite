@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { LocalNetworkAccessPanel } from './LocalNetworkAccessPanel';
 import { LocalControlPlanePanel } from './LocalControlPlanePanel';
+import { LocalCorePanel } from './LocalCorePanel';
 import { DeviceEvolutionPanel } from './DeviceEvolutionPanel';
 import { RemoteAssistPanel } from './RemoteAssistPanel';
 import {
@@ -86,6 +87,7 @@ export function DeviceOSPage() {
       </div>
 
       <DeviceEvolutionPanel />
+      <LocalCorePanel />
       <LocalNetworkAccessPanel />
       <RemoteAssistPanel />
       <LocalControlPlanePanel />
