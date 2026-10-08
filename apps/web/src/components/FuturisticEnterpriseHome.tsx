@@ -42,6 +42,13 @@ function normalizeSearch(value: string) {
   return value.trim().toLocaleLowerCase();
 }
 
+// A catalog count ratio, not a production certification score. The catalog
+// readiness and evolution axes are deliberately independent.
+export function getAtlasCatalogShare(count: number, total: number): number {
+  if (!Number.isFinite(count) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.min(100, Math.max(0, (count / total) * 100));
+}
+
 export function FuturisticEnterpriseHome() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -248,14 +255,20 @@ export function FuturisticEnterpriseHome() {
               <div><strong>Resumen general del sistema</strong><span>Estados independientes derivados del catálogo canónico</span></div>
               <Link to="/suite">Ver módulos →</Link>
             </header>
-            <div className="atlas-readiness-chart" role="img" aria-label={`${implemented} módulos con baseline operativo, ${activeEvolution} en evolución activa y ${gated} con conexión externa requerida`}>
+            <div
+              className="atlas-readiness-chart"
+              role="img"
+              aria-label={`Distribución del catálogo: ${implemented} módulos implementados, ${activeEvolution} en evolución activa y ${gated} con dependencia externa; no es certificación de producción`}
+            >
               <div className="chart-grid" aria-hidden="true" />
               <div className="chart-bars">
-                <div><span style={{ height: `${Math.max(18, (implemented / total) * 100)}%` }} /><small>Operativos</small></div>
-                <div><span style={{ height: `${Math.max(18, (activeEvolution / total) * 100)}%` }} /><small>En evolución</small></div>
-                <div><span style={{ height: `${Math.max(18, (gated / total) * 100)}%` }} /><small>Conexión</small></div>
+                <div><span style={{ height: `${getAtlasCatalogShare(implemented, total)}%` }} /><small>${implemented} implementados</small></div>
+                <div><span style={{ height: `${getAtlasCatalogShare(activeEvolution, total)}%` }} /><small>${activeEvolution} en evolución</small></div>
+                <div><span style={{ height: `${getAtlasCatalogShare(gated, total)}%` }} /><small>${gated} externos</small></div>
               </div>
             </div>
+            <p className="atlas-chart-note">Los estados pueden superponerse; no representan certificación de producción.</p>
+            <p className="atlas-chart-certification">Porcentaje de certificación: sin evidencia suficiente</p>
           </article>
 
           <article className="atlas-system-panel atlas-operational-feed">
