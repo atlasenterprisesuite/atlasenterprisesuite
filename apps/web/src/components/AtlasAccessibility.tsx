@@ -1,6 +1,7 @@
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AtlasConfidenceEngine } from '../services/AtlasConfidenceEngine';
+import { evaluateAccessibilityRecognitionGate, type AccessibilityRecognitionBlockReason } from '../services/accessibilityRecognitionGate';
 import type {
   AccessibilityAction,
   AccessibilityCapabilities,
@@ -20,6 +21,13 @@ interface AtlasAccessibilityProps {
 }
 
 type RecognitionState = 'idle' | 'ready' | 'confirmation' | 'blocked';
+
+const BLOCK_REASONS: Record<AccessibilityRecognitionBlockReason, string> = {
+  provider_not_configured: 'Sign-language recognition is unavailable until a validated provider is configured.',
+  sign_language_not_selected: 'Select a sign-language input and a specific sign language before recognition can run.',
+  sign_language_mismatch: 'The recognition provider language does not match the language you selected.',
+  invalid_recognition_input: 'The recognition provider returned missing or invalid recognition data.'
+};
 
 const CAPABILITY_LABELS: Array<[keyof AccessibilityCapabilities, string]> = [
   ['aslRecognition', 'Sign-language recognition'],
@@ -72,6 +80,7 @@ export function AtlasAccessibility({
   const [confidence, setConfidence] = useState<number | null>(null);
   const [recognitionState, setRecognitionState] = useState<RecognitionState>('idle');
   const [pendingRecognition, setPendingRecognition] = useState<AccessibilityRecognitionInput | null>(null);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   const capabilities = useMemo(
     () => ({ ...defaultCapabilities(), ...(capabilityOverrides || {}) }),
@@ -88,13 +97,35 @@ export function AtlasAccessibility({
   }, [initialProfile]);
 
   useEffect(() => {
-    if (!recognitionInput) return;
+    if (!recognitionInput) {
+      setTranscript('');
+      setConfidence(null);
+      setPendingRecognition(null);
+      setRecognitionState('idle');
+      setBlockedReason(null);
+      return;
+    }
+    const gate = evaluateAccessibilityRecognitionGate(capabilities, profile, recognitionInput);
+    if (!gate.allowed) {
+      setTranscript('');
+      setConfidence(null);
+      setPendingRecognition(null);
+      setRecognitionState('blocked');
+      setBlockedReason(BLOCK_REASONS[gate.reason]);
+      onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', {
+        reason: gate.reason,
+        signLanguage: profile.preferredSignLanguage
+      });
+      return;
+    }
+    setBlockedReason(null);
     const evaluation = AtlasConfidenceEngine.evaluate(recognitionInput.confidence);
     setTranscript(recognitionInput.text);
     setConfidence(recognitionInput.confidence);
 
     if (!evaluation.actionRecommended) {
-      setPendingRecognition(recognitionInput);
+      setPendingRecognition(null);
+      setBlockedReason('The recognition confidence is too low for ATLAS to execute the interpreted action.');
       setRecognitionState('blocked');
       onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', {
         text: recognitionInput.text,
@@ -120,7 +151,7 @@ export function AtlasAccessibility({
       confirmed: false,
       signLanguage: profile.preferredSignLanguage
     });
-  }, [recognitionInput, onActionTriggered, profile.preferredSignLanguage]);
+  }, [recognitionInput, onActionTriggered, capabilities, profile]);
 
   const closeAccessibilityCenter = () => {
     setIsOpen(false);
@@ -184,6 +215,14 @@ export function AtlasAccessibility({
 
   const confirmInterpretation = () => {
     if (!pendingRecognition || recognitionState !== 'confirmation') return;
+    const gate = evaluateAccessibilityRecognitionGate(capabilities, profile, pendingRecognition);
+    if (!gate.allowed) {
+      setPendingRecognition(null);
+      setRecognitionState('blocked');
+      setBlockedReason(BLOCK_REASONS[gate.reason]);
+      onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', { reason: gate.reason, signLanguage: profile.preferredSignLanguage });
+      return;
+    }
     const payload = {
       text: pendingRecognition.text,
       confidence: pendingRecognition.confidence,
@@ -246,7 +285,7 @@ export function AtlasAccessibility({
               <span><strong>Input</strong>{profile.preferredInput === 'asl' ? 'Sign language' : profile.preferredInput}</span>
               <span><strong>Output</strong>{profile.preferredOutput === 'asl_avatar' ? 'Sign-language avatar' : profile.preferredOutput.replace('_', ' ')}</span>
               <span><strong>Sign language</strong>{selectedSignLanguage ? `${selectedSignLanguage.languageName} (${selectedSignLanguage.acronym}) · ${selectedSignLanguage.iso639_3}` : 'Not selected'}</span>
-              <span><strong>Captions</strong>{profile.captionsEnabled ? 'Enabled' : 'Off'}</span>
+              <span><strong>Captions</strong>{profile.captionsEnabled ? (capabilities.liveCaptions === 'available' ? 'Preference on · provider available' : 'Preference on · no live provider') : 'Off'}</span>
             </div>
 
             <div className="accessibility-provider-boundary" aria-label="Accessibility provider status">
@@ -282,13 +321,13 @@ export function AtlasAccessibility({
               {recognitionState === 'blocked' && (
                 <div className="accessibility-decision blocked" role="alert">
                   <strong>Automation blocked</strong>
-                  <p>The recognition confidence is too low for ATLAS to execute the interpreted action.</p>
+                  <p>{blockedReason || 'Recognition cannot trigger an action without a configured provider, matching language and sufficient confidence.'}</p>
                 </div>
               )}
             </div>
 
             <div className="accessibility-quick-actions" aria-label="Accessibility quick actions">
-              <button type="button" onClick={enableCaptions}>{profile.captionsEnabled ? 'Captions enabled' : 'Enable captions'}</button>
+              <button type="button" onClick={enableCaptions}>{profile.captionsEnabled ? (capabilities.liveCaptions === 'available' ? 'Captions preference on' : 'Caption preference saved; provider unavailable') : 'Show caption panel'}</button>
               <label className="accessibility-inline-field">
                 <span>Haptic intensity</span>
                 <select value={profile.hapticIntensity} onChange={(event) => setHaptics(event.target.value as HapticIntensity)}>
