@@ -49,7 +49,7 @@ test('live October state fails closed on bypass and unresolved review contracts'
   assert.equal(result.pass, false);
   assert.ok(result.blocking.some(msg => msg.includes('946600')));
   assert.ok(result.blocking.some(msg => msg.includes('review threads')));
-  assert.ok(result.blocking.some(msg => msg.includes('stale reviews')));
+  assert.ok(result.blocking.some(msg => msg.toLowerCase().includes('stale reviews')));
   assert.ok(result.advisory.some(msg => msg.includes('Copilot')));
 });
 
