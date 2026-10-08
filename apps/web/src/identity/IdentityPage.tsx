@@ -7,6 +7,7 @@ import {
   signInAtlas
 } from '../lib/atlasSession';
 import { ATLAS_MODULES } from '../modules/registry';
+import { AtlasMfaPanel } from './AtlasMfaPanel';
 import './identity.css';
 
 const DEFAULT_TARGET = '/';
@@ -57,6 +58,7 @@ function identityErrorMessage(cause: unknown) {
 export function IdentityPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const mfaMode = useMemo(() => new URLSearchParams(location.search).get('security') === 'mfa', [location.search]);
   const target = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return resolveAtlasIdentityTarget(params.get('app'));
@@ -66,10 +68,19 @@ export function IdentityPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(() => Boolean(getAtlasAccessToken()));
+  const [mfaReady, setMfaReady] = useState(() => Boolean(getAtlasAccessToken()));
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!getAtlasAccessToken()) {
+      setCheckingSession(false);
+      return;
+    }
+
+    if (mfaMode) {
+      // TOTP enrollment is permitted for the current authenticated account
+      // even before the user belongs to an ATLAS organization.
+      setMfaReady(true);
       setCheckingSession(false);
       return;
     }
@@ -93,7 +104,7 @@ export function IdentityPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, target]);
+  }, [navigate, target, mfaMode]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,9 +114,14 @@ export function IdentityPage() {
     setError('');
     try {
       await signInAtlas(email.trim(), password);
-      await getActiveAtlasOrganization();
+      if (!mfaMode) await getActiveAtlasOrganization();
       setPassword('');
-      navigate(target, { replace: true });
+      if (mfaMode) {
+        setMfaReady(true);
+        setCheckingSession(false);
+      } else {
+        navigate(target, { replace: true });
+      }
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : '';
       if (message === 'no_active_organization' || message === 'authentication_required' || message === 'session_expired' || message === 'invalid_session') {
@@ -122,7 +138,9 @@ export function IdentityPage() {
       <header className="page-header identity-header">
         <p className="eyebrow">Secure access</p>
         <h1 id="atlas-identity-title">ATLAS Identity</h1>
-        <p>Authenticate once, validate your active organization, and continue into the authorized ATLAS workspace.</p>
+        <p>{mfaMode
+          ? 'Enroll or verify an authenticator for your own signed-in account. Privileged operations require AAL2.'
+          : 'Authenticate once, validate your active organization, and continue into the authorized ATLAS workspace.'}</p>
       </header>
 
       <div className="identity-grid">
@@ -135,6 +153,8 @@ export function IdentityPage() {
                 <p>Confirming identity and active organization access.</p>
               </div>
             </div>
+          ) : mfaMode && mfaReady ? (
+            <AtlasMfaPanel />
           ) : (
             <form className="identity-form" onSubmit={handleSubmit}>
               <label className="field">
@@ -172,6 +192,7 @@ export function IdentityPage() {
         <aside className="identity-context" aria-label="ATLAS Identity security boundary">
           <p className="eyebrow">Access boundary</p>
           <h2>Identity → Organization → Permission</h2>
+          {!mfaMode ? <p><a href="/identity?security=mfa">Configure your authenticator (MFA)</a></p> : null}
           <p>ATLAS only continues after Supabase Auth succeeds and an active organization membership is confirmed.</p>
           <dl>
             <div><dt>Destination</dt><dd>{target}</dd></div>
