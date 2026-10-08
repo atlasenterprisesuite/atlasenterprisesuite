@@ -22,7 +22,7 @@ function humanMfaError(error: unknown): string {
  * Signed-in account holder only. Factor enrollment must be intentional and
  * verified by Supabase Auth, never by a database admin or a local simulation.
  */
-export function AtlasMfaPanel() {
+export function AtlasMfaPanel({ onSignOut }: { onSignOut: () => void }) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [verifiedFactors, setVerifiedFactors] = useState<AtlasMfaFactor[]>([]);
   const [enrollment, setEnrollment] = useState<AtlasTotpEnrollment | null>(null);
@@ -88,7 +88,7 @@ export function AtlasMfaPanel() {
 
   if (phase === 'loading') return <p role="status">Checking your ATLAS Auth session…</p>;
   if (phase === 'error') {
-    return <div role="alert"><p>{error}</p><a href="/identity?security=mfa">Sign in again</a></div>;
+    return <div role="alert"><p>{error}</p><button type="button" onClick={onSignOut}>Sign out and try again</button></div>;
   }
   if (phase === 'verified') {
     return <div role="status">
