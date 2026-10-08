@@ -191,3 +191,10 @@ ATLAS_DEVICE_DNA_DISABLED=true
 
 macOS and Windows remain evidence-gated until dedicated collectors are implemented and tested. No compatibility is inferred from the Linux collector.
 
+
+
+## ATLAS Local Core — Windows/Ubuntu local-only console prototype
+
+A loopback-only client now reuses the existing `llama-server` runtime without exposing its API or silently switching to cloud providers. See [Wave 1 setup, threat boundaries and tests](../../docs/architecture/ATLAS_LOCAL_CORE_WAVE1.md).
+
+Run its tests with `npm run test:local-core`. The prototype **does not** establish device enrollment, memory encryption, production readiness, or that a model is currently running.
