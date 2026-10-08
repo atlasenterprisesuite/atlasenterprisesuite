@@ -235,7 +235,13 @@ function writeResult(path, result) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   // P0 is blocking. P1 remains observable but never impersonates a P0 failure.
-  const requiredPaths = [...contract.public_routes, ...contract.critical_network_routes, ...contract.critical_crm_routes];
+  // A route can belong to several P0 categories (e.g. /crm). Probe it once,
+  // then reuse its measured result for all applicable gate categories.
+  const requiredPaths = [...new Set([
+    ...contract.public_routes,
+    ...contract.critical_network_routes,
+    ...contract.critical_crm_routes
+  ])];
   const advisoryPaths = Array.isArray(contract.p1_routes) ? contract.p1_routes : [];
   const requiredResults = [];
 
@@ -257,11 +263,11 @@ async function main() {
   const advisoryFailures = advisoryResults.filter((result) => !result.ok);
   const challengeFailures = failures.filter((result) => result.reason === 'cloudflare-edge-challenge');
   const nonChallengeFailures = failures.filter((result) => result.reason !== 'cloudflare-edge-challenge');
-  const publicEnd = contract.public_routes.length;
-  const networkEnd = publicEnd + contract.critical_network_routes.length;
-  const publicResults = requiredResults.slice(0, publicEnd);
-  const criticalNetworkResults = requiredResults.slice(publicEnd, networkEnd);
-  const criticalCrmResults = requiredResults.slice(networkEnd);
+  // Preserve independent P0 assertions even if a measured route belongs to
+  // more than one required category.
+  const publicResults = requiredResults.filter((entry) => contract.public_routes.includes(entry.path));
+  const criticalNetworkResults = requiredResults.filter((entry) => contract.critical_network_routes.includes(entry.path));
+  const criticalCrmResults = requiredResults.filter((entry) => contract.critical_crm_routes.includes(entry.path));
   const protectedRoutesEnforced = protectedResults.every((entry) => entry.ok);
   const criticalNetworkRoutesReachable = criticalNetworkResults.every((entry) => entry.ok);
   const criticalCrmRoutesReachable = criticalCrmResults.every((entry) => entry.ok);
