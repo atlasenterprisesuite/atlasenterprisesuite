@@ -19,6 +19,8 @@ export type AccessibilityProfile = {
 };
 
 export type AccessibilityRecognitionInput = {
+  /** Explicit language identifier attested by the recognition adapter. */
+  signLanguage: string;
   text: string;
   confidence: number;
   sensitive: boolean;
