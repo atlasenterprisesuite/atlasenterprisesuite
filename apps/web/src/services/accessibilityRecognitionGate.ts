@@ -30,7 +30,7 @@ export function evaluateAccessibilityRecognitionGate(
   if (input.signLanguage !== profile.preferredSignLanguage) {
     return { allowed: false, reason: 'sign_language_mismatch' };
   }
-  if (!input.text.trim() || !Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1) {
+  if (typeof input.text !== 'string' || !input.text.trim() || !Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1) {
     return { allowed: false, reason: 'invalid_recognition_input' };
   }
   return { allowed: true };
