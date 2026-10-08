@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const capabilityRows = [
@@ -8,6 +9,12 @@ const capabilityRows = [
 ] as const;
 
 export function ConnectMeetingsPage() {
+  const [draft, setDraft] = useState('');
+  const [displayedText, setDisplayedText] = useState('');
+  const [textSize, setTextSize] = useState<'normal' | 'large' | 'extra-large'>('large');
+  const [position, setPosition] = useState<'inline' | 'side'>('inline');
+  const [isPaused, setIsPaused] = useState(false);
+  const fontSize = textSize === 'extra-large' ? '2rem' : textSize === 'large' ? '1.5rem' : '1rem';
   return (
     <section className="page-stack" aria-labelledby="atlas-meetings-title">
       <header className="page-header">
@@ -25,6 +32,35 @@ export function ConnectMeetingsPage() {
           </article>
         ))}
       </div>
+      <section aria-labelledby="atlas-manual-captions-title">
+        <h2 id="atlas-manual-captions-title">Manual communication display</h2>
+        <p>Type a message to display readable text. This is NOT automatic speech recognition, translation or signing.</p>
+        <label className="field" htmlFor="atlas-manual-message">
+          <span>Message to display</span>
+          <textarea id="atlas-manual-message" value={draft} onChange={(event) => setDraft(event.target.value)} rows={3} maxLength={2000} />
+        </label>
+        <div className="row-actions">
+          <button type="button" disabled={!draft.trim() || isPaused} onClick={() => setDisplayedText(draft.trim())}>Show message</button>
+          <button type="button" onClick={() => setIsPaused((paused) => !paused)}>{isPaused ? 'Resume updates' : 'Pause updates'}</button>
+          <button type="button" disabled={!displayedText} onClick={() => { setDisplayedText(''); setDraft(''); }}>Clear</button>
+        </div>
+        <div className="row-actions">
+          <label className="field" htmlFor="atlas-caption-size"><span>Text size</span>
+            <select id="atlas-caption-size" value={textSize} onChange={(event) => setTextSize(event.target.value as typeof textSize)}>
+              <option value="normal">Normal</option><option value="large">Large</option><option value="extra-large">Extra large</option>
+            </select>
+          </label>
+          <label className="field" htmlFor="atlas-caption-layout"><span>Layout preference</span>
+            <select id="atlas-caption-layout" value={position} onChange={(event) => setPosition(event.target.value as typeof position)}>
+              <option value="inline">Inline</option><option value="side">Wide reading panel</option>
+            </select>
+          </label>
+        </div>
+        <div role="region" aria-label="Manual message display" aria-live="polite" style={{ maxWidth: position === 'side' ? '60rem' : '40rem', padding: '1rem', border: '1px solid currentColor', borderRadius: '0.75rem', overflowWrap: 'anywhere' }}>
+          <p style={{ fontSize, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{displayedText || 'Messages you choose to display will appear here.'}</p>
+        </div>
+        <p role="status">{isPaused ? 'Message updates paused. Current text remains visible.' : 'Ready for manual text.'}</p>
+      </section>
       <section aria-labelledby="atlas-sign-workflow-title">
         <h2 id="atlas-sign-workflow-title">Accessible communication workflow</h2>
         <ol>
