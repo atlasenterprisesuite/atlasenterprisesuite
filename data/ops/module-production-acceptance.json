@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "policy": "fail-closed",
+  "verdicts": [
+    "FINAL_PRODUCTION_VERIFIED",
+    "PRODUCTION_VERIFIED_GATED",
+    "VERIFICATION_HOLD",
+    "NOT_PRODUCTION_VERIFIED"
+  ],
+  "required_dimensions": [
+    "canonical_navigation",
+    "ux_flow",
+    "responsive_desktop_tablet_mobile",
+    "ui_states_loading_empty_error_success_unauthorized",
+    "real_functionality_and_validation",
+    "persistence_after_refresh",
+    "tenant_scope_and_cross_tenant_denial",
+    "server_side_rbac",
+    "audit_and_secret_safety",
+    "integration_handshake_and_fail_closed",
+    "tests_build_deploy",
+    "public_e2e_exact_sha"
+  ],
+  "navigation_route_holds": [
+    {
+      "module_id": "care",
+      "path": "/care",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "Canonical navigation exposes ATLAS Care, but the route is not yet part of the canonical fail-closed production verification contract. It must not be reported as production verified until route evidence is added."
+    },
+    {
+      "module_id": "city",
+      "path": "/city",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "Canonical navigation exposes ATLAS Digital City, but the route is not yet part of the canonical fail-closed production verification contract. It must not be reported as production verified until route evidence is added."
+    }
+  ]
+}
