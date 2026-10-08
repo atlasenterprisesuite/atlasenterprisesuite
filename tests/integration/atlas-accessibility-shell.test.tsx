@@ -47,10 +47,11 @@ describe('AtlasAccessibility', () => {
     render(
       <MemoryRouter>
         <AtlasAccessibility
-          initialProfile={defaultAccessibilityProfile('user-a')}
+          initialProfile={{ ...defaultAccessibilityProfile('user-a'), preferredInput: 'asl', preferredSignLanguage: 'ase' }}
           onProfileChange={() => undefined}
           onActionTriggered={onActionTriggered}
-          recognitionInput={{ text: 'Open Human Resources', confidence: 0.85, sensitive: false }}
+          capabilities={{ aslRecognition: 'available' }}
+          recognitionInput={{ text: 'Open Human Resources', confidence: 0.85, sensitive: false, signLanguage: 'ase' }}
         />
       </MemoryRouter>
     );
@@ -66,10 +67,11 @@ describe('AtlasAccessibility', () => {
     render(
       <MemoryRouter>
         <AtlasAccessibility
-          initialProfile={defaultAccessibilityProfile('user-a')}
+          initialProfile={{ ...defaultAccessibilityProfile('user-a'), preferredInput: 'asl', preferredSignLanguage: 'ase' }}
           onProfileChange={() => undefined}
           onActionTriggered={onActionTriggered}
-          recognitionInput={{ text: 'Approve payroll', confidence: 0.5, sensitive: true }}
+          capabilities={{ aslRecognition: 'available' }}
+          recognitionInput={{ text: 'Approve payroll', confidence: 0.5, sensitive: true, signLanguage: 'ase' }}
         />
       </MemoryRouter>
     );
@@ -78,6 +80,34 @@ describe('AtlasAccessibility', () => {
     expect(screen.getByText(/automation blocked/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /request human interpreter/i })).toBeDisabled();
     expect(screen.getByText(/interpreter provider is not configured/i)).toBeInTheDocument();
+    expect(onActionTriggered).not.toHaveBeenCalledWith('EXECUTE_ACCESSIBILITY_ACTION', expect.anything());
+  });
+
+  it('blocks high-confidence recognition without a configured provider', () => {
+    const onActionTriggered = vi.fn();
+    render(<MemoryRouter><AtlasAccessibility
+      initialProfile={{ ...defaultAccessibilityProfile('user-a'), preferredInput: 'asl', preferredSignLanguage: 'ase' }}
+      onProfileChange={() => undefined}
+      onActionTriggered={onActionTriggered}
+      recognitionInput={{ text: 'Approve payroll', confidence: 1, sensitive: false, signLanguage: 'ase' }}
+    /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /open accessibility communication center/i }));
+    expect(screen.getByText(/unavailable until a validated provider/i)).toBeInTheDocument();
+    expect(onActionTriggered).not.toHaveBeenCalledWith('EXECUTE_ACCESSIBILITY_ACTION', expect.anything());
+    expect(onActionTriggered).toHaveBeenCalledWith('ACCESSIBILITY_INTERPRETATION_BLOCKED', expect.objectContaining({ reason: 'provider_not_configured' }));
+  });
+
+  it('blocks language mismatches even when a recognition adapter is available', () => {
+    const onActionTriggered = vi.fn();
+    render(<MemoryRouter><AtlasAccessibility
+      initialProfile={{ ...defaultAccessibilityProfile('user-a'), preferredInput: 'asl', preferredSignLanguage: 'ase' }}
+      onProfileChange={() => undefined}
+      onActionTriggered={onActionTriggered}
+      capabilities={{ aslRecognition: 'available' }}
+      recognitionInput={{ text: 'Open Human Resources', confidence: 1, sensitive: false, signLanguage: 'vsl' }}
+    /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /open accessibility communication center/i }));
+    expect(screen.getByText(/does not match the language/i)).toBeInTheDocument();
     expect(onActionTriggered).not.toHaveBeenCalledWith('EXECUTE_ACCESSIBILITY_ACTION', expect.anything());
   });
 });
