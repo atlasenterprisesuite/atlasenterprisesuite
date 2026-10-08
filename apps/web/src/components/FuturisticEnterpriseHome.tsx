@@ -6,7 +6,7 @@ import './futuristic-enterprise-home.css';
 import './atlas-visual-home.css';
 
 const readinessLabel = {
-  implemented: 'Operativo',
+  implemented: 'Implementado (sin certificación)',
   partial: 'En evolución',
   'external-gated': 'Conexión requerida'
 } as const;
@@ -163,7 +163,7 @@ export function FuturisticEnterpriseHome() {
 
           <div className="atlas-home-status" aria-label="ATLAS system status">
             <span className="atlas-home-status__label">SYSTEM</span>
-            <strong>{implemented} operativos</strong>
+            <strong>{implemented} implementados</strong>
             <span aria-hidden="true">·</span>
             <strong>{activeEvolution} en evolución</strong>
             <span aria-hidden="true">·</span>
@@ -244,7 +244,7 @@ export function FuturisticEnterpriseHome() {
 
         <section className="atlas-command-metrics" aria-label="ATLAS module readiness summary">
           <article><span className="metric-icon">◇</span><small>MÓDULOS</small><strong>{total}</strong><p>Registrados en el catálogo ATLAS</p></article>
-          <article><span className="metric-icon">✓</span><small>OPERATIVOS</small><strong>{implemented}</strong><p>Baseline operativo comprobado</p></article>
+          <article><span className="metric-icon">✓</span><small>IMPLEMENTADOS</small><strong>{implemented}</strong><p>Cobertura de código en el catálogo; no es certificación de producción</p></article>
           <article><span className="metric-icon">↗</span><small>EN EVOLUCIÓN</small><strong>{activeEvolution}</strong><p>Siguiente versión en desarrollo o validación</p></article>
           <article><span className="metric-icon">◎</span><small>CONEXIONES</small><strong>{gated}</strong><p>Dependencias externas gobernadas</p></article>
         </section>
@@ -273,13 +273,13 @@ export function FuturisticEnterpriseHome() {
 
           <article className="atlas-system-panel atlas-operational-feed">
             <header>
-              <div><strong>Capacidades operativas</strong><span>Derivadas del registro canónico</span></div>
+              <div><strong>Capacidades con código registrado</strong><span>Derivadas del registro canónico, no de pruebas de producción</span></div>
               <span className="live-chip"><i /> CATÁLOGO</span>
             </header>
             <div className="atlas-operation-list">
               {operational.map((module) => (
                 <Link key={module.id} to={module.route}>
-                  <span className="operation-mark">✓</span>
+                  <span className="operation-mark" aria-hidden="true">•</span>
                   <span><strong>{module.title}</strong><small>{module.area} · {module.description}</small></span>
                   <span aria-hidden="true">›</span>
                 </Link>
