@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assessRuleset, REQUIRED_CHECKS } from '../../../scripts/verify-github-live-ruleset.mjs';
+import { assessRuleset, REQUIRED_CHECKS } from '../../scripts/verify-github-live-ruleset.mjs';
 
 function compliant() {
   return {
