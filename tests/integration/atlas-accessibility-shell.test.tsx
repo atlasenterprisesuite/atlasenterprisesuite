@@ -50,9 +50,10 @@ describe('AtlasAccessibility', () => {
     render(
       <MemoryRouter>
         <AtlasAccessibility
-          initialProfile={defaultAccessibilityProfile('user-a')}
+          initialProfile={{ ...defaultAccessibilityProfile('user-a'), preferredInput: 'asl', preferredSignLanguage: 'ase' }}
           onProfileChange={() => undefined}
           onActionTriggered={onActionTriggered}
+          capabilities={{ aslRecognition: 'available' }}
           recognitionInput={{ text: 'Open Human Resources', confidence: 0.85, sensitive: false }}
         />
       </MemoryRouter>
@@ -69,9 +70,10 @@ describe('AtlasAccessibility', () => {
     render(
       <MemoryRouter>
         <AtlasAccessibility
-          initialProfile={defaultAccessibilityProfile('user-a')}
+          initialProfile={{ ...defaultAccessibilityProfile('user-a'), preferredInput: 'asl', preferredSignLanguage: 'ase' }}
           onProfileChange={() => undefined}
           onActionTriggered={onActionTriggered}
+          capabilities={{ aslRecognition: 'available' }}
           recognitionInput={{ text: 'Approve payroll', confidence: 0.5, sensitive: true }}
         />
       </MemoryRouter>
@@ -102,6 +104,25 @@ describe('AtlasAccessibility', () => {
       if (before) Object.defineProperty(navigator, 'vibrate', before);
       else Reflect.deleteProperty(navigator, 'vibrate');
     }
+  });
+
+  it('blocks even high-confidence injected recognition without a verified sign provider', () => {
+    const onActionTriggered = vi.fn();
+    render(
+      <MemoryRouter>
+        <AtlasAccessibility
+          initialProfile={{ ...defaultAccessibilityProfile('user-unverified'), preferredInput: 'asl', preferredSignLanguage: 'ase' }}
+          onProfileChange={() => undefined}
+          onActionTriggered={onActionTriggered}
+          recognitionInput={{ text: 'Approve financial transfer', confidence: 1, sensitive: false }}
+        />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole('button', { name: /open accessibility communication center/i }));
+    expect(screen.getByText(/no verified sign-language recognition provider is connected/i)).toBeInTheDocument();
+    expect(onActionTriggered).toHaveBeenCalledWith('ACCESSIBILITY_INTERPRETATION_BLOCKED',
+      expect.objectContaining({ reason: 'sign_language_provider_not_verified', signLanguage: 'ase' }));
+    expect(onActionTriggered).not.toHaveBeenCalledWith('EXECUTE_ACCESSIBILITY_ACTION', expect.anything());
   });
 
 });
