@@ -43,6 +43,12 @@ const creatorSections: ModuleExperienceSection[] = [
         to: '/studio/create?type=music'
       },
       {
+        label: 'DJ',
+        title: 'ATLAS DJ Universe',
+        description: 'Play and crossfade two local audio tracks with an accessible, browser-native mixer. Advanced DJ hardware and AI features remain planned.',
+        to: '/studio/dj'
+      },
+      {
         label: 'Voice',
         title: 'Voice Studio & Agents',
         description: 'Create governed voice and conversational experiences through the existing ATLAS Voice workspace.',
@@ -184,6 +190,7 @@ export function CreatorExperiencePage() {
         { label: 'Open Productivity Pro', to: '/studio/productivity-pro', variant: 'secondary' },
         { label: 'Create an image', to: '/studio/create?type=image', variant: 'secondary' },
         { label: 'Create a video', to: '/studio/create?type=video', variant: 'secondary' },
+        { label: 'Open DJ mixer', to: '/studio/dj', variant: 'secondary' },
         { label: 'Browse saved media', to: '/studio/library', variant: 'secondary' },
         { label: 'Check provider readiness', to: '/studio/providers', variant: 'secondary' }
       ]}
