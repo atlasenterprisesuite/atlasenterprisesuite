@@ -120,7 +120,7 @@ export function AtlasWelcomeExperience() {
   }
 
   return (
-    <section className="atlas-welcome" aria-label={t.eyebrow} lang={language}>
+    <section className={speechStatus === 'speaking' ? 'atlas-welcome atlas-welcome--speaking' : 'atlas-welcome'} aria-label={t.eyebrow} lang={language}>
       <div className="atlas-welcome-visual" aria-hidden="true">
         <div className="atlas-welcome-orbit" />
         <img src={AVATAR_SRC} alt="" draggable={false} width="320" height="320" />
