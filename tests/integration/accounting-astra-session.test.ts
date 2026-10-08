@@ -36,7 +36,7 @@ describe('ATLAS accounting Astra session bridge', () => {
       execution: { payments: false, journal_entries: false, mutations: false }
     };
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(insight), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -56,7 +56,7 @@ describe('ATLAS accounting Astra session bridge', () => {
   it('loads live bills and vendor data from the same RLS-scoped organization', async () => {
     localStorage.setItem('atlas_access_token', 'live-token');
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([
         {
           id: 'bill-1', org_id: 'org-1', vendor_id: 'vendor-1', bill_number: 'WAL-1', bill_date: '2026-08-20', due_date: null,
