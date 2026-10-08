@@ -1,11 +1,13 @@
 import {normalizeAgentContext} from './agentic-core.mjs';
 import {evaluateEmergencyFallbackPolicy,evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
+import {normalizeModelPin,selectVerifiedModel} from './model-policy.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
 export const INTELLIGENCE_CAPABILITIES=Object.freeze(['generation','reasoning']);
 export const REASONING_PROFILES=Object.freeze({fast:Object.freeze({id:'fast'}),balanced:Object.freeze({id:'balanced'}),deep:Object.freeze({id:'deep'})});
 export const INTELLIGENCE_PROVIDER_IDS=Object.freeze(['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','codex-sovereign']);
 export const INTELLIGENCE_MODES=Object.freeze(['auto',...INTELLIGENCE_PROVIDER_IDS,'council']);
+export const INTELLIGENCE_RUNTIME_IDS=Object.freeze(['native','openai-agents']);
 
 function fail(code,status=400,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function has(context,permission){return Array.isArray(context?.permissions)&&(context.permissions.includes(permission)||context.permissions.includes('*'));}
@@ -15,49 +17,73 @@ export function normalizeIntelligenceRequest(input={}){
   const module=String(input.module||'atlas').trim()||'atlas';
   const intent=String(input.intent||'balanced').trim();
   const mode=String(input.mode||'auto').trim();
+  const runtime=String(input.runtime||'native').trim()||'native';
   const message=String(input.message||'').trim();
+  const model=normalizeModelPin(input.model);
   if(!message)throw fail('invalid_input',400,{field:'message'});
   if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
   if(!INTELLIGENCE_MODES.includes(mode))throw fail('invalid_input',400,{field:'mode'});
+  if(!INTELLIGENCE_RUNTIME_IDS.includes(runtime))throw fail('invalid_input',400,{field:'runtime'});
   const capabilities_requested=Array.isArray(input.capabilities_requested)&&input.capabilities_requested.length?[...new Set(input.capabilities_requested.map(String))]:['generation'];
   for(const capability of capabilities_requested)if(!INTELLIGENCE_CAPABILITIES.includes(capability))throw fail('capability_unavailable',409,{capability});
-  return Object.freeze({module,intent,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
+  return Object.freeze({module,intent,mode,runtime,model,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
 }
 
-export function createIntelligenceRouter({providers=[],allowedProviders=[],preferredProviders=[]}={}){
+export function createIntelligenceRouter({providers=[],allowedProviders=[],preferredProviders=[],allowedModels=[]}={}){
   const ordered=[...providers].filter(p=>INTELLIGENCE_PROVIDER_IDS.includes(p?.id));
   const allowedSet=Array.isArray(allowedProviders)&&allowedProviders.length?new Set(allowedProviders.filter(id=>INTELLIGENCE_PROVIDER_IDS.includes(id))):null;
   const preferredSet=new Set(Array.isArray(preferredProviders)?preferredProviders.filter(id=>INTELLIGENCE_PROVIDER_IDS.includes(id)):[]);
+  const allowedModelList=Array.isArray(allowedModels)?allowedModels.map(normalizeModelPin).filter(Boolean):[];
   const autoOrdered=[...ordered.filter(p=>preferredSet.has(p?.id)),...ordered.filter(p=>!preferredSet.has(p?.id))];
   const allowed=provider=>!allowedSet||allowedSet.has(provider?.id);
+  const selectModel=(provider,profile,model)=>selectVerifiedModel({provider,profile,explicitModel:model,allowedModels:allowedModelList});
+  const eligibleWithModels=(candidates,profile,model)=>{
+    const eligible=[];let firstModelError=null;
+    for(const provider of candidates){
+      try{eligible.push({provider,selection:selectModel(provider,profile,model)});}catch(error){if(['model_unavailable','model_not_allowed'].includes(error?.code)){firstModelError=firstModelError||error;continue;}throw error;}
+    }
+    return {eligible,firstModelError};
+  };
   return Object.freeze({
-    route({mode='auto',intent='balanced',capabilities_requested=['generation']}={}){
+    route({mode='auto',intent='balanced',model=null,capabilities_requested=['generation']}={}){
       if(!INTELLIGENCE_MODES.includes(mode))throw fail('invalid_input',400,{field:'mode'});
       if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
       const capabilities=[...capabilities_requested];
+      const modelPin=normalizeModelPin(model);
       if(mode==='council'){
-        const compatible=ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
-        if(compatible.length<2)throw fail('capability_unavailable',503,{mode:'council',minimum_providers:2});
-        return Object.freeze({mode:'council',providers:compatible.map(p=>p.id),provider:compatible[0].id,profile:intent,capabilities,fallback_used:false,reason:'council_verified_capability_match'});
+        const baseCompatible=ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
+        const {eligible,firstModelError}=eligibleWithModels(baseCompatible,intent,modelPin);
+        if(eligible.length<2){if(modelPin&&firstModelError)throw firstModelError;throw fail('capability_unavailable',503,{mode:'council',minimum_providers:2});}
+        const modelsByProvider=Object.fromEntries(eligible.map(item=>[item.provider.id,item.selection.model]));
+        return Object.freeze({mode:'council',providers:eligible.map(item=>item.provider.id),provider:eligible[0].provider.id,model:modelPin,model_verification_state:modelPin?'verified':null,models_by_provider:modelsByProvider,profile:intent,capabilities,fallback_used:false,reason:'council_verified_capability_match'});
       }
       if(mode!=='auto'){
         const selected=ordered.find(p=>p.id===mode);
         if(!selected||selected.configured!==true)throw fail('provider_not_configured',503,{provider:mode});
         if(!supports(selected,intent,capabilities))throw fail(selected.verified===true?'capability_unavailable':'provider_unavailable',503,{provider:mode});
-        return Object.freeze({mode,providers:[selected.id],provider:selected.id,profile:intent,capabilities,fallback_used:false,reason:'explicit_provider'});
+        const selection=selectModel(selected,intent,modelPin);
+        return Object.freeze({mode,providers:[selected.id],provider:selected.id,model:selection.model,model_verification_state:selection.verification_state,profile:intent,capabilities,fallback_used:false,reason:'explicit_provider'});
       }
       const configured=autoOrdered.filter(p=>allowed(p)&&p?.configured===true);
       if(!configured.length)throw fail('provider_not_configured',503);
-      const compatible=autoOrdered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
-      if(!compatible.length)throw fail('capability_unavailable',503);
-      const selected=compatible[0];
+      const baseCompatible=autoOrdered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
+      if(!baseCompatible.length)throw fail('capability_unavailable',503);
+      const {eligible,firstModelError}=eligibleWithModels(baseCompatible,intent,modelPin);
+      if(!eligible.length){if(firstModelError)throw firstModelError;throw fail(modelPin?'model_unavailable':'capability_unavailable',modelPin?409:503,{model:modelPin});}
+      const selectedEntry=eligible[0],selected=selectedEntry.provider,selection=selectedEntry.selection;
       const originalIndex=ordered.findIndex(p=>p?.id===selected.id);
       const preferred=preferredSet.has(selected.id);
+      const modelsByProvider=Object.fromEntries(eligible.map(item=>[item.provider.id,item.selection.model]));
+      const verificationByProvider=Object.fromEntries(eligible.map(item=>[item.provider.id,item.selection.verification_state]));
       return Object.freeze({
         mode:'auto',
         providers:[selected.id],
         provider:selected.id,
-        fallback_providers:compatible.slice(1).map(p=>p.id),
+        model:selection.model,
+        model_verification_state:selection.verification_state,
+        models_by_provider:modelsByProvider,
+        model_verification_by_provider:verificationByProvider,
+        fallback_providers:eligible.slice(1).map(item=>item.provider.id),
         profile:intent,
         capabilities,
         fallback_used:preferred?false:originalIndex>0,
@@ -74,7 +100,7 @@ export function normalizeIntelligenceError(error){
   return {code:'internal_error',status:500,trace_id:null};
 }
 
-export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
+export function createIntelligenceGateway({router,provider,registry,council,runtimeRegistry,store,costPolicy,toolGateway,clock=Date.now}={}){
   if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
   const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:false,allow_council:false,zero_cost_providers:[],enforce_zero_cost:true};
   return Object.freeze({async execute({context,request}){
@@ -98,7 +124,21 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:route.mode,intent:normalized.intent});
       let result,executionRoute=route,executionCostDecision=costDecision;
       const fallbackAttempts=[];
-      if(route.mode==='council'){
+      if(normalized.runtime!=='native'){
+        if(route.mode==='council')throw fail('runtime_unavailable',409,{runtime:normalized.runtime,reason:'managed_runtime_council_not_supported'});
+        const managedRuntime=runtimeRegistry?.get?.(normalized.runtime);
+        if(!managedRuntime)throw fail('runtime_unavailable',503,{runtime:normalized.runtime});
+        const providerId=route.providers[0];
+        const candidateRoute=Object.freeze({
+          ...route,
+          providers:[providerId],
+          provider:providerId,
+          model:route.models_by_provider?.[providerId]??route.model??null,
+          model_verification_state:route.model_verification_by_provider?.[providerId]??route.model_verification_state??null,
+        });
+        result=await managedRuntime.execute({context:principal,route:candidateRoute,instructions,input:history,tool_policy:{tools:[],computer_use:false},trace_id});
+        executionRoute=candidateRoute;
+      }else if(route.mode==='council'){
         if(!council)throw fail('capability_unavailable',503,{mode:'council'});
         result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000});
       }else{
@@ -153,6 +193,8 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
             ...route,
             providers:[providerId],
             provider:providerId,
+            model:route.models_by_provider?.[providerId]??route.model??null,
+            model_verification_state:route.model_verification_by_provider?.[providerId]??route.model_verification_state??null,
             fallback_used:index>0||route.fallback_used,
             reason:emergencyFallback?'runtime_emergency_fallback_after_provider_failure':index>0?'runtime_fallback_after_provider_failure':route.reason
           });
@@ -185,10 +227,20 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
       const automaticApiCostUsd=Number.isFinite(executionCostDecision.estimated_automatic_cost_usd)?executionCostDecision.estimated_automatic_cost_usd:null;
-      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
-      await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
-      await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:{...(result.usage||{}),atlas_routing:routing},latency_ms:latency});
-      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
+      const runtimeBackend=normalized.runtime||'native';
+      const executionState=runtimeBackend==='native'?'completed':String(result.execution_state||'incomplete');
+      const runtimeEvidence={runtime_backend:runtimeBackend,provider_session_id:result.provider_session_id||null,execution_state:executionState,provider_status:result.status||null};
+      const routing={mode:executionRoute.mode,providers:executionRoute.providers,model:executionRoute.model??result.model??null,model_verification_state:executionRoute.model_verification_state??null,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,runtime:runtimeBackend,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
+      const usage={...(result.usage||{}),atlas_routing:routing,atlas_runtime:runtimeEvidence};
+      if(result.text){
+        await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,runtime:runtimeEvidence,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
+      }
+      if(executionState==='completed'){
+        await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage,latency_ms:latency});
+      }else if(typeof store.markBackgroundStarted==='function'){
+        await store.markBackgroundStarted({context:principal,id:telemetry.id,provider:result.provider,model:result.model,usage});
+      }
+      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:executionState==='completed'?'completed':String(result.status||executionState),output:result.text||null,provider:result.provider,providers:executionRoute.providers,model:result.model,runtime:runtimeBackend,provider_session_id:result.provider_session_id||null,mode:executionRoute.mode,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:Array.isArray(result.tools_executed)?result.tools_executed:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:executionState};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});

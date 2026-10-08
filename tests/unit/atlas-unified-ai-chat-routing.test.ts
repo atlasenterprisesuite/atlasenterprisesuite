@@ -10,6 +10,8 @@ type Provider = {
   verified: boolean;
   capabilities: string[];
   profiles: string[];
+  model?: string | null;
+  model_verification_state?: string;
 };
 
 const provider = (id: Provider['id'], overrides: Partial<Provider> = {}): Provider => ({
@@ -28,6 +30,16 @@ describe('ATLAS Unified AI routing', () => {
     expect(request.intent).toBe('balanced');
   });
 
+  it('normalizes an explicit model pin without changing provider mode', () => {
+    const request = normalizeIntelligenceRequest({
+      message: 'Review the repository.',
+      mode: 'openai',
+      model: '  gpt-6.1-sol  ',
+    });
+    expect(request.mode).toBe('openai');
+    expect(request.model).toBe('gpt-6.1-sol');
+  });
+
   it('routes an explicit provider without silent fallback', () => {
     const router = createIntelligenceRouter({
       providers: [provider('openai'), provider('bedrock'), provider('gemini'), provider('codex-sovereign')],
@@ -39,6 +51,47 @@ describe('ATLAS Unified AI routing', () => {
       capabilities: ['reasoning'],
       fallback_used: false,
     });
+  });
+
+  it('keeps model identity inside the selected provider boundary', () => {
+    const router = createIntelligenceRouter({
+      providers: [provider('openai', { model: 'gpt-6.1-sol', model_verification_state: 'verified' })],
+    });
+    const result = router.route({
+      mode: 'openai',
+      intent: 'balanced',
+      model: 'gpt-6.1-sol',
+      capabilities_requested: ['generation'],
+    });
+    expect(result.provider).toBe('openai');
+    expect(result.model).toBe('gpt-6.1-sol');
+    expect(result.model_verification_state).toBe('verified');
+    expect(result.providers).toEqual(['openai']);
+  });
+
+  it('fails closed when an explicitly pinned model is not verified', () => {
+    const router = createIntelligenceRouter({
+      providers: [provider('openai', { model: 'gpt-6-astra', model_verification_state: 'verified' })],
+    });
+    expect(() => router.route({
+      mode: 'openai',
+      intent: 'balanced',
+      model: 'unverified-model',
+      capabilities_requested: ['generation'],
+    })).toThrowError(/model_unavailable/);
+  });
+
+  it('enforces a non-empty server model allowlist', () => {
+    const router = createIntelligenceRouter({
+      providers: [provider('openai', { model: 'gpt-6-astra', model_verification_state: 'verified' })],
+      allowedModels: ['openai/gpt-6.1-sol'],
+    });
+    expect(() => router.route({
+      mode: 'openai',
+      intent: 'balanced',
+      model: 'gpt-6-astra',
+      capabilities_requested: ['generation'],
+    })).toThrowError(/model_not_allowed/);
   });
 
   it('fails closed when an explicitly selected provider is not verified', () => {
@@ -60,6 +113,28 @@ describe('ATLAS Unified AI routing', () => {
     expect(router.route({ mode: 'auto', intent: 'balanced', capabilities_requested: ['generation'] })).toMatchObject({
       mode: 'auto',
       providers: ['gemini'],
+      fallback_used: true,
+    });
+  });
+
+  it('auto mode skips providers whose verified model does not match an explicit model pin', () => {
+    const router = createIntelligenceRouter({
+      providers: [
+        provider('openai', { model: 'gpt-6-astra', model_verification_state: 'verified' }),
+        provider('gemini', { model: 'gpt-6.1-sol', model_verification_state: 'verified' }),
+      ],
+    });
+    expect(router.route({
+      mode: 'auto',
+      intent: 'balanced',
+      model: 'gpt-6.1-sol',
+      capabilities_requested: ['generation'],
+    })).toMatchObject({
+      mode: 'auto',
+      provider: 'gemini',
+      providers: ['gemini'],
+      model: 'gpt-6.1-sol',
+      model_verification_state: 'verified',
       fallback_used: true,
     });
   });

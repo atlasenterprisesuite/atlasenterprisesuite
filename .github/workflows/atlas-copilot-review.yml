@@ -1,0 +1,80 @@
+name: ATLAS Copilot Review Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: atlas-copilot-review-${{ github.event.pull_request.number || github.run_id }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  copilot-review-evidence:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      COPILOT_REVIEWER: copilot-pull-request-reviewer[bot]
+      requested_effort: balanced
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Request official GitHub Copilot reviewer
+        id: request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "Requesting reviewer: $COPILOT_REVIEWER" >> "$GITHUB_STEP_SUMMARY"
+          node scripts/atlas-copilot-review-evidence.mjs request \
+            --repo "$GITHUB_REPOSITORY" \
+            --pr "$PR_NUMBER" \
+            --head "$PR_HEAD_SHA" \
+            --output /tmp/atlas-copilot-review-request.json
+          cat /tmp/atlas-copilot-review-request.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect exact-SHA advisory review evidence
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for ATTEMPT in 1 2 3; do
+            node scripts/atlas-copilot-review-evidence.mjs collect \
+              --repo "$GITHUB_REPOSITORY" \
+              --pr "$PR_NUMBER" \
+              --head "$PR_HEAD_SHA" \
+              --output /tmp/atlas-copilot-review-evidence.json
+            COMPLETED="$(node -e "const e=require('/tmp/atlas-copilot-review-evidence.json');process.stdout.write(String(e.completed===true))")"
+            STATUS="$(node -e "const e=require('/tmp/atlas-copilot-review-evidence.json');process.stdout.write(String(e.status||''))")"
+            if [ "$COMPLETED" = "true" ] || [ "$STATUS" = "unavailable" ]; then
+              break
+            fi
+            if [ "$ATTEMPT" -lt 3 ]; then sleep 20; fi
+          done
+          {
+            echo '## ATLAS Copilot exact-SHA advisory evidence'
+            echo '- requested_effort: balanced'
+            echo '- Copilot review is advisory and never substitutes for deterministic gates.'
+            echo '```json'
+            cat /tmp/atlas-copilot-review-evidence.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

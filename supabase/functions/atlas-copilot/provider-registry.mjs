@@ -9,6 +9,7 @@ function safeDescriptor(adapter){
     profiles:Array.isArray(raw.profiles)?[...raw.profiles]:[],
     model:raw.model||null,
     models:raw.models&&typeof raw.models==='object'?{...raw.models}:undefined,
+    model_discovery:Array.isArray(raw.model_discovery)?raw.model_discovery.map(item=>({...item})):undefined,
     api:raw.api||null,
     backend:raw.backend||null,
     endpoint:raw.endpoint||null,
@@ -21,18 +22,22 @@ export function createProviderRegistry({providers=[]}={}){
   const map=new Map();
   for(const adapter of providers){const d=safeDescriptor(adapter);if(ORDER.includes(d.id)&&!map.has(d.id))map.set(d.id,adapter);}
   const get=id=>map.get(id)||null;
-  async function readiness({profile='balanced'}={}){
+  async function readiness({profile='balanced',model=null,provider=null}={}){
     return Promise.all(ORDER.map(async id=>{
       const adapter=get(id);
-      if(!adapter)return {id,state:'configuration-required',configured:false,verified:false,model:null,capabilities:[],profiles:[],error:'provider_not_configured'};
+      if(!adapter)return {id,state:'configuration-required',configured:false,verified:false,model:null,model_verification_state:'configuration-required',capabilities:[],profiles:[],error:'provider_not_configured'};
       const descriptor=safeDescriptor(adapter);let probe;
-      try{probe=await adapter.probe({profile});}catch(error){probe={configured:descriptor.configured,verified:false,provider:id,model:descriptor.model||descriptor.models?.[profile]||null,error:error?.code||'provider_unavailable'};}
+      const requestedModel=(provider===null||provider===id)?model:null;
+      try{probe=await adapter.probe({profile,...(requestedModel?{model:requestedModel}:{})});}catch(error){probe={configured:descriptor.configured,verified:false,provider:id,model:requestedModel||descriptor.model||descriptor.models?.[profile]||null,error:error?.code||'provider_unavailable'};}
+      const state=stateFor(probe);
       return {
         id,
-        state:stateFor(probe),
+        state,
         configured:probe?.configured===true,
         verified:probe?.verified===true,
         model:probe?.model||descriptor.model||descriptor.models?.[profile]||null,
+        model_verification_state:probe?.model_verification_state|| (probe?.verified===true?'verified':state),
+        model_discovery:descriptor.model_discovery,
         capabilities:descriptor.capabilities,
         profiles:descriptor.profiles,
         api:descriptor.api,

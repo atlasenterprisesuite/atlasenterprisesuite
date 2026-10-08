@@ -25,6 +25,12 @@ The protected release line must require the applicable exact-head checks, includ
 
 Feature-specific CI may add additional required checks for affected paths. The build/readiness workflow must run on pull requests to `main` as well as on `main` pushes so the required check is enforceable before merge and independently re-proven after merge. A passing build is not equivalent to a passing production deployment.
 
+## Copilot code review evidence
+
+For changes that enable the ATLAS Copilot review workflow, GitHub Copilot code review is additive advisory evidence. The workflow requests the official `copilot-pull-request-reviewer[bot]` reviewer and records evidence only for the exact current pull-request head SHA. Stale reviews do not count. The requested policy effort for cross-service/security-sensitive ATLAS changes is `balanced`; when GitHub does not expose the observed effort through the review API, ATLAS records `effort_unconfirmed` rather than inventing a value.
+
+Copilot comments or approvals do not substitute for ATLAS Consensus, CodeQL, `verify-build-readiness`, resolved material review conversations, or production verification. Promotion of a future Copilot finding class to a blocking rule requires a separate explicit repository policy change.
+
 ## Production completion
 
 After merge, the exact merged SHA must independently pass the production-readiness gate and the Cloudflare deployment/runtime verification pipeline. ATLAS Manager evidence must identify that exact SHA. Provider or edge blocks must be recorded as blocked rather than converted to success.
