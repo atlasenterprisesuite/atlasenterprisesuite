@@ -124,7 +124,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('classified_required_route_challenge_deferred');
     expect(verifier).toContain('classified_root_challenge_deferred');
     expect(verifier).toContain('manager_readiness_route_reachable');
-    expect(verifier).toContain('const verified = directlyVerified;');
+    expect(verifier).toContain('const verified = directlyVerified && integrityGatePassed;');
     expect(verifier).toContain('AbortSignal.timeout');
     expect(verifier).toContain("redirect: 'manual'");
     expect(verifier).toContain('blocked-cross-origin-redirect');
@@ -213,7 +213,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('challengeFailures.length > 0');
     expect(verifier).toContain('nonChallengeFailures.length === 0');
     expect(verifier).toContain('classified_required_route_challenge_deferred');
-    expect(verifier).toContain('const verified = directlyVerified;');
+    expect(verifier).toContain('const verified = directlyVerified && integrityGatePassed;');
     expect(verifier).toContain('requires_authorized_fallback: challengeDeferred');
     expect(verifier).not.toMatch(/challengeDeferred[\s\S]{0,260}productionCommitShaVerified/);
     expect(verifier).not.toContain('passed-edge-secured');
