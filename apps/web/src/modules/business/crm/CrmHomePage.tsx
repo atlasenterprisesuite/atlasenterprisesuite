@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { CrmConnectionView } from '../../../../../../packages/core/src/crm';
 import { canDisplayEvidenceBackedState } from '../../../../../../packages/core/src/evidence';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../../components/ModuleExperiencePage';
-import { CrmApiError, crmApi } from './crmApi';
+import { crmApi } from './crmApi';
 
 const workspaces = [
   { to: '/crm/contacts', title: 'Contacts', description: 'Customer people and relationship context.' },
@@ -49,22 +49,38 @@ const stateLabel: Record<CrmConnectionView['state'], string> = {
 };
 
 export function CrmHomePage() {
-  const [connection, setConnection] = useState<CrmConnectionView | null>(null);
+  const [hubSpot, setHubSpot] = useState<CrmConnectionView | null>(null);
+  const [salesforce, setSalesforce] = useState<{
+    connection: CrmConnectionView;
+    candidateCount: number;
+    canonicalRequired: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    crmApi<{ connection: CrmConnectionView }>('connection.status')
-      .then((result) => {
+    Promise.allSettled([
+      crmApi<{ connection: CrmConnectionView }>('connection.status'),
+      crmApi<{
+        connection: CrmConnectionView;
+        candidateCount: number;
+        canonicalRequired: boolean;
+      }>('connection.status', {}, 'salesforce')
+    ])
+      .then(([hubSpotResult, salesforceResult]) => {
         if (!active) return;
-        setConnection(result.connection);
-        setError(null);
-      })
-      .catch((caught: unknown) => {
-        if (!active) return;
-        setError(caught instanceof CrmApiError ? caught.message : 'CRM connection status is unavailable');
+        if (hubSpotResult.status === 'fulfilled') setHubSpot(hubSpotResult.value.connection);
+        if (salesforceResult.status === 'fulfilled') setSalesforce(salesforceResult.value);
+        const failures = [hubSpotResult, salesforceResult].filter(
+          (result) => result.status === 'rejected'
+        );
+        setError(
+          failures.length === 2
+            ? 'CRM provider connection status is unavailable.'
+            : null
+        );
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -72,25 +88,29 @@ export function CrmHomePage() {
     return () => { active = false; };
   }, []);
 
-  const connectionEvidence =
-    connection?.state === 'connected' &&
-    connection.providerAccountId &&
-    connection.lastVerifiedAt
-      ? {
-          authenticated: true,
-          authoritative: true,
-          source: 'hubspot:connection.status',
-          reference: connection.providerAccountId,
-          observedAt: connection.lastVerifiedAt
-        }
-      : null;
+  const evidenceBacked = (provider: 'hubspot' | 'salesforce', connection: CrmConnectionView | null) => {
+    const evidence =
+      connection?.state === 'connected' &&
+      connection.providerAccountId &&
+      connection.lastVerifiedAt
+        ? {
+            authenticated: true,
+            authoritative: true,
+            source: `${provider}:connection.status`,
+            reference: connection.providerAccountId,
+            observedAt: connection.lastVerifiedAt
+          }
+        : null;
 
-  const connectedVerified =
-    connection?.state === 'connected' &&
-    canDisplayEvidenceBackedState({
-      state: 'connected',
-      evidence: connectionEvidence
-    });
+    return connection?.state === 'connected' &&
+      canDisplayEvidenceBackedState({ state: 'connected', evidence });
+  };
+
+  const hubSpotVerified = evidenceBacked('hubspot', hubSpot);
+  const salesforceVerified =
+    !salesforce?.canonicalRequired &&
+    evidenceBacked('salesforce', salesforce?.connection ?? null);
+  const anyVerified = hubSpotVerified || salesforceVerified;
 
   return (
     <ModuleExperiencePage
@@ -102,49 +122,79 @@ export function CrmHomePage() {
       statusNote="No pipeline totals, revenue, customer counts or activity metrics are shown unless they come from an authorized live provider response."
     >
       <div className="crm-connection-summary" aria-live="polite">
-        {loading ? (
-          <span className="crm-status neutral">Checking connection</span>
-        ) : error ? (
-          <span className="crm-status error">Status unavailable</span>
-        ) : connection ? (
-          connection.state === 'connected' && !connectedVerified
-            ? <span className="crm-status neutral">Verification required</span>
-            : <span className={`crm-status ${connection.state}`}>{stateLabel[connection.state]}</span>
+        {loading ? <span className="crm-status neutral">Checking connections</span> : null}
+        {!loading && hubSpot ? (
+          <span className={`crm-status ${hubSpot.state}`}>
+            HubSpot · {stateLabel[hubSpot.state]}
+          </span>
+        ) : null}
+        {!loading && salesforce ? (
+          <span className={`crm-status ${salesforce.canonicalRequired ? 'degraded' : salesforce.connection.state}`}>
+            Salesforce · {salesforce.canonicalRequired ? 'Canonical org required' : stateLabel[salesforce.connection.state]}
+          </span>
         ) : null}
       </div>
 
       {error ? <div className="crm-banner error" role="alert">{error}</div> : null}
-      {connection && (connection.state !== 'connected' || !connectedVerified) ? (
-        <div className={`crm-banner ${connection.state === 'connected' ? 'neutral' : connection.state}`} role="status">
+
+      {salesforce?.canonicalRequired ? (
+        <div className="crm-banner degraded" role="status">
+          <strong>Salesforce canonical org required</strong>
+          <span>
+            ATLAS detected {salesforce.candidateCount} verified Salesforce organizations.
+            Inventory and classify them before Salesforce customer data is treated as canonical.
+          </span>
+          <Link className="text-link" to="/crm/integrations/salesforce">Review Salesforce organizations</Link>
+        </div>
+      ) : null}
+
+      {hubSpot && !hubSpotVerified && hubSpot.state !== 'unconfigured' ? (
+        <div className={`crm-banner ${hubSpot.state}`} role="status">
           <strong>
-            {connection.state === 'connected' && !connectedVerified
-              ? 'Verification required'
-              : stateLabel[connection.state]}
+            {hubSpot.state === 'connected' ? 'HubSpot · Verification required' : `HubSpot · ${stateLabel[hubSpot.state]}`}
           </strong>
           <span>
-            {connection.state === 'connected' && !connectedVerified
-              ? 'ATLAS received a connected state without complete authenticated provider evidence. The state remains unverified.'
-              : connection.state === 'degraded'
-                ? 'The provider is reachable, but one or more authorized CRM capabilities are unavailable.'
-                : connection.state === 'expired'
-                  ? 'The provider credential must be re-authorized before CRM records can be read.'
-                  : connection.state === 'revoked'
-                    ? 'This organization disconnected its CRM provider.'
-                    : connection.state === 'authorizing'
-                      ? 'Provider authorization has started but is not yet verified.'
-                      : connection.state === 'error'
-                        ? `Connection verification failed${connection.safeErrorCode ? ` (${connection.safeErrorCode})` : ''}.`
-                        : 'Connect and verify a CRM provider before customer records are available.'}
+            {hubSpot.state === 'degraded'
+              ? 'The provider is reachable, but one or more authorized CRM capabilities are unavailable.'
+              : hubSpot.state === 'expired'
+                ? 'The provider credential must be re-authorized before CRM records can be read.'
+                : hubSpot.state === 'revoked'
+                  ? 'This organization disconnected its CRM provider.'
+                  : hubSpot.state === 'authorizing'
+                    ? 'Provider authorization has started but is not yet verified.'
+                    : hubSpot.state === 'error'
+                      ? `Connection verification failed${hubSpot.safeErrorCode ? ` (${hubSpot.safeErrorCode})` : ''}.`
+                      : hubSpot.state === 'connected'
+                        ? 'Verification required: ATLAS received a connected state without complete authenticated provider evidence.'
+                        : 'HubSpot verification is required before customer records are available.'}
           </span>
           <Link className="text-link" to="/crm/integrations/hubspot">Open HubSpot connection</Link>
         </div>
       ) : null}
 
-      {connection?.state === 'connected' && connectedVerified ? (
+      {!loading && !anyVerified && !salesforce?.canonicalRequired ? (
+        <div className="crm-banner neutral" role="status">
+          <strong>No verified CRM provider</strong>
+          <span>Connect HubSpot or Salesforce before provider-backed customer records are available.</span>
+          <Link className="text-link" to="/crm/integrations">Open CRM integrations</Link>
+        </div>
+      ) : null}
+
+      {hubSpot && hubSpotVerified ? (
         <div className="crm-banner connected" role="status">
           <strong>HubSpot verified</strong>
-          <span>{connection.providerAccountLabel || 'Authorized provider account'}</span>
-          <small>Verified {new Date(connection.lastVerifiedAt as string).toLocaleString()}</small>
+          <span>{hubSpot.providerAccountLabel || 'Authorized HubSpot account'}</span>
+          <small>Verified {new Date(hubSpot.lastVerifiedAt as string).toLocaleString()}</small>
+          <Link className="text-link" to="/crm/contacts">Open HubSpot CRM</Link>
+        </div>
+      ) : null}
+
+      {salesforce && salesforceVerified ? (
+        <div className="crm-banner connected" role="status">
+          <strong>Salesforce verified</strong>
+          <span>{salesforce.connection.providerAccountLabel || 'Authorized Salesforce organization'}</span>
+          <small>Verified {new Date(salesforce.connection.lastVerifiedAt as string).toLocaleString()}</small>
+          <Link className="text-link" to="/crm/salesforce/contacts">Open Salesforce CRM</Link>
         </div>
       ) : null}
     </ModuleExperiencePage>
