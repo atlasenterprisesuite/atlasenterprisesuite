@@ -172,6 +172,25 @@
   .atlas-welcome-caption { flex-wrap: wrap; }
   .atlas-welcome-actions a, .atlas-welcome-actions button { flex: 1 1 9rem; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .atlas-welcome-orbit { animation: none; }
+@keyframes atlas-welcome-speaking {
+  from { transform: translateY(0) scale(1); filter: brightness(1); }
+  to { transform: translateY(-3px) scale(1.015); filter: brightness(1.1); }
 }
+@keyframes atlas-welcome-speech-bars {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+.atlas-welcome--speaking .atlas-welcome-visual img {
+  animation: atlas-welcome-speaking 350ms ease-in-out infinite alternate;
+}
+.atlas-welcome--speaking .atlas-welcome-waveform {
+  animation: atlas-welcome-speech-bars 250ms ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-welcome-orbit,
+  .atlas-welcome--speaking .atlas-welcome-visual img,
+  .atlas-welcome--speaking .atlas-welcome-waveform { animation: none; }
+}
+.accessibility-reduced-motion .atlas-welcome-orbit,
+.accessibility-reduced-motion .atlas-welcome--speaking .atlas-welcome-visual img,
+.accessibility-reduced-motion .atlas-welcome--speaking .atlas-welcome-waveform { animation: none; }
