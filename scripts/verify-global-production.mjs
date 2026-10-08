@@ -234,11 +234,18 @@ function writeResult(path, result) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  // P0 is blocking. P1 remains observable but never impersonates a P0 failure.
   const requiredPaths = [...contract.public_routes, ...contract.critical_network_routes, ...contract.critical_crm_routes];
+  const advisoryPaths = Array.isArray(contract.p1_routes) ? contract.p1_routes : [];
   const requiredResults = [];
 
   for (const path of requiredPaths) {
     requiredResults.push(await probePublicRoute(args.baseUrl, path));
+  }
+
+  const advisoryResults = [];
+  for (const path of advisoryPaths) {
+    advisoryResults.push(await probePublicRoute(args.baseUrl, path));
   }
 
   const protectedResults = [];
@@ -247,6 +254,7 @@ async function main() {
   }
 
   const failures = [...requiredResults, ...protectedResults].filter((result) => !result.ok);
+  const advisoryFailures = advisoryResults.filter((result) => !result.ok);
   const challengeFailures = failures.filter((result) => result.reason === 'cloudflare-edge-challenge');
   const nonChallengeFailures = failures.filter((result) => result.reason !== 'cloudflare-edge-challenge');
   const publicEnd = contract.public_routes.length;
@@ -278,15 +286,18 @@ async function main() {
     args.deferEdgeChallenge &&
     challengeOnlyOnRequiredRoutes &&
     protectedRoutesEnforced;
-  const verified = directlyVerified;
+  // A successful HTTP 200 is not production certification unless the published
+  // version tag matches the exact commit requested by CI.
+  const integrityGatePassed = !args.expectedSha || productionCommitShaVerified;
+  const verified = directlyVerified && integrityGatePassed;
 
   const result = {
     version: contract.version,
     production_origin: args.baseUrl,
     mode: args.mode,
     ok: verified,
-    status: directlyVerified
-      ? 'passed'
+    status: verified
+      ? (advisoryFailures.length ? 'passed-with-warnings' : 'passed')
       : challengeDeferred
         ? 'challenge-deferred'
         : args.mode === 'warning-only'
@@ -299,6 +310,9 @@ async function main() {
       manager_readiness_route_reachable: managerReadinessRouteReachable,
       critical_network_routes_reachable: criticalNetworkRoutesReachable,
       critical_crm_routes_reachable: criticalCrmRoutesReachable,
+      p0_routes_reachable: directlyVerified,
+      p1_routes_reachable: advisoryFailures.length === 0,
+      p1_routes: advisoryResults,
       protected_routes_enforced: protectedRoutesEnforced,
       production_commit_sha_verified: productionCommitShaVerified,
       observed_version_ids: versionIds,
@@ -309,7 +323,9 @@ async function main() {
       required_routes: requiredResults,
       protected_routes: protectedResults
     },
-    failure_count: failures.length
+    p0_failure_count: failures.length + (integrityGatePassed ? 0 : 1),
+    p1_warning_count: advisoryFailures.length,
+    failure_count: failures.length + (integrityGatePassed ? 0 : 1)
   };
 
   writeResult(args.jsonOutput, result);
