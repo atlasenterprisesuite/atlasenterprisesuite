@@ -19,6 +19,10 @@ export function ConnectHomePage() {
           <span>Broadcast · Configured</span><strong>ATLAS Network</strong>
           <p>Official bilingual ATLAS broadcast feed with notifications, reactions and governed handoff to Social Publisher.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/meetings">
+          <span>Meetings · Provider-gated</span><strong>ATLAS Meetings &amp; Sign Avatar</strong>
+          <p>Meeting readiness, explicit sign-language selection, caption and interpreter requirements. No unverified interpretation or calls.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/calling">
           <span>Voice · Provider-gated</span><strong>ATLAS Calling</strong>
           <p>Governed outbound calling with live provider verification, RBAC, consent controls and signed lifecycle evidence.</p>
