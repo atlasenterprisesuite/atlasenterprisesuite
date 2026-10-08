@@ -107,6 +107,7 @@ function DashboardPerspectives({ active }: { active?: string }) {
           key={view.id}
           to={`/analytics/${view.id}`}
           className="analytics-perspective-link"
+          aria-label={view.label}
           aria-current={active === view.id ? 'page' : undefined}
         >
           <span className="analytics-perspective-kicker">{view.label}</span>
