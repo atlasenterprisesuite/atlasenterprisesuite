@@ -73,6 +73,38 @@ describe('ATLAS Identity account-owned MFA', () => {
     expect(screen.getByRole('button', { name: 'Add an authenticator' })).toBeInTheDocument();
   });
 
+  it('steps up an existing verified authenticator to AAL2 without enrolling a new factor', async () => {
+    localStorage.setItem('atlas_access_token', 'test-existing-aal1');
+    localStorage.setItem('atlas_refresh_token', 'test-existing-refresh');
+    const fetchMock = vi.fn(async (url: string, init: RequestInit = {}) => {
+      if (url.endsWith('/auth/v1/user')) return Response.json({ id: 'user-one' });
+      if (url.endsWith('/auth/v1/factors') && (!init.method || init.method === 'GET')) {
+        return Response.json({
+          all: [{ id: FACTOR, factor_type: 'totp', status: 'verified', friendly_name: 'Existing TOTP' }]
+        });
+      }
+      if (url.endsWith(`/auth/v1/factors/${FACTOR}/challenge`)) return Response.json({ id: 'existing-challenge' });
+      if (url.endsWith(`/auth/v1/factors/${FACTOR}/verify`)) return Response.json({
+        access_token: newAal2Token(), refresh_token: 'existing-step-up-refresh'
+      });
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<MemoryRouter initialEntries={['/identity?security=mfa']}><App /></MemoryRouter>);
+
+    await screen.findByRole('option', { name: 'Existing TOTP' });
+    expect(screen.getByRole('button', { name: 'Verify MFA with Supabase' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Six-digit authenticator code'), { target: { value: '234567' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify MFA with Supabase' }));
+    await screen.findByRole('heading', { name: 'MFA verified' });
+
+    expect(fetchMock.mock.calls.some(([url, init]) =>
+      String(url).endsWith('/auth/v1/factors') && init?.method === 'POST'
+    )).toBe(false);
+    expect(localStorage.getItem('atlas_access_token')).toBe(newAal2Token());
+    expect(localStorage.getItem('atlas_refresh_token')).toBe('existing-step-up-refresh');
+  });
+
   it('fails closed when Supabase does not issue AAL2 after verifying the code', async () => {
     localStorage.setItem('atlas_access_token', 'test-initial-session');
     localStorage.setItem('atlas_refresh_token', 'test-initial-refresh');
