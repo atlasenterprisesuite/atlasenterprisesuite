@@ -1,4 +1,4 @@
-import type { ProviderReadiness } from './types';
+import type { ProviderReadiness } from './types.ts';
 
 export type CreativeMediaKind = 'image' | 'video' | 'music' | 'voice' | 'sfx' | 'graphic' | 'template';
 

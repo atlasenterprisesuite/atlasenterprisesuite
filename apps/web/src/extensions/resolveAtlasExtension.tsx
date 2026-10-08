@@ -12,6 +12,7 @@ import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { EventsHomePage } from '../modules/events/EventsHomePage';
 import { FrontierRoutes } from '../modules/frontier/FrontierRoutes';
 import { AtlasGestationPage } from '../modules/release/AtlasGestationPage';
+import { AtlasStewardshipReleasePage } from '../modules/release/AtlasStewardshipReleasePage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { SocialCommandCenterPage } from '../modules/creator/social/SocialCommandCenterPage';
 import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDeskPage';
@@ -25,6 +26,7 @@ import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
 import { AtlasPortalsPage } from '../modules/galaxy/AtlasPortalsPage';
 import { ProcureToPayPage } from '../modules/inventory/ProcureToPayPage';
 import { PeopleRoutes } from '../modules/people/PeopleRoutes';
+import { CareRoutes } from '../modules/care/CareRoutes';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
@@ -72,6 +74,10 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>;
   }
 
+  if (pathname === '/care' || pathname.startsWith('/care/')) {
+    return <RequireAtlasIdentity><CareRoutes /></RequireAtlasIdentity>;
+  }
+
   if (pathname === '/revenue') {
     return <RequireAtlasIdentity><RevenueIntegrationHub /></RequireAtlasIdentity>;
   }
@@ -90,6 +96,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/release/gestation') {
     return <RequireAtlasIdentity><AtlasGestationPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/release/stewardship') {
+    return <RequireAtlasIdentity><AtlasStewardshipReleasePage /></RequireAtlasIdentity>;
   }
 
   if (pathname.startsWith('/assistant/oracle')) {

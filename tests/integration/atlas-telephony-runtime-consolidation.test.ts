@@ -22,4 +22,11 @@ describe('ATLAS quota-safe Telnyx runtime consolidation', () => {
     expect(webhookRuntime).toContain('verifyTelnyxWebhook');
     expect(webhookRuntime).toContain('atlas_apply_call_provider_state');
   });
+  it('does not bypass native Apple Voice authentication when Telnyx webhook JWT is disabled', () => {
+    expect(nativeVerification).toContain("req.method === 'POST' && api === 'telnyx-webhook'");
+    expect(nativeVerification).toContain('handleTelnyxWebhook(req)');
+    expect(nativeVerification).toContain('const ctx = await resolveContext(req)');
+    expect(webhookRuntime).toContain('verifyTelnyxWebhook');
+  });
+
 });

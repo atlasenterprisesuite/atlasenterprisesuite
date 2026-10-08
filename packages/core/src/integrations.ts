@@ -1,6 +1,7 @@
 export const ATLAS_INTEGRATION_PROVIDERS = [
   { id: 'google', label: 'Google Workspace', area: 'productivity', authKind: 'oauth2' },
   { id: 'hubspot', label: 'HubSpot', area: 'crm', authKind: 'oauth2' },
+  { id: 'salesforce', label: 'Salesforce', area: 'crm', authKind: 'oauth2' },
   { id: 'cloudflare', label: 'Cloudflare', area: 'platform', authKind: 'service_token' },
   { id: 'stripe', label: 'Stripe', area: 'payments', authKind: 'api_key' },
   { id: 'authorize_net', label: 'Authorize.Net', area: 'payments', authKind: 'api_key' },

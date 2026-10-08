@@ -6,7 +6,7 @@ import {
   getCachedAtlasShellOrganization,
   type AtlasShellOrganization
 } from '../lib/atlasSession';
-import { ATLAS_NAV_ITEMS } from '../modules/registry';
+import { ATLAS_MODULES, ATLAS_NAV_ITEMS } from '../modules/registry';
 import { searchAtlasNavigation } from '../navigation/atlasNavigation';
 import {
   ATLAS_ACCESSIBILITY_PROFILE_EVENT,
@@ -121,6 +121,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
       : 'Public workspace';
   const roleLabel = organization ? organization.role.toUpperCase() : hasSession ? 'CHECKING' : 'PUBLIC';
   const shellClassName = [
+    (location.pathname === '/voice/studio' || location.pathname === '/studio/voice') ? 'atlas-shell-voice-studio' : '',
     'atlas-shell',
     'atlas-shell-futuristic',
     accessibilityProfile.highContrast ? 'accessibility-high-contrast' : '',
@@ -133,11 +134,37 @@ export function AtlasShell({ children }: { children: ReactNode }) {
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'AT';
   const closeMobileNav = () => setMobileNavOpen(false);
-  const voiceOwnsAssistantSurface = location.pathname === '/studio/voice'
+  const routeOwnsAssistantSurface = location.pathname === '/assistant'
+    || location.pathname.startsWith('/assistant/')
+    || location.pathname === '/studio/voice'
     || location.pathname === '/voice'
     || location.pathname.startsWith('/voice/');
 
   const searchResults = useMemo(() => searchAtlasNavigation(searchQuery), [searchQuery]);
+
+  const navigationGroups = useMemo(() => {
+    const grouped = new Map<string, Array<{ to: string; label: string }>>();
+    const moduleAreaByRoute = new Map(
+      ATLAS_MODULES
+        .filter((module) => module.showInNavigation)
+        .map((module) => [module.route, module.area] as const)
+    );
+
+    for (const item of ATLAS_NAV_ITEMS) {
+      if (item.to === '/' || item.to === '/suite') continue;
+
+      const area = moduleAreaByRoute.get(item.to)
+        ?? (item.to.startsWith('/finance/') ? 'Finance' : 'Platform');
+      const items = grouped.get(area) || [];
+      items.push({ to: item.to, label: item.label });
+      grouped.set(area, items);
+    }
+
+    return Array.from(grouped.entries()).map(([area, items]) => ({ area, items }));
+  }, []);
+
+  const isRouteActive = (to: string) =>
+    to === '/' ? location.pathname === '/' : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -181,18 +208,58 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav aria-label="ATLAS modules">
-          {ATLAS_NAV_ITEMS.map((item, index) => (
+          <div className="atlas-nav-primary">
             <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
+              to="/"
+              end
               className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
               onClick={closeMobileNav}
             >
-              <span className="atlas-nav-glyph" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-              <span>{item.label}</span>
+              <span className="atlas-nav-glyph" aria-hidden="true">HM</span>
+              <span>Home</span>
             </NavLink>
-          ))}
+            <NavLink
+              to="/suite"
+              className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+              onClick={closeMobileNav}
+            >
+              <span className="atlas-nav-glyph" aria-hidden="true">ALL</span>
+              <span>All Modules</span>
+            </NavLink>
+          </div>
+
+          <div className="atlas-nav-groups">
+            {navigationGroups.map((group) => {
+              const groupActive = group.items.some((item) => isRouteActive(item.to));
+              return (
+                <details
+                  key={`${group.area}-${groupActive ? 'active' : 'idle'}`}
+                  className={groupActive ? 'atlas-nav-group is-active' : 'atlas-nav-group'}
+                  open={groupActive || undefined}
+                >
+                  <summary className="atlas-nav-group-summary">
+                    <span>{group.area}</span>
+                    <small>{group.items.length}</small>
+                    <span className="atlas-nav-chevron" aria-hidden="true">⌄</span>
+                  </summary>
+                  <div className="atlas-nav-submenu">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+                        onClick={closeMobileNav}
+                      >
+                        <span className="atlas-nav-glyph" aria-hidden="true">{item.label.slice(0, 3).toUpperCase()}</span>
+                        <span>{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+
           <NavLink
             to="/settings/accessibility/communication"
             className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
@@ -293,7 +360,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         </header>
 
         <main>{children}</main>
-        {organization && !voiceOwnsAssistantSurface ? <AtlasAssistant /> : null}
+        {organization && !routeOwnsAssistantSurface ? <AtlasAssistant /> : null}
       </div>
       <AtlasAccessibility
         initialProfile={accessibilityProfile}

@@ -7,7 +7,9 @@ import {
   type ImageEditRequest,
   type ImageEditVisibility
 } from '../../../../../../packages/creator/image_edit';
-import { exportCreatorPrompt, submitImageEdit } from '../../../lib/creatorApi';
+import { exportCreatorPrompt } from '../../../lib/creatorApi';
+import { getImageEditReadiness, submitImageEdit } from './imageLabApi';
+import './imageLabLive.css';
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -34,6 +36,8 @@ export function ImageLabWorkspace({ engines }: Props) {
   const [submissionState, setSubmissionState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [promptExport, setPromptExport] = useState<{ prompt: string; adaptationNotes: string[] } | null>(null);
   const [promptExportState, setPromptExportState] = useState<'idle' | 'running' | 'error'>('idle');
+  const [liveImageEngine, setLiveImageEngine] = useState<CreativeEngineReadiness | null>(null);
+  const [generatedUrl, setGeneratedUrl] = useState('');
   const pointSequence = useRef(0);
   const promptExportRequestSequence = useRef(0);
   const pointEditorRefs = useRef(new Map<string, HTMLInputElement>());
@@ -41,6 +45,14 @@ export function ImageLabWorkspace({ engines }: Props) {
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+
+  useEffect(() => {
+    let active = true;
+    getImageEditReadiness()
+      .then(engine => { if (active) setLiveImageEngine(engine); })
+      .catch(() => { if (active) setLiveImageEngine(null); });
+    return () => { active = false; };
+  }, []);
 
   const pointInstructions = useMemo(() => points
     .filter(point => point.instruction.trim())
@@ -65,11 +77,14 @@ export function ImageLabWorkspace({ engines }: Props) {
     setPromptExportState('idle');
   }, [promptPlanKey]);
 
-  const executableEngine = useMemo(() => engines.find(engine =>
-    engine.ready &&
-    engine.mediaKinds.includes('image') &&
-    engine.executionClass !== 'prompt-export-only'
-  ) ?? null, [engines]);
+  const executableEngine = useMemo(() => {
+    if (liveImageEngine?.ready && liveImageEngine.mediaKinds.includes('image')) return liveImageEngine;
+    return engines.find(engine =>
+      engine.ready &&
+      engine.mediaKinds.includes('image') &&
+      engine.executionClass !== 'prompt-export-only'
+    ) ?? null;
+  }, [engines, liveImageEngine]);
 
   const promptExportReady = engines.some(engine => engine.engineId === 'prompt-export' && engine.ready && engine.mediaKinds.includes('image'));
   const safePreviewUrl = previewUrl.startsWith('blob:') ? encodeURI(previewUrl) : '';
@@ -82,6 +97,7 @@ export function ImageLabWorkspace({ engines }: Props) {
     setNotice('');
     setSubmissionState('idle');
     setPreviewDecoded(false);
+    setGeneratedUrl('');
     setPoints([]);
 
     if (!file) {
@@ -157,6 +173,7 @@ export function ImageLabWorkspace({ engines }: Props) {
     setPreviewDecoded(false);
     setSourceFile(null);
     setPreviewUrl('');
+    setGeneratedUrl('');
     setPoints([]);
     setNotice('The selected file could not be decoded as a valid image.');
   }
@@ -204,6 +221,7 @@ export function ImageLabWorkspace({ engines }: Props) {
     }
 
     setSubmissionState('running');
+    setGeneratedUrl('');
     setNotice('');
     try {
       const result = await submitImageEdit(sourceFile, request);
@@ -216,8 +234,10 @@ export function ImageLabWorkspace({ engines }: Props) {
         (typeof (asset as { storagePath?: unknown }).storagePath === 'string' || typeof (asset as { storage_path?: unknown }).storage_path === 'string')
       );
       if (!persisted) throw new Error('image_asset_not_persisted');
+      if (!result.signed_url || typeof result.signed_url !== 'string') throw new Error('image_preview_not_available');
+      setGeneratedUrl(result.signed_url);
       setSubmissionState('success');
-      setNotice('Image edit submitted and persisted successfully.');
+      setNotice('Image edit generated, persisted, and ready to review.');
     } catch (error) {
       setSubmissionState('error');
       setNotice(error instanceof Error ? error.message : 'image_edit_failed');
@@ -298,6 +318,10 @@ export function ImageLabWorkspace({ engines }: Props) {
         </div>}
 
         {sourceFile && <div className="image-lab-file-meta"><strong>{sourceFile.name}</strong><span>{(sourceFile.size / 1024 / 1024).toFixed(2)} MiB</span></div>}
+        {generatedUrl && <section className="image-lab-generated" aria-live="polite">
+          <div><p className="eyebrow">Persisted output</p><h2>Generated design</h2></div>
+          <img src={generatedUrl} alt="Generated design" />
+        </section>}
       </section>
 
       <aside className="image-lab-panel image-lab-points">

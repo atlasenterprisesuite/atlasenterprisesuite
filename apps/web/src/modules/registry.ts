@@ -1,6 +1,7 @@
 // Describes canonical implementation/integration coverage only.
 // It is never a production-verification verdict. Production readiness is derived from current gate evidence.
 export type AtlasModuleReadiness = 'implemented' | 'partial' | 'external-gated';
+export type AtlasModuleEvolution = 'active' | 'continuous' | 'none';
 
 export type AtlasModuleDefinition = {
   id: string;
@@ -9,6 +10,7 @@ export type AtlasModuleDefinition = {
   area: string;
   route: string;
   readiness: AtlasModuleReadiness;
+  evolution?: AtlasModuleEvolution;
   requiresAuth: boolean;
   description: string;
   showInNavigation: boolean;
@@ -143,8 +145,8 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     area: 'Finance',
     route: '/finance/pay',
     readiness: 'external-gated',
-    requiresAuth: true,
-    description: 'Provider-neutral wallet, issuing and payout orchestration with regulated providers and rails fail-closed until verified.',
+    requiresAuth: false,
+    description: 'Public ATLAS Pay product experience with the operational wallet, balance evidence, issuing and payout workspace protected behind identity.',
     showInNavigation: true
   },
   {
@@ -269,6 +271,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'care',
+    title: 'ATLAS Care',
+    navLabel: 'Care',
+    area: 'Health',
+    route: '/care',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Governed participant and family care coordination across eligibility, caregivers, care plans, timecards and payroll handoff with payer/EHR integrations fail-closed.',
+    showInNavigation: true
+  },
+  {
     id: 'insurance',
     title: 'ATLAS Insurance',
     navLabel: 'Insurance',
@@ -352,6 +365,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     area: 'Mobility',
     route: '/ride',
     readiness: 'implemented',
+    evolution: 'active',
     requiresAuth: true,
     description: 'Governed mobility and driver-compliance workflows.',
     showInNavigation: true

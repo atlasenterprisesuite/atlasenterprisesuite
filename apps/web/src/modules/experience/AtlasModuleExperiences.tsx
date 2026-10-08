@@ -13,6 +13,7 @@ const enterpriseSections: ModuleExperienceSection[] = [
       { label: 'People', title: 'Payroll', description: 'Governed payroll workspace using the authenticated ATLAS organization.', to: '/payroll' },
       { label: 'Learning', title: 'Learning', description: 'Structured practice and neuroplasticity programs with visible safety boundaries.', to: '/learning' },
       { label: 'Health', title: 'ATLAS Health', description: 'Governed research and wellbeing tooling with explicit evidence boundaries.', to: '/health' },
+      { label: 'Care', title: 'ATLAS Care', description: 'Governed participant, caregiver, plan and timecard operations with payer/EHR gates.', to: '/care' },
       { label: 'Creative', title: 'Creator Studio', description: 'Image, video, voice and content intelligence workspaces.', to: '/studio' },
       { label: 'Execution', title: 'Guided Execution', description: 'Launch governed workflows through the shared execution engine.', to: '/execution/manager/readiness' }
     ]

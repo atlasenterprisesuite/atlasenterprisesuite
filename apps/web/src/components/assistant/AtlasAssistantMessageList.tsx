@@ -1,8 +1,14 @@
+import { useEffect, useRef } from 'react';
 import type { AtlasAssistantMessage } from '../../assistant/types';
 
 export function AtlasAssistantMessageList({ messages }: { messages: AtlasAssistantMessage[] }) {
+  const container = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = container.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [messages]);
   return (
-    <div className="atlas-assistant-messages" aria-live="polite" aria-label="ATLAS Assistant conversation">
+    <div ref={container} className="atlas-assistant-messages" aria-live="polite" aria-label="ATLAS Assistant conversation">
       {messages.length === 0 ? (
         <div className="atlas-assistant-empty">
           <strong>ATLAS Assistant</strong>

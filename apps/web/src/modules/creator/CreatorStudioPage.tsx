@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { CreatorAsset, ProductionSummary } from '../../../../../packages/creator/types';
-import type { CreativeEngineReadiness, CreativeMediaKind } from '../../../../../packages/creator/creative_engine';
+import { rankCreativeEngines, type CreativeEngineReadiness, type CreativeMediaKind } from '../../../../../packages/creator/creative_engine';
 import { buildCreativePlan, type CreativePlan } from '../../../../../packages/creator/creative_plan';
 import { compileSpecializedPrompt, type PromptExportPackage } from '../../../../../packages/creator/prompt_engine';
-import { exportCreatorPrompt, listCreativeEngines, listCreatorAssets, listCreatorProductions, saveCreativePlan } from '../../lib/creatorApi';
+import { exportCreatorPrompt, generateCreatorMusic, listCreativeEngines, listCreatorAssets, listCreatorProductions, saveCreativePlan } from '../../lib/creatorApi';
 import { CreatorExperiencePage } from '../experience/CreatorExperiencePage';
 import { DirectorWorkspace } from './director/DirectorWorkspace';
 import { ImageLabWorkspace } from './image/ImageLabWorkspace';
@@ -65,6 +65,9 @@ export function CreatorWorkspace() {
   const [planState, setPlanState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [promptPackage, setPromptPackage] = useState<PromptExportPackage | null>(null);
   const [exportState, setExportState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [generationState, setGenerationState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [musicAudioUrl, setMusicAudioUrl] = useState('');
+  const [musicGenerationMeta, setMusicGenerationMeta] = useState<{ songId: string | null; provider: string | null; model: string | null } | null>(null);
   const canSubmit = prompt.trim().length >= 8;
 
   useEffect(() => {
@@ -75,14 +78,18 @@ export function CreatorWorkspace() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (musicAudioUrl) URL.revokeObjectURL(musicAudioUrl);
+    };
+  }, [musicAudioUrl]);
+
   if (kind === 'image') return <ImageLabWorkspace engines={engines} />;
   if (kind === 'video') return <DirectorWorkspace />;
 
-  const executable = engines.some(engine =>
-    engine.ready &&
-    engine.mediaKinds.includes(kind) &&
-    engine.executionClass !== 'prompt-export-only'
-  );
+  const executableEngine = rankCreativeEngines(engines, kind)
+    .find(engine => engine.ready && engine.executionClass !== 'prompt-export-only');
+  const executable = Boolean(executableEngine);
   const promptExportReady = engines.some(engine =>
     engine.engineId === 'prompt-export' &&
     engine.ready &&
@@ -97,6 +104,12 @@ export function CreatorWorkspace() {
     setSelectedKinds(current => current.includes(next) ? current : [...current, next]);
     setNotice('');
     setPromptPackage(null);
+    if (musicAudioUrl) {
+      URL.revokeObjectURL(musicAudioUrl);
+      setMusicAudioUrl('');
+      setMusicGenerationMeta(null);
+    }
+    setGenerationState('idle');
   }
 
   function toggleDeliverable(mediaKind: CreativeMediaKind) {
@@ -163,17 +176,39 @@ export function CreatorWorkspace() {
     }
   }
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!canSubmit) {
       setNotice('Describe the result in at least 8 characters.');
       return;
     }
-    if (!executable) {
+    if (!executableEngine) {
       setNotice('Generation is not submitted: no verified executable engine is ready for this media type.');
       return;
     }
-    setNotice('A verified engine is available, but Phase 2 remains a planning workflow until its generation adapter is explicitly invoked.');
+    if (kind !== 'music' || executableEngine.engineId !== 'elevenlabs-music-v2') {
+      setNotice('A verified engine is available, but this media adapter is not executable from the unified composer yet.');
+      return;
+    }
+
+    setGenerationState('running');
+    setNotice('');
+    try {
+      const result = await generateCreatorMusic({
+        prompt: specializedPrompt?.prompt || prompt,
+        durationSeconds: 60,
+        instrumental: true
+      });
+      if (musicAudioUrl) URL.revokeObjectURL(musicAudioUrl);
+      const nextUrl = URL.createObjectURL(result.blob);
+      setMusicAudioUrl(nextUrl);
+      setMusicGenerationMeta({ songId: result.songId, provider: result.provider, model: result.model });
+      setGenerationState('success');
+      setNotice('Music generated successfully · AI-generated instrumental.');
+    } catch (error) {
+      setGenerationState('error');
+      setNotice(error instanceof Error ? error.message : 'music_generation_failed');
+    }
   }
 
   async function exportPrompt() {
@@ -183,10 +218,11 @@ export function CreatorWorkspace() {
     try {
       const exported = await exportCreatorPrompt({
         mediaKind: kind,
-        brief: specializedPrompt?.prompt || prompt,
+        brief: prompt,
         aspectRatio,
         destination: destination || undefined,
         language,
+        accessibility,
         negativeConstraints: negativeConstraints
           .split('\n')
           .map(value => value.trim())
@@ -242,7 +278,7 @@ export function CreatorWorkspace() {
         <div className="creator-actions">
           <button className="creator-primary" type="button" onClick={createPlan} disabled={!canSubmit}>Create plan</button>
           <button type="button" onClick={persistPlan} disabled={!creativePlan || planState==='saving'}>{planState==='saving'?'Saving…':'Save plan'}</button>
-          <button type="submit" disabled={!canSubmit || !executable}>Generate {kind}</button>
+          <button type="submit" disabled={!canSubmit || !executable || generationState==='running'}>{generationState==='running' && kind==='music' ? 'Generating music…' : `Generate ${kind}`}</button>
           <button type="button" onClick={exportPrompt} disabled={!canSubmit || !promptExportReady || exportState==='running'}>{exportState==='running'?'Exporting…':'Export prompt package'}</button>
         </div>
         {notice && <p className="creator-notice" role="status">{notice}</p>}
@@ -259,8 +295,9 @@ export function CreatorWorkspace() {
           <p>Create a plan to inspect deliverables and the specialized prompt. ATLAS does not insert fabricated output.</p>
         </>}
         {promptPackage && <div className="creator-export-preview"><h3>Prompt export</h3><pre>{promptPackage.prompt}</pre>{promptPackage.adaptationNotes.map(note => <p key={note}>{note}</p>)}</div>}
+        {musicAudioUrl && <div className="creator-export-preview"><h3>Generated music</h3><audio controls src={musicAudioUrl} aria-label="Generated ATLAS music" /><a href={musicAudioUrl} download="atlas-music.mp3">Download MP3</a><p>AI-generated instrumental · {musicGenerationMeta?.provider || 'verified provider'} · {musicGenerationMeta?.model || 'verified model'}{musicGenerationMeta?.songId ? ` · Song ${musicGenerationMeta.songId}` : ''}</p></div>}
         <dl>
-          <div><dt>Engine</dt><dd>{executable ? 'Verified executable ready' : 'No executable engine verified'}</dd></div>
+          <div><dt>Engine</dt><dd>{executableEngine ? `${executableEngine.displayName} · verified executable` : 'No executable engine verified'}</dd></div>
           <div><dt>Prompt Export</dt><dd>{promptExportReady ? 'Ready · planning only' : 'Unavailable'}</dd></div>
           <div><dt>Plan version</dt><dd>{persistedVersion || 'Not saved'}</dd></div>
           <div><dt>Audit</dt><dd>Enabled</dd></div>

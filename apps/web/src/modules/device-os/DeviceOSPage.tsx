@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { LocalNetworkAccessPanel } from './LocalNetworkAccessPanel';
 import { LocalControlPlanePanel } from './LocalControlPlanePanel';
 import { DeviceEvolutionPanel } from './DeviceEvolutionPanel';
+import { RemoteAssistPanel } from './RemoteAssistPanel';
 import {
   ATLAS_DEVICE_PROFILES,
   getAtlasDeviceProfile,
@@ -86,6 +87,7 @@ export function DeviceOSPage() {
 
       <DeviceEvolutionPanel />
       <LocalNetworkAccessPanel />
+      <RemoteAssistPanel />
       <LocalControlPlanePanel />
     </section>
   );

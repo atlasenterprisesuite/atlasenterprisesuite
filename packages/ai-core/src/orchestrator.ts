@@ -17,6 +17,7 @@ import {
   type AtlasTaskState,
   type AtlasTestResult
 } from '../../task-protocol/src';
+import { assertCompletionEvidence } from './completionReadiness';
 import type { PersistencePort } from './persistence';
 import type { ProviderAdapter, ProviderResult } from './providers';
 
@@ -72,8 +73,13 @@ export class AtlasOrchestrator {
     const task = await this.load(scope, taskId);
     try {
       assertTransition(task.state, next);
+      if (next === 'completed') assertCompletionEvidence(task);
     } catch (error) {
-      await this.event(task, actor, 'task.state_changed', 'failed', { from: task.state, to: next });
+      await this.event(task, actor, 'task.state_changed', 'failed', {
+        from: task.state,
+        to: next,
+        reason: error instanceof Error ? error.message : 'unknown_error'
+      });
       throw error;
     }
     const updated = { ...task, state: next, updatedAt: new Date().toISOString() };

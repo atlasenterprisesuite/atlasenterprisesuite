@@ -194,6 +194,77 @@ export type AtlasPayoutRoute = {
   estimatedArrivalSeconds: number | null;
 };
 
+export type AtlasBalanceKind = 'wallet' | 'earnings' | 'rewards' | 'credits';
+export type AtlasBalanceState = 'available' | 'pending' | 'held' | 'unavailable';
+export type AtlasBalanceSourceKind = 'atlas_control_plane' | 'external_provider' | 'manual_evidence';
+
+export type AtlasBalanceEvidence = {
+  id: string;
+  accountId: string;
+  balanceKind: AtlasBalanceKind;
+  amountMinor: bigint;
+  currency: string;
+  state: AtlasBalanceState;
+  sourceKind: AtlasBalanceSourceKind;
+  sourceReference: string;
+  observedAt: string;
+};
+
+export type AtlasBalanceSummary = {
+  balanceKind: AtlasBalanceKind;
+  currency: string;
+  state: Exclude<AtlasBalanceState, 'unavailable'>;
+  amountMinor: bigint;
+  evidenceCount: number;
+};
+
+export function summarizeBalanceEvidence(
+  evidence: readonly AtlasBalanceEvidence[]
+): AtlasBalanceSummary[] {
+  const latest = new Map<string, AtlasBalanceEvidence>();
+
+  for (const row of evidence) {
+    const currency = normalizedCurrency(row.currency);
+    const normalizedRow = { ...row, currency };
+    const key = [
+      normalizedRow.accountId,
+      normalizedRow.balanceKind,
+      normalizedRow.currency,
+      normalizedRow.sourceKind,
+      normalizedRow.sourceReference
+    ].join('|');
+    const current = latest.get(key);
+    if (!current || Date.parse(normalizedRow.observedAt) >= Date.parse(current.observedAt)) {
+      latest.set(key, normalizedRow);
+    }
+  }
+
+  const grouped = new Map<string, AtlasBalanceSummary>();
+  for (const row of latest.values()) {
+    if (row.state === 'unavailable') continue;
+    const key = [row.balanceKind, row.currency, row.state].join('|');
+    const current = grouped.get(key);
+    if (current) {
+      current.amountMinor += row.amountMinor;
+      current.evidenceCount += 1;
+    } else {
+      grouped.set(key, {
+        balanceKind: row.balanceKind,
+        currency: row.currency,
+        state: row.state,
+        amountMinor: row.amountMinor,
+        evidenceCount: 1
+      });
+    }
+  }
+
+  return [...grouped.values()].sort((left, right) =>
+    left.balanceKind.localeCompare(right.balanceKind)
+    || left.currency.localeCompare(right.currency)
+    || left.state.localeCompare(right.state)
+  );
+}
+
 export type AtlasPayoutPreference = 'fastest' | 'lowest_fee';
 
 export function selectPayoutRoute(

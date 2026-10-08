@@ -57,3 +57,56 @@ it('shows a route blocker as an execution prerequisite rather than a policy deni
   expect(screen.getByText('Connect an authorized OpenAI/ChatGPT session before ATLAS retries this step.')).toBeInTheDocument();
   expect(screen.queryByText('Blocked by policy')).not.toBeInTheDocument();
 });
+
+
+it('does not report an execution route blocker for a completed step with matching verified evidence', () => {
+  const state = makeGuidedState();
+  const source = state.steps[0];
+  const step = { ...source, status: 'completed' as const, evidenceRequirement: ['infra_verification.production'] };
+  const evidence = [{ id: 'evidence-production', taskId: step.taskId, stepId: step.id, kind: 'infra_verification.production', reference: 'atlas-infra-status:production:verified', verified: true, createdAt: '2026-10-07T21:18:08Z' }];
+
+  render(
+    <StepDetailPanel
+      step={step}
+      task={state.tasks[0]}
+      dependencies={[]}
+      evidence={evidence}
+      approvals={[]}
+      executionDecision={{
+        route: { state: 'blocked', mechanism: null, reason: 'no_authorized_execution_path' },
+        policy: { outcome: 'deny', reason: 'execution_route_blocked' },
+        approvalRequired: false
+      }}
+      onDecideApproval={vi.fn()}
+    />
+  );
+
+  expect(screen.getByText('Completed with verified evidence')).toBeInTheDocument();
+  expect(screen.queryByText('No Authorized Execution Path')).not.toBeInTheDocument();
+  expect(screen.queryByText('Not evaluated — execution route unavailable')).not.toBeInTheDocument();
+});
+
+it('keeps a route blocker visible when completion lacks verified required evidence', () => {
+  const state = makeGuidedState();
+  const source = state.steps[0];
+  const step = { ...source, status: 'completed' as const, evidenceRequirement: ['infra_verification.production'] };
+
+  render(
+    <StepDetailPanel
+      step={step}
+      task={state.tasks[0]}
+      dependencies={[]}
+      evidence={[]}
+      approvals={[]}
+      executionDecision={{
+        route: { state: 'blocked', mechanism: null, reason: 'no_authorized_execution_path' },
+        policy: { outcome: 'deny', reason: 'execution_route_blocked' },
+        approvalRequired: false
+      }}
+      onDecideApproval={vi.fn()}
+    />
+  );
+
+  expect(screen.getByText('Not evaluated — execution route unavailable')).toBeInTheDocument();
+  expect(screen.queryByText('Completed with verified evidence')).not.toBeInTheDocument();
+});

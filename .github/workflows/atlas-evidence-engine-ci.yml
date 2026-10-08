@@ -1,0 +1,69 @@
+name: ATLAS Evidence Engine CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "packages/core/src/evidence.ts"
+      - "packages/core/src/index.ts"
+      - "scripts/evidence/**"
+      - "scripts/network/**"
+      - "tests/unit/core-evidence.test.ts"
+      - "tests/unit/evidence-engine.test.ts"
+      - "tests/fixtures/evidence/**"
+      - "docs/network/evidence/**"
+      - ".github/workflows/atlas-evidence-engine-ci.yml"
+      - "package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-evidence-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run evidence governance tests
+        run: npx vitest run tests/unit/core-evidence.test.ts tests/unit/evidence-engine.test.ts
+
+      - name: Validate network verifier syntax
+        run: bash -n scripts/network/verify-openai-connectivity.sh
+
+      - name: Build deterministic evidence manifest
+        run: |
+          node --experimental-strip-types scripts/evidence/build-evidence-manifest.mjs             tests/fixtures/evidence/openai-network-pass.json             artifacts/evidence/openai-network-ci.json             docs/network/evidence/2026-10-07-openai-connectivity-evidence.json
+
+      - name: Publish evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-evidence-engine-${{ github.sha }}
+          path: |
+            artifacts/evidence/openai-network-ci.json
+            docs/network/evidence/2026-10-07-openai-connectivity-evidence.md
+            docs/network/evidence/2026-10-07-openai-connectivity-evidence.json
+            scripts/network/verify-openai-connectivity.sh
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record evidence gate summary
+        run: |
+          {
+            echo "## ATLAS Evidence Engine"
+            echo "- Fail-closed evaluation tests: passed"
+            echo "- Network verifier syntax: passed"
+            echo "- SHA-256 manifest: generated"
+            echo "- Evidence artifact: published"
+            echo "- P0 unverified: BLOCKED, never promoted to PASS"
+            echo "- P0 observed failure: FAIL"
+          } >> "$GITHUB_STEP_SUMMARY"

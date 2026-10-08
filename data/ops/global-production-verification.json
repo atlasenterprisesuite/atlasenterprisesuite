@@ -1,7 +1,15 @@
 {
-  "version": 30,
+  "version": 33,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
+  "health_check": {
+    "path": "/api/v1/health",
+    "expected_status": "healthy"
+  },
+  "required_security_headers": [
+    "strict-transport-security",
+    "content-security-policy"
+  ],
   "public_routes": [
     "/status",
     "/",
@@ -22,6 +30,7 @@
     "/advisory",
     "/finance",
     "/finance/pay",
+    "/finance/pay/workspace",
     "/tax",
     "/crm",
     "/commerce",
@@ -71,7 +80,8 @@
     "/advisory/business-launch-360/workspace",
     "/advisory/reports",
     "/advisory/providers",
-    "/advisory/readiness"
+    "/advisory/readiness",
+    "/release/stewardship"
   ],
   "critical_network_routes": [
     "/business/network",

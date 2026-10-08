@@ -4,9 +4,11 @@ import type { TenantScope } from './scope';
 
 export * from './scope';
 export * from './permissions';
+export * from './stewardship';
 export * from './audit';
 export * from './integrations';
 export * from './endpoints';
+export * from './evidence';
 
 export type GoogleIntegrationPermission =
   | 'google.gmail.read'
@@ -316,3 +318,5 @@ export * from './libraryRouting';
 
 export * from './whatsapp-ai-council';
 export * from './whatsapp-provider';
+
+export * from './deploymentControl';

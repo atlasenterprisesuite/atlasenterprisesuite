@@ -14,6 +14,7 @@ import { NetworkPublicPage } from './modules/business/network/NetworkPublicPage'
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { AtlasPayPage } from './modules/finance/pay/AtlasPayPage';
+import { PublicAtlasPayPage } from './modules/finance/pay/PublicAtlasPayPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
 import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
@@ -33,6 +34,7 @@ import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPag
 import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
 import { FaithReflectionPage } from './modules/wellbeing/FaithReflectionPage';
 import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
+import { AtlasMaxPage } from './modules/atlas-max/AtlasMaxPage';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -69,6 +71,7 @@ function EnterpriseHome() {
         <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
         <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
+        <Link className="module-card enabled" to="/max"><span>Intelligence · Governed capacity</span><strong>ATLAS MAX</strong><p>Provider-neutral premium intelligence with evidence-backed entitlements, usage controls and Operators.</p></Link>
       </div>
       <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
     </section>
@@ -276,8 +279,10 @@ export function App() {
   if (location.pathname.startsWith('/events')) return <EventsRoutes />;
   if (location.pathname.startsWith('/shop/')) return <PublicCommerceRoutes />;
   if (location.pathname.startsWith('/insurance')) return <InsuranceRoutes />;
-  const publicAdvisoryHost = typeof window !== 'undefined' && ['atlasenterprisesuite.com','www.atlasenterprisesuite.com','localhost','127.0.0.1'].includes(window.location.hostname);
+  const publicProductHost = typeof window !== 'undefined' && ['atlasenterprisesuite.com','www.atlasenterprisesuite.com','localhost','127.0.0.1'].includes(window.location.hostname);
+  const publicAdvisoryHost = publicProductHost;
   if (location.pathname === '/advisory/business-launch-360' && publicAdvisoryHost) return <PublicBusinessLaunch360Page />;
+  if (location.pathname === '/finance/pay' && publicProductHost) return <PublicAtlasPayPage />;
   const extension = resolveAtlasExtension(location.pathname);
   if (extension) return <AtlasShell>{extension}</AtlasShell>;
 
@@ -286,6 +291,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
         <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
@@ -307,7 +313,8 @@ export function App() {
         <Route path="/city" element={<RequireAtlasIdentity><AtlasDigitalDistrictPage /></RequireAtlasIdentity>} />
         <Route path="/city/twin" element={<RequireAtlasIdentity><UrbanTwinPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
-        <Route path="/finance/pay" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
+        <Route path="/finance/pay" element={<Navigate to="/finance/pay/workspace" replace />} />
+        <Route path="/finance/pay/workspace" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
+import { AtlasRuntimeIntegrityProvider } from './runtime/AtlasRuntimeIntegrityProvider';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { RideRoutes } from './modules/ride/RideRoutes';
 import './atlas-design-tokens.css';
@@ -17,6 +18,8 @@ import './modules/cloud/cloud.css';
 import './modules/galaxy/portals.css';
 import './modules/hospitality/hospitality.css';
 import './modules/ride/ride.css';
+import './modules/release/stewardship-release.css';
+import './runtime/runtime-integrity.css';
 
 function RootRouter() {
   const location = useLocation();
@@ -27,8 +30,10 @@ function RootRouter() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <RootRouter />
-    </BrowserRouter>
+    <AtlasRuntimeIntegrityProvider>
+      <BrowserRouter>
+        <RootRouter />
+      </BrowserRouter>
+    </AtlasRuntimeIntegrityProvider>
   </React.StrictMode>
 );

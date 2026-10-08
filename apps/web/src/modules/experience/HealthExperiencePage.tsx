@@ -20,6 +20,13 @@ const healthSections: ModuleExperienceSection[] = [
         to: '/health/wellbeing/neuroplasticity'
       },
       {
+        label: 'Care operations',
+        title: 'ATLAS Care',
+        description: 'Coordinate eligibility, authorized caregivers, care plans, timecards and payroll-ready approvals under the shared ATLAS organization.',
+        to: '/care',
+        status: 'Core active · payer/EHR providers gated'
+      },
+      {
         label: 'Clinical systems',
         title: 'Not configured',
         description: 'No EHR, FHIR, HL7 or patient workflow is represented as connected.',

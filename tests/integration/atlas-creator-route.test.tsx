@@ -193,6 +193,110 @@ describe('ATLAS Creator', () => {
     }
   });
 
+  it('keeps Music Lab planning-only when no executable music engine is verified', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['music'],
+      capabilityNotes: ['planning-only'],
+      lastVerifiedAt: null
+    }]);
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=music']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Creative brief'), { target: { value: 'Wondering cinematic ambient score' } });
+
+    expect(await screen.findByRole('button', { name: 'Generate music' })).toBeDisabled();
+    expect(screen.getByText('No executable engine verified')).toBeInTheDocument();
+  });
+
+  it('generates music through a verified ElevenLabs Music v2 engine', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([
+      {
+        engineId: 'prompt-export',
+        displayName: 'Prompt Export',
+        executionClass: 'prompt-export-only',
+        connectionState: 'ready',
+        ready: true,
+        mediaKinds: ['music'],
+        capabilityNotes: ['planning-only'],
+        lastVerifiedAt: null
+      },
+      {
+        engineId: 'elevenlabs-music-v2',
+        displayName: 'ElevenLabs Music v2',
+        executionClass: 'byo-provider',
+        connectionState: 'ready',
+        ready: true,
+        mediaKinds: ['music'],
+        capabilityNotes: ['model:music_v2'],
+        lastVerifiedAt: '2026-10-06T22:00:00Z'
+      }
+    ]);
+    vi.spyOn(creatorApi, 'generateCreatorMusic').mockResolvedValue({
+      blob: new Blob(['music'], { type: 'audio/mpeg' }),
+      songId: 'song-1',
+      provider: 'elevenlabs',
+      model: 'music_v2'
+    });
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:atlas-music');
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=music']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Creative brief'), { target: { value: 'Wondering cinematic ambient score' } });
+
+    const generate = await screen.findByRole('button', { name: 'Generate music' });
+    expect(generate).toBeEnabled();
+    expect(screen.getByText(/ElevenLabs Music v2 · verified executable/)).toBeInTheDocument();
+    fireEvent.click(generate);
+
+    expect(await screen.findByText(/Music generated successfully/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Generated ATLAS music')).toHaveAttribute('src', 'blob:atlas-music');
+    expect(screen.getByRole('link', { name: 'Download MP3' })).toHaveAttribute('href', 'blob:atlas-music');
+    expect(creatorApi.generateCreatorMusic).toHaveBeenCalledWith(expect.objectContaining({
+      durationSeconds: 60,
+      instrumental: true
+    }));
+    createObjectURL.mockRestore();
+  });
+
+  it('exports the raw music brief once and preserves accessibility without visual aspect ratio semantics', async () => {
+    vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
+      engineId: 'prompt-export',
+      displayName: 'Prompt Export',
+      executionClass: 'prompt-export-only',
+      connectionState: 'ready',
+      ready: true,
+      mediaKinds: ['music'],
+      capabilityNotes: ['planning-only'],
+      lastVerifiedAt: null
+    }]);
+    const exportSpy = vi.spyOn(creatorApi, 'exportCreatorPrompt').mockResolvedValue({
+      status: 'prompt-ready',
+      engineId: 'prompt-export',
+      mediaKind: 'music',
+      prompt: 'MEDIA: MUSIC\nOBJECTIVE: Wondering cinematic ambient score\nLANGUAGE: English\nACCESSIBILITY: transcript, alt-text, audio-description',
+      parameters: { language: 'English', accessibility: ['transcript', 'alt-text', 'audio-description'], negativeConstraints: [] },
+      adaptationNotes: ['No media was generated.']
+    });
+
+    render(<MemoryRouter initialEntries={['/studio/create?type=music']}><CreatorWorkspace /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Creative brief'), { target: { value: 'Wondering cinematic ambient score' } });
+    fireEvent.click(screen.getByLabelText('Require transcript'));
+    fireEvent.click(screen.getByLabelText('Require audio description'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Export prompt package' }));
+
+    expect(exportSpy).toHaveBeenCalledWith(expect.objectContaining({
+      mediaKind: 'music',
+      brief: 'Wondering cinematic ambient score',
+      accessibility: expect.objectContaining({ transcript: true, altText: true, audioDescription: true })
+    }));
+    const promptText = await screen.findByText(/MEDIA: MUSIC/);
+    expect(promptText.textContent?.match(/OBJECTIVE:/g)).toHaveLength(1);
+    expect(promptText).not.toHaveTextContent('ASPECT RATIO');
+  });
+
   it('builds a provider-neutral SFX CreativePlan with accessibility metadata', async () => {
     vi.mocked(creatorApi.listCreativeEngines).mockResolvedValue([{
       engineId: 'prompt-export',

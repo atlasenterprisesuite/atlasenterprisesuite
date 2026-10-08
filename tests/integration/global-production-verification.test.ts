@@ -43,6 +43,7 @@ describe('ATLAS global production verification', () => {
       '/advisory',
       '/finance',
       '/finance/pay',
+      '/finance/pay/workspace',
       '/tax',
       '/crm',
       '/commerce',
@@ -92,7 +93,8 @@ describe('ATLAS global production verification', () => {
       '/advisory/business-launch-360/workspace',
       '/advisory/reports',
       '/advisory/providers',
-      '/advisory/readiness'
+      '/advisory/readiness',
+      '/release/stewardship'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
@@ -149,7 +151,7 @@ describe('ATLAS global production verification', () => {
   it('exposes the portable verifier through package scripts', () => {
     const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
     expect(pkg.scripts?.['verify:production:global']).toBe(
-      'node scripts/verify-global-production.mjs'
+      'node scripts/verify-production-p0.mjs && node scripts/verify-global-production.mjs'
     );
   });
 

@@ -30,8 +30,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Image Lab domain tests
-        run: npx vitest run tests/unit/creator-image-edit.test.ts tests/unit/creator-image-edit-edge.test.ts
+      - name: Image Lab domain and adapter tests
+        run: npx vitest run tests/unit/creator-image-edit.test.ts tests/unit/creator-image-edit-edge.test.ts tests/unit/creator-image-edit-openai.test.ts
       - name: Creator integration tests
         run: npx vitest run tests/integration/atlas-creator-route.test.tsx --environment jsdom
       - name: Typecheck

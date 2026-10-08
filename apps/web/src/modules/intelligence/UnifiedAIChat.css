@@ -453,14 +453,30 @@
 .atlas-ai-status-panel-head button{
   border:0;
   border-radius:8px;
-  padding:6px 8px;
+  min-height:36px;
+  padding:6px 10px;
   background:#373737;
-  color:#c8c8cd;
-  font-size:.68rem;
+  color:#d6d6db;
+  font-size:.72rem;
 }
 
 .atlas-ai-status-panel-head button:hover{
   background:#414141;
+}
+
+.atlas-ai-status-panel-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:0 0 auto;
+}
+
+.atlas-ai-status-close{
+  width:36px;
+  min-width:36px;
+  padding:0!important;
+  font-size:1.05rem!important;
+  line-height:1;
 }
 
 .atlas-ai-select-row{
@@ -526,9 +542,51 @@
   text-align:right;
 }
 
+.atlas-ai-provider-details{
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:11px;
+  background:rgba(0,0,0,.08);
+  overflow:hidden;
+}
+
+.atlas-ai-provider-details summary{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:9px 11px;
+  cursor:pointer;
+  color:#b6b6bd;
+  font-size:.72rem;
+  list-style:none;
+}
+
+.atlas-ai-provider-details summary::-webkit-details-marker{
+  display:none;
+}
+
+.atlas-ai-provider-details summary::after{
+  content:'⌄';
+  color:#85858e;
+  margin-left:2px;
+}
+
+.atlas-ai-provider-details[open] summary::after{
+  transform:rotate(180deg);
+}
+
+.atlas-ai-provider-details summary strong{
+  margin-left:auto;
+  color:#8f8f97;
+  font-size:.68rem;
+  font-weight:650;
+}
+
 .atlas-ai-provider-list{
   display:grid;
   gap:4px;
+  padding:0 8px 8px;
 }
 
 .atlas-ai-provider-list>div{
@@ -946,11 +1004,11 @@
 }
 
 .atlas-ai-disclaimer{
-  margin:6px 4px 0;
-  color:#686871;
+  margin:7px 6px 0;
+  color:#92929b;
   text-align:center;
-  font-size:.59rem;
-  line-height:1.3;
+  font-size:.68rem;
+  line-height:1.4;
 }
 
 .atlas-ai-mobile-scrim{
@@ -1027,6 +1085,52 @@
   .atlas-ai-status-panel{
     left:10px;
     top:50px;
+    width:calc(100% - 20px);
+    max-height:min(62dvh,560px);
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    padding:12px;
+    gap:10px;
+  }
+
+  .atlas-ai-status-panel-head{
+    position:sticky;
+    top:-12px;
+    z-index:2;
+    margin:-12px -12px 0;
+    padding:12px;
+    background:#292929;
+    border-bottom:1px solid rgba(255,255,255,.07);
+  }
+
+  .atlas-ai-status-panel-head strong{
+    font-size:.95rem;
+  }
+
+  .atlas-ai-status-panel-head span,
+  .atlas-ai-select-row>span,
+  .atlas-ai-status-grid span,
+  .atlas-ai-provider-list span{
+    font-size:.76rem;
+  }
+
+  .atlas-ai-status-grid>strong,
+  .atlas-ai-provider-list strong{
+    font-size:.76rem;
+  }
+
+  .atlas-ai-select-row select{
+    min-height:42px;
+    font-size:.82rem;
+  }
+
+  .atlas-ai-status-panel-head button{
+    min-height:40px;
+  }
+
+  .atlas-ai-status-close{
+    width:40px;
+    min-width:40px;
   }
 
   .atlas-ai-messages{
@@ -1102,7 +1206,7 @@
   }
 
   .atlas-ai-status-panel{
-    width:calc(100vw - 20px);
+    width:calc(100% - 20px);
   }
 
   .atlas-ai-select-row{

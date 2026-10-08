@@ -87,15 +87,19 @@ export async function probeComputerOperationsRoute(
   options: {
     fetchImpl?: typeof fetch;
     productionOrigin?: string;
+    timeoutMs?: number;
   } = {}
 ): Promise<ComputerOperationsProbe> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const productionOrigin = options.productionOrigin ?? COMPUTER_OPERATIONS_CONTRACT.production_origin;
   const started = performance.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
 
   try {
     const response = await fetchImpl(new URL(route.path, productionOrigin), {
       method: 'GET',
+      signal: controller.signal,
       cache: 'no-store',
       credentials: 'include',
       redirect: 'follow',
@@ -117,8 +121,10 @@ export async function probeComputerOperationsRoute(
       state: 'unavailable',
       status: null,
       durationMs: Math.round(performance.now() - started),
-      error: 'browser_probe_unavailable'
+      error: controller.signal.aborted ? 'browser_probe_timeout' : 'browser_probe_unavailable'
     };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -127,6 +133,7 @@ export async function probeComputerOperationsRoutes(
   options: {
     fetchImpl?: typeof fetch;
     productionOrigin?: string;
+    timeoutMs?: number;
   } = {}
 ): Promise<ComputerOperationsProbe[]> {
   return Promise.all(routes.map((route) => probeComputerOperationsRoute(route, options)));
