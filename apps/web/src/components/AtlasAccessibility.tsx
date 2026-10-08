@@ -39,13 +39,14 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 function defaultCapabilities(): AccessibilityCapabilities {
-  const hasVibration = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
   return {
     aslRecognition: 'not_configured',
     aslAvatar: 'not_configured',
     liveCaptions: 'not_configured',
     brailleHardware: 'unavailable',
-    haptics: hasVibration ? 'available' : 'unavailable',
+    // Browser API presence is not evidence of tested, connected haptic hardware.
+    // A validated adapter may explicitly override this state once verified.
+    haptics: 'unavailable',
     humanInterpreter: 'not_configured'
   };
 }
@@ -248,6 +249,19 @@ export function AtlasAccessibility({
               <span><strong>Sign language</strong>{selectedSignLanguage ? `${selectedSignLanguage.languageName} (${selectedSignLanguage.acronym}) · ${selectedSignLanguage.iso639_3}` : 'Not selected'}</span>
               <span><strong>Captions</strong>{profile.captionsEnabled ? 'Enabled' : 'Off'}</span>
             </div>
+
+            {selectedSignLanguage && (capabilities.aslRecognition !== 'available' || capabilities.aslAvatar !== 'available') && (
+              <div className="accessibility-preference-notice" role="status">
+                <strong>Sign language selected — service not yet connected</strong>
+                <p>
+                  {selectedSignLanguage.languageName} is saved as a preference. Selecting a language does not enable
+                  sign recognition or the avatar. These require separately verified providers for that language.
+                </p>
+                <Link className="text-link" to="/settings/accessibility/communication" onClick={closeAccessibilityCenter}>
+                  Change communication preferences
+                </Link>
+              </div>
+            )}
 
             <div className="accessibility-provider-boundary" aria-label="Accessibility provider status">
               <h3>Capability status</h3>
