@@ -150,7 +150,9 @@ export function CrmHomePage() {
 
       {hubSpot && !hubSpotVerified && hubSpot.state !== 'unconfigured' ? (
         <div className={`crm-banner ${hubSpot.state}`} role="status">
-          <strong>HubSpot · {stateLabel[hubSpot.state]}</strong>
+          <strong>
+            {hubSpot.state === 'connected' ? 'HubSpot · Verification required' : `HubSpot · ${stateLabel[hubSpot.state]}`}
+          </strong>
           <span>
             {hubSpot.state === 'degraded'
               ? 'The provider is reachable, but one or more authorized CRM capabilities are unavailable.'
@@ -162,7 +164,9 @@ export function CrmHomePage() {
                     ? 'Provider authorization has started but is not yet verified.'
                     : hubSpot.state === 'error'
                       ? `Connection verification failed${hubSpot.safeErrorCode ? ` (${hubSpot.safeErrorCode})` : ''}.`
-                      : 'HubSpot verification is required before customer records are available.'}
+                      : hubSpot.state === 'connected'
+                        ? 'Verification required: ATLAS received a connected state without complete authenticated provider evidence.'
+                        : 'HubSpot verification is required before customer records are available.'}
           </span>
           <Link className="text-link" to="/crm/integrations/hubspot">Open HubSpot connection</Link>
         </div>
