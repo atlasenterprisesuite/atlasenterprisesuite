@@ -52,6 +52,7 @@ describe('ATLAS avatar welcome on canonical home', () => {
     expect(utterance.lang).toBe('es-ES');
     expect(utterance.text).toContain('Soy ATLAS');
     expect(screen.getByRole('status')).toHaveTextContent('Reproduciendo bienvenida');
+    expect(document.querySelector('.atlas-welcome--speaking')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Detener voz' }));
     expect(cancel).toHaveBeenCalled();
