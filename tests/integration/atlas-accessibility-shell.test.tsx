@@ -35,6 +35,9 @@ describe('AtlasAccessibility', () => {
     expect(screen.getByText(/Sign-language recognition/i)).toBeInTheDocument();
     expect(screen.getByText(/vsl/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Not configured/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/sign language selected — service not yet connected/i)).toBeInTheDocument();
+    expect(screen.getByText(/selecting a language does not enable/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /change communication preferences/i })).toHaveAttribute('href', '/settings/accessibility/communication');
     expect(screen.getByRole('link', { name: /communication settings/i })).toHaveAttribute('href', '/settings/accessibility/communication');
 
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -80,4 +83,25 @@ describe('AtlasAccessibility', () => {
     expect(screen.getByText(/interpreter provider is not configured/i)).toBeInTheDocument();
     expect(onActionTriggered).not.toHaveBeenCalledWith('EXECUTE_ACCESSIBILITY_ACTION', expect.anything());
   });
+  it('does not report haptics as verified solely from browser vibration API presence', () => {
+    const before = Object.getOwnPropertyDescriptor(navigator, 'vibrate');
+    Object.defineProperty(navigator, 'vibrate', { configurable: true, value: vi.fn(() => true) });
+    try {
+      render(
+        <MemoryRouter>
+          <AtlasAccessibility
+            initialProfile={defaultAccessibilityProfile('user-haptics')}
+            onProfileChange={() => undefined}
+            onActionTriggered={() => undefined}
+          />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByRole('button', { name: /open accessibility communication center/i }));
+      expect(screen.getByText('Haptics').closest('.accessibility-capability')).toHaveTextContent('Unavailable');
+    } finally {
+      if (before) Object.defineProperty(navigator, 'vibrate', before);
+      else Reflect.deleteProperty(navigator, 'vibrate');
+    }
+  });
+
 });
