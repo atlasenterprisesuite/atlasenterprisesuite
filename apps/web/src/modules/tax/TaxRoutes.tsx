@@ -10,7 +10,7 @@ import { DepthTaxIntake } from './DepthTaxIntake';
 import { TaxProfessionalDashboard } from './TaxProfessionalDashboard';
 import { TaxBenefits2025 } from './TaxBenefits2025';
 import { importTaxSourceMapping } from '../../lib/taxApi';
-import { TaxLearningPage } from './TaxLearningPage';
+import { TaxCourseWorkspace } from './TaxCourseWorkspace';
 import './tax.css';
 
 const nav = [
@@ -376,7 +376,7 @@ export function TaxRoutes() {
           <Route index element={<TaxHome />} />
           <Route path="control" element={<TaxControlCenter />} />
           <Route path="prepare" element={<ProfessionalReturnWorkspace />} />
-          <Route path="learn" element={<TaxLearningPage />} />
+          <Route path="learn" element={<TaxCourseWorkspace />} />
           <Route path="documents/w2" element={<W2Workspace />} />
           <Route path="documents/1099" element={<InformationReturnWorkspace />} />
           <Route path="documents/k1" element={<PartnershipK1Workspace />} />
