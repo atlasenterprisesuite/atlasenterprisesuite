@@ -108,7 +108,7 @@ describe('ATLAS 777 production matrix — live-probe contract with controlled HT
   });
 
   it('reports P1 route errors without falsely failing valid P0 certification', () => {
-    const result = verify({ p1Fail: '/cloud/observability' });
+    const result = verify({ p1Fail: '/studio/providers' });
     expect(result.exitCode).toBe(0);
     expect(result.output.ok).toBe(true);
     expect(result.output.status).toBe('passed-with-warnings');
