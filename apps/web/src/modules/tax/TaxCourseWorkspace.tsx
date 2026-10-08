@@ -59,6 +59,7 @@ export function TaxCourseWorkspace() {
   const generation = useRef(0);
   const [context, setContext] = useState<TaxLearningContext | null>(null);
   const [progress, setProgress] = useState<TaxLearningProgress>([]);
+  const [confirmed, setConfirmed] = useState(false);
   const [selected, setSelected] = useState(TAX_LESSONS[0].id);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -68,14 +69,14 @@ export function TaxCourseWorkspace() {
   const [pending, setPending] = useState<Attempt | null>(null);
 
   useEffect(() => {
-    const changed = () => { generation.current += 1; setContext(null); setProgress([]); setPending(null); setLoading(true); setBusy(false); setEpoch(value => value + 1); };
+    const changed = () => { generation.current += 1; setContext(null); setProgress([]); setConfirmed(false); setPending(null); setLoading(true); setBusy(false); setEpoch(value => value + 1); };
     window.addEventListener(ATLAS_SESSION_EVENT, changed);
     return () => window.removeEventListener(ATLAS_SESSION_EVENT, changed);
   }, []);
   useEffect(() => {
     let cancelled = false;
     generation.current += 1;
-    setLoading(true); setContext(null); setProgress([]); setPending(null);
+    setLoading(true); setContext(null); setProgress([]); setConfirmed(false); setPending(null);
     void (async () => {
       try {
         const resolved = await resolveTaxLearningContext();
@@ -84,7 +85,7 @@ export function TaxCourseWorkspace() {
         try {
           const rows = await loadTaxLearningProgress(resolved);
           if (cancelled) return;
-          setProgress(rows);
+          setProgress(rows); setConfirmed(true);
           setSelected(TAX_LESSONS.find(lesson => !rows.some(row => row.lesson_id === lesson.id && row.best_percent === 100))?.id || TAX_LESSONS[0].id);
           setMessage('Progreso cargado de tu cuenta y organización. Se sincroniza tras cada intento confirmado.');
         } catch {
@@ -127,10 +128,12 @@ export function TaxCourseWorkspace() {
         <p className="eyebrow">ATLAS Tax · Learning · CPA/EA foundation</p><h1>Curso práctico de preparación tributaria</h1>
         <p>20 lecciones disponibles desde ahora: 1040, schedules, negocios, depreciación/base y e-file. Casos ficticios para el año tributario 2025, no una cobertura exhaustiva de toda la ley fiscal ni una acreditación. Estudia tres sesiones por semana y repasa los errores.</p>
         <p>No introduce datos de tu declaración, no genera una declaración lista para presentar y no transmite al IRS. Las lecciones mantienen el año y las fuentes IRS explícitos.</p>
-        <label>Lecciones dominadas: {mastered}/{TAX_LESSONS.length} · {percent}% <progress max={TAX_LESSONS.length} value={mastered} /></label>
+        {confirmed ? <label>Lecciones dominadas: {mastered}/{TAX_LESSONS.length} · {percent}% <progress max={TAX_LESSONS.length} value={mastered} /></label> : <p>Progreso de cuenta aún no confirmado.</p>}
         <p aria-live="polite">{message}</p>
         <div className="tax-pro-actions">
-          <button type="button" disabled={busy || loading} onClick={() => setEpoch(value => value + 1)}>Recargar progreso de mi cuenta</button>
+          <button type="button" disabled={busy || loading || !!pending} onClick={() => setEpoch(value => value + 1)}>Recargar progreso de mi cuenta</button>
+          {pending && <p>Intento pendiente: {TAX_LESSONS.find(item => item.id === pending.lessonId)?.title}. Reintenta o descártalo antes de otro chequeo.</p>}
+          {pending && <button type="button" disabled={busy} onClick={() => { setPending(null); setMessage('Intento pendiente descartado; no se afirma que esté guardado.'); }}>Descartar intento pendiente</button>}
           {pending && <button type="button" disabled={busy || loading || !context} onClick={() => void persist(pending)}>Reintentar guardado pendiente</button>}
         </div>
       </header>
@@ -142,16 +145,16 @@ export function TaxCourseWorkspace() {
           </div>
           <div className="tax-learning-grid">{visible.map(item => {
             const row = progress.find(record => record.lesson_id === item.id);
-            return <button type="button" key={item.id} disabled={busy} aria-pressed={selected === item.id} onClick={() => { setSelected(item.id); setPending(null); }}>
-              <strong>{item.title}</strong><span>{row ? row.attempts + ' intentos · mejor ' + row.best_percent + '%' : 'Sin intentos confirmados'}</span>
+            return <button type="button" key={item.id} disabled={busy} aria-pressed={selected === item.id} onClick={() => { setSelected(item.id); }}>
+              <strong>{item.title}</strong><span>{row ? row.attempts + ' intentos · mejor ' + row.best_percent + '%' : confirmed ? 'Sin intentos confirmados' : 'Progreso no disponible'}</span>
             </button>;
           })}</div>
           {!visible.length && <p>No hay lecciones para este filtro.</p>}
         </section>
-        <TaxLessonView key={selected + ':' + epoch} lesson={lesson} busy={busy} onAttempt={persist} />
+        <TaxLessonView key={selected + ':' + epoch} lesson={lesson} busy={busy || !!pending} onAttempt={persist} />
         <nav className="tax-pro-actions" aria-label="Secuencia de lecciones">
-          <button disabled={busy || position === 0} type="button" onClick={() => { setSelected(TAX_LESSONS[position - 1].id); setPending(null); }}>Anterior</button>
-          <button disabled={busy || position === TAX_LESSONS.length - 1} type="button" onClick={() => { setSelected(TAX_LESSONS[position + 1].id); setPending(null); }}>Siguiente</button>
+          <button disabled={busy || position === 0} type="button" onClick={() => { setSelected(TAX_LESSONS[position - 1].id); }}>Anterior</button>
+          <button disabled={busy || position === TAX_LESSONS.length - 1} type="button" onClick={() => { setSelected(TAX_LESSONS[position + 1].id); }}>Siguiente</button>
         </nav>
       </>}
     </div>
