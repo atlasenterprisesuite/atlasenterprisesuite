@@ -10,12 +10,14 @@ import { DepthTaxIntake } from './DepthTaxIntake';
 import { TaxProfessionalDashboard } from './TaxProfessionalDashboard';
 import { TaxBenefits2025 } from './TaxBenefits2025';
 import { importTaxSourceMapping } from '../../lib/taxApi';
+import { TaxCourseWorkspace } from './TaxCourseWorkspace';
 import './tax.css';
 
 const nav = [
   { to: '/tax', label: 'Tax Home', end: true },
   { to: '/tax/control', label: 'Control Center', end: false },
   { to: '/tax/prepare', label: 'Prepare Return', end: false },
+  { to: '/tax/learn', label: 'Tax Practice', end: false },
   { to: '/tax/documents/w2', label: 'W-2 Intake', end: false },
   { to: '/tax/documents/1099', label: '1099 Intake', end: false },
   { to: '/tax/documents/k1', label: 'K-1 Intake', end: false },
@@ -31,6 +33,7 @@ const shellNav = [
   { to: '/tax', label: 'Workspace', glyph: '⌂', end: true },
   { to: '/tax/control', label: 'Clients', glyph: '●', end: false },
   { to: '/tax/control', label: 'Returns', glyph: '▤', end: false },
+  { to: '/tax/learn', label: 'Tax Practice', glyph: '✎', end: false },
   { to: '/tax/documents/depth', label: 'Documents', glyph: '▱', end: false },
   { to: '/tax/prepare', label: 'Tax Facts', glyph: '◎', end: false },
   { to: '/tax/benefits', label: 'Credits & Deductions', glyph: '★', end: false },
@@ -373,6 +376,7 @@ export function TaxRoutes() {
           <Route index element={<TaxHome />} />
           <Route path="control" element={<TaxControlCenter />} />
           <Route path="prepare" element={<ProfessionalReturnWorkspace />} />
+          <Route path="learn" element={<TaxCourseWorkspace />} />
           <Route path="documents/w2" element={<W2Workspace />} />
           <Route path="documents/1099" element={<InformationReturnWorkspace />} />
           <Route path="documents/k1" element={<PartnershipK1Workspace />} />
