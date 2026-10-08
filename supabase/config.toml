@@ -30,3 +30,11 @@ verify_jwt = true
 
 [functions.atlas-platform-controls]
 verify_jwt = true
+
+[functions.atlas-voice-provider]
+verify_jwt = true
+
+# Existing native verification requests require ATLAS bearer authentication in-handler.
+# Only api=telnyx-webhook POST is allowed without Supabase JWT; Ed25519 is mandatory.
+[functions.atlas-voice-native-verification]
+verify_jwt = false
