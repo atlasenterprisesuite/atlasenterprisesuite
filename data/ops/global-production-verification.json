@@ -16,6 +16,11 @@
     "/suite",
     "/cloud",
     "/cloud/docs",
+    "/cloud/docs/catalog",
+    "/cloud/api-explorer",
+    "/cloud/observability",
+    "/cloud/resources",
+    "/cloud/domains",
     "/work",
     "/assistant",
     "/knowledge",
@@ -44,9 +49,12 @@
     "/health",
     "/studio",
     "/voice",
+    "/events",
     "/frontier",
+    "/hospitality",
     "/ride",
     "/mobility/aviation",
+    "/galaxy",
     "/device-os",
     "/execution/manager/readiness",
     "/settings/accessibility/communication",
@@ -58,7 +66,9 @@
     "/gps",
     "/finance/accounting",
     "/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel",
+    "/studio/teleprompter",
     "/studio/web-launch",
+    "/studio/write",
     "/revenue",
     "/work/new",
     "/work/connections",
@@ -68,7 +78,10 @@
     "/advisory/clients",
     "/advisory/engagements",
     "/advisory/business-launch-360/workspace",
-    "/advisory/readiness"
+    "/advisory/reports",
+    "/advisory/providers",
+    "/advisory/readiness",
+    "/release/stewardship"
   ],
   "critical_network_routes": [
     "/business/network",
@@ -96,18 +109,12 @@
     }
   ],
   "p1_routes": [
-    "/cloud/docs/catalog",
-    "/cloud/api-explorer",
-    "/cloud/observability",
-    "/cloud/resources",
-    "/cloud/domains",
-    "/events",
-    "/hospitality",
-    "/studio/teleprompter",
-    "/studio/write",
-    "/galaxy",
-    "/advisory/providers",
-    "/advisory/reports",
-    "/release/stewardship"
+    "/business/growth/social-publisher",
+    "/studio/ai-universe",
+    "/studio/create",
+    "/studio/library",
+    "/studio/productivity-pro",
+    "/studio/providers",
+    "/city/twin"
   ]
 }
