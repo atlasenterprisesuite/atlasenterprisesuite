@@ -11,3 +11,8 @@
 .tax-learning-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: end; gap: 12px; }
 .tax-learning-form input, .tax-learning-form select { width: 100%; }
 .tax-learning-form button { min-height: 42px; }
+
+.tax-learning-grid > button { display: grid; gap: 8px; padding: 16px; text-align: left; min-height: 88px; border-radius: 14px; }
+.tax-learning-grid > button strong { font-size: 1rem; }
+.tax-learning-grid > button[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
+.tax-learning-grid > button:focus-visible { outline: 3px solid currentColor; outline-offset: 4px; }
