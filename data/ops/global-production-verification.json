@@ -1,5 +1,5 @@
 {
-  "version": 33,
+  "version": 34,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "health_check": {
@@ -107,5 +107,14 @@
         403
       ]
     }
+  ],
+  "p1_routes": [
+    "/business/growth/social-publisher",
+    "/studio/ai-universe",
+    "/studio/create",
+    "/studio/library",
+    "/studio/productivity-pro",
+    "/studio/providers",
+    "/city/twin"
   ]
 }
