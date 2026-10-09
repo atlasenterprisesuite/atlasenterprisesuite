@@ -354,16 +354,45 @@ describe('ATLAS Unified AI provider adapters', () => {
     });
   });
 
-  it('implements Gemini descriptor/probe/execute without a real provider call', async () => {
-    const fetchFn = vi.fn(async (url: string) => {
+  it('implements Gemini 3.8 reasoning profiles without a real provider call', async () => {
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes(':generateContent')) {
+        const body = JSON.parse(String(init?.body));
+        expect(body.generationConfig).toMatchObject({
+          maxOutputTokens: 3000,
+          thinkingConfig: { thinkingLevel: 'medium' },
+        });
+        expect(body.systemInstruction).toEqual({ parts: [{ text: 'ATLAS' }] });
         return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'gemini-ok' }] } }], usageMetadata: {} }), { status: 200 });
       }
-      return new Response(JSON.stringify({ name: 'models/gemini-configured' }), { status: 200 });
+      expect(url).toContain('/v1beta/models/gemini-3.8-flash');
+      return new Response(JSON.stringify({ name: 'models/gemini-3.8-flash' }), { status: 200 });
     });
-    const adapter = createGeminiAdapter({ apiKey: 'gemini-secret', models: { balanced: 'gemini-configured' }, fetchFn });
+    const adapter = createGeminiAdapter({ apiKey: 'gemini-secret', models: { balanced: 'gemini-3.8-flash' }, fetchFn });
+    expect(adapter.descriptor()).toMatchObject({
+      id: 'gemini',
+      models: { balanced: 'gemini-3.8-flash' },
+      feature_support: { thinking_levels: ['low', 'medium', 'high'] },
+    });
     expect((await adapter.probe({ profile: 'balanced' })).verified).toBe(true);
     expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('gemini-ok');
+  });
+
+  it('maps ATLAS fast and deep profiles to Gemini thinking levels', async () => {
+    const observed: string[] = [];
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      observed.push(body.generationConfig?.thinkingConfig?.thinkingLevel);
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] }], }], usageMetadata: {} }), { status: 200 });
+    });
+    const adapter = createGeminiAdapter({
+      apiKey: 'gemini-secret',
+      models: { fast: 'gemini-3.8-flash', deep: 'gemini-3.8-flash' },
+      fetchFn,
+    });
+    await adapter.execute({ context, route: { ...route, profile: 'fast' }, instructions: 'ATLAS', input: [{ role: 'user', content: 'fast' }] });
+    await adapter.execute({ context, route: { ...route, profile: 'deep' }, instructions: 'ATLAS', input: [{ role: 'user', content: 'deep' }] });
+    expect(observed).toEqual(['low', 'high']);
   });
 
 
