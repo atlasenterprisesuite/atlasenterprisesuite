@@ -113,10 +113,10 @@ describe('FuturisticEnterpriseHome visual landing', () => {
       </MemoryRouter>
     );
 
-    const chart = screen.getByRole('img', { name: /distribución del catálogo.*no es certificación/i });
-    const bars = chart.querySelectorAll('.chart-bars > div > span');
+    const chart = screen.getByRole('group', { name: /distribución del catálogo.*no es certificación/i });
+    const bars = chart.querySelectorAll('.chart-bars > a > span');
     expect(bars).toHaveLength(3);
-    const barLabels = chart.querySelectorAll('.chart-bars > div > small');
+    const barLabels = chart.querySelectorAll('.chart-bars > a > small');
     expect(Array.from(barLabels, label => label.textContent)).toEqual([
       `${implemented} implementados`,
       `${evolving} en evolución`,
@@ -127,6 +127,9 @@ describe('FuturisticEnterpriseHome visual landing', () => {
     expect(bars[2]).toHaveStyle({ height: `${(gated / total) * 100}%` });
     expect(screen.getByText('Los estados pueden superponerse; no representan certificación de producción.')).toBeInTheDocument();
     expect(screen.getByText('Porcentaje de certificación: sin evidencia suficiente')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ver módulos implementados/i })).toHaveAttribute('href', '/suite?readiness=implemented');
+    expect(screen.getByRole('link', { name: /Ver módulos en evolución/i })).toHaveAttribute('href', '/suite?evolution=active');
+    expect(screen.getByRole('link', { name: /Ver módulos con dependencia externa/i })).toHaveAttribute('href', '/suite?readiness=external-gated');
   });
 
   it('uses accurate catalog percentage heights without a misleading minimum', () => {
