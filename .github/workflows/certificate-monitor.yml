@@ -14,6 +14,10 @@ concurrency:
 
 jobs:
   observe-public-tls:
+    # Fail-closed: Supabase has reached its Edge Function quota, so the dedicated
+    # OIDC receiver is not deployed. Keep scheduled invocations non-operational
+    # until the validated receiver is active and verified end-to-end.
+    if: ${{ vars.ATLAS_CERT_MONITOR_INGEST_READY == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
