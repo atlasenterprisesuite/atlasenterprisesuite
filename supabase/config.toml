@@ -35,3 +35,8 @@ verify_jwt = true
 # Public OAuth callback; the function enforces OAuth state, ATLAS session and RBAC internally.
 [functions.atlas-crm-salesforce]
 verify_jwt = false
+
+# GitHub Actions OIDC is verified cryptographically by this function.
+# Supabase JWT verification cannot validate GitHub-issued OIDC tokens.
+[functions.atlas-certificate-ingest]
+verify_jwt = false
