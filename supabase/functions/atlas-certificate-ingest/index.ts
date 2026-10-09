@@ -42,6 +42,8 @@ async function trustedGithubClaims(req: Request) {
   if (claims.iss !== ISSUER
     || (claims.aud !== AUDIENCE && !(Array.isArray(claims.aud) && claims.aud.includes(AUDIENCE)))
     || claims.repository !== REPOSITORY
+    || String(claims.repository_id) !== '1329354275'
+    || String(claims.repository_owner_id) !== '315187932'
     || claims.ref !== 'refs/heads/main'
     || claims.workflow_ref !== WORKFLOW_REF
     || !['schedule', 'workflow_dispatch'].includes(String(claims.event_name))
