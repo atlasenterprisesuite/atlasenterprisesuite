@@ -82,7 +82,7 @@ export function certificateVerdict(
   maxAgeMs = 24 * 60 * 60 * 1000
 ): CertificateVerdict {
   const latest = observations
-    .filter((item) => item.target_id === target.id)
+    .filter((item) => item.target_id === target.id && item.org_id === target.org_id)
     .sort((a, b) => Date.parse(b.observed_at) - Date.parse(a.observed_at))[0];
   if (!latest || !target.monitoring_approved) return 'no_evidence';
   const observedAt = Date.parse(latest.observed_at);
