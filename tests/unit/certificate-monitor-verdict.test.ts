@@ -13,13 +13,15 @@ const evidence: CertificateObservation = {
   observed_at:'2026-10-09T17:58:00Z',observation_status:'verified_tls',
   source:'github_actions_oidc',certificate_sha256:'a'.repeat(64),
   certificate_subject:'CN=example',certificate_issuer:'CA example',
-  not_before:'2026-10-01T00:00:00Z',not_after:'2026-10-20T00:00:00Z',
+  not_before:'2026-10-01T00:00:00Z',not_after:'2027-01-20T00:00:00Z',
   tls_protocol:'TLSv1.3',hostname_verified:true,chain_verified:true,mtls_verified:false,
   evidence_sha256:'b'.repeat(64),evidence_ref:'github-actions:example:1:1'
 };
 describe('certificate inventory fail-closed evidence verdicts', () => {
   it('requires an approved target and valid recent evidence', () => {
     expect(certificateVerdict(target,[evidence],now)).toBe('verified');
+    expect(certificateVerdict(target,[{...evidence,not_after:'2026-10-20T00:00:00Z'}],now)).toBe('expiring_soon');
+    expect(certificateVerdict(target,[{...evidence,not_after:'2027-01-20T00:00:00Z'}],now)).toBe('verified');
     expect(certificateVerdict({...target,monitoring_approved:false},[evidence],now)).toBe('no_evidence');
     expect(certificateVerdict(target,[],now)).toBe('no_evidence');
   });

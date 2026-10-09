@@ -220,6 +220,7 @@ jobs:
           IDENTITY_VERSION="$(probe_worker '/identity?app=%2Ffinance' 'identity')"
           MANAGER_VERSION="$(probe_worker '/execution/manager/readiness' 'manager-readiness')"
           ACCESSIBILITY_VERSION="$(probe_worker '/settings/accessibility/communication' 'accessibility')"
+          CERTIFICATES_VERSION="$(probe_worker '/security/certificates' 'certificates')"
           MODULE_VERSION="$(probe_worker '/finance' 'finance')"
           ACCOUNTING_VERSION="$(probe_worker '/finance/accounting' 'finance-accounting')"
           PAYABLES_VERSION="$(probe_worker '/finance/accounting/accounts-payable' 'accounts-payable')"
@@ -237,11 +238,12 @@ jobs:
           WORK_POLICIES_VERSION="$(probe_worker '/work/policies' 'work-policies')"
           DIRECT_VERSION_ID="${ROOT_VERSION%%|*}"
           DIRECT_VERSION_TAG="${ROOT_VERSION#*|}"
-          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MANAGER_VERSION" "$ACCESSIBILITY_VERSION" "$MODULE_VERSION" "$ACCOUNTING_VERSION" "$PAYABLES_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$PROCURE_TO_PAY_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
+          DIRECT_VERSION_IDS="$(printf '%s\n' "$ROOT_VERSION" "$SUITE_VERSION" "$IDENTITY_VERSION" "$MANAGER_VERSION" "$ACCESSIBILITY_VERSION" "$CERTIFICATES_VERSION" "$MODULE_VERSION" "$ACCOUNTING_VERSION" "$PAYABLES_VERSION" "$AUTOMOTIVE_VERSION" "$RECEIVABLES_VERSION" "$PROCURE_TO_PAY_VERSION" "$HEALTH_VERSION" "$JAQUE_MATE_SENTINEL_VERSION" "$WEB_LAUNCH_VERSION" "$COMMERCE_VERSION" "$WORK_VERSION" "$WORK_NEW_VERSION" "$WORK_CONNECTIONS_VERSION" "$WORK_RUNTIMES_VERSION" "$WORK_POLICIES_VERSION" | cut -d'|' -f1 | sort -u | paste -sd, -)"
           test "${SUITE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${IDENTITY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${MANAGER_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${ACCESSIBILITY_VERSION#*|}" = "$GITHUB_SHA" || exit 1
+          test "${CERTIFICATES_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${MODULE_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${ACCOUNTING_VERSION#*|}" = "$GITHUB_SHA" || exit 1
           test "${PAYABLES_VERSION#*|}" = "$GITHUB_SHA" || exit 1
@@ -386,6 +388,7 @@ jobs:
           }
           probe_route "Public home" "/" "public_home_reachable"
           probe_route "ATLAS Identity" "/identity?app=%2Ffinance" "identity_route_reachable"
+          probe_route "ATLAS Certificates" "/security/certificates" "certificates_route_reachable"
           probe_route "ATLAS Manager readiness" "/execution/manager/readiness" "manager_readiness_route_reachable"
           probe_route "Module SPA shell" "/finance" "module_spa_shell_reachable"
           probe_route "ATLAS Accounting" "/finance/accounting" "finance_accounting_route_reachable"
