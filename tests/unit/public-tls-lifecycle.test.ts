@@ -21,6 +21,7 @@ describe('ATLAS public HTTPS TLS lifecycle', () => {
   it('fails closed for untrusted chains, hostname mismatches, or weak protocol', () => {
     expect(evaluatePublicTlsCertificate(verified({ authorized: false }), { now }).status).toBe('blocked');
     expect(evaluatePublicTlsCertificate(verified({ peer: peer('malicious.example') }), { now }).status).toBe('blocked');
+    expect(evaluatePublicTlsCertificate(verified({ peer: { ...peer(), subjectaltname: undefined } }), { now }).status).toBe('blocked');
     expect(evaluatePublicTlsCertificate(verified({ protocol: 'TLSv1.1' }), { now }).status).toBe('blocked');
     expect(evaluatePublicTlsCertificate(verified({ hostname: 'attacker.example' }), { now }).status).toBe('blocked');
   });
