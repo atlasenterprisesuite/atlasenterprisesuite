@@ -140,6 +140,30 @@ jobs:
       - name: Verify complete repository
         run: npm run verify:all
 
+      - name: Verify ATLAS Copilot live release contract
+        env:
+          COPILOT_READINESS_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-copilot?api=readiness
+        run: |
+          set -euo pipefail
+
+          EXPECTED_VERSION="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const VERSION=(\\d+);/);if(!m)process.exit(2);process.stdout.write(m[1]);")"
+          EXPECTED_PROVIDERS="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const PROVIDER_IDS=\\[([^\\]]+)\\];/s);if(!m)process.exit(2);const ids=[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1]).sort();process.stdout.write(ids.join(','));")"
+          EXPECTED_MODES="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const PROVIDER_IDS=\\[([^\\]]+)\\];/s);if(!m)process.exit(2);const ids=[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1]);process.stdout.write(['auto',...ids,'council'].sort().join(','));")"
+
+          curl --fail --silent --show-error --max-time 30             -H 'Cache-Control: no-cache, no-store'             "$COPILOT_READINESS_URL"             > /tmp/atlas-copilot-readiness.json
+
+          LIVE_OK="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));process.stdout.write(String(j.ok===true&&j.state==='ready'&&j.service==='atlas-copilot'));")"
+          LIVE_VERSION="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));process.stdout.write(String(j.version??''));")"
+          LIVE_PROVIDERS="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));const ids=(j.providers||[]).map(x=>String(x.id||'')).filter(Boolean).sort();process.stdout.write(ids.join(','));")"
+          LIVE_MODES="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));const ids=(j.modes||[]).map(String).sort();process.stdout.write(ids.join(','));")"
+
+          test "$LIVE_OK" = "true" || { echo "::error::ATLAS Copilot live readiness is not ready."; exit 1; }
+          test "$LIVE_VERSION" = "$EXPECTED_VERSION" || { echo "::error::ATLAS Copilot live version does not match repository VERSION (repo=$EXPECTED_VERSION live=$LIVE_VERSION)."; exit 1; }
+          test "$LIVE_PROVIDERS" = "$EXPECTED_PROVIDERS" || { echo "::error::ATLAS Copilot live provider catalog does not match repository contract."; exit 1; }
+          test "$LIVE_MODES" = "$EXPECTED_MODES" || { echo "::error::ATLAS Copilot live mode catalog does not match repository contract."; exit 1; }
+
+          echo "ATLAS Copilot live release contract verified: version=$LIVE_VERSION providers=$LIVE_PROVIDERS" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Deploy Workers Static Assets
         if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
         id: deploy

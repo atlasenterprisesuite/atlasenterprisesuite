@@ -31,6 +31,46 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Require ATLAS Copilot version bump when source changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PUSH_BEFORE_SHA: ${{ github.event.before || '' }}
+        run: |
+          set -euo pipefail
+
+          BASE_SHA=""
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE_SHA="$PR_BASE_SHA"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            BASE_SHA="$PUSH_BEFORE_SHA"
+          fi
+
+          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -Eq '^0+$'; then
+            echo "ATLAS Copilot version gate skipped: no comparable base SHA."
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+
+          if git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- supabase/functions/atlas-copilot/; then
+            echo "ATLAS Copilot source unchanged; VERSION bump not required."
+            exit 0
+          fi
+
+          BASE_VERSION="$(git show "$BASE_SHA:supabase/functions/atlas-copilot/index.ts" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=s.match(/const VERSION=(\\d+);/);if(!m)process.exit(2);process.stdout.write(m[1]);})")"
+          HEAD_VERSION="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const VERSION=(\\d+);/);if(!m)process.exit(2);process.stdout.write(m[1]);")"
+
+          test -n "$BASE_VERSION" || { echo "::error::Unable to read ATLAS Copilot base VERSION"; exit 1; }
+          test -n "$HEAD_VERSION" || { echo "::error::Unable to read ATLAS Copilot head VERSION"; exit 1; }
+
+          if [ "$HEAD_VERSION" -le "$BASE_VERSION" ]; then
+            echo "::error::ATLAS Copilot source changed without a monotonic VERSION bump (base=$BASE_VERSION head=$HEAD_VERSION)."
+            exit 1
+          fi
+
+          echo "ATLAS Copilot VERSION advanced from $BASE_VERSION to $HEAD_VERSION."
+
       - name: Install native media verification dependencies
         run: |
           # GitHub-hosted Ubuntu images can inherit optional third-party APT
