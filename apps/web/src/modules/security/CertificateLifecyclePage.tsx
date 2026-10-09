@@ -48,9 +48,12 @@ export function CertificateLifecyclePage() {
     return () => { active = false; };
   }, [reload]);
   const verifiedCount = inventory?.targets.filter((target) =>
-    certificateVerdict(target, inventory.observations, Date.now()) === 'verified'
+    ['verified', 'expiring_soon'].includes(certificateVerdict(target, inventory.observations, Date.now()))
   ).length ?? 0;
 
+  const renewalWarnings = inventory?.targets.filter((target) =>
+    certificateVerdict(target, inventory.observations, Date.now()) === 'expiring_soon'
+  ).length ?? 0;
   return (
     <section className="clm-page" aria-labelledby="clm-title">
       <div className="clm-top-grid">
@@ -83,7 +86,7 @@ export function CertificateLifecyclePage() {
             {inventoryState === 'error' ? <p><strong>Fuente no disponible.</strong> No se puede determinar el estado real. Acceso restringido o error de conexión.</p> : null}
             {inventoryState === 'loaded' && inventory ? <>
               <p><strong>{inventory.targets.length}</strong> destinos registrados · <strong>{verifiedCount}</strong> con comprobación TLS reciente.</p>
-              <p>{inventory.observations.length} observaciones autorizadas registradas. Ninguna cifra implica cumplimiento mTLS sin evidencia específica.</p>
+              <p>{inventory.observations.length} observaciones autorizadas registradas. {renewalWarnings > 0 ? `${renewalWarnings} certificado(s) requieren renovación dentro de 30 días.` : ''} Ninguna cifra implica cumplimiento mTLS sin evidencia específica.</p>
               <small>Origen: Supabase con RLS por organización. Actualización: {new Date(inventory.loadedAt).toLocaleString()}</small>
             </> : null}
             <button type="button" className="clm-refresh" onClick={() => setReload((value) => value + 1)}>Actualizar inventario</button>
