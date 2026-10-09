@@ -3,9 +3,13 @@ import { createHash } from 'node:crypto';
 
 const hostname = 'www.atlasenterprisesuite.com';
 const port = 443;
-const audience = 'atlas-certificate-monitor';
+const audience = 'atlas-infrastructure-evidence';
 const endpoint = process.env.ATLAS_CERTIFICATE_INGEST_URL;
-if (!endpoint || new URL(endpoint).origin !== 'https://ggmanzcgtlrvqfoccgsh.supabase.co') {
+if (!endpoint) throw new Error('approved_ingest_endpoint_required');
+const approvedUrl = new URL(endpoint);
+if (approvedUrl.origin !== 'https://ggmanzcgtlrvqfoccgsh.supabase.co'
+  || approvedUrl.pathname !== '/functions/v1/atlas-infra-evidence'
+  || approvedUrl.searchParams.get('api') !== 'record') {
   throw new Error('approved_ingest_endpoint_required');
 }
 if (!process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || !process.env.ACTIONS_ID_TOKEN_REQUEST_URL) {
@@ -58,16 +62,38 @@ if (!tokenResponse.ok) throw new Error('github_oidc_token_unavailable');
 const token = (await tokenResponse.json()).value;
 if (typeof token !== 'string' || !token.includes('.')) throw new Error('github_oidc_token_invalid');
 const observed = { hostname, port, observed_at: new Date().toISOString(), ...await probeTls() };
+const passed = observed.observation_status === 'verified_tls';
+const record = {
+  provider: 'cloudflare',
+  status: passed ? 'passed' : 'failed',
+  verification_type: 'public-edge-verification',
+  target_service: 'atlas-certificate-monitor',
+  target_version: process.env.GITHUB_SHA || 'unknown',
+  provider_state: passed ? 'tls_verified' : 'tls_failure',
+  checks: {
+    hostname, port, observed_at: observed.observed_at,
+    certificate_sha256: observed.certificate_sha256 || null,
+    certificate_subject: observed.certificate_subject || null,
+    certificate_issuer: observed.certificate_issuer || null,
+    not_before: observed.not_before || null,
+    not_after: observed.not_after || null,
+    tls_protocol: observed.tls_protocol || null,
+    hostname_verified: passed && observed.hostname_verified === true,
+    chain_verified: passed && observed.chain_verified === true,
+    mtls_verified: false
+  }
+};
 const result = await fetch(endpoint, {
   method: 'POST',
   headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
-  body: JSON.stringify(observed),
+  body: JSON.stringify(record),
   signal: AbortSignal.timeout(15000)
 });
 const data = await result.json().catch(() => ({}));
-if (!result.ok || data.ok !== true) throw new Error('certificate_evidence_ingestion_rejected:' + (data.error || result.status));
-console.log(JSON.stringify({ host: hostname, status: observed.observation_status, evidence_id: data.evidence_id, sha256: createHash('sha256').update(JSON.stringify(observed)).digest('hex') }));
-if (observed.observation_status !== 'verified_tls') {
+if (!result.ok || data.ok !== true || !data.evidence?.id)
+  throw new Error('certificate_evidence_ingestion_rejected:' + (data.error || result.status));
+console.log(JSON.stringify({ host: hostname, status: observed.observation_status, evidence_id: data.evidence.id, sha256: createHash('sha256').update(JSON.stringify(record)).digest('hex') }));
+if (!passed) {
   // Successful recording of a failed handshake is still a failed security verification.
   process.exitCode = 1;
 }
