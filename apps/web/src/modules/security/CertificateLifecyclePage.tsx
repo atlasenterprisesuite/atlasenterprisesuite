@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { certificateVerdict, loadCertificateInventory, type CertificateInventory } from './certificateInventory';
 import './certificate-lifecycle.css';
 
 type Phase = { title: string; subtitle: string; detail: string; owner: string };
@@ -29,6 +30,27 @@ function LockShield() {
 }
 export function CertificateLifecyclePage() {
   const [selected, setSelected] = useState(0);
+  const [inventory, setInventory] = useState<CertificateInventory | null>(null);
+  const [inventoryState, setInventoryState] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setInventoryState('loading');
+    void loadCertificateInventory().then((result) => {
+      if (!active) return;
+      setInventory(result);
+      setInventoryState('loaded');
+    }).catch(() => {
+      if (!active) return;
+      setInventory(null);
+      setInventoryState('error');
+    });
+    return () => { active = false; };
+  }, [reload]);
+  const verifiedCount = inventory?.targets.filter((target) =>
+    certificateVerdict(target, inventory.observations, Date.now()) === 'verified'
+  ).length ?? 0;
+
   return (
     <section className="clm-page" aria-labelledby="clm-title">
       <div className="clm-top-grid">
@@ -55,7 +77,17 @@ export function CertificateLifecyclePage() {
             <div className="clm-change"><span className="clm-change-icon caution">⌛</span><div><strong>Certificados de menor vigencia</strong><p>Planificar renovaciones frecuentes; objetivo público de 47 días en marzo de 2029.</p></div><b className="clm-level">P1</b></div>
             <div className="clm-change"><span className="clm-change-icon">✧</span><div><strong>Root CAs y trust stores</strong><p>Actualizar confianza pública compatible, sin ampliar arbitrariamente la PKI privada.</p></div><b className="clm-level">P1</b></div>
           </article>
-          <article className="clm-panel clm-reality" role="status"><h2>Estado operativo de ATLAS</h2><p><strong>No verificado.</strong> No existe un inventario autenticado de certificados conectado a esta pantalla.</p><p>No se han ejecutado rotaciones desde este panel.</p></article>
+          <article className="clm-panel clm-reality" role="status">
+            <h2>Fuente autenticada ATLAS</h2>
+            {inventoryState === 'loading' ? <p>Cargando inventario con identidad de organización verificada…</p> : null}
+            {inventoryState === 'error' ? <p><strong>Fuente no disponible.</strong> No se puede determinar el estado real. Acceso restringido o error de conexión.</p> : null}
+            {inventoryState === 'loaded' && inventory ? <>
+              <p><strong>{inventory.targets.length}</strong> destinos registrados · <strong>{verifiedCount}</strong> con comprobación TLS reciente.</p>
+              <p>{inventory.observations.length} observaciones autorizadas registradas. Ninguna cifra implica cumplimiento mTLS sin evidencia específica.</p>
+              <small>Origen: Supabase con RLS por organización. Actualización: {new Date(inventory.loadedAt).toLocaleString()}</small>
+            </> : null}
+            <button type="button" className="clm-refresh" onClick={() => setReload((value) => value + 1)}>Actualizar inventario</button>
+          </article>
         </aside>
       </div>
 
@@ -71,6 +103,27 @@ export function CertificateLifecyclePage() {
         <div className="clm-phase-detail" aria-live="polite"><strong>Fase {selected + 1} · {phases[selected].title}</strong><p>{phases[selected].detail}</p><small>Responsables previstos: {phases[selected].owner}</small></div>
       </section>
 
+      <section className="clm-panel clm-inventory" aria-labelledby="clm-inventory-title">
+        <div className="clm-section-heading"><h2 id="clm-inventory-title">Inventario autenticado de certificados</h2><span>Solo lectura · evidencias del servidor</span></div>
+        {inventoryState === 'loading' ? <p role="status">Verificando organización y consultando certificados…</p> : null}
+        {inventoryState === 'error' ? <p role="alert">No se pudo consultar la fuente. Estado desconocido; ninguna validación de seguridad se presume exitosa.</p> : null}
+        {inventoryState === 'loaded' && inventory?.targets.length === 0 ? <p>No hay destinos registrados para esta organización. No se ha efectuado ninguna comprobación.</p> : null}
+        {inventoryState === 'loaded' && inventory?.targets.length ? <div className="clm-inventory-list">
+          {inventory.targets.map((target) => {
+            const verdict = certificateVerdict(target, inventory.observations, Date.now());
+            const latest = inventory.observations.filter((observation) => observation.target_id === target.id)
+              .sort((a, b) => Date.parse(b.observed_at) - Date.parse(a.observed_at))[0];
+            const labels = { verified: 'TLS verificado', failed: 'Fallo TLS', stale: 'Evidencia caducada', no_evidence: 'Sin evidencia' };
+            return <article key={target.id} className="clm-inventory-target">
+              <div><strong>{target.label}</strong><p>{target.hostname}:{target.port} · {target.provider} · {target.environment}</p></div>
+              <div><span className={'clm-verdict clm-verdict-' + verdict}>{labels[verdict]}</span><small>{latest ? 'Última observación: ' + new Date(latest.observed_at).toLocaleString() : 'Sin observaciones'}</small>
+              {latest?.not_after ? <small>Vence: {new Date(latest.not_after).toLocaleDateString()}</small> : null}
+              {latest?.evidence_ref ? <small>Evidencia: {latest.evidence_ref}</small> : null}</div>
+            </article>;
+          })}
+        </div> : null}
+        <p className="clm-muted">La validación del servidor no demuestra mTLS de cliente; éste requiere pruebas de identidad separadas. Solo los destinos aprobados pueden recibir comprobaciones automatizadas.</p>
+      </section>
       <div className="clm-bottom-grid">
         <section className="clm-panel" aria-labelledby="clm-module-title"><h2 id="clm-module-title">Módulos ATLAS involucrados</h2><div className="clm-module-grid">{modules.map((name) => <span key={name}>{name}</span>)}</div><p className="clm-muted">Alcance de integración planificado; no indica que los conectores estén activos.</p></section>
         <section className="clm-panel" aria-labelledby="clm-calendar-title"><h2 id="clm-calendar-title">Horizonte de reducción de vigencia TLS</h2>
