@@ -4,3 +4,15 @@
 @media(max-width:740px){.clm-page{padding:14px;border-radius:12px}.clm-hero{min-height:570px;padding:18px}.clm-hero-heading{max-width:100%}.clm-hero-heading h1{max-width:440px}.clm-planet{width:320px;height:320px;top:205px;right:-80px}.clm-hero-visual{top:285px;right:16%;width:180px}.clm-principles{display:flex;flex-wrap:wrap;max-width:100%;gap:6px;margin-top:12px}.clm-principles span{font-size:.72rem;padding:7px}.clm-constellation{left:16px;right:16px;bottom:57px;max-width:none;justify-content:flex-start}.clm-constellation span{font-size:.68rem}.clm-hero-disclaimer{left:16px}.clm-aside,.clm-bottom-grid{grid-template-columns:1fr}.clm-reality{grid-column:auto}.clm-phase-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.clm-phase{min-height:162px}.clm-module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:430px){.clm-hero{min-height:600px}.clm-hero-visual{right:7%;top:325px;width:155px}.clm-planet{top:255px}.clm-phase-grid{grid-template-columns:1fr}.clm-phase{min-height:130px}.clm-change{grid-template-columns:38px minmax(0,1fr) auto}.clm-change-icon{width:38px;height:38px}.clm-timeline{gap:6px}.clm-timeline li{font-size:.68rem}}
 @media(prefers-reduced-motion:reduce){.clm-page *{transition:none!important;animation:none!important}}
+
+.clm-inventory-list{display:grid;gap:10px;margin:14px 0}
+.clm-inventory-target{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:14px;border:1px solid rgba(95,198,254,.3);background:rgba(3,28,58,.7);border-radius:12px;overflow-wrap:anywhere}
+.clm-inventory-target p{margin:5px 0 0;color:#a5cde4;font-size:.87rem}
+.clm-inventory-target>div:last-child{display:grid;justify-items:end;gap:7px;text-align:right}
+.clm-inventory-target small{color:#a8c5d8;max-width:440px;overflow-wrap:anywhere}
+.clm-verdict{display:inline-block;background:#47371b;color:#ffdc9c;padding:5px 10px;border-radius:999px;border:1px solid #b88f4d;font-size:.76rem;font-weight:800}
+.clm-verdict-verified{background:#073a33;border-color:#39ca9a;color:#9dfbe1}
+.clm-verdict-failed{background:#4c1f2a;border-color:#ed6c7f;color:#ffb0bc}
+.clm-refresh{color:#e5fbff;background:#0c3e6a;border:1px solid rgba(112,220,255,.55);border-radius:10px;margin-top:12px;min-height:44px;padding:10px 14px;font:inherit;font-size:.85rem;font-weight:700;cursor:pointer}
+.clm-refresh:hover{background:#115388}
+@media(max-width:650px){.clm-inventory-target{flex-direction:column}.clm-inventory-target>div:last-child{justify-items:start;text-align:left}}
