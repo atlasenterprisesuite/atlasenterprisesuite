@@ -257,14 +257,23 @@ export function FuturisticEnterpriseHome() {
             </header>
             <div
               className="atlas-readiness-chart"
-              role="img"
+              role="group"
               aria-label={`Distribución del catálogo: ${implemented} módulos implementados, ${activeEvolution} en evolución activa y ${gated} con dependencia externa; no es certificación de producción`}
             >
               <div className="chart-grid" aria-hidden="true" />
               <div className="chart-bars">
-                <div><span style={{ height: `${getAtlasCatalogShare(implemented, total)}%` }} /><small>{implemented} implementados</small></div>
-                <div><span style={{ height: `${getAtlasCatalogShare(activeEvolution, total)}%` }} /><small>{activeEvolution} en evolución</small></div>
-                <div><span style={{ height: `${getAtlasCatalogShare(gated, total)}%` }} /><small>{gated} externos</small></div>
+                <Link to="/suite?readiness=implemented" aria-label={`Ver módulos implementados: ${implemented}`}>
+                  <span style={{ height: `${getAtlasCatalogShare(implemented, total)}%` }} aria-hidden="true" />
+                  <small>{implemented} implementados</small>
+                </Link>
+                <Link to="/suite?evolution=active" aria-label={`Ver módulos en evolución: ${activeEvolution}`}>
+                  <span style={{ height: `${getAtlasCatalogShare(activeEvolution, total)}%` }} aria-hidden="true" />
+                  <small>{activeEvolution} en evolución</small>
+                </Link>
+                <Link to="/suite?readiness=external-gated" aria-label={`Ver módulos con dependencia externa: ${gated}`}>
+                  <span style={{ height: `${getAtlasCatalogShare(gated, total)}%` }} aria-hidden="true" />
+                  <small>{gated} externos</small>
+                </Link>
               </div>
             </div>
             <p className="atlas-chart-note">Los estados pueden superponerse; no representan certificación de producción.</p>
