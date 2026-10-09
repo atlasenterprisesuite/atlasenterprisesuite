@@ -33,6 +33,12 @@ const DEVICE_DNA_ENABLED = !CERTIFICATE_TRUST_ONLY && process.platform === 'linu
   String(process.env.ATLAS_DEVICE_DNA_DISABLED || '').trim().toLowerCase() !== 'true';
 
 let state = await loadAgentState();
+if (CERTIFICATE_TRUST_ONLY && process.env.ATLAS_AGENT_SESSION_TOKEN) {
+  throw new Error('certificate_trust_requires_one_time_enrollment');
+}
+if (state.sessionToken && (state.agentProfile || 'standard') !== AGENT_PROFILE) {
+  throw new Error('agent_profile_change_requires_reenrollment');
+}
 let sessionToken = String(process.env.ATLAS_AGENT_SESSION_TOKEN || state.sessionToken || '').trim();
 let realtimeConnected = false;
 let realtimeClient = null;
@@ -143,6 +149,7 @@ async function enroll() {
     ...state,
     agentId: String(result.agent?.id || ''),
     organizationId: String(result.agent?.org_id || ''),
+    agentProfile: AGENT_PROFILE,
     sessionToken,
     sessionExpiresAt: String(result.session_expires_at || ''),
     enrolledAt: new Date().toISOString(),
