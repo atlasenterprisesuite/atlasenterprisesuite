@@ -7,6 +7,9 @@ on:
   # never be inherited by a newer main commit.
   push:
     branches: ["main"]
+  # Read-only TLS inventory runs daily without invoking the deployment job.
+  schedule:
+    - cron: '20 12 * * *'
 
 concurrency:
   group: atlas-cloudflare-worker
@@ -19,6 +22,7 @@ permissions:
 
 jobs:
   validate-deploy-verify:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
@@ -763,3 +767,19 @@ jobs:
     uses: ./.github/workflows/global-production-verify.yml
     with:
       mode: fail-closed
+  
+  certificate-monitor:
+    name: Verify ATLAS public TLS certificate
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout allowlisted certificate monitor
+        uses: actions/checkout@v7
+      - name: Capture and persist signed TLS evidence
+        env:
+          ATLAS_CERTIFICATE_INGEST_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=record
+        run: node tools/certificate-monitor/probe.mjs
