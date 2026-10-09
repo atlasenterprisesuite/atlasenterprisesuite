@@ -104,6 +104,12 @@ export function parseTravelDraftJson(raw: string): TripPlan {
   return plan;
 }
 
+/** Security-safe unique draft identifiers; do not fall back to Math.random. */
+export function createTravelId(): string {
+  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+}
+
 function escapeIcs(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/\r\n|\n|\r/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
 }
@@ -125,7 +131,7 @@ export function tripCalendarIcs(plan: TripPlan, now = new Date()): string {
     ...(services.length ? services : ['Sin opciones añadidas'])
   ].join('\n');
   const instant = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const uid = 'atlas-travel-' + instant + '-' + Math.floor(Math.random() * 1000000) + '@atlas.local';
+  const uid = 'atlas-travel-' + instant + '-' + createTravelId() + '@atlas.local';
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
