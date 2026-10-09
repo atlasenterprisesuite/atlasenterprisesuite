@@ -14,6 +14,17 @@ class SentinelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / "ok.ts").write_text("export const ok = true;")
             self.assertEqual(scan(Path(d))["findings"], [])
+    def test_detects_wildcard_cors_without_reporting_non_wildcard_origins(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "headers.ts").write_text(
+                'Access-Control-Allow-Origin: "*"\\nAccess-Control-Allow-Origin: *\\n'
+                'Access-Control-Allow-Origin: https://example.test'
+            )
+            result = scan(Path(d))
+            rules = [item["rule"] for item in result["findings"]]
+            self.assertEqual(rules.count("WILDCARD_CORS"), 2)
+            self.assertEqual(result["counts"]["P0"], 0)
+
     def test_skip_node_modules(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "node_modules" / "bad.ts"
