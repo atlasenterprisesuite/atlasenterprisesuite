@@ -20,6 +20,8 @@ const evidence: CertificateObservation = {
 describe('certificate inventory fail-closed evidence verdicts', () => {
   it('requires an approved target and valid recent evidence', () => {
     expect(certificateVerdict(target,[evidence],now)).toBe('verified');
+    expect(certificateVerdict(target,[{...evidence,not_after:'2026-10-20T00:00:00Z'}],now)).toBe('expiring_soon');
+    expect(certificateVerdict(target,[{...evidence,not_after:'2027-01-20T00:00:00Z'}],now)).toBe('verified');
     expect(certificateVerdict({...target,monitoring_approved:false},[evidence],now)).toBe('no_evidence');
     expect(certificateVerdict(target,[],now)).toBe('no_evidence');
   });
