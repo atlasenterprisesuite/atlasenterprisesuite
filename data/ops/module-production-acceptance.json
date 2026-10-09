@@ -33,6 +33,12 @@
       "path": "/city",
       "verdict": "VERIFICATION_HOLD",
       "reason": "Canonical navigation exposes ATLAS Digital City, but the route is not yet part of the canonical fail-closed production verification contract. It must not be reported as production verified until route evidence is added."
+    },
+    {
+      "module_id": "travel",
+      "path": "/travel",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "ATLAS Travel & Stay is available only as a draft planner with external Google searches and user-entered estimated prices. There is no authorized inventory, confirmed booking, payment rail, tenant-scoped durable itinerary storage, or production E2E exact-SHA verification. Hold production certification until all required dimensions are demonstrated."
     }
   ]
 }
