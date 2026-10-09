@@ -262,9 +262,9 @@ export function FuturisticEnterpriseHome() {
             >
               <div className="chart-grid" aria-hidden="true" />
               <div className="chart-bars">
-                <div><span style={{ height: `${getAtlasCatalogShare(implemented, total)}%` }} /><small>${implemented} implementados</small></div>
-                <div><span style={{ height: `${getAtlasCatalogShare(activeEvolution, total)}%` }} /><small>${activeEvolution} en evolución</small></div>
-                <div><span style={{ height: `${getAtlasCatalogShare(gated, total)}%` }} /><small>${gated} externos</small></div>
+                <div><span style={{ height: `${getAtlasCatalogShare(implemented, total)}%` }} /><small>{implemented} implementados</small></div>
+                <div><span style={{ height: `${getAtlasCatalogShare(activeEvolution, total)}%` }} /><small>{activeEvolution} en evolución</small></div>
+                <div><span style={{ height: `${getAtlasCatalogShare(gated, total)}%` }} /><small>{gated} externos</small></div>
               </div>
             </div>
             <p className="atlas-chart-note">Los estados pueden superponerse; no representan certificación de producción.</p>
