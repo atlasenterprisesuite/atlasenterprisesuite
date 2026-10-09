@@ -258,7 +258,7 @@ export function AtlasDigitalDistrictPage() {
         <aside className="atlas-district-panel">
           <div className="atlas-district-panel-heading">
             <div><p className="eyebrow">Operational layers</p><h2>District controls</h2></div>
-            <span>{Object.values(activeLayers).filter(Boolean).length}/{LAYERS.length}</span>
+            <span>{mode === 'simulation' ? `${Object.values(activeLayers).filter(Boolean).length}/${LAYERS.length}` : 'LOCKED'}</span>
           </div>
 
           {mode === 'live' ? <p className="atlas-district-layer-gate">Live layer controls are locked until an authenticated telemetry feed is bound.</p> : null}
@@ -267,14 +267,14 @@ export function AtlasDigitalDistrictPage() {
               <button
                 key={layer.id}
                 type="button"
-                className={activeLayers[layer.id] ? 'active' : ''}
-                aria-pressed={activeLayers[layer.id]}
+                className={mode === 'simulation' && activeLayers[layer.id] ? 'active' : ''}
+                aria-pressed={mode === 'simulation' && activeLayers[layer.id]}
                 disabled={mode === 'live'}
                 onClick={() => toggleLayer(layer.id)}
               >
                 <span className="atlas-district-layer-indicator" />
                 <span><strong>{layer.label}</strong><small>{layer.detail}</small></span>
-                <span>{activeLayers[layer.id] ? 'ON' : 'OFF'}</span>
+                <span>{mode === 'live' ? 'LOCKED' : activeLayers[layer.id] ? 'ON' : 'OFF'}</span>
               </button>
             ))}
           </div>
