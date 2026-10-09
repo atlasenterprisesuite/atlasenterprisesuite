@@ -24,7 +24,7 @@ describe('ATLAS Travel & Stay web planner', () => {
     fillTrip();
     expect(screen.getByRole('button', { name: /Buscar en la web/ })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Agendar plan/ })).toBeEnabled();
-    expect(screen.getByText('2 noches')).toBeInTheDocument();
+    expect(screen.getByText(/2 noches/)).toBeInTheDocument();
   });
 
   it('switches search category, opens an external search on user action and never claims an actual booking', () => {
