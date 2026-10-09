@@ -34,6 +34,9 @@ describe('ATLAS authorized certificate trust agent',()=>{
     expect(agent).toContain('if (CERTIFICATE_TRUST_ONLY) return;');
     expect(agent).toContain('if (!CERTIFICATE_TRUST_ONLY) await syncDevices()');
     expect(agent).toContain('!CERTIFICATE_TRUST_ONLY && process.platform');
+    expect(agent).toContain('certificate_trust_requires_one_time_enrollment');
+    expect(agent).toContain('agent_profile_change_requires_reenrollment');
+    expect(agent).toContain('agentProfile: AGENT_PROFILE');
   });
   it('preserves standard agent functionality',()=>{
     expect(capabilitiesForAgentProfile('standard',{deviceDnaEnabled:true})).toContain('device.dna.read');
