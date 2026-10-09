@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  travelSearchUrl, tripCalendarIcs, tripNights, validateTripPlan,
+  parseTravelDraftJson, travelSearchUrl, tripCalendarIcs, tripNights, validateTripPlan,
   type TripPlan
 } from '../../apps/web/src/modules/travel/travelPlanning';
 
@@ -39,6 +39,14 @@ describe('ATLAS Travel planning (no external booking)', () => {
     expect(content).toContain('No existe reserva');
     expect(content).toContain('Orlando\\, FL\\;\\nResumen');
     expect(content).not.toContain('\nResumen\r\n');
+  });
+
+  it('restores a saved draft and rejects invalid data', () => {
+    const saved = JSON.stringify({ schema: 'atlas.travel.plan.v1', status: 'draft_unconfirmed', ...plan });
+    expect(parseTravelDraftJson(saved).services[0].estimatedCost).toBe(280);
+    expect(parseTravelDraftJson(saved).services[0].id).toBe('imported-0');
+    expect(() => parseTravelDraftJson('invalid')).toThrow();
+    expect(() => parseTravelDraftJson(JSON.stringify({ schema: 'atlas.travel.plan.v1', status: 'other', ...plan }))).toThrow();
   });
 
   it('rejects fake costs and excessive option counts', () => {
