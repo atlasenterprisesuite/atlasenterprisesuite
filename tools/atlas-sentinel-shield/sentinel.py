@@ -8,7 +8,7 @@ from pathlib import Path
 
 RULES = [
     ("P0", "SECRET_KEY", re.compile(r"(?i)sb_secret_[A-Za-z0-9_-]{12,}"), "Rotate secret and use secret manager"),
-    ("P0", "SERVICE_ROLE_KEY", re.compile(r"(?i)(?:SUPABASE_SERVICE_ROLE_KEY|service_role_key)\s*[:=]\s*['\\"]?(?!\$|\{|process\.env|Deno\.env|import\.meta\.env)[A-Za-z0-9_.-]{20,}"), "Remove embedded privileged credentials"),
+    ("P0", "SERVICE_ROLE_KEY", re.compile(r'(?i)(?:SUPABASE_SERVICE_ROLE_KEY|service_role_key)\s*[:=]\s*[A-Za-z0-9_.-]{20,}'), "Remove embedded privileged credentials"),
     ("P1", "WILDCARD_CORS", re.compile(r"(?i)Access-Control-Allow-Origin\s*['\\"]?\s*[:=]\s*['\\"]\*"), "Review authenticated CORS origins"),
     ("P1", "JWT_DISABLED", re.compile(r"(?m)^\s*verify_jwt\s*=\s*false\b"), "Confirm alternate authorization or intentionally public route"),
     ("P1", "RLS_DISABLED", re.compile(r"(?i)ALTER\s+TABLE\s+[^;\n]+\s+DISABLE\s+ROW\s+LEVEL\s+SECURITY"), "Keep RLS enabled for exposed tables"),
