@@ -364,7 +364,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Travel & Stay',
     area: 'Mobility',
     route: '/travel',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Buscador externo y planificador de hoteles, vuelos, autos, transporte, actividades y estadías con exportación de itinerario tentativo; reservas y pagos no conectados.',
     showInNavigation: true
