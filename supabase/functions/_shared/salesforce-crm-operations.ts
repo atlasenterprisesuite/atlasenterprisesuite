@@ -49,7 +49,7 @@ function nowIso(deps: SalesforceCrmOperationDependencies): string {
 
 function isObjectType(value: unknown): value is CrmObjectType {
   return typeof value === 'string' && [
-    'contact', 'company', 'deal', 'ticket', 'task', 'call', 'meeting', 'note', 'email'
+    'contact', 'lead', 'company', 'deal', 'ticket', 'task', 'call', 'meeting', 'note', 'email'
   ].includes(value);
 }
 
