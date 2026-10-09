@@ -1,0 +1,25 @@
+name: ATLAS Sentinel Shield (advisory)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests
+        run: python3 -m unittest discover -s tools/atlas-sentinel-shield -p 'test_*.py'
+      - name: Source security scan (advisory rollout)
+        run: |
+          python3 tools/atlas-sentinel-shield/sentinel.py . --output sentinel-report.json || echo "Sentinel findings require triage; advisory rollout"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-sentinel-report
+          path: sentinel-report.json
+          retention-days: 14
