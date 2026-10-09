@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TRAVEL_CATEGORIES,
+  createTravelId,
   parseTravelDraftJson,
   travelSearchUrl,
   tripCalendarIcs,
@@ -79,7 +80,7 @@ export function TravelPlannerPage() {
       return;
     }
     setServices((current) => [...current, {
-      id: String(Date.now()) + '-' + String(Math.random()).slice(2),
+      id: createTravelId(),
       category,
       title,
       notes: optionNotes.trim(),
