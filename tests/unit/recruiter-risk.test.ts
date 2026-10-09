@@ -52,4 +52,30 @@ describe('ATLAS Recruiting offer safety precheck', () => {
     expect(result.verified).toBe(false);
     expect(result.flags.map((flag)=>flag.code)).not.toContain('domain_mismatch');
   });
+
+  it('flags Spanish upfront fees as high risk without certifying fraud', () => {
+    const result = screenRecruiterMessage({ message: 'Para comenzar debes pagar una tarifa de capacitación.' });
+    expect(result.level).toBe('high-risk');
+    expect(result.flags.map(flag => flag.code)).toContain('upfront_payment');
+    expect(result.verified).toBe(false);
+  });
+
+  it('detects Spanish requests for credentials and banking data', () => {
+    const result = screenRecruiterMessage({ message: 'Por favor envía tu número de seguro social y cuenta bancaria.' });
+    expect(result.flags.map(flag => flag.code)).toContain('sensitive_information');
+    expect(result.verified).toBe(false);
+  });
+
+  it('detects suspicious Spanish checks and messaging pressure', () => {
+    const result = screenRecruiterMessage({ message: 'Deposita el cheque y compra el equipo; contáctame por WhatsApp, urgente.' });
+    expect(result.flags.map(flag => flag.code)).toEqual(expect.arrayContaining(['check_scheme', 'off_platform', 'urgency']));
+    expect(result.level).toBe('high-risk');
+  });
+
+  it('keeps an ordinary Spanish invitation inconclusive and unverified', () => {
+    const result = screenRecruiterMessage({ message: 'Te invitamos a una entrevista para el puesto de contador.' });
+    expect(result.flags).toEqual([]);
+    expect(result.level).toBe('inconclusive');
+    expect(result.verified).toBe(false);
+  });
 });

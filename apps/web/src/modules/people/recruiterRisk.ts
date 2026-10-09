@@ -48,27 +48,27 @@ export function screenRecruiterMessage(input: RecruiterRiskInput): RecruiterRisk
     flags.push({ code, severity, title, explanation });
   };
 
-  if (/\b(?:pay|send|transfer|deposit|purchase|buy)\b.{0,100}\b(?:fee|gift cards?|bitcoin|cryptocurrency|crypto|equipment|training kit|background check|processing charge)\b/i.test(message)) {
+  if (/\b(?:pay|send|transfer|deposit|purchase|buy)\b.{0,100}\b(?:fee|gift cards?|bitcoin|cryptocurrency|crypto|equipment|training kit|background check|processing charge)\b/i.test(message) || /\b(?:paga(?:r)?|abona(?:r)?|deposita(?:r)?|transfiere|env[ií]a(?:r)?|compra(?:r)?)\b.{0,100}\b(?:cuota|tarifa|comisi[oó]n|anticipo|equipo|materiales|curso|capacitaci[oó]n|tarjetas? de regalo|criptomonedas?|bitcoin)\b/i.test(message)) {
     add('upfront_payment', 'high', 'Payment or purchase requested',
       'Do not pay to secure a job or purchase equipment from instructions in an unverified offer.');
   }
 
-  if (/\b(?:send|share|provide|upload|enter|give)\b.{0,120}\b(?:ssn|social security (?:number)?|bank account|routing number|passport|driver\x27s licen[cs]e|password|login credentials)\b/i.test(message)) {
+  if (/\b(?:send|share|provide|upload|enter|give)\b.{0,120}\b(?:ssn|social security (?:number)?|bank account|routing number|passport|driver\x27s licen[cs]e|password|login credentials)\b/i.test(message) || /\b(?:env[ií]a|comparte|facilita|proporciona|sube|entrega|ingresa)\b.{0,120}\b(?:n[uú]mero de seguro social|seguro social|cuenta bancaria|n[uú]mero de cuenta|contrase[nñ]a|pasaporte|credenciales|licencia de conducir)\b/i.test(message)) {
     add('sensitive_information', 'high', 'Sensitive information requested',
       'Confirm the hiring process through an independent official contact before supplying identity, banking or login details.');
   }
 
-  if (/\b(?:deposit|cash)\b.{0,80}\b(?:check|cheque)\b|\b(?:check|cheque)\b.{0,80}\b(?:equipment|refund|transfer|send back)\b/i.test(message)) {
+  if (/\b(?:deposit|cash)\b.{0,80}\b(?:check|cheque)\b|\b(?:check|cheque)\b.{0,80}\b(?:equipment|refund|transfer|send back)\b/i.test(message) || /\b(?:deposita(?:r)?|cobra(?:r)?)\b.{0,80}\b(?:cheque|tal[oó]n)\b|\bcheque\b.{0,80}\b(?:equipo|reembolso|transferencia)\b/i.test(message)) {
     add('check_scheme', 'high', 'Potential fake-check pattern',
       'Never deposit an employer check to buy supplies or forward funds before an independently verified hiring process.');
   }
 
-  if (/\b(?:contact|message|text|continue|switch|move|reach(?:\s+me)?)\b.{0,80}\b(?:whatsapp|telegram|signal)\b/i.test(message)) {
+  if (/\b(?:contact|message|text|continue|switch|move|reach(?:\s+me)?)\b.{0,80}\b(?:whatsapp|telegram|signal)\b/i.test(message) || /\b(?:escr[ií]be(?:me)?|cont[aá]ctame|contacta|contin[uú]a|hablemos|pasa(?:mos)?|env[ií]a)\b.{0,80}\b(?:whatsapp|telegram|signal)\b/i.test(message)) {
     add('off_platform', 'caution', 'Move to private messaging requested',
       'Ask to continue through a verifiable company email or official recruiting portal.');
   }
 
-  if (/\b(?:urgent|immediately|act now|limited time|only today|within 24 hours|within 48 hours)\b/i.test(message)) {
+  if (/\b(?:urgent|immediately|act now|limited time|only today|within 24 hours|within 48 hours)\b/i.test(message) || /\b(?:urgente|inmediatamente|ahora mismo|solo hoy|hoy mismo|en las pr[oó]ximas 24 horas|oferta por tiempo limitado)\b/i.test(message)) {
     add('urgency', 'caution', 'Pressure or urgency language',
       'Take time to verify the organization and job posting independently.');
   }
