@@ -33,6 +33,12 @@
       "path": "/city",
       "verdict": "VERIFICATION_HOLD",
       "reason": "Canonical navigation exposes ATLAS Digital City, but the route is not yet part of the canonical fail-closed production verification contract. It must not be reported as production verified until route evidence is added."
+    },
+    {
+      "module_id": "certificate-lifecycle",
+      "path": "/security/certificates",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "The authenticated certificate inventory and security dashboard are implemented only in the pull-request branch. Live GitHub OIDC ingestion, end-to-end mTLS verification, release tests and exact-SHA production route evidence have not passed all acceptance gates; the route must remain explicitly on verification hold."
     }
   ]
 }
