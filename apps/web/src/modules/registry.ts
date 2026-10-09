@@ -23,9 +23,9 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Certificates',
     area: 'Platform',
     route: '/security/certificates',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: true,
-    description: 'Accessible security lifecycle dashboard with governed verification gates; certificate inventory and mTLS telemetry are not connected.',
+    description: 'Authenticated RLS certificate inventory and accessible security dashboard; active TLS observations and mTLS compliance remain evidence-gated.',
     showInNavigation: true
   },
   {
