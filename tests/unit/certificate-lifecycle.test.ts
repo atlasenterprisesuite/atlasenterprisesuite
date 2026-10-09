@@ -25,6 +25,7 @@ describe('certificate inventory fail-closed evidence verdicts', () => {
   });
   it('does not trust unrelated organization/target evidence', () => {
     expect(certificateVerdict(target,[{...evidence,target_id:'other'}],now)).toBe('no_evidence');
+    expect(certificateVerdict(target,[{...evidence,org_id:'other'}],now)).toBe('no_evidence');
   });
   it('never treats expired, self-reported or broken certificates as healthy', () => {
     expect(certificateVerdict(target,[{...evidence,chain_verified:false}],now)).toBe('no_evidence');
