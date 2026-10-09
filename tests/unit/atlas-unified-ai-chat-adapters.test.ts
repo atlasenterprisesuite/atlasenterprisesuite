@@ -383,7 +383,7 @@ describe('ATLAS Unified AI provider adapters', () => {
     const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
       observed.push(body.generationConfig?.thinkingConfig?.thinkingLevel);
-      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] }], }], usageMetadata: {} }), { status: 200 });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }], usageMetadata: {} }), { status: 200 });
     });
     const adapter = createGeminiAdapter({
       apiKey: 'gemini-secret',
