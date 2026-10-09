@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TRAVEL_CATEGORIES,
+  parseTravelDraftJson,
   travelSearchUrl,
   tripCalendarIcs,
   tripNights,
@@ -35,6 +36,7 @@ export function TravelPlannerPage() {
   const [optionNotes, setOptionNotes] = useState('');
   const [optionCost, setOptionCost] = useState('');
   const [optionError, setOptionError] = useState('');
+  const [importError, setImportError] = useState('');
 
   const plan: TripPlan = {
     destination,
@@ -87,6 +89,24 @@ export function TravelPlannerPage() {
     setOptionNotes('');
     setOptionCost('');
     setOptionError('');
+  };
+
+  const importDraft = async (file?: File) => {
+    if (!file) return;
+    try {
+      if (file.size > 131072) throw new Error('El archivo supera el límite de 128 KB.');
+      const restored = parseTravelDraftJson(await file.text());
+      setDestination(restored.destination);
+      setCheckIn(restored.checkIn);
+      setCheckOut(restored.checkOut);
+      setTravelers(String(restored.travelers));
+      setBudget(restored.budget === undefined ? '' : String(restored.budget));
+      setServices(restored.services);
+      setOptionError('');
+      setImportError('');
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'No se pudo abrir el archivo.');
+    }
   };
 
   const exportCalendar = () => {
@@ -212,6 +232,12 @@ export function TravelPlannerPage() {
             <button type="button" className="travel-primary" disabled={Boolean(planError)} onClick={exportCalendar}>Agendar plan (.ics)</button>
             <button type="button" className="travel-secondary" disabled={Boolean(planError)} onClick={exportDraft}>Guardar plan (.json)</button>
           </div>
+          <label className="travel-field travel-import">Recuperar plan guardado (.json)
+            <input type="file" accept=".json,application/json" aria-label="Importar plan ATLAS Travel"
+              onChange={(event) => { void importDraft(event.target.files?.[0]); event.target.value = ''; }} />
+          </label>
+          {importError ? <p className="travel-validation" role="alert">{importError}</p> : null}
+          <p className="travel-helper">El archivo se lee localmente y se valida antes de restaurar tus opciones. No se sube a ningún servidor.</p>
           <p className="travel-helper">El archivo .ics añade un evento tentativo al calendario que elijas; no sincroniza automáticamente ni confirma reservaciones. Los datos solo permanecen en memoria mientras esta página siga abierta. Descarga el plan antes de salir.</p>
         </div>
       </div>
