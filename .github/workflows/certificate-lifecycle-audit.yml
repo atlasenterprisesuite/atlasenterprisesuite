@@ -35,3 +35,18 @@ jobs:
           node --check scripts/security/scan-certificate-lifecycle.mjs
       - name: Inspect provider mTLS certificates and renewal horizon
         run: node scripts/security/scan-certificate-lifecycle.mjs
+  public-tls-endpoints:
+    name: Public TLS identity, chain and expiry
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate public TLS probe syntax
+        run: node --check scripts/security/public-tls.mjs
+      - name: Verify authoritative public HTTPS certificates
+        run: node scripts/security/public-tls.mjs
