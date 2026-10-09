@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AtlasWelcomeExperience } from '../../apps/web/src/components/AtlasWelcomeExperience';
+import { resolveAtlasExtension } from '../../apps/web/src/extensions/resolveAtlasExtension';
 
 class FakeUtterance {
   lang = '';
@@ -90,10 +91,14 @@ describe('ATLAS avatar welcome on canonical home', () => {
     expect(screen.getByRole('heading', { name: 'Bienvenido a ATLAS' })).toBeInTheDocument();
   });
 
-  it('mounts the greeting in the real ATLAS home route, not a disconnected preview', () => {
-    const app = readFileSync('apps/web/src/App.tsx', 'utf8');
-    expect(app).toContain('import { AtlasWelcomeExperience }');
-    expect(app).toContain('<AtlasWelcomeExperience />');
-    expect(app).toContain('<Route path="/" element={<EnterpriseHome />} />');
+  it('renders the approved greeting through the canonical root route resolver', () => {
+    const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
+    expect(resolver).toContain("if (pathname === '/') return <FuturisticEnterpriseHome />;");
+
+    const home = resolveAtlasExtension('/');
+    expect(home).not.toBeNull();
+    render(<MemoryRouter>{home}</MemoryRouter>);
+    expect(screen.getByRole('button', { name: 'Escuchar bienvenida' })).toBeInTheDocument();
+    expect(document.querySelector('.atlas-welcome img[src="/assets/atlas-voice-avatar-approved.webp"]')).toBeTruthy();
   });
 });
