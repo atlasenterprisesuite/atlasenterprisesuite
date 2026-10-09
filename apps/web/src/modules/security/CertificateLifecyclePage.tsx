@@ -113,7 +113,7 @@ export function CertificateLifecyclePage() {
             const verdict = certificateVerdict(target, inventory.observations, Date.now());
             const latest = inventory.observations.filter((observation) => observation.target_id === target.id)
               .sort((a, b) => Date.parse(b.observed_at) - Date.parse(a.observed_at))[0];
-            const labels = { verified: 'TLS verificado', failed: 'Fallo TLS', stale: 'Evidencia caducada', no_evidence: 'Sin evidencia' };
+            const labels = { verified: 'TLS verificado', expiring_soon: 'Renovar pronto', failed: 'Fallo TLS', stale: 'Evidencia caducada', no_evidence: 'Sin evidencia' };
             return <article key={target.id} className="clm-inventory-target">
               <div><strong>{target.label}</strong><p>{target.hostname}:{target.port} · {target.provider} · {target.environment}</p></div>
               <div><span className={'clm-verdict clm-verdict-' + verdict}>{labels[verdict]}</span><small>{latest ? 'Última observación: ' + new Date(latest.observed_at).toLocaleString() : 'Sin observaciones'}</small>
