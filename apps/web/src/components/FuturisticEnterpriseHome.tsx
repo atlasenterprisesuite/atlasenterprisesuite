@@ -2,6 +2,7 @@ import { type CSSProperties, type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ATLAS_MODULES } from '../modules/registry';
 import { AtlasVisualReference } from './AtlasVisualReference';
+import { AtlasWelcomeExperience } from './AtlasWelcomeExperience';
 import './futuristic-enterprise-home.css';
 import './atlas-visual-home.css';
 
@@ -125,6 +126,7 @@ export function FuturisticEnterpriseHome() {
           <p className="atlas-visual-home__lede">
             Personas, procesos, datos e inteligencia conectados desde una sola superficie operativa.
           </p>
+          <AtlasWelcomeExperience />
 
           <form className="atlas-visual-home__search" aria-label="ATLAS command search" onSubmit={handleSearch}>
             <span aria-hidden="true">⌕</span>
