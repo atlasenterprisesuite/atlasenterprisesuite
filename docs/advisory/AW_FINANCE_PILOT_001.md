@@ -65,6 +65,9 @@ Supabase branch or project, obtain current cost and required purchase confirmati
   alone does not prove negative cross-tenant behavior.
 - The repo has an Advisory UI, routes, client/engagement APIs and tests. No
   authenticated end-to-end result was obtained in this review.
+- **Observed P0:** Supabase Branching reports the existing `main` branch
+  `MIGRATIONS_FAILED` (checked 2026-10-09). `ACTIVE_HEALTHY` for the preview
+  project is not migration success. Investigate/reconcile this before new DDL.
 - DB migration versions may differ from repository filenames; compare
   `supabase_migrations.schema_migrations` / source before applying any new DDL.
 - Cloudflare remains the sole public production release target. The separate
