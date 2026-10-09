@@ -1,0 +1,25 @@
+name: ATLAS Certificate Monitor
+on:
+  schedule:
+    - cron: '20 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: atlas-certificate-monitor
+  cancel-in-progress: false
+
+jobs:
+  observe-public-tls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted workflow
+        uses: actions/checkout@v4
+      - name: Run allowlisted TLS probe and authenticated evidence upload
+        env:
+          ATLAS_CERTIFICATE_INGEST_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-certificate-ingest
+        run: node tools/certificate-monitor/probe.mjs
