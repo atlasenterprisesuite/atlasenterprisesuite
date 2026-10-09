@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
-import { AtlasWelcomeExperience } from './components/AtlasWelcomeExperience';
 import { AtlasShell } from './components/AtlasShell';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
@@ -61,7 +60,6 @@ function EnterpriseHome() {
   return (
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
-      <AtlasWelcomeExperience />
       <div className="module-grid">
         <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting operations with live Accounts Payable, Accounts Receivable and governed financial reporting.</p></Link>
