@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getVisibleDistrictSimulationPoints } from './districtSimulation';
 import './atlasDigitalDistrict.css';
 
 type DistrictMode = 'simulation' | 'live';
@@ -10,11 +11,28 @@ const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.mjs';
 const STREET_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const LAKE_EOLA: [number, number] = [-81.3732, 28.5439];
 
-const SIMULATION_POINTS = [
-  { id: 'core', label: 'Lake Eola Core', coordinates: [-81.3732, 28.5439] as [number, number], kind: 'Command' },
-  { id: 'mobility', label: 'Mobility Sandbox', coordinates: [-81.3762, 28.5419] as [number, number], kind: 'Mobility' },
-  { id: 'infra', label: 'Infrastructure Sandbox', coordinates: [-81.3698, 28.5456] as [number, number], kind: 'Infrastructure' }
-] as const;
+const USGS_TILE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
+const MAP_LOAD_TIMEOUT_MS = 12_000;
+
+// Independent public-data fallback. It does not imply an operational city feed.
+function aerialFallbackStyle() {
+  return {
+    version: 8,
+    sources: {
+      usgs: {
+        type: 'raster',
+        tiles: [USGS_TILE],
+        tileSize: 256,
+        maxzoom: 16,
+        attribution: 'USGS The National Map — public aerial imagery'
+      }
+    },
+    layers: [
+      { id: 'district-background', type: 'background', paint: { 'background-color': '#071321' } },
+      { id: 'district-aerial', type: 'raster', source: 'usgs' }
+    ]
+  };
+}
 
 const LAYERS: { id: DistrictLayer; label: string; detail: string }[] = [
   { id: 'mobility', label: 'Mobility', detail: 'GPS 4D, Ride and future autonomous mobility.' },
@@ -46,8 +64,12 @@ async function loadMapLibre() {
 export function AtlasDigitalDistrictPage() {
   const mapNode = useRef<HTMLDivElement | null>(null);
   const map = useRef<any>(null);
+  const maplibreRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const [mapAttempt, setMapAttempt] = useState(0);
   const [mode, setMode] = useState<DistrictMode>('simulation');
-  const [mapState, setMapState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [mapState, setMapState] = useState<'loading' | 'ready' | 'fallback' | 'unavailable'>('loading');
+  const [mapNotice, setMapNotice] = useState('');
   const [activeLayers, setActiveLayers] = useState<Record<DistrictLayer, boolean>>({
     mobility: true,
     infrastructure: true,
@@ -58,7 +80,39 @@ export function AtlasDigitalDistrictPage() {
 
   useEffect(() => {
     let cancelled = false;
-    let markers: any[] = [];
+    let usingFallback = false;
+    let mapLoaded = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
+    setMapState('loading');
+    setMapNotice('');
+    const stopTimeout = () => {
+      if (timeout !== undefined) clearTimeout(timeout);
+      timeout = undefined;
+    };
+
+    const scheduleTimeout = () => {
+      stopTimeout();
+      timeout = setTimeout(() => {
+        if (cancelled || mapLoaded) return;
+        if (!usingFallback) startFallback();
+        else setMapState('unavailable');
+      }, MAP_LOAD_TIMEOUT_MS);
+    };
+
+    const startFallback = () => {
+      if (cancelled || mapLoaded || usingFallback) return;
+      usingFallback = true;
+      setMapNotice('Street map unavailable; trying public USGS aerial imagery.');
+      try {
+        if (!map.current) throw new Error('Map engine missing');
+        map.current.setStyle(aerialFallbackStyle());
+        scheduleTimeout();
+      } catch {
+        stopTimeout();
+        setMapState('unavailable');
+      }
+    };
 
     void loadMapLibre()
       .then((maplibre) => {
@@ -68,50 +122,73 @@ export function AtlasDigitalDistrictPage() {
           style: STREET_STYLE,
           center: LAKE_EOLA,
           zoom: 14.7,
-          pitch: 54,
+          pitch: 46,
           bearing: -22,
           antialias: true
         });
         map.current = instance;
+        maplibreRef.current = maplibre;
         instance.addControl(new maplibre.NavigationControl({ visualizePitch: true }), 'bottom-right');
-        instance.once('load', () => {
+        scheduleTimeout();
+
+        instance.on('load', () => {
           if (cancelled) return;
-          try {
-            instance.setProjection?.({ type: 'globe' });
-          } catch {
-            // A flat map remains a valid fallback when globe projection is unavailable.
-          }
-          markers = SIMULATION_POINTS.map((point) => {
-            const element = document.createElement('button');
-            element.type = 'button';
-            element.className = 'atlas-district-marker';
-            element.setAttribute('aria-label', `${point.label} — simulation point`);
-            element.title = `${point.label} · SIMULATION`;
-            element.innerHTML = '<span></span>';
-            return new maplibre.Marker({ element })
-              .setLngLat(point.coordinates)
-              .setPopup(new maplibre.Popup({ offset: 18 }).setHTML(
-                `<strong>${point.label}</strong><br/><small>${point.kind} · SIMULATION</small>`
-              ))
-              .addTo(instance);
-          });
-          setMapState('ready');
+          mapLoaded = true;
+          stopTimeout();
+          setMapState(usingFallback ? 'fallback' : 'ready');
         });
-        instance.once('error', () => {
-          if (!cancelled) setMapState('error');
+
+        // MapLibre emits recoverable tile/glyph errors. Never equate one error
+        // with an entirely failed map or with a live city-state incident.
+        instance.on('error', (event: { error?: { message?: string } }) => {
+          if (cancelled) return;
+          const message = String(event?.error?.message || '');
+          if (!mapLoaded && !usingFallback && /style|failed to fetch|failed to load|network/i.test(message)) {
+            startFallback();
+          } else if (mapLoaded) {
+            setMapNotice('Some third-party map resources did not load; the spatial view may be partial.');
+          }
         });
       })
       .catch(() => {
-        if (!cancelled) setMapState('error');
+        if (!cancelled) setMapState('unavailable');
       });
 
     return () => {
       cancelled = true;
-      markers.forEach((marker) => marker.remove?.());
+      stopTimeout();
+      markersRef.current.forEach((marker) => marker.remove?.());
+      markersRef.current = [];
       map.current?.remove?.();
       map.current = null;
+      maplibreRef.current = null;
     };
-  }, []);
+  }, [mapAttempt]);
+
+  // The same pure selector drives the map markers and the accessible reference
+  // view. Changing a control really changes the rendered synthetic layer.
+  useEffect(() => {
+    markersRef.current.forEach((marker) => marker.remove?.());
+    markersRef.current = [];
+    if (!map.current || !maplibreRef.current || (mapState !== 'ready' && mapState !== 'fallback')) return;
+    const maplibre = maplibreRef.current;
+    markersRef.current = getVisibleDistrictSimulationPoints(mode, activeLayers).map((point) => {
+      const element = document.createElement('button');
+      element.type = 'button';
+      element.className = 'atlas-district-marker';
+      element.setAttribute('aria-label', `${point.label} — simulated location, not live telemetry`);
+      element.title = `${point.label} · SIMULATION`;
+      element.appendChild(document.createElement('span'));
+      return new maplibre.Marker({ element })
+        .setLngLat(point.coordinates)
+        .setPopup(new maplibre.Popup({ offset: 18 }).setText(`${point.label} · ${point.kind} · SIMULATION`))
+        .addTo(map.current);
+    });
+  }, [mode, activeLayers, mapState]);
+
+  const visiblePoints = getVisibleDistrictSimulationPoints(mode, activeLayers);
+  const retryMap = () => setMapAttempt((current) => current + 1);
+  const resetMap = () => map.current?.easeTo?.({ center: LAKE_EOLA, zoom: 14.7, pitch: 46, bearing: -22 });
 
   const toggleLayer = (layer: DistrictLayer) => {
     setActiveLayers((current) => ({ ...current, [layer]: !current[layer] }));
@@ -134,8 +211,8 @@ export function AtlasDigitalDistrictPage() {
         </div>
       </header>
 
-      <div className="atlas-district-status-row">
-        <span className={`atlas-district-status ${mapState}`}>Map · {mapState}</span>
+      <div className="atlas-district-status-row" role="status" aria-live="polite">
+        <span className={`atlas-district-status ${mapState}`}>Map · {mapState === 'fallback' ? 'aerial fallback' : mapState}</span>
         <span className={`atlas-district-status ${mode}`}>Mode · {mode}</span>
         <span className="atlas-district-status neutral">Pilot · Lake Eola</span>
         {mode === 'live' ? <span className="atlas-district-status gated">Telemetry · not connected</span> : null}
@@ -144,8 +221,26 @@ export function AtlasDigitalDistrictPage() {
       <div className="atlas-district-command-grid">
         <section className="atlas-district-map-shell" aria-label="Orlando digital district map">
           <div ref={mapNode} className="atlas-district-map" />
-          {mapState === 'loading' ? <div className="atlas-district-map-overlay">Loading spatial engine…</div> : null}
-          {mapState === 'error' ? <div className="atlas-district-map-overlay error">Map provider did not respond. No live state is inferred.</div> : null}
+          {mapState === 'loading' ? <div className="atlas-district-map-overlay" role="status">Loading spatial engine…</div> : null}
+          {mapState === 'unavailable' ? (
+            <div className="atlas-district-map-overlay error" role="status">
+              <div className="atlas-district-offline">
+                <strong>External map unavailable</strong>
+                <p>The street and aerial providers could not load. The district remains accessible as a labeled synthetic reference — no live state is inferred.</p>
+                <button type="button" onClick={retryMap}>Retry map</button>
+                {mode === 'simulation' ? (
+                  <ul aria-label="Visible synthetic reference locations">
+                    {visiblePoints.map((point) => <li key={point.id}>{point.label} · SIMULATION</li>)}
+                  </ul>
+                ) : <p>No authenticated telemetry is connected.</p>}
+              </div>
+            </div>
+          ) : null}
+          {mapNotice && mapState !== 'unavailable' ? <div className="atlas-district-map-notice" role="status">{mapNotice}</div> : null}
+          <div className="atlas-district-map-actions">
+            <button type="button" onClick={resetMap} disabled={mapState !== 'ready' && mapState !== 'fallback'}>Reset view</button>
+            {mapState === 'fallback' ? <span>USGS aerial · public data</span> : null}
+          </div>
           {mode === 'live' ? (
             <div className="atlas-district-live-gate">
               <strong>LIVE TELEMETRY GATED</strong>
@@ -166,6 +261,7 @@ export function AtlasDigitalDistrictPage() {
             <span>{Object.values(activeLayers).filter(Boolean).length}/{LAYERS.length}</span>
           </div>
 
+          {mode === 'live' ? <p className="atlas-district-layer-gate">Live layer controls are locked until an authenticated telemetry feed is bound.</p> : null}
           <div className="atlas-district-layer-list">
             {LAYERS.map((layer) => (
               <button
@@ -173,6 +269,7 @@ export function AtlasDigitalDistrictPage() {
                 type="button"
                 className={activeLayers[layer.id] ? 'active' : ''}
                 aria-pressed={activeLayers[layer.id]}
+                disabled={mode === 'live'}
                 onClick={() => toggleLayer(layer.id)}
               >
                 <span className="atlas-district-layer-indicator" />
@@ -187,7 +284,7 @@ export function AtlasDigitalDistrictPage() {
             <strong>{mode === 'simulation' ? 'Synthetic operating model' : 'Authenticated feeds only'}</strong>
             <p>
               {mode === 'simulation'
-                ? 'Pins and operational states on this pilot surface are intentionally marked as simulation.'
+                ? `${visiblePoints.length} visible reference points are synthetic and are not operational readings.`
                 : 'No connected sensor, municipal, building or carrier state is displayed without authenticated evidence.'}
             </p>
           </div>
