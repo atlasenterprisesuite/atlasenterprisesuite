@@ -116,6 +116,12 @@ describe('FuturisticEnterpriseHome visual landing', () => {
     const chart = screen.getByRole('img', { name: /distribución del catálogo.*no es certificación/i });
     const bars = chart.querySelectorAll('.chart-bars > div > span');
     expect(bars).toHaveLength(3);
+    const barLabels = chart.querySelectorAll('.chart-bars > div > small');
+    expect(Array.from(barLabels, label => label.textContent)).toEqual([
+      `${implemented} implementados`,
+      `${evolving} en evolución`,
+      `${gated} externos`
+    ]);
     expect(bars[0]).toHaveStyle({ height: `${(implemented / total) * 100}%` });
     expect(bars[1]).toHaveStyle({ height: `${(evolving / total) * 100}%` });
     expect(bars[2]).toHaveStyle({ height: `${(gated / total) * 100}%` });
