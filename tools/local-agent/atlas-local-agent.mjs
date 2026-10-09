@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
+import { capabilitiesForAgentProfile, isCertificateTrustProfile, modulesForAgentProfile, resolveAgentProfile } from './lib/agent-profile.mjs';
 import { executeBrowserCdpAction } from './lib/browser-cdp.mjs';
 import { collectLinuxDeviceDnaReport, deviceDnaLocalDevice } from './lib/device-dna-linux.mjs';
 import {
@@ -22,11 +23,13 @@ const REALTIME_URL = String(
 ).trim();
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
 const VERSION = '1.2.0';
+const AGENT_PROFILE = resolveAgentProfile(process.env.ATLAS_AGENT_PROFILE);
+const CERTIFICATE_TRUST_ONLY = isCertificateTrustProfile(AGENT_PROFILE);
 const HEARTBEAT_MS = 30_000;
 const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
 const DEVICE_DNA_REFRESH_MS = 5 * 60_000;
-const DEVICE_DNA_ENABLED = process.platform === 'linux' &&
+const DEVICE_DNA_ENABLED = !CERTIFICATE_TRUST_ONLY && process.platform === 'linux' &&
   String(process.env.ATLAS_DEVICE_DNA_DISABLED || '').trim().toLowerCase() !== 'true';
 
 let state = await loadAgentState();
@@ -49,6 +52,7 @@ function localHostname(hostname) {
 }
 
 async function readDeviceConfig() {
+  if (CERTIFICATE_TRUST_ONLY) return [];
   const parsed = await readExplicitDevices();
   return parsed.slice(0,100).map((item,index)=>{
     const adapter = String(item.adapter || 'http-health').trim();
@@ -79,8 +83,7 @@ async function readDeviceConfig() {
 }
 
 function agentCapabilities() {
-  const capabilities = ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'];
-  return DEVICE_DNA_ENABLED ? [...capabilities, 'device.dna.read'] : capabilities;
+  return capabilitiesForAgentProfile(AGENT_PROFILE,{deviceDnaEnabled:DEVICE_DNA_ENABLED});
 }
 
 async function buildRuntimeDevices() {
@@ -132,7 +135,7 @@ async function enroll() {
     agent_version: VERSION,
     installer_version: VERSION,
     capabilities: agentCapabilities(),
-    modules: ['device-os','connect','hospitality','browser-operator']
+    modules: modulesForAgentProfile(AGENT_PROFILE)
   }, false);
   sessionToken = String(result.session_token || '');
   if (!sessionToken) throw new Error('enrollment_did_not_return_session');
@@ -279,6 +282,8 @@ async function claimAndExecute() {
 }
 
 async function drainCommands() {
+  // Certificate trust agents are verification-only; never claim or execute device commands.
+  if (CERTIFICATE_TRUST_ONLY) return;
   if (draining) return;
   draining = true;
   try {
@@ -333,7 +338,7 @@ async function realtimeLoop() {
 
 async function main() {
   await enroll();
-  await syncDevices();
+  if (!CERTIFICATE_TRUST_ONLY) await syncDevices();
   await heartbeat();
 
   setInterval(()=>heartbeat().catch((error)=>{
@@ -351,7 +356,7 @@ async function main() {
   void realtimeLoop();
   await drainCommands();
 
-  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}.\n`);
+  process.stdout.write(`ATLAS Local Agent ${VERSION} [${AGENT_PROFILE}] running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}.\n`);
   await new Promise(()=>{});
 }
 
