@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ATLAS_MODULES, type AtlasModuleReadiness } from '../registry';
 import './atlas-suite.css';
 
@@ -54,8 +54,30 @@ const PRIMARY_SYSTEMS: readonly PrimarySystemDefinition[] = [
 
 export function AtlasSuitePage() {
   const [query, setQuery] = useState('');
-  const [readiness, setReadiness] = useState<'all' | AtlasModuleReadiness>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [area, setArea] = useState('all');
+  const requestedReadiness = searchParams.get('readiness');
+  const readiness: 'all' | AtlasModuleReadiness = requestedReadiness === 'implemented'
+    || requestedReadiness === 'partial' || requestedReadiness === 'external-gated'
+    ? requestedReadiness : 'all';
+  const evolution = searchParams.get('evolution') === 'active' ? 'active' : 'all';
+
+  const setReadiness = (value: 'all' | AtlasModuleReadiness) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value === 'all') next.delete('readiness');
+      else next.set('readiness', value);
+      return next;
+    }, { replace: true });
+  };
+  const toggleEvolution = () => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (evolution === 'active') next.delete('evolution');
+      else next.set('evolution', 'active');
+      return next;
+    }, { replace: true });
+  };
 
   const areas = useMemo(
     () => Array.from(new Set(ATLAS_MODULES.map((module) => module.area))).sort(),
@@ -86,10 +108,11 @@ export function AtlasSuitePage() {
         || [module.title, module.navLabel, module.area, module.description, module.route]
           .some((value) => value.toLowerCase().includes(normalizedQuery));
       const matchesReadiness = readiness === 'all' || module.readiness === readiness;
+      const matchesEvolution = evolution === 'all' || module.evolution === evolution;
       const matchesArea = area === 'all' || module.area === area;
-      return matchesQuery && matchesReadiness && matchesArea;
+      return matchesQuery && matchesReadiness && matchesEvolution && matchesArea;
     }).sort((left, right) => left.title.localeCompare(right.title));
-  }, [area, query, readiness]);
+  }, [area, query, readiness, evolution]);
 
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
   const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
@@ -181,6 +204,12 @@ export function AtlasSuitePage() {
                 {filter.label}
               </button>
             ))}
+            <button
+              type="button"
+              className={evolution === 'active' ? 'is-active' : ''}
+              aria-pressed={evolution === 'active'}
+              onClick={toggleEvolution}
+            >Active evolution</button>
           </div>
 
           <label className="suite-area-filter">
