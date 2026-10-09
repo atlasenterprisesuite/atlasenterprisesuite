@@ -69,6 +69,41 @@ export function travelSearchUrl(plan: TripPlan, category: TravelCategory): strin
   return 'https://www.google.com/search?q=' + encodeURIComponent(query);
 }
 
+/** Load only our documented, bounded, unconfirmed plan format. No network or storage writes. */
+export function parseTravelDraftJson(raw: string): TripPlan {
+  if (raw.length > 131072) throw new Error('El archivo supera el límite de 128 KB.');
+  let data: unknown;
+  try { data = JSON.parse(raw); } catch { throw new Error('El archivo JSON no es válido.'); }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Formato de viaje inválido.');
+  const value = data as Record<string, unknown>;
+  if (value.schema !== 'atlas.travel.plan.v1' || value.status !== 'draft_unconfirmed') throw new Error('Este archivo no es un borrador ATLAS Travel compatible.');
+  if (typeof value.destination !== 'string' || typeof value.checkIn !== 'string' || typeof value.checkOut !== 'string' || typeof value.travelers !== 'number' || (value.budget !== undefined && typeof value.budget !== 'number')) throw new Error('Los datos básicos del viaje son inválidos.');
+  if (!Array.isArray(value.services) || value.services.length > 100) throw new Error('La lista de opciones es inválida.');
+  const services: PlannedService[] = value.services.map((item: unknown, index: number) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Opción de viaje inválida.');
+    const service = item as Record<string, unknown>;
+    if (typeof service.category !== 'string' || !TRAVEL_CATEGORIES.some((entry) => entry.id === service.category) || typeof service.title !== 'string' || typeof service.notes !== 'string' || (service.estimatedCost !== undefined && typeof service.estimatedCost !== 'number')) throw new Error('La opción del viaje no tiene un formato válido.');
+    return {
+      id: 'imported-' + index,
+      category: service.category as TravelCategory,
+      title: service.title,
+      notes: service.notes,
+      estimatedCost: service.estimatedCost as number | undefined
+    };
+  });
+  const plan: TripPlan = {
+    destination: value.destination,
+    checkIn: value.checkIn,
+    checkOut: value.checkOut,
+    travelers: value.travelers,
+    budget: value.budget as number | undefined,
+    services
+  };
+  const error = validateTripPlan(plan);
+  if (error) throw new Error(error);
+  return plan;
+}
+
 function escapeIcs(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/\r\n|\n|\r/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
 }
