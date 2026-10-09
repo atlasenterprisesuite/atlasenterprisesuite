@@ -17,7 +17,7 @@ class SentinelTests(unittest.TestCase):
     def test_detects_wildcard_cors_without_reporting_non_wildcard_origins(self):
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / "headers.ts").write_text(
-                'Access-Control-Allow-Origin: "*"\\nAccess-Control-Allow-Origin: *\\n'
+                'Access-Control-Allow-Origin: "*"\nAccess-Control-Allow-Origin: *\n'
                 'Access-Control-Allow-Origin: https://example.test'
             )
             result = scan(Path(d))
