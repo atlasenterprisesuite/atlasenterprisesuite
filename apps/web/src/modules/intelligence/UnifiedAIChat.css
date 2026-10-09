@@ -10,7 +10,7 @@
   --atlas-ai-accent:#7dd3fc;
   width:100%;
   height:calc(100dvh - 108px);
-  min-height:650px;
+  min-height:0;
   display:grid;
   grid-template-columns:260px minmax(0,1fr);
   overflow:hidden;
@@ -77,6 +77,16 @@
   justify-content:space-between;
   gap:10px;
   padding:0 3px;
+}
+
+.atlas-ai-sidebar-head-actions{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+.atlas-ai-sidebar-close{
+  display:none;
 }
 
 .atlas-ai-brand{
@@ -645,6 +655,15 @@
   position:relative;
 }
 
+/* The suite's generic main styles must not size or pad this nested chat main. */
+.atlas-ai-app .atlas-ai-thread{
+  width:100%;
+  max-width:none;
+  min-height:0;
+  margin:0;
+  padding:0;
+}
+
 .atlas-ai-alert,
 .atlas-ai-route-notice{
   width:min(760px,calc(100% - 40px));
@@ -665,12 +684,27 @@
 }
 
 .atlas-ai-alert button{
-  width:24px;
-  height:24px;
+  min-width:36px;
+  min-height:36px;
   border:0;
+  border-radius:8px;
   background:transparent;
   color:#f4b2b8;
   font-size:1rem;
+}
+
+.atlas-ai-alert-actions{
+  display:flex;
+  align-items:center;
+  flex:0 0 auto;
+  gap:5px;
+}
+
+.atlas-ai-alert-actions button:not([aria-label]){
+  padding:8px 10px;
+  border:1px solid rgba(255,193,198,.25);
+  color:#ffe4e6;
+  font-size:.8rem;
 }
 
 .atlas-ai-route-notice{
@@ -749,8 +783,8 @@
 .atlas-ai-message-meta{
   display:block;
   margin-top:6px;
-  color:#6f6f79;
-  font-size:.64rem;
+  color:#b4b4c0;
+  font-size:.73rem;
 }
 
 .atlas-ai-thinking{
@@ -815,8 +849,8 @@
 .atlas-ai-welcome>p{
   max-width:610px;
   margin:0;
-  color:#8d8d96;
-  font-size:.87rem;
+  color:#b7b7c3;
+  font-size:.94rem;
   line-height:1.5;
 }
 
@@ -902,7 +936,7 @@
 }
 
 .atlas-ai-composer textarea::placeholder{
-  color:#888891;
+  color:#aeb0be;
 }
 
 .atlas-ai-composer textarea:disabled{
@@ -1029,11 +1063,11 @@
   }
 }
 
-@media(max-width:760px){
+@media(max-width:1024px){
   .atlas-ai-app{
-    height:calc(100dvh - 86px);
-    min-height:580px;
-    grid-template-columns:1fr;
+    height:calc(100dvh - 112px - env(safe-area-inset-bottom, 0px));
+    min-height:0;
+    grid-template-columns:minmax(0,1fr);
     border-radius:18px;
   }
 
@@ -1043,12 +1077,22 @@
     inset:0 auto 0 0;
     z-index:50;
     transform:translateX(-102%);
-    transition:transform .2s ease;
+    visibility:hidden;
+    pointer-events:none;
+    transition:transform .2s ease,visibility .2s ease;
     box-shadow:18px 0 44px rgba(0,0,0,.34);
   }
 
   .atlas-ai-app.sidebar-open .atlas-ai-sidebar{
     transform:translateX(0);
+    visibility:visible;
+    pointer-events:auto;
+  }
+
+  .atlas-ai-sidebar-close{
+    display:grid;
+    width:44px;
+    height:44px;
   }
 
   .atlas-ai-mobile-scrim{
@@ -1061,12 +1105,14 @@
     border:0;
     background:rgba(0,0,0,.48);
     opacity:0;
+    visibility:hidden;
     pointer-events:none;
-    transition:opacity .2s ease;
+    transition:opacity .2s ease,visibility .2s ease;
   }
 
   .atlas-ai-app.sidebar-open .atlas-ai-mobile-scrim{
     opacity:1;
+    visibility:visible;
     pointer-events:auto;
   }
 
@@ -1148,8 +1194,37 @@
   }
 
   .atlas-ai-composer-wrap{
+    position:sticky;
+    bottom:0;
+    z-index:5;
     width:calc(100% - 20px);
-    padding-bottom:8px;
+    min-width:0;
+    padding-bottom:max(8px,env(safe-area-inset-bottom,0px));
+    background:linear-gradient(180deg,transparent,rgba(33,33,33,.97) 20%);
+  }
+
+  .atlas-ai-composer textarea{
+    font-size:16px;
+  }
+
+  .atlas-ai-app button:focus-visible,
+  .atlas-ai-app a:focus-visible,
+  .atlas-ai-app textarea:focus-visible{
+    outline:2px solid var(--atlas-ai-accent);
+    outline-offset:2px;
+  }
+
+  .atlas-ai-translator-bar{
+    max-height:min(35dvh,280px);
+    overflow-y:auto;
+  }
+
+  .atlas-ai-prompt-library{
+    position:absolute;
+    inset:auto 0 calc(100% - 14px);
+    z-index:8;
+    max-height:45dvh;
+    overflow-y:auto;
   }
 
   .atlas-ai-composer{
@@ -1484,14 +1559,14 @@
   }
 
   .atlas-ai-composer{
-    min-height:124px;
-    border-radius:24px;
-    padding:15px 12px 11px;
+    min-height:104px;
+    border-radius:20px;
+    padding:12px 12px 10px;
   }
 
   .atlas-ai-composer textarea{
-    min-height:58px;
-    font-size:1rem;
+    min-height:44px;
+    font-size:16px;
   }
 
   .atlas-ai-prompt-library-grid{
