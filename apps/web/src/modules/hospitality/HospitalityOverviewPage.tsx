@@ -14,6 +14,7 @@ export function HospitalityOverviewPage() {
         <p>One governed operating surface for hotel and restaurant properties, built on ATLAS organization, identity, permission, audit, and execution boundaries.</p>
       </header>
       <HospitalitySubnav />
+      <div className="notice">¿Buscas hospedaje o planificas un viaje? <Link className="text-link" to="/travel">Abrir ATLAS Travel &amp; Stay</Link>. El buscador no representa inventario confirmado.</div>
 
       <div className="feature-card wide">
         <p className="eyebrow">Property context</p>
