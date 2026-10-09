@@ -18,7 +18,7 @@ import type {
 } from './hubspot-connection-store.ts';
 
 const CRM_OBJECT_TYPES = [
-  'contact', 'company', 'deal', 'ticket', 'task', 'call', 'meeting', 'note', 'email'
+  'contact', 'lead', 'company', 'deal', 'ticket', 'task', 'call', 'meeting', 'note', 'email'
 ] as const satisfies readonly CrmObjectType[];
 
 export type HubSpotCrmOperation =

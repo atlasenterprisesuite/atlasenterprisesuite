@@ -60,6 +60,17 @@ type SalesforceObjectDefinition = {
 };
 
 const DEFINITIONS: Record<CrmObjectType, SalesforceObjectDefinition> = {
+  lead: {
+    objectName: 'Lead',
+    fields: ['Id', 'FirstName', 'LastName', 'Name', 'Company', 'Email', 'Phone', 'Status', 'LeadSource', 'IsConverted', 'LastModifiedDate'],
+    display: (record, id) => text(record.Name) ?? text(record.Company) ?? id,
+    fieldMap: {
+      FirstName: 'firstName', LastName: 'lastName', Company: 'company',
+      Email: 'email', Phone: 'phone', Status: 'status',
+      LeadSource: 'source', IsConverted: 'converted'
+    },
+    searchFields: ['Name', 'Company', 'Email']
+  },
   contact: {
     objectName: 'Contact',
     fields: ['Id', 'FirstName', 'LastName', 'Name', 'Email', 'Phone', 'AccountId', 'LastModifiedDate'],

@@ -4,6 +4,7 @@ export type CrmProvider = 'hubspot' | 'salesforce';
 
 export type CrmObjectType =
   | 'contact'
+  | 'lead'
   | 'company'
   | 'deal'
   | 'ticket'

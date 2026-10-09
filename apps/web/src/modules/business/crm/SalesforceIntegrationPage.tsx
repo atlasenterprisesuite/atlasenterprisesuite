@@ -370,6 +370,7 @@ export function SalesforceIntegrationPage() {
             Provider write operations remain disabled in this phase.
           </p>
           <div className="crm-actions">
+            <Link className="text-link" to="/crm/salesforce/leads">Leads</Link>
             <Link className="text-link" to="/crm/salesforce/contacts">Contacts</Link>
             <Link className="text-link" to="/crm/salesforce/companies">Accounts</Link>
             <Link className="text-link" to="/crm/salesforce/deals">Opportunities</Link>
