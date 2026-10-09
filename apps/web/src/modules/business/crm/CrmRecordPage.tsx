@@ -15,6 +15,7 @@ function routeForObject(
 ): string | null {
   const encoded = encodeURIComponent(providerId);
   const base = provider === 'salesforce' ? '/crm/salesforce' : '/crm';
+  if (objectType === 'lead') return `${base}/leads/${encoded}`;
   if (objectType === 'contact') return `${base}/contacts/${encoded}`;
   if (objectType === 'company') return `${base}/companies/${encoded}`;
   if (objectType === 'deal') return `${base}/deals/${encoded}`;
