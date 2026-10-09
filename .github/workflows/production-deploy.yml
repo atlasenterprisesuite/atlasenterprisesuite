@@ -46,47 +46,7 @@ jobs:
             BASE_SHA="$PUSH_BEFORE_SHA"
           fi
 
-          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -Eq '^0+      - name: Install native media verification dependencies
-        run: |
-          # GitHub-hosted Ubuntu images can inherit optional third-party APT
-          # sources. A 4xx from one of those sources must not prevent ATLAS
-          # from installing the Ubuntu-native packages required by this gate.
-          for source in /etc/apt/sources.list.d/*; do
-            if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
-              sudo mv "$source" "$source.disabled"
-            fi
-          done
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
-          ffmpeg -version
-          ffprobe -version
-          espeak --version
-          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Verify complete repository
-        run: npm run verify:all
-
-      - name: Record Supabase-first readiness boundary
-        run: |
-          {
-            echo "## ATLAS Supabase-first readiness gate"
-            echo "- Canonical source validation: passed"
-            echo "- Dependency security audit: passed"
-            echo "- Typecheck: passed"
-            echo "- Unit tests: passed"
-            echo "- Integration tests: passed"
-            echo "- Supabase source/migration verification: passed"
-            echo "- Creator Native Python tests: passed"
-            echo "- Vite production build: passed"
-            echo "- Supabase ATLAS Manager: required control plane; runtime verified separately"
-            echo "- Vercel: optional legacy adapter; not part of this gate"
-            echo "- Cloudflare production deployment: separate required stage; not claimed by this workflow"
-            echo "- Public production verification: separate required stage; not claimed by this workflow"
-          } >> "$GITHUB_STEP_SUMMARY"
-; then
+          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -Eq '^0+$'; then
             echo "ATLAS Copilot version gate skipped: no comparable base SHA."
             exit 0
           fi
