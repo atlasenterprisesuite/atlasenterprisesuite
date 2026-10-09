@@ -6,6 +6,7 @@ import { ModuleExperiencePage, type ModuleExperienceSection } from '../../../com
 import { crmApi } from './crmApi';
 
 const workspaces = [
+  { to: '/crm/leads', title: 'Leads', description: 'Review sales prospects and qualification status from an authorized provider.' },
   { to: '/crm/contacts', title: 'Contacts', description: 'Customer people and relationship context.' },
   { to: '/crm/companies', title: 'Accounts', description: 'Company and account relationship context.' },
   { to: '/crm/deals', title: 'Opportunities', description: 'Deal pipeline records from the connected provider.' },
