@@ -33,3 +33,14 @@ Cloudflare, API gateway, Salesforce/MuleSoft if connected, payment, governmental
 - Audit logs redact secrets.
 - Every connection reports last verified handshake and trust policy.
 - No unverified Salesforce connection or operational compliance claim.
+
+
+## Authenticated certificate telemetry integration (2026-10-09)
+- `atlas-core` contains RLS-protected `atlas_certificate_targets` and immutable `atlas_certificate_observations`, with an approved public TLS target for `www.atlasenterprisesuite.com:443`.
+- Reuse the **existing**, cryptographically authenticated `atlas-infra-evidence?api=record` endpoint; Supabase is at the 100 Edge Function limit. A separate receiver is NOT deployed or required.
+- The preexisting Cloudflare deployment workflow is explicitly authorized by that live receiver's GitHub-OIDC claim allowlist. A scheduled/read-only certificate-monitor job executes there, without running a scheduled production deployment.
+- A narrowly filtered database adapter maps only `github-actions-oidc` verification records with exact workflow, main branch, hostname, approved target and TLS proof into the certificate observations table.
+- Signed observation persistence must be verified by a successful **main-branch** run before declaring monitoring LIVE. GitHub CI alone is insufficient.
+- Public TLS verification never proves mutual TLS; mTLS requires dedicated client-identity handshake tests, currently NOT VERIFIED.
+- Production UI state is under explicit `VERIFICATION_HOLD` until route E2E and exact-SHA evidence. Never mark all certificates verified by default.
+- Never delete active Supabase services or silently bypass plan limits. See issue #734 for capacity context and reconciliation evidence.
