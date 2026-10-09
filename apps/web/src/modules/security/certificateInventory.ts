@@ -90,6 +90,7 @@ export function certificateVerdict(
   if (latest.observation_status === 'tls_failure') return 'failed';
   if (latest.observation_status === 'verified_tls'
       && latest.hostname_verified && latest.chain_verified
+      && (target.purpose === 'server_tls' || latest.mtls_verified)
       && Boolean(latest.certificate_sha256?.match(/^[a-f0-9]{64}$/))
       && latest.not_after && Date.parse(latest.not_after) > now) {
     return 'verified';
