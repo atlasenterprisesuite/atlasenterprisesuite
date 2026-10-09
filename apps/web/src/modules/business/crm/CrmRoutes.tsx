@@ -7,6 +7,7 @@ import { SalesforceIntegrationPage } from './SalesforceIntegrationPage';
 import { CrmSocialHandoffPage } from './CrmSocialHandoffPage';
 import './crm.css';
 
+const leadAssociations = [] as const;
 const contactAssociations = ['company', 'deal'] as const;
 const companyAssociations = ['contact', 'deal', 'ticket'] as const;
 const dealAssociations = ['contact', 'company', 'ticket'] as const;
@@ -36,6 +37,12 @@ export function CrmRoutes() {
   return (
     <Routes>
       <Route path="/crm" element={<CrmHomePage />} />
+      <Route path="/crm/leads" element={
+        <CrmObjectListPage objectType="lead" title="Leads" description="Provider-backed sales prospects, subject to authorized scopes." detailBase="/crm/leads" />
+      } />
+      <Route path="/crm/leads/:providerId" element={
+        <CrmRecordPage objectType="lead" title="Lead" associationTargets={leadAssociations} />
+      } />
       <Route path="/crm/contacts" element={
         <CrmObjectListPage objectType="contact" title="Contacts" description="Provider-backed contact records." detailBase="/crm/contacts" />
       } />
@@ -62,6 +69,12 @@ export function CrmRoutes() {
       } />
       <Route path="/crm/activities" element={<CrmActivitiesPage />} />
 
+      <Route path="/crm/salesforce/leads" element={
+        <CrmObjectListPage provider="salesforce" objectType="lead" title="Leads" description="Read-only Salesforce sales prospects." detailBase="/crm/salesforce/leads" />
+      } />
+      <Route path="/crm/salesforce/leads/:providerId" element={
+        <CrmRecordPage provider="salesforce" objectType="lead" title="Lead" associationTargets={leadAssociations} />
+      } />
       <Route path="/crm/salesforce/contacts" element={
         <CrmObjectListPage provider="salesforce" objectType="contact" title="Contacts" description="Salesforce-backed contact records." detailBase="/crm/salesforce/contacts" />
       } />
