@@ -18,6 +18,17 @@ export type AtlasModuleDefinition = {
 
 export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
   {
+    id: 'certificate-lifecycle',
+    title: 'ATLAS Certificate Lifecycle & Trust Management',
+    navLabel: 'Certificates',
+    area: 'Platform',
+    route: '/security/certificates',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Authenticated RLS certificate inventory and accessible security dashboard; active TLS observations and mTLS compliance remain evidence-gated.',
+    showInNavigation: true
+  },
+  {
     id: 'cloud',
     title: 'ATLAS Cloud',
     navLabel: 'Cloud',
