@@ -31,6 +31,86 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Require ATLAS Copilot version bump when source changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PUSH_BEFORE_SHA: ${{ github.event.before || '' }}
+        run: |
+          set -euo pipefail
+
+          BASE_SHA=""
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE_SHA="$PR_BASE_SHA"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            BASE_SHA="$PUSH_BEFORE_SHA"
+          fi
+
+          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -Eq '^0+      - name: Install native media verification dependencies
+        run: |
+          # GitHub-hosted Ubuntu images can inherit optional third-party APT
+          # sources. A 4xx from one of those sources must not prevent ATLAS
+          # from installing the Ubuntu-native packages required by this gate.
+          for source in /etc/apt/sources.list.d/*; do
+            if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          ffmpeg -version
+          ffprobe -version
+          espeak --version
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify complete repository
+        run: npm run verify:all
+
+      - name: Record Supabase-first readiness boundary
+        run: |
+          {
+            echo "## ATLAS Supabase-first readiness gate"
+            echo "- Canonical source validation: passed"
+            echo "- Dependency security audit: passed"
+            echo "- Typecheck: passed"
+            echo "- Unit tests: passed"
+            echo "- Integration tests: passed"
+            echo "- Supabase source/migration verification: passed"
+            echo "- Creator Native Python tests: passed"
+            echo "- Vite production build: passed"
+            echo "- Supabase ATLAS Manager: required control plane; runtime verified separately"
+            echo "- Vercel: optional legacy adapter; not part of this gate"
+            echo "- Cloudflare production deployment: separate required stage; not claimed by this workflow"
+            echo "- Public production verification: separate required stage; not claimed by this workflow"
+          } >> "$GITHUB_STEP_SUMMARY"
+; then
+            echo "ATLAS Copilot version gate skipped: no comparable base SHA."
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+
+          if git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- supabase/functions/atlas-copilot/; then
+            echo "ATLAS Copilot source unchanged; VERSION bump not required."
+            exit 0
+          fi
+
+          BASE_VERSION="$(git show "$BASE_SHA:supabase/functions/atlas-copilot/index.ts" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=s.match(/const VERSION=(\\d+);/);if(!m)process.exit(2);process.stdout.write(m[1]);})")"
+          HEAD_VERSION="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const VERSION=(\\d+);/);if(!m)process.exit(2);process.stdout.write(m[1]);")"
+
+          test -n "$BASE_VERSION" || { echo "::error::Unable to read ATLAS Copilot base VERSION"; exit 1; }
+          test -n "$HEAD_VERSION" || { echo "::error::Unable to read ATLAS Copilot head VERSION"; exit 1; }
+
+          if [ "$HEAD_VERSION" -le "$BASE_VERSION" ]; then
+            echo "::error::ATLAS Copilot source changed without a monotonic VERSION bump (base=$BASE_VERSION head=$HEAD_VERSION)."
+            exit 1
+          fi
+
+          echo "ATLAS Copilot VERSION advanced from $BASE_VERSION to $HEAD_VERSION."
+
       - name: Install native media verification dependencies
         run: |
           # GitHub-hosted Ubuntu images can inherit optional third-party APT
