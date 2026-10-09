@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  parseTravelDraftJson, travelSearchUrl, tripCalendarIcs, tripNights, validateTripPlan,
+  createTravelId, parseTravelDraftJson, travelSearchUrl, tripCalendarIcs, tripNights, validateTripPlan,
   type TripPlan
 } from '../../apps/web/src/modules/travel/travelPlanning';
 
@@ -47,6 +47,15 @@ describe('ATLAS Travel planning (no external booking)', () => {
     expect(parseTravelDraftJson(saved).services[0].id).toBe('imported-0');
     expect(() => parseTravelDraftJson('invalid')).toThrow();
     expect(() => parseTravelDraftJson(JSON.stringify({ schema: 'atlas.travel.plan.v1', status: 'other', ...plan }))).toThrow();
+  });
+
+  it('uses secure 128-bit identifiers for saved options and calendar events', () => {
+    const token = createTravelId();
+    expect(token).toMatch(/^[0-9a-f]{32}$/);
+    expect(createTravelId()).not.toBe(token);
+    const first = tripCalendarIcs(plan, new Date('2026-10-09T12:00:00Z'));
+    const second = tripCalendarIcs(plan, new Date('2026-10-09T12:00:00Z'));
+    expect(first.match(/^UID:(.+)$/m)?.[1]).not.toBe(second.match(/^UID:(.+)$/m)?.[1]);
   });
 
   it('rejects fake costs and excessive option counts', () => {
