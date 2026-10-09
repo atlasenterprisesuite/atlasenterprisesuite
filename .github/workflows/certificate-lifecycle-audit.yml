@@ -2,6 +2,13 @@ name: ATLAS Certificate Lifecycle Audit
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/certificate-lifecycle-audit.yml'
+      - 'scripts/security/certificate-lifecycle.mjs'
+      - 'scripts/security/scan-certificate-lifecycle.mjs'
+      - 'scripts/security/public-tls.mjs'
   schedule:
     - cron: '18 8 * * *'
 
