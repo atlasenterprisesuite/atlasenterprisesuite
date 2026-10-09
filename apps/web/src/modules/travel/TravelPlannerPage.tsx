@@ -212,7 +212,7 @@ export function TravelPlannerPage() {
             <button type="button" className="travel-primary" disabled={Boolean(planError)} onClick={exportCalendar}>Agendar plan (.ics)</button>
             <button type="button" className="travel-secondary" disabled={Boolean(planError)} onClick={exportDraft}>Guardar plan (.json)</button>
           </div>
-          <p className="travel-helper">El archivo .ics añade un evento tentativo al calendario que elijas; no sincroniza automáticamente ni confirma reservaciones. Los datos permanecen en esta sesión hasta descargarlos.</p>
+          <p className="travel-helper">El archivo .ics añade un evento tentativo al calendario que elijas; no sincroniza automáticamente ni confirma reservaciones. Los datos solo permanecen en memoria mientras esta página siga abierta. Descarga el plan antes de salir.</p>
         </div>
       </div>
 
