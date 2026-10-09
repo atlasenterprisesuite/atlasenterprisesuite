@@ -30,6 +30,8 @@ describe('certificate inventory fail-closed evidence verdicts', () => {
   it('never treats expired, self-reported or broken certificates as healthy', () => {
     expect(certificateVerdict(target,[{...evidence,chain_verified:false}],now)).toBe('no_evidence');
     expect(certificateVerdict(target,[{...evidence,hostname_verified:false}],now)).toBe('no_evidence');
+    expect(certificateVerdict({...target,purpose:'mtls_client'},[evidence],now)).toBe('no_evidence');
+    expect(certificateVerdict({...target,purpose:'mtls_server'},[{...evidence,mtls_verified:true}],now)).toBe('verified');
     expect(certificateVerdict(target,[{...evidence,not_after:'2026-10-08T00:00:00Z'}],now)).toBe('no_evidence');
     expect(certificateVerdict(target,[{...evidence,certificate_sha256:'fake'}],now)).toBe('no_evidence');
     expect(certificateVerdict(target,[{...evidence,observation_status:'tls_failure'}],now)).toBe('failed');
