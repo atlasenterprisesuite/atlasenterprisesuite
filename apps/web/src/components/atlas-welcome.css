@@ -1,4 +1,5 @@
 .atlas-welcome {
+  width: 100%;
   display: grid;
   grid-template-columns: minmax(210px, 0.78fr) minmax(0, 1.45fr);
   align-items: center;
