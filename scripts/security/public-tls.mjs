@@ -21,7 +21,8 @@ export function evaluatePublicTlsCertificate(
       criticalDays < 1 || warningDays <= criticalDays) {
     return { hostname, status: 'blocked', code: 'invalid_probe_input' };
   }
-  if (!authorized || !peer || tls.checkServerIdentity(hostname, peer)) {
+  if (!authorized || !peer || !/(?:^|,\\s*)DNS:[^,]+/.test(String(peer.subjectaltname || '')) ||
+      tls.checkServerIdentity(hostname, peer)) {
     return { hostname, status: 'blocked', code: 'tls_identity_unverified' };
   }
   if (!['TLSv1.2','TLSv1.3'].includes(protocol)) {
