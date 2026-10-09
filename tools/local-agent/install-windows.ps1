@@ -8,6 +8,8 @@ $major = [int]((& $node -p "Number(process.versions.node.split('.')[0])").Trim()
 if ($major -lt 22) { throw "Node.js 22+ is required." }
 $openssl = (Get-Command openssl -ErrorAction Stop).Source
 
+$agentMode = if ([string]::IsNullOrWhiteSpace($env:ATLAS_AGENT_PROFILE)) { 'standard' } else { $env:ATLAS_AGENT_PROFILE }
+if ($agentMode -cnotin @('standard','certificate-trust')) { throw "Invalid ATLAS agent profile." }
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
 $runtime = Join-Path $InstallRoot "runtime"
 $config = Join-Path $InstallRoot "config"
@@ -17,6 +19,15 @@ New-Item -ItemType Directory -Force -Path $runtime,(Join-Path $runtime "lib"),$c
 Copy-Item (Join-Path $source "atlas-local-agent.mjs") (Join-Path $runtime "atlas-local-agent.mjs") -Force
 Copy-Item (Join-Path $source "lib\realtime-client.mjs") (Join-Path $runtime "lib\realtime-client.mjs") -Force
 Copy-Item (Join-Path $source "lib\secure-state.mjs") (Join-Path $runtime "lib\secure-state.mjs") -Force
+Copy-Item (Join-Path $source "lib\browser-cdp.mjs") (Join-Path $runtime "lib\browser-cdp.mjs") -Force
+Copy-Item (Join-Path $source "lib\device-dna-linux.mjs") (Join-Path $runtime "lib\device-dna-linux.mjs") -Force
+Copy-Item (Join-Path $source "lib\agent-profile.mjs") (Join-Path $runtime "lib\agent-profile.mjs") -Force
+& $node --check (Join-Path $runtime "atlas-local-agent.mjs")
+if ($LASTEXITCODE -ne 0) { throw "ATLAS runtime entrypoint syntax check failed." }
+Get-ChildItem (Join-Path $runtime 'lib') -Filter '*.mjs' | ForEach-Object {
+  & $node --check $_.FullName
+  if ($LASTEXITCODE -ne 0) { throw "ATLAS runtime module syntax check failed." }
+}
 
 $key = Join-Path $config "agent.key"
 $csr = Join-Path $config "agent.csr"
@@ -50,6 +61,7 @@ foreach ($target in @($key,$enrollment,$devices,$state)) {
 
 $envFile = Join-Path $config "run-agent.ps1"
 $wrapper = @(
+  "`$env:ATLAS_AGENT_PROFILE = '$agentMode'",
   "`$env:ATLAS_AGENT_STATE_FILE = '$state\state.json'",
   "`$env:ATLAS_AGENT_ENROLLMENT_CODE_FILE = '$enrollment'",
   "`$env:ATLAS_LOCAL_DEVICES_FILE = '$devices'",
