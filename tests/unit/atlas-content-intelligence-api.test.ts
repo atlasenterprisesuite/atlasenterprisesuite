@@ -8,7 +8,7 @@ function source(path: string) {
 
 describe('ATLAS Content Intelligence persistence boundary', () => {
   it('stores workspaces in a tenant-scoped RLS table', () => {
-    const sql = source('supabase/migrations/20260915043000_creator_content_intelligence.sql');
+    const sql = source('supabase/migrations/20260915090932_creator_content_intelligence.sql');
     expect(sql).toContain('create table if not exists public.creator_content_workspaces');
     expect(sql).toContain('organization_id uuid not null');
     expect(sql).toContain('state_json jsonb not null');

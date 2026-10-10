@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration=readFileSync('supabase/migrations/20261007081500_atlas_care_core.sql','utf8');
+const migration=readFileSync('supabase/migrations/20261007071557_atlas_care_core.sql','utf8');
 const api=readFileSync('apps/web/src/modules/care/careApi.ts','utf8');
 const routes=readFileSync('apps/web/src/modules/care/CareRoutes.tsx','utf8');
 const registry=readFileSync('apps/web/src/modules/registry.ts','utf8');
