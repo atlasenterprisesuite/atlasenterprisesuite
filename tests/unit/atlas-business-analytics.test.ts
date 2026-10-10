@@ -27,7 +27,7 @@ describe('ATLAS Business Analytics', () => {
   });
 
   it('enforces production lineage and verified-source constraints in persistence', () => {
-    const sql = readFileSync('supabase/migrations/20260929150000_atlas_business_analytics_core.sql', 'utf8');
+    const sql = readFileSync('supabase/migrations_legacy_pre_remote_sync/20260929150000_atlas_business_analytics_core.sql', 'utf8');
     expect(sql).toContain("('analytics.read'");
     expect(sql).toContain("('analytics.manage'");
     expect(sql).toContain("evidence_scope <> 'production' or source_verified = true");
