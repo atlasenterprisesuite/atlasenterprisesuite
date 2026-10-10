@@ -14,7 +14,7 @@ export function MusicVideoShowcase() {
       <figure className="atlas-mv-visual">
         <img
           src="/atlas/design/atlas-music-video-studio.svg"
-          alt="ATLAS Music & Video visual with a music player and lyrics, video camera and smart teleprompter on two phone screens"
+          alt="ATLAS Music, Video and Teleprompter visual: two mobile screens showing music playback with lyrics and a camera teleprompter"
           width="1600"
           height="900"
           loading="lazy"
