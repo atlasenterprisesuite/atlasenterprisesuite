@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => existsSync(path) ? readFileSync(path, 'utf8') : '';
 
-const migrationPath = 'supabase/migrations/20260925031000_atlas_chat_core.sql';
-const runtimeMigrationPath = 'supabase/migrations/20260925093000_atlas_chat_postgrest_runtime.sql';
+const migrationPath = 'supabase/migrations/20260925095246_atlas_chat_core.sql';
+const runtimeMigrationPath = 'supabase/migrations/20260925095507_atlas_chat_postgrest_runtime.sql';
 const workerPath = 'worker/index.ts';
 const wranglerPath = 'wrangler.jsonc';
 const routesPath = 'apps/web/src/modules/connect/ConnectRoutes.tsx';
