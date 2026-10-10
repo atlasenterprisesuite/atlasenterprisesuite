@@ -30,8 +30,8 @@ const GLYPHS: Record<WeatherKind, string> = {
   sun: '☀', cloud: '☁', rain: '☂', snow: '❄', storm: 'ϟ', fog: '≋', unknown: '◌'
 };
 
-function WeatherScene({ kind }: { kind: WeatherKind }) {
-  return <div className={`weather-scene weather-scene--${kind}`} aria-hidden="true">
+function WeatherScene({ kind, isNight }: { kind: WeatherKind; isNight: boolean }) {
+  return <div className={`weather-scene weather-scene--${kind}${isNight ? ' weather-scene--night' : ''}`} aria-hidden="true">
     <div className="weather-scene-orb" />
     <div className="weather-scene-cloud weather-scene-cloud--front" />
     <div className="weather-scene-cloud weather-scene-cloud--back" />
@@ -59,8 +59,12 @@ export function AtlasWeatherPage() {
 
   // Pull periodically, but never bypass the source's HTTP Expires cache boundary.
   useEffect(() => {
-    const interval = window.setInterval(() => setRefreshCycle(value => value + 1), 15 * 60 * 1000);
-    return () => window.clearInterval(interval);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') setRefreshCycle(value => value + 1);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 15 * 60 * 1000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', refreshWhenVisible); };
   }, []);
 
   useEffect(() => {
@@ -136,6 +140,7 @@ export function AtlasWeatherPage() {
   const activeHours = forecast?.hours.filter(hour => Date.parse(hour.at) >= Date.now() - 30 * 60 * 1000).slice(0, 12) || [];
   const activeDays = forecast?.days.filter(day => day.date >= new Date().toISOString().slice(0, 10)).slice(0, 7) || [];
   const kind = current?.kind || 'unknown';
+  const isNight = current?.symbol.endsWith('_night') || false;
 
   return (
     <section className="atlas-weather-page">
@@ -169,8 +174,8 @@ export function AtlasWeatherPage() {
       </div>
       {gpsMessage && <p className="atlas-weather-info" role="status">{gpsMessage}</p>}
 
-      <div className={`atlas-weather-hero atlas-weather-hero--${kind}`}>
-        <WeatherScene kind={kind} />
+      <div className={`atlas-weather-hero atlas-weather-hero--${kind}${isNight ? ' atlas-weather-hero--night' : ''}`}>
+        <WeatherScene kind={kind} isNight={isNight} />
         <div className="atlas-weather-hero-content">
           <span className="atlas-weather-kicker">{place.label}</span>
           {forecastState === 'loading' && <p role="status">Consultando el servicio meteorológico…</p>}
