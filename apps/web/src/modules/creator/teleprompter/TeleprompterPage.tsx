@@ -9,6 +9,7 @@ import { TELEPROMPTER_SCRIPTS, type TeleprompterLanguage } from './teleprompterS
 import './teleprompter.css';
 
 type SyncMode = 'voice' | 'timed';
+type ReaderTheme = 'neon' | 'professional' | 'cinematic' | 'minimal';
 type RecorderState = 'idle' | 'countdown' | 'recording' | 'stopped' | 'error';
 type CloudState = 'checking' | 'connected' | 'unavailable' | 'saving' | 'saved' | 'error';
 
@@ -111,6 +112,7 @@ const copy = {
     saveCloud: 'Guardar en ATLAS',
     cloudDownload: 'Abrir copia de ATLAS',
     font: 'Tamaño',
+    design: 'Diseño', opacity: 'Opacidad', position: 'Posición',
     speed: 'Velocidad',
     mirror: 'Espejo',
     autoCloud: 'Guardar automáticamente en ATLAS',
@@ -146,6 +148,7 @@ const copy = {
     saveCloud: 'Save to ATLAS',
     cloudDownload: 'Open ATLAS copy',
     font: 'Font size',
+    design: 'Theme', opacity: 'Opacity', position: 'Position',
     speed: 'Speed',
     mirror: 'Mirror',
     autoCloud: 'Automatically save to ATLAS',
@@ -168,7 +171,10 @@ export function TeleprompterPage() {
   const [draft, setDraft] = useState(TELEPROMPTER_SCRIPTS.es);
   const [mode, setMode] = useState<SyncMode>('voice');
   const [cursor, setCursor] = useState(0);
-  const [fontSize, setFontSize] = useState(44);
+  const [fontSize, setFontSize] = useState(24);
+  const [readerTheme, setReaderTheme] = useState<ReaderTheme>('neon');
+  const [readerOpacity, setReaderOpacity] = useState(90);
+  const [readerPosition, setReaderPosition] = useState<'top' | 'center' | 'bottom'>('center');
   const [wordsPerMinute, setWordsPerMinute] = useState(125);
   const [mirror, setMirror] = useState(true);
   const [autoCloud, setAutoCloud] = useState(true);
@@ -426,8 +432,14 @@ export function TeleprompterPage() {
         <button type="button" className={mode === 'voice' ? 'active' : ''} disabled={!voiceAvailable || state === 'recording'} onClick={() => setMode('voice')}>{ui.voice}</button>
         <button type="button" className={mode === 'timed' ? 'active' : ''} disabled={state === 'recording'} onClick={() => setMode('timed')}>{ui.timed}</button>
       </div>
-      <label><span>{ui.font} · {fontSize}px</span><input aria-label={ui.font} type="range" min="28" max="72" value={fontSize} onChange={event => setFontSize(Number(event.target.value))} /></label>
+      <label><span>{ui.font} · {fontSize}px</span><input aria-label={ui.font} type="range" min="18" max="72" value={fontSize} onChange={event => setFontSize(Number(event.target.value))} /></label>
       <label><span>{ui.speed} · {wordsPerMinute}</span><input aria-label={ui.speed} type="range" min="70" max="220" step="5" value={wordsPerMinute} disabled={mode === 'voice'} onChange={event => setWordsPerMinute(Number(event.target.value))} /></label>
+    </div>
+
+    <div className="teleprompter-design-controls" role="group" aria-label={ui.design}>
+      <label>{ui.design}<select value={readerTheme} onChange={event => setReaderTheme(event.target.value as ReaderTheme)}><option value="neon">Neón</option><option value="professional">Professional</option><option value="cinematic">Cinematic</option><option value="minimal">Minimal</option></select></label>
+      <label>{ui.opacity} · {readerOpacity}%<input type="range" min="30" max="100" step="5" value={readerOpacity} onChange={event => setReaderOpacity(Number(event.target.value))} /></label>
+      <label>{ui.position}<select value={readerPosition} onChange={event => setReaderPosition(event.target.value as typeof readerPosition)}><option value="top">Top / Arriba</option><option value="center">Center / Centro</option><option value="bottom">Bottom / Abajo</option></select></label>
     </div>
 
     <div className="teleprompter-cloud" data-state={cloudState}>
@@ -441,7 +453,7 @@ export function TeleprompterPage() {
         {!cameraReady && <div className="camera-empty"><strong>ATLAS</strong><span>{ui.camera}</span></div>}
         {state === 'countdown' && <div className="countdown"><span>ATLAS</span><strong>{countdown}</strong></div>}
       </div>
-      <div className="teleprompter-reader" style={{ fontSize }} aria-label="Teleprompter script">
+      <div className={`teleprompter-reader reader-theme-${readerTheme} reader-position-${readerPosition}`} style={{ fontSize, backgroundColor: `rgba(16, 13, 35, ${readerOpacity / 100})` }} aria-label="Teleprompter script">
         <div className="reading-guide" />
         <p>{words.map((word, index) => <span key={index} ref={node => { wordRefs.current[index] = node; }} className={index < cursor ? 'word spoken' : index === cursor ? 'word current' : 'word'}>{word} </span>)}</p>
       </div>
