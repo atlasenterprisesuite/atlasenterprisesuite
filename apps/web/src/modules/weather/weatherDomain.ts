@@ -82,8 +82,9 @@ export type WeatherAlert = {
   sourceUrl: string;
 };
 
-const FORECAST_ENDPOINT = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
-const NWS_ENDPOINT = 'https://api.weather.gov/alerts/active';
+const FORECAST_ENDPOINT = '/api/v1/weather/forecast';
+const NWS_ENDPOINT = '/api/v1/weather/alerts';
+const OBSERVATION_ENDPOINT = '/api/v1/weather/observations';
 const DEFAULT_TTL_MS = 60 * 60 * 1000;
 const forecastCache = new Map<string, { expiresAt: number; payload: WeatherForecast }>();
 
@@ -203,10 +204,8 @@ export async function fetchWeatherForecast(lat: number, lon: number, signal?: Ab
   const key = `${coords.lat},${coords.lon}`;
   const cached = forecastCache.get(key);
   if (cached && Date.now() < cached.expiresAt) return cached.payload;
-  const url = new URL(FORECAST_ENDPOINT);
-  url.searchParams.set('lat', coords.lat);
-  url.searchParams.set('lon', coords.lon);
-  const response = await fetch(url.toString(), {
+  const url = `${FORECAST_ENDPOINT}?${new URLSearchParams(coords)}`;
+  const response = await fetch(url, {
     headers: { Accept: 'application/json' },
     signal
   });
@@ -253,9 +252,8 @@ export function normalizeAlerts(input: unknown): WeatherAlert[] {
 export async function fetchNwsAlerts(lat: number, lon: number, signal?: AbortSignal): Promise<WeatherAlert[]> {
   const coords = safeCoordinates(lat, lon);
   if (!nwsCoverageEligible(lat, lon)) return [];
-  const url = new URL(NWS_ENDPOINT);
-  url.searchParams.set('point', `${coords.lat},${coords.lon}`);
-  const response = await fetch(url.toString(), {
+  const url = `${NWS_ENDPOINT}?${new URLSearchParams(coords)}`;
+  const response = await fetch(url, {
     headers: { Accept: 'application/geo+json' },
     signal
   });
