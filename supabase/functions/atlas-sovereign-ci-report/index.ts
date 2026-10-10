@@ -213,10 +213,15 @@ Deno.serve(async (req: Request) => {
       throw fail(error instanceof Error ? error.message : 'invalid_sovereign_ci_input', 422);
     }
 
-    const resolvedSha = clean(body.resolved_sha, 40).toLowerCase();
-    if (!SHA40.test(resolvedSha)) throw fail('invalid_resolved_sha', 422);
+    const targetResolutionFailed = body.target_resolution_failed === true;
+    const resolvedShaRaw = clean(body.resolved_sha, 40).toLowerCase();
+    if (!targetResolutionFailed && !SHA40.test(resolvedShaRaw)) throw fail('invalid_resolved_sha', 422);
+    if (targetResolutionFailed && resolvedShaRaw && !SHA40.test(resolvedShaRaw)) throw fail('invalid_resolved_sha', 422);
+    const resolvedSha = SHA40.test(resolvedShaRaw) ? resolvedShaRaw : null;
     const results = Array.isArray(body.results) ? body.results.map(normalizeResult) : [];
-    const gate = evaluateSovereignCiGate(results);
+    const gate = targetResolutionFailed
+      ? { green: false as const, failureClass: 'target_resolution_failure' as const, failedCommand: null }
+      : evaluateSovereignCiGate(results);
 
     const admin = adminClient();
     const { data: workflow, error: workflowError } = await admin.from('execution_workflows')
@@ -233,7 +238,7 @@ Deno.serve(async (req: Request) => {
       !constantTimeTextEqual(clean(context.requested_ref, 200), requestedRef)
     ) throw fail('execution_target_mismatch', 409);
     const priorSha = clean(context.resolved_sha, 40).toLowerCase();
-    if (priorSha && !constantTimeTextEqual(priorSha, resolvedSha)) {
+    if (priorSha && (!resolvedSha || !constantTimeTextEqual(priorSha, resolvedSha))) {
       throw fail('resolved_sha_immutable', 409);
     }
 
@@ -249,6 +254,92 @@ Deno.serve(async (req: Request) => {
 
     const now = new Date().toISOString();
     const evidenceIds: string[] = [];
+
+    if (targetResolutionFailed) {
+      evidenceIds.push(await persistEvidence(admin, {
+        org_id: workflow.org_id,
+        tenant_id: workflow.tenant_id,
+        task_id: taskId,
+        step_id: targetStep.id,
+        kind: 'manager.ci.target',
+        reference: `github-actions:${claims.runId}:target:unresolved`,
+        verified: false,
+        metadata: {
+          repository,
+          requested_ref: requestedRef,
+          resolved_sha: null,
+          failure_class: 'target_resolution_failure',
+          runner_kind: 'github-actions',
+          github_run_id: claims.runId
+        }
+      }));
+
+      const { error: targetStepError } = await admin.from('execution_steps').update({
+        status: 'failed',
+        started_at: targetStep.started_at || now,
+        completed_at: now,
+        updated_at: now
+      }).eq('id', String(targetStep.id)).eq('org_id', String(workflow.org_id));
+      if (targetStepError) throw fail('persistence_error', 500);
+
+      const nextContext = {
+        ...context,
+        resolved_sha: null,
+        runner_kind: 'github-actions',
+        github_run_id: claims.runId,
+        github_actor: claims.actor || null,
+        runner_workflow_sha: SHA40.test(claims.workflowSha) ? claims.workflowSha : null
+      };
+      const [taskUpdate, workflowUpdate] = await Promise.all([
+        admin.from('execution_tasks').update({
+          status: 'blocked',
+          current_step_id: targetStep.id,
+          next_action: 'Correct the repository ref and start a new Sovereign CI verification.',
+          blocked_reason: 'target_resolution_failure',
+          completed_at: null,
+          updated_at: now,
+          version: Number(task.version || 1) + 1
+        }).eq('id', taskId).eq('org_id', String(workflow.org_id)),
+        admin.from('execution_workflows').update({
+          status: 'blocked',
+          current_task_id: task.id,
+          current_module: 'manager',
+          context: nextContext,
+          completed_at: null,
+          updated_at: now,
+          version: Number(workflow.version || 1) + 1
+        }).eq('id', workflowId).eq('org_id', String(workflow.org_id))
+      ]);
+      if (taskUpdate.error || workflowUpdate.error) throw fail('persistence_error', 500);
+
+      const { error: auditError } = await admin.from('execution_audit_events').insert({
+        org_id: workflow.org_id,
+        tenant_id: workflow.tenant_id,
+        actor_user_id: workflow.created_by,
+        task_id: taskId,
+        workflow_id: workflowId,
+        module: 'manager',
+        action: 'execution.manager.sovereign_ci_target_resolution_failed',
+        previous_state: String(task.status),
+        resulting_state: 'blocked',
+        evidence_ids: evidenceIds,
+        correlation_id: `github-actions:${claims.runId}`
+      });
+      if (auditError) throw fail('audit_write_failed', 500);
+
+      return json({
+        ok: true,
+        workflow_id: workflowId,
+        task_id: taskId,
+        resolved_sha: null,
+        target_resolution_failed: true,
+        gate: 'red',
+        failure_class: 'target_resolution_failure',
+        failed_command: null,
+        evidence_ids: evidenceIds,
+        secrets_returned: false
+      });
+    }
     evidenceIds.push(await persistEvidence(admin, {
       org_id: workflow.org_id,
       tenant_id: workflow.tenant_id,
