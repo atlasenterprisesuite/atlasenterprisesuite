@@ -31,6 +31,8 @@ ATLAS Manager UI
 
 The browser never receives GitHub control credentials. `atlas-execution` authenticates the ATLAS user and organization and dispatches only the allowlisted canonical workflow through the server-side `ATLAS_GITHUB_TOKEN`.
 
+Every start creates a random one-time dispatch binding. ATLAS stores only its SHA-256 hash in workflow context and sends the raw nonce to the selected GitHub run. The OIDC reporter hashes the presented nonce, compares it against the stored binding, and consumes the binding after the first accepted report. A replay is rejected.
+
 The verification workflow has only:
 
 - `contents: read`
