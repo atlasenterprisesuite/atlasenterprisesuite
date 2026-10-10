@@ -64,7 +64,7 @@ describe('ATLAS Weather model truth boundary', () => {
     const second = await fetchWeatherForecast(28.53, -81.37);
     expect(first).toEqual(second);
     expect(mocked).toHaveBeenCalledTimes(1);
-    expect(String(mocked.mock.calls[0]?.[0])).toContain('api.met.no');
+    expect(String(mocked.mock.calls[0]?.[0])).toContain('/api/v1/weather/forecast');
   });
 
   it('does not disguise an unavailable source as successful weather data', async () => {
@@ -83,33 +83,21 @@ describe('ATLAS official warning boundary', () => {
     expect(mocked).not.toHaveBeenCalled();
   });
 
-  it('verifies actual station measurements and rejects stale readings', async () => {
+  it('distinguishes fresh verified measurements from stale readings', async () => {
     const observedAt = new Date().toISOString();
-    const mocked = vi.fn(async (input: string) => {
-      const url = String(input);
-      if (url.includes('/points/')) return {
-        ok: true, json: async () => ({ properties: { observationStations: 'https://api.weather.gov/gridpoints/MLB/10,20/stations' } })
-      };
-      if (url.includes('/gridpoints/')) return {
-        ok: true, json: async () => ({ features: [{ properties: { stationIdentifier: 'KMCO' } }] })
-      };
-      return { ok: true, json: async () => ({ properties: {
-        timestamp: observedAt, textDescription: 'Partly Cloudy',
-        temperature: { value: 26 }, relativeHumidity: { value: 80 }, windSpeed: { value: 3 }
-      } }) };
+    const official = (timestamp: string) => ({
+      station: 'KMCO',
+      sourceUrl: 'https://api.weather.gov/stations/KMCO/observations/latest',
+      properties: { timestamp, textDescription: 'Partly Cloudy',
+        temperature: { value: 26 }, relativeHumidity: { value: 80 }, windSpeed: { value: 3 } }
     });
+    const mocked = vi.fn(async () => ({ ok: true, json: async () => official(observedAt) }));
     vi.stubGlobal('fetch', mocked);
-    const observation = await fetchNwsObservation(28.55, -81.34);
-    expect(observation).toMatchObject({ station: 'KMCO', celsius: 26, humidity: 80 });
-    expect(mocked).toHaveBeenCalledTimes(3);
+    await expect(fetchNwsObservation(28.55, -81.34)).resolves.toMatchObject({ station: 'KMCO', celsius: 26, humidity: 80 });
+    expect(mocked).toHaveBeenCalledTimes(1);
+    expect(String(mocked.mock.calls[0]?.[0])).toContain('/api/v1/weather/observations');
 
-    const stale = vi.fn(async (input: string) => {
-      const url = String(input);
-      if (url.includes('/points/')) return { ok: true, json: async () => ({ properties: { observationStations: 'https://api.weather.gov/gridpoints/MLB/10,20/stations' } }) };
-      if (url.includes('/gridpoints/')) return { ok: true, json: async () => ({ features: [{ properties: { stationIdentifier: 'KMCO' } }] }) };
-      return { ok: true, json: async () => ({ properties: { timestamp: '2020-01-01T00:00:00Z', temperature: { value: 26 } } }) };
-    });
-    vi.stubGlobal('fetch', stale);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => official('2020-01-01T00:00:00Z') })));
     await expect(fetchNwsObservation(28.55, -81.34)).resolves.toBeNull();
   });
 
