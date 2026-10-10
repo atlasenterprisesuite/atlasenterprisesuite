@@ -1,0 +1,1605 @@
+{
+  "version": 1,
+  "source": "supabase_migrations.schema_migrations",
+  "project_ref": "ggmanzcgtlrvqfoccgsh",
+  "synchronized_at": "2026-10-10",
+  "migration_count": 319,
+  "latest_version": "20261009160135",
+  "migrations": [
+    {
+      "version": "20260808183211",
+      "name": "atlas_core_schema",
+      "file": "20260808183211_atlas_core_schema.sql"
+    },
+    {
+      "version": "20260808183220",
+      "name": "atlas_storage",
+      "file": "20260808183220_atlas_storage.sql"
+    },
+    {
+      "version": "20260808183306",
+      "name": "atlas_cloud_operations",
+      "file": "20260808183306_atlas_cloud_operations.sql"
+    },
+    {
+      "version": "20260808183316",
+      "name": "atlas_security_patch",
+      "file": "20260808183316_atlas_security_patch.sql"
+    },
+    {
+      "version": "20260808183355",
+      "name": "atlas_production_function_hardening",
+      "file": "20260808183355_atlas_production_function_hardening.sql"
+    },
+    {
+      "version": "20260808183529",
+      "name": "atlas_personal_intelligence_cloud_core",
+      "file": "20260808183529_atlas_personal_intelligence_cloud_core.sql"
+    },
+    {
+      "version": "20260808183851",
+      "name": "atlas_private_authorization_helpers",
+      "file": "20260808183851_atlas_private_authorization_helpers.sql"
+    },
+    {
+      "version": "20260808184042",
+      "name": "atlas_calendar_owner_isolation",
+      "file": "20260808184042_atlas_calendar_owner_isolation.sql"
+    },
+    {
+      "version": "20260809032705",
+      "name": "atlas_identity_foundation",
+      "file": "20260809032705_atlas_identity_foundation.sql"
+    },
+    {
+      "version": "20260809032710",
+      "name": "atlas_identity_audit_hardening",
+      "file": "20260809032710_atlas_identity_audit_hardening.sql"
+    },
+    {
+      "version": "20260809032746",
+      "name": "atlas_identity_invoker_hardening",
+      "file": "20260809032746_atlas_identity_invoker_hardening.sql"
+    },
+    {
+      "version": "20260809032851",
+      "name": "atlas_identity_indexes",
+      "file": "20260809032851_atlas_identity_indexes.sql"
+    },
+    {
+      "version": "20260809035356",
+      "name": "atlas_identity_mfa_stepup",
+      "file": "20260809035356_atlas_identity_mfa_stepup.sql"
+    },
+    {
+      "version": "20260809040445",
+      "name": "atlas_identity_member_admin",
+      "file": "20260809040445_atlas_identity_member_admin.sql"
+    },
+    {
+      "version": "20260809040925",
+      "name": "atlas_identity_hierarchy_locking",
+      "file": "20260809040925_atlas_identity_hierarchy_locking.sql"
+    },
+    {
+      "version": "20260809040959",
+      "name": "atlas_identity_member_indexes",
+      "file": "20260809040959_atlas_identity_member_indexes.sql"
+    },
+    {
+      "version": "20260809041349",
+      "name": "atlas_identity_invitations",
+      "file": "20260809041349_atlas_identity_invitations.sql"
+    },
+    {
+      "version": "20260809041745",
+      "name": "atlas_identity_invitation_confirmation",
+      "file": "20260809041745_atlas_identity_invitation_confirmation.sql"
+    },
+    {
+      "version": "20260809042001",
+      "name": "atlas_identity_invitation_indexes",
+      "file": "20260809042001_atlas_identity_invitation_indexes.sql"
+    },
+    {
+      "version": "20260809042222",
+      "name": "atlas_identity_invitation_rls",
+      "file": "20260809042222_atlas_identity_invitation_rls.sql"
+    },
+    {
+      "version": "20260809042533",
+      "name": "atlas_identity_security_history",
+      "file": "20260809042533_atlas_identity_security_history.sql"
+    },
+    {
+      "version": "20260809043021",
+      "name": "atlas_identity_security_event_privileges",
+      "file": "20260809043021_atlas_identity_security_event_privileges.sql"
+    },
+    {
+      "version": "20260809223037",
+      "name": "atlas_private_beta_access_hardening",
+      "file": "20260809223037_atlas_private_beta_access_hardening.sql"
+    },
+    {
+      "version": "20260809223324",
+      "name": "atlas_horizontal_production_fabric",
+      "file": "20260809223324_atlas_horizontal_production_fabric.sql"
+    },
+    {
+      "version": "20260809224013",
+      "name": "bootstrap_atlas_production_tenant",
+      "file": "20260809224013_bootstrap_atlas_production_tenant.sql"
+    },
+    {
+      "version": "20260809224140",
+      "name": "atlas_horizontal_fabric_hardening",
+      "file": "20260809224140_atlas_horizontal_fabric_hardening.sql"
+    },
+    {
+      "version": "20260809224811",
+      "name": "atlas_core_performance_hardening",
+      "file": "20260809224811_atlas_core_performance_hardening.sql"
+    },
+    {
+      "version": "20260810021509",
+      "name": "atlas_work_graph_conversation_execution",
+      "file": "20260810021509_atlas_work_graph_conversation_execution.sql"
+    },
+    {
+      "version": "20260810021519",
+      "name": "atlas_work_graph_referential_hardening",
+      "file": "20260810021519_atlas_work_graph_referential_hardening.sql"
+    },
+    {
+      "version": "20260810021646",
+      "name": "atlas_work_graph_rpc_hardening",
+      "file": "20260810021646_atlas_work_graph_rpc_hardening.sql"
+    },
+    {
+      "version": "20260810021734",
+      "name": "atlas_work_graph_performance_hardening",
+      "file": "20260810021734_atlas_work_graph_performance_hardening.sql"
+    },
+    {
+      "version": "20260810022127",
+      "name": "atlas_work_graph_production_registry",
+      "file": "20260810022127_atlas_work_graph_production_registry.sql"
+    },
+    {
+      "version": "20260810022656",
+      "name": "atlas_work_graph_codex_review_hardening",
+      "file": "20260810022656_atlas_work_graph_codex_review_hardening.sql"
+    },
+    {
+      "version": "20260816023303",
+      "name": "atlas_owner_bootstrap_rpc",
+      "file": "20260816023303_atlas_owner_bootstrap_rpc.sql"
+    },
+    {
+      "version": "20260816024547",
+      "name": "secure_atlas_bootstrap_owner_execution",
+      "file": "20260816024547_secure_atlas_bootstrap_owner_execution.sql"
+    },
+    {
+      "version": "20260816065444",
+      "name": "atlas_transportation_core",
+      "file": "20260816065444_atlas_transportation_core.sql"
+    },
+    {
+      "version": "20260818201734",
+      "name": "atlas_autonomous_accounting_foundation",
+      "file": "20260818201734_atlas_autonomous_accounting_foundation.sql"
+    },
+    {
+      "version": "20260818201801",
+      "name": "atlas_autonomous_accounting_fk_indexes",
+      "file": "20260818201801_atlas_autonomous_accounting_fk_indexes.sql"
+    },
+    {
+      "version": "20260821174011",
+      "name": "atlas_bootstrap_owner_role_accuracy",
+      "file": "20260821174011_atlas_bootstrap_owner_role_accuracy.sql"
+    },
+    {
+      "version": "20260821174121",
+      "name": "atlas_product_telemetry_capture",
+      "file": "20260821174121_atlas_product_telemetry_capture.sql"
+    },
+    {
+      "version": "20260821174345",
+      "name": "atlas_transport_audit_coverage",
+      "file": "20260821174345_atlas_transport_audit_coverage.sql"
+    },
+    {
+      "version": "20260821174504",
+      "name": "atlas_autonomous_accounting_audit_coverage",
+      "file": "20260821174504_atlas_autonomous_accounting_audit_coverage.sql"
+    },
+    {
+      "version": "20260821174551",
+      "name": "atlas_audit_recursive_secret_redaction",
+      "file": "20260821174551_atlas_audit_recursive_secret_redaction.sql"
+    },
+    {
+      "version": "20260821174808",
+      "name": "atlas_transport_rls_policy_consolidation",
+      "file": "20260821174808_atlas_transport_rls_policy_consolidation.sql"
+    },
+    {
+      "version": "20260821174843",
+      "name": "atlas_work_graph_fk_index_alignment",
+      "file": "20260821174843_atlas_work_graph_fk_index_alignment.sql"
+    },
+    {
+      "version": "20260821174944",
+      "name": "atlas_conversation_capture_security_invoker",
+      "file": "20260821174944_atlas_conversation_capture_security_invoker.sql"
+    },
+    {
+      "version": "20260821175104",
+      "name": "atlas_accounting_rpc_security_invoker",
+      "file": "20260821175104_atlas_accounting_rpc_security_invoker.sql"
+    },
+    {
+      "version": "20260821224214",
+      "name": "atlas_sovereign_feature_flags_v1",
+      "file": "20260821224214_atlas_sovereign_feature_flags_v1.sql"
+    },
+    {
+      "version": "20260821224245",
+      "name": "atlas_observability_core_v1",
+      "file": "20260821224245_atlas_observability_core_v1.sql"
+    },
+    {
+      "version": "20260821224357",
+      "name": "atlas_observability_rls_initplan_optimization",
+      "file": "20260821224357_atlas_observability_rls_initplan_optimization.sql"
+    },
+    {
+      "version": "20260821224524",
+      "name": "atlas_ai_gateway_registry_v1",
+      "file": "20260821224524_atlas_ai_gateway_registry_v1.sql"
+    },
+    {
+      "version": "20260821224631",
+      "name": "atlas_workflow_outbox_resilience_v1",
+      "file": "20260821224631_atlas_workflow_outbox_resilience_v1.sql"
+    },
+    {
+      "version": "20260821224725",
+      "name": "atlas_ai_gateway_fk_index_alignment",
+      "file": "20260821224725_atlas_ai_gateway_fk_index_alignment.sql"
+    },
+    {
+      "version": "20260822092417",
+      "name": "atlas_sovereign_ai_governance_v1",
+      "file": "20260822092417_atlas_sovereign_ai_governance_v1.sql"
+    },
+    {
+      "version": "20260822092503",
+      "name": "atlas_sovereign_ai_governance_lint_fixes",
+      "file": "20260822092503_atlas_sovereign_ai_governance_lint_fixes.sql"
+    },
+    {
+      "version": "20260822093104",
+      "name": "atlas_release_registry_v1",
+      "file": "20260822093104_atlas_release_registry_v1.sql"
+    },
+    {
+      "version": "20260825212333",
+      "name": "atlas_live_entertainment_core_v1",
+      "file": "20260825212333_atlas_live_entertainment_core_v1.sql"
+    },
+    {
+      "version": "20260825231212",
+      "name": "atlas_payroll_identity_permissions_v1",
+      "file": "20260825231212_atlas_payroll_identity_permissions_v1.sql"
+    },
+    {
+      "version": "20260825233548",
+      "name": "atlas_ai_repair_queue_v1",
+      "file": "20260825233548_atlas_ai_repair_queue_v1.sql"
+    },
+    {
+      "version": "20260825235838",
+      "name": "harden_atlas_ai_repair_queue_v2",
+      "file": "20260825235838_harden_atlas_ai_repair_queue_v2.sql"
+    },
+    {
+      "version": "20260827010234",
+      "name": "atlas_payroll_self_service_permission_v2",
+      "file": "20260827010234_atlas_payroll_self_service_permission_v2.sql"
+    },
+    {
+      "version": "20260828015713",
+      "name": "atlas_inventory_core_v1",
+      "file": "20260828015713_atlas_inventory_core_v1.sql"
+    },
+    {
+      "version": "20260828015841",
+      "name": "atlas_inventory_atomic_transfer_v1",
+      "file": "20260828015841_atlas_inventory_atomic_transfer_v1.sql"
+    },
+    {
+      "version": "20260828020146",
+      "name": "atlas_inventory_permission_alignment_v1",
+      "file": "20260828020146_atlas_inventory_permission_alignment_v1.sql"
+    },
+    {
+      "version": "20260828020258",
+      "name": "atlas_pos_identity_permissions_v1",
+      "file": "20260828020258_atlas_pos_identity_permissions_v1.sql"
+    },
+    {
+      "version": "20260828020317",
+      "name": "atlas_pos_core_v1",
+      "file": "20260828020317_atlas_pos_core_v1.sql"
+    },
+    {
+      "version": "20260828020342",
+      "name": "atlas_pos_atomic_cash_sale_v1",
+      "file": "20260828020342_atlas_pos_atomic_cash_sale_v1.sql"
+    },
+    {
+      "version": "20260828020714",
+      "name": "atlas_projects_core_v1",
+      "file": "20260828020714_atlas_projects_core_v1.sql"
+    },
+    {
+      "version": "20260828021218",
+      "name": "atlas_work_identity_permissions_v1",
+      "file": "20260828021218_atlas_work_identity_permissions_v1.sql"
+    },
+    {
+      "version": "20260828021929",
+      "name": "atlas_bootstrap_owner_platform_admin_hardening_v1",
+      "file": "20260828021929_atlas_bootstrap_owner_platform_admin_hardening_v1.sql"
+    },
+    {
+      "version": "20260829040159",
+      "name": "atlas_ride_os_core_v1",
+      "file": "20260829040159_atlas_ride_os_core_v1.sql"
+    },
+    {
+      "version": "20260829040232",
+      "name": "atlas_ride_identity_permissions_v1",
+      "file": "20260829040232_atlas_ride_identity_permissions_v1.sql"
+    },
+    {
+      "version": "20260830231944",
+      "name": "atlas_business_fk_index_hardening_v1",
+      "file": "20260830231944_atlas_business_fk_index_hardening_v1.sql"
+    },
+    {
+      "version": "20260830232234",
+      "name": "atlas_ride_rls_performance_hardening_v1",
+      "file": "20260830232234_atlas_ride_rls_performance_hardening_v1.sql"
+    },
+    {
+      "version": "20260830232540",
+      "name": "atlas_ai_repair_rls_initplan_hardening_v1",
+      "file": "20260830232540_atlas_ai_repair_rls_initplan_hardening_v1.sql"
+    },
+    {
+      "version": "20260830232659",
+      "name": "atlas_live_entertainment_fk_index_hardening_v1",
+      "file": "20260830232659_atlas_live_entertainment_fk_index_hardening_v1.sql"
+    },
+    {
+      "version": "20260901191119",
+      "name": "atlas_purchasing_core_v1",
+      "file": "20260901191119_atlas_purchasing_core_v1.sql"
+    },
+    {
+      "version": "20260901191136",
+      "name": "atlas_sales_orders_core_v1",
+      "file": "20260901191136_atlas_sales_orders_core_v1.sql"
+    },
+    {
+      "version": "20260901191229",
+      "name": "atlas_inventory_audit_v1",
+      "file": "20260901191229_atlas_inventory_audit_v1.sql"
+    },
+    {
+      "version": "20260902025442",
+      "name": "atlas_pos_terminal_fabric_phase1",
+      "file": "20260902025442_atlas_pos_terminal_fabric_phase1.sql"
+    },
+    {
+      "version": "20260902025721",
+      "name": "atlas_pos_terminal_fabric_phase1_performance_hardening",
+      "file": "20260902025721_atlas_pos_terminal_fabric_phase1_performance_hardening.sql"
+    },
+    {
+      "version": "20260902025813",
+      "name": "atlas_pos_terminal_fabric_phase1_trigger_scope_fix",
+      "file": "20260902025813_atlas_pos_terminal_fabric_phase1_trigger_scope_fix.sql"
+    },
+    {
+      "version": "20260902081551",
+      "name": "atlas_intelligence_core_v1",
+      "file": "20260902081551_atlas_intelligence_core_v1.sql"
+    },
+    {
+      "version": "20260902093853",
+      "name": "atlas_intelligence_fk_index_hardening_v1",
+      "file": "20260902093853_atlas_intelligence_fk_index_hardening_v1.sql"
+    },
+    {
+      "version": "20260902100159",
+      "name": "atlas_education_core_v1",
+      "file": "20260902100159_atlas_education_core_v1.sql"
+    },
+    {
+      "version": "20260902100525",
+      "name": "atlas_education_identity_permissions_v1",
+      "file": "20260902100525_atlas_education_identity_permissions_v1.sql"
+    },
+    {
+      "version": "20260902100652",
+      "name": "atlas_sales_audit_trigger_hardening_v1",
+      "file": "20260902100652_atlas_sales_audit_trigger_hardening_v1.sql"
+    },
+    {
+      "version": "20260902181119",
+      "name": "atlas_native_verification_plane_evidence_v1",
+      "file": "20260902181119_atlas_native_verification_plane_evidence_v1.sql"
+    },
+    {
+      "version": "20260902181209",
+      "name": "atlas_native_verification_plane_vault_scheduler_primitives_v1",
+      "file": "20260902181209_atlas_native_verification_plane_vault_scheduler_primitives_v1.sql"
+    },
+    {
+      "version": "20260902181526",
+      "name": "atlas_native_verification_plane_trigger_cron_v1",
+      "file": "20260902181526_atlas_native_verification_plane_trigger_cron_v1.sql"
+    },
+    {
+      "version": "20260902181814",
+      "name": "atlas_native_verification_rls_initplan_hardening_v1",
+      "file": "20260902181814_atlas_native_verification_rls_initplan_hardening_v1.sql"
+    },
+    {
+      "version": "20260902181835",
+      "name": "atlas_native_verification_pg_net_schema_hardening_v1",
+      "file": "20260902181835_atlas_native_verification_pg_net_schema_hardening_v1.sql"
+    },
+    {
+      "version": "20260903234634",
+      "name": "governed_journal_reversals",
+      "file": "20260903234634_governed_journal_reversals.sql"
+    },
+    {
+      "version": "20260903234805",
+      "name": "journal_reversal_security_invoker",
+      "file": "20260903234805_journal_reversal_security_invoker.sql"
+    },
+    {
+      "version": "20260904001916",
+      "name": "govern_chart_of_accounts_writes",
+      "file": "20260904001916_govern_chart_of_accounts_writes.sql"
+    },
+    {
+      "version": "20260904075627",
+      "name": "govern_accounting_bill_approval",
+      "file": "20260904075627_govern_accounting_bill_approval.sql"
+    },
+    {
+      "version": "20260904090207",
+      "name": "govern_accounting_reconciliation",
+      "file": "20260904090207_govern_accounting_reconciliation.sql"
+    },
+    {
+      "version": "20260904153041",
+      "name": "govern_accounting_close_assets_settings",
+      "file": "20260904153041_govern_accounting_close_assets_settings.sql"
+    },
+    {
+      "version": "20260906173047",
+      "name": "revoke_public_execute_from_accounting_audit_triggers",
+      "file": "20260906173047_revoke_public_execute_from_accounting_audit_triggers.sql"
+    },
+    {
+      "version": "20260906180632",
+      "name": "lock_platform_admins_direct_client_access",
+      "file": "20260906180632_lock_platform_admins_direct_client_access.sql"
+    },
+    {
+      "version": "20260906180728",
+      "name": "add_missing_fk_indexes_core_modules",
+      "file": "20260906180728_add_missing_fk_indexes_core_modules.sql"
+    },
+    {
+      "version": "20260906180929",
+      "name": "enable_http_extension_for_infra_verification",
+      "file": "20260906180929_enable_http_extension_for_infra_verification.sql"
+    },
+    {
+      "version": "20260906181040",
+      "name": "schedule_public_infra_verification",
+      "file": "20260906181040_schedule_public_infra_verification.sql"
+    },
+    {
+      "version": "20260906181432",
+      "name": "split_write_rls_policies_by_operation",
+      "file": "20260906181432_split_write_rls_policies_by_operation.sql"
+    },
+    {
+      "version": "20260906235721",
+      "name": "revoke_anon_identity_catalog_reads",
+      "file": "20260906235721_revoke_anon_identity_catalog_reads.sql"
+    },
+    {
+      "version": "20260906235829",
+      "name": "add_identity_security_posture_monitor",
+      "file": "20260906235829_add_identity_security_posture_monitor.sql"
+    },
+    {
+      "version": "20260907000221",
+      "name": "schedule_identity_security_verification",
+      "file": "20260907000221_schedule_identity_security_verification.sql"
+    },
+    {
+      "version": "20260907002404",
+      "name": "create_atlas_governance_approvals",
+      "file": "20260907002404_create_atlas_governance_approvals.sql"
+    },
+    {
+      "version": "20260907002427",
+      "name": "harden_atlas_approval_transition_actor_detection",
+      "file": "20260907002427_harden_atlas_approval_transition_actor_detection.sql"
+    },
+    {
+      "version": "20260907002541",
+      "name": "add_atlas_governance_posture_verification",
+      "file": "20260907002541_add_atlas_governance_posture_verification.sql"
+    },
+    {
+      "version": "20260907002638",
+      "name": "add_sanitized_agent_governance_audit",
+      "file": "20260907002638_add_sanitized_agent_governance_audit.sql"
+    },
+    {
+      "version": "20260907002717",
+      "name": "use_latest_states_in_governance_posture",
+      "file": "20260907002717_use_latest_states_in_governance_posture.sql"
+    },
+    {
+      "version": "20260907003028",
+      "name": "index_atlas_approvals_decided_by",
+      "file": "20260907003028_index_atlas_approvals_decided_by.sql"
+    },
+    {
+      "version": "20260907174942",
+      "name": "atlas_personal_voice_persistence_and_rls_v1",
+      "file": "20260907174942_atlas_personal_voice_persistence_and_rls_v1.sql"
+    },
+    {
+      "version": "20260907175253",
+      "name": "atlas_connect_publication_backend_v1",
+      "file": "20260907175253_atlas_connect_publication_backend_v1.sql"
+    },
+    {
+      "version": "20260907175334",
+      "name": "atlas_voice_revoke_anon_data_api_v1",
+      "file": "20260907175334_atlas_voice_revoke_anon_data_api_v1.sql"
+    },
+    {
+      "version": "20260907175540",
+      "name": "register_atlas_voice_module_blocked_v1",
+      "file": "20260907175540_register_atlas_voice_module_blocked_v1.sql"
+    },
+    {
+      "version": "20260907175553",
+      "name": "atlas_connect_private_trigger_fix_v1",
+      "file": "20260907175553_atlas_connect_private_trigger_fix_v1.sql"
+    },
+    {
+      "version": "20260908021356",
+      "name": "accounting_ai_insights",
+      "file": "20260908021356_accounting_ai_insights.sql"
+    },
+    {
+      "version": "20260908021904",
+      "name": "accounting_ai_insights_least_privilege",
+      "file": "20260908021904_accounting_ai_insights_least_privilege.sql"
+    },
+    {
+      "version": "20260908061236",
+      "name": "atlas_observability_incident_model",
+      "file": "20260908061236_atlas_observability_incident_model.sql"
+    },
+    {
+      "version": "20260908061336",
+      "name": "harden_atlas_observability_incident_functions",
+      "file": "20260908061336_harden_atlas_observability_incident_functions.sql"
+    },
+    {
+      "version": "20260908061400",
+      "name": "optimize_atlas_incidents_rls_auth_initplan",
+      "file": "20260908061400_optimize_atlas_incidents_rls_auth_initplan.sql"
+    },
+    {
+      "version": "20260908061554",
+      "name": "atlas_observability_incident_audit",
+      "file": "20260908061554_atlas_observability_incident_audit.sql"
+    },
+    {
+      "version": "20260908061756",
+      "name": "atlas_observability_correlation",
+      "file": "20260908061756_atlas_observability_correlation.sql"
+    },
+    {
+      "version": "20260908061926",
+      "name": "fix_incident_resolution_evidence_check",
+      "file": "20260908061926_fix_incident_resolution_evidence_check.sql"
+    },
+    {
+      "version": "20260908062031",
+      "name": "atlas_observability_posture_cron",
+      "file": "20260908062031_atlas_observability_posture_cron.sql"
+    },
+    {
+      "version": "20260908062247",
+      "name": "atlas_observability_telemetry_helpers",
+      "file": "20260908062247_atlas_observability_telemetry_helpers.sql"
+    },
+    {
+      "version": "20260908062724",
+      "name": "atlas_observability_first_wave_instrumentation",
+      "file": "20260908062724_atlas_observability_first_wave_instrumentation.sql"
+    },
+    {
+      "version": "20260908152348",
+      "name": "atlas_observability_auth_verifier_trigger",
+      "file": "20260908152348_atlas_observability_auth_verifier_trigger.sql"
+    },
+    {
+      "version": "20260908152607",
+      "name": "atlas_observability_governance_timeline_and_public_health_contract",
+      "file": "20260908152607_atlas_observability_governance_timeline_and_public_health_contract.sql"
+    },
+    {
+      "version": "20260908152731",
+      "name": "fix_governance_timeline_parameter_ambiguity",
+      "file": "20260908152731_fix_governance_timeline_parameter_ambiguity.sql"
+    },
+    {
+      "version": "20260908153109",
+      "name": "atlas_observability_e2e_completion_gate",
+      "file": "20260908153109_atlas_observability_e2e_completion_gate.sql"
+    },
+    {
+      "version": "20260908153200",
+      "name": "fix_observability_e2e_audit_trigger_detection",
+      "file": "20260908153200_fix_observability_e2e_audit_trigger_detection.sql"
+    },
+    {
+      "version": "20260908153513",
+      "name": "restrict_platform_incident_visibility_to_platform_admins",
+      "file": "20260908153513_restrict_platform_incident_visibility_to_platform_admins.sql"
+    },
+    {
+      "version": "20260908153613",
+      "name": "use_private_platform_admin_helper_for_incident_rls",
+      "file": "20260908153613_use_private_platform_admin_helper_for_incident_rls.sql"
+    },
+    {
+      "version": "20260908202857",
+      "name": "knowledge_animal_atlas",
+      "file": "20260908202857_knowledge_animal_atlas.sql"
+    },
+    {
+      "version": "20260908203314",
+      "name": "knowledge_animal_atlas_seed",
+      "file": "20260908203314_knowledge_animal_atlas_seed.sql"
+    },
+    {
+      "version": "20260908232000",
+      "name": "atlas_release_control_foundation",
+      "file": "20260908232000_atlas_release_control_foundation.sql"
+    },
+    {
+      "version": "20260908232156",
+      "name": "atlas_release_control_state_machines",
+      "file": "20260908232156_atlas_release_control_state_machines.sql"
+    },
+    {
+      "version": "20260908232224",
+      "name": "guard_release_candidate_transition_for_manifest_freeze",
+      "file": "20260908232224_guard_release_candidate_transition_for_manifest_freeze.sql"
+    },
+    {
+      "version": "20260908232357",
+      "name": "atlas_release_control_manifest",
+      "file": "20260908232357_atlas_release_control_manifest.sql"
+    },
+    {
+      "version": "20260908232606",
+      "name": "atlas_release_control_gates",
+      "file": "20260908232606_atlas_release_control_gates.sql"
+    },
+    {
+      "version": "20260908232842",
+      "name": "atlas_release_control_approval_rollback",
+      "file": "20260908232842_atlas_release_control_approval_rollback.sql"
+    },
+    {
+      "version": "20260908233337",
+      "name": "atlas_release_control_audit_observability",
+      "file": "20260908233337_atlas_release_control_audit_observability.sql"
+    },
+    {
+      "version": "20260908233607",
+      "name": "atlas_release_control_posture_cron",
+      "file": "20260908233607_atlas_release_control_posture_cron.sql"
+    },
+    {
+      "version": "20260908233641",
+      "name": "fix_release_verifier_gate_error_code_qualification",
+      "file": "20260908233641_fix_release_verifier_gate_error_code_qualification.sql"
+    },
+    {
+      "version": "20260908233825",
+      "name": "atlas_release_control_atomic_draft_create",
+      "file": "20260908233825_atlas_release_control_atomic_draft_create.sql"
+    },
+    {
+      "version": "20260909025912",
+      "name": "atlas_release_control_baseline",
+      "file": "20260909025912_atlas_release_control_baseline.sql"
+    },
+    {
+      "version": "20260909030109",
+      "name": "atlas_release_control_reverify_approval_consistency",
+      "file": "20260909030109_atlas_release_control_reverify_approval_consistency.sql"
+    },
+    {
+      "version": "20260909030304",
+      "name": "atlas_release_control_trigger_execute_hardening",
+      "file": "20260909030304_atlas_release_control_trigger_execute_hardening.sql"
+    },
+    {
+      "version": "20260909030812",
+      "name": "atlas_release_control_e2e",
+      "file": "20260909030812_atlas_release_control_e2e.sql"
+    },
+    {
+      "version": "20260909030848",
+      "name": "atlas_release_control_e2e_uuid_fix",
+      "file": "20260909030848_atlas_release_control_e2e_uuid_fix.sql"
+    },
+    {
+      "version": "20260910031611",
+      "name": "atlas_release_control_auth_verifier_trigger",
+      "file": "20260910031611_atlas_release_control_auth_verifier_trigger.sql"
+    },
+    {
+      "version": "20260910043608",
+      "name": "harden_public_infra_verification",
+      "file": "20260910043608_harden_public_infra_verification.sql"
+    },
+    {
+      "version": "20260910111459",
+      "name": "harden_synthetic_e2e_membership_roles_v1",
+      "file": "20260910111459_harden_synthetic_e2e_membership_roles_v1.sql"
+    },
+    {
+      "version": "20260910111746",
+      "name": "direct_deploy_public_verifier_v2",
+      "file": "20260910111746_direct_deploy_public_verifier_v2.sql"
+    },
+    {
+      "version": "20260910112017",
+      "name": "cloudflare_access_vault_bridge_v1",
+      "file": "20260910112017_cloudflare_access_vault_bridge_v1.sql"
+    },
+    {
+      "version": "20260910112338",
+      "name": "cloudflare_control_vault_access_v1",
+      "file": "20260910112338_cloudflare_control_vault_access_v1.sql"
+    },
+    {
+      "version": "20260910122806",
+      "name": "atlas_runtime_token_service_accessor_v1",
+      "file": "20260910122806_atlas_runtime_token_service_accessor_v1.sql"
+    },
+    {
+      "version": "20260911044210",
+      "name": "atlas_global_approval_center",
+      "file": "20260911044210_atlas_global_approval_center.sql"
+    },
+    {
+      "version": "20260911044309",
+      "name": "atlas_bulk_approval_propagation",
+      "file": "20260911044309_atlas_bulk_approval_propagation.sql"
+    },
+    {
+      "version": "20260911044425",
+      "name": "harden_atlas_bulk_approval_metadata",
+      "file": "20260911044425_harden_atlas_bulk_approval_metadata.sql"
+    },
+    {
+      "version": "20260911055442",
+      "name": "atlas_user_default_org_preference",
+      "file": "20260911055442_atlas_user_default_org_preference.sql"
+    },
+    {
+      "version": "20260911062646",
+      "name": "atlas_platform_master_and_client_provisioning",
+      "file": "20260911062646_atlas_platform_master_and_client_provisioning.sql"
+    },
+    {
+      "version": "20260911062957",
+      "name": "atlas_platform_client_directory",
+      "file": "20260911062957_atlas_platform_client_directory.sql"
+    },
+    {
+      "version": "20260911092725",
+      "name": "harden_future_function_execute_defaults",
+      "file": "20260911092725_harden_future_function_execute_defaults.sql"
+    },
+    {
+      "version": "20260911192327",
+      "name": "harden_accounting_period_close",
+      "file": "20260911192327_harden_accounting_period_close.sql"
+    },
+    {
+      "version": "20260912014255",
+      "name": "hospitality_room_access",
+      "file": "20260912014255_hospitality_room_access.sql"
+    },
+    {
+      "version": "20260912014547",
+      "name": "hospitality_rls_initplan_hardening",
+      "file": "20260912014547_hospitality_rls_initplan_hardening.sql"
+    },
+    {
+      "version": "20260912061602",
+      "name": "accounting_budgeting",
+      "file": "20260912061602_accounting_budgeting.sql"
+    },
+    {
+      "version": "20260912062021",
+      "name": "harden_accounting_budget_delete",
+      "file": "20260912062021_harden_accounting_budget_delete.sql"
+    },
+    {
+      "version": "20260912062356",
+      "name": "harden_accounting_budget_lifecycle",
+      "file": "20260912062356_harden_accounting_budget_lifecycle.sql"
+    },
+    {
+      "version": "20260912062814",
+      "name": "accounting_multicurrency",
+      "file": "20260912062814_accounting_multicurrency.sql"
+    },
+    {
+      "version": "20260912065841",
+      "name": "accounting_intercompany_consolidation",
+      "file": "20260912065841_accounting_intercompany_consolidation.sql"
+    },
+    {
+      "version": "20260912070014",
+      "name": "harden_accounting_consolidation_governance",
+      "file": "20260912070014_harden_accounting_consolidation_governance.sql"
+    },
+    {
+      "version": "20260912070120",
+      "name": "accounting_consolidation_workspace",
+      "file": "20260912070120_accounting_consolidation_workspace.sql"
+    },
+    {
+      "version": "20260914001959",
+      "name": "harden_atlas_bootstrap_owner_aal2",
+      "file": "20260914001959_harden_atlas_bootstrap_owner_aal2.sql"
+    },
+    {
+      "version": "20260914005402",
+      "name": "optimize_auth_rls_initplan_v1",
+      "file": "20260914005402_optimize_auth_rls_initplan_v1.sql"
+    },
+    {
+      "version": "20260915090932",
+      "name": "creator_content_intelligence",
+      "file": "20260915090932_creator_content_intelligence.sql"
+    },
+    {
+      "version": "20260915091127",
+      "name": "creator_director",
+      "file": "20260915091127_creator_director.sql"
+    },
+    {
+      "version": "20260915091306",
+      "name": "accounting_back_to_front_completion",
+      "file": "20260915091306_accounting_back_to_front_completion.sql"
+    },
+    {
+      "version": "20260915091529",
+      "name": "add_finances_accounting_batch_import",
+      "file": "20260915091529_add_finances_accounting_batch_import.sql"
+    },
+    {
+      "version": "20260915091753",
+      "name": "allow_postgres_admin_finances_import",
+      "file": "20260915091753_allow_postgres_admin_finances_import.sql"
+    },
+    {
+      "version": "20260915092049",
+      "name": "add_privacy_minimized_finances_batch_import",
+      "file": "20260915092049_add_privacy_minimized_finances_batch_import.sql"
+    },
+    {
+      "version": "20260915092255",
+      "name": "add_compact_finances_batch_import",
+      "file": "20260915092255_add_compact_finances_batch_import.sql"
+    },
+    {
+      "version": "20260915092453",
+      "name": "add_ultracompact_finances_batch_import",
+      "file": "20260915092453_add_ultracompact_finances_batch_import.sql"
+    },
+    {
+      "version": "20260915095233",
+      "name": "creator_director_hardening",
+      "file": "20260915095233_creator_director_hardening.sql"
+    },
+    {
+      "version": "20260915102540",
+      "name": "add_compact_finances_importer_v5",
+      "file": "20260915102540_add_compact_finances_importer_v5.sql"
+    },
+    {
+      "version": "20260915102626",
+      "name": "fix_compact_finances_importer_v5_columns",
+      "file": "20260915102626_fix_compact_finances_importer_v5_columns.sql"
+    },
+    {
+      "version": "20260915102657",
+      "name": "fix_compact_finances_importer_v5_digest",
+      "file": "20260915102657_fix_compact_finances_importer_v5_digest.sql"
+    },
+    {
+      "version": "20260915102834",
+      "name": "add_compact_finances_importer_v6",
+      "file": "20260915102834_add_compact_finances_importer_v6.sql"
+    },
+    {
+      "version": "20260915161424",
+      "name": "add_atlas_public_www_reconcile_invoker",
+      "file": "20260915161424_add_atlas_public_www_reconcile_invoker.sql"
+    },
+    {
+      "version": "20260915161606",
+      "name": "extend_atlas_public_www_reconcile_timeout",
+      "file": "20260915161606_extend_atlas_public_www_reconcile_timeout.sql"
+    },
+    {
+      "version": "20260915161813",
+      "name": "add_atlas_cloudflare_worker_map_invoker",
+      "file": "20260915161813_add_atlas_cloudflare_worker_map_invoker.sql"
+    },
+    {
+      "version": "20260915161936",
+      "name": "add_atlas_www_domain_rebind_invoker",
+      "file": "20260915161936_add_atlas_www_domain_rebind_invoker.sql"
+    },
+    {
+      "version": "20260915162546",
+      "name": "add_atlas_www_bypass_reconcile_invoker",
+      "file": "20260915162546_add_atlas_www_bypass_reconcile_invoker.sql"
+    },
+    {
+      "version": "20260915164724",
+      "name": "allow_cloudflare_edge_challenge_verification_status",
+      "file": "20260915164724_allow_cloudflare_edge_challenge_verification_status.sql"
+    },
+    {
+      "version": "20260915210532",
+      "name": "insurance_verification",
+      "file": "20260915210532_insurance_verification.sql"
+    },
+    {
+      "version": "20260916044714",
+      "name": "health_jaque_mate_sentinel",
+      "file": "20260916044714_health_jaque_mate_sentinel.sql"
+    },
+    {
+      "version": "20260916045900",
+      "name": "health_jaque_mate_sentinel_hardening",
+      "file": "20260916045900_health_jaque_mate_sentinel_hardening.sql"
+    },
+    {
+      "version": "20260916184257",
+      "name": "hospitality_add_onity_provider",
+      "file": "20260916184257_hospitality_add_onity_provider.sql"
+    },
+    {
+      "version": "20260918031936",
+      "name": "advisory_office_core",
+      "file": "20260918031936_advisory_office_core.sql"
+    },
+    {
+      "version": "20260918032931",
+      "name": "advisory_firm_scope_rls",
+      "file": "20260918032931_advisory_firm_scope_rls.sql"
+    },
+    {
+      "version": "20260918073823",
+      "name": "atlas_orchestrator_persistence",
+      "file": "20260918073823_atlas_orchestrator_persistence.sql"
+    },
+    {
+      "version": "20260918091404",
+      "name": "atlas_orchestrator_runtime_rpc",
+      "file": "20260918091404_atlas_orchestrator_runtime_rpc.sql"
+    },
+    {
+      "version": "20260918092900",
+      "name": "atlas_orchestrator_runtime_rpc",
+      "file": "20260918092900_atlas_orchestrator_runtime_rpc.sql"
+    },
+    {
+      "version": "20260918134123",
+      "name": "atlas_commerce_core",
+      "file": "20260918134123_atlas_commerce_core.sql"
+    },
+    {
+      "version": "20260918134130",
+      "name": "atlas_commerce_order_commit",
+      "file": "20260918134130_atlas_commerce_order_commit.sql"
+    },
+    {
+      "version": "20260918134133",
+      "name": "atlas_commerce_delivery_state",
+      "file": "20260918134133_atlas_commerce_delivery_state.sql"
+    },
+    {
+      "version": "20260918155451",
+      "name": "atlas_insurance_otp_vault_secret",
+      "file": "20260918155451_atlas_insurance_otp_vault_secret.sql"
+    },
+    {
+      "version": "20260918180505",
+      "name": "creator_creative_plans",
+      "file": "20260918180505_creator_creative_plans.sql"
+    },
+    {
+      "version": "20260918181721",
+      "name": "creator_teleprompter_recordings",
+      "file": "20260918181721_creator_teleprompter_recordings.sql"
+    },
+    {
+      "version": "20260918184006",
+      "name": "atlas_universal_execution_engine",
+      "file": "20260918184006_atlas_universal_execution_engine.sql"
+    },
+    {
+      "version": "20260918184010",
+      "name": "atlas_work_runtime",
+      "file": "20260918184010_atlas_work_runtime.sql"
+    },
+    {
+      "version": "20260918190544",
+      "name": "atlas_crm_hubspot_integration",
+      "file": "20260918190544_atlas_crm_hubspot_integration.sql"
+    },
+    {
+      "version": "20260918190551",
+      "name": "creator_web_launch_blueprints",
+      "file": "20260918190551_creator_web_launch_blueprints.sql"
+    },
+    {
+      "version": "20260918191213",
+      "name": "crm_integration_policy_consolidation",
+      "file": "20260918191213_crm_integration_policy_consolidation.sql"
+    },
+    {
+      "version": "20260918192936",
+      "name": "crm_secure_oauth_config",
+      "file": "20260918192936_crm_secure_oauth_config.sql"
+    },
+    {
+      "version": "20260918211001",
+      "name": "atlas_local_network_access",
+      "file": "20260918211001_atlas_local_network_access.sql"
+    },
+    {
+      "version": "20260918231705",
+      "name": "atlas_local_control_plane",
+      "file": "20260918231705_atlas_local_control_plane.sql"
+    },
+    {
+      "version": "20260918234506",
+      "name": "health_cure_candidate_registry",
+      "file": "20260918234506_health_cure_candidate_registry.sql"
+    },
+    {
+      "version": "20260919000247",
+      "name": "atlas_local_agent_mtls_realtime",
+      "file": "20260919000247_atlas_local_agent_mtls_realtime.sql"
+    },
+    {
+      "version": "20260919000707",
+      "name": "health_jaque_mate_live_research",
+      "file": "20260919000707_health_jaque_mate_live_research.sql"
+    },
+    {
+      "version": "20260919021634",
+      "name": "atlas_local_ai_runtime_bootstrap",
+      "file": "20260919021634_atlas_local_ai_runtime_bootstrap.sql"
+    },
+    {
+      "version": "20260919035705",
+      "name": "atlas_local_ai_offline_state",
+      "file": "20260919035705_atlas_local_ai_offline_state.sql"
+    },
+    {
+      "version": "20260919041653",
+      "name": "atlas_social_command_center",
+      "file": "20260919041653_atlas_social_command_center.sql"
+    },
+    {
+      "version": "20260919053622",
+      "name": "harden_atlas_fin_import_staging",
+      "file": "20260919053622_harden_atlas_fin_import_staging.sql"
+    },
+    {
+      "version": "20260919053745",
+      "name": "explicitly_deny_browser_atlas_fin_import_staging",
+      "file": "20260919053745_explicitly_deny_browser_atlas_fin_import_staging.sql"
+    },
+    {
+      "version": "20260919061418",
+      "name": "atlas_browser_operator_payload",
+      "file": "20260919061418_atlas_browser_operator_payload.sql"
+    },
+    {
+      "version": "20260919061623",
+      "name": "atlas_render_free_local_ai_existing_identity",
+      "file": "20260919061623_atlas_render_free_local_ai_existing_identity.sql"
+    },
+    {
+      "version": "20260919065044",
+      "name": "crm_hubspot_resilience",
+      "file": "20260919065044_crm_hubspot_resilience.sql"
+    },
+    {
+      "version": "20260919181438",
+      "name": "restrict_advisory_audit_trigger_execution",
+      "file": "20260919181438_restrict_advisory_audit_trigger_execution.sql"
+    },
+    {
+      "version": "20260919214201",
+      "name": "atlas_frontier_vertical_slice",
+      "file": "20260919214201_atlas_frontier_vertical_slice.sql"
+    },
+    {
+      "version": "20260919225601",
+      "name": "frontier_awakening_campaign",
+      "file": "20260919225601_frontier_awakening_campaign.sql"
+    },
+    {
+      "version": "20260919232620",
+      "name": "frontier_persistent_world",
+      "file": "20260919232620_frontier_persistent_world.sql"
+    },
+    {
+      "version": "20260919232759",
+      "name": "frontier_persistent_world_hardening",
+      "file": "20260919232759_frontier_persistent_world_hardening.sql"
+    },
+    {
+      "version": "20260920064109",
+      "name": "frontier_living_worlds",
+      "file": "20260920064109_frontier_living_worlds.sql"
+    },
+    {
+      "version": "20260920072347",
+      "name": "frontier_campaign_6_10",
+      "file": "20260920072347_frontier_campaign_6_10.sql"
+    },
+    {
+      "version": "20260920072427",
+      "name": "ride_profile_photo_compliance",
+      "file": "20260920072427_ride_profile_photo_compliance.sql"
+    },
+    {
+      "version": "20260920072429",
+      "name": "ride_profile_photo_compliance_hardening",
+      "file": "20260920072429_ride_profile_photo_compliance_hardening.sql"
+    },
+    {
+      "version": "20260920072431",
+      "name": "ride_profile_photo_atomicity",
+      "file": "20260920072431_ride_profile_photo_atomicity.sql"
+    },
+    {
+      "version": "20260920073009",
+      "name": "frontier_survival_events",
+      "file": "20260920073009_frontier_survival_events.sql"
+    },
+    {
+      "version": "20260920073539",
+      "name": "frontier_world_codex",
+      "file": "20260920073539_frontier_world_codex.sql"
+    },
+    {
+      "version": "20260920080208",
+      "name": "frontier_biome_canon_alignment",
+      "file": "20260920080208_frontier_biome_canon_alignment.sql"
+    },
+    {
+      "version": "20260920082059",
+      "name": "frontier_physical_biomes",
+      "file": "20260920082059_frontier_physical_biomes.sql"
+    },
+    {
+      "version": "20260920085413",
+      "name": "atlas_personal_voice_activation_v2",
+      "file": "20260920085413_atlas_personal_voice_activation_v2.sql"
+    },
+    {
+      "version": "20260920133713",
+      "name": "atlas_personal_voice_activation",
+      "file": "20260920133713_atlas_personal_voice_activation.sql"
+    },
+    {
+      "version": "20260920152720",
+      "name": "atlas_voice_provider_native_verification",
+      "file": "20260920152720_atlas_voice_provider_native_verification.sql"
+    },
+    {
+      "version": "20260920153003",
+      "name": "atlas_voice_provider_native_verification",
+      "file": "20260920153003_atlas_voice_provider_native_verification.sql"
+    },
+    {
+      "version": "20260920160501",
+      "name": "atlas_github_app_manifest_credentials",
+      "file": "20260920160501_atlas_github_app_manifest_credentials.sql"
+    },
+    {
+      "version": "20260920161055",
+      "name": "atlas_ai_emergency_fallback_budget",
+      "file": "20260920161055_atlas_ai_emergency_fallback_budget.sql"
+    },
+    {
+      "version": "20260921010117",
+      "name": "procure_to_pay_inventory_margin",
+      "file": "20260921010117_procure_to_pay_inventory_margin.sql"
+    },
+    {
+      "version": "20260921010522",
+      "name": "inventory_product_quantity_sync",
+      "file": "20260921010522_inventory_product_quantity_sync.sql"
+    },
+    {
+      "version": "20260921011233",
+      "name": "procure_to_pay_posting_guard_fix",
+      "file": "20260921011233_procure_to_pay_posting_guard_fix.sql"
+    },
+    {
+      "version": "20260921011623",
+      "name": "finalize_purchase_cost_before_sale",
+      "file": "20260921011623_finalize_purchase_cost_before_sale.sql"
+    },
+    {
+      "version": "20260921011809",
+      "name": "p2p_integrity_guards",
+      "file": "20260921011809_p2p_integrity_guards.sql"
+    },
+    {
+      "version": "20260921011835",
+      "name": "invoice_line_issue_guard_fix",
+      "file": "20260921011835_invoice_line_issue_guard_fix.sql"
+    },
+    {
+      "version": "20260921011913",
+      "name": "p2p_least_privilege",
+      "file": "20260921011913_p2p_least_privilege.sql"
+    },
+    {
+      "version": "20260921014904",
+      "name": "vendor_w9_intake",
+      "file": "20260921014904_vendor_w9_intake.sql"
+    },
+    {
+      "version": "20260921022903",
+      "name": "business_launch_360_commercial",
+      "file": "20260921022903_business_launch_360_commercial.sql"
+    },
+    {
+      "version": "20260921124125",
+      "name": "advisory_external_provider_registry",
+      "file": "20260921124125_advisory_external_provider_registry.sql"
+    },
+    {
+      "version": "20260921174632",
+      "name": "advisory_provider_authorizations",
+      "file": "20260921174632_advisory_provider_authorizations.sql"
+    },
+    {
+      "version": "20260922033917",
+      "name": "atlas_memory_core",
+      "file": "20260922033917_atlas_memory_core.sql"
+    },
+    {
+      "version": "20260923185553",
+      "name": "optimize_auth_rls_initplans",
+      "file": "20260923185553_optimize_auth_rls_initplans.sql"
+    },
+    {
+      "version": "20260923185854",
+      "name": "harden_identity_rpc_security_definer_boundary",
+      "file": "20260923185854_harden_identity_rpc_security_definer_boundary.sql"
+    },
+    {
+      "version": "20260923190004",
+      "name": "lock_orchestrator_rpc_execution_to_service_role",
+      "file": "20260923190004_lock_orchestrator_rpc_execution_to_service_role.sql"
+    },
+    {
+      "version": "20260923190454",
+      "name": "harden_authenticated_security_definer_rpc_boundaries",
+      "file": "20260923190454_harden_authenticated_security_definer_rpc_boundaries.sql"
+    },
+    {
+      "version": "20260923190525",
+      "name": "explicit_deny_policies_for_internal_service_tables",
+      "file": "20260923190525_explicit_deny_policies_for_internal_service_tables.sql"
+    },
+    {
+      "version": "20260923190631",
+      "name": "index_missing_foreign_keys_batch_1",
+      "file": "20260923190631_index_missing_foreign_keys_batch_1.sql"
+    },
+    {
+      "version": "20260923190633",
+      "name": "index_missing_foreign_keys_batch_2",
+      "file": "20260923190633_index_missing_foreign_keys_batch_2.sql"
+    },
+    {
+      "version": "20260923190635",
+      "name": "index_missing_foreign_keys_batch_3",
+      "file": "20260923190635_index_missing_foreign_keys_batch_3.sql"
+    },
+    {
+      "version": "20260923190656",
+      "name": "index_remaining_foreign_keys",
+      "file": "20260923190656_index_remaining_foreign_keys.sql"
+    },
+    {
+      "version": "20260923192046",
+      "name": "verify_public_artifact_via_version_attestation_headers",
+      "file": "20260923192046_verify_public_artifact_via_version_attestation_headers.sql"
+    },
+    {
+      "version": "20260924001019",
+      "name": "atlas_gps4d_core",
+      "file": "20260924001019_atlas_gps4d_core.sql"
+    },
+    {
+      "version": "20260924001101",
+      "name": "harden_atlas_gps4d_internal_tables",
+      "file": "20260924001101_harden_atlas_gps4d_internal_tables.sql"
+    },
+    {
+      "version": "20260924005706",
+      "name": "atlas_library_ingestion",
+      "file": "20260924005706_atlas_library_ingestion.sql"
+    },
+    {
+      "version": "20260924162513",
+      "name": "private_oracle",
+      "file": "20260924162513_private_oracle.sql"
+    },
+    {
+      "version": "20260924204337",
+      "name": "atlas_knowledge_audit_hardening",
+      "file": "20260924204337_atlas_knowledge_audit_hardening.sql"
+    },
+    {
+      "version": "20260924204443",
+      "name": "atlas_knowledge_advisor_cleanup",
+      "file": "20260924204443_atlas_knowledge_advisor_cleanup.sql"
+    },
+    {
+      "version": "20260925071244",
+      "name": "atlas_master_evidence_registry",
+      "file": "20260925071244_atlas_master_evidence_registry.sql"
+    },
+    {
+      "version": "20260925071646",
+      "name": "atlas_master_evidence_registry_index_hardening",
+      "file": "20260925071646_atlas_master_evidence_registry_index_hardening.sql"
+    },
+    {
+      "version": "20260925095246",
+      "name": "atlas_chat_core",
+      "file": "20260925095246_atlas_chat_core.sql"
+    },
+    {
+      "version": "20260925095507",
+      "name": "atlas_chat_postgrest_runtime",
+      "file": "20260925095507_atlas_chat_postgrest_runtime.sql"
+    },
+    {
+      "version": "20260926125052",
+      "name": "harden_exposed_security_definer_functions",
+      "file": "20260926125052_harden_exposed_security_definer_functions.sql"
+    },
+    {
+      "version": "20260926223752",
+      "name": "atlas_orchestrator_rpc_runtime_grants",
+      "file": "20260926223752_atlas_orchestrator_rpc_runtime_grants.sql"
+    },
+    {
+      "version": "20260926223841",
+      "name": "fix_orchestrator_runtime_vault_auth",
+      "file": "20260926223841_fix_orchestrator_runtime_vault_auth.sql"
+    },
+    {
+      "version": "20260927155742",
+      "name": "atlas_carrier_numbering",
+      "file": "20260927155742_atlas_carrier_numbering.sql"
+    },
+    {
+      "version": "20260927165333",
+      "name": "atlas_native_sovereign_consensus",
+      "file": "20260927165333_atlas_native_sovereign_consensus.sql"
+    },
+    {
+      "version": "20260927211719",
+      "name": "atlas_communication_telephony",
+      "file": "20260927211719_atlas_communication_telephony.sql"
+    },
+    {
+      "version": "20260927211721",
+      "name": "atlas_communication_telephony_permissions",
+      "file": "20260927211721_atlas_communication_telephony_permissions.sql"
+    },
+    {
+      "version": "20260927211755",
+      "name": "atlas_communication_telephony_anon_hardening",
+      "file": "20260927211755_atlas_communication_telephony_anon_hardening.sql"
+    },
+    {
+      "version": "20260928230758",
+      "name": "atlas_communication_carrier_hardening",
+      "file": "20260928230758_atlas_communication_carrier_hardening.sql"
+    },
+    {
+      "version": "20261001172715",
+      "name": "atlas_pay_control_plane",
+      "file": "20261001172715_atlas_pay_control_plane.sql"
+    },
+    {
+      "version": "20261001172914",
+      "name": "atlas_pay_fk_index_hardening",
+      "file": "20261001172914_atlas_pay_fk_index_hardening.sql"
+    },
+    {
+      "version": "20261002133301",
+      "name": "integration_auth_kind_alignment_20261002",
+      "file": "20261002133301_integration_auth_kind_alignment_20261002.sql"
+    },
+    {
+      "version": "20261002133440",
+      "name": "atlas_mvno_permissions_sync_20261002",
+      "file": "20261002133440_atlas_mvno_permissions_sync_20261002.sql"
+    },
+    {
+      "version": "20261002133442",
+      "name": "atlas_wireless_owned_network_permissions_sync_20261002",
+      "file": "20261002133442_atlas_wireless_owned_network_permissions_sync_20261002.sql"
+    },
+    {
+      "version": "20261002184539",
+      "name": "atlas_urban_twin_core",
+      "file": "20261002184539_atlas_urban_twin_core.sql"
+    },
+    {
+      "version": "20261002184923",
+      "name": "atlas_urban_twin_fk_index_hardening",
+      "file": "20261002184923_atlas_urban_twin_fk_index_hardening.sql"
+    },
+    {
+      "version": "20261002190313",
+      "name": "atlas_urban_twin_governed_intake",
+      "file": "20261002190313_atlas_urban_twin_governed_intake.sql"
+    },
+    {
+      "version": "20261003211725",
+      "name": "atlas_carrier_number_truth_gate",
+      "file": "20261003211725_atlas_carrier_number_truth_gate.sql"
+    },
+    {
+      "version": "20261004134824",
+      "name": "atlas_telephony_provider_state_clock",
+      "file": "20261004134824_atlas_telephony_provider_state_clock.sql"
+    },
+    {
+      "version": "20261004183250",
+      "name": "atlas_people_core",
+      "file": "20261004183250_atlas_people_core.sql"
+    },
+    {
+      "version": "20261004183449",
+      "name": "atlas_payroll_core_governed",
+      "file": "20261004183449_atlas_payroll_core_governed.sql"
+    },
+    {
+      "version": "20261004183528",
+      "name": "atlas_payroll_core",
+      "file": "20261004183528_atlas_payroll_core.sql"
+    },
+    {
+      "version": "20261004183620",
+      "name": "atlas_payroll_control_plane_wave1",
+      "file": "20261004183620_atlas_payroll_control_plane_wave1.sql"
+    },
+    {
+      "version": "20261004183630",
+      "name": "atlas_payroll_settlement_guard",
+      "file": "20261004183630_atlas_payroll_settlement_guard.sql"
+    },
+    {
+      "version": "20261004183637",
+      "name": "atlas_payroll_readiness_security",
+      "file": "20261004183637_atlas_payroll_readiness_security.sql"
+    },
+    {
+      "version": "20261004183643",
+      "name": "atlas_payroll_provider_column_security",
+      "file": "20261004183643_atlas_payroll_provider_column_security.sql"
+    },
+    {
+      "version": "20261004192132",
+      "name": "atlas_people_payroll_least_privilege",
+      "file": "20261004192132_atlas_people_payroll_least_privilege.sql"
+    },
+    {
+      "version": "20261004204812",
+      "name": "atlas_payroll_us_federal_tax_2026",
+      "file": "20261004204812_atlas_payroll_us_federal_tax_2026.sql"
+    },
+    {
+      "version": "20261004204839",
+      "name": "atlas_payroll_us_federal_determination_persistence",
+      "file": "20261004204839_atlas_payroll_us_federal_determination_persistence.sql"
+    },
+    {
+      "version": "20261007071557",
+      "name": "atlas_care_core",
+      "file": "20261007071557_atlas_care_core.sql"
+    },
+    {
+      "version": "20261009150152",
+      "name": "atlas_certificate_lifecycle_inventory",
+      "file": "20261009150152_atlas_certificate_lifecycle_inventory.sql"
+    },
+    {
+      "version": "20261009151205",
+      "name": "atlas_certificate_evidence_immutability",
+      "file": "20261009151205_atlas_certificate_evidence_immutability.sql"
+    },
+    {
+      "version": "20261009155301",
+      "name": "atlas_certificate_existing_oidc_evidence_adapter",
+      "file": "20261009155301_atlas_certificate_existing_oidc_evidence_adapter.sql"
+    },
+    {
+      "version": "20261009155535",
+      "name": "atlas_certificate_evidence_ref_operator_fix",
+      "file": "20261009155535_atlas_certificate_evidence_ref_operator_fix.sql"
+    },
+    {
+      "version": "20261009160135",
+      "name": "atlas_certificate_evidence_fk_index",
+      "file": "20261009160135_atlas_certificate_evidence_fk_index.sql"
+    }
+  ]
+}
