@@ -57,7 +57,7 @@ async function telephonyFetch(path: string, init: RequestInit = {}) {
 
 export async function getTelephonyReadiness(): Promise<TelephonyReadiness> {
   return parseResponse<TelephonyReadiness>(
-    await telephonyFetch('/functions/v1/atlas-communication-telephony?api=readiness', {
+    await telephonyFetch('/functions/v1/atlas-cloudflare-seed-build-once?api=readiness', {
       method: 'GET'
     })
   );
@@ -69,7 +69,7 @@ export async function startTelephonyCall(input: {
   consentReference: string;
 }): Promise<TelephonyCallAccepted> {
   return parseResponse<TelephonyCallAccepted>(
-    await telephonyFetch('/functions/v1/atlas-communication-telephony?api=call', {
+    await telephonyFetch('/functions/v1/atlas-cloudflare-seed-build-once?api=call', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
