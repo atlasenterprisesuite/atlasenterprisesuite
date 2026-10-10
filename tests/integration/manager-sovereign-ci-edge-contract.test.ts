@@ -30,6 +30,14 @@ describe('ATLAS Manager Sovereign CI Edge contract', () => {
     expect(executableBoundary).not.toContain('supabase functions deploy');
   });
 
+  it('binds each GitHub dispatch to a one-time hashed ATLAS nonce', () => {
+    expect(ciSource).toContain('dispatch_nonce_hash');
+    expect(ciSource).toContain('crypto.randomUUID()');
+    expect(reportSource).toContain('dispatch_binding_mismatch');
+    expect(reportSource).toContain('dispatch_binding_consumed');
+    expect(reportSource).toContain('dispatch_nonce_hash: null');
+  });
+
   it('pins and persists immutable target and command evidence', () => {
     expect(domainSource).toContain('SOVEREIGN_CI_COMMANDS');
     expect(reportSource).toContain('resolved_sha');
