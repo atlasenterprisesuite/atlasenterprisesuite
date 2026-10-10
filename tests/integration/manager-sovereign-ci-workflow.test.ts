@@ -26,6 +26,8 @@ describe('ATLAS Sovereign CI GitHub runner', () => {
     expect(workflow).toContain('ref: ${{ inputs.requested_ref }}');
     expect(workflow).toContain('git rev-parse HEAD');
     expect(workflow).toContain('RESOLVED_SHA');
+    expect(workflow).toContain('continue-on-error: true');
+    expect(workflow).toContain('target_resolution_failed');
   });
 
   it('runs only the canonical npm verification sequence', () => {
@@ -38,7 +40,7 @@ describe('ATLAS Sovereign CI GitHub runner', () => {
 
   it('reports results back through GitHub OIDC to atlas-execution', () => {
     expect(workflow).toContain('audience=atlas-sovereign-ci');
-    expect(workflow).toContain('report_manager_sovereign_ci');
-    expect(workflow).toContain('/functions/v1/atlas-execution');
+    expect(workflow).toContain('/functions/v1/atlas-sovereign-ci-report');
+    expect(workflow).not.toContain('/functions/v1/atlas-execution');
   });
 });
