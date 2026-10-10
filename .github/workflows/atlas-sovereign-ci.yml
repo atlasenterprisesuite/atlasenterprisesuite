@@ -55,8 +55,10 @@ jobs:
 
     steps:
       - name: Enforce canonical repository
+        env:
+          REQUESTED_REPOSITORY: ${{ inputs.repository }}
         run: |
-          test "${{ inputs.repository }}" = "atlasenterprisesuite/atlasenterprisesuite" || {
+          test "$REQUESTED_REPOSITORY" = "atlasenterprisesuite/atlasenterprisesuite" || {
             echo "::error::repository_not_allowed"
             exit 1
           }
