@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration=readFileSync('supabase/migrations/20260924005000_atlas_library_ingestion.sql','utf8');
-const hardening=readFileSync('supabase/migrations/20260924205000_atlas_knowledge_audit_hardening.sql','utf8');
+const migration=readFileSync('supabase/migrations/20260924005706_atlas_library_ingestion.sql','utf8');
+const hardening=readFileSync('supabase/migrations/20260924204337_atlas_knowledge_audit_hardening.sql','utf8');
 const edge=readFileSync('supabase/functions/atlas-memory/index.ts','utf8');
 const api=readFileSync('apps/web/src/modules/knowledge/memoryApi.ts','utf8');
 const page=readFileSync('apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx','utf8');
