@@ -1,4 +1,5 @@
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { MusicVideoShowcase } from './MusicVideoShowcase';
 
 const creatorSections: ModuleExperienceSection[] = [
   {
@@ -189,6 +190,8 @@ export function CreatorExperiencePage() {
       ]}
       sections={creatorSections}
       statusNote="External generation remains unavailable until verified provider readiness, organization authorization and the required storage boundary are present. Local planning remains available without fabricating provider output."
-    />
+    >
+      <MusicVideoShowcase />
+    </ModuleExperiencePage>
   );
 }
