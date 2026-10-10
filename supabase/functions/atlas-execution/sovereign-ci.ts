@@ -48,6 +48,11 @@ function requireExecutionPermission(context: StartContext, permission: string) {
   }
 }
 
+async function sha256Text(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function normalizeInput(repository: unknown, requestedRef: unknown) {
   try {
     return {
@@ -94,6 +99,7 @@ async function dispatchGitHub(deps: StartDependencies, input: {
   taskId: string;
   repository: string;
   requestedRef: string;
+  dispatchNonce: string;
 }) {
   if (!deps.githubToken) throw new SovereignCiStartError('github_control_token_not_configured', 503);
   const fetchImpl = deps.fetchImpl ?? fetch;
@@ -115,7 +121,8 @@ async function dispatchGitHub(deps: StartDependencies, input: {
             workflow_id: input.workflowId,
             task_id: input.taskId,
             repository: input.repository,
-            requested_ref: input.requestedRef
+            requested_ref: input.requestedRef,
+            dispatch_nonce: input.dispatchNonce
           }
         })
       }
@@ -134,6 +141,8 @@ export async function startManagerSovereignCi(
 ) {
   requireExecutionPermission(deps.context, 'execution.write');
   const normalized = normalizeInput(input.repository, input.requestedRef);
+  const dispatchNonce = crypto.randomUUID();
+  const dispatchNonceHash = await sha256Text(dispatchNonce);
 
   const { data: workflow, error: workflowError } = await deps.admin.from('execution_workflows').insert({
     org_id: deps.context.orgId,
@@ -149,6 +158,7 @@ export async function startManagerSovereignCi(
       repository: normalized.repository,
       requested_ref: normalized.requestedRef,
       resolved_sha: null,
+      dispatch_nonce_hash: dispatchNonceHash,
       runner_kind: 'github-actions',
       return_path: '/execution/manager/sovereign-ci'
     },
@@ -244,7 +254,8 @@ export async function startManagerSovereignCi(
       workflowId: String(workflow.id),
       taskId: String(task.id),
       repository: normalized.repository,
-      requestedRef: normalized.requestedRef
+      requestedRef: normalized.requestedRef,
+      dispatchNonce
     });
   } catch (error) {
     const reason = error instanceof SovereignCiStartError ? error.code : 'github_ci_dispatch_failed';
