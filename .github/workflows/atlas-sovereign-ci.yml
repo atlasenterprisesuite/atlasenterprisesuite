@@ -19,6 +19,10 @@ on:
         description: Explicit branch, tag, or SHA to verify
         required: true
         type: string
+      dispatch_nonce:
+        description: One-time ATLAS dispatch binding
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -141,6 +145,7 @@ jobs:
           TASK_ID: ${{ inputs.task_id }}
           REPOSITORY: ${{ inputs.repository }}
           REQUESTED_REF: ${{ inputs.requested_ref }}
+          DISPATCH_NONCE: ${{ inputs.dispatch_nonce }}
           RESOLVED_SHA: ${{ steps.target.outputs.RESOLVED_SHA }}
           TARGET_RESOLUTION_FAILED: ${{ steps.target_checkout.outcome != 'success' }}
           INSTALL_EXIT: ${{ steps.install.outputs.exit_code }}
@@ -174,6 +179,7 @@ jobs:
             task_id: process.env.TASK_ID,
             repository: process.env.REPOSITORY,
             requested_ref: process.env.REQUESTED_REF,
+            dispatch_nonce: process.env.DISPATCH_NONCE,
             resolved_sha: process.env.RESOLVED_SHA || null,
             target_resolution_failed: process.env.TARGET_RESOLUTION_FAILED === 'true',
             results: [
