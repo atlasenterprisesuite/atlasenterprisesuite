@@ -3,8 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
-const sql = readFileSync(resolve(root, 'supabase/migrations/20260912_ride_profile_photo_compliance.sql'), 'utf8');
-const atomicMigrationPath = resolve(root, 'supabase/migrations/20260912_ride_profile_photo_atomicity.sql');
+const sql = readFileSync(resolve(root, 'supabase/migrations/20260920072427_ride_profile_photo_compliance.sql'), 'utf8');
+const atomicMigrationPath = resolve(root, 'supabase/migrations/20260920072431_ride_profile_photo_atomicity.sql');
 const repositorySource = readFileSync(resolve(root, 'supabase/functions/atlas-ride-compliance/_shared/repository.ts'), 'utf8');
 const edgeSource = readFileSync(resolve(root, 'supabase/functions/atlas-ride-compliance/index.ts'), 'utf8');
 

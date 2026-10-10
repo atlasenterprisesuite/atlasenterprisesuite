@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const sql = readFileSync(
-  'supabase/migrations/20260920160000_atlas_github_app_manifest_credentials.sql',
+  'supabase/migrations/20260920160501_atlas_github_app_manifest_credentials.sql',
   'utf8',
 );
 

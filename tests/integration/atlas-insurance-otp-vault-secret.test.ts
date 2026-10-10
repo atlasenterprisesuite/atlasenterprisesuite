@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = 'supabase/migrations/20260918155000_atlas_insurance_otp_vault_secret.sql';
+const migrationPath = 'supabase/migrations/20260918155451_atlas_insurance_otp_vault_secret.sql';
 const cryptoPath = 'supabase/functions/atlas-insurance-verification/_shared/crypto.ts';
 const repositoryPath = 'supabase/functions/atlas-insurance-verification/_shared/repository.ts';
 const handlerPath = 'supabase/functions/atlas-insurance-verification/index.ts';
