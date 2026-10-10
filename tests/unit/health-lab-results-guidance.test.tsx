@@ -9,7 +9,7 @@ describe('ATLAS Health urinalysis guidance', () => {
 
     expect(screen.getByRole('heading', { name: 'Urinalysis guidance' })).toBeInTheDocument();
     expect(screen.getByText(/does not diagnose a condition/i)).toBeInTheDocument();
-    expect(screen.getByText(/Protein 1\+/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Protein 1\+/i })).toBeInTheDocument();
     expect(screen.getByText(/does not diagnose kidney disease/i)).toBeInTheDocument();
     expect(screen.getByText(/urine albumin-to-creatinine ratio \(UACR\)/i)).toBeInTheDocument();
     expect(screen.getByText(/older adult \(75\)/i)).toBeInTheDocument();
