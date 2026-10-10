@@ -6,6 +6,7 @@ const ciSource = readFileSync('supabase/functions/atlas-execution/sovereign-ci.t
 const reportSource = readFileSync('supabase/functions/atlas-sovereign-ci-report/index.ts', 'utf8');
 const domainSource = readFileSync('packages/execution/src/sovereign-ci.ts', 'utf8');
 const migration = readFileSync('supabase/migrations/20261010095100_manager_sovereign_ci.sql', 'utf8');
+const supabaseConfig = readFileSync('supabase/config.toml', 'utf8');
 
 describe('ATLAS Manager Sovereign CI Edge contract', () => {
   it('keeps user start in atlas-execution and GitHub OIDC reports in a dedicated adapter', () => {
@@ -49,6 +50,7 @@ describe('ATLAS Manager Sovereign CI Edge contract', () => {
     expect(reportSource).toContain('refs/heads/main');
     expect(reportSource).toContain('constantTime');
     expect(reportSource).toContain("event_name");
+    expect(supabaseConfig).toMatch(/\[functions\.atlas-sovereign-ci-report\][\s\S]*verify_jwt\s*=\s*false/);
   });
 
   it('records a blocked target-resolution result without fabricating a sha', () => {
