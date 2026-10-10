@@ -53,6 +53,11 @@ function decodePart(input: string) {
   return JSON.parse(new TextDecoder().decode(b64u(input)));
 }
 
+async function sha256Text(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function constantTimeTextEqual(left: string, right: string) {
   const a = new TextEncoder().encode(left);
   const b = new TextEncoder().encode(right);
@@ -202,7 +207,9 @@ Deno.serve(async (req: Request) => {
 
     const workflowId = clean(body.workflow_id, 80);
     const taskId = clean(body.task_id, 80);
+    const dispatchNonce = clean(body.dispatch_nonce, 80);
     if (!workflowId || !taskId) throw fail('workflow_and_task_required', 422);
+    if (!dispatchNonce) throw fail('dispatch_binding_required', 422);
 
     let repository: string;
     let requestedRef: string;
@@ -237,6 +244,12 @@ Deno.serve(async (req: Request) => {
       !constantTimeTextEqual(clean(context.repository, 200), repository) ||
       !constantTimeTextEqual(clean(context.requested_ref, 200), requestedRef)
     ) throw fail('execution_target_mismatch', 409);
+    const dispatchBindingHash = clean(context.dispatch_nonce_hash, 64).toLowerCase();
+    if (!dispatchBindingHash) throw fail('dispatch_binding_consumed', 409);
+    const presentedBindingHash = await sha256Text(dispatchNonce);
+    if (!constantTimeTextEqual(dispatchBindingHash, presentedBindingHash)) {
+      throw fail('dispatch_binding_mismatch', 403);
+    }
     const priorSha = clean(context.resolved_sha, 40).toLowerCase();
     if (priorSha && (!resolvedSha || !constantTimeTextEqual(priorSha, resolvedSha))) {
       throw fail('resolved_sha_immutable', 409);
@@ -285,6 +298,8 @@ Deno.serve(async (req: Request) => {
       const nextContext = {
         ...context,
         resolved_sha: null,
+        dispatch_nonce_hash: null,
+        dispatch_binding_consumed_at: now,
         runner_kind: 'github-actions',
         github_run_id: claims.runId,
         github_actor: claims.actor || null,
@@ -448,6 +463,8 @@ Deno.serve(async (req: Request) => {
     const nextContext = {
       ...context,
       resolved_sha: resolvedSha,
+      dispatch_nonce_hash: null,
+      dispatch_binding_consumed_at: now,
       runner_kind: 'github-actions',
       github_run_id: claims.runId,
       github_actor: claims.actor || null,
