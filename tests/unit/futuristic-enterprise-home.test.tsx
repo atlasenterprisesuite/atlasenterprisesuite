@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import { FuturisticEnterpriseHome } from '../../apps/web/src/components/FuturisticEnterpriseHome';
+import { FuturisticEnterpriseHome, getAtlasCatalogShare } from '../../apps/web/src/components/FuturisticEnterpriseHome';
 import { ATLAS_MODULES } from '../../apps/web/src/modules/registry';
 
 describe('FuturisticEnterpriseHome visual landing', () => {
@@ -47,8 +47,13 @@ describe('FuturisticEnterpriseHome visual landing', () => {
     expect(screen.getByRole('link', { name: 'Cloud surface' })).toHaveAttribute('href', '/cloud');
 
     const status = screen.getByLabelText('ATLAS system status');
-    expect(status).toHaveTextContent(`${implemented} operativos`);
+    expect(status).toHaveTextContent(`${implemented} implementados`);
     expect(status).toHaveTextContent(`${gated} conexiones`);
+    expect(screen.getByText('IMPLEMENTADOS')).toBeInTheDocument();
+    expect(screen.getByText('Cobertura de código en el catálogo; no es certificación de producción')).toBeInTheDocument();
+    expect(screen.getByText('Capacidades con código registrado')).toBeInTheDocument();
+    expect(screen.queryByText('Baseline operativo comprobado')).not.toBeInTheDocument();
+    expect(screen.queryByText('Capacidades operativas')).not.toBeInTheDocument();
   });
 
   it('counts active evolution independently from operational readiness', () => {
@@ -94,6 +99,45 @@ describe('FuturisticEnterpriseHome visual landing', () => {
     fireEvent.submit(screen.getByRole('form', { name: 'ATLAS command search' }));
 
     expect(screen.getByText('Finance destination')).toBeInTheDocument();
+  });
+
+  it('shows catalog distribution separately from production certification', () => {
+    const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
+    const evolving = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
+    const gated = ATLAS_MODULES.filter((module) => module.readiness === 'external-gated').length;
+    const total = ATLAS_MODULES.length;
+
+    render(
+      <MemoryRouter>
+        <FuturisticEnterpriseHome />
+      </MemoryRouter>
+    );
+
+    const chart = screen.getByRole('group', { name: /distribución del catálogo.*no es certificación/i });
+    const bars = chart.querySelectorAll('.chart-bars > a > span');
+    expect(bars).toHaveLength(3);
+    const barLabels = chart.querySelectorAll('.chart-bars > a > small');
+    expect(Array.from(barLabels, label => label.textContent)).toEqual([
+      `${implemented} implementados`,
+      `${evolving} en evolución`,
+      `${gated} externos`
+    ]);
+    expect(bars[0]).toHaveStyle({ height: `${(implemented / total) * 100}%` });
+    expect(bars[1]).toHaveStyle({ height: `${(evolving / total) * 100}%` });
+    expect(bars[2]).toHaveStyle({ height: `${(gated / total) * 100}%` });
+    expect(screen.getByText('Los estados pueden superponerse; no representan certificación de producción.')).toBeInTheDocument();
+    expect(screen.getByText('Porcentaje de certificación: sin evidencia suficiente')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ver módulos implementados/i })).toHaveAttribute('href', '/suite?readiness=implemented');
+    expect(screen.getByRole('link', { name: /Ver módulos en evolución/i })).toHaveAttribute('href', '/suite?evolution=active');
+    expect(screen.getByRole('link', { name: /Ver módulos con dependencia externa/i })).toHaveAttribute('href', '/suite?readiness=external-gated');
+  });
+
+  it('uses accurate catalog percentage heights without a misleading minimum', () => {
+    expect(getAtlasCatalogShare(0, 0)).toBe(0);
+    expect(getAtlasCatalogShare(1, 20)).toBe(5);
+    expect(getAtlasCatalogShare(20, 20)).toBe(100);
+    expect(getAtlasCatalogShare(40, 20)).toBe(100);
+    expect(getAtlasCatalogShare(-2, 20)).toBe(0);
   });
 
   it('ships the approved sunset photograph as a local reusable optimized asset', () => {

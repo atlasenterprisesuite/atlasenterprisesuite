@@ -38,7 +38,8 @@ describe('ATLAS A-Z canonical integration', () => {
 
   it('shows active evolution as an independent lifecycle axis', () => {
     expect(suite).toContain("module.evolution === 'active'");
-    expect(suite).toContain('operational baseline');
+    expect(suite).toContain('code integration');
+    expect(suite).toContain('production certification');
     expect(suite).toContain('active evolution');
     expect(suite).not.toContain('<strong>{partial}</strong> partial');
   });
@@ -92,7 +93,10 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(hubs).toContain('External gate');
     expect(hubs).toContain('remain fail-closed');
     expect(suite).toContain('External providers');
-    expect(suite).toContain("implemented: 'Integrated'");
+    expect(suite).toContain("implemented: 'Code integrated · prod unverified'");
+    expect(suite).toContain("{ value: 'implemented', label: 'Code integrated' }");
+    expect(suite).not.toContain("label: 'Operational'");
+    expect(suite).not.toContain('operational baseline');
     expect(suite).toContain('Pending external gate');
     expect(suite).toContain('machine-verifiable gate evidence can yield Production Verified');
   });

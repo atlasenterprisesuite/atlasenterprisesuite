@@ -1,17 +1,17 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ATLAS_MODULES, type AtlasModuleReadiness } from '../registry';
 import './atlas-suite.css';
 
 const READINESS_LABELS: Record<AtlasModuleReadiness, string> = {
-  implemented: 'Integrated',
-  partial: 'Integrated / partial',
+  implemented: 'Code integrated · prod unverified',
+  partial: 'Partial implementation · prod unverified',
   'external-gated': 'Pending external gate'
 };
 
 const READINESS_FILTERS: readonly { value: 'all' | AtlasModuleReadiness; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'implemented', label: 'Operational' },
+  { value: 'implemented', label: 'Code integrated' },
   { value: 'partial', label: 'Partial' },
   { value: 'external-gated', label: 'External Gate' }
 ];
@@ -54,8 +54,30 @@ const PRIMARY_SYSTEMS: readonly PrimarySystemDefinition[] = [
 
 export function AtlasSuitePage() {
   const [query, setQuery] = useState('');
-  const [readiness, setReadiness] = useState<'all' | AtlasModuleReadiness>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [area, setArea] = useState('all');
+  const requestedReadiness = searchParams.get('readiness');
+  const readiness: 'all' | AtlasModuleReadiness = requestedReadiness === 'implemented'
+    || requestedReadiness === 'partial' || requestedReadiness === 'external-gated'
+    ? requestedReadiness : 'all';
+  const evolution = searchParams.get('evolution') === 'active' ? 'active' : 'all';
+
+  const setReadiness = (value: 'all' | AtlasModuleReadiness) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value === 'all') next.delete('readiness');
+      else next.set('readiness', value);
+      return next;
+    }, { replace: true });
+  };
+  const toggleEvolution = () => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (evolution === 'active') next.delete('evolution');
+      else next.set('evolution', 'active');
+      return next;
+    }, { replace: true });
+  };
 
   const areas = useMemo(
     () => Array.from(new Set(ATLAS_MODULES.map((module) => module.area))).sort(),
@@ -86,10 +108,11 @@ export function AtlasSuitePage() {
         || [module.title, module.navLabel, module.area, module.description, module.route]
           .some((value) => value.toLowerCase().includes(normalizedQuery));
       const matchesReadiness = readiness === 'all' || module.readiness === readiness;
+      const matchesEvolution = evolution === 'all' || module.evolution === evolution;
       const matchesArea = area === 'all' || module.area === area;
-      return matchesQuery && matchesReadiness && matchesArea;
+      return matchesQuery && matchesReadiness && matchesEvolution && matchesArea;
     }).sort((left, right) => left.title.localeCompare(right.title));
-  }, [area, query, readiness]);
+  }, [area, query, readiness, evolution]);
 
   const implemented = ATLAS_MODULES.filter((module) => module.readiness === 'implemented').length;
   const activeEvolution = ATLAS_MODULES.filter((module) => module.evolution === 'active').length;
@@ -104,7 +127,7 @@ export function AtlasSuitePage() {
           <h1>ATLAS Suite A-Z</h1>
           <p className="suite-hero-copy">
             Discover, enter and continue across every canonical ATLAS system from one visual product library.
-            Operational baseline and active evolution are independent lifecycle axes; external readiness remains fail-closed.
+            Canonical code integration and active evolution are independent lifecycle axes; production certification requires current verified evidence and external readiness remains fail-closed.
           </p>
 
           <label className="suite-search">
@@ -122,7 +145,7 @@ export function AtlasSuitePage() {
 
           <div className="suite-status-strip" aria-label="ATLAS module readiness summary">
             <span><strong>{ATLAS_MODULES.length}</strong> modules</span>
-            <span><strong>{implemented}</strong> operational baseline</span>
+            <span><strong>{implemented}</strong> code-integrated (not production certified)</span>
             <span><strong>{activeEvolution}</strong> active evolution</span>
             <span><strong>{externalGated}</strong> gated</span>
           </div>
@@ -181,6 +204,12 @@ export function AtlasSuitePage() {
                 {filter.label}
               </button>
             ))}
+            <button
+              type="button"
+              className={evolution === 'active' ? 'is-active' : ''}
+              aria-pressed={evolution === 'active'}
+              onClick={toggleEvolution}
+            >Active evolution</button>
           </div>
 
           <label className="suite-area-filter">
@@ -242,8 +271,8 @@ export function AtlasSuitePage() {
       </section>
 
       <div className="notice strong suite-governance-note">
-        “Integrated” describes the Operational baseline: canonical routing and governed module composition. Active evolution is tracked
-        independently, so a stable module can continue into its next implementation/validation cycle without losing its baseline. External providers,
+        “Code integrated” describes catalog implementation, not verified production health or release readiness. Active evolution is tracked
+        independently from code integration, so modules can evolve without acquiring a certified state. External providers,
         irreversible actions, production data and regulated workflows remain unavailable until their own verification gates pass. Only current
         machine-verifiable gate evidence can yield Production Verified.
       </div>

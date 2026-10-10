@@ -7,7 +7,7 @@ import './futuristic-enterprise-home.css';
 import './atlas-visual-home.css';
 
 const readinessLabel = {
-  implemented: 'Operativo',
+  implemented: 'Implementado (sin certificación)',
   partial: 'En evolución',
   'external-gated': 'Conexión requerida'
 } as const;
@@ -41,6 +41,13 @@ const quickLinks = primarySurfaces.slice(0, 5);
 
 function normalizeSearch(value: string) {
   return value.trim().toLocaleLowerCase();
+}
+
+// A catalog count ratio, not a production certification score. The catalog
+// readiness and evolution axes are deliberately independent.
+export function getAtlasCatalogShare(count: number, total: number): number {
+  if (!Number.isFinite(count) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.min(100, Math.max(0, (count / total) * 100));
 }
 
 export function FuturisticEnterpriseHome() {
@@ -158,7 +165,7 @@ export function FuturisticEnterpriseHome() {
 
           <div className="atlas-home-status" aria-label="ATLAS system status">
             <span className="atlas-home-status__label">SYSTEM</span>
-            <strong>{implemented} operativos</strong>
+            <strong>{implemented} implementados</strong>
             <span aria-hidden="true">·</span>
             <strong>{activeEvolution} en evolución</strong>
             <span aria-hidden="true">·</span>
@@ -239,7 +246,7 @@ export function FuturisticEnterpriseHome() {
 
         <section className="atlas-command-metrics" aria-label="ATLAS module readiness summary">
           <article><span className="metric-icon">◇</span><small>MÓDULOS</small><strong>{total}</strong><p>Registrados en el catálogo ATLAS</p></article>
-          <article><span className="metric-icon">✓</span><small>OPERATIVOS</small><strong>{implemented}</strong><p>Baseline operativo comprobado</p></article>
+          <article><span className="metric-icon">✓</span><small>IMPLEMENTADOS</small><strong>{implemented}</strong><p>Cobertura de código en el catálogo; no es certificación de producción</p></article>
           <article><span className="metric-icon">↗</span><small>EN EVOLUCIÓN</small><strong>{activeEvolution}</strong><p>Siguiente versión en desarrollo o validación</p></article>
           <article><span className="metric-icon">◎</span><small>CONEXIONES</small><strong>{gated}</strong><p>Dependencias externas gobernadas</p></article>
         </section>
@@ -250,25 +257,40 @@ export function FuturisticEnterpriseHome() {
               <div><strong>Resumen general del sistema</strong><span>Estados independientes derivados del catálogo canónico</span></div>
               <Link to="/suite">Ver módulos →</Link>
             </header>
-            <div className="atlas-readiness-chart" role="img" aria-label={`${implemented} módulos con baseline operativo, ${activeEvolution} en evolución activa y ${gated} con conexión externa requerida`}>
+            <div
+              className="atlas-readiness-chart"
+              role="group"
+              aria-label={`Distribución del catálogo: ${implemented} módulos implementados, ${activeEvolution} en evolución activa y ${gated} con dependencia externa; no es certificación de producción`}
+            >
               <div className="chart-grid" aria-hidden="true" />
               <div className="chart-bars">
-                <div><span style={{ height: `${Math.max(18, (implemented / total) * 100)}%` }} /><small>Operativos</small></div>
-                <div><span style={{ height: `${Math.max(18, (activeEvolution / total) * 100)}%` }} /><small>En evolución</small></div>
-                <div><span style={{ height: `${Math.max(18, (gated / total) * 100)}%` }} /><small>Conexión</small></div>
+                <Link to="/suite?readiness=implemented" aria-label={`Ver módulos implementados: ${implemented}`}>
+                  <span style={{ height: `${getAtlasCatalogShare(implemented, total)}%` }} aria-hidden="true" />
+                  <small>{implemented} implementados</small>
+                </Link>
+                <Link to="/suite?evolution=active" aria-label={`Ver módulos en evolución: ${activeEvolution}`}>
+                  <span style={{ height: `${getAtlasCatalogShare(activeEvolution, total)}%` }} aria-hidden="true" />
+                  <small>{activeEvolution} en evolución</small>
+                </Link>
+                <Link to="/suite?readiness=external-gated" aria-label={`Ver módulos con dependencia externa: ${gated}`}>
+                  <span style={{ height: `${getAtlasCatalogShare(gated, total)}%` }} aria-hidden="true" />
+                  <small>{gated} externos</small>
+                </Link>
               </div>
             </div>
+            <p className="atlas-chart-note">Los estados pueden superponerse; no representan certificación de producción.</p>
+            <p className="atlas-chart-certification">Porcentaje de certificación: sin evidencia suficiente</p>
           </article>
 
           <article className="atlas-system-panel atlas-operational-feed">
             <header>
-              <div><strong>Capacidades operativas</strong><span>Derivadas del registro canónico</span></div>
+              <div><strong>Capacidades con código registrado</strong><span>Derivadas del registro canónico, no de pruebas de producción</span></div>
               <span className="live-chip"><i /> CATÁLOGO</span>
             </header>
             <div className="atlas-operation-list">
               {operational.map((module) => (
                 <Link key={module.id} to={module.route}>
-                  <span className="operation-mark">✓</span>
+                  <span className="operation-mark" aria-hidden="true">•</span>
                   <span><strong>{module.title}</strong><small>{module.area} · {module.description}</small></span>
                   <span aria-hidden="true">›</span>
                 </Link>
