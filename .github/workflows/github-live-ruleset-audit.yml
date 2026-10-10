@@ -1,0 +1,41 @@
+name: ATLAS GitHub Live Ruleset Audit
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/github-live-ruleset-audit.yml'
+      - 'scripts/verify-github-live-ruleset.mjs'
+      - 'tools/security/github-live-ruleset.checks.mjs'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 12 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  policy-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Test live ruleset P0 policy
+        run: node --test tools/security/github-live-ruleset.checks.mjs
+
+  audit-live:
+    if: github.event_name != 'pull_request'
+    needs: policy-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Verify current GitHub ruleset and bypass actors (fail closed)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-github-live-ruleset.mjs
