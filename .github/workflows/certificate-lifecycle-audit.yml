@@ -1,0 +1,59 @@
+name: ATLAS Certificate Lifecycle Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/certificate-lifecycle-audit.yml'
+      - 'scripts/security/certificate-lifecycle.mjs'
+      - 'scripts/security/scan-certificate-lifecycle.mjs'
+      - 'scripts/security/public-tls.mjs'
+  schedule:
+    - cron: '18 8 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-certificate-lifecycle-audit
+  cancel-in-progress: false
+
+jobs:
+  cloudflare-mtls-inventory:
+    name: Cloudflare mTLS certificate inventory and renewal readiness
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout audited source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate auditor syntax
+        run: |
+          node --check scripts/security/certificate-lifecycle.mjs
+          node --check scripts/security/scan-certificate-lifecycle.mjs
+      - name: Inspect provider mTLS certificates and renewal horizon
+        run: node scripts/security/scan-certificate-lifecycle.mjs
+  public-tls-endpoints:
+    name: Public TLS identity, chain and expiry
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate public TLS probe syntax
+        run: node --check scripts/security/public-tls.mjs
+      - name: Verify authoritative public HTTPS certificates
+        run: node scripts/security/public-tls.mjs
