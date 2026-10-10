@@ -29,7 +29,7 @@ export function EvidencePanel({ evidence }: { evidence: GuidedEvidence[] }) {
       ) : (
         <ul className="execution-evidence-list">
           {evidence.map((item) => {
-            const entries = metadataEntries(item.metadata);
+            const entries = metadataEntries(item.metadata ?? {});
             return (
               <li key={item.id}>
                 <strong>{item.kind}</strong>
