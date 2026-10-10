@@ -38,6 +38,8 @@ jobs:
           }
 
       - name: Checkout requested target
+        id: target_checkout
+        continue-on-error: true
         uses: actions/checkout@v7
         with:
           repository: ${{ inputs.repository }}
@@ -46,6 +48,7 @@ jobs:
           persist-credentials: false
 
       - name: Resolve immutable target SHA
+        if: steps.target_checkout.outcome == 'success'
         id: target
         run: |
           RESOLVED_SHA="$(git rev-parse HEAD)"
@@ -53,12 +56,14 @@ jobs:
           echo "RESOLVED_SHA=$RESOLVED_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Runtime
+        if: steps.target_checkout.outcome == 'success'
         uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
+        if: steps.target_checkout.outcome == 'success'
         id: install
         run: |
           set +e
@@ -76,6 +81,7 @@ jobs:
           exit 0
 
       - name: Typecheck
+        if: steps.target_checkout.outcome == 'success'
         id: typecheck
         run: |
           set +e
@@ -93,6 +99,7 @@ jobs:
           exit 0
 
       - name: Tests
+        if: steps.target_checkout.outcome == 'success'
         id: tests
         run: |
           set +e
@@ -110,6 +117,7 @@ jobs:
           exit 0
 
       - name: Build
+        if: steps.target_checkout.outcome == 'success'
         id: build
         run: |
           set +e
@@ -134,6 +142,7 @@ jobs:
           REPOSITORY: ${{ inputs.repository }}
           REQUESTED_REF: ${{ inputs.requested_ref }}
           RESOLVED_SHA: ${{ steps.target.outputs.RESOLVED_SHA }}
+          TARGET_RESOLUTION_FAILED: ${{ steps.target_checkout.outcome != 'success' }}
           INSTALL_EXIT: ${{ steps.install.outputs.exit_code }}
           INSTALL_DIGEST: ${{ steps.install.outputs.output_digest }}
           INSTALL_STARTED: ${{ steps.install.outputs.started_at }}
@@ -166,6 +175,7 @@ jobs:
             repository: process.env.REPOSITORY,
             requested_ref: process.env.REQUESTED_REF,
             resolved_sha: process.env.RESOLVED_SHA || null,
+            target_resolution_failed: process.env.TARGET_RESOLUTION_FAILED === 'true',
             results: [
               row('install_dependencies', process.env.INSTALL_EXIT, process.env.INSTALL_DIGEST, process.env.INSTALL_STARTED, process.env.INSTALL_COMPLETED),
               row('typecheck', process.env.TYPECHECK_EXIT, process.env.TYPECHECK_DIGEST, process.env.TYPECHECK_STARTED, process.env.TYPECHECK_COMPLETED),
@@ -200,7 +210,9 @@ jobs:
           TYPECHECK_EXIT: ${{ steps.typecheck.outputs.exit_code }}
           TEST_EXIT: ${{ steps.tests.outputs.exit_code }}
           BUILD_EXIT: ${{ steps.build.outputs.exit_code }}
+          TARGET_RESOLUTION_FAILED: ${{ steps.target_checkout.outcome != 'success' }}
         run: |
+          test "$TARGET_RESOLUTION_FAILED" != "true"
           test "$INSTALL_EXIT" = "0"
           test "$TYPECHECK_EXIT" = "0"
           test "$TEST_EXIT" = "0"
