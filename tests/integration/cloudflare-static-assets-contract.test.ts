@@ -142,6 +142,22 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(worker).toContain('deploymentCommitCache.versionId !== versionId');
   });
 
+  it('bounds custom-domain SHA convergence retries without accepting old deploys', () => {
+    const start = workflow.indexOf('- name: Verify public ATLAS production routes');
+    const end = workflow.indexOf('- name: Verify production shell through authorized ATLAS runtime');
+    const probe = workflow.slice(start, end);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(probe).toContain('PRODUCTION_PROPAGATION_DEADLINE=$((SECONDS + 180))');
+    expect(probe).toContain('while :; do');
+    expect(probe).toContain('[[ "$atlas_version_tag" =~ ^[0-9a-f]{40}$ ]]');
+    expect(probe).toContain('[ "$SECONDS" -lt "$PRODUCTION_PROPAGATION_DEADLINE" ]');
+    expect(probe).toContain('sleep 5');
+    expect(probe).toContain('awaiting exact-SHA propagation');
+    expect(probe).toContain('served version tag');
+    expect(probe).toContain('return 1');
+  });
+
   it('records exact-version verification only from the production verification output', () => {
     expect(workflow).toContain("production_commit_sha_verified:process.env.PRODUCTION_COMMIT_SHA_VERIFIED==='true'");
     expect(workflow).not.toContain('production_commit_sha_verified:true');
