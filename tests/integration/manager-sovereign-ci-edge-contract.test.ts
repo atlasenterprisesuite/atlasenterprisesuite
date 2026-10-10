@@ -18,7 +18,8 @@ describe('ATLAS Manager Sovereign CI Edge contract', () => {
   });
 
   it('dispatches only the allowlisted canonical workflow and never mutates source or deploys', () => {
-    expect(ciSource).toContain('atlasenterprisesuite/atlasenterprisesuite');
+    expect(domainSource).toContain('atlasenterprisesuite/atlasenterprisesuite');
+    expect(ciSource).toContain('SOVEREIGN_CI_REPOSITORY');
     expect(ciSource).toContain('atlas-sovereign-ci.yml');
     expect(edgeSource).toContain('ATLAS_GITHUB_TOKEN');
     expect(ciSource).toContain('/actions/workflows/');
