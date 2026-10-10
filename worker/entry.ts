@@ -36,6 +36,11 @@ async function machineHealth(request: Request, env: Env): Promise<Response> {
 
   return new Response(JSON.stringify({
     status: healthy ? 'healthy' : 'unhealthy',
+    scope: 'worker_liveness',
+    dependencies: {
+      supabase_database: 'not_checked',
+      supabase_auth: 'not_checked'
+    },
     service: statusPayload?.service || 'atlas-enterprise-suite-web',
     environment: statusPayload?.environment || 'production',
     release: statusPayload?.release || null,
