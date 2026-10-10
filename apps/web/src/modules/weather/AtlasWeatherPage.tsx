@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  describeWeather, fetchNwsAlerts, fetchWeatherForecast, formatTemperature,
-  nextWeatherHour, nwsCoverageEligible, type WeatherAlert, type WeatherForecast, type WeatherKind
+  describeWeather, fetchNwsAlerts, fetchNwsObservation, fetchWeatherForecast, formatTemperature,
+  nextWeatherHour, nwsCoverageEligible, type WeatherAlert, type WeatherForecast, type WeatherKind, type WeatherObservation
 } from './weatherDomain';
 import './weather.css';
 
@@ -48,6 +48,9 @@ export function AtlasWeatherPage() {
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [forecastState, setForecastState] = useState<FetchState>('loading');
   const [forecastError, setForecastError] = useState<string | null>(null);
+  const [observation, setObservation] = useState<WeatherObservation | null>(null);
+  const [observationState, setObservationState] = useState<FetchState>('loading');
+  const [observationError, setObservationError] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<WeatherAlert[]>([]);
   const [alertsState, setAlertsState] = useState<FetchState>('loading');
   const [alertsError, setAlertsError] = useState<string | null>(null);
@@ -67,6 +70,9 @@ export function AtlasWeatherPage() {
     setForecastState('loading');
     setForecastError(null);
     setAlerts([]);
+    setObservation(null);
+    setObservationError(null);
+    setObservationState(eligible ? 'loading' : 'ready');
     setAlertsError(null);
     setAlertsState(eligible ? 'loading' : 'ready');
 
@@ -83,6 +89,17 @@ export function AtlasWeatherPage() {
       });
 
     if (eligible) {
+      void fetchNwsObservation(place.lat, place.lon, controller.signal)
+        .then(result => {
+          if (!active) return;
+          setObservation(result);
+          setObservationState('ready');
+        })
+        .catch(error => {
+          if (!active || controller.signal.aborted) return;
+          setObservationState('error');
+          setObservationError(error instanceof Error ? error.message : 'La observación no pudo verificarse.');
+        });
       void fetchNwsAlerts(place.lat, place.lon, controller.signal)
         .then(result => {
           if (!active) return;
@@ -173,6 +190,26 @@ export function AtlasWeatherPage() {
           )}
         </div>
       </div>
+
+      <section className="atlas-weather-section atlas-weather-observation" aria-labelledby="atlas-weather-observed-title">
+        <div className="atlas-weather-section-heading">
+          <h2 id="atlas-weather-observed-title">Observación real de estación</h2>
+          <span>NOAA/NWS · EE. UU. · diferente del pronóstico</span>
+        </div>
+        {!eligible && <p>No hay estación NOAA/NWS disponible para esta región; los datos de arriba son predicciones del modelo.</p>}
+        {eligible && observationState === 'loading' && <p role="status">Buscando una estación de observación oficial…</p>}
+        {eligible && observationState === 'error' && <p role="status">No se pudo verificar la observación: {observationError}. No se sustituye con datos inventados.</p>}
+        {eligible && observationState === 'ready' && !observation && <p>La estación consultada no proporcionó una lectura reciente utilizable. No se afirma ninguna condición observada.</p>}
+        {eligible && observationState === 'ready' && observation && (
+          <div className="atlas-weather-measurement">
+            <div><span>Temperatura medida</span><strong>{formatTemperature(observation.celsius, unit)}</strong></div>
+            <div><span>Estación</span><strong>{observation.station}</strong></div>
+            <div><span>Hora de lectura</span><strong>{localTime(observation.observedAt)}</strong></div>
+            <div><span>Humedad</span><strong>{observation.humidity === null ? '—' : `${Math.round(observation.humidity)}%`}</strong></div>
+            <a href={observation.sourceUrl} target="_blank" rel="noopener noreferrer">Ver lectura NOAA/NWS</a>
+          </div>
+        )}
+      </section>
 
       {forecastState === 'ready' && forecast && (
         <>
