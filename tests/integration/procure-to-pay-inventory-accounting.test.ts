@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const lifecycleSql = readFileSync('supabase/migrations/20260920190000_procure_to_pay_inventory_margin.sql', 'utf8');
-const quantitySyncSql = readFileSync('supabase/migrations/20260920190500_inventory_product_quantity_sync.sql', 'utf8');
-const postingGuardSql = readFileSync('supabase/migrations/20260920191500_procure_to_pay_posting_guard_fix.sql', 'utf8');
-const integrityGuardSql = readFileSync('supabase/migrations/20260920192500_p2p_integrity_guards.sql', 'utf8');
-const invoiceLineGuardSql = readFileSync('supabase/migrations/20260920193000_invoice_line_issue_guard_fix.sql', 'utf8');
+const lifecycleSql = readFileSync('supabase/migrations/20260921010117_procure_to_pay_inventory_margin.sql', 'utf8');
+const quantitySyncSql = readFileSync('supabase/migrations/20260921010522_inventory_product_quantity_sync.sql', 'utf8');
+const postingGuardSql = readFileSync('supabase/migrations/20260921011233_procure_to_pay_posting_guard_fix.sql', 'utf8');
+const integrityGuardSql = readFileSync('supabase/migrations/20260921011809_p2p_integrity_guards.sql', 'utf8');
+const invoiceLineGuardSql = readFileSync('supabase/migrations/20260921011835_invoice_line_issue_guard_fix.sql', 'utf8');
 const resolverSource = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
 const procureApi = readFileSync('apps/web/src/lib/procureToPayApi.ts', 'utf8');
 const receivablesApi = readFileSync('apps/web/src/lib/receivablesApi.ts', 'utf8');

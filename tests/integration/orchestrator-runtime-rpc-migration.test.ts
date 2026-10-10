@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync('supabase/migrations/20260918091500_atlas_orchestrator_runtime_rpc.sql', 'utf8');
+const sql = readFileSync('supabase/migrations_legacy_pre_remote_sync/20260918091500_atlas_orchestrator_runtime_rpc.sql', 'utf8');
 
 describe('ATLAS orchestrator production RPC persistence contract', () => {
   it('keeps raw orchestrator tables private while exposing only token-gated SECURITY DEFINER RPCs', () => {

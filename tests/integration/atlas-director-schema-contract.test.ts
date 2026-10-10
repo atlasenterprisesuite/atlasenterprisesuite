@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync('supabase/migrations/20260912_creator_director.sql', 'utf8');
-const hardeningPath = 'supabase/migrations/20260915094600_creator_director_hardening.sql';
+const sql = readFileSync('supabase/migrations/20260915091127_creator_director.sql', 'utf8');
+const hardeningPath = 'supabase/migrations/20260915095233_creator_director_hardening.sql';
 const hardeningSql = existsSync(hardeningPath) ? readFileSync(hardeningPath, 'utf8') : '';
 
 describe('ATLAS Director schema contract', () => {

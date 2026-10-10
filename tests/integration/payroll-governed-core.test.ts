@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration=readFileSync('supabase/migrations/20260923203000_atlas_payroll_core.sql','utf8');
+const migration=readFileSync('supabase/migrations/20261004183528_atlas_payroll_core.sql','utf8');
 const api=readFileSync('apps/web/src/modules/payroll/payrollApi.ts','utf8');
 const routes=readFileSync('apps/web/src/modules/payroll/PayrollRoutes.tsx','utf8');
 const registry=readFileSync('apps/web/src/modules/registry.ts','utf8');

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = () => readFileSync('supabase/migrations/20260920152000_atlas_voice_provider_native_verification.sql', 'utf8');
+const sql = () => readFileSync('supabase/migrations_legacy_pre_remote_sync/20260920152000_atlas_voice_provider_native_verification.sql', 'utf8');
 
 describe('ATLAS Voice provider/native verification schema', () => {
   it('stores provider lifecycle refs without exposing secrets', () => {

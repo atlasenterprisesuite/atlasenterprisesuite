@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = 'supabase/migrations/20260914_private_oracle.sql';
+const migrationPath = 'supabase/migrations/20260924162513_private_oracle.sql';
 
 describe('private oracle migration', () => {
   it('creates a dedicated private entitlement and owner-only RLS', () => {

@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  `${process.cwd()}/supabase/migrations/20260919232000_frontier_persistent_world.sql`,
+  `${process.cwd()}/supabase/migrations/20260919232620_frontier_persistent_world.sql`,
   'utf8'
 );
 const hardening = readFileSync(
-  `${process.cwd()}/supabase/migrations/20260919232800_frontier_persistent_world_hardening.sql`,
+  `${process.cwd()}/supabase/migrations/20260919232759_frontier_persistent_world_hardening.sql`,
   'utf8'
 );
 
