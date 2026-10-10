@@ -33,10 +33,10 @@ The browser never receives GitHub control credentials. `atlas-execution` authent
 
 Every start creates a random one-time dispatch binding. ATLAS stores only its SHA-256 hash in workflow context and sends the raw nonce to the selected GitHub run. The OIDC reporter hashes the presented nonce, compares it against the stored binding, and consumes the binding after the first accepted report. A replay is rejected.
 
-The verification workflow has only:
+The workflow separates privileges by job:
 
-- `contents: read`
-- `id-token: write`
+- `verify`: `contents: read` only; it executes the requested source and has no OIDC permission.
+- `report`: `id-token: write`, `contents: none`; it never checks out or executes the requested source.
 
 Checkout uses `persist-credentials: false`. The workflow contains no source-control write, merge, deployment, DNS, secret mutation, or provider deployment command.
 
