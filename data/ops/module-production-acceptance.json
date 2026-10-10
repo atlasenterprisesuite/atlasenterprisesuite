@@ -28,5 +28,27 @@
       "verdict": "VERIFICATION_HOLD",
       "reason": "The authenticated certificate inventory and security dashboard are implemented only in the pull-request branch. Live GitHub OIDC ingestion, end-to-end mTLS verification, release tests and exact-SHA production route evidence have not passed all acceptance gates; the route must remain explicitly on verification hold."
     }
-  ]
+  ],
+  "shared_ux_evidence": {
+    "persistent_navigation": {
+      "state": "implemented",
+      "source": "apps/web/src/components/AtlasShell.tsx",
+      "evidence": "Persistent Back, Forward and Home controls use React Router navigation from the shared shell."
+    },
+    "breadcrumbs": {
+      "state": "implemented",
+      "source": "apps/web/src/components/AtlasShell.tsx",
+      "evidence": "Shared breadcrumbs expose menu, submenu, section and action-or-record hierarchy for canonical routes."
+    },
+    "responsive_shell": {
+      "state": "implemented",
+      "source": "apps/web/src/styles.css",
+      "evidence": "Shared navigation context has desktop, tablet and mobile responsive rules; module-specific responsive evidence remains separately required."
+    },
+    "unauthorized_gate": {
+      "state": "implemented",
+      "source": "apps/web/src/identity/RequireAtlasIdentity.tsx",
+      "evidence": "Protected modules redirect unauthenticated or invalid sessions through the canonical ATLAS Identity gate."
+    }
+  }
 }
