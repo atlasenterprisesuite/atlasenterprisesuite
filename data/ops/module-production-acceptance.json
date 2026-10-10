@@ -23,18 +23,6 @@
   ],
   "navigation_route_holds": [
     {
-      "module_id": "care",
-      "path": "/care",
-      "verdict": "VERIFICATION_HOLD",
-      "reason": "Canonical navigation exposes ATLAS Care, but the route is not yet part of the canonical fail-closed production verification contract. It must not be reported as production verified until route evidence is added."
-    },
-    {
-      "module_id": "city",
-      "path": "/city",
-      "verdict": "VERIFICATION_HOLD",
-      "reason": "Canonical navigation exposes ATLAS Digital City, but the route is not yet part of the canonical fail-closed production verification contract. It must not be reported as production verified until route evidence is added."
-    },
-    {
       "module_id": "certificate-lifecycle",
       "path": "/security/certificates",
       "verdict": "VERIFICATION_HOLD",
