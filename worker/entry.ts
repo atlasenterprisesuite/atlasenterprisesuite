@@ -1,4 +1,5 @@
 import worker, { AtlasChatRealtimeBus, AtlasLocalRealtimeBus } from './index';
+import { weatherGateway } from './weatherGateway';
 
 export { AtlasChatRealtimeBus, AtlasLocalRealtimeBus };
 
@@ -49,6 +50,9 @@ async function machineHealth(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/v1/weather/')) {
+      return (await weatherGateway(request)) || new Response(null, { status: 404 });
+    }
     if (request.method === 'GET' && url.pathname === '/api/v1/health') {
       return machineHealth(request, env);
     }
