@@ -1,0 +1,305 @@
+name: ATLAS Sovereign CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_id:
+        description: ATLAS execution workflow ID
+        required: true
+        type: string
+      task_id:
+        description: ATLAS execution task ID
+        required: true
+        type: string
+      repository:
+        description: Allowlisted source repository
+        required: true
+        type: string
+      requested_ref:
+        description: Explicit branch, tag, or SHA to verify
+        required: true
+        type: string
+      dispatch_nonce:
+        description: One-time ATLAS dispatch binding
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  verify:
+    name: verify-sovereign-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      resolved_sha: ${{ steps.summary.outputs.resolved_sha }}
+      target_resolution_failed: ${{ steps.summary.outputs.target_resolution_failed }}
+      install_exit: ${{ steps.summary.outputs.install_exit }}
+      install_digest: ${{ steps.summary.outputs.install_digest }}
+      install_started: ${{ steps.summary.outputs.install_started }}
+      install_completed: ${{ steps.summary.outputs.install_completed }}
+      typecheck_exit: ${{ steps.summary.outputs.typecheck_exit }}
+      typecheck_digest: ${{ steps.summary.outputs.typecheck_digest }}
+      typecheck_started: ${{ steps.summary.outputs.typecheck_started }}
+      typecheck_completed: ${{ steps.summary.outputs.typecheck_completed }}
+      test_exit: ${{ steps.summary.outputs.test_exit }}
+      test_digest: ${{ steps.summary.outputs.test_digest }}
+      test_started: ${{ steps.summary.outputs.test_started }}
+      test_completed: ${{ steps.summary.outputs.test_completed }}
+      build_exit: ${{ steps.summary.outputs.build_exit }}
+      build_digest: ${{ steps.summary.outputs.build_digest }}
+      build_started: ${{ steps.summary.outputs.build_started }}
+      build_completed: ${{ steps.summary.outputs.build_completed }}
+
+    steps:
+      - name: Enforce canonical repository
+        env:
+          REQUESTED_REPOSITORY: ${{ inputs.repository }}
+        run: |
+          test "$REQUESTED_REPOSITORY" = "atlasenterprisesuite/atlasenterprisesuite" || {
+            echo "::error::repository_not_allowed"
+            exit 1
+          }
+
+      - name: Checkout requested target
+        id: target_checkout
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.requested_ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve immutable target SHA
+        if: steps.target_checkout.outcome == 'success'
+        id: target
+        run: |
+          RESOLVED_SHA="$(git rev-parse HEAD)"
+          test "$RESOLVED_SHA" = "$(git rev-parse --verify HEAD)"
+          test "${#RESOLVED_SHA}" = "40"
+          echo "RESOLVED_SHA=$RESOLVED_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Runtime
+        if: steps.target_checkout.outcome == 'success'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.target_checkout.outcome == 'success'
+        id: install
+        run: |
+          set +e
+          started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          npm ci 2>&1 | tee /tmp/atlas-ci-install.log
+          exit_code="${PIPESTATUS[0]}"
+          completed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          output_digest="$(sha256sum /tmp/atlas-ci-install.log | awk '{print $1}')"
+          {
+            echo "exit_code=$exit_code"
+            echo "output_digest=$output_digest"
+            echo "started_at=$started_at"
+            echo "completed_at=$completed_at"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Typecheck
+        if: steps.target_checkout.outcome == 'success'
+        id: typecheck
+        run: |
+          set +e
+          started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          npm run typecheck 2>&1 | tee /tmp/atlas-ci-typecheck.log
+          exit_code="${PIPESTATUS[0]}"
+          completed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          output_digest="$(sha256sum /tmp/atlas-ci-typecheck.log | awk '{print $1}')"
+          {
+            echo "exit_code=$exit_code"
+            echo "output_digest=$output_digest"
+            echo "started_at=$started_at"
+            echo "completed_at=$completed_at"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Tests
+        if: steps.target_checkout.outcome == 'success'
+        id: tests
+        run: |
+          set +e
+          started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          npm test 2>&1 | tee /tmp/atlas-ci-test.log
+          exit_code="${PIPESTATUS[0]}"
+          completed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          output_digest="$(sha256sum /tmp/atlas-ci-test.log | awk '{print $1}')"
+          {
+            echo "exit_code=$exit_code"
+            echo "output_digest=$output_digest"
+            echo "started_at=$started_at"
+            echo "completed_at=$completed_at"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Build
+        if: steps.target_checkout.outcome == 'success'
+        id: build
+        run: |
+          set +e
+          started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          npm run build 2>&1 | tee /tmp/atlas-ci-build.log
+          exit_code="${PIPESTATUS[0]}"
+          completed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          output_digest="$(sha256sum /tmp/atlas-ci-build.log | awk '{print $1}')"
+          {
+            echo "exit_code=$exit_code"
+            echo "output_digest=$output_digest"
+            echo "started_at=$started_at"
+            echo "completed_at=$completed_at"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Summarize bounded verification evidence
+        if: always()
+        id: summary
+        env:
+          RESOLVED_SHA: ${{ steps.target.outputs.RESOLVED_SHA }}
+          TARGET_RESOLUTION_FAILED: ${{ steps.target_checkout.outcome != 'success' }}
+          INSTALL_EXIT: ${{ steps.install.outputs.exit_code }}
+          INSTALL_DIGEST: ${{ steps.install.outputs.output_digest }}
+          INSTALL_STARTED: ${{ steps.install.outputs.started_at }}
+          INSTALL_COMPLETED: ${{ steps.install.outputs.completed_at }}
+          TYPECHECK_EXIT: ${{ steps.typecheck.outputs.exit_code }}
+          TYPECHECK_DIGEST: ${{ steps.typecheck.outputs.output_digest }}
+          TYPECHECK_STARTED: ${{ steps.typecheck.outputs.started_at }}
+          TYPECHECK_COMPLETED: ${{ steps.typecheck.outputs.completed_at }}
+          TEST_EXIT: ${{ steps.tests.outputs.exit_code }}
+          TEST_DIGEST: ${{ steps.tests.outputs.output_digest }}
+          TEST_STARTED: ${{ steps.tests.outputs.started_at }}
+          TEST_COMPLETED: ${{ steps.tests.outputs.completed_at }}
+          BUILD_EXIT: ${{ steps.build.outputs.exit_code }}
+          BUILD_DIGEST: ${{ steps.build.outputs.output_digest }}
+          BUILD_STARTED: ${{ steps.build.outputs.started_at }}
+          BUILD_COMPLETED: ${{ steps.build.outputs.completed_at }}
+        run: |
+          {
+            echo "resolved_sha=$RESOLVED_SHA"
+            echo "target_resolution_failed=$TARGET_RESOLUTION_FAILED"
+            echo "install_exit=${INSTALL_EXIT:-255}"
+            echo "install_digest=$INSTALL_DIGEST"
+            echo "install_started=$INSTALL_STARTED"
+            echo "install_completed=$INSTALL_COMPLETED"
+            echo "typecheck_exit=${TYPECHECK_EXIT:-255}"
+            echo "typecheck_digest=$TYPECHECK_DIGEST"
+            echo "typecheck_started=$TYPECHECK_STARTED"
+            echo "typecheck_completed=$TYPECHECK_COMPLETED"
+            echo "test_exit=${TEST_EXIT:-255}"
+            echo "test_digest=$TEST_DIGEST"
+            echo "test_started=$TEST_STARTED"
+            echo "test_completed=$TEST_COMPLETED"
+            echo "build_exit=${BUILD_EXIT:-255}"
+            echo "build_digest=$BUILD_DIGEST"
+            echo "build_started=$BUILD_STARTED"
+            echo "build_completed=$BUILD_COMPLETED"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Enforce green gate
+        if: always()
+        env:
+          TARGET_RESOLUTION_FAILED: ${{ steps.summary.outputs.target_resolution_failed }}
+          INSTALL_EXIT: ${{ steps.summary.outputs.install_exit }}
+          TYPECHECK_EXIT: ${{ steps.summary.outputs.typecheck_exit }}
+          TEST_EXIT: ${{ steps.summary.outputs.test_exit }}
+          BUILD_EXIT: ${{ steps.summary.outputs.build_exit }}
+        run: |
+          test "$TARGET_RESOLUTION_FAILED" != "true"
+          test "$INSTALL_EXIT" = "0"
+          test "$TYPECHECK_EXIT" = "0"
+          test "$TEST_EXIT" = "0"
+          test "$BUILD_EXIT" = "0"
+
+  report:
+    name: report-sovereign-ci
+    needs: verify
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: none
+      id-token: write
+    steps:
+      - name: Build bounded report
+        env:
+          WORKFLOW_ID: ${{ inputs.workflow_id }}
+          TASK_ID: ${{ inputs.task_id }}
+          REPOSITORY: ${{ inputs.repository }}
+          REQUESTED_REF: ${{ inputs.requested_ref }}
+          DISPATCH_NONCE: ${{ inputs.dispatch_nonce }}
+          RESOLVED_SHA: ${{ needs.verify.outputs.resolved_sha }}
+          TARGET_RESOLUTION_FAILED: ${{ needs.verify.outputs.target_resolution_failed }}
+          INSTALL_EXIT: ${{ needs.verify.outputs.install_exit }}
+          INSTALL_DIGEST: ${{ needs.verify.outputs.install_digest }}
+          INSTALL_STARTED: ${{ needs.verify.outputs.install_started }}
+          INSTALL_COMPLETED: ${{ needs.verify.outputs.install_completed }}
+          TYPECHECK_EXIT: ${{ needs.verify.outputs.typecheck_exit }}
+          TYPECHECK_DIGEST: ${{ needs.verify.outputs.typecheck_digest }}
+          TYPECHECK_STARTED: ${{ needs.verify.outputs.typecheck_started }}
+          TYPECHECK_COMPLETED: ${{ needs.verify.outputs.typecheck_completed }}
+          TEST_EXIT: ${{ needs.verify.outputs.test_exit }}
+          TEST_DIGEST: ${{ needs.verify.outputs.test_digest }}
+          TEST_STARTED: ${{ needs.verify.outputs.test_started }}
+          TEST_COMPLETED: ${{ needs.verify.outputs.test_completed }}
+          BUILD_EXIT: ${{ needs.verify.outputs.build_exit }}
+          BUILD_DIGEST: ${{ needs.verify.outputs.build_digest }}
+          BUILD_STARTED: ${{ needs.verify.outputs.build_started }}
+          BUILD_COMPLETED: ${{ needs.verify.outputs.build_completed }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const row = (command_identifier, exit, output_digest, started_at, completed_at) => ({
+            command_identifier,
+            exit_code: Number.isInteger(Number(exit)) ? Number(exit) : 255,
+            output_digest: /^[a-f0-9]{64}$/.test(output_digest || '') ? output_digest : null,
+            started_at: started_at || null,
+            completed_at: completed_at || null
+          });
+          const payload = {
+            workflow_id: process.env.WORKFLOW_ID,
+            task_id: process.env.TASK_ID,
+            repository: process.env.REPOSITORY,
+            requested_ref: process.env.REQUESTED_REF,
+            dispatch_nonce: process.env.DISPATCH_NONCE,
+            resolved_sha: process.env.RESOLVED_SHA || null,
+            target_resolution_failed: process.env.TARGET_RESOLUTION_FAILED === 'true',
+            results: [
+              row('install_dependencies', process.env.INSTALL_EXIT, process.env.INSTALL_DIGEST, process.env.INSTALL_STARTED, process.env.INSTALL_COMPLETED),
+              row('typecheck', process.env.TYPECHECK_EXIT, process.env.TYPECHECK_DIGEST, process.env.TYPECHECK_STARTED, process.env.TYPECHECK_COMPLETED),
+              row('test', process.env.TEST_EXIT, process.env.TEST_DIGEST, process.env.TEST_STARTED, process.env.TEST_COMPLETED),
+              row('build', process.env.BUILD_EXIT, process.env.BUILD_DIGEST, process.env.BUILD_STARTED, process.env.BUILD_COMPLETED)
+            ]
+          };
+          fs.writeFileSync('/tmp/atlas-sovereign-ci-report.json', JSON.stringify(payload));
+          NODE
+
+      - name: Mint GitHub OIDC report token
+        id: oidc
+        run: |
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=atlas-sovereign-ci")"
+          token="$(node -e "const d=JSON.parse(process.argv[1]); if(!d.value) process.exit(2); process.stdout.write(d.value)" "$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Report to ATLAS execution evidence
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          REPORT_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-sovereign-ci-report
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "$REPORT_URL" \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/atlas-sovereign-ci-report.json
