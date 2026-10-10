@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 const items = [
   { to: '/work', label: 'Overview', end: true },
   { to: '/work/os', label: 'Work OS' },
+  { to: '/work/board', label: 'Board' },
   { to: '/work/new', label: 'New work' },
   { to: '/work/active', label: 'Active' },
   { to: '/work/approvals', label: 'Approvals' },
