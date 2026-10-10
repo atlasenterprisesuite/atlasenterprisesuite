@@ -36,3 +36,7 @@ verify_jwt = true
 [functions.atlas-crm-salesforce]
 verify_jwt = false
 
+
+# GitHub Actions OIDC reporter; verifies GitHub signature, audience, repository and exact workflow identity internally.
+[functions.atlas-sovereign-ci-report]
+verify_jwt = false
