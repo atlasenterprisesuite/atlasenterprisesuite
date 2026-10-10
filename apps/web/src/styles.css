@@ -228,3 +228,98 @@ body{background:radial-gradient(circle at 72% -8%,rgba(38,99,255,.2),transparent
     font-size:var(--atlas-font-size-sm);
   }
 }
+
+
+/* Persistent ATLAS navigation context */
+.atlas-context-bar{
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:6px 18px;
+  border-bottom:1px solid rgba(54,167,255,.16);
+  background:rgba(3,13,25,.74);
+  backdrop-filter:blur(14px);
+  position:sticky;
+  top:64px;
+  z-index:4;
+}
+.atlas-history-controls{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:0 0 auto;
+}
+.atlas-history-controls button,
+.atlas-breadcrumbs button{
+  border:1px solid rgba(92,180,244,.18);
+  background:rgba(7,28,47,.72);
+  color:#a9c6da;
+  border-radius:9px;
+  min-height:32px;
+  padding:6px 9px;
+  font:inherit;
+  font-size:var(--atlas-font-size-xs);
+  cursor:pointer;
+}
+.atlas-history-controls button:hover,
+.atlas-history-controls button:focus-visible,
+.atlas-breadcrumbs button:hover,
+.atlas-breadcrumbs button:focus-visible{
+  color:#ecfbff;
+  border-color:rgba(46,219,255,.48);
+  outline:none;
+  box-shadow:0 0 0 2px rgba(46,219,255,.09);
+}
+.atlas-breadcrumbs{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  overflow-x:auto;
+  white-space:nowrap;
+  scrollbar-width:thin;
+}
+.atlas-breadcrumb-item{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  color:#6f91a8;
+  font-size:var(--atlas-font-size-xs);
+}
+.atlas-breadcrumb-item [aria-current="page"]{
+  color:#dff6ff;
+  font-weight:750;
+  padding:0 4px;
+}
+.atlas-breadcrumb-separator{
+  color:#416279;
+}
+@media(max-width:1024px){
+  .atlas-context-bar{
+    top:calc(68px + env(safe-area-inset-top));
+    padding:6px 12px;
+  }
+}
+@media(max-width:650px){
+  .atlas-context-bar{
+    align-items:stretch;
+    flex-direction:column;
+    gap:6px;
+    padding:7px 10px;
+  }
+  .atlas-history-controls{
+    width:100%;
+  }
+  .atlas-history-controls button{
+    flex:1;
+  }
+  .atlas-breadcrumbs{
+    padding-bottom:2px;
+  }
+}
+@media(max-width:420px){
+  .atlas-history-controls button span{
+    display:none;
+  }
+}
