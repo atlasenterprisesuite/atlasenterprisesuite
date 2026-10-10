@@ -12,7 +12,7 @@ describe('ATLAS global production P0 hardening', () => {
   it('defines and serves a dedicated machine health contract without replacing Health OS', () => {
     const contract = JSON.parse(read(contractPath)) as {
       public_routes?: string[];
-      health_check?: { path?: string; expected_status?: string };
+      health_check?: { path?: string; expected_status?: string; scope?: string };
     };
     const workerEntry = read(workerEntryPath);
     const workerCore = read(workerCorePath);
@@ -21,7 +21,8 @@ describe('ATLAS global production P0 hardening', () => {
     expect(contract.public_routes).toContain('/health');
     expect(contract.health_check).toEqual({
       path: '/api/v1/health',
-      expected_status: 'healthy'
+      expected_status: 'healthy',
+      scope: 'worker_liveness'
     });
     expect(wrangler).toContain('"main": "worker/entry.ts"');
     expect(workerEntry).toContain("url.pathname === '/api/v1/health'");
