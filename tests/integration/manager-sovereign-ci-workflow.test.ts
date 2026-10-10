@@ -13,9 +13,19 @@ describe('ATLAS Sovereign CI GitHub runner', () => {
     expect(workflow.toLowerCase()).not.toContain('supabase functions deploy');
   });
 
-  it('uses least-privilege read plus OIDC report permissions', () => {
-    expect(workflow).toContain('contents: read');
-    expect(workflow).toContain('id-token: write');
+  it('keeps OIDC out of the job that executes target source code', () => {
+    const verifyStart = workflow.indexOf('  verify:');
+    const reportStart = workflow.indexOf('  report:');
+    expect(verifyStart).toBeGreaterThan(-1);
+    expect(reportStart).toBeGreaterThan(verifyStart);
+    const verifyBlock = workflow.slice(verifyStart, reportStart);
+    const reportBlock = workflow.slice(reportStart);
+    expect(verifyBlock).toContain('contents: read');
+    expect(verifyBlock).not.toContain('id-token: write');
+    expect(verifyBlock).not.toContain('ACTIONS_ID_TOKEN_REQUEST_TOKEN');
+    expect(reportBlock).toContain('id-token: write');
+    expect(reportBlock).toContain('contents: none');
+    expect(reportBlock).toContain('needs: verify');
     expect(workflow).not.toContain('contents: write');
   });
 
