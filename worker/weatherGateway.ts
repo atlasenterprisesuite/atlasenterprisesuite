@@ -50,8 +50,8 @@ function upstreamHeaders() {
   return { 'User-Agent': UA, Accept: 'application/json' };
 }
 
-async function upstreamJson(url: string): Promise<{ payload: unknown; expires: string | null }> {
-  const response = await fetch(url, { headers: upstreamHeaders(), redirect: 'follow' });
+async function upstreamJson(url: string, accept = 'application/json'): Promise<{ payload: unknown; expires: string | null }> {
+  const response = await fetch(url, { headers: { ...upstreamHeaders(), Accept: accept }, redirect: 'follow' });
   if (!response.ok) throw new Error(`provider_status_${response.status}`);
   return { payload: await response.json(), expires: response.headers.get('Expires') };
 }
@@ -103,7 +103,7 @@ async function alerts(request: Request, coords: { lat: string; lon: string }): P
   const key = new URL(request.url);
   key.search = new URLSearchParams(coords).toString();
   return cached(new Request(key.toString()), 180, async () => {
-    const { payload } = await upstreamJson(url.toString());
+    const { payload } = await upstreamJson(url.toString(), 'application/geo+json');
     return responseJson(payload, 200, 180);
   });
 }
@@ -117,16 +117,16 @@ async function observation(request: Request, coords: { lat: string; lon: string 
   const key = new URL(request.url);
   key.search = new URLSearchParams(coords).toString();
   return cached(new Request(key.toString()), 300, async () => {
-    const location = await upstreamJson(`${NWS}/points/${coords.lat},${coords.lon}`);
+    const location = await upstreamJson(`${NWS}/points/${coords.lat},${coords.lon}`, 'application/geo+json');
     const source = getRecord(location.payload);
     const stationsLink = getRecord(source.properties).observationStations;
     if (typeof stationsLink !== 'string' || !stationsLink.startsWith(`${NWS}/gridpoints/`)) return responseJson(null, 200, 300);
-    const stations = getRecord((await upstreamJson(stationsLink)).payload).features;
+    const stations = getRecord((await upstreamJson(stationsLink, 'application/geo+json')).payload).features;
     if (!Array.isArray(stations) || !stations.length) return responseJson(null, 200, 300);
     const station = getRecord(getRecord(stations[0]).properties).stationIdentifier;
     if (typeof station !== 'string' || !/^[A-Z0-9]{3,6}$/.test(station)) return responseJson(null, 200, 300);
     const sourceUrl = `${NWS}/stations/${station}/observations/latest`;
-    const latest = await upstreamJson(sourceUrl);
+    const latest = await upstreamJson(sourceUrl, 'application/geo+json');
     return responseJson({ station, properties: getRecord(getRecord(latest.payload).properties), sourceUrl }, 200, 300);
   });
 }
