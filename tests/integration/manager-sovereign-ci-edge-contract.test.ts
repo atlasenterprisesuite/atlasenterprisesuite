@@ -20,7 +20,7 @@ describe('ATLAS Manager Sovereign CI Edge contract', () => {
   it('dispatches only the allowlisted canonical workflow and never mutates source or deploys', () => {
     expect(ciSource).toContain('atlasenterprisesuite/atlasenterprisesuite');
     expect(ciSource).toContain('atlas-sovereign-ci.yml');
-    expect(ciSource).toContain('ATLAS_GITHUB_TOKEN');
+    expect(edgeSource).toContain('ATLAS_GITHUB_TOKEN');
     expect(ciSource).toContain('/actions/workflows/');
     const executableBoundary = [ciSource, reportSource].join('\n').toLowerCase();
     expect(executableBoundary).not.toContain('git push');
