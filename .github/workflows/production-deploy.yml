@@ -94,8 +94,14 @@ jobs:
       - name: Verify complete repository
         run: npm run verify:all
 
+      - name: Inspect Supabase source-only replay prerequisites (diagnostic)
+        run: |
+          node scripts/inspect-supabase-migration-source.mjs > "$RUNNER_TEMP/atlas-migration-source-audit.json"
+          node -e "const r=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/atlas-migration-source-audit.json','utf8'));console.log('Static migration source preflight:',r.status);if(r.status === 'SOURCE_INCOMPLETE')console.log('::warning::Supabase migration source-only replay appears incomplete; this is NOT the live preview SQL error.')"
+
       - name: Record Supabase-first readiness boundary
         run: |
+          MIGRATION_STATUS=$(node -e "const fs=require('node:fs');process.stdout.write(JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/atlas-migration-source-audit.json','utf8')).status)")
           {
             echo "## ATLAS Supabase-first readiness gate"
             echo "- Canonical source validation: passed"
@@ -103,7 +109,8 @@ jobs:
             echo "- Typecheck: passed"
             echo "- Unit tests: passed"
             echo "- Integration tests: passed"
-            echo "- Supabase source/migration verification: passed"
+            echo "- Supabase source-only replay preflight: ${MIGRATION_STATUS} (diagnostic only; SQL replay not exercised)"
+            echo "- Supabase preview branch replay/RLS: NOT VERIFIED; requires separate authenticated evidence"
             echo "- Creator Native Python tests: passed"
             echo "- Vite production build: passed"
             echo "- Supabase ATLAS Manager: required control plane; runtime verified separately"
