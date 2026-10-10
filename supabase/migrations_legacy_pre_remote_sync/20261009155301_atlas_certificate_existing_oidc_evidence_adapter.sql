@@ -1,13 +1,10 @@
--- Capture only signed GitHub Actions OIDC certificate-monitor evidence emitted by
--- the already deployed atlas-infra-evidence endpoint.
--- The receiver verifies GitHub's JWT signature and an exact main-branch workflow_ref.
--- A separate Edge Function is not required; all existing infrastructure evidence
--- entrypoints and schemas remain unchanged.
-create or replace function atlas_private.capture_certificate_from_infra_evidence()
-returns trigger
-language plpgsql
-set search_path = ''
-as $function$
+-- Derived from the applied PostgreSQL function in atlas-core on 2026-10-09.
+-- Attach only GitHub-OIDC-verified Cloudflare workflow evidence to certificates.
+CREATE OR REPLACE FUNCTION atlas_private.capture_certificate_from_infra_evidence()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
 declare
   v_org_id uuid;
   v_target_id uuid;
@@ -104,13 +101,12 @@ begin
   -- Duplicate GitHub run references fail with a UNIQUE constraint; no replay overwrite.
   return new;
 end;
-$function$;
+$function$
 
 revoke all on function atlas_private.capture_certificate_from_infra_evidence()
-  from public,anon,authenticated;
-
+  from public, anon, authenticated;
 drop trigger if exists atlas_certificate_from_infra_evidence
   on public.atlas_runtime_verification_runs;
 create trigger atlas_certificate_from_infra_evidence
-after insert on public.atlas_runtime_verification_runs
-for each row execute function atlas_private.capture_certificate_from_infra_evidence();
+  after insert on public.atlas_runtime_verification_runs
+  for each row execute function atlas_private.capture_certificate_from_infra_evidence();

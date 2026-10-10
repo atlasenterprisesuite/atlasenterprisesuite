@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "source": "supabase_migrations.schema_migrations",
   "project_ref": "ggmanzcgtlrvqfoccgsh",
   "synchronized_at": "2026-10-10",
@@ -1600,6 +1600,718 @@
       "version": "20261009160135",
       "name": "atlas_certificate_evidence_fk_index",
       "file": "20261009160135_atlas_certificate_evidence_fk_index.sql"
+    }
+  ],
+  "legacy_path_mappings": [
+    {
+      "from": "supabase/migrations/20260906034500_google_workspace_integration.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260906034500_google_workspace_integration.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260907_accounting_ai_insights.sql",
+      "to": "supabase/migrations/20260908021356_accounting_ai_insights.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260910_harden_public_infra_verification.sql",
+      "to": "supabase/migrations/20260910043608_harden_public_infra_verification.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260911192327_harden_accounting_period_close.sql",
+      "to": "supabase/migrations/20260911192327_harden_accounting_period_close.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260911_hospitality_room_access.sql",
+      "to": "supabase/migrations/20260912014255_hospitality_room_access.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260912061602_accounting_budgeting.sql",
+      "to": "supabase/migrations/20260912061602_accounting_budgeting.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260912062021_harden_accounting_budget_delete.sql",
+      "to": "supabase/migrations/20260912062021_harden_accounting_budget_delete.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260912062356_harden_accounting_budget_lifecycle.sql",
+      "to": "supabase/migrations/20260912062356_harden_accounting_budget_lifecycle.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260912062814_accounting_multicurrency.sql",
+      "to": "supabase/migrations/20260912062814_accounting_multicurrency.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260912065841_accounting_intercompany_consolidation.sql",
+      "to": "supabase/migrations/20260912065841_accounting_intercompany_consolidation.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260912070014_harden_accounting_consolidation_governance.sql",
+      "to": "supabase/migrations/20260912070014_harden_accounting_consolidation_governance.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260912070120_accounting_consolidation_workspace.sql",
+      "to": "supabase/migrations/20260912070120_accounting_consolidation_workspace.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260912_atlas_work_runtime.sql",
+      "to": "supabase/migrations/20260918184010_atlas_work_runtime.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260912_creator_director.sql",
+      "to": "supabase/migrations/20260915091127_creator_director.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260912_hospitality_rls_initplan_hardening.sql",
+      "to": "supabase/migrations/20260912014547_hospitality_rls_initplan_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260912_manager_readiness_execution.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260912_manager_readiness_execution.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260912_ride_profile_photo_atomicity.sql",
+      "to": "supabase/migrations/20260920072431_ride_profile_photo_atomicity.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260912_ride_profile_photo_compliance.sql",
+      "to": "supabase/migrations/20260920072427_ride_profile_photo_compliance.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260912_ride_profile_photo_compliance_hardening.sql",
+      "to": "supabase/migrations/20260920072429_ride_profile_photo_compliance_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260912_universal_execution_engine.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260912_universal_execution_engine.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260913_harden_atlas_bootstrap_owner_aal2.sql",
+      "to": "supabase/migrations/20260914001959_harden_atlas_bootstrap_owner_aal2.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260914004900_optimize_auth_rls_initplan_v1.sql",
+      "to": "supabase/migrations/20260914005402_optimize_auth_rls_initplan_v1.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260914170000_atlas_crm_hubspot_integration.sql",
+      "to": "supabase/migrations/20260918190544_atlas_crm_hubspot_integration.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260914_private_oracle.sql",
+      "to": "supabase/migrations/20260924162513_private_oracle.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260915043000_creator_content_intelligence.sql",
+      "to": "supabase/migrations/20260915090932_creator_content_intelligence.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260915094600_creator_director_hardening.sql",
+      "to": "supabase/migrations/20260915095233_creator_director_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260915124500_insurance_verification.sql",
+      "to": "supabase/migrations/20260915210532_insurance_verification.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260915164724_allow_cloudflare_edge_challenge_verification_status.sql",
+      "to": "supabase/migrations/20260915164724_allow_cloudflare_edge_challenge_verification_status.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260915233000_health_jaque_mate_sentinel.sql",
+      "to": "supabase/migrations/20260916044714_health_jaque_mate_sentinel.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260916005000_health_jaque_mate_sentinel_hardening.sql",
+      "to": "supabase/migrations/20260916045900_health_jaque_mate_sentinel_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260916150000_atlas_network_core.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260916150000_atlas_network_core.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260916150500_atlas_network_governance.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260916150500_atlas_network_governance.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260916232000_atlas_orchestrator_persistence.sql",
+      "to": "supabase/migrations/20260918073823_atlas_orchestrator_persistence.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260916_hospitality_add_onity_provider.sql",
+      "to": "supabase/migrations/20260916184257_hospitality_add_onity_provider.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918031500_advisory_office_core.sql",
+      "to": "supabase/migrations/20260918031936_advisory_office_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918033500_advisory_firm_scope_rls.sql",
+      "to": "supabase/migrations/20260918032931_advisory_firm_scope_rls.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918091500_atlas_orchestrator_runtime_rpc.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260918091500_atlas_orchestrator_runtime_rpc.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260918113000_atlas_commerce_core.sql",
+      "to": "supabase/migrations/20260918134123_atlas_commerce_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918114500_atlas_commerce_order_commit.sql",
+      "to": "supabase/migrations/20260918134130_atlas_commerce_order_commit.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918120000_atlas_commerce_delivery_state.sql",
+      "to": "supabase/migrations/20260918134133_atlas_commerce_delivery_state.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918141000_creator_creative_plans.sql",
+      "to": "supabase/migrations/20260918180505_creator_creative_plans.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918153000_creator_web_launch_blueprints.sql",
+      "to": "supabase/migrations/20260918190551_creator_web_launch_blueprints.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918155000_atlas_insurance_otp_vault_secret.sql",
+      "to": "supabase/migrations/20260918155451_atlas_insurance_otp_vault_secret.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918191500_crm_integration_policy_consolidation.sql",
+      "to": "supabase/migrations/20260918191213_crm_integration_policy_consolidation.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918193000_crm_secure_oauth_config.sql",
+      "to": "supabase/migrations/20260918192936_crm_secure_oauth_config.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918210000_atlas_local_network_access.sql",
+      "to": "supabase/migrations/20260918211001_atlas_local_network_access.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918213000_atlas_local_control_plane.sql",
+      "to": "supabase/migrations/20260918231705_atlas_local_control_plane.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918233500_health_cure_candidate_registry.sql",
+      "to": "supabase/migrations/20260918234506_health_cure_candidate_registry.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918234500_atlas_local_agent_mtls_realtime.sql",
+      "to": "supabase/migrations/20260919000247_atlas_local_agent_mtls_realtime.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918235500_health_jaque_mate_live_research.sql",
+      "to": "supabase/migrations/20260919000707_health_jaque_mate_live_research.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260918_creator_teleprompter_recordings.sql",
+      "to": "supabase/migrations/20260918181721_creator_teleprompter_recordings.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919015000_crm_hubspot_resilience.sql",
+      "to": "supabase/migrations/20260919065044_crm_hubspot_resilience.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919022000_atlas_local_ai_runtime_bootstrap.sql",
+      "to": "supabase/migrations/20260919021634_atlas_local_ai_runtime_bootstrap.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919033500_atlas_local_ai_offline_state.sql",
+      "to": "supabase/migrations/20260919035705_atlas_local_ai_offline_state.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919034000_atlas_render_free_local_ai.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260919034000_atlas_render_free_local_ai.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260919034500_atlas_render_existing_identity.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260919034500_atlas_render_existing_identity.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260919043000_atlas_social_command_center.sql",
+      "to": "supabase/migrations/20260919041653_atlas_social_command_center.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919053622_harden_atlas_fin_import_staging.sql",
+      "to": "supabase/migrations/20260919053622_harden_atlas_fin_import_staging.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260919053745_explicitly_deny_browser_atlas_fin_import_staging.sql",
+      "to": "supabase/migrations/20260919053745_explicitly_deny_browser_atlas_fin_import_staging.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20260919061000_atlas_browser_operator_payload.sql",
+      "to": "supabase/migrations/20260919061418_atlas_browser_operator_payload.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919213000_atlas_frontier_vertical_slice.sql",
+      "to": "supabase/migrations/20260919214201_atlas_frontier_vertical_slice.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919224500_frontier_awakening_campaign.sql",
+      "to": "supabase/migrations/20260919225601_frontier_awakening_campaign.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919232000_frontier_persistent_world.sql",
+      "to": "supabase/migrations/20260919232620_frontier_persistent_world.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260919232800_frontier_persistent_world_hardening.sql",
+      "to": "supabase/migrations/20260919232759_frontier_persistent_world_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920024000_frontier_living_worlds.sql",
+      "to": "supabase/migrations/20260920064109_frontier_living_worlds.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920033000_frontier_campaign_6_10.sql",
+      "to": "supabase/migrations/20260920072347_frontier_campaign_6_10.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920041000_frontier_survival_events.sql",
+      "to": "supabase/migrations/20260920073009_frontier_survival_events.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920044500_frontier_world_codex.sql",
+      "to": "supabase/migrations/20260920073539_frontier_world_codex.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920050000_atlas_personal_voice_activation.sql",
+      "to": "supabase/migrations/20260920133713_atlas_personal_voice_activation.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920080500_frontier_biome_canon_alignment.sql",
+      "to": "supabase/migrations/20260920080208_frontier_biome_canon_alignment.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920083000_frontier_physical_biomes.sql",
+      "to": "supabase/migrations/20260920082059_frontier_physical_biomes.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920152000_atlas_voice_provider_native_verification.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260920152000_atlas_voice_provider_native_verification.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260920154000_atlas_github_webhook_delivery_dedupe.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260920154000_atlas_github_webhook_delivery_dedupe.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260920160000_atlas_ai_emergency_fallback_budget.sql",
+      "to": "supabase/migrations/20260920161055_atlas_ai_emergency_fallback_budget.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920160000_atlas_github_app_manifest_credentials.sql",
+      "to": "supabase/migrations/20260920160501_atlas_github_app_manifest_credentials.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920190000_procure_to_pay_inventory_margin.sql",
+      "to": "supabase/migrations/20260921010117_procure_to_pay_inventory_margin.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920190500_inventory_product_quantity_sync.sql",
+      "to": "supabase/migrations/20260921010522_inventory_product_quantity_sync.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920191500_procure_to_pay_posting_guard_fix.sql",
+      "to": "supabase/migrations/20260921011233_procure_to_pay_posting_guard_fix.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920192000_finalize_purchase_cost_before_sale.sql",
+      "to": "supabase/migrations/20260921011623_finalize_purchase_cost_before_sale.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920192500_p2p_integrity_guards.sql",
+      "to": "supabase/migrations/20260921011809_p2p_integrity_guards.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920193000_invoice_line_issue_guard_fix.sql",
+      "to": "supabase/migrations/20260921011835_invoice_line_issue_guard_fix.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920193500_p2p_least_privilege.sql",
+      "to": "supabase/migrations/20260921011913_p2p_least_privilege.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920214500_vendor_w9_intake.sql",
+      "to": "supabase/migrations/20260921014904_vendor_w9_intake.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260920223000_business_launch_360_commercial.sql",
+      "to": "supabase/migrations/20260921022903_business_launch_360_commercial.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260921082000_advisory_external_provider_registry.sql",
+      "to": "supabase/migrations/20260921124125_advisory_external_provider_registry.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260921134500_advisory_provider_authorizations.sql",
+      "to": "supabase/migrations/20260921174632_advisory_provider_authorizations.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260921201000_tax_productive_core.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260921201000_tax_productive_core.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260922033000_atlas_memory_core.sql",
+      "to": "supabase/migrations/20260922033917_atlas_memory_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260923185500_optimize_auth_rls_initplans.sql",
+      "to": "supabase/migrations/20260923185553_optimize_auth_rls_initplans.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260923201500_atlas_people_core.sql",
+      "to": "supabase/migrations/20261004183250_atlas_people_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260923203000_atlas_payroll_core.sql",
+      "to": "supabase/migrations/20261004183528_atlas_payroll_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260923235300_release_deployment_control_backfill.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260923235300_release_deployment_control_backfill.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260923235400_release_deployment_control_completion_gate.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260923235400_release_deployment_control_completion_gate.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260923235500_atlas_gps4d_core.sql",
+      "to": "supabase/migrations/20260924001019_atlas_gps4d_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260924001200_harden_atlas_gps4d_internal_tables.sql",
+      "to": "supabase/migrations/20260924001101_harden_atlas_gps4d_internal_tables.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260924005000_atlas_library_ingestion.sql",
+      "to": "supabase/migrations/20260924005706_atlas_library_ingestion.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260924132000_tax_client_intake_profile.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260924132000_tax_client_intake_profile.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260924205000_atlas_knowledge_audit_hardening.sql",
+      "to": "supabase/migrations/20260924204337_atlas_knowledge_audit_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260924211000_atlas_knowledge_advisor_cleanup.sql",
+      "to": "supabase/migrations/20260924204443_atlas_knowledge_advisor_cleanup.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260925031000_atlas_chat_core.sql",
+      "to": "supabase/migrations/20260925095246_atlas_chat_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260925072000_atlas_master_evidence_registry.sql",
+      "to": "supabase/migrations/20260925071244_atlas_master_evidence_registry.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260925072500_atlas_master_evidence_registry_index_hardening.sql",
+      "to": "supabase/migrations/20260925071646_atlas_master_evidence_registry_index_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260925093000_atlas_chat_postgrest_runtime.sql",
+      "to": "supabase/migrations/20260925095507_atlas_chat_postgrest_runtime.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260925122500_atlas_mvno_permissions.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260925122500_atlas_mvno_permissions.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260925123500_extend_atlas_gps_indoor_provider.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260925123500_extend_atlas_gps_indoor_provider.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260925174500_atlas_wireless_owned_network_permissions.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260925174500_atlas_wireless_owned_network_permissions.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260925182000_atlas_wireless_network_control_plane.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260925182000_atlas_wireless_network_control_plane.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260926104500_atlas_wireless_physical_commissioning.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260926104500_atlas_wireless_physical_commissioning.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260926131500_harden_exposed_security_definer_functions.sql",
+      "to": "supabase/migrations/20260926125052_harden_exposed_security_definer_functions.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260926201000_atlas_communication_telephony.sql",
+      "to": "supabase/migrations/20260927211719_atlas_communication_telephony.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260926203500_atlas_communication_telephony_permissions.sql",
+      "to": "supabase/migrations/20260927211721_atlas_communication_telephony_permissions.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260926223800_atlas_orchestrator_rpc_runtime_grants.sql",
+      "to": "supabase/migrations/20260926223752_atlas_orchestrator_rpc_runtime_grants.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260926224000_fix_orchestrator_runtime_vault_auth.sql",
+      "to": "supabase/migrations/20260926223841_fix_orchestrator_runtime_vault_auth.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260927001500_atlas_gps_coverage_progress.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260927001500_atlas_gps_coverage_progress.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20260927120000_atlas_carrier_numbering.sql",
+      "to": "supabase/migrations/20260927155742_atlas_carrier_numbering.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260927125500_atlas_native_sovereign_consensus.sql",
+      "to": "supabase/migrations/20260927165333_atlas_native_sovereign_consensus.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260928015000_atlas_communication_carrier_hardening.sql",
+      "to": "supabase/migrations/20260928230758_atlas_communication_carrier_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260928202500_atlas_communication_carrier_hardening.sql",
+      "to": "supabase/migrations/20260928230758_atlas_communication_carrier_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20260929150000_atlas_business_analytics_core.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20260929150000_atlas_business_analytics_core.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20261001153000_atlas_carrier_number_truth_gate.sql",
+      "to": "supabase/migrations/20261003211725_atlas_carrier_number_truth_gate.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261001173000_atlas_pay_control_plane.sql",
+      "to": "supabase/migrations/20261001172715_atlas_pay_control_plane.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261001173100_atlas_pay_fk_index_hardening.sql",
+      "to": "supabase/migrations/20261001172914_atlas_pay_fk_index_hardening.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261002133000_integration_auth_kind_alignment.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20261002133000_integration_auth_kind_alignment.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20261002184539_atlas_urban_twin_core.sql",
+      "to": "supabase/migrations/20261002184539_atlas_urban_twin_core.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20261002184923_atlas_urban_twin_fk_index_hardening.sql",
+      "to": "supabase/migrations/20261002184923_atlas_urban_twin_fk_index_hardening.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20261002190313_atlas_urban_twin_governed_intake.sql",
+      "to": "supabase/migrations/20261002190313_atlas_urban_twin_governed_intake.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20261004002900_orchestrator_private_security_boundary.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20261004002900_orchestrator_private_security_boundary.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20261004143000_atlas_telephony_provider_state_clock.sql",
+      "to": "supabase/migrations/20261004134824_atlas_telephony_provider_state_clock.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261004190000_atlas_payroll_control_plane.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20261004190000_atlas_payroll_control_plane.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20261004191500_atlas_payroll_settlement_guard.sql",
+      "to": "supabase/migrations/20261004183630_atlas_payroll_settlement_guard.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261004193000_atlas_payroll_readiness_security.sql",
+      "to": "supabase/migrations/20261004183637_atlas_payroll_readiness_security.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261004194500_atlas_payroll_provider_column_security.sql",
+      "to": "supabase/migrations/20261004183643_atlas_payroll_provider_column_security.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261004195000_atlas_people_payroll_least_privilege.sql",
+      "to": "supabase/migrations/20261004192132_atlas_people_payroll_least_privilege.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261004203000_atlas_payroll_us_federal_tax_2026.sql",
+      "to": "supabase/migrations/20261004204812_atlas_payroll_us_federal_tax_2026.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261004204500_atlas_payroll_us_federal_determination_persistence.sql",
+      "to": "supabase/migrations/20261004204839_atlas_payroll_us_federal_determination_persistence.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261006190000_atlas_pay_accounts_center.sql",
+      "to": "supabase/migrations_legacy_pre_remote_sync/20261006190000_atlas_pay_accounts_center.sql",
+      "reason": "legacy-only"
+    },
+    {
+      "from": "supabase/migrations/20261007081500_atlas_care_core.sql",
+      "to": "supabase/migrations/20261007071557_atlas_care_core.sql",
+      "reason": "unique-production-name"
+    },
+    {
+      "from": "supabase/migrations/20261009150152_atlas_certificate_lifecycle_inventory.sql",
+      "to": "supabase/migrations/20261009150152_atlas_certificate_lifecycle_inventory.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20261009151205_atlas_certificate_evidence_immutability.sql",
+      "to": "supabase/migrations/20261009151205_atlas_certificate_evidence_immutability.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20261009155301_atlas_certificate_existing_oidc_evidence_adapter.sql",
+      "to": "supabase/migrations/20261009155301_atlas_certificate_existing_oidc_evidence_adapter.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20261009155535_atlas_certificate_evidence_ref_operator_fix.sql",
+      "to": "supabase/migrations/20261009155535_atlas_certificate_evidence_ref_operator_fix.sql",
+      "reason": "production-version"
+    },
+    {
+      "from": "supabase/migrations/20261009160135_atlas_certificate_evidence_fk_index.sql",
+      "to": "supabase/migrations/20261009160135_atlas_certificate_evidence_fk_index.sql",
+      "reason": "production-version"
     }
   ]
 }

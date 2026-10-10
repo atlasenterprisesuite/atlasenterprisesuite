@@ -1,13 +1,9 @@
--- Capture only signed GitHub Actions OIDC certificate-monitor evidence emitted by
--- the already deployed atlas-infra-evidence endpoint.
--- The receiver verifies GitHub's JWT signature and an exact main-branch workflow_ref.
--- A separate Edge Function is not required; all existing infrastructure evidence
--- entrypoints and schemas remain unchanged.
-create or replace function atlas_private.capture_certificate_from_infra_evidence()
-returns trigger
-language plpgsql
-set search_path = ''
-as $function$
+-- Correct string concatenation precedence in the signed certificate evidence adapter.
+CREATE OR REPLACE FUNCTION atlas_private.capture_certificate_from_infra_evidence()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
 declare
   v_org_id uuid;
   v_target_id uuid;
@@ -79,7 +75,7 @@ begin
   end if;
 
   v_evidence_ref := 'github-actions:atlasenterprisesuite/atlasenterprisesuite:'
-       || new.metadata->>'run_id' || ':' || new.metadata->>'run_attempt';
+       || (new.metadata->>'run_id') || ':' || (new.metadata->>'run_attempt');
 
   insert into public.atlas_certificate_observations (
     org_id,target_id,observed_at,observation_status,source,
@@ -104,13 +100,4 @@ begin
   -- Duplicate GitHub run references fail with a UNIQUE constraint; no replay overwrite.
   return new;
 end;
-$function$;
-
-revoke all on function atlas_private.capture_certificate_from_infra_evidence()
-  from public,anon,authenticated;
-
-drop trigger if exists atlas_certificate_from_infra_evidence
-  on public.atlas_runtime_verification_runs;
-create trigger atlas_certificate_from_infra_evidence
-after insert on public.atlas_runtime_verification_runs
-for each row execute function atlas_private.capture_certificate_from_infra_evidence();
+$function$
