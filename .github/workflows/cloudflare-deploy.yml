@@ -337,6 +337,7 @@ jobs:
           WORK_ROUTES_REACHABLE=true
           PRODUCTION_VERSION_ID=""
           PRODUCTION_VERSION_IDS=""
+          PRODUCTION_PROPAGATION_DEADLINE=$((SECONDS + 180))
           probe_route() {
             local label="$1"
             local path="$2"
@@ -344,6 +345,7 @@ jobs:
             local headers="/tmp/atlas-${output_name}.headers"
             local body="/tmp/atlas-${output_name}.body"
             local result status effective_url same_origin cf_mitigated title atlas_version_id atlas_version_tag
+            while :; do
             result="$(curl --retry 5 --retry-delay 3 --silent --show-error \
               --location --max-redirs 5 --proto '=https' --proto-redir '=https' \
               -A 'Mozilla/5.0 (ATLAS production verifier; GitHub Actions)' \
@@ -359,7 +361,15 @@ jobs:
             echo "$label status=$status effective_url=${effective_url:-none} same_origin=$same_origin cf_mitigated=${cf_mitigated:-none} title=${title:-none}"
             if [ "$status" = "200" ] && [ "$same_origin" = "true" ]; then
               test -n "$atlas_version_id" || { echo "::error::$label did not expose X-Atlas-Version-Id"; return 1; }
-              test "$atlas_version_tag" = "$GITHUB_SHA" || { echo "::error::$label served version tag ${atlas_version_tag:-none} instead of $GITHUB_SHA"; return 1; }
+              if [ "$atlas_version_tag" != "$GITHUB_SHA" ]; then
+                if [[ "$atlas_version_tag" =~ ^[0-9a-f]{40}$ ]] && [ "$SECONDS" -lt "$PRODUCTION_PROPAGATION_DEADLINE" ]; then
+                  echo "::notice::$label served previous SHA $atlas_version_tag; awaiting exact-SHA propagation to $GITHUB_SHA"
+                  sleep 5
+                  continue
+                fi
+                echo "::error::$label served version tag ${atlas_version_tag:-none} instead of $GITHUB_SHA after bounded propagation window"
+                return 1
+              fi
               if [ -z "$PRODUCTION_VERSION_ID" ]; then
                 PRODUCTION_VERSION_ID="$atlas_version_id"
               fi
@@ -383,6 +393,7 @@ jobs:
             fi
             echo "::error::$label must return HTTP 200, got ${status:-none}. This is not a classified Cloudflare challenge."
             return 1
+            done
           }
           probe_route "Public home" "/" "public_home_reachable"
           probe_route "ATLAS Identity" "/identity?app=%2Ffinance" "identity_route_reachable"
