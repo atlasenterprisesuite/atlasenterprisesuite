@@ -50,6 +50,22 @@ describe('ATLAS global production P0 hardening', () => {
     expect(verifier).toContain('process.exit(1)');
   });
 
+
+  it('labels Worker liveness without pretending to have checked backend readiness', () => {
+    const workerEntry = read(workerEntryPath);
+    const verifier = read(verifierPath);
+    const contract = JSON.parse(read(contractPath)) as { health_check?: { scope?: string } };
+
+    expect(contract.health_check?.scope).toBe('worker_liveness');
+    expect(workerEntry).toContain("scope: 'worker_liveness'");
+    expect(workerEntry).toContain("supabase_database: 'not_checked'");
+    expect(workerEntry).toContain("supabase_auth: 'not_checked'");
+    expect(verifier).toContain("healthPayload.scope === 'worker_liveness'");
+    expect(verifier).toContain("healthPayload.dependencies?.supabase_database === 'not_checked'");
+    expect(verifier).toContain('backend_readiness_verified: false');
+    expect(verifier).toContain("verification_scope: 'worker_liveness_and_edge_security_only'");
+  });
+
   it('runs the P0 verifier before the existing global verifier', () => {
     const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
     expect(pkg.scripts?.['verify:production:global']).toBe(
