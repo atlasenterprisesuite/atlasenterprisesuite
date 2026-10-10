@@ -12,7 +12,7 @@ const manifest = JSON.parse(
   readFileSync('data/ops/supabase-production-migration-history.json', 'utf8')
 ) as Manifest;
 const active = readdirSync('supabase/migrations').filter((file) => file.endsWith('.sql'));
-const versions = new Set(active.map((file) => file.match(/^(\\d+)_/)?.[1]).filter(Boolean));
+const versions = new Set(active.map((file) => file.match(/^(\d+)_/)?.[1]).filter(Boolean));
 
 describe('Supabase production migration history coverage', () => {
   it('keeps every remotely applied migration version represented in Git', () => {
