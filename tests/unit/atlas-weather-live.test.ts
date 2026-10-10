@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  describeWeather, fetchNwsAlerts, fetchWeatherForecast, formatTemperature, nextWeatherHour,
+  describeWeather, fetchNwsAlerts, fetchNwsObservation, fetchWeatherForecast, formatTemperature, nextWeatherHour,
   normalizeAlerts, normalizeForecast, nwsCoverageEligible, safeCoordinates, weatherKind
 } from '../../apps/web/src/modules/weather/weatherDomain';
 
@@ -81,6 +81,36 @@ describe('ATLAS official warning boundary', () => {
     vi.stubGlobal('fetch', mocked);
     await expect(fetchNwsAlerts(10.48, -66.90)).resolves.toEqual([]);
     expect(mocked).not.toHaveBeenCalled();
+  });
+
+  it('verifies actual station measurements and rejects stale readings', async () => {
+    const observedAt = new Date().toISOString();
+    const mocked = vi.fn(async (input: string) => {
+      const url = String(input);
+      if (url.includes('/points/')) return {
+        ok: true, json: async () => ({ properties: { observationStations: 'https://api.weather.gov/gridpoints/MLB/10,20/stations' } })
+      };
+      if (url.includes('/gridpoints/')) return {
+        ok: true, json: async () => ({ features: [{ properties: { stationIdentifier: 'KMCO' } }] })
+      };
+      return { ok: true, json: async () => ({ properties: {
+        timestamp: observedAt, textDescription: 'Partly Cloudy',
+        temperature: { value: 26 }, relativeHumidity: { value: 80 }, windSpeed: { value: 3 }
+      } }) };
+    });
+    vi.stubGlobal('fetch', mocked);
+    const observation = await fetchNwsObservation(28.55, -81.34);
+    expect(observation).toMatchObject({ station: 'KMCO', celsius: 26, humidity: 80 });
+    expect(mocked).toHaveBeenCalledTimes(3);
+
+    const stale = vi.fn(async (input: string) => {
+      const url = String(input);
+      if (url.includes('/points/')) return { ok: true, json: async () => ({ properties: { observationStations: 'https://api.weather.gov/gridpoints/MLB/10,20/stations' } }) };
+      if (url.includes('/gridpoints/')) return { ok: true, json: async () => ({ features: [{ properties: { stationIdentifier: 'KMCO' } }] }) };
+      return { ok: true, json: async () => ({ properties: { timestamp: '2020-01-01T00:00:00Z', temperature: { value: 26 } } }) };
+    });
+    vi.stubGlobal('fetch', stale);
+    await expect(fetchNwsObservation(28.55, -81.34)).resolves.toBeNull();
   });
 
   it('accepts only genuine unexpired NOAA alert references', () => {
