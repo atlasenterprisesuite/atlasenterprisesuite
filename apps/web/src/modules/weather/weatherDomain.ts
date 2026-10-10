@@ -31,6 +31,47 @@ export type WeatherForecast = {
   days: WeatherDay[];
 };
 
+export type WeatherObservation = {
+  station: string;
+  observedAt: string;
+  celsius: number;
+  humidity: number | null;
+  windMps: number | null;
+  description: string | null;
+  sourceUrl: string;
+};
+
+/** NWS station observations are real measurements, unlike MET model forecast grid data. */
+export async function fetchNwsObservation(lat: number, lon: number, signal?: AbortSignal): Promise<WeatherObservation | null> {
+  if (!nwsCoverageEligible(lat, lon)) return null;
+  const coords = safeCoordinates(lat, lon);
+  const base = 'https://api.weather.gov';
+  const points = await fetch(`${base}/points/${coords.lat},${coords.lon}`, { headers: { Accept: 'application/geo+json' }, signal });
+  if (!points.ok) throw new Error(`Estaciones NWS no disponibles (HTTP ${points.status}).`);
+  const observationStations = text(asRecord(asRecord(await points.json()).properties).observationStations);
+  if (!observationStations.startsWith(`${base}/gridpoints/`)) return null;
+  const stationsResponse = await fetch(observationStations, { headers: { Accept: 'application/geo+json' }, signal });
+  if (!stationsResponse.ok) throw new Error(`Estaciones NWS no disponibles (HTTP ${stationsResponse.status}).`);
+  const stations = asRecord(await stationsResponse.json()).features;
+  if (!Array.isArray(stations) || !stations.length) return null;
+  const station = text(asRecord(asRecord(stations[0]).properties).stationIdentifier);
+  if (!/^[A-Z0-9]{3,6}$/.test(station)) return null;
+  const sourceUrl = `${base}/stations/${station}/observations/latest`;
+  const latest = await fetch(sourceUrl, { headers: { Accept: 'application/geo+json' }, signal });
+  if (!latest.ok) throw new Error(`Observación NWS no disponible (HTTP ${latest.status}).`);
+  const props = asRecord(asRecord(await latest.json()).properties);
+  const observedAt = text(props.timestamp);
+  const celsius = finiteNumber(asRecord(props.temperature).value);
+  if (celsius === null || !Number.isFinite(Date.parse(observedAt)) || Date.now() - Date.parse(observedAt) > 3 * 60 * 60 * 1000 || Date.parse(observedAt) > Date.now() + 15 * 60 * 1000) return null;
+  return {
+    station, observedAt, celsius,
+    humidity: finiteNumber(asRecord(props.relativeHumidity).value),
+    windMps: finiteNumber(asRecord(props.windSpeed).value),
+    description: text(props.textDescription) || null,
+    sourceUrl
+  };
+}
+
 export type WeatherAlert = {
   id: string;
   title: string;
