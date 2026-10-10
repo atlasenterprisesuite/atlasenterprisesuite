@@ -16,7 +16,7 @@ const guidance: Record<ProteinLevel, { level: string; summary: string; next: str
   '1+': {
     level: 'Abnormal screening finding',
     summary: 'Protein 1+ is a semiquantitative dipstick finding. It can be temporary or persistent and, by itself, does not diagnose kidney disease.',
-    next: 'Confirm persistence and quantify albumin with UACR. Review serum creatinine/eGFR, blood pressure, diabetes status, hydration, infection symptoms and medications with a clinician.'
+    next: 'Confirm persistence and quantify albumin with a urine albumin-to-creatinine ratio (UACR). Review serum creatinine/eGFR, blood pressure, diabetes status, hydration, infection symptoms and medications with a clinician.'
   },
   '2+': {
     level: 'Elevated screening finding',
