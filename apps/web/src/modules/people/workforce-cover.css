@@ -1,0 +1,56 @@
+/* ATLAS Workforce Management: an isolated, responsive visual surface */
+.workforce-cover{--wc:#7bd8ff;position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;min-height:655px;border:1px solid rgba(110,192,250,.28);border-radius:26px;background:#030c17;color:#f4faff;box-shadow:0 24px 70px rgba(0,8,19,.34)}
+.workforce-cover-art{position:absolute;inset:0;z-index:-3;width:100%;height:100%;object-fit:cover;object-position:center 58%;pointer-events:none}
+.workforce-cover-vignette{position:absolute;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(90deg,rgba(2,8,17,.96),rgba(3,12,23,.83) 37%,rgba(2,14,29,.15) 72%),linear-gradient(0deg,rgba(2,9,19,.98) 0%,rgba(2,9,19,.04) 42%,rgba(2,9,19,.55) 100%)}
+.workforce-cover-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:30px clamp(22px,3vw,48px) 0}
+.workforce-cover-brand{display:inline-flex;align-items:center;gap:11px}
+.workforce-brand-mark{width:55px;height:55px;filter:drop-shadow(0 0 15px rgba(53,176,244,.25))}
+.workforce-brand-words{display:grid;line-height:1.05}
+.workforce-brand-words strong{font-size:26px;letter-spacing:.25em}
+.workforce-brand-words small{margin-top:5px;color:#8eb6d2;font-size:9px;letter-spacing:.3em}
+.workforce-reference-chip{max-width:220px;padding:8px 12px;border:1px solid rgba(95,193,247,.25);border-radius:12px;background:rgba(3,15,27,.76);color:#9cc9e3;font-size:11px;line-height:1.4;text-align:right}
+.workforce-cover-title-block{max-width:650px;padding:43px clamp(22px,4vw,60px) 50px}
+.workforce-cover-overline{margin:0 0 20px;color:#6cccf4;font-size:12px;letter-spacing:.3em}
+.workforce-cover-atlas{margin:0;font-size:clamp(58px,8vw,125px);font-weight:800;line-height:.98;letter-spacing:.045em;text-shadow:0 0 25px rgba(76,172,244,.22)}
+.workforce-cover h1{margin:8px 0 22px;font-size:clamp(29px,4.2vw,66px);line-height:1.02;letter-spacing:.045em;overflow-wrap:anywhere;text-shadow:0 0 24px rgba(38,158,251,.27)}
+.workforce-cover-tagline{margin:0;color:#bdeaff;font-size:clamp(13px,1.3vw,18px);font-weight:600;letter-spacing:.025em}
+.workforce-cover-rule{width:122px;height:3px;margin-top:20px;border-radius:8px;background:linear-gradient(90deg,#7de1ff,#1275bc,transparent)}
+.workforce-cover-panels{position:absolute;right:5%;top:21%;z-index:-1;display:grid;width:clamp(145px,23%,300px);gap:20px;opacity:.62;pointer-events:none}
+.workforce-hud{display:grid;gap:9px;padding:15px;border:1px solid rgba(70,167,231,.28);border-radius:15px;background:rgba(5,21,41,.52);box-shadow:0 0 34px rgba(13,77,125,.16);backdrop-filter:blur(3px)}
+.workforce-hud>span{color:#89cde9;font-size:10px;font-weight:700;letter-spacing:.1em}
+.workforce-hud-stats i{display:block;height:7px;border-radius:30px;background:linear-gradient(90deg,#1078b0 0%,#35a8e1 67%,transparent 67%)}
+.workforce-hud-stats i:nth-of-type(2){width:83%}
+.workforce-hud-stats i:nth-of-type(3){width:64%}
+.workforce-hud-bars{display:flex;height:60px;align-items:flex-end;gap:8px}
+.workforce-hud-bars i{flex:1;height:45%;border-radius:3px 3px 0 0;background:linear-gradient(0deg,#165082,#45bbec)}
+.workforce-hud-bars i:nth-child(2){height:76%}
+.workforce-hud-bars i:nth-child(3){height:60%}
+.workforce-hud-bars i:nth-child(4){height:97%}
+.workforce-hud-bars i:nth-child(5){height:52%}
+.workforce-hud-bars i:nth-child(6){height:81%}
+.workforce-cover-features{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;padding:0 16px 16px}
+.workforce-cover-feature{display:grid;justify-items:center;align-content:center;gap:8px;min-width:0;min-height:142px;padding:15px 9px;border:1px solid rgba(74,149,200,.25);border-radius:12px;background:linear-gradient(180deg,rgba(16,44,70,.73),rgba(4,19,35,.9));color:#e7f6ff;text-align:center;text-decoration:none;transition:background .2s ease,transform .2s ease,border-color .2s ease}
+a.workforce-cover-feature:hover,a.workforce-cover-feature:focus-visible{transform:translateY(-3px);border-color:#6ad9ff;background:linear-gradient(180deg,rgba(22,92,132,.83),rgba(6,30,54,.92))}
+.workforce-cover-feature:focus-visible,.workforce-journey a:focus-visible{outline:3px solid #73e1ff;outline-offset:3px}
+.workforce-cover-feature.is-planned{opacity:.72;cursor:not-allowed}
+.workforce-feature-icon{display:grid;width:43px;height:43px;place-items:center;border:1px solid rgba(88,182,235,.55);border-radius:50%;background:rgba(31,111,172,.2);color:#67d2ff;font-size:26px;line-height:1}
+.workforce-cover-feature strong{font-size:clamp(12px,1.2vw,16px);line-height:1.25}
+.workforce-cover-feature small{color:#90b9d0;font-size:10px;line-height:1.25}
+.workforce-journey{display:grid;gap:23px;margin:24px 0 35px;padding:24px;border:1px solid rgba(77,161,217,.22);border-radius:23px;background:linear-gradient(145deg,rgba(9,34,58,.72),rgba(4,16,31,.84))}
+.workforce-journey-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.workforce-journey-intro h2{margin:5px 0 12px;font-size:clamp(23px,2.6vw,34px)}
+.workforce-journey-intro p:last-child{max-width:700px;margin:0;color:#aec4d2;font-size:14px;line-height:1.55}
+.workforce-journey-actions{display:flex;flex-wrap:wrap;gap:10px}
+.workforce-journey-actions a{display:inline-flex;justify-content:center;gap:8px;align-items:center;min-height:44px;padding:10px 15px;border:1px solid #65beea;border-radius:11px;color:#f7fcff;text-decoration:none;font-size:13px;font-weight:700;white-space:nowrap}
+.workforce-action-primary{background:#126a9f}
+.workforce-action-secondary{background:#091e31}
+.workforce-journey-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:0;padding:0;list-style:none}
+.workforce-journey-steps li{display:flex;flex-direction:column;gap:6px;min-height:91px;padding:15px 12px;border:1px solid rgba(113,198,248,.18);border-radius:11px;background:rgba(17,46,74,.45)}
+.workforce-journey-steps li>span{color:#74d9ff;font-size:10px;font-weight:800;letter-spacing:.12em}
+.workforce-journey-steps strong{font-size:12px}
+.workforce-journey-steps small{color:#e5c18d;font-size:10px}
+.workforce-journey-steps .is-gated{border-color:rgba(235,183,92,.35);background:rgba(89,65,27,.25)}
+@media(max-width:1000px){.workforce-cover{min-height:620px}.workforce-cover-vignette{background:linear-gradient(90deg,rgba(2,8,17,.98),rgba(3,12,23,.77) 55%,rgba(2,14,29,.3)),linear-gradient(0deg,rgba(2,9,19,.95),transparent 70%)}.workforce-cover-panels{right:3%;top:20%;opacity:.36}.workforce-journey-intro{align-items:flex-start;flex-direction:column}.workforce-journey-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.workforce-cover{min-height:675px;border-radius:18px}.workforce-cover-art{object-position:40% center}.workforce-cover-header{padding:20px 17px 0}.workforce-brand-mark{width:39px;height:39px}.workforce-brand-words strong{font-size:19px}.workforce-brand-words small{font-size:7px}.workforce-reference-chip{max-width:127px;font-size:9px}.workforce-cover-title-block{padding:36px 20px 25px}.workforce-cover-atlas{font-size:clamp(56px,15vw,86px)}.workforce-cover h1{font-size:clamp(26px,7vw,42px)}.workforce-cover-overline{font-size:9px}.workforce-cover-panels{top:53%;right:4%;width:35%;opacity:.17}.workforce-cover-features{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}.workforce-cover-feature{min-height:106px;padding:11px}.workforce-feature-icon{width:36px;height:36px;font-size:21px}.workforce-cover-feature strong{font-size:13px}.workforce-journey{margin:18px 0 30px;padding:17px}.workforce-journey-actions{width:100%}.workforce-journey-actions a{flex:1}.workforce-journey-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:390px){.workforce-cover-title-block{padding-top:16px}.workforce-cover-features{gap:5px}.workforce-cover-feature{min-height:100px}.workforce-journey-steps{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.workforce-cover-feature{transition:none}a.workforce-cover-feature:hover{transform:none}}
