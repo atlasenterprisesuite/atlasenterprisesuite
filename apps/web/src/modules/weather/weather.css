@@ -49,6 +49,12 @@
 .atlas-weather-week article{display:grid;justify-items:center;gap:10px;padding:14px 6px;border:1px solid #30506a;border-radius:14px;background:#132e45}
 .atlas-weather-week article>span:first-child{font-size:.77rem;color:#c3d6e3;text-align:center;text-transform:capitalize}
 .atlas-weather-week small{color:#94aebf}
+.atlas-weather-observation>p{color:#b1cbda;line-height:1.6}
+.atlas-weather-measurement{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+.atlas-weather-measurement>div{display:grid;gap:7px;border-radius:13px;border:1px solid #326181;padding:12px 16px;background:#12334b;min-width:130px}
+.atlas-weather-measurement span{color:#9fbdd0;font-size:.74rem}
+.atlas-weather-measurement strong{font-size:1.15rem}
+.atlas-weather-measurement a{color:#9cddff}
 .atlas-weather-alerts>p{line-height:1.6;color:#b7d0df}
 .atlas-weather-alert{border:1px solid #b38b48;background:#49310b55;border-radius:14px;padding:16px;margin-top:12px;overflow-wrap:anywhere}
 .atlas-weather-alert span{font-size:.74rem;font-weight:700;text-transform:uppercase}
