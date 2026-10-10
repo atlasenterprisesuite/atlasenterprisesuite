@@ -1,10 +1,11 @@
 {
-  "version": 35,
+  "version": 36,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "health_check": {
     "path": "/api/v1/health",
-    "expected_status": "healthy"
+    "expected_status": "healthy",
+    "scope": "worker_liveness"
   },
   "required_security_headers": [
     "strict-transport-security",
