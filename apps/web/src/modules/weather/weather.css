@@ -17,6 +17,9 @@
 .atlas-weather-hero--rain,.atlas-weather-hero--storm{background:linear-gradient(115deg,#111e35,#283d57 60%,#3d6e88)}
 .atlas-weather-hero--snow{background:linear-gradient(120deg,#273f5a,#6086a0,#c2d7e8)}
 .atlas-weather-hero--fog,.atlas-weather-hero--unknown{background:linear-gradient(120deg,#1d3549,#50687d)}
+.atlas-weather-hero--night{background:linear-gradient(120deg,#081629,#183252 58%,#34476a)}
+.weather-scene--night .weather-scene-orb{background:#ecf3ff;box-shadow:0 0 60px #b2cbed80}
+.weather-scene--night .weather-scene-orb::after{content:'';position:absolute;inset:-5px -5px 5px 43px;border-radius:50%;background:#1b3455}
 .atlas-weather-hero-content{position:relative;z-index:2;padding:36px;max-width:650px;text-shadow:0 2px 14px #091c3480}
 .atlas-weather-kicker{font-weight:750;letter-spacing:.08em;text-transform:uppercase;font-size:.83rem}
 .atlas-weather-provenance{display:block;margin-top:18px;color:#eff9ff;font-weight:700;letter-spacing:.09em;font-size:.7rem}
