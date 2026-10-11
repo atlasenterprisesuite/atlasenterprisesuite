@@ -302,7 +302,7 @@ export function LocalDJMixPage() {
               {track.audioDNA && <>
                 <span>Audio DNA · Energy {track.audioDNA.energyPercent}% · {track.audioDNA.durationAnalyzedSeconds}s analyzed · BPM {track.audioDNA.bpm ?? 'unknown'}{track.audioDNA.bpmConfidence !== null ? ` (signal score ${track.audioDNA.bpmConfidence}/100)` : ''} · Key {track.audioDNA.camelot ?? 'unknown'}{track.audioDNA.keyConfidence !== null ? ` (signal score ${track.audioDNA.keyConfidence}/100)` : ''}</span>
                 <div className="atlas-dj-waveform" role="img" aria-label={`Relative RMS waveform preview of first ${track.audioDNA.durationAnalyzedSeconds} analyzed seconds for ${track.title}`}>
-                  {track.audioDNA.waveform.map((height, bar) => <span key={bar} aria-hidden="true" style={{ height: `${Math.max(1, Math.min(100, height * 100))}%` }} />)}
+                  {track.audioDNA.waveform.map((height, bar) => <span key={bar} aria-hidden="true" style={{ height: `${Math.max(0, Math.min(100, height * 100))}%` }} />)}
                 </div>
               </>}
             </div>
