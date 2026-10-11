@@ -29,3 +29,11 @@
 - Existing Local DJ integration test verifies truthful capability boundaries, control state and navigation.
 - Typecheck and production build use the existing ATLAS CI workflow; no parallel pipeline.
 - After merge/deploy, verify the exact deployed SHA, authenticated route, two browser-decodable files and resulting metadata in a supported mobile browser.
+
+## Waveform and playback hardening
+
+- The UI displays an exact 64-bin **relative RMS envelope** derived from decoded PCM, only after the user starts analysis. Silence produces zero bars; it never creates synthetic decorative peaks.
+- The relative envelope depicts only the inspected portion (up to 90 seconds) and cannot be used to infer absolute loudness or mastering levels.
+- BPM and key signal scores are labeled heuristic scores rather than calibrated probability/confidence.
+- A successor starts at full volume if the previous track already ended, avoiding a six-second silent fade-in. An outstanding initial `play()` rejection following Stop does not fabricate a playback failure.
+- Additional regression tests cover waveform invariants and user-triggered UI display. Final live audio tests on real browsers are still required.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeLocalAudioPCM, estimateCamelotFromChroma } from '../../packages/creator/audio/local_analysis';
+import { analyzeLocalAudioPCM, buildLocalWaveform, estimateCamelotFromChroma } from '../../packages/creator/audio/local_analysis';
 
 function clicks(bpm: number, seconds = 12, rate = 11025) {
   const samples = new Float32Array(seconds * rate);
@@ -49,6 +49,25 @@ describe('ATLAS Audio DNA local analysis — reproducible estimates', () => {
     const result = estimateCamelotFromChroma(template);
     expect(result.camelot).toBe('8B');
     expect(result.confidence).toBeGreaterThan(50);
+  });
+
+  it('derives a bounded waveform only from real PCM amplitude', () => {
+    const signal = new Float32Array(80);
+    signal.fill(0.25, 10, 20);
+    signal.fill(0.8, 30, 40);
+    const bins = buildLocalWaveform(signal, 8);
+    expect(bins).toHaveLength(8);
+    expect(bins[0]).toBe(0);
+    expect(bins[1]).toBeGreaterThan(0);
+    expect(bins[3]).toBe(1);
+    expect(bins.every(value => value >= 0 && value <= 1)).toBe(true);
+  });
+
+  it('never paints fictional waveform amplitude for silence', () => {
+    const result = analyzeLocalAudioPCM(new Float32Array(11025 * 6), 11025);
+    expect(result.waveform).toHaveLength(64);
+    expect(result.waveform.every(value => value === 0)).toBe(true);
+    expect(() => buildLocalWaveform(new Float32Array([Number.NaN]), 8)).toThrow('audio_dna_non_finite_sample');
   });
 
   it('does not label ambiguous flat or invalid chroma as a real key', () => {

@@ -19,7 +19,8 @@ vi.mock('../../packages/creator/audio/local_analysis', async importOriginal => {
       bpmConfidence: 70,
       camelot: '8B',
       keyConfidence: 66,
-      onsetCount: 40
+      onsetCount: 40,
+      waveform: Array.from({ length: 64 }, (_, index) => index % 4 === 0 ? 1 : 0.12)
     }))
   };
 });
@@ -43,6 +44,9 @@ describe('ATLAS Local DJ browser-only UI', () => {
     expect(screen.getByLabelText('BPM for pulse')).toHaveValue(120);
     expect(screen.getByLabelText('Camelot key for pulse')).toHaveValue('8B');
     expect(screen.getByText(/Audio DNA · Energy 48%/)).toBeInTheDocument();
+    const waveform = screen.getByRole('img', { name: /relative RMS waveform preview.*pulse/i });
+    expect(waveform.querySelectorAll('span')).toHaveLength(64);
+    expect(screen.getByText(/signal score 70\/100/)).toBeInTheDocument();
   });
 
   it('offers a working input and honest capability limits without fabricated songs', () => {
