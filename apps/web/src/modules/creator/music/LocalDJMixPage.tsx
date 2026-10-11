@@ -7,7 +7,7 @@ import './local-dj-mix.css';
 type LocalTrack = MixTrackMetadata & { file: File; url: string; audioDNA: LocalAudioDNA | null };
 type PlayState = 'idle' | 'playing' | 'blocked';
 
-class LocalCrossfadeSession {
+export class LocalCrossfadeSession {
   private active = false;
   private tickTimer: ReturnType<typeof setInterval> | null = null;
   private current: HTMLAudioElement | null = null;
