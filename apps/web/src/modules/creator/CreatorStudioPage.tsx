@@ -239,6 +239,7 @@ export function CreatorWorkspace() {
   return <section className="creator-page">
     <nav className="creator-breadcrumb" aria-label="Breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Create</span></nav>
     <header className="creator-hero compact"><div><p className="eyebrow">Unified Creator composer</p><h1>Plan once. Create everywhere.</h1><p>ATLAS turns one authorized brief into a provider-neutral CreativePlan, specialized prompts and zero-cost-first execution choices without fabricating output.</p></div></header>
+    {kind === 'music' && <div className="creator-status"><strong>Mix audio locally</strong><span>Use your own files to preview real crossfades without invoking external providers.</span><Link className="creator-primary" to="/studio/mix">Open Local DJ Mixer</Link></div>}
     <div className="creator-tabs" role="tablist" aria-label="Creative media modes">
       {CREATIVE_MEDIA_KINDS.map(item => <button key={item} type="button" role="tab" aria-selected={kind===item} className={kind===item?'active':''} onClick={()=>changeKind(item)}>{item}</button>)}
     </div>
