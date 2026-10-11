@@ -23,6 +23,7 @@ import { TaxRoutes } from './modules/tax/TaxRoutes';
 import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { LocalDJMixPage } from './modules/creator/music/LocalDJMixPage';
 import { AIUniversePage } from './modules/creator/AIUniversePage';
 import { ProductivityProPage } from './modules/creator/ProductivityProPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
@@ -300,6 +301,7 @@ export function App() {
         <Route path="/studio/ai-universe" element={<RequireAtlasIdentity><AIUniversePage /></RequireAtlasIdentity>} />
         <Route path="/studio/productivity-pro" element={<RequireAtlasIdentity><ProductivityProPage /></RequireAtlasIdentity>} />
         <Route path="/studio/create" element={<RequireAtlasIdentity><CreatorWorkspace /></RequireAtlasIdentity>} />
+        <Route path="/studio/mix" element={<RequireAtlasIdentity><LocalDJMixPage /></RequireAtlasIdentity>} />
         <Route path="/studio/library" element={<RequireAtlasIdentity><CreatorLibrary /></RequireAtlasIdentity>} />
         <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />

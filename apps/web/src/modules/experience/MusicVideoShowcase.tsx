@@ -23,6 +23,7 @@ export function MusicVideoShowcase() {
       </figure>
       <nav className="atlas-mv-actions" aria-label="Music & Video Studio tools">
         <Link to="/studio/create?type=music">Open Music Lab</Link>
+        <Link to="/studio/mix">Open Local DJ Mixer</Link>
         <Link to="/studio/create?type=video">Open Video Studio</Link>
         <Link to="/studio/teleprompter">Open Smart Teleprompter</Link>
       </nav>
