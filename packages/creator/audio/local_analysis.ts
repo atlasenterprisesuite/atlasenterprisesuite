@@ -13,6 +13,8 @@ export type LocalAudioDNA = {
   camelot: string | null;
   keyConfidence: number | null;
   onsetCount: number;
+  /** Sixty-four relative RMS envelope bars from analyzed PCM (not a full-track waveform). */
+  waveform: number[];
 };
 
 const TARGET_RATE = 11025;
@@ -45,6 +47,33 @@ export function selectLocalAnalysisSamples(buffer: AudioBuffer): { samples: Floa
     samples[i] = total / count;
   }
   return { samples, sampleRate: buffer.sampleRate / stride };
+}
+
+/**
+ * Compute a bounded, truthful relative amplitude overview of the analyzed window.
+ * A zero-amplitude input yields only zeros, never decorative bars.
+ */
+export function buildLocalWaveform(samples: Float32Array, bars = 64): number[] {
+  if (!(samples instanceof Float32Array) || !samples.length || !Number.isInteger(bars) || bars < 8 || bars > 128) {
+    throw new Error('audio_dna_invalid_waveform');
+  }
+  const values = new Array<number>(bars).fill(0);
+  for (let i = 0; i < samples.length; i += 1) {
+    const sample = samples[i];
+    if (!Number.isFinite(sample)) throw new Error('audio_dna_non_finite_sample');
+    const index = Math.min(bars - 1, Math.floor(i * bars / samples.length));
+    values[index] += sample * sample;
+  }
+  let maximum = 0;
+  for (let i = 0; i < bars; i += 1) {
+    const begin = Math.ceil(i * samples.length / bars);
+    const end = Math.ceil((i + 1) * samples.length / bars);
+    // Each bin contains a bounded window; never divide by zero for short PCM.
+    const samplesInBin = Math.max(1, end - begin);
+    values[i] = Math.sqrt(values[i] / samplesInBin);
+    maximum = Math.max(maximum, values[i]);
+  }
+  return maximum > 0 ? values.map(value => Math.round(value / maximum * 100) / 100) : values;
 }
 
 function estimatedTempo(samples: Float32Array, rate: number): { bpm: number | null; confidence: number | null; onsets: number } {
@@ -237,6 +266,7 @@ export function analyzeLocalAudioPCM(samples: Float32Array, sampleRate: number):
   const silent = rms < 0.004 || mono.length / rate < 4;
   const tempo = silent ? { bpm: null, confidence: null, onsets: 0 } : estimatedTempo(mono, rate);
   const key = silent ? { camelot: null, confidence: null } : estimatedKey(mono, rate);
+  const waveform = buildLocalWaveform(mono);
   return {
     method: 'local-signal-estimate-v1',
     durationAnalyzedSeconds,
@@ -247,7 +277,8 @@ export function analyzeLocalAudioPCM(samples: Float32Array, sampleRate: number):
     bpmConfidence: tempo.confidence,
     camelot: key.camelot,
     keyConfidence: key.confidence,
-    onsetCount: tempo.onsets
+    onsetCount: tempo.onsets,
+    waveform
   };
 }
 
