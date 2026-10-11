@@ -35,6 +35,8 @@ class LocalCrossfadeSession {
       this.report(0, 'playing', 'Playing from local files. Audio stays in this browser.');
       this.tickTimer = setInterval(() => this.tick(), 100);
     } catch {
+      // A user-initiated stop can reject an outstanding play() promise.
+      if (!this.active) return;
       this.stop();
       this.report(0, 'blocked', 'Browser could not play this file. Try a supported audio format.');
     }
@@ -45,10 +47,20 @@ class LocalCrossfadeSession {
     this.starting = true;
     const target = new Audio(this.tracks[this.index + 1].url);
     target.preload = 'auto';
-    target.volume = 0;
+    // Fading from silence after the previous track ended is not a valid crossfade.
+    const sourceEnded = Boolean(this.current?.ended);
+    target.volume = sourceEnded ? 1 : 0;
     try {
       await target.play();
       if (!this.active) { target.pause(); return; }
+      if (sourceEnded || this.current?.ended) {
+        target.volume = 1;
+        this.current?.pause();
+        this.current = target;
+        this.index += 1;
+        this.report(this.index, 'playing', 'Continuing immediately after the previous track ended.');
+        return;
+      }
       this.incoming = target;
       this.fadeStart = performance.now();
       this.report(this.index, 'playing', 'Crossfading between local tracks.');
@@ -66,7 +78,9 @@ class LocalCrossfadeSession {
   private tick() {
     if (!this.active || !this.current) return;
     if (this.incoming) {
-      const progress = Math.min(1, (performance.now() - this.fadeStart) / (this.fadeSeconds * 1000));
+      const progress = this.current.ended
+        ? 1
+        : Math.min(1, (performance.now() - this.fadeStart) / (this.fadeSeconds * 1000));
       this.current.volume = Math.cos(progress * Math.PI / 2);
       this.incoming.volume = Math.sin(progress * Math.PI / 2);
       if (progress >= 1) {
@@ -254,7 +268,7 @@ export function LocalDJMixPage() {
     <div className="atlas-dj-panel">
       <label className="atlas-dj-upload">
         <span>Add audio files (up to 24, 100 MB each)</span>
-        <input aria-label="Add audio files" type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.flac" multiple onChange={event => {
+        <input aria-label="Add audio files" type="file" disabled={Boolean(analyzingId)} accept="audio/*,.m4a,.mp3,.wav,.ogg,.flac" multiple onChange={event => {
           importFiles(event.target.files);
           event.target.value = '';
         }} />
@@ -285,7 +299,12 @@ export function LocalDJMixPage() {
           const compatibility = index ? transitionCompatibility(tracks[index - 1], track) : null;
           return <li key={track.id}>
             <div className="atlas-dj-track"><strong>{index + 1}. {track.title}</strong>{compatibility && <span>{compatibility.score === null ? 'Compatibility unavailable' : `Compatibility ${compatibility.score}/100 (estimate)`}</span>}
-              {track.audioDNA && <span>Audio DNA · Energy {track.audioDNA.energyPercent}% · {track.audioDNA.durationAnalyzedSeconds}s sampled · BPM {track.audioDNA.bpm ?? 'unknown'}{track.audioDNA.bpmConfidence !== null ? ` (${track.audioDNA.bpmConfidence}% confidence)` : ''} · Key {track.audioDNA.camelot ?? 'unknown'}{track.audioDNA.keyConfidence !== null ? ` (${track.audioDNA.keyConfidence}% confidence)` : ''}</span>}
+              {track.audioDNA && <>
+                <span>Audio DNA · Energy {track.audioDNA.energyPercent}% · {track.audioDNA.durationAnalyzedSeconds}s analyzed · BPM {track.audioDNA.bpm ?? 'unknown'}{track.audioDNA.bpmConfidence !== null ? ` (signal score ${track.audioDNA.bpmConfidence}/100)` : ''} · Key {track.audioDNA.camelot ?? 'unknown'}{track.audioDNA.keyConfidence !== null ? ` (signal score ${track.audioDNA.keyConfidence}/100)` : ''}</span>
+                <div className="atlas-dj-waveform" role="img" aria-label={`Relative RMS waveform preview of first ${track.audioDNA.durationAnalyzedSeconds} analyzed seconds for ${track.title}`}>
+                  {track.audioDNA.waveform.map((height, bar) => <span key={bar} aria-hidden="true" style={{ height: `${Math.max(1, Math.min(100, height * 100))}%` }} />)}
+                </div>
+              </>}
             </div>
             <label>BPM<input disabled={Boolean(analyzingId)} aria-label={`BPM for ${track.title}`} type="number" min="40" max="250" placeholder="Unknown" value={track.bpm ?? ''} onChange={event => updateTrack(track.id, { bpm: event.target.value ? normalizeBpm(Number(event.target.value)) : null })} /></label>
             <label>Key<select disabled={Boolean(analyzingId)} aria-label={`Camelot key for ${track.title}`} value={track.camelot || ''} onChange={event => updateTrack(track.id, { camelot: event.target.value || null })}><option value="">Unknown</option>{CAMELOT_KEYS.map(key => <option key={key} value={key}>{key}</option>)}</select></label>
@@ -295,6 +314,6 @@ export function LocalDJMixPage() {
         })}
       </ol>}
     </div>
-    <p className="atlas-dj-disclaimer">Private, temporary playback and estimated signal analysis. Files never leave this page. Audio DNA decodes at most 30 MB per file and inspects at most the first 90 seconds, using a heuristic that can return unknown or incorrect BPM/key. No audio export, recording, cloud persistence, license validation, guaranteed beat detection, beat synchronization or mastering is claimed. Do not use copyrighted files for public or commercial distribution without appropriate rights.</p>
+    <p className="atlas-dj-disclaimer">Private, temporary playback and estimated signal analysis. Files never leave this page. Audio DNA decodes at most 30 MB per file and inspects at most the first 90 seconds, using a heuristic that can return unknown or incorrect BPM/key. Waveform bars show relative RMS amplitude of the analyzed portion only; signal scores are not calibrated probabilities. No audio export, recording, cloud persistence, license validation, guaranteed beat detection, beat synchronization or mastering is claimed. Do not use copyrighted files for public or commercial distribution without appropriate rights.</p>
   </section>;
 }
