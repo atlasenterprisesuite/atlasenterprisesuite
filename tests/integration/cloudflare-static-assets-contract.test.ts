@@ -150,6 +150,12 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(end).toBeGreaterThan(start);
     expect(probe).toContain('PRODUCTION_PROPAGATION_DEADLINE=$((SECONDS + 180))');
     expect(probe).toContain('while :; do');
+    expect(probe).toContain('remaining=$((PRODUCTION_PROPAGATION_DEADLINE - SECONDS))');
+    expect(probe).toContain('if (( remaining <= 0 )); then');
+    expect(probe).toContain('--connect-timeout 5 --max-time "$remaining" --retry-max-time "$remaining"');
+    expect(probe).toContain(': > "$headers"');
+    expect(probe).toContain(': > "$body"');
+    expect(probe).toContain('if [ "$SECONDS" -ge "$PRODUCTION_PROPAGATION_DEADLINE" ]; then');
     expect(probe).toContain('[[ "$atlas_version_tag" =~ ^[0-9a-f]{40}$ ]]');
     expect(probe).toContain('[ "$SECONDS" -lt "$PRODUCTION_PROPAGATION_DEADLINE" ]');
     expect(probe).toContain('sleep 5');
