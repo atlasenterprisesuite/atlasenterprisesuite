@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -9,6 +10,16 @@ afterEach(() => {
 });
 
 describe('ATLAS public founder profile', () => {
+  it('registers a reachable public route with navigation entry points before the 404 fallback', () => {
+    const app = readFileSync('apps/web/src/App.tsx', 'utf8');
+    const shell = readFileSync('apps/web/src/components/AtlasShell.tsx', 'utf8');
+    expect(app).toContain('path="/about/founder" element={<FounderPage />}');
+    expect(app).toContain('to="/about/founder"');
+    expect(shell).toContain('to="/about/founder"');
+    expect(app.indexOf('path="/about/founder"')).toBeLessThan(app.indexOf('<Route path="*"'));
+    expect(app).not.toContain('path="/about/founder" element={<RequireAtlasIdentity>');
+  });
+
   it('presents the founder without authentication, invented personal contact details, or unverified social profiles', () => {
     render(
       <MemoryRouter>
