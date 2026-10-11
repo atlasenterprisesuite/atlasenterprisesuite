@@ -18,7 +18,7 @@
 .atlas-dj-status,.atlas-dj-error{margin:0;line-height:1.5;color:#b7e7e4}
 .atlas-dj-error{color:#ffc1c1}
 .atlas-dj-list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
-.atlas-dj-list li{display:grid;grid-template-columns:minmax(120px,1fr) 96px 110px auto;gap:12px;align-items:end;padding:12px;border:1px solid #373b58;border-radius:12px}
+.atlas-dj-list li{display:grid;grid-template-columns:minmax(160px,1fr) 96px 110px auto auto;gap:12px;align-items:end;padding:12px;border:1px solid #373b58;border-radius:12px}
 .atlas-dj-list label{display:grid;gap:5px;color:#c4c0d7}
 .atlas-dj-list input,.atlas-dj-list select{width:100%;background:#12172b;color:#f0eaff;border:1px solid #6b6293;border-radius:8px;padding:9px;min-height:42px}
 .atlas-dj-track{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}.atlas-dj-track span{color:#bbb5cc;font-size:13px}
