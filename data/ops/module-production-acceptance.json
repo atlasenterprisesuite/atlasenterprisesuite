@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "policy": "fail-closed",
   "verdicts": [
     "FINAL_PRODUCTION_VERIFIED",
@@ -27,6 +27,12 @@
       "path": "/security/certificates",
       "verdict": "VERIFICATION_HOLD",
       "reason": "The authenticated certificate inventory and security dashboard are implemented only in the pull-request branch. Live GitHub OIDC ingestion, end-to-end mTLS verification, release tests and exact-SHA production route evidence have not passed all acceptance gates; the route must remain explicitly on verification hold."
+    },
+    {
+      "module_id": "weather",
+      "path": "/weather",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "The ATLAS Weather route is implemented on the feature branch, but authenticated production E2E, external provider reachability and data freshness, exact-SHA route verification, and fail-closed negative cases remain unverified. Do not certify Weather from passing source tests alone."
     }
   ]
 }
