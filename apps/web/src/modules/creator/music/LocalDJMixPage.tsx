@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CAMELOT_KEYS, normalizeBpm, reorderMixTracks, transitionCompatibility, type MixTrackMetadata } from '../../../../../../packages/creator/audio/mix';
+import { analyzeLocalAudioFile, type LocalAudioDNA } from '../../../../../../packages/creator/audio/local_analysis';
 import './local-dj-mix.css';
 
-type LocalTrack = MixTrackMetadata & { file: File; url: string };
+type LocalTrack = MixTrackMetadata & { file: File; url: string; audioDNA: LocalAudioDNA | null };
 type PlayState = 'idle' | 'playing' | 'blocked';
 
 class LocalCrossfadeSession {
@@ -108,13 +109,21 @@ export function LocalDJMixPage() {
   const [status, setStatus] = useState<PlayState>('idle');
   const [activeIndex, setActiveIndex] = useState(0);
   const [message, setMessage] = useState('Add local audio tracks to begin.');
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const cancelAnalysisRef = useRef(0);
+  const mountedRef = useRef(true);
   const sessionRef = useRef<LocalCrossfadeSession | null>(null);
   const tracksRef = useRef<LocalTrack[]>([]);
   tracksRef.current = tracks;
 
-  useEffect(() => () => {
-    sessionRef.current?.stop();
-    tracksRef.current.forEach(track => URL.revokeObjectURL(track.url));
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      cancelAnalysisRef.current += 1;
+      sessionRef.current?.stop();
+      tracksRef.current.forEach(track => URL.revokeObjectURL(track.url));
+    };
   }, []);
 
   function halt(note = 'Playback stopped.') {
@@ -138,10 +147,11 @@ export function LocalDJMixPage() {
       file,
       url: URL.createObjectURL(file),
       bpm: null,
-      camelot: null
+      camelot: null,
+      audioDNA: null
     }));
     if (accepted.length) {
-      halt('Local tracks imported. Enter BPM/keys to enable informed reordering.');
+      halt('Local tracks imported. Analyze audio locally or enter BPM/keys manually.');
       setTracks(previous => [...previous, ...accepted]);
     } else setMessage('No supported non-empty files within the 100 MB / 24-track limit were added.');
     if (accepted.length < files.length) setMessage('Some files were skipped (format, size, or 24-track limit).');
@@ -164,12 +174,12 @@ export function LocalDJMixPage() {
     const ordered = reorderMixTracks(tracks);
     setTracks(ordered);
     const informed = ordered.slice(1).some((track, index) => transitionCompatibility(ordered[index], track).score !== null);
-    setMessage(informed ? 'Track order suggested using entered BPM/Camelot metadata. Audio was not analyzed.' :
-      'Not reordered by musical compatibility: enter BPM or Camelot keys first.');
+    setMessage(informed ? 'Track order suggested using supplied or estimated BPM/Camelot data. Estimates are not guaranteed.' :
+      'No compatible metadata: analyze the audio locally or enter BPM/Camelot data manually.');
   }
 
   async function start() {
-    if (!tracks.length) return;
+    if (!tracks.length || analyzingId) return;
     halt();
     const session = new LocalCrossfadeSession(tracks, fadeSeconds, (index, nextStatus, note) => {
       setActiveIndex(index);
@@ -180,13 +190,65 @@ export function LocalDJMixPage() {
     await session.start();
   }
 
+  async function analyzeOne(track: LocalTrack, token: number): Promise<boolean> {
+    try {
+      const dna = await analyzeLocalAudioFile(track.file);
+      if (!mountedRef.current || token !== cancelAnalysisRef.current) return false;
+      setTracks(existing => existing.map(candidate => candidate.id === track.id
+        ? { ...candidate, audioDNA: dna, bpm: dna.bpm ?? candidate.bpm, camelot: dna.camelot ?? candidate.camelot }
+        : candidate));
+      return true;
+    } catch (error) {
+      if (mountedRef.current && token === cancelAnalysisRef.current) {
+        const reason = error instanceof Error ? error.message : 'audio_dna_analysis_failed';
+        setMessage(`Could not analyze ${track.title}: ${reason}. You can still set metadata manually.`);
+      }
+      return false;
+    }
+  }
+
+  async function analyzeAudio(track: LocalTrack) {
+    if (analyzingId) return;
+    halt('Analyzing audio locally…');
+    const token = ++cancelAnalysisRef.current;
+    setAnalyzingId(track.id);
+    const succeeded = await analyzeOne(track, token);
+    if (mountedRef.current && token === cancelAnalysisRef.current) {
+      setAnalyzingId(null);
+      if (succeeded) setMessage(`Audio DNA analyzed ${track.title}. BPM and key remain estimates when available.`);
+    }
+  }
+
+  async function analyzePlaylist() {
+    if (analyzingId || tracks.length === 0) return;
+    halt('Analyzing playlist locally…');
+    const token = ++cancelAnalysisRef.current;
+    setAnalyzingId('playlist');
+    let succeeded = 0;
+    for (const [index, track] of tracks.entries()) {
+      if (!mountedRef.current || token !== cancelAnalysisRef.current) break;
+      setMessage(`Analyzing ${index + 1} of ${tracks.length}: ${track.title}`);
+      if (await analyzeOne(track, token)) succeeded += 1;
+    }
+    if (mountedRef.current && token === cancelAnalysisRef.current) {
+      setAnalyzingId(null);
+      setMessage(`Local Audio DNA completed for ${succeeded} of ${tracks.length} tracks. Unknown estimates remain unknown.`);
+    }
+  }
+
+  function cancelAnalysis() {
+    cancelAnalysisRef.current += 1;
+    setAnalyzingId(null);
+    setMessage('Playlist analysis cancelled. A decoding operation already underway may finish privately.');
+  }
+
   const current = tracks[activeIndex];
   return <section className="creator-page atlas-dj-page" aria-label="ATLAS Local DJ Mixer">
     <nav className="creator-breadcrumb" aria-label="Breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><Link to="/studio/create?type=music">Music Lab</Link><span>/</span><span>Local DJ</span></nav>
     <header className="atlas-dj-header">
       <p className="eyebrow">ATLAS Audio Platform · Local preview</p>
       <h1>ATLAS Local DJ</h1>
-      <p>Mix tracks from your own device. Equal-power crossfades play locally; no Spotify audio is accessed, uploaded or copied.</p>
+      <p>Mix tracks from your own device. Equal-power crossfades and bounded Audio DNA estimates run locally; no Spotify audio is accessed, uploaded or copied.</p>
       <span className="atlas-dj-chip">Browser-local · No provider required</span>
     </header>
     <div className="atlas-dj-panel">
@@ -206,28 +268,33 @@ export function LocalDJMixPage() {
           <input type="range" aria-label="Crossfade duration" min="2" max="12" step="1" value={fadeSeconds} disabled={status === 'playing'} onChange={event => setFadeSeconds(Number(event.target.value))} />
         </label>
         <div className="atlas-dj-buttons">
-          <button type="button" onClick={() => void start()} disabled={!tracks.length}>Play mix</button>
+          <button type="button" onClick={() => void start()} disabled={!tracks.length || Boolean(analyzingId)}>Play mix</button>
           <button type="button" onClick={() => void sessionRef.current?.next()} disabled={status !== 'playing' || activeIndex >= tracks.length - 1}>Next mix</button>
           <button type="button" onClick={() => halt()} disabled={status !== 'playing'}>Stop</button>
-          <button type="button" onClick={smartReorder} disabled={tracks.length < 3}>Smart reorder</button>
+          <button type="button" onClick={smartReorder} disabled={tracks.length < 3 || Boolean(analyzingId)}>Smart reorder</button>
+          <button type="button" onClick={() => void analyzePlaylist()} disabled={!tracks.length || Boolean(analyzingId)}>Analyze playlist locally</button>
+          {analyzingId && <button type="button" onClick={cancelAnalysis}>Cancel analysis</button>}
         </div>
       </div>
       <p role="status" className={status === 'blocked' ? 'atlas-dj-error' : 'atlas-dj-status'}>{message}</p>
     </div>
     <div className="atlas-dj-panel">
       <h2>Playlist · {tracks.length} tracks</h2>
-      {tracks.length === 0 ? <p>Add your own licensed or authorized files. BPM and Camelot codes are optional, user-entered values; analysis is not yet automatic.</p> : <ol className="atlas-dj-list">
+      {tracks.length === 0 ? <p>Add your own licensed or authorized audio files. ATLAS can estimate BPM, energy and tonal key on your device; results are not guarantees.</p> : <ol className="atlas-dj-list">
         {tracks.map((track, index) => {
           const compatibility = index ? transitionCompatibility(tracks[index - 1], track) : null;
           return <li key={track.id}>
-            <div className="atlas-dj-track"><strong>{index + 1}. {track.title}</strong>{compatibility && <span>{compatibility.score === null ? 'Compatibility unavailable' : `Compatibility ${compatibility.score}/100 (estimate)`}</span>}</div>
-            <label>BPM<input aria-label={`BPM for ${track.title}`} type="number" min="40" max="250" placeholder="Unknown" value={track.bpm ?? ''} onChange={event => updateTrack(track.id, { bpm: event.target.value ? normalizeBpm(Number(event.target.value)) : null })} /></label>
-            <label>Key<select aria-label={`Camelot key for ${track.title}`} value={track.camelot || ''} onChange={event => updateTrack(track.id, { camelot: event.target.value || null })}><option value="">Unknown</option>{CAMELOT_KEYS.map(key => <option key={key} value={key}>{key}</option>)}</select></label>
-            <button type="button" onClick={() => removeTrack(track.id)} aria-label={`Remove ${track.title}`}>Remove</button>
+            <div className="atlas-dj-track"><strong>{index + 1}. {track.title}</strong>{compatibility && <span>{compatibility.score === null ? 'Compatibility unavailable' : `Compatibility ${compatibility.score}/100 (estimate)`}</span>}
+              {track.audioDNA && <span>Audio DNA · Energy {track.audioDNA.energyPercent}% · {track.audioDNA.durationAnalyzedSeconds}s sampled · BPM {track.audioDNA.bpm ?? 'unknown'}{track.audioDNA.bpmConfidence !== null ? ` (${track.audioDNA.bpmConfidence}% confidence)` : ''} · Key {track.audioDNA.camelot ?? 'unknown'}{track.audioDNA.keyConfidence !== null ? ` (${track.audioDNA.keyConfidence}% confidence)` : ''}</span>}
+            </div>
+            <label>BPM<input disabled={Boolean(analyzingId)} aria-label={`BPM for ${track.title}`} type="number" min="40" max="250" placeholder="Unknown" value={track.bpm ?? ''} onChange={event => updateTrack(track.id, { bpm: event.target.value ? normalizeBpm(Number(event.target.value)) : null })} /></label>
+            <label>Key<select disabled={Boolean(analyzingId)} aria-label={`Camelot key for ${track.title}`} value={track.camelot || ''} onChange={event => updateTrack(track.id, { camelot: event.target.value || null })}><option value="">Unknown</option>{CAMELOT_KEYS.map(key => <option key={key} value={key}>{key}</option>)}</select></label>
+            <button type="button" onClick={() => void analyzeAudio(track)} disabled={Boolean(analyzingId)} aria-label={`Analyze ${track.title}`}>Analyze audio</button>
+            <button type="button" disabled={Boolean(analyzingId)} onClick={() => removeTrack(track.id)} aria-label={`Remove ${track.title}`}>Remove</button>
           </li>;
         })}
       </ol>}
     </div>
-    <p className="atlas-dj-disclaimer">Private, temporary playback only. Files never leave this page. No audio export, recording, cloud persistence, license validation, automatic beat detection, beat synchronization or mastering is claimed. Do not use copyrighted files for public or commercial distribution without appropriate rights.</p>
+    <p className="atlas-dj-disclaimer">Private, temporary playback and estimated signal analysis. Files never leave this page. Audio DNA decodes at most 30 MB per file and inspects at most the first 90 seconds, using a heuristic that can return unknown or incorrect BPM/key. No audio export, recording, cloud persistence, license validation, guaranteed beat detection, beat synchronization or mastering is claimed. Do not use copyrighted files for public or commercial distribution without appropriate rights.</p>
   </section>;
 }
