@@ -344,15 +344,26 @@ jobs:
             local output_name="$3"
             local headers="/tmp/atlas-${output_name}.headers"
             local body="/tmp/atlas-${output_name}.body"
-            local result status effective_url same_origin cf_mitigated title atlas_version_id atlas_version_tag
+            local result status effective_url same_origin cf_mitigated title atlas_version_id atlas_version_tag remaining
             while :; do
-            result="$(curl --retry 5 --retry-delay 3 --silent --show-error \
+            remaining=$((PRODUCTION_PROPAGATION_DEADLINE - SECONDS))
+            if (( remaining <= 0 )); then
+              echo "::error::$label exact-SHA propagation deadline expired"
+              return 1
+            fi
+            : > "$headers"
+            : > "$body"
+            result="$(curl --retry 5 --retry-delay 3 --connect-timeout 5 --max-time "$remaining" --retry-max-time "$remaining" --silent --show-error \
               --location --max-redirs 5 --proto '=https' --proto-redir '=https' \
               -A 'Mozilla/5.0 (ATLAS production verifier; GitHub Actions)' \
               -H 'Cache-Control: no-cache, no-store' \
               -D "$headers" --output "$body" --write-out '%{http_code}|%{url_effective}' "$PRODUCTION_URL$path" || true)"
             status="${result%%|*}"
             effective_url="${result#*|}"
+            if [ "$SECONDS" -ge "$PRODUCTION_PROPAGATION_DEADLINE" ]; then
+              echo "::error::$label exact-SHA probe exceeded shared propagation deadline"
+              return 1
+            fi
             same_origin="$(node -e "try{const u=new URL(process.argv[1]);process.stdout.write(String(u.protocol==='https:'&&u.host==='www.atlasenterprisesuite.com'))}catch{process.stdout.write('false')}" "$effective_url")"
             cf_mitigated="$(awk 'BEGIN{IGNORECASE=1} /^cf-mitigated:/ {gsub(/\r/,""); print $2}' "$headers" 2>/dev/null | tail -1 || true)"
             atlas_version_id="$(awk 'BEGIN{IGNORECASE=1} /^x-atlas-version-id:/ {gsub(/\r/,""); print $2}' "$headers" 2>/dev/null | tail -1 || true)"
