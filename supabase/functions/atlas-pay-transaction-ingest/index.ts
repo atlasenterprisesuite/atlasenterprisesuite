@@ -3,7 +3,7 @@
 // This is NOT a native financial-provider webhook: a trusted adapter MUST
 // verify the provider-specific delivery before producing ATLAS's HMAC envelope.
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
-import { verifySignedTransactionEnvelope } from '../../../packages/pay/src/secureEventIngress.ts';
+import { verifySignedTransactionEnvelope } from '../_shared/pay-transaction-signature.ts';
 
 const MAX_BODY_BYTES = 65536;
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
