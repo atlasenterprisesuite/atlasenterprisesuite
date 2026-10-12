@@ -1,16 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { WebLaunchProfile } from '../../../../../../packages/creator/web_launch';
 import {
   buildBrandExperiencePack,
   renderBrandExperienceText
 } from '../../../../../../packages/creator/brand_experience';
+import { buildBrandQr, renderBrandQrSvg } from '../../../../../../packages/creator/brand_qr';
+import {
+  MAX_PHOTO360_FRAMES,
+  photo360Readiness,
+  nextPhoto360Frame,
+  validatePhoto360Files
+} from '../../../../../../packages/creator/brand_360';
 import './brand-experience.css';
 
-type LocalFrame = { id: number; src: string; name: string };
-const MAX_FRAMES = 12;
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+type LocalFrame = { id: number; src: string; name: string; type: string; size: number };
 
 export function BrandExperiencePanel({ profile }: { profile: WebLaunchProfile }) {
   const [productName, setProductName] = useState('');
@@ -20,6 +24,9 @@ export function BrandExperiencePanel({ profile }: { profile: WebLaunchProfile })
   const [activeFrame, setActiveFrame] = useState(0);
   const [frameError, setFrameError] = useState('');
   const [exportMessage, setExportMessage] = useState('');
+  const [confirmed360, setConfirmed360] = useState(false);
+  const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null);
+  const dragStartX = useRef<number | null>(null);
   const nextFrameId = useRef(0);
   const objectUrls = useRef(new Set<string>());
 
@@ -33,25 +40,41 @@ export function BrandExperiencePanel({ profile }: { profile: WebLaunchProfile })
     [profile, productName, founderStory, destinationUrl]
   );
   const pack = result.pack;
+  const qr = useMemo(() => pack?.destination ? buildBrandQr(pack.destination) : null, [pack?.destination]);
+  const photoStatus = photo360Readiness(frames, confirmed360);
+
+  useEffect(() => {
+    if (!qr) { setQrPreviewUrl(null); return; }
+    const url = URL.createObjectURL(new Blob([renderBrandQrSvg(qr)], { type: 'image/svg+xml' }));
+    setQrPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [qr]);
+
+  function startRotate(event: ReactPointerEvent<HTMLDivElement>) {
+    dragStartX.current = event.clientX;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+  function endRotate(event: ReactPointerEvent<HTMLDivElement>) {
+    if (dragStartX.current === null) return;
+    const delta = Math.trunc((event.clientX - dragStartX.current) / 20);
+    dragStartX.current = null;
+    if (delta) setActiveFrame(current => nextPhoto360Frame(current, frames.length, -delta));
+  }
 
   function addFrames(files: FileList | null) {
     if (!files?.length) return;
-    const remaining = Math.max(0, MAX_FRAMES - frames.length);
     const incoming = Array.from(files);
-    if (incoming.length > remaining) {
-      setFrameError(`Maximum ${MAX_FRAMES} local frames; ${remaining} slot(s) available.`);
-      return;
-    }
-    if (incoming.some(file => !ALLOWED_TYPES.has(file.type) || file.size > MAX_FILE_BYTES || file.size === 0)) {
-      setFrameError('Use JPEG, PNG or WebP photographs, each larger than 0 and no more than 10 MB.');
-      return;
-    }
-    const added = incoming.map(file => {
+    const manifest = [...frames, ...incoming].map(file => ({ name: file.name, type: file.type, size: file.size }));
+    const problem = validatePhoto360Files(manifest);
+    if (problem) { setFrameError(problem); return; }
+    const added: LocalFrame[] = incoming.map(file => {
       const src = URL.createObjectURL(file);
       objectUrls.current.add(src);
-      return { id: ++nextFrameId.current, src, name: file.name };
+      return { id: ++nextFrameId.current, src, name: file.name, type: file.type, size: file.size };
     });
-    setFrames(current => [...current, ...added]);
+    setFrames(current => [...current, ...added].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
+    setActiveFrame(0);
+    setConfirmed360(false);
     setFrameError('');
   }
 
@@ -62,6 +85,7 @@ export function BrandExperiencePanel({ profile }: { profile: WebLaunchProfile })
     });
     setFrames([]);
     setActiveFrame(0);
+    setConfirmed360(false);
     setFrameError('');
   }
 
@@ -121,29 +145,57 @@ export function BrandExperiencePanel({ profile }: { profile: WebLaunchProfile })
             <p className="brand-experience__proof">{pack.proofReview}</p>
             {pack.destination
               ? <a className="creator-secondary" href={pack.destination} rel="noopener noreferrer" target="_blank">{pack.cta} ↗</a>
-              : <p className="brand-experience__proof">Product URL required before a QR handoff. No QR image has been generated.</p>}
+              : <p className="brand-experience__proof">Enter a public HTTPS product URL to prepare an offline QR draft.</p>}
+            {qr && qrPreviewUrl ? <div className="brand-experience__qr">
+              <h4>Offline QR · medium error correction</h4>
+              <img src={qrPreviewUrl} width="224" height="224" alt="QR code leading to the exact displayed product HTTPS URL" />
+              <p className="brand-experience__qr-destination">{qr.destination}</p>
+              <a className="creator-secondary" href={qrPreviewUrl} download="atlas-product-qr.svg">Download printable SVG QR</a>
+              <p className="brand-experience__proof">Check the destination and scan the exported code before printing. No shortener, tracking, redirect, or external QR provider was used. ATLAS cannot independently certify ownership or safety of the destination website.</p>
+            </div> : pack.destination ? <p className="brand-experience__alert" role="status">Link exceeds offline QR capacity (version 10 maximum). Use a shorter public HTTPS product URL you control.</p> : null}
           </> : <p>Provide the real business details to see a preview. All text remains editable.</p>}
         </div>
       </div>
       <div className="brand-experience__frames">
         <div>
-          <h3>Product multi-angle viewer</h3>
-          <p>Use genuine product photos from different angles. This local photo sequence is not a generated 3D model or a certified 360° capture.</p>
+          <h3>Product photographic 360° viewer</h3>
+          <p>Upload 12–36 real, ordered photographs covering one full turn of the same product with a fixed camera. Files sort by natural filename order (frame-1, frame-2…). Fewer than 12 frames remain a multi-angle preview. This is not a generated 3D mesh.</p>
         </div>
         <label className="brand-experience__upload">
-          Add photos (maximum 12, 10 MB each)
+          Add photos (maximum {MAX_PHOTO360_FRAMES}, 6 MB each, 96 MB total)
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => { addFrames(event.target.files); event.target.value = ''; }} />
         </label>
         {frameError ? <p className="brand-experience__alert" role="alert">{frameError}</p> : null}
+        {frames.length >= 12 ? <label className="brand-experience__confirm">
+          <input type="checkbox" checked={confirmed360} onChange={event => setConfirmed360(event.target.checked)} />
+          I confirm these ordered photos capture one complete 360° rotation of the same product.
+        </label> : null}
+        <p className="brand-experience__status" role="status">
+          {photoStatus === 'photo-360-confirmed' ? 'Photographic 360° sequence · user-confirmed (not a 3D mesh)' : 'Multi-angle preview · not verified as a complete 360° turn'}
+        </p>
         {frames.length > 0 ? <div className="brand-experience__viewer">
-          <img src={frames[Math.min(activeFrame, frames.length - 1)].src} alt={`Product view ${Math.min(activeFrame, frames.length - 1) + 1} of ${frames.length}: ${frames[Math.min(activeFrame, frames.length - 1)].name}`} />
+          <div className="brand-experience__rotation" role="slider" tabIndex={0}
+            aria-label="Rotate product photographic sequence" aria-valuemin={1} aria-valuemax={frames.length}
+            aria-valuenow={Math.min(activeFrame, frames.length - 1) + 1}
+            aria-valuetext={'Product view ' + (Math.min(activeFrame, frames.length - 1) + 1) + ' of ' + frames.length}
+            onPointerDown={startRotate} onPointerUp={endRotate} onPointerCancel={() => { dragStartX.current = null; }}
+            onKeyDown={event => {
+              if (event.key === 'ArrowLeft') { event.preventDefault(); setActiveFrame(current => nextPhoto360Frame(current, frames.length, -1)); }
+              if (event.key === 'ArrowRight') { event.preventDefault(); setActiveFrame(current => nextPhoto360Frame(current, frames.length, 1)); }
+              if (event.key === 'Home') { event.preventDefault(); setActiveFrame(0); }
+              if (event.key === 'End') { event.preventDefault(); setActiveFrame(frames.length - 1); }
+            }}>
+            <img draggable={false} src={frames[Math.min(activeFrame, frames.length - 1)].src}
+              alt={'Product angle ' + (Math.min(activeFrame, frames.length - 1) + 1) + ' of ' + frames.length + ': ' + frames[Math.min(activeFrame, frames.length - 1)].name} />
+          </div>
           <div className="brand-experience__viewer-controls">
-            <button type="button" onClick={() => setActiveFrame(current => (current + frames.length - 1) % frames.length)} aria-label="Previous product view">←</button>
+            <button type="button" onClick={() => setActiveFrame(current => nextPhoto360Frame(current, frames.length, -1))} aria-label="Previous product view">←</button>
             <label><span>View {Math.min(activeFrame, frames.length - 1) + 1} of {frames.length}</span>
               <input aria-label="Select product view" type="range" min={0} max={frames.length - 1} step={1} value={Math.min(activeFrame, frames.length - 1)} onChange={event => setActiveFrame(Number(event.target.value))} disabled={frames.length < 2} />
             </label>
-            <button type="button" onClick={() => setActiveFrame(current => (current + 1) % frames.length)} aria-label="Next product view">→</button>
+            <button type="button" onClick={() => setActiveFrame(current => nextPhoto360Frame(current, frames.length, 1))} aria-label="Next product view">→</button>
             <button type="button" onClick={clearFrames}>Clear photos</button>
+            <span className="brand-experience__proof">Drag or swipe the product; or use keyboard arrows, Home and End.</span>
           </div>
         </div> : <p className="brand-experience__empty">No product photos selected. Photos stay on this device during the session and are never automatically uploaded.</p>}
       </div>
