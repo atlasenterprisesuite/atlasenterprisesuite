@@ -162,7 +162,7 @@ export function BrandExperiencePanel({ profile }: { profile: WebLaunchProfile })
           <p>Upload 12–36 real, ordered photographs covering one full turn of the same product with a fixed camera. Files sort by natural filename order (frame-1, frame-2…). Fewer than 12 frames remain a multi-angle preview. This is not a generated 3D mesh.</p>
         </div>
         <label className="brand-experience__upload">
-          Add photos (maximum 36, 6 MB each, 96 MB total)
+          Add photos (maximum {MAX_PHOTO360_FRAMES}, 6 MB each, 96 MB total)
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => { addFrames(event.target.files); event.target.value = ''; }} />
         </label>
         {frameError ? <p className="brand-experience__alert" role="alert">{frameError}</p> : null}
