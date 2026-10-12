@@ -87,6 +87,12 @@ const creatorSections: ModuleExperienceSection[] = [
         to: '/studio/content'
       },
       {
+        label: 'Brand',
+        title: 'Brand Experience Pack',
+        description: 'Draft authentic product storytelling, packaging copy, social captions and a local multi-angle photo preview using the existing Web Launch brand context.',
+        to: '/studio/web-launch#brand-experience'
+      },
+      {
         label: 'Web',
         title: 'Web Launch Lab',
         description: 'Turn brand and audience context into a seven-stage website plan covering hero, motion, copy, implementation, conversion audit and launch verification.',
