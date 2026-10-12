@@ -353,7 +353,7 @@ jobs:
             fi
             : > "$headers"
             : > "$body"
-            result="$(curl --retry 5 --retry-delay 3 --connect-timeout 5 --max-time "$remaining" --retry-max-time "$remaining" --silent --show-error \
+            result="$(curl --connect-timeout 5 --max-time "$remaining" --silent --show-error \
               --location --max-redirs 5 --proto '=https' --proto-redir '=https' \
               -A 'Mozilla/5.0 (ATLAS production verifier; GitHub Actions)' \
               -H 'Cache-Control: no-cache, no-store' \
