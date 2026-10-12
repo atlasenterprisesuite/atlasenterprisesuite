@@ -787,6 +787,32 @@
   font-size:.73rem;
 }
 
+.atlas-ai-memory-sources{
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px solid rgba(125,211,252,.18);
+  border-radius:10px;
+  color:#c5d5e4;
+  background:rgba(125,211,252,.04);
+  font-size:.76rem;
+}
+.atlas-ai-memory-sources summary{
+  cursor:pointer;
+  font-weight:600;
+}
+.atlas-ai-memory-sources summary:focus-visible,
+.atlas-ai-memory-sources a:focus-visible{
+  outline:2px solid #7dd3fc;
+  outline-offset:3px;
+}
+.atlas-ai-memory-sources ul{
+  padding-left:20px;
+  margin:8px 0;
+}
+.atlas-ai-memory-sources li{overflow-wrap:anywhere;margin:5px 0}
+.atlas-ai-memory-sources code{font-size:.69rem;color:#addff4}
+.atlas-ai-memory-sources a{color:#addff4}
+
 .atlas-ai-thinking{
   min-height:34px;
 }
