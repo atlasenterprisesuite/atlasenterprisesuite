@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { isAtlasMemoryId, knowledgeRecordUrl, workDraftUrl } from '../knowledge/memoryIntegration';
 import { useAssistantVoice } from '../../assistant/useAssistantVoice';
 import { detectPcmWavRecordingCapability, recordAssistantPcmWavChunk } from '../../assistant/voice';
 import {
@@ -1031,7 +1032,13 @@ export function UnifiedAIChatPage() {
                   {message.sources?.length ? <details className="atlas-ai-memory-sources">
                     <summary>{message.sources.length} approved ATLAS memory source(s) used as context</summary>
                     <p>Organization-approved context is not independent factual verification. Confirm important claims with their original records.</p>
-                    <ul>{message.sources.map(source => <li key={source.id}><strong>{source.title}</strong> · <code>{source.citation_ref}</code></li>)}</ul>
+                    <ul>{message.sources.filter(source => isAtlasMemoryId(source.id)).map(source => <li key={source.id}>
+                      <strong>{source.title}</strong> · <code>{source.citation_ref}</code>
+                      <div className="atlas-ai-memory-source-actions">
+                        <Link to={knowledgeRecordUrl(source.id)}>Open authorized record</Link>
+                        <Link to={workDraftUrl(source.id)}>Prepare Work proposal</Link>
+                      </div>
+                    </li>)}</ul>
                     <Link to="/knowledge">Review Knowledge Atlas</Link>
                   </details> : null}
                 </div>
