@@ -42,45 +42,10 @@ jobs:
       - name: Enforce fail-closed P0 findings on changed files
         shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
         run: |
-          set -euo pipefail
-          CHANGES="$RUNNER_TEMP/atlas-security-changes.nul"
-          REPORT="$RUNNER_TEMP/atlas-security-changed-report.json"
-          if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            BASE_SHA=""
-          fi
-          if [ -n "$BASE_SHA" ]; then
-            git cat-file -e "$BASE_SHA^{commit}" || {
-              echo "::error::Cannot verify base SHA; refusing to skip changed-file security gate"
-              exit 1
-            }
-            git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" > "$CHANGES"
-          else
-            git ls-files -z > "$CHANGES"
-          fi
-
-          set +e
-          python3 tools/atlas-sentinel-shield/sentinel.py . --files-from "$CHANGES" --output "$REPORT"
-          SCAN_RC=$?
-          set -e
-          python3 - "$REPORT" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-          report = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
-          if report.get('tool') != 'ATLAS Sentinel Shield':
-              raise SystemExit('Invalid Sentinel security report')
-          print('Sentinel changed-file scan:', report['files_scanned'], 'files,', report['counts'])
-          for finding in report['findings']:
-              if finding['severity'] == 'P0':
-                  print(f"::error file={finding['file']},line={finding['line']}::P0 security finding: {finding['rule']}; no secret value exposed")
-          PY
-          if [ "$SCAN_RC" -ne 0 ]; then
-            echo "::error::ATLAS Sentinel P0 check blocked integration (exit $SCAN_RC)."
-            exit 1
-          fi
+          bash -n tools/atlas-sentinel-shield/ci-gate.sh
+          bash tools/atlas-sentinel-shield/ci-gate.sh
       - name: Validate CODEOWNERS security coverage
         shell: bash
         run: |
