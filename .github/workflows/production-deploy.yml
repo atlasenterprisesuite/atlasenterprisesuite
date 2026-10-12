@@ -25,6 +25,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify Sentinel Shield and block P0 secrets in changed sources
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        shell: bash
+        run: |
+          python3 -m unittest discover -s tools/atlas-sentinel-shield -p 'test_*.py'
+          bash -n tools/atlas-sentinel-shield/ci-gate.sh
+          bash tools/atlas-sentinel-shield/ci-gate.sh
 
       - uses: actions/setup-node@v7
         with:
