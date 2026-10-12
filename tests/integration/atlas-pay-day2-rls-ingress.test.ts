@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 
 const schema = readFileSync('supabase/migrations/20261012113000_atlas_pay_transaction_event_evidence.sql', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-pay-transaction-ingest/index.ts', 'utf8');
-const signer = readFileSync('packages/pay/src/secureEventIngress.ts', 'utf8');
+const signer = readFileSync('supabase/functions/_shared/pay-transaction-signature.ts', 'utf8');
 
 describe('ATLAS Financial OS Day 2 RLS and webhook trust contract', () => {
   it('fails closed if Accounts Center migration has not been applied', () => {
