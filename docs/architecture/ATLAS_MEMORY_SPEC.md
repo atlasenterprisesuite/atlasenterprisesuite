@@ -35,3 +35,17 @@ Canonical flow:
 `atlas-memory?api=readiness|list|record|save|approve|import`
 
 The import endpoint exists for explicit structured migration. It is not an automatic ChatGPT-history scraper.
+
+## Enterprise Intelligence source provenance — 2026-10-12
+
+This code-level phase extends the **existing** approved-memory lookup in `supabase/functions/atlas-copilot` instead of adding another data store or provider.
+
+- Select approved records from the current organization only, with the existing service-role API plus server-side membership/role/permission context.
+- Recheck each row's organization ID, approved status, sensitivity classification, ID validity and restricted/admin role before it enters model context or response source metadata.
+- Supply `atlas-memory:<uuid>` source references and titles (not model-invented citations) to the immediate Assistant response; the UI labels them as organization-approved context, **not externally verified facts**.
+- Reject non-approved, cross-tenant, malformed and unknown-sensitivity records; render no source when none qualifies.
+- Do not pass tokens, passwords or provider secrets to client source metadata; queries use existing server-side configuration.
+
+**Important remaining release boundaries (P0/P1):** This milestone does not yet provide source-level ACL/SCIM for external documents, a complete audit of access revocation while a model is generating, immutable citation storage for historical messages, or authenticated production E2E evidence. Those must be implemented or explicitly excluded from the final production acceptance scope. A source cited on a current response is not a guarantee of revocation-safe display of historical answers.
+
+**Status:** feature branch implementation; do not label production-verified until exact-SHA CI, merge, deploy and authorization tests succeed.
