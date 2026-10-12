@@ -95,3 +95,20 @@ The gallery contains ATLAS-original reusable patterns. It does not claim that a 
 ### Provider onboarding boundary
 
 Provider secrets are never collected by the AI Universe browser page. Administrators configure credentials/model identifiers through approved server-side secret/configuration boundaries, organization policy authorizes the provider, and readiness probes must verify it before execution becomes available.
+
+## 2026-10-12 — Enterprise AI adoption dashboard (screenshot-inspired implementation branch)
+
+The reference advertising image for ChatGPT Enterprise depicts usage by team, Daily Active Users, and a 30-day natural-language admin question. These are illustrative reference concepts, **not ATLAS observations**; no 28%, 22% or 14.5% values are copied as telemetry.
+
+ATLAS extends the existing authenticated `/studio/ai-universe` control center and `atlas-copilot?api=usage` endpoint, reusing canonical `atlas_ai_requests` rows:
+
+- UTC daily AI request counts, completed and failed request counts;
+- distinct users who generated an AI request (no user identifiers in the response);
+- actor-only scope for non-managers, organization-wide scope only for `intelligence.manage`/wildcard permission;
+- actual provider request shares and a clearly defined *recorded-request* completion rate;
+- a warning when the bounded row query could truncate the reporting window, or actor IDs are missing;
+- explicit non-availability of team distribution and business outcome attribution until authoritative actor-team membership and evidence-linked business record events can be joined under server permissions.
+
+**Definition limitations:** AI request activity != daily application active users. A completed AI response != a completed business workflow. A difference in reported requests != a productivity increase. Recorded automatic API cost != fully accounted business cost. No business savings, ROI, department ranking or prior-period growth is inferred. The UI will show a data-unavailable state when the authenticated endpoint fails.
+
+Status: **code added on a feature branch; CI, merge, deploy and production E2E not yet verified**. See test `tests/unit/atlas-enterprise-ai-insights.test.ts`, calculator `supabase/functions/atlas-copilot/usage-insights.mjs`, existing store `atlas-intelligence-store.mjs`, and `apps/web/src/modules/intelligence/EnterpriseUsageInsights.tsx`. Release requires 777 REVIEW and exact-SHA verification.
