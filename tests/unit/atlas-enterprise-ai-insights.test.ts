@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { summarizeAIActivity } from '../../supabase/functions/atlas-copilot/usage-insights.mjs';
+import { createIntelligenceStore } from '../../supabase/functions/atlas-copilot/atlas-intelligence-store.mjs';
 
 const periodStart = '2026-10-10T12:00:00.000Z';
 const periodEnd = '2026-10-12T12:00:00.000Z';
@@ -57,6 +58,59 @@ describe('ATLAS Enterprise AI Insights', () => {
   it('validates the reporting window instead of displaying invalid charts', () => {
     expect(() => summarizeAIActivity(observed, { periodStart: periodEnd, periodEnd: periodStart })).toThrow();
     expect(() => summarizeAIActivity(observed, { periodStart: 'invalid', periodEnd })).toThrow();
+  });
+
+  it('scopes service-role usage queries to the authenticated actor and organization', async () => {
+    const calls: string[] = [];
+    const rows = [{
+      actor_id: 'actor-a',
+      status: 'completed',
+      provider: 'atlas-local',
+      model: 'atlas-test',
+      created_at: new Date().toISOString(),
+      usage: {},
+      latency_ms: 100,
+    }];
+    const store = createIntelligenceStore({
+      supabaseUrl: 'https://example.supabase.co',
+      serviceRoleKey: 'test-key',
+      fetchFn: async (url: string) => {
+        calls.push(url);
+        return { ok: true, json: async () => rows };
+      },
+    });
+
+    const member = await store.usageSummary({
+      context: { organization_id: 'company-a', user_id: 'actor-a', permissions: ['intelligence.use'] },
+      days: 1,
+    });
+    expect(member.scope).toBe('actor');
+    expect(member.total_requests).toBe(1);
+    expect(member.active_users).toBe(1);
+    expect(calls[0]).toContain('org_id=eq.company-a');
+    expect(calls[0]).toContain('actor_id=eq.actor-a');
+    expect(calls[0]).toContain('actor_id');
+    expect(JSON.stringify(member)).not.toContain('actor-a');
+
+    const admin = await store.usageSummary({
+      context: { organization_id: 'company-b', user_id: 'admin-b', permissions: ['intelligence.manage'] },
+      days: 1,
+    });
+    expect(admin.scope).toBe('organization');
+    expect(calls[1]).toContain('org_id=eq.company-b');
+    expect(calls[1]).not.toContain('&actor_id=eq.');
+    expect(JSON.stringify(admin)).not.toContain('actor-a');
+  });
+
+  it('rejects an absent tenant context before querying service-role storage', async () => {
+    let calls = 0;
+    const store = createIntelligenceStore({
+      supabaseUrl: 'https://example.supabase.co',
+      serviceRoleKey: 'test-key',
+      fetchFn: async () => { calls += 1; throw new Error('must not call'); },
+    });
+    await expect(store.usageSummary({ context: { organization_id: 'company-a' } })).rejects.toThrow('invalid_agent_context');
+    expect(calls).toBe(0);
   });
 
   it('extends existing permission-scoped telemetry without publishing actor details', () => {
