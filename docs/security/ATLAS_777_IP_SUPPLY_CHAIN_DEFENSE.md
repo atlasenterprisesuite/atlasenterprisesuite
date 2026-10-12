@@ -13,7 +13,7 @@ Status: proposed hardening; source changes are not verified in production until 
 
 ## P0 — enforce and verify
 
-1. **Prevent new embedded credentials:** Sentinel P0 detection cannot be ignored via `sentinel:ignore`. The required GitHub security baseline scans added/modified/copied/renamed files against the PR base SHA and fails on P0; existing untouched findings require separate remediation. Secret values never appear in reports.
+1. **Prevent new embedded credentials:** Sentinel P0 detection cannot be ignored via `sentinel:ignore`. The required GitHub build-readiness check scans added/modified/copied/renamed files against the PR base SHA and fails on P0; existing untouched findings require separate remediation. Secret values never appear in reports.
 2. **Protect source controls:** keep main ruleset active, block force-push/deletion, and require passing `github-security-baseline`, build-readiness and CodeQL checks; ensure the required checks actually run on every PR.
 3. **Human access:** require passkeys and independent recovery. Confirm MFA, access lists, deploy identities, scoped tokens and GitHub App permissions directly in the providers; do not export secrets into audit logs.
 4. **Credential incident response:** if a genuine token is discovered, revoke/rotate via provider controls, check audit logs, examine usage, and redeploy only with proven clean secret references. Git history rewrite is not a substitute for rotation.
