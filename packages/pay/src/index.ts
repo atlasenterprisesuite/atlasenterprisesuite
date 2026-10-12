@@ -322,3 +322,11 @@ export const ATLAS_PAY_PRINCIPLES = [
   'Issuance and payouts fail closed unless provider authorization, credentials, regulatory coverage and capability are verified.',
   'No UI state may claim issued, paid, settled, insured or bank-backed without authenticated evidence.'
 ] as const;
+
+export { deriveTransactionTruth } from './transactionTruth';
+export type {
+  AtlasTransactionEventKind,
+  AtlasTransactionScope,
+  AtlasTransactionEvidence,
+  AtlasTransactionTruth
+} from './transactionTruth';

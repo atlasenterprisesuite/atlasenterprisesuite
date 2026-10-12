@@ -163,6 +163,24 @@ export function AtlasPayPage() {
         )}
       </article>
 
+      <article className="feature-card wide" aria-label="Transaction Truth Engine">
+        <p className="eyebrow">ATLAS Financial OS · Day 1</p>
+        <h2>Transaction Truth Engine</h2>
+        <p>
+          A card authorization hold, a posted charge and a verified release are different
+          lifecycle states. A negative transaction amount alone cannot prove which one occurred.
+        </p>
+        <div className="notice" role="status">
+          Provider-gated: no server-attested transaction event feed is connected to this workspace.
+          Transaction lifecycle status remains unavailable until authenticated,
+          organization-scoped provider evidence can be read.
+        </div>
+        <p>
+          This read-only foundation cannot release bank holds or infer available funds.
+          Releasing an authorization does not refund an already posted charge.
+        </p>
+      </article>
+
       <div className="module-grid">
         {CAPABILITIES.map((capability) => (
           <article className="module-card enabled" key={capability.label}>
