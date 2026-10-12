@@ -17,7 +17,7 @@ Read-only inspection of the canonical `atlas-core` Supabase production project `
 
 1. An **authorized, provider-specific adapter** verifies a native bank/processor event. The native provider's signature algorithm is not assumed to be HMAC and is deliberately NOT implemented here.
 2. The trusted adapter converts only the approved fields into an internal signed envelope. It signs `<unix_seconds>.<raw_json>` with HMAC-SHA256 and a **unique secret stored server-side**.
-3. `packages/pay/src/secureEventIngress.ts` validates the signature, freshness window (5 minutes), maximum payload size (64 KiB), schema and signed event amount before producing a hash.
+3. `supabase/functions/_shared/pay-transaction-signature.ts` validates the signature, freshness window (5 minutes), maximum payload size (64 KiB), schema and signed event amount before producing a hash.
 4. `supabase/functions/atlas-pay-transaction-ingest/index.ts` requires **Supabase JWT verification** if deployed, keeps `ATLAS_PAY_TRANSACTION_INGEST_ENABLED` false by default, and binds the org and provider exclusively from trusted environment variables.
 5. The `atlas_pay_record_transaction_event` database RPC verifies service-role auth, account/connection organization ownership and provider readiness. Its insert and audit occur in one transaction.
 6. `atlas_pay_transaction_events` keeps immutable organization-scoped evidence (no card PAN, account routing number, personal name, provider secrets or raw signed payload); repeat IDs return `duplicate` only if all attested fields and payload hash match.
