@@ -1,4 +1,4 @@
-# ATLAS Six-Dimensional Enterprise Operations Explorer
+# ATLAS 5D + 6D Enterprise Operations Explorer
 
 Date: 2026-10-12
 
@@ -16,6 +16,29 @@ Enhances the existing `/advisory/enterprise-automation` route; reuses `calculate
 4. Recovered human capacity.
 5. Projected RPA exception queue.
 6. Human approval boundaries.
+
+
+## 5D: alternate business futures (shared 6D engine)
+
+A second section is available at `/advisory/enterprise-automation#automation-fifth-dimension`.
+
+- **Lower demand**: variable document/receivable, inventory, purchasing, and administration volumes decline by an editable percent.
+- **Current plan**: unchanged input volumes and RPA assumptions.
+- **Demand surge**: those same variable volumes increase by an editable percent, with a relative increase in RPA exceptions and decrease in productivity.
+- All three cases call `evaluateSixDimensionPaths`; they inherit its hard-coded control categories and simulation-only boundary.
+- The 5D robustness heuristic chooses the route whose *worst modeled monthly operating cost* across the three cases is lowest (simple minimax). Ties follow manual → assisted → governed RPA order. It is not a promise that the future is known.
+- These scenarios contain no assigned probabilities. Five interpretive lenses: demand, futures, routes, cost, resilience. They are not physical spatial dimensions.
+- Legal entities, bank accounts, people/payroll counts and GL close counts stay unchanged by variable demand, to avoid manufacturing sensitive operations.
+- Assumptions for the alternatives default to 25% demand change, 50% relative exception variation and 15% relative RPA productivity variation. All are user-editable from 0 to 100 inclusive. RPA percentages are capped at 100.
+- Calculations run locally in browser memory only; no persistent scenario records, external provider calls, authorization changes or automated financial operations.
+
+### Additional acceptance checks
+
+- Zero variation gives identical 5D rows to the underlying 6D result.
+- Zero companies selects zero-cost manual operation.
+- High RPA exception workload cannot be promoted to the preferred operational path solely because it is called automation.
+- All alternative cases preserve restricted AP, bank, GL-close and payroll categories.
+- Reject invalid user inputs and non-finite or out-of-range scenario assumptions.
 
 ## Compared strategies
 
@@ -55,6 +78,6 @@ P1 validations:
 
 ## Workflows
 
-Primary route: `/advisory/enterprise-automation#automation-six-dimension`
+Shared route: `/advisory/enterprise-automation` with sections `#automation-fifth-dimension` (5D) and `#automation-six-dimension` (6D).
 
 Launch policy: start with advisory planning. Any future transition to `/work` or `/automations` must use the existing authorized execution engine and approval policies; this feature currently initiates no job.
