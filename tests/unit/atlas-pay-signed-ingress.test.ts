@@ -1,6 +1,6 @@
 import { webcrypto } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { verifySignedTransactionEnvelope } from '../../packages/pay/src/secureEventIngress';
+import { verifySignedTransactionEnvelope } from '../../supabase/functions/_shared/pay-transaction-signature';
 
 const subtle = webcrypto.subtle as unknown as SubtleCrypto;
 const secret = 'ATLAS-TEST-ONLY-HMAC-SECRET-32-CHARACTERS';
