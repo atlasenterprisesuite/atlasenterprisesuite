@@ -62,7 +62,7 @@ describe('ATLAS Brand Experience — truthful local drafting', () => {
       productName: 'Cloud Runner', founderStory: '', destinationUrl: 'https://store.example.com'
     });
     expect(result.pack?.packagingNote).toMatch(/Gracias/);
-    expect(result.pack?.socialCaption).toContain('viaje');
+    expect(result.pack?.socialCaption).toContain('Para commuters');
     expect(renderBrandExperienceText(result.pack!)).toContain('BORRADOR');
     expect(renderBrandExperienceText(result.pack!)).toContain('https://store.example.com/');
   });
