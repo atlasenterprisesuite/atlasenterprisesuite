@@ -15,6 +15,7 @@ import {
   evaluateFifthDimensionFutures,
   type FifthDimensionAssumptions
 } from './enterpriseFifthDimensionModel';
+import { EnterpriseConsequencePanel } from './EnterpriseConsequencePanel';
 import './enterpriseAutomation.css';
 
 const fields: { key: keyof AutomationInput; label: string; help: string }[] = [
@@ -83,6 +84,7 @@ export function EnterpriseAutomationPage() {
       <a href="#automation-scenario">Scenario calculator</a>
       <a href="#automation-fifth-dimension">5D alternative futures</a>
       <a href="#automation-six-dimension">6D operating controls</a>
+      <a href="#automation-consequence">Decision & consequence explorer</a>
       <a href="#automation-controls">Controls and measurement</a>
     </nav>
 
@@ -227,6 +229,8 @@ export function EnterpriseAutomationPage() {
       <p className="automation-loop">This comparison reuses canonical ATLAS operating volumes and assumes the same entered monthly platform cost for assisted and RPA paths, with no additional RPA license or setup premium. Review time is added back to the RPA estimate. Actual costs, error rates, throughput and provider readiness must be measured separately.</p>
       <p><strong>Fail-closed control:</strong> Accounts payable, bank reconciliations, GL close, and people/payroll remain outside this RPA pilot. No path invokes an automation runner, writes business records, approves payees, releases payments, processes payroll, or declares production readiness. Each sensitive action continues through its existing authenticated approvals and audit trail.</p>
     </section>
+
+    <EnterpriseConsequencePanel futures={fifthResult} />
 
     <section id="automation-controls" aria-labelledby="automation-controls-title">
       <h3 id="automation-controls-title">Evidence before automation claims</h3>
