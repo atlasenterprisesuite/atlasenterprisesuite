@@ -82,6 +82,12 @@ export type AssistantUsageSummary = {
   days: number;
   period_start: string;
   period_end: string;
+  active_users?: number | null;
+  identity_coverage?: 'complete' | 'partial';
+  source_coverage?: 'complete' | 'potentially_truncated';
+  source_limit?: number;
+  observed_requests?: number;
+  daily_activity?: Array<{ date: string; requests: number; completed: number; failed: number; active_users: number | null }>;
   total_requests: number;
   completed_requests: number;
   failed_requests: number;
