@@ -1,0 +1,43 @@
+.brand-experience { scroll-margin-top: 100px; margin-top: 20px; }
+.brand-experience__header { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.3rem; }
+.brand-experience__header h2 { font-size:clamp(1.55rem, 2.8vw, 2.4rem); line-height:1.12; margin:.3rem 0 .5rem; }
+.brand-experience__header p { max-width:65ch; }
+.brand-experience__status { border:1px solid rgba(136,211,255,.35); border-radius:2rem; padding:.45rem .9rem; font-size:.8rem; }
+.brand-experience__layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,.85fr); gap:1rem; align-items:stretch; }
+.brand-experience__editor,.brand-experience__preview,.brand-experience__frames { border:1px solid var(--web-border); border-radius:20px; padding:clamp(1rem, 2.5vw, 1.5rem); background:rgba(7,17,32,.7); min-width:0; }
+.brand-experience h3 { margin:.2rem 0 .8rem; font-size:1.1rem; }
+.brand-experience__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem; margin:1rem 0; }
+.brand-experience__fields label { display:grid; gap:.4rem; min-width:0; }
+.brand-experience__fields label span { font-size:.83rem; opacity:.84; }
+.brand-experience__fields .brand-experience__wide { grid-column:1/-1; }
+.brand-experience__alert,.brand-experience__warning { border-radius:12px; padding:.7rem .85rem; margin:1rem 0; }
+.brand-experience__alert { background:rgba(224,124,124,.13); border:1px solid rgba(255,160,160,.3); }
+.brand-experience__warning { background:rgba(245,197,109,.08); border:1px solid rgba(245,197,109,.26); font-size:.84rem; }
+.brand-experience__warning ul { padding-left:1.2rem; margin:.4rem 0 0; }
+.brand-experience__warning li { margin:.25rem 0; }
+.brand-experience__actions { display:flex; flex-wrap:wrap; gap:.65rem; align-items:center; }
+.brand-experience__actions a { text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+.brand-experience__actions button:disabled { opacity:.5; cursor:not-allowed; }
+.brand-experience__preview { display:flex; flex-direction:column; gap:.55rem; }
+.brand-experience__preview-brand { letter-spacing:.16em; text-transform:uppercase; font-size:.72rem; color:#a4d8ff; }
+.brand-experience__preview h3 { font-size:clamp(1.6rem,3vw,2.4rem); margin:0; }
+.brand-experience__preview-lead { font-size:1.08rem; line-height:1.5; }
+.brand-experience__preview blockquote { margin:.4rem 0; border-left:3px solid #88cfff; padding:.7rem 1rem; background:rgba(136,207,255,.06); }
+.brand-experience__caption { border-top:1px solid var(--web-border); padding-top:.7rem; }
+.brand-experience__caption p { white-space:pre-wrap; }
+.brand-experience__proof { opacity:.78; font-size:.82rem; }
+.brand-experience__preview > a { align-self:flex-start; margin-top:auto; }
+.brand-experience__frames { margin-top:1rem; }
+.brand-experience__upload { cursor:pointer; display:inline-flex; flex-direction:column; gap:.45rem; font-size:.88rem; margin:.8rem 0; }
+.brand-experience__upload input { max-width:350px; }
+.brand-experience__empty { border:1px dashed var(--web-border); padding:1.25rem; border-radius:14px; }
+.brand-experience__viewer { max-width:700px; margin:0 auto; }
+.brand-experience__viewer img { display:block; width:100%; max-height:490px; aspect-ratio:4/3; object-fit:contain; background:rgba(0,0,0,.3); border-radius:12px; }
+.brand-experience__viewer-controls { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.6rem; margin-top:.75rem; }
+.brand-experience__viewer-controls button { border:1px solid var(--web-border); border-radius:10px; background:rgba(20,50,80,.8); color:inherit; padding:.6rem .85rem; cursor:pointer; }
+.brand-experience__viewer-controls label { min-width:120px; flex:1; max-width:260px; display:grid; gap:.3rem; }
+.brand-experience__viewer-controls input { padding:0; }
+.brand-experience :is(button, a, input, textarea):focus-visible { outline:3px solid #96d9ff; outline-offset:3px; }
+@media(max-width:820px) { .brand-experience__layout { grid-template-columns:1fr; } }
+@media(max-width:520px) { .brand-experience__fields { grid-template-columns:1fr; } .brand-experience__header { gap:.4rem; } .brand-experience__actions > * { width:100%; } }
+@media(prefers-reduced-motion:reduce) { .brand-experience * { scroll-behavior:auto !important; transition:none !important; } }
