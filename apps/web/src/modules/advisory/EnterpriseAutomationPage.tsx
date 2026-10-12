@@ -5,6 +5,11 @@ import {
   DEFAULT_AUTOMATION_INPUT,
   type AutomationInput
 } from './enterpriseAutomationModel';
+import {
+  DEFAULT_SIX_DIMENSION_ASSUMPTIONS,
+  evaluateSixDimensionPaths,
+  type SixDimensionAssumptions
+} from './enterpriseSixDimensionModel';
 import './enterpriseAutomation.css';
 
 const fields: { key: keyof AutomationInput; label: string; help: string }[] = [
@@ -18,6 +23,13 @@ const fields: { key: keyof AutomationInput; label: string; help: string }[] = [
   { key: 'hourlyCost', label: 'Fully loaded hourly cost ($)', help: 'Cost of capacity, not guaranteed cash savings' },
   { key: 'monthlyPlatformCost', label: 'Monthly platform cost ($)', help: 'Scenario assumption; not an ATLAS price quote' },
   { key: 'setupCost', label: 'One-time implementation cost ($)', help: 'Scenario assumption; not an ATLAS price quote' }
+];
+
+const sixFields: { key: keyof SixDimensionAssumptions; label: string; help: string; max: number }[] = [
+  { key: 'rpaCoveragePercent', label: 'RPA pilot coverage (%)', help: 'Share of lower-risk work items proposed for the simulated pilot', max: 100 },
+  { key: 'rpaTimeReductionPercent', label: 'RPA time reduction (%)', help: 'Hypothetical reduction in assisted touch time for covered items', max: 100 },
+  { key: 'exceptionRatePercent', label: 'RPA exception rate (%)', help: 'Assumed share of covered work needing human review', max: 100 },
+  { key: 'reviewMinutesPerException', label: 'Review minutes per exception', help: 'Additional human review time per projected exception', max: 1000000 }
 ];
 
 const workflow = [
@@ -37,6 +49,9 @@ const decimal = (value: number) => new Intl.NumberFormat('en-US', { maximumFract
 export function EnterpriseAutomationPage() {
   const [input, setInput] = useState<AutomationInput>(DEFAULT_AUTOMATION_INPUT);
   const result = useMemo(() => calculateAutomationScenario(input), [input]);
+  const [sixAssumptions, setSixAssumptions] = useState<SixDimensionAssumptions>(DEFAULT_SIX_DIMENSION_ASSUMPTIONS);
+  const sixResult = useMemo(() => evaluateSixDimensionPaths(input, sixAssumptions), [input, sixAssumptions]);
+  const sixPreferred = sixResult.paths.find((path) => path.id === sixResult.recommendedId);
 
   return <div className="enterprise-automation">
     <header className="page-header">
@@ -48,6 +63,7 @@ export function EnterpriseAutomationPage() {
     <nav className="automation-jump" aria-label="Enterprise automation sections">
       <a href="#automation-cycle">Operating cycle</a>
       <a href="#automation-scenario">Scenario calculator</a>
+      <a href="#automation-six-dimension">Six-dimensional choices</a>
       <a href="#automation-controls">Controls and measurement</a>
     </nav>
 
@@ -95,6 +111,55 @@ export function EnterpriseAutomationPage() {
         <tbody>{result.rows.map((row) => <tr key={row.id}><th scope="row"><Link to={row.route}>{row.label}</Link></th><td>{decimal(row.volume)} {row.unit}</td><td>{row.manual}</td><td>{row.assisted}</td><td>{decimal(row.savedHours)}</td></tr>)}</tbody>
       </table></div>
       <p className="automation-loop">First-year ROI: {result.firstYearRoi === null ? 'No cost entered' : `${decimal(result.firstYearRoi * 100)}%`}. This is a hypothetical planning calculation. Recovered capacity becomes cash savings only when it reduces paid work or external cost; do not count the same hours again as revenue.</p>
+    </section>
+
+    <section id="automation-six-dimension" aria-labelledby="automation-six-dimension-title">
+      <h3 id="automation-six-dimension-title">Six-dimensional decision explorer</h3>
+      <p>Compare manual, assisted and governed RPA paths across six operational axes. The "sixth dimension" is a planning metaphor, not an assertion about physics or knowledge of future outcomes. All numbers are assumptions for planning, not measured production results.</p>
+      <div className="automation-dimension-grid" aria-label="Six business decision dimensions">
+        {sixResult.dimensions.map((dimension, index) => <article key={dimension.id}>
+          <span>0{index + 1}</span>
+          <h4>{dimension.label}</h4>
+          <p>{dimension.description}</p>
+        </article>)}
+      </div>
+      <div className="automation-inputs">
+        {sixFields.map((field) => <label key={field.key}>
+          <span>{field.label}</span>
+          <input type="number" min="0" max={field.max} step="1" value={sixAssumptions[field.key]}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              if (Number.isFinite(next) && next >= 0 && next <= field.max) {
+                setSixAssumptions((current) => ({ ...current, [field.key]: next }));
+              }
+            }} />
+          <small>{field.help}</small>
+        </label>)}
+      </div>
+      <button className="automation-reset" type="button" onClick={() => setSixAssumptions({ ...DEFAULT_SIX_DIMENSION_ASSUMPTIONS })}>Reset RPA assumptions</button>
+      <div className="automation-results" aria-live="polite">
+        <article><span>Monthly work items</span><strong>{decimal(sixResult.totalItems)}</strong></article>
+        <article><span>RPA-eligible work items</span><strong>{decimal(sixResult.eligibleVolume)}</strong></article>
+        <article><span>Gated process categories</span><strong>{sixResult.restrictedProcesses.length}</strong></article>
+        <article><span>Preferred modeled route</span><strong>{sixPreferred?.label ?? 'Unavailable'}</strong></article>
+      </div>
+      <div className="automation-table-wrap"><table>
+        <caption>Simulated paths ranked by estimated monthly operating cost, not actual automation outcomes</caption>
+        <thead><tr>
+          <th scope="col">Operating path</th><th scope="col">Human hours/mo</th><th scope="col">Modeled cost/mo</th>
+          <th scope="col">Capacity recovered/mo</th><th scope="col">RPA exceptions/mo</th><th scope="col">Difference vs manual/mo</th>
+        </tr></thead>
+        <tbody>{sixResult.paths.map((path) => <tr key={path.id}>
+          <th scope="row">{path.label}{path.id === sixResult.recommendedId ? ' · lowest modeled cost' : ''}</th>
+          <td>{decimal(path.humanHours)} h</td>
+          <td>{money(path.operatingCost)}</td>
+          <td>{decimal(path.capacityRecovered)} h</td>
+          <td>{path.projectedExceptions === null ? 'Not modeled' : decimal(path.projectedExceptions)}</td>
+          <td>{money(path.monthlyCostDifferenceFromManual)}</td>
+        </tr>)}</tbody>
+      </table></div>
+      <p className="automation-loop">This comparison reuses canonical ATLAS operating volumes and assumes the same entered monthly platform cost for assisted and RPA paths, with no additional RPA license or setup premium. Review time is added back to the RPA estimate. Actual costs, error rates, throughput and provider readiness must be measured separately.</p>
+      <p><strong>Fail-closed control:</strong> Accounts payable, bank reconciliations, GL close, and people/payroll remain outside this RPA pilot. No path invokes an automation runner, writes business records, approves payees, releases payments, processes payroll, or declares production readiness. Each sensitive action continues through its existing authenticated approvals and audit trail.</p>
     </section>
 
     <section id="automation-controls" aria-labelledby="automation-controls-title">
