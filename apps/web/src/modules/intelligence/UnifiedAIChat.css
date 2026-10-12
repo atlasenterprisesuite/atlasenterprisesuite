@@ -813,6 +813,21 @@
 .atlas-ai-memory-sources code{font-size:.69rem;color:#addff4}
 .atlas-ai-memory-sources a{color:#addff4}
 
+.atlas-ai-memory-source-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 16px;
+  margin:6px 0;
+}
+.atlas-ai-memory-source-actions a{
+  text-underline-offset:3px;
+  overflow-wrap:anywhere;
+}
+.atlas-ai-memory-source-actions a:focus-visible{
+  outline:2px solid #7dd3fc;
+  outline-offset:3px;
+}
+
 .atlas-ai-thinking{
   min-height:34px;
 }
