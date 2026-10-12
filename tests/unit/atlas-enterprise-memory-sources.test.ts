@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildApprovedMemoryContext } from '../../supabase/functions/atlas-copilot/approved-memory-sources.mjs';
 
@@ -78,6 +79,22 @@ describe('ATLAS Enterprise Intelligence authorized memory source gate', () => {
       rows: [memory({ id: idA })], context: member, message: 'meteorology', module: 'weather',
     });
     expect(r).toEqual({ text: '', recordIds: [], sources: [] });
+  });
+
+  it('uses service-scoped approved records and exposes source references only from the server', () => {
+    const backend = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
+    const client = readFileSync('apps/web/src/assistant/client.ts', 'utf8');
+    const chat = readFileSync('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx', 'utf8');
+    expect(backend).toContain("buildApprovedMemoryContext({rows,context,message,module})");
+    expect(backend).toContain("organization_id=eq.");
+    expect(backend).toContain("status=eq.approved");
+    expect(backend).toContain("if(!privileged)endpoint+='&sensitivity=eq.organization'");
+    expect(backend).toContain("sources:memory.sources");
+    expect(client).toContain("memory?:");
+    expect(chat).toContain("sources: result.memory?.sources || []");
+    expect(chat).toContain("approved ATLAS memory source(s) used as context");
+    expect(chat).toContain('Review Knowledge Atlas');
+    expect(backend).not.toMatch(/const VERSION=17;/);
   });
 
   it('orders sources deterministically, deduplicates IDs and caps the evidence prompt', () => {
