@@ -83,8 +83,10 @@ begin
   -- A participant losing org privileges immediately blocks BOTH sides.
   update public.organization_members set status='revoked' where org_id=org and user_id=viewer;
   perform pg_temp.expect_denied('status',org,host,v_room_id);
+  -- A still-authorized host MUST be able to revoke immediately even when the
+  -- counterpart's membership is revoked; otherwise the room could reawaken.
+  result:=public.atlas_remote_assist_event('stop',org,host,v_room_id);
   update public.organization_members set status='active' where org_id=org and user_id=viewer;
-  result:=public.atlas_remote_assist_event('stop',org,viewer,v_room_id);
   if result->>'status' <> 'revoked' then raise exception 'P0: stop did not revoke'; end if;
   perform pg_temp.expect_denied('status',org,host,v_room_id);
   perform pg_temp.expect_denied('answer',org,viewer,v_room_id,answer_hash);
@@ -101,6 +103,11 @@ begin
     raise exception 'P0: room approved even though audit insert failed';
   end if;
   execute 'alter table public.audit_logs drop constraint remote_test_approval_denied';
+  -- Viewer can also revoke their own enrolled session after a denied approval.
+  result:=public.atlas_remote_assist_event('stop',org,viewer,next_id);
+  if result->>'status' <> 'revoked' then
+    raise exception 'P0: viewer-side stop failed';
+  end if;
 
   raise notice 'REMOTE ASSIST P0 ISOLATION + AUDIT TESTS PASSED';
 end $$;
