@@ -1,0 +1,53 @@
+name: ATLAS Remote Assist PostgreSQL P0
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/modules/device-os/BrowserScreenAssist.tsx'
+      - 'apps/web/src/modules/device-os/remoteAssistRoom.ts'
+      - 'supabase/functions/atlas-remote-assist/**'
+      - 'supabase/migrations/*atlas_remote_assist*'
+      - 'tests/postgres/atlas-remote-assist-rooms.sql'
+      - '.github/workflows/atlas-remote-assist-postgres-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  remote-assist-db-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ github.sha }}
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL command-line client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Validate tenant isolation, room transitions and atomic audit in ephemeral PostgreSQL 17
+        env:
+          PGPASSWORD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          psql --host=127.0.0.1 --port=5432 --username=postgres --dbname=postgres \
+            --set=ON_ERROR_STOP=1 --file=tests/postgres/atlas-remote-assist-rooms.sql
+      - name: Record evidence and explicit release limitation
+        if: success()
+        run: |
+          echo "Local PostgreSQL 17 negative-path contract: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "This check uses synthetic users, not a real production database or a two-device WebRTC test." >> "$GITHUB_STEP_SUMMARY"
+          echo "Production deployment must remain fail-closed without an authenticated two-device and exact-SHA verification." >> "$GITHUB_STEP_SUMMARY"

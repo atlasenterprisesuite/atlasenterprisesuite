@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { BrowserScreenAssist } from './BrowserScreenAssist';
 import {
   listLocalAgents,
   listLocalDevices,
@@ -167,6 +168,7 @@ export function RemoteAssistPanel() {
         The ATLAS target is provider-neutral remote support with explicit consent, least privilege,
         expiring sessions, visible session state, audit evidence and immediate revocation.
       </div>
+      <BrowserScreenAssist />
     </article>
   );
 }
