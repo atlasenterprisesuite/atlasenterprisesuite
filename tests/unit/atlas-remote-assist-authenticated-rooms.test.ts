@@ -28,8 +28,8 @@ describe('ATLAS Remote Assist authenticated room',()=>{
     expect(sql).toContain("om.status = 'active'");
     expect(sql).toContain("om.role in ('owner', 'admin', 'platform_admin')");
     expect(sql).toContain("v_session.host_user_id = p_actor_id");
-    expect(sql).toContain("v_session.offer_sha256 = p_digest");
-    expect(sql).toContain("v_session.answer_sha256 = p_digest");
+    expect(sql).toContain("v_session.offer_sha256 <> p_digest");
+    expect(sql).toContain("v_session.answer_sha256 <> p_digest");
     expect(sql).toContain("from public, anon, authenticated");
     expect(sql).toContain('grant execute on function public.atlas_remote_assist_event');
     expect(sql).toContain('to service_role');
