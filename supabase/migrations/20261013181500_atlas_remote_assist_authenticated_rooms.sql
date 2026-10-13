@@ -72,7 +72,8 @@ begin
     -- Revalidate BOTH participant memberships before any status read or action.
     -- Revoking either membership must also stop the other browser on its next
     -- short authorization heartbeat, not just revoke the departing user's token.
-    if not exists (
+    if p_action <> 'stop' and (
+      not exists (
       select 1 from public.organization_members om
       where om.org_id = p_org_id and om.user_id = v_session.host_user_id
         and om.status = 'active'
@@ -84,7 +85,7 @@ begin
           and om.status = 'active'
           and om.role in ('owner', 'admin', 'platform_admin')
       )
-    ) then
+    )) then
       raise exception 'remote_assist_peer_membership_revoked' using errcode = '42501';
     end if;
 
