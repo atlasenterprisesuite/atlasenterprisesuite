@@ -4,17 +4,16 @@
  */
 export async function requireIdentityShieldAdmin(
   sb: {
-    auth: { getUser: () => Promise<{data: {user: {id: string} | null}, error: unknown}> };
+    auth: { getUser: () => Promise<{data: {user: {id: string} | null}, error: unknown}>; getClaims: () => Promise<{data: {claims?: {aal?: unknown}} | null, error: unknown}> };
     rpc: (name: string, args: Record<string,string>) => Promise<{data: unknown,error: unknown}>;
   },
-  verifiedClaims: { aal?: unknown } | null,
   organizationId: string,
 ): Promise<{userId: string; organizationId: string}> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(organizationId)) {
     throw new Error('identity_shield_denied');
   }
-  const {data, error} = await sb.auth.getUser();
-  if (error || !data.user?.id || verifiedClaims?.aal !== 'aal2') {
+  const [{data, error}, claimsResult] = await Promise.all([sb.auth.getUser(), sb.auth.getClaims()]);
+  if (error || !data.user?.id || claimsResult.error || claimsResult.data?.claims?.aal !== 'aal2') {
     throw new Error('identity_shield_denied');
   }
   const permission = await sb.rpc('has_identity_permission', {o: organizationId, p: 'identity.shield.manage'});
