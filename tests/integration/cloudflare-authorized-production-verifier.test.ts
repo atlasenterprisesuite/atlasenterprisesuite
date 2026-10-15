@@ -40,6 +40,8 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(verifier).toContain("'/revenue'");
     expect(verifier).toContain("'/analytics'");
     expect(verifier).toContain("'/health'");
+    expect(verifier).toContain("'/care'");
+    expect(verifier).toContain("'/city'");
     expect(verifier).toContain(
       "'/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel'"
     );
@@ -72,7 +74,7 @@ describe('Cloudflare authorized production HTTP verifier', () => {
     expect(workflow).toContain('/functions/v1/atlas-cloudflare-production-http-verify?api=verify');
     expect(workflow).toContain('AUTHORIZED_EDGE_VERIFIED');
     expect(workflow).toContain('AUTHORIZED_VERIFIER_VERSION');
-    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "31" ]');
+    expect(workflow).toContain('[ "$AUTHORIZED_VERIFIER_VERSION" = "32" ]');
     expect(workflow).toContain('OBSERVED_VERSION_ID');
     expect(workflow).toContain('OBSERVED_VERSION_TAG');
     expect(workflow).toContain('AUTHORIZED_HEALTH_REACHABLE');

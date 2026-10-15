@@ -29,8 +29,11 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(suite).toContain('suite-primary-grid');
     expect(suite).toContain('suite-filter-bar');
     expect(suite).toContain('suite-module-card');
-    expect(suite).toContain('COVER_ASSETS');
-    expect(suite).toContain('/atlas/design/atlas-module-gallery.webp');
+    expect(suite).toContain('AtlasModuleArtwork');
+    expect(suite).toContain('<AtlasModuleArtwork module={module} />');
+    expect(suite).not.toContain('COVER_ASSETS');
+    expect(suiteStyles).toContain('.suite-module-artwork');
+    expect(suiteStyles).toContain('/atlas/design/atlas-module-gallery.webp');
     expect(suiteStyles).toContain('.suite-module-grid');
     expect(suiteStyles).toContain('repeat(4,minmax(0,1fr))');
     expect(suiteStyles).toContain('@media(max-width:760px)');

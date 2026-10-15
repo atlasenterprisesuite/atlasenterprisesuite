@@ -60,6 +60,7 @@ describe('ATLAS global production verification', () => {
       '/payroll',
       '/learning',
       '/health',
+      '/care',
       '/studio',
       '/voice',
       '/events',
@@ -77,6 +78,7 @@ describe('ATLAS global production verification', () => {
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
       '/gps',
+      '/city',
       '/finance/accounting',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
       '/studio/teleprompter',
@@ -264,6 +266,8 @@ describe('ATLAS global production verification', () => {
     }
     expect(authorizedVerifier).toContain("'/voice'");
     expect(authorizedVerifier).toContain("'/health'");
+    expect(authorizedVerifier).toContain("'/care'");
+    expect(authorizedVerifier).toContain("'/city'");
     expect(authorizedVerifier).toContain("'/frontier'");
     expect(authorizedVerifier).toContain("'/studio/write'");
     expect(authorizedVerifier).toContain("'/commerce'");

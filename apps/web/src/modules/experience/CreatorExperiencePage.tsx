@@ -1,4 +1,5 @@
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { MusicVideoShowcase } from './MusicVideoShowcase';
 
 const creatorSections: ModuleExperienceSection[] = [
   {
@@ -84,6 +85,12 @@ const creatorSections: ModuleExperienceSection[] = [
         title: 'Content Intelligence',
         description: 'Turn creator context into audience insights, ranked ideas, hooks, structured drafts, channel variants and governed handoffs.',
         to: '/studio/content'
+      },
+      {
+        label: 'Brand',
+        title: 'Brand Experience Pack',
+        description: 'Draft authentic product storytelling, packaging copy, social captions and a local multi-angle photo preview using the existing Web Launch brand context.',
+        to: '/studio/web-launch#brand-experience'
       },
       {
         label: 'Web',
@@ -189,6 +196,8 @@ export function CreatorExperiencePage() {
       ]}
       sections={creatorSections}
       statusNote="External generation remains unavailable until verified provider readiness, organization authorization and the required storage boundary are present. Local planning remains available without fabricating provider output."
-    />
+    >
+      <MusicVideoShowcase />
+    </ModuleExperiencePage>
   );
 }
