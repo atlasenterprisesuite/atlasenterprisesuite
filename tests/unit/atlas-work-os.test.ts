@@ -18,6 +18,8 @@ describe('ATLAS Work OS', () => {
     expect(routes).toContain('<WorkOSPage />');
     expect(subnav).toContain("to: '/work/os'");
     expect(subnav).toContain("label: 'Work OS'");
+    expect(routes).toContain('path="/work/board"');
+    expect(subnav).toContain("to: '/work/board'");
   });
 
   it('reuses canonical ATLAS modules instead of creating disconnected product silos', () => {
@@ -37,6 +39,7 @@ describe('ATLAS Work OS', () => {
     ]) {
       expect(page).toContain(route);
     }
+    expect(page).toContain("to: '/work/board'");
     expect(page).toContain('Existing modules are reused instead of duplicated');
     expect(page).toContain('Identity → Graph → Data → Knowledge → AI → Automation → Security → Apps');
   });
@@ -47,7 +50,6 @@ describe('ATLAS Work OS', () => {
       'External mailbox authorization is required',
       'No calendar is represented as connected',
       'Dedicated form-builder UI is not yet implemented',
-      'Dedicated collaborative board UI is not yet implemented',
       'A canonical ATLAS Drive route is not yet registered',
       'A live meeting provider must be authorized'
     ]) {
