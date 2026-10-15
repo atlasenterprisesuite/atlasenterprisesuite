@@ -8,6 +8,18 @@ const camera: CameraDevice = {
 const owner = { tenantId: 'tenant-1', authenticated: true, allowedCameraIds: ['cam-1'] };
 
 describe('camera capability fail-closed gate', () => {
+  it('rejects unknown capabilities from untrusted HTTP input', () => {
+    expect(authorizeCameraCapability(owner, camera, 'remote_unlock'))
+      .toEqual({ allowed: false, status: 501, code: 'capability_unavailable' });
+  });
+  it('rejects missing tenant identifiers even when both are empty', () => {
+    expect(authorizeCameraCapability({ ...owner, tenantId: '' }, { ...camera, tenantId: '' }, 'events'))
+      .toEqual({ allowed: false, status: 403, code: 'camera_access_denied' });
+  });
+  it('rejects malformed access allowlists at runtime', () => {
+    expect(authorizeCameraCapability({ ...owner, allowedCameraIds: null as unknown as string[] }, camera, 'events'))
+      .toEqual({ allowed: false, status: 403, code: 'camera_access_denied' });
+  });
   it('rejects unauthenticated access', () => {
     expect(authorizeCameraCapability({ ...owner, authenticated: false }, camera, 'live_view'))
       .toEqual({ allowed: false, status: 401, code: 'unauthenticated' });
