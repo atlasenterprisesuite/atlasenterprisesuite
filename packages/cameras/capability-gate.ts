@@ -41,13 +41,16 @@ export type CameraDecision =
 export function authorizeCameraCapability(
   context: CameraAccessContext,
   device: CameraDevice,
-  capability: CameraCapability,
+  capability: unknown,
 ): CameraDecision {
-  if (!context.authenticated) return { allowed: false, status: 401, code: 'unauthenticated' };
-  if (context.tenantId !== device.tenantId || !context.allowedCameraIds.includes(device.id)) {
+  if (!context || !device || context.authenticated !== true) return { allowed: false, status: 401, code: 'unauthenticated' };
+  if (!context.tenantId || !device.tenantId || !device.id || context.tenantId !== device.tenantId ||
+      !Array.isArray(context.allowedCameraIds) || !context.allowedCameraIds.includes(device.id)) {
     return { allowed: false, status: 403, code: 'camera_access_denied' };
   }
-  if (!CAMERA_CAPABILITIES.includes(capability) || device.capabilities[capability] !== true) {
+  if (typeof capability !== 'string' ||
+      !CAMERA_CAPABILITIES.some((item) => item === capability) ||
+      !device.capabilities || device.capabilities[capability as CameraCapability] !== true) {
     return { allowed: false, status: 501, code: 'capability_unavailable' };
   }
   return { allowed: true };
