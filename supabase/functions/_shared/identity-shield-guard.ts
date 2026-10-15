@@ -4,7 +4,7 @@
  */
 export async function requireIdentityShieldAdmin(
   sb: {
-    auth: { getUser: () => Promise<{data: {user: {id: string} | null}, error: unknown}>; getClaims: () => Promise<{data: {claims?: {aal?: unknown}} | null, error: unknown}> };
+    auth: { getUser: () => Promise<{data: {user: {id: string} | null}, error: unknown}>; getClaims: () => Promise<{data: {claims?: {aal?: unknown; sub?: unknown}} | null, error: unknown}> };
     rpc: (name: string, args: Record<string,string>) => Promise<{data: unknown,error: unknown}>;
   },
   organizationId: string,
@@ -13,7 +13,7 @@ export async function requireIdentityShieldAdmin(
     throw new Error('identity_shield_denied');
   }
   const [{data, error}, claimsResult] = await Promise.all([sb.auth.getUser(), sb.auth.getClaims()]);
-  if (error || !data.user?.id || claimsResult.error || claimsResult.data?.claims?.aal !== 'aal2') {
+  if (error || !data.user?.id || claimsResult.error || claimsResult.data?.claims?.aal !== 'aal2' || claimsResult.data?.claims?.sub !== data.user.id) {
     throw new Error('identity_shield_denied');
   }
   const permission = await sb.rpc('has_identity_permission', {o: organizationId, p: 'identity.shield.manage'});
