@@ -18,13 +18,31 @@ RULES = [
 SKIP = {".git", "node_modules", "dist", "build", ".next", ".venv", "coverage"}
 EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".sql", ".toml", ".py", ".json", ".yaml", ".yml"}
 
-def scan(root):
+def scan(root, selected_files=None):
+    """Scan source files, optionally limiting enforcement to trusted git diff paths."""
+    root = root.resolve()
     findings = []
     scanned = 0
-    for p in root.rglob("*"):
-        if not p.is_file() or any(x in SKIP for x in p.relative_to(root).parts[:-1]):
+    if selected_files is None:
+        candidates = root.rglob("*")
+    else:
+        candidates = []
+        for file_name in selected_files:
+            relative = Path(file_name)
+            if relative.is_absolute() or ".." in relative.parts:
+                raise ValueError("Unsafe selected-file path")
+            resolved = (root / relative).resolve()
+            if not resolved.is_relative_to(root):
+                raise ValueError("Selected-file path escapes repository")
+            candidates.append(resolved)
+    for p in candidates:
+        if p.is_symlink() or not p.is_file() or not p.resolve().is_relative_to(root):
             continue
-        if p.suffix.lower() not in EXTS or p.stat().st_size > 1_000_000:
+        if any(x in SKIP for x in p.relative_to(root).parts[:-1]):
+            continue
+        if p.suffix.lower() not in EXTS and not (p.name == ".env" or p.name.startswith(".env.")):
+            continue
+        if p.stat().st_size > 1_000_000:
             continue
         scanned += 1
         try:
@@ -32,9 +50,10 @@ def scan(root):
         except (UnicodeError, OSError):
             continue
         for line_number, line in enumerate(lines, 1):
-            if "sentinel:ignore" in line:
-                continue
             for severity, rule, pattern, advice in RULES:
+                # P0 credentials must never be suppressed with an inline comment.
+                if severity != "P0" and "sentinel:ignore" in line:
+                    continue
                 if pattern.search(line):
                     findings.append({"severity": severity, "rule": rule, "file": str(p.relative_to(root)), "line": line_number, "advice": advice})
     return {"tool": "ATLAS Sentinel Shield", "mode": "read-only", "files_scanned": scanned,
@@ -44,11 +63,24 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("repository", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--files-from", type=Path,
+                        help="NUL-delimited git paths to scan (for required changed-file P0 gate)")
     args = parser.parse_args()
     root = args.repository.resolve()
     if not root.is_dir():
         parser.error("repository must be a directory")
-    result = scan(root)
+    selected = None
+    if args.files_from is not None:
+        try:
+            raw = args.files_from.read_bytes()
+        except OSError as exc:
+            parser.error(f"cannot read changed-file list: {exc}")
+        selected = [Path(part.decode("utf-8", errors="surrogateescape"))
+                    for part in raw.split(b"\0") if part]
+    try:
+        result = scan(root, selected)
+    except ValueError as exc:
+        parser.error(str(exc))
     payload = json.dumps(result, indent=2)
     if args.output:
         args.output.write_text(payload + "\n", encoding="utf-8")
