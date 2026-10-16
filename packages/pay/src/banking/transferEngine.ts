@@ -21,16 +21,16 @@ export type TransferIntent = Readonly<{
 export type Decision = { allowed: true; status: 'authorized' } | { allowed: false; status: 'awaiting_authorization'; reasons: string[] };
 export function authorizeTransfer(t: TransferIntent): Decision {
   const reasons: string[] = [];
-  if (!t.orgId || !t.actorId) reasons.push('missing_identity');
-  if (!t.sourceAccountId || !t.destinationAccountId || t.sourceAccountId === t.destinationAccountId) reasons.push('invalid_accounts');
+  if (!t.orgId?.trim() || !t.actorId?.trim()) reasons.push('missing_identity');
+  if (!t.sourceAccountId?.trim() || !t.destinationAccountId?.trim() || t.sourceAccountId.trim() === t.destinationAccountId.trim()) reasons.push('invalid_accounts');
   if (!Number.isSafeInteger(t.amountCents) || t.amountCents <= 0 || t.currency !== 'USD') reasons.push('invalid_amount');
-  if (!t.idempotencyKey || t.idempotencyKey.length < 16) reasons.push('missing_idempotency_key');
+  if (!t.idempotencyKey?.trim() || t.idempotencyKey.trim().length < 16) reasons.push('missing_idempotency_key');
   if (!t.ownerVerified) reasons.push('ownership_unverified');
   if (!t.consentVerified) reasons.push('consent_missing');
   if (!t.stepUpVerified) reasons.push('step_up_required');
   if (!t.bankRailEnabled) reasons.push('bank_rail_unavailable');
   // SpotMe/overdraft credit must never increase transferable funds.
-  if (t.availableCents === null || !Number.isSafeInteger(t.availableCents) || t.availableCents < t.amountCents) reasons.push('insufficient_verified_funds');
+  if (t.availableCents === null || !Number.isSafeInteger(t.availableCents) || t.availableCents < 0 || t.availableCents < t.amountCents) reasons.push('insufficient_verified_funds');
   return reasons.length ? { allowed: false, status: 'awaiting_authorization', reasons } : { allowed: true, status: 'authorized' };
 }
 export const TRANSFER_TRANSITIONS: Readonly<Record<TransferStatus, readonly TransferStatus[]>> = {
