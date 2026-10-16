@@ -3,7 +3,7 @@
 Status: source code proposed for review; NOT an operational bank transfer service.
 
 ## Existing architecture reused
-- packages/core for policy logic and existing Vitest unit test conventions.
+- packages/pay/src/banking for the single canonical transfer policy; packages/core retains only a temporary compatibility re-export. Use existing Vitest unit test conventions.
 - Existing accounting_entities, accounting_bank_accounts, accounting_transactions, journal_entries and journal_lines for future reconciled ledger integration. Do not create duplicate ledgers.
 - Existing authentication, organization RBAC/RLS and audit requirements must gate every future endpoint.
 
@@ -24,4 +24,4 @@ Transfer intent validation requires scoped identity, distinct accounts, integer 
 5. Implement real adapter with server-side secrets, replay-safe signed events, retries, returns and double-entry reconciliation.
 6. Run security/integration/E2E and production exact-SHA verification before enabling live funds.
 
-No funds are moved by Phase 1. The Chime to Uber Pro Card $18.49 transfer remains unexecuted.
+No funds are moved by Phase 1. No customer-specific account names, amounts or transfer instructions belong in repository fixtures.
