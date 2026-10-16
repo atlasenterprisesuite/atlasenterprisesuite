@@ -31,4 +31,21 @@ describe('ATLAS Banking Core fail-closed transfer intent', () => {
     expect(canTransition('draft', 'settled')).toBe(false);
     expect(canTransition('submitted', 'settled')).toBe(true);
   });
+  it('rejects cross-account ambiguity and invalid idempotency', () => {
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, destinationAccountId: intent.sourceAccountId }).allowed).toBe(false);
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, idempotencyKey: 'short' }).allowed).toBe(false);
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, orgId: '' }).allowed).toBe(false);
+  });
+  it('rejects non-integer, non-finite, and negative available balances', () => {
+    for (const amountCents of [0, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(authorizeTransfer({ ...intent, bankRailEnabled: true, amountCents }).allowed).toBe(false);
+    }
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, availableCents: -1 }).allowed).toBe(false);
+  });
+  it('does not permit settled or failed transfers to be submitted again', () => {
+    expect(canTransition('settled', 'submitted')).toBe(false);
+    expect(canTransition('failed', 'submitted')).toBe(false);
+    expect(canTransition('returned', 'settled')).toBe(false);
+  });
+
 });
