@@ -35,3 +35,12 @@ E. Regulatory route decision and authenticated network access.
 F. Controlled live pilot, CI/PR/merge/deploy, exact-SHA production verification.
 
 P0 fail closed: no regulatory authorization, no verified banking rail, no live transfers.
+
+## Transfer database security gate (mandatory before production)
+- Inspect existing Supabase schema, grants, tenant membership and RLS policies before writing migrations; no duplicate ledger.
+- Persist organization-scoped transfer intents with unique (organization_id, idempotency_key), trusted server actor and account ownership evidence.
+- Deny direct browser writes to transfer state and immutable audit events; enforce tenant isolation on every read.
+- Server must independently attest consent, step-up, rail readiness and available balance; never trust client-supplied booleans.
+- Enforce state transitions and append-only audit atomically; deduplicate signed provider webhooks and reconcile settlement in Accounting.
+- Run negative tenant-isolation, replay, concurrency, rollback and authorization tests against staging before production migration.
+- Database inspection was blocked by tool safety controls on 2026-10-16; production schema is NOT verified or modified.
