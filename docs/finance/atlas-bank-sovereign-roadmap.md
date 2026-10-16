@@ -3,7 +3,7 @@ Date: 2026-10-16
 Status: engineering design; not a licensed bank or live money movement.
 
 ## Canonical ownership
-Reuse packages/pay, apps/web/src/modules/finance/pay/AtlasPayPage.tsx and existing /finance/pay route. Accounting is the ONLY general ledger. Do not duplicate account, authentication, audit or ledger subsystems. The transfer policy introduced in packages/core/src/banking is a temporary isolated policy foundation and MUST be consolidated into packages/pay before any merge.
+Reuse packages/pay, apps/web/src/modules/finance/pay/AtlasPayPage.tsx and existing /finance/pay route. Accounting is the ONLY general ledger. Do not duplicate account, authentication, audit or ledger subsystems. The canonical transfer policy now lives in packages/pay/src/banking. packages/core/src/banking retains a deprecated compatibility re-export only; remove that shim after verifying there are no downstream imports.
 
 ## Product layers
 1. ATLAS Accounts: identity-linked account profiles and source-evidenced balances, never misrepresented as bank deposits.
