@@ -48,4 +48,15 @@ describe('ATLAS Banking Core fail-closed transfer intent', () => {
     expect(canTransition('returned', 'settled')).toBe(false);
   });
 
+  it('fails closed on whitespace-only identity, account and idempotency fields', () => {
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, orgId: '   ' }).allowed).toBe(false);
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, actorId: '   ' }).allowed).toBe(false);
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, sourceAccountId: ' source-account ', destinationAccountId: 'source-account' }).allowed).toBe(false);
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, idempotencyKey: '                ' }).allowed).toBe(false);
+  });
+  it('rejects unsafe integer available balances', () => {
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, availableCents: Number.MAX_SAFE_INTEGER + 1 }).allowed).toBe(false);
+    expect(authorizeTransfer({ ...intent, bankRailEnabled: true, availableCents: Number.NaN }).allowed).toBe(false);
+  });
+
 });
