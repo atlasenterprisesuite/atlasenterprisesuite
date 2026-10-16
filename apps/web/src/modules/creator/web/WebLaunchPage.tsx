@@ -19,6 +19,7 @@ import {
   type WebLaunchBlueprintRecord
 } from '../../../lib/creatorApi';
 import { ScrollVideoComposer } from './ScrollVideoComposer';
+import { BrandExperiencePanel } from '../brand/BrandExperiencePanel';
 import './web-launch.css';
 
 const STAGES = [
@@ -304,5 +305,6 @@ export function WebLaunchPage() {
         <Link className="content-handoff-action" to="/execution/manager/readiness">Open deployment readiness <span>→</span></Link>
       </aside>
     </div>
+    <BrandExperiencePanel profile={blueprint.profile} />
   </section>;
 }
