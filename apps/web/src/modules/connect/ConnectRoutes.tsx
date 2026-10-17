@@ -7,6 +7,7 @@ import { AtlasWirelessCommissioningPage } from './AtlasWirelessCommissioningPage
 import { AtlasWirelessNetworkPage } from './AtlasWirelessNetworkPage';
 import { AtlasWirelessPage } from './AtlasWirelessPage';
 import { ConnectHomePage } from './ConnectHomePage';
+import { ConnectMeetingsPage } from './ConnectMeetingsPage';
 import { GoogleFiWirelessPage } from './GoogleFiWirelessPage';
 
 export function ConnectRoutes() {
@@ -15,6 +16,7 @@ export function ConnectRoutes() {
       <Route path="/connect" element={<ConnectHomePage />} />
       <Route path="/connect/channel" element={<AtlasBroadcastChannelPage />} />
       <Route path="/connect/chat" element={<AtlasChatPage />} />
+      <Route path="/connect/meetings" element={<ConnectMeetingsPage />} />
       <Route path="/connect/calling" element={<AtlasTelephonyPage />} />
       <Route path="/connect/wireless" element={<AtlasWirelessPage />} />
       <Route path="/connect/wireless/network" element={<AtlasWirelessNetworkPage />} />
