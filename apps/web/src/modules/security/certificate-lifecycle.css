@@ -16,3 +16,5 @@
 .clm-refresh{color:#e5fbff;background:#0c3e6a;border:1px solid rgba(112,220,255,.55);border-radius:10px;margin-top:12px;min-height:44px;padding:10px 14px;font:inherit;font-size:.85rem;font-weight:700;cursor:pointer}
 .clm-refresh:hover{background:#115388}
 @media(max-width:650px){.clm-inventory-target{flex-direction:column}.clm-inventory-target>div:last-child{justify-items:start;text-align:left}}
+
+.clm-verdict-expiring_soon{background:#53370a;border-color:#ffc46f;color:#ffe4ad}
