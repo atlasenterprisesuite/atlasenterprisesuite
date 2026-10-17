@@ -1,0 +1,34 @@
+name: Payroll Workbench Diagnostic
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/modules/payroll/**'
+      - 'supabase/migrations/20261004213*.sql'
+      - 'supabase/migrations/20261004214*.sql'
+      - 'tests/integration/payroll-*.test.ts*'
+      - '.github/workflows/payroll-workbench-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  payroll-workbench:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run full integration suite and print only failure summary
+        shell: bash
+        run: |
+          set +e
+          npm run test:integration > /tmp/vitest.log 2>&1
+          code=$?
+          echo '--- failure summary ---'
+          grep -E 'FAIL |Failed Tests|Test Files|Tests  |AssertionError|Error:' /tmp/vitest.log | tail -80 || true
+          if [ "$code" -ne 0 ]; then
+            echo '--- final context ---'
+            tail -80 /tmp/vitest.log
+          fi
+          exit "$code"
