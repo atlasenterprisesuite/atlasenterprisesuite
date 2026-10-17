@@ -3,7 +3,7 @@
  * Uses the existing ATLAS session and organization membership resolution.
  * Does not enable writes until a server endpoint is explicitly configured.
  */
-import { getActiveAtlasOrganization, getAtlasAccessToken } from '../../../../lib/atlasSession';
+import { getActiveAtlasOrganization, getAtlasAccessToken } from '../../../lib/atlasSession';
 
 export type DnsRecord = {
   name: string;
