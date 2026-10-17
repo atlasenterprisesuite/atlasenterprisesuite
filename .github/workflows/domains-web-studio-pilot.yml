@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'prototypes/domains-web-studio/**'
+      - 'apps/web/src/modules/business/domains/**'
+      - 'apps/web/src/App.tsx'
       - 'tests/unit/domains-web-studio-pilot.test.mjs'
       - '.github/workflows/domains-web-studio-pilot.yml'
   workflow_dispatch:
@@ -16,5 +18,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate responsive and safety contracts
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate pilot safety contracts
         run: node --test tests/unit/domains-web-studio-pilot.test.mjs
+      - name: Typecheck integrated React route
+        run: npm run typecheck
+      - name: Build ATLAS web
+        run: npm run build
