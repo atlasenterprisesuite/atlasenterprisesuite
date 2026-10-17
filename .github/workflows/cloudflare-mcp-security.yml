@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - "packages/cloudflare-mcp/**"
-      - "tests/unit/cloudflare-mcp-security.test.mjs"
+      - "tests/unit/cloudflare-mcp-*.test.mjs"
       - ".github/workflows/cloudflare-mcp-security.yml"
   workflow_dispatch:
 permissions:
@@ -18,4 +18,4 @@ jobs:
         with:
           node-version: "22"
       - name: Run Cloudflare MCP negative tests
-        run: node --test tests/unit/cloudflare-mcp-security.test.mjs
+        run: node --test tests/unit/cloudflare-mcp-*.test.mjs
