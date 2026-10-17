@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "status": "reference_only_not_georeferenced",
+  "source": "https://www.internationaldriveorlando.com/pdf/marker-map.pdf",
+  "sourceChecked": "2026-10-15",
+  "network": "I-RIDE Trolley Orlando",
+  "lines": [
+    {
+      "id": "red",
+      "corridors": [
+        "International Drive"
+      ],
+      "landmarks": [
+        "Orlando International Premium Outlets",
+        "ICON Park",
+        "Pointe Orlando",
+        "Orange County Convention Center",
+        "SeaWorld Orlando",
+        "Aquatica",
+        "Orlando Vineland Premium Outlets"
+      ],
+      "approxHeadwayMinutes": 20
+    },
+    {
+      "id": "green",
+      "corridors": [
+        "Major Boulevard",
+        "Universal Boulevard",
+        "Westwood Boulevard",
+        "South International Drive"
+      ],
+      "landmarks": [
+        "Orange County Convention Center",
+        "SeaWorld Orlando",
+        "Orlando Vineland Premium Outlets"
+      ],
+      "approxHeadwayMinutes": 45
+    }
+  ],
+  "mappingRequirements": [
+    "obtain official stop identifiers and coordinates",
+    "verify directional stop geometry",
+    "verify transfer points",
+    "use licensed street geometry rather than tracing brochure",
+    "check current operations and ADA access",
+    "verify hotel proximity before suggesting walking routes"
+  ],
+  "limitations": "Not for turn-by-turn navigation; topology and headways are informational and may change."
+}
