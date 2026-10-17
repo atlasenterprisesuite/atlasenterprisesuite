@@ -21,6 +21,8 @@ describe('ATLAS shell live organization identity', () => {
     expect(source).toContain('export type AtlasShellOrganization');
     expect(source).toContain('organizations!organization_members_org_id_fkey(id,name,legal_name,active)');
     expect(source).toContain('getCachedAtlasShellOrganization');
+    expect(source).toContain('if (!relatedOrganization?.id || relatedOrganization.active !== true)');
+    expect(source).toContain("throw new Error('no_active_organization')");
     expect(source).toContain("return { id: String(data[0].org_id), role: String(data[0].role || 'member') };");
   });
 

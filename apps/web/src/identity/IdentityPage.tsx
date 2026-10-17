@@ -7,6 +7,7 @@ import {
   signInAtlas
 } from '../lib/atlasSession';
 import { ATLAS_MODULES } from '../modules/registry';
+import { identityErrorMessage, type IdentityPhase } from './identityErrors';
 import './identity.css';
 
 const DEFAULT_TARGET = '/';
@@ -40,20 +41,6 @@ export function resolveAtlasIdentityTarget(rawTarget: string | null) {
   return DEFAULT_TARGET;
 }
 
-function identityErrorMessage(cause: unknown) {
-  const message = cause instanceof Error ? cause.message : String(cause || '');
-  if (message === 'no_active_organization') {
-    return 'Your account is authenticated but has no active ATLAS organization access.';
-  }
-  if (message === 'authentication_required' || message === 'session_expired' || message === 'invalid_session') {
-    return 'Your ATLAS session is no longer valid. Sign in again.';
-  }
-  if (/invalid login credentials/i.test(message)) {
-    return 'The email or password is incorrect.';
-  }
-  return 'ATLAS Identity could not verify access. Check your credentials or try again.';
-}
-
 export function IdentityPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -85,7 +72,7 @@ export function IdentityPage() {
         if (message === 'authentication_required' || message === 'session_expired' || message === 'invalid_session' || message === 'no_active_organization') {
           clearAtlasSession();
         }
-        setError(identityErrorMessage(cause));
+        setError(identityErrorMessage(cause, 'organization'));
         setCheckingSession(false);
       }
     })();
@@ -101,8 +88,10 @@ export function IdentityPage() {
 
     setLoading(true);
     setError('');
+    let phase: IdentityPhase = 'sign_in';
     try {
       await signInAtlas(email.trim(), password);
+      phase = 'organization';
       await getActiveAtlasOrganization();
       setPassword('');
       navigate(target, { replace: true });
@@ -111,7 +100,7 @@ export function IdentityPage() {
       if (message === 'no_active_organization' || message === 'authentication_required' || message === 'session_expired' || message === 'invalid_session') {
         clearAtlasSession();
       }
-      setError(identityErrorMessage(cause));
+      setError(identityErrorMessage(cause, phase));
     } finally {
       setLoading(false);
     }
