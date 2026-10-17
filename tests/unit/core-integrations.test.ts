@@ -32,6 +32,7 @@ describe('integration policy', () => {
     for (const provider of [
       'google',
       'hubspot',
+      'wix',
       'cloudflare',
       'stripe',
       'authorize_net',
@@ -50,6 +51,8 @@ describe('integration policy', () => {
     expect(ATLAS_INTEGRATION_PROVIDERS.length).toBeGreaterThanOrEqual(12);
     expect(integrationProviderDefinition('cloudflare').authKind).toBe('service_token');
     expect(integrationProviderDefinition('hubspot').authKind).toBe('oauth2');
+    expect(integrationProviderDefinition('wix').area).toBe('marketing');
+    expect(integrationProviderDefinition('wix').authKind).toBe('oauth2');
   });
 
   it('fails closed until authorization, credentials, provider proof and capabilities all pass', () => {
@@ -77,6 +80,28 @@ describe('integration policy', () => {
       allowed: true,
       blockers: [],
       missingCapabilities: []
+    });
+  });
+
+  it('keeps the Wix commercial channel unavailable without owner authorization and verified capabilities', () => {
+    const result = evaluateIntegrationExecutionGate({
+      state: 'unconfigured',
+      authorized: false,
+      credentialsConfigured: false,
+      providerVerified: false,
+      requiredCapabilities: ['wix.sites.read', 'wix.seo.read'],
+      grantedCapabilities: []
+    });
+    expect(result).toEqual({
+      allowed: false,
+      blockers: [
+        'authorization_required',
+        'credentials_required',
+        'provider_verification_required',
+        'connection_not_connected',
+        'capability_missing'
+      ],
+      missingCapabilities: ['wix.sites.read', 'wix.seo.read']
     });
   });
 
