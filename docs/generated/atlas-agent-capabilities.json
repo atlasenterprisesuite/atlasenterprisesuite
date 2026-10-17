@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "generated_from": "packages/execution/src/capability-registry.ts",
+  "capabilities": [
+    {
+      "id": "communications.number.provision.test",
+      "version": 1,
+      "domain": "communications",
+      "title": "Provision test phone number",
+      "description": "Provision at most one test number under explicit P0 write and cleanup controls.",
+      "operation": "write",
+      "risk_tier": "P0",
+      "mutates_external_state": true,
+      "may_incur_cost": true,
+      "requires_approval": true,
+      "requires_evidence": true,
+      "permissions": [
+        "communication.telephony.provision"
+      ],
+      "allowed_environments": [
+        "test"
+      ],
+      "input_schema_ref": "atlas://communications/number/provision-test/input/v1",
+      "output_schema_ref": "atlas://communications/number/provision-test/output/v1",
+      "verification_policy": "reuse_before_create_and_cleanup",
+      "providers": [
+        {
+          "provider": "telnyx",
+          "adapter": "atlas-communication-telephony",
+          "environments": [
+            "test"
+          ],
+          "priority": 10,
+          "health_check": "communications.voice.readiness",
+          "write_policy": "telnyx_test_number_p0"
+        }
+      ]
+    },
+    {
+      "id": "communications.number.search",
+      "version": 1,
+      "domain": "communications",
+      "title": "Number search",
+      "description": "Discover provider number inventory without claiming ownership or allocation.",
+      "operation": "read",
+      "risk_tier": "P1",
+      "mutates_external_state": false,
+      "may_incur_cost": false,
+      "requires_approval": false,
+      "requires_evidence": true,
+      "permissions": [
+        "communication.telephony.read"
+      ],
+      "allowed_environments": [
+        "development",
+        "test",
+        "production"
+      ],
+      "input_schema_ref": "atlas://communications/number/search/input/v1",
+      "output_schema_ref": "atlas://communications/number/search/output/v1",
+      "verification_policy": "discovery_only_truth",
+      "providers": [
+        {
+          "provider": "telnyx",
+          "adapter": "atlas-communication-telephony",
+          "environments": [
+            "development",
+            "test",
+            "production"
+          ],
+          "priority": 10,
+          "health_check": "communications.number.search"
+        }
+      ]
+    },
+    {
+      "id": "communications.voice.call.create",
+      "version": 1,
+      "domain": "communications",
+      "title": "Create outbound voice call",
+      "description": "Create one governed outbound call through an authorized provider adapter.",
+      "operation": "execute",
+      "risk_tier": "P0",
+      "mutates_external_state": true,
+      "may_incur_cost": true,
+      "requires_approval": false,
+      "requires_evidence": true,
+      "permissions": [
+        "communication.telephony.call"
+      ],
+      "allowed_environments": [
+        "development",
+        "test",
+        "production"
+      ],
+      "input_schema_ref": "atlas://communications/voice/call-create/input/v1",
+      "output_schema_ref": "atlas://communications/voice/call-create/output/v1",
+      "verification_policy": "call_provider_ack_and_lifecycle",
+      "providers": [
+        {
+          "provider": "telnyx",
+          "adapter": "atlas-communication-telephony",
+          "environments": [
+            "development",
+            "test",
+            "production"
+          ],
+          "priority": 10,
+          "health_check": "communications.voice.readiness",
+          "write_policy": "telephony_call_p0"
+        }
+      ]
+    },
+    {
+      "id": "communications.voice.readiness",
+      "version": 1,
+      "domain": "communications",
+      "title": "Voice readiness",
+      "description": "Read provider configuration and verified voice readiness without exposing secrets.",
+      "operation": "read",
+      "risk_tier": "P1",
+      "mutates_external_state": false,
+      "may_incur_cost": false,
+      "requires_approval": false,
+      "requires_evidence": true,
+      "permissions": [
+        "communication.telephony.read"
+      ],
+      "allowed_environments": [
+        "development",
+        "test",
+        "production"
+      ],
+      "input_schema_ref": "atlas://communications/voice/readiness/input/v1",
+      "output_schema_ref": "atlas://communications/voice/readiness/output/v1",
+      "verification_policy": "provider_readiness_fresh",
+      "providers": [
+        {
+          "provider": "telnyx",
+          "adapter": "atlas-communication-telephony",
+          "environments": [
+            "development",
+            "test",
+            "production"
+          ],
+          "priority": 10,
+          "health_check": "communications.voice.readiness"
+        }
+      ]
+    },
+    {
+      "id": "communications.webhook.verify",
+      "version": 1,
+      "domain": "communications",
+      "title": "Verify communications webhook",
+      "description": "Verify signed provider lifecycle events before authoritative state mutation.",
+      "operation": "execute",
+      "risk_tier": "P0",
+      "mutates_external_state": false,
+      "may_incur_cost": false,
+      "requires_approval": false,
+      "requires_evidence": true,
+      "permissions": [],
+      "allowed_environments": [
+        "development",
+        "test",
+        "production"
+      ],
+      "input_schema_ref": "atlas://communications/webhook/verify/input/v1",
+      "output_schema_ref": "atlas://communications/webhook/verify/output/v1",
+      "verification_policy": "signed_webhook_ed25519_replay_guard",
+      "providers": []
+    }
+  ]
+}

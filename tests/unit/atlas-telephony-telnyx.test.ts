@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isE164,
   probeTelnyxVoice,
+  searchTelnyxAvailableNumbers,
   validateTelnyxConfig,
   type TelnyxVoiceConfig
 } from '../../supabase/functions/_shared/telephony-telnyx';
@@ -85,5 +86,67 @@ describe('ATLAS Telnyx telephony adapter', () => {
       verified: false,
       blocker: 'provider_unreachable'
     });
+  });
+
+  it('returns normalized discovery matches without exposing credentials', async () => {
+    const seen: string[] = [];
+    const result = await searchTelnyxAvailableNumbers(
+      config,
+      { countryCode: 'US', areaCode: '407', limit: 2 },
+      async (input) => {
+        seen.push(String(input));
+        return new Response(JSON.stringify({
+          data: [{
+            phone_number: '+14075550101',
+            reservable: true,
+            quickship: true,
+            best_effort: false,
+            cost_information: { upfront_cost: '1.00' }
+          }]
+        }), { status: 200, headers: { 'x-request-id': 'search-1' } });
+      }
+    );
+
+    expect(seen[0]).toContain('filter%5Bcountry_code%5D=US');
+    expect(seen[0]).toContain('filter%5Bnational_destination_code%5D=407');
+    expect(seen[0]).toContain('filter%5Blimit%5D=2');
+    expect(result).toEqual({
+      status: 'matches',
+      candidates: [{
+        phoneNumber: '+14075550101',
+        reservable: true,
+        quickship: true,
+        bestEffort: false,
+        costInformation: { upfront_cost: '1.00' }
+      }],
+      requestId: 'search-1'
+    });
+    expect(JSON.stringify(result)).not.toContain('test-key');
+  });
+
+  it('distinguishes a confirmed empty provider result from lookup errors', async () => {
+    await expect(searchTelnyxAvailableNumbers(config, {}, async () =>
+      new Response(JSON.stringify({ data: [] }), { status: 200 })
+    )).resolves.toMatchObject({ status: 'no_matches', candidates: [] });
+
+    for (const [status, blocker] of [
+      [401, 'provider_authentication_failed'],
+      [403, 'provider_permission_denied'],
+      [429, 'provider_rate_limited'],
+      [500, 'provider_lookup_failed']
+    ] as const) {
+      const result = await searchTelnyxAvailableNumbers(config, {}, async () =>
+        new Response('{}', { status })
+      );
+      expect(result).toMatchObject({ status: 'lookup_error', blocker, statusCode: status });
+    }
+
+    await expect(searchTelnyxAvailableNumbers(config, {}, async () =>
+      new Response(JSON.stringify({ data: [{ reservable: true }] }), { status: 200 })
+    )).resolves.toMatchObject({ status: 'lookup_error', blocker: 'provider_response_invalid' });
+
+    await expect(searchTelnyxAvailableNumbers(config, {}, async () => {
+      throw new Error('offline');
+    })).resolves.toMatchObject({ status: 'lookup_error', blocker: 'provider_unreachable' });
   });
 });

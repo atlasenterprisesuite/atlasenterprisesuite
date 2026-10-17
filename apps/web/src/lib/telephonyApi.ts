@@ -27,9 +27,11 @@ export type TelephonyReadiness = {
 export type TelephonyCallAccepted = {
   ok: true;
   call_session_id: string;
-  state: 'dialing';
+  state: 'dialing' | 'queued' | 'ringing' | 'connected' | 'completed' | 'failed' | 'canceled' | 'blocked';
   provider: string;
   provider_request_id: string | null;
+  replayed?: boolean;
+  reconciliation_required?: boolean;
 };
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -67,6 +69,7 @@ export async function startTelephonyCall(input: {
   to: string;
   purpose: string;
   consentReference: string;
+  idempotencyKey: string;
 }): Promise<TelephonyCallAccepted> {
   return parseResponse<TelephonyCallAccepted>(
     await telephonyFetch('/functions/v1/atlas-communication-telephony?api=call', {
@@ -75,7 +78,8 @@ export async function startTelephonyCall(input: {
       body: JSON.stringify({
         to: input.to,
         purpose: input.purpose,
-        consent_reference: input.consentReference
+        consent_reference: input.consentReference,
+        idempotency_key: input.idempotencyKey
       })
     })
   );
