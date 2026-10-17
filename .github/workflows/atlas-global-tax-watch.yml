@@ -1,0 +1,28 @@
+name: ATLAS Global Tax Watch — persistent source monitor
+on:
+  schedule:
+    - cron: '17 11 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: atlas-global-tax-watch
+  cancel-in-progress: false
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check official sources and persist review queue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node scripts/tax-watch/monitor.mjs
+      - name: Evidence summary
+        if: always()
+        run: echo "Tax Watch only creates review candidates; never modifies tax calculations or deploys." >> "$GITHUB_STEP_SUMMARY"
