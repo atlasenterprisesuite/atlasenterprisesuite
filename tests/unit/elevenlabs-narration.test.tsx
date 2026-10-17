@@ -10,7 +10,7 @@ describe('ElevenLabs narration flow', () => {
   it('disables generation when the provider is unconfigured', async () => {
     vi.spyOn(atlasVoiceApi, 'elevenLabsStatus').mockResolvedValue({ state: 'provider_not_configured', configured: false, synthesis_verified: false });
     render(<ElevenLabsNarration />);
-    await screen.findByText('ElevenLabs requires a server API key.');
+    await screen.findByText('ATLAS Voice requires a server-side synthesis engine.');
     expect(screen.getByRole('button', { name: 'Generate MP3' })).toBeDisabled();
   });
   it('generates, plays and downloads audio only after successful synthesis', async () => {
