@@ -18,6 +18,14 @@ const STATIC_NODES: readonly AtlasNavigationNode[] = [
   { id: 'receivables', label: 'Receivables', to: '/finance/accounting/accounts-receivable', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['ar', 'accounts receivable', 'cuentas por cobrar', 'customers', 'clientes'] },
   { id: 'enterprise-automation', label: 'Enterprise Automation', to: '/advisory/enterprise-automation', area: 'Business', moduleId: 'advisory', parentId: 'advisory', keywords: ['automation', 'automatizacion', '15 companies', 'roi', 'accounts payable', 'human resources', 'inventory', 'operations'] },
   { id: 'automotive-reporting', label: 'Automotive', to: '/finance/accounting/reports/automotive-sales', area: 'Finance', moduleId: 'accounting', parentId: 'accounting', keywords: ['automotive', 'dealer', 'vehicle', 'sales report', 'autos'] },
+  { id: 'settings', label: 'Settings', to: '/settings', area: 'Platform', keywords: ['settings', 'configuration', 'preferences', 'account', 'privacy', 'security', 'billing', 'diagnostics', 'about'] },
+  { id: 'settings-account', label: 'Account', to: '/settings/account', area: 'Platform', parentId: 'settings', keywords: ['profile', 'identity', 'organization', 'account'] },
+  { id: 'settings-preferences', label: 'Preferences', to: '/settings/preferences', area: 'Platform', parentId: 'settings', keywords: ['preferences', 'settings', 'personalization'] },
+  { id: 'settings-privacy', label: 'Privacy', to: '/settings/privacy', area: 'Platform', parentId: 'settings', keywords: ['privacy', 'consent', 'permissions'] },
+  { id: 'settings-security', label: 'Security', to: '/settings/security', area: 'Platform', parentId: 'settings', keywords: ['security', 'session', 'identity', 'mfa'] },
+  { id: 'settings-billing', label: 'Billing', to: '/settings/billing', area: 'Platform', parentId: 'settings', keywords: ['billing', 'plan', 'subscription', 'entitlement'] },
+  { id: 'settings-diagnostics', label: 'Diagnostics', to: '/settings/diagnostics', area: 'Platform', parentId: 'settings', keywords: ['diagnostics', 'support', 'runtime', 'troubleshooting'] },
+  { id: 'settings-about', label: 'About', to: '/settings/about', area: 'Platform', parentId: 'settings', keywords: ['about', 'version', 'build', 'runtime'] },
   { id: 'accessibility', label: 'Accessibility', to: '/settings/accessibility/communication', area: 'Platform', keywords: ['a11y', 'accessibility', 'accesibilidad', 'captions', 'screen reader', 'braille', 'sign language'] }
 ];
 
