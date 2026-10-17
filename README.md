@@ -22,7 +22,7 @@ The previously referenced `winderaranguren-gif/Atlas-enterprise-suite` repositor
 ## Operating rule
 
 ATLAS advances continuously through analysis, implementation, correction, testing, integration, deployment gates, and verification. Work stops only when a real human, legal, authorization, or technically irresolvable dependency makes further progress impossible. Independent work continues even when another dependency is blocked.
-
+not send any pull to vercel 
 ATLAS Manager is the shared infrastructure control plane and deployment brain for the required GitHub → Supabase → Cloudflare → Production path. Vercel and other deployment providers are optional adapters unless an approved release explicitly marks them required. Provider-specific deployment mechanisms must converge through ATLAS Manager instead of becoming isolated sources of infrastructure truth.
 
 ## Truthful production state
