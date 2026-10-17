@@ -1,0 +1,72 @@
+name: ATLAS 777 Persistent Runner
+on:
+  workflow_dispatch:
+    inputs:
+      module:
+        description: Module identifier (safe slug)
+        required: true
+        type: string
+      dry_run:
+        description: Inventory and validate without deploying
+        required: true
+        default: true
+        type: boolean
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: atlas-777-${{ inputs.module || 'scheduled-audit' }}
+  cancel-in-progress: false
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ATLAS_MODULE: ${{ inputs.module || 'global' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Initialize ledger
+        run: node scripts/atlas-777-runner.mjs
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit tests
+        id: unit
+        run: npm run test:unit
+      - name: Record unit test evidence
+        if: steps.unit.outcome == 'success'
+        env:
+          ATLAS_PHASE: '7'
+          ATLAS_STEP_RESULT: ${{ steps.unit.outcome }}
+        run: node scripts/atlas-777-runner.mjs
+      - name: Run integration tests
+        id: integration
+        run: npm run test:integration
+      - name: Record integration evidence
+        if: steps.integration.outcome == 'success'
+        env:
+          ATLAS_PHASE: '8'
+          ATLAS_STEP_RESULT: ${{ steps.integration.outcome }}
+        run: node scripts/atlas-777-runner.mjs
+      - name: Verify types
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Record successful CI gate
+        env:
+          ATLAS_PHASE: '11'
+          ATLAS_STEP_RESULT: success
+        run: node scripts/atlas-777-runner.mjs
+      - name: Save evidence, including failed runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-777-evidence-${{ github.run_id }}
+          path: artifacts/atlas-777/
+          if-no-files-found: error
+          retention-days: 30
