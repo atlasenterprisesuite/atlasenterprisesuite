@@ -1,0 +1,76 @@
+.atlas-weather-page{display:grid;gap:22px;color:#e9f4ff;max-width:1400px;margin:auto}
+.atlas-weather-header{display:flex;justify-content:space-between;align-items:end;gap:20px}
+.atlas-weather-header h1{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.045em;margin:.45rem 0}
+.atlas-weather-header p:not(.eyebrow){max-width:730px;color:#a1b5c9;line-height:1.6;margin:0}
+.atlas-weather-actions{display:flex;gap:8px;flex-wrap:wrap}
+.atlas-weather-actions button,.atlas-weather-location-bar button,.atlas-weather-location-bar select{min-height:44px;padding:10px 14px;border-radius:12px;font:inherit;color:#eff9ff;background:#102a42;border:1px solid #356183;cursor:pointer}
+.atlas-weather-actions button:hover,.atlas-weather-location-bar button:hover{border-color:#75c9ff}
+.atlas-weather-actions button:focus-visible,.atlas-weather-location-bar button:focus-visible,.atlas-weather-location-bar select:focus-visible{outline:3px solid #91d6ff;outline-offset:3px}
+.atlas-weather-location-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;border:1px solid #24465e;border-radius:18px;background:#091d30}
+.atlas-weather-location-bar label{font-size:.85rem;font-weight:700}
+.atlas-weather-location-bar select{min-width:190px}
+.atlas-weather-location-bar span{color:#b4c9d9;font-size:.78rem}
+.atlas-weather-info{margin:0;padding:10px 14px;border-left:3px solid #6bbefb;background:#10283e}
+.atlas-weather-hero{position:relative;isolation:isolate;min-height:375px;overflow:hidden;border-radius:27px;border:1px solid rgba(155,209,255,.2);background:linear-gradient(115deg,#133757 0%,#265477 55%,#70a0bd 100%);box-shadow:0 22px 55px rgba(0,0,0,.25)}
+.atlas-weather-hero--sun{background:linear-gradient(120deg,#234f84,#4da7e2 68%,#e8b979)}
+.atlas-weather-hero--cloud{background:linear-gradient(120deg,#1b334e,#4e718f 62%,#8cabbc)}
+.atlas-weather-hero--rain,.atlas-weather-hero--storm{background:linear-gradient(115deg,#111e35,#283d57 60%,#3d6e88)}
+.atlas-weather-hero--snow{background:linear-gradient(120deg,#273f5a,#6086a0,#c2d7e8)}
+.atlas-weather-hero--fog,.atlas-weather-hero--unknown{background:linear-gradient(120deg,#1d3549,#50687d)}
+.atlas-weather-hero--night{background:linear-gradient(120deg,#081629,#183252 58%,#34476a)}
+.weather-scene--night .weather-scene-orb{background:#ecf3ff;box-shadow:0 0 60px #b2cbed80}
+.weather-scene--night .weather-scene-orb::after{content:'';position:absolute;inset:-5px -5px 5px 43px;border-radius:50%;background:#1b3455}
+.atlas-weather-hero-content{position:relative;z-index:2;padding:36px;max-width:650px;text-shadow:0 2px 14px #091c3480}
+.atlas-weather-kicker{font-weight:750;letter-spacing:.08em;text-transform:uppercase;font-size:.83rem}
+.atlas-weather-provenance{display:block;margin-top:18px;color:#eff9ff;font-weight:700;letter-spacing:.09em;font-size:.7rem}
+.atlas-weather-temperature{font-size:clamp(5rem,12vw,8.5rem);line-height:1.2;font-weight:240;letter-spacing:-.085em;margin:0}
+.atlas-weather-hero h2{font-size:clamp(1.25rem,2vw,1.8rem);margin:0 0 6px}
+.atlas-weather-hero p{line-height:1.55;margin:8px 0 18px}
+.atlas-weather-details{display:flex;gap:15px;flex-wrap:wrap}
+.atlas-weather-details>div{min-width:125px;padding:10px 16px;background:#07182866;border:1px solid #c5ecff33;border-radius:13px;backdrop-filter:blur(5px)}
+.atlas-weather-details span,.atlas-weather-details strong{display:block}
+.atlas-weather-details span{font-size:.73rem;color:#d4e6ef}
+.atlas-weather-details strong{font-size:1.1rem;margin-top:5px}
+.weather-scene{position:absolute;inset:0 0 0 42%;overflow:hidden;pointer-events:none}
+.weather-scene-orb{position:absolute;top:12%;right:16%;width:145px;height:145px;border-radius:50%;background:#ffe8ac;box-shadow:0 0 85px 27px #fff1a070}
+.weather-scene--rain .weather-scene-orb,.weather-scene--storm .weather-scene-orb,.weather-scene--fog .weather-scene-orb,.weather-scene--unknown .weather-scene-orb{opacity:.16}
+.weather-scene-cloud{position:absolute;top:32%;width:270px;height:110px;border-radius:100px;background:#dce9f1c7;filter:blur(3px);box-shadow:60px -30px 0 3px #dce9f1a8,-50px 13px 0 #dce9f1a0;animation:weather-float 10s ease-in-out infinite alternate}
+.weather-scene-cloud--front{right:7%}
+.weather-scene-cloud--back{right:38%;top:49%;transform:scale(.65);opacity:.65;animation-duration:14s}
+.weather-scene--sun .weather-scene-cloud--front{opacity:.35}
+.weather-scene-precip{position:absolute;top:57%;right:4%;font-size:35px;letter-spacing:13px;line-height:2;color:#d4eaffbb;transform:rotate(13deg);animation:weather-fall 1.6s linear infinite}
+.weather-scene-flash{position:absolute;right:34%;top:35%;color:#fff7cd;font-size:115px;text-shadow:0 0 30px #fff3a4}
+.atlas-weather-section{min-width:0;padding:22px;border:1px solid #23475e;background:linear-gradient(140deg,#0a2236,#0a1727);border-radius:22px}
+.atlas-weather-section-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:18px}
+.atlas-weather-section-heading h2{font-size:1.3rem;margin:0}
+.atlas-weather-section-heading span{font-size:.8rem;color:#91b1c4}
+.atlas-weather-hourly{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x proximity}
+.atlas-weather-hourly article{display:grid;justify-items:center;gap:10px;flex:1;min-width:87px;padding:13px 9px;border:1px solid #31506a;background:#14314a;border-radius:14px;scroll-snap-align:start}
+.atlas-weather-hourly time,.atlas-weather-hourly small{color:#c1d5e5;font-size:.78rem;white-space:nowrap}
+.atlas-weather-glyph{font-size:1.7rem;line-height:1.2;color:#ddf4ff}
+.atlas-weather-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.atlas-weather-week article{display:grid;justify-items:center;gap:10px;padding:14px 6px;border:1px solid #30506a;border-radius:14px;background:#132e45}
+.atlas-weather-week article>span:first-child{font-size:.77rem;color:#c3d6e3;text-align:center;text-transform:capitalize}
+.atlas-weather-week small{color:#94aebf}
+.atlas-weather-observation>p{color:#b1cbda;line-height:1.6}
+.atlas-weather-measurement{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+.atlas-weather-measurement>div{display:grid;gap:7px;border-radius:13px;border:1px solid #326181;padding:12px 16px;background:#12334b;min-width:130px}
+.atlas-weather-measurement span{color:#9fbdd0;font-size:.74rem}
+.atlas-weather-measurement strong{font-size:1.15rem}
+.atlas-weather-measurement a{color:#9cddff}
+.atlas-weather-alerts>p{line-height:1.6;color:#b7d0df}
+.atlas-weather-alert{border:1px solid #b38b48;background:#49310b55;border-radius:14px;padding:16px;margin-top:12px;overflow-wrap:anywhere}
+.atlas-weather-alert span{font-size:.74rem;font-weight:700;text-transform:uppercase}
+.atlas-weather-alert h3{margin:9px 0}
+.atlas-weather-alert p{font-size:.9rem;line-height:1.55;white-space:pre-line}
+.atlas-weather-alert a,.atlas-weather-footer a{color:#9cddff;text-underline-offset:3px}
+.atlas-weather-disclaimer{font-size:.82rem}
+.atlas-weather-footer{display:flex;justify-content:space-between;gap:20px;padding:20px;border:1px solid #264659;border-radius:18px}
+.atlas-weather-footer p{color:#9db9ca;line-height:1.55;font-size:.8rem;margin:7px 0}
+.atlas-weather-footer nav{display:flex;align-items:start;gap:12px;flex-wrap:wrap}
+.atlas-weather-footer nav a{white-space:nowrap;padding:11px 14px;border:1px solid #386487;border-radius:11px;text-decoration:none}
+@keyframes weather-float{from{translate:-16px 0}to{translate:18px -9px}}
+@keyframes weather-fall{from{translate:0 -9px;opacity:1}to{translate:-18px 30px;opacity:.4}}
+@media(max-width:860px){.atlas-weather-header,.atlas-weather-footer{flex-direction:column;align-items:stretch}.atlas-weather-week{grid-template-columns:repeat(4,minmax(0,1fr))}.weather-scene{inset:0 0 0 22%;opacity:.45}.atlas-weather-hero-content{padding:27px}}
+@media(max-width:520px){.atlas-weather-week{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-weather-section-heading{flex-direction:column}.atlas-weather-hero{min-height:390px}.atlas-weather-hero-content{padding:22px}.atlas-weather-details>div{min-width:0;flex:1 1 130px}.atlas-weather-details{gap:8px}.atlas-weather-location-bar>*{flex:1 1 100%}.atlas-weather-location-bar span{flex-basis:100%}}
+@media(prefers-reduced-motion:reduce){.weather-scene-cloud,.weather-scene-precip{animation:none}}
