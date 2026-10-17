@@ -44,11 +44,15 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
-// Use the canonical, source-controlled handler by default. The production
-// Cloudflare build explicitly selects the already deployed, JWT-protected slot.
-// Unknown values fail closed rather than constructing arbitrary function paths.
+// Production builds select the already deployed, JWT-protected Supabase slot.
+// This default is independent of Cloudflare's external build environment.
+// Local development retains the canonical source-controlled handler.
+// Explicit overrides are restricted to the allowlist below (fail closed).
 const TELEPHONY_FUNCTION_SLUG =
-  import.meta.env.VITE_ATLAS_TELEPHONY_FUNCTION_SLUG || 'atlas-communication-telephony';
+  import.meta.env.VITE_ATLAS_TELEPHONY_FUNCTION_SLUG ||
+  (import.meta.env.PROD
+    ? 'atlas-cloudflare-seed-build-once'
+    : 'atlas-communication-telephony');
 
 function telephonyEndpoint(operation: 'readiness' | 'call'): string {
   if (
