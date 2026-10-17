@@ -10,6 +10,7 @@ import { digestApprovalPayload } from '../../../packages/execution/src/approvals
 import { parseAtlasWorkContext } from '../../../packages/execution/src/work-types.ts';
 import { selectWorkRuntime, type WorkRuntime } from '../../../packages/execution/src/work-runtime.ts';
 import { ManagerReadinessError, syncManagerReadiness } from './manager-readiness.ts';
+import { SovereignCiStartError, startManagerSovereignCi } from './sovereign-ci.ts';
 import { createWorkWorkflowPlan, listWorkWorkflows, WorkExecutionError } from './work.ts';
 import { evaluateWorkStepServer, WorkPolicyResolutionError } from './work-policy.ts';
 import {
@@ -39,6 +40,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const ATLAS_PLATFORM_TENANT_ID = Deno.env.get('ATLAS_PLATFORM_TENANT_ID') || '';
+const ATLAS_GITHUB_TOKEN = Deno.env.get('ATLAS_GITHUB_TOKEN') || '';
 const MAX_REQUEST_BYTES = 64 * 1024;
 
 const ALLOWED_ORIGINS = new Set([
@@ -77,7 +79,8 @@ const SUPPORTED_OPERATIONS = new Set([
   'heartbeat_work_runtime',
   'claim_work_runtime_job',
   'complete_work_runtime_job',
-  'sync_manager_readiness'
+  'sync_manager_readiness',
+  'start_manager_sovereign_ci'
 ]);
 
 const EXECUTION_PERMISSION_SET = new Set<ExecutionPermission>([
@@ -816,6 +819,26 @@ async function pilotOperation(req: Request, operation: string, body: JsonObject,
   }
 }
 
+async function startSovereignCi(req: Request, body: JsonObject, context: RequestContext, requestId: string) {
+  const admin = adminClient();
+  try {
+    const result = await startManagerSovereignCi({
+      admin,
+      context,
+      requestId,
+      githubToken: ATLAS_GITHUB_TOKEN,
+      appendAudit: (input) => appendAudit(admin, input)
+    }, {
+      repository: body.repository,
+      requestedRef: body.requested_ref
+    });
+    return json(req, { ok: true, ...result }, 201);
+  } catch (error) {
+    if (error instanceof SovereignCiStartError) throw new EdgeError(error.code, error.status);
+    throw error;
+  }
+}
+
 async function syncReadiness(req: Request, context: RequestContext, requestId: string) {
   requireExecutionPermission(context, 'execution.write');
   const admin = adminClient();
@@ -843,6 +866,7 @@ function errorResponse(req: Request, error: unknown) {
   if (error instanceof WorkConnectionError) return json(req, { ok: false, error: error.code }, error.status);
   if (error instanceof WorkPolicyResolutionError) return json(req, { ok: false, error: error.code }, error.status);
   if (error instanceof OpenAiDomainPilotError) return json(req, { ok: false, error: error.code }, error.status);
+  if (error instanceof SovereignCiStartError) return json(req, { ok: false, error: error.code }, error.status);
   return json(req, { ok: false, error: 'internal_error' }, 500);
 }
 
@@ -907,6 +931,7 @@ Deno.serve(async (req: Request) => {
     if (['list_work_runtimes', 'enroll_work_runtime', 'enqueue_work_runtime_job'].includes(operation)) return await runtimeUserOperation(req, operation, body, context);
     if (['create_work_template', 'execute_work_step', 'resume_work_step'].includes(operation)) return await pilotOperation(req, operation, body, context, requestId);
     if (operation === 'sync_manager_readiness') return await syncReadiness(req, context, requestId);
+    if (operation === 'start_manager_sovereign_ci') return await startSovereignCi(req, body, context, requestId);
     return json(req, { ok: false, error: 'unsupported_operation' }, 400);
   } catch (error) {
     return errorResponse(req, error);
