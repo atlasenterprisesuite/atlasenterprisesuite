@@ -32,7 +32,9 @@ export function evaluateInfrastructure(
     PROVIDER_ORDER.map((provider) => [provider, { ...input[provider] }])
   ) as Record<ProviderName, ProviderSnapshot>;
 
-  if (!providers.vercel.required && OPTIONAL_UNCONFIGURED_STATES.has(providers.vercel.state)) {
+  // Retired provider: preserve observed state for audit, never use it as a release gate.
+  providers.vercel.required = false;
+  if (OPTIONAL_UNCONFIGURED_STATES.has(providers.vercel.state)) {
     providers.vercel.state = 'optional_provider_unconfigured';
   }
 
