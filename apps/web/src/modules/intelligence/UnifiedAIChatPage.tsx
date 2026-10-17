@@ -83,6 +83,7 @@ const ENTERPRISE_LINKS = [
   { to: '/work', label: 'Work' },
   { to: '/automations', label: 'Agents' },
   { to: '/work/connections', label: 'Apps' },
+  { to: '/studio/ai-universe#enterprise-ai-insights', label: 'Insights' },
   { to: '/work/team', label: 'Team' },
   { to: '/work/policies', label: 'Policies' },
   { to: '/suite', label: 'Modules' }
