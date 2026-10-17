@@ -7,6 +7,7 @@ import {
   type PeopleWorkspace
 } from './peopleApi';
 import { PeopleKnowledgePage } from './PeopleKnowledgePage';
+import { WorkforceCover } from './WorkforceCover';
 import { parseCandidateImportCsv } from './candidateImport';
 
 type WorkspaceState =
@@ -26,11 +27,12 @@ function usePeopleWorkspace() {
   return { state, reload };
 }
 
-function Layout({ children }: { children: ReactNode }) {
+function Layout({ children, cover = false }: { children: ReactNode; cover?: boolean }) {
   return <section className="page-stack">
+    {cover ? <WorkforceCover /> : null}
     <header className="page-header">
       <p className="eyebrow">ATLAS People</p>
-      <h1>People Operations</h1>
+      {cover ? <h2>People Operations</h2> : <h1>People Operations</h1>}
       <p>Organization-scoped workers, time, recruiting and compensation with RLS and governed RPC writes.</p>
       <nav className="module-experience-actions" aria-label="People navigation">
         <Link to="/people">Overview</Link><Link to="/people/workers">Workers</Link><Link to="/people/time">Time</Link>
@@ -50,7 +52,7 @@ function State({ state, children }: { state: WorkspaceState; children: (data: Pe
 
 function Overview() {
   const { state } = usePeopleWorkspace();
-  return <Layout><State state={state}>{(data) => <div className="metric-grid">
+  return <Layout cover><State state={state}>{(data) => <div className="metric-grid">
     <article><strong>{data.workers.length}</strong><span>Workers</span></article>
     <article><strong>{data.timeEntries.filter((x) => x.status === 'submitted').length}</strong><span>Time awaiting review</span></article>
     <article><strong>{data.requisitions.filter((x) => x.status === 'open').length}</strong><span>Open requisitions</span></article>
