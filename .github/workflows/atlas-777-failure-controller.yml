@@ -1,0 +1,49 @@
+name: ATLAS 777 Failure Controller
+on:
+  workflow_run:
+    workflows: ["ATLAS 777 Parallel Verification"]
+    types: [completed]
+permissions:
+  actions: write
+  issues: write
+  contents: read
+concurrency:
+  group: atlas-777-recovery-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+jobs:
+  triage:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Classify and record failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" > jobs.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('jobs.json','utf8'));
+          const failed=(j.jobs||[]).filter(x=>x.conclusion==='failure').map(x=>x.name);
+          fs.writeFileSync('failure.txt',failed.length?failed.join(', '):'unknown job');
+          NODE
+          FAILED="$(cat failure.txt)"
+          echo "Failed jobs: $FAILED" >> "$GITHUB_STEP_SUMMARY"
+          EXISTING="$(gh issue list --repo "$REPO" --state open --search "ATLAS 777 failure run $RUN_ID in:title" --json number --jq '.[0].number // empty')"
+          if [ -z "$EXISTING" ]; then
+            gh issue create --repo "$REPO" --title "ATLAS 777 failure run $RUN_ID" --body "Automated CI triage only.\n\nRun: $RUN_URL\nCommit: $RUN_SHA\nFailed jobs: $FAILED\nAttempt: $RUN_ATTEMPT\n\nP0 fail-closed: no automatic code edits, merge or deploy. Investigate deterministic failures before further retries."
+          fi
+          # Exactly one retry of failed jobs. No infinite loop, no deployment.
+          if [ "$RUN_ATTEMPT" -eq 1 ]; then
+            gh api -X POST "repos/$REPO/actions/runs/$RUN_ID/rerun-failed-jobs"
+            echo "One retry requested for failed jobs." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Retry budget exhausted. Manual diagnosis required." >> "$GITHUB_STEP_SUMMARY"
+          fi
