@@ -25,6 +25,7 @@ import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
 import { LocalDJMixPage } from './modules/creator/music/LocalDJMixPage';
 import { AIUniversePage } from './modules/creator/AIUniversePage';
+import { AtlasDjPage } from './modules/creator/dj/AtlasDjPage';
 import { ProductivityProPage } from './modules/creator/ProductivityProPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
@@ -299,6 +300,7 @@ export function App() {
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
         <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
         <Route path="/studio/ai-universe" element={<RequireAtlasIdentity><AIUniversePage /></RequireAtlasIdentity>} />
+        <Route path="/studio/dj" element={<RequireAtlasIdentity><AtlasDjPage /></RequireAtlasIdentity>} />
         <Route path="/studio/productivity-pro" element={<RequireAtlasIdentity><ProductivityProPage /></RequireAtlasIdentity>} />
         <Route path="/studio/create" element={<RequireAtlasIdentity><CreatorWorkspace /></RequireAtlasIdentity>} />
         <Route path="/studio/mix" element={<RequireAtlasIdentity><LocalDJMixPage /></RequireAtlasIdentity>} />
