@@ -42,7 +42,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 export async function getWirelessMvnoReadiness(): Promise<WirelessMvnoReadiness> {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch(
-    '/functions/v1/atlas-wireless-mvno?api=readiness',
+    '/functions/v1/atlas-platform-controls?api=wireless-mvno-readiness',
     {
       method: 'GET',
       headers: {
