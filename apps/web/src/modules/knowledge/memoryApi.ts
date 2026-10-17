@@ -124,6 +124,15 @@ export async function listAtlasMemory(filters: {
   return request(`?${params.toString()}`, { method: 'GET', signal: filters.signal }) as Promise<MemoryListResponse>;
 }
 
+export async function getAtlasMemoryRecord(id: string, signal?: AbortSignal): Promise<{ ok: true; record: AtlasMemoryRecord }> {
+  // The API enforces active organization membership and restricted-source role on every read.
+  // Caller-controlled organization IDs are never accepted from a deep link.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    throw new Error('invalid_memory_id');
+  }
+  return request(`?api=record&id=${encodeURIComponent(id)}`, { method: 'GET', signal }) as Promise<{ ok: true; record: AtlasMemoryRecord }>;
+}
+
 export async function getAtlasMemoryStats(module?: string, signal?: AbortSignal): Promise<{ ok: true; organization_id: string; role: string; stats: AtlasMemoryStats }> {
   const params = new URLSearchParams({ api: 'memory-stats' });
   if (module?.trim()) params.set('module', module.trim());
