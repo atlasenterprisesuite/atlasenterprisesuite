@@ -2,6 +2,7 @@
 import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
 import { executeBrowserCdpAction } from './lib/browser-cdp.mjs';
 import { collectLinuxDeviceDnaReport, deviceDnaLocalDevice } from './lib/device-dna-linux.mjs';
+import { collectWindowsDeviceDnaReport, windowsDeviceDnaLocalDevice } from './lib/device-dna-windows.mjs';
 import {
   consumeEnrollmentFile,
   loadAgentState,
@@ -21,12 +22,13 @@ const REALTIME_URL = String(
   'wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect'
 ).trim();
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const HEARTBEAT_MS = 30_000;
 const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
 const DEVICE_DNA_REFRESH_MS = 5 * 60_000;
-const DEVICE_DNA_ENABLED = process.platform === 'linux' &&
+const DEVICE_DNA_PLATFORM = process.platform === 'linux' || process.platform === 'win32' ? process.platform : null;
+const DEVICE_DNA_ENABLED = Boolean(DEVICE_DNA_PLATFORM) &&
   String(process.env.ATLAS_DEVICE_DNA_DISABLED || '').trim().toLowerCase() !== 'true';
 
 let state = await loadAgentState();
@@ -86,8 +88,15 @@ function agentCapabilities() {
 async function buildRuntimeDevices() {
   const configured = await readDeviceConfig();
   if (!DEVICE_DNA_ENABLED) return configured;
-  const report = await collectLinuxDeviceDnaReport();
-  return [deviceDnaLocalDevice(report), ...configured];
+  if (DEVICE_DNA_PLATFORM === 'linux') {
+    const report = await collectLinuxDeviceDnaReport();
+    return [deviceDnaLocalDevice(report), ...configured];
+  }
+  if (DEVICE_DNA_PLATFORM === 'win32') {
+    const report = await collectWindowsDeviceDnaReport();
+    return [windowsDeviceDnaLocalDevice(report), ...configured];
+  }
+  return configured;
 }
 
 let devices = [];
@@ -173,7 +182,7 @@ async function execute(command) {
   if (!device) return {success:false,error_code:'device_not_configured_locally'};
 
   if (
-    device.adapter === 'device-dna-linux' &&
+    device.adapter.startsWith('device-dna-') &&
     command.capability === 'device.dna.read' &&
     command.action === 'report.read'
   ) {
@@ -351,7 +360,7 @@ async function main() {
   void realtimeLoop();
   await drainCommands();
 
-  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}.\n`);
+  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Device DNA (${DEVICE_DNA_PLATFORM || 'unsupported'}) is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}.\n`);
   await new Promise(()=>{});
 }
 

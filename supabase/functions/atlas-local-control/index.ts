@@ -94,9 +94,16 @@ function containsDeviceDnaIdentityKey(value: unknown, depth = 0): boolean {
   );
 }
 
-async function validateDeviceDnaMetadata(metadata: JsonObject, agentPlatform: string, capabilities: string[]) {
-  if (!agentPlatform.toLowerCase().startsWith('linux')) {
+async function validateDeviceDnaMetadata(metadata: JsonObject, agentPlatform: string, capabilities: string[], adapter: string) {
+  const platform = agentPlatform.toLowerCase();
+  if (adapter === 'device-dna-linux' && !platform.startsWith('linux')) {
     throw new EdgeError('device_dna_linux_agent_required', 422);
+  }
+  if (adapter === 'device-dna-windows' && !(platform.startsWith('win32') || platform.startsWith('windows'))) {
+    throw new EdgeError('device_dna_windows_agent_required', 422);
+  }
+  if (!['device-dna-linux', 'device-dna-windows'].includes(adapter)) {
+    throw new EdgeError('device_dna_adapter_unsupported', 422);
   }
   if (!capabilities.includes('device.dna.read')) {
     throw new EdgeError('device_dna_capability_required', 422);
@@ -127,6 +134,15 @@ async function validateDeviceDnaMetadata(metadata: JsonObject, agentPlatform: st
   const expectedDigest = await sha256(JSON.stringify(sortApprovalValue(unsigned)));
   if (digest !== expectedDigest) {
     throw new EdgeError('device_dna_digest_mismatch', 422);
+  }
+
+  const environment = record(report.operating_environment);
+  const reportPlatform = clean(environment.platform, 40).toLowerCase();
+  if (adapter === 'device-dna-linux' && reportPlatform !== 'linux') {
+    throw new EdgeError('device_dna_report_platform_mismatch', 422);
+  }
+  if (adapter === 'device-dna-windows' && reportPlatform !== 'win32') {
+    throw new EdgeError('device_dna_report_platform_mismatch', 422);
   }
 
   const compute = record(report.compute);
@@ -709,9 +725,9 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
       const adapter = requiredText(input.adapter, 'adapter_required', 120);
       const deviceType = requiredText(input.device_type, 'device_type_required', 80);
       const capabilities = stringArray(input.capabilities);
-      if (adapter === 'device-dna-linux') {
+      if (adapter.startsWith('device-dna-')) {
         if (deviceType !== 'computer') throw new EdgeError('device_dna_device_type_invalid', 422);
-        await validateDeviceDnaMetadata(metadata, String(context.agent.platform || ''), capabilities);
+        await validateDeviceDnaMetadata(metadata, String(context.agent.platform || ''), capabilities, adapter);
       }
       const row = {
         org_id: orgId, agent_id: agentId, external_id: externalId,
@@ -719,7 +735,7 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
         device_type: deviceType,
         adapter,
         capabilities,
-        health_status: adapter === 'device-dna-linux'
+        health_status: adapter.startsWith('device-dna-')
           ? 'unknown'
           : ['unknown','healthy','degraded','offline','error'].includes(clean(input.health_status, 20))
             ? clean(input.health_status, 20) : 'unknown',

@@ -69,11 +69,11 @@ export function DeviceDnaEvidencePanel() {
     try {
       const rows = await listLocalDevices();
       setDevices(rows);
-      const count = rows.filter((device) => device.adapter === 'device-dna-linux' && reportFor(device)).length;
+      const count = rows.filter((device) => device.adapter.startsWith('device-dna-') && reportFor(device)).length;
       setStatus(
         count
-          ? `${count} evidence-backed Linux Device DNA report(s) available.`
-          : 'No Linux Device DNA report has been observed by an enrolled ATLAS Local Agent yet.'
+          ? `${count} evidence-backed Device DNA report(s) available.`
+          : 'No Linux or Windows Device DNA report has been observed by an enrolled ATLAS Local Agent yet.'
       );
     } catch (error) {
       const code = error instanceof Error ? error.message : 'device_dna_load_failed';
@@ -87,7 +87,7 @@ export function DeviceDnaEvidencePanel() {
 
   const observed = useMemo(
     () => devices
-      .filter((device) => device.adapter === 'device-dna-linux')
+      .filter((device) => device.adapter.startsWith('device-dna-'))
       .map((device) => ({ device, summary: reportSummary(device) }))
       .filter((item): item is { device: AtlasLocalDevice; summary: NonNullable<ReturnType<typeof reportSummary>> } => Boolean(item.summary)),
     [devices]
@@ -105,7 +105,7 @@ export function DeviceDnaEvidencePanel() {
       });
       setStatus(
         result.realtime.delivered > 0
-          ? 'Fresh Device DNA observation queued and the realtime Linux agent was notified. Reload evidence after the command completes.'
+          ? 'Fresh Device DNA observation queued and the realtime Local Agent was notified. Reload evidence after the command completes.'
           : 'Fresh Device DNA observation queued. Realtime is unavailable, so the Local Agent polling fallback will execute it.'
       );
     } catch (error) {
@@ -129,7 +129,7 @@ export function DeviceDnaEvidencePanel() {
       </div>
 
       <p>
-        The Linux reference agent reads only bounded, non-secret system facts. A report is evidence-backed
+        The Linux and Windows reference collectors read only bounded, non-secret system facts. A report is evidence-backed
         by an enrolled ATLAS Local Agent, but it is not hardware attestation and it does not prove full
         component health.
       </p>
@@ -173,14 +173,14 @@ export function DeviceDnaEvidencePanel() {
                 onClick={() => void requestFreshReport(device)}
                 disabled={busyDeviceId !== null}
               >
-                {busyDeviceId === device.id ? 'Queueing…' : 'Refresh from Linux agent'}
+                {busyDeviceId === device.id ? 'Queueing…' : 'Refresh from Local Agent'}
               </button>
             </section>
           ))}
         </div>
       ) : (
         <div className="notice">
-          Install and enroll the ATLAS Local Agent on an authorized Linux computer. Device DNA stays
+          Install and enroll the ATLAS Local Agent on an authorized Linux or Windows computer. Device DNA stays
           fail-closed on other platforms until their native collectors are implemented and tested.
         </div>
       )}

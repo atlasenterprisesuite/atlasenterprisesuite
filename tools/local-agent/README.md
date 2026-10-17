@@ -160,9 +160,9 @@ Optional environment variables:
 
 ATLAS must not claim a browser action occurred unless the Local Agent reports the audited command as succeeded.
 
-## ATLAS Device DNA — Linux reference collector
+## ATLAS Device DNA — Linux and Windows reference collectors
 
-On Linux, Local Agent 1.2 automatically registers one read-only host adapter named `device-dna-linux` with capability `device.dna.read`. It collects a bounded Device DNA v1 report from Node OS APIs and Linux sysfs and syncs that report through the existing organization-scoped Local Control Plane.
+On Linux and Windows, Local Agent 1.3 automatically registers one read-only host adapter (`device-dna-linux` or `device-dna-windows`) with capability `device.dna.read`. Linux collects bounded Node OS + sysfs evidence. Windows currently uses bounded Node OS evidence only and intentionally leaves firmware, TPM, battery and storage details unverified rather than invoking privileged shell tooling. Both paths sync through the existing organization-scoped Local Control Plane.
 
 Observed fields include:
 
