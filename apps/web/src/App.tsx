@@ -10,6 +10,7 @@ import { ManagerReadinessLauncher } from './execution/ManagerReadinessLauncher';
 import { resolveAtlasExtension } from './extensions/resolveAtlasExtension';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
+import { DomainsWebStudioPage } from './modules/business/domains/DomainsWebStudioPage';
 import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
 import { NetworkPublicPage } from './modules/business/network/NetworkPublicPage';
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
@@ -307,6 +308,7 @@ export function App() {
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
         <Route path="/studio/teleprompter" element={<RequireAtlasIdentity><TeleprompterPage /></RequireAtlasIdentity>} />
         <Route path="/business" element={<BusinessHome />} />
+        <Route path="/business/domains-web-studio" element={<RequireAtlasIdentity><DomainsWebStudioPage /></RequireAtlasIdentity>} />
         <Route path="/business/network" element={<NetworkPublicPage section="network" />} />
         <Route path="/business/network/pricing" element={<NetworkPublicPage section="pricing" />} />
         <Route path="/business/network/commissions" element={<NetworkPublicPage section="commissions" />} />
