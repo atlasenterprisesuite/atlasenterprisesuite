@@ -41,7 +41,7 @@ describe('ATLAS vendor W-9 intake', () => {
   });
 
   it('keeps 1099 reportability separate from W-9 onboarding and uses governed server persistence', () => {
-    const migration = source('supabase/migrations/20260920214500_vendor_w9_intake.sql');
+    const migration = source('supabase/migrations/20260921014904_vendor_w9_intake.sql');
     const api = source('apps/web/src/lib/procureToPayApi.ts');
     const page = source('apps/web/src/modules/inventory/ProcureToPayPage.tsx');
 

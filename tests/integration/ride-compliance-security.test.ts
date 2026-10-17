@@ -11,8 +11,8 @@ const rideSources = readdirSync(rideRoot)
 const apiSource = readFileSync(resolve(root, 'apps/web/src/lib/rideComplianceApi.ts'), 'utf8');
 const edgeIndex = readFileSync(resolve(root, 'supabase/functions/atlas-ride-compliance/index.ts'), 'utf8');
 const edgeContext = readFileSync(resolve(root, 'supabase/functions/atlas-ride-compliance/_shared/context.ts'), 'utf8');
-const baseMigration = readFileSync(resolve(root, 'supabase/migrations/20260912_ride_profile_photo_compliance.sql'), 'utf8');
-const hardeningMigration = readFileSync(resolve(root, 'supabase/migrations/20260912_ride_profile_photo_compliance_hardening.sql'), 'utf8');
+const baseMigration = readFileSync(resolve(root, 'supabase/migrations/20260920072427_ride_profile_photo_compliance.sql'), 'utf8');
+const hardeningMigration = readFileSync(resolve(root, 'supabase/migrations/20260920072429_ride_profile_photo_compliance_hardening.sql'), 'utf8');
 
 describe('ATLAS Ride compliance security regression contract', () => {
   it('contains no placeholder navigation, console logging, or biometric claims in Ride browser sources', () => {

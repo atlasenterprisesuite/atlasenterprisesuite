@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const edge = readFileSync('supabase/functions/atlas-gps/index.ts', 'utf8');
 const api = readFileSync('apps/web/src/modules/gps/gpsApi.ts', 'utf8');
-const migration = readFileSync('supabase/migrations/20260927001500_atlas_gps_coverage_progress.sql', 'utf8');
+const migration = readFileSync('supabase/migrations_legacy_pre_remote_sync/20260927001500_atlas_gps_coverage_progress.sql', 'utf8');
 
 describe('ATLAS GPS resumable coverage persistence contract', () => {
   it('persists coverage state by organization, user and stable coverage key', () => {

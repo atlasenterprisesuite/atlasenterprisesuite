@@ -7,7 +7,7 @@ const read = (relative: string) => fs.readFileSync(path.join(root, relative), 'u
 
 describe('CreativePlan persistence contract', () => {
   it('defines tenant-scoped creative plan storage with active-member RLS', () => {
-    const migration = read('supabase/migrations/20260918141000_creator_creative_plans.sql');
+    const migration = read('supabase/migrations/20260918180505_creator_creative_plans.sql');
     expect(migration).toContain('create table if not exists public.creator_creative_plans');
     expect(migration).toContain('organization_id uuid not null');
     expect(migration).toContain('plan_json jsonb not null');

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const source = readFileSync('supabase/migrations/20260912_atlas_work_runtime.sql', 'utf8');
+const source = readFileSync('supabase/migrations/20260918184010_atlas_work_runtime.sql', 'utf8');
 
 describe('ATLAS Work runtime persistence', () => {
   it('creates tenant and organization scoped support tables', () => {

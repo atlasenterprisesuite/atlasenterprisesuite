@@ -2,15 +2,15 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const sql = readFileSync(
-  'supabase/migrations/20260914170000_atlas_crm_hubspot_integration.sql',
+  'supabase/migrations/20260918190544_atlas_crm_hubspot_integration.sql',
   'utf8'
 );
 const crmPolicySql = readFileSync(
-  'supabase/migrations/20260918191500_crm_integration_policy_consolidation.sql',
+  'supabase/migrations/20260918191213_crm_integration_policy_consolidation.sql',
   'utf8'
 );
 const secureOAuthSql = readFileSync(
-  'supabase/migrations/20260918193000_crm_secure_oauth_config.sql',
+  'supabase/migrations/20260918192936_crm_secure_oauth_config.sql',
   'utf8'
 );
 

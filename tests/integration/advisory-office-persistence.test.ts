@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
 
 describe('Advisory Office durable persistence contract', () => {
   it('creates organization-scoped Advisory tables with RLS', () => {
-    const path = 'supabase/migrations/20260918031500_advisory_office_core.sql';
+    const path = 'supabase/migrations/20260918031936_advisory_office_core.sql';
     expect(existsSync(resolve(root, path))).toBe(true);
     const sql = read(path);
     for (const table of [
@@ -29,7 +29,7 @@ describe('Advisory Office durable persistence contract', () => {
   });
 
   it('bootstraps only AW Finance firm 001 and no invented clients or engagements', () => {
-    const sql = read('supabase/migrations/20260918031500_advisory_office_core.sql');
+    const sql = read('supabase/migrations/20260918031936_advisory_office_core.sql');
     const bootstrapStart = sql.indexOf('create or replace function public.advisory_bootstrap_default_firm');
     const clientCreateStart = sql.indexOf('create or replace function public.advisory_create_client');
     const bootstrap = sql.slice(bootstrapStart, clientCreateStart);
