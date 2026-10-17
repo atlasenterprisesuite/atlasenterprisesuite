@@ -1,0 +1,57 @@
+name: ATLAS 777 Parallel Verification
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/atlas-777-parallel.yml'
+      - 'package.json'
+      - 'apps/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - 'tests/**'
+concurrency:
+  group: atlas-777-parallel-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        check: [design, typecheck, unit, integration, edge, navigation]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run independent verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.check }}" in
+            design) npm run verify:design ;;
+            typecheck) npm run typecheck ;;
+            unit) npm run test:unit ;;
+            integration) npm run test:integration ;;
+            edge) npm run verify:edge ;;
+            navigation) npm run verify:navigation ;;
+            *) exit 2 ;;
+          esac
+  gate:
+    name: Parallel verification gate
+    needs: [verify]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed on any failed or skipped verification
+        env:
+          RESULT: ${{ needs.verify.result }}
+        run: |
+          test "$RESULT" = "success" || { echo "::error::Parallel verification failed: $RESULT"; exit 1; }
