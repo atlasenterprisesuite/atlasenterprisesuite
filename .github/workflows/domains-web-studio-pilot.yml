@@ -1,5 +1,8 @@
 name: Domains Web Studio Pilot
 on:
+  push:
+    branches:
+      - 'feat/domains-web-studio-pilot-20261016'
   pull_request:
     paths:
       - 'prototypes/domains-web-studio/**'
