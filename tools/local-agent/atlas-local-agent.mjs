@@ -21,13 +21,15 @@ const REALTIME_URL = String(
   'wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect'
 ).trim();
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const HEARTBEAT_MS = 30_000;
 const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
 const DEVICE_DNA_REFRESH_MS = 5 * 60_000;
 const DEVICE_DNA_ENABLED = process.platform === 'linux' &&
   String(process.env.ATLAS_DEVICE_DNA_DISABLED || '').trim().toLowerCase() !== 'true';
+const REMOTE_DESKTOP_ENABLED = process.platform === 'win32' &&
+  String(process.env.ATLAS_REMOTE_DESKTOP_ENABLED || '').trim().toLowerCase() === 'true';
 
 let state = await loadAgentState();
 let sessionToken = String(process.env.ATLAS_AGENT_SESSION_TOKEN || state.sessionToken || '').trim();
@@ -35,6 +37,21 @@ let realtimeConnected = false;
 let realtimeClient = null;
 let realtimeRetryMs = 2_000;
 let draining = false;
+let remoteDesktopController = null;
+let remoteDesktopDeviceFactory = null;
+let startRemoteRelaySessionFn = null;
+const activeRemoteSessions = new Map();
+
+async function initializeRemoteDesktop() {
+  if (!REMOTE_DESKTOP_ENABLED) return;
+  const [desktopModule, relayModule] = await Promise.all([
+    import('./lib/remote-desktop-windows.mjs'),
+    import('./lib/remote-session-client.mjs')
+  ]);
+  remoteDesktopController = desktopModule.createWindowsRemoteDesktopController();
+  remoteDesktopDeviceFactory = desktopModule.windowsRemoteDesktopLocalDevice;
+  startRemoteRelaySessionFn = relayModule.startRemoteRelaySession;
+}
 
 function localHostname(hostname) {
   const h = hostname.replace(/^\[/,'').replace(/\]$/,'').toLowerCase();
@@ -80,14 +97,24 @@ async function readDeviceConfig() {
 
 function agentCapabilities() {
   const capabilities = ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'];
-  return DEVICE_DNA_ENABLED ? [...capabilities, 'device.dna.read'] : capabilities;
+  if (DEVICE_DNA_ENABLED) capabilities.push('device.dna.read');
+  if (REMOTE_DESKTOP_ENABLED) {
+    capabilities.push('remote.session','remote.desktop.stream');
+  }
+  return capabilities;
 }
 
 async function buildRuntimeDevices() {
   const configured = await readDeviceConfig();
-  if (!DEVICE_DNA_ENABLED) return configured;
-  const report = await collectLinuxDeviceDnaReport();
-  return [deviceDnaLocalDevice(report), ...configured];
+  const runtimeDevices = [...configured];
+  if (REMOTE_DESKTOP_ENABLED && remoteDesktopDeviceFactory) {
+    runtimeDevices.unshift(remoteDesktopDeviceFactory());
+  }
+  if (DEVICE_DNA_ENABLED) {
+    const report = await collectLinuxDeviceDnaReport();
+    runtimeDevices.unshift(deviceDnaLocalDevice(report));
+  }
+  return runtimeDevices;
 }
 
 let devices = [];
@@ -132,7 +159,9 @@ async function enroll() {
     agent_version: VERSION,
     installer_version: VERSION,
     capabilities: agentCapabilities(),
-    modules: ['device-os','connect','hospitality','browser-operator']
+    modules: REMOTE_DESKTOP_ENABLED
+      ? ['device-os','connect','hospitality','browser-operator','remote']
+      : ['device-os','connect','hospitality','browser-operator']
   }, false);
   sessionToken = String(result.session_token || '');
   if (!sessionToken) throw new Error('enrollment_did_not_return_session');
@@ -163,7 +192,9 @@ async function heartbeat() {
     platform: PLATFORM,
     agent_version: VERSION,
     capabilities: agentCapabilities(),
-    modules: ['device-os','connect','hospitality','browser-operator']
+    modules: REMOTE_DESKTOP_ENABLED
+      ? ['device-os','connect','hospitality','browser-operator','remote']
+      : ['device-os','connect','hospitality','browser-operator']
   });
   if (result.session_token || result.session_expires_at) await persistSession(result);
 }
@@ -213,6 +244,99 @@ async function execute(command) {
       }).catch(()=>{});
       return {success:false,error_code:code};
     }
+  }
+
+
+  if (
+    device.adapter === 'remote-desktop-windows' &&
+    command.capability === 'remote.session' &&
+    command.action === 'session.request'
+  ) {
+    if (!REMOTE_DESKTOP_ENABLED || !remoteDesktopController) {
+      return {success:false,error_code:'remote_desktop_not_enabled'};
+    }
+
+    const sessionId = String(command.action_payload?.session_id || '').trim();
+    const mode = String(command.action_payload?.mode || 'view').trim().toLowerCase();
+    if (!/^[a-zA-Z0-9_-]{8,80}$/.test(sessionId) || mode !== 'view') {
+      return {success:false,error_code:'remote_session_payload_invalid'};
+    }
+
+    try {
+      const consent = await remoteDesktopController.requestConsent({
+        session_id: sessionId,
+        mode
+      });
+      const activated = await post('agent.remote.consent', {
+        session_id: sessionId,
+        granted: true
+      });
+
+      const mtls = await readMtlsMaterial().catch(()=>null);
+      if (!mtls?.certificate || !mtls?.privateKey) {
+        await post('agent.remote.end', {session_id: sessionId}).catch(()=>{});
+        remoteDesktopController.endSession(sessionId);
+        return {success:false,error_code:'remote_mtls_required'};
+      }
+
+      const previous = activeRemoteSessions.get(sessionId);
+      try { previous?.close('replaced'); } catch {}
+
+      if (!startRemoteRelaySessionFn) throw new Error('remote_relay_runtime_unavailable');
+      const relay = await startRemoteRelaySessionFn({
+        baseUrl: REALTIME_URL,
+        sessionId,
+        sessionToken,
+        certificate: mtls.certificate,
+        privateKey: mtls.privateKey,
+        controller: remoteDesktopController,
+        expiresAt: String(activated.expires_at || consent.expires_at),
+        onEnded(reason) {
+          activeRemoteSessions.delete(sessionId);
+          void post('agent.remote.end', {session_id: sessionId}).catch(()=>{});
+          void post('agent.events.append', {
+            device_id: String(command.device_id),
+            event_type: 'remote.session.relay.ended',
+            severity: 'info',
+            success: true,
+            safe_detail: {remote_session_id: sessionId, reason: String(reason || 'ended').slice(0,80)}
+          }).catch(()=>{});
+        }
+      });
+      activeRemoteSessions.set(sessionId, relay);
+
+      await post('agent.events.append', {
+        device_id: String(command.device_id),
+        event_type: 'remote.session.relay.started',
+        severity: 'info',
+        success: true,
+        safe_detail: {remote_session_id: sessionId, mode}
+      });
+      return {success:true};
+    } catch (error) {
+      const code = String(error?.message || 'remote_session_failed').slice(0,120);
+      if (code === 'remote_consent_denied') {
+        await post('agent.remote.consent', {session_id: sessionId, granted: false}).catch(()=>{});
+      } else {
+        await post('agent.remote.end', {session_id: sessionId}).catch(()=>{});
+      }
+      remoteDesktopController.endSession(sessionId);
+      return {success:false,error_code:code};
+    }
+  }
+
+  if (
+    device.adapter === 'remote-desktop-windows' &&
+    command.capability === 'remote.session' &&
+    command.action === 'session.end'
+  ) {
+    const sessionId = String(command.action_payload?.session_id || '').trim();
+    const relay = activeRemoteSessions.get(sessionId);
+    try { relay?.close('ended-by-command'); } catch {}
+    activeRemoteSessions.delete(sessionId);
+    remoteDesktopController?.endSession(sessionId);
+    await post('agent.remote.end', {session_id: sessionId}).catch(()=>{});
+    return {success:true};
   }
 
   if (device.adapter === 'browser-cdp' && command.capability === 'browser.control') {
@@ -332,6 +456,7 @@ async function realtimeLoop() {
 }
 
 async function main() {
+  await initializeRemoteDesktop();
   await enroll();
   await syncDevices();
   await heartbeat();
@@ -351,15 +476,24 @@ async function main() {
   void realtimeLoop();
   await drainCommands();
 
-  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}.\n`);
+  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}; attended Windows Remote is ${REMOTE_DESKTOP_ENABLED ? 'enabled' : 'not enabled'}.\n`);
   await new Promise(()=>{});
 }
 
+function closeRemoteSessions(reason) {
+  for (const relay of activeRemoteSessions.values()) {
+    try { relay?.close(reason); } catch {}
+  }
+  activeRemoteSessions.clear();
+}
+
 process.on('SIGTERM',()=>{
+  closeRemoteSessions('agent-stopped');
   try { realtimeClient?.close(); } catch {}
   process.exit(0);
 });
 process.on('SIGINT',()=>{
+  closeRemoteSessions('agent-stopped');
   try { realtimeClient?.close(); } catch {}
   process.exit(0);
 });
