@@ -86,6 +86,7 @@ function BusinessHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Business Suite" title="Business Suite" description="Connected growth, customer, commerce and publishing operations under one governed organization." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/business/domains-web-studio"><span>Web presence · Pilot</span><strong>Domains & Web Studio</strong><p>Identity-gated domain format validation and digital presence planning. Live domain registration and email provisioning remain disabled.</p></Link>
         <Link className="module-card enabled" to="/business/network"><span>Growth · Partner operations</span><strong>ATLAS Network</strong><p>Governed partner, pricing, commission, payout and compliance architecture with explicit data boundaries.</p></Link>
         <Link className="module-card enabled" to="/business/growth/social-publisher"><span>Growth · Creator Studio</span><strong>Social Publisher</strong><p>Attach photos and videos, select each platform format, validate assets and prepare governed publication.</p></Link>
         <div className="module-card disabled" aria-disabled="true"><span>Channel connections</span><strong>Authorization required</strong><p>External publishing remains unavailable until each organization authorizes its social accounts.</p></div>
