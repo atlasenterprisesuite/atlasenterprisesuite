@@ -1,0 +1,20 @@
+name: Domains Web Studio Pilot
+on:
+  pull_request:
+    paths:
+      - 'prototypes/domains-web-studio/**'
+      - 'tests/unit/domains-web-studio-pilot.test.mjs'
+      - '.github/workflows/domains-web-studio-pilot.yml'
+  workflow_dispatch:
+jobs:
+  pilot-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate responsive and safety contracts
+        run: node --test tests/unit/domains-web-studio-pilot.test.mjs
