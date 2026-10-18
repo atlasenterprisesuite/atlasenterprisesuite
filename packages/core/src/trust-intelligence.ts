@@ -21,7 +21,7 @@ export type TrustClaimDecision = {
   evidenceIds: string[];
 };
 const validDate = (value: string): number | null => {
-  if (!/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$/.test(value)) return null;
+  if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(value)) return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
