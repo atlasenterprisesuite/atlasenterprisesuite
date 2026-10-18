@@ -15,9 +15,9 @@ revoke all on public.atlas_civilian_simulations from anon;
 grant select, insert on public.atlas_civilian_simulations to authenticated;
 create policy atlas_civilian_simulations_owner_read on public.atlas_civilian_simulations
   for select to authenticated using (owner_id = (select auth.uid())
-    and exists (select 1 from public.organization_members m where m.organization_id = org_id and m.user_id = (select auth.uid())));
+    and exists (select 1 from public.organization_members m where m.org_id = org_id and m.user_id = (select auth.uid()) and m.status = 'active'));
 create policy atlas_civilian_simulations_owner_create on public.atlas_civilian_simulations
   for insert to authenticated with check (owner_id = (select auth.uid())
     and status = 'DRAFT' and simulation_only
-    and exists (select 1 from public.organization_members m where m.organization_id = org_id and m.user_id = (select auth.uid())));
+    and exists (select 1 from public.organization_members m where m.org_id = org_id and m.user_id = (select auth.uid()) and m.status = 'active'));
 comment on table public.atlas_civilian_simulations is 'Educational civilian emergency simulation records only; no real incident dispatch.';
