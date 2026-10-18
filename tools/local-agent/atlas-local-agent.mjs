@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
 import { executeBrowserCdpAction } from './lib/browser-cdp.mjs';
+import { collectLinuxDeviceDnaReport, deviceDnaLocalDevice } from './lib/device-dna-linux.mjs';
 import {
   consumeEnrollmentFile,
   loadAgentState,
@@ -20,10 +21,13 @@ const REALTIME_URL = String(
   'wss://www.atlasenterprisesuite.com/_atlas/local-bus/connect'
 ).trim();
 const PLATFORM = String(process.env.ATLAS_AGENT_PLATFORM || process.platform).slice(0, 120);
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const HEARTBEAT_MS = 30_000;
 const FALLBACK_POLL_MS = 30_000;
 const REALTIME_RETRY_MAX_MS = 60_000;
+const DEVICE_DNA_REFRESH_MS = 5 * 60_000;
+const DEVICE_DNA_ENABLED = process.platform === 'linux' &&
+  String(process.env.ATLAS_DEVICE_DNA_DISABLED || '').trim().toLowerCase() !== 'true';
 
 let state = await loadAgentState();
 let sessionToken = String(process.env.ATLAS_AGENT_SESSION_TOKEN || state.sessionToken || '').trim();
@@ -74,7 +78,19 @@ async function readDeviceConfig() {
   }).filter(d=>d.external_id && d.label);
 }
 
-const devices = await readDeviceConfig();
+function agentCapabilities() {
+  const capabilities = ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'];
+  return DEVICE_DNA_ENABLED ? [...capabilities, 'device.dna.read'] : capabilities;
+}
+
+async function buildRuntimeDevices() {
+  const configured = await readDeviceConfig();
+  if (!DEVICE_DNA_ENABLED) return configured;
+  const report = await collectLinuxDeviceDnaReport();
+  return [deviceDnaLocalDevice(report), ...configured];
+}
+
+let devices = [];
 let deviceByServerId = new Map();
 
 async function persistSession(result = {}) {
@@ -115,7 +131,7 @@ async function enroll() {
     platform: PLATFORM,
     agent_version: VERSION,
     installer_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'],
+    capabilities: agentCapabilities(),
     modules: ['device-os','connect','hospitality','browser-operator']
   }, false);
   sessionToken = String(result.session_token || '');
@@ -135,6 +151,7 @@ async function enroll() {
 }
 
 async function syncDevices() {
+  devices = await buildRuntimeDevices();
   const safeDevices = devices.map(({endpoint,...device})=>device);
   const result = await post('agent.devices.sync', {devices:safeDevices});
   const ids = Array.isArray(result.device_ids) ? result.device_ids : [];
@@ -145,7 +162,7 @@ async function heartbeat() {
   const result = await post('agent.heartbeat', {
     platform: PLATFORM,
     agent_version: VERSION,
-    capabilities: ['heartbeat','device.inventory','command.poll','command.realtime','http-health','browser.cdp'],
+    capabilities: agentCapabilities(),
     modules: ['device-os','connect','hospitality','browser-operator']
   });
   if (result.session_token || result.session_expires_at) await persistSession(result);
@@ -154,6 +171,49 @@ async function heartbeat() {
 async function execute(command) {
   const device = deviceByServerId.get(String(command.device_id));
   if (!device) return {success:false,error_code:'device_not_configured_locally'};
+
+  if (
+    device.adapter === 'device-dna-linux' &&
+    command.capability === 'device.dna.read' &&
+    command.action === 'report.read'
+  ) {
+    try {
+      await syncDevices();
+      const refreshed = deviceByServerId.get(String(command.device_id));
+      const report = refreshed?.metadata?.device_dna;
+      if (!report || report.schema_version !== 'atlas.device-dna.v1') {
+        throw new Error('device_dna_report_unavailable');
+      }
+      await post('agent.events.append', {
+        device_id: String(command.device_id),
+        event_type: 'device.dna.observed',
+        severity: 'info',
+        success: true,
+        safe_detail: {
+          schema_version: report.schema_version,
+          evidence_level: report.evidence_level,
+          runtime_profile: report.runtime_profile,
+          memory_gb: report.compute?.memory_gb ?? null,
+          logical_cores: report.compute?.logical_cores ?? null,
+          boot_mode: report.firmware?.boot_mode ?? 'unknown',
+          secure_boot: report.firmware?.secure_boot ?? 'unknown',
+          tpm_present: report.firmware?.tpm_present === true,
+          content_digest_sha256: report.integrity?.content_digest_sha256 ?? null
+        }
+      });
+      return {success:true};
+    } catch (error) {
+      const code = String(error?.message || 'device_dna_refresh_failed').slice(0,120);
+      await post('agent.events.append', {
+        device_id: String(command.device_id),
+        event_type: 'device.dna.failed',
+        severity: 'warning',
+        success: false,
+        safe_detail: { error_code: code }
+      }).catch(()=>{});
+      return {success:false,error_code:code};
+    }
+  }
 
   if (device.adapter === 'browser-cdp' && command.capability === 'browser.control') {
     try {
@@ -284,10 +344,14 @@ async function main() {
     if (!realtimeConnected) void drainCommands().catch(()=>{});
   }, FALLBACK_POLL_MS);
 
+  if (DEVICE_DNA_ENABLED) {
+    setInterval(()=>syncDevices().catch(()=>{}), DEVICE_DNA_REFRESH_MS);
+  }
+
   void realtimeLoop();
   await drainCommands();
 
-  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only.\n`);
+  process.stdout.write(`ATLAS Local Agent ${VERSION} running. Realtime uses mTLS when configured; polling is fallback only; Linux Device DNA is ${DEVICE_DNA_ENABLED ? 'enabled' : 'not enabled'}.\n`);
   await new Promise(()=>{});
 }
 

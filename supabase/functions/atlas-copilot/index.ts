@@ -5,12 +5,15 @@ import {createOpenAIResponsesAdapter} from './openai-responses-adapter.mjs';
 import {createAtlasLocalResponsesAdapter} from './atlas-local-responses-adapter.mjs';
 import {createAmazonBedrockResponsesAdapter} from './amazon-bedrock-responses-adapter.mjs';
 import {createGeminiAdapter} from './gemini-adapter.mjs';
+import {createAnthropicAdapter} from './anthropic-adapter.mjs';
+import {createOpenAICompatibleChatAdapter} from './openai-compatible-chat-adapter.mjs';
 import {createCodexSovereignAdapter} from './codex-sovereign-adapter.mjs';
 import {createProviderRegistry} from './provider-registry.mjs';
 import {createCouncilOrchestrator} from './council-orchestrator.mjs';
 import {createToolGateway} from './tool-gateway.mjs';
 import {detectOracleIntent} from './oracle-intent.mjs';
 import {renderAtlasCopilotPage} from './ui.mjs';
+import {createBackgroundBrain,shouldRunInBackground} from './background-brain.mjs';
 
 const U='https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const K='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
@@ -18,13 +21,26 @@ const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const ORACLE='/functions/v1/atlas-oracle';
-const VERSION=13;
-const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','codex-sovereign'];
+const VERSION=17;
+const READINESS_CACHE_TTL_MS=15_000;
+const readinessCache=new Map();
+const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','codex-sovereign'];
 const DEFAULT_OPENAI_MODEL='gpt-6-astra';
 const DEFAULT_BEDROCK_REGION='us-west-2';
 const DEFAULT_BEDROCK_ENDPOINT='runtime';
 const DEFAULT_BEDROCK_RUNTIME_MODEL='us.openai.gpt-6-astra';
 const DEFAULT_BEDROCK_MANTLE_MODEL='openai.gpt-6-astra';
+const DEFAULT_GEMINI_MODEL='gemini-3.8-flash';
+const DEFAULT_ANTHROPIC_MODEL='claude-sonnet-5-5';
+const DEFAULT_GROK_MODEL='grok-4.7';
+const DEFAULT_DEEPSEEK_FAST_MODEL='deepseek-flash';
+const DEFAULT_DEEPSEEK_MODEL='deepseek-v4-pro';
+const DEFAULT_MISTRAL_MODEL='mistral-large-latest';
+const DEFAULT_QWEN_MODEL='qwen-plus';
+const DEFAULT_GROK_BASE_URL='https://api.x.ai/v1';
+const DEFAULT_DEEPSEEK_BASE_URL='https://api.deepseek.com';
+const DEFAULT_MISTRAL_BASE_URL='https://api.mistral.ai/v1';
+const DEFAULT_QWEN_BASE_URL='https://dashscope-us.aliyuncs.com/compatible-mode/v1';
 
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
 function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null,defaultModel=null){
@@ -57,6 +73,7 @@ function withCors(response,origin){
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers:nextHeaders});
 }
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:headers({'content-type':'application/json; charset=utf-8'})});}
+function edgeBackgroundRunner(){const edgeRuntime=(globalThis as any).EdgeRuntime;return edgeRuntime&&typeof edgeRuntime.waitUntil==='function'?(promise)=>edgeRuntime.waitUntil(promise):null;}
 function safeError(error){const n=normalizeIntelligenceError(error);return json({ok:false,error:n.code,trace_id:error?.trace_id||n.trace_id||null},n.status);}
 function authRequest(req,organization_id){if(!organization_id||req.headers.get('x-atlas-org-id'))return req;const h=new Headers(req.headers);h.set('x-atlas-org-id',String(organization_id));return new Request(req.url,{method:req.method,headers:h});}
 function runtime(){
@@ -71,6 +88,11 @@ function runtime(){
   const openaiKey=Deno.env.get('OPENAI_API_KEY')||'';
   const bedrockKey=Deno.env.get('AWS_BEARER_TOKEN_BEDROCK')||Deno.env.get('ATLAS_BEDROCK_API_KEY')||'';
   const geminiKey=Deno.env.get('GEMINI_API_KEY')||Deno.env.get('GOOGLE_AI_API_KEY')||'';
+  const anthropicKey=Deno.env.get('ANTHROPIC_API_KEY')||'';
+  const grokKey=Deno.env.get('XAI_API_KEY')||Deno.env.get('GROK_API_KEY')||'';
+  const deepseekKey=Deno.env.get('DEEPSEEK_API_KEY')||'';
+  const mistralKey=Deno.env.get('MISTRAL_API_KEY')||'';
+  const qwenKey=Deno.env.get('QWEN_API_KEY')||Deno.env.get('DASHSCOPE_API_KEY')||'';
   const openaiModels=profileModels('ATLAS_OPENAI_MODEL','ATLAS_OPENAI_MODEL_FAST','ATLAS_OPENAI_MODEL_BALANCED','ATLAS_OPENAI_MODEL_DEEP','ATLAS_OPENAI_ASTRA_MODEL',DEFAULT_OPENAI_MODEL);
   const bedrockEndpoint=clean(Deno.env.get('ATLAS_BEDROCK_ENDPOINT'))||DEFAULT_BEDROCK_ENDPOINT;
   const bedrockRegion=clean(Deno.env.get('ATLAS_BEDROCK_REGION'))||DEFAULT_BEDROCK_REGION;
@@ -78,7 +100,21 @@ function runtime(){
   const bedrockDefaultModel=bedrockEndpoint==='mantle'?DEFAULT_BEDROCK_MANTLE_MODEL:DEFAULT_BEDROCK_RUNTIME_MODEL;
   const bedrockModels=profileModels('ATLAS_BEDROCK_MODEL','ATLAS_BEDROCK_MODEL_FAST','ATLAS_BEDROCK_MODEL_BALANCED','ATLAS_BEDROCK_MODEL_DEEP',null,bedrockDefaultModel);
   const bedrockRuntimeVerified=boolEnv('ATLAS_BEDROCK_RUNTIME_VERIFIED',false);
-  const geminiModels=profileModels('ATLAS_GEMINI_MODEL','ATLAS_GEMINI_MODEL_FAST','ATLAS_GEMINI_MODEL_BALANCED','ATLAS_GEMINI_MODEL_DEEP');
+  const geminiModels=profileModels('ATLAS_GEMINI_MODEL','ATLAS_GEMINI_MODEL_FAST','ATLAS_GEMINI_MODEL_BALANCED','ATLAS_GEMINI_MODEL_DEEP',null,DEFAULT_GEMINI_MODEL);
+  const anthropicModels=profileModels('ATLAS_ANTHROPIC_MODEL','ATLAS_ANTHROPIC_MODEL_FAST','ATLAS_ANTHROPIC_MODEL_BALANCED','ATLAS_ANTHROPIC_MODEL_DEEP',null,DEFAULT_ANTHROPIC_MODEL);
+  const grokModels=profileModels('ATLAS_GROK_MODEL','ATLAS_GROK_MODEL_FAST','ATLAS_GROK_MODEL_BALANCED','ATLAS_GROK_MODEL_DEEP',null,DEFAULT_GROK_MODEL);
+  const deepseekShared=clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL'));
+  const deepseekModels={
+    fast:clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL_FAST'))||deepseekShared||DEFAULT_DEEPSEEK_FAST_MODEL,
+    balanced:clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL_BALANCED'))||deepseekShared||DEFAULT_DEEPSEEK_MODEL,
+    deep:clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL_DEEP'))||deepseekShared||DEFAULT_DEEPSEEK_MODEL,
+  };
+  const mistralModels=profileModels('ATLAS_MISTRAL_MODEL','ATLAS_MISTRAL_MODEL_FAST','ATLAS_MISTRAL_MODEL_BALANCED','ATLAS_MISTRAL_MODEL_DEEP',null,DEFAULT_MISTRAL_MODEL);
+  const qwenModels=profileModels('ATLAS_QWEN_MODEL','ATLAS_QWEN_MODEL_FAST','ATLAS_QWEN_MODEL_BALANCED','ATLAS_QWEN_MODEL_DEEP',null,DEFAULT_QWEN_MODEL);
+  const grokBaseUrl=clean(Deno.env.get('ATLAS_GROK_BASE_URL'))||DEFAULT_GROK_BASE_URL;
+  const deepseekBaseUrl=clean(Deno.env.get('ATLAS_DEEPSEEK_BASE_URL'))||DEFAULT_DEEPSEEK_BASE_URL;
+  const mistralBaseUrl=clean(Deno.env.get('ATLAS_MISTRAL_BASE_URL'))||DEFAULT_MISTRAL_BASE_URL;
+  const qwenBaseUrl=clean(Deno.env.get('ATLAS_QWEN_BASE_URL'))||DEFAULT_QWEN_BASE_URL;
   const codexEndpoint=clean(Deno.env.get('ATLAS_CODEX_SOVEREIGN_URL'));
   const codexToken=Deno.env.get('ATLAS_CODEX_SOVEREIGN_TOKEN')||'';
   const codexModel=clean(Deno.env.get('ATLAS_CODEX_SOVEREIGN_MODEL'));
@@ -97,7 +133,7 @@ function runtime(){
     emergency_openai_reserve_usd:Math.max(0,numberEnv('ATLAS_AI_EMERGENCY_OPENAI_RESERVE_USD',0)),
     emergency_openai_max_output_tokens:Math.max(64,Math.min(3000,Math.trunc(numberEnv('ATLAS_AI_EMERGENCY_OPENAI_MAX_OUTPUT_TOKENS',512))||512)),
   };
-  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
+  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,anthropicKey,grokKey,deepseekKey,mistralKey,qwenKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,anthropicModels,grokModels,deepseekModels,mistralModels,qwenModels,grokBaseUrl,deepseekBaseUrl,mistralBaseUrl,qwenBaseUrl,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
 }
 async function resolveLocalAiRuntime(rt){
   let stored={};
@@ -140,13 +176,27 @@ function registryFor(rt,localAi){
     createOpenAIResponsesAdapter({apiKey:rt.openaiKey,models:rt.openaiModels,fetchFn:fetch}),
     createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,fetchFn:fetch}),
     createGeminiAdapter({apiKey:rt.geminiKey,models:rt.geminiModels,fetchFn:fetch}),
+    createAnthropicAdapter({apiKey:rt.anthropicKey,models:rt.anthropicModels,fetchFn:fetch}),
+    createOpenAICompatibleChatAdapter({id:'grok',apiKey:rt.grokKey,baseUrl:rt.grokBaseUrl,models:rt.grokModels,backend:'xai',fetchFn:fetch}),
+    createOpenAICompatibleChatAdapter({id:'deepseek',apiKey:rt.deepseekKey,baseUrl:rt.deepseekBaseUrl,models:rt.deepseekModels,backend:'deepseek',fetchFn:fetch}),
+    createOpenAICompatibleChatAdapter({id:'mistral',apiKey:rt.mistralKey,baseUrl:rt.mistralBaseUrl,models:rt.mistralModels,backend:'mistral',fetchFn:fetch}),
+    createOpenAICompatibleChatAdapter({id:'qwen',apiKey:rt.qwenKey,baseUrl:rt.qwenBaseUrl,models:rt.qwenModels,backend:'alibaba-model-studio',fetchFn:fetch}),
     createCodexSovereignAdapter({endpoint:rt.codexEndpoint,token:rt.codexToken,model:rt.codexModel,fetchFn:fetch}),
   ]});
 }
-async function readinessFor(rt,profile='balanced'){
+async function readinessFor(rt,profile='balanced',fresh=false){
   const localAi=await resolveLocalAiRuntime(rt);
   const registry=registryFor(rt,localAi);
+  const localModel=localAi?.models?.[profile]||null;
+  const cacheKey=JSON.stringify([profile,localAi?.baseUrl||null,localModel,localAi?.state||null,localAi?.lastVerifiedAt||null]);
+  const cached=readinessCache.get(cacheKey);
+  if(!fresh&&cached&&Date.now()-cached.checkedAt<READINESS_CACHE_TTL_MS)return {registry,providers:cached.providers,localAi};
   const providers=await registry.readiness({profile});
+  readinessCache.set(cacheKey,{checkedAt:Date.now(),providers});
+  if(readinessCache.size>12){
+    const oldest=[...readinessCache.entries()].sort((a,b)=>a[1].checkedAt-b[1].checkedAt).slice(0,readinessCache.size-12);
+    for(const [key] of oldest)readinessCache.delete(key);
+  }
   return {registry,providers,localAi};
 }
 function resolveDiarizationRuntime(rt,localAi){
@@ -278,15 +328,17 @@ async function approvedMemoryForAssistant(rt,context,{message,module}={}){
   parts.push('Use this memory as organization-approved context. Preserve RBAC, provider evidence, current authoritative data, and module-specific verification gates.');
   return {text:parts.join('\n').slice(0,8000),recordIds};
 }
+async function handleUsage(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),url=new URL(req.url),days=Math.min(90,Math.max(1,Number(url.searchParams.get('days'))||30)),summary=await store.usageSummary({context:resolved.context,days});return json({ok:true,...summary});}
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
-async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
+async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});await brain.reconcileConversation({context:resolved.context,conversationId:id}).catch(()=>[]);const conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
+async function handleBackground(req,url){if(req.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);const traceId=String(url.searchParams.get('trace_id')||'').trim();if(!traceId)return json({ok:false,error:'invalid_input'},400);const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});const result=await brain.poll({context:resolved.context,traceId});return json({ok:true,...result});}
 async function handleStatus(req){
-  const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced'),diarization=await diarizationReadiness(rt,localAi);
+  const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced',true),diarization=await diarizationReadiness(rt,localAi);
   const openai=providers.find(p=>p.id==='openai');
   const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
   const emergencyConfigured=rt.costPolicy.emergency_openai_enabled===true&&rt.costPolicy.emergency_openai_daily_budget_usd>0&&rt.costPolicy.emergency_openai_reserve_usd>0;
   const emergencyReady=emergencyConfigured&&openai?.configured===true&&openai?.verified===true;
-  return json({ok:true,authenticated:true,local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning','private-oracle'],profiles:['fast','balanced','deep'],cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'github-actions-oidc-queue'});
+  return json({ok:true,authenticated:true,local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto',...PROVIDER_IDS,'council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning','private-oracle'],profiles:['fast','balanced','deep'],cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'atlas-direct-deploy'});
 }
 async function handleOracle(req,body,message,oracleIntent,resolved){
   const authorization=req.headers.get('authorization')||'';
@@ -309,7 +361,7 @@ async function handleChat(req){
   const oracleIntent=detectOracleIntent(message);
   if(oracleIntent)return await handleOracle(req,body,message,oracleIntent,resolved);
   const requestedModule=body?.context!==undefined&&body?.module===undefined?'workbench':String(body?.module||'atlas');
-  const clientLegacy=String(body?.context||'').trim().slice(0,4000),intent=String(body?.intent||'balanced'),mode=String(body?.mode||'auto');
+  const clientLegacy=String(body?.context||'').trim().slice(0,4000),intent=String(body?.intent||'balanced'),mode=String(body?.mode||'auto'),requestedExecutionMode=String(body?.execution_mode||'auto'),executionMode=['auto','interactive','background'].includes(requestedExecutionMode)?requestedExecutionMode:'auto';
   const memory=await approvedMemoryForAssistant(rt,resolved.context,{message,module:requestedModule});
   const legacy=[clientLegacy,memory.text].filter(Boolean).join('\n\n').slice(0,12000);
   const {registry,providers}=await readinessFor(rt,intent);
@@ -319,6 +371,15 @@ async function handleChat(req){
   const request=body?.context!==undefined&&body?.module===undefined
     ?{module:'workbench',intent:'balanced',mode,message,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy),atlas_memory_records:memory.recordIds},legacy_context:legacy}
     :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:{...(body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{}),atlas_memory_records:memory.recordIds},legacy_context:legacy};
+  if(shouldRunInBackground({executionMode,message,profile:intent})){
+    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,runDetached:edgeBackgroundRunner()});
+    try{
+      const background=await brain.start({context:resolved.context,request});
+      return json({ok:true,...background,text:background.text||'',provider_state:'verified_for_request',provider_readiness:providers,memory:{approved_records_used:memory.recordIds.length,record_ids:memory.recordIds},execution:{repositoryMutation:false,repairQueue:'available',mode:'background'}},background.status==='completed'?200:202);
+    }catch(error){
+      if(executionMode==='background'||error?.code!=='background_provider_unavailable')throw error;
+    }
+  }
   const result=await gateway.execute({context:resolved.context,request});
   return json({ok:true,...result,text:result.output,provider_state:'verified_for_request',provider_readiness:providers,memory:{approved_records_used:memory.recordIds.length,record_ids:memory.recordIds},execution:{repositoryMutation:false,repairQueue:'available',mode:'analysis'}});
 }
@@ -327,15 +388,17 @@ async function handleRequest(req: Request){
   const url=new URL(req.url),api=url.searchParams.get('api');
   try{
     if(api==='readiness'){
-      const rt=runtime(),{providers,localAi}=await readinessFor(rt,'balanced'),diarization=await diarizationReadiness(rt,localAi),openai=providers.find(p=>p.id==='openai');
+      const rt=runtime(),{providers,localAi}=await readinessFor(rt,'balanced',true),diarization=await diarizationReadiness(rt,localAi),openai=providers.find(p=>p.id==='openai');
       const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
       const emergencyConfigured=rt.costPolicy.emergency_openai_enabled===true&&rt.costPolicy.emergency_openai_daily_budget_usd>0&&rt.costPolicy.emergency_openai_reserve_usd>0;
       const emergencyReady=emergencyConfigured&&openai?.configured===true&&openai?.verified===true;
-      return json({ok:true,state:'ready',service:'atlas-copilot',local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto','atlas-local','openai','bedrock','gemini','codex-sovereign','council'],api:'unified-provider-router',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'github-actions-oidc-queue',repairBridge:REPAIR,oracle:ORACLE,checkedAt:new Date().toISOString()});
+      return json({ok:true,state:'ready',service:'atlas-copilot',local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,version:VERSION,auth:'atlas-session-required-for-prompts',provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto',...PROVIDER_IDS,'council'],api:'unified-provider-router',reasoning_profiles:{fast:'low',balanced:'medium',deep:'high'},storage_state:rt.storageConfigured?'configured':'not_configured',cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'atlas-direct-deploy',repairBridge:REPAIR,oracle:ORACLE,checkedAt:new Date().toISOString()});
     }
     if(api==='status')return await handleStatus(req);
+    if(api==='usage')return await handleUsage(req);
     if(api==='history')return await handleHistory(req);
     if(api==='conversation')return await handleConversation(req,url);
+    if(api==='background')return await handleBackground(req,url);
     if(api==='chat')return await handleChat(req);
     if(api==='diarize')return await handleDiarize(req);
     const html=renderAtlasCopilotPage({supabaseUrl:U,publishableKey:K,selfPath:SELF,repairPath:REPAIR,livePath:LIVE,version:VERSION});

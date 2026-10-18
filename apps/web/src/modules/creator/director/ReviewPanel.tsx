@@ -66,13 +66,13 @@ export function ReviewPanel({
 
     <section className="director-review-card" aria-label="ATLAS Native Composer">
       <div className="director-card-heading"><strong>ATLAS Native Composer</strong><span>{nativeReadinessState}</span></div>
-      <p><strong>Zero-cost</strong> · self-hosted · local narration · burned captions · audio mix.</p>
+      <p><strong>No external generation fee</strong> · self-hosted · local narration · burned captions · audio mix. Compute, electricity and storage may have costs.</p>
       <p>No automatic fallback to paid media providers.</p>
       {nativeReadinessState === 'error' && <p><strong>Runtime:</strong> {nativeReadinessError || 'native_composer_unavailable'}</p>}
       {spec.motionComposition && <p><strong>Motion capability:</strong> {nativeCapabilities.includes('motion-composition-v1') ? 'verified' : 'not advertised by runtime'}</p>}
       {nativeGate.reasons.length > 0 && <ul>{nativeGate.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}
       <button className="director-action generate" type="button" disabled={!canNativeGenerate} onClick={onNativeSubmit}>
-        {nativeSubmitting ? 'Rendering with ATLAS Native…' : 'Generate with ATLAS Native · $0'}
+        {nativeSubmitting ? 'Rendering with ATLAS Native…' : 'Generate with ATLAS Native · local'}
       </button>
     </section>
 

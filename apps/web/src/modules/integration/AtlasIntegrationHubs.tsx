@@ -213,6 +213,7 @@ export function ReleaseControlIntegrationHub() {
           title: 'Canonical verification surfaces',
           description: 'Release Control points to current readiness and system-state surfaces rather than restoring the historical controller unchanged.',
           cards: [
+            { label: 'Stewardship', title: 'Stewardship Governance', description: 'Blueprint-matched visual record of the verified Wave 1 governance release and its evidence chain.', to: '/release/stewardship' },
             { label: 'Gestation', title: 'ATLAS Gestation A-Z', description: 'Sequential evidence gates from conception through production birth.', to: '/release/gestation' },
             { label: 'Manager', title: 'Execution readiness', description: 'Governed readiness and approval orchestration.', to: '/execution/manager/readiness' },
             { label: 'System', title: 'ATLAS Galaxy', description: 'Spatial module-state and system overview.', to: '/galaxy' },

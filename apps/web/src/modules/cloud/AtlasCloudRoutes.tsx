@@ -3,7 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { ATLAS_MODULES } from '../registry';
 import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManager } from './AtlasCloudNextLevel';
 import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
+import { AtlasRuntimeIntegrityPage } from './AtlasRuntimeIntegrityPage';
+import { AtlasCloudDomains } from './AtlasCloudDomains';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
+import { atlasCloudTruthBadge } from './truthStatus';
 
 type CloudService = {
   id: string;
@@ -82,11 +85,15 @@ function ServiceCatalog({ compact = false }: { compact?: boolean }) {
         </div>
       ) : (
         <div className={compact ? 'atlas-cloud-service-grid compact' : 'atlas-cloud-service-grid'}>
-          {results.map((service) => (
+          {results.map((service) => {
+            const truth = atlasCloudTruthBadge(service.readiness);
+            return (
             <article key={service.id} className="atlas-cloud-service-card">
               <div className="atlas-cloud-service-meta">
                 <span>{service.category}</span>
-                <span>{service.readiness}</span>
+                <span className={`atlas-cloud-truth-badge ${truth.state}`} title={`Source readiness: ${service.readiness}`}>
+                  <span aria-hidden="true">{truth.symbol}</span> {truth.label}
+                </span>
               </div>
               <h3>{service.name}</h3>
               <p>{service.description}</p>
@@ -96,7 +103,8 @@ function ServiceCatalog({ compact = false }: { compact?: boolean }) {
               </div>
               <Link to={service.route}>Open service</Link>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
@@ -232,9 +240,17 @@ function ConsoleHome() {
           <span>Operations</span><strong>Observability</strong>
           <p>View native incidents, traces, metrics and runtime verification evidence.</p>
         </Link>
+        <Link to="/cloud/runtime-integrity">
+          <span>Runtime</span><strong>Runtime Integrity</strong>
+          <p>Classify browser, application, provider and policy failures without promoting extension noise to P0.</p>
+        </Link>
         <Link to="/cloud/resources">
           <span>Resources</span><strong>Resource Manager</strong>
           <p>Manage organization projects and inspect the canonical ATLAS service registry.</p>
+        </Link>
+        <Link to="/cloud/domains">
+          <span>Network</span><strong>Domains & DNS</strong>
+          <p>Verify public DNS evidence while provider mutations remain fail-closed.</p>
         </Link>
         <Link to="/cloud/service-graph">
           <span>Topology</span><strong>Service Graph</strong>
@@ -312,7 +328,9 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/docs/operations') return <DocumentationArticle kind="operations" />;
   if (pathname === '/cloud/api-explorer') return <AtlasCloudApiExplorer />;
   if (pathname === '/cloud/observability') return <AtlasCloudObservability />;
+  if (pathname === '/cloud/runtime-integrity') return <AtlasRuntimeIntegrityPage />;
   if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
+  if (pathname === '/cloud/domains') return <AtlasCloudDomains />;
   if (pathname === '/cloud/service-graph') return <AtlasCloudServiceGraph />;
   if (pathname === '/cloud/releases') return <AtlasCloudReleaseCenter />;
   if (pathname === '/cloud/production-verification') return <AtlasCloudProductionVerification />;

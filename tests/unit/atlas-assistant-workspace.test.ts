@@ -21,7 +21,7 @@ describe('ATLAS Assistant workspace', () => {
   it('shares the governed assistant client for status, history, conversation and chat', () => {
     const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
     const client = source('apps/web/src/assistant/client.ts');
-    for (const mode of ['auto', 'atlas-local', 'openai', 'bedrock', 'gemini', 'codex-sovereign', 'council']) {
+    for (const mode of ['auto', 'atlas-local', 'openai', 'bedrock', 'gemini', 'anthropic', 'grok', 'deepseek', 'mistral', 'qwen', 'codex-sovereign', 'council']) {
       expect(page).toContain(`value: '${mode}'`);
     }
     for (const profile of ['fast', 'balanced', 'deep']) {
@@ -35,7 +35,14 @@ describe('ATLAS Assistant workspace', () => {
     expect(client).toContain('/functions/v1/atlas-copilot?api=history');
     expect(client).toContain('/functions/v1/atlas-copilot?api=conversation');
     expect(client).toContain('/functions/v1/atlas-copilot?api=chat');
+    expect(client).toContain('/functions/v1/atlas-copilot?api=background&trace_id=');
+    expect(client).toContain("execution_mode: input.executionMode || 'auto'");
     expect(client).toContain("surface: 'atlas-assistant-workspace'");
+    expect(page).toContain('getAssistantBackgroundStatus');
+    expect(page).toContain('Working in background…');
+    expect(page).toContain('assistant_empty_response');
+    expect(page).not.toContain('Promise.all([getAssistantStatus(), listAssistantConversations()])');
+    expect(page).toContain('const completedText = String(state.output || state.text || \'\').trim()');
     expect(page).toContain("status?.local_runtime?.state === 'verified'");
     expect(page).toContain("localProvider?.verified === true");
   });
@@ -132,6 +139,27 @@ describe('ATLAS Assistant workspace', () => {
     expect(backend).toContain("diarization_speaker_limit_exceeded");
     expect(page).toContain("status?.diarization?.verified === true");
     expect(page).toContain("Speaker labels come from an authenticated, verified diarization provider");
+  });
+
+  it('keeps the mobile composer reachable and retries unsent messages without inventing AI success', () => {
+    const page = source('apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx');
+    const css = source('apps/web/src/modules/intelligence/UnifiedAIChat.css');
+
+    expect(css).toContain('.atlas-ai-app .atlas-ai-thread{');
+    expect(css).toContain('max-width:none;');
+    expect(css).toContain('@media(max-width:1024px){');
+    expect(css).toContain('height:calc(100dvh - 112px - env(safe-area-inset-bottom, 0px));');
+    expect(css).toContain('.atlas-ai-composer-wrap{\n    position:sticky;');
+    expect(css).toContain('font-size:16px;');
+    expect(css).toContain('.atlas-ai-sidebar-close{');
+
+    expect(page).toContain('aria-controls="atlas-ai-conversation-sidebar"');
+    expect(page).toContain('aria-expanded={sidebarOpen}');
+    expect(page).toContain('ref={promptRef}');
+    expect(page).toContain('const optimisticKey =');
+    expect(page).toContain('item.key !== optimisticKey');
+    expect(page).toContain('setPrompt((current) => current || value)');
+    expect(page).toContain('Retry readiness check');
   });
 
 });

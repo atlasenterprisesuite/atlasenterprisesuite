@@ -17,6 +17,7 @@ export interface AtlasMcpContext {
 const descriptions: Record<AtlasToolId, string> = {
   'atlas.task.create': 'Create a governed ATLAS collaboration task.',
   'atlas.task.read': 'Read one ATLAS task in the caller scope.',
+  'atlas.task.readiness': 'Evaluate completion readiness for one ATLAS task using governed evidence gates.',
   'atlas.task.update': 'Move an ATLAS task through an allowed governed state transition.',
   'atlas.task.claim': 'Claim an ATLAS task when the claim workflow is enabled.',
   'atlas.agent.delegate': 'Delegate work to an authorized registered ATLAS agent.',
@@ -32,7 +33,7 @@ const descriptions: Record<AtlasToolId, string> = {
 };
 
 function toolSchema(name: AtlasToolId): Record<string, unknown> {
-  if (name === 'atlas.task.read' || name === 'atlas.audit.read' || name === 'atlas.deploy.request') {
+  if (name === 'atlas.task.read' || name === 'atlas.task.readiness' || name === 'atlas.audit.read' || name === 'atlas.deploy.request') {
     return { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'], additionalProperties: false };
   }
   if (name === 'atlas.test.run') {

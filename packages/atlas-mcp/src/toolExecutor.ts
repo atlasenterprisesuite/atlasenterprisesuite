@@ -1,4 +1,4 @@
-import type { AtlasOrchestrator, PersistencePort } from '../../ai-core/src';
+import { evaluateCompletionReadiness, type AtlasOrchestrator, type PersistencePort } from '../../ai-core/src';
 import { authorize, type AtlasActor } from '../../governance/src';
 import type { AtlasTask, AtlasTaskState } from '../../task-protocol/src';
 import { toolPermission, type AtlasToolId } from './toolIds';
@@ -61,6 +61,10 @@ export class ToolExecutor {
         return this.options.orchestrator.createTask(args.task as AtlasTask, actor);
       case 'atlas.task.read':
         return this.options.orchestrator.readTask(actor.scope, requiredString(args, 'taskId'), actor);
+      case 'atlas.task.readiness': {
+        const task = await this.options.orchestrator.readTask(actor.scope, requiredString(args, 'taskId'), actor);
+        return evaluateCompletionReadiness(task);
+      }
       case 'atlas.task.update':
         return this.options.orchestrator.transitionTask(
           actor.scope,

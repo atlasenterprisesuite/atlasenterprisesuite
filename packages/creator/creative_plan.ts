@@ -1,4 +1,4 @@
-import { rankCreativeEngines, type CreativeEngineReadiness, type CreativeMediaKind } from './creative_engine';
+import { rankCreativeEngines, type CreativeEngineReadiness, type CreativeMediaKind } from './creative_engine.ts';
 
 export type CreativeAccessibilityPlan = {
   captions: boolean;

@@ -22,7 +22,7 @@ function errorForStatus(status){if(status===401||status===403)return fail('provi
 export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
   const resolved=Object.freeze({fast:cleanModel(models?.fast),balanced:cleanModel(models?.balanced),deep:cleanModel(models?.deep)});
   const configured=Boolean(apiKey)&&Object.values(resolved).some(Boolean);
-  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false}});
+  const descriptor=()=>({id:'openai',configured,verified:false,capabilities:['generation','reasoning'],profiles:[...PROFILES],api:'responses',models:{...resolved},prompt_cache:{ttl:PROMPT_CACHE_TTL,tenant_isolated_key:true},feature_support:{reasoning_updates:Object.values(resolved).some(isAstra),background:true,async_tool_calling:false,mid_turn_steering:false,programmatic_tool_calling:false,multi_agent:false,remote_mcp:false}});
   async function execute({context,route,instructions,input,max_output_tokens=3000}={}){
     const model=resolved[route?.profile];
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
@@ -44,6 +44,52 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
     if(!text)throw fail('internal_error',500,{provider:'openai'});
     return {provider:'openai',model:data.model||model,response_id:data.id||null,text,capabilities_used:[...(route.capabilities||['generation'])],usage:data.usage||{},provenance:[],tool_calls:[]};
   }
+  async function startBackground({context,route,instructions,input,max_output_tokens=3000}={}){
+    const model=resolved[route?.profile];
+    if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'openai'});
+    const headers={authorization:`Bearer ${apiKey}`,'content-type':'application/json','OpenAI-Safety-Identifier':await safetyId(context)};
+    const body={
+      model,
+      instructions,
+      input:withReasoningConfiguration(input,route.profile,model),
+      reasoning:{effort:isAstra(model)?EFFORT.fast:(EFFORT[route.profile]||EFFORT.balanced)},
+      max_output_tokens,
+      store:false,
+      background:true,
+      prompt_cache_key:await promptCacheKey(context,route,model),
+      prompt_cache_options:{ttl:PROMPT_CACHE_TTL},
+    };
+    let response;
+    try{response=await fetchFn('https://api.openai.com/v1/responses',{method:'POST',headers,body:JSON.stringify(body)});}catch{throw fail('provider_unavailable',502,{provider:'openai'});}
+    if(!response.ok)throw errorForStatus(response.status);
+    const data=await providerJson(response);
+    const responseId=typeof data?.id==='string'&&data.id.trim()?data.id.trim():null;
+    if(!responseId)throw fail('internal_error',500,{provider:'openai'});
+    const status=typeof data?.status==='string'&&data.status.trim()?data.status.trim():'queued';
+    const text=status==='completed'?outputText(data):'';
+    if(status==='completed'&&!text)throw fail('internal_error',500,{provider:'openai'});
+    return {provider:'openai',model:data?.model||model,response_id:responseId,status,text:text||null,usage:data?.usage||{}};
+  }
+  async function retrieveBackground({response_id}={}){
+    const responseId=typeof response_id==='string'&&response_id.trim()?response_id.trim():null;
+    if(!apiKey||!responseId)throw fail('invalid_input',400,{provider:'openai'});
+    let response;
+    try{response=await fetchFn(`https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}`,{headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'}});}catch{throw fail('provider_unavailable',502,{provider:'openai'});}
+    if(!response.ok)throw errorForStatus(response.status);
+    const data=await providerJson(response);
+    const status=typeof data?.status==='string'&&data.status.trim()?data.status.trim():'in_progress';
+    const text=status==='completed'?outputText(data):'';
+    if(status==='completed'&&!text)throw fail('internal_error',500,{provider:'openai'});
+    return {
+      provider:'openai',
+      model:data?.model||null,
+      response_id:responseId,
+      status,
+      text:text||null,
+      usage:data?.usage||{},
+      error:data?.error?.code||data?.error?.message||null
+    };
+  }
   async function probe({profile='balanced'}={}){
     const model=resolved[profile];
     if(!apiKey||!model)return {configured:false,verified:false,provider:'openai',model:model||null,error:'provider_not_configured'};
@@ -53,5 +99,5 @@ export function createOpenAIResponsesAdapter({apiKey,models,fetchFn=fetch}={}){
     const e=errorForStatus(response.status);
     return {configured:true,verified:false,provider:'openai',model,error:e.code};
   }
-  return Object.freeze({descriptor,execute,probe});
+  return Object.freeze({descriptor,execute,startBackground,retrieveBackground,probe});
 }

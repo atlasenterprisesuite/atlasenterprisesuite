@@ -41,14 +41,18 @@ describe('atlas-creator Edge contract', () => {
   it('exposes the generalized engine registry and planning-only prompt export', () => {
     expect(index).toContain("api === 'engines' && req.method === 'GET'");
     expect(index).toContain("api === 'prompt-export' && req.method === 'POST'");
+    expect(index).toContain("api === 'music-generate' && req.method === 'POST'");
     expect(index).toContain('PROMPT_EXPORT_ENGINE');
+    expect(index).toContain('elevenLabsMusicReadiness');
+    expect(index).toContain('elevenLabsMusicGenerate');
     expect(index).toContain('compilePromptExport');
     expect(index).toContain("'creator.prompt.exported'");
     expect(index).toContain("api === 'providers'");
     expect(index).toContain("api === 'submit'");
   });
 
-  it('contains no direct provider secrets', () => {
+  it('keeps the ElevenLabs key server-side and out of browser contracts', () => {
+    expect(index).toContain("Deno.env.get('ELEVENLABS_API_KEY')");
     expect(index).not.toMatch(/OPENART_API_KEY|provider_secret|private_key/i);
   });
 });

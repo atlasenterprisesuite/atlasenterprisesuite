@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 
 const destinations = [
   ['/ride', 'Ride'],
+  ['/ride/routes', 'Route Planning'],
   ['/ride/driver', 'Driver / Partner'],
   ['/ride/driver/compliance', 'Compliance'],
   ['/ride/driver/compliance/documents', 'Documents & Credentials']

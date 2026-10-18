@@ -13,7 +13,7 @@ import type {
 } from '../../packages/core/src/index';
 
 describe('ATLAS CRM core contracts', () => {
-  it('supports HubSpot as an integration provider', () => {
+  it('supports HubSpot and Salesforce as CRM integration providers', () => {
     expect(
       createIntegrationConnection({
         scope: { tenantId: 'tenant-a', organizationId: 'org-a' },
@@ -22,6 +22,17 @@ describe('ATLAS CRM core contracts', () => {
     ).toEqual({
       scope: { tenantId: 'tenant-a', organizationId: 'org-a' },
       provider: 'hubspot',
+      status: 'disconnected'
+    });
+
+    expect(
+      createIntegrationConnection({
+        scope: { tenantId: 'tenant-a', organizationId: 'org-a' },
+        provider: 'salesforce'
+      })
+    ).toEqual({
+      scope: { tenantId: 'tenant-a', organizationId: 'org-a' },
+      provider: 'salesforce',
       status: 'disconnected'
     });
   });
@@ -45,7 +56,7 @@ describe('ATLAS CRM core contracts', () => {
     expect(canReportConnected({ authorized: false, providerVerified: true })).toBe(false);
   });
 
-  it('exposes provider-neutral CRM pages without leaking HubSpot property names into the contract', () => {
+  it('exposes provider-neutral CRM pages without leaking provider-specific property names into the contract', () => {
     const page: CrmPage = {
       records: [
         {
@@ -55,6 +66,14 @@ describe('ATLAS CRM core contracts', () => {
           displayName: 'Ada Lovelace',
           fields: { email: 'ada@example.test', active: true },
           updatedAt: null
+        },
+        {
+          provider: 'salesforce',
+          objectType: 'company',
+          providerId: '001ATLAS',
+          displayName: 'ATLAS Enterprise Suite',
+          fields: { industry: 'Technology', active: true },
+          updatedAt: null
         }
       ],
       nextCursor: 'opaque-next'
@@ -62,6 +81,7 @@ describe('ATLAS CRM core contracts', () => {
 
     expect(page.records[0].objectType).toBe('contact');
     expect(page.records[0].providerId).toBe('101');
+    expect(page.records[1].provider).toBe('salesforce');
     expect(page.nextCursor).toBe('opaque-next');
   });
 
@@ -80,17 +100,18 @@ describe('ATLAS CRM core contracts', () => {
       nextCursor: null
     };
     const connection: CrmConnectionView = {
-      provider: 'hubspot',
+      provider: 'salesforce',
       state: 'degraded',
-      providerAccountId: 'portal-1',
-      providerAccountLabel: 'Atlas CRM',
-      grantedScopes: ['crm.objects.contacts.read'],
+      providerAccountId: '00D000000000001',
+      providerAccountLabel: 'ATLAS Enterprise Suite',
+      grantedScopes: ['api'],
       lastVerifiedAt: null,
       lastSuccessAt: null,
       safeErrorCode: 'forbidden_scope'
     };
 
     expect(associations.associations[0].toObjectType).toBe('company');
+    expect(connection.provider).toBe('salesforce');
     expect(connection).not.toHaveProperty('accessToken');
     expect(connection).not.toHaveProperty('refreshToken');
   });

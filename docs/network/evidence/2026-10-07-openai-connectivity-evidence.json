@@ -1,0 +1,70 @@
+{
+  "evidence_date": "2026-10-07",
+  "repository": "atlasenterprisesuite/atlasenterprisesuite",
+  "base_branch": "main",
+  "base_revision": "b3fc5a94c6474acf0e55259478bed8c1f5ff30bf",
+  "existing_guidance": {
+    "path": "docs/network/2026-10-06-openai-connectivity.md",
+    "blob_sha": "3ccecf718617b8ac8f18de20fbe577fbdcb70375"
+  },
+  "sources": [
+    "https://help.openai.com/en/articles/9247338-network-recommendations-for-chatgpt-errors-on-web-and-apps",
+    "https://status.openai.com/",
+    "https://openai.com/chatgpt-voice.json"
+  ],
+  "observations": [
+    {
+      "gate": "chatgpt_https",
+      "priority": "P0",
+      "status": "PASS",
+      "detail": "ChatGPT public web surface retrieved."
+    },
+    {
+      "gate": "auth_https",
+      "priority": "P0",
+      "status": "PASS",
+      "detail": "OpenAI authentication surface retrieved."
+    },
+    {
+      "gate": "provider_status",
+      "priority": "P0",
+      "status": "PASS",
+      "detail": "OpenAI status page reported fully operational."
+    },
+    {
+      "gate": "ws_host_root",
+      "priority": "P0",
+      "status": "UNVERIFIED",
+      "detail": "HTTPS root returned 404; host reachability only, not WebSocket upgrade proof."
+    },
+    {
+      "gate": "upload_transaction",
+      "priority": "P0",
+      "status": "UNVERIFIED",
+      "detail": "oaiusercontent root returned 404; not an upload transaction."
+    },
+    {
+      "gate": "production_dns",
+      "priority": "P0",
+      "status": "UNVERIFIED",
+      "detail": "Production egress was not available to this evidence run."
+    },
+    {
+      "gate": "production_tls",
+      "priority": "P0",
+      "status": "UNVERIFIED",
+      "detail": "Production egress TLS chain was not available to this evidence run."
+    },
+    {
+      "gate": "voice_udp_3478",
+      "priority": "P1",
+      "status": "UNVERIFIED",
+      "detail": "UDP egress not exercised."
+    }
+  ],
+  "container_probe": {
+    "status": "ENVIRONMENT_LIMITED",
+    "detail": "Isolated execution container could not resolve public DNS; result is not attributed to ATLAS or OpenAI."
+  },
+  "production_ready": false
+}

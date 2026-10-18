@@ -1,0 +1,45 @@
+name: ATLAS Local Core Wave 2
+on:
+  pull_request:
+    paths:
+      - 'tools/local-agent/**'
+      - 'apps/web/src/modules/device-os/**'
+      - 'docs/architecture/ATLAS_LOCAL_CORE_WAVE2.md'
+      - '.github/workflows/local-core-wave2.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/local-agent/**'
+      - 'apps/web/src/modules/device-os/**'
+      - '.github/workflows/local-core-wave2.yml'
+permissions:
+  contents: read
+jobs:
+  portable-check:
+    name: Local Core portable installer and vault tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Portable runtime and memory tests
+        run: node --test tools/local-agent/tests/local-core-client.test.mjs tools/local-agent/tests/local-core-vault.test.mjs tools/local-agent/tests/local-core-installer.test.mjs
+      - name: Ubuntu unprivileged installation smoke test
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          bash tools/local-agent/install-local-core-ubuntu.sh
+          "${HOME}/.local/share/atlas/local-core/atlas-local-core" doctor
+          test "$(stat -c %a "${HOME}/.atlas/local-core")" = "700"
+      - name: Windows PowerShell user installation smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & ./tools/local-agent/install-local-core-windows.ps1
+          & "$env:LOCALAPPDATA\ATLAS\LocalCore\atlas-local-core.cmd" doctor
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer smoke failed.' }

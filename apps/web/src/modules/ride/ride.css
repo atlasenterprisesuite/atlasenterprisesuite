@@ -1,4 +1,10 @@
 .ride-page { min-width: 0; }
+.ride-route-pilot { display: grid; gap: var(--atlas-space-4); }
+.ride-route-pilot textarea { box-sizing: border-box; width: 100%; min-height: 12rem; padding: var(--atlas-space-4); border: 1px solid var(--atlas-cyan); border-radius: var(--atlas-radius-md); background: var(--atlas-surface-1); color: var(--atlas-text); font: inherit; }
+.ride-route-actions { display: flex; flex-wrap: wrap; gap: var(--atlas-space-4); }
+.ride-route-actions button { min-height: var(--atlas-touch-target); padding: .6rem 1rem; }
+.ride-route-actions button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 600px) { .ride-route-actions button { width: 100%; } }
 
 .ride-subnav {
   display: flex;

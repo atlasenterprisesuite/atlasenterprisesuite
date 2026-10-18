@@ -20,6 +20,11 @@ export function VoiceHomePage() {
           <strong>Personal Voice</strong>
           <p>Manage the existing governed Personal Voice workspace and verified platform capability boundaries.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/calling">
+          <span>Telephony · Provider-gated</span>
+          <strong>ATLAS Calling</strong>
+          <p>Use ATLAS Voice through the governed telephony control plane once a real provider passes live verification.</p>
+        </Link>
         <Link className="module-card enabled" to="/assistant">
           <span>Text + intelligence</span>
           <strong>Assistant Workspace</strong>

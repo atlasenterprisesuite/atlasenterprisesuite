@@ -3,6 +3,7 @@ import { FuturisticEnterpriseHome } from '../components/FuturisticEnterpriseHome
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { AviationRoutes } from '../modules/aviation/AviationRoutes';
+import { BusinessEcosystemPage } from '../modules/business/BusinessEcosystemPage';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
 import { AtlasCloudRoutes } from '../modules/cloud/AtlasCloudRoutes';
@@ -11,13 +12,13 @@ import { DeviceOSPage } from '../modules/device-os/DeviceOSPage';
 import { EventsHomePage } from '../modules/events/EventsHomePage';
 import { FrontierRoutes } from '../modules/frontier/FrontierRoutes';
 import { AtlasGestationPage } from '../modules/release/AtlasGestationPage';
+import { AtlasStewardshipReleasePage } from '../modules/release/AtlasStewardshipReleasePage';
 import { ContentIntelligencePage } from '../modules/creator/content/ContentIntelligencePage';
 import { SocialCommandCenterPage } from '../modules/creator/social/SocialCommandCenterPage';
 import { ATLASWritingDeskPage } from '../modules/creator/writing/ATLASWritingDeskPage';
 import { WebLaunchPage } from '../modules/creator/web/WebLaunchPage';
 import {
   AccountingExperiencePage,
-  BusinessExperiencePage,
   EnterpriseExperiencePage,
   FinanceExperiencePage
 } from '../modules/experience/AtlasModuleExperiences';
@@ -25,6 +26,7 @@ import { AtlasGalaxyPage } from '../modules/galaxy/AtlasGalaxyPage';
 import { AtlasPortalsPage } from '../modules/galaxy/AtlasPortalsPage';
 import { ProcureToPayPage } from '../modules/inventory/ProcureToPayPage';
 import { PeopleRoutes } from '../modules/people/PeopleRoutes';
+import { CareRoutes } from '../modules/care/CareRoutes';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
@@ -32,9 +34,10 @@ import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityP
 import { OracleRoutes } from '../modules/oracle/OracleRoutes';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
+import { BibleOSPage } from '../modules/knowledge/bible/BibleOSPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
+import { AnalyticsRoutes } from '../modules/analytics/AnalyticsRoutes';
 import {
-  AnalyticsIntegrationHub,
   AutomationsIntegrationHub,
   ReleaseControlIntegrationHub,
   RevenueIntegrationHub,
@@ -63,12 +66,16 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><AutomationsIntegrationHub /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/analytics') {
-    return <RequireAtlasIdentity><AnalyticsIntegrationHub /></RequireAtlasIdentity>;
+  if (pathname === '/analytics' || pathname.startsWith('/analytics/')) {
+    return <RequireAtlasIdentity><AnalyticsRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/people' || pathname.startsWith('/people/')) {
     return <RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/care' || pathname.startsWith('/care/')) {
+    return <RequireAtlasIdentity><CareRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/revenue') {
@@ -91,12 +98,20 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><AtlasGestationPage /></RequireAtlasIdentity>;
   }
 
+  if (pathname === '/release/stewardship') {
+    return <RequireAtlasIdentity><AtlasStewardshipReleasePage /></RequireAtlasIdentity>;
+  }
+
   if (pathname.startsWith('/assistant/oracle')) {
     return <RequireAtlasIdentity><OracleRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/assistant') {
     return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/knowledge/bible') {
+    return <RequireAtlasIdentity><BibleOSPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/knowledge') {
@@ -129,7 +144,11 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><AviationRoutes /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/business') return <BusinessExperiencePage />;
+  if (pathname === '/business/insights') {
+    return <RequireAtlasIdentity><AnalyticsRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/business') return <BusinessEcosystemPage />;
   if (pathname === '/finance') return <FinanceExperiencePage />;
   if (pathname === '/finance/accounting') return <AccountingExperiencePage />;
 

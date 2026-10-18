@@ -4,7 +4,7 @@ import { createCouncilOrchestrator } from '../../supabase/functions/atlas-copilo
 import { createToolGateway } from '../../supabase/functions/atlas-copilot/tool-gateway.mjs';
 import { evaluateEmergencyFallbackPolicy, evaluateIntelligenceCostPolicy } from '../../supabase/functions/atlas-copilot/cost-policy.mjs';
 
-function adapter(id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign', options: {
+function adapter(id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'anthropic' | 'grok' | 'deepseek' | 'mistral' | 'qwen' | 'codex-sovereign', options: {
   configured?: boolean;
   verified?: boolean;
   text?: string;
@@ -60,9 +60,39 @@ describe('ATLAS provider registry', () => {
       ['openai', 'verified'],
       ['bedrock', 'unavailable'],
       ['gemini', 'configuration-required'],
+      ['anthropic', 'configuration-required'],
+      ['grok', 'configuration-required'],
+      ['deepseek', 'configuration-required'],
+      ['mistral', 'configuration-required'],
+      ['qwen', 'configuration-required'],
       ['codex-sovereign', 'unavailable'],
     ]);
     expect(JSON.stringify(readiness)).not.toContain('secret');
+  });
+
+  it('probes configured providers concurrently while preserving canonical result order', async () => {
+    let started = 0;
+    let release: (() => void) | null = null;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const concurrentAdapter = (id: 'openai' | 'gemini') => ({
+      descriptor: () => ({
+        id,
+        configured: true,
+        capabilities: ['generation'],
+        profiles: ['balanced'],
+        model: id + '-model',
+      }),
+      probe: async () => {
+        started += 1;
+        if (started === 2) release?.();
+        await gate;
+        return { configured: true, verified: true, provider: id, model: id + '-model', error: null };
+      },
+    });
+    const registry = createProviderRegistry({ providers: [concurrentAdapter('openai'), concurrentAdapter('gemini')] });
+    const readiness = await registry.readiness({ profile: 'balanced' });
+    expect(started).toBe(2);
+    expect(readiness.filter((item: any) => item.verified).map((item: any) => item.id)).toEqual(['openai', 'gemini']);
   });
 
   it('returns an adapter by provider id without exposing credentials', () => {

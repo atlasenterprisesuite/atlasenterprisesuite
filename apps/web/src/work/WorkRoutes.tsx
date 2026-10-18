@@ -4,6 +4,7 @@ import { WorkComposerPage } from './WorkComposerPage';
 import { WorkConnectionsPage } from './WorkConnectionsPage';
 import { WorkComputerOperationsPage } from './WorkComputerOperationsPage';
 import { WorkListPage } from './WorkListPage';
+import { WorkOSPage } from './WorkOSPage';
 import { WorkPoliciesPage } from './WorkPoliciesPage';
 import { WorkRuntimesPage } from './WorkRuntimesPage';
 import { WorkTeamPage } from './WorkTeamPage';
@@ -13,6 +14,7 @@ export function WorkRoutes() {
   return (
     <Routes>
       <Route path="/work" element={<WorkCommandCenter />} />
+      <Route path="/work/os" element={<WorkOSPage />} />
       <Route path="/work/new" element={<WorkComposerPage />} />
       <Route path="/work/active" element={<WorkListPage view="active" />} />
       <Route path="/work/approvals" element={<WorkListPage view="approvals" />} />

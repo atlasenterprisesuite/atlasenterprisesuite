@@ -1,7 +1,15 @@
 {
-  "version": 25,
+  "version": 35,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
+  "health_check": {
+    "path": "/api/v1/health",
+    "expected_status": "healthy"
+  },
+  "required_security_headers": [
+    "strict-transport-security",
+    "content-security-policy"
+  ],
   "public_routes": [
     "/status",
     "/",
@@ -12,12 +20,17 @@
     "/cloud/api-explorer",
     "/cloud/observability",
     "/cloud/resources",
+    "/cloud/domains",
     "/work",
     "/assistant",
     "/knowledge",
+    "/knowledge/bible",
     "/business",
+    "/business/insights",
     "/advisory",
     "/finance",
+    "/finance/pay",
+    "/finance/pay/workspace",
     "/tax",
     "/crm",
     "/commerce",
@@ -34,6 +47,7 @@
     "/payroll",
     "/learning",
     "/health",
+    "/care",
     "/studio",
     "/voice",
     "/events",
@@ -44,12 +58,14 @@
     "/galaxy",
     "/device-os",
     "/execution/manager/readiness",
+    "/settings/accessibility/communication",
     "/finance/accounting/accounts-payable",
     "/finance/accounting/accounts-receivable",
     "/finance/accounting/reports/automotive-sales",
     "/advisory/business-launch-360",
     "/identity?app=%2Ffinance",
     "/gps",
+    "/city",
     "/finance/accounting",
     "/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel",
     "/studio/teleprompter",
@@ -60,7 +76,14 @@
     "/work/connections",
     "/work/runtimes",
     "/work/policies",
-    "/work/computer-operations"
+    "/work/computer-operations",
+    "/advisory/clients",
+    "/advisory/engagements",
+    "/advisory/business-launch-360/workspace",
+    "/advisory/reports",
+    "/advisory/providers",
+    "/advisory/readiness",
+    "/release/stewardship"
   ],
   "critical_network_routes": [
     "/business/network",
@@ -86,5 +109,14 @@
         403
       ]
     }
+  ],
+  "p1_routes": [
+    "/business/growth/social-publisher",
+    "/studio/ai-universe",
+    "/studio/create",
+    "/studio/library",
+    "/studio/productivity-pro",
+    "/studio/providers",
+    "/city/twin"
   ]
 }

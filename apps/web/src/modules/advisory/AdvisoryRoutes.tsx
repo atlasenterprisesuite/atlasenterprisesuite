@@ -39,6 +39,16 @@ import {
   suggestInvoiceNumber
 } from '../../lib/receivablesApi';
 import { ClientFinancialGuidancePage } from './ClientFinancialGuidancePage';
+import { EnterpriseAutomationPage } from './EnterpriseAutomationPage';
+import {
+  AdvisoryAutomationsPage,
+  AdvisoryCompliancePage,
+  AdvisoryCrmPage,
+  AdvisoryReadinessPage,
+  AdvisoryReportsPage,
+  AdvisorySettingsPage,
+  AdvisoryTasksPage
+} from './AdvisoryOperationsPages';
 import './advisory.css';
 
 const advisoryNav = [
@@ -46,7 +56,9 @@ const advisoryNav = [
   ['/advisory/clients','Clients'],
   ['/advisory/engagements','Engagements'],
   ['/advisory/financial-guidance','Financial Guidance'],
+  ['/advisory/enterprise-automation','Enterprise Automation'],
   ['/advisory/business-launch-360/workspace','Business Launch 360'],
+  ['/advisory/readiness','Readiness'],
   ['/advisory/tasks','Tasks'],
   ['/advisory/calendar','Calendar'],
   ['/advisory/documents','Documents'],
@@ -577,19 +589,21 @@ export function AdvisoryRoutes() {
     <Route path="/advisory/clients" element={<ClientsPage />} />
     <Route path="/advisory/engagements" element={<EngagementsPage />} />
     <Route path="/advisory/financial-guidance" element={<ClientFinancialGuidancePage />} />
+    <Route path="/advisory/enterprise-automation" element={<AdvisoryLayout><EnterpriseAutomationPage /></AdvisoryLayout>} />
     <Route path="/advisory/business-launch-360" element={<LaunchPage />} />
     <Route path="/advisory/business-launch-360/workspace" element={<LaunchPage />} />
-    <Route path="/advisory/tasks" element={<BoundaryPage title="Tasks" description="Task orchestration will reuse the canonical ATLAS execution/work layer rather than create a parallel task source of truth." />} />
+    <Route path="/advisory/tasks" element={<AdvisoryLayout><AdvisoryTasksPage /></AdvisoryLayout>} />
     <Route path="/advisory/calendar" element={<BoundaryPage title="Calendar" description="Calendar events remain provider-gated until an authorized calendar connection is available for the active organization." />} />
     <Route path="/advisory/documents" element={<BoundaryPage title="Documents" description="Document metadata can be linked to engagements, but storage, signatures and provider delivery are not claimed as connected here." />} />
     <Route path="/advisory/billing" element={<Navigate to="/finance/accounting/accounts-receivable" replace />} />
-    <Route path="/advisory/crm" element={<BoundaryPage title="CRM" description="Prospects and opportunities remain in canonical ATLAS CRM. Won opportunities may open Advisory clients and engagements through governed conversion." />} />
+    <Route path="/advisory/crm" element={<AdvisoryLayout><AdvisoryCrmPage /></AdvisoryLayout>} />
     <Route path="/advisory/portal" element={<BoundaryPage title="Client Portal" description="Client access is deny-by-default until authenticated client/delegate scope is implemented and verified." />} />
-    <Route path="/advisory/reports" element={<BoundaryPage title="Reports" description="Reports will aggregate only persisted Advisory records and verified Accounting references. No synthetic business metrics are introduced." />} />
-    <Route path="/advisory/compliance" element={<BoundaryPage title="Compliance" description="Conflict checks, engagement letters, consents and regulated authorizations require explicit evidence and approval gates." />} />
-    <Route path="/advisory/automations" element={<BoundaryPage title="Automations" description="Low-risk reminders may be automated. Sensitive sharing, billing, closeout and regulated actions remain approval-bound." />} />
+    <Route path="/advisory/reports" element={<AdvisoryLayout><AdvisoryReportsPage /></AdvisoryLayout>} />
+    <Route path="/advisory/compliance" element={<AdvisoryLayout><AdvisoryCompliancePage /></AdvisoryLayout>} />
+    <Route path="/advisory/automations" element={<AdvisoryLayout><AdvisoryAutomationsPage /></AdvisoryLayout>} />
     <Route path="/advisory/providers" element={<ProviderReadinessPage />} />
-    <Route path="/advisory/settings" element={<BoundaryPage title="Settings" description="Firm configuration remains organization-scoped. Provider credentials and secrets are never stored in browser-visible Advisory records." />} />
+    <Route path="/advisory/readiness" element={<AdvisoryLayout><AdvisoryReadinessPage /></AdvisoryLayout>} />
+    <Route path="/advisory/settings" element={<AdvisoryLayout><AdvisorySettingsPage /></AdvisoryLayout>} />
     <Route path="/advisory/*" element={<Navigate to="/advisory" replace />} />
   </Routes>;
 }

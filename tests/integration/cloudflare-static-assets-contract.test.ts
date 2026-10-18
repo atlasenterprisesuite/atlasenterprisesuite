@@ -97,6 +97,8 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('probe_route "Public home"');
     expect(workflow).toContain('probe_route "ATLAS Identity"');
     expect(workflow).toContain('probe_route "ATLAS Manager readiness" "/execution/manager/readiness" "manager_readiness_route_reachable"');
+    expect(workflow).toContain('/settings/accessibility/communication');
+    expect(workflow).toContain('accessibility_route_reachable');
     expect(workflow).toContain('probe_route "Module SPA shell"');
     expect(workflow).toContain('probe_route "ATLAS Work" "/work"');
     expect(workflow).toContain('work_routes_reachable');
@@ -110,6 +112,8 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('public_home_reachable:true');
     expect(workflow).toContain('identity_route_reachable:true');
     expect(workflow).toContain("manager_readiness_route_reachable:process.env.MANAGER_READINESS_ROUTE_REACHABLE==='true'");
+    expect(workflow).toContain('DIRECT_ACCESSIBILITY_REACHABLE');
+    expect(workflow).toContain('AUTHORIZED_ACCESSIBILITY_REACHABLE');
     expect(workflow).toContain('module_spa_shell_reachable:true');
     expect(workflow).toContain('module_authorization_boundary:\'atlas-identity\'');
     expect(workflow).not.toContain('access_gateway_fail_closed:true');

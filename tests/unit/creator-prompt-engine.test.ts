@@ -33,6 +33,24 @@ describe('ATLAS Prompt Export', () => {
     expect('generationJobId' in result).toBe(false);
   });
 
+  it('exports music without visual-only fields and preserves accessibility once', () => {
+    const result = compilePromptExport({
+      mediaKind: 'music',
+      brief: 'Wondering about the edge of the known universe',
+      aspectRatio: 'adaptive',
+      language: 'English',
+      accessibility: { transcript: true, altText: true, audioDescription: true },
+      negativeConstraints: ['No aggressive drums']
+    });
+    expect(result.prompt).toContain('MEDIA: music');
+    expect(result.prompt).toContain('OBJECTIVE: Wondering about the edge of the known universe');
+    expect(result.prompt).toContain('ACCESSIBILITY: transcript, alt-text, audio-description');
+    expect(result.prompt).not.toContain('ASPECT RATIO');
+    expect(result.prompt.match(/OBJECTIVE:/g)).toHaveLength(1);
+    expect(result.prompt.match(/LANGUAGE:/g)).toHaveLength(1);
+    expect(result.parameters).not.toHaveProperty('aspectRatio');
+  });
+
   it('rejects a brief shorter than eight characters', () => {
     expect(() => compilePromptExport({ mediaKind: 'image', brief: 'short' })).toThrow('creative_brief_too_short');
   });

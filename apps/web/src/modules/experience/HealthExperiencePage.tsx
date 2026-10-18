@@ -20,6 +20,13 @@ const healthSections: ModuleExperienceSection[] = [
         to: '/health/wellbeing/neuroplasticity'
       },
       {
+        label: 'Care operations',
+        title: 'ATLAS Care',
+        description: 'Coordinate eligibility, authorized caregivers, care plans, timecards and payroll-ready approvals under the shared ATLAS organization.',
+        to: '/care',
+        status: 'Core active · payer/EHR providers gated'
+      },
+      {
         label: 'Clinical systems',
         title: 'Not configured',
         description: 'No EHR, FHIR, HL7 or patient workflow is represented as connected.',
@@ -64,6 +71,7 @@ export function HealthExperiencePage() {
       title="Health"
       description="A governed smart-health, biomedical research and wellbeing ecosystem that exposes only verified capabilities."
       narrative="Health intelligence, research and wellbeing with explicit evidence boundaries."
+      visualReference="modules"
       sections={healthSections}
       statusNote="ATLAS Health does not infer clinical readiness from design. Research, wellbeing, provider connectivity and hospital operations remain separate governed states."
     >

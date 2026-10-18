@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const registry = readFileSync('apps/web/src/modules/registry.ts', 'utf8');
 const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
 const routes = readFileSync('apps/web/src/modules/cloud/AtlasCloudRoutes.tsx', 'utf8');
+const truthStatus = readFileSync('apps/web/src/modules/cloud/truthStatus.ts', 'utf8');
 const nextLevel = readFileSync('apps/web/src/modules/cloud/AtlasCloudNextLevel.tsx', 'utf8');
 const main = readFileSync('apps/web/src/main.tsx', 'utf8');
 const backend = readFileSync('supabase/functions/atlas-observability/index.ts', 'utf8');
@@ -52,6 +53,15 @@ describe('ATLAS Cloud routing and product boundaries', () => {
     expect(backend).toContain("requirePermission(ctx,'projects.write')");
     expect(backend).toContain("org_id=eq.");
     expect(backend).toContain("duplicated_registry_created:false");
+  });
+
+  it('normalizes service readiness into the approved evidence-backed truth states', () => {
+    expect(routes).toContain('atlasCloudTruthBadge');
+    expect(routes).toContain('atlas-cloud-truth-badge');
+    for (const label of ['VERIFIED', 'IN PROGRESS', 'WARNING', 'BLOCKED', 'NEEDS AUTHORIZATION']) {
+      expect(truthStatus).toContain(label);
+    }
+    expect(truthStatus).toContain("return { state: 'in_progress'");
   });
 
   it('loads Atlas Cloud styles from the primary web entry point', () => {

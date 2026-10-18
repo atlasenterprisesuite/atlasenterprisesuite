@@ -8,7 +8,7 @@ describe('ATLAS canonical module registry', () => {
   it('defines one typed registry for surfaced top-level modules', () => {
     expect(existsSync(path)).toBe(true);
     expect(source).toContain('export const ATLAS_MODULES');
-    for (const id of ['work', 'automations', 'business', 'revenue', 'finance', 'accounting', 'tax', 'crm', 'commerce', 'inventory', 'telecom', 'people', 'payroll', 'learning', 'health', 'insurance', 'studio', 'site-review', 'frontier', 'hospitality', 'ride', 'voice', 'galaxy', 'release-control']) {
+    for (const id of ['work', 'automations', 'business', 'revenue', 'finance', 'accounting', 'tax', 'crm', 'commerce', 'inventory', 'telecom', 'people', 'payroll', 'learning', 'health', 'care', 'insurance', 'studio', 'site-review', 'frontier', 'hospitality', 'ride', 'voice', 'galaxy', 'release-control']) {
       expect(source).toContain(`id: '${id}'`);
     }
   });
@@ -42,5 +42,14 @@ describe('ATLAS canonical module registry', () => {
     expect(source).toContain('readiness:');
     expect(source).toContain('requiresAuth:');
     expect(source).not.toContain("readiness: 'partial'");
+  });
+
+  it('tracks active evolution independently from the operational baseline', () => {
+    expect(source).toContain("export type AtlasModuleEvolution = 'active' | 'continuous' | 'none';");
+    const start = source.indexOf("id: 'ride'");
+    const end = source.indexOf('\n  {', start + 1);
+    const block = source.slice(start, end === -1 ? source.length : end);
+    expect(block).toContain("readiness: 'implemented'");
+    expect(block).toContain("evolution: 'active'");
   });
 });

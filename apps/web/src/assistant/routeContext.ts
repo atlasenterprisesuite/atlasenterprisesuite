@@ -1,3 +1,5 @@
+import { getAtlasNavigationNode } from '../navigation/atlasNavigation';
+
 export function resolveAssistantModule(pathname: string): string {
   if (pathname.startsWith('/assistant')) return 'assistant';
   if (pathname.startsWith('/voice')) return 'voice';
@@ -25,5 +27,7 @@ export function resolveAssistantModule(pathname: string): string {
   if (pathname.startsWith('/studio')) return 'studio';
   if (pathname.startsWith('/execution/manager')) return 'execution.manager';
   if (pathname.startsWith('/execution')) return 'execution';
+  const navigationNode = getAtlasNavigationNode(pathname);
+  if (navigationNode) return navigationNode.moduleId || navigationNode.id;
   return 'atlas.home';
 }

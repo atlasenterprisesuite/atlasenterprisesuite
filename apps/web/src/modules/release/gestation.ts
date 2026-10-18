@@ -38,7 +38,7 @@ export const ATLAS_GESTATION_PHASES: readonly GestationPhase[] = [
     atlasLayer: 'Domain backends',
     status: 'in-progress',
     exitGate: 'Every canonical module has a real backend contract or an explicit external gate; no represented action is a placeholder.',
-    evidence: ['Integrated modules exist; production verification remains evidence-gated', 'Partial modules remain visible as partial', 'Provider-backed modules remain external-gated']
+    evidence: ['Integrated modules exist; production verification remains evidence-gated', 'Active evolution is tracked independently from the operational baseline', 'Provider-backed modules remain external-gated']
   },
   {
     id: 'circulation',
@@ -132,11 +132,15 @@ export function summarizeGestation(modules: readonly AtlasModuleDefinition[]) {
     { implemented: 0, partial: 0, 'external-gated': 0 }
   );
 
+  const operationalBaseline = modules.filter((module) => module.readiness === 'implemented').length;
+  const activeEvolution = modules.filter((module) => module.evolution === 'active').length;
   const firstOpenPhase = ATLAS_GESTATION_PHASES.find((phase) => phase.status !== 'complete');
 
   return {
     totalModules: modules.length,
     moduleCounts,
+    operationalBaseline,
+    activeEvolution,
     completedPhases: ATLAS_GESTATION_PHASES.filter((phase) => phase.status === 'complete').length,
     totalPhases: ATLAS_GESTATION_PHASES.length,
     currentPhase: firstOpenPhase ?? ATLAS_GESTATION_PHASES.at(-1)!,

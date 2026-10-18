@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { AtlasVisualReference, type AtlasVisualReferenceId } from './AtlasVisualReference';
 import './module-experience.css';
 
 export type ModuleExperienceCard = {
@@ -31,6 +32,7 @@ type ModuleExperiencePageProps = {
   actions?: ModuleExperienceAction[];
   sections: ModuleExperienceSection[];
   statusNote?: string;
+  visualReference?: AtlasVisualReferenceId;
   children?: ReactNode;
 };
 
@@ -68,6 +70,7 @@ export function ModuleExperiencePage({
   actions = [],
   sections,
   statusNote,
+  visualReference,
   children
 }: ModuleExperiencePageProps) {
   return (
@@ -100,6 +103,8 @@ export function ModuleExperiencePage({
           <span className="orbit-node orbit-node-orange" />
         </div>
       </header>
+
+      {visualReference ? <AtlasVisualReference reference={visualReference} /> : null}
 
       {children}
 

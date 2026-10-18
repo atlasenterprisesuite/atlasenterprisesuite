@@ -1,0 +1,453 @@
+.stewardship-release-page {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 1320px);
+  margin: 0 auto;
+  padding: clamp(20px, 3vw, 44px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--atlas-cyan) 32%, transparent);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(33, 135, 255, 0.24), transparent 34%),
+    linear-gradient(180deg, rgba(2, 13, 28, 0.98), rgba(2, 8, 17, 0.98));
+  box-shadow: var(--atlas-shadow-panel), inset 0 0 70px rgba(33, 135, 255, 0.08);
+  color: var(--atlas-text);
+}
+
+.stewardship-release-page::before,
+.stewardship-release-page::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(46, 219, 255, 0.8), transparent);
+  pointer-events: none;
+}
+
+.stewardship-release-page::before { top: 16px; }
+.stewardship-release-page::after { bottom: 16px; }
+
+.stewardship-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.45;
+  background-image:
+    linear-gradient(rgba(46, 219, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 219, 255, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+}
+
+.stewardship-hero {
+  position: relative;
+  min-height: 600px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  text-align: center;
+}
+
+.stewardship-wordmark {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+.stewardship-wordmark strong {
+  font-size: clamp(2.6rem, 8vw, 6.2rem);
+  line-height: 0.92;
+  letter-spacing: 0.08em;
+  color: transparent;
+  background: linear-gradient(180deg, #fff 0%, #b9d7ff 48%, #5f86bd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 20px rgba(46, 219, 255, 0.24));
+}
+
+.stewardship-wordmark span,
+.stewardship-release-line,
+.stewardship-panel-heading h2,
+.stewardship-flow-panel h2,
+.stewardship-footer {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+.stewardship-wordmark span {
+  color: #cce7ff;
+  font-size: clamp(0.68rem, 1.4vw, 1.05rem);
+}
+
+.stewardship-side-copy {
+  position: absolute;
+  top: 14px;
+  color: rgba(207, 231, 255, 0.58);
+  font-size: 0.64rem;
+  line-height: 1.7;
+  letter-spacing: 0.18em;
+  text-align: left;
+}
+
+.stewardship-side-copy-left { left: 0; }
+.stewardship-side-copy-right { right: 0; text-align: right; }
+
+.stewardship-orbit-scene {
+  position: relative;
+  width: min(78vw, 690px);
+  height: 330px;
+  margin-top: 18px;
+}
+
+.stewardship-globe {
+  position: absolute;
+  inset: 5% 11% 0;
+  border: 1px solid rgba(82, 171, 255, 0.45);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(118, 92, 255, 0.34), transparent 10%),
+    radial-gradient(circle at 68% 36%, rgba(46, 219, 255, 0.28), transparent 11%),
+    radial-gradient(circle at 51% 65%, rgba(33, 135, 255, 0.23), transparent 13%),
+    radial-gradient(circle, rgba(46, 219, 255, 0.18) 1px, transparent 1.5px),
+    radial-gradient(circle at 50% 50%, rgba(17, 79, 155, 0.35), rgba(4, 19, 40, 0.22) 55%, transparent 72%);
+  background-size: auto, auto, auto, 13px 13px, auto;
+  box-shadow: inset 0 0 45px rgba(46, 219, 255, 0.14), 0 0 50px rgba(33, 135, 255, 0.16);
+}
+
+.orbit {
+  position: absolute;
+  inset: 47% -9%;
+  height: 42%;
+  border: 1px solid rgba(46, 219, 255, 0.65);
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.orbit-b { transform: translateY(-50%) rotate(24deg); opacity: 0.65; }
+.orbit-c { transform: translateY(-50%) rotate(-24deg); opacity: 0.45; }
+
+.stewardship-shield {
+  position: absolute;
+  top: 42px;
+  left: 50%;
+  width: 176px;
+  height: 210px;
+  transform: translateX(-50%);
+  clip-path: polygon(50% 0, 92% 16%, 86% 70%, 50% 100%, 14% 70%, 8% 16%);
+  padding: 10px;
+  background: linear-gradient(145deg, #edf7ff, #52749e 22%, #0a203c 42%, #84c8ff 69%, #e5f6ff);
+  filter: drop-shadow(0 0 22px rgba(46, 219, 255, 0.55));
+}
+
+.stewardship-shield-core {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  clip-path: inherit;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 75%, rgba(46, 219, 255, 0.45), transparent 25%),
+    linear-gradient(145deg, #06101f, #092b5b 50%, #060e1a);
+  border: 1px solid rgba(46, 219, 255, 0.5);
+}
+
+.stewardship-mark-left,
+.stewardship-mark-right {
+  position: absolute;
+  bottom: 45px;
+  width: 24px;
+  height: 105px;
+  background: linear-gradient(180deg, #eaf7ff, #4ac8ff 50%, #765cff);
+  box-shadow: 0 0 18px rgba(46, 219, 255, 0.6);
+}
+
+.stewardship-mark-left {
+  left: 49px;
+  transform: skewX(-27deg);
+  transform-origin: bottom;
+}
+
+.stewardship-mark-right {
+  right: 49px;
+  transform: skewX(27deg);
+  transform-origin: bottom;
+}
+
+.stewardship-mark-tip {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  width: 12px;
+  height: 18px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #bff5ff;
+  box-shadow: 0 0 18px #2edbff;
+}
+
+.stewardship-pedestal {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  width: min(82%, 520px);
+  height: 56px;
+  transform: translateX(-50%);
+}
+
+.stewardship-pedestal span {
+  position: absolute;
+  left: 50%;
+  border: 1px solid rgba(46, 219, 255, 0.58);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 16px rgba(46, 219, 255, 0.28);
+}
+
+.stewardship-pedestal span:nth-child(1) { inset-block: 18px auto; width: 100%; height: 34px; }
+.stewardship-pedestal span:nth-child(2) { inset-block: 25px auto; width: 76%; height: 24px; }
+.stewardship-pedestal span:nth-child(3) { inset-block: 31px auto; width: 54%; height: 15px; }
+
+.stewardship-title-lockup {
+  margin-top: -8px;
+  max-width: 940px;
+}
+
+.stewardship-kicker {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 4.8rem);
+  line-height: 1;
+  font-weight: 800;
+  color: transparent;
+  background: linear-gradient(180deg, #fff, #a6c9f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.stewardship-title-lockup h1 {
+  margin: 8px 0 0;
+  font-size: clamp(1.65rem, 4vw, 3.35rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  color: #eff8ff;
+  text-shadow: 0 0 24px rgba(46, 219, 255, 0.16);
+}
+
+.stewardship-release-line {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(46, 219, 255, 0.42);
+  color: #83dfff;
+  font-size: clamp(0.66rem, 1.4vw, 0.92rem);
+}
+
+.stewardship-status-panel,
+.stewardship-flow-panel {
+  position: relative;
+  margin-top: 24px;
+  padding: clamp(18px, 2.4vw, 28px);
+  border: 1px solid rgba(64, 163, 255, 0.45);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(5, 26, 50, 0.88), rgba(3, 16, 31, 0.94));
+  box-shadow: inset 0 0 32px rgba(33, 135, 255, 0.07), 0 0 24px rgba(33, 135, 255, 0.08);
+}
+
+.stewardship-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stewardship-panel-heading h2,
+.stewardship-flow-panel h2 {
+  margin: 0;
+  font-size: clamp(0.72rem, 1.4vw, 0.95rem);
+  color: #e9f6ff;
+}
+
+.stewardship-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid rgba(53, 230, 188, 0.72);
+  border-radius: 6px;
+  color: #59f0cd;
+  background: rgba(14, 94, 78, 0.28);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stewardship-evidence-note {
+  margin: 18px 0 8px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--atlas-cyan);
+  color: var(--atlas-text-muted);
+  background: rgba(7, 35, 61, 0.44);
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.stewardship-evidence-note strong { color: #dff6ff; }
+
+.stewardship-status-list { margin: 0; }
+
+.stewardship-status-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1.2fr) 30px;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(116, 183, 255, 0.16);
+}
+
+.stewardship-status-row:last-child { border-bottom: 0; }
+
+.stewardship-status-row dt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #e8f1fa;
+  font-size: 0.9rem;
+}
+
+.stewardship-status-row dd {
+  margin: 0;
+  color: #59f0cd;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.stewardship-status-row dd.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.stewardship-status-icon {
+  display: inline-grid;
+  width: 24px;
+  place-items: center;
+  color: #66ddff;
+  font-family: ui-monospace, monospace;
+  font-weight: 800;
+}
+
+.stewardship-row-check {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid rgba(53, 230, 188, 0.8);
+  border-radius: 50%;
+  color: #59f0cd;
+  font-size: 0.74rem;
+}
+
+.stewardship-flow-list {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stewardship-flow-list li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  min-width: 0;
+  text-align: center;
+  color: #dceeff;
+  font-size: 0.76rem;
+}
+
+.stewardship-flow-list li i {
+  position: absolute;
+  top: 23px;
+  right: -13px;
+  color: #57cfff;
+  font-style: normal;
+}
+
+.stewardship-flow-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(94, 179, 255, 0.82);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(33, 135, 255, 0.22), rgba(8, 21, 42, 0.84));
+  color: #8fdfff;
+  box-shadow: 0 0 14px rgba(46, 219, 255, 0.14);
+  font-size: 1.2rem;
+}
+
+.stewardship-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.stewardship-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid rgba(118, 188, 255, 0.35);
+  border-radius: 10px;
+  color: #dceeff;
+  background: rgba(8, 30, 51, 0.72);
+  text-decoration: none;
+  transition: transform var(--atlas-duration-base) var(--atlas-ease), border-color var(--atlas-duration-base) var(--atlas-ease);
+}
+
+.stewardship-actions a:hover { transform: translateY(-1px); border-color: var(--atlas-cyan); }
+.stewardship-actions a.primary { color: #021019; background: linear-gradient(135deg, #60e6ff, #52f0ca); border-color: transparent; font-weight: 800; }
+
+.stewardship-footer {
+  margin-top: 34px;
+  padding: 36px 14px 12px;
+  text-align: center;
+  color: #cfe9ff;
+  font-size: clamp(0.62rem, 1.2vw, 0.8rem);
+  background: radial-gradient(ellipse at bottom, rgba(33, 135, 255, 0.34), transparent 64%);
+}
+
+@media (max-width: 980px) {
+  .stewardship-hero { min-height: 560px; }
+  .stewardship-side-copy { display: none; }
+  .stewardship-status-row { grid-template-columns: minmax(190px, 0.9fr) minmax(0, 1.1fr) 28px; }
+  .stewardship-flow-list { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 24px; }
+  .stewardship-flow-list li i { display: none; }
+}
+
+@media (max-width: 680px) {
+  .stewardship-release-page { padding: 16px; border-radius: 18px; }
+  .stewardship-hero { min-height: 500px; }
+  .stewardship-orbit-scene { width: 100%; height: 290px; }
+  .stewardship-shield { width: 148px; height: 178px; }
+  .stewardship-mark-left { left: 42px; }
+  .stewardship-mark-right { right: 42px; }
+  .stewardship-panel-heading { align-items: flex-start; flex-direction: column; }
+  .stewardship-status-row { grid-template-columns: 1fr 24px; gap: 6px 10px; padding: 10px 0; }
+  .stewardship-status-row dt { grid-column: 1 / -1; }
+  .stewardship-status-row dd { grid-column: 1; }
+  .stewardship-row-check { grid-column: 2; grid-row: 2; }
+  .stewardship-flow-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stewardship-actions { align-items: stretch; flex-direction: column; }
+  .stewardship-actions a { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stewardship-actions a { transition: none; }
+}

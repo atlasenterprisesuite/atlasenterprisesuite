@@ -20,7 +20,7 @@ import {
   assertGitHubWebhookRepositoryScope,
   ingestGitHubWebhook,
 } from './webhooks/github';
-import { handleMcpRequest, type JsonRpcRequest } from '../../../packages/atlas-mcp/src';
+import { buildGeminiConnectedAppDescriptor, handleMcpRequest, type JsonRpcRequest } from '../../../packages/atlas-mcp/src';
 import { createAtlasRuntime } from './runtime/container';
 import { resolveHttpActor } from './runtime/auth';
 import { resolvePersistence } from './runtime/persistence';
@@ -219,6 +219,18 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/readyz') {
       const state = await verifyReadiness(runtime.persistence, scope);
       return json(res, state.ready ? 200 : 503, state);
+    }
+    if (req.method === 'GET' && req.url === '/integrations/gemini') {
+      const state = await verifyReadiness(runtime.persistence, scope);
+      const descriptor = buildGeminiConnectedAppDescriptor({
+        publicBaseUrl: process.env.ATLAS_PUBLIC_ORCHESTRATOR_URL,
+        tokenConfigured: Boolean(String(process.env.ATLAS_MCP_GEMINI_TOKEN || '').trim()),
+        runtimeReady: state.ready,
+      });
+      return json(res, descriptor.connection.state === 'ready_for_authorization' ? 200 : 503, {
+        ...descriptor,
+        runtime: state,
+      });
     }
     if (req.method === 'GET' && req.url?.startsWith('/github-app/setup?')) {
       const url = new URL(req.url, githubPublicUrl());

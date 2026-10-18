@@ -1,5 +1,5 @@
-import type { CreativeEngineReadiness, CreativeMediaKind } from './creative_engine';
-import type { CreativePlan, CreativePromptArtifact } from './creative_plan';
+import type { CreativeEngineReadiness, CreativeMediaKind } from './creative_engine.ts';
+import type { CreativePlan, CreativePromptArtifact } from './creative_plan.ts';
 
 export type PromptExportRequest = {
   mediaKind: CreativeMediaKind;
@@ -8,6 +8,12 @@ export type PromptExportRequest = {
   destination?: string;
   language?: string;
   negativeConstraints?: string[];
+  accessibility?: {
+    captions?: boolean;
+    transcript?: boolean;
+    altText?: boolean;
+    audioDescription?: boolean;
+  };
 };
 
 export type PromptExportPackage = {
@@ -34,12 +40,21 @@ export function compilePromptExport(request: PromptExportRequest): PromptExportP
   const brief = request.brief.trim();
   if (brief.length < 8) throw new Error('creative_brief_too_short');
 
+  const visualKinds = new Set<CreativeMediaKind>(['image', 'video', 'graphic', 'template']);
+  const accessibility = [
+    request.accessibility?.captions ? 'captions' : '',
+    request.accessibility?.transcript ? 'transcript' : '',
+    request.accessibility?.altText ? 'alt-text' : '',
+    request.accessibility?.audioDescription ? 'audio-description' : ''
+  ].filter(Boolean);
+
   const lines = [
     `MEDIA: ${request.mediaKind}`,
     `OBJECTIVE: ${brief}`,
     request.destination ? `DESTINATION: ${request.destination.trim()}` : '',
-    request.aspectRatio ? `ASPECT RATIO: ${request.aspectRatio.trim()}` : '',
+    visualKinds.has(request.mediaKind) && request.aspectRatio ? `ASPECT RATIO: ${request.aspectRatio.trim()}` : '',
     `LANGUAGE: ${(request.language || 'English').trim()}`,
+    accessibility.length ? `ACCESSIBILITY: ${accessibility.join(', ')}` : '',
     request.negativeConstraints?.length
       ? `NEGATIVE CONSTRAINTS: ${request.negativeConstraints.map(value => value.trim()).filter(Boolean).join('; ')}`
       : '',
@@ -52,9 +67,10 @@ export function compilePromptExport(request: PromptExportRequest): PromptExportP
     mediaKind: request.mediaKind,
     prompt: lines.join('\n'),
     parameters: {
-      ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
+      ...(visualKinds.has(request.mediaKind) && request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
       ...(request.destination ? { destination: request.destination } : {}),
       language: request.language || 'English',
+      accessibility,
       negativeConstraints: request.negativeConstraints ?? []
     },
     adaptationNotes: [

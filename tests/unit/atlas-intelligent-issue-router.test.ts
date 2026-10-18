@@ -2,8 +2,13 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync('.github/workflows/atlas-intelligent-issue-router.yml', 'utf8');
+const issueForm = readFileSync('.github/ISSUE_TEMPLATE/atlas-intelligent-issue.yml', 'utf8');
 
 describe('ATLAS Intelligent Issue Router', () => {
+  it('offers ATLAS Device OS as a structured owner, avoiding legacy fallback', () => {
+    expect(issueForm).toContain('        - ATLAS Device OS');
+  });
+
   it('routes issue-form intake through Director and Codex without fake GitHub agent assignees', () => {
     expect(workflow).toContain('issues:');
     expect(workflow).toContain('types: [opened, edited, reopened]');

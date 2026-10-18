@@ -14,6 +14,7 @@ import {
 } from './turnEngine';
 import { resolveVoiceNavigationCommand } from './voiceActions';
 import './voice.css';
+import './voiceApproved.css';
 
 type RecognitionEventLike = {
   resultIndex: number;
@@ -71,6 +72,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
   const [intelligenceState, setIntelligenceState] = useState<IntelligenceState>('checking');
   const [providerLabel, setProviderLabel] = useState('checking');
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const snapshotRef = useRef(snapshot);
   const submittedTurnIdRef = useRef<string | null>(null);
@@ -83,7 +85,31 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
   const supported = Boolean(Recognition);
 
   useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => {
+      setIsOnline(false);
+      setMessage('Network offline. Local voice navigation remains available; Intelligence requests stay fail-closed.');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
+    if (!isOnline) {
+      setIntelligenceState('unavailable');
+      setProviderLabel('offline');
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIntelligenceState('checking');
+    setProviderLabel('checking');
     void getAssistantStatus()
       .then((status) => {
         if (cancelled) return;
@@ -105,7 +131,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isOnline]);
 
   const completeSpeaking = useCallback((completionMessage: string, onComplete?: () => void) => {
     const next = {
@@ -150,6 +176,18 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
       setSnapshot(withResponse);
       setMessage(`Safe local action verified. Opening ${navigationAction.label}.`);
       speakControlled(navigationAction.confirmation, () => navigate(navigationAction.route));
+      return;
+    }
+
+    if (!isOnline) {
+      const failed = {
+        ...current,
+        state: 'error' as const,
+        activeTurn: current.activeTurn ? { ...current.activeTurn, state: 'error' as const } : undefined
+      };
+      snapshotRef.current = failed;
+      setSnapshot(failed);
+      setMessage('ATLAS Intelligence is offline. The transcript was not sent.');
       return;
     }
 
@@ -205,7 +243,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
       setSnapshot(failed);
       setMessage(cause instanceof Error ? `ATLAS Intelligence error: ${cause.message}` : 'ATLAS Intelligence could not complete this voice turn.');
     }
-  }, [conversationId, intelligenceState, location.pathname, navigate, providerLabel, speakControlled]);
+  }, [conversationId, intelligenceState, isOnline, location.pathname, navigate, providerLabel, speakControlled]);
 
   useEffect(() => {
     const turn = snapshot.activeTurn;
@@ -323,19 +361,29 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
   const turn = snapshot.activeTurn;
   const avatarBusy = snapshot.state === 'transcribing' || snapshot.state === 'understanding' || snapshot.state === 'responding';
   const visibleState = stateLabel(snapshot.state);
+  const waveformActive = snapshot.state === 'listening' || snapshot.state === 'speaking';
+  const intelligenceVerified = isOnline && intelligenceState === 'ready';
 
   const promptText = turn?.finalTranscript || turn?.interimTranscript || 'Say what you need. ATLAS will show what it heard before taking action.';
   const responseText = turn?.responseText || (snapshot.state === 'responding'
     ? 'ATLAS is preparing a response…'
     : 'Your response will appear here after a verified turn.');
-  const intelligenceLabel = intelligenceState === 'ready'
-    ? providerLabel
-    : intelligenceState === 'checking'
-      ? 'Checking provider'
-      : 'Provider unavailable';
+  const intelligenceLabel = !isOnline
+    ? 'Offline'
+    : intelligenceState === 'ready'
+      ? providerLabel
+      : intelligenceState === 'checking'
+        ? 'Checking provider'
+        : 'Provider unavailable';
+  const phaseStates = [
+    { label: 'Listening', active: snapshot.state === 'listening' },
+    { label: 'Understanding', active: snapshot.state === 'transcribing' || snapshot.state === 'understanding' },
+    { label: 'Thinking', active: snapshot.state === 'responding' },
+    { label: 'Speaking', active: snapshot.state === 'speaking' }
+  ];
 
   return (
-    <section className={`voice-page voice-experience${embedded ? ' voice-page-embedded' : ''}`}>
+    <section className={`voice-page voice-experience voice-approved-experience${embedded ? ' voice-page-embedded' : ''}`}>
       <div className="voice-experience-header">
         <div>
           <p className="eyebrow">ATLAS Voice Assistant</p>
@@ -345,10 +393,21 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
         <span className="voice-private-pill"><span aria-hidden="true">●</span> Private voice turn</span>
       </div>
 
-      <div className="voice-presence-bar" aria-label="Voice readiness">
-        <span className={`voice-state voice-state-${snapshot.state}`}><i aria-hidden="true" />{visibleState}</span>
-        <span className={`voice-intelligence-state voice-intelligence-${intelligenceState}`}>AI · {intelligenceLabel}</span>
+      <div className="voice-presence-bar voice-approved-presence" aria-label="Voice readiness">
+        {phaseStates.map((phase) => (
+          <span
+            key={phase.label}
+            className={`voice-phase-chip${phase.active ? ' is-active' : ''}`}
+            aria-current={phase.active ? 'true' : undefined}
+          >
+            <i aria-hidden="true" />{phase.label}
+          </span>
+        ))}
         <span className={supported ? 'voice-device-state is-ready' : 'voice-device-state'}>{supported ? 'Mic ready' : 'Mic unavailable'}</span>
+        <span className={`voice-intelligence-state ${intelligenceVerified ? 'voice-intelligence-ready' : 'voice-intelligence-unavailable'}`}>
+          {intelligenceVerified ? 'AI verified' : intelligenceState === 'checking' && isOnline ? 'AI checking' : 'AI unavailable'}
+        </span>
+        {!isOnline ? <span className="voice-network-state is-offline">Offline</span> : null}
       </div>
 
       {!supported && (
@@ -371,7 +430,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
             <span className="avatar-orbit avatar-orbit-one" aria-hidden="true" />
             <span className="avatar-orbit avatar-orbit-two" aria-hidden="true" />
             <span className="avatar-glow" aria-hidden="true" />
-            <img src="/atlas-avatar-particle.svg" alt="" draggable={false} />
+            <img src="/assets/atlas-voice-avatar-approved.webp" alt="" draggable={false} />
             <span className="avatar-scanline" aria-hidden="true" />
             <span className="avatar-state-ring" aria-hidden="true" />
           </button>
@@ -390,19 +449,23 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
             </div>
           </div>
 
-          <div className={`avatar-waveform avatar-waveform-${snapshot.state}`} aria-hidden="true">
-            {Array.from({ length: 18 }, (_, index) => <span key={index} />)}
+          <div
+            className={`avatar-waveform avatar-waveform-${snapshot.state}`}
+            data-active={waveformActive ? 'true' : 'false'}
+            aria-hidden="true"
+          >
+            {Array.from({ length: 24 }, (_, index) => <span key={index} />)}
           </div>
         </div>
 
         <div className="voice-conversation" aria-label="Current voice turn">
           <article className="voice-turn-card voice-turn-user">
-            <div className="voice-turn-label"><span>You</span><small>{turn?.confidence !== undefined ? `${Math.round(turn.confidence * 100)}% confidence` : 'Microphone'}</small></div>
+            <div className="voice-turn-label"><span>You said</span><small>{turn?.confidence !== undefined ? `${Math.round(turn.confidence * 100)}% confidence` : 'Microphone'}</small></div>
             <p className={turn?.finalTranscript || turn?.interimTranscript ? '' : 'is-placeholder'}>{promptText}</p>
           </article>
 
           <article className="voice-turn-card voice-turn-atlas">
-            <div className="voice-turn-label"><span>ATLAS</span><small>{intelligenceState === 'ready' ? 'Verified intelligence' : 'Waiting for provider'}</small></div>
+            <div className="voice-turn-label"><span>ATLAS replied</span><small>{intelligenceVerified ? 'Verified intelligence' : !isOnline ? 'Offline' : 'Waiting for provider'}</small></div>
             <p className={turn?.responseText || snapshot.state === 'responding' ? '' : 'is-placeholder'}>{responseText}</p>
           </article>
 
@@ -414,7 +477,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
         {snapshot.state !== 'listening' && snapshot.state !== 'speaking' ? (
           <button type="button" className="voice-primary" onClick={startListening} disabled={!supported || avatarBusy}>
             <span className="voice-control-icon" aria-hidden="true">●</span>
-            Start voice turn
+            Start voice
           </button>
         ) : null}
         {snapshot.state === 'listening' ? (
@@ -440,6 +503,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
         <div className="voice-diagnostics-grid">
           <div><span>State</span><strong>{visibleState}</strong></div>
           <div><span>Intelligence</span><strong>{intelligenceLabel}</strong></div>
+          <div><span>Network</span><strong>{isOnline ? 'Online' : 'Offline'}</strong></div>
           <div><span>Source</span><strong>{turn?.source ?? '—'}</strong></div>
           <div><span>Turn ID</span><strong>{turn?.id ?? '—'}</strong></div>
         </div>
@@ -452,6 +516,7 @@ export function AtlasVoicePage({ embedded = false }: { embedded?: boolean }) {
           <span>barge-in opens a new turn</span>
           <span>low-confidence transcripts blocked</span>
           <span>unverified AI fails closed</span>
+          <span>offline AI fails closed</span>
         </div>
       </details>
     </section>

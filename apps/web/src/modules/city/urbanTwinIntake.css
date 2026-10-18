@@ -1,0 +1,15 @@
+.urban-twin-intake{gap:16px}
+.urban-twin-intake-note{margin:0;max-width:920px;opacity:.72}
+.urban-twin-intake-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.urban-twin-intake form{display:grid;align-content:start;gap:10px;padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(255,255,255,.02)}
+.urban-twin-intake form>strong{font-size:14px}
+.urban-twin-intake label{display:grid;gap:5px;font-size:11px;opacity:.9}
+.urban-twin-intake input,.urban-twin-intake select,.urban-twin-intake textarea{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid rgba(255,255,255,.13);border-radius:10px;background:rgba(4,12,24,.78);color:inherit;font:inherit}
+.urban-twin-intake textarea{resize:vertical}
+.urban-twin-intake button{padding:10px 12px;border:1px solid rgba(71,196,255,.34);border-radius:11px;background:rgba(46,160,224,.13);color:inherit;font-weight:700;cursor:pointer}
+.urban-twin-intake button:disabled{opacity:.45;cursor:not-allowed}
+.urban-twin-coordinate-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.urban-twin-intake form>small{opacity:.58;line-height:1.35}
+.urban-twin-intake-message{padding:10px 12px;border:1px solid rgba(64,213,145,.23);border-radius:11px;background:rgba(64,213,145,.06);font-size:12px}
+@media(max-width:1100px){.urban-twin-intake-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.urban-twin-coordinate-row{grid-template-columns:1fr}}

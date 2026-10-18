@@ -1,7 +1,7 @@
 import type { AiPermission, AtlasActor } from '../../governance/src';
 
 export const toolIds = [
-  'atlas.task.create', 'atlas.task.read', 'atlas.task.update', 'atlas.task.claim',
+  'atlas.task.create', 'atlas.task.read', 'atlas.task.readiness', 'atlas.task.update', 'atlas.task.claim',
   'atlas.agent.delegate', 'atlas.agent.respond', 'atlas.repo.inspect', 'atlas.code.propose',
   'atlas.test.run', 'atlas.review.request', 'atlas.pr.create', 'atlas.ci.verify',
   'atlas.deploy.request', 'atlas.audit.read'
@@ -12,6 +12,7 @@ export type AtlasToolId = (typeof toolIds)[number];
 export const toolPermission: Record<AtlasToolId, AiPermission> = {
   'atlas.task.create': 'ai.task.create',
   'atlas.task.read': 'ai.task.read',
+  'atlas.task.readiness': 'ai.task.read',
   'atlas.task.update': 'ai.task.update',
   'atlas.task.claim': 'ai.task.update',
   'atlas.agent.delegate': 'ai.delegate',

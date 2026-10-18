@@ -20,6 +20,7 @@ const ACCOUNT_DETAILS_URL = `${API_ROOT}/account-info/2026-03/details`;
 
 const OBJECT_PATH: Record<CrmObjectType, string> = {
   contact: 'contacts',
+  lead: 'leads',
   company: 'companies',
   deal: 'deals',
   ticket: 'tickets',
@@ -32,6 +33,7 @@ const OBJECT_PATH: Record<CrmObjectType, string> = {
 
 const REQUESTED_PROPERTIES: Record<CrmObjectType, readonly string[]> = {
   contact: ['firstname', 'lastname', 'email', 'phone', 'lifecyclestage'],
+  lead: ['hs_lead_name', 'hs_lead_status', 'hs_lead_type', 'hs_lead_label'],
   company: ['name', 'domain', 'industry', 'phone'],
   deal: ['dealname', 'amount', 'hs_currency', 'pipeline', 'dealstage', 'closedate'],
   ticket: ['subject', 'hs_pipeline', 'hs_pipeline_stage', 'hs_ticket_priority'],
@@ -43,6 +45,12 @@ const REQUESTED_PROPERTIES: Record<CrmObjectType, readonly string[]> = {
 };
 
 const FIELD_MAP: Record<CrmObjectType, Readonly<Record<string, string>>> = {
+  lead: {
+    hs_lead_name: 'name',
+    hs_lead_status: 'status',
+    hs_lead_type: 'type',
+    hs_lead_label: 'label'
+  },
   contact: {
     firstname: 'firstName',
     lastname: 'lastName',
@@ -251,6 +259,7 @@ function displayName(
   providerId: string,
   properties: Record<string, unknown>
 ): string {
+  if (objectType === 'lead') return valueAsText(properties, 'hs_lead_name') || providerId;
   if (objectType === 'contact') {
     const name = [valueAsText(properties, 'firstname'), valueAsText(properties, 'lastname')]
       .filter(Boolean)

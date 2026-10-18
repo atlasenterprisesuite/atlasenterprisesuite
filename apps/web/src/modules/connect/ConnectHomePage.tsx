@@ -23,6 +23,10 @@ export function ConnectHomePage() {
           <span>Email · Provider-gated</span><strong>ATLAS Mail Provisioning</strong>
           <p>Create governed departmental aliases only after Cloudflare Email Routing is authenticated and verified server-side.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/calling">
+          <span>Voice · Provider-gated</span><strong>ATLAS Calling</strong>
+          <p>Governed outbound calling with live provider verification, RBAC, consent controls and signed lifecycle evidence.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/wireless">
           <span>Wireless · Pre-launch</span><strong>ATLAS Wireless</strong>
           <p>$39/month target architecture for unlimited mobile service, eSIM, ATLAS Home Hub and satellite fallback. Provider functions remain gated until verified.</p>

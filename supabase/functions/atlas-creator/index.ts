@@ -5,6 +5,7 @@ import type { CreativePlan } from '../../../packages/creator/creative_plan.ts';
 import type { ContentWorkspaceState } from '../../../packages/creator/content_intelligence.ts';
 import type { WebLaunchBlueprint } from '../../../packages/creator/web_launch.ts';
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
+import { validateImageEditRequest, type ImageEditRequest } from '../../../packages/creator/image_edit.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
 import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts';
 import {
@@ -13,6 +14,8 @@ import {
   uploadCreatorRecording
 } from './_shared/recordings.ts';
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
+import { executeOpenAiImageEdit, openAiImageEngineReadiness } from './_shared/openai_image.ts';
+import { elevenLabsMusic, elevenLabsMusicGenerate, elevenLabsMusicReadiness } from './_shared/elevenlabs_music.mjs';
 import {
   createAssetPreview,
   getContentWorkspace,
@@ -32,7 +35,10 @@ import {
   writeCreatorAudit
 } from './_shared/repository.ts';
 
-const VERSION = '2026-09-18.3';
+const VERSION = '2026-10-06.3';
+const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY') || '';
+const IMAGE_EDIT_MAX_BYTES = 15 * 1024 * 1024;
+const IMAGE_EDIT_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const PROVIDER_IDS = new Set<ProviderId>(['seedance', 'veo', 'kling', 'wan', 'minimax']);
 
 function json(body: unknown, status = 200) {
@@ -72,7 +78,6 @@ function creativePlanIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.creative_plan_id || body?.creativePlanId || url.searchParams.get('creative_plan_id') || url.searchParams.get('id') || '').trim();
 }
 
-
 function webLaunchBlueprintIdFrom(url: URL, body?: Record<string, any>) {
   return String(body?.blueprint_id || body?.blueprintId || url.searchParams.get('blueprint_id') || url.searchParams.get('id') || '').trim();
 }
@@ -85,7 +90,10 @@ async function creatorContext(req: Request, permission: CreatorPermission) {
 
 async function handleReadiness(req: Request) {
   const ctx = await creatorContext(req, 'creator.read');
-  const providers = await listProviderReadiness(ctx.orgId);
+  const [providers, musicEngine] = await Promise.all([
+    listProviderReadiness(ctx.orgId),
+    elevenLabsMusicReadiness(ELEVENLABS_API_KEY)
+  ]);
   return json({
     ok: true,
     service: 'atlas-creator',
@@ -94,7 +102,8 @@ async function handleReadiness(req: Request) {
     role: ctx.role,
     permissions: ctx.permissions,
     providers,
-    generation_enabled: providers.some(provider => provider.connectionState === 'ready'),
+    music_engine: musicEngine,
+    generation_enabled: providers.some(provider => provider.connectionState === 'ready') || musicEngine.ready,
     checked_at: new Date().toISOString()
   });
 }
@@ -106,10 +115,13 @@ async function handleProviders(req: Request) {
 
 async function handleEngines(req: Request) {
   const ctx = await creatorContext(req, 'creator.read');
-  const providers = await listProviderReadiness(ctx.orgId);
+  const [providers, musicEngine] = await Promise.all([
+    listProviderReadiness(ctx.orgId),
+    elevenLabsMusicReadiness(ELEVENLABS_API_KEY)
+  ]);
   return json({
     ok: true,
-    engines: [PROMPT_EXPORT_ENGINE, ...providers.map(adaptProviderToCreativeEngine)]
+    engines: [PROMPT_EXPORT_ENGINE, musicEngine, ...providers.map(adaptProviderToCreativeEngine)]
   });
 }
 
@@ -126,6 +138,14 @@ async function handlePromptExport(req: Request) {
       language: body.language ? String(body.language) : undefined,
       negativeConstraints: Array.isArray(body.negative_constraints)
         ? body.negative_constraints.map((value: unknown) => String(value))
+        : undefined,
+      accessibility: body.accessibility && typeof body.accessibility === 'object'
+        ? {
+            captions: body.accessibility.captions === true,
+            transcript: body.accessibility.transcript === true,
+            altText: body.accessibility.altText === true,
+            audioDescription: body.accessibility.audioDescription === true
+          }
         : undefined
     });
   } catch (error) {
@@ -139,6 +159,49 @@ async function handlePromptExport(req: Request) {
     engine_id: promptPackage.engineId
   });
   return json({ ok: true, prompt_package: promptPackage });
+}
+
+
+async function handleMusicGenerate(req: Request) {
+  const ctx = await creatorContext(req, 'creator.generate');
+  const body = await bodyJson(req);
+  const prompt = String(body.prompt || body.brief || '').trim();
+  const durationSeconds = Number(body.duration_seconds ?? 60);
+  const instrumental = body.instrumental !== false;
+  if (prompt.length < 8 || prompt.length > 4100) throw creatorError('music_prompt_invalid', 422);
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 3 || durationSeconds > 600) {
+    throw creatorError('music_duration_invalid', 422);
+  }
+
+  const readiness = await elevenLabsMusicReadiness(ELEVENLABS_API_KEY);
+  if (!readiness.ready) throw creatorError('music_engine_not_ready', 409);
+
+  const requestId = crypto.randomUUID();
+  const metadata = {
+    request_id: requestId,
+    provider: 'elevenlabs',
+    engine_id: elevenLabsMusic.engineId,
+    model: elevenLabsMusic.model,
+    prompt_characters: prompt.length,
+    duration_seconds: durationSeconds,
+    instrumental
+  };
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.music.requested', null, metadata);
+  const response = await elevenLabsMusicGenerate(ELEVENLABS_API_KEY, {
+    prompt,
+    durationSeconds,
+    instrumental
+  });
+  try {
+    await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.music.accepted', null, {
+      ...metadata,
+      song_id: response.headers.get('x-atlas-song-id') || null
+    });
+  } catch (error) {
+    await response.body?.cancel();
+    throw error;
+  }
+  return response;
 }
 
 async function handleProductions(req: Request) {
@@ -202,7 +265,6 @@ async function handleContentSave(req: Request) {
   });
   return json({ ok: true, workspace: saved });
 }
-
 
 async function handleWebLaunchBlueprints(req: Request) {
   const ctx = await creatorContext(req, 'creator.read');
@@ -348,6 +410,66 @@ async function handleRecordingDownload(req: Request, url: URL) {
   });
 }
 
+async function handleImageEditReadiness(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const engine = await openAiImageEngineReadiness();
+  return json({
+    ok: true,
+    service: 'atlas-creator',
+    version: VERSION,
+    organization_id: ctx.orgId,
+    engine,
+    checked_at: new Date().toISOString()
+  });
+}
+
+async function handleImageEdit(req: Request) {
+  const ctx = await creatorContext(req, 'creator.generate');
+  const form = await req.formData().catch(() => { throw creatorError('invalid_form_data', 400); });
+  const files = form.getAll('source').filter((value): value is File => value instanceof File);
+  if (files.length !== 1) throw creatorError('image_source_required', 422);
+  const source = files[0];
+  if (!IMAGE_EDIT_MIME_TYPES.has(source.type)) throw creatorError('image_source_type_invalid', 415);
+  if (source.size <= 0 || source.size > IMAGE_EDIT_MAX_BYTES) throw creatorError('image_source_size_invalid', 413);
+
+  const requestRaw = String(form.get('request') || '').trim();
+  if (!requestRaw) throw creatorError('image_edit_request_required', 422);
+
+  let imageEditRequestRaw: unknown;
+  try {
+    imageEditRequestRaw = JSON.parse(requestRaw) as unknown;
+  } catch {
+    throw creatorError('image_edit_request_invalid', 422);
+  }
+
+  const validation = validateImageEditRequest(imageEditRequestRaw);
+  if (!validation.ok) throw creatorError(validation.error, 422);
+  const imageEditRequest = imageEditRequestRaw as ImageEditRequest;
+  const readiness = await openAiImageEngineReadiness();
+
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.image.edit.requested', null, {
+    source_mime_type: source.type,
+    source_size_bytes: source.size,
+    point_count: imageEditRequest.points.length,
+    preserve_identity: imageEditRequest.preserveIdentity,
+    aspect_ratio: imageEditRequest.aspectRatio,
+    visibility: imageEditRequest.visibility,
+    image_engine_ready: readiness.ready,
+    engine_id: readiness.engineId
+  });
+
+  if (!readiness.ready) throw creatorError('image_engine_not_ready', 409);
+  const result = await executeOpenAiImageEdit(ctx, source, imageEditRequest);
+  return json({
+    ok: true,
+    asset: result.asset,
+    signed_url: result.signedUrl,
+    production_id: result.production.id,
+    generation_job_id: result.job.id,
+    engine: result.engine
+  }, 201);
+}
+
 async function handleSubmit(req: Request): Promise<never> {
   const ctx = await creatorContext(req, 'creator.generate');
   const body = await bodyJson(req);
@@ -378,6 +500,7 @@ async function route(req: Request) {
   if (api === 'providers') return handleProviders(req);
   if (api === 'engines' && req.method === 'GET') return handleEngines(req);
   if (api === 'prompt-export' && req.method === 'POST') return handlePromptExport(req);
+  if (api === 'music-generate' && req.method === 'POST') return handleMusicGenerate(req);
   if (api === 'productions') return handleProductions(req);
   if (api === 'production') return handleProduction(req, url);
   if (api === 'save') return handleSave(req);
@@ -392,6 +515,8 @@ async function route(req: Request) {
   if (api === 'creative-plan-save' && req.method === 'POST') return handleCreativePlanSave(req);
   if (api === 'assets') return handleAssets(req, url);
   if (api === 'asset-preview' && req.method === 'GET') return handleAssetPreview(req, url);
+  if (api === 'image-edit-readiness' && req.method === 'GET') return handleImageEditReadiness(req);
+  if (api === 'image-edit' && req.method === 'POST') return handleImageEdit(req);
   if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
   if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
   if (api === 'recording-download' && req.method === 'GET') return handleRecordingDownload(req, url);

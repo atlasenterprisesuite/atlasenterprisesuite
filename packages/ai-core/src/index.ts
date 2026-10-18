@@ -4,4 +4,5 @@ export * from './inMemoryPersistence';
 export * from './supabasePersistence';
 export * from './supabaseRpcPersistence';
 export * from './providers';
+export * from './completionReadiness';
 export * from './orchestrator';

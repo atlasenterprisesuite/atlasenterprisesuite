@@ -1,4 +1,4 @@
-import type { CreatorPermission } from './types';
+import type { CreatorPermission } from './types.ts';
 
 const ALL: CreatorPermission[] = [
   'creator.read', 'creator.write', 'creator.generate',

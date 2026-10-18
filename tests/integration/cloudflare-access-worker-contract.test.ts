@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import worker from '../../worker/index';
+import worker from '../../worker/entry';
 
 const wrangler = readFileSync('wrangler.jsonc', 'utf8');
 
@@ -13,10 +13,28 @@ function createEnv() {
 }
 
 describe('Cloudflare public web shell contract', () => {
-  it('routes every request through the Worker before static assets', () => {
-    expect(wrangler).toContain('"main": "worker/index.ts"');
+  it('routes every request through the Worker entrypoint before static assets', () => {
+    expect(wrangler).toContain('"main": "worker/entry.ts"');
     expect(wrangler).toContain('"binding": "ASSETS"');
     expect(wrangler).toContain('"run_worker_first": true');
+  });
+
+  it('serves secured machine health JSON without replacing the Health OS UI route', async () => {
+    const { env, assetFetch } = createEnv();
+    const request = new Request('https://atlas.example/api/v1/health');
+
+    const response = await worker.fetch(request, env);
+    const payload = await response.json() as { status?: string; service?: string };
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      status: 'healthy',
+      service: 'atlas-enterprise-suite-web'
+    });
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(response.headers.get('strict-transport-security')).toContain('max-age=31536000');
+    expect(response.headers.get('content-security-policy')).toContain("default-src 'self'");
+    expect(assetFetch).not.toHaveBeenCalled();
   });
 
   it('serves the public landing page without a Cloudflare Access assertion', async () => {

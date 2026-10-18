@@ -6,7 +6,9 @@ const read = (path: string) => (existsSync(path) ? readFileSync(path, 'utf8') : 
 const registry = read('apps/web/src/modules/registry.ts');
 const resolver = read('apps/web/src/extensions/resolveAtlasExtension.tsx');
 const suite = read('apps/web/src/modules/integration/AtlasSuitePage.tsx');
+const suiteStyles = read('apps/web/src/modules/integration/atlas-suite.css');
 const hubs = read('apps/web/src/modules/integration/AtlasIntegrationHubs.tsx');
+const analytics = read('apps/web/src/modules/analytics/AnalyticsRoutes.tsx');
 const app = read('apps/web/src/App.tsx');
 const experiences = read('apps/web/src/modules/experience/AtlasModuleExperiences.tsx');
 
@@ -20,6 +22,30 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(resolver).toContain('<AtlasSuitePage />');
   });
 
+  it('presents the suite as a visual product library before the A-Z directory', () => {
+    expect(suite).toContain('Primary Systems');
+    expect(suite).toContain('Explore A-Z');
+    expect(suite).toContain('suite-hero');
+    expect(suite).toContain('suite-primary-grid');
+    expect(suite).toContain('suite-filter-bar');
+    expect(suite).toContain('suite-module-card');
+    expect(suite).toContain('AtlasModuleArtwork');
+    expect(suite).toContain('<AtlasModuleArtwork module={module} />');
+    expect(suite).not.toContain('COVER_ASSETS');
+    expect(suiteStyles).toContain('.suite-module-artwork');
+    expect(suiteStyles).toContain('/atlas/design/atlas-module-gallery.webp');
+    expect(suiteStyles).toContain('.suite-module-grid');
+    expect(suiteStyles).toContain('repeat(4,minmax(0,1fr))');
+    expect(suiteStyles).toContain('@media(max-width:760px)');
+  });
+
+  it('shows active evolution as an independent lifecycle axis', () => {
+    expect(suite).toContain("module.evolution === 'active'");
+    expect(suite).toContain('operational baseline');
+    expect(suite).toContain('active evolution');
+    expect(suite).not.toContain('<strong>{partial}</strong> partial');
+  });
+
   it('reconciles historical A-Z domains onto the modern router without restoring the legacy shell', () => {
     const routes = ['/analytics', '/automations', '/people', '/revenue', '/site-review', '/telecom', '/release'];
     for (const route of routes) {
@@ -28,7 +54,6 @@ describe('ATLAS A-Z canonical integration', () => {
     }
 
     for (const component of [
-      'AnalyticsIntegrationHub',
       'AutomationsIntegrationHub',
       'RevenueIntegrationHub',
       'SiteReviewIntegrationHub',
@@ -39,6 +64,8 @@ describe('ATLAS A-Z canonical integration', () => {
       expect(resolver).toContain(`<RequireAtlasIdentity><${component} /></RequireAtlasIdentity>`);
     }
     expect(resolver).toContain('<RequireAtlasIdentity><PeopleRoutes /></RequireAtlasIdentity>');
+    expect(resolver).toContain('<RequireAtlasIdentity><AnalyticsRoutes /></RequireAtlasIdentity>');
+    expect(analytics).toContain('export function AnalyticsRoutes');
   });
 
   it('registers modern Accounting and Insurance truthfully', () => {
@@ -58,7 +85,8 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(experiences).toContain("title: 'Revenue Operations'");
     expect(experiences).toContain("to: '/revenue'");
     expect(experiences).toContain("to: '/commerce'");
-    expect(experiences).toContain("to: '/analytics'");
+    expect(experiences).toContain("to: '/business/insights'");
+    expect(resolver).toContain("pathname === '/business/insights'");
     expect(experiences).toContain('aggregation gated');
   });
 
@@ -66,9 +94,9 @@ describe('ATLAS A-Z canonical integration', () => {
     expect(hubs).toContain('Migration gate');
     expect(hubs).toContain('External gate');
     expect(hubs).toContain('remain fail-closed');
-    expect(suite).toContain('never present external or incomplete capabilities as live');
+    expect(suite).toContain('External providers');
     expect(suite).toContain("implemented: 'Integrated'");
-    expect(suite).toContain("Pending external gate");
-    expect(suite).toContain('only current machine-verifiable gate evidence can yield Production Verified');
+    expect(suite).toContain('Pending external gate');
+    expect(suite).toContain('machine-verifiable gate evidence can yield Production Verified');
   });
 });

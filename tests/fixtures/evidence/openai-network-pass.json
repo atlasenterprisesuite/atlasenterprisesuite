@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "subject": "provider:openai",
+  "environment": "ci",
+  "mode": "fail-closed",
+  "generatedAt": "2026-10-07T05:50:00.000Z",
+  "checks": [
+    {
+      "id": "https-chatgpt",
+      "priority": "P0",
+      "status": "pass",
+      "observedAt": "2026-10-07T05:49:00.000Z",
+      "source": "synthetic",
+      "reference": "fixture:https-chatgpt"
+    },
+    {
+      "id": "https-auth",
+      "priority": "P0",
+      "status": "pass",
+      "observedAt": "2026-10-07T05:49:00.000Z",
+      "source": "synthetic",
+      "reference": "fixture:https-auth"
+    },
+    {
+      "id": "voice-udp",
+      "priority": "P1",
+      "status": "unverified",
+      "observedAt": "2026-10-07T05:49:00.000Z",
+      "source": "synthetic",
+      "reference": "fixture:voice-udp"
+    }
+  ]
+}

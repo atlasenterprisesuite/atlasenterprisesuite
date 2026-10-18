@@ -98,3 +98,106 @@ export async function saveGpsPlace(place: GpsPoint) {
 export async function deleteGpsPlace(id: string) {
   return request<{ ok: true; deleted: true }>('saved.delete', { id });
 }
+
+
+export type GpsIndoorFeature = {
+  id: string;
+  osm_type: string;
+  lat: number | null;
+  lon: number | null;
+  tags: Record<string, string>;
+};
+
+export type GpsIndoorLookup = {
+  ok: true;
+  source: 'cache' | 'overpass';
+  provider: 'openstreetmap-overpass';
+  provider_state: 'external_gated';
+  verified_sla: false;
+  center: { lat: number; lon: number };
+  radius_m: number;
+  coverage: {
+    available: boolean;
+    feature_count: number;
+    levels: string[];
+    rooms: number;
+    corridors: number;
+    entrances: number;
+    vertical_connections: number;
+  };
+  features: GpsIndoorFeature[];
+};
+
+export async function lookupGpsIndoor(point: Pick<GpsPoint, 'lat' | 'lon'>, radiusM = 90) {
+  return request<GpsIndoorLookup>('indoor.lookup', {
+    latitude: point.lat,
+    longitude: point.lon,
+    radius_m: radiusM
+  });
+}
+
+
+export type GpsCoverageRun = {
+  id: string;
+  coverage_key: string;
+  label: string;
+  scope: 'street' | 'sector' | 'city' | 'region' | 'country' | 'continent' | 'globe';
+  status: 'pending' | 'in-progress' | 'complete' | 'blocked';
+  state: Record<string, unknown>;
+  progress_pct: number;
+  last_probe_id: string | null;
+  last_sector_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listGpsCoverageRuns() {
+  return request<{ ok: true; runs: GpsCoverageRun[] }>('coverage.list');
+}
+
+export async function saveGpsCoverageRun(input: {
+  coverage_key: string;
+  label: string;
+  scope: GpsCoverageRun['scope'];
+  status: GpsCoverageRun['status'];
+  state: Record<string, unknown>;
+  progress_pct: number;
+  last_probe_id?: string | null;
+  last_sector_id?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  return request<{ ok: true; run: GpsCoverageRun }>('coverage.save', input);
+}
+
+export async function deleteGpsCoverageRun(coverageKey: string) {
+  return request<{ ok: true; deleted: true }>('coverage.delete', {
+    coverage_key: coverageKey
+  });
+}
+
+
+export type GpsStreetCoverageSegment = {
+  id: string;
+  label: string;
+  highway: string;
+  coordinates: Array<[number, number]>;
+};
+
+export async function lookupGpsStreetCoverage(bounds: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}) {
+  return request<{
+    ok: true;
+    source: 'cache' | 'overpass';
+    provider: 'openstreetmap-overpass';
+    provider_state: 'external_gated';
+    verified_sla: false;
+    bounds: typeof bounds;
+    segment_count: number;
+    segments: GpsStreetCoverageSegment[];
+  }>('street.coverage.lookup', bounds);
+}

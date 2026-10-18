@@ -1,0 +1,39 @@
+name: ATLAS Design Intelligence
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "DESIGN.md"
+      - "apps/web/**"
+      - "scripts/verify-atlas-design.mjs"
+      - ".github/workflows/atlas-design-intelligence.yml"
+      - "package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-design-intelligence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  design-gate:
+    name: Design contract, typecheck and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify design contract
+        run: npm run verify:design
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build

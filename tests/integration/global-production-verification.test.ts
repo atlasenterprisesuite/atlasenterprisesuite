@@ -33,12 +33,17 @@ describe('ATLAS global production verification', () => {
       '/cloud/api-explorer',
       '/cloud/observability',
       '/cloud/resources',
+      '/cloud/domains',
       '/work',
       '/assistant',
       '/knowledge',
+      '/knowledge/bible',
       '/business',
+      '/business/insights',
       '/advisory',
       '/finance',
+      '/finance/pay',
+      '/finance/pay/workspace',
       '/tax',
       '/crm',
       '/commerce',
@@ -55,6 +60,7 @@ describe('ATLAS global production verification', () => {
       '/payroll',
       '/learning',
       '/health',
+      '/care',
       '/studio',
       '/voice',
       '/events',
@@ -65,12 +71,14 @@ describe('ATLAS global production verification', () => {
       '/galaxy',
       '/device-os',
       '/execution/manager/readiness',
+      '/settings/accessibility/communication',
       '/finance/accounting/accounts-payable',
       '/finance/accounting/accounts-receivable',
       '/finance/accounting/reports/automotive-sales',
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
       '/gps',
+      '/city',
       '/finance/accounting',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
       '/studio/teleprompter',
@@ -81,7 +89,14 @@ describe('ATLAS global production verification', () => {
       '/work/connections',
       '/work/runtimes',
       '/work/policies',
-      '/work/computer-operations'
+      '/work/computer-operations',
+      '/advisory/clients',
+      '/advisory/engagements',
+      '/advisory/business-launch-360/workspace',
+      '/advisory/reports',
+      '/advisory/providers',
+      '/advisory/readiness',
+      '/release/stewardship'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
@@ -111,7 +126,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('classified_required_route_challenge_deferred');
     expect(verifier).toContain('classified_root_challenge_deferred');
     expect(verifier).toContain('manager_readiness_route_reachable');
-    expect(verifier).toContain('const verified = directlyVerified;');
+    expect(verifier).toContain('const verified = directlyVerified && integrityGatePassed;');
     expect(verifier).toContain('AbortSignal.timeout');
     expect(verifier).toContain("redirect: 'manual'");
     expect(verifier).toContain('blocked-cross-origin-redirect');
@@ -138,7 +153,7 @@ describe('ATLAS global production verification', () => {
   it('exposes the portable verifier through package scripts', () => {
     const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
     expect(pkg.scripts?.['verify:production:global']).toBe(
-      'node scripts/verify-global-production.mjs'
+      'node scripts/verify-production-p0.mjs && node scripts/verify-global-production.mjs'
     );
   });
 
@@ -176,6 +191,12 @@ describe('ATLAS global production verification', () => {
     expect(cloudflareWorkflow).toContain('Verify ATLAS Manager post-deployment canary');
     expect(cloudflareWorkflow).toContain('/execution/manager/readiness');
     expect(cloudflareWorkflow).toContain('manager_readiness_route_reachable');
+    expect(cloudflareWorkflow).toContain('/settings/accessibility/communication');
+    expect(cloudflareWorkflow).toContain('accessibility_route_reachable');
+    expect(cloudflareWorkflow).toContain('AUTHORIZED_CONVERGED=false');
+    expect(cloudflareWorkflow).toContain('for ATTEMPT in 1 2 3 4 5; do');
+    expect(cloudflareWorkflow).toContain('Authorized production verification has not converged on attempt');
+    expect(cloudflareWorkflow).toContain('if [ "$AUTHORIZED_CONVERGED" = "true" ]; then');
   });
 
   it('keeps warning-only diagnostics from turning authorized fallback into a blocking gate', () => {
@@ -194,7 +215,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('challengeFailures.length > 0');
     expect(verifier).toContain('nonChallengeFailures.length === 0');
     expect(verifier).toContain('classified_required_route_challenge_deferred');
-    expect(verifier).toContain('const verified = directlyVerified;');
+    expect(verifier).toContain('const verified = directlyVerified && integrityGatePassed;');
     expect(verifier).toContain('requires_authorized_fallback: challengeDeferred');
     expect(verifier).not.toMatch(/challengeDeferred[\s\S]{0,260}productionCommitShaVerified/);
     expect(verifier).not.toContain('passed-edge-secured');
@@ -218,27 +239,35 @@ describe('ATLAS global production verification', () => {
     }
 
     expect(authorizedVerifier).toContain("'/status'");
-    for (const route of ['/cloud', '/cloud/docs', '/cloud/docs/catalog', '/cloud/api-explorer', '/cloud/observability', '/cloud/resources']) {
+    for (const route of ['/cloud', '/cloud/docs', '/cloud/docs/catalog', '/cloud/api-explorer', '/cloud/observability', '/cloud/resources', '/cloud/domains']) {
       expect(authorizedVerifier).toContain(`'${route}'`);
     }
     expect(authorizedVerifier).toContain('status_route_reachable');
     expect(authorizedVerifier).toContain('all_module_routes_reachable');
     expect(authorizedVerifier).toContain("'/suite'");
+    expect(authorizedVerifier).toContain("'/business/insights'");
     expect(authorizedVerifier).toContain("'/advisory/business-launch-360'");
     expect(authorizedVerifier).toContain('business_launch_360_route_reachable');
     expect(authorizedVerifier).toContain('suite_route_reachable');
     expect(authorizedVerifier).toContain("'/execution/manager/readiness'");
     expect(authorizedVerifier).toContain('manager_readiness_route_reachable');
+    expect(authorizedVerifier).toContain("'/settings/accessibility/communication'");
+    expect(authorizedVerifier).toContain('accessibility_route_reachable');
     expect(authorizedVerifier).toContain("'/gps'");
     expect(authorizedVerifier).toContain('gps_route_reachable');
     expect(authorizedVerifier).toContain("'/finance/accounting/reports/automotive-sales'");
     expect(authorizedVerifier).toContain('automotive_sales_report_reachable');
     expect(authorizedVerifier).toContain("'/knowledge'");
+    expect(authorizedVerifier).toContain("'/knowledge/bible'");
+    expect(authorizedVerifier).toContain('bible_os_route_reachable');
+    expect(authorizedVerifier).toContain("'/finance/pay'");
     for (const route of ['/connect', '/connect/chat', '/connect/channel', '/connect/wireless', '/connect/wireless/network', '/connect/wireless/commissioning', '/connect/wireless/mvno', '/connect/google-fi']) {
       expect(authorizedVerifier).toContain(`'${route}'`);
     }
     expect(authorizedVerifier).toContain("'/voice'");
     expect(authorizedVerifier).toContain("'/health'");
+    expect(authorizedVerifier).toContain("'/care'");
+    expect(authorizedVerifier).toContain("'/city'");
     expect(authorizedVerifier).toContain("'/frontier'");
     expect(authorizedVerifier).toContain("'/studio/write'");
     expect(authorizedVerifier).toContain("'/commerce'");

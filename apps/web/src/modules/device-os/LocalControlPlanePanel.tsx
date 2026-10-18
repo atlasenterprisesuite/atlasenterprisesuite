@@ -131,16 +131,20 @@ export function LocalControlPlanePanel() {
   async function healthCheck(device: AtlasLocalDevice) {
     setBusy(true);
     try {
-      const capability = device.capabilities.includes('health.check')
-        ? 'health.check'
-        : device.capabilities[0];
+      const isDeviceDna = device.adapter === 'device-dna-linux' &&
+        device.capabilities.includes('device.dna.read');
+      const capability = isDeviceDna
+        ? 'device.dna.read'
+        : device.capabilities.includes('health.check')
+          ? 'health.check'
+          : device.capabilities[0];
       if (!capability) throw new Error('device_has_no_declared_capabilities');
 
       const result = await enqueueLocalDeviceCommand({
         deviceId: device.id,
         agentId: device.agent_id,
         capability,
-        action: 'status.read',
+        action: isDeviceDna ? 'report.read' : 'status.read',
         riskLevel: 'low'
       });
       setStatus(
@@ -326,7 +330,7 @@ export function LocalControlPlanePanel() {
               disabled={busy || !device.capabilities.length}
               onClick={() => void healthCheck(device)}
             >
-              Queue status check
+              {device.adapter === 'device-dna-linux' ? 'Queue Device DNA refresh' : 'Queue status check'}
             </button>
           </div>
         ))}

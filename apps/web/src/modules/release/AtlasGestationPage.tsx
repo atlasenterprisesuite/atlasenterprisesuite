@@ -29,8 +29,8 @@ export function AtlasGestationPage() {
 
       <div className="stat-grid" aria-label="ATLAS gestation evidence">
         <article><strong>{summary.completedPhases}/{summary.totalPhases}</strong><span>sequential gates passed</span></article>
-        <article><strong>{summary.moduleCounts.implemented}</strong><span>modules marked implemented</span></article>
-        <article><strong>{summary.moduleCounts.partial}</strong><span>modules marked partial</span></article>
+        <article><strong>{summary.operationalBaseline}</strong><span>operational baselines</span></article>
+        <article><strong>{summary.activeEvolution}</strong><span>modules in active evolution</span></article>
         <article><strong>{summary.moduleCounts['external-gated']}</strong><span>modules externally gated</span></article>
       </div>
 
@@ -50,8 +50,8 @@ export function AtlasGestationPage() {
       </div>
 
       <div className="notice">
-        No percentage is inferred from code volume. A phase changes to complete only when its exit gate has evidence.
-        External integrations never count as live merely because a UI or adapter exists.
+        Operational baseline and Active evolution are independent evidence axes. No percentage is inferred from code volume.
+        A phase changes to complete only when its exit gate has evidence. External integrations never count as live merely because a UI or adapter exists.
       </div>
 
       <div className="action-row">

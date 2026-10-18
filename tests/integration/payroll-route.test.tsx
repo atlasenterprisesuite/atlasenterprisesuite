@@ -10,8 +10,19 @@ const membership = [{
   status: 'active',
   organizations: { id: 'org-1', name: 'ATLAS Test', legal_name: null, active: true }
 }];
+const readiness = {
+  as_of: '2026-10-04T18:00:00Z',
+  pay_date: '2026-10-09',
+  capabilities: {
+    tax_determination: { status: 'blocked', severity: 'P0_BLOCKER', reason: 'No verified production tax rule coverage.' },
+    tax_filing: { status: 'blocked', severity: 'P0_BLOCKER', reason: 'No verified production tax-filing provider.' },
+    tax_remittance: { status: 'blocked', severity: 'P0_BLOCKER', reason: 'No verified production tax-remittance provider.' },
+    direct_deposit: { status: 'blocked', severity: 'P0_BLOCKER', reason: 'No verified production ACH disbursement provider.' }
+  }
+};
 const responseBody = (url: string) => {
   if (url.includes('/rest/v1/organization_members')) return membership;
+  if (url.includes('/rest/v1/rpc/payroll_get_capability_readiness')) return readiness;
   if (url.includes('/rest/v1/')) return [];
   return {};
 };
@@ -44,11 +55,21 @@ describe('ATLAS Payroll governed core routing', () => {
     expect(screen.getByRole('link', { name: 'Pay Runs' })).toHaveAttribute('href', '/payroll/pay-runs');
   });
 
-  it('keeps external payment and tax execution explicitly gated', async () => {
+  it('renders backend evidence-driven payroll capability blockers without false success claims', async () => {
     render(<MemoryRouter initialEntries={['/payroll']}><App /></MemoryRouter>);
-    expect(await screen.findByText('Tax determination & filing')).toBeInTheDocument();
-    expect(screen.getByText('Direct deposit')).toBeInTheDocument();
-    expect(screen.getByText(/No bank transfer is represented as paid/i)).toBeInTheDocument();
+    for (const label of ['Tax determination', 'Tax filing', 'Tax remittance', 'Direct deposit']) {
+      expect(await screen.findByText(label)).toBeInTheDocument();
+    }
+    for (const reason of [
+      'No verified production tax rule coverage.',
+      'No verified production tax-filing provider.',
+      'No verified production tax-remittance provider.',
+      'No verified production ACH disbursement provider.'
+    ]) expect(screen.getByText(reason)).toBeInTheDocument();
+    expect(screen.getAllByText('Blocked')).toHaveLength(4);
+    for (const falseClaim of ['Filed','Paid','Connected','Settled']) {
+      expect(screen.queryByText(new RegExp(`^${falseClaim}$`, 'i'))).not.toBeInTheDocument();
+    }
   });
 
   it.each([

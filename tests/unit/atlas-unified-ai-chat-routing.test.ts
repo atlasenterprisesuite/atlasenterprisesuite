@@ -5,7 +5,7 @@ import {
 } from '../../supabase/functions/atlas-copilot/intelligence-gateway.mjs';
 
 type Provider = {
-  id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'codex-sovereign';
+  id: 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'anthropic' | 'grok' | 'deepseek' | 'mistral' | 'qwen' | 'codex-sovereign';
   configured: boolean;
   verified: boolean;
   capabilities: string[];

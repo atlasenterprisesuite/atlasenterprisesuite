@@ -63,23 +63,17 @@ describe('ATLAS Identity route', () => {
 
   it('returns an authenticated member to ATLAS Voice Studio with truthful native capability state', async () => {
     const membership = [{ org_id: 'org-1', role: 'owner', status: 'active' }];
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'identity-token', refresh_token: 'refresh-token' }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(membership), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(membership), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(membership), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        ok: true,
-        authenticated: true,
-        provider: 'none',
-        provider_state: 'not_configured',
-        model: null,
-        storage_state: 'configured',
-        organization: 'org-1',
-        role: 'owner',
-        capabilities: [],
-        providers: []
-      }), { status: 200 }));
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes('/auth/v1/token')) return Promise.resolve(Response.json({ access_token: 'identity-token', refresh_token: 'refresh-token' }));
+      if (url.includes('/auth/v1/user')) return Promise.resolve(Response.json({ id: 'user-1' }));
+      if (url.includes('/organization_members')) return Promise.resolve(Response.json(membership));
+      if (url.includes('provider=elevenlabs')) return Promise.resolve(Response.json({ state: 'provider_not_configured', configured: false, synthesis_verified: false }));
+      if (url.includes('/atlas-copilot?api=status')) return Promise.resolve(Response.json({
+        ok: true, authenticated: true, provider: 'none', provider_state: 'not_configured', model: null,
+        storage_state: 'configured', organization: 'org-1', role: 'owner', capabilities: [], providers: []
+      }));
+      throw new Error(`Unexpected request: ${url}`);
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(
@@ -94,9 +88,9 @@ describe('ATLAS Identity route', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Voice Studio' })).toBeInTheDocument());
     expect(screen.getByText(/Requires ATLAS iOS app/i)).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(5);
-    expect(String(fetchMock.mock.calls[3][0])).toContain('/rest/v1/organization_members');
-    expect(String(fetchMock.mock.calls[4][0])).toContain('/functions/v1/atlas-copilot?api=status');
+    await screen.findByText('ElevenLabs requires a server API key.');
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/functions/v1/atlas-copilot?api=status'))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('provider=elevenlabs'))).toBe(true);
   });
 
   it('rejects external return targets and keeps navigation inside ATLAS', async () => {

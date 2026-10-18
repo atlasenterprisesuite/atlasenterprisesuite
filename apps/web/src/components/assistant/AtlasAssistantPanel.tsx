@@ -107,7 +107,7 @@ export function AtlasAssistantPanel({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder={!textReady ? `Intelligence ${providerLabel}` : microphoneActive ? 'Finish or cancel the voice turn to type' : 'Ask ATLAS…'}
-          rows={2}
+          rows={1}
           disabled={busy || microphoneActive || !textReady}
         />
         <button type="submit" disabled={busy || microphoneActive || !textReady || !input.trim()}>{state === 'thinking' ? 'Thinking…' : 'Send'}</button>

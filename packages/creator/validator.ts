@@ -4,8 +4,8 @@ import type {
   ValidationIssue,
   ValidationResult,
   ShotSpec
-} from './types';
-import { validateMotionComposition } from './motion/validator';
+} from './types.ts';
+import { validateMotionComposition } from './motion/validator.ts';
 
 function issue(
   code: string,

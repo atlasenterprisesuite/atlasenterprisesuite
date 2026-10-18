@@ -4,6 +4,7 @@ import { useAssistantVoice } from '../../assistant/useAssistantVoice';
 import { detectPcmWavRecordingCapability, recordAssistantPcmWavChunk } from '../../assistant/voice';
 import {
   getAssistantConversation,
+  getAssistantBackgroundStatus,
   getAssistantStatus,
   listAssistantConversations,
   diarizeAssistantAudio,
@@ -31,6 +32,11 @@ const MODES: Array<{ value: AssistantMode; label: string; short: string }> = [
   { value: 'openai', label: 'OpenAI', short: 'OpenAI' },
   { value: 'bedrock', label: 'OpenAI on AWS Bedrock', short: 'Bedrock' },
   { value: 'gemini', label: 'Gemini', short: 'Gemini' },
+  { value: 'anthropic', label: 'Claude / Anthropic', short: 'Claude' },
+  { value: 'grok', label: 'Grok / xAI', short: 'Grok' },
+  { value: 'deepseek', label: 'DeepSeek', short: 'DeepSeek' },
+  { value: 'mistral', label: 'Mistral', short: 'Mistral' },
+  { value: 'qwen', label: 'Qwen', short: 'Qwen' },
   { value: 'codex-sovereign', label: 'Codex Sovereign', short: 'Codex' },
   { value: 'council', label: 'Council', short: 'Council' }
 ];
@@ -117,7 +123,11 @@ function humanizeError(value: string) {
     diarization_provider_failed: 'Speaker detection failed for that audio turn.',
     diarization_speaker_limit_exceeded: 'More than two speakers were detected. Two-person translation stopped safely.',
     audio_recording_unavailable: 'Raw audio recording is unavailable in this browser.',
-    audio_recording_failed: 'ATLAS could not capture the audio segment.'
+    audio_recording_failed: 'ATLAS could not capture the audio segment.',
+    assistant_empty_response: 'ATLAS received an empty provider response and stopped instead of showing a blank answer.',
+    background_provider_unavailable: 'Background execution is not available under the current verified provider and cost policy.',
+    background_failed: 'The background task did not complete successfully.',
+    background_timeout: 'The background task is still running. Reopen this conversation to reconcile its latest state.'
   };
   return errors[value] || value.replaceAll('_', ' ');
 }
@@ -157,6 +167,8 @@ export function UnifiedAIChatPage() {
   const diarizationSessionIdRef = useRef('');
   const diarizationSpeakerMapRef = useRef(new Map<string, ConversationSpeaker>());
   const messageEnd = useRef<HTMLDivElement | null>(null);
+  const promptRef = useRef<HTMLTextAreaElement | null>(null);
+  const pageActiveRef = useRef(true);
   const voice = useAssistantVoice();
 
   const providers = status?.providers || [];
@@ -190,17 +202,28 @@ export function UnifiedAIChatPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([getAssistantStatus(), listAssistantConversations()])
-      .then(([nextStatus, nextConversations]) => {
+
+    void getAssistantStatus()
+      .then((nextStatus) => {
         if (!active) return;
         setStatus(nextStatus);
-        setConversations(nextConversations);
         setError('');
       })
       .catch((cause) => {
         if (!active) return;
         setError(cause instanceof Error ? cause.message : 'assistant_unavailable');
       });
+
+    void listAssistantConversations()
+      .then((nextConversations) => {
+        if (!active) return;
+        setConversations(nextConversations);
+      })
+      .catch(() => {
+        if (!active) return;
+        setConversations([]);
+      });
+
     return () => { active = false; };
   }, []);
 
@@ -212,8 +235,12 @@ export function UnifiedAIChatPage() {
     conversationIdRef.current = conversationId;
   }, [conversationId]);
 
-  useEffect(() => () => {
-    conversationSessionRef.current += 1;
+  useEffect(() => {
+    pageActiveRef.current = true;
+    return () => {
+      conversationSessionRef.current += 1;
+      pageActiveRef.current = false;
+    };
   }, []);
 
   async function refreshStatus() {
@@ -299,13 +326,79 @@ export function UnifiedAIChatPage() {
     ].join('\n');
   }
 
+  async function pollBackgroundResult(traceId: string, targetConversationId: string, placeholderKey: string) {
+    let transientFailures = 0;
+    for (let attempt = 0; attempt < 300 && pageActiveRef.current; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      if (!pageActiveRef.current) return;
+      try {
+        const state = await getAssistantBackgroundStatus(traceId);
+        transientFailures = 0;
+        if (state.status === 'queued' || state.status === 'in_progress') {
+          setMessages((current) => current.map((item) =>
+            item.key === placeholderKey
+              ? { ...item, meta: 'Background · ' + (state.status === 'queued' ? 'Queued' : 'Running') }
+              : item
+          ));
+          continue;
+        }
+        if (state.status === 'completed') {
+          const completedText = String(state.output || state.text || '').trim();
+          if (completedText && conversationIdRef.current === targetConversationId) {
+            setMessages((current) => current.map((item) =>
+              item.key === placeholderKey
+                ? {
+                    ...item,
+                    text: completedText,
+                    meta: 'Background · Completed'
+                      + (state.provider ? ' · via ' + state.provider : '')
+                      + (state.model ? ' · ' + state.model : '')
+                  }
+                : item
+            ));
+          }
+
+          try {
+            const payload = await getAssistantConversation(targetConversationId);
+            if (conversationIdRef.current === targetConversationId) {
+              setMessages((payload.messages || []).map((stored, index) => ({
+                key: stored.id || stored.role + '-' + index,
+                role: stored.role === 'user' ? 'user' : 'assistant',
+                text: textOf(stored),
+                meta: metaOf(stored)
+              })));
+            }
+          } catch {
+            if (!completedText) {
+              setMessages((current) => current.filter((item) => item.key !== placeholderKey));
+              setError('history_unavailable');
+            }
+          }
+
+          void refreshHistory();
+          return;
+        }
+        setMessages((current) => current.filter((item) => item.key !== placeholderKey));
+        setError(state.error || 'background_failed');
+        return;
+      } catch (cause) {
+        transientFailures += 1;
+        if (transientFailures < 3) continue;
+        setError(cause instanceof Error ? cause.message : 'background_failed');
+        return;
+      }
+    }
+    if (pageActiveRef.current) setError('background_timeout');
+  }
+
   async function executeMessage(message: string) {
     const value = message.trim();
     if (!value || busy || !routeReady) return;
 
+    const optimisticKey = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     setMessages((current) => [
       ...current,
-      { key: 'local-' + Date.now(), role: 'user', text: value }
+      { key: optimisticKey, role: 'user', text: value }
     ]);
     setToolsOpen(false);
     setBusy(true);
@@ -316,7 +409,8 @@ export function UnifiedAIChatPage() {
         message: translationRequest(value),
         conversationId: conversationIdRef.current,
         mode,
-        profile
+        profile,
+        executionMode: 'auto'
       });
       if (result.conversation_id) {
         setConversationId(result.conversation_id);
@@ -325,7 +419,24 @@ export function UnifiedAIChatPage() {
       const providersUsed = Array.isArray(result.providers) && result.providers.length
         ? result.providers.join(' + ')
         : result.provider || 'ATLAS';
-      const reply = result.output || result.text || '';
+      if (result.background && result.status !== 'completed') {
+        if (!result.trace_id || !result.conversation_id) throw new Error('background_failed');
+        const placeholderKey = 'background-' + result.trace_id;
+        setMessages((current) => [
+          ...current,
+          {
+            key: placeholderKey,
+            role: 'assistant',
+            text: 'Working in background…',
+            meta: 'Background · ' + (result.status === 'queued' ? 'Queued' : 'Running') + ' · via ' + providersUsed
+          }
+        ]);
+        void pollBackgroundResult(result.trace_id, result.conversation_id, placeholderKey);
+        void refreshHistory();
+        return;
+      }
+      const reply = (result.output || result.text || '').trim();
+      if (!reply) throw new Error('assistant_empty_response');
       setMessages((current) => [
         ...current,
         {
@@ -343,9 +454,14 @@ export function UnifiedAIChatPage() {
           setError('speech_unavailable');
         }
       }
-      await Promise.all([refreshHistory(), refreshStatus()]);
+      void refreshHistory();
     } catch (cause) {
+      // A failed request was not delivered: do not leave an optimistic user turn
+      // pretending it was persisted. Keep the draft available for a manual retry.
+      setMessages((current) => current.filter((item) => item.key !== optimisticKey));
+      setPrompt((current) => current || value);
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
+      promptRef.current?.focus();
     } finally {
       setBusy(false);
     }
@@ -380,7 +496,8 @@ export function UnifiedAIChatPage() {
         message: conversationTranslationRequest(value, speaker),
         conversationId: conversationIdRef.current,
         mode,
-        profile
+        profile,
+        executionMode: 'interactive'
       });
       if (result.conversation_id) {
         setConversationId(result.conversation_id);
@@ -410,7 +527,7 @@ export function UnifiedAIChatPage() {
         await voice.speak(reply, targetLanguageCode);
       }
 
-      await Promise.all([refreshHistory(), refreshStatus()]);
+      void refreshHistory();
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
@@ -607,6 +724,8 @@ export function UnifiedAIChatPage() {
     setPrompt(text);
     setPromptLibraryOpen(false);
     setMobileActionsOpen(false);
+    setSidebarOpen(false);
+    promptRef.current?.focus();
   }
 
   function activateTranslator() {
@@ -670,15 +789,20 @@ export function UnifiedAIChatPage() {
         onClick={() => setSidebarOpen(false)}
       />
 
-      <aside className="atlas-ai-sidebar" aria-label="ATLAS AI conversations">
+      <aside id="atlas-ai-conversation-sidebar" className="atlas-ai-sidebar" aria-label="ATLAS AI conversations">
         <div className="atlas-ai-sidebar-head">
           <Link className="atlas-ai-brand" to="/suite" aria-label="ATLAS Enterprise Suite">
             <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
             <span>ATLAS</span>
           </Link>
-          <button className="atlas-ai-icon-button" type="button" onClick={startNewConversation} aria-label="New chat">
-            <span aria-hidden="true">＋</span>
-          </button>
+          <div className="atlas-ai-sidebar-head-actions">
+            <button className="atlas-ai-icon-button" type="button" onClick={startNewConversation} aria-label="New chat">
+              <span aria-hidden="true">＋</span>
+            </button>
+            <button className="atlas-ai-icon-button atlas-ai-sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Close conversation sidebar">
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
         </div>
 
         <button className="atlas-ai-new-chat" type="button" onClick={startNewConversation}>
@@ -739,6 +863,8 @@ export function UnifiedAIChatPage() {
               className="atlas-ai-icon-button atlas-ai-mobile-menu"
               type="button"
               aria-label="Open conversation sidebar"
+              aria-expanded={sidebarOpen}
+              aria-controls="atlas-ai-conversation-sidebar"
               onClick={() => setSidebarOpen(true)}
             >
               <span aria-hidden="true">☰</span>
@@ -799,7 +925,15 @@ export function UnifiedAIChatPage() {
                   <strong>AI controls</strong>
                   <span>Provider routing and governance</span>
                 </div>
-                <button type="button" onClick={refreshStatus}>Refresh</button>
+                <div className="atlas-ai-status-panel-actions">
+                  <button type="button" onClick={refreshStatus}>Refresh</button>
+                  <button
+                    type="button"
+                    className="atlas-ai-status-close"
+                    onClick={() => setStatusOpen(false)}
+                    aria-label="Close AI controls"
+                  >×</button>
+                </div>
               </div>
 
               <label className="atlas-ai-select-row">
@@ -832,16 +966,22 @@ export function UnifiedAIChatPage() {
               </div>
 
               {providers.length ? (
-                <div className="atlas-ai-provider-list">
-                  {providers.map((provider) => (
-                    <div key={provider.id}>
-                      <span>{provider.id}</span>
-                      <strong className={provider.verified && provider.state === 'verified' ? 'ready' : ''}>
-                        {providerStateLabel(provider.state)}
-                      </strong>
-                    </div>
-                  ))}
-                </div>
+                <details className="atlas-ai-provider-details">
+                  <summary>
+                    <span>Provider details</span>
+                    <strong>{verifiedProviders.length}/{providers.length} verified</strong>
+                  </summary>
+                  <div className="atlas-ai-provider-list">
+                    {providers.map((provider) => (
+                      <div key={provider.id}>
+                        <span>{provider.id}</span>
+                        <strong className={provider.verified && provider.state === 'verified' ? 'ready' : ''}>
+                          {providerStateLabel(provider.state)}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ) : null}
 
               <div className="atlas-ai-status-links">
@@ -856,7 +996,12 @@ export function UnifiedAIChatPage() {
           {error ? (
             <div className="atlas-ai-alert" role="alert">
               <span>{humanizeError(error)}</span>
-              <button type="button" onClick={() => setError('')} aria-label="Dismiss error">×</button>
+              <div className="atlas-ai-alert-actions">
+                {!status || !routeReady ? (
+                  <button type="button" onClick={() => void refreshStatus()}>Retry readiness check</button>
+                ) : null}
+                <button type="button" onClick={() => setError('')} aria-label="Dismiss error">×</button>
+              </div>
             </div>
           ) : null}
 
@@ -870,7 +1015,7 @@ export function UnifiedAIChatPage() {
             </div>
           ) : null}
 
-          <div className={'atlas-ai-messages' + (messages.length ? '' : ' empty')}>
+          <div className={'atlas-ai-messages' + (messages.length ? '' : ' empty')} role="log" aria-live="polite" aria-relevant="additions text" aria-label="ATLAS AI conversation">
             {messages.length ? messages.map((message) => (
               <article key={message.key} className={'atlas-ai-message ' + message.role}>
                 {message.role === 'assistant' ? (
@@ -1093,6 +1238,7 @@ export function UnifiedAIChatPage() {
 
             <form className={'atlas-ai-composer' + (translatorEnabled ? ' translator-active' : '')} onSubmit={submit}>
               <textarea
+                ref={promptRef}
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={(event) => {
@@ -1113,6 +1259,7 @@ export function UnifiedAIChatPage() {
                     : 'Open AI controls to restore a verified provider'
                   : 'Checking ATLAS AI readiness…'}
                 aria-label="Message ATLAS Assistant"
+                aria-describedby="atlas-ai-composer-help"
                 disabled={busy || conversationActive}
                 rows={1}
               />
@@ -1207,7 +1354,7 @@ export function UnifiedAIChatPage() {
               </section>
             ) : null}
 
-            <p className="atlas-ai-disclaimer">
+            <p id="atlas-ai-composer-help" className="atlas-ai-disclaimer">
               ATLAS can make mistakes. Verify important information and governed actions.
             </p>
           </div>

@@ -83,6 +83,76 @@ function safeActionPayload(value: unknown) {
   return payload;
 }
 
+const DEVICE_DNA_FORBIDDEN_KEY = /^(serial(_number)?|product_uuid|uuid|mac(_address)?|ip(_address)?|hostname|username|mountpoint|mount_path)$/i;
+
+function containsDeviceDnaIdentityKey(value: unknown, depth = 0): boolean {
+  if (depth > 8 || value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.some((item) => containsDeviceDnaIdentityKey(item, depth + 1));
+  if (typeof value !== 'object') return false;
+  return Object.entries(value as JsonObject).some(([key, nested]) =>
+    DEVICE_DNA_FORBIDDEN_KEY.test(key) || containsDeviceDnaIdentityKey(nested, depth + 1)
+  );
+}
+
+async function validateDeviceDnaMetadata(metadata: JsonObject, agentPlatform: string, capabilities: string[]) {
+  if (!agentPlatform.toLowerCase().startsWith('linux')) {
+    throw new EdgeError('device_dna_linux_agent_required', 422);
+  }
+  if (!capabilities.includes('device.dna.read')) {
+    throw new EdgeError('device_dna_capability_required', 422);
+  }
+  if (containsDeviceDnaIdentityKey(metadata)) {
+    throw new EdgeError('device_dna_identity_metadata_rejected', 422);
+  }
+
+  const report = record(metadata.device_dna);
+  if (report.schema_version !== 'atlas.device-dna.v1') {
+    throw new EdgeError('device_dna_schema_invalid', 422);
+  }
+  if (report.evidence_level !== 'agent-observed') {
+    throw new EdgeError('device_dna_evidence_level_invalid', 422);
+  }
+
+  const integrity = record(report.integrity);
+  if (integrity.hardware_attested !== false) {
+    throw new EdgeError('device_dna_hardware_attestation_not_supported', 422);
+  }
+  const digest = clean(integrity.content_digest_sha256, 64).toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(digest)) {
+    throw new EdgeError('device_dna_digest_invalid', 422);
+  }
+
+  const unsigned = { ...report };
+  delete unsigned.integrity;
+  const expectedDigest = await sha256(JSON.stringify(sortApprovalValue(unsigned)));
+  if (digest !== expectedDigest) {
+    throw new EdgeError('device_dna_digest_mismatch', 422);
+  }
+
+  const compute = record(report.compute);
+  const memoryGb = Number(compute.memory_gb);
+  const logicalCores = Number(compute.logical_cores);
+  if (!Number.isFinite(memoryGb) || memoryGb <= 0 || memoryGb > 4096) {
+    throw new EdgeError('device_dna_memory_invalid', 422);
+  }
+  if (!Number.isInteger(logicalCores) || logicalCores < 1 || logicalCores > 1024) {
+    throw new EdgeError('device_dna_cpu_invalid', 422);
+  }
+
+  const firmware = record(report.firmware);
+  if (!['uefi', 'legacy-or-unknown'].includes(clean(firmware.boot_mode, 40))) {
+    throw new EdgeError('device_dna_boot_mode_invalid', 422);
+  }
+  if (!['enabled', 'disabled', 'unknown'].includes(clean(firmware.secure_boot, 40))) {
+    throw new EdgeError('device_dna_secure_boot_invalid', 422);
+  }
+
+  const storage = record(report.storage);
+  if (!Array.isArray(storage.disks) || storage.disks.length > 16) {
+    throw new EdgeError('device_dna_storage_invalid', 422);
+  }
+}
+
 function adminClient() {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new EdgeError('server_runtime_not_configured', 503);
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -636,14 +706,23 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
       const metadata = record(input.metadata);
       if (containsSensitiveKey(metadata)) throw new EdgeError('sensitive_device_metadata_rejected', 422);
       const externalId = requiredText(input.external_id, 'external_id_required', 160);
+      const adapter = requiredText(input.adapter, 'adapter_required', 120);
+      const deviceType = requiredText(input.device_type, 'device_type_required', 80);
+      const capabilities = stringArray(input.capabilities);
+      if (adapter === 'device-dna-linux') {
+        if (deviceType !== 'computer') throw new EdgeError('device_dna_device_type_invalid', 422);
+        await validateDeviceDnaMetadata(metadata, String(context.agent.platform || ''), capabilities);
+      }
       const row = {
         org_id: orgId, agent_id: agentId, external_id: externalId,
         label: requiredText(input.label, 'device_label_required', 160),
-        device_type: requiredText(input.device_type, 'device_type_required', 80),
-        adapter: requiredText(input.adapter, 'adapter_required', 120),
-        capabilities: stringArray(input.capabilities),
-        health_status: ['unknown','healthy','degraded','offline','error'].includes(clean(input.health_status, 20))
-          ? clean(input.health_status, 20) : 'unknown',
+        device_type: deviceType,
+        adapter,
+        capabilities,
+        health_status: adapter === 'device-dna-linux'
+          ? 'unknown'
+          : ['unknown','healthy','degraded','offline','error'].includes(clean(input.health_status, 20))
+            ? clean(input.health_status, 20) : 'unknown',
         last_seen_at: now, metadata, updated_at: now
       };
       const { data, error } = await admin.from('atlas_local_devices')

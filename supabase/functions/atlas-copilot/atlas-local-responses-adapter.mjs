@@ -1,3 +1,4 @@
+import { ATLAS_CONVERSATION_POLICY } from './sovereign-brain-prompt.mjs';
 const PROFILES=Object.freeze(['fast','balanced','deep']);
 const LOCAL_INPUT_CHAR_BUDGET=6000;
 const LOCAL_MAX_OUTPUT_TOKENS=384;
@@ -41,7 +42,7 @@ function compactInstructions(value){
   const marker='CURRENT COGNITIVE CONTEXT';
   const index=raw.lastIndexOf(marker);
   const context=index>=0?raw.slice(index,index+800):'';
-  return `${LOCAL_SYSTEM_CORE}${context?`\n\n${context}`:''}`.slice(0,LOCAL_INSTRUCTION_CHAR_BUDGET).trim();
+  return `${LOCAL_SYSTEM_CORE}\n\n${ATLAS_CONVERSATION_POLICY}${context?`\n\n${context}`:''}`.slice(0,LOCAL_INSTRUCTION_CHAR_BUDGET).trim();
 }
 const sleep=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
 function retryableStatus(status){return status===429||status===500||status===502||status===503||status===504;}
@@ -113,7 +114,7 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     }
     return {configured:true,verified:false,provider:'atlas-local',model,error:lastError};
   }
-  async function execute({route,instructions,input,max_output_tokens=3000}={}){
+  async function execute({route,instructions,input,max_output_tokens=3000,background=false}={}){
     const profile=route?.profile||'balanced';
     const model=resolved[profile];
     if(!configured||!model)throw fail('provider_not_configured',503,{provider:'atlas-local'});
@@ -126,15 +127,16 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     const localInstructions=compactInstructions(instructions);
     const body={model,instructions:`${localInstructions}\n\nATLAS LOCAL RUNTIME PROFILE: ${profileInstruction}`.trim(),input:compactInput(input),max_output_tokens:boundedMaxOutput,store:false};
     let response;
-    for(let attempt=1;attempt<=boundedExecutionAttempts;attempt+=1){
+    const executionLimit=background?1:boundedExecutionAttempts;
+    for(let attempt=1;attempt<=executionLimit;attempt+=1){
       try{
         response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
       }catch{
-        if(attempt<boundedExecutionAttempts){await sleep(boundedRetryDelayMs*attempt);continue;}
+        if(attempt<executionLimit){await sleep(boundedRetryDelayMs*attempt);continue;}
         throw fail('provider_unavailable',502,{provider:'atlas-local'});
       }
       if(response.ok)break;
-      if(retryableStatus(response.status)&&attempt<boundedExecutionAttempts){await sleep(boundedRetryDelayMs*attempt);continue;}
+      if(retryableStatus(response.status)&&attempt<executionLimit){await sleep(boundedRetryDelayMs*attempt);continue;}
       throw errorForStatus(response.status);
     }
     if(!response?.ok)throw fail('provider_unavailable',502,{provider:'atlas-local'});
