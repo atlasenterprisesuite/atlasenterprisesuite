@@ -1,0 +1,34 @@
+name: ATLAS 777 Autonomous Worker (observation gate)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only inspect; no issue comments"
+        type: boolean
+        required: true
+        default: true
+  schedule:
+    - cron: '13 * * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: atlas-777-observation-worker
+  cancel-in-progress: false
+
+jobs:
+  observe-queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ATLAS_777_DRY_RUN: ${{ github.event_name == 'schedule' && 'true' || inputs.dry_run && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect explicitly queued issues (fail-closed)
+        run: node scripts/atlas-777-worker.mjs
