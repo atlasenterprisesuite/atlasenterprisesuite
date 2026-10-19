@@ -14,6 +14,12 @@ const rideSections: ModuleExperienceSection[] = [
         to: '/ride/routes'
       },
       {
+        label: 'World Transport',
+        title: 'Atlas mundial del transporte',
+        description: 'Catálogo educativo filtrable de medios, evolución y madurez tecnológica; no implica reservas ni operación de proveedores.',
+        to: '/ride/world-transport'
+      },
+      {
         label: 'People & readiness',
         title: 'Driver / Partner',
         description: 'Open onboarding and compliance requirements for the authenticated Ride participant.',
