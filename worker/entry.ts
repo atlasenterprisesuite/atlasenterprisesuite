@@ -52,6 +52,22 @@ export default {
     if (request.method === 'GET' && url.pathname === '/api/v1/health') {
       return machineHealth(request, env);
     }
+    if (request.method === 'GET' && url.pathname === '/api/v1/civilian-sentinel/status') {
+      return new Response(JSON.stringify({
+        module: 'atlas-civilian-sentinel',
+        mode: 'SIMULATION_ONLY',
+        operational: false,
+        public_alerts_enabled: false,
+        external_actions_enabled: false
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff'
+        }
+      });
+    }
     return worker.fetch(request, env as never);
   }
 };
