@@ -33,6 +33,19 @@ describe('ATLAS 2030 invoice presentation, read-only accounting bridge', () => {
     expect(JSON.stringify(ledger)).toBe(before);
   });
 
+  it('matches SQL per-line tax rounding for fractional-cent extended prices', () => {
+    const ledger = fixture();
+    ledger.lines[0].quantity = 1;
+    ledger.lines[0].unit_price = 0.005;
+    ledger.lines[0].tax_rate = 50;
+    ledger.invoices[0].total = 0.01;
+    ledger.invoices[0].balance_due = 0.01;
+    const invoice = buildInvoice2030Model(ledger, 'inv-1');
+    expect(invoice.subtotalMinor).toBe(1);
+    expect(invoice.taxMinor).toBe(0);
+    expect(invoice.totalMinor).toBe(1);
+  });
+
   it('fails closed on wrong organization, mismatched customer or line scope', () => {
     const ledger = fixture();
     ledger.invoices[0].org_id = 'other';
