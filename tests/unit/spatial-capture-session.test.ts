@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateCaptureSession, type CaptureSessionDraft } from '../../../apps/web/src/modules/city/spatialCaptureSession';
+import { validateCaptureSession, type CaptureSessionDraft } from '../../apps/web/src/modules/city/spatialCaptureSession';
 
 const valid = (): CaptureSessionDraft => ({
   organizationId: 'tenant-a', siteId: 'building-1',
