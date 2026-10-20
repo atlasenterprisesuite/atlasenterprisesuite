@@ -41,6 +41,12 @@ describe('Midnight Tech invoice print model / modelo de impresión', () => {
     expect(model.signed).toBe(false);
   });
 
+  it('marks cancelled invoices as not payable', () => {
+    const ledger = fixture();
+    ledger.invoices[0].status = 'cancelled';
+    expect(buildMidnightInvoice(ledger, 'invoice-a').warning).toContain('NOT PAYABLE / NO PAGAR');
+  });
+
   it('fails closed if the invoice or customer is not in the active tenant', () => {
     const ledger = fixture();
     ledger.lines[0].org_id = 'org-other';
