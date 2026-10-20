@@ -11,6 +11,7 @@ import {
   type LiveReceivablesLedger
 } from '../../../lib/receivablesApi';
 import { ATLAS_SESSION_EVENT } from '../../../lib/atlasSession';
+import { AtlasInvoice2030 } from './AtlasInvoice2030';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -363,11 +364,13 @@ export function ReceivablesPage() {
               </article>
             )}
             <article>
-              <span>Print / save PDF</span>
+              <span>ATLAS 2030 invoice preview</span>
               <strong>{selected.invoice_number}</strong>
-              <button className="secondary-action" type="button" onClick={() => window.print()}>Print invoice view</button>
+              <small>Print and language controls appear in the preview below. No financial posting occurs during printing.</small>
             </article>
           </div>
+
+          {ledger && <AtlasInvoice2030 ledger={ledger} invoiceId={selected.id} />}
 
           {selected.inventory_posted_at && (
             <section className="metric-grid" aria-label="Invoice inventory costing">
