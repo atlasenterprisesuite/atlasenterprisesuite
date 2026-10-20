@@ -21,17 +21,18 @@ function fixtures(): GovernedGrowthAdDeliveryInput {
     providerConnections: [
       {
         scope, provider: 'example-ad-provider', connectionName: 'advisory:paid_media:primary',
-        state: 'connected', authorized: true, providerVerified: true
+        state: 'connected', authorized: true, providerVerified: true,
+        lastVerifiedAt: '2026-10-20T11:00:00Z'
       }
     ],
     providerAuthorizations: [
       {
-        scope, capability: 'paid_media', authorized: true,
+        scope, firmId: 'firm-a', capability: 'paid_media', authorized: true,
         authorizedAt: '2026-10-19T12:00:00Z', authorizationReference: 'approval-42'
       }
     ],
     campaign: {
-      id: 'campaign-a', scope, provider: 'example-ad-provider', approved: true,
+      id: 'campaign-a', scope, firmId: 'firm-a', provider: 'example-ad-provider', approved: true,
       spendingLimitCents: 10000, spentCents: 5000, proposedSpendCents: 5000
     }
   };
@@ -85,6 +86,33 @@ describe('Governed ATLAS Growth ad-delivery authorization', () => {
     const input = fixtures();
     input.providerConnections = input.providerConnections.map(item => ({ ...item, scope: otherScope }));
     denied(input, 'provider_unverified');
+  });
+
+  it('denies another advisory firm in the same organization', () => {
+    const input = fixtures();
+    input.campaign = { ...input.campaign!, firmId: 'firm-b' };
+    denied(input, 'organization_not_authorized');
+  });
+
+  it('denies revoked approval despite authorized=true', () => {
+    const input = fixtures();
+    input.providerAuthorizations = input.providerAuthorizations.map(item => ({
+      ...item, revokedAt: '2026-10-19T23:00:00Z'
+    }));
+    denied(input, 'organization_not_authorized');
+  });
+
+  it('denies stale or future provider verification and revoked provider connections', () => {
+    for (const change of [
+      { lastVerifiedAt: '2026-10-19T10:00:00Z' },
+      { lastVerifiedAt: '2026-10-20T13:00:00Z' },
+      { lastVerifiedAt: null },
+      { revokedAt: '2026-10-19T23:00:00Z' }
+    ]) {
+      const input = fixtures();
+      input.providerConnections = [{ ...input.providerConnections[0], ...change }];
+      denied(input, 'provider_unverified');
+    }
   });
 
   it('denies a connected provider for a different campaign provider', () => {
