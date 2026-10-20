@@ -21,9 +21,12 @@ import {
  */
 export type ScopedGrowthProviderConnection = AdvisoryProviderConnectionEvidence & {
   scope: TenantScope;
+  revokedAt?: string | null;
 };
 export type ScopedGrowthProviderAuthorization = AdvisoryProviderAuthorizationEvidence & {
   scope: TenantScope;
+  firmId: string;
+  revokedAt?: string | null;
 };
 export type AdvertisingConsentEvidence = {
   scope: TenantScope;
@@ -37,6 +40,7 @@ export type AdvertisingConsentEvidence = {
 export type GrowthCampaignEvidence = {
   id: string;
   scope: TenantScope;
+  firmId: string;
   provider: string;
   approved: boolean;
   spendingLimitCents: number;
@@ -101,17 +105,30 @@ export function authorizeGovernedGrowthAdDelivery(input: GovernedGrowthAdDeliver
     permission: 'advisory.manage'
   });
   const campaign = input.campaign;
+  const nowMs = parseTimestamp(input.now);
   const campaignInScope = Boolean(
     campaign && matchesScope(campaign.scope, input.resourceScope) &&
     typeof campaign.id === 'string' && campaign.id.trim() &&
+    typeof campaign.firmId === 'string' && campaign.firmId.trim() &&
     typeof campaign.provider === 'string' && campaign.provider.trim()
   );
   const matchingConnections = (input.providerConnections || []).filter(
-    (item) => matchesScope(item.scope, input.resourceScope) &&
-      campaignInScope && item.provider === campaign!.provider
+    (item) => {
+      const verifiedAt = parseTimestamp(item.lastVerifiedAt ?? '');
+      return matchesScope(item.scope, input.resourceScope) &&
+        campaignInScope && item.provider === campaign!.provider &&
+        item.revokedAt == null && Number.isFinite(nowMs) &&
+        Number.isFinite(verifiedAt) && verifiedAt <= nowMs &&
+        nowMs - verifiedAt <= 24 * 60 * 60 * 1000;
+    }
   );
   const matchingAuthorizations = (input.providerAuthorizations || []).filter(
-    (item) => matchesScope(item.scope, input.resourceScope)
+    (item) => matchesScope(item.scope, input.resourceScope) &&
+      campaignInScope && item.firmId === campaign!.firmId &&
+      item.authorized === true && item.revokedAt == null &&
+      Number.isFinite(nowMs) &&
+      Number.isFinite(parseTimestamp(item.authorizedAt ?? '')) &&
+      parseTimestamp(item.authorizedAt ?? '') <= nowMs
   );
   const paidMedia = resolveAdvisoryProviderReadiness(
     matchingConnections,
