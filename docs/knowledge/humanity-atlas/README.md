@@ -93,6 +93,12 @@ For medicine and health, prioritize systematic reviews, meta-analyses, clinical 
 
 Knowledge Atlas remains the retrieval and provenance layer; it must not become a duplicate database for records already owned by another module.
 
+## Historical catastrophe memory and human resilience
+
+The proposed **ATLAS Human Resilience — Flood Memory to Future Preparedness** workstream reuses Knowledge Atlas, Bible OS, Security, Education, Spatial/Maps and Communications. It separates scripture/tradition, archaeology, historical records, scientific models and authoritative live warnings, with fail-closed life-safety boundaries. This is a *research/product specification*, not a deployed alert system.
+
+See [Flood Memory and Human Resilience — 2026-10-20](./flood-memory-human-resilience-2026-10-20.md) for initial cases, provenance rules, implementation stages, P0 gates and acceptance criteria.
+
 ## Future product surfaces
 
 Candidate product views for this knowledge domain:
