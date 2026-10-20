@@ -47,6 +47,7 @@ export function AtlasAssistantPanel({
   onSpeechPreference
 }: AtlasAssistantPanelProps) {
   const [input, setInput] = useState('');
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const busy = state === 'thinking' || state === 'speaking';
   const textReady = textCapability === 'ready';
   const microphoneUnavailable = microphoneCapability === 'unavailable';
@@ -72,9 +73,20 @@ export function AtlasAssistantPanel({
             <small role="status" aria-live="polite">{stateLabel(state)} · Intelligence {providerLabel}</small>
           </div>
         </div>
-        <button type="button" className="atlas-assistant-close" aria-label="Close ATLAS Assistant" onClick={onClose}>×</button>
+        <div className="atlas-assistant-header-actions">
+          <button type="button" className="atlas-assistant-close" aria-label="Quick actions" aria-expanded={quickActionsOpen} aria-controls="atlas-assistant-quick-actions" onClick={() => setQuickActionsOpen((value) => !value)}>···</button>
+          <button type="button" className="atlas-assistant-close" aria-label="Close ATLAS Assistant" onClick={onClose}>×</button>
+        </div>
       </header>
 
+      {quickActionsOpen ? (
+        <nav id="atlas-assistant-quick-actions" className="atlas-assistant-quick-actions" aria-label="Assistant quick actions">
+          <button type="button" disabled={microphoneUnavailable || transcriptionUnavailable || !textReady || busy} onClick={() => { setQuickActionsOpen(false); void onToggleMicrophone(); }}>{microphoneActive ? 'Stop listening' : 'Talk to ATLAS'}</button>
+          <button type="button" disabled={speechUnavailable} onClick={() => { onSpeechPreference(!speechEnabled); setQuickActionsOpen(false); }}>{speechEnabled ? 'Mute spoken replies' : 'Enable spoken replies'}</button>
+          <button type="button" onClick={() => { setQuickActionsOpen(false); onClose(); }}>Close assistant</button>
+          <small>Screen sharing and iPhone controls require separate device permissions and are not enabled by this menu.</small>
+        </nav>
+      ) : null}
       <AtlasAssistantMessageList messages={messages} />
 
       {error ? <div className="atlas-assistant-error" role="alert">{error}</div> : null}
