@@ -171,7 +171,8 @@ describe('Governed ATLAS Growth ad-delivery authorization', () => {
     }
     const input = fixtures();
     input.now = 'not-a-date';
-    denied(input, 'consent_required');
+    // Invalid server time prevents validating 24-hour provider freshness first.
+    denied(input, 'provider_unverified');
   });
 
   it('denies an unapproved campaign or any over-limit, negative or non-integer spending', () => {
