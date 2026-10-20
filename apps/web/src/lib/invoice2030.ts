@@ -69,7 +69,8 @@ export function buildInvoice2030Model(ledger: LiveReceivablesLedger, invoiceId: 
     }
     const unitPriceMinor = assertMinor(line.unit_price, 'unit_price');
     const netMinor = assertMinor(line.quantity * line.unit_price, 'line_amount');
-    const taxMinor = Math.round(netMinor * line.tax_rate / 100);
+    // Match canonical SQL: tax rounds from the unrounded extended price per line.
+    const taxMinor = assertMinor(line.quantity * line.unit_price * line.tax_rate / 100, 'line_tax');
     const product = ledger.products.find((entry) => entry.id === line.product_id);
     if (product && product.org_id !== ledger.organization.id) {
       throw new Error('invoice_2030_product_scope_mismatch');
