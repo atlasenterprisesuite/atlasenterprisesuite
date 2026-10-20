@@ -11,8 +11,7 @@ import {
   type LiveReceivablesLedger
 } from '../../../lib/receivablesApi';
 import { ATLAS_SESSION_EVENT } from '../../../lib/atlasSession';
-import { buildMidnightInvoice } from './midnightInvoice';
-import { MidnightInvoiceDocument } from './MidnightInvoiceDocument';
+import { AtlasInvoice2030 } from './AtlasInvoice2030';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -92,14 +91,6 @@ export function ReceivablesPage() {
   const selected = ledger?.invoices.find((invoice) => invoice.id === selectedId) || null;
   const selectedLines = (ledger?.lines || []).filter((line) => line.invoice_id === selectedId);
   const selectedPayments = (ledger?.payments || []).filter((payment) => payment.invoice_id === selectedId);
-  const printPreview = useMemo(() => {
-    if (!ledger || !selectedId) return { model: null, error: '' };
-    try {
-      return { model: buildMidnightInvoice(ledger, selectedId), error: '' };
-    } catch (cause) {
-      return { model: null, error: friendlyError(cause) };
-    }
-  }, [ledger, selectedId]);
   const inventoryBackedLines = selectedLines.filter((line) => {
     const product = line.product_id ? productById.get(line.product_id) : null;
     return Boolean(product?.inventory_item_id);
@@ -373,15 +364,13 @@ export function ReceivablesPage() {
               </article>
             )}
             <article>
-              <span>Print / save PDF</span>
+              <span>ATLAS 2030 invoice preview</span>
               <strong>{selected.invoice_number}</strong>
-              <button className="secondary-action" type="button" disabled={!printPreview.model || working} onClick={() => window.print()}>Print bilingual invoice / Imprimir factura</button>
+              <small>Print and language controls appear in the preview below. No financial posting occurs during printing.</small>
             </article>
           </div>
 
-          {printPreview.model
-            ? <MidnightInvoiceDocument model={printPreview.model} />
-            : <div className="notice strong" role="alert">Printing unavailable / Impresión no disponible: {printPreview.error || 'Invoice data not ready'}</div>}
+          {ledger && <AtlasInvoice2030 ledger={ledger} invoiceId={selected.id} />}
 
           {selected.inventory_posted_at && (
             <section className="metric-grid" aria-label="Invoice inventory costing">
