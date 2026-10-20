@@ -86,7 +86,11 @@ export function buildMidnightInvoice(ledger: LiveReceivablesLedger, invoiceId: s
     totalCents,
     balanceCents,
     lines,
-    warning: invoice.status === 'draft' ? 'DRAFT / BORRADOR — NOT ISSUED / NO EMITIDA' : null,
+    warning: invoice.status === 'draft'
+      ? 'DRAFT / BORRADOR — NOT ISSUED / NO EMITIDA'
+      : invoice.status === 'cancelled'
+        ? 'CANCELLED / ANULADA — NOT PAYABLE / NO PAGAR'
+        : null,
     paymentEnabled: false,
     signed: false
   };
