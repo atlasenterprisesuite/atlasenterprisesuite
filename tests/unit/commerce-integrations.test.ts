@@ -6,7 +6,7 @@ import {
 } from '../../packages/commerce/src';
 
 const dispatcherPath = 'supabase/functions/atlas-commerce-dispatch/index.ts';
-const migrationPath = 'supabase/migrations/20260918120000_atlas_commerce_delivery_state.sql';
+const migrationPath = 'supabase/migrations/20260918134133_atlas_commerce_delivery_state.sql';
 const dispatcher = existsSync(dispatcherPath) ? readFileSync(dispatcherPath, 'utf8') : '';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
 

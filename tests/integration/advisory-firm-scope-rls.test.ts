@@ -6,7 +6,7 @@ const root = process.cwd();
 
 describe('Advisory firm-scope RLS hardening', () => {
   it('requires active firm membership in addition to organization permission', () => {
-    const path = resolve(root, 'supabase/migrations/20260918033500_advisory_firm_scope_rls.sql');
+    const path = resolve(root, 'supabase/migrations/20260918032931_advisory_firm_scope_rls.sql');
     expect(existsSync(path)).toBe(true);
     const sql = readFileSync(path, 'utf8');
 

@@ -2,19 +2,19 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const schema = readFileSync(
-  'supabase/migrations/20260923235300_release_deployment_control_backfill.sql',
+  'supabase/migrations_legacy_pre_remote_sync/20260923235300_release_deployment_control_backfill.sql',
   'utf8'
 );
 const completion = readFileSync(
-  'supabase/migrations/20260923235400_release_deployment_control_completion_gate.sql',
+  'supabase/migrations_legacy_pre_remote_sync/20260923235400_release_deployment_control_completion_gate.sql',
   'utf8'
 );
 const evidenceRegistry = readFileSync(
-  'supabase/migrations/20260925072000_atlas_master_evidence_registry.sql',
+  'supabase/migrations/20260925071244_atlas_master_evidence_registry.sql',
   'utf8'
 );
 const evidenceIndexHardening = readFileSync(
-  'supabase/migrations/20260925072500_atlas_master_evidence_registry_index_hardening.sql',
+  'supabase/migrations/20260925071646_atlas_master_evidence_registry_index_hardening.sql',
   'utf8'
 );
 const edge = readFileSync('supabase/functions/atlas-release-control/index.ts', 'utf8');

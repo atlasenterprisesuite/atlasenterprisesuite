@@ -1,0 +1,12 @@
+create index if not exists live_ent_asset_movements_actor_idx on public.live_entertainment_asset_movements(actor_user_id);
+create index if not exists live_ent_asset_movements_from_space_idx on public.live_entertainment_asset_movements(org_id, from_space_id);
+create index if not exists live_ent_asset_movements_production_idx on public.live_entertainment_asset_movements(org_id, production_id);
+create index if not exists live_ent_asset_movements_to_space_idx on public.live_entertainment_asset_movements(org_id, to_space_id);
+create index if not exists live_ent_assets_created_by_idx on public.live_entertainment_assets(created_by);
+create index if not exists live_ent_assets_photo_document_idx on public.live_entertainment_assets(photo_document_id);
+create index if not exists live_ent_productions_created_by_idx on public.live_entertainment_productions(created_by);
+create index if not exists live_ent_reservations_production_idx on public.live_entertainment_reservations(org_id, production_id);
+create index if not exists live_ent_reservations_reserved_by_idx on public.live_entertainment_reservations(reserved_by);
+create index if not exists live_ent_sites_created_by_idx on public.live_entertainment_sites(created_by);
+create index if not exists live_ent_spaces_created_by_idx on public.live_entertainment_spaces(created_by);
+create index if not exists live_ent_spaces_parent_idx on public.live_entertainment_spaces(org_id, parent_space_id);

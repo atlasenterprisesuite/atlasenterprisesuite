@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = `${process.cwd()}/supabase/migrations/20260912_universal_execution_engine.sql`;
+const migrationPath = `${process.cwd()}/supabase/migrations_legacy_pre_remote_sync/20260912_universal_execution_engine.sql`;
 
 async function migration() {
   return readFile(migrationPath, 'utf8');

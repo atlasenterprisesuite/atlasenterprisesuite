@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = 'supabase/migrations/20261004190000_atlas_payroll_control_plane.sql';
-const settlementFixPath = 'supabase/migrations/20261004191500_atlas_payroll_settlement_guard.sql';
-const readinessFixPath = 'supabase/migrations/20261004193000_atlas_payroll_readiness_security.sql';
-const providerGrantFixPath = 'supabase/migrations/20261004194500_atlas_payroll_provider_column_security.sql';
-const leastPrivilegeFixPath = 'supabase/migrations/20261004195000_atlas_people_payroll_least_privilege.sql';
+const migrationPath = 'supabase/migrations_legacy_pre_remote_sync/20261004190000_atlas_payroll_control_plane.sql';
+const settlementFixPath = 'supabase/migrations/20261004183630_atlas_payroll_settlement_guard.sql';
+const readinessFixPath = 'supabase/migrations/20261004183637_atlas_payroll_readiness_security.sql';
+const providerGrantFixPath = 'supabase/migrations/20261004183643_atlas_payroll_provider_column_security.sql';
+const leastPrivilegeFixPath = 'supabase/migrations/20261004192132_atlas_people_payroll_least_privilege.sql';
 const apiPath = 'apps/web/src/modules/payroll/payrollApi.ts';
 const routesPath = 'apps/web/src/modules/payroll/PayrollRoutes.tsx';
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';

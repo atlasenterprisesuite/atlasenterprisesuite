@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const sql = readFileSync(
-  'supabase/migrations/20260920154000_atlas_github_webhook_delivery_dedupe.sql',
+  'supabase/migrations_legacy_pre_remote_sync/20260920154000_atlas_github_webhook_delivery_dedupe.sql',
   'utf8',
 );
 

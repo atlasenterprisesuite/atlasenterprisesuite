@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync('supabase/migrations/20260914_private_oracle.sql', 'utf8').toLowerCase();
+const migration = readFileSync('supabase/migrations/20260924162513_private_oracle.sql', 'utf8').toLowerCase();
 const shell = readFileSync('apps/web/src/components/AtlasShell.tsx', 'utf8');
 const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
 const routes = readFileSync('apps/web/src/modules/oracle/OracleRoutes.tsx', 'utf8');

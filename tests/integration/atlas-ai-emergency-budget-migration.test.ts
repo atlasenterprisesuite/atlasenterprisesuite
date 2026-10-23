@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  'supabase/migrations/20260920160000_atlas_ai_emergency_fallback_budget.sql',
+  'supabase/migrations/20260920161055_atlas_ai_emergency_fallback_budget.sql',
   'utf8'
 );
 
