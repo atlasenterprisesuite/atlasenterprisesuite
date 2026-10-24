@@ -19,7 +19,7 @@ export function assessNetworkMeasurement(value: NetworkMeasurement): NetworkAsse
   if (metrics.some((metric) => !Number.isFinite(metric) || metric < 0) || value.packetLossPercent > 100) {
     throw new Error('Invalid network measurement');
   }
-  if (!/^\\d{4}-\\d{2}-\\d{2}T/.test(value.measuredAt) || !Number.isFinite(Date.parse(value.measuredAt))) {
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(value.measuredAt) || !Number.isFinite(Date.parse(value.measuredAt))) {
     throw new Error('Invalid measurement timestamp');
   }
   if (value.source !== 'user-reported-cloudflare') throw new Error('Unsupported measurement source');
