@@ -1,6 +1,11 @@
 name: ATLAS 777 npm dependency repair
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - chore/npm-audit-repair-workflow-777
+    paths:
+      - .github/workflows/atlas-npm-dependency-repair.yml
 
 permissions:
   contents: read
