@@ -1,0 +1,47 @@
+name: ATLAS 777 npm dependency repair
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-npm-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+      - name: Regenerate authentic lockfile
+        run: npm install --save-dev --save-exact vite@6.4.5 vitest@5.0.5 --package-lock=true --ignore-scripts
+      - name: Verify lockfile installation
+        run: npm ci
+      - name: Security audit
+        run: npm audit --audit-level=high
+      - name: Full repository verification
+        run: npm run verify:all
+      - name: Preserve repair patch and evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/npm-repair
+          git diff -- package.json package-lock.json > artifacts/npm-repair/dependency-repair.patch
+          git diff --check -- package.json package-lock.json > artifacts/npm-repair/diff-check.txt 2>&1 || true
+          git status --short -- package.json package-lock.json > artifacts/npm-repair/changed-files.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-npm-repair-evidence
+          path: artifacts/npm-repair/
+          retention-days: 7
