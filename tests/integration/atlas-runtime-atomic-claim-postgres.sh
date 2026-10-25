@@ -220,5 +220,17 @@ duplicate_receipt="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; 
 [[ "$duplicate_receipt" == f ]] || { echo "Duplicate receipt created another transition" >&2; exit 1; }
 audit_rows="$(psql_ci -At -c "select count(*) from public.atlas_external_effect_audit_777 where evidence_ref in ('provider-timeout','provider-confirmation');")"
 [[ "$audit_rows" == 2 ]] || { echo "Reconciliation audit count invalid: $audit_rows" >&2; exit 1; }
+# Append-only audit: privileged UPDATE/DELETE must fail at trigger level.
+audit_update_error="$(psql_ci -At -c "update public.atlas_external_effect_audit_777 set evidence_ref='tampered' where evidence_ref='provider-confirmation';" 2>&1 || true)"
+[[ "$audit_update_error" == *external_effect_audit_append_only* ]] || { echo "Audit UPDATE not rejected" >&2; exit 1; }
+audit_delete_error="$(psql_ci -At -c "delete from public.atlas_external_effect_audit_777 where evidence_ref='provider-confirmation';" 2>&1 || true)"
+[[ "$audit_delete_error" == *external_effect_audit_append_only* ]] || { echo "Audit DELETE not rejected" >&2; exit 1; }
+# An already-confirmed provider receipt cannot be attached to a different effect.
+second_effect="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_a','tenant-a','20000000-0000-4000-8000-000000000007','effect-two','mock-provider','provider-key-two');")"
+[[ "$second_effect" == effect-two ]] || { echo "Second fixture reservation failed" >&2; exit 1; }
+receipt_reuse_error="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; select public.atlas_reconcile_external_effect_777('$org_a','tenant-a','effect-two','reserved','confirmed','receipt-conflict','receipt-once');" 2>&1 || true)"
+[[ "$receipt_reuse_error" == *duplicate\ key\ value* ]] || { echo "Provider receipt reuse not blocked" >&2; exit 1; }
+second_status="$(psql_ci -At -c "select status from public.atlas_external_effect_ledger_777 where effect_key='effect-two';")"
+[[ "$second_status" == reserved ]] || { echo "Receipt conflict did not roll back ledger" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
