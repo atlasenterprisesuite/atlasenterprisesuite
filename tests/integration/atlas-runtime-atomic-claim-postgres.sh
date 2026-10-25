@@ -174,5 +174,13 @@ cross_effect="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; sel
 [[ -z "$cross_effect" ]] || { echo "Cross-tenant external-effect reservation accepted" >&2; exit 1; }
 ledger_count="$(psql_ci -At -c "select count(*) from public.atlas_external_effect_ledger_777;")"
 [[ "$ledger_count" == 1 ]] || { echo "Unexpected ledger rows: $ledger_count" >&2; exit 1; }
+# Verify effective ledger privileges and fail-closed reservation of expired jobs.
+ledger_grants="$(psql_ci -At -c "select has_table_privilege('anon','public.atlas_external_effect_ledger_777','SELECT')::text || ',' || has_table_privilege('authenticated','public.atlas_external_effect_ledger_777','INSERT')::text || ',' || has_table_privilege('service_role','public.atlas_external_effect_ledger_777','INSERT')::text;")"
+[[ "$ledger_grants" == "false,false,true" ]] || { echo "Unexpected ledger grants: $ledger_grants" >&2; exit 1; }
+psql_ci -c "insert into public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state,lease_id,lease_expires_at)
+values ('20000000-0000-4000-8000-000000000008','$org_a','tenant-a','cloud_ephemeral','running',
+'30000000-0000-4000-8000-000000000008',now()-interval '1 minute');"
+expired_reservation="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_a','tenant-a','20000000-0000-4000-8000-000000000008','expired-effect','mock-provider','expired-provider-key');")"
+[[ -z "$expired_reservation" ]] || { echo "Expired job reserved an external effect" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
