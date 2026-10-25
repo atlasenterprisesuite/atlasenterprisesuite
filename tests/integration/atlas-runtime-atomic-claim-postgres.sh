@@ -116,5 +116,29 @@ denied="$(psql_ci -At -c "set request.jwt.claim.role = 'authenticated'; select c
 # The already quarantined job must remain quarantined on repeated sweeps.
 third_pass="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select public.atlas_quarantine_expired_runtime_jobs(50);")"
 [[ "$third_pass" == 0 ]] || { echo "Unexpected repeated quarantine: $third_pass" >&2; exit 1; }
+# Simulate a provider that committed an external effect before its worker crashed.
+# A durable counter is deliberately outside execution_runtime_jobs: a lease alone
+# cannot tell whether the provider has already applied the operation.
+psql_ci <<'SQL'
+create table public.atlas_ci_external_effects (
+  operation_key text primary key,
+  apply_count integer not null check (apply_count >= 1)
+);
+insert into public.atlas_ci_external_effects(operation_key, apply_count)
+values ('interrupted-operation', 1);
+SQL
+psql_ci -c "insert into public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state,lease_id,lease_expires_at)
+values ('20000000-0000-4000-8000-000000000005','$org_a','tenant-a','cloud_ephemeral','running',
+'30000000-0000-4000-8000-000000000005',now()-interval '1 minute');"
+before_effects="$(psql_ci -At -c "select apply_count from public.atlas_ci_external_effects where operation_key='interrupted-operation';")"
+[[ "$before_effects" == 1 ]] || { echo "Interrupted provider fixture invalid" >&2; exit 1; }
+interrupted_sweep="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select public.atlas_quarantine_expired_runtime_jobs(50);")"
+[[ "$interrupted_sweep" == 1 ]] || { echo "Interrupted work not quarantined: $interrupted_sweep" >&2; exit 1; }
+interrupted_reclaim="$(claim "$org_a" tenant-a "$runtime_a" cloud_ephemeral)"
+[[ -z "$interrupted_reclaim" ]] || { echo "Interrupted external operation re-claimed" >&2; exit 1; }
+interrupted_state="$(psql_ci -At -c "select state from public.execution_runtime_jobs where id='20000000-0000-4000-8000-000000000005';")"
+[[ "$interrupted_state" == waiting_human ]] || { echo "Interrupted operation escaped quarantine" >&2; exit 1; }
+after_effects="$(psql_ci -At -c "select apply_count from public.atlas_ci_external_effects where operation_key='interrupted-operation';")"
+[[ "$after_effects" == "$before_effects" ]] || { echo "External effect counter changed after reconciliation" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
