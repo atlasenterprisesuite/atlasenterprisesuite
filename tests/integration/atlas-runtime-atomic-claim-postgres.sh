@@ -154,5 +154,25 @@ reconciled_total="$(awk '{sum += $1} END {print sum+0}' "$results_dir/reconcile-
 [[ "$reconciled_total" == 1 ]] || { echo "Concurrent reconcilers double-counted or missed an expired job: $reconciled_total" >&2; exit 1; }
 reconciled_state="$(psql_ci -At -c "select state from public.execution_runtime_jobs where id='20000000-0000-4000-8000-000000000006';")"
 [[ "$reconciled_state" == waiting_human ]] || { echo "Concurrent reconciliation failed closed: $reconciled_state" >&2; exit 1; }
+# Durable reservation ledger: unique keys, cross-tenant denial and concurrent inserts.
+psql_ci -f supabase/migrations/20261025_atlas_external_effect_ledger_777.sql
+psql_ci -c "insert into public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state,lease_id,lease_expires_at)
+values ('20000000-0000-4000-8000-000000000007','$org_a','tenant-a','cloud_ephemeral','running',
+'30000000-0000-4000-8000-000000000007',now()+interval '5 minutes');"
+reserve_effect() {
+  psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_a','tenant-a','20000000-0000-4000-8000-000000000007','effect-once','mock-provider','provider-key-once');"
+}
+reserve_effect >"$results_dir/reserve-a" &
+reserve_pid_a=$!
+reserve_effect >"$results_dir/reserve-b" &
+reserve_pid_b=$!
+wait "$reserve_pid_a"
+wait "$reserve_pid_b"
+reservation_count="$(psql_ci -At -c "select count(*) from public.atlas_external_effect_ledger_777 where effect_key='effect-once';")"
+[[ "$reservation_count" == 1 ]] || { echo "Duplicate durable effect reservation: $reservation_count" >&2; exit 1; }
+cross_effect="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_b','tenant-b','20000000-0000-4000-8000-000000000007','cross-tenant','mock-provider','cross-provider-key');")"
+[[ -z "$cross_effect" ]] || { echo "Cross-tenant external-effect reservation accepted" >&2; exit 1; }
+ledger_count="$(psql_ci -At -c "select count(*) from public.atlas_external_effect_ledger_777;")"
+[[ "$ledger_count" == 1 ]] || { echo "Unexpected ledger rows: $ledger_count" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
