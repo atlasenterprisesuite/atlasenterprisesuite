@@ -244,6 +244,7 @@ export async function completeWorkRuntimeJob(admin: any, context: RuntimeAuthCon
     .eq('org_id', context.orgId)
     .eq('tenant_id', context.tenantId)
     .eq('lease_id', leaseId)
+    .gt('lease_expires_at', new Date().toISOString())
     .in('state', ['claimed', 'running'])
     .select('id,workflow_id,task_id,step_id,state,sanitized_result,updated_at')
     .maybeSingle();
