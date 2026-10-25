@@ -79,3 +79,28 @@ commit, simultaneous recovery workers, duplicate webhook delivery, tenant
 isolation, and a provider timeout with unknown outcome. Verify provider-side
 effect count stays at one. Production remains blocked until provider-specific
 E2E evidence and exact-SHA deployment checks exist.
+
+## P0 — Audited reconciliation state machine (design only)
+
+The effect ledger is reservation-only. No transition endpoint is authorized yet.
+A future service-only, tenant-scoped transaction must enforce:
+
+| Current | Next | Required evidence |
+| --- | --- | --- |
+| reserved | unknown | outbound outcome uncertain; immutable incident reference |
+| reserved / unknown | confirmed | authoritative provider receipt and matching idempotency key |
+| reserved / unknown | rejected | authoritative provider rejection **with proof of no side effect** |
+| confirmed | confirmed | same receipt only (idempotent observation) |
+| rejected | rejected | same rejection evidence only |
+
+All other transitions are forbidden, including confirmed -> rejected,
+rejected -> confirmed and unknown -> reserved. Provider timeout alone is never
+proof of rejection. The reconciler must compare-and-swap the expected current
+state, persist an append-only audit event in the same transaction, and enforce
+the job's org/tenant boundary. Duplicate or conflicting receipts must be
+quarantined. Provider-specific callbacks must be authenticated and bound to
+the original provider/idempotency key.
+
+No reconciliation transition may itself issue an outbound provider operation,
+requeue a job, or authorize a retry. These capabilities require separate
+security review and provider-side E2E tests.
