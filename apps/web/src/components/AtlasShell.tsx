@@ -24,6 +24,8 @@ export function AtlasShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement>(null);
+  const mobileNavToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
   const [organization, setOrganization] = useState<AtlasShellOrganization | null>(() => getCachedAtlasShellOrganization());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,7 +80,25 @@ export function AtlasShell({ children }: { children: ReactNode }) {
 
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileNavOpen(false);
+      if (event.key === 'Escape') {
+        setMobileNavOpen(false);
+        mobileNavToggleRef.current?.focus();
+      }
+      if (event.key === 'Tab') {
+        const focusable = Array.from(mobileNavRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), summary, input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) ?? []).filter((element) => element.getClientRects().length > 0);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !mobileNavRef.current?.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !mobileNavRef.current?.contains(document.activeElement))) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     const desktopMedia = window.matchMedia('(min-width: 1025px)');
     const closeOnDesktop = (event: MediaQueryListEvent) => {
@@ -221,6 +241,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
       data-braille-preferred={accessibilityProfile.brailleMode ? 'true' : 'false'}
     >
       <aside
+        ref={mobileNavRef}
         id="atlas-primary-navigation"
         className={mobileNavOpen ? 'atlas-sidebar is-open' : 'atlas-sidebar'}
         aria-label="ATLAS navigation"
@@ -229,7 +250,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           type="button"
           className="atlas-mobile-nav-close"
           aria-label="Close ATLAS navigation"
-          onClick={closeMobileNav}
+          onClick={() => { closeMobileNav(); mobileNavToggleRef.current?.focus(); }}
         >
           <span aria-hidden="true">×</span>
         </button>
@@ -336,7 +357,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           type="button"
           className="atlas-nav-backdrop"
           aria-label="Close ATLAS navigation"
-          onClick={closeMobileNav}
+          onClick={() => { closeMobileNav(); mobileNavToggleRef.current?.focus(); }}
         />
       ) : null}
 
@@ -344,6 +365,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         <header className="topbar atlas-futuristic-topbar">
           <button
             type="button"
+            ref={mobileNavToggleRef}
             className="atlas-mobile-nav-toggle"
             aria-label="Open ATLAS navigation"
             aria-controls="atlas-primary-navigation"
