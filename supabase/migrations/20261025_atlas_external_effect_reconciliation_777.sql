@@ -11,9 +11,17 @@ create table public.atlas_external_effect_audit_777 (
  created_at timestamptz not null default now()
 );
 create unique index atlas_effect_audit_receipt_777
- on public.atlas_external_effect_audit_777(effect_id, provider_receipt)
+ on public.atlas_external_effect_audit_777(provider_receipt)
  where provider_receipt is not null;
 alter table public.atlas_external_effect_audit_777 enable row level security;
+create or replace function public.atlas_reject_effect_audit_mutation_777()
+returns trigger language plpgsql as $
+begin
+ raise exception 'external_effect_audit_append_only' using errcode='42501';
+end; $;
+create trigger atlas_effect_audit_no_update_delete_777
+before update or delete on public.atlas_external_effect_audit_777
+for each row execute function public.atlas_reject_effect_audit_mutation_777();
 revoke all on public.atlas_external_effect_audit_777 from public, anon, authenticated;
 grant select on public.atlas_external_effect_audit_777 to service_role;
 -- Direct ledger updates remain forbidden: service role gets only EXECUTE on RPC.
