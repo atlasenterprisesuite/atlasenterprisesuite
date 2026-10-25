@@ -54,3 +54,19 @@ describe('ATLAS 777 fail-closed reconciliation and single RPC contract', () => {
     expect(runtime).not.toContain(".rpc('execution_claim_runtime_job_777'");
   });
 });
+
+describe('ATLAS 777 external-effect interruption fence', () => {
+  it('does not allow an expired worker to complete or re-claim its interrupted external action', () => {
+    expect(sql).toContain('j.lease_expires_at > now()');
+    expect(sql).toContain("j.state = 'queued'");
+    expect(sql).toContain("state = 'waiting_human'");
+    expect(sql).toContain('lease_id = null');
+  });
+  it('requires explicit reconciliation evidence before any future automatic replay', () => {
+    // The #913 recovery helper is decision-only; the #917 database intentionally
+    // quarantines ambiguous external effects instead of trusting a client flag.
+    expect(sql).toContain('External effects still require separate durable idempotency/reconciliation before retry.');
+    expect(sql).not.toMatch(/update public\.execution_runtime_jobs j[\s\S]*?set state = 'queued'/i);
+    expect(runtime).not.toContain(".rpc('execution_claim_runtime_job_777'");
+  });
+});
