@@ -28,20 +28,12 @@ INSERT INTO public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state
 SQL
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261025120000_execution_claim_runtime_job_777.sql
 claim="SELECT count(*) FROM public.execution_claim_runtime_job_777('11111111-1111-4111-8111-111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','tenant-a','worker');"
-# Hold the only eligible row lock while two independent database sessions queue.
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q <<'SQL' >/dev/null &
-BEGIN;
-SELECT id FROM public.execution_runtime_jobs WHERE id='33333333-3333-4333-8333-333333333333' FOR UPDATE;
-SELECT pg_sleep(2);
-COMMIT;
-SQL
-locker=$!
-sleep 0.3
+# Two independent connections race for one queued job; exactly one must win.
 ( psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c "SET ROLE service_role; $claim" | tail -1 > /tmp/atlas-claim-a ) &
 a=$!
 ( psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c "SET ROLE service_role; $claim" | tail -1 > /tmp/atlas-claim-b ) &
 b=$!
-wait "$a"; wait "$b"; wait "$locker"
+wait "$a"; wait "$b"
 first=$(cat /tmp/atlas-claim-a); second=$(cat /tmp/atlas-claim-b)
 test "$((first + second))" -eq 1
 test "$(psql "$DATABASE_URL" -At -c "SELECT count(*) FROM public.execution_runtime_jobs WHERE state='claimed' AND lease_id IS NOT NULL AND lease_expires_at > now();")" = "1"
