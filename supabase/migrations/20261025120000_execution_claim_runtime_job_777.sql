@@ -23,6 +23,18 @@ begin
     raise exception 'runtime_not_authorized' using errcode = '42501';
   end if;
 
+  -- Fail closed on expired leases: an external side effect may have occurred.
+  -- Quarantine rather than requeue; a human or an idempotency-aware reconciler
+  -- must verify the external outcome before any retry.
+  update public.execution_runtime_jobs j
+  set state = 'waiting_human',
+      updated_at = clock_timestamp()
+  where j.org_id = p_org_id
+    and j.tenant_id = p_tenant_id
+    and j.runtime_kind = p_runtime_kind
+    and j.state in ('claimed', 'running')
+    and j.lease_expires_at <= clock_timestamp();
+
   return query
   with candidate as (
     select j.id from public.execution_runtime_jobs j
