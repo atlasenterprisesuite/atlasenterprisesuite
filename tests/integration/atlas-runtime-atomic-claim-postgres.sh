@@ -208,9 +208,7 @@ reconcile_once >"$results_dir/reconcile-effect-b" &
 effect_pid_b=$!
 wait "$effect_pid_a"
 wait "$effect_pid_b"
-reconcile_winners="$(grep -h -c '^t
-
- "$results_dir/reconcile-effect-a" "$results_dir/reconcile-effect-b" | awk '{sum += $1} END {print sum+0}')"
+reconcile_winners="$(awk '$0 == "t" {sum++} END {print sum+0}' "$results_dir/reconcile-effect-a" "$results_dir/reconcile-effect-b")"
 [[ "$reconcile_winners" == 1 ]] || { echo "Reconciliation CAS violated: $reconcile_winners" >&2; exit 1; }
 forbidden="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; select public.atlas_reconcile_external_effect_777('$org_a','tenant-a','effect-once','unknown','reserved','rollback-evidence',null);")"
 [[ "$forbidden" == f ]] || { echo "Forbidden rollback transition accepted" >&2; exit 1; }
