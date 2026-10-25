@@ -140,5 +140,19 @@ interrupted_state="$(psql_ci -At -c "select state from public.execution_runtime_
 [[ "$interrupted_state" == waiting_human ]] || { echo "Interrupted operation escaped quarantine" >&2; exit 1; }
 after_effects="$(psql_ci -At -c "select apply_count from public.atlas_ci_external_effects where operation_key='interrupted-operation';")"
 [[ "$after_effects" == "$before_effects" ]] || { echo "External effect counter changed after reconciliation" >&2; exit 1; }
+# Two independent reconcilers must not count the same expired job twice.
+psql_ci -c "insert into public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state,lease_id,lease_expires_at)
+values ('20000000-0000-4000-8000-000000000006','$org_a','tenant-a','cloud_ephemeral','running',
+'30000000-0000-4000-8000-000000000006',now()-interval '1 minute');"
+psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select public.atlas_quarantine_expired_runtime_jobs(50);" >"$results_dir/reconcile-a" &
+reconcile_pid_a=$!
+psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select public.atlas_quarantine_expired_runtime_jobs(50);" >"$results_dir/reconcile-b" &
+reconcile_pid_b=$!
+wait "$reconcile_pid_a"
+wait "$reconcile_pid_b"
+reconciled_total="$(awk '{sum += $1} END {print sum+0}' "$results_dir/reconcile-a" "$results_dir/reconcile-b")"
+[[ "$reconciled_total" == 1 ]] || { echo "Concurrent reconcilers double-counted or missed an expired job: $reconciled_total" >&2; exit 1; }
+reconciled_state="$(psql_ci -At -c "select state from public.execution_runtime_jobs where id='20000000-0000-4000-8000-000000000006';")"
+[[ "$reconciled_state" == waiting_human ]] || { echo "Concurrent reconciliation failed closed: $reconciled_state" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
