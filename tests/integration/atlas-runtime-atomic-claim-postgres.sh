@@ -107,5 +107,14 @@ second_pass="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; sele
 [[ "$second_pass" == 0 ]] || { echo "Quarantine must be idempotent: $second_pass" >&2; exit 1; }
 reclaimed="$(claim "$org_a" tenant-a "$runtime_a" cloud_ephemeral)"
 [[ -z "$reclaimed" ]] || { echo "Quarantined external job was replayed" >&2; exit 1; }
+# Service-only functions must reject a non-service caller even when a privileged
+# database session could otherwise invoke the function.
+denied="$(psql_ci -At -c "set request.jwt.claim.role = 'authenticated'; select count(*) from public.atlas_claim_execution_runtime_job('$org_a','tenant-a','$runtime_a','cloud_ephemeral');" 2>&1)" && {
+  echo "Authenticated role unexpectedly invoked claim RPC" >&2; exit 1;
+} || true
+[[ "$denied" == *service_role_required* ]] || { echo "Unexpected claim rejection: $denied" >&2; exit 1; }
+# The already quarantined job must remain quarantined on repeated sweeps.
+third_pass="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select public.atlas_quarantine_expired_runtime_jobs(50);")"
+[[ "$third_pass" == 0 ]] || { echo "Unexpected repeated quarantine: $third_pass" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
