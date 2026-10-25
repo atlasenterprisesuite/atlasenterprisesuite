@@ -1,0 +1,37 @@
+name: Universal Intelligence Evidence CI
+
+on:
+  pull_request:
+    paths:
+      - 'services/creator-native/**'
+      - 'packages/universal-intelligence/**'
+      - '.github/workflows/universal-intelligence-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run creator-native Python tests
+        run: npm run verify:python
+      - name: Check Python syntax
+        run: python3 -m compileall -q services/creator-native
+
+  typescript-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run evidence contract tests
+        run: node --experimental-strip-types --test packages/universal-intelligence/evidence.test.ts
