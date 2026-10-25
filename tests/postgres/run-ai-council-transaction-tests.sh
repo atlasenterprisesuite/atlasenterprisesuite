@@ -31,5 +31,5 @@ psql -v ON_ERROR_STOP=1 -c "select fixture.consume_approved_action('concurrent-1
 tenant_status=$?
 set -e
 test "$tenant_status" -ne 0
-test "$(psql -Atqc "select has_function_privilege('public','fixture.consume_approved_action(text,text,text,text,boolean)','EXECUTE')")" = "f"
+test "$(psql -Atqc "select exists(select 1 from pg_proc p cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where p.oid='fixture.consume_approved_action(text,text,text,text,boolean)'::regprocedure and a.grantee=0 and a.privilege_type='EXECUTE')")" = "f"
 echo "PASS: concurrent single-consume (one winner); audit failure rollback; cross-tenant denial; PUBLIC execute revoked"
