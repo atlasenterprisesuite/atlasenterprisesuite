@@ -74,4 +74,29 @@ own_b="$(claim "$org_b" tenant-b "$runtime_b" cloud_ephemeral)"
 [[ "$own_b" == "20000000-0000-4000-8000-000000000002" ]] || { echo "Tenant B could not claim its own job" >&2; exit 1; }
 replay="$(claim "$org_a" tenant-a "$runtime_a" cloud_ephemeral)"
 [[ -z "$replay" ]] || { echo "Already claimed job returned twice" >&2; exit 1; }
-echo "PASS: atomic claim, concurrent single owner, tenant isolation, active heartbeat, grants, lease and no replay."
+# Completion is owned by one atomic database predicate, not read-then-update.
+winner="$(psql_ci -At -c "select runtime_id from public.execution_runtime_jobs where id='20000000-0000-4000-8000-000000000001';")"
+lease="$(psql_ci -At -c "select lease_id from public.execution_runtime_jobs where id='20000000-0000-4000-8000-000000000001';")"
+complete() {
+  local org="$1" tenant="$2" runtime="$3" job="$4" held_lease="$5"
+  psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select state from public.atlas_complete_execution_runtime_job('$org','$tenant','$runtime','$job','$held_lease','completed','{}'::jsonb);"
+}
+# A different tenant/worker cannot finish someone else's claimed work.
+cross_finish="$(complete "$org_b" tenant-b "$runtime_b" 20000000-0000-4000-8000-000000000001 "$lease")"
+[[ -z "$cross_finish" ]] || { echo "Cross-tenant completion occurred" >&2; exit 1; }
+finished="$(complete "$org_a" tenant-a "$winner" 20000000-0000-4000-8000-000000000001 "$lease")"
+[[ "$finished" == completed ]] || { echo "Lease holder could not complete job" >&2; exit 1; }
+again="$(complete "$org_a" tenant-a "$winner" 20000000-0000-4000-8000-000000000001 "$lease")"
+[[ -z "$again" ]] || { echo "Terminal job completed twice" >&2; exit 1; }
+# Claimed work whose lease expired must not commit a late result.
+psql_ci -c "insert into public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state) values ('20000000-0000-4000-8000-000000000004','$org_a','tenant-a','cloud_ephemeral','queued');"
+late_job="$(claim "$org_a" tenant-a "$runtime_a" cloud_ephemeral)"
+[[ "$late_job" == 20000000-0000-4000-8000-000000000004 ]] || { echo "Expired scenario setup failed" >&2; exit 1; }
+late_lease="$(psql_ci -At -c "select lease_id from public.execution_runtime_jobs where id='$late_job';")"
+psql_ci -c "update public.execution_runtime_jobs set lease_expires_at=now()-interval '1 minute' where id='$late_job';"
+late="$(complete "$org_a" tenant-a "$runtime_a" "$late_job" "$late_lease")"
+[[ -z "$late" ]] || { echo "Expired lease was accepted" >&2; exit 1; }
+late_state="$(psql_ci -At -c "select state from public.execution_runtime_jobs where id='$late_job';")"
+[[ "$late_state" == claimed ]] || { echo "Expired work was improperly mutated" >&2; exit 1; }
+echo "PASS: atomic claim + completion, no duplicate finalization, expiry and cross-tenant denial."
+
