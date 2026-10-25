@@ -37,3 +37,20 @@ describe('ATLAS 777 atomic runtime claim contract', () => {
   });
 
 });
+
+describe('ATLAS 777 fail-closed reconciliation and single RPC contract', () => {
+  it('quarantines expired claims without automatically requeueing external effects', () => {
+    expect(sql).toContain('public.atlas_quarantine_expired_runtime_jobs');
+    expect(sql).toMatch(/j\.lease_expires_at <= now\(\)/i);
+    expect(sql).toMatch(/state = 'waiting_human'/i);
+    expect(sql).not.toMatch(/state = 'queued'\s*,\s*lease_id/i);
+    expect(sql).toMatch(/for update skip locked/i);
+    expect(sql).toContain('p_limit > 500');
+  });
+  it('rejects stale lease completion and prevents a second competing claim RPC', () => {
+    expect(sql).toContain('j.lease_expires_at > now()');
+    expect(sql).toContain('j.lease_id = p_lease_id');
+    expect(runtime).toContain(".rpc('atlas_claim_execution_runtime_job'");
+    expect(runtime).not.toContain(".rpc('execution_claim_runtime_job_777'");
+  });
+});
