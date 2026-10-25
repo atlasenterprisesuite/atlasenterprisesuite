@@ -21,4 +21,19 @@ describe('ATLAS 777 atomic runtime claim contract', () => {
     expect(runtime).toContain(".rpc('atlas_claim_execution_runtime_job'");
     expect(runtime).not.toContain("const { data: candidate, error: candidateError }");
   });
+  it('finalizes jobs atomically with live lease and tenant guards', () => {
+    expect(runtime).toContain(".rpc('atlas_complete_execution_runtime_job'");
+    expect(runtime).not.toContain("const { data: current, error: loadError }");
+    expect(sql).toContain('public.atlas_complete_execution_runtime_job');
+    for (const guard of [
+      'j.org_id = p_org_id',
+      'j.tenant_id = p_tenant_id',
+      'j.runtime_id = p_runtime_id',
+      'j.lease_id = p_lease_id',
+      'j.lease_expires_at > now()',
+      "j.state in ('claimed', 'running')"
+    ]) expect(sql).toContain(guard);
+    expect(sql).toMatch(/revoke all on function public\.atlas_complete_execution_runtime_job\([\s\S]*? from public, anon, authenticated/i);
+  });
+
 });
