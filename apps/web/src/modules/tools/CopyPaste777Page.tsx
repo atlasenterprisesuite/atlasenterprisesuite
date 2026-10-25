@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SmartAutofill777Preview } from './SmartAutofill777Preview';
 
 const KEY = 'atlas.copy-paste-777.v1';
 type Template = { id: string; title: string; content: string };
@@ -62,6 +63,7 @@ export function CopyPaste777Page() {
       <button type="button" onClick={() => { setSelected(''); setTitle(''); setContent(''); }}>Nueva</button>
     </div>
     <p role="status" aria-live="polite">{message}</p>
+    <SmartAutofill777Preview />
     <h2>Historial de copias</h2>
     {history.length === 0 ? <p>Aún no hay copias guardadas.</p> : <ul>{history.map((item, i) =>
       <li key={i}><span>{item.slice(0, 100)}</span> <button type="button" onClick={() => void copy(item)}>Copiar otra vez</button></li>)}</ul>}
