@@ -98,5 +98,14 @@ late="$(complete "$org_a" tenant-a "$runtime_a" "$late_job" "$late_lease")"
 [[ -z "$late" ]] || { echo "Expired lease was accepted" >&2; exit 1; }
 late_state="$(psql_ci -At -c "select state from public.execution_runtime_jobs where id='$late_job';")"
 [[ "$late_state" == claimed ]] || { echo "Expired work was improperly mutated" >&2; exit 1; }
-echo "PASS: atomic claim + completion, no duplicate finalization, expiry and cross-tenant denial."
+# Quarantine expired work instead of blindly replaying an external side effect.
+quarantine="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select public.atlas_quarantine_expired_runtime_jobs(50);")"
+[[ "$quarantine" == 1 ]] || { echo "Expected exactly one expired job to quarantine: $quarantine" >&2; exit 1; }
+quarantine_state="$(psql_ci -At -c "select state || ',' || (lease_id is null)::text from public.execution_runtime_jobs where id='$late_job';")"
+[[ "$quarantine_state" == "waiting_human,true" ]] || { echo "Quarantine did not fence stale lease: $quarantine_state" >&2; exit 1; }
+second_pass="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select public.atlas_quarantine_expired_runtime_jobs(50);")"
+[[ "$second_pass" == 0 ]] || { echo "Quarantine must be idempotent: $second_pass" >&2; exit 1; }
+reclaimed="$(claim "$org_a" tenant-a "$runtime_a" cloud_ephemeral)"
+[[ -z "$reclaimed" ]] || { echo "Quarantined external job was replayed" >&2; exit 1; }
+echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
