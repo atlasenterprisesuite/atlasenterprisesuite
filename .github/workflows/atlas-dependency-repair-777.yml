@@ -36,7 +36,9 @@ jobs:
       - name: Install FFmpeg for native video tests
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg espeak
           ffmpeg -version
+          command -v espeak
+          espeak --version
       - name: Verify full suite
         run: npm run verify:all
