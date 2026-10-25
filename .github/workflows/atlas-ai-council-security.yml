@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - 'supabase/functions/atlas-copilot/**'
-      - 'tests/integration/atlas-ai-council-security-gates.test.mjs'
+      - 'tests/node/atlas-ai-council-security-gates.test.mjs'
       - '.github/workflows/atlas-ai-council-security.yml'
   workflow_dispatch:
 permissions:
@@ -15,4 +15,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify Council authentication and fail-closed boundaries
-        run: node --test tests/integration/atlas-ai-council-security-gates.test.mjs
+        run: node --test tests/node/atlas-ai-council-security-gates.test.mjs
