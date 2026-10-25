@@ -15,10 +15,10 @@ create unique index atlas_effect_audit_receipt_777
  where provider_receipt is not null;
 alter table public.atlas_external_effect_audit_777 enable row level security;
 create or replace function public.atlas_reject_effect_audit_mutation_777()
-returns trigger language plpgsql as $
+returns trigger language plpgsql as $audit_guard$
 begin
  raise exception 'external_effect_audit_append_only' using errcode='42501';
-end; $;
+end; $audit_guard$;
 create trigger atlas_effect_audit_no_update_delete_777
 before update or delete on public.atlas_external_effect_audit_777
 for each row execute function public.atlas_reject_effect_audit_mutation_777();
