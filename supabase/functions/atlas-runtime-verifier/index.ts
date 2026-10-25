@@ -74,8 +74,10 @@ async function rpc(name:string,args:Record<string,unknown>={}){
 }
 async function check(checks:Checks,name:string,fn:()=>Promise<{status?:number,detail?:Record<string,unknown>}|void>){
   const started=Date.now();
-  try{const out=await fn()||{};checks[name]={ok:true,status:out.status??null,duration_ms:Date.now()-started,...(out.detail?{detail:out.detail}:{})};return out;}
-  catch(error:any){checks[name]={ok:false,status:Number(error?.status)||null,duration_ms:Date.now()-started,detail:{error:String(error?.code||'check_failed')}};throw error;}
+  // Structured stage telemetry: no request bodies, auth headers, or secrets.
+  console.info(JSON.stringify({event:'verifier_stage_start',stage:name}));
+  try{const out=await fn()||{};checks[name]={ok:true,status:out.status??null,duration_ms:Date.now()-started,...(out.detail?{detail:out.detail}:{})};console.info(JSON.stringify({event:'verifier_stage_end',stage:name,ok:true,duration_ms:checks[name].duration_ms}));return out;}
+  catch(error:any){checks[name]={ok:false,status:Number(error?.status)||null,duration_ms:Date.now()-started,detail:{error:String(error?.code||'check_failed')}};console.warn(JSON.stringify({event:'verifier_stage_end',stage:name,ok:false,duration_ms:checks[name].duration_ms,error_code:String(error?.code||'check_failed')}));throw error;}
 }
 async function authorize(req:Request){
   const runtimeToken=(req.headers.get('x-atlas-runtime-verifier-token')||'').trim();
