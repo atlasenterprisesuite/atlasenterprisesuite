@@ -4,6 +4,7 @@ on:
     paths:
       - 'supabase/functions/atlas-copilot/**'
       - 'tests/node/atlas-ai-council-*.test.mjs'
+      - 'docs/security/ai-council-approval-transaction.preview.sql'
       - '.github/workflows/atlas-ai-council-security.yml'
   workflow_dispatch:
 permissions:
@@ -15,4 +16,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify Council authentication and fail-closed boundaries
-        run: node --test tests/node/atlas-ai-council-security-gates.test.mjs tests/node/atlas-ai-council-approval-guard.test.mjs tests/node/atlas-ai-council-approval-store.test.mjs
+        run: node --test tests/node/atlas-ai-council-security-gates.test.mjs tests/node/atlas-ai-council-approval-guard.test.mjs tests/node/atlas-ai-council-approval-store.test.mjs tests/node/atlas-ai-council-transaction-contract.test.mjs
