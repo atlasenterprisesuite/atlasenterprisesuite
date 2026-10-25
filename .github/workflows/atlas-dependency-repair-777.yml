@@ -1,0 +1,37 @@
+name: ATLAS Dependency Repair 777
+on:
+  push:
+    branches:
+      - fix/atlas-dependencies-777
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Update Vite and Vitest with npm
+        run: npm install --save-dev --save-exact vite@6.4.5 vitest@5.0.5
+      - name: Commit npm-generated dependency lock
+        run: |
+          if ! git diff --quiet -- package.json package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json package-lock.json
+            git commit -m "fix(deps): update Vite 6.4.5 and Vitest 5.0.5"
+            git push origin HEAD:fix/atlas-dependencies-777
+          fi
+      - name: Reinstall exact lockfile
+        run: npm ci
+      - name: Security audit
+        run: npm audit --audit-level=high
+      - name: Verify full suite
+        run: npm run verify:all
