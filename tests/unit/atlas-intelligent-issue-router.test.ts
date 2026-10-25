@@ -1,4 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { classify } = require('../../.github/workflows/lib/atlas-issue-classifier.cjs');
 import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync('.github/workflows/atlas-intelligent-issue-router.yml', 'utf8');
@@ -21,9 +24,9 @@ describe('ATLAS Intelligent Issue Router', () => {
   });
 
   it('fails closed for P0, security-sensitive, production mutation, and legacy intake', () => {
-    expect(workflow).toContain("prioritySlug === 'p0'");
-    expect(workflow).toContain('/^yes$/i.test(securitySensitive)');
-    expect(workflow).toContain('/^yes$/i.test(productionMutation)');
+    expect(readFileSync('.github/workflows/lib/atlas-issue-classifier.cjs', 'utf8')).toContain("priority === 'P0'");
+    expect(workflow).toContain('classification.sensitive');
+    expect(workflow).toContain('classification.autoEligible');
     expect(workflow).toContain('review:human-required');
     expect(workflow).toContain('intake:legacy');
   });
@@ -40,5 +43,30 @@ describe('ATLAS Intelligent Issue Router', () => {
     expect(workflow).toContain('issues.addLabels');
     expect(workflow).toContain('existingRoutingComment');
     expect(workflow).toContain('issues.updateComment');
+  });
+  it('classifies #908 legacy text without granting execution', () => {
+    const result = classify({
+      title: 'ATLAS Universal Intelligence 777 — evidence-based video audit MVP',
+      body: 'Parent governance: #324. P0: identity/tenant permissions and audit remain incomplete. No merge/deploy until independently verified.',
+    });
+    expect(result).toMatchObject({
+      module: 'ATLAS Universal Intelligence 777',
+      type: 'Feature', priority: 'P0', structured: false,
+      complete: true, sensitive: true, autoEligible: false,
+    });
+  });
+
+  it('does not guess missing module or priority', () => {
+    expect(classify({ title: 'Please investigate', body: 'Need help' })).toMatchObject({
+      complete: false, autoEligible: false,
+    });
+  });
+
+  it('keeps incomplete security answers blocked even with structured fields', () => {
+    const result = classify({
+      title: 'ATLAS Universal Intelligence 777',
+      body: '### Owner module\\nATLAS Universal Intelligence 777\\n\\n### Issue type\\nFeature\\n\\n### Priority\\nP2',
+    });
+    expect(result).toMatchObject({ structured: true, complete: true, autoEligible: false });
   });
 });
