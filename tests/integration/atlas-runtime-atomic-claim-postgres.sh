@@ -195,5 +195,30 @@ unclaimed_effect="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role';
 [[ -z "$unclaimed_effect" ]] || { echo "Unclaimed job reserved an external effect" >&2; exit 1; }
 final_effect_count="$(psql_ci -At -c "select count(*) from public.atlas_external_effect_ledger_777;")"
 [[ "$final_effect_count" == 1 ]] || { echo "Unexpected ledger count after denied reservations: $final_effect_count" >&2; exit 1; }
+# Reconciliation is CAS-fenced and auditable, without outbound effects.
+psql_ci -f supabase/migrations/20261025_atlas_external_effect_reconciliation_777.sql
+wrong_tenant="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; select public.atlas_reconcile_external_effect_777('$org_b','tenant-b','effect-once','reserved','confirmed','foreign-evidence','foreign-receipt');")"
+[[ "$wrong_tenant" == f ]] || { echo "Cross-tenant reconciliation accepted" >&2; exit 1; }
+reconcile_once() {
+ psql_ci -At -c "set request.jwt.claim.role='service_role'; select public.atlas_reconcile_external_effect_777('$org_a','tenant-a','effect-once','reserved','unknown','provider-timeout',null);"
+}
+reconcile_once >"$results_dir/reconcile-effect-a" &
+effect_pid_a=$!
+reconcile_once >"$results_dir/reconcile-effect-b" &
+effect_pid_b=$!
+wait "$effect_pid_a"
+wait "$effect_pid_b"
+reconcile_winners="$(grep -h -c '^t
+
+ "$results_dir/reconcile-effect-a" "$results_dir/reconcile-effect-b" | awk '{sum += $1} END {print sum+0}')"
+[[ "$reconcile_winners" == 1 ]] || { echo "Reconciliation CAS violated: $reconcile_winners" >&2; exit 1; }
+forbidden="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; select public.atlas_reconcile_external_effect_777('$org_a','tenant-a','effect-once','unknown','reserved','rollback-evidence',null);")"
+[[ "$forbidden" == f ]] || { echo "Forbidden rollback transition accepted" >&2; exit 1; }
+confirmed="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; select public.atlas_reconcile_external_effect_777('$org_a','tenant-a','effect-once','unknown','confirmed','provider-confirmation','receipt-once');")"
+[[ "$confirmed" == t ]] || { echo "Provider confirmation not reconciled" >&2; exit 1; }
+duplicate_receipt="$(psql_ci -At -c "set request.jwt.claim.role='service_role'; select public.atlas_reconcile_external_effect_777('$org_a','tenant-a','effect-once','unknown','confirmed','duplicate','receipt-once');")"
+[[ "$duplicate_receipt" == f ]] || { echo "Duplicate receipt created another transition" >&2; exit 1; }
+audit_rows="$(psql_ci -At -c "select count(*) from public.atlas_external_effect_audit_777 where evidence_ref in ('provider-timeout','provider-confirmation');")"
+[[ "$audit_rows" == 2 ]] || { echo "Reconciliation audit count invalid: $audit_rows" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
