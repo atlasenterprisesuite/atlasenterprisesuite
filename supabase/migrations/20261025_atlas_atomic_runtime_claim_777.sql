@@ -99,3 +99,47 @@ $$;
 
 revoke all on function public.atlas_complete_execution_runtime_job(uuid,text,uuid,uuid,uuid,text,jsonb) from public, anon, authenticated;
 grant execute on function public.atlas_complete_execution_runtime_job(uuid,text,uuid,uuid,uuid,text,jsonb) to service_role;
+
+-- Fail-closed stale-lease reconciliation. Never automatically replay an
+-- external side effect without a durable provider idempotency record.
+-- Run only from a trusted service worker; row locks prevent racing completion.
+create or replace function public.atlas_quarantine_expired_runtime_jobs(
+  p_limit integer default 50
+) returns integer
+language plpgsql security definer set search_path = public, pg_temp
+as $$
+declare
+  v_count integer;
+begin
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'service_role_required' using errcode = '42501';
+  end if;
+  if p_limit is null or p_limit < 1 or p_limit > 500 then
+    raise exception 'invalid_reconciliation_limit' using errcode = '22023';
+  end if;
+  with expired as (
+    select j.id
+    from public.execution_runtime_jobs j
+    where j.state in ('claimed', 'running')
+      and j.lease_expires_at <= now()
+    order by j.lease_expires_at, j.id
+    for update skip locked
+    limit p_limit
+  ), quarantined as (
+    update public.execution_runtime_jobs j
+    set state = 'waiting_human',
+        lease_id = null,
+        lease_expires_at = null,
+        updated_at = now()
+    from expired
+    where j.id = expired.id
+      and j.state in ('claimed', 'running')
+      and j.lease_expires_at <= now()
+    returning j.id
+  )
+  select count(*) into v_count from quarantined;
+  return v_count;
+end;
+$$;
+revoke all on function public.atlas_quarantine_expired_runtime_jobs(integer) from public, anon, authenticated;
+grant execute on function public.atlas_quarantine_expired_runtime_jobs(integer) to service_role;
