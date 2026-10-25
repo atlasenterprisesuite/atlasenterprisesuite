@@ -182,33 +182,28 @@ export async function enqueueWorkRuntimeJob(admin: any, context: UserContext, in
 }
 
 export async function claimWorkRuntimeJob(admin: any, context: RuntimeAuthContext) {
-  const { data: candidate, error: candidateError } = await admin
-    .from('execution_runtime_jobs')
-    .select('id')
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .eq('runtime_kind', context.kind)
-    .eq('state', 'queued')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (candidateError) throw new WorkRuntimeError('persistence_error', 500);
-  if (!candidate) return null;
-
-  const leaseId = crypto.randomUUID();
-  const leaseExpiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
-  const { data: job, error } = await admin
-    .from('execution_runtime_jobs')
-    .update({ runtime_id: context.runtimeId, state: 'claimed', lease_id: leaseId, lease_expires_at: leaseExpiresAt, updated_at: new Date().toISOString() })
-    .eq('id', String(candidate.id))
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .eq('runtime_kind', context.kind)
-    .eq('state', 'queued')
-    .select('id,workflow_id,task_id,step_id,runtime_kind,state,execution_envelope,action,lease_id,lease_expires_at')
-    .maybeSingle();
+  // Database transaction owns selection and claim; do not split into client-side read/update.
+  const { data, error } = await admin.rpc('atlas_claim_execution_runtime_job', {
+    p_org_id: context.orgId,
+    p_tenant_id: context.tenantId,
+    p_runtime_id: context.runtimeId,
+    p_runtime_kind: context.kind
+  });
   if (error) throw new WorkRuntimeError('persistence_error', 500);
-  return job || null;
+  const job = Array.isArray(data) ? data[0] : data;
+  if (!job) return null;
+  return {
+    id: job.id,
+    workflow_id: job.workflow_id,
+    task_id: job.task_id,
+    step_id: job.step_id,
+    runtime_kind: job.runtime_kind,
+    state: job.state,
+    execution_envelope: job.execution_envelope,
+    action: job.action,
+    lease_id: job.lease_id,
+    lease_expires_at: job.lease_expires_at
+  };
 }
 
 export async function completeWorkRuntimeJob(admin: any, context: RuntimeAuthContext, input: {
