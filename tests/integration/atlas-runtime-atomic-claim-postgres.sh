@@ -182,5 +182,18 @@ values ('20000000-0000-4000-8000-000000000008','$org_a','tenant-a','cloud_epheme
 '30000000-0000-4000-8000-000000000008',now()-interval '1 minute');"
 expired_reservation="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_a','tenant-a','20000000-0000-4000-8000-000000000008','expired-effect','mock-provider','expired-provider-key');")"
 [[ -z "$expired_reservation" ]] || { echo "Expired job reserved an external effect" >&2; exit 1; }
+# The same logical effect must not be reserved with a different provider key.
+alternate_effect="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_a','tenant-a','20000000-0000-4000-8000-000000000007','effect-once','mock-provider','provider-key-alternate');")"
+[[ -z "$alternate_effect" ]] || { echo "Logical effect duplicated with alternate provider key" >&2; exit 1; }
+# A provider key must not be reused for another logical effect.
+reused_provider_key="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_a','tenant-a','20000000-0000-4000-8000-000000000007','different-effect','mock-provider','provider-key-once');")"
+[[ -z "$reused_provider_key" ]] || { echo "Provider idempotency key reused" >&2; exit 1; }
+# A queued job without a live lease cannot reserve a provider effect.
+psql_ci -c "insert into public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state)
+values ('20000000-0000-4000-8000-000000000009','$org_a','tenant-a','cloud_ephemeral','queued');"
+unclaimed_effect="$(psql_ci -At -c "set request.jwt.claim.role = 'service_role'; select effect_key from public.atlas_reserve_external_effect_777('$org_a','tenant-a','20000000-0000-4000-8000-000000000009','unclaimed-effect','mock-provider','unclaimed-provider-key');")"
+[[ -z "$unclaimed_effect" ]] || { echo "Unclaimed job reserved an external effect" >&2; exit 1; }
+final_effect_count="$(psql_ci -At -c "select count(*) from public.atlas_external_effect_ledger_777;")"
+[[ "$final_effect_count" == 1 ]] || { echo "Unexpected ledger count after denied reservations: $final_effect_count" >&2; exit 1; }
 echo "PASS: atomic claim + completion, expiry, cross-tenant denial and fail-closed stale-lease quarantine."
 
