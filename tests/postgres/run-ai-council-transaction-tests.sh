@@ -26,11 +26,13 @@ set -e
 test "$audit_status" -ne 0
 test "$(psql -Atqc "select count(*) from fixture.consumptions where approval_id='audit-fail'")" = "0"
 test "$(psql -Atqc "select count(*) from fixture.audit_events where approval_id='audit-fail'")" = "0"
+psql -v ON_ERROR_STOP=1 -c "insert into fixture.approvals values ('tenant-isolation','org-a','user-a',repeat('c',64),'approved',now()+interval '5 minutes')" >/dev/null
 set +e
-psql -v ON_ERROR_STOP=1 -c "select fixture.consume_approved_action('concurrent-1','org-b','user-a',repeat('a',64),false)" >/tmp/council-tenant-deny.out 2>&1
+psql -v ON_ERROR_STOP=1 -c "select fixture.consume_approved_action('tenant-isolation','org-b','user-a',repeat('c',64),false)" >/tmp/council-tenant-deny.out 2>&1
 tenant_status=$?
 set -e
 test "$tenant_status" -ne 0
+test "$(psql -Atqc "select count(*) from fixture.consumptions where approval_id='tenant-isolation'")" = "0"
 test "$(psql -Atqc "select exists(select 1 from pg_proc p cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where p.oid='fixture.consume_approved_action(text,text,text,text,boolean)'::regprocedure and a.grantee=0 and a.privilege_type='EXECUTE')")" = "f"
 test "$(psql -Atqc "select has_function_privilege('atlas_council_app','fixture.consume_approved_action(text,text,text,text,boolean)','EXECUTE')")" = "f"
 echo "PASS: concurrent single-consume (one winner); audit failure rollback; cross-tenant denial; PUBLIC execute revoked"
