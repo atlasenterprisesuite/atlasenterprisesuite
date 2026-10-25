@@ -10,6 +10,7 @@ create table if not exists atlas_council_private.approval_consumptions (
   proposal_hash text not null check (proposal_hash ~ '^[a-f0-9]{64}$'),
   consumed_at timestamptz not null default now()
 );
+alter table atlas_council_private.approval_consumptions enable row level security;
 revoke all on atlas_council_private.approval_consumptions from public, anon, authenticated;
 -- SECURITY INVOKER and service-only execution. Caller must separately authenticate
 -- actor, org membership, permission and proposal digest before calling this RPC.
@@ -21,7 +22,7 @@ set search_path = '' as $$
 declare v public.atlas_approvals%rowtype;
 begin
   if p_approval_id is null or p_org_id is null or p_user_id is null
-     or p_proposal_hash !~ '^[a-f0-9]{64}$' then
+     or p_proposal_hash is null or p_proposal_hash !~ '^[a-f0-9]{64}$' then
     raise exception 'approval_invalid';
   end if;
   select * into v from public.atlas_approvals
