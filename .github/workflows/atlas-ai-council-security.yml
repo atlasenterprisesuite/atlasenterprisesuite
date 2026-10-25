@@ -4,6 +4,7 @@ on:
     paths:
       - 'supabase/functions/atlas-copilot/**'
       - 'tests/node/atlas-ai-council-*.test.mjs'
+      - 'tests/postgres/**'
       - 'docs/security/ai-council-approval-transaction.preview.sql'
       - '.github/workflows/atlas-ai-council-security.yml'
   workflow_dispatch:
