@@ -1,7 +1,7 @@
 // Council persistence adapter: no privileged client, no read-then-write.
 // Requires a reviewed SECURITY INVOKER RPC that atomically consumes an approval
 // and writes the audit event in the same database transaction.
-// Until that RPC exists, all authorization attempts fail closed.
+// The injected rpc must target the private atlas_council_private schema using\n// a separately authenticated server identity; never expose this to browser clients.\n// The database clock, not client-provided now, determines expiration.\n// Until the reviewed private RPC is deployed, all requests fail closed.
 const failure=(code)=>Object.assign(new Error(code),{code,status:503});
 export function createCouncilApprovalStore({rpc}={}){
   return Object.freeze({
@@ -10,9 +10,9 @@ export function createCouncilApprovalStore({rpc}={}){
       if(!approvalId||!organizationId||!userId||!proposalHash||!Number.isFinite(now))throw failure('approval_request_invalid');
       let result;
       try{
-        result=await rpc('atlas_council_consume_approval',{
+        result=await rpc('consume_approved_action',{
           p_approval_id:approvalId,p_org_id:organizationId,p_user_id:userId,
-          p_proposal_hash:proposalHash,p_now:new Date(now).toISOString()
+          p_proposal_hash:proposalHash
         });
       }catch{throw failure('approval_persistence_unavailable');}
       if(result?.error||!result?.data||Array.isArray(result.data)&&result.data.length!==1)throw failure('approval_persistence_unavailable');
