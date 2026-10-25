@@ -47,7 +47,9 @@ async function requestWithRetry(
   options:{method?:string,headers?:Record<string,string>,json?:unknown}={},
   attempts=2,
 ){
-  const boundedAttempts=Math.max(1,Math.min(2,Math.trunc(Number(attempts)||1)));
+  // Never replay non-idempotent POST requests: chat retries can create duplicate turns.
+  const boundedAttempts=String(options.method||'GET').toUpperCase()==='GET'
+    ? Math.max(1,Math.min(2,Math.trunc(Number(attempts)||1))) : 1;
   let result:Awaited<ReturnType<typeof request>>|null=null;
   for(let attempt=1;attempt<=boundedAttempts;attempt+=1){
     result=await request(url,options);
