@@ -1,0 +1,48 @@
+name: ATLAS 777 Runtime Atomic Claim CI
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/atlas-execution/work-runtime.ts'
+      - 'supabase/migrations/20261025_atlas_atomic_runtime_claim_777.sql'
+      - 'tests/integration/atlas-runtime-atomic-claim-postgres.sh'
+      - '.github/workflows/atlas-runtime-atomic-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-runtime-atomic-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-claim:
+    name: PostgreSQL concurrent claim and tenancy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atlas_runtime_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d atlas_runtime_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGDATABASE: atlas_runtime_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Atomic claim integration (isolated database)
+        shell: bash
+        run: bash tests/integration/atlas-runtime-atomic-claim-postgres.sh
