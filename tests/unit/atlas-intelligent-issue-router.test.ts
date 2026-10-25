@@ -65,7 +65,7 @@ describe('ATLAS Intelligent Issue Router', () => {
   it('keeps incomplete security answers blocked even with structured fields', () => {
     const result = classify({
       title: 'ATLAS Universal Intelligence 777',
-      body: '### Owner module\\nATLAS Universal Intelligence 777\\n\\n### Issue type\\nFeature\\n\\n### Priority\\nP2',
+      body: ['### Owner module', 'ATLAS Universal Intelligence 777', '', '### Issue type', 'Feature', '', '### Priority', 'P2'].join('\n'),
     });
     expect(result).toMatchObject({ structured: true, complete: true, autoEligible: false });
   });
