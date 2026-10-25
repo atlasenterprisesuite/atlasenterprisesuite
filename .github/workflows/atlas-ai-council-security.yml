@@ -1,5 +1,14 @@
 name: ATLAS AI Council Security Gates
 on:
+  push:
+    branches:
+      - 'audit/ai-council-777-auth-gates-20261025'
+    paths:
+      - 'supabase/functions/atlas-copilot/**'
+      - 'tests/node/atlas-ai-council-*.test.mjs'
+      - 'tests/postgres/**'
+      - 'docs/security/ai-council-approval-transaction.preview.sql'
+      - '.github/workflows/atlas-ai-council-security.yml'
   pull_request:
     paths:
       - 'supabase/functions/atlas-copilot/**'
