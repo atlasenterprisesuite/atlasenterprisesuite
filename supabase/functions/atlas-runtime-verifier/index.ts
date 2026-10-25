@@ -27,17 +27,29 @@ async function bodyJson(r:Response){const t=await r.text();try{return JSON.parse
 async function request(url:string,{method='GET',headers:hs={},json:payload}:{method?:string,headers?:Record<string,string>,json?:unknown}={}){
   const h=new Headers({accept:'application/json',...hs}); let body:BodyInit|undefined;
   if(payload!==undefined){h.set('content-type','application/json');body=JSON.stringify(payload)}
-  const r=await fetch(url,{method,headers:h,body,redirect:'manual',cache:'no-store'});
-  return {r,payload:await bodyJson(r)};
+  // Bound dependent requests well below the Edge worker wall-clock ceiling.
+  // A timeout is an explicit failed/blocked check, never a successful verification.
+  const isChat=url.includes('/atlas-copilot?api=chat');
+  const timeoutMs=isChat?35000:12000;
+  let r:Response;
+  try {
+    r=await fetch(url,{method,headers:h,body,redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});
+    return {r,payload:await bodyJson(r)};
+  } catch(error) {
+    throw fail(isChat?'provider_unavailable':'target_unavailable',isChat?503:504,
+      error instanceof Error?error.message:'request_timeout');
+  }
 }
 const TRANSIENT_HTTP=new Set([500,502,503,504,520,522,524,546]);
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 async function requestWithRetry(
   url:string,
   options:{method?:string,headers?:Record<string,string>,json?:unknown}={},
-  attempts=4,
+  attempts=2,
 ){
-  const boundedAttempts=Math.max(1,Math.min(6,Math.trunc(Number(attempts)||1)));
+  // Never replay non-idempotent POST requests: chat retries can create duplicate turns.
+  const boundedAttempts=String(options.method||'GET').toUpperCase()==='GET'
+    ? Math.max(1,Math.min(2,Math.trunc(Number(attempts)||1))) : 1;
   let result:Awaited<ReturnType<typeof request>>|null=null;
   for(let attempt=1;attempt<=boundedAttempts;attempt+=1){
     result=await request(url,options);
@@ -62,8 +74,10 @@ async function rpc(name:string,args:Record<string,unknown>={}){
 }
 async function check(checks:Checks,name:string,fn:()=>Promise<{status?:number,detail?:Record<string,unknown>}|void>){
   const started=Date.now();
-  try{const out=await fn()||{};checks[name]={ok:true,status:out.status??null,duration_ms:Date.now()-started,...(out.detail?{detail:out.detail}:{})};return out;}
-  catch(error:any){checks[name]={ok:false,status:Number(error?.status)||null,duration_ms:Date.now()-started,detail:{error:String(error?.code||'check_failed')}};throw error;}
+  // Structured stage telemetry: no request bodies, auth headers, or secrets.
+  console.info(JSON.stringify({event:'verifier_stage_start',stage:name}));
+  try{const out=await fn()||{};checks[name]={ok:true,status:out.status??null,duration_ms:Date.now()-started,...(out.detail?{detail:out.detail}:{})};console.info(JSON.stringify({event:'verifier_stage_end',stage:name,ok:true,duration_ms:checks[name].duration_ms}));return out;}
+  catch(error:any){checks[name]={ok:false,status:Number(error?.status)||null,duration_ms:Date.now()-started,detail:{error:String(error?.code||'check_failed')}};console.warn(JSON.stringify({event:'verifier_stage_end',stage:name,ok:false,duration_ms:checks[name].duration_ms,error_code:String(error?.code||'check_failed')}));throw error;}
 }
 async function authorize(req:Request){
   const runtimeToken=(req.headers.get('x-atlas-runtime-verifier-token')||'').trim();
@@ -113,7 +127,7 @@ async function runVerification(){
   const traceId=crypto.randomUUID(); const checks:Checks={}; const runId=await begin(traceId); let providerState:string|null=null,storageState:string|null=null,orgId:string|null=null,conversationId:string|null=null,targetVersion:string|null=null,actualProvider:string|null=null,actualModel:string|null=null,automaticApiCostUsd:number|null=null;
   try{
     await check(checks,'01_shell',async()=>{
-      const r=await fetch(COPILOT,{cache:'no-store'});
+      const r=await fetch(COPILOT,{cache:'no-store',signal:AbortSignal.timeout(12000)});
       const text=await r.text();
       const shell=verifyAtlasCopilotShell({status:r.status,contentType:r.headers.get('content-type'),body:text});
       if(!shell.ok)throw fail('target_unavailable',502,shell.reason);
