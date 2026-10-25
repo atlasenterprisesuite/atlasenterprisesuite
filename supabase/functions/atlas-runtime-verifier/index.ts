@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyAtlasCopilotShell } from '../_shared/runtime-verifier-shell.ts';
+import { remainingBudgetMs, boundedTimeoutMs } from '../_shared/runtime-verifier-budget.ts';
 
 const SUPABASE_URL='https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_wicVjdsduxa5FAnRW9k0Lw_HxtBW72d';
@@ -9,6 +10,8 @@ const E2E_EMAIL='atlas-intelligence-e2e@atlas.invalid';
 const E2E_ORG='ATLAS Intelligence E2E';
 const VERSION=3;
 const TERMINAL=new Set(['passed','failed','blocked']);
+let activeDeadlineStartMs:number|null=null;
+function stageTimeoutMs(perRequestMs:number){return activeDeadlineStartMs===null?perRequestMs:boundedTimeoutMs(remainingBudgetMs(activeDeadlineStartMs,Date.now()),perRequestMs);}
 
 type Check={ok:boolean,status:number|null,duration_ms:number,detail?:Record<string,unknown>};
 type Checks=Record<string,Check>;
@@ -33,7 +36,7 @@ async function request(url:string,{method='GET',headers:hs={},json:payload}:{met
   const timeoutMs=isChat?35000:12000;
   let r:Response;
   try {
-    r=await fetch(url,{method,headers:h,body,redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});
+    r=await fetch(url,{method,headers:h,body,redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(stageTimeoutMs(timeoutMs))});
     return {r,payload:await bodyJson(r)};
   } catch(error) {
     throw fail(isChat?'provider_unavailable':'target_unavailable',isChat?503:504,
@@ -54,7 +57,7 @@ async function requestWithRetry(
   for(let attempt=1;attempt<=boundedAttempts;attempt+=1){
     result=await request(url,options);
     if(!TRANSIENT_HTTP.has(result.r.status)||attempt===boundedAttempts)return result;
-    await sleep(1500*attempt);
+    await sleep(stageTimeoutMs(1500*attempt));
   }
   return result as Awaited<ReturnType<typeof request>>;
 }
@@ -74,6 +77,7 @@ async function rpc(name:string,args:Record<string,unknown>={}){
 }
 async function check(checks:Checks,name:string,fn:()=>Promise<{status?:number,detail?:Record<string,unknown>}|void>){
   const started=Date.now();
+  if(activeDeadlineStartMs!==null) stageTimeoutMs(1);
   // Structured stage telemetry: no request bodies, auth headers, or secrets.
   console.info(JSON.stringify({event:'verifier_stage_start',stage:name}));
   try{const out=await fn()||{};checks[name]={ok:true,status:out.status??null,duration_ms:Date.now()-started,...(out.detail?{detail:out.detail}:{})};console.info(JSON.stringify({event:'verifier_stage_end',stage:name,ok:true,duration_ms:checks[name].duration_ms}));return out;}
@@ -124,10 +128,10 @@ async function prepareIdentity(){
 }
 
 async function runVerification(){
-  const traceId=crypto.randomUUID(); const checks:Checks={}; const runId=await begin(traceId); let providerState:string|null=null,storageState:string|null=null,orgId:string|null=null,conversationId:string|null=null,targetVersion:string|null=null,actualProvider:string|null=null,actualModel:string|null=null,automaticApiCostUsd:number|null=null;
+  const traceId=crypto.randomUUID(); const checks:Checks={}; activeDeadlineStartMs=Date.now(); const runId=await begin(traceId); let providerState:string|null=null,storageState:string|null=null,orgId:string|null=null,conversationId:string|null=null,targetVersion:string|null=null,actualProvider:string|null=null,actualModel:string|null=null,automaticApiCostUsd:number|null=null;
   try{
     await check(checks,'01_shell',async()=>{
-      const r=await fetch(COPILOT,{cache:'no-store',signal:AbortSignal.timeout(12000)});
+      const r=await fetch(COPILOT,{cache:'no-store',signal:AbortSignal.timeout(stageTimeoutMs(12000))});
       const text=await r.text();
       const shell=verifyAtlasCopilotShell({status:r.status,contentType:r.headers.get('content-type'),body:text});
       if(!shell.ok)throw fail('target_unavailable',502,shell.reason);
@@ -157,10 +161,12 @@ async function runVerification(){
     await check(checks,'15_cross_tenant_denied',async()=>{const x=await request(`${COPILOT}?api=status`,{headers:{...authHeaders,'x-atlas-org-id':foreignOrg}});if(x.r.status!==403||x.payload?.error!=='organization_membership_required')throw fail('tenant_boundary_failed',x.r.status||500);return {status:x.r.status,detail:{error:'organization_membership_required'}};});
     await check(checks,'16_completion_gate',async()=>{if(Object.values(checks).some(c=>!c.ok))throw fail('verifier_internal_error',500);return {status:200,detail:{all_required_checks:true}};});
     await complete(runId,'passed',{target_version:targetVersion,provider:actualProvider,provider_state:providerState,storage_state:storageState,organization_id:orgId,conversation_id:conversationId,checks,metadata:{verifier_version:VERSION,source:'supabase-native',model:actualModel,automatic_api_cost_usd:automaticApiCostUsd}});
+    activeDeadlineStartMs=null;
     return {ok:true,run_id:runId,status:'passed',trace_id:traceId,provider:actualProvider,model:actualModel,automatic_api_cost_usd:automaticApiCostUsd,provider_state:providerState,storage_state:storageState,conversation_id:conversationId,checks};
   }catch(error:any){
     const c=classify(error);
     await complete(runId,c.status,{target_version:targetVersion,provider:actualProvider,provider_state:providerState,storage_state:storageState,organization_id:orgId,conversation_id:conversationId,checks,metadata:{verifier_version:VERSION,source:'supabase-native',model:actualModel,automatic_api_cost_usd:automaticApiCostUsd},error_code:c.code,error_detail:safeDetail(error?.detail||error?.message||c.code)}).catch(()=>{});
+    activeDeadlineStartMs=null;
     return {ok:false,run_id:runId,status:c.status,trace_id:traceId,provider:actualProvider,model:actualModel,automatic_api_cost_usd:automaticApiCostUsd,provider_state:providerState,storage_state:storageState,conversation_id:conversationId,checks,error_code:c.code};
   }
 }
