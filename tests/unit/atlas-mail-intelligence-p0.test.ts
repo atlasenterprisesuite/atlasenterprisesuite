@@ -23,3 +23,14 @@ describe('ATLAS Mail 777 P0 security contracts (red tests)', () => {
     expect(oauth).toMatch(/consume.*nonce|nonce.*consume|replay.*protect/i);
   });
 });
+
+describe('ATLAS Mail P0 emergency provider-effect gate', () => {
+  it('blocks bulk alias provisioning before provider-side effects while atomic ledger is absent', () => {
+    const entry = source.indexOf("if (api === 'bulk-provision' && req.method === 'POST')");
+    const gate = source.indexOf("throw new MailError('mail_atomic_claim_and_audit_required', 503)", entry);
+    const firstProviderWrite = source.indexOf("const existing = await listRules(cfg)", entry);
+    expect(entry).toBeGreaterThan(-1);
+    expect(gate).toBeGreaterThan(entry);
+    expect(firstProviderWrite).toBeGreaterThan(gate);
+  });
+});
