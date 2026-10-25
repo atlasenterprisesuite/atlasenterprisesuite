@@ -47,3 +47,35 @@ No one task's failure may block unrelated tenant-isolated tasks; dependent tasks
 3. Write failing contract tests for claim/lease/idempotency/RLS.
 4. Make minimal reusable changes on isolated feature branch.
 5. CI + security + E2E evidence; PR review; production is a separate gate.
+
+## P0 — Durable external-effect idempotency design (not deployed)
+
+The isolated PostgreSQL test covers an interrupted worker, a durable simulated
+provider-effect counter, and concurrent quarantine. It **does not** prove
+exactly-once execution against a real external provider. Until reconciliation
+exists, expired `claimed`/`running` jobs remain `waiting_human`; never
+automatically requeue them.
+
+Proposed schema, subject to separate review and tests:
+- `external_effect_ledger`: `org_id`, `tenant_id`, `job_id`,
+  `effect_key`, `provider`, `provider_idempotency_key`, `status`
+  (`reserved`, `unknown`, `confirmed`, `rejected`), provider
+  receipt/reference, timestamps, and immutable audit reference.
+- Unique constraint on (`org_id`, `tenant_id`, `effect_key`) to prevent
+  concurrent reservation of the same logical effect. The provider must support
+  a stable idempotency key or a reliable read-only status lookup.
+- Before an outbound call, atomically reserve the effect key and persist an
+  outbox intent; do not rely on an in-memory lock. A crash after sending but
+  before recording a receipt produces `unknown`, not `rejected`.
+- On recovery, reconcile `unknown` with the provider using the **same**
+  idempotency key or authoritative status API. If reconciliation is impossible,
+  quarantine for human review. Never infer `not executed` from a timeout.
+- Retry is a separate authorized, transactionally fenced transition only
+  after provider-confirmed absence of side effects and bounded attempt checks.
+  Neither a new lease nor an expired lease authorizes an outbound replay.
+
+Acceptance gate: tests must simulate a crash both before and after provider
+commit, simultaneous recovery workers, duplicate webhook delivery, tenant
+isolation, and a provider timeout with unknown outcome. Verify provider-side
+effect count stays at one. Production remains blocked until provider-specific
+E2E evidence and exact-SHA deployment checks exist.
