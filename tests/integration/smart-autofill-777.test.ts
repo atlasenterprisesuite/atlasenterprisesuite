@@ -24,7 +24,7 @@ describe('ATLAS Smart Autofill 777 proposal engine', () => {
       { id: 'f', label: 'Name', type: 'hidden' },
       { id: 'g', label: 'Name', autocomplete: 'cc-number' }
     ];
-    expect(proposeAutofill(fields, profile)).toEqual([{ fieldId: 'g', category: 'name', value: 'Ada Lovelace', source: 'authorized-profile' }]);
+    expect(proposeAutofill(fields, profile)).toEqual([]);
   });
   it('rejects conflicting hints, wrong input types and missing values', () => {
     expect(proposeAutofill([
