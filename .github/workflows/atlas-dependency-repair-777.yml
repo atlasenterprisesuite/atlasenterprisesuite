@@ -36,7 +36,7 @@ jobs:
       - name: Install FFmpeg for native video tests
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak
+          sudo apt-get install -y ffmpeg espeak espeak
           ffmpeg -version
           command -v espeak
           espeak --version
