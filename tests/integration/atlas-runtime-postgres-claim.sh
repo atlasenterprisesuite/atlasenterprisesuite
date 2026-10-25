@@ -49,4 +49,19 @@ for rejected in \
    echo "FAIL: unauthorized claim succeeded" >&2; exit 1
  fi
 done
+# Expired leases must be quarantined, never automatically requeued.
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+UPDATE public.execution_runtime_jobs
+SET state='running', lease_expires_at=clock_timestamp()-interval '1 minute'
+WHERE id='33333333-3333-4333-8333-333333333333';
+INSERT INTO public.execution_runtime_jobs(id,org_id,tenant_id,runtime_kind,state,runtime_id,lease_id,lease_expires_at)
+VALUES
+('55555555-5555-4555-8555-555555555555','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','tenant-a','worker','claimed','11111111-1111-4111-8111-111111111111',gen_random_uuid(),clock_timestamp()-interval '1 minute'),
+('66666666-6666-4666-8666-666666666666','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','tenant-b','worker','running','11111111-1111-4111-8111-111111111111',gen_random_uuid(),clock_timestamp()-interval '1 minute');
+SQL
+test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c "SET ROLE service_role; $claim" | tail -1)" = "0"
+test "$(psql "$DATABASE_URL" -At -c "SELECT count(*) FROM public.execution_runtime_jobs WHERE id IN ('33333333-3333-4333-8333-333333333333','55555555-5555-4555-8555-555555555555') AND state='waiting_human';")" = "2"
+test "$(psql "$DATABASE_URL" -At -c "SELECT count(*) FROM public.execution_runtime_jobs WHERE id='66666666-6666-4666-8666-666666666666' AND state='running';")" = "1"
+test "$(psql "$DATABASE_URL" -At -c "SELECT count(*) FROM public.execution_runtime_jobs WHERE tenant_id='tenant-a' AND state='queued';")" = "0"
+echo "PASS: expired claimed/running quarantined, no replay, tenant isolation"
 echo "PASS: atomic single claim, scoped tenant, lease, revoked runtime, role restrictions"
