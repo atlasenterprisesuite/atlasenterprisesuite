@@ -25,7 +25,7 @@ export function proposeAutofill(fields: readonly AutofillField[], profile: Reado
     used.add(field.id);
     const label = normalize(field.label || '');
     const hint = normalize(field.autocomplete || '');
-    if (sensitive.test([label, hint, field.id, field.type || ''].join(' '))) continue;
+    if (sensitive.test([label, hint, field.id, field.type || ''].join(' ')) || /^(cc-|bday|one-time-code|transaction-|new-password|current-password)/.test(hint)) continue;
     const fromHint = allowedAutocomplete[hint];
     const candidates = (Object.keys(aliases) as AutofillCategory[]).filter(category => aliases[category].some(alias => normalize(alias) === label));
     const category = fromHint || (candidates.length === 1 ? candidates[0] : undefined);
