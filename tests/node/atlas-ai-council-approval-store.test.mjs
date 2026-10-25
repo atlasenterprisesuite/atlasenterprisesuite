@@ -4,13 +4,14 @@ import {createCouncilApprovalStore} from '../../supabase/functions/atlas-copilot
 const args={approvalId:'a',organizationId:'org-a',userId:'user-a',proposalHash:'hash-a',now:1000};
 const row={status:'consumed',organization_id:'org-a',user_id:'user-a',proposal_hash:'hash-a',expires_at_ms:2000};
 test('fails closed without persistence RPC',async()=>{await assert.rejects(createCouncilApprovalStore().consumeApproval(args),{code:'approval_persistence_unavailable'});});
-test('passes exact tenant actor action and timestamp to atomic RPC',async()=>{
+test('passes exact tenant actor and digest to private atomic RPC',async()=>{
  let call;
  const store=createCouncilApprovalStore({rpc:async(...v)=>{call=v;return {data:row};}});
  assert.deepEqual(await store.consumeApproval(args),row);
  assert.equal(call[0],'consume_approved_action');
  assert.equal(call[1].p_org_id,'org-a');
- assert.equal(call[1].p_proposal_hash,'hash-a');\n assert.equal(Object.hasOwn(call[1],'p_now'),false);
+ assert.equal(call[1].p_proposal_hash,'hash-a');
+ assert.equal(Object.hasOwn(call[1],'p_now'),false);
 });
 for(const [name,value] of [['cross tenant',{...row,organization_id:'org-b'}],['cross user',{...row,user_id:'user-b'}],['wrong hash',{...row,proposal_hash:'hash-b'}],['not consumed',{...row,status:'approved'}]]){
  test('denies '+name,async()=>{await assert.rejects(createCouncilApprovalStore({rpc:async()=>({data:value})}).consumeApproval(args),{code:'approval_invalid_or_expired'});});
