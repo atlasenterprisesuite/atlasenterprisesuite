@@ -11,7 +11,10 @@ describe('ATLAS Universal Setup accessible navigation', () => {
     expect(screen.getByRole('heading', { name: 'Welcome to ATLAS' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'es' } });
+    const languageSelect = screen.getByRole('combobox', { name: 'Language' });
+    expect(languageSelect).toHaveValue('en');
+    fireEvent.change(languageSelect, { target: { value: 'es' } });
+    expect(screen.getByRole('combobox', { name: 'Idioma' })).toHaveValue('es');
     expect(screen.getByRole('heading', { name: 'Idioma' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
     expect(screen.getByRole('checkbox', { name: 'Activar subtítulos' })).toBeInTheDocument();
