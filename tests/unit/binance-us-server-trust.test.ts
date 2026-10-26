@@ -3,7 +3,7 @@ import { createBinanceUsServerReadDecisionResolver } from '../../packages/pay/sr
 import { createBinanceUsReadAdapter } from '../../packages/pay/src/binanceUsReadAdapter';
 function fixture() {
   const deps = {
-    authenticate: vi.fn(async (): Promise<{ userId: string } | null> => ({ userId: 'user-a' })),
+    authenticate: vi.fn(async (): Promise<{ userId: string; organizationId: string } | null> => ({ userId: 'user-a', organizationId: 'org-a' })),
     loadConnection: vi.fn(async () => ({ organizationId: 'org-a', state: 'authorized' as const })),
     verifyMembershipAndPermission: vi.fn(async (): Promise<boolean> => true),
     verifyEffectiveReadOnlyKeyPermissions: vi.fn(async (): Promise<boolean> => true)
@@ -18,6 +18,19 @@ describe('Binance.US server-only trust resolver contract', () => {
     expect(await f.adapter.readBalances()).toEqual({ balances: [] });
     expect(f.deps.verifyMembershipAndPermission).toHaveBeenCalledWith('user-a', 'org-a', 'pay.read');
     expect(f.transport).toHaveBeenCalledTimes(1);
+  });
+  it('rejects cross-tenant connection even if permission callback incorrectly allows it', async () => {
+    const f = fixture();
+    f.deps.loadConnection.mockResolvedValue({ organizationId: 'org-b', state: 'authorized' });
+    f.deps.verifyMembershipAndPermission.mockResolvedValue(true);
+    await expect(f.adapter.readBalances()).rejects.toThrow('ACCESS_DENIED');
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it('rejects an authenticated session without trusted organization scope', async () => {
+    const f = fixture();
+    f.deps.authenticate.mockResolvedValue({ userId: 'user-a' } as never);
+    await expect(f.adapter.readBalances()).rejects.toThrow('ACCESS_DENIED');
+    expect(f.transport).not.toHaveBeenCalled();
   });
   it('rejects missing authenticated identity before transport', async () => {
     const f = fixture();
