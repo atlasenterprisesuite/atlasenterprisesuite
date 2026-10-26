@@ -33,7 +33,8 @@ describe('tenant-scoped readiness ledger boundary', () => {
   it('never loads another organization through the same bound ledger', async () => {
     const store = fixture();
     await scopedReadinessLedger('org-a', store).load('atlas-pay');
-    expect(store.load).toHaveBeenCalledExactlyOnceWith('org-a', 'atlas-pay');
+    expect(store.load).toHaveBeenCalledTimes(1);
+    expect(store.load).toHaveBeenCalledWith('org-a', 'atlas-pay');
   });
   it('propagates persistence failures without claiming a write', async () => {
     const store = fixture();
