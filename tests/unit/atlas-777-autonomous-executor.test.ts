@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runAutonomousCycle } from '../../scripts/atlas-777-autonomous-executor.mjs';
-const task = { id: 'pr-926', organizationId: 'org-a', idempotencyKey: 'job-926', sha: 'abc123', kind: 'verify', approved: true };
+const task = { id: 'pr-926', organizationId: 'org-a', idempotencyKey: 'job-926', sha: 'a'.repeat(40), kind: 'verify', approved: true };
 function harness() {
   const state = new Map();
   const loadState = vi.fn(async (org, key) => state.get(org + ':' + key));
@@ -28,6 +28,13 @@ describe('ATLAS 777 autonomous executor security', () => {
     const result = await runAutonomousCycle({ ...h, tasks: [task] });
     expect(result.completed[0].resumed).toBe(true);
     expect(h.execute).toHaveBeenCalledTimes(1);
+  });
+  it('rejects non-commit SHA before state writes or execution', async () => {
+    const h = harness();
+    const result = await runAutonomousCycle({ ...h, tasks: [{ ...task, sha: 'abc123' }] });
+    expect(result.reason).toBe('TENANT_OR_TASK_INVALID');
+    expect(h.saveState).not.toHaveBeenCalled();
+    expect(h.execute).not.toHaveBeenCalled();
   });
   it('blocks cross-tenant input before execution', async () => {
     const h = harness();
@@ -58,7 +65,7 @@ describe('ATLAS 777 autonomous executor security', () => {
   });
   it('fails closed on incomplete state', async () => {
     const h = harness();
-    h.state.set('org-a:job-926', { organizationId: 'org-a', taskId: 'pr-926', sha: 'abc123', status: 'pending' });
+    h.state.set('org-a:job-926', { organizationId: 'org-a', taskId: 'pr-926', sha: 'a'.repeat(40), status: 'pending' });
     expect((await runAutonomousCycle({ ...h, tasks: [task] })).reason).toBe('INCOMPLETE_STATE_REQUIRES_RECONCILIATION');
   });
   it('bounds execution and preserves unfinished work', async () => {
