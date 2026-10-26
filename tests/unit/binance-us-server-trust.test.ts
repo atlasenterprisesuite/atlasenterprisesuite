@@ -3,10 +3,10 @@ import { createBinanceUsServerReadDecisionResolver } from '../../packages/pay/sr
 import { createBinanceUsReadAdapter } from '../../packages/pay/src/binanceUsReadAdapter';
 function fixture() {
   const deps = {
-    authenticate: vi.fn(async () => ({ userId: 'user-a' })),
+    authenticate: vi.fn(async (): Promise<{ userId: string } | null> => ({ userId: 'user-a' })),
     loadConnection: vi.fn(async () => ({ organizationId: 'org-a', state: 'authorized' as const })),
-    verifyMembershipAndPermission: vi.fn(async () => true),
-    verifyEffectiveReadOnlyKeyPermissions: vi.fn(async () => true)
+    verifyMembershipAndPermission: vi.fn(async (): Promise<boolean> => true),
+    verifyEffectiveReadOnlyKeyPermissions: vi.fn(async (): Promise<boolean> => true)
   };
   const transport = vi.fn(async () => ({ canTrade: false, canWithdraw: false, balances: [] }));
   const adapter = createBinanceUsReadAdapter(transport, createBinanceUsServerReadDecisionResolver(deps));
