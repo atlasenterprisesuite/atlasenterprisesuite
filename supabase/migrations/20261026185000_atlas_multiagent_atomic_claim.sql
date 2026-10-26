@@ -8,10 +8,15 @@ create table if not exists public.atlas_multiagent_dispatch_claims (
   provider_id text not null,
   status text not null default 'claimed' check (status in ('claimed','blocked','failed','completed')),
   created_at timestamptz not null default now(),
-  primary key (tenant_id, organization_id, idempotency_key)
+  primary key (tenant_id, organization_id, idempotency_key),
+  foreign key (tenant_id, organization_id, task_id)
+    references public.atlas_orchestrator_tasks (tenant_id, organization_id, task_id)
+    on delete cascade
 );
 alter table public.atlas_multiagent_dispatch_claims enable row level security;
 revoke all on public.atlas_multiagent_dispatch_claims from public, anon, authenticated;
+-- A runtime token alone does not authorize arbitrary tenant selection.
+-- Callers must derive tenant and organization from a verified server-side actor.
 create or replace function private.atlas_multiagent_claim_internal(
   p_tenant_id text, p_organization_id text, p_idempotency_key text,
   p_task_id text, p_provider_id text
