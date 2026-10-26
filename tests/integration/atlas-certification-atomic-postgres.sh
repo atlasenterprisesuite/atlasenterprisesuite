@@ -39,4 +39,27 @@ begin
   if (select count(*) from public.atlas_certification_audit_777) <> 2 then raise exception 'rejected writes changed audit'; end if;
 end $$;
 SQL
+psql_ci <<'SQL'
+-- Negative authorization and append-only mutation checks.
+set request.jwt.claim.role = 'authenticated';
+do $
+begin
+  begin
+    perform public.atlas_record_certification_777(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','tenant-a','atlas-pay',
+      repeat('a',40),'{}'::jsonb);
+    raise exception 'unauthorized write accepted';
+  exception when insufficient_privilege then null;
+  end;
+end $;
+set request.jwt.claim.role = 'service_role';
+do $
+begin
+  begin
+    update public.atlas_certification_audit_777 set sha=repeat('b',40);
+    raise exception 'audit mutation accepted';
+  exception when insufficient_privilege then null;
+  end;
+end $;
+SQL
 echo "PASS: isolated atomic certification assertions"
