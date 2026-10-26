@@ -13,10 +13,13 @@ export async function runAutonomousCycle({ tasks, execute, maxSteps = 20, organi
     || !safeId(organizationId) || typeof loadState !== 'function' || typeof saveState !== 'function')
     return { status: 'blocked', completed, reason: 'INVALID_CONFIGURATION' };
   const keys = new Set();
+  const taskIds = new Set();
   for (const task of tasks) {
     if (!validTask(task) || task.organizationId !== organizationId)
       return { status: 'blocked', completed, reason: 'TENANT_OR_TASK_INVALID' };
     if (keys.has(task.idempotencyKey)) return { status: 'blocked', completed, reason: 'DUPLICATE_KEY' };
+    if (taskIds.has(task.id)) return { status: 'blocked', completed, reason: 'DUPLICATE_TASK_ID' };
+    taskIds.add(task.id);
     keys.add(task.idempotencyKey);
   }
   for (const task of tasks) {
@@ -43,7 +46,10 @@ export async function runAutonomousCycle({ tasks, execute, maxSteps = 20, organi
         return { status: 'blocked', completed, taskId: task.id, reason: 'CONCURRENT_CLAIM' };
     } catch { return { status: 'blocked', completed, taskId: task.id, reason: 'STATE_UNAVAILABLE' }; }
     let result;
-    try { result = await execute(Object.freeze({ ...task })); }
+    // Pass only validated primitives; unexpected task payloads cannot reach the executor callback.
+    const safeTask = Object.freeze({ id: task.id, organizationId: task.organizationId,
+      idempotencyKey: task.idempotencyKey, sha: task.sha, kind: task.kind, approved: task.approved });
+    try { result = await execute(safeTask); }
     catch { return { status: 'blocked', completed, taskId: task.id, reason: 'EXECUTION_FAILED' }; }
     if (result?.status !== 'completed' || result?.evidence?.verified !== true || result?.evidence?.sha !== task.sha)
       return { status: 'blocked', completed, taskId: task.id, reason: 'EVIDENCE_MISMATCH' };
