@@ -27,6 +27,6 @@ test('image signature rejects MIME spoofing and truncated payloads',()=>{
  assert.equal(verifyImageBytes({type:'image/png',size:2,bytes:png.slice(0,2)}),false);
 });
 test('azimuth uses north-clockwise orientation',()=>{
- const east=equatorialToHorizontal({raDegrees:270,decDegrees:0,latitudeDegrees:0,longitudeDegrees:0,gmstDegrees:0});
+ const east=equatorialToHorizontal({raDegrees:90,decDegrees:0,latitudeDegrees:0,longitudeDegrees:0,gmstDegrees:0});
  assert.ok(Math.abs(east.azimuthDegrees-90)<1e-8);
 });
