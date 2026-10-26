@@ -39,6 +39,22 @@ describe('Binance.US server-only trust resolver contract', () => {
       expect(f.transport).not.toHaveBeenCalled();
     }
   });
+  it('rejects a cross-tenant connection even with a valid session', async () => {
+    const f = fixture();
+    f.deps.loadConnection.mockResolvedValue({ organizationId: 'org-b', state: 'authorized' });
+    f.deps.verifyMembershipAndPermission.mockImplementation(async (_user, org) => org === 'org-a');
+    await expect(f.adapter.readBalances()).rejects.toThrow('ACCESS_DENIED');
+    expect(f.deps.verifyMembershipAndPermission).toHaveBeenCalledWith('user-a', 'org-b', 'pay.read');
+    expect(f.deps.verifyEffectiveReadOnlyKeyPermissions).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it('blocks reads immediately after connection revocation', async () => {
+    const f = fixture();
+    await expect(f.adapter.readBalances()).resolves.toEqual({ balances: [] });
+    f.deps.loadConnection.mockResolvedValue({ organizationId: 'org-a', state: 'revoked' } as never);
+    await expect(f.adapter.readBalances()).rejects.toThrow('ACCESS_DENIED');
+    expect(f.transport).toHaveBeenCalledTimes(1);
+  });
   it('rejects unverified key permission evidence', async () => {
     const f = fixture();
     f.deps.verifyEffectiveReadOnlyKeyPermissions.mockResolvedValue(false);
