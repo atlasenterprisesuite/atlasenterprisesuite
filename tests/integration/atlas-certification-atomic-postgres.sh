@@ -101,4 +101,16 @@ end $$;
 drop trigger atlas_test_reject_certification_audit_insert_777 on public.atlas_certification_audit_777;
 drop function public.atlas_test_reject_certification_audit_insert_777();
 SQL
+# Real concurrent sessions replay the same tenant-scoped evidence.
+# Both must succeed and must not create duplicate audit events.
+concurrent_sql="set request.jwt.claim.role='service_role'; select public.atlas_record_certification_777('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','tenant-a','atlas-pay',repeat('a',40),jsonb_build_object('moduleId','atlas-pay','sha',repeat('a',40),'state','validation','certified',false,'blockers',jsonb_build_array('P0_OPEN'),'verifiedChecks',jsonb_build_array('unit')));"
+pids=()
+for _ in 1 2 3 4 5 6; do
+  psql_ci -c "$concurrent_sql" >/dev/null &
+  pids+=("$!")
+done
+for pid in "${pids[@]}"; do wait "$pid"; done
+audit_count="$(psql_ci -At -c "select count(*) from public.atlas_certification_audit_777 where org_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' and tenant_id='tenant-a' and module_id='atlas-pay'")"
+[[ "$audit_count" == "1" ]] || { echo "FAIL: concurrent replay duplicated audit: $audit_count" >&2; exit 1; }
+echo "PASS: six concurrent replay sessions; single tenant-scoped audit event"
 echo "PASS: isolated atomic certification assertions"
