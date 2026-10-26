@@ -1,0 +1,22 @@
+name: ATLAS Astronomy 777 TDD
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/modules/astronomy/**'
+      - 'apps/web/src/extensions/resolveAtlasExtension.tsx'
+      - 'tests/node/atlas-astronomy-777.test.mjs'
+      - '.github/workflows/atlas-astronomy-777.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  astronomy-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run fail-closed lunar contracts
+        run: node --test tests/node/atlas-astronomy-777.test.mjs
