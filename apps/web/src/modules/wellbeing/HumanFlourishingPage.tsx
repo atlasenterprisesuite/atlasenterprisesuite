@@ -37,7 +37,7 @@ export function HumanFlourishingPage() {
               <button type="button" aria-expanded={selected === dimension.id} aria-controls={`flourishing-action-${dimension.id}`} onClick={() => setSelected((current) => current === dimension.id ? null : dimension.id)}>
                 {selected === dimension.id ? 'Ocultar sugerencia' : 'Ver una sugerencia'}
               </button>
-              {selected === dimension.id && <p id={`flourishing-action-${dimension.id}`}>{dimension.action}</p>}
+              <p id={`flourishing-action-${dimension.id}`} hidden={selected !== dimension.id}>{dimension.action}</p>
               <p><Link to={dimension.route}>Explorar módulo relacionado</Link></p>
             </article>
           ))}
