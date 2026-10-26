@@ -66,4 +66,39 @@ begin
   end;
 end $$;
 SQL
+psql_ci <<'SQL'
+-- Force audit insertion to fail, proving the snapshot update rolls back.
+set request.jwt.claim.role = 'service_role';
+create function public.atlas_test_reject_certification_audit_insert_777()
+returns trigger language plpgsql as $
+begin
+  raise exception 'forced_audit_failure' using errcode='23514';
+end $;
+create trigger atlas_test_reject_certification_audit_insert_777
+before insert on public.atlas_certification_audit_777
+for each row execute function public.atlas_test_reject_certification_audit_insert_777();
+do $
+declare
+  original jsonb;
+  changed jsonb;
+begin
+  select evidence into original from public.atlas_certification_snapshot_777
+    where org_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' and tenant_id='tenant-a' and module_id='atlas-pay';
+  changed := original || '{"state":"development"}'::jsonb;
+  begin
+    perform public.atlas_record_certification_777('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','tenant-a','atlas-pay',repeat('a',40),changed);
+    raise exception 'audit failure was ignored';
+  exception when check_violation then null;
+  end;
+  if (select evidence from public.atlas_certification_snapshot_777
+      where org_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' and tenant_id='tenant-a' and module_id='atlas-pay') is distinct from original then
+    raise exception 'snapshot was not rolled back';
+  end if;
+  if (select count(*) from public.atlas_certification_audit_777) <> 2 then
+    raise exception 'failed transaction appended audit';
+  end if;
+end $;
+drop trigger atlas_test_reject_certification_audit_insert_777 on public.atlas_certification_audit_777;
+drop function public.atlas_test_reject_certification_audit_insert_777();
+SQL
 echo "PASS: isolated atomic certification assertions"
