@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const panel = readFileSync(new URL('../../apps/web/src/modules/device-os/RemoteAssistPanel.tsx', import.meta.url), 'utf8');
+const panel = readFileSync('apps/web/src/modules/device-os/RemoteAssistPanel.tsx', 'utf8');
 
 describe('ATLAS Remote Assist fail-closed readiness', () => {
   it('does not label declared remote capabilities as evidence verified', () => {
