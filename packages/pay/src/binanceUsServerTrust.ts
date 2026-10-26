@@ -2,7 +2,7 @@ import type { ServerReadDecision, ServerReadDecisionResolver } from './binanceUs
 
 /** Server-only dependency contract. Caller MUST supply authenticated, server-derived evidence. */
 export type BinanceServerTrustDependencies = {
-  authenticate: () => Promise<{ userId: string } | null>;
+  authenticate: () => Promise<{ userId: string; organizationId: string } | null>;
   loadConnection: () => Promise<{ organizationId: string; state: 'authorized' | 'revoked' | 'blocked' | 'unverified' } | null>;
   verifyMembershipAndPermission: (userId: string, organizationId: string, permission: 'pay.read') => Promise<boolean>;
   verifyEffectiveReadOnlyKeyPermissions: (organizationId: string) => Promise<boolean>;
@@ -14,17 +14,19 @@ export function createBinanceUsServerReadDecisionResolver(deps: BinanceServerTru
       || typeof deps.verifyMembershipAndPermission !== 'function' || typeof deps.verifyEffectiveReadOnlyKeyPermissions !== 'function')
       throw new Error('ACCESS_DENIED');
     const session = await deps.authenticate();
-    if (!session || typeof session.userId !== 'string' || !session.userId.trim()) throw new Error('ACCESS_DENIED');
+    if (!session || typeof session.userId !== 'string' || !session.userId.trim() ||
+      typeof session.organizationId !== 'string' || !session.organizationId.trim()) throw new Error('ACCESS_DENIED');
     const connection = await deps.loadConnection();
     if (!connection || typeof connection.organizationId !== 'string' || !connection.organizationId.trim())
       throw new Error('ACCESS_DENIED');
+    if (connection.organizationId !== session.organizationId) throw new Error('ACCESS_DENIED');
     if (connection.state !== 'authorized') throw new Error('CONNECTION_REVOKED_OR_UNVERIFIED');
     const permitted = await deps.verifyMembershipAndPermission(session.userId, connection.organizationId, 'pay.read');
     if (permitted !== true) throw new Error('ACCESS_DENIED');
     const verified = await deps.verifyEffectiveReadOnlyKeyPermissions(connection.organizationId);
     if (verified !== true) throw new Error('KEY_PERMISSIONS_UNVERIFIED');
     return {
-      sessionOrganizationId: connection.organizationId,
+      sessionOrganizationId: session.organizationId,
       connectionOrganizationId: connection.organizationId,
       hasPayReadPermission: true,
       effectiveKeyPermissionsVerifiedReadOnly: true
