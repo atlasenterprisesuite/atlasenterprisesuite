@@ -102,6 +102,7 @@ export function AtlasDigitalDistrictPage() {
           geoMarker.setAttribute('aria-label', 'GEO-001 reference point, unverified GIS and no panorama coverage');
           geoMarker.title = 'GEO-001 · reference only';
           geoMarker.textContent = 'G';
+          geoMarker.setAttribute('aria-haspopup', 'dialog');
           markers.push(new maplibre.Marker({ element: geoMarker }).setLngLat([GEO_001.longitude, GEO_001.latitude]).setPopup(new maplibre.Popup({ offset: 18 }).setText('GEO-001 · coordinate reference only; GIS and 360 imagery not verified')).addTo(instance));
           setMapState('ready');
         });
@@ -172,7 +173,7 @@ export function AtlasDigitalDistrictPage() {
           <section aria-label="GEO-001 360 reference" className="atlas-district-truth-card">
             <strong>GEO-001 · GPS / 5G / 360°</strong>
             <p>WGS84 {GEO_001.latitude}, {GEO_001.longitude}. Coordinate reference only; no authenticated GNSS, 5G carrier telemetry, parcel or imagery is connected.</p>
-            <p role="status">360°: {spatial360State(false, false)} · accessible 2D map fallback. No panorama is inferred.</p>
+            <p role="status">360°: {spatial360State(true, false)} · accessible 2D map fallback. No panorama is inferred.</p>
             <a href={`https://www.openstreetmap.org/?mlat=${GEO_001.latitude}&mlon=${GEO_001.longitude}#map=17/${GEO_001.latitude}/${GEO_001.longitude}`} target="_blank" rel="noopener noreferrer">View GEO-001 reference map</a>
           </section>
           <div className="atlas-district-panel-heading">
