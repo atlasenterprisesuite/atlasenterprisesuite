@@ -30,3 +30,13 @@ export function detectImageSignature(bytes) {
 export function verifyImageBytes({type,size,bytes}) {
  return validateLunarImage({type,size}).ok && bytes.byteLength===size && detectImageSignature(bytes)===type;
 }
+
+const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function buildPrivateObservationPath({orgId,userId,sha256}) {
+ if(!uuidPattern.test(orgId)||!uuidPattern.test(userId)||!/^[a-f0-9]{64}$/.test(sha256)) throw new Error('Invalid tenant-scoped original identity');
+ return orgId.toLowerCase()+'/'+userId.toLowerCase()+'/'+sha256;
+}
+export function calculateWithProvenance({coordinates,provenance}) {
+ if(!provenance || provenance.source!=='NASA JPL Horizons'||typeof provenance.version!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/.test(provenance.version)||typeof provenance.observedAt!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:\\d{2})$/.test(provenance.observedAt)||!Number.isFinite(Date.parse(provenance.observedAt))) throw new Error('Verified ephemeris provenance required');
+ return {...equatorialToHorizontal(coordinates),provenance:{...provenance}};
+}
