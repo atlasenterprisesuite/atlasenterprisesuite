@@ -1,0 +1,18 @@
+.tax-learning h1, .tax-learning h2, .tax-learning p { margin: 0; }
+.tax-learning p { line-height: 1.55; }
+.tax-learning-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.tax-learning-grid article { display: grid; gap: 5px; padding: 16px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; }
+.tax-learning-grid small, .tax-learning-grid span, .tax-learning-sources, .tax-learning-next { opacity: .78; }
+.tax-learning-grid strong { font-size: 1.3rem; }
+.tax-learning-table-wrap { overflow-x: auto; }
+.tax-learning-table { width: 100%; border-collapse: collapse; text-align: left; }
+.tax-learning-table th, .tax-learning-table td { padding: 11px; border-bottom: 1px solid rgba(255,255,255,.13); }
+.tax-learning-table td:last-child { text-align: right; white-space: nowrap; }
+.tax-learning-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: end; gap: 12px; }
+.tax-learning-form input, .tax-learning-form select { width: 100%; }
+.tax-learning-form button { min-height: 42px; }
+
+.tax-learning-grid > button { display: grid; gap: 8px; padding: 16px; text-align: left; min-height: 88px; border-radius: 14px; }
+.tax-learning-grid > button strong { font-size: 1rem; }
+.tax-learning-grid > button[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
+.tax-learning-grid > button:focus-visible { outline: 3px solid currentColor; outline-offset: 4px; }
