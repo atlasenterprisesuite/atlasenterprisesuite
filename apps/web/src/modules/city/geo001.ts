@@ -31,7 +31,7 @@ export async function fetchArcGisReadOnly(endpoint: string, fetcher: typeof fetc
 
 export async function verifyGeoPayload(payload: unknown, evidence: GeoEvidence | null): Promise<GeoResult> {
   const preliminary = validateGeoResponse(payload, evidence);
-  if (!evidence || preliminary.reason !== 'hash_not_verified') return preliminary;
+  if (!evidence || preliminary.status !== 'unverified' || preliminary.reason !== 'hash_not_verified') return preliminary;
   if (!globalThis.crypto?.subtle) return { status: 'unverified', reason: 'crypto_unavailable' };
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
