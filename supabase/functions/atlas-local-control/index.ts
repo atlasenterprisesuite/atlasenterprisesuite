@@ -576,6 +576,25 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     return json(req, { ok: true });
   }
 
+  if (operation === 'remote.sessions.prepare') {
+    requirePermission(context, 'device.agent.use');
+    const deviceId = requiredText(body.device_id, 'device_id_required', 80);
+    const { data: device, error: deviceError } = await admin.from('atlas_local_devices')
+      .select('id,agent_id,org_id').eq('id', deviceId).eq('org_id', context.orgId).maybeSingle();
+    if (deviceError) throw new EdgeError('persistence_error', 500);
+    if (!device) throw new EdgeError('device_not_found', 404);
+    const { data: agent, error: agentError } = await admin.from('atlas_local_agents')
+      .select('id,status,mtls_status,org_id').eq('id', device.agent_id).eq('org_id', context.orgId).maybeSingle();
+    if (agentError) throw new EdgeError('persistence_error', 500);
+    if (!agent || agent.status !== 'online' || agent.mtls_status !== 'active') {
+      throw new EdgeError('secure_agent_required', 409);
+    }
+    // This endpoint deliberately does not mint session tokens or enqueue commands.
+    // A signed adapter, explicit per-session consent, atomic revocation and audit
+    // must be verified by the server before session issuance is implemented.
+    throw new EdgeError('remote_desktop_session_verification_required', 409);
+  }
+
   if (operation === 'commands.enqueue') {
     requirePermission(context, 'device.agent.use');
     const deviceId = requiredText(body.device_id, 'device_id_required', 80);
