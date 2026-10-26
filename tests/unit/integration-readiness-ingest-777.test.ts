@@ -45,6 +45,45 @@ describe('Trusted GitHub integration readiness ingestion', () => {
     expect(result.status).toBe('recorded');
     if (result.status === 'recorded') expect(result.current.blockers).toContain('P0_OPEN');
   });
+  it('rejects runs from a different SHA without granting verified checks', async () => {
+    const f = fixture();
+    f.github.fetchRuns.mockResolvedValue([{ id: 42, name: 'ATLAS Build + Production Readiness Gate', head_sha: 'b'.repeat(40), status: 'completed', conclusion: 'success' }]);
+    const result = await ingestIntegrationReadiness({ ...args, ...f });
+    expect(result.status).toBe('recorded');
+    if (result.status === 'recorded') expect(result.current.verifiedChecks).toEqual([]);
+    expect(f.github.verifyStepInJobLogs).not.toHaveBeenCalled();
+  });
+  it('fails closed when inventory storage is unavailable', async () => {
+    const f = fixture();
+    f.inventory.loadForOrganization.mockRejectedValue(new Error('database offline'));
+    expect((await ingestIntegrationReadiness({ ...args, ...f })).status).toBe('blocked');
+    expect(f.github.fetchRuns).not.toHaveBeenCalled();
+    expect(f.ledger.save).not.toHaveBeenCalled();
+  });
+  it('does not persist readiness when audit append is unconfirmed', async () => {
+    const f = fixture();
+    f.ledger.appendIfAbsent.mockResolvedValue(false);
+    const result = await ingestIntegrationReadiness({ ...args, ...f });
+    expect(result.status).toBe('blocked');
+    expect(f.ledger.save).not.toHaveBeenCalled();
+  });
+  it('does not claim a recorded result when durable save fails', async () => {
+    const f = fixture();
+    f.ledger.save.mockRejectedValue(new Error('storage unavailable'));
+    const result = await ingestIntegrationReadiness({ ...args, ...f });
+    expect(result.status).toBe('blocked');
+    expect(f.ledger.appendIfAbsent).toHaveBeenCalledTimes(1);
+  });
+  it('does not append a duplicate authorization event for an unchanged snapshot', async () => {
+    const f = fixture();
+    const first = await ingestIntegrationReadiness({ ...args, ...f });
+    expect(first.status).toBe('recorded');
+    if (first.status !== 'recorded') return;
+    f.ledger.load.mockResolvedValue(first.current);
+    const second = await ingestIntegrationReadiness({ ...args, ...f });
+    expect(second.status).toBe('recorded');
+    expect(f.ledger.appendIfAbsent).toHaveBeenCalledTimes(1);
+  });
   it('blocks when trusted GitHub source throws', async () => {
     const f = fixture();
     f.github.fetchRuns.mockRejectedValue(new Error('unavailable'));
