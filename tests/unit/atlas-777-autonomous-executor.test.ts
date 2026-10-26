@@ -68,6 +68,23 @@ describe('ATLAS 777 autonomous executor security', () => {
     h.state.set('org-a:job-926', { organizationId: 'org-a', taskId: 'pr-926', sha: 'a'.repeat(40), status: 'pending' });
     expect((await runAutonomousCycle({ ...h, tasks: [task] })).reason).toBe('INCOMPLETE_STATE_REQUIRES_RECONCILIATION');
   });
+  it('rejects duplicate task ids even with different idempotency keys', async () => {
+    const h = harness();
+    const result = await runAutonomousCycle({ ...h, tasks: [task, { ...task, idempotencyKey: 'job-other' }] });
+    expect(result.reason).toBe('DUPLICATE_TASK_ID');
+    expect(h.execute).not.toHaveBeenCalled();
+    expect(h.saveState).not.toHaveBeenCalled();
+  });
+  it('never forwards arbitrary untrusted fields to the executor callback', async () => {
+    const h = harness();
+    const result = await runAutonomousCycle({ ...h, tasks: [{ ...task, operation: 'withdraw', credentials: 'untrusted' }] });
+    expect(result.status).toBe('completed');
+    expect(h.execute).toHaveBeenCalledTimes(1);
+    const forwarded = h.execute.mock.calls[0][0];
+    expect(forwarded).not.toHaveProperty('operation');
+    expect(forwarded).not.toHaveProperty('credentials');
+    expect(Object.isFrozen(forwarded)).toBe(true);
+  });
   it('bounds execution and preserves unfinished work', async () => {
     const h = harness();
     const result = await runAutonomousCycle({ ...h, tasks: [task, { ...task, id: 'next', idempotencyKey: 'job-next' }], maxSteps: 1 });
