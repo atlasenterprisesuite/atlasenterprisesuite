@@ -102,7 +102,6 @@ export function AtlasDigitalDistrictPage() {
           geoMarker.setAttribute('aria-label', 'GEO-001 reference point, unverified GIS and no panorama coverage');
           geoMarker.title = 'GEO-001 · reference only';
           geoMarker.textContent = 'G';
-          geoMarker.setAttribute('aria-haspopup', 'dialog');
           markers.push(new maplibre.Marker({ element: geoMarker }).setLngLat([GEO_001.longitude, GEO_001.latitude]).setPopup(new maplibre.Popup({ offset: 18 }).setText('GEO-001 · coordinate reference only; GIS and 360 imagery not verified')).addTo(instance));
           setMapState('ready');
         });
