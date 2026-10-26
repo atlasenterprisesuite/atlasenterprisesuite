@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { connectMtlsWebSocket } from './lib/realtime-client.mjs';
+import { collectWindowsDiagnosticSnapshot } from './lib/windows-diagnostics.mjs';
 import { executeBrowserCdpAction } from './lib/browser-cdp.mjs';
 import { collectLinuxDeviceDnaReport, deviceDnaLocalDevice } from './lib/device-dna-linux.mjs';
 import {
@@ -332,6 +333,11 @@ async function realtimeLoop() {
 }
 
 async function main() {
+  // Explicit opt-in local diagnostics; never upload metrics or enable desktop control.
+  if (process.platform === 'win32' && process.env.ATLAS_WINDOWS_DIAGNOSTICS_LOCAL === 'true') {
+    const snapshot = collectWindowsDiagnosticSnapshot();
+    process.stdout.write(`ATLAS Windows local diagnostics: ${JSON.stringify(snapshot)}\n`);
+  }
   await enroll();
   await syncDevices();
   await heartbeat();

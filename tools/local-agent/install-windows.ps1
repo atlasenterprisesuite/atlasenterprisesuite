@@ -17,6 +17,7 @@ New-Item -ItemType Directory -Force -Path $runtime,(Join-Path $runtime "lib"),$c
 Copy-Item (Join-Path $source "atlas-local-agent.mjs") (Join-Path $runtime "atlas-local-agent.mjs") -Force
 Copy-Item (Join-Path $source "lib\realtime-client.mjs") (Join-Path $runtime "lib\realtime-client.mjs") -Force
 Copy-Item (Join-Path $source "lib\secure-state.mjs") (Join-Path $runtime "lib\secure-state.mjs") -Force
+Copy-Item (Join-Path $source "lib\windows-diagnostics.mjs") (Join-Path $runtime "lib\windows-diagnostics.mjs") -Force
 
 $key = Join-Path $config "agent.key"
 $csr = Join-Path $config "agent.csr"
