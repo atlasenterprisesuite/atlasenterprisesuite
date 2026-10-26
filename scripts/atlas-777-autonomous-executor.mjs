@@ -2,9 +2,9 @@
 const gated = new Set(['deploy', 'merge', 'trade', 'withdraw', 'connect_live', 'production_write', 'secrets']);
 const allowed = new Set(['verify', 'audit', 'test', 'diagnose']);
 const safeId = value => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9:_-]{0,127}$/.test(value);
-const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const validCommitSha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
 function validTask(task) {
-  return task && safeId(task.id) && safeId(task.organizationId) && safeId(task.sha) && safeId(task.kind)
+  return task && safeId(task.id) && safeId(task.organizationId) && validCommitSha(task.sha) && safeId(task.kind)
     && safeId(task.idempotencyKey) && typeof task.approved === 'boolean';
 }
 export async function runAutonomousCycle({ tasks, execute, maxSteps = 20, organizationId, loadState, saveState }) {
