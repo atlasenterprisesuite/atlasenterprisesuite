@@ -23,6 +23,11 @@ describe('Binance.US isolated read adapter', () => {
     await expect((adapter.readBalances as (...args: unknown[]) => Promise<unknown>)({ authorized: true, boundOrganizationId: 'org-a', permissionEvidence: 'read_only_verified' })).rejects.toThrow('ACCESS_DENIED');
     expect(transport).not.toHaveBeenCalled();
   });
+  it('rejects truthy non-boolean permission values before any provider call', async () => {
+    const { adapter, transport } = make(async () => ({ ...decision, hasPayReadPermission: 'true' as unknown as boolean }));
+    await expect(adapter.readBalances()).rejects.toThrow('ACCESS_DENIED');
+    expect(transport).not.toHaveBeenCalled();
+  });
   it('preserves precision and invokes only the injected read path', async () => {
     const { adapter, transport } = make(async () => decision);
     expect((await adapter.readBalances()).balances[0].free).toBe('0.00000001');
