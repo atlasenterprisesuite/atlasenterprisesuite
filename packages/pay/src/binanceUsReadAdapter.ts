@@ -24,7 +24,7 @@ export function createBinanceUsReadAdapter(transport: BinanceReadTransport, reso
       let decision: ServerReadDecision;
       try { decision = await resolveServerDecision(); }
       catch { throw new Error('ACCESS_DENIED'); }
-      if (!decision?.hasPayReadPermission) throw new Error('ACCESS_DENIED');
+      if (decision?.hasPayReadPermission !== true) throw new Error('ACCESS_DENIED');
       if (!decision.sessionOrganizationId || !decision.connectionOrganizationId ||
           decision.sessionOrganizationId !== decision.connectionOrganizationId) throw new Error('TENANT_MISMATCH');
       if (decision.effectiveKeyPermissionsVerifiedReadOnly !== true) throw new Error('KEY_PERMISSIONS_UNVERIFIED');
