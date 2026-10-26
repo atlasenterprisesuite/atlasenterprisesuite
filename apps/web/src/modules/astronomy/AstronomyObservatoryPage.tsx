@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { equatorialToHorizontal, validateLunarImage } from './astronomyMath.mjs';
+import { equatorialToHorizontal, validateLunarImage, verifyImageBytes } from './astronomyMath.mjs';
 
 type Confidence='confirmed'|'probable'|'hypothesis';
 const formations=[{name:'Mare Imbrium',confidence:'hypothesis'},{name:'Mare Tranquillitatis',confidence:'hypothesis'},{name:'Tycho',confidence:'hypothesis'}] as const;
@@ -18,7 +18,9 @@ export function AstronomyObservatoryPage() {
    if(!next)return;
    if(!validateLunarImage(next).ok){setError('Archivo rechazado: solo JPEG, PNG o WebP hasta 20 MB.');return;}
    try {
-     const digest=await crypto.subtle.digest('SHA-256',await next.arrayBuffer());
+     const bytes=new Uint8Array(await next.arrayBuffer());
+     if(!verifyImageBytes({type:next.type,size:next.size,bytes})){setError('La firma del archivo no coincide con el formato declarado.');return;}
+     const digest=await crypto.subtle.digest('SHA-256',bytes);
      setSha(Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''));
      setFile(next);
    } catch {setError('No se pudo verificar la integridad del archivo.');}
@@ -48,7 +50,7 @@ export function AstronomyObservatoryPage() {
        <textarea id="lunar-note" value={annotation} onChange={e=>setAnnotation(e.target.value)} maxLength={1000} style={{width:'100%'}}/>
        <label htmlFor="lunar-confidence">Certeza declarada</label>
        <select id="lunar-confidence" value={confidence} onChange={e=>setConfidence(e.target.value as Confidence)}>
-         <option value="hypothesis">Hipótesis</option><option value="probable">Probable</option><option value="confirmed">Confirmada (requiere evidencia externa)</option>
+         <option value="hypothesis">Hipótesis</option><option value="probable">Probable</option><option value="confirmed" disabled>Confirmada (bloqueada: requiere evidencia externa)</option>
        </select>
        <p>Nota local: {annotation||'Sin anotaciones'} · {confidence}. Esta etiqueta no equivale a validación científica.</p>
        <h2>Coordenadas ecuatoriales → horizontales</h2>
