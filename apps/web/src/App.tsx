@@ -34,6 +34,7 @@ import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { Gps4DPage } from './modules/gps/Gps4DPage';
 import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPage';
 import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
+import { OrbitalCityPage } from './modules/city/OrbitalCityPage';
 import { FaithReflectionPage } from './modules/wellbeing/FaithReflectionPage';
 import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
 import { AtlasMaxPage } from './modules/atlas-max/AtlasMaxPage';
@@ -315,6 +316,7 @@ export function App() {
         <Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />
         <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/city" element={<RequireAtlasIdentity><AtlasDigitalDistrictPage /></RequireAtlasIdentity>} />
+        <Route path="/city/orbital" element={<RequireAtlasIdentity><OrbitalCityPage /></RequireAtlasIdentity>} />
         <Route path="/city/twin" element={<RequireAtlasIdentity><UrbanTwinPage /></RequireAtlasIdentity>} />
         <Route path="/finance" element={<FinanceHome />} />
         <Route path="/finance/pay" element={<Navigate to="/finance/pay/workspace" replace />} />
