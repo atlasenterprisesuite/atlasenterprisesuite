@@ -56,9 +56,9 @@ begin
    or jsonb_typeof(p_evidence->'state') is distinct from 'string' then
    raise exception 'invalid_certification_evidence' using errcode='23514';
  end if;
- if (p_evidence->>'certified')::boolean
-   and (jsonb_array_length(p_evidence->'blockers') <> 0
-     or p_evidence->>'state' is distinct from 'operational_confirmed') then
+ -- This evidence recorder cannot independently attest deployment or authorization.
+ -- A separate, reviewed certification authority is required for a certified=true state.
+ if (p_evidence->>'certified')::boolean then
    raise exception 'certification_gates_not_verified' using errcode='23514';
  end if;
  -- Serialize writes for the same organization/tenant/module, including first insert.
