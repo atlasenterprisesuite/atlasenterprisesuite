@@ -1,18 +1,15 @@
-/**
- * Binance.US isolated read model. The injected transport MUST be an authenticated
- * server-side GET-only transport; this module never signs requests or holds keys.
- * No live provider wiring, persistence, trading, or payout capability.
- */
-export type BinanceReadScope = {
-  organizationId: string;
-  boundOrganizationId: string;
-  authorized: boolean;
-  permissionEvidence: 'read_only_verified' | 'unknown' | 'trade_enabled' | 'withdraw_enabled';
-};
+/** Isolated Binance.US read model. No live transport, signing, secrets or money movement. */
 export type BinanceBalance = { asset: string; free: string; locked: string };
 export type BinanceTradeEvidence = { id: string; asset: string; quantity: string };
 export type BinanceReadTransport = (path: '/api/v3/account') => Promise<unknown>;
-
+/** Server-resolved trust evidence: never deserialize these fields from an HTTP request. */
+export type ServerReadDecision = {
+  sessionOrganizationId: string;
+  connectionOrganizationId: string;
+  hasPayReadPermission: boolean;
+  effectiveKeyPermissionsVerifiedReadOnly: boolean;
+};
+export type ServerReadDecisionResolver = () => Promise<ServerReadDecision>;
 const decimal = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
 function validBalance(value: unknown): value is BinanceBalance {
   if (!value || typeof value !== 'object') return false;
@@ -21,16 +18,16 @@ function validBalance(value: unknown): value is BinanceBalance {
     && typeof row.free === 'string' && decimal.test(row.free)
     && typeof row.locked === 'string' && decimal.test(row.locked);
 }
-function validateScope(scope: BinanceReadScope): void {
-  if (!scope.authorized) throw new Error('ACCESS_DENIED');
-  if (!scope.organizationId || !scope.boundOrganizationId || scope.organizationId !== scope.boundOrganizationId)
-    throw new Error('TENANT_MISMATCH');
-  if (scope.permissionEvidence !== 'read_only_verified') throw new Error('KEY_PERMISSIONS_UNVERIFIED');
-}
-export function createBinanceUsReadAdapter(transport: BinanceReadTransport) {
+export function createBinanceUsReadAdapter(transport: BinanceReadTransport, resolveServerDecision: ServerReadDecisionResolver) {
   return {
-    async readBalances(scope: BinanceReadScope): Promise<{ balances: BinanceBalance[] }> {
-      validateScope(scope);
+    async readBalances(): Promise<{ balances: BinanceBalance[] }> {
+      let decision: ServerReadDecision;
+      try { decision = await resolveServerDecision(); }
+      catch { throw new Error('ACCESS_DENIED'); }
+      if (!decision?.hasPayReadPermission) throw new Error('ACCESS_DENIED');
+      if (!decision.sessionOrganizationId || !decision.connectionOrganizationId ||
+          decision.sessionOrganizationId !== decision.connectionOrganizationId) throw new Error('TENANT_MISMATCH');
+      if (decision.effectiveKeyPermissionsVerifiedReadOnly !== true) throw new Error('KEY_PERMISSIONS_UNVERIFIED');
       let response: unknown;
       try { response = await transport('/api/v3/account'); }
       catch { throw new Error('PROVIDER_UNAVAILABLE'); }
