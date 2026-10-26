@@ -16,7 +16,7 @@ export const readinessStates = Object.freeze({
   OPERATIONAL: 'operational_confirmed'
 });
 const required = ['unit', 'integration', 'typecheck', 'build', 'security', 'tenantIsolation'];
-const validSha = (value: unknown) => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
+const validSha = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
 function verified(check: ReadinessCheck | undefined, sha: string) {
   return check?.conclusion === 'success' && check?.status === 'completed' &&
     check?.sha === sha && typeof check?.runId === 'number' && Number.isSafeInteger(check.runId) && check.runId > 0;
