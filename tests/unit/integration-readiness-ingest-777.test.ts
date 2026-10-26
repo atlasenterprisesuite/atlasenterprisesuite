@@ -31,7 +31,13 @@ describe('Trusted GitHub integration readiness ingestion', () => {
     const result = await ingestIntegrationReadiness({ ...args, ...f });
     expect(result.status).toBe('recorded');
     if (result.status === 'recorded') expect(result.current.verifiedChecks).toEqual([]);
-    expect(f.ledger.appendIfAbsent).not.toHaveBeenCalled();
+    // Missing CI logs must never produce a certification milestone, but an
+    // authorization blocker remains auditable even when no checks are verified.
+    expect(f.ledger.appendIfAbsent).toHaveBeenCalledTimes(1);
+    expect(f.ledger.appendIfAbsent).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'authorization_blocker', sha, moduleId: 'atlas-pay',
+      blockers: expect.arrayContaining(['AUTHORIZATION_REQUIRED', 'P0_OPEN'])
+    }));
   });
   it('does not certify an integration while P0 is open', async () => {
     const f = fixture();
