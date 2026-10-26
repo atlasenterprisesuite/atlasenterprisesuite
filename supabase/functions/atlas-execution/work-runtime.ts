@@ -182,33 +182,28 @@ export async function enqueueWorkRuntimeJob(admin: any, context: UserContext, in
 }
 
 export async function claimWorkRuntimeJob(admin: any, context: RuntimeAuthContext) {
-  const { data: candidate, error: candidateError } = await admin
-    .from('execution_runtime_jobs')
-    .select('id')
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .eq('runtime_kind', context.kind)
-    .eq('state', 'queued')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (candidateError) throw new WorkRuntimeError('persistence_error', 500);
-  if (!candidate) return null;
-
-  const leaseId = crypto.randomUUID();
-  const leaseExpiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
-  const { data: job, error } = await admin
-    .from('execution_runtime_jobs')
-    .update({ runtime_id: context.runtimeId, state: 'claimed', lease_id: leaseId, lease_expires_at: leaseExpiresAt, updated_at: new Date().toISOString() })
-    .eq('id', String(candidate.id))
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .eq('runtime_kind', context.kind)
-    .eq('state', 'queued')
-    .select('id,workflow_id,task_id,step_id,runtime_kind,state,execution_envelope,action,lease_id,lease_expires_at')
-    .maybeSingle();
+  // Database transaction owns selection and claim; do not split into client-side read/update.
+  const { data, error } = await admin.rpc('atlas_claim_execution_runtime_job', {
+    p_org_id: context.orgId,
+    p_tenant_id: context.tenantId,
+    p_runtime_id: context.runtimeId,
+    p_runtime_kind: context.kind
+  });
   if (error) throw new WorkRuntimeError('persistence_error', 500);
-  return job || null;
+  const job = Array.isArray(data) ? data[0] : data;
+  if (!job) return null;
+  return {
+    id: job.id,
+    workflow_id: job.workflow_id,
+    task_id: job.task_id,
+    step_id: job.step_id,
+    runtime_kind: job.runtime_kind,
+    state: job.state,
+    execution_envelope: job.execution_envelope,
+    action: job.action,
+    lease_id: job.lease_id,
+    lease_expires_at: job.lease_expires_at
+  };
 }
 
 export async function completeWorkRuntimeJob(admin: any, context: RuntimeAuthContext, input: {
@@ -221,33 +216,28 @@ export async function completeWorkRuntimeJob(admin: any, context: RuntimeAuthCon
   const leaseId = text(input.leaseId, 80);
   if (!jobId || !leaseId) throw new WorkRuntimeError('runtime_lease_required', 422);
 
-  const { data: current, error: loadError } = await admin
-    .from('execution_runtime_jobs')
-    .select('id,state,lease_id,lease_expires_at')
-    .eq('id', jobId)
-    .eq('runtime_id', context.runtimeId)
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .maybeSingle();
-  if (loadError) throw new WorkRuntimeError('persistence_error', 500);
-  if (!current || String(current.lease_id || '') !== leaseId) throw new WorkRuntimeError('runtime_lease_mismatch', 409);
-  if (!['claimed', 'running'].includes(String(current.state))) throw new WorkRuntimeError('runtime_job_not_claimed', 409);
-  const expiry = new Date(String(current.lease_expires_at || '')).getTime();
-  if (!Number.isFinite(expiry) || Date.now() >= expiry) throw new WorkRuntimeError('runtime_lease_expired', 409);
-
+  // Only persist the redacted result. PostgreSQL owns the lease/time/state
+  // predicate atomically so a late worker cannot finalize an expired claim.
   const sanitized = sanitizeBrowserResult(input.result);
-  const { data, error } = await admin
-    .from('execution_runtime_jobs')
-    .update({ state: input.state, sanitized_result: sanitized, updated_at: new Date().toISOString() })
-    .eq('id', jobId)
-    .eq('runtime_id', context.runtimeId)
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .eq('lease_id', leaseId)
-    .in('state', ['claimed', 'running'])
-    .select('id,workflow_id,task_id,step_id,state,sanitized_result,updated_at')
-    .maybeSingle();
+  const { data, error } = await admin.rpc('atlas_complete_execution_runtime_job', {
+    p_org_id: context.orgId,
+    p_tenant_id: context.tenantId,
+    p_runtime_id: context.runtimeId,
+    p_job_id: jobId,
+    p_lease_id: leaseId,
+    p_state: input.state,
+    p_result: sanitized
+  });
   if (error) throw new WorkRuntimeError('persistence_error', 500);
-  if (!data) throw new WorkRuntimeError('runtime_lease_mismatch', 409);
-  return data;
+  const job = Array.isArray(data) ? data[0] : data;
+  if (!job) throw new WorkRuntimeError('runtime_lease_mismatch', 409);
+  return {
+    id: job.id,
+    workflow_id: job.workflow_id,
+    task_id: job.task_id,
+    step_id: job.step_id,
+    state: job.state,
+    sanitized_result: job.sanitized_result,
+    updated_at: job.updated_at
+  };
 }
