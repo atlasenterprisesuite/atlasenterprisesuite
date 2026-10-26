@@ -57,7 +57,7 @@ describe('Binance.US server-only trust resolver contract', () => {
     f.deps.loadConnection.mockResolvedValue({ organizationId: 'org-b', state: 'authorized' });
     f.deps.verifyMembershipAndPermission.mockImplementation(async (_user, org) => org === 'org-a');
     await expect(f.adapter.readBalances()).rejects.toThrow('ACCESS_DENIED');
-    expect(f.deps.verifyMembershipAndPermission).toHaveBeenCalledWith('user-a', 'org-b', 'pay.read');
+    expect(f.deps.verifyMembershipAndPermission).not.toHaveBeenCalled();
     expect(f.deps.verifyEffectiveReadOnlyKeyPermissions).not.toHaveBeenCalled();
     expect(f.transport).not.toHaveBeenCalled();
   });
