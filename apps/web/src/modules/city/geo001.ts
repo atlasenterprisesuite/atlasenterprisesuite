@@ -16,7 +16,7 @@ export function spatial360State(authorized: boolean, panoramaAvailable: boolean)
 export function validateGeoResponse(payload: unknown, evidence: GeoEvidence | null): GeoResult {
   if (!evidence || !/^https:\/\//.test(evidence.source) || !Number.isFinite(Date.parse(evidence.capturedAt)) || !/^[a-f0-9]{64}$/i.test(evidence.sha256) || !evidence.license.trim()) return { status: 'unverified', reason: 'missing_provenance' };
   if (!payload || typeof payload !== 'object' || !('features' in payload) || !Array.isArray(payload.features)) return { status: 'unverified', reason: 'invalid_features' };
-  return { status: 'verified', features: payload.features, evidence };
+  return { status: 'unverified', reason: 'hash_not_verified' };
 }
 export async function fetchArcGisReadOnly(endpoint: string, fetcher: typeof fetch = fetch): Promise<unknown> {
   const url = new URL(endpoint);
@@ -27,4 +27,15 @@ export async function fetchArcGisReadOnly(endpoint: string, fetcher: typeof fetc
   const data: unknown = await response.json();
   if (data && typeof data === 'object' && 'error' in data) throw new Error('gis_provider_error');
   return data;
+}
+
+export async function verifyGeoPayload(payload: unknown, evidence: GeoEvidence | null): Promise<GeoResult> {
+  const preliminary = validateGeoResponse(payload, evidence);
+  if (!evidence || preliminary.reason !== 'hash_not_verified') return preliminary;
+  if (!globalThis.crypto?.subtle) return { status: 'unverified', reason: 'crypto_unavailable' };
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const actual = Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, '0')).join('');
+  if (actual !== evidence.sha256.toLowerCase()) return { status: 'unverified', reason: 'sha256_mismatch' };
+  return { status: 'verified', features: (payload as { features: unknown[] }).features, evidence };
 }
