@@ -42,7 +42,7 @@ SQL
 psql_ci <<'SQL'
 -- Negative authorization and append-only mutation checks.
 set request.jwt.claim.role = 'authenticated';
-do $
+do $$
 begin
   begin
     perform public.atlas_record_certification_777(
@@ -51,15 +51,15 @@ begin
     raise exception 'unauthorized write accepted';
   exception when insufficient_privilege then null;
   end;
-end $;
+end $$;
 set request.jwt.claim.role = 'service_role';
-do $
+do $$
 begin
   begin
     update public.atlas_certification_audit_777 set sha=repeat('b',40);
     raise exception 'audit mutation accepted';
   exception when insufficient_privilege then null;
   end;
-end $;
+end $$;
 SQL
 echo "PASS: isolated atomic certification assertions"
