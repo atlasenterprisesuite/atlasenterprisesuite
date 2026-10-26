@@ -6,7 +6,7 @@ import {
   type AtlasLocalDevice
 } from './localControlApi';
 
-type AssistReadiness = 'loading' | 'not-enrolled' | 'secure-agent-required' | 'adapter-required' | 'ready' | 'error';
+type AssistReadiness = 'loading' | 'not-enrolled' | 'secure-agent-required' | 'adapter-required' | 'error';
 
 function isWindows(agent: AtlasLocalAgent) {
   const platform = agent.platform.toLowerCase();
@@ -27,7 +27,6 @@ function statusLabel(status: AssistReadiness) {
     case 'not-enrolled': return 'Enrollment required';
     case 'secure-agent-required': return 'mTLS required';
     case 'adapter-required': return 'Native adapter required';
-    case 'ready': return 'Evidence verified';
     case 'error': return 'Unavailable';
   }
 }
@@ -73,8 +72,11 @@ export function RemoteAssistPanel() {
           return;
         }
 
-        setState('ready');
-        setMessage('A secure Windows agent and a declared native remote-desktop capability are both present.');
+        // A capability declaration is untrusted metadata, not signed adapter or session evidence.
+        // Fail closed until the canonical backend verifies adapter signature, device binding,
+        // tenant scope, consent, session lifetime and revocation at session creation.
+        setState('adapter-required');
+        setMessage('Remote capability declared, but signed native adapter and authorized session evidence are not verified. Desktop control remains blocked.');
       })
       .catch((error: unknown) => {
         if (!mounted) return;
@@ -106,7 +108,7 @@ export function RemoteAssistPanel() {
           <p className="eyebrow">ATLAS Remote Assist</p>
           <h2 id="remote-assist-title">Governed remote support</h2>
         </div>
-        <span className={state === 'ready' ? 'status-chip' : 'status-chip warning'}>
+        <span className="status-chip warning">
           {statusLabel(state)}
         </span>
       </div>
