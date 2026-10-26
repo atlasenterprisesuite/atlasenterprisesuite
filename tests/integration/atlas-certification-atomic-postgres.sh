@@ -30,7 +30,11 @@ begin
   if (select count(*) from public.atlas_certification_audit_777) <> 1 then raise exception 'audit duplicated'; end if;
   if not public.atlas_record_certification_777(org_b,'tenant-b','atlas-pay',sha,payload) then raise exception 'tenant b record failed'; end if;
   if (select count(*) from public.atlas_certification_snapshot_777) <> 2 then raise exception 'tenant isolation failed'; end if;
-  if public.atlas_record_certification_777(org_a,'tenant-a','atlas-pay',repeat('b',40),payload) then raise exception 'mismatched sha accepted'; end if;
+  begin
+    perform public.atlas_record_certification_777(org_a,'tenant-a','atlas-pay',repeat('b',40),payload);
+    raise exception 'mismatched sha accepted';
+  exception when check_violation then null;
+  end;
   begin
     perform public.atlas_record_certification_777(org_a,'tenant-a','atlas-pay',sha,payload || '{"certified":true}'::jsonb);
     raise exception 'P0 bypass accepted';
