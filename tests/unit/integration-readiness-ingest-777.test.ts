@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ingestIntegrationReadiness } from '../../packages/core/src/integrationReadinessIngest777';
+import type { ReadinessResult } from '../../packages/core/src/integrationReadiness777';
 const sha = 'a'.repeat(40);
 const record = { repository: 'atlasenterprisesuite/atlasenterprisesuite', moduleId: 'atlas-pay', sha, p0Open: true, authorizationRequired: true, authorized: false, organizationId: 'org-a' };
 function fixture() {
@@ -8,7 +9,7 @@ function fixture() {
     fetchRuns: vi.fn(async () => [{ id: 42, name: 'ATLAS Build + Production Readiness Gate', head_sha: sha, status: 'completed', conclusion: 'success' }]),
     verifyStepInJobLogs: vi.fn(async () => true)
   };
-  const ledger = { load: vi.fn(async () => null), appendIfAbsent: vi.fn(async () => true), save: vi.fn(async () => {}) };
+  const ledger = { load: vi.fn(async (): Promise<ReadinessResult | null> => null), appendIfAbsent: vi.fn(async () => true), save: vi.fn(async () => {}) };
   return { inventory, github, ledger };
 }
 const args = { organizationId: 'org-a', moduleId: 'atlas-pay', now: '2026-10-26T15:00:00Z' };
