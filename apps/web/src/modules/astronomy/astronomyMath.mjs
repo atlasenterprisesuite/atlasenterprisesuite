@@ -37,6 +37,6 @@ export function buildPrivateObservationPath({orgId,userId,sha256}) {
  return orgId.toLowerCase()+'/'+userId.toLowerCase()+'/'+sha256;
 }
 export function calculateWithProvenance({coordinates,provenance}) {
- if(!provenance || provenance.source!=='NASA JPL Horizons'||typeof provenance.version!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/.test(provenance.version)||typeof provenance.observedAt!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:\\d{2})$/.test(provenance.observedAt)||!Number.isFinite(Date.parse(provenance.observedAt))) throw new Error('Verified ephemeris provenance required');
+ if(!provenance || provenance.source!=='NASA JPL Horizons'||typeof provenance.version!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/.test(provenance.version)||typeof provenance.observedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/.test(provenance.observedAt)||!Number.isFinite(Date.parse(provenance.observedAt))) throw new Error('Verified ephemeris provenance required');
  return {...equatorialToHorizontal(coordinates),provenance:{...provenance}};
 }
