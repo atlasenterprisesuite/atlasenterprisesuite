@@ -581,6 +581,12 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     const deviceId = requiredText(body.device_id, 'device_id_required', 80);
     const capability = requiredText(body.capability, 'capability_required', 120);
     const action = requiredText(body.action, 'action_required', 120);
+    // Server-side fail-closed boundary: device capability metadata is not proof of
+    // a signed adapter, bound session, tenant-scoped consent or revocation checks.
+    // Do not enqueue remote desktop actions until an authenticated session API exists.
+    if (capability.startsWith('remote.desktop.')) {
+      throw new EdgeError('remote_desktop_session_verification_required', 409);
+    }
     const risk = clean(body.risk_level, 20) || 'low';
     if (!['low', 'medium', 'high', 'critical'].includes(risk)) throw new EdgeError('invalid_risk_level', 422);
     const { data: device, error: deviceError } = await admin.from('atlas_local_devices')
