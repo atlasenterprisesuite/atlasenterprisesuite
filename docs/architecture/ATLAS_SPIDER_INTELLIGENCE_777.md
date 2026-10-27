@@ -92,3 +92,6 @@ Added tests/fixtures/spider-auth-catalog-readonly.sql and tests/unit/spider-auth
 
 ## Catalog privilege completeness follow-up
 The read-only catalog inspector now includes relacl, schema ACL, effective table and schema privileges for anon/authenticated/service_role, pg_auth_members, role inheritance and bypass-RLS flags, default ACL, and related public function execute grants/security-definer flags. Six additional static Vitest checks were defined, not executed. This is metadata inspection design, not proof of authorization. No database connection or migration occurred. P0 remains open.
+
+## Static contract validation follow-up
+Fixed two classifier regressions: dotted signal kinds such as ci.failure were rejected by safeId; the timestamp regex contained double-escaped digit and decimal patterns. Added one regression test. The catalog function filter now reads pg_proc.prosrc instead of decompiling every routine; this reduces exposure to pg_get_functiondef failures for nonstandard functions. Static review only; Vitest, typecheck, PostgreSQL and CI have not passed or run in an isolated environment. P0 open.
