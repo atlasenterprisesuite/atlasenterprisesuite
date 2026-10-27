@@ -21,7 +21,13 @@ describe('Genesis Humanity Covenant 777 negative preflight', () => {
     expect(check({ ...req,claimsDivineAuthority:true },ctx).reason).toBe('MISREPRESENTATION');
   });
   it('rejects unapproved sensors, spending, deployment and self-modification', () => {
-    for (const action of ['sensor_access','spend','deploy','self_modify']) expect(check({ ...req,action },ctx).reason).toBe('HUMAN_APPROVAL_REQUIRED');
+    for (const action of ['sensor_access','spend','deploy','self_modify']) expect(check({ ...req,action },ctx).reason).toBe('ENFORCEMENT_GATE_REQUIRED');
+  });
+  it('requires human approval after the trusted gate, RBAC and audit checks pass', () => {
+    for (const action of ['sensor_access','spend','deploy','self_modify']) {
+      const trusted = { ...approved, permissions:[action], auditReceipt:{ ...approved.auditReceipt,action }, humanApproval:undefined };
+      expect(check({ ...req,action },trusted).reason).toBe('HUMAN_APPROVAL_REQUIRED');
+    }
   });
   it('requires active purpose-scoped consent for sensors and personal data', () => {
     expect(check(protectedReq,approved).allowed).toBe(true);

@@ -1,6 +1,7 @@
 /** Genesis Covenant 777 v0.1: pure, fail-closed preflight. No external side effects. */
 const protectedActions = new Set(['sensor_access','personal_data','production_write','deploy','merge','spend','physical_actuator','self_modify','safety_control_change']);
 const prohibitedActions = new Set(['disable_safeguards','disable_audit','disable_emergency_stop','autonomous_violence']);
+export const isGenesisProtectedAction = action => protectedActions.has(action);
 const safeId = s => typeof s === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9:_-]{0,127}$/.test(s);
 export function evaluateGenesisCovenant(request, context) {
   const deny = reason => Object.freeze({ allowed: false, reason });

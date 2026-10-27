@@ -46,4 +46,17 @@ describe('Genesis trusted server enforcement boundary',()=>{
     const r=await gateway().execute(request,async()=>({status:'failed'}));
     expect(r.reason).toBe('TRANSACTION_OR_AUTHORITY_FAILED');
   });
+  it('blocks preflight-only verify from triggering a side-effect callback',async()=>{
+    const e=vi.fn(async()=>({status:'completed'}));
+    const r=await gateway().execute({ ...request,action:'verify' },e);
+    expect(r.reason).toBe('EXECUTION_ACTION_REQUIRED');
+    expect(e).not.toHaveBeenCalled();
+  });
+  it('rejects a fabricated successful transaction without executing the callback',async()=>{
+    const e=vi.fn(async()=>({status:'completed'}));
+    const r=await gateway(async()=>state,async()=>({status:'completed',result:{status:'completed'}})).execute(request,e);
+    expect(r.reason).toBe('TRANSACTION_RESULT_UNVERIFIED');
+    expect(e).not.toHaveBeenCalled();
+  });
+
 });
