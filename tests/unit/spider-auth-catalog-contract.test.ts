@@ -15,5 +15,5 @@ describe("Spider catalog inspector static safety contract (not a DB execution)",
  it("checks role inheritance and RLS bypass", () => { expect(sql).toContain("pg_auth_members"); expect(sql).toContain("rolinherit"); expect(sql).toContain("rolbypassrls"); });
  it("checks default ACLs", () => expect(sql).toContain("pg_default_acl"));
  it("checks function execute and security definer flags", () => { expect(sql).toContain("has_function_privilege"); expect(sql).toContain("p.prosecdef"); });
- it("never invokes database functions through CALL or DO blocks", () => expect(sql.replace(/--[^\n]*/g, "")).not.toMatch(/^\s*(CALL|DO)\b/im));
+ it("rejects SQL mutations only at statement boundaries", () => {\n  const statements = sql.replace(/--[^\n]*/g, "").split(";").map(part => part.trim());\n  expect(statements.filter(Boolean).every(part => !/^(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE|TRUNCATE|GRANT|REVOKE|CALL|DO)\\b/i.test(part))).toBe(true);\n });\n it("never invokes database functions through CALL or DO blocks", () => expect(sql.replace(/--[^\n]*/g, "")).not.toMatch(/^\s*(CALL|DO)\b/im));
 });
