@@ -41,6 +41,7 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[],prefe
         return Object.freeze({mode:'council',providers:compatible.map(p=>p.id),provider:compatible[0].id,profile:intent,capabilities,fallback_used:false,reason:'council_verified_capability_match'});
       }
       if(mode!=='auto'){
+        if(allowedSet&&!allowedSet.has(mode))throw fail('provider_not_allowed',403,{provider:mode});
         const selected=ordered.find(p=>p.id===mode);
         if(!selected||selected.configured!==true)throw fail('provider_not_configured',503,{provider:mode});
         if(!supports(selected,intent,capabilities))throw fail(selected.verified===true?'capability_unavailable':'provider_unavailable',503,{provider:mode});
