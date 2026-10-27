@@ -35,3 +35,12 @@ No executable test result or exact-SHA CI was established for this feature. The 
 - Local disposable runtime check: Node v22.16.0 and git available; no repository checkout or vetted local node_modules/vitest. No safe complete exact-SHA Vitest/typecheck execution environment was established.
 - Gate decision: BLOCKED; do not install packages, run lifecycle scripts, or claim tests passed. For exact-SHA verification, require integrity-checked checkout and preapproved offline dependency cache with scripts disabled and no production credentials.
 - Integration remains observation-only; #933 is pure planning, #927 needs atomic durable state, and no real executor callback is connected.
+
+## 2026-10-27 verified source / offline execution follow-up
+- Verified GitHub commit object exists for 0499f0c6cb003687d960323eed0f4691a549d89e via authorized GitHub connector. This is NOT an integrity-verified local Git checkout.
+- Connector supports fetching individual files/blobs and commit metadata, but no demonstrated end-to-end export into this sandbox with verified tree reconstruction.
+- Sandbox has Node v22.16.0 and Git v2.47.3. No Vitest executable, node_modules, or vetted offline dependency cache found in the inspected locations.
+- Direct git ls-remote of repository failed because github.com DNS resolution is unavailable in the sandbox. No credentials were supplied or used.
+- Consequently exact-SHA Vitest (11 tests) and full typecheck were NOT executed. Neither pass nor fail is established. No lifecycle scripts or npm install were run.
+- Further static conclusion: a pure classifier cannot guarantee durable uniqueness or audit receipts. Do not wire it to #927 executor or claim transactional idempotency; a backend with atomic unique constraints and tenant RLS remains necessary.
+- P0 remains open; this is a reproducible environment limitation, not an application test failure.
