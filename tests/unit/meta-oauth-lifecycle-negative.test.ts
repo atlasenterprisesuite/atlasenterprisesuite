@@ -17,7 +17,7 @@ function fixture(override: Record<string, unknown> | null = {}) {
   const exchangeCode = vi.fn();
   const store = { findOAuthState, consumeOAuthState, recordEvidence };
   const deps = {
-    store, now: () => now, clientId: 'offline-client',
+    store, now: () => now, fetchImpl: vi.fn().mockRejectedValue(new Error('offline-network-blocked')), clientId: 'offline-client',
     clientSecret: 'offline-secret', redirectUri: 'https://atlas.example.test/callback',
     credentialKey: new Uint8Array(32), oauth: { exchangeCode }
   };
