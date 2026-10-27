@@ -56,6 +56,15 @@ describe('OAuth callback negative lifecycle contracts (offline)', () => {
         .rejects.toMatchObject({ code: 'oauth_state_consumption_failed', status: 409 });
       expect(f.exchangeCode).not.toHaveBeenCalled();
     });
+    it(`${provider} does not mask a failed OAuth exchange when evidence persistence fails`, async () => {
+      const f = fixture();
+      f.recordEvidence.mockRejectedValue(new Error('offline-audit-storage-failure'));
+      await expect(complete({ state: 'audit-failure', code: 'offline-code', deps: f.deps as never }))
+        .rejects.toMatchObject({ code: 'oauth_exchange_failed', status: 502 });
+      expect(f.consumeOAuthState).toHaveBeenCalledTimes(1);
+      expect(f.recordEvidence).toHaveBeenCalledTimes(1);
+      // This documents existing best-effort evidence behavior; NOT transactional audit certification.
+    });
     it(`${provider} allows at most one concurrent callback past atomic claim`, async () => {
       const f = fixture();
       let consumed = false;
