@@ -1,0 +1,10 @@
+{
+  "name": "ATLAS Enterprise Suite",
+  "short_name": "ATLAS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "description": "ATLAS Enterprise Suite mobile web access"
+}

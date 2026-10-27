@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { IosDeviceSetupPage } from './modules/device-os/IosDeviceSetupPage';
 import { AtlasShell } from './components/AtlasShell';
 import { CertificateLifecyclePage } from './modules/security/CertificateLifecyclePage';
 import { LabNav } from './components/LabNav';
@@ -293,6 +294,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/device/setup/ios" element={<RequireAtlasIdentity><IosDeviceSetupPage /></RequireAtlasIdentity>} />
         <Route path="/security/certificates" element={<RequireAtlasIdentity><CertificateLifecyclePage /></RequireAtlasIdentity>} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
