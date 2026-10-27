@@ -5,6 +5,11 @@
 name: GPS 5D isolated TDD (P0 safety gate)
 on:
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: 'Exact 40-character commit SHA to inspect; must match selected branch HEAD'
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -16,16 +21,17 @@ jobs:
     timeout-minutes: 5
     env:
       EXPECTED_REF: refs/heads/feat/gps5d-idrive-tdd-777-20261027
-      EXPECTED_SHA: ccd214b84f7158472de49fc4d1bcda4c47eb3dcb
     steps:
       - name: Reject unexpected ref and commit
         shell: bash
         env:
           ACTUAL_REF: ${{ github.ref }}
           ACTUAL_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: |
           set -euo pipefail
           test "$ACTUAL_REF" = "$EXPECTED_REF"
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
           test "$ACTUAL_SHA" = "$EXPECTED_SHA"
       - name: Refuse unproven network isolation and dependency safety
         shell: bash
@@ -38,4 +44,5 @@ jobs:
 # No checkout, package installation, service containers, credentials, deploy,
 # artifact upload, or execution of untrusted repository scripts.
 # Future execution requires an independently reviewed isolated runner design
-# and an exact-SHA lock update. This workflow intentionally FAILS CLOSED.
+# and explicit authorization. The SHA input must match github.sha, avoiding a
+# stale hardcoded SHA after this workflow itself changes. It FAILS CLOSED.
