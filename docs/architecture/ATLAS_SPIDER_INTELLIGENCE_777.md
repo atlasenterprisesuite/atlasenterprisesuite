@@ -44,3 +44,9 @@ No executable test result or exact-SHA CI was established for this feature. The 
 - Consequently exact-SHA Vitest (11 tests) and full typecheck were NOT executed. Neither pass nor fail is established. No lifecycle scripts or npm install were run.
 - Further static conclusion: a pure classifier cannot guarantee durable uniqueness or audit receipts. Do not wire it to #927 executor or claim transactional idempotency; a backend with atomic unique constraints and tenant RLS remains necessary.
 - P0 remains open; this is a reproducible environment limitation, not an application test failure.
+
+## 2026-10-27 static security TDD hardening
+- Hardened classifier to reject malformed event, tenant and kind IDs; require strict UTC ISO timestamps and calendar validity; require explicit revoked=false; reject malformed idempotency history entries.
+- Added six Vitest cases (17 total defined), covering impossible/ambiguous timestamps, malformed identities, unspecified revocation, malformed idempotency history, invalid severity and valid UTC milliseconds.
+- Static-only change: no Vitest/typecheck run; no verified transactional persistence, authenticated membership lookup, immutable evidence receipt, or concurrency protection. Input context is untrusted unless a trusted backend validates it.
+- Fail-closed here means classification-only; it does not imply authorization to execute jobs or repairs.
