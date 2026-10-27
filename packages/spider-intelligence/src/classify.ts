@@ -4,7 +4,7 @@ export type SpiderDecision = Readonly<{ status: "quarantined" | "observed"; reas
 const safeId = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9:_-]{0,127}$/.test(value);
 const safeKind = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,127}$/.test(value);
 const validTimestamp = (value: unknown): boolean => {
-  if (typeof value !== "string" || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z$/.test(value)) return false;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) return false;
   const millis = Date.parse(value);
   if (!Number.isFinite(millis)) return false;
   const canonical = new Date(millis).toISOString();
