@@ -78,11 +78,12 @@ export function selectVisibleDevelopments(
 
 export function selectDevelopmentsAtYear(
   records: readonly IrvDevelopment[],
-  year: number
+  year: number,
+  tenantId: string,
+  access: IrvAuthorization
 ): IrvDevelopment[] {
   if (!Number.isInteger(year)) return [];
-  return records.filter(record =>
-    validateIrvDevelopment(record).publishable &&
+  return selectVisibleDevelopments(records, tenantId, access).filter(record =>
     record.startYear <= year && year <= record.endYear
   );
 }
@@ -92,9 +93,10 @@ export function simulateMobilityImpact(input: {
   baselineTrips: number;
   scenarioMultiplier: number;
 }): { kind: 'simulation'; estimatedTrips: number | null; valid: boolean; disclaimer: string } {
+  const estimate = input.baselineTrips * input.scenarioMultiplier;
   const valid = Number.isFinite(input.baselineTrips) && input.baselineTrips >= 0 &&
     Number.isFinite(input.scenarioMultiplier) && input.scenarioMultiplier >= 0 &&
-    input.scenarioMultiplier <= 100;
+    input.scenarioMultiplier <= 100 && Number.isFinite(estimate);
   return {
     kind: 'simulation',
     estimatedTrips: valid ? input.baselineTrips * input.scenarioMultiplier : null,
