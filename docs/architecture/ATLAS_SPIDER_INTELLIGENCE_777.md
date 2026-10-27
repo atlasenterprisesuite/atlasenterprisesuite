@@ -25,3 +25,13 @@ Record stdout, stderr, exit codes, SHA and environment. Do not infer passing fro
 
 ## Unresolved
 No executable test result or exact-SHA CI was established for this feature. The classifier's previouslyObservedKeys input is an advisory in-memory snapshot, not durable idempotency; concurrency remains unsafe without a transactional store. Keep P0 open. No merge/deploy/production writes.
+
+## 2026-10-27 isolated environment inspection
+- Inspected exact baseline ff67dac7328d2fd455502f28b7579cbc96bcede2.
+- package-lock.json v3 root hasInstallScript=true; dependency integrity entries exist but entire lockfile/transitive package scripts were not audited.
+- scripts/install-render-local-ai.mjs exits unless RENDER=true; when enabled it performs curl downloads, tar extraction, chmod, and local filesystem writes. Never run install lifecycle hooks for this gate.
+- vitest.config.ts imports vitest/config and configures jsdom plus tests/setup.ts; setup imports @testing-library/jest-dom/vitest.
+- tsconfig.base.json uses strict, noEmit and bundler resolution; apps/web/tsconfig.json includes ../../packages and ../../data, so typecheck is not restricted to Spider.
+- Local disposable runtime check: Node v22.16.0 and git available; no repository checkout or vetted local node_modules/vitest. No safe complete exact-SHA Vitest/typecheck execution environment was established.
+- Gate decision: BLOCKED; do not install packages, run lifecycle scripts, or claim tests passed. For exact-SHA verification, require integrity-checked checkout and preapproved offline dependency cache with scripts disabled and no production credentials.
+- Integration remains observation-only; #933 is pure planning, #927 needs atomic durable state, and no real executor callback is connected.
