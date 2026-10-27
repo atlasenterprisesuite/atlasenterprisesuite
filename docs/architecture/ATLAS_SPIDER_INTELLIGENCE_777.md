@@ -86,3 +86,6 @@ No executable test result or exact-SHA CI was established for this feature. The 
 - Required isolated catalog recovery (read-only, never production): pg_catalog.pg_class/pg_attribute/pg_constraint/pg_index/pg_trigger/pg_policy/pg_roles/pg_class.relrowsecurity and information_schema.role_table_grants for both tables; capture exact DDL, owner and migration history. This requires an explicitly verified disposable clone.
 - Negative test specifications before an RPC: unauthenticated auth.uid() null, spoofed actor UUID, inactive/revoked membership, cross-org and cross-tenant, revoked membership during concurrent insert, duplicate idempotency key from two sessions, audit insertion error rolls back observation, receipt mismatch, zero-row success response, and client direct write denied by RLS/grants.
 - No database catalog was queried; tests were not run. P0 remains open pending verifiable schema and disposable Postgres.
+
+## Offline catalog inspection follow-up
+Added tests/fixtures/spider-auth-catalog-readonly.sql and tests/unit/spider-auth-catalog-contract.test.ts. These are source-only, unexecuted checks for membership and audit metadata in a disposable clone. No clone was available; P0 remains open. Effective inherited privileges and function permissions require further review.
