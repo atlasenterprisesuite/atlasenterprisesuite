@@ -89,3 +89,6 @@ No executable test result or exact-SHA CI was established for this feature. The 
 
 ## Offline catalog inspection follow-up
 Added tests/fixtures/spider-auth-catalog-readonly.sql and tests/unit/spider-auth-catalog-contract.test.ts. These are source-only, unexecuted checks for membership and audit metadata in a disposable clone. No clone was available; P0 remains open. Effective inherited privileges and function permissions require further review.
+
+## Catalog privilege completeness follow-up
+The read-only catalog inspector now includes relacl, schema ACL, effective table and schema privileges for anon/authenticated/service_role, pg_auth_members, role inheritance and bypass-RLS flags, default ACL, and related public function execute grants/security-definer flags. Six additional static Vitest checks were defined, not executed. This is metadata inspection design, not proof of authorization. No database connection or migration occurred. P0 remains open.
