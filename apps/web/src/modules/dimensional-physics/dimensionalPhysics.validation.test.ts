@@ -17,7 +17,7 @@ describe('dimensional science numerical and evidence gates', () => {
   it('rejects invalid confidence, untraceable and incomparable limits', () => {
     expect(() => validateExperimentalLimit({...EXPERIMENTAL_LIMITS[0], confidenceLevel: 1.5})).toThrow();
     expect(() => validateExperimentalLimit({...EXPERIMENTAL_LIMITS[0], sourceUrl:'http://example.com'})).toThrow();
-    expect(comparableLimits(EXPERIMENTAL_LIMITS[0], EXPERIMENTAL_LIMITS[1])).toBe(false);
+    expect(comparableLimits(EXPERIMENTAL_LIMITS[0], {...EXPERIMENTAL_LIMITS[0], model:'RS-graviton'})).toBe(false);
   });
   it('catalog records pass provenance validation', () => {
     EXPERIMENTAL_LIMITS.forEach(record=>expect(()=>validateExperimentalLimit(record)).not.toThrow());
