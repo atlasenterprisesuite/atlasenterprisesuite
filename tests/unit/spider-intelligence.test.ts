@@ -5,6 +5,7 @@ const signal = { tenantId: "tenant-a", id: "event-1", kind: "ci.failure", severi
 const ctx = { tenantId: "tenant-a", roles: ["spider:observe"], allowedKinds: ["ci.failure"], membershipActive: true, revoked: false, previouslyObservedKeys: [] as string[] };
 
 describe("Spider Intelligence fail-closed contract", () => {
+  it("rejects literal backslash-d timestamp patterns", () => expect(classifySpiderSignal({ ...signal, observedAt: String.raw`\\d{4}-10-27T00:00:00Z` }, ctx).reason).toBe("invalid-evidence"));
   it("accepts dotted CI event kind", () => expect(classifySpiderSignal(signal, ctx).reason).toBe("read-only-unpersisted"));
   it("observes authorized evidence without dispatching actions", () => expect(classifySpiderSignal(signal, ctx).status).toBe("observed"));
   it("quarantines cross-tenant signals", () => expect(classifySpiderSignal({ ...signal, tenantId: "tenant-b" }, ctx).reason).toBe("cross-tenant"));
