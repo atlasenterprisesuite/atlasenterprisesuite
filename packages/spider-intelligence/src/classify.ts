@@ -3,9 +3,11 @@ export type SpiderContext = Readonly<{ tenantId: string; roles: readonly string[
 export type SpiderDecision = Readonly<{ status: "quarantined" | "observed"; reason: string; signalId: string; evidenceSha: string }>;
 const safeId = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9:_-]{0,127}$/.test(value);
 const validTimestamp = (value: unknown): boolean => {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) return false;
+  if (typeof value !== "string" || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z$/.test(value)) return false;
   const millis = Date.parse(value);
-  return Number.isFinite(millis) && new Date(millis).toISOString() === new Date(millis).toISOString() && value === new Date(millis).toISOString().replace(/\.000Z$/, "Z").replace(/(\.\d{1,3}?)0+Z$/, "$1Z");
+  if (!Number.isFinite(millis)) return false;
+  const canonical = new Date(millis).toISOString();
+  return value.slice(0, 19) === canonical.slice(0, 19);
 };
 /** Pure, fail-closed observation only. Never authorizes or dispatches work. */
 export function classifySpiderSignal(signal: SpiderSignal, context: SpiderContext): SpiderDecision {
