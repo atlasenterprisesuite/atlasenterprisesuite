@@ -8,7 +8,6 @@ import {
 } from '../../supabase/functions/_shared/salesforce-oauth';
 
 // Provider transport is injected and mocked. No real OAuth or network requests.
-const rejectNetwork = vi.fn().mockRejectedValue(new Error('network disabled'));
 describe('CRM provider transport negative contracts (offline)', () => {
   it('rejects an invalid Salesforce redirect host before building authorization', () => {
     expect(() => normalizeSalesforceLoginBaseUrl('https://login.salesforce.com.attacker.invalid'))
