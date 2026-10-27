@@ -38,4 +38,40 @@ SELECT table_name,grantee,privilege_type,is_grantable
 FROM information_schema.role_table_grants
 WHERE table_schema='public' AND table_name IN ('organization_members','audit_logs')
 ORDER BY table_name,grantee,privilege_type;
+-- Security metadata: ACLs and effective role privileges (inspect only).
+SELECT c.relname,c.relacl,n.nspacl,pg_get_userbyid(c.relowner) AS table_owner
+FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relname IN ('organization_members','audit_logs');
+SELECT r.rolname,r.rolinherit,r.rolbypassrls,
+       c.relname AS table_name,
+       has_table_privilege(r.oid,c.oid,'SELECT') AS can_select,
+       has_table_privilege(r.oid,c.oid,'INSERT') AS can_insert,
+       has_table_privilege(r.oid,c.oid,'UPDATE') AS can_update,
+       has_table_privilege(r.oid,c.oid,'DELETE') AS can_delete,
+       has_schema_privilege(r.oid,n.oid,'USAGE') AS can_use_schema
+FROM pg_roles r CROSS JOIN pg_class c
+JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relname IN ('organization_members','audit_logs')
+AND r.rolname IN ('anon','authenticated','service_role')
+ORDER BY r.rolname,c.relname;
+SELECT r.rolname AS member_role, parent.rolname AS granted_role, m.admin_option
+FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member
+JOIN pg_roles parent ON parent.oid=m.roleid
+WHERE r.rolname IN ('anon','authenticated','service_role')
+ORDER BY r.rolname,parent.rolname;
+SELECT d.defaclrole::regrole::text AS owner_role,n.nspname AS schema_name,
+       d.defaclobjtype,d.defaclacl
+FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid=d.defaclnamespace
+WHERE n.nspname='public' OR d.defaclnamespace=0
+ORDER BY owner_role,schema_name,defaclobjtype;
+SELECT p.oid::regprocedure::text AS function_signature,
+       pg_get_userbyid(p.proowner) AS owner,p.prosecdef,p.proacl,
+       has_function_privilege('anon',p.oid,'EXECUTE') AS anon_execute,
+       has_function_privilege('authenticated',p.oid,'EXECUTE') AS authenticated_execute,
+       has_function_privilege('service_role',p.oid,'EXECUTE') AS service_execute
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='public'
+AND (pg_get_functiondef(p.oid) ILIKE '%organization_members%'
+     OR pg_get_functiondef(p.oid) ILIKE '%audit_logs%')
+ORDER BY function_signature;
 ROLLBACK;
