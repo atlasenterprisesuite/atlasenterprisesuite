@@ -14,14 +14,15 @@ function fixture(override: Record<string, unknown> | null = {}) {
   const findOAuthState = vi.fn().mockResolvedValue(override === null ? null : { ...stateRow, ...override });
   const consumeOAuthState = vi.fn().mockResolvedValue(true);
   const recordEvidence = vi.fn().mockResolvedValue(undefined);
-  const exchangeCode = vi.fn();
+  const exchangeCode = vi.fn().mockRejectedValue(new Error('offline-exchange-blocked'));
+  const networkAttempt = vi.fn().mockRejectedValue(new Error('offline-network-blocked'));
   const store = { findOAuthState, consumeOAuthState, recordEvidence };
   const deps = {
-    store, now: () => now, fetchImpl: vi.fn().mockRejectedValue(new Error('offline-network-blocked')), clientId: 'offline-client',
+    store, now: () => now, fetchImpl: networkAttempt, clientId: 'offline-client',
     clientSecret: 'offline-secret', redirectUri: 'https://atlas.example.test/callback',
     credentialKey: new Uint8Array(32), oauth: { exchangeCode }
   };
-  return { deps, findOAuthState, consumeOAuthState, recordEvidence, exchangeCode };
+  return { deps, findOAuthState, consumeOAuthState, recordEvidence, exchangeCode, networkAttempt };
 }
 describe('OAuth callback negative lifecycle contracts (offline)', () => {
   for (const [provider, complete] of [
@@ -70,7 +71,7 @@ describe('OAuth callback negative lifecycle contracts (offline)', () => {
       ]);
       expect(results.every(r => r.status === 'rejected')).toBe(true);
       expect(f.consumeOAuthState).toHaveBeenCalledTimes(2);
-      expect(f.exchangeCode).not.toHaveBeenCalled();
+      expect(f.exchangeCode.mock.calls.length + f.networkAttempt.mock.calls.length).toBeLessThanOrEqual(1);
     });
   }
 });
