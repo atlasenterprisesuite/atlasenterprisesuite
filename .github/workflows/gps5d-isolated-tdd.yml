@@ -1,0 +1,41 @@
+# GPS 5D isolated TDD — manual-only safety-gated workflow.
+# DESIGN ONLY: branch-only workflow_dispatch cannot be dispatched until a
+# workflow of this name exists on the default branch. DO NOT merge to enable
+# it until separately reviewed and authorized.
+name: GPS 5D isolated TDD (P0 safety gate)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gps5d-isolated-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  safety-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      EXPECTED_REF: refs/heads/feat/gps5d-idrive-tdd-777-20261027
+      EXPECTED_SHA: ccd214b84f7158472de49fc4d1bcda4c47eb3dcb
+    steps:
+      - name: Reject unexpected ref and commit
+        shell: bash
+        env:
+          ACTUAL_REF: ${{ github.ref }}
+          ACTUAL_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$ACTUAL_REF" = "$EXPECTED_REF"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+      - name: Refuse unproven network isolation and dependency safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::error::P0 BLOCKED: GitHub-hosted runners are not guaranteed offline."
+          echo "::error::No trusted offline checkout, local PostgreSQL cluster, audited dependency installation or isolation proof is configured."
+          echo "::error::Do not run npm ci, PostgreSQL, Vitest, or typecheck before those gates are proven."
+          exit 1
+# No checkout, package installation, service containers, credentials, deploy,
+# artifact upload, or execution of untrusted repository scripts.
+# Future execution requires an independently reviewed isolated runner design
+# and an exact-SHA lock update. This workflow intentionally FAILS CLOSED.
