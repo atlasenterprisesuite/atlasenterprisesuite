@@ -57,3 +57,10 @@ No executable test result or exact-SHA CI was established for this feature. The 
 - Added tests/unit/spider-observation-sql-contract.test.ts with seven static assertions. These do not execute PostgreSQL, do not establish transactional rollback, and do not test real concurrent workers.
 - P0 prerequisites: verify authoritative membership source and revocation semantics; implement trusted transaction that locks/validates membership and inserts observation + audit receipt atomically; negative PostgreSQL tests for simultaneous inserts, cross-tenant, revoked actor, rollback on audit failure, false-success result, and replay; demonstrate RLS/grants in disposable DB.
 - Never infer persisted or verified status from the pure classifier; do not wire #927 execution. No deploy, merge, or production changes.
+
+## 2026-10-27 PostgreSQL negative TDD follow-up
+- Added tests/fixtures/spider-observation-negative-isolated.sql with temporary tables and rollback-only negative assertions for duplicate idempotency key, audit rollback, revoked membership and cross-tenant membership.
+- Read existing #917 runtime SQL and #931 isolated repair fixture as references. The #917 atomic migration is not present on this branch's base; do not treat it as merged or installed.
+- Inspected runtime code; it uses org_id and tenant_id scopes but this is not sufficient evidence for the authoritative organization_members schema, revocation policy, or actual audit table. Integration with those sources remains blocked pending exact schema inspection.
+- The new fixture is a single-session test and DOES NOT verify two-worker concurrency, RLS as a non-owner, or live authorization. No PostgreSQL instance was used. The fixture has not been executed.
+- Next gate: dedicated disposable PostgreSQL with two separate connections and barrier synchronization, independent RLS roles, authoritative membership schema and a single transaction that inserts observation plus audit receipt; assert zero persisted rows on failure and no success response without committed receipt.
