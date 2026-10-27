@@ -23,7 +23,7 @@ export function authorizeScribeGuide(guide: ScribeGuide, viewer: ScribeViewer): 
   try { url = new URL(guide.url); } catch { return { allowed: false, reason: 'invalid_url' }; }
   if (url.protocol !== 'https:' || url.hostname !== 'scribehow.com' ||
       url.username || url.password || url.port || url.search || url.hash ||
-      !/^\\/(?:shared|embed)\\/[a-zA-Z0-9_-]+\\/?$/.test(url.pathname)) {
+      !/^\/(?:shared|embed)\/[a-zA-Z0-9_-]+\/?$/.test(url.pathname)) {
     return { allowed: false, reason: 'invalid_url' };
   }
   if (!viewer.authenticated) return { allowed: false, reason: 'unauthenticated' };
