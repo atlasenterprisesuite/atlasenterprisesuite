@@ -56,9 +56,18 @@ describe('GPS 5D I-Drive fail-closed contract (synthetic fixtures)', () => {
     expect(selectVisibleDevelopments([approved], 'tenant-a', access)).toEqual([approved]);
   });
   it('selects only licensed, verified developments in temporal range', () => {
-    expect(selectDevelopmentsAtYear([sample, approved], 2027)).toEqual([approved]);
-    expect(selectDevelopmentsAtYear([approved], 2029)).toEqual([]);
-    expect(selectDevelopmentsAtYear([approved], NaN)).toEqual([]);
+    expect(selectDevelopmentsAtYear([sample, approved], 2027, 'tenant-a', access)).toEqual([approved]);
+    expect(selectDevelopmentsAtYear([approved], 2029, 'tenant-a', access)).toEqual([]);
+    expect(selectDevelopmentsAtYear([approved], NaN, 'tenant-a', access)).toEqual([]);
+  });
+  it('denies temporal reads without valid tenant membership', () => {
+    expect(selectDevelopmentsAtYear([approved], 2027, 'tenant-b', access)).toEqual([]);
+    expect(selectDevelopmentsAtYear([approved], 2027, 'tenant-a', { ...access, activeMember: false })).toEqual([]);
+    expect(selectDevelopmentsAtYear([approved], 2027, 'tenant-a', { ...access, authorized: false })).toEqual([]);
+    expect(selectDevelopmentsAtYear([approved], 2027, '', access)).toEqual([]);
+  });
+  it('rejects extreme overflow in scenario arithmetic', () => {
+    expect(simulateMobilityImpact({ baselineTrips: Number.MAX_VALUE, scenarioMultiplier: 2 }).estimatedTrips).toBeNull();
   });
   it('marks simulations and rejects unsafe input', () => {
     const result = simulateMobilityImpact({ baselineTrips: 100, scenarioMultiplier: 1.2 });
