@@ -1,0 +1,18 @@
+{
+  "name": "ATLAS GPS 5D — preparation only (P0)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "remoteUser": "vscode",
+  "forwardPorts": [],
+  "portsAttributes": {
+    "3000": { "onAutoForward": "ignore" },
+    "5432": { "onAutoForward": "ignore" }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "git.autofetch": false,
+        "git.autorefresh": false
+      }
+    }
+  }
+}
