@@ -70,7 +70,7 @@ SELECT p.oid::regprocedure::text AS function_signature,
        has_function_privilege('authenticated',p.oid,'EXECUTE') AS authenticated_execute,
        has_function_privilege('service_role',p.oid,'EXECUTE') AS service_execute
 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-WHERE n.nspname='public'
+WHERE n.nspname='public' AND p.prokind='f'
 AND (pg_get_functiondef(p.oid) ILIKE '%organization_members%'
      OR pg_get_functiondef(p.oid) ILIKE '%audit_logs%')
 ORDER BY function_signature;
