@@ -50,3 +50,10 @@ No executable test result or exact-SHA CI was established for this feature. The 
 - Added six Vitest cases (17 total defined), covering impossible/ambiguous timestamps, malformed identities, unspecified revocation, malformed idempotency history, invalid severity and valid UTC milliseconds.
 - Static-only change: no Vitest/typecheck run; no verified transactional persistence, authenticated membership lookup, immutable evidence receipt, or concurrency protection. Input context is untrusted unless a trusted backend validates it.
 - Fail-closed here means classification-only; it does not imply authorization to execute jobs or repairs.
+
+## 2026-10-27 atomic observation contract (isolated draft)
+- Inspected #917 atomic runtime claim/completion SQL and external-effect ledger, plus #931 rollback-only repair fixture.
+- Added tests/fixtures/spider-observation-atomic-isolated.sql: disposable schema, UNIQUE(tenant_id,idempotency_key), unique tenant-scoped receipt, SHA check, RLS enabled and public grants revoked, explicit ROLLBACK. No executable RPC or production migration.
+- Added tests/unit/spider-observation-sql-contract.test.ts with seven static assertions. These do not execute PostgreSQL, do not establish transactional rollback, and do not test real concurrent workers.
+- P0 prerequisites: verify authoritative membership source and revocation semantics; implement trusted transaction that locks/validates membership and inserts observation + audit receipt atomically; negative PostgreSQL tests for simultaneous inserts, cross-tenant, revoked actor, rollback on audit failure, false-success result, and replay; demonstrate RLS/grants in disposable DB.
+- Never infer persisted or verified status from the pure classifier; do not wire #927 execution. No deploy, merge, or production changes.
