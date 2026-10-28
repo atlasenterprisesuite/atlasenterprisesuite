@@ -19,3 +19,24 @@ export function selectAdaptiveReasoningProfile(input = {}) {
   }
   return Object.freeze({ profile: 'fast', reason: 'simple_request' });
 }
+
+/**
+ * Context is accepted only from the authenticated conversation store, not from
+ * request.client_metadata or caller-supplied history. A short follow-up can
+ * inherit the established effort floor. No text is returned or logged.
+ */
+export function selectConversationReasoningProfile({ message, history = [] } = {}) {
+  const current = selectAdaptiveReasoningProfile({ message });
+  if (current.profile === 'deep' || !Array.isArray(history) || history.length === 0) return current;
+  const currentText = typeof message === 'string' ? message.trim() : '';
+  if (currentText.length > 120) return current;
+  const recent = history.slice(-12).filter(item => item && item.role === 'user' && typeof item.content === 'string');
+  const prior = recent.slice(-4).map(item => selectAdaptiveReasoningProfile({ message: item.content }));
+  if (prior.some(result => result.profile === 'deep')) {
+    return Object.freeze({ profile: 'deep', reason: 'authorized_conversation_continuity' });
+  }
+  if (current.profile === 'fast' && prior.some(result => result.profile === 'balanced')) {
+    return Object.freeze({ profile: 'balanced', reason: 'authorized_conversation_continuity' });
+  }
+  return current;
+}
