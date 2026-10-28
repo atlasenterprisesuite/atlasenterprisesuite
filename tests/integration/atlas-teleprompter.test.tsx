@@ -125,9 +125,8 @@ describe('ATLAS Smart Teleprompter', () => {
     });
     const list = vi.spyOn(creatorApi, 'listCreatorRecordings').mockResolvedValue([{
       id: 'recording-a', organization_id: 'org-a', created_by: 'user-a', language: 'es',
-      storage_bucket: 'atlas-creator-recordings', storage_path: 'private',
       mime_type: 'video/mp4', file_size_bytes: 2048, duration_seconds: 12,
-      source: 'teleprompter', created_at: '2026-10-28T00:00:00Z'
+      created_at: '2026-10-28T00:00:00Z'
     }]);
     vi.spyOn(creatorApi, 'getCreatorRecordingDownload').mockResolvedValue({
       ok: true, recording: {} as creatorApi.CreatorRecording,
