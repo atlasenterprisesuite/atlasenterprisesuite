@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { selectAdaptiveReasoningProfile, selectConversationReasoningProfile } from '../../supabase/functions/atlas-copilot/adaptive-reasoning.mjs';
-import { normalizeIntelligenceRequest } from '../../supabase/functions/atlas-copilot/intelligence-gateway.mjs';
+import { normalizeIntelligenceRequest, resolveAuthorizedIntelligenceRequest } from '../../supabase/functions/atlas-copilot/intelligence-gateway.mjs';
+import { readFileSync } from 'node:fs';
 
 describe('ATLAS Enterprise DNA/RNA — adaptive reasoning contract', () => {
   it('assigns low effort to simple exchanges without granting new permissions', () => {
@@ -88,6 +89,74 @@ describe('ATLAS Enterprise DNA/RNA — adaptive reasoning contract', () => {
     const history = [{ role: 'user', content: 'ATLAS 777 REVIEW P0' },
       ...Array.from({ length: 14 }, () => ({ role: 'user', content: 'Hola' }))];
     expect(selectConversationReasoningProfile({ message: 'Hola', history }).profile).toBe('fast');
+  });
+
+  const principal = (overrides: Record<string, unknown> = {}) => ({
+    organization_id: 'org-one', user_id: 'alice', session_id: 'session-1', request_id: 'req-1',
+    permissions: ['intelligence.use'], ...overrides,
+  });
+
+  it('resolves Auto against authenticated recent history before probing a provider model', async () => {
+    const reads: string[] = [];
+    const store = {
+      getConversation: async ({ context, id }: any) => {
+        reads.push('conversation:' + context.organization_id + ':' + id);
+        return { id };
+      },
+      listRecentMessages: async ({ context, conversation_id }: any) => {
+        reads.push('history:' + context.organization_id + ':' + conversation_id);
+        return [{ role: 'user', content: { text: 'ATLAS 777 REVIEW P0 RLS por tenant' } }];
+      },
+    };
+    const request = { message: 'Run it then', conversation_id: 'conv-1', intent: 'auto' };
+    const prepared = await resolveAuthorizedIntelligenceRequest({ context: principal(), request, store });
+    expect(prepared).toMatchObject({
+      intent: 'deep', requested_intent: 'auto',
+      reasoning_decision: { profile: 'deep', reason: 'authorized_conversation_continuity' },
+    });
+    expect(reads).toEqual(['conversation:org-one:conv-1', 'history:org-one:conv-1']);
+    const reused = await resolveAuthorizedIntelligenceRequest({ context: principal(), request, store, preparedRequest: prepared });
+    expect(reused).toBe(prepared);
+    expect(reads).toHaveLength(2);
+  });
+
+  it('fails closed if a signed request is replayed under another tenant or session', async () => {
+    const store = { getConversation: async () => ({ id: 'conv-1' }), listRecentMessages: async () => [] };
+    const request = { message: 'Continue', conversation_id: 'conv-1', intent: 'auto' };
+    const prepared = await resolveAuthorizedIntelligenceRequest({ context: principal(), request, store });
+    for (const changes of [{ organization_id: 'org-two' }, { user_id: 'bob' }, { session_id: 'other' }]) {
+      await expect(resolveAuthorizedIntelligenceRequest({
+        context: principal(changes), request, store, preparedRequest: prepared,
+      })).rejects.toMatchObject({ code: 'invalid_prepared_request' });
+    }
+  });
+
+  it('blocks revocation and missing intelligence permission without invoking providers', async () => {
+    const store = {
+      getConversation: async () => { throw Object.assign(new Error('conversation_not_found'), { code: 'conversation_not_found', status: 404 }); },
+      listRecentMessages: async () => { throw new Error('MUST_NOT_READ'); },
+    };
+    await expect(resolveAuthorizedIntelligenceRequest({
+      context: principal(), request: { message: 'Continue', conversation_id: 'revoked', intent: 'auto' }, store,
+    })).rejects.toMatchObject({ code: 'conversation_not_found' });
+    await expect(resolveAuthorizedIntelligenceRequest({
+      context: principal({ permissions: [] }), request: { message: 'Continue', intent: 'auto' }, store,
+    })).rejects.toMatchObject({ code: 'permission_denied' });
+  });
+
+  it('does not trust client-injected preparedRequest and never accepts an unknown history response', async () => {
+    const request = { message: 'Continue', conversation_id: 'conv', intent: 'auto', preparedRequest: { intent: 'deep' } };
+    const store = { getConversation: async () => ({ id: 'conv' }), listRecentMessages: async () => null };
+    await expect(resolveAuthorizedIntelligenceRequest({
+      context: principal(), request, store,
+    })).rejects.toMatchObject({ code: 'storage_unavailable' });
+  });
+
+  it('selects a concrete model profile before provider readiness checks in the Edge entrypoint', () => {
+    const source = readFileSync('supabase/functions/atlas-copilot/index.ts', 'utf8');
+    expect(source).toContain('readinessFor(rt,prepared.intent)');
+    expect(source).toContain("profiles:['auto','fast','balanced','deep']");
+    expect(source).not.toContain('readinessFor(rt,intent);');
   });
 
 });
