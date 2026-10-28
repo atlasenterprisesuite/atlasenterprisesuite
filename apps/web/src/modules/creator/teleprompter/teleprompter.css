@@ -24,3 +24,6 @@
 .teleprompter-library button{min-height:44px;min-width:44px;border-radius:8px;border:1px solid #9bb9ff;background:#1b2b50;color:#fff;cursor:pointer}
 .teleprompter-library button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 @media(max-width:640px){.teleprompter-library{padding:14px}.teleprompter-library li{align-items:stretch;flex-direction:column}.teleprompter-library button{width:100%}}
+
+.teleprompter-safety a{color:#9fdcff;text-decoration:underline;text-underline-offset:3px}
+.teleprompter-safety a:focus-visible{outline:3px solid #fff;outline-offset:3px}
