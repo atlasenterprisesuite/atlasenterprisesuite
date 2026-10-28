@@ -43,7 +43,7 @@ describe('ATLAS ChatGPT OAuth → Supabase → MCP two-organization isolated int
     ? matching(memberships,['org_id','user_id','status'])
     : url.pathname.endsWith('/organizations')
     ? matching(organizations,['id']) : null;
-   return new Response(JSON.stringify(data),{status:200,headers:{'content-type':'application/json'}});
+   return { ok:true, status:200, json:async()=>data } as Response;
   };
   const issuerSessions=new Map([['alice:alice-jti',true],['bob:bob-jti',true]]);
   const directory=createAtlasChatGptSupabaseDirectory({
