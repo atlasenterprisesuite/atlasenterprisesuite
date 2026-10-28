@@ -124,7 +124,7 @@ describe('ATLAS Enterprise DNA/RNA — adaptive reasoning contract', () => {
     const store = { getConversation: async () => ({ id: 'conv-1' }), listRecentMessages: async () => [] };
     const request = { message: 'Continue', conversation_id: 'conv-1', intent: 'auto' };
     const prepared = await resolveAuthorizedIntelligenceRequest({ context: principal(), request, store });
-    for (const changes of [{ organization_id: 'org-two' }, { user_id: 'bob' }, { session_id: 'other' }]) {
+    for (const changes of [{ organization_id: 'org-two' }, { user_id: 'bob' }, { session_id: 'other' }, { request_id: 'different-request' }]) {
       await expect(resolveAuthorizedIntelligenceRequest({
         context: principal(changes), request, store, preparedRequest: prepared,
       })).rejects.toMatchObject({ code: 'invalid_prepared_request' });
