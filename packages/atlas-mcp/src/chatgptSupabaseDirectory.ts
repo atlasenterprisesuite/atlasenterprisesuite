@@ -9,6 +9,7 @@
 export interface AtlasChatGptSupabaseDirectoryOptions {
   /** Exact, trusted OAuth issuer. Every authorization grant is scoped to this issuer. */
   issuer: string;
+  issuer: string;
   supabaseUrl: string;
   serviceRoleKey: string;
   /** Mandatory live check against a trusted issuer-owned session ledger (no JWT-only inference). */
@@ -36,6 +37,7 @@ const opaque = (s: unknown): s is string =>
 export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabaseDirectoryOptions): AtlasChatGptSupabaseDirectory {
   const root = new URL(options.supabaseUrl);
   const issuer = new URL(options.issuer);
+  const issuer = new URL(options.issuer);
   if (issuer.protocol !== 'https:' || issuer.username || issuer.password || issuer.search || issuer.hash ||
       issuer.href.replace(/\/$/, '') !== options.issuer ||
       root.protocol !== 'https:' || root.username || root.password || root.pathname !== '/' ||
@@ -45,6 +47,7 @@ export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabas
 
   const request = options.fetchFn ?? ((url: string, init: RequestInit) => fetch(url, init));
   const base = root.origin;
+  const trustedIssuer = issuer.href.replace(/\/$/, '');
   const now = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
   const read = async (table: string, columns: string[], filters: Record<string,string>): Promise<unknown[] | null> => {
     const url = new URL('/rest/v1/' + table, base);
