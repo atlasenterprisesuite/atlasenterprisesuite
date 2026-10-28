@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync('supabase/migrations/20260918213000_atlas_local_control_plane.sql','utf8');
+const sql = readFileSync('supabase/migrations/20260918231705_atlas_local_control_plane.sql','utf8');
 
 describe('ATLAS Local Control Plane schema', () => {
   it('registers separated Local Agent permissions', () => {

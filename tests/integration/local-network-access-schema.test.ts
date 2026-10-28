@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const sql = readFileSync(
-  'supabase/migrations/20260918210000_atlas_local_network_access.sql',
+  'supabase/migrations/20260918211001_atlas_local_network_access.sql',
   'utf8'
 );
 

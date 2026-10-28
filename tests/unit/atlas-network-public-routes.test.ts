@@ -7,11 +7,11 @@ const page = readFileSync(
   'utf8'
 );
 const core = readFileSync(
-  'supabase/migrations/20260916150000_atlas_network_core.sql',
+  'supabase/migrations_legacy_pre_remote_sync/20260916150000_atlas_network_core.sql',
   'utf8'
 );
 const governance = readFileSync(
-  'supabase/migrations/20260916150500_atlas_network_governance.sql',
+  'supabase/migrations_legacy_pre_remote_sync/20260916150500_atlas_network_governance.sql',
   'utf8'
 );
 const productionContract = JSON.parse(

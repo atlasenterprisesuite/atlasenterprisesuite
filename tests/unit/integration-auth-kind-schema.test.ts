@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  'supabase/migrations/20261002133000_integration_auth_kind_alignment.sql',
+  'supabase/migrations_legacy_pre_remote_sync/20261002133000_integration_auth_kind_alignment.sql',
   'utf8'
 );
 const core = readFileSync('packages/core/src/integrations.ts', 'utf8');
