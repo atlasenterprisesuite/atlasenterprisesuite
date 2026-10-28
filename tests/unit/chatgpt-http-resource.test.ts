@@ -25,8 +25,23 @@ describe('isolated OAuth HTTP transport',()=>{
   expect((await handleAtlasChatGptHttp({method:'POST',path:'/mcp',body:[]},opts)).status).toBe(400);
   expect((await handleAtlasChatGptHttp({method:'GET',path:'/mcp'},opts)).status).toBe(404);
  });
- it('fails closed for revoked and wrong-tenant identity',async()=>{
-  const revoked={...opts,verifyToken:async()=>({...await opts.verifyToken(),revoked:true})};
-  expect((await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:rpc},revoked)).status).toBe(401);
+ it('fails closed for revoked, missing tenant and missing organization identities',async()=>{
+  const cases=[
+   {revoked:true},
+   {tenantId:''},
+   {organizationId:''},
+  ];
+  for (const change of cases) {
+   const denied={...opts,verifyToken:async()=>({...await opts.verifyToken(),...change})};
+   const res=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:rpc},denied);
+   expect(res.status).toBe(401);
+   expect(JSON.stringify(res)).not.toContain('trusted-tenant');
+  }
+ });
+ it('rejects tenant and organization selection supplied by the MCP caller',async()=>{
+  for (const arguments_ of [{tenantId:'other-tenant'},{organizationId:'other-org'},{tenantId:'trusted-tenant',organizationId:'other-org'}]) {
+   const res=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:{...rpc,method:'tools/call',params:{name:'atlas.apps.catalog',arguments:arguments_}}},opts);
+   expect(res.status).toBe(403);
+  }
  });
 });
