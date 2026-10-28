@@ -1,4 +1,3 @@
-import { createPublicKey, verify as verifySignature, type JsonWebKey } from 'node:crypto';
 import type { VerifiedChatGptPrincipal, VerifyChatGptAccessToken } from './chatgptReadOnlyAdapter';
 
 export interface AtlasJwtClaims {
@@ -18,9 +17,14 @@ export interface AtlasOAuthVerifierOptions {
   rejectReplay?: (jti: string, expiresAt: number) => Promise<boolean>;
   nowSeconds?: () => number;
 }
+const base64UrlBytes = (segment: string): Uint8Array => {
+  const normalized = segment.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+  return Uint8Array.from(binary, character => character.charCodeAt(0));
+};
 const decode = (segment: string): Record<string, unknown> | null => {
   try {
-    const value = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8'));
+    const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(base64UrlBytes(segment)));
     return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
   } catch { return null; }
 };
@@ -37,9 +41,12 @@ export function createAtlasJwtVerifier(options: AtlasOAuthVerifierOptions): Veri
       if (!Array.isArray(jwks?.keys)) return null;
       const matches = jwks.keys.filter(k => k.kid === header.kid && k.kty === 'RSA' && (!k.alg || k.alg === 'RS256') && (!k.use || k.use === 'sig'));
       if (matches.length !== 1) return null;
-      const key = createPublicKey({ key: matches[0], format: 'jwk' });
-      const signature = Buffer.from(encodedSignature, 'base64url');
-      if (!verifySignature('RSA-SHA256', Buffer.from(encodedHeader + '.' + encodedPayload), key, signature)) return null;
+      const key = await crypto.subtle.importKey(
+        'jwk', matches[0], { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'],
+      );
+      const signature = base64UrlBytes(encodedSignature);
+      const signingInput = new TextEncoder().encode(encodedHeader + '.' + encodedPayload);
+      if (!await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, signingInput)) return null;
       const now = options.nowSeconds?.() ?? Math.floor(Date.now() / 1000);
       if (claims.iss !== options.issuer || !str(claims.sub) || !str(claims.jti) ||
           !(claims.aud === options.audience || Array.isArray(claims.aud) && claims.aud.includes(options.audience)) ||
