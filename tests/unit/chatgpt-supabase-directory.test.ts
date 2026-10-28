@@ -45,7 +45,11 @@ const make = (overrides: { grants?: unknown; memberships?: unknown; organization
 describe('ATLAS ChatGPT server-bound Supabase directory: isolated two-org E2E',()=>{
   it('binds verified subjects to their own active memberships, never to caller org claims',async()=>{
     const {directory,hits}=make();
-    expect(await directory.resolveIdentity('alice','token-a')).toEqual({tenantId:orgA,organizationId:orgA,active:true});
+    const identity = await directory.resolveIdentity('alice','token-a');
+    expect(hits.map(url => new URL(url).pathname)).toEqual([
+      '/rest/v1/atlas_chatgpt_oauth_grants', '/rest/v1/organization_members', '/rest/v1/organizations'
+    ]);
+    expect(identity).toEqual({tenantId:orgA,organizationId:orgA,active:true});
     expect(await directory.resolveIdentity('bob','token-b')).toEqual({tenantId:orgB,organizationId:orgB,active:true});
     expect(await directory.resolveIdentity('alice','token-b')).toBeNull();
     expect(await directory.resolveIdentity('bob','token-a')).toBeNull();
