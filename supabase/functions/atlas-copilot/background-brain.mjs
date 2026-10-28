@@ -1,5 +1,5 @@
 import {evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
-import {normalizeIntelligenceRequest} from './intelligence-gateway.mjs';
+import {resolveAuthorizedIntelligenceRequest} from './intelligence-gateway.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
@@ -58,10 +58,10 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
     return {status:'completed',background:true,trace_id:traceId,conversation_id:conversationId,provider:providerResult.provider||requestRow.provider,model:providerResult.model||requestRow.model||null,text};
   }
 
-  async function start({context,request}){
+  async function start({context,request,preparedRequest=null}){
     if(!router)throw new TypeError('background_router_required');
     if(!has(context,'intelligence.use'))throw fail('permission_denied',403);
-    const normalized=normalizeIntelligenceRequest(request);
+    const normalized=await resolveAuthorizedIntelligenceRequest({context,request,store,preparedRequest});
     const route=router.route(normalized);
     if(route.mode==='council')throw fail('background_provider_unavailable',409,{mode:'council'});
     const candidates=route.mode==='auto'
@@ -113,6 +113,8 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
       mode:candidateRoute.mode,
       providers:[selected.providerId],
       profile:candidateRoute.profile,
+      requested_profile:normalized.requested_intent,
+      selection_reason:normalized.reasoning_decision.reason,
       fallback_used:candidateRoute.fallback_used,
       reason:candidateRoute.reason,
       cost_decision:costDecision?.reason||null,
