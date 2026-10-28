@@ -22,6 +22,24 @@ describe('OAuth resource server fail closed',()=>{
   const identity=await make()(jwt());expect(identity?.tenantId).toBe('trusted-tenant');
   expect(identity?.organizationId).toBe('trusted-org');
  });
+ it('looks up membership only by the signed subject and token id, never caller tenant claims',async()=>{
+  const observed: Array<[string,string]>=[];
+  const verify=make({resolveIdentity:async(subject:string,jti:string)=>{
+   observed.push([subject,jti]);
+   return {tenantId:'trusted-tenant',organizationId:'trusted-org',active:true};
+  }});
+  const identity=await verify(jwt({...base,tenant_id:'other-tenant',organization_id:'other-org'}));
+  expect(identity?.tenantId).toBe('trusted-tenant');
+  expect(identity?.organizationId).toBe('trusted-org');
+  expect(observed).toEqual([['user-a','nonce-1']]);
+ });
+ it('denies another subject even if its signed claims name an existing tenant',async()=>{
+  const verify=make({resolveIdentity:async(subject:string,jti:string)=>
+   subject==='user-a' && jti==='nonce-1'
+    ? {tenantId:'trusted-tenant',organizationId:'trusted-org',active:true}
+    : null});
+  expect(await verify(jwt({...base,sub:'user-b',tenant_id:'trusted-tenant',organization_id:'trusted-org'}))).toBeNull();
+ });
  it('rejects forged signature, alg none and unknown JWKS kid',async()=>{
   const other=generateKeyPairSync('rsa',{modulusLength:2048});
   expect(await make()(jwt(base,other.privateKey))).toBeNull();
