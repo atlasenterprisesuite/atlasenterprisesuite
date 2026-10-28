@@ -36,7 +36,7 @@ const make = (overrides: { grants?: unknown; memberships?: unknown; organization
       : u.pathname.endsWith('/organizations')
       ? lookup(overrides.organizations ?? organizations,u.searchParams,['id','active'])
       : null;
-    return new Response(JSON.stringify(data),{status:200,headers:{'content-type':'application/json'}});
+    return { ok:true, status:200, json:async()=>data } as Response;
   };
   return { directory:createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'test-secret',fetchFn,verifyIssuerSession:async()=>overrides.issuerSessionActive !== false,nowSeconds:()=>now/1000}), hits };
 };
