@@ -37,6 +37,7 @@ create table storage.buckets (
 -- Reproduce the dangerous default grants seen in the production catalog,
 -- then apply the actual hardened migration, not a rewritten policy.
 grant all privileges on table public.creator_recordings to anon;
+grant all privileges on table public.creator_recordings to service_role;
 \i supabase/migrations/20261028120000_creator_recordings_anon_grant_hardening.sql
 
 insert into public.organizations (id) values
