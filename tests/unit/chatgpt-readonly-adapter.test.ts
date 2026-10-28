@@ -10,6 +10,12 @@ describe('ChatGPT catalog isolated MCP authorization',()=>{
  it('rejects wrong issuer, audience, scope, expiry and revocation',async()=>{
   for(const change of [{issuer:'https://evil.test'},{audience:'wrong'},{scopes:[]},{expiresAt:1},{revoked:true}])expect((await call(change)).status).toBe(401);
  });
+ it('fails closed on malformed verifier principal fields',async()=>{
+  expect((await call({revoked:undefined as unknown as boolean})).status).toBe(401);
+  expect((await call({scopes:'atlas:apps:read' as unknown as string[]})).status).toBe(401);
+  expect((await call({organizationId:123 as unknown as string})).status).toBe(401);
+  expect((await call({subject:123 as unknown as string})).status).toBe(401);
+ });
  it('rejects unknown methods, write tools and injected arguments',async()=>{
   expect((await call({},'tools/call',{name:'atlas.deploy.request',arguments:{}})).status).toBe(403);
   expect((await call({},'tools/call',{name:'atlas.apps.catalog',arguments:{organizationId:'other'}})).status).toBe(403);
