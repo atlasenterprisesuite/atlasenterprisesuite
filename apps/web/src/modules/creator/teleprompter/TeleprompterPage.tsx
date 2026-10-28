@@ -127,7 +127,7 @@ const copy = {
     permissionError: 'No se pudo acceder a la cámara o al micrófono. Revisa los permisos del navegador.',
     unsupported: 'Este navegador no permite grabar video con MediaRecorder.',
     localNotice: 'La descarga local permanece en tu dispositivo. La copia de ATLAS solo se crea mediante una sesión y organización autorizadas.',
-    library: 'Mis grabaciones en ATLAS', libraryEmpty: 'No hay grabaciones privadas guardadas todavía.', libraryError: 'No se pudo consultar el historial privado.', libraryOpen: 'Abrir grabación',
+    library: 'Mis grabaciones en ATLAS', libraryEmpty: 'No hay grabaciones privadas guardadas todavía.', libraryError: 'No se pudo consultar el historial privado.', libraryOpen: 'Abrir grabación', cloudOpenLink: 'Abrir copia privada',
     editor: 'Guion actual'
   },
   en: {
@@ -164,7 +164,7 @@ const copy = {
     permissionError: 'Camera or microphone access failed. Review browser permissions.',
     unsupported: 'This browser does not support MediaRecorder video recording.',
     localNotice: 'The local download stays on your device. An ATLAS copy is created only through an authorized session and organization.',
-    library: 'My ATLAS recordings', libraryEmpty: 'No private recordings have been saved yet.', libraryError: 'Private recording history is unavailable.', libraryOpen: 'Open recording',
+    library: 'My ATLAS recordings', libraryEmpty: 'No private recordings have been saved yet.', libraryError: 'Private recording history is unavailable.', libraryOpen: 'Open recording', cloudOpenLink: 'Open private copy',
     editor: 'Current script'
   }
 } as const;
@@ -534,8 +534,8 @@ export function TeleprompterPage() {
     if (!id) return;
     try {
       const result = await getCreatorRecordingDownload(id);
+      // iOS Safari may block window.open after an awaited request.
       setCloudUrl(result.signed_url);
-      window.open(result.signed_url, '_blank', 'noopener,noreferrer');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'recording_download_unavailable');
     }
@@ -627,7 +627,10 @@ export function TeleprompterPage() {
 
     {editing && <div className="teleprompter-editor"><label><span>{ui.editor}</span><textarea rows={18} value={draft} onChange={event => setDraft(event.target.value)} /></label><button type="button" className="creator-primary" onClick={saveScript}>{ui.saveEdit}</button></div>}
     {notice && <div className="creator-notice" role="status">{notice}</div>}
-    {cloudUrl && <div className="teleprompter-safety">ATLAS signed copy ready. The access link expires automatically.</div>}
+    {cloudUrl && <div className="teleprompter-safety">
+      <a href={cloudUrl} target="_blank" rel="noopener noreferrer">{ui.cloudOpenLink}</a>
+      <span> · {language === 'es' ? 'El enlace caduca automáticamente.' : 'This link expires automatically.'}</span>
+    </div>
     <div className="teleprompter-safety">{ui.localNotice}</div>
   </section>;
 }
