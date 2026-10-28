@@ -37,8 +37,18 @@ const middleware = {
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
       if (req.method === 'GET' && req.url?.startsWith('/__atlas_teleprompter_ui')) {
-        res.writeHead(200, {'content-type':'text/html; charset=utf-8', 'cache-control':'no-store'});
-        res.end('<!doctype html><html><head><meta charset="utf-8"></head><body><main id="root"></main><script type="module" src="/tests/fixtures/teleprompter-real-ui-browser.tsx"></script></body></html>');
+        const template = `<!doctype html><html><head><meta charset="utf-8"></head><body><main id="root"></main>
+<script>
+window.addEventListener('error', event => { fetch('/__atlas_teleprompter_ui_report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ok:false,error:'page_error:'+event.message})}).catch(()=>{}); });
+window.addEventListener('unhandledrejection', event => { fetch('/__atlas_teleprompter_ui_report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ok:false,error:'unhandled_rejection:'+String(event.reason)})}).catch(()=>{}); });
+</script><script type="module" src="/tests/fixtures/teleprompter-real-ui-browser.tsx"></script></body></html>`;
+        void server.transformIndexHtml(req.url, template).then(html => {
+          res.writeHead(200, {'content-type':'text/html; charset=utf-8', 'cache-control':'no-store'});
+          res.end(html);
+        }).catch(error => {
+          res.writeHead(500);
+          res.end('vite_html_transform_failed: ' + String(error));
+        });
         return;
       }
       if (req.method === 'POST' && req.url === '/__atlas_teleprompter_ui_report') {
@@ -66,6 +76,7 @@ const server = await createServer({
   logLevel:'error'
 });
 let chrome, timer, temp;
+let browserDiagnostics = '';
 try {
   await server.listen();
   const addr = server.httpServer?.address();
@@ -83,8 +94,7 @@ try {
     '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1',
     '--user-data-dir=' + temp, url
   ], {stdio:['ignore','ignore','pipe']});
-  let diagnostic = '';
-  chrome.stderr.on('data', b => { diagnostic = (diagnostic + String(b)).slice(-3600); });
+  chrome.stderr.on('data', b => { browserDiagnostics = (browserDiagnostics + String(b)).slice(-3600); });
   const badExit = new Promise((_,reject) => {
     chrome.once('error', error=>reject(Error('chrome_start_failed:'+error.message)));
     chrome.once('exit', (code,signal)=>reject(Error('chrome_exited_before_ui_result:'+code+':'+signal)));
@@ -103,6 +113,7 @@ try {
 } catch (error) {
   process.exitCode = 1;
   console.error('FAIL:',error);
+  console.error('Chromium:', browserDiagnostics.slice(-2000));
 } finally {
   clearTimeout(timer);
   chrome?.kill('SIGTERM');
