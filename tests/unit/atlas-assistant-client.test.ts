@@ -83,7 +83,7 @@ describe('ATLAS Assistant governed copilot client', () => {
     expect(JSON.parse(String(init.body))).toMatchObject({
       organization_id: 'org-1',
       module: 'hospitality',
-      intent: 'balanced',
+      intent: 'auto',
       mode: 'auto',
       message: 'Review hospitality operations',
       capabilities_requested: ['generation'],

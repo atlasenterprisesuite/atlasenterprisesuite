@@ -1,4 +1,5 @@
 import {normalizeAgentContext} from './agentic-core.mjs';
+import {selectAdaptiveReasoningProfile,selectConversationReasoningProfile} from './adaptive-reasoning.mjs';
 import {evaluateEmergencyFallbackPolicy,evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
@@ -13,15 +14,50 @@ function supports(provider,intent,capabilities){return provider?.configured===tr
 
 export function normalizeIntelligenceRequest(input={}){
   const module=String(input.module||'atlas').trim()||'atlas';
-  const intent=String(input.intent||'balanced').trim();
+  const requested_intent=String(input.intent||'balanced').trim();
   const mode=String(input.mode||'auto').trim();
   const message=String(input.message||'').trim();
   if(!message)throw fail('invalid_input',400,{field:'message'});
+  const reasoning_decision=requested_intent==='auto'
+    ?selectAdaptiveReasoningProfile({message})
+    :Object.freeze({profile:requested_intent,reason:'manual_selection'});
+  const intent=reasoning_decision.profile;
   if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
   if(!INTELLIGENCE_MODES.includes(mode))throw fail('invalid_input',400,{field:'mode'});
   const capabilities_requested=Array.isArray(input.capabilities_requested)&&input.capabilities_requested.length?[...new Set(input.capabilities_requested.map(String))]:['generation'];
   for(const capability of capabilities_requested)if(!INTELLIGENCE_CAPABILITIES.includes(capability))throw fail('capability_unavailable',409,{capability});
-  return Object.freeze({module,intent,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
+  return Object.freeze({module,intent,requested_intent,reasoning_decision,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
+}
+
+// Only this module can mark a request as prepared. This prevents an HTTP
+// client from spoofing a resolved profile, tenant, actor or session.
+const AUTHORIZED_PREPARATIONS=new WeakMap();
+
+export async function resolveAuthorizedIntelligenceRequest({context,request,store,preparedRequest=null}={}){
+  const principal=normalizeAgentContext(context);
+  if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
+  if(preparedRequest!==null){
+    const proof=preparedRequest&&typeof preparedRequest==='object'?AUTHORIZED_PREPARATIONS.get(preparedRequest):null;
+    const sameRequest=proof&&proof.message===String(request?.message||'').trim()&&proof.mode===String(request?.mode||'auto').trim()&&proof.requested_intent===String(request?.intent||'balanced').trim()&&proof.conversation_id===(request?.conversation_id?String(request.conversation_id):null);
+    if(!sameRequest||proof.organization_id!==principal.organization_id||proof.user_id!==principal.user_id||proof.session_id!==principal.session_id||proof.request_id!==principal.request_id)throw fail('invalid_prepared_request',403);
+    return preparedRequest;
+  }
+  let normalized=normalizeIntelligenceRequest(request);
+  if(normalized.requested_intent==='auto'&&normalized.conversation_id){
+    if(typeof store?.getConversation!=='function'||typeof store?.listRecentMessages!=='function')throw fail('storage_unavailable',503);
+    await store.getConversation({context:principal,id:normalized.conversation_id});
+    const authorizedMessages=await store.listRecentMessages({context:principal,conversation_id:normalized.conversation_id,limit:12});
+    if(!Array.isArray(authorizedMessages))throw fail('storage_unavailable',503);
+    const history=authorizedMessages.map(item=>({role:item.role,content:typeof item.content==='string'?item.content:item.content?.text||''}));
+    const reasoning_decision=selectConversationReasoningProfile({message:normalized.message,history});
+    normalized=Object.freeze({...normalized,intent:reasoning_decision.profile,reasoning_decision});
+  }
+  AUTHORIZED_PREPARATIONS.set(normalized,{
+    organization_id:principal.organization_id,user_id:principal.user_id,session_id:principal.session_id,request_id:principal.request_id,
+    message:normalized.message,mode:normalized.mode,requested_intent:normalized.requested_intent,
+    conversation_id:normalized.conversation_id
+  });
+  return normalized;
 }
 
 export function createIntelligenceRouter({providers=[],allowedProviders=[],preferredProviders=[]}={}){
@@ -74,13 +110,13 @@ export function normalizeIntelligenceError(error){
   return {code:'internal_error',status:500,trace_id:null};
 }
 
-export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
+export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,reauthorize=null,clock=Date.now}={}){
   if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
   const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:false,allow_council:false,zero_cost_providers:[],enforce_zero_cost:true};
-  return Object.freeze({async execute({context,request}){
+  return Object.freeze({async execute({context,request,preparedRequest=null}){
     const principal=normalizeAgentContext(context);
     if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
-    const normalized=normalizeIntelligenceRequest(request);
+    const normalized=await resolveAuthorizedIntelligenceRequest({context:principal,request,store,preparedRequest});
     const route=router.route(normalized);
     const costDecision=evaluateIntelligenceCostPolicy({mode:route.mode,providers:route.providers,policy:effectiveCostPolicy});
     if(costDecision.decision==='deny')throw fail(costDecision.reason||'cost_policy_denied',403,{cost_decision:costDecision});
@@ -182,13 +218,23 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
           throw fail('provider_unavailable',502,{fallback_attempts:fallbackAttempts});
         }
       }
+      // Reject outputs when identity, membership or role permissions changed during
+      // inference. The callback must resolve the live bearer-backed server identity;
+      // no provider, message or client metadata can vouch for current access.
+      if(reauthorize!==null){
+        if(typeof reauthorize!=='function')throw fail('identity_unavailable',503);
+        const fresh=normalizeAgentContext(await reauthorize({context:principal,conversation_id:conversation.id,trace_id}));
+        const roleDowngraded=principal.roles.some(role=>!fresh.roles.includes(role));
+        const sourcePermissionRevoked=principal.permissions.some(permission=>!fresh.permissions.includes(permission));
+        if(fresh.organization_id!==principal.organization_id||fresh.user_id!==principal.user_id||!has(fresh,'intelligence.use')||roleDowngraded||sourcePermissionRevoked)throw fail('permission_denied',403);
+      }
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
       const automaticApiCostUsd=Number.isFinite(executionCostDecision.estimated_automatic_cost_usd)?executionCostDecision.estimated_automatic_cost_usd:null;
-      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
+      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,requested_profile:normalized.requested_intent,selection_reason:normalized.reasoning_decision.reason,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
       await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
       await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:{...(result.usage||{}),atlas_routing:routing},latency_ms:latency});
-      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
+      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,requested_profile:normalized.requested_intent,selection_reason:normalized.reasoning_decision.reason,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});

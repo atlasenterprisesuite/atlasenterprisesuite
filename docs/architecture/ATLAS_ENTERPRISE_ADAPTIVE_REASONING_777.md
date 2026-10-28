@@ -1,0 +1,94 @@
+# ATLAS Enterprise DNA/RNA 777 — Adaptive reasoning (E0)
+
+Date: 2026-10-28
+Status: **Branch-only implementation; CI, production and authenticated E2E unverified**
+Base main commit: `6f7bc8bf7ccb4c50afb347281c934b4cf1925786`
+Related open draft work: PR #781 (Enterprise DNA) and PR #812 (P0 verification).
+
+## Intent
+Reuse the canonical `/assistant` surface, `atlas-copilot` intelligence gateway,
+provider registry, cost policy and tool governance. This is an independent ATLAS
+capability inspired by publicly documented enterprise AI workflows, not a copy
+of OpenAI's internal model, subscription, authorization system or private code.
+
+## Implemented contract in this isolated branch (not production)
+- `intent: 'auto'` selects a deterministic `fast | balanced | deep` profile
+  before provider routing. Manual profiles remain authoritative.
+- The current message determines the initial profile. Short follow-ups can
+  inherit a higher effort level from the last 12 authorized conversation messages,
+  considering up to the last 4 user turns; assistant/tool text cannot force
+  escalation. This is bounded per-conversation continuity, **not** global
+  analysis of all previous ChatGPT or ATLAS chats.
+- Long/high-assurance engineering or security tasks use `deep`, conventional
+  analysis `balanced`, and short simple requests `fast`.
+- The classifier returns only `profile` and a fixed reason category, never
+  the text, actor identity, tenant or sensitive source material.
+- The existing provider verification, explicit-mode no-fallback rule, tenant
+  permission checks, Tool Gateway, budget denial and emergency-budget guards
+  are not changed or bypassed.
+- The canonical web UI and native copilot UI offer Adaptive as default; server
+  compatibility preserves `balanced` for legacy clients that omit `intent`.
+- Persisted routing evidence includes `requested_profile` and
+  `selection_reason`, and the response reports the actually resolved profile.
+
+## Explicit exclusions / remaining P0 work
+- No cross-chat or history-wide inference, source ingestion, ACL rewriting,
+  assistant permission elevation, implicit model entitlement, billing activation,
+  enterprise account upgrade or synchronization of ChatGPT private chats.
+- Broader cross-chat/history-wide adaptation is not implemented. It would
+  require explicit source consent, per-document ACL/revocation, tenant-scoped
+  retrieval and provenance/retention rules; no other user's history can be
+  inferred from a chat ID or model-generated text.
+- Adaptive requests are prepared server-side after authenticated conversation
+  checks and are bound to tenant, actor, session and request ID. Provider
+  readiness checks must use the resolved `fast | balanced | deep` profile
+  rather than the unsupported `auto` string. The background path uses the
+  same authorized preparation and cost policy.
+- Interactive gateway release now revalidates bearer identity and live active
+  organization membership **after inference and before returning or persisting
+  provider output**. Mid-request role demotion, any revoked permission,
+  tenant/user mismatch or identity-source outage rejects the response, even
+  if the provider generated text.
+  Tests mock revocation, user/tenant substitution and identity outages.
+- Background jobs now require a live server-side reauthorization callback.
+  Both provider-native polling and detached job finalization validate current
+  identity/organization/role/permission grants and conversation ACL before
+  returning or persisting provider output. Already-completed polling must
+  reauthorize before reading stored assistant text. The history endpoint also
+  rechecks tenant membership and grants after reconciliation.
+- Focused negative TDD simulates a revoked bearer session, tenant substitution,
+  role downgrade, detached inference completed after revocation, previously
+  stored background output, and a conversation ACL denial.
+- Added a **no-network simulated Supabase HTTP integration suite** using the
+  actual auth resolver, scoped conversation store and adaptive preflight:
+  distinct organization identities, an unauthorized cross-org conversation
+  ID, a non-owner member of the same org, authorized recent history and a
+  revoked bearer. This does not replace a live E2E with two independent
+  authenticated test organizations.
+- **P0 remains open:** These tests use injected identities/stores, not real
+  Supabase revocation events or two independently authenticated test
+  organizations. JWT invalidation latency, authorization/write atomicity,
+  queued provider cancellation, and exact-SHA production verification are
+  not certified. No merge/deploy until approved and evidenced.
+- Negative tests must cover explicit manual overrides, unknown profiles,
+  zero-cost denial, missing provider readiness, cross-tenant/session/request
+  replay, revoked conversation lookup, budget exhaustion, audit failure and no
+  secret leakage. These are not all covered by production E2E yet.
+- CI TypeScript/Vitest, authenticated E2E and deployed exact-SHA must pass
+  before any production claim. Do not merge/deploy while P0 is open.
+
+## References / continuity
+- `docs/architecture/ATLAS_ENTERPRISE_INTELLIGENCE_PARITY.md`
+- `docs/superpowers/specs/2026-09-15-atlas-unified-ai-chat-design.md`
+- `docs/superpowers/specs/2026-10-04-atlas-max-design.md`
+- PR #781 specification: `docs/superpowers/specs/2026-10-12-atlas-enterprise-intelligence-dna.md`
+- PR #812 governance baseline
+
+## Verification ledger
+- Source edits: isolated branch only; not merged.
+- Previous branch SHA `9710c9f68bec4734708537f240e813833bdce7e1`:
+  13/13 GitHub workflows completed successfully, as observed via GitHub.
+- Following background revocation and history-release changes require
+  **independent CI revalidation on their new exact SHA**. This document does
+  not assert GREEN for commits still under verification.
+- Production: unchanged, unknown readiness; **NO-GO**.

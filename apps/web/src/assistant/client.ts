@@ -2,7 +2,7 @@ import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSe
 import { resolveAssistantModule } from './routeContext';
 
 export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'anthropic' | 'grok' | 'deepseek' | 'mistral' | 'qwen' | 'codex-sovereign' | 'council';
-export type AssistantProfile = 'fast' | 'balanced' | 'deep';
+export type AssistantProfile = 'auto' | 'fast' | 'balanced' | 'deep';
 export type AssistantExecutionMode = 'auto' | 'interactive' | 'background';
 
 export type AssistantProviderState =
@@ -124,6 +124,8 @@ export type AssistantChatResponse = {
   model?: string | null;
   mode?: AssistantMode;
   profile?: AssistantProfile;
+  requested_profile?: AssistantProfile;
+  selection_reason?: string;
   fallback_used?: boolean;
   contributions?: Array<{ provider: string; model: string | null; text: string }>;
   background?: boolean;
@@ -316,7 +318,7 @@ export async function sendAssistantMessage(input: {
     body: JSON.stringify({
       organization_id: organization.id,
       module: resolveAssistantModule(input.pathname),
-      intent: 'balanced',
+      intent: 'auto',
       mode: 'auto',
       message,
       conversation_id: input.conversationId || null,
