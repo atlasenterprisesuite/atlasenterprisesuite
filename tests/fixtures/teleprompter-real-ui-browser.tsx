@@ -38,7 +38,13 @@ class SyntheticSpeechRecognition {
   start() { SyntheticSpeechRecognition.current = this; }
   stop() { SyntheticSpeechRecognition.current = null; }
 }
-(window as any).webkitSpeechRecognition = SyntheticSpeechRecognition;
+// Chrome may expose the unprefixed API first; override both variants locally.
+Object.defineProperty(window, 'SpeechRecognition', {
+  configurable: true, writable: true, value: SyntheticSpeechRecognition
+});
+Object.defineProperty(window, 'webkitSpeechRecognition', {
+  configurable: true, writable: true, value: SyntheticSpeechRecognition
+});
 createRoot(document.getElementById('root')!).render(
   <MemoryRouter><TeleprompterPage /></MemoryRouter>
 );
