@@ -447,13 +447,26 @@ export type CreatorRecordingSummary = Pick<CreatorRecording,
   'id' | 'organization_id' | 'created_by' | 'language' |
   'mime_type' | 'file_size_bytes' | 'duration_seconds' | 'created_at'>;
 
+async function scopedCreatorRecordingRequest<T>(
+  api: string,
+  params: Record<string, string | undefined> = {},
+  init: RequestInit = {}
+): Promise<T> {
+  // Organization selection is explicitly bound to every recording operation.
+  // The server independently verifies active membership for this header.
+  const organization = await getActiveAtlasOrganization();
+  const headers = new Headers(init.headers);
+  headers.set('x-atlas-org-id', organization.id);
+  return creatorRequest<T>(api, params, { ...init, headers });
+}
+
 export async function listCreatorRecordings(): Promise<CreatorRecordingSummary[]> {
-  const data = await creatorRequest<{ ok: true; recordings: CreatorRecordingSummary[] }>('recording-list');
+  const data = await scopedCreatorRecordingRequest<{ ok: true; recordings: CreatorRecordingSummary[] }>('recording-list');
   return data.recordings;
 }
 
 export const getCreatorRecordingReadiness = () =>
-  creatorRequest<CreatorRecordingReadiness>('recording-readiness');
+  scopedCreatorRecordingRequest<CreatorRecordingReadiness>('recording-readiness');
 
 export async function uploadCreatorRecording(
   blob: Blob,
@@ -467,7 +480,7 @@ export async function uploadCreatorRecording(
   form.append('recording', file);
   form.append('language', language);
   form.append('duration_seconds', String(Math.max(0, Math.round(durationSeconds))));
-  const data = await creatorRequest<{ ok: true; recording: CreatorRecording }>(
+  const data = await scopedCreatorRecordingRequest<{ ok: true; recording: CreatorRecording }>(
     'recording-upload',
     {},
     { method: 'POST', body: form }
@@ -476,7 +489,7 @@ export async function uploadCreatorRecording(
 }
 
 export async function getCreatorRecordingDownload(recordingId: string) {
-  return creatorRequest<{
+  return scopedCreatorRecordingRequest<{
     ok: true;
     recording: CreatorRecording;
     signed_url: string;
