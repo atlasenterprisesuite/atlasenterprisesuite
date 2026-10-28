@@ -15,7 +15,7 @@ const memberships = [
   { user_id:userB, org_id:orgB, status:'active' },
 ];
 const organizations = [{id:orgA,active:true},{id:orgB,active:true}];
-const make = (overrides: { grants?: unknown; memberships?: unknown; organizations?: unknown; fail?: boolean } = {}) => {
+const make = (overrides: { grants?: unknown; memberships?: unknown; organizations?: unknown; fail?: boolean; issuerSessionActive?: boolean } = {}) => {
   const hits: string[] = [];
   const lookup = (items: unknown, params: URLSearchParams, fields: string[]) =>
     Array.isArray(items) ? items.filter(row => fields.every(field => {
@@ -38,7 +38,7 @@ const make = (overrides: { grants?: unknown; memberships?: unknown; organization
       : null;
     return new Response(JSON.stringify(data),{status:200,headers:{'content-type':'application/json'}});
   };
-  return { directory:createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'test-secret',fetchFn,nowSeconds:()=>now/1000}), hits };
+  return { directory:createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'test-secret',fetchFn,verifyIssuerSession:async()=>overrides.issuerSessionActive !== false,nowSeconds:()=>now/1000}), hits };
 };
 
 describe('ATLAS ChatGPT server-bound Supabase directory: isolated two-org E2E',()=>{
@@ -59,6 +59,9 @@ describe('ATLAS ChatGPT server-bound Supabase directory: isolated two-org E2E',(
     const revoked=make({grants:[{...grants[0],revoked_at:'2026-10-28T11:30:00Z'},grants[1]]}).directory;
     expect(await revoked.resolveIdentity('alice','token-a')).toBeNull();
     expect(await revoked.isRevoked('token-a','alice')).toBe(true);
+    const issuerRevoked=make({issuerSessionActive:false}).directory;
+    expect(await issuerRevoked.resolveIdentity('alice','token-a')).toBeNull();
+    expect(await issuerRevoked.isRevoked('token-a','alice')).toBe(true);
   });
   it('denies removed membership, inactive organization, expired grant and duplicate grants',async()=>{
     const removed=make({memberships:[{...memberships[0],status:'revoked'},memberships[1]]}).directory;
@@ -75,7 +78,8 @@ describe('ATLAS ChatGPT server-bound Supabase directory: isolated two-org E2E',(
     expect(await make().directory.resolveIdentity('alice,org_id.eq.'+orgB,'token-a')).toBeNull();
   });
   it('rejects unsafe server configuration before any fetch',()=>{
-    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'http://project.example.test',serviceRoleKey:'key'})).toThrow();
-    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:''})).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'http://project.example.test',serviceRoleKey:'key',verifyIssuerSession:async()=>true})).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'',verifyIssuerSession:async()=>true})).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'key'} as never)).toThrow();
   });
 });
