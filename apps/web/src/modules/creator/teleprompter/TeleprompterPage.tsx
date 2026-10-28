@@ -403,6 +403,7 @@ export function TeleprompterPage() {
       recorder.ondataavailable = event => { if (event.data.size) chunksRef.current.push(event.data); };
       recorder.onstop = () => {
         if (startAttemptRef.current !== attempt) return;
+        stopCamera();
         const finalType = String(recorder.mimeType || mimeType || 'video/webm').split(';')[0];
         const blob = new Blob(chunksRef.current, { type: finalType });
         if (!blob.size) {
@@ -428,6 +429,7 @@ export function TeleprompterPage() {
       beginVoiceTracking();
     } catch {
       if (startAttemptRef.current === attempt) {
+        stopCamera();
         setState('error');
         setNotice(ui.unsupported);
       }
@@ -442,6 +444,7 @@ export function TeleprompterPage() {
       startAttemptRef.current += 1;
       startingRef.current = false;
       setCountdown(0);
+      stopCamera();
       setState('idle');
       return;
     }
