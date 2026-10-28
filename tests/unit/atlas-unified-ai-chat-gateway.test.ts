@@ -255,4 +255,38 @@ describe('ATLAS Unified AI gateway', () => {
       request: { message: 'Council', mode: 'council' },
     })).rejects.toMatchObject({ code: 'cost_approval_required' });
   });
+  it('preserves demanding conversation effort across a short authorized follow-up', async () => {
+    const { gateway, store } = makeGateway();
+    const principal = context('req-context', ['intelligence.use']);
+    const first = await gateway.execute({
+      context: principal,
+      request: { message: 'ATLAS 777 REVIEW — audita P0 y RLS para la organización.', intent: 'auto' },
+    });
+    const second = await gateway.execute({
+      context: principal,
+      request: { message: 'Continúa', conversation_id: first.conversation_id, intent: 'auto' },
+    });
+    expect(first.profile).toBe('deep');
+    expect(second.profile).toBe('deep');
+    expect(second.selection_reason).toBe('authorized_conversation_continuity');
+    const messages = store._messages.get(first.conversation_id) ?? [];
+    expect(messages.filter((item: any) => item.role === 'assistant').at(-1)?.content?.routing)
+      .toMatchObject({ profile: 'deep', requested_profile: 'auto', selection_reason: 'authorized_conversation_continuity' });
+  });
+
+  it('does not inherit previous effort when the user explicitly selects fast', async () => {
+    const { gateway } = makeGateway();
+    const principal = context('req-manual', ['intelligence.use']);
+    const first = await gateway.execute({
+      context: principal,
+      request: { message: 'ATLAS 777 REVIEW — audita P0', intent: 'auto' },
+    });
+    const second = await gateway.execute({
+      context: principal,
+      request: { message: 'Continúa', conversation_id: first.conversation_id, intent: 'fast' },
+    });
+    expect(second.profile).toBe('fast');
+    expect(second.selection_reason).toBe('manual_selection');
+  });
+
 });
