@@ -60,9 +60,9 @@ export function createAtlasJwtVerifier(options: AtlasOAuthVerifierOptions): Veri
       const scopes = str(claims.scope) ? claims.scope.split(' ').filter(Boolean) : [];
       if (!scopes.includes('atlas:apps:read')) return null;
       const identity = await options.resolveIdentity(claims);
-      if (!identity?.active || !str(identity.tenantId) || !str(identity.organizationId)) return null;
-      if (await options.isRevoked(claims.jti, claims.sub)) return null;
-      if (options.rejectReplay && await options.rejectReplay(claims.jti, claims.exp)) return null;
+      if (identity?.active !== true || !str(identity.tenantId) || !str(identity.organizationId)) return null;
+      if (await options.isRevoked(claims.jti, claims.sub) !== false) return null;
+      if (options.rejectReplay && await options.rejectReplay(claims.jti, claims.exp) !== false) return null;
       return { subject: claims.sub, tenantId: identity.tenantId, organizationId: identity.organizationId,
         scopes, issuer: options.issuer, audience: options.audience, expiresAt: claims.exp, revoked: false } satisfies VerifiedChatGptPrincipal;
     } catch { return null; }
