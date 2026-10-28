@@ -38,8 +38,8 @@ export async function resolveAuthorizedIntelligenceRequest({context,request,stor
   if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
   if(preparedRequest!==null){
     const proof=preparedRequest&&typeof preparedRequest==='object'?AUTHORIZED_PREPARATIONS.get(preparedRequest):null;
-    const sameRequest=proof&&proof.message===request?.message&&proof.mode===(request?.mode||'auto')&&proof.requested_intent===(request?.intent||'balanced')&&proof.conversation_id===(request?.conversation_id||null);
-    if(!sameRequest||proof.organization_id!==principal.organization_id||proof.user_id!==principal.user_id||proof.session_id!==principal.session_id)throw fail('invalid_prepared_request',403);
+    const sameRequest=proof&&proof.message===String(request?.message||'').trim()&&proof.mode===String(request?.mode||'auto').trim()&&proof.requested_intent===String(request?.intent||'balanced').trim()&&proof.conversation_id===(request?.conversation_id?String(request.conversation_id):null);
+    if(!sameRequest||proof.organization_id!==principal.organization_id||proof.user_id!==principal.user_id||proof.session_id!==principal.session_id||proof.request_id!==principal.request_id)throw fail('invalid_prepared_request',403);
     return preparedRequest;
   }
   let normalized=normalizeIntelligenceRequest(request);
@@ -53,7 +53,7 @@ export async function resolveAuthorizedIntelligenceRequest({context,request,stor
     normalized=Object.freeze({...normalized,intent:reasoning_decision.profile,reasoning_decision});
   }
   AUTHORIZED_PREPARATIONS.set(normalized,{
-    organization_id:principal.organization_id,user_id:principal.user_id,session_id:principal.session_id,
+    organization_id:principal.organization_id,user_id:principal.user_id,session_id:principal.session_id,request_id:principal.request_id,
     message:normalized.message,mode:normalized.mode,requested_intent:normalized.requested_intent,
     conversation_id:normalized.conversation_id
   });
