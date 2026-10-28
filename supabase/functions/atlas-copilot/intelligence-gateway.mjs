@@ -1,4 +1,5 @@
 import {normalizeAgentContext} from './agentic-core.mjs';
+import {selectAdaptiveReasoningProfile} from './adaptive-reasoning.mjs';
 import {evaluateEmergencyFallbackPolicy,evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
@@ -13,15 +14,19 @@ function supports(provider,intent,capabilities){return provider?.configured===tr
 
 export function normalizeIntelligenceRequest(input={}){
   const module=String(input.module||'atlas').trim()||'atlas';
-  const intent=String(input.intent||'balanced').trim();
+  const requested_intent=String(input.intent||'balanced').trim();
   const mode=String(input.mode||'auto').trim();
   const message=String(input.message||'').trim();
   if(!message)throw fail('invalid_input',400,{field:'message'});
+  const reasoning_decision=requested_intent==='auto'
+    ?selectAdaptiveReasoningProfile({message})
+    :Object.freeze({profile:requested_intent,reason:'manual_selection'});
+  const intent=reasoning_decision.profile;
   if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
   if(!INTELLIGENCE_MODES.includes(mode))throw fail('invalid_input',400,{field:'mode'});
   const capabilities_requested=Array.isArray(input.capabilities_requested)&&input.capabilities_requested.length?[...new Set(input.capabilities_requested.map(String))]:['generation'];
   for(const capability of capabilities_requested)if(!INTELLIGENCE_CAPABILITIES.includes(capability))throw fail('capability_unavailable',409,{capability});
-  return Object.freeze({module,intent,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
+  return Object.freeze({module,intent,requested_intent,reasoning_decision,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
 }
 
 export function createIntelligenceRouter({providers=[],allowedProviders=[],preferredProviders=[]}={}){
@@ -185,10 +190,10 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
       const automaticApiCostUsd=Number.isFinite(executionCostDecision.estimated_automatic_cost_usd)?executionCostDecision.estimated_automatic_cost_usd:null;
-      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
+      const routing={mode:executionRoute.mode,providers:executionRoute.providers,profile:executionRoute.profile,requested_profile:normalized.requested_intent,selection_reason:normalized.reasoning_decision.reason,fallback_used:executionRoute.fallback_used,reason:executionRoute.reason,cost_decision:executionCostDecision.reason,automatic_api_cost_usd:automaticApiCostUsd,fallback_attempts:fallbackAttempts};
       await store.appendMessage({context:principal,conversation_id:conversation.id,role:'assistant',content:{text:result.text,routing,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model}))||[]},provenance:result.provenance||[],trace_id});
       await store.completeRequest({context:principal,id:telemetry.id,provider:result.provider,model:result.model,capabilities_used:result.capabilities_used||route.capabilities,usage:{...(result.usage||{}),atlas_routing:routing},latency_ms:latency});
-      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
+      return {request_id:principal.request_id,trace_id,conversation_id:conversation.id,status:'completed',output:result.text,provider:result.provider,providers:executionRoute.providers,model:result.model,mode:executionRoute.mode,profile:executionRoute.profile,requested_profile:normalized.requested_intent,selection_reason:normalized.reasoning_decision.reason,fallback_used:executionRoute.fallback_used,capabilities_used:result.capabilities_used||executionRoute.capabilities,tools_used:[],tool_proposals:proposals,contributions:result.contributions?.map(item=>({provider:item.provider,model:item.model,text:item.text}))||[],sources:result.provenance||[],usage:result.usage||{},latency,automatic_api_cost_usd:automaticApiCostUsd,execution_state:'completed'};
     }catch(error){
       const normalizedError=normalizeIntelligenceError(error),latency=Math.max(0,clock()-started);
       if(telemetry?.id)await store.failRequest({context:principal,id:telemetry.id,error_code:normalizedError.code,latency_ms:latency}).catch(()=>{});
