@@ -443,6 +443,15 @@ export type CreatorRecording = {
   created_at: string;
 };
 
+export type CreatorRecordingSummary = Pick<CreatorRecording,
+  'id' | 'organization_id' | 'created_by' | 'language' |
+  'mime_type' | 'file_size_bytes' | 'duration_seconds' | 'created_at'>;
+
+export async function listCreatorRecordings(): Promise<CreatorRecordingSummary[]> {
+  const data = await creatorRequest<{ ok: true; recordings: CreatorRecordingSummary[] }>('recording-list');
+  return data.recordings;
+}
+
 export const getCreatorRecordingReadiness = () =>
   creatorRequest<CreatorRecordingReadiness>('recording-readiness');
 
