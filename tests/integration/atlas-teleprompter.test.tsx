@@ -93,6 +93,54 @@ describe('ATLAS Smart Teleprompter', () => {
     expect(screen.getByLabelText('Guardar automáticamente en ATLAS')).toBeDisabled();
   });
 
+  it('shares one pending camera request between camera preview and recording', () => {
+    vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockImplementation(() => new Promise(() => {}));
+    vi.stubGlobal('MediaRecorder', vi.fn());
+    const getUserMedia = mockCamera(new Promise<MediaStream>(() => {}));
+    render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Activar cámara' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Comenzar grabación' }));
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels recording while camera permission is still pending and releases late tracks', async () => {
+    vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockImplementation(() => new Promise(() => {}));
+    vi.stubGlobal('MediaRecorder', vi.fn());
+    let resolveMedia!: (stream: MediaStream) => void;
+    mockCamera(new Promise<MediaStream>(resolve => { resolveMedia = resolve; }));
+    const stop = vi.fn();
+    render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Comenzar grabación' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Detener y guardar' }));
+    resolveMedia({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    expect(await screen.findByRole('button', { name: 'Comenzar grabación' })).toBeInTheDocument();
+    await vi.waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
+  });
+
+  it('recovers a previously saved organization recording after reloading the page', async () => {
+    vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockResolvedValue({
+      ok: true, service: 'atlas-creator-recordings', organization_id: 'org-a',
+      connected: true, reason: null, upload_allowed: true, bucket: 'atlas-creator-recordings',
+      checked_at: '2026-10-28T00:00:00Z'
+    });
+    const list = vi.spyOn(creatorApi, 'listCreatorRecordings').mockResolvedValue([{
+      id: 'recording-a', organization_id: 'org-a', created_by: 'user-a', language: 'es',
+      storage_bucket: 'atlas-creator-recordings', storage_path: 'private',
+      mime_type: 'video/mp4', file_size_bytes: 2048, duration_seconds: 12,
+      source: 'teleprompter', created_at: '2026-10-28T00:00:00Z'
+    }]);
+    vi.spyOn(creatorApi, 'getCreatorRecordingDownload').mockResolvedValue({
+      ok: true, recording: {} as creatorApi.CreatorRecording,
+      signed_url: 'https://example.test/signed', expires_in: 120
+    });
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
+    expect(await screen.findByText('Mis grabaciones en ATLAS')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Abrir grabación recording-a' }));
+    await vi.waitFor(() => expect(open).toHaveBeenCalledWith('https://example.test/signed', '_blank', 'noopener,noreferrer'));
+    expect(list).toHaveBeenCalledTimes(1);
+  });
+
   it('switches to the independent English script and interface', () => {
     vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockImplementation(() => new Promise(() => {}));
     render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
