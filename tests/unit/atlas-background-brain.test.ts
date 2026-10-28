@@ -4,6 +4,8 @@ import { createBackgroundBrain, shouldRunInBackground } from '../../supabase/fun
 const context = {
   organization_id: 'org-1',
   user_id: 'user-1',
+  session_id: 'session-1',
+  request_id: 'request-1',
   permissions: ['intelligence.use']
 };
 
