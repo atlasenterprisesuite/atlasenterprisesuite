@@ -55,7 +55,9 @@ describe('ATLAS Creator teleprompter recording connection', () => {
     const api = read('apps/web/src/lib/creatorApi.ts');
     expect(api).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(api).toContain("init.body instanceof FormData");
-    expect(api).toContain("creatorRequest<CreatorRecordingReadiness>('recording-readiness')");
+    expect(api).toContain("scopedCreatorRecordingRequest<CreatorRecordingReadiness>('recording-readiness')");
+    expect(api).toContain("headers['x-atlas-org-id'] = organization.id");
+    expect(api).toContain('await getActiveAtlasOrganization()');
     expect(api).toContain("'recording-upload'");
   });
 });
