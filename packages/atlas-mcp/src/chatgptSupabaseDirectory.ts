@@ -7,6 +7,8 @@
  * Never use JWT tenant_id/organization_id or client-supplied org values to pick a tenant.
  */
 export interface AtlasChatGptSupabaseDirectoryOptions {
+  /** Exact, trusted OAuth issuer. Every authorization grant is scoped to this issuer. */
+  issuer: string;
   supabaseUrl: string;
   serviceRoleKey: string;
   /** Mandatory live check against a trusted issuer-owned session ledger (no JWT-only inference). */
@@ -20,7 +22,7 @@ export interface AtlasChatGptSupabaseDirectory {
 }
 
 type Grant = {
-  subject: string; token_id: string; user_id: string; org_id: string;
+  issuer: string; subject: string; token_id: string; user_id: string; org_id: string;
   expires_at: string; revoked_at: string | null; session_revoked_at: string | null;
 };
 type Membership = { user_id: string; org_id: string; status: string };
@@ -33,7 +35,10 @@ const opaque = (s: unknown): s is string =>
 /** Pure composition root: no outbound requests until the returned methods are called. */
 export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabaseDirectoryOptions): AtlasChatGptSupabaseDirectory {
   const root = new URL(options.supabaseUrl);
-  if (root.protocol !== 'https:' || root.username || root.password || root.pathname !== '/' ||
+  const issuer = new URL(options.issuer);
+  if (issuer.protocol !== 'https:' || issuer.username || issuer.password || issuer.search || issuer.hash ||
+      issuer.href.replace(/\/$/, '') !== options.issuer ||
+      root.protocol !== 'https:' || root.username || root.password || root.pathname !== '/' ||
       root.search || root.hash || !root.hostname || !options.serviceRoleKey?.trim() ||
       typeof options.verifyIssuerSession !== 'function')
     throw new Error('trusted_server_supabase_configuration_required');
@@ -61,12 +66,12 @@ export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabas
       // A signed JWT or an unrevoked local grant alone cannot establish an active session.
       if (await options.verifyIssuerSession(subject, tokenId) !== true) return null;
       const records = await read('atlas_chatgpt_oauth_grants',
-        ['subject','token_id','user_id','org_id','expires_at','revoked_at','session_revoked_at'],
-        { subject,token_id:tokenId });
+        ['issuer','subject','token_id','user_id','org_id','expires_at','revoked_at','session_revoked_at'],
+        { issuer:options.issuer,subject,token_id:tokenId });
       if (records?.length !== 1) return null;
       const g = records[0] as Grant;
       const expiry = typeof g.expires_at === 'string' ? Date.parse(g.expires_at) : NaN;
-      if (g.subject !== subject || g.token_id !== tokenId || !uuid(g.user_id) || !uuid(g.org_id) ||
+      if (g.issuer !== options.issuer || g.subject !== subject || g.token_id !== tokenId || !uuid(g.user_id) || !uuid(g.org_id) ||
           g.revoked_at !== null || g.session_revoked_at !== null ||
           !Number.isFinite(expiry) || expiry <= now()*1000) return null;
       const memberships = await read('organization_members',['org_id','user_id','status'],
