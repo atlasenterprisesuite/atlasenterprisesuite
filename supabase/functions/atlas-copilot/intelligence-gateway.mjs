@@ -224,7 +224,9 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       if(reauthorize!==null){
         if(typeof reauthorize!=='function')throw fail('identity_unavailable',503);
         const fresh=normalizeAgentContext(await reauthorize({context:principal,conversation_id:conversation.id,trace_id}));
-        if(fresh.organization_id!==principal.organization_id||fresh.user_id!==principal.user_id||!has(fresh,'intelligence.use'))throw fail('permission_denied',403);
+        const roleDowngraded=principal.roles.some(role=>!fresh.roles.includes(role));
+        const sourcePermissionRevoked=principal.permissions.some(permission=>!fresh.permissions.includes(permission));
+        if(fresh.organization_id!==principal.organization_id||fresh.user_id!==principal.user_id||!has(fresh,'intelligence.use')||roleDowngraded||sourcePermissionRevoked)throw fail('permission_denied',403);
       }
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
