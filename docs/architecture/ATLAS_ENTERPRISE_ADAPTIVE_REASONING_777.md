@@ -59,6 +59,12 @@ of OpenAI's internal model, subscription, authorization system or private code.
 - Focused negative TDD simulates a revoked bearer session, tenant substitution,
   role downgrade, detached inference completed after revocation, previously
   stored background output, and a conversation ACL denial.
+- Added a **no-network simulated Supabase HTTP integration suite** using the
+  actual auth resolver, scoped conversation store and adaptive preflight:
+  distinct organization identities, an unauthorized cross-org conversation
+  ID, a non-owner member of the same org, authorized recent history and a
+  revoked bearer. This does not replace a live E2E with two independent
+  authenticated test organizations.
 - **P0 remains open:** These tests use injected identities/stores, not real
   Supabase revocation events or two independently authenticated test
   organizations. JWT invalidation latency, authorization/write atomicity,
