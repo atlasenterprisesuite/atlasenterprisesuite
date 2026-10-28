@@ -40,6 +40,7 @@ function fakeStore(options: { emergencyAllowed?: boolean } = {}) {
       return item;
     },
     listMessages: async ({ conversation_id }: any) => messages.get(conversation_id) ?? [],
+    listRecentMessages: async ({ conversation_id, limit = 12 }: any) => (messages.get(conversation_id) ?? []).slice(-limit),
     startRequest: async (value: any) => {
       const item = { id: `request-${++requestCount}`, ...value };
       requests.set(item.id, item);
