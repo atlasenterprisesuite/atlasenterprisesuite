@@ -1,10 +1,23 @@
 """Negative TDD and offline smoke tests for ATLAS Cinematic Engine 777."""
 from pathlib import Path
+import struct
 import tempfile
 import unittest
-from unittest.mock import patch
+import zlib
 
 from cinematic_composer import render, secure_asset, validate_spec
+
+
+def synthetic_png(path: Path) -> None:
+    """Small self-contained RGB PNG fixture (stdlib only)."""
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        return struct.pack('>I', len(payload)) + kind + payload + struct.pack('>I', zlib.crc32(kind + payload) & 0xffffffff)
+    width = height = 8
+    pixels = b''.join(b'\x00' + bytes((20, 40, 58)) * width for _ in range(height))
+    path.write_bytes(b'\x89PNG\r\n\x1a\n'
+                     + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
+                     + chunk(b'IDAT', zlib.compress(pixels))
+                     + chunk(b'IEND', b''))
 
 
 class CinematicSafetyTests(unittest.TestCase):
@@ -13,9 +26,7 @@ class CinematicSafetyTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.assets = self.root / 'assets'
         self.assets.mkdir()
-        # Use ffmpeg itself to create a synthetic source; no fixture download.
-        from PIL import Image
-        Image.new('RGB', (360, 640), '#14283a').save(self.assets / 'scene.png')
+        synthetic_png(self.assets / 'scene.png')
         self.spec = {'size': [360, 640], 'scenes': [{'media': 'scene.png', 'duration': 1.3}]}
 
     def tearDown(self):
