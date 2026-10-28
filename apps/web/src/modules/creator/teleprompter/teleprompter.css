@@ -15,3 +15,12 @@
 .teleprompter-reader.reader-position-center{padding-top:44vh;padding-bottom:44vh}
 .teleprompter-reader.reader-position-bottom{padding-top:70vh;padding-bottom:10vh}
 @media(prefers-reduced-motion:reduce){.teleprompter-reader .word{transition:none}}
+
+.teleprompter-library{margin-top:20px;padding:20px;border:1px solid rgba(140,169,216,.28);border-radius:16px;background:rgba(8,15,32,.84);color:#f2f5fc}
+.teleprompter-library h2{font-size:1.1rem;margin:0 0 12px}
+.teleprompter-library ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.teleprompter-library li{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,.055)}
+.teleprompter-library li span{overflow-wrap:anywhere}
+.teleprompter-library button{min-height:44px;min-width:44px;border-radius:8px;border:1px solid #9bb9ff;background:#1b2b50;color:#fff;cursor:pointer}
+.teleprompter-library button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media(max-width:640px){.teleprompter-library{padding:14px}.teleprompter-library li{align-items:stretch;flex-direction:column}.teleprompter-library button{width:100%}}
