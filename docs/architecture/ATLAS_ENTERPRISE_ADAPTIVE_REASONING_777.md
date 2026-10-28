@@ -44,6 +44,14 @@ of OpenAI's internal model, subscription, authorization system or private code.
   readiness checks must use the resolved `fast | balanced | deep` profile
   rather than the unsupported `auto` string. The background path uses the
   same authorized preparation and cost policy.
+- Interactive gateway release now revalidates bearer identity and live active
+  organization membership **after inference and before returning or persisting
+  provider output**. A revoked permission, tenant/user mismatch or identity
+  source outage rejects the response, even if the provider generated text.
+  Tests mock revocation, user/tenant substitution and identity outages.
+- This is not a proof of instantaneous global revocation. Durable background
+  execution, queued jobs and token invalidation need dedicated revocation
+  propagation tests. Remain NO-GO for production until verified.
 - Negative tests must cover explicit manual overrides, unknown profiles,
   zero-cost denial, missing provider readiness, cross-tenant/session/request
   replay, revoked conversation lookup, budget exhaustion, audit failure and no
