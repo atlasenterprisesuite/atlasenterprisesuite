@@ -44,7 +44,10 @@ export function createAtlasJwtVerifier(options: AtlasOAuthVerifierOptions): Veri
       const key = await crypto.subtle.importKey(
         'jwk', matches[0], { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'],
       );
-      const signature = base64UrlBytes(encodedSignature);
+      // Copy into an ArrayBuffer-backed view required by WebCrypto's BufferSource type.
+      const decodedSignature = base64UrlBytes(encodedSignature);
+      const signature = new Uint8Array(new ArrayBuffer(decodedSignature.byteLength));
+      signature.set(decodedSignature);
       const signingInput = new TextEncoder().encode(encodedHeader + '.' + encodedPayload);
       if (!await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, signingInput)) return null;
       const now = options.nowSeconds?.() ?? Math.floor(Date.now() / 1000);
