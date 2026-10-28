@@ -110,7 +110,7 @@ export function normalizeIntelligenceError(error){
   return {code:'internal_error',status:500,trace_id:null};
 }
 
-export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
+export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,reauthorize=null,clock=Date.now}={}){
   if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
   const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:false,allow_council:false,zero_cost_providers:[],enforce_zero_cost:true};
   return Object.freeze({async execute({context,request,preparedRequest=null}){
@@ -217,6 +217,14 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
           if(lastRetryableError)throw lastRetryableError;
           throw fail('provider_unavailable',502,{fallback_attempts:fallbackAttempts});
         }
+      }
+      // Reject outputs when identity, membership or role permissions changed during
+      // inference. The callback must resolve the live bearer-backed server identity;
+      // no provider, message or client metadata can vouch for current access.
+      if(reauthorize!==null){
+        if(typeof reauthorize!=='function')throw fail('identity_unavailable',503);
+        const fresh=normalizeAgentContext(await reauthorize({context:principal,conversation_id:conversation.id,trace_id}));
+        if(fresh.organization_id!==principal.organization_id||fresh.user_id!==principal.user_id||!has(fresh,'intelligence.use'))throw fail('permission_denied',403);
       }
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
