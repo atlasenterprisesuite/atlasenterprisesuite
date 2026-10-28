@@ -308,4 +308,55 @@ describe('ATLAS Background Brain', () => {
       .toThrowError(/background_authorization_required/);
   });
 
+  it('fails a detached task without persisting confidential text when authorization expires during inference', async () => {
+    const store = createStore();
+    let revoked = false;
+    let resolveInference!: (value: any) => void;
+    const pending = new Promise<any>((resolve) => { resolveInference = resolve; });
+    let detached: Promise<unknown> | null = null;
+    const local = { execute: vi.fn(async () => pending) };
+    const brain = createBackgroundBrain({
+      router: { route: () => ({mode:'auto',providers:['atlas-local'],fallback_providers:[],provider:'atlas-local',profile:'deep',capabilities:['generation'],fallback_used:false}) },
+      registry:{get:()=>local},store,
+      reauthorize: async () => {
+        if(revoked) throw Object.assign(new Error('authentication_required'), {code:'authentication_required',status:401});
+        return context;
+      },
+      runDetached: (task:Promise<unknown>) => { detached=task; },
+      costPolicy:{allowed_providers:['atlas-local'],zero_cost_providers:['atlas-local'],enforce_zero_cost:true,allow_paid_single:false}
+    });
+    const result=await brain.start({context,request:{message:'Research private organization records',mode:'auto',intent:'deep'}});
+    expect(result.status).toBe('in_progress');
+    revoked=true;
+    resolveInference({provider:'atlas-local',model:'mock-local',text:'DETACHED_PRIVATE_OUTPUT',usage:{},capabilities_used:['generation']});
+    await detached;
+    expect(store.messages.map(item=>item.content?.text)).not.toContain('DETACHED_PRIVATE_OUTPUT');
+    expect(store.completeRequest).not.toHaveBeenCalled();
+    expect(store.failRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('denies stale access to an already stored completed background answer', async () => {
+    const store=createStore();
+    store.request.status='completed';
+    store.request.trace_id='trace-existing';
+    store.messages.push({role:'assistant',trace_id:'trace-existing',content:{text:'STORED_PRIVATE_OUTPUT'}});
+    const brain=createBackgroundBrain({
+      registry:{get:()=>null},store,
+      reauthorize: async ()=>{throw Object.assign(new Error('authentication_required'),{code:'authentication_required',status:401});}
+    });
+    await expect(brain.poll({context,traceId:'trace-existing'}))
+      .rejects.toMatchObject({code:'authentication_required',status:401});
+    expect(store.findAssistantMessageByTrace).not.toHaveBeenCalled();
+  });
+
+  it('checks conversation ACL again after checking live identity', async () => {
+    const store=createStore();
+    store.request.status='completed';
+    store.request.trace_id='trace-acl';
+    store.getConversation=vi.fn(async ()=>{throw Object.assign(new Error('conversation_not_found'),{code:'conversation_not_found',status:404});});
+    const brain=createBackgroundBrain({registry:{get:()=>null},store,reauthorize:async ()=>context});
+    await expect(brain.poll({context,traceId:'trace-acl'})).rejects.toMatchObject({code:'conversation_not_found',status:404});
+    expect(store.findAssistantMessageByTrace).not.toHaveBeenCalled();
+  });
+
 });
