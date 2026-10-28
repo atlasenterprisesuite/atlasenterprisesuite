@@ -48,10 +48,13 @@ export async function handleChatGptCatalogMcp(input: {
   let principal: VerifiedChatGptPrincipal | null;
   try { principal = await verifyToken(token); } catch { return unauthorized(); }
   const now = input.nowSeconds ?? Math.floor(Date.now() / 1000);
-  if (!principal || principal.revoked || principal.issuer !== expectedIssuer ||
-      principal.audience !== expectedAudience || !Number.isFinite(principal.expiresAt) ||
-      principal.expiresAt <= now || !principal.scopes.includes(ATLAS_CHATGPT_SCOPE) ||
-      !principal.subject.trim() || !principal.tenantId.trim() || !principal.organizationId.trim()) return unauthorized();
+  if (!principal || principal.revoked !== false || principal.issuer !== expectedIssuer ||
+      principal.audience !== expectedAudience || typeof principal.expiresAt !== 'number' ||
+      !Number.isFinite(principal.expiresAt) || principal.expiresAt <= now ||
+      !Array.isArray(principal.scopes) || !principal.scopes.includes(ATLAS_CHATGPT_SCOPE) ||
+      typeof principal.subject !== 'string' || !principal.subject.trim() ||
+      typeof principal.tenantId !== 'string' || !principal.tenantId.trim() ||
+      typeof principal.organizationId !== 'string' || !principal.organizationId.trim()) return unauthorized();
   if (request.method === 'initialize') return { status: 200, body: ok(request.id, {
     protocolVersion: '2025-11-25', capabilities: { tools: {} }, serverInfo: { name: 'atlas-chatgpt-catalog', version: '0.1.0' },
   }) };
