@@ -61,8 +61,8 @@ describe('ATLAS Smart Teleprompter', () => {
     render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Comenzar grabación' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Comenzar grabación' }));
-
+    expect(screen.getByRole('button', { name: 'Detener y guardar' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Comenzar grabación' })).not.toBeInTheDocument();
     expect(getUserMedia).toHaveBeenCalledTimes(1);
   });
 
