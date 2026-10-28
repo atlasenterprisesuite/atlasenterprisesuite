@@ -290,4 +290,64 @@ describe('ATLAS Unified AI gateway', () => {
     expect(second.selection_reason).toBe('manual_selection');
   });
 
+  it('fails closed after identity revocation during inference without persisting assistant text', async () => {
+    const store = fakeStore();
+    let revoked = false;
+    const adapter = fakeAdapter('openai');
+    adapter.execute = async () => {
+      revoked = true;
+      return { provider: 'openai', model: 'openai-model', text: 'PRIVATE_ORG_OUTPUT',
+        capabilities_used: ['generation'], usage: {}, provenance: [], tool_calls: [] };
+    };
+    const registry = createProviderRegistry({ providers: [adapter] });
+    const router = createIntelligenceRouter({ providers: [routeProviders[0]] });
+    const gateway = createIntelligenceGateway({
+      router, registry, store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, zero_cost_providers: [] },
+      reauthorize: async () => revoked
+        ? { ...context('fresh', []), permissions: [] }
+        : context('fresh', ['intelligence.use']),
+    });
+    await expect(gateway.execute({
+      context: context('request-revoke', ['intelligence.use']),
+      request: { message: 'Summarize organization records', intent: 'fast', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    const serialized = JSON.stringify([...store._messages.values()]);
+    expect(serialized).not.toContain('PRIVATE_ORG_OUTPUT');
+  });
+
+  it.each([
+    { organization_id: 'org-other', user_id: 'user-1' },
+    { organization_id: 'org-1', user_id: 'intruder' },
+  ])('rejects identity changes between inference and response release', async (newPrincipal) => {
+    const store = fakeStore();
+    const adapter = fakeAdapter('openai');
+    const registry = createProviderRegistry({ providers: [adapter] });
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }), registry, store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, zero_cost_providers: [] },
+      reauthorize: async () => ({ ...context('fresh', ['intelligence.use']), ...newPrincipal }),
+    });
+    await expect(gateway.execute({
+      context: context('request-identity', ['intelligence.use']),
+      request: { message: 'Check accounting totals', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
+  it('stops response release when the auth source is unavailable (no silent fallback)', async () => {
+    const store = fakeStore();
+    const registry = createProviderRegistry({ providers: [fakeAdapter('openai')] });
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }), registry, store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, zero_cost_providers: [] },
+      reauthorize: async () => { throw Object.assign(new Error('identity_unavailable'), { code: 'identity_unavailable', status: 502 }); },
+    });
+    await expect(gateway.execute({
+      context: context('request-outage', ['intelligence.use']),
+      request: { message: 'Private user information', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'identity_unavailable', status: 502 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
 });
