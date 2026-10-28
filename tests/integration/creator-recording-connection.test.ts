@@ -41,6 +41,16 @@ describe('ATLAS Creator teleprompter recording connection', () => {
     expect(storage).toContain('createSignedUrl(String(row.storage_path), 120)');
   });
 
+  it('requires an explicit tenant context for each private recording endpoint', () => {
+    const edge = read('supabase/functions/atlas-creator/index.ts');
+    expect(edge).toContain('async function recordingContext(req: Request, permission: CreatorPermission)');
+    expect(edge).toContain("creatorError('organization_scope_required', 400)");
+    for (const handler of ['Readiness', 'List', 'Upload', 'Download']) {
+      const section = edge.slice(edge.indexOf(`async function handleRecording${handler}(`));
+      expect(section).toContain("recordingContext(req, 'creator.");
+    }
+  });
+
   it('does not send the service-role key to the browser and supports multipart uploads', () => {
     const api = read('apps/web/src/lib/creatorApi.ts');
     expect(api).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
