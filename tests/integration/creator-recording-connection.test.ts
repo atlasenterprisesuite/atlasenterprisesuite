@@ -5,7 +5,7 @@ const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('ATLAS Creator teleprompter recording connection', () => {
   it('removes inherited anonymous DML and TRUNCATE grants from private recordings', () => {
-    const sql = read('supabase/migrations/20261028_creator_recordings_anon_grant_hardening.sql');
+    const sql = read('supabase/migrations/20261028120000_creator_recordings_anon_grant_hardening.sql');
     expect(sql).toMatch(/revoke all privileges on table public\.creator_recordings from anon/i);
     expect(sql).toContain("has_table_privilege('anon', 'public.creator_recordings', 'TRUNCATE')");
     expect(sql).not.toMatch(/grant\s+(?:all|insert|update|delete|truncate)\s+on\s+(?:table\s+)?public\.creator_recordings\s+to\s+anon/i);
