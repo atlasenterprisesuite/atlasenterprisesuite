@@ -150,7 +150,7 @@ def render(spec: dict, assets: Path, output: Path) -> dict:
         if cfg['captions']:
             srt = work / 'captions.srt'
             shutil.copyfile(cfg['captions'], srt)
-            filters.append(f"subtitles={srt}:force_style='FontName=DejaVu Sans,FontSize=14,Outline=2,Alignment=2,MarginV=170'")
+            filters.append(f"subtitles={srt}:force_style='FontName=DejaVu Sans,FontSize=8,Outline=2,Alignment=2,MarginV=35'")
         if cfg['voice']:
             argv.extend(['-i', str(cfg['voice'])])
         if cfg['soundbed']:
