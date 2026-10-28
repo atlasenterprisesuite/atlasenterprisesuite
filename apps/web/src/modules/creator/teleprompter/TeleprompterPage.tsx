@@ -203,6 +203,8 @@ export function TeleprompterPage() {
   const autoCloudRef = useRef(autoCloud);
   const autoLocalRef = useRef(autoLocal);
   const elapsedRef = useRef(0);
+  const startAttemptRef = useRef(0);
+  const startingRef = useRef(false);
 
   const ui = copy[language];
   const script = scripts[language];
@@ -221,7 +223,7 @@ export function TeleprompterPage() {
       .then(result => {
         if (!active) return;
         setCloudAllowed(Boolean(result.connected && result.upload_allowed));
-        setCloudState(result.connected ? 'connected' : 'unavailable');
+        setCloudState(result.connected && result.upload_allowed ? 'connected' : 'unavailable');
       })
       .catch(() => {
         if (!active) return;
@@ -257,10 +259,23 @@ export function TeleprompterPage() {
   }, [state]);
 
   useEffect(() => () => {
+    // Route changes must cancel pending countdowns and never save an uncompleted recording.
+    startAttemptRef.current += 1;
+    startingRef.current = false;
     runningRef.current = false;
     recognitionRef.current?.stop();
+    const recorder = recorderRef.current;
+    if (recorder?.state === 'recording') {
+      recorder.onstop = null;
+      recorder.ondataavailable = null;
+      recorder.stop();
+    }
     streamRef.current?.getTracks().forEach(track => track.stop());
   }, []);
+
+  useEffect(() => () => {
+    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+  }, [recordedUrl]);
 
   async function ensureCamera() {
     if (streamRef.current) return streamRef.current;
@@ -344,52 +359,92 @@ export function TeleprompterPage() {
   }
 
   async function startRecording() {
-    if (typeof MediaRecorder === 'undefined') {
-      setNotice(ui.unsupported);
-      setState('error');
-      return;
+    // A synchronous ref prevents repeated clicks from racing while camera permission resolves.
+    if (startingRef.current || recorderRef.current?.state === 'recording') return;
+    const attempt = ++startAttemptRef.current;
+    startingRef.current = true;
+    try {
+      if (typeof MediaRecorder === 'undefined') {
+        setNotice(ui.unsupported);
+        setState('error');
+        return;
+      }
+      const stream = await ensureCamera();
+      if (!stream) return;
+      if (startAttemptRef.current !== attempt) {
+        stopCamera();
+        return;
+      }
+
+      setRecordedBlob(null);
+      setRecordedUrl('');
+      setRecordingId('');
+      setCloudUrl('');
+      setElapsed(0);
+      elapsedRef.current = 0;
+      setState('countdown');
+
+      for (let value = 3; value >= 1; value -= 1) {
+        if (startAttemptRef.current !== attempt) return;
+        setCountdown(value);
+        await new Promise(resolve => window.setTimeout(resolve, 700));
+      }
+      if (startAttemptRef.current !== attempt) return;
+      setCountdown(0);
+      if (stream.active === false) {
+        setState('error');
+        setNotice(ui.permissionError);
+        return;
+      }
+
+      const mimeType = preferredMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = event => { if (event.data.size) chunksRef.current.push(event.data); };
+      recorder.onstop = () => {
+        if (startAttemptRef.current !== attempt) return;
+        const finalType = String(recorder.mimeType || mimeType || 'video/webm').split(';')[0];
+        const blob = new Blob(chunksRef.current, { type: finalType });
+        if (!blob.size) {
+          setState('error');
+          setNotice('recording_empty_no_file_saved');
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        setRecordedBlob(blob);
+        setRecordedUrl(previous => {
+          if (previous) URL.revokeObjectURL(previous);
+          return url;
+        });
+        setState('stopped');
+        if (autoLocalRef.current) triggerDownload(url, finalType);
+        if (autoCloudRef.current && cloudAllowed) void saveBlobToAtlas(blob, elapsedRef.current);
+      };
+
+      recorderRef.current = recorder;
+      recorder.start(1000);
+      runningRef.current = true;
+      setState('recording');
+      beginVoiceTracking();
+    } catch {
+      if (startAttemptRef.current === attempt) {
+        setState('error');
+        setNotice(ui.unsupported);
+      }
+    } finally {
+      if (startAttemptRef.current === attempt) startingRef.current = false;
     }
-    const stream = await ensureCamera();
-    if (!stream) return;
-    setRecordedBlob(null);
-    setRecordingId('');
-    setCloudUrl('');
-    setElapsed(0);
-    elapsedRef.current = 0;
-    setState('countdown');
-
-    for (let value = 3; value >= 1; value -= 1) {
-      setCountdown(value);
-      await new Promise(resolve => window.setTimeout(resolve, 700));
-    }
-    setCountdown(0);
-
-    const mimeType = preferredMimeType();
-    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    chunksRef.current = [];
-    recorder.ondataavailable = event => { if (event.data.size) chunksRef.current.push(event.data); };
-    recorder.onstop = () => {
-      const finalType = String(recorder.mimeType || mimeType || 'video/webm').split(';')[0];
-      const blob = new Blob(chunksRef.current, { type: finalType });
-      const url = URL.createObjectURL(blob);
-      setRecordedBlob(blob);
-      setRecordedUrl(previous => {
-        if (previous) URL.revokeObjectURL(previous);
-        return url;
-      });
-      setState('stopped');
-      if (autoLocalRef.current) triggerDownload(url, finalType);
-      if (autoCloudRef.current && cloudAllowed) void saveBlobToAtlas(blob, elapsedRef.current);
-    };
-
-    recorderRef.current = recorder;
-    recorder.start(1000);
-    runningRef.current = true;
-    setState('recording');
-    beginVoiceTracking();
   }
 
   function stopRecording() {
+    if (state === 'countdown') {
+      // Invalidate the async countdown before its pending timeout can start MediaRecorder.
+      startAttemptRef.current += 1;
+      startingRef.current = false;
+      setCountdown(0);
+      setState('idle');
+      return;
+    }
     runningRef.current = false;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
@@ -427,7 +482,7 @@ export function TeleprompterPage() {
     </header>
 
     <div className="teleprompter-toolbar">
-      <label><span>{ui.script}</span><select aria-label={ui.script} value={language} onChange={event => setLanguage(event.target.value as TeleprompterLanguage)}><option value="es">{ui.spanish}</option><option value="en">{ui.english}</option></select></label>
+      <label><span>{ui.script}</span><select aria-label={ui.script} value={language} disabled={state === 'countdown' || state === 'recording'} onChange={event => setLanguage(event.target.value as TeleprompterLanguage)}><option value="es">{ui.spanish}</option><option value="en">{ui.english}</option></select></label>
       <div className="teleprompter-segmented" role="group" aria-label="Synchronization mode">
         <button type="button" className={mode === 'voice' ? 'active' : ''} disabled={!voiceAvailable || state === 'recording'} onClick={() => setMode('voice')}>{ui.voice}</button>
         <button type="button" className={mode === 'timed' ? 'active' : ''} disabled={state === 'recording'} onClick={() => setMode('timed')}>{ui.timed}</button>
@@ -463,7 +518,7 @@ export function TeleprompterPage() {
       {state === 'recording' || state === 'countdown'
         ? <button type="button" className="stop" onClick={stopRecording}>{ui.stop}</button>
         : <button type="button" className="creator-primary" onClick={startRecording}>{ui.start}</button>}
-      <button type="button" onClick={cameraReady ? stopCamera : ensureCamera}>{cameraReady ? ui.cameraOff : ui.camera}</button>
+      <button type="button" disabled={state === 'countdown' || state === 'recording'} onClick={cameraReady ? stopCamera : ensureCamera}>{cameraReady ? ui.cameraOff : ui.camera}</button>
       <button type="button" onClick={() => setCursor(value => Math.max(0, value - 30))}>{ui.rewind}</button>
       <button type="button" onClick={() => setCursor(0)}>{ui.reset}</button>
       <button type="button" onClick={enterFullscreen}>{ui.fullscreen}</button>
