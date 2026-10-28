@@ -9,7 +9,6 @@
 export interface AtlasChatGptSupabaseDirectoryOptions {
   /** Exact, trusted OAuth issuer. Every authorization grant is scoped to this issuer. */
   issuer: string;
-  issuer: string;
   supabaseUrl: string;
   serviceRoleKey: string;
   /** Mandatory live check against a trusted issuer-owned session ledger (no JWT-only inference). */
@@ -36,7 +35,6 @@ const opaque = (s: unknown): s is string =>
 /** Pure composition root: no outbound requests until the returned methods are called. */
 export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabaseDirectoryOptions): AtlasChatGptSupabaseDirectory {
   const root = new URL(options.supabaseUrl);
-  const issuer = new URL(options.issuer);
   const issuer = new URL(options.issuer);
   if (issuer.protocol !== 'https:' || issuer.username || issuer.password || issuer.search || issuer.hash ||
       issuer.href.replace(/\/$/, '') !== options.issuer ||
