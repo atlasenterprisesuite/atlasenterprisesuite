@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase/migrations/*creator_recordings*'
       - 'tests/integration/creator-recording-connection.test.ts'
+      - 'tests/fixtures/creator-recording-tenant-rls.sql'
       - '.github/workflows/verify-creator-recording-grants.yml'
   workflow_dispatch:
 
@@ -72,3 +73,36 @@ jobs:
           result="$(psql -X -A -t -v ON_ERROR_STOP=1 -c "select has_table_privilege('anon','public.creator_recordings','TRUNCATE'), has_table_privilege('service_role','public.creator_recordings','INSERT')")"
           test "$result" = 't|f' || { echo "rollback failed: $result"; exit 1; }
           echo 'PASS: isolated PostgreSQL anon revocation, preserved roles, idempotence, fail-closed rollback'
+
+  verify-tenant-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: local-ci-only
+      PGDATABASE: postgres
+    steps:
+      - name: Check out exact PR commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Exercise actual migration and multi-tenant RLS against synthetic Postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql >/dev/null
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/creator-recording-tenant-rls.sql
