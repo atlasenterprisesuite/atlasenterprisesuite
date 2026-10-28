@@ -29,6 +29,37 @@ export function normalizeIntelligenceRequest(input={}){
   return Object.freeze({module,intent,requested_intent,reasoning_decision,mode,message,capabilities_requested,conversation_id:input.conversation_id?String(input.conversation_id):null,client_metadata:input.client_metadata&&typeof input.client_metadata==='object'?structuredClone(input.client_metadata):{},legacy_context:input.legacy_context?String(input.legacy_context).slice(0,12000):''});
 }
 
+// Only this module can mark a request as prepared. This prevents an HTTP
+// client from spoofing a resolved profile, tenant, actor or session.
+const AUTHORIZED_PREPARATIONS=new WeakMap();
+
+export async function resolveAuthorizedIntelligenceRequest({context,request,store,preparedRequest=null}={}){
+  const principal=normalizeAgentContext(context);
+  if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
+  if(preparedRequest!==null){
+    const proof=preparedRequest&&typeof preparedRequest==='object'?AUTHORIZED_PREPARATIONS.get(preparedRequest):null;
+    const sameRequest=proof&&proof.message===request?.message&&proof.mode===(request?.mode||'auto')&&proof.requested_intent===(request?.intent||'balanced')&&proof.conversation_id===(request?.conversation_id||null);
+    if(!sameRequest||proof.organization_id!==principal.organization_id||proof.user_id!==principal.user_id||proof.session_id!==principal.session_id)throw fail('invalid_prepared_request',403);
+    return preparedRequest;
+  }
+  let normalized=normalizeIntelligenceRequest(request);
+  if(normalized.requested_intent==='auto'&&normalized.conversation_id){
+    if(typeof store?.getConversation!=='function'||typeof store?.listRecentMessages!=='function')throw fail('storage_unavailable',503);
+    await store.getConversation({context:principal,id:normalized.conversation_id});
+    const authorizedMessages=await store.listRecentMessages({context:principal,conversation_id:normalized.conversation_id,limit:12});
+    if(!Array.isArray(authorizedMessages))throw fail('storage_unavailable',503);
+    const history=authorizedMessages.map(item=>({role:item.role,content:typeof item.content==='string'?item.content:item.content?.text||''}));
+    const reasoning_decision=selectConversationReasoningProfile({message:normalized.message,history});
+    normalized=Object.freeze({...normalized,intent:reasoning_decision.profile,reasoning_decision});
+  }
+  AUTHORIZED_PREPARATIONS.set(normalized,{
+    organization_id:principal.organization_id,user_id:principal.user_id,session_id:principal.session_id,
+    message:normalized.message,mode:normalized.mode,requested_intent:normalized.requested_intent,
+    conversation_id:normalized.conversation_id
+  });
+  return normalized;
+}
+
 export function createIntelligenceRouter({providers=[],allowedProviders=[],preferredProviders=[]}={}){
   const ordered=[...providers].filter(p=>INTELLIGENCE_PROVIDER_IDS.includes(p?.id));
   const allowedSet=Array.isArray(allowedProviders)&&allowedProviders.length?new Set(allowedProviders.filter(id=>INTELLIGENCE_PROVIDER_IDS.includes(id))):null;
@@ -82,19 +113,10 @@ export function normalizeIntelligenceError(error){
 export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
   if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
   const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:false,allow_council:false,zero_cost_providers:[],enforce_zero_cost:true};
-  return Object.freeze({async execute({context,request}){
+  return Object.freeze({async execute({context,request,preparedRequest=null}){
     const principal=normalizeAgentContext(context);
     if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
-    let normalized=normalizeIntelligenceRequest(request);
-    // Resolve existing context only through the tenant/actor-authorized store.
-    // A lookup or revocation error must abort before provider dispatch.
-    if(normalized.requested_intent==='auto'&&normalized.conversation_id){
-      await store.getConversation({context:principal,id:normalized.conversation_id});
-      const authorizedMessages=await store.listRecentMessages({context:principal,conversation_id:normalized.conversation_id,limit:12});
-      const history=authorizedMessages.map(item=>({role:item.role,content:typeof item.content==='string'?item.content:item.content?.text||''}));
-      const reasoning_decision=selectConversationReasoningProfile({message:normalized.message,history});
-      normalized=Object.freeze({...normalized,intent:reasoning_decision.profile,reasoning_decision});
-    }
+    const normalized=await resolveAuthorizedIntelligenceRequest({context:principal,request,store,preparedRequest});
     const route=router.route(normalized);
     const costDecision=evaluateIntelligenceCostPolicy({mode:route.mode,providers:route.providers,policy:effectiveCostPolicy});
     if(costDecision.decision==='deny')throw fail(costDecision.reason||'cost_policy_denied',403,{cost_decision:costDecision});
