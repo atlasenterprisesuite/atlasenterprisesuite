@@ -132,11 +132,10 @@ describe('ATLAS Smart Teleprompter', () => {
       ok: true, recording: {} as creatorApi.CreatorRecording,
       signed_url: 'https://example.test/signed', expires_in: 120
     });
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
     expect(await screen.findByText('Mis grabaciones en ATLAS')).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Abrir grabación recording-a' }));
-    await vi.waitFor(() => expect(open).toHaveBeenCalledWith('https://example.test/signed', '_blank', 'noopener,noreferrer'));
+    expect(await screen.findByRole('link', { name: 'Abrir copia privada' })).toHaveAttribute('href', 'https://example.test/signed');
     expect(list).toHaveBeenCalledTimes(1);
   });
 
