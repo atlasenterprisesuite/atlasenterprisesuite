@@ -115,6 +115,7 @@ describe('ATLAS Background Brain', () => {
       router,
       registry,
       store,
+      reauthorize: async () => context,
       costPolicy: {
         allowed_providers: ['openai'],
         enforce_zero_cost: false,
@@ -177,6 +178,7 @@ describe('ATLAS Background Brain', () => {
       router,
       registry,
       store,
+      reauthorize: async () => context,
       runDetached: (promise: Promise<unknown>) => { detached = promise; },
       costPolicy: {
         allowed_providers: ['atlas-local'],
@@ -226,6 +228,7 @@ describe('ATLAS Background Brain', () => {
       router,
       registry,
       store,
+      reauthorize: async () => context,
       costPolicy: {
         allowed_providers: ['atlas-local', 'openai'],
         enforce_zero_cost: true,
@@ -244,4 +247,65 @@ describe('ATLAS Background Brain', () => {
       }
     })).rejects.toMatchObject({ code: 'background_provider_unavailable' });
   });
+  it('fails closed when a previously valid background session is revoked before completion', async () => {
+    const store = createStore();
+    const adapter = {
+      startBackground: vi.fn(async () => ({
+        provider: 'openai', model: 'test-model', response_id: 'native-1',
+        status: 'queued', text: null, usage: {}
+      })),
+      retrieveBackground: vi.fn(async () => ({
+        provider: 'openai', model: 'test-model', response_id: 'native-1',
+        status: 'completed', text: 'SECRET_RESPONSE', usage: {}
+      }))
+    };
+    let revoked = false;
+    const brain = createBackgroundBrain({
+      router: { route: () => ({ mode: 'openai', providers: ['openai'], provider: 'openai', profile: 'balanced', capabilities: ['generation'], fallback_used: false }) },
+      registry: { get: () => adapter }, store,
+      reauthorize: async () => {
+        if(revoked) throw Object.assign(new Error('authentication_required'), {code: 'authentication_required', status: 401});
+        return context;
+      },
+      costPolicy: { allowed_providers: ['openai'], enforce_zero_cost: false, allow_paid_single: true }
+    });
+    const started = await brain.start({context, request: {message: 'Generate a private report', intent: 'balanced', mode: 'openai'}});
+    revoked = true;
+    await expect(brain.poll({context,traceId:started.trace_id})).rejects.toMatchObject({code:'authentication_required',status:401});
+    expect(adapter.retrieveBackground).not.toHaveBeenCalled();
+    expect(store.messages.map(m => m.content?.text)).not.toContain('SECRET_RESPONSE');
+    expect(store.completeRequest).not.toHaveBeenCalled();
+  });
+
+  it('rejects cross-tenant and downgraded-role background output even when provider succeeds', async () => {
+    for (const unauthorized of [
+      {...context, organization_id: 'org-another'},
+      {...context, roles: ['member'], permissions: ['intelligence.use']}
+    ]) {
+      const store = createStore();
+      const adapter = {
+        startBackground: vi.fn(async () => ({
+          provider:'openai', model:'test-model', response_id:'native-2',
+          status:'completed', text:'SECRET_RESPONSE', usage:{}
+        }))
+      };
+      const initiating = {...context, roles: ['admin'], permissions:['intelligence.use','finance.read']};
+      const brain = createBackgroundBrain({
+        router: {route: () => ({mode:'openai',providers:['openai'],provider:'openai',profile:'deep',capabilities:['generation'],fallback_used:false})},
+        registry: {get:() => adapter}, store,
+        reauthorize: async () => unauthorized,
+        costPolicy: {allowed_providers:['openai'],enforce_zero_cost:false,allow_paid_single:true}
+      });
+      await expect(brain.start({context: initiating, request: {message:'Audit sensitive data',mode:'openai',intent:'deep'}}))
+        .rejects.toMatchObject({code:'permission_denied',status:403});
+      expect(store.messages.map(m => m.content?.text)).not.toContain('SECRET_RESPONSE');
+      expect(store.completeRequest).not.toHaveBeenCalled();
+    }
+  });
+
+  it('requires a live reauthorization dependency for background work', () => {
+    expect(() => createBackgroundBrain({store:createStore(),registry:{get:()=>null}}))
+      .toThrowError(/background_authorization_required/);
+  });
+
 });
