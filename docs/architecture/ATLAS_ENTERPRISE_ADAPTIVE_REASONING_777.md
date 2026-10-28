@@ -46,8 +46,9 @@ of OpenAI's internal model, subscription, authorization system or private code.
   same authorized preparation and cost policy.
 - Interactive gateway release now revalidates bearer identity and live active
   organization membership **after inference and before returning or persisting
-  provider output**. A revoked permission, tenant/user mismatch or identity
-  source outage rejects the response, even if the provider generated text.
+  provider output**. Mid-request role demotion, any revoked permission,
+  tenant/user mismatch or identity-source outage rejects the response, even
+  if the provider generated text.
   Tests mock revocation, user/tenant substitution and identity outages.
 - This is not a proof of instantaneous global revocation. Durable background
   execution, queued jobs and token invalidation need dedicated revocation
