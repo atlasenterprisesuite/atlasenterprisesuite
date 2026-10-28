@@ -26,8 +26,8 @@ const rpc={jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'atlas.apps.catal
 describe('ATLAS ChatGPT OAuth → Supabase → MCP two-organization isolated integration',()=>{
  it('allows two distinct signed identities, rejects org injection, and revokes a session on next request',async()=>{
   const records=[
-   {subject:'alice',token_id:'alice-jti',user_id:userA,org_id:orgA,expires_at:'2031-01-01T00:00:00Z',revoked_at:null as string|null,session_revoked_at:null as string|null},
-   {subject:'bob',token_id:'bob-jti',user_id:userB,org_id:orgB,expires_at:'2031-01-01T00:00:00Z',revoked_at:null as string|null,session_revoked_at:null as string|null}
+   {issuer,subject:'alice',token_id:'alice-jti',user_id:userA,org_id:orgA,expires_at:'2031-01-01T00:00:00Z',revoked_at:null as string|null,session_revoked_at:null as string|null},
+   {issuer,subject:'bob',token_id:'bob-jti',user_id:userB,org_id:orgB,expires_at:'2031-01-01T00:00:00Z',revoked_at:null as string|null,session_revoked_at:null as string|null}
   ];
   const memberships=[{user_id:userA,org_id:orgA,status:'active'},{user_id:userB,org_id:orgB,status:'active'}];
   const organizations=[{id:orgA,active:true},{id:orgB,active:true}];
@@ -38,7 +38,7 @@ describe('ATLAS ChatGPT OAuth → Supabase → MCP two-organization isolated int
     return !q || row[k]===q.slice(3);
    }));
    const data=url.pathname.endsWith('/atlas_chatgpt_oauth_grants')
-    ? matching(records,['subject','token_id'])
+    ? matching(records,['issuer','subject','token_id'])
     : url.pathname.endsWith('/organization_members')
     ? matching(memberships,['org_id','user_id','status'])
     : url.pathname.endsWith('/organizations')
@@ -47,7 +47,7 @@ describe('ATLAS ChatGPT OAuth → Supabase → MCP two-organization isolated int
   };
   const issuerSessions=new Map([['alice:alice-jti',true],['bob:bob-jti',true]]);
   const directory=createAtlasChatGptSupabaseDirectory({
-   supabaseUrl:'https://project.example.test',serviceRoleKey:'server-only-test',fetchFn,
+   issuer,supabaseUrl:'https://project.example.test',serviceRoleKey:'server-only-test',fetchFn,
    verifyIssuerSession:async(subject,tokenId)=>issuerSessions.get(subject+':'+tokenId)===true,
    nowSeconds:()=>1900000001
   });
