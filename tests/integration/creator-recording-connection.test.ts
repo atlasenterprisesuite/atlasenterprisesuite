@@ -24,6 +24,18 @@ describe('ATLAS Creator teleprompter recording connection', () => {
     expect(storage).toContain('.eq(\'organization_id\', ctx.orgId)');
   });
 
+  it('lists only active-tenant recordings through Creator authorized read boundary', () => {
+    const edge = read('supabase/functions/atlas-creator/index.ts');
+    const storage = read('supabase/functions/atlas-creator/_shared/recordings.ts');
+    expect(edge).toContain("api === 'recording-list' && req.method === 'GET'");
+    expect(edge).toContain("creatorContext(req, 'creator.read')");
+    expect(storage).toContain('export async function listCreatorRecordings(');
+    expect(storage).toContain(".eq('organization_id', ctx.orgId)");
+    expect(storage).toContain(".order('created_at', { ascending: false })");
+    expect(storage).toContain('.limit(50)');
+    expect(storage).not.toContain('createSignedUrl(String(row.storage_path), 900)');
+  });
+
   it('does not send the service-role key to the browser and supports multipart uploads', () => {
     const api = read('apps/web/src/lib/creatorApi.ts');
     expect(api).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
