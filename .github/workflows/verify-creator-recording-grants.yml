@@ -1,0 +1,74 @@
+name: ATLAS Creator Recording Grants — isolated PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*creator_recordings*'
+      - 'tests/integration/creator-recording-connection.test.ts'
+      - '.github/workflows/verify-creator-recording-grants.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-private-grants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: local-ci-only
+      PGDATABASE: postgres
+    steps:
+      - name: Check out exact pull-request SHA
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify migration against isolated PostgreSQL only
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql >/dev/null
+          migration='supabase/migrations/20261028120000_creator_recordings_anon_grant_hardening.sql'
+          test -f "$migration"
+          # Provision minimal synthetic roles and one empty table. No application data.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin;
+          create table public.creator_recordings (id uuid primary key);
+          alter table public.creator_recordings enable row level security;
+          grant all privileges on table public.creator_recordings to anon;
+          grant select on table public.creator_recordings to authenticated;
+          grant insert on table public.creator_recordings to service_role;
+          SQL
+          # Positive case: anon loses all, while protected service/read rights remain.
+          psql -v ON_ERROR_STOP=1 -f "$migration"
+          psql -v ON_ERROR_STOP=1 -f "$migration"  # idempotence
+          result="$(psql -X -A -t -v ON_ERROR_STOP=1 -c "select has_table_privilege('anon','public.creator_recordings','TRUNCATE'), has_table_privilege('anon','public.creator_recordings','INSERT'), has_table_privilege('authenticated','public.creator_recordings','SELECT'), has_table_privilege('service_role','public.creator_recordings','INSERT'), relrowsecurity from pg_class where oid='public.creator_recordings'::regclass")"
+          test "$result" = 'f|f|t|t|t' || { echo "unexpected positive ACL result: $result"; exit 1; }
+          # Negative case: removing required service INSERT must abort transaction.
+          # The original anon grant must survive failed migration (atomic rollback).
+          psql -v ON_ERROR_STOP=1 -c 'grant all privileges on table public.creator_recordings to anon; revoke insert on table public.creator_recordings from service_role;'
+          if psql -v ON_ERROR_STOP=1 -f "$migration" > /tmp/creator-migration-denial.log 2>&1; then
+            echo 'ERROR: fail-closed SQL unexpectedly succeeded'
+            exit 1
+          fi
+          grep -F 'creator_recordings_required_privileges_missing' /tmp/creator-migration-denial.log >/dev/null
+          result="$(psql -X -A -t -v ON_ERROR_STOP=1 -c "select has_table_privilege('anon','public.creator_recordings','TRUNCATE'), has_table_privilege('service_role','public.creator_recordings','INSERT')")"
+          test "$result" = 't|f' || { echo "rollback failed: $result"; exit 1; }
+          echo 'PASS: isolated PostgreSQL anon revocation, preserved roles, idempotence, fail-closed rollback'
