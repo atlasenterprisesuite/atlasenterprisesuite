@@ -23,6 +23,7 @@ const catalogTool = {
   description: 'Read the ATLAS application catalog. Entries are not installed or connected.',
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false, idempotentHint: true },
+  securitySchemes: [{ type: 'oauth2', scopes: [ATLAS_CHATGPT_SCOPE] }],
 };
 /**
  * Isolated MCP resource handler. The caller MUST verify OAuth signature, issuer,
