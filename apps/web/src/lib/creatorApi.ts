@@ -455,8 +455,9 @@ async function scopedCreatorRecordingRequest<T>(
   // Organization selection is explicitly bound to every recording operation.
   // The server independently verifies active membership for this header.
   const organization = await getActiveAtlasOrganization();
-  const headers = new Headers(init.headers);
-  headers.set('x-atlas-org-id', organization.id);
+  const headers: Record<string, string> = {};
+  new Headers(init.headers).forEach((value, key) => { headers[key] = value; });
+  headers['x-atlas-org-id'] = organization.id;
   return creatorRequest<T>(api, params, { ...init, headers });
 }
 
