@@ -11,6 +11,7 @@ import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts
 import {
   createCreatorRecordingDownload,
   creatorRecordingReadiness,
+  listCreatorRecordings,
   uploadCreatorRecording
 } from './_shared/recordings.ts';
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
@@ -393,6 +394,12 @@ async function handleRecordingUpload(req: Request) {
   return json({ ok: true, recording }, 201);
 }
 
+async function handleRecordingList(req: Request) {
+  const ctx = await creatorContext(req, 'creator.read');
+  const recordings = await listCreatorRecordings(ctx);
+  return json({ ok: true, recordings });
+}
+
 async function handleRecordingDownload(req: Request, url: URL) {
   const ctx = await creatorContext(req, 'creator.read');
   const recordingId = String(url.searchParams.get('recording_id') || '').trim();
@@ -518,6 +525,7 @@ async function route(req: Request) {
   if (api === 'image-edit-readiness' && req.method === 'GET') return handleImageEditReadiness(req);
   if (api === 'image-edit' && req.method === 'POST') return handleImageEdit(req);
   if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
+  if (api === 'recording-list' && req.method === 'GET') return handleRecordingList(req);
   if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
   if (api === 'recording-download' && req.method === 'GET') return handleRecordingDownload(req, url);
   if (api === 'submit') return handleSubmit(req);
