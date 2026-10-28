@@ -371,7 +371,15 @@ async function handleChat(req){
   const {registry,providers}=await readinessFor(rt,prepared.intent);
   const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers,preferredProviders:rt.costPolicy.zero_cost_providers});
   const council=createCouncilOrchestrator({registry});
-  const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway()});
+  const gateway=createIntelligenceGateway({
+    router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway(),
+    reauthorize:async ()=>{
+      // Re-resolve bearer identity and active membership after provider inference.
+      // Do not trust the client-supplied organization or cached permission set.
+      const fresh=await contextFor(req,body?.organization_id);
+      return fresh.context;
+    }
+  });
   if(shouldRunInBackground({executionMode,message,profile:prepared.intent})){
     const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,runDetached:edgeBackgroundRunner()});
     try{
