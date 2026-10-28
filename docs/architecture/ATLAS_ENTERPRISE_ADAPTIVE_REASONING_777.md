@@ -50,9 +50,20 @@ of OpenAI's internal model, subscription, authorization system or private code.
   tenant/user mismatch or identity-source outage rejects the response, even
   if the provider generated text.
   Tests mock revocation, user/tenant substitution and identity outages.
-- This is not a proof of instantaneous global revocation. Durable background
-  execution, queued jobs and token invalidation need dedicated revocation
-  propagation tests. Remain NO-GO for production until verified.
+- Background jobs now require a live server-side reauthorization callback.
+  Both provider-native polling and detached job finalization validate current
+  identity/organization/role/permission grants and conversation ACL before
+  returning or persisting provider output. Already-completed polling must
+  reauthorize before reading stored assistant text. The history endpoint also
+  rechecks tenant membership and grants after reconciliation.
+- Focused negative TDD simulates a revoked bearer session, tenant substitution,
+  role downgrade, detached inference completed after revocation, previously
+  stored background output, and a conversation ACL denial.
+- **P0 remains open:** These tests use injected identities/stores, not real
+  Supabase revocation events or two independently authenticated test
+  organizations. JWT invalidation latency, authorization/write atomicity,
+  queued provider cancellation, and exact-SHA production verification are
+  not certified. No merge/deploy until approved and evidenced.
 - Negative tests must cover explicit manual overrides, unknown profiles,
   zero-cost denial, missing provider readiness, cross-tenant/session/request
   replay, revoked conversation lookup, budget exhaustion, audit failure and no
@@ -69,8 +80,9 @@ of OpenAI's internal model, subscription, authorization system or private code.
 
 ## Verification ledger
 - Source edits: isolated branch only; not merged.
-- Tests: 13/13 GitHub workflows passed at historical branch SHA
-  `e4093a36ffe9609d5e815acd47f265527c8c9943` before the later
-  authorized preflight regression repair. This **does not** certify a newer
-  commit; the latest exact-SHA CI must be checked separately.
+- Previous branch SHA `9710c9f68bec4734708537f240e813833bdce7e1`:
+  13/13 GitHub workflows completed successfully, as observed via GitHub.
+- Following background revocation and history-release changes require
+  **independent CI revalidation on their new exact SHA**. This document does
+  not assert GREEN for commits still under verification.
 - Production: unchanged, unknown readiness; **NO-GO**.
