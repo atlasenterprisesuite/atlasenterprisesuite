@@ -14,10 +14,13 @@ of OpenAI's internal model, subscription, authorization system or private code.
 ## Implemented contract in this isolated branch (not production)
 - `intent: 'auto'` selects a deterministic `fast | balanced | deep` profile
   before provider routing. Manual profiles remain authoritative.
-- The first classifier uses only the **current submitted message**. It does
-  not yet measure the entire authenticated conversation. Long or high-assurance
-  engineering/security tasks use `deep`, conventional analysis `balanced`,
-  simple messages `fast`.
+- The current message determines the initial profile. Short follow-ups can
+  inherit a higher effort level from the last 12 authorized conversation messages,
+  considering up to the last 4 user turns; assistant/tool text cannot force
+  escalation. This is bounded per-conversation continuity, **not** global
+  analysis of all previous ChatGPT or ATLAS chats.
+- Long/high-assurance engineering or security tasks use `deep`, conventional
+  analysis `balanced`, and short simple requests `fast`.
 - The classifier returns only `profile` and a fixed reason category, never
   the text, actor identity, tenant or sensitive source material.
 - The existing provider verification, explicit-mode no-fallback rule, tenant
@@ -32,13 +35,19 @@ of OpenAI's internal model, subscription, authorization system or private code.
 - No cross-chat or history-wide inference, source ingestion, ACL rewriting,
   assistant permission elevation, implicit model entitlement, billing activation,
   enterprise account upgrade or synchronization of ChatGPT private chats.
-- Full conversation-aware adaptation requires loading history **after**
-  authenticated tenant and conversation lookup, revalidating permissions before
-  retrieval, respecting source consent and bounded token/cost budgets, and
-  preventing prompt-injection from client metadata or retrieved text.
+- Broader cross-chat/history-wide adaptation is not implemented. It would
+  require explicit source consent, per-document ACL/revocation, tenant-scoped
+  retrieval and provenance/retention rules; no other user's history can be
+  inferred from a chat ID or model-generated text.
+- Adaptive requests are prepared server-side after authenticated conversation
+  checks and are bound to tenant, actor, session and request ID. Provider
+  readiness checks must use the resolved `fast | balanced | deep` profile
+  rather than the unsupported `auto` string. The background path uses the
+  same authorized preparation and cost policy.
 - Negative tests must cover explicit manual overrides, unknown profiles,
-  zero-cost denial, missing provider readiness, cross-tenant history spoofing,
-  revocation during routing, budget exhaustion, audit failure and no secret leakage.
+  zero-cost denial, missing provider readiness, cross-tenant/session/request
+  replay, revoked conversation lookup, budget exhaustion, audit failure and no
+  secret leakage. These are not all covered by production E2E yet.
 - CI TypeScript/Vitest, authenticated E2E and deployed exact-SHA must pass
   before any production claim. Do not merge/deploy while P0 is open.
 
@@ -51,5 +60,8 @@ of OpenAI's internal model, subscription, authorization system or private code.
 
 ## Verification ledger
 - Source edits: isolated branch only; not merged.
-- Tests: TDD cases authored; no RED/GREEN or full CI outcome asserted until observed.
+- Tests: 13/13 GitHub workflows passed at historical branch SHA
+  `e4093a36ffe9609d5e815acd47f265527c8c9943` before the later
+  authorized preflight regression repair. This **does not** certify a newer
+  commit; the latest exact-SHA CI must be checked separately.
 - Production: unchanged, unknown readiness; **NO-GO**.
