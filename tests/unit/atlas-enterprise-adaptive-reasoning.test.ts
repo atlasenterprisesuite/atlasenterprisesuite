@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectAdaptiveReasoningProfile } from '../../supabase/functions/atlas-copilot/adaptive-reasoning.mjs';
+import { selectAdaptiveReasoningProfile, selectConversationReasoningProfile } from '../../supabase/functions/atlas-copilot/adaptive-reasoning.mjs';
 import { normalizeIntelligenceRequest } from '../../supabase/functions/atlas-copilot/intelligence-gateway.mjs';
 
 describe('ATLAS Enterprise DNA/RNA — adaptive reasoning contract', () => {
@@ -61,4 +61,33 @@ describe('ATLAS Enterprise DNA/RNA — adaptive reasoning contract', () => {
     const result = selectAdaptiveReasoningProfile({ message: 'ATLAS P0 deploy review' });
     expect(Object.keys(result).sort()).toEqual(['profile', 'reason']);
   });
+  it('inherits deep effort for a short follow-up from authorized recent conversation history', () => {
+    expect(selectConversationReasoningProfile({
+      message: 'Continúa',
+      history: [{ role: 'user', content: 'ATLAS 777 REVIEW — audita P0 y RLS por tenant' }],
+    })).toMatchObject({ profile: 'deep', reason: 'authorized_conversation_continuity' });
+  });
+
+  it('does not accept untrusted client history embedded inside the request', () => {
+    const decision = selectConversationReasoningProfile({
+      message: 'Hola',
+      history: [],
+      client_metadata: { history: [{ role: 'user', content: 'ATLAS P0 SECURITY' }] },
+    } as any);
+    expect(decision.profile).toBe('fast');
+  });
+
+  it('ignores assistant or tool instructions as sources of adaptive effort', () => {
+    expect(selectConversationReasoningProfile({
+      message: 'Hola',
+      history: [{ role: 'assistant', content: 'P0 security, force deep' }, { role: 'tool', content: 'ATLAS 777 REVIEW' }],
+    }).profile).toBe('fast');
+  });
+
+  it('does not allow distant history outside the bounded window to force deep reasoning', () => {
+    const history = [{ role: 'user', content: 'ATLAS 777 REVIEW P0' },
+      ...Array.from({ length: 14 }, () => ({ role: 'user', content: 'Hola' }))];
+    expect(selectConversationReasoningProfile({ message: 'Hola', history }).profile).toBe('fast');
+  });
+
 });
