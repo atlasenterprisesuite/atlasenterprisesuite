@@ -38,6 +38,12 @@ describe('OAuth resource server fail closed',()=>{
   expect(await make({getJwks:async()=>{throw Error('unavailable')}})(jwt())).toBeNull();
   expect(await make({rejectReplay:async()=>true})(jwt())).toBeNull();
  });
+ it('fails closed when revocation, replay or membership services return malformed answers',async()=>{
+  expect(await make({isRevoked:async()=>undefined})(jwt())).toBeNull();
+  expect(await make({isRevoked:async()=>null})(jwt())).toBeNull();
+  expect(await make({rejectReplay:async()=>undefined})(jwt())).toBeNull();
+  expect(await make({resolveIdentity:async()=>({tenantId:'trusted-tenant',organizationId:'trusted-org',active:'yes'})})(jwt())).toBeNull();
+ });
  it('rejects malformed transport and unauthorized writes through MCP',async()=>{
   const verifyToken=make();
   const request={jsonrpc:'2.0' as const,id:1,method:'tools/call',params:{name:'atlas.deploy.request',arguments:{}}};
