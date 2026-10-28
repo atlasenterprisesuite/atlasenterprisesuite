@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { App } from './App';
 import { AtlasRuntimeIntegrityProvider } from './runtime/AtlasRuntimeIntegrityProvider';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
@@ -34,6 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <RootRouter />
       </BrowserRouter>
+      <SpeedInsights />
     </AtlasRuntimeIntegrityProvider>
   </React.StrictMode>
 );
