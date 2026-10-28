@@ -4,6 +4,13 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('ATLAS Creator teleprompter recording connection', () => {
+  it('removes inherited anonymous DML and TRUNCATE grants from private recordings', () => {
+    const sql = read('supabase/migrations/20261028_creator_recordings_anon_grant_hardening.sql');
+    expect(sql).toMatch(/revoke all privileges on table public\.creator_recordings from anon/i);
+    expect(sql).toContain("has_table_privilege('anon', 'public.creator_recordings', 'TRUNCATE')");
+    expect(sql).not.toMatch(/grant\s+(?:all|insert|update|delete|truncate)\s+on\s+(?:table\s+)?public\.creator_recordings\s+to\s+anon/i);
+  });
+
   it('creates a private organization-scoped recording bucket and metadata table', () => {
     const sql = read('supabase/migrations/20260918_creator_teleprompter_recordings.sql');
     expect(sql).toContain('create table if not exists public.creator_recordings');
