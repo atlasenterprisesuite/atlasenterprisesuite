@@ -181,7 +181,7 @@ export function TeleprompterPage() {
   const [readerPosition, setReaderPosition] = useState<'top' | 'center' | 'bottom'>('center');
   const [wordsPerMinute, setWordsPerMinute] = useState(125);
   const [mirror, setMirror] = useState(true);
-  const [autoCloud, setAutoCloud] = useState(true);
+  const [autoCloud, setAutoCloud] = useState(false);
   const [autoLocal, setAutoLocal] = useState(true);
   const [editing, setEditing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
