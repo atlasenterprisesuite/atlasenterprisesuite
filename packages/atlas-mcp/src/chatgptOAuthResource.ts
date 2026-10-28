@@ -9,8 +9,10 @@ export interface AtlasOAuthVerifierOptions {
   audience: string;
   /** Trusted JWKS provider. Fetch only from a preconfigured trusted issuer endpoint. */
   getJwks: () => Promise<{ keys: Array<JsonWebKey & { kid?: string; alg?: string; use?: string }> }>;
-  /** Mandatory server-side session/tenant membership and revocation lookup. */
-  resolveIdentity: (claims: AtlasJwtClaims) => Promise<{ tenantId: string; organizationId: string; active: boolean } | null>;
+  /** Mandatory server-side membership lookup by signed subject and token id only.
+   * Never trust tenant_id or organization_id from JWT claims for authorization.
+   */
+  resolveIdentity: (subject: string, tokenId: string) => Promise<{ tenantId: string; organizationId: string; active: boolean } | null>;
   /** Mandatory revocation check. Fail closed on errors. */
   isRevoked: (jti: string, subject: string) => Promise<boolean>;
   /** Optional one-time token-use guard; only enable when issuer issues one-use tokens. */
@@ -59,7 +61,7 @@ export function createAtlasJwtVerifier(options: AtlasOAuthVerifierOptions): Veri
           claims.iat > claims.exp) return null;
       const scopes = str(claims.scope) ? claims.scope.split(' ').filter(Boolean) : [];
       if (!scopes.includes('atlas:apps:read')) return null;
-      const identity = await options.resolveIdentity(claims);
+      const identity = await options.resolveIdentity(claims.sub, claims.jti);
       if (identity?.active !== true || !str(identity.tenantId) || !str(identity.organizationId)) return null;
       if (await options.isRevoked(claims.jti, claims.sub) !== false) return null;
       if (options.rejectReplay && await options.rejectReplay(claims.jti, claims.exp) !== false) return null;
