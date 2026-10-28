@@ -9,6 +9,8 @@
 export interface AtlasChatGptSupabaseDirectoryOptions {
   supabaseUrl: string;
   serviceRoleKey: string;
+  /** Mandatory live check against a trusted issuer-owned session ledger (no JWT-only inference). */
+  verifyIssuerSession: (subject: string, tokenId: string) => Promise<boolean>;
   fetchFn?: (url: string, init: RequestInit) => Promise<Response>;
   nowSeconds?: () => number;
 }
@@ -32,7 +34,8 @@ const opaque = (s: unknown): s is string =>
 export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabaseDirectoryOptions): AtlasChatGptSupabaseDirectory {
   const root = new URL(options.supabaseUrl);
   if (root.protocol !== 'https:' || root.username || root.password || root.pathname !== '/' ||
-      root.search || root.hash || !root.hostname || !options.serviceRoleKey?.trim())
+      root.search || root.hash || !root.hostname || !options.serviceRoleKey?.trim() ||
+      typeof options.verifyIssuerSession !== 'function')
     throw new Error('trusted_server_supabase_configuration_required');
 
   const request = options.fetchFn ?? ((url: string, init: RequestInit) => fetch(url, init));
@@ -55,6 +58,8 @@ export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabas
   const resolveIdentity = async (subject: string, tokenId: string) => {
     try {
       if (!opaque(subject) || !opaque(tokenId)) return null;
+      // A signed JWT or an unrevoked local grant alone cannot establish an active session.
+      if (await options.verifyIssuerSession(subject, tokenId) !== true) return null;
       const records = await read('atlas_chatgpt_oauth_grants',
         ['subject','token_id','user_id','org_id','expires_at','revoked_at','session_revoked_at'],
         { subject,token_id:tokenId });
