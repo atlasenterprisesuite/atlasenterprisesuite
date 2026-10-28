@@ -45,8 +45,11 @@ describe('ATLAS ChatGPT OAuth → Supabase → MCP two-organization isolated int
     ? matching(organizations,['id']) : null;
    return new Response(JSON.stringify(data),{status:200,headers:{'content-type':'application/json'}});
   };
+  const issuerSessions=new Map([['alice:alice-jti',true],['bob:bob-jti',true]]);
   const directory=createAtlasChatGptSupabaseDirectory({
-   supabaseUrl:'https://project.example.test',serviceRoleKey:'server-only-test',fetchFn,nowSeconds:()=>1900000001
+   supabaseUrl:'https://project.example.test',serviceRoleKey:'server-only-test',fetchFn,
+   verifyIssuerSession:async(subject,tokenId)=>issuerSessions.get(subject+':'+tokenId)===true,
+   nowSeconds:()=>1900000001
   });
   const verifyToken=createAtlasJwtVerifier({
    issuer,audience,getJwks:async()=>({keys:[jwk]}),
@@ -66,6 +69,7 @@ describe('ATLAS ChatGPT OAuth → Supabase → MCP two-organization isolated int
   expect((await invoke(crossTenant)).status).toBe(401);
   expect((await invoke(alice,{...rpc,params:{name:'atlas.apps.catalog',arguments:{organizationId:orgB}}})).status).toBe(403);
 
+  issuerSessions.set('alice:alice-jti',false);
   records[0].session_revoked_at='2030-03-16T00:00:00Z';
   expect((await invoke(alice)).status).toBe(401);
   expect((await invoke(bob)).status).toBe(200);
