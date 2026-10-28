@@ -350,4 +350,42 @@ describe('ATLAS Unified AI gateway', () => {
     expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
   });
 
+  it('blocks a downgraded role from receiving higher-privilege inference after reauthorization', async () => {
+    const store = fakeStore();
+    const adapter = fakeAdapter('openai');
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }),
+      registry: createProviderRegistry({ providers: [adapter] }),
+      store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true },
+      reauthorize: async () => ({
+        ...context('fresh', ['intelligence.use']),
+        roles: ['member'],
+      }),
+    });
+    await expect(gateway.execute({
+      context: { ...context('request-role', ['intelligence.use', 'finance.read']), roles: ['admin'] },
+      request: { message: 'Analyze private AR data', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
+  it('blocks mid-request removal of a source permission even if intelligence.use remains', async () => {
+    const store = fakeStore();
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }),
+      registry: createProviderRegistry({ providers: [fakeAdapter('openai')] }),
+      store, costPolicy: { allowed_providers: ['openai'], allow_paid_single: true },
+      reauthorize: async () => ({
+        ...context('fresh', ['intelligence.use']),
+        roles: ['member'],
+      }),
+    });
+    await expect(gateway.execute({
+      context: { ...context('request-source-revoke', ['intelligence.use', 'documents.read']), roles: ['member'] },
+      request: { message: 'Summarize restricted source', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
 });
