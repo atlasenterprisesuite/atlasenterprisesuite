@@ -79,6 +79,7 @@ describe('ATLAS Smart Teleprompter', () => {
     expect(screen.getByRole('button', { name: 'Apagar cámara' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Detener y guardar' }));
     expect(screen.getByRole('button', { name: 'Comenzar grabación' })).toBeInTheDocument();
+    expect(stop).toHaveBeenCalledTimes(1);
   });
 
   it('does not label a bucket writable when upload permission is denied', async () => {
