@@ -9,6 +9,7 @@ const result: Record<string, unknown> = {
   cloudBackend: 'isolated_stub',
   realSpeechRecognition: false
 };
+let stage = 'initial';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function until<T>(getter: () => T | null | undefined, timeout = 12000): Promise<T> {
   const start = Date.now();
@@ -17,7 +18,7 @@ async function until<T>(getter: () => T | null | undefined, timeout = 12000): Pr
     if (value) return value;
     await sleep(100);
   }
-  throw Error('ui_condition_timeout');
+  throw Error('ui_condition_timeout_at_' + stage);
 }
 function button(label: string): HTMLButtonElement | null {
   return [...document.querySelectorAll('button')].find(node => node.textContent?.trim() === label) || null;
@@ -50,30 +51,38 @@ async function report(out: unknown) {
 }
 async function run() {
   try {
+    stage = 'mount';
     await until(() => document.querySelector('h1')?.textContent === 'ATLAS Teleprompter Inteligente');
     const cloudOpt = await until(() => option('Guardar automáticamente en ATLAS'));
     if (cloudOpt.checked) throw Error('cloud_opt_in_missing');
     const localOpt = await until(() => option('Descargar automáticamente en este dispositivo'));
     if (localOpt.checked) localOpt.click();
+    stage = 'camera';
     const camera = await until(() => button('Activar cámara'));
     camera.click();
     await until(() => button('Apagar cámara'));
     const preview = document.querySelector('video[aria-label="Camera preview"]') as HTMLVideoElement;
     await until(() => preview.videoWidth > 16 && preview.videoHeight > 16);
     result.cameraPreview = { width: preview.videoWidth, height: preview.videoHeight };
+    stage = 'recording_start';
     const start = await until(() => button('Comenzar grabación'));
     start.click();
     await until(() => document.querySelector('.recording-dot.active'), 14000);
+    stage = 'speech_recognizer_start';
     await until(() => SyntheticSpeechRecognition.current, 4000);
     const speech = SyntheticSpeechRecognition.current!;
     if (speech.lang !== 'es-US') throw Error('unexpected_recognition_language:' + speech.lang);
     speech.onresult?.({ results: [[{ transcript: 'ATLAS Enterprise Suite Una plataforma Cada solución Control total Hola Mi nombre' }]] });
+    stage = 'voice_cursor_advance';
     await until(() => document.querySelectorAll('.teleprompter-reader .word.spoken').length >= 3, 5000);
     result.syntheticVoiceAdvanced = document.querySelectorAll('.teleprompter-reader .word.spoken').length;
     await sleep(2200);
+    stage = 'recording_stop';
     const stop = await until(() => button('Detener y guardar'));
     stop.click();
+    stage = 'playback_element';
     const playback = await until(() => document.querySelector('video[aria-label="Reproducir video grabado"]') as HTMLVideoElement, 15000);
+    stage = 'playback_metadata';
     await until(() => playback.videoWidth > 16 && playback.videoHeight > 16, 12000);
     const blob = await (await fetch(playback.currentSrc || playback.src)).blob();
     if (blob.size < 1024) throw Error('empty_component_recording');
@@ -82,6 +91,7 @@ async function run() {
     result.video = { bytes: blob.size, mime: blob.type, width: playback.videoWidth, height: playback.videoHeight };
     result.autoCloud = cloudOpt.checked;
     result.uploadCalls = (window as any).__atlasProbeUploads;
+    stage = 'language_change';
     const lang = document.querySelector('select[aria-label="Guion"]') as HTMLSelectElement;
     lang.value = 'en';
     lang.dispatchEvent(new Event('change', { bubbles: true }));
@@ -93,6 +103,10 @@ async function run() {
     await report(result);
   } catch(error) {
     result.ok = false;
+    result.stage = stage;
+    result.speechStarted = Boolean(SyntheticSpeechRecognition.current);
+    result.spokenCount = document.querySelectorAll('.teleprompter-reader .word.spoken').length;
+    result.recordingActive = Boolean(document.querySelector('.recording-dot.active'));
     result.error = String(error);
     result.currentUI = document.body.textContent?.slice(-900);
     await report(result);
