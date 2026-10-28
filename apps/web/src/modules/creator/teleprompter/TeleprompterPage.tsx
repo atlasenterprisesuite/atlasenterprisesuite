@@ -630,7 +630,7 @@ export function TeleprompterPage() {
     {cloudUrl && <div className="teleprompter-safety">
       <a href={cloudUrl} target="_blank" rel="noopener noreferrer">{ui.cloudOpenLink}</a>
       <span> · {language === 'es' ? 'El enlace caduca automáticamente.' : 'This link expires automatically.'}</span>
-    </div>
+    </div>}
     <div className="teleprompter-safety">{ui.localNotice}</div>
   </section>;
 }
