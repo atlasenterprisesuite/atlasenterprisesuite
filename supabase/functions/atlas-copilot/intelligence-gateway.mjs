@@ -1,5 +1,5 @@
 import {normalizeAgentContext} from './agentic-core.mjs';
-import {selectAdaptiveReasoningProfile} from './adaptive-reasoning.mjs';
+import {selectAdaptiveReasoningProfile,selectConversationReasoningProfile} from './adaptive-reasoning.mjs';
 import {evaluateEmergencyFallbackPolicy,evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
@@ -85,7 +85,16 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
   return Object.freeze({async execute({context,request}){
     const principal=normalizeAgentContext(context);
     if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
-    const normalized=normalizeIntelligenceRequest(request);
+    let normalized=normalizeIntelligenceRequest(request);
+    // Resolve existing context only through the tenant/actor-authorized store.
+    // A lookup or revocation error must abort before provider dispatch.
+    if(normalized.requested_intent==='auto'&&normalized.conversation_id){
+      await store.getConversation({context:principal,id:normalized.conversation_id});
+      const authorizedMessages=await store.listMessages({context:principal,conversation_id:normalized.conversation_id,limit:12});
+      const history=authorizedMessages.map(item=>({role:item.role,content:typeof item.content==='string'?item.content:item.content?.text||''}));
+      const reasoning_decision=selectConversationReasoningProfile({message:normalized.message,history});
+      normalized=Object.freeze({...normalized,intent:reasoning_decision.profile,reasoning_decision});
+    }
     const route=router.route(normalized);
     const costDecision=evaluateIntelligenceCostPolicy({mode:route.mode,providers:route.providers,policy:effectiveCostPolicy});
     if(costDecision.decision==='deny')throw fail(costDecision.reason||'cost_policy_denied',403,{cost_decision:costDecision});
