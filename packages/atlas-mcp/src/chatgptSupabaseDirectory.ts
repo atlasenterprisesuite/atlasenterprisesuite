@@ -68,11 +68,11 @@ export function createAtlasChatGptSupabaseDirectory(options: AtlasChatGptSupabas
       if (await options.verifyIssuerSession(subject, tokenId) !== true) return null;
       const records = await read('atlas_chatgpt_oauth_grants',
         ['issuer','subject','token_id','user_id','org_id','expires_at','revoked_at','session_revoked_at'],
-        { issuer:options.issuer,subject,token_id:tokenId });
+        { issuer:trustedIssuer,subject,token_id:tokenId });
       if (records?.length !== 1) return null;
       const g = records[0] as Grant;
       const expiry = typeof g.expires_at === 'string' ? Date.parse(g.expires_at) : NaN;
-      if (g.issuer !== options.issuer || g.subject !== subject || g.token_id !== tokenId || !uuid(g.user_id) || !uuid(g.org_id) ||
+      if (g.issuer !== trustedIssuer || g.subject !== subject || g.token_id !== tokenId || !uuid(g.user_id) || !uuid(g.org_id) ||
           g.revoked_at !== null || g.session_revoked_at !== null ||
           !Number.isFinite(expiry) || expiry <= now()*1000) return null;
       const memberships = await read('organization_members',['org_id','user_id','status'],
