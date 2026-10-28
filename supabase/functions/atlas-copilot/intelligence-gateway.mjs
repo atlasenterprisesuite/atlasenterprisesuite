@@ -90,7 +90,7 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
     // A lookup or revocation error must abort before provider dispatch.
     if(normalized.requested_intent==='auto'&&normalized.conversation_id){
       await store.getConversation({context:principal,id:normalized.conversation_id});
-      const authorizedMessages=await store.listMessages({context:principal,conversation_id:normalized.conversation_id,limit:12});
+      const authorizedMessages=await store.listRecentMessages({context:principal,conversation_id:normalized.conversation_id,limit:12});
       const history=authorizedMessages.map(item=>({role:item.role,content:typeof item.content==='string'?item.content:item.content?.text||''}));
       const reasoning_decision=selectConversationReasoningProfile({message:normalized.message,history});
       normalized=Object.freeze({...normalized,intent:reasoning_decision.profile,reasoning_decision});
