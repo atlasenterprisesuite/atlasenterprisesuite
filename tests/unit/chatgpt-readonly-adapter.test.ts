@@ -5,7 +5,7 @@ const request = (method:string, params?:unknown) => ({ jsonrpc:'2.0' as const,id
 const call = (overrides:Partial<VerifiedChatGptPrincipal>|null={},method='tools/list',params?:unknown,authorization='Bearer opaque-token') =>
  handleChatGptCatalogMcp({request:request(method,params),authorization,verifyToken:async()=>overrides===null?null:{...principal,...overrides},expectedIssuer:principal.issuer,expectedAudience:principal.audience,nowSeconds:1900000000});
 describe('ChatGPT catalog isolated MCP authorization',()=>{
- it('rejects absent credentials and unverifiable token',async()=>{expect((await call({},'tools/list',undefined,undefined)).status).toBe(401);expect((await call(null)).status).toBe(401)});
+ it('rejects absent credentials and unverifiable token',async()=>{expect((await call({},'tools/list',undefined,'')).status).toBe(401);expect((await call(null)).status).toBe(401)});
  it('rejects tenantless, orgless and subjectless identity',async()=>{for(const key of ['tenantId','organizationId','subject'] as const)expect((await call({[key]:''})).status).toBe(401)});
  it('rejects wrong issuer, audience, scope, expiry and revocation',async()=>{
   for(const change of [{issuer:'https://evil.test'},{audience:'wrong'},{scopes:[]},{expiresAt:1},{revoked:true}])expect((await call(change)).status).toBe(401);
