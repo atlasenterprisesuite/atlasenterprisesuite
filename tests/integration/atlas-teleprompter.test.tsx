@@ -54,6 +54,35 @@ describe('ATLAS Smart Teleprompter', () => {
     expect(await screen.findByText('Almacenamiento privado conectado')).toBeInTheDocument();
   });
 
+  it('requires explicit opt-in before any automatic ATLAS cloud upload in Spanish', async () => {
+    vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockResolvedValue({
+      ok: true, service: 'atlas-creator-recordings', organization_id: 'org-1',
+      connected: true, reason: null, upload_allowed: true,
+      bucket: 'atlas-creator-recordings', checked_at: '2026-10-28T00:00:00Z'
+    });
+    const upload = vi.spyOn(creatorApi, 'uploadCreatorRecording').mockRejectedValue(new Error('upload_not_expected'));
+    render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
+    const option = screen.getByLabelText('Guardar automáticamente en ATLAS') as HTMLInputElement;
+    expect(await screen.findByText('Almacenamiento privado conectado')).toBeInTheDocument();
+    expect(option).toBeEnabled();
+    expect(option).not.toBeChecked();
+    expect(upload).not.toHaveBeenCalled();
+    fireEvent.click(option);
+    expect(option).toBeChecked();
+  });
+
+  it('keeps cloud uploads opt-in after switching to the English script', async () => {
+    vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockResolvedValue({
+      ok: true, service: 'atlas-creator-recordings', organization_id: 'org-1',
+      connected: true, reason: null, upload_allowed: true,
+      bucket: 'atlas-creator-recordings', checked_at: '2026-10-28T00:00:00Z'
+    });
+    render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
+    expect(await screen.findByText('Almacenamiento privado conectado')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Guion'), { target: { value: 'en' } });
+    expect(screen.getByLabelText('Automatically save to ATLAS')).not.toBeChecked();
+  });
+
   it('fails closed against duplicate recording starts while camera permission is pending', () => {
     vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockImplementation(() => new Promise(() => {}));
     vi.stubGlobal('MediaRecorder', vi.fn());
