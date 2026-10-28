@@ -6,9 +6,10 @@ const orgB = '22222222-2222-4222-8222-222222222222';
 const userA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const userB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const now = Date.parse('2026-10-28T12:00:00Z');
+const issuer = 'https://issuer.example.test';
 const grants = [
-  { subject:'alice', token_id:'token-a', user_id:userA, org_id:orgA, expires_at:'2026-10-29T12:00:00Z', revoked_at:null, session_revoked_at:null },
-  { subject:'bob', token_id:'token-b', user_id:userB, org_id:orgB, expires_at:'2026-10-29T12:00:00Z', revoked_at:null, session_revoked_at:null },
+  { issuer, subject:'alice', token_id:'token-a', user_id:userA, org_id:orgA, expires_at:'2026-10-29T12:00:00Z', revoked_at:null, session_revoked_at:null },
+  { issuer, subject:'bob', token_id:'token-b', user_id:userB, org_id:orgB, expires_at:'2026-10-29T12:00:00Z', revoked_at:null, session_revoked_at:null },
 ];
 const memberships = [
   { user_id:userA, org_id:orgA, status:'active' },
@@ -30,7 +31,7 @@ const make = (overrides: { grants?: unknown; memberships?: unknown; organization
     if (overrides.fail) throw new Error('store_unavailable');
     const u = new URL(url);
     const data = u.pathname.endsWith('/atlas_chatgpt_oauth_grants')
-      ? lookup(overrides.grants ?? grants,u.searchParams,['subject','token_id'])
+      ? lookup(overrides.grants ?? grants,u.searchParams,['issuer','subject','token_id'])
       : u.pathname.endsWith('/organization_members')
       ? lookup(overrides.memberships ?? memberships,u.searchParams,['user_id','org_id','status'])
       : u.pathname.endsWith('/organizations')
@@ -38,7 +39,7 @@ const make = (overrides: { grants?: unknown; memberships?: unknown; organization
       : null;
     return { ok:true, status:200, json:async()=>data } as Response;
   };
-  return { directory:createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'test-secret',fetchFn,verifyIssuerSession:async()=>overrides.issuerSessionActive !== false,nowSeconds:()=>now/1000}), hits };
+  return { directory:createAtlasChatGptSupabaseDirectory({issuer,supabaseUrl:'https://project.example.test',serviceRoleKey:'test-secret',fetchFn,verifyIssuerSession:async()=>overrides.issuerSessionActive !== false,nowSeconds:()=>now/1000}), hits };
 };
 
 describe('ATLAS ChatGPT server-bound Supabase directory: isolated two-org E2E',()=>{
@@ -77,9 +78,16 @@ describe('ATLAS ChatGPT server-bound Supabase directory: isolated two-org E2E',(
     expect(await make({fail:true}).directory.isRevoked('token-a','alice')).toBe(true);
     expect(await make().directory.resolveIdentity('alice,org_id.eq.'+orgB,'token-a')).toBeNull();
   });
+  it('requires an issuer-scoped grant, even for an identical signed subject and token id',async()=>{
+    const foreign = make({grants:[{...grants[0],issuer:'https://other-issuer.example.test'},grants[1]]}).directory;
+    expect(await foreign.resolveIdentity('alice','token-a')).toBeNull();
+    expect(await foreign.isRevoked('token-a','alice')).toBe(true);
+  });
   it('rejects unsafe server configuration before any fetch',()=>{
-    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'http://project.example.test',serviceRoleKey:'key',verifyIssuerSession:async()=>true})).toThrow();
-    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'',verifyIssuerSession:async()=>true})).toThrow();
-    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'key'} as never)).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({issuer,supabaseUrl:'http://project.example.test',serviceRoleKey:'key',verifyIssuerSession:async()=>true})).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({issuer,supabaseUrl:'https://project.example.test',serviceRoleKey:'',verifyIssuerSession:async()=>true})).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({issuer,supabaseUrl:'https://project.example.test',serviceRoleKey:'key'} as never)).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({supabaseUrl:'https://project.example.test',serviceRoleKey:'key',verifyIssuerSession:async()=>true} as never)).toThrow();
+    expect(()=>createAtlasChatGptSupabaseDirectory({issuer:'http://issuer.example.test',supabaseUrl:'https://project.example.test',serviceRoleKey:'key',verifyIssuerSession:async()=>true})).toThrow();
   });
 });
