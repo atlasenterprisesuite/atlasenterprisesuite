@@ -27,3 +27,5 @@
 
 .teleprompter-safety a{color:#9fdcff;text-decoration:underline;text-underline-offset:3px}
 .teleprompter-safety a:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+.teleprompter-playback{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(112,184,239,.2);background:#06111c;color:#e6f1f7}.teleprompter-playback h2{font-size:1.125rem;margin:0}.teleprompter-playback video{display:block;width:100%;max-width:780px;max-height:70vh;border-radius:12px;background:#000}

@@ -111,6 +111,7 @@ const copy = {
     edit: 'Editar guion',
     saveEdit: 'Guardar guion',
     download: 'Descargar video',
+    playback: 'Reproducir video grabado',
     saveCloud: 'Guardar en ATLAS',
     cloudDownload: 'Abrir copia de ATLAS',
     font: 'Tamaño',
@@ -148,6 +149,7 @@ const copy = {
     edit: 'Edit script',
     saveEdit: 'Save script',
     download: 'Download video',
+    playback: 'Play recorded video',
     saveCloud: 'Save to ATLAS',
     cloudDownload: 'Open ATLAS copy',
     font: 'Font size',
@@ -606,6 +608,11 @@ export function TeleprompterPage() {
       {recordedBlob && cloudAllowed && cloudState !== 'saving' && cloudState !== 'saved' && <button type="button" onClick={() => saveBlobToAtlas(recordedBlob, elapsed, language)}>{ui.saveCloud}</button>}
       {recordingId && <button type="button" onClick={() => openCloudCopy(recordingId)}>{ui.cloudDownload}</button>}
     </div>
+
+    {recordedUrl && <section className="teleprompter-playback" aria-label={ui.playback}>
+      <h2>{ui.playback}</h2>
+      <video src={recordedUrl} controls playsInline preload="metadata" aria-label={ui.playback} />
+    </section>}
 
     <div className="teleprompter-options">
       <label><input type="checkbox" checked={mirror} onChange={event => setMirror(event.target.checked)} /> {ui.mirror}</label>

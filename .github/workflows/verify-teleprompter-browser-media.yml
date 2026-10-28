@@ -34,3 +34,9 @@ jobs:
           fi
       - name: Capture and decode synthetic A/V in real browser
         run: node scripts/verify-teleprompter-browser-media.mjs
+      - name: Install existing locked Vite/React dependencies (no scripts)
+        shell: bash
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify real Teleprompter React UI in isolated Chromium
+        shell: bash
+        run: node scripts/verify-teleprompter-ui-browser.mjs
