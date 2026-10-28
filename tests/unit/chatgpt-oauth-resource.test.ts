@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateKeyPairSync, sign } from 'node:crypto';
+import { generateKeyPairSync, sign, type JsonWebKey } from 'node:crypto';
 import { createAtlasJwtVerifier, atlasProtectedResourceMetadata } from '../../packages/atlas-mcp/src/chatgptOAuthResource';
 import { handleChatGptCatalogMcp } from '../../packages/atlas-mcp/src/chatgptReadOnlyAdapter';
 const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
