@@ -59,11 +59,11 @@ async function run() {
   try {
     stage = 'mount';
     await until(() => document.querySelector('h1')?.textContent === 'ATLAS Teleprompter Inteligente');
-    const stage = await until(() => document.querySelector('.teleprompter-stage'));
-    if (!stage.querySelector('.teleprompter-script-panel') || !stage.querySelector('.teleprompter-camera-panel')) {
+    const workbenchStage = await until(() => document.querySelector('.teleprompter-stage'));
+    if (!workbenchStage.querySelector('.teleprompter-script-panel') || !workbenchStage.querySelector('.teleprompter-camera-panel')) {
       throw Error('blueprint_studio_panels_missing');
     }
-    if (stage.firstElementChild?.className !== 'teleprompter-script-panel') {
+    if (workbenchStage.firstElementChild?.className !== 'teleprompter-script-panel') {
       throw Error('blueprint_script_first_desktop_order_missing');
     }
     result.blueprintWorkbench = 'script/camera panels with live status';
