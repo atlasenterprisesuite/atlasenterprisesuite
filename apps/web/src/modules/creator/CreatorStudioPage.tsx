@@ -9,6 +9,7 @@ import { CreatorExperiencePage } from '../experience/CreatorExperiencePage';
 import { DirectorWorkspace } from './director/DirectorWorkspace';
 import { ImageLabWorkspace } from './image/ImageLabWorkspace';
 import './creator.css';
+import { LocalMediaPicker } from './media/LocalMediaPicker';
 
 const CREATIVE_MEDIA_KINDS: CreativeMediaKind[] = ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'];
 
@@ -341,6 +342,7 @@ export function CreatorLibrary() {
   return <section className="creator-page">
     <nav className="creator-breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Library</span></nav>
     <header className="creator-hero compact"><div><p className="eyebrow">Projects & assets</p><h1>Creator Library</h1><p>Searchable organization media with provenance, versions and permission-aware visibility.</p></div></header>
+    <LocalMediaPicker />
     <label className="creator-search"><span>Search library</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search projects and assets" /></label>
     {state === 'loading' && <div className="creator-empty" role="status"><strong>Loading Creator Library…</strong><span>Reading authorized organization productions and assets.</span></div>}
     {state === 'error' && <div className="creator-empty" role="status"><strong>Library unavailable</strong><span>{error}</span></div>}
