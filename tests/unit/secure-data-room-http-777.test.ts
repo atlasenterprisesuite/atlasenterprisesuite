@@ -36,6 +36,21 @@ describe('Secure Data Room HTTP access boundary', () => {
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(await response.text()).toBe('');
   });
+  it('sets no-store for all rejected requests and unsupported methods', async () => {
+    const handler = createDataRoomReadHandler(sources());
+    const denied = [
+      request(docId, ''),
+      request('invalid-id'),
+      new Request('https://example.invalid/read', { method: 'GET' }),
+      new Request('https://example.invalid/read', { method: 'POST', headers: { authorization: 'Bearer token' }, body: '{invalid' })
+    ];
+    for (const req of denied) {
+      const response = await handler(req);
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(await response.text()).toBe('');
+    }
+  });
   it('denies revoked access', async () => {
     const trusted = sources();
     trusted.grant = vi.fn(async () => false);
