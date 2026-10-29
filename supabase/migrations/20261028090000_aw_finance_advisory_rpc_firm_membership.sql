@@ -12,7 +12,7 @@ create or replace function public.advisory_create_client(
 returns setof public.advisory_clients
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
   v_user uuid := auth.uid();
@@ -45,7 +45,7 @@ create or replace function public.advisory_create_engagement(
 returns setof public.advisory_engagements
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
   v_user uuid := auth.uid();
@@ -83,7 +83,7 @@ create or replace function public.advisory_set_launch_evidence(
 returns setof public.advisory_launch_deliverables
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
   v_user uuid := auth.uid();
