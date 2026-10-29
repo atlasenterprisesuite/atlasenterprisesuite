@@ -1,0 +1,19 @@
+name: Network Doctor Truth Gate
+on:
+  pull_request:
+    paths:
+      - 'tools/network-doctor/**'
+      - '.github/workflows/network-doctor.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s tools/network-doctor -p 'test_*.py' -v
+      - run: python -m compileall -q tools/network-doctor
