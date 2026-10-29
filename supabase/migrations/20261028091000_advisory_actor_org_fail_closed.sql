@@ -7,7 +7,7 @@ stable
 security definer
 set search_path = pg_catalog, public, pg_temp
 as $$
-  select case when count(*) = 1 then min(om.org_id) else null::uuid end
+  select case when count(*) = 1 then (array_agg(om.org_id))[1] else null::uuid end
   from public.organization_members om
   where om.user_id = auth.uid()
     and om.status = 'active'
