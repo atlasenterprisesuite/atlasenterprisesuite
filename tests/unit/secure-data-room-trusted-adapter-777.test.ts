@@ -37,6 +37,23 @@ describe('Data Room trusted-source adapter', () => {
     b.grant = vi.fn(async () => false);
     expect(await authorizeTrustedDataRoomRead(request, b)).toEqual({ status: 403, allowed: false });
   });
+  it('does not consult grants after tenant mismatch', async () => {
+    const s = sources();
+    s.membership = vi.fn(async () => ({ tenantId: 'org-b', active: true }));
+    expect(await authorizeTrustedDataRoomRead(request, s)).toEqual({ status: 403, allowed: false });
+    expect(s.grant).not.toHaveBeenCalled();
+  });
+  it('does not consult grants after revoked document or inactive membership', async () => {
+    const revoked = sources();
+    revoked.document = vi.fn(async () => ({ tenantId: 'org-a', organizationId: 'org-a', revoked: true }));
+    expect(await authorizeTrustedDataRoomRead(request, revoked)).toEqual({ status: 403, allowed: false });
+    expect(revoked.membership).not.toHaveBeenCalled();
+    expect(revoked.grant).not.toHaveBeenCalled();
+    const inactive = sources();
+    inactive.membership = vi.fn(async () => ({ tenantId: 'org-a', active: false }));
+    expect(await authorizeTrustedDataRoomRead(request, inactive)).toEqual({ status: 403, allowed: false });
+    expect(inactive.grant).not.toHaveBeenCalled();
+  });
   it('fails closed on upstream errors', async () => {
     const s = sources();
     s.membership = vi.fn(async () => { throw Error('db offline'); });
