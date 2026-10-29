@@ -368,3 +368,56 @@
   .gps4d-coverage-heading { flex-direction:column; }
   .gps4d-coverage-actions { grid-template-columns:1fr; }
 }
+
+/* Single-surface navigation: the route state is shared, only one map is visible. */
+.gps4d-map-wrap-navigation.gps4d-single-view {
+  display:block;
+  position:relative;
+  min-height:calc(100svh - 96px);
+  height:calc(100svh - 96px);
+  overflow:hidden;
+}
+.gps4d-single-view .gps4d-drive-view,
+.gps4d-single-view .gps4d-overview-map {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  min-height:0;
+  border:0;
+}
+.gps4d-single-view-drive3d .gps4d-overview-map,
+.gps4d-single-view-map2d .gps4d-drive-view {
+  visibility:hidden;
+  pointer-events:none;
+}
+.gps4d-single-view .gps4d-layer-status { top:auto; bottom:70px; }
+.gps4d-single-view .gps4d-arrival { top:72px; }
+.gps4d-surface-switch {
+  position:absolute;
+  z-index:600;
+  left:50%;
+  top:62px;
+  transform:translateX(-50%);
+  display:flex;
+  gap:5px;
+  padding:5px;
+  border:1px solid rgba(135,185,255,.4);
+  border-radius:999px;
+  background:rgba(3,10,24,.91);
+}
+.gps4d-surface-switch button {
+  min-height:40px;
+  padding:8px 14px;
+  border:0;
+  border-radius:999px;
+  color:#fff;
+  background:transparent;
+  white-space:nowrap;
+}
+.gps4d-surface-switch button[aria-pressed="true"] { background:#1469bb; }
+.gps4d-surface-switch button:focus-visible { outline:3px solid #9bdcff; outline-offset:2px; }
+@media (max-width:640px) {
+  .gps4d-map-wrap-navigation.gps4d-single-view { height:100svh; min-height:100svh; }
+  .gps4d-surface-switch { top:58px; }
+}
