@@ -20,6 +20,7 @@ export function evaluateMediaImport(request: MediaImportRequest): MediaImportDec
   if (!request.authenticatedUserId || request.sessionExpired) return { allowed: false, reason: 'authentication_required' };
   if (!request.fileName || request.fileName.includes('/') || request.fileName.includes('\\') || request.fileName.includes('..') || /[\x00-\x1f]/.test(request.fileName)) return { allowed: false, reason: 'invalid_filename' };
   if (!Number.isSafeInteger(request.byteSize) || request.byteSize < 1 || request.byteSize > MAX_BYTES || !SAFE_MIME.has(request.mimeType)) return { allowed: false, reason: 'unsupported_file' };
+  if (request.membershipRevoked && request.scope === 'organization') return { allowed: false, reason: 'organization_access_denied' };
   if (request.scope === 'private') {
     return request.destinationOwnerId === request.authenticatedUserId
       ? { allowed: true, scope: 'private' }
