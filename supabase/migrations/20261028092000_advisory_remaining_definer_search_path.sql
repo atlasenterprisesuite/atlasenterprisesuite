@@ -8,3 +8,6 @@ alter function public.advisory_log_audit()
 -- Do not grant table writes to authenticated: the original migration explicitly
 -- revokes all table privileges and re-grants SELECT only.
 -- Runtime ACL and function-owner verification remain required in isolated PostgreSQL.
+
+-- Trigger entrypoint must not remain executable through PostgreSQL's default PUBLIC grant.
+revoke all on function public.advisory_log_audit() from public, anon, authenticated;
