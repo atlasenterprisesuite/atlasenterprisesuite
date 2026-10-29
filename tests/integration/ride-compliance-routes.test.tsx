@@ -20,6 +20,7 @@ describe('ATLAS Ride compliance routes', () => {
     const source = routeSource();
     for (const route of [
       '/ride',
+      '/ride/trip',
       '/ride/driver',
       '/ride/driver/compliance',
       '/ride/driver/compliance/documents',

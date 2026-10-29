@@ -1,4 +1,17 @@
 .ride-page { min-width: 0; }
+.ride-trip-page, .ride-trip-form { display: grid; gap: 1rem; }
+.ride-trip-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.ride-trip-layout > *, .ride-trip-place { min-width: 0; }
+.ride-trip-place label { display: block; margin-bottom: .5rem; font-weight: 700; }
+.ride-trip-search { display: flex; gap: .5rem; }
+.ride-trip-search input { width: 100%; min-width: 0; min-height: 44px; padding: .6rem; box-sizing: border-box; border: 1px solid rgba(108,177,231,.4); border-radius: 10px; background: #091522; color: #e7f1f9; font: inherit; }
+.ride-trip-page button { min-height: 44px; padding: .6rem .8rem; }
+.ride-trip-place-status { color: #b9d6ec; font-size: .9rem; }
+.ride-trip-results { padding: 0; list-style: none; display: grid; gap: .5rem; }
+.ride-trip-results button { width: 100%; text-align: left; overflow-wrap: anywhere; }
+.ride-trip-layout aside { overflow-wrap: anywhere; }
+.ride-trip-page a:focus-visible { outline: 3px solid rgba(77,183,255,.55); outline-offset: 2px; }
+@media (max-width: 800px) { .ride-trip-layout { grid-template-columns: 1fr; } }
 .ride-route-pilot { display: grid; gap: var(--atlas-space-4); }
 .ride-route-pilot textarea { box-sizing: border-box; width: 100%; min-height: 12rem; padding: var(--atlas-space-4); border: 1px solid var(--atlas-cyan); border-radius: var(--atlas-radius-md); background: var(--atlas-surface-1); color: var(--atlas-text); font: inherit; }
 .ride-route-actions { display: flex; flex-wrap: wrap; gap: var(--atlas-space-4); }
