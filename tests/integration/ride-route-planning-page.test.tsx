@@ -12,6 +12,18 @@ function enter(value = 'Inicio;0;0\nLejos;0;3\nCerca;0;1\nFinal;0;4') {
   fireEvent.click(screen.getByRole('button', { name: 'Ordenar paradas' }));
 }
 describe('Ride pilot interactions', () => {
+  it('cancels pending results and allows a new query without stale responses replacing it', async () => {
+    let finish!: (value: any) => void;
+    vi.mocked(calculateGpsRoute).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    open(); enter('Inicio;0;0\nFinal;0;4');
+    fireEvent.click(screen.getByRole('button', { name: 'Consultar distancia vial' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar consulta vial' }));
+    expect(screen.getByRole('textbox')).toBeEnabled();
+    expect(screen.getByRole('heading', { name: 'Orden propuesto' })).toBeInTheDocument();
+    finish({ routes: [{ distance_m: 999, duration_s: 100 }] });
+    await waitFor(() => expect(screen.queryByText(/Calculando tramos/)).toBeNull());
+    expect(screen.queryByText(/Ruta vial consultada/)).toBeNull();
+  });
   it('plans locally, exposes limits and invalidates old results when points change', () => {
     open(); enter();
     expect(screen.getAllByRole('listitem').map(n => n.textContent)).toEqual(['Inicio', 'Cerca', 'Lejos', 'Final']);
