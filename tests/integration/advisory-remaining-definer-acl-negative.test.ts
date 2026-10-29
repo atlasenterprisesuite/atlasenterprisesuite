@@ -8,7 +8,7 @@ describe('Advisory remaining privileged function and table ACL negative contract
     expect(hardening).toContain('alter function public.' + name + '()');
     expect(hardening).toMatch(new RegExp('alter function public\\.' + name + '\\(\\)\\s+set search_path = pg_catalog, public, pg_temp', 'i'));
   });
-  it('does not grant authenticated users direct advisory table writes', () => {
+  it('revokes default PUBLIC execute on the trigger entrypoint', () => {\n    expect(hardening).toMatch(/revoke all on function public\\.advisory_log_audit\\(\\) from public, anon, authenticated/i);\n  });\n  it('does not grant authenticated users direct advisory table writes', () => {
     expect(original).toMatch(/revoke all on public\.advisory_clients from anon, authenticated/i);
     expect(original).toMatch(/grant select on public\.advisory_clients to authenticated/i);
     expect(original).not.toMatch(/grant (?:insert|update|delete|all) on public\.advisory_clients to authenticated/i);
