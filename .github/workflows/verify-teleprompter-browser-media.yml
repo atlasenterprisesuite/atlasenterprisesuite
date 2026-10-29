@@ -1,0 +1,42 @@
+name: ATLAS Teleprompter Chromium Media (synthetic)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/verify-teleprompter-browser-media.mjs'
+      - 'tests/fixtures/teleprompter-browser-media-probe.html'
+      - '.github/workflows/verify-teleprompter-browser-media.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-fake-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Checkout exact PR code without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Select installed Chromium without downloading dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "CHROME_BIN=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "CHROME_BIN=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            echo "Installed Chromium not available; do not claim media validation"
+            exit 1
+          fi
+      - name: Capture and decode synthetic A/V in real browser
+        run: node scripts/verify-teleprompter-browser-media.mjs
+      - name: Install existing locked Vite/React dependencies (no scripts)
+        shell: bash
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify real Teleprompter React UI in isolated Chromium
+        shell: bash
+        run: node scripts/verify-teleprompter-ui-browser.mjs
