@@ -8,6 +8,12 @@ const rideSections: ModuleExperienceSection[] = [
     description: 'ATLAS Ride currently exposes authenticated driver readiness and compliance evidence while dispatch, pricing and external rideshare operations remain explicitly gated.',
     cards: [
       {
+        label: 'Mi viaje',
+        title: 'Prepara tu viaje',
+        description: 'Busca origen, destino y hasta cuatro paradas. Consulta distancia y duración con GPS, sin reservar ni activar despacho.',
+        to: '/ride/trip'
+      },
+      {
         label: 'Route Planning',
         title: 'Planificador de rutas',
         description: 'Ordena hasta 8 paradas, consulta tramos con GPS y exporta planes sin activar despacho.',
