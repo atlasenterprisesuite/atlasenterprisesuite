@@ -1,4 +1,3 @@
-
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Link, NavLink, Route, Routes, useSearchParams } from 'react-router-dom';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
@@ -9,12 +8,14 @@ import { TaxControlCenter } from './TaxControlCenter';
 import { DepthTaxIntake } from './DepthTaxIntake';
 import { TaxProfessionalDashboard } from './TaxProfessionalDashboard';
 import { TaxBenefits2025 } from './TaxBenefits2025';
+import { AcademyRoutes } from './academy/AcademyRoutes';
 import { importTaxSourceMapping } from '../../lib/taxApi';
 import './tax.css';
 
 const nav = [
   { to: '/tax', label: 'Tax Home', end: true },
   { to: '/tax/control', label: 'Control Center', end: false },
+  { to: '/tax/academy', label: 'Academy', end: false },
   { to: '/tax/prepare', label: 'Prepare Return', end: false },
   { to: '/tax/documents/w2', label: 'W-2 Intake', end: false },
   { to: '/tax/documents/1099', label: '1099 Intake', end: false },
@@ -31,6 +32,7 @@ const shellNav = [
   { to: '/tax', label: 'Workspace', glyph: '⌂', end: true },
   { to: '/tax/control', label: 'Clients', glyph: '●', end: false },
   { to: '/tax/control', label: 'Returns', glyph: '▤', end: false },
+  { to: '/tax/academy', label: 'Academy', glyph: '◆', end: false },
   { to: '/tax/documents/depth', label: 'Documents', glyph: '▱', end: false },
   { to: '/tax/prepare', label: 'Tax Facts', glyph: '◎', end: false },
   { to: '/tax/benefits', label: 'Credits & Deductions', glyph: '★', end: false },
@@ -372,6 +374,7 @@ export function TaxRoutes() {
         <Routes>
           <Route index element={<TaxHome />} />
           <Route path="control" element={<TaxControlCenter />} />
+          <Route path="academy/*" element={<AcademyRoutes />} />
           <Route path="prepare" element={<ProfessionalReturnWorkspace />} />
           <Route path="documents/w2" element={<W2Workspace />} />
           <Route path="documents/1099" element={<InformationReturnWorkspace />} />
