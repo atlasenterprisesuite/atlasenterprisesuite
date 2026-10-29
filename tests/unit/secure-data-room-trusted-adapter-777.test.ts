@@ -54,6 +54,22 @@ describe('Data Room trusted-source adapter', () => {
     expect(await authorizeTrustedDataRoomRead(request, inactive)).toEqual({ status: 403, allowed: false });
     expect(inactive.grant).not.toHaveBeenCalled();
   });
+  it('denies when grant lookup fails and never converts the failure into access', async () => {
+    const s = sources();
+    s.grant = vi.fn(async () => { throw new Error('grant source unavailable'); });
+    expect(await authorizeTrustedDataRoomRead(request, s)).toEqual({ status: 403, allowed: false });
+  });
+  it('denies when document or identity source is unavailable', async () => {
+    const identity = sources();
+    identity.authenticate = vi.fn(async () => { throw new Error('identity unavailable'); });
+    expect(await authorizeTrustedDataRoomRead(request, identity)).toEqual({ status: 403, allowed: false });
+    expect(identity.document).not.toHaveBeenCalled();
+    const document = sources();
+    document.document = vi.fn(async () => { throw new Error('document unavailable'); });
+    expect(await authorizeTrustedDataRoomRead(request, document)).toEqual({ status: 403, allowed: false });
+    expect(document.membership).not.toHaveBeenCalled();
+    expect(document.grant).not.toHaveBeenCalled();
+  });
   it('fails closed on upstream errors', async () => {
     const s = sources();
     s.membership = vi.fn(async () => { throw Error('db offline'); });
