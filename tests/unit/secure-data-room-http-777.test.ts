@@ -51,6 +51,39 @@ describe('Secure Data Room HTTP access boundary', () => {
       expect(await response.text()).toBe('');
     }
   });
+  it('denies a session revoked between consecutive requests', async () => {
+    const trusted = sources();
+    let active = true;
+    trusted.authenticate = vi.fn(async () => ({ userId: 'user-a', sessionActive: active }));
+    const handler = createDataRoomReadHandler(trusted);
+    expect((await handler(request(docId))).status).toBe(200);
+    active = false;
+    expect((await handler(request(docId))).status).toBe(403);
+    expect(trusted.authenticate).toHaveBeenCalledTimes(2);
+  });
+  it('denies cross-tenant membership even with a valid document grant', async () => {
+    const trusted = sources();
+    trusted.membership = vi.fn(async () => ({ tenantId: 'org-b', active: true }));
+    expect((await createDataRoomReadHandler(trusted)(request(docId))).status).toBe(403);
+  });
+  it('denies membership revocation between requests', async () => {
+    const trusted = sources();
+    let active = true;
+    trusted.membership = vi.fn(async () => ({ tenantId: 'org-a', active }));
+    const handler = createDataRoomReadHandler(trusted);
+    expect((await handler(request(docId))).status).toBe(200);
+    active = false;
+    expect((await handler(request(docId))).status).toBe(403);
+  });
+  it('denies document revocation between requests', async () => {
+    const trusted = sources();
+    let revoked = false;
+    trusted.document = vi.fn(async () => ({ tenantId: 'org-a', organizationId: 'org-a', revoked }));
+    const handler = createDataRoomReadHandler(trusted);
+    expect((await handler(request(docId))).status).toBe(200);
+    revoked = true;
+    expect((await handler(request(docId))).status).toBe(403);
+  });
   it('denies revoked access', async () => {
     const trusted = sources();
     trusted.grant = vi.fn(async () => false);
