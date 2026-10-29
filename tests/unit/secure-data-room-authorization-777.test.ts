@@ -1,37 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { authorizeDocumentRead, type DataRoomReadContext } from '../../packages/security/secure-data-room-policy';
 
 /**
  * ATLAS Secure Data Room 777 — negative-first authorization contract.
  * These tests deliberately fail closed until a real authorization adapter is wired.
  * No production secrets, network, database, or privileged credentials are required.
  */
-type DecisionInput = {
-  actorId: string;
-  tenantId: string;
-  organizationId: string;
-  documentTenantId: string;
-  documentOrganizationId: string;
-  membershipActive: boolean;
-  sessionActive: boolean;
-  grantActive: boolean;
-  documentRevoked: boolean;
-};
-
-export function authorizeDocumentRead(input: DecisionInput): boolean {
-  return Boolean(
-    input.actorId &&
-    input.tenantId &&
-    input.organizationId &&
-    input.documentTenantId === input.tenantId &&
-    input.documentOrganizationId === input.organizationId &&
-    input.membershipActive &&
-    input.sessionActive &&
-    input.grantActive &&
-    !input.documentRevoked
-  );
-}
-
-const valid: DecisionInput = {
+const valid: DataRoomReadContext = {
   actorId: 'user-a',
   tenantId: 'tenant-a',
   organizationId: 'org-a',
@@ -44,6 +19,11 @@ const valid: DecisionInput = {
 };
 
 describe('Secure Data Room 777: fail-closed policy contract', () => {
+  it('denies missing context', () => {
+    expect(authorizeDocumentRead(null)).toBe(false);
+    expect(authorizeDocumentRead(undefined)).toBe(false);
+  });
+
   it('allows a fully scoped, active authorization decision', () => {
     expect(authorizeDocumentRead(valid)).toBe(true);
   });
