@@ -72,6 +72,7 @@ window.addEventListener('unhandledrejection', event => { fetch('/__atlas_telepro
 };
 const server = await createServer({
   configFile: false, root: devRoot, plugins: [react(), stub, middleware],
+  resolve: { dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'] },
   server: {host:'127.0.0.1',port:0,strictPort:false},
   logLevel:'error'
 });
