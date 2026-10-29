@@ -583,17 +583,30 @@ export function TeleprompterPage() {
       <span>{cloudState === 'saved' ? ui.cloudSaved : cloudAllowed ? 'ATLAS Identity · organization scope · creator.write · private bucket' : 'Local recording remains available.'}</span>
     </div>
 
-    <div className="teleprompter-stage">
-      <div className="teleprompter-camera">
-        <video ref={videoRef} className={mirror ? 'mirrored' : ''} muted playsInline aria-label="Camera preview" />
-        {!cameraReady && <div className="camera-empty"><strong>ATLAS</strong><span>{ui.camera}</span></div>}
-        {state === 'countdown' && <div className="countdown"><span>ATLAS</span><strong>{countdown}</strong></div>}
+    <section className="teleprompter-studio-frame" aria-label={language === 'es' ? 'Estudio de grabación ATLAS' : 'ATLAS recording studio'}>
+      <div className="teleprompter-workbench-status">
+        <span className="teleprompter-workbench-brand">ATLAS · STUDIO 777</span>
+        <span>{ui.script} · {Math.min(cursor + 1, words.length)} / {words.length}</span>
+        <span>{state === 'recording' ? (language === 'es' ? 'Grabando' : 'Recording') : (language === 'es' ? 'Grabación local' : 'Local recording')} · {clock(elapsed)}</span>
       </div>
-      <div className={`teleprompter-reader reader-theme-${readerTheme} reader-position-${readerPosition}`} style={{ fontSize, backgroundColor: `rgba(16, 13, 35, ${readerOpacity / 100})` }} aria-label="Teleprompter script">
-        <div className="reading-guide" />
-        <p>{words.map((word, index) => <span key={index} ref={node => { wordRefs.current[index] = node; }} className={index < cursor ? 'word spoken' : index === cursor ? 'word current' : 'word'}>{word} </span>)}</p>
+      <div className="teleprompter-stage">
+        <section className="teleprompter-script-panel" aria-label={ui.script}>
+          <div className="teleprompter-panel-heading"><strong>{ui.script}</strong><span>{language === 'es' ? 'Lectura sincronizada' : 'Synchronized reading'}</span></div>
+          <div className={`teleprompter-reader reader-theme-${readerTheme} reader-position-${readerPosition}`} style={{ fontSize, backgroundColor: `rgba(16, 13, 35, ${readerOpacity / 100})` }} aria-label="Teleprompter script">
+            <div className="reading-guide" />
+            <p>{words.map((word, index) => <span key={index} ref={node => { wordRefs.current[index] = node; }} className={index < cursor ? 'word spoken' : index === cursor ? 'word current' : 'word'}>{word} </span>)}</p>
+          </div>
+        </section>
+        <section className="teleprompter-camera-panel" aria-label={ui.camera}>
+          <div className="teleprompter-panel-heading"><strong>{ui.camera}</strong><span>VIDEO · LOCAL</span></div>
+          <div className="teleprompter-camera">
+            <video ref={videoRef} className={mirror ? 'mirrored' : ''} muted playsInline aria-label="Camera preview" />
+            {!cameraReady && <div className="camera-empty"><strong>ATLAS</strong><span>{ui.camera}</span></div>}
+            {state === 'countdown' && <div className="countdown"><span>ATLAS</span><strong>{countdown}</strong></div>}
+          </div>
+        </section>
       </div>
-    </div>
+    </section>
 
     <div className="teleprompter-actions">
       {state === 'recording' || state === 'countdown' || state === 'requesting'

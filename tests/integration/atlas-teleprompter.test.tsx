@@ -37,6 +37,21 @@ describe('ATLAS Smart Teleprompter', () => {
     expect(matchVoiceCursor(scriptWords, 'ATLAS nació aquí en Orlando', 0)).toBe(4);
   });
 
+  it('uses distinct bilingual script and camera panels with a recording status bar', () => {
+    vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockImplementation(() => new Promise(() => {}));
+    const { container } = render(<MemoryRouter><TeleprompterPage /></MemoryRouter>);
+    const stage = container.querySelector('.teleprompter-stage');
+    expect(stage).not.toBeNull();
+    expect(stage?.firstElementChild).toHaveClass('teleprompter-script-panel');
+    expect(stage?.lastElementChild).toHaveClass('teleprompter-camera-panel');
+    expect(screen.getByText('ATLAS · STUDIO 777')).toBeInTheDocument();
+    expect(screen.getByText('Lectura sincronizada')).toBeInTheDocument();
+    expect(screen.getByText('Grabación local · 00:00')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Guion'), { target: { value: 'en' } });
+    expect(screen.getByText('Synchronized reading')).toBeInTheDocument();
+    expect(screen.getByText('Local recording · 00:00')).toBeInTheDocument();
+  });
+
   it('shows recording controls and verified private-storage readiness', async () => {
     vi.spyOn(creatorApi, 'getCreatorRecordingReadiness').mockResolvedValue({
       ok: true,
