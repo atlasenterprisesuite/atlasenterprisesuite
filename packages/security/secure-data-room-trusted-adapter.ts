@@ -27,7 +27,7 @@ export async function authorizeTrustedDataRoomRead(
     const doc = await sources.document(documentId, actor.userId);
     if (!doc?.tenantId || !doc.organizationId || doc.revoked) return null;
     const membership = await sources.membership(actor.userId, doc.organizationId);
-    if (!membership?.tenantId || membership.active !== true) return null;
+    if (!membership?.tenantId || membership.active !== true || membership.tenantId !== doc.tenantId) return null;
     const grantActive = await sources.grant(actor.userId, documentId);
     return {
       actorId: actor.userId,
