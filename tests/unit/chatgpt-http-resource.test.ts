@@ -44,4 +44,16 @@ describe('isolated OAuth HTTP transport',()=>{
    expect(res.status).toBe(403);
   }
  });
+ it('rejects hostile origins and unsupported transport negotiation',async()=>{
+  const base={method:'POST',path:'/mcp',authorization:'Bearer opaque',body:rpc};
+  expect((await handleAtlasChatGptHttp({...base,origin:'https://evil.example.test'},opts)).status).toBe(403);
+  expect((await handleAtlasChatGptHttp({...base,contentType:'text/plain'},opts)).status).toBe(415);
+  expect((await handleAtlasChatGptHttp({...base,accept:'application/json'},opts)).status).toBe(406);
+  expect((await handleAtlasChatGptHttp({...base,protocolVersion:'2026-07-28'},opts)).status).toBe(400);
+ });
+ it('does not acknowledge notifications without certified session lifecycle',async()=>{
+  const res=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:{jsonrpc:'2.0',method:'notifications/initialized'}},opts);
+  expect(res.status).toBe(400);
+ });
+
 });
