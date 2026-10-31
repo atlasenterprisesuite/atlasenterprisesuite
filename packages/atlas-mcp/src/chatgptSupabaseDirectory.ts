@@ -28,7 +28,7 @@ type Grant = {
 type Membership = { user_id: string; org_id: string; status: string };
 type Organization = { id: string; active: boolean };
 const uuid = (s: unknown): s is string =>
-  typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(s);
+  typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 const opaque = (s: unknown): s is string =>
   typeof s === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(s);
 
