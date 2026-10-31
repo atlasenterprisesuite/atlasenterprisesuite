@@ -21,7 +21,7 @@ const make = (overrides: { grants?: unknown; memberships?: unknown; organization
   const lookup = (items: unknown, params: URLSearchParams, fields: string[]) =>
     Array.isArray(items) ? items.filter(row => fields.every(field => {
       const eq = params.get(field);
-      return !eq || (row as Record<string,unknown>)[field] === eq.slice(3);
+      return !eq || String((row as Record<string,unknown>)[field]) === eq.slice(3);
     })) : items;
   const fetchFn = async (url: string, init: RequestInit): Promise<Response> => {
     hits.push(url);
