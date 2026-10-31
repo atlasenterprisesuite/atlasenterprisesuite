@@ -137,8 +137,16 @@ export async function bootstrapAdvisoryFirm(): Promise<AdvisoryFirmRow> {
   const organization = await getActiveAtlasOrganization();
   if (!organization.id) throw new Error('no_active_organization');
   const rows = await rpcRows<AdvisoryFirmRow>('advisory_bootstrap_default_firm', {});
-  if (!rows[0]) throw new Error('advisory_firm_unavailable');
-  return rows[0];
+  const firm = Array.isArray(rows) && rows.length === 1 ? rows[0] : undefined;
+  if (!firm || typeof firm.id !== 'string' || !firm.id.trim() ||
+      firm.status !== 'active' || firm.org_id !== organization.id) {
+    throw new Error('advisory_firm_unavailable');
+  }
+  // Do not reuse a bootstrap response after the active organization changes.
+  // Server-side membership and permission checks remain mandatory for every RPC.
+  const currentOrganization = await getActiveAtlasOrganization();
+  if (currentOrganization.id !== organization.id) throw new Error('advisory_organization_changed');
+  return firm;
 }
 
 
