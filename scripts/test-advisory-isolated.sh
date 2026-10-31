@@ -11,7 +11,7 @@ fi
 exec unshare --user --map-root-user --net -- env -i PATH="$PATH" HOME=/tmp NODE_ENV=test bash -s <<'ISOLATED'
   set -euo pipefail
   node -e 'const fs = require("node:fs");
-    const interfaces = fs.readdirSync("/sys/class/net");
+    const interfaces = fs.readFileSync("/proc/net/dev", "utf8").trim().split("\n").slice(2).map(line => line.split(":")[0].trim());
     if (interfaces.some(name => name !== "lo")) {
       console.error("BLOCKED: unexpected network interface"); process.exit(78);
     }

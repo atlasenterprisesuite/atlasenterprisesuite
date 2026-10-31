@@ -11,9 +11,10 @@ if [[ "${1:-}" != --inside ]]; then
     bash "$(realpath "$0")" --inside
 fi
 [[ $(id -u) != 0 ]] || exit 78
-for interface in /sys/class/net/*; do
-  [[ ${interface##*/} == lo ]] || { echo 'BLOCKED: external interface present' >&2; exit 78; }
-done
+# /proc/net is scoped to the calling process network namespace; /sys may
+# retain the host sysfs mount after unshare and cause false positives.
+awk 'NR > 2 { split($0, fields, ":"); gsub(/[[:space:]]/, "", fields[1]); if (fields[1] != "lo") exit 78 }' /proc/net/dev \
+  || { echo 'BLOCKED: external interface present' >&2; exit 78; }
 work=$(mktemp -d /tmp/atlas-pg.XXXXXX)
 cleanup() {
   pg_ctl -D "$work/data" -m immediate -w stop >/dev/null 2>&1 || true
