@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { calculateGpsRoute, type GpsPoint } from '../gps/gpsApi';
 import { formatDistance, formatDuration } from '../gps/gpsDomain';
@@ -20,6 +20,13 @@ export function RoutePlanningPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const version = useRef(0);
+  useEffect(() => () => { version.current++; }, []);
+  function cancelRoadRoute() {
+    version.current++;
+    setBusy(false);
+    setRoad(null);
+    setError('Consulta cancelada. El plan local se conserva.');
+  }
   function input() {
     const points = parsePoints(text);
     if (points.length < 2) throw new Error('Introduce origen y destino, con paradas intermedias opcionales.');
@@ -43,6 +50,7 @@ export function RoutePlanningPage() {
       for (let i = 1; i < points.length; i++) {
         if (revision !== version.current) return;
         const response = await calculateGpsRoute(points[i - 1], points[i]);
+        if (revision !== version.current) return;
         const leg = response.routes?.[0];
         if (!leg || !Number.isFinite(leg.distance_m) || !Number.isFinite(leg.duration_s) || leg.distance_m < 0 || leg.duration_s < 0) {
           throw new Error('No se obtuvo una ruta vial verificable para todas las paradas.');
@@ -52,7 +60,7 @@ export function RoutePlanningPage() {
       if (revision === version.current) setRoad({ distance, duration });
     } catch {
       if (revision === version.current) setError('El proveedor vial no respondió con una ruta completa. Puedes conservar el plan geométrico y reintentar.');
-    } finally { setBusy(false); }
+    } finally { if (revision === version.current) setBusy(false); }
   }
   function download(google: boolean) {
     if (!result) return;
@@ -75,6 +83,7 @@ export function RoutePlanningPage() {
     <div className="ride-route-actions">
       <button type="button" disabled={busy || !text.trim()} onClick={plan}>Ordenar paradas</button>
       <button type="button" disabled={busy || !result} onClick={() => void roadRoute()}>{busy ? 'Consultando…' : 'Consultar distancia vial'}</button>
+      {busy && <button type="button" onClick={cancelRoadRoute}>Cancelar consulta vial</button>}
       <button type="button" disabled={busy || !result} onClick={() => download(false)}>Exportar plan ATLAS</button>
       <button type="button" disabled={busy || !result} onClick={() => download(true)}>Exportar solicitud Google</button>
     </div>
