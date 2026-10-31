@@ -14,6 +14,11 @@ on:
       - 'supabase/functions/atlas-advisory-public/**'
       - 'tests/unit/advisory-*.test.ts'
       - 'tests/integration/advisory-*.test.ts'
+      - 'tests/executor/advisory-isolated-runner.test.mjs'
+      - 'scripts/test-advisory-isolated.sh'
+      - 'scripts/advisory-db-preflight.mjs'
+      - 'scripts/advisory-postgres-smoke.sh'
+      - 'tests/executor/advisory-db-preflight.test.mjs'
       - 'tests/integration/business-launch-360-commercial.test.ts'
       - 'tests/integration/root-router-sanity.test.ts'
       - '.github/workflows/advisory-office-ci.yml'
@@ -24,6 +29,7 @@ permissions:
 
 jobs:
   verify:
+    if: github.head_ref != 'fix/advisory-multiempresa-777-20261031'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +37,39 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Verify disconnected executor control flow (no database)
+        run: |
+          bash -n scripts/test-advisory-isolated.sh
+          node --test tests/executor/advisory-isolated-runner.test.mjs
+          node --test tests/executor/advisory-db-preflight.test.mjs
       - run: npm ci
       - run: npm run typecheck
       - run: npx vitest run tests/unit/advisory-*.test.ts tests/integration/advisory-*.test.ts tests/integration/business-launch-360-commercial.test.ts tests/integration/root-router-sanity.test.ts
       - run: npm run build
+
+  isolated-postgres-environment:
+    if: github.head_ref == 'fix/advisory-multiempresa-777-20261031'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Executor control checks
+        run: |
+          bash -n scripts/test-advisory-isolated.sh
+          bash -n scripts/advisory-postgres-smoke.sh
+          node --test tests/executor/*.test.mjs
+      - name: Provision disposable PostgreSQL tooling before isolation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-client
+      - name: Verify disconnected PostgreSQL with synthetic data
+        run: |
+          git rev-parse HEAD
+          test -z "$(git status --porcelain)"
+          bash scripts/advisory-postgres-smoke.sh
