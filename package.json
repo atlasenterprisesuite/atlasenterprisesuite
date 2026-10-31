@@ -9,7 +9,7 @@
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build && node scripts/write-deployment-manifest.mjs apps/web/dist/deployment.json",
     "typecheck": "npm --workspace apps/web run typecheck",
-    "test": "vitest run",
+    "test": "vitest run tests/unit tests/integration && node --test tests/node/*.test.mjs tools/local-agent/tests/*.test.mjs",
     "test:unit": "vitest run tests/unit",
     "test:local-core": "node --test tools/local-agent/tests/*.test.mjs",
     "test:integration": "vitest run tests/integration",
