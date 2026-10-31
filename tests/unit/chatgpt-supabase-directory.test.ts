@@ -76,6 +76,13 @@ describe('ATLAS ChatGPT server-bound Supabase directory: isolated two-org E2E',(
     expect(await make({grants:[{...grants[0],expires_at:'2026-10-27T12:00:00Z'},grants[1]]}).directory.resolveIdentity('alice','token-a')).toBeNull();
     expect(await make({grants:[grants[0],grants[0]]}).directory.resolveIdentity('alice','token-a')).toBeNull();
   });
+  it('accepts canonical UUID grants but denies malformed UUID identifiers',async()=>{
+    expect(await make().directory.resolveIdentity('alice','token-a')).toEqual({tenantId:orgA,organizationId:orgA,active:true});
+    const invalidUser = make({grants:[{...grants[0],user_id:'aaaaaaaa-aaaa-4aaa-8aaaaaaaaaaaa'},grants[1]]}).directory;
+    expect(await invalidUser.resolveIdentity('alice','token-a')).toBeNull();
+    const invalidOrg = make({grants:[{...grants[0],org_id:'11111111-1111-4111-811111111111'},grants[1]]}).directory;
+    expect(await invalidOrg.resolveIdentity('alice','token-a')).toBeNull();
+  });
   it('fails closed on malformed responses, backend outage and malformed identifiers',async()=>{
     expect(await make({grants:{unexpected:'object'}}).directory.resolveIdentity('alice','token-a')).toBeNull();
     expect(await make({fail:true}).directory.resolveIdentity('alice','token-a')).toBeNull();
