@@ -67,6 +67,10 @@ export function assertAdvisoryScope(
   actor: { organizationId: string; firmId: string },
   resource: { organizationId: string; firmId: string }
 ) {
+  // Fail closed when either side has no valid tenant/firm binding.
+  const valid = (value: string) => typeof value === 'string' && value.trim().length > 0;
+  if (!valid(actor.organizationId) || !valid(resource.organizationId)) return { ok: false as const, reason: 'organization_mismatch' as const };
+  if (!valid(actor.firmId) || !valid(resource.firmId)) return { ok: false as const, reason: 'firm_mismatch' as const };
   if (actor.organizationId !== resource.organizationId) return { ok: false as const, reason: 'organization_mismatch' as const };
   if (actor.firmId !== resource.firmId) return { ok: false as const, reason: 'firm_mismatch' as const };
   return { ok: true as const };
