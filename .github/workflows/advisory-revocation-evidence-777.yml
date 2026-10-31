@@ -1,0 +1,44 @@
+name: ATLAS Advisory 777 Revocation Evidence (isolated)
+on:
+  pull_request:
+    paths:
+      - 'tests/unit/advisory-revocation-linearization-model-777.test.ts'
+      - '.github/workflows/advisory-revocation-evidence-777.yml'
+      - 'scripts/advisory-postgres-smoke.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-model-and-environment:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Capture exact source and clean checkout
+        run: |
+          git rev-parse HEAD
+          test -z "$(git status --porcelain)"
+      - name: Validate offline PostgreSQL environment script
+        run: bash -n scripts/advisory-postgres-smoke.sh
+      - name: Install dependencies and run reference model
+        run: |
+          npm ci
+          npx vitest run tests/unit/advisory-revocation-linearization-model-777.test.ts
+      - name: Provision disposable PostgreSQL tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-client
+      - name: Run disconnected synthetic PostgreSQL capability smoke
+        run: bash scripts/advisory-postgres-smoke.sh
+      - name: Mark incomplete authorization proof
+        run: |
+          echo 'P0 NO-GO: smoke/model checks do NOT execute Advisory RPC revocation, RLS, or two-connection transactional tests.'
