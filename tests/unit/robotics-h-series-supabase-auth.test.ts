@@ -68,6 +68,19 @@ describe('F11 real ATLAS membership adapter (isolated mocks)', () => {
     expect(await provider.canReadCatalog(first!)).toBe(true);
     expect(await provider.canReadCatalog(second!)).toBe(true);
   });
+  it('F17-001 calls the exact atlas-core RPC with verified organization and permission',async()=>{
+    const f=fixture();const result=await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope);
+    expect(result.ok).toBe(true);
+    expect(f.rpc).toHaveBeenCalledWith('has_identity_permission',{o:org,p:'execution.read'});
+  });
+  it('F17-002 rejects an effective role override denying permission',async()=>{
+    const f=fixture('active','owner');f.rpc.mockResolvedValueOnce({data:false,error:null});
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
+  });
+  it('F17-003 does not evaluate permissions for revoked membership',async()=>{
+    const f=fixture('revoked');await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope);
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
   it('F11-008 denies changed membership on next read',async()=>{
     const f=fixture();const provider=createHSeriesSupabaseAuthorization('token',org,f.client);
     expect((await readAuthorizedHSeriesCatalog(provider,scope)).ok).toBe(true);
