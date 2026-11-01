@@ -7,7 +7,7 @@ import type { RoboticsAuthorizationProvider, VerifiedRoboticsSession } from './h
  * No public route or credential is created by this module.
  */
 export interface ScopedSupabaseReader {
-  auth: { getUser(token: string): Promise<{ data: { user: { id: string } | null }; error: unknown }> };
+  auth: { getUser(token?: string): Promise<{ data: { user: { id: string } | null }; error: unknown }> };
   rpc(functionName: string, args: { o: string; p: string }): Promise<{ data: unknown; error: unknown }>;
   from(table: string): {
     select(columns: string): {
@@ -32,6 +32,8 @@ export function createHSeriesSupabaseAuthorization(
       if (!trustedToken || !uuid(orgId)) return null;
       const { data, error } = await client.auth.getUser(trustedToken);
       if (error || !data.user || !uuid(data.user.id)) return null;
+      const bound = await client.auth.getUser();
+      if (bound.error || !bound.data.user || bound.data.user.id !== data.user.id) return null;
       const session = { userId: data.user.id, tenantId: orgId, organizationId: orgId };
       verifiedSessions.add(session);
       return session;
