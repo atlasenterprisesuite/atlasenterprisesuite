@@ -54,3 +54,41 @@ revoke all on function public.robotics_simulation_revoke(text,uuid,uuid) from pu
 -- Session B: BEGIN; SELECT robotics_simulation_revoke(...); blocks on same grant row.
 -- A COMMIT; B resumes; B COMMIT. Reversed ordering must make complete return false.
 -- F5 does not yet demonstrate this contract by executing PostgreSQL.
+
+-- F6: stop operations. Same grant-row lock ordering as reserve/complete/revoke.
+-- Only a trusted database role with explicit grants can invoke these.
+create or replace function public.robotics_simulation_halt(
+  p_tenant text,p_org uuid,p_actor uuid,p_run text
+) returns boolean language plpgsql security invoker set search_path = pg_catalog, public as $$
+declare allowed boolean;
+begin
+  if p_run !~ '^[A-Za-z0-9_-]{1,128}$' then return false; end if;
+  select enabled into allowed from public.atlas_robotics_simulation_grants
+    where tenant_id=p_tenant and org_id=p_org and actor_id=p_actor for update;
+  if allowed is distinct from true then return false; end if;
+  insert into public.atlas_robotics_simulation_runs(tenant_id,org_id,run_id,status)
+    values(p_tenant,p_org,p_run,'halted')
+    on conflict (tenant_id,org_id,run_id) do update
+      set status='halted', updated_at=now()
+      where atlas_robotics_simulation_runs.status in ('reserved','halted');
+  return found;
+end $$;
+create or replace function public.robotics_simulation_is_halted(
+  p_tenant text,p_org uuid,p_actor uuid,p_run text
+) returns boolean language plpgsql security invoker set search_path = pg_catalog, public as $$
+declare allowed boolean;
+declare stopped boolean;
+begin
+  if p_run !~ '^[A-Za-z0-9_-]{1,128}$' then return true; end if;
+  select enabled into allowed from public.atlas_robotics_simulation_grants
+    where tenant_id=p_tenant and org_id=p_org and actor_id=p_actor for update;
+  if allowed is distinct from true then return true; end if;
+  select status='halted' into stopped from public.atlas_robotics_simulation_runs
+    where tenant_id=p_tenant and org_id=p_org and run_id=p_run;
+  return coalesce(stopped,false);
+end $$;
+revoke all on function public.robotics_simulation_halt(text,uuid,uuid,text) from public,anon,authenticated;
+revoke all on function public.robotics_simulation_is_halted(text,uuid,uuid,text) from public,anon,authenticated;
+-- NOTE: A halt after completion does not undo a completed run.
+-- Authorization gap: actor_id is caller-supplied; these functions MUST NOT be
+-- exposed until bound to verified identity, membership and tenant claims.
