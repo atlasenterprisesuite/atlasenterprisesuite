@@ -1,0 +1,55 @@
+import { executionPermissionsForRole } from '../execution/src/types';
+import type { RoboticsAuthorizationProvider, VerifiedRoboticsSession } from './h-series-server-access';
+
+/**
+ * Isolated server adapter following atlas-creator/_shared/context.ts:
+ * Supabase auth.getUser(token) + organization_members active + organizations active.
+ * The caller must inject a user-scoped, RLS-enforced Supabase client, NEVER service_role.
+ * No public route or credential is created by this module.
+ */
+export interface ScopedSupabaseReader {
+  auth: { getUser(token: string): Promise<{ data: { user: { id: string } | null }; error: unknown }> };
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): { eq(column: string, value: string): Promise<{ data: unknown; error: unknown }> };
+    };
+  };
+}
+type Membership = { org_id: string; user_id: string; role: string; status: string };
+type Organization = { id: string; active: boolean };
+const uuid = (s: string): boolean => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+
+/** ATLAS Ride compatibility tenant binding (tenantId=orgId); no guessed tenant mapping. */
+export function createHSeriesSupabaseAuthorization(
+  accessToken: string,
+  orgId: string,
+  client: ScopedSupabaseReader
+): RoboticsAuthorizationProvider {
+  const trustedToken = accessToken;
+  let resolved: VerifiedRoboticsSession | null = null;
+  return {
+    async verifiedSession() {
+      resolved = null;
+      if (!trustedToken || !uuid(orgId)) return null;
+      const { data, error } = await client.auth.getUser(trustedToken);
+      if (error || !data.user || !uuid(data.user.id)) return null;
+      const session = { userId: data.user.id, tenantId: orgId, organizationId: orgId };
+      resolved = session;
+      return session;
+    },
+    async canReadCatalog(session) {
+      if (!resolved || session !== resolved || session.organizationId !== orgId) return false;
+      const memberships = await client.from('organization_members')
+        .select('org_id,user_id,role,status').eq('org_id',orgId).eq('user_id',session.userId);
+      if (memberships.error || !Array.isArray(memberships.data) || memberships.data.length !== 1) return false;
+      const m = memberships.data[0] as Membership;
+      if (m.org_id !== orgId || m.user_id !== session.userId || m.status !== 'active' ||
+          typeof m.role !== 'string' || !executionPermissionsForRole(m.role).includes('execution.read')) return false;
+      const organizations = await client.from('organizations')
+        .select('id,active').eq('id',orgId).eq('id',orgId);
+      if (organizations.error || !Array.isArray(organizations.data) || organizations.data.length !== 1) return false;
+      const org = organizations.data[0] as Organization;
+      return org.id === orgId && org.active === true;
+    }
+  };
+}
