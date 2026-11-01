@@ -8,7 +8,7 @@ import type { RoboticsAuthorizationProvider, VerifiedRoboticsSession } from './h
  */
 export interface ScopedSupabaseReader {
   auth: { getUser(token: string): Promise<{ data: { user: { id: string } | null }; error: unknown }> };
-  rpc(functionName: string, args: { p_org_id: string; p_permission: string }): Promise<{ data: unknown; error: unknown }>;
+  rpc(functionName: string, args: { org_id: string; permission_code: string }): Promise<{ data: unknown; error: unknown }>;
   from(table: string): {
     select(columns: string): {
       eq(column: string, value: string): { eq(column: string, value: string): Promise<{ data: unknown; error: unknown }> };
@@ -53,7 +53,7 @@ export function createHSeriesSupabaseAuthorization(
       // Authoritative, live permission check under the same user-scoped JWT.
       // The function signature must be verified against the deployed database before use.
       const permission = await client.rpc('has_identity_permission', {
-        p_org_id: orgId, p_permission: 'execution.read'
+        org_id: orgId, permission_code: 'execution.read'
       });
       return !permission.error && permission.data === true;
     }
