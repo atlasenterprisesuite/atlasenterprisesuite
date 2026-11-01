@@ -9,7 +9,7 @@ function fixture(status = 'active', role = 'member', orgActive = true) {
     organization_members: [{org_id:org,user_id:user,status,role}],
     organizations: [{id:org,active:orgActive}]
   };
-  const getUser = vi.fn(async () => ({data:{user:{id:user}},error:null}));
+  const getUser = vi.fn(async (_token?: string) => ({data:{user:{id:user}},error:null}));
   const rpc = vi.fn(async () => ({data:true as unknown,error:null}));
   const from = vi.fn((table:string) => ({
     select: (_columns:string) => ({
@@ -67,6 +67,20 @@ describe('F11 real ATLAS membership adapter (isolated mocks)', () => {
     const first=await provider.verifiedSession();const second=await provider.verifiedSession();
     expect(await provider.canReadCatalog(first!)).toBe(true);
     expect(await provider.canReadCatalog(second!)).toBe(true);
+  });
+  it('F18-001 denies when scoped client identity differs from bearer user',async()=>{
+    const f=fixture();f.getUser.mockImplementation(async (token?:string) => ({
+      data:{user:{id:token ? user : 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'}},error:null
+    }));
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
+    expect(f.from).not.toHaveBeenCalled();
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+  it('F18-002 requires a scoped client identity check before membership access',async()=>{
+    const f=fixture();const result=await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope);
+    expect(result.ok).toBe(true);
+    expect(f.getUser).toHaveBeenCalledWith('token');
+    expect(f.getUser).toHaveBeenCalledWith();
   });
   it('F17-001 calls the exact atlas-core RPC with verified organization and permission',async()=>{
     const f=fixture();const result=await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope);
