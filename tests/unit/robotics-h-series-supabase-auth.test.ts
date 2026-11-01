@@ -56,6 +56,18 @@ describe('F11 real ATLAS membership adapter (isolated mocks)', () => {
     const f=fixture();f.rpc.mockResolvedValueOnce({data:'true',error:null});
     expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
   });
+  it('F16-001 denies reuse of a previously authorized session capability',async()=>{
+    const f=fixture();const provider=createHSeriesSupabaseAuthorization('token',org,f.client);
+    const session=await provider.verifiedSession();expect(session).not.toBeNull();
+    expect(await provider.canReadCatalog(session!)).toBe(true);
+    expect(await provider.canReadCatalog(session!)).toBe(false);
+  });
+  it('F16-002 independently accepts two verified sessions without overwriting either',async()=>{
+    const f=fixture();const provider=createHSeriesSupabaseAuthorization('token',org,f.client);
+    const first=await provider.verifiedSession();const second=await provider.verifiedSession();
+    expect(await provider.canReadCatalog(first!)).toBe(true);
+    expect(await provider.canReadCatalog(second!)).toBe(true);
+  });
   it('F11-008 denies changed membership on next read',async()=>{
     const f=fixture();const provider=createHSeriesSupabaseAuthorization('token',org,f.client);
     expect((await readAuthorizedHSeriesCatalog(provider,scope)).ok).toBe(true);
