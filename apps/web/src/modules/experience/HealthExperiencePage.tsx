@@ -7,6 +7,9 @@ const healthSections: ModuleExperienceSection[] = [
     title: 'Research and wellbeing with explicit boundaries',
     description: 'The current Health surface exposes implemented research and wellbeing routes while clinical and hospital-system claims remain gated until real integrations exist.',
     cards: [
+      { label: 'Educational prototype', title: 'Explora la columna lumbar',
+        description: 'Esquema 2D interactivo por capas. Revisión anatómica profesional pendiente.',
+        to: '/health/anatomy/lumbar' },
       {
         label: 'Research & Innovation',
         title: 'Health Frontiers',
