@@ -10,6 +10,7 @@ function fixture(status = 'active', role = 'member', orgActive = true) {
     organizations: [{id:org,active:orgActive}]
   };
   const getUser = vi.fn(async () => ({data:{user:{id:user}},error:null}));
+  const rpc = vi.fn(async () => ({data:true as unknown,error:null}));
   const from = vi.fn((table:string) => ({
     select: (_columns:string) => ({
       eq: (_key:string,_value:string) => ({
@@ -17,7 +18,7 @@ function fixture(status = 'active', role = 'member', orgActive = true) {
       })
     })
   }));
-  return { client:{auth:{getUser},from} as unknown as ScopedSupabaseReader, tables, getUser, from };
+  return { client:{auth:{getUser},from,rpc} as unknown as ScopedSupabaseReader, tables, getUser, from, rpc };
 }
 describe('F11 real ATLAS membership adapter (isolated mocks)', () => {
   it('F11-001 allows verified user with active member and active organization',async()=>{
@@ -41,6 +42,18 @@ describe('F11 real ATLAS membership adapter (isolated mocks)', () => {
   });
   it('F11-007 denies authentication failure',async()=>{
     const f=fixture();f.getUser.mockRejectedValueOnce(new Error('offline'));
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
+  });
+  it('F12-001 denies absent effective permission even for active membership',async()=>{
+    const f=fixture();f.rpc.mockResolvedValueOnce({data:false,error:null});
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
+  });
+  it('F12-002 denies permission lookup failure',async()=>{
+    const f=fixture();f.rpc.mockRejectedValueOnce(new Error('permission backend down'));
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
+  });
+  it('F12-003 denies permission response that is not boolean true',async()=>{
+    const f=fixture();f.rpc.mockResolvedValueOnce({data:'true',error:null});
     expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
   });
   it('F11-008 denies changed membership on next read',async()=>{
