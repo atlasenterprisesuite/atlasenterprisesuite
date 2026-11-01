@@ -26,19 +26,19 @@ export function createHSeriesSupabaseAuthorization(
   client: ScopedSupabaseReader
 ): RoboticsAuthorizationProvider {
   const trustedToken = accessToken;
-  let resolved: VerifiedRoboticsSession | null = null;
+  const verifiedSessions = new WeakSet<VerifiedRoboticsSession>();
   return {
     async verifiedSession() {
-      resolved = null;
       if (!trustedToken || !uuid(orgId)) return null;
       const { data, error } = await client.auth.getUser(trustedToken);
       if (error || !data.user || !uuid(data.user.id)) return null;
       const session = { userId: data.user.id, tenantId: orgId, organizationId: orgId };
-      resolved = session;
+      verifiedSessions.add(session);
       return session;
     },
     async canReadCatalog(session) {
-      if (!resolved || session !== resolved || session.organizationId !== orgId) return false;
+      if (!verifiedSessions.has(session) || session.organizationId !== orgId) return false;
+      verifiedSessions.delete(session); // single-use authorization capability; reject replay
       const memberships = await client.from('organization_members')
         .select('org_id,user_id,role,status').eq('org_id',orgId).eq('user_id',session.userId);
       if (memberships.error || !Array.isArray(memberships.data) || memberships.data.length !== 1) return false;
