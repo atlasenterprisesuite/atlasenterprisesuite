@@ -1,4 +1,3 @@
-import { executionPermissionsForRole } from '../execution/src/types';
 import type { RoboticsAuthorizationProvider, VerifiedRoboticsSession } from './h-series-server-access';
 
 /**
@@ -9,6 +8,7 @@ import type { RoboticsAuthorizationProvider, VerifiedRoboticsSession } from './h
  */
 export interface ScopedSupabaseReader {
   auth: { getUser(token: string): Promise<{ data: { user: { id: string } | null }; error: unknown }> };
+  rpc(functionName: string, args: { p_org_id: string; p_permission: string }): Promise<{ data: unknown; error: unknown }>;
   from(table: string): {
     select(columns: string): {
       eq(column: string, value: string): { eq(column: string, value: string): Promise<{ data: unknown; error: unknown }> };
@@ -44,12 +44,18 @@ export function createHSeriesSupabaseAuthorization(
       if (memberships.error || !Array.isArray(memberships.data) || memberships.data.length !== 1) return false;
       const m = memberships.data[0] as Membership;
       if (m.org_id !== orgId || m.user_id !== session.userId || m.status !== 'active' ||
-          typeof m.role !== 'string' || !executionPermissionsForRole(m.role).includes('execution.read')) return false;
+          typeof m.role !== 'string') return false;
       const organizations = await client.from('organizations')
         .select('id,active').eq('id',orgId).eq('id',orgId);
       if (organizations.error || !Array.isArray(organizations.data) || organizations.data.length !== 1) return false;
       const org = organizations.data[0] as Organization;
-      return org.id === orgId && org.active === true;
+      if (org.id !== orgId || org.active !== true) return false;
+      // Authoritative, live permission check under the same user-scoped JWT.
+      // The function signature must be verified against the deployed database before use.
+      const permission = await client.rpc('has_identity_permission', {
+        p_org_id: orgId, p_permission: 'execution.read'
+      });
+      return !permission.error && permission.data === true;
     }
   };
 }
