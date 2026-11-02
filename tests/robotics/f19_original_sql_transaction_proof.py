@@ -35,8 +35,9 @@ def complete(c, org, identity, tenant):
           where organization_id=%s and user_id=%s for update""",(org,identity))
         row=q.fetchone()
         if row is None or row[0] != "active": return False
-        q.execute("select public.robotics_simulation_complete(%s,%s,%s,'proof')",
-                  (tenant,org,identity))
+        q.execute("select set_config('test.verified_actor',%s,true)",(identity,))
+        q.execute("select public.robotics_simulation_complete(%s,%s,'proof')",
+                  (tenant,org))
         return q.fetchone()[0]
 
 def revoke(c, org, identity):
