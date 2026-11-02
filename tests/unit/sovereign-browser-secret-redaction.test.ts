@@ -69,6 +69,17 @@ describe('ATLAS 777 browser queue must not persist unapproved side effects or ra
         { type, domain: 'example.com', target, metadata: { note: 'synthetic-unclassified-private-value' } },
         '2026-11-02T00:00:00Z')).toThrow('browser_unexpected_payload');
     });
+  it('rejects URL query and fragment payloads before persisting navigation', () => {
+    for (const target of [
+      'https://example.com/?trace=synthetic-only',
+      'https://example.com/#synthetic-only',
+      'https://other.example/path',
+    ]) {
+      expect(() => prepareBrowserJob(restrictedEnvelope,
+        { type: 'navigate', domain: 'example.com', target },
+        '2026-11-02T00:00:00Z')).toThrow();
+    }
+  });
   it('retains safe read-only queue preparation', () => {
     expect(prepareBrowserJob(restrictedEnvelope, { type: 'navigate', domain: 'example.com',
       target: 'https://example.com/' }, '2026-11-02T00:00:00Z').action.type).toBe('navigate');
