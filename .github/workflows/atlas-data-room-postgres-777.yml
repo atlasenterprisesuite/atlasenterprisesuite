@@ -69,4 +69,4 @@ jobs:
       - name: Install pinned dependencies without postinstall side effects
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Test Data Room user-scoped sources and HTTP release denial
-        run: npx vitest run tests/unit/secure-data-room-authorization-777.test.ts tests/unit/secure-data-room-read-boundary-777.test.ts tests/unit/secure-data-room-trusted-adapter-777.test.ts tests/unit/secure-data-room-trusted-source-negative-777.test.ts tests/unit/secure-data-room-supabase-sources-777.test.ts tests/unit/secure-data-room-http-777.test.ts tests/integration/secure-data-room-release-denial-777.test.ts
+        run: npx vitest run tests/unit/secure-data-room-authorization-777.test.ts tests/unit/secure-data-room-read-boundary-777.test.ts tests/unit/secure-data-room-trusted-adapter-777.test.ts tests/unit/secure-data-room-trusted-source-negative-777.test.ts tests/unit/secure-data-room-supabase-sources-777.test.ts tests/unit/secure-data-room-http-777.test.ts tests/unit/secure-data-room-http-hardening-777.test.ts tests/integration/secure-data-room-release-denial-777.test.ts
