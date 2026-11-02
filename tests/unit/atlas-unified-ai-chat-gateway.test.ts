@@ -40,6 +40,7 @@ function fakeStore(options: { emergencyAllowed?: boolean } = {}) {
       return item;
     },
     listMessages: async ({ conversation_id }: any) => messages.get(conversation_id) ?? [],
+    listRecentMessages: async ({ conversation_id, limit = 12 }: any) => (messages.get(conversation_id) ?? []).slice(-limit),
     startRequest: async (value: any) => {
       const item = { id: `request-${++requestCount}`, ...value };
       requests.set(item.id, item);
@@ -255,4 +256,136 @@ describe('ATLAS Unified AI gateway', () => {
       request: { message: 'Council', mode: 'council' },
     })).rejects.toMatchObject({ code: 'cost_approval_required' });
   });
+  it('preserves demanding conversation effort across a short authorized follow-up', async () => {
+    const { gateway, store } = makeGateway();
+    const principal = context('req-context', ['intelligence.use']);
+    const first = await gateway.execute({
+      context: principal,
+      request: { message: 'ATLAS 777 REVIEW — audita P0 y RLS para la organización.', intent: 'auto' },
+    });
+    const second = await gateway.execute({
+      context: principal,
+      request: { message: 'Continúa', conversation_id: first.conversation_id, intent: 'auto' },
+    });
+    expect(first.profile).toBe('deep');
+    expect(second.profile).toBe('deep');
+    expect(second.selection_reason).toBe('authorized_conversation_continuity');
+    const messages = store._messages.get(first.conversation_id) ?? [];
+    expect(messages.filter((item: any) => item.role === 'assistant').at(-1)?.content?.routing)
+      .toMatchObject({ profile: 'deep', requested_profile: 'auto', selection_reason: 'authorized_conversation_continuity' });
+  });
+
+  it('does not inherit previous effort when the user explicitly selects fast', async () => {
+    const { gateway } = makeGateway();
+    const principal = context('req-manual', ['intelligence.use']);
+    const first = await gateway.execute({
+      context: principal,
+      request: { message: 'ATLAS 777 REVIEW — audita P0', intent: 'auto' },
+    });
+    const second = await gateway.execute({
+      context: principal,
+      request: { message: 'Continúa', conversation_id: first.conversation_id, intent: 'fast' },
+    });
+    expect(second.profile).toBe('fast');
+    expect(second.selection_reason).toBe('manual_selection');
+  });
+
+  it('fails closed after identity revocation during inference without persisting assistant text', async () => {
+    const store = fakeStore();
+    let revoked = false;
+    const adapter = fakeAdapter('openai');
+    adapter.execute = async () => {
+      revoked = true;
+      return { provider: 'openai', model: 'openai-model', text: 'PRIVATE_ORG_OUTPUT',
+        capabilities_used: ['generation'], usage: {}, provenance: [], tool_calls: [] };
+    };
+    const registry = createProviderRegistry({ providers: [adapter] });
+    const router = createIntelligenceRouter({ providers: [routeProviders[0]] });
+    const gateway = createIntelligenceGateway({
+      router, registry, store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, zero_cost_providers: [] },
+      reauthorize: async () => revoked
+        ? { ...context('fresh', []), permissions: [] }
+        : context('fresh', ['intelligence.use']),
+    });
+    await expect(gateway.execute({
+      context: context('request-revoke', ['intelligence.use']),
+      request: { message: 'Summarize organization records', intent: 'fast', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    const serialized = JSON.stringify([...store._messages.values()]);
+    expect(serialized).not.toContain('PRIVATE_ORG_OUTPUT');
+  });
+
+  it.each([
+    { organization_id: 'org-other', user_id: 'user-1' },
+    { organization_id: 'org-1', user_id: 'intruder' },
+  ])('rejects identity changes between inference and response release', async (newPrincipal) => {
+    const store = fakeStore();
+    const adapter = fakeAdapter('openai');
+    const registry = createProviderRegistry({ providers: [adapter] });
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }), registry, store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, zero_cost_providers: [] },
+      reauthorize: async () => ({ ...context('fresh', ['intelligence.use']), ...newPrincipal }),
+    });
+    await expect(gateway.execute({
+      context: context('request-identity', ['intelligence.use']),
+      request: { message: 'Check accounting totals', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
+  it('stops response release when the auth source is unavailable (no silent fallback)', async () => {
+    const store = fakeStore();
+    const registry = createProviderRegistry({ providers: [fakeAdapter('openai')] });
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }), registry, store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true, zero_cost_providers: [] },
+      reauthorize: async () => { throw Object.assign(new Error('identity_unavailable'), { code: 'identity_unavailable', status: 502 }); },
+    });
+    await expect(gateway.execute({
+      context: context('request-outage', ['intelligence.use']),
+      request: { message: 'Private user information', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'identity_unavailable', status: 502 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
+  it('blocks a downgraded role from receiving higher-privilege inference after reauthorization', async () => {
+    const store = fakeStore();
+    const adapter = fakeAdapter('openai');
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }),
+      registry: createProviderRegistry({ providers: [adapter] }),
+      store,
+      costPolicy: { allowed_providers: ['openai'], allow_paid_single: true },
+      reauthorize: async () => ({
+        ...context('fresh', ['intelligence.use']),
+        roles: ['member'],
+      }),
+    });
+    await expect(gateway.execute({
+      context: { ...context('request-role', ['intelligence.use', 'finance.read']), roles: ['admin'] },
+      request: { message: 'Analyze private AR data', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
+  it('blocks mid-request removal of a source permission even if intelligence.use remains', async () => {
+    const store = fakeStore();
+    const gateway = createIntelligenceGateway({
+      router: createIntelligenceRouter({ providers: [routeProviders[0]] }),
+      registry: createProviderRegistry({ providers: [fakeAdapter('openai')] }),
+      store, costPolicy: { allowed_providers: ['openai'], allow_paid_single: true },
+      reauthorize: async () => ({
+        ...context('fresh', ['intelligence.use']),
+        roles: ['member'],
+      }),
+    });
+    await expect(gateway.execute({
+      context: { ...context('request-source-revoke', ['intelligence.use', 'documents.read']), roles: ['member'] },
+      request: { message: 'Summarize restricted source', mode: 'openai' },
+    })).rejects.toMatchObject({ code: 'permission_denied', status: 403 });
+    expect(JSON.stringify([...store._messages.values()])).not.toContain('openai reply');
+  });
+
 });

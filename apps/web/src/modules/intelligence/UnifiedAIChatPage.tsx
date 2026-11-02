@@ -42,6 +42,7 @@ const MODES: Array<{ value: AssistantMode; label: string; short: string }> = [
 ];
 
 const PROFILES: Array<{ value: AssistantProfile; label: string }> = [
+  { value: 'auto', label: 'Auto · adapts to task' },
   { value: 'fast', label: 'Fast' },
   { value: 'balanced', label: 'Balanced' },
   { value: 'deep', label: 'Deep' }
@@ -142,7 +143,7 @@ export function UnifiedAIChatPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [mode, setMode] = useState<AssistantMode>('auto');
-  const [profile, setProfile] = useState<AssistantProfile>('balanced');
+  const [profile, setProfile] = useState<AssistantProfile>('auto');
   const [prompt, setPrompt] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
   const [busy, setBusy] = useState(false);

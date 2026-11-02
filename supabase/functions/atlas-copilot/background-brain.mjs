@@ -1,5 +1,6 @@
 import {evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
-import {normalizeIntelligenceRequest} from './intelligence-gateway.mjs';
+import {normalizeAgentContext} from './agentic-core.mjs';
+import {resolveAuthorizedIntelligenceRequest} from './intelligence-gateway.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
@@ -19,13 +20,28 @@ function terminalFailure(status){
   return ['failed','cancelled','incomplete'].includes(String(status||'').toLowerCase());
 }
 
-export function createBackgroundBrain({router,registry,store,costPolicy,runDetached=null,clock=Date.now}={}){
+export function createBackgroundBrain({router,registry,store,costPolicy,reauthorize=null,runDetached=null,clock=Date.now}={}){
   if(!registry||!store)throw new TypeError('background_brain_dependencies_required');
+  if(typeof reauthorize!=='function')throw new TypeError('background_authorization_required');
+
+  async function requireCurrentAccess(context,conversationId){
+    const principal=normalizeAgentContext(context);
+    if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
+    const fresh=normalizeAgentContext(await reauthorize({context:principal,conversation_id:conversationId}));
+    const rolesChanged=principal.roles.some(role=>!fresh.roles.includes(role));
+    const permissionsRevoked=principal.permissions.some(permission=>!fresh.permissions.includes(permission));
+    if(fresh.organization_id!==principal.organization_id||fresh.user_id!==principal.user_id||rolesChanged||permissionsRevoked||!has(fresh,'intelligence.use'))throw fail('permission_denied',403);
+    await store.getConversation({context:fresh,id:conversationId});
+    return fresh;
+  }
 
   async function finalize({context,requestRow,providerResult,routing}){
     const conversationId=String(requestRow.conversation_id||'');
     const traceId=String(requestRow.trace_id||'');
     if(!conversationId||!traceId)throw fail('background_request_invalid',500);
+    // Revoke before reading or storing provider output. This includes detached tasks
+    // whose original HTTP request already returned.
+    await requireCurrentAccess(context,conversationId);
     const existing=await store.findAssistantMessageByTrace({context,conversation_id:conversationId,trace_id:traceId});
     const text=String(providerResult?.text||'').trim();
     if(!text)throw fail('internal_error',500,{provider:providerResult?.provider||requestRow.provider||null});
@@ -58,10 +74,10 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
     return {status:'completed',background:true,trace_id:traceId,conversation_id:conversationId,provider:providerResult.provider||requestRow.provider,model:providerResult.model||requestRow.model||null,text};
   }
 
-  async function start({context,request}){
+  async function start({context,request,preparedRequest=null}){
     if(!router)throw new TypeError('background_router_required');
     if(!has(context,'intelligence.use'))throw fail('permission_denied',403);
-    const normalized=normalizeIntelligenceRequest(request);
+    const normalized=await resolveAuthorizedIntelligenceRequest({context,request,store,preparedRequest});
     const route=router.route(normalized);
     if(route.mode==='council')throw fail('background_provider_unavailable',409,{mode:'council'});
     const candidates=route.mode==='auto'
@@ -113,6 +129,8 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
       mode:candidateRoute.mode,
       providers:[selected.providerId],
       profile:candidateRoute.profile,
+      requested_profile:normalized.requested_intent,
+      selection_reason:normalized.reasoning_decision.reason,
       fallback_used:candidateRoute.fallback_used,
       reason:candidateRoute.reason,
       cost_decision:costDecision?.reason||null,
@@ -203,6 +221,8 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
   async function poll({context,traceId}){
     if(!has(context,'intelligence.use'))throw fail('permission_denied',403);
     const requestRow=await store.getRequestByTrace({context,trace_id:traceId});
+    // Authorize before returning already stored text or retrieving pending output.
+    await requireCurrentAccess(context,String(requestRow.conversation_id||''));
     if(requestRow.status==='completed'){
       const persisted=await store.findAssistantMessageByTrace({
         context,

@@ -1,4 +1,4 @@
-import {createIntelligenceGateway,createIntelligenceRouter,normalizeIntelligenceError} from './intelligence-gateway.mjs';
+import {createIntelligenceGateway,createIntelligenceRouter,resolveAuthorizedIntelligenceRequest,normalizeIntelligenceError} from './intelligence-gateway.mjs';
 import {resolveIntelligenceContext} from './atlas-intelligence-auth.mjs';
 import {createIntelligenceStore} from './atlas-intelligence-store.mjs';
 import {createOpenAIResponsesAdapter} from './openai-responses-adapter.mjs';
@@ -21,7 +21,7 @@ const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const ORACLE='/functions/v1/atlas-oracle';
-const VERSION=17;
+const VERSION=18;
 const READINESS_CACHE_TTL_MS=15_000;
 const readinessCache=new Map();
 const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','codex-sovereign'];
@@ -330,15 +330,24 @@ async function approvedMemoryForAssistant(rt,context,{message,module}={}){
 }
 async function handleUsage(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),url=new URL(req.url),days=Math.min(90,Math.max(1,Number(url.searchParams.get('days'))||30)),summary=await store.usageSummary({context:resolved.context,days});return json({ok:true,...summary});}
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
-async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});await brain.reconcileConversation({context:resolved.context,conversationId:id}).catch(()=>[]);const conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
-async function handleBackground(req,url){if(req.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);const traceId=String(url.searchParams.get('trace_id')||'').trim();if(!traceId)return json({ok:false,error:'invalid_input'},400);const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});const result=await brain.poll({context:resolved.context,traceId});return json({ok:true,...result});}
+async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy,reauthorize:async ({context})=>(await contextFor(req,context.organization_id)).context});await brain.reconcileConversation({context:resolved.context,conversationId:id}).catch(()=>[]);
+  // A reconciliation can outlive the access grant used to begin this GET.
+  // Recheck membership and privilege set before returning any stored messages.
+  const fresh=(await contextFor(req,resolved.context.organization_id)).context;
+  const changedIdentity=fresh.organization_id!==resolved.context.organization_id||fresh.user_id!==resolved.context.user_id;
+  const revokedPermissions=resolved.context.permissions.some(permission=>!fresh.permissions.includes(permission));
+  const downgradedRole=resolved.context.roles.some(role=>!fresh.roles.includes(role));
+  if(changedIdentity||revokedPermissions||downgradedRole)throw Object.assign(new Error('permission_denied'),{code:'permission_denied',status:403});
+  const conversation=await store.getConversation({context:fresh,id}),messages=await store.listMessages({context:fresh,conversation_id:id,limit:50});
+  return json({ok:true,conversation,messages});}
+async function handleBackground(req,url){if(req.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);const traceId=String(url.searchParams.get('trace_id')||'').trim();if(!traceId)return json({ok:false,error:'invalid_input'},400);const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy,reauthorize:async ({context})=>(await contextFor(req,context.organization_id)).context});const result=await brain.poll({context:resolved.context,traceId});return json({ok:true,...result});}
 async function handleStatus(req){
   const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced',true),diarization=await diarizationReadiness(rt,localAi);
   const openai=providers.find(p=>p.id==='openai');
   const zeroCostReady=providers.some(p=>rt.costPolicy.zero_cost_providers.includes(p.id)&&p.configured===true&&p.verified===true);
   const emergencyConfigured=rt.costPolicy.emergency_openai_enabled===true&&rt.costPolicy.emergency_openai_daily_budget_usd>0&&rt.costPolicy.emergency_openai_reserve_usd>0;
   const emergencyReady=emergencyConfigured&&openai?.configured===true&&openai?.verified===true;
-  return json({ok:true,authenticated:true,local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto',...PROVIDER_IDS,'council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning','private-oracle'],profiles:['fast','balanced','deep'],cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'atlas-direct-deploy'});
+  return json({ok:true,authenticated:true,local_runtime:{state:localAi.state,last_error_code:localAi.lastErrorCode,last_verified_at:localAi.lastVerifiedAt,host_required:localAi.state!=='verified'},diarization,provider:'openai',provider_state:legacyProviderState(openai),model:openai?.model||null,models:rt.openaiModels,providers,modes:['auto',...PROVIDER_IDS,'council'],api:'unified-provider-router',storage_state:rt.storageConfigured?'configured':'not_configured',organization:resolved.context.organization_id,role:resolved.context.roles[0]||null,capabilities:['generation','reasoning','private-oracle'],profiles:['auto','fast','balanced','deep'],cost_policy:{enforce_zero_cost:rt.costPolicy.enforce_zero_cost,automatic_paid_calls:emergencyReady||(!rt.costPolicy.enforce_zero_cost&&(rt.costPolicy.allow_paid_single||rt.costPolicy.allow_council)),automatic_api_cost_usd:emergencyReady?rt.costPolicy.emergency_openai_reserve_usd:rt.costPolicy.enforce_zero_cost?0:null,zero_cost_ready:zeroCostReady,allow_paid_single:rt.costPolicy.allow_paid_single,allow_council:rt.costPolicy.allow_council,allowed_providers:rt.costPolicy.allowed_providers,zero_cost_providers:rt.costPolicy.zero_cost_providers,emergency_openai_fallback:{enabled:rt.costPolicy.emergency_openai_enabled,configured:emergencyConfigured,ready:emergencyReady,daily_budget_usd:rt.costPolicy.emergency_openai_daily_budget_usd,reserve_usd:rt.costPolicy.emergency_openai_reserve_usd,max_output_tokens:rt.costPolicy.emergency_openai_max_output_tokens}},repositoryMutation:'atlas-direct-deploy'});
 }
 async function handleOracle(req,body,message,oracleIntent,resolved){
   const authorization=req.headers.get('authorization')||'';
@@ -364,23 +373,32 @@ async function handleChat(req){
   const clientLegacy=String(body?.context||'').trim().slice(0,4000),intent=String(body?.intent||'balanced'),mode=String(body?.mode||'auto'),requestedExecutionMode=String(body?.execution_mode||'auto'),executionMode=['auto','interactive','background'].includes(requestedExecutionMode)?requestedExecutionMode:'auto';
   const memory=await approvedMemoryForAssistant(rt,resolved.context,{message,module:requestedModule});
   const legacy=[clientLegacy,memory.text].filter(Boolean).join('\n\n').slice(0,12000);
-  const {registry,providers}=await readinessFor(rt,intent);
-  const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers,preferredProviders:rt.costPolicy.zero_cost_providers});
-  const council=createCouncilOrchestrator({registry});
-  const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway()});
   const request=body?.context!==undefined&&body?.module===undefined
     ?{module:'workbench',intent:'balanced',mode,message,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy),atlas_memory_records:memory.recordIds},legacy_context:legacy}
     :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:{...(body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{}),atlas_memory_records:memory.recordIds},legacy_context:legacy};
-  if(shouldRunInBackground({executionMode,message,profile:intent})){
-    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,runDetached:edgeBackgroundRunner()});
+  const prepared=await resolveAuthorizedIntelligenceRequest({context:resolved.context,request,store});
+  const {registry,providers}=await readinessFor(rt,prepared.intent);
+  const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers,preferredProviders:rt.costPolicy.zero_cost_providers});
+  const council=createCouncilOrchestrator({registry});
+  const gateway=createIntelligenceGateway({
+    router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway(),
+    reauthorize:async ()=>{
+      // Re-resolve bearer identity and active membership after provider inference.
+      // Do not trust the client-supplied organization or cached permission set.
+      const fresh=await contextFor(req,body?.organization_id);
+      return fresh.context;
+    }
+  });
+  if(shouldRunInBackground({executionMode,message,profile:prepared.intent})){
+    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,reauthorize:async ({context})=>(await contextFor(req,context.organization_id)).context,runDetached:edgeBackgroundRunner()});
     try{
-      const background=await brain.start({context:resolved.context,request});
+      const background=await brain.start({context:resolved.context,request,preparedRequest:prepared});
       return json({ok:true,...background,text:background.text||'',provider_state:'verified_for_request',provider_readiness:providers,memory:{approved_records_used:memory.recordIds.length,record_ids:memory.recordIds},execution:{repositoryMutation:false,repairQueue:'available',mode:'background'}},background.status==='completed'?200:202);
     }catch(error){
       if(executionMode==='background'||error?.code!=='background_provider_unavailable')throw error;
     }
   }
-  const result=await gateway.execute({context:resolved.context,request});
+  const result=await gateway.execute({context:resolved.context,request,preparedRequest:prepared});
   return json({ok:true,...result,text:result.output,provider_state:'verified_for_request',provider_readiness:providers,memory:{approved_records_used:memory.recordIds.length,record_ids:memory.recordIds},execution:{repositoryMutation:false,repairQueue:'available',mode:'analysis'}});
 }
 
