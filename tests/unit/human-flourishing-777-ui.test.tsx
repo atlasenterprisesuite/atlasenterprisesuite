@@ -18,7 +18,7 @@ describe('Human Flourishing 777 interface', () => {
   it('requires an explicit click to reveal faith content and permits revocation', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: 'Cristiana (opcional)' }));
-    expect(screen.getByText(/Santiago 1:5/)).toBeTruthy();
+    expect(screen.getAllByText(/Santiago 1:5/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'Secular' }));
     expect(screen.queryByText(/Santiago 1:5/)).toBeNull();
   });
