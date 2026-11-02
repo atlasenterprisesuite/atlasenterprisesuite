@@ -89,7 +89,7 @@ declare allowed boolean;
 declare stopped boolean;
 begin
   if v_actor is null then return true; end if;
-  if p_run !~ '^[A-Za-z0-9_-]{1,128}
+  if p_run !~ '^[A-Za-z0-9_-]{1,128}$' then return true; end if;
   select enabled into allowed from public.atlas_robotics_simulation_grants
     where tenant_id=p_tenant and org_id=p_org and actor_id=v_actor for update;
   if allowed is distinct from true then return true; end if;
@@ -99,19 +99,5 @@ begin
 end $$;
 revoke all on function public.robotics_simulation_halt(text,uuid,text) from public,anon,authenticated;
 revoke all on function public.robotics_simulation_is_halted(text,uuid,text) from public,anon,authenticated;
--- NOTE: A halt after completion does not undo a completed run.
 -- P0: Membership, tenant binding, and role-revocation serialization remain unproven.
 -- Do not expose these functions to API roles.
- then return true; end if;
-  select enabled into allowed from public.atlas_robotics_simulation_grants
-    where tenant_id=p_tenant and org_id=p_org and actor_id=v_actor for update;
-  if allowed is distinct from true then return true; end if;
-  select status='halted' into stopped from public.atlas_robotics_simulation_runs
-    where tenant_id=p_tenant and org_id=p_org and run_id=p_run;
-  return coalesce(stopped,false);
-end $$;
-revoke all on function public.robotics_simulation_halt(text,uuid,text) from public,anon,authenticated;
-revoke all on function public.robotics_simulation_is_halted(text,uuid,text) from public,anon,authenticated;
--- NOTE: A halt after completion does not undo a completed run.
--- Authorization gap: actor_id is caller-supplied; these functions MUST NOT be
--- exposed until bound to verified identity, membership and tenant claims.
