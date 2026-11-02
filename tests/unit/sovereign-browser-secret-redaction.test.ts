@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeBrowserResult } from '../../packages/execution/src/browser-executor';
+import { prepareBrowserJob, sanitizeBrowserResult } from '../../packages/execution/src/browser-executor';
 
 // Synthetic-only fixtures: assemble at runtime to avoid false-positive
 // secret-scanner incidents from hardcoded JWT-shaped strings.
@@ -37,5 +37,30 @@ describe('ATLAS 777 browser untrusted page text secret handling', () => {
   it('preserves ordinary non-secret text and existing output length limit', () => {
     expect(sanitizeBrowserResult('Public heading')).toBe('Public heading');
     expect((sanitizeBrowserResult('x'.repeat(5000)) as string).length).toBe(2000);
+  });
+});
+
+const restrictedEnvelope = {
+  workflowId: 'workflow', stepId: 'step', tenantId: 'tenant', organizationId: 'org',
+  allowedDomains: ['example.com'],
+  allowedActions: ['navigate', 'read_text', 'click', 'type', 'submit', 'create_dns_txt', 'click_openai_check'],
+  deniedActions: [], autonomyLevel: 'autonomous' as const,
+  expiresAt: '2099-01-01T00:00:00Z',
+};
+
+describe('ATLAS 777 browser queue must not persist unapproved side effects or raw form secrets', () => {
+  it('rejects raw type input before constructing a persisted browser job', () => {
+    expect(() => prepareBrowserJob(restrictedEnvelope,
+      { type: 'type', domain: 'example.com', target: '#password', value: 'synthetic-only-test-input' },
+      '2026-11-02T00:00:00Z')).toThrow('browser_sensitive_input_requires_vault');
+  });
+  it.each(['click', 'submit', 'create_dns_txt', 'click_openai_check'] as const)(
+    'rejects %s without a persisted human approval', type => {
+      expect(() => prepareBrowserJob(restrictedEnvelope, { type, domain: 'example.com' },
+        '2026-11-02T00:00:00Z')).toThrow('human_approval_required');
+    });
+  it('retains safe read-only queue preparation', () => {
+    expect(prepareBrowserJob(restrictedEnvelope, { type: 'navigate', domain: 'example.com',
+      target: 'https://example.com/' }, '2026-11-02T00:00:00Z').action.type).toBe('navigate');
   });
 });
