@@ -5,7 +5,7 @@ on:
       - audit/supabase-definer-rls-777-20261101
     paths:
       - '.github/workflows/atlas-777-isolated-postgres.yml'
-      - 'tests/security/atlas-777-postgres-smoke.sql'
+      - 'tests/security/**'
   pull_request:
     paths:
       - '.github/workflows/atlas-777-isolated-postgres.yml'
@@ -51,6 +51,11 @@ jobs:
           test "$isolation" = 'read committed' || { echo "UNEXPECTED_ISOLATION: $isolation"; exit 1; }
           echo "POSTGRES_17_ENGINE_READY SHA=${GITHUB_SHA} isolation=${isolation}"
           psql -v ON_ERROR_STOP=1 -f tests/security/atlas-777-postgres-smoke.sql
+      - name: Check prerequisites for original People migration (fail closed)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f tests/security/atlas-777-people-real-dependencies.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923201500_atlas_people_core.sql
       - name: Explicitly reject premature RPC certification
         run: |
           echo 'ENGINE_SMOKE_ONLY: real 22 RPC migration/authorization/revocation certification not yet executed'
