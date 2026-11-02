@@ -27,7 +27,9 @@ describe('ATLAS Sovereign Browser fail closed', () => {
   it('rejects reserved and internal DNS suffixes before opening a page', async () => {
     const {adapter,browser}=setup();
     for (const domain of ['service.internal','host.local','metadata.google.internal','host.test','host.invalid']) {
-      await expect(adapter.execute(job({type:'navigate',domain,target:'https://'+domain+'/'}),context)).rejects.toThrow('unsafe_navigation');
+      const scoped = job({type:'navigate',domain,target:'https://'+domain+'/'});
+      scoped.executionEnvelope.allowedDomains.push(domain);
+      await expect(adapter.execute(scoped,context)).rejects.toThrow('unsafe_navigation');
     }
     expect(browser.newPage).not.toHaveBeenCalled();
   });
