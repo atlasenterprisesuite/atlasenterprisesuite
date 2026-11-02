@@ -23,43 +23,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Execute negative evidence tests
         run: node --test tests/executor/gravity-runner-777.test.mjs
-      - name: Inspect P0 PRs (fail closed; never certify)
+      - name: Inspect effective required checks with exact SHA (fail closed)
         shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p evidence
-          printf '%s\n' '{"mode":"read-only","certified":false,"p0":"NO-GO"}' > evidence/ledger.json
-          : > evidence/blockers.txt
-          # A failed API request, invalid response, or truncated check list is a blocker.
-          for pr in 976 968; do
-            if ! gh api "repos/$GH_REPO/pulls/$pr" --jq '{number,state,draft,head_sha:.head.sha,base_sha:.base.sha,updated_at}' > "evidence/pr-$pr.json"; then
-              echo "P0: PR API failed for $pr" >> evidence/blockers.txt
-              continue
-            fi
-            sha="$(jq -er '.head_sha | select(test("^[a-f0-9]{40}$"))' "evidence/pr-$pr.json")" || {
-              echo "P0: invalid HEAD for $pr" >> evidence/blockers.txt
-              continue
-            }
-            if ! gh api "repos/$GH_REPO/commits/$sha/check-runs?per_page=100" --jq '{total_count,check_runs:[.check_runs[]|{name,status,conclusion,head_sha,html_url}]}' > "evidence/checks-$pr.json"; then
-              echo "P0: check-runs API failed for $pr" >> evidence/blockers.txt
-              continue
-            fi
-            if ! jq -e --arg sha "$sha" '
-              (.total_count | type) == "number" and
-              (.check_runs | type) == "array" and
-              .total_count > 0 and
-              .total_count == (.check_runs | length) and
-              all(.check_runs[]; .status == "completed" and .conclusion == "success" and .head_sha == $sha)
-            ' "evidence/checks-$pr.json" >/dev/null; then
-              echo "P0: missing, failed, incomplete, SHA-mismatched or unpaginated checks for $pr" >> evidence/blockers.txt
-            fi
-          done
-          # Required checks are repository policy, not inferred from observed successful checks.
-          if ! gh api "repos/$GH_REPO/rulesets?includes_parents=true" > evidence/rulesets.json; then
-            echo "P0: rulesets unavailable or forbidden" >> evidence/blockers.txt
-          fi
-          echo "P0: required-check enforcement, runtime security and PostgreSQL revocation remain uncertified" >> evidence/blockers.txt
-          test -s evidence/blockers.txt
+        run: node scripts/gravity-runner-777.mjs
       - name: Publish inspectable evidence
         if: always()
         uses: actions/upload-artifact@v4
