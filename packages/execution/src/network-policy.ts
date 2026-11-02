@@ -117,15 +117,14 @@ export interface RouteContext {
   route(pattern: string, handler: (route: NetworkRoute) => Promise<void>): Promise<unknown>;
 }
 /** Defense in depth; requires an external DNS-aware egress firewall for SSRF certification. */
-export async function installNetworkGuard(context: RouteContext, allowedDomains: readonly string[], egress?: EgressDecision): Promise<void> {
+export async function installNetworkGuard(context: RouteContext, allowedDomains: readonly string[], _egress?: EgressDecision): Promise<void> {
   await context.route('**/*', async route => {
     try {
-      const destination = approvedUrl(route.request().url(), allowedDomains);
+      approvedUrl(route.request().url(), allowedDomains);
       if (route.request().method() !== 'GET') throw new Error('network_method_denied');
-      if (!egress || !(await egress.authorize(destination))) throw new Error('network_egress_unverified');
-      // A URL-level allow decision cannot pin the browser socket to the DNS-checked IP.
-      // Playwright route.continue() may resolve a different address (DNS rebinding).
-      // Until a socket-bound transport is certified, abort even approved GET requests.
+      // Browser sockets are deliberately disabled until IP/TLS pinning is certified.
+      // Do not even invoke a URL-level egress callback: it may perform DNS I/O,
+      // block indefinitely, or create an external side effect despite aborting.
       throw new Error('network_socket_binding_unverified');
     } catch { await route.abort(); }
   });
