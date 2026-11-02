@@ -181,3 +181,22 @@ describe('ATLAS 777 browser queue rejects untrusted persisted action grants', ()
     }
   });
 });
+
+// Runtime payloads can bypass TypeScript types. The queue must not persist
+// credential-bearing identity fields or an unrecognized autonomy level.
+describe('ATLAS 777 durable browser envelope scope validation', () => {
+  it('rejects credential-shaped scope fields and unrecognized autonomy before persistence', () => {
+    const untrusted = 'Authorization: Bearer ' + 'x'.repeat(24);
+    for (const override of [
+      { tenantId: 'tenant\\n' + untrusted },
+      { organizationId: 'org\\n' + untrusted },
+      { workflowId: 'workflow\\n' + untrusted },
+      { stepId: 'step\\n' + untrusted },
+      { autonomyLevel: untrusted },
+    ]) {
+      expect(() => prepareBrowserJob({ ...restrictedEnvelope, ...override } as typeof restrictedEnvelope,
+        { type: 'read_text', domain: 'example.com', target: 'h1' },
+        '2026-11-02T00:00:00Z')).toThrow('browser_envelope_scope_invalid');
+    }
+  });
+});
