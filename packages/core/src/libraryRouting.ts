@@ -5,7 +5,7 @@ export type AtlasLibraryClassification = {
   moduleIds: string[];
   tags: string[];
   sensitivity: AtlasLibrarySensitivity;
-  basis: 'path' | 'name' | 'fallback';
+  basis: 'path' | 'name' | 'content' | 'fallback';
 };
 
 const RESTRICTED_PATTERNS = [
@@ -13,7 +13,8 @@ const RESTRICTED_PATTERNS = [
   /(^|\/)(legal|loans|vivienda|housing)(\/|$)/i,
   /(^|\/)(03_health|health|care)(\/|$)/i,
   /(^|\/)(01_finance_tax|finance|tax|irs|accounting)(\/|$)/i,
-  /(resume|curriculum|winder_aranguren|1040|transcript|receipt|recibo|invoice|bank|loan|kia|lyft|unemployment|reemployment)/i
+  /(resume|curriculum|winder_aranguren|1040|transcript|receipt|recibo|invoice|bank|loan|kia|lyft|unemployment|reemployment)/i,
+  /(health[ _-]?summary|patient[ _-]?health|medical[ _-]?(record|summary)|clinical[ _-]?record|lab[ _-]?results?)/i
 ];
 
 const RULES: Array<{ module: string; tags: string[]; patterns: RegExp[] }> = [
@@ -23,10 +24,15 @@ const RULES: Array<{ module: string; tags: string[]; patterns: RegExp[] }> = [
   { module: 'payroll', tags: ['payroll'], patterns: [/payroll/i,/timecard/i,/timesheet/i] },
   { module: 'people', tags: ['people','hr'], patterns: [/(^|[\/ _-])hr([\/ _-]|$)/i,/rrhh/i,/human resources/i,/resume/i,/career/i,/recruit/i] },
   { module: 'care', tags: ['care','caregiving'], patterns: [/atlas[ _-]?care/i,/caregiver/i,/care[ _-]?plan/i,/home[ _-]?care/i,/elder[ _-]?care/i] },
-  { module: 'health', tags: ['health'], patterns: [/health/i,/cancer/i,/medical/i,/disease/i,/hiv/i,/hospital/i] },
+  { module: 'bible-os', tags: ['bible','scripture','religion'], patterns: [/bible/i,/biblia/i,/scripture/i,/escritura/i,/psalm/i,/salmo/i,/genesis/i,/g[eé]nesis/i,/exodus/i,/[ée]xodo/i,/jehov/i,/jes[uú]s/i,/christ/i,/cristo/i,/arc[aá]ngel/i,/religion/i,/religi[oó]n/i,/spiritual/i,/espiritual/i] },
+  { module: 'knowledge', tags: ['knowledge','religion'], patterns: [/bible/i,/biblia/i,/scripture/i,/escritura/i,/psalm/i,/salmo/i,/genesis/i,/g[eé]nesis/i,/exodus/i,/[ée]xodo/i,/jehov/i,/jes[uú]s/i,/christ/i,/cristo/i,/arc[aá]ngel/i,/religion/i,/religi[oó]n/i,/spiritual/i,/espiritual/i] },
+  { module: 'health', tags: ['health'], patterns: [/health/i,/salud/i,/cancer/i,/medical/i,/m[eé]dic/i,/disease/i,/enfermed/i,/hiv/i,/hospital/i,/acne/i,/acn[eé]/i,/dental/i,/periodont/i,/mucus/i,/moco/i,/cerumen/i] },
+  { module: 'health', tags: ['health','weight','nutrition','wellness'], patterns: [/\bweight\b/i,/\bpeso\b/i,/\bbmi\b/i,/body[ _-]?mass/i,/nutrition/i,/nutrici[oó]n/i,/wellness/i,/bienestar/i,/fitness/i,/calori/i,/diet/i,/muscle/i,/m[uú]sculo/i] },
   { module: 'ride', tags: ['mobility'], patterns: [/ride/i,/lyft/i,/uber/i,/mobility/i,/gps/i,/vehicle/i,/kia/i,/cars/i,/transport/i] },
   { module: 'aviation', tags: ['aviation'], patterns: [/aviation/i,/aircraft/i,/flight/i] },
-  { module: 'hospitality', tags: ['hospitality'], patterns: [/hospitality/i,/hotel/i,/restaurant/i,/onity/i] },
+  { module: 'hospitality', tags: ['hospitality'], patterns: [/hospitality/i,/hotel/i,/resort/i,/onity/i] },
+  { module: 'hospitality', tags: ['hospitality','food-service','restaurant'], patterns: [/restaurant/i,/restaurante/i,/fast[ _-]?food/i,/comida[ _-]?r[aá]pida/i,/food[ _-]?service/i,/caf[eé]/i,/kitchen/i,/cocina/i,/menu/i,/men[uú]/i,/mcdonald/i,/burger[ _-]?king/i,/wendy/i,/kfc/i,/chick[ _-]?fil/i,/subway/i,/taco[ _-]?bell/i] },
+  { module: 'commerce', tags: ['commerce','food-catalog'], patterns: [/restaurant/i,/restaurante/i,/fast[ _-]?food/i,/comida[ _-]?r[aá]pida/i,/food[ _-]?service/i,/menu/i,/men[uú]/i,/ordering/i,/pedido/i] },
   { module: 'inventory', tags: ['inventory','operations'], patterns: [/inventory/i,/pallet/i,/warehouse/i,/purchas/i,/vendor/i,/procure/i] },
   { module: 'crm', tags: ['crm','sales'], patterns: [/crm/i,/hubspot/i,/prospect/i,/customer/i,/lead/i,/sales/i,/contacts/i] },
   { module: 'commerce', tags: ['commerce'], patterns: [/commerce/i,/pos/i,/checkout/i,/catalog/i,/product/i] },
@@ -41,18 +47,31 @@ const RULES: Array<{ module: string; tags: string[]; patterns: RegExp[] }> = [
   { module: 'events', tags: ['events'], patterns: [/event/i,/entertainment/i,/concert/i] },
   { module: 'advisory', tags: ['advisory'], patterns: [/advisory/i,/business launch/i] },
   { module: 'release-control', tags: ['release','backup','devops'], patterns: [/backup/i,/repository/i,/source[_ -]?code/i,/release/i,/manifest/i,/audit/i,/deployment/i,/cloudflare/i,/github/i,/supabase/i] },
+  { module: 'knowledge', tags: ['knowledge','geography','usa'], patterns: [/\busa\b/i,/united[ _-]?states/i,/estados[ _-]?unidos/i,/\bu\.s\.\b/i,/\bflorida\b/i,/\borlando\b/i,/\bamerica\b/i,/\bam[eé]rica\b/i] },
   { module: 'knowledge', tags: ['knowledge'], patterns: [/knowledge/i,/humanity/i,/reference/i,/research/i,/document/i,/archive/i] }
 ];
 
-export function classifyAtlasLibraryAsset(input: { path?: string | null; name: string; mimeType?: string | null }): AtlasLibraryClassification {
+export function classifyAtlasLibraryAsset(input: {
+  path?: string | null;
+  name: string;
+  mimeType?: string | null;
+  contentText?: string | null;
+}): AtlasLibraryClassification {
   const path = String(input.path || '');
   const name = String(input.name || '');
-  const haystack = `${path} ${name}`;
-  const sensitivity: AtlasLibrarySensitivity = RESTRICTED_PATTERNS.some((pattern) => pattern.test(haystack))
+  const contentText = String(input.contentText || '');
+  const metadataHaystack = `${path} ${name}`;
+  const sensitivity: AtlasLibrarySensitivity = RESTRICTED_PATTERNS.some((pattern) => pattern.test(metadataHaystack))
     ? 'restricted'
     : 'organization';
 
-  const matches = RULES.filter((rule) => rule.patterns.some((pattern) => pattern.test(haystack)));
+  const pathMatches = RULES.filter((rule) => rule.patterns.some((pattern) => pattern.test(path)));
+  const nameMatches = RULES.filter((rule) => rule.patterns.some((pattern) => pattern.test(name)));
+  const contentMatches = contentText
+    ? RULES.filter((rule) => rule.patterns.some((pattern) => pattern.test(contentText)))
+    : [];
+  const matchedRules = new Set([...pathMatches, ...nameMatches, ...contentMatches]);
+  const matches = RULES.filter((rule) => matchedRules.has(rule));
   const moduleIds = [...new Set(matches.map((rule) => rule.module))];
   const tags = [...new Set(matches.flatMap((rule) => rule.tags))];
 
@@ -62,7 +81,7 @@ export function classifyAtlasLibraryAsset(input: { path?: string | null; name: s
       moduleIds,
       tags,
       sensitivity,
-      basis: path && matches.some((rule) => rule.patterns.some((pattern) => pattern.test(path))) ? 'path' : 'name'
+      basis: pathMatches.length ? 'path' : nameMatches.length ? 'name' : 'content'
     };
   }
 
