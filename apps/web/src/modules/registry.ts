@@ -382,6 +382,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'weather',
+    title: 'ATLAS Weather · Live Meteorologist',
+    navLabel: 'Weather',
+    area: 'Spatial',
+    route: '/weather',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Live-refreshed global model forecasts, condition-driven accessible visualizations and US official alerts; provider availability and release must be independently verified.',
+    showInNavigation: true
+  },
+  {
     id: 'gps',
     title: 'ATLAS GPS 4D',
     navLabel: 'GPS 4D',
