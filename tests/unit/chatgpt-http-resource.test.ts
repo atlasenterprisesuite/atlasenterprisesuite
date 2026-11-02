@@ -51,9 +51,17 @@ describe('isolated OAuth HTTP transport',()=>{
   expect((await handleAtlasChatGptHttp({...base,accept:'application/json'},opts)).status).toBe(406);
   expect((await handleAtlasChatGptHttp({...base,protocolVersion:'2026-07-28'},opts)).status).toBe(400);
  });
- it('does not acknowledge notifications without certified session lifecycle',async()=>{
+ it('acknowledges authenticated stateless initialized notifications without a JSON-RPC body',async()=>{
   const res=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:{jsonrpc:'2.0',method:'notifications/initialized'}},opts);
-  expect(res.status).toBe(400);
+  expect(res.status).toBe(202);
+  expect(res.body).toBeNull();
+  const missing=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',body:{jsonrpc:'2.0',method:'notifications/initialized'}},opts);
+  expect(missing.status).toBe(401);
+  const revoked={...opts,verifyToken:async()=>({...await opts.verifyToken(),revoked:true})};
+  const denied=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:{jsonrpc:'2.0',method:'notifications/initialized'}},revoked);
+  expect(denied.status).toBe(401);
+  const injected=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:{jsonrpc:'2.0',method:'notifications/initialized',params:{organizationId:'other'}}},opts);
+  expect(injected.status).toBe(400);
  });
 
 });
