@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { approvedUrl, installNetworkGuard } from '../../packages/execution/src/network-policy';
+import { approvedUrl, installNetworkGuard, resolvePublicDns } from '../../packages/execution/src/network-policy';
 import { executeOnce } from '../../packages/execution/src/idempotency';
 import { PlaywrightLocalBrowser } from '../../packages/execution/src/playwright-local';
 describe('Sovereign browser local transport negative gates', () => {
@@ -97,4 +97,43 @@ describe('Sovereign browser local transport negative gates', () => {
     expect(route.continue).not.toHaveBeenCalled();
   });
 
+
+  // DNS answers are untrusted even when the HTTPS hostname is allowlisted.
+  // The resolver is injected so these negative cases perform no network I/O.
+  it.each([
+    '127.0.0.1', '10.0.0.1', '172.16.0.1', '192.168.1.1',
+    '169.254.169.254', '100.64.0.1', '0.0.0.0',
+    '192.0.2.1', '198.18.0.1', '198.51.100.2', '203.0.113.2',
+    '224.0.0.1', '255.255.255.255', 'not-an-ip'
+  ])('denies unsafe DNS A record %s', async address => {
+    await expect(resolvePublicDns('https://example.com/', allowed, {
+      resolve4: async () => [address], resolve6: async () => []
+    })).rejects.toThrow('network_dns_address_denied');
+  });
+  it.each(['::1', 'fe80::1', 'fc00::1', '::ffff:127.0.0.1', '2001:db8::1', '2002::1'])(
+    'denies unsafe DNS AAAA record %s', async address => {
+      await expect(resolvePublicDns('https://example.com/', allowed, {
+        resolve4: async () => ['8.8.8.8'], resolve6: async () => [address]
+      })).rejects.toThrow('network_dns_address_denied');
+    }
+  );
+  it('rejects mixed public and private answers instead of selecting a safe subset', async () => {
+    await expect(resolvePublicDns('https://example.com/', allowed, {
+      resolve4: async () => ['8.8.8.8', '10.1.2.3'], resolve6: async () => []
+    })).rejects.toThrow('network_dns_address_denied');
+  });
+  it('fails closed on DNS resolver failure or empty answer sets', async () => {
+    await expect(resolvePublicDns('https://example.com/', allowed, {
+      resolve4: async () => { throw new Error('SERVFAIL'); }, resolve6: async () => []
+    })).rejects.toThrow('network_dns_lookup_failed');
+    await expect(resolvePublicDns('https://example.com/', allowed, {
+      resolve4: async () => [], resolve6: async () => []
+    })).rejects.toThrow('network_dns_empty');
+  });
+  it('accepts only bounded public A/AAAA answers as preflight evidence, not socket authorization', async () => {
+    const verified = await resolvePublicDns('https://example.com/', allowed, {
+      resolve4: async () => ['8.8.8.8'], resolve6: async () => ['2606:4700:4700::1111']
+    });
+    expect(verified).toEqual({ hostname: 'example.com', addresses: ['8.8.8.8', '2606:4700:4700::1111'] });
+  });
 });
