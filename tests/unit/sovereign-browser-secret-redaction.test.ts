@@ -124,3 +124,18 @@ describe('ATLAS 777 browser queue must not persist unapproved side effects or ra
       target: 'https://example.com/' }, '2026-11-02T00:00:00Z').action.type).toBe('navigate');
   });
 });
+
+// A parent-domain envelope is not authorization to visit arbitrary subdomains.
+// Browser egress and audit scopes must use explicit host grants only.
+describe('ATLAS 777 browser explicit hostname authorization', () => {
+  it('rejects an unlisted subdomain before queuing read-only work', () => {
+    expect(() => prepareBrowserJob(restrictedEnvelope,
+      { type: 'read_text', domain: 'unapproved.example.com', target: 'h1' },
+      '2026-11-02T00:00:00Z')).toThrow('browser_domain_not_allowed');
+  });
+  it('accepts the explicitly listed hostname without changing its scope', () => {
+    expect(prepareBrowserJob(restrictedEnvelope,
+      { type: 'read_text', domain: 'example.com', target: 'h1' },
+      '2026-11-02T00:00:00Z').action.domain).toBe('example.com');
+  });
+});
