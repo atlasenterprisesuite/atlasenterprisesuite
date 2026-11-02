@@ -46,5 +46,30 @@ with conn.cursor() as cur:
             cur.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role, "public.robotics_simulation_"+name+"("+signature+")"))
             assert not cur.fetchone()[0], (role, name)
     print("PASS anon/authenticated ACL denies both tables and all 5 functions", flush=True)
+
+    # Real role-context denial, rather than relying only on owner-side ACL inspection.
+    for role in ("anon", "authenticated"):
+        cur.execute("set role " + role)
+        try:
+            for table in ("atlas_robotics_simulation_runs", "atlas_robotics_simulation_grants"):
+                try:
+                    cur.execute("select count(*) from public." + table)
+                except psycopg2.errors.InsufficientPrivilege:
+                    print("PASS role denied table", role, table, flush=True)
+                else:
+                    raise AssertionError(("table readable by", role, table))
+            for fn in ("reserve", "complete", "revoke", "halt", "is_halted"):
+                params = "'tenant','00000000-0000-0000-0000-000000000001'::uuid,'00000000-0000-0000-0000-000000000002'::uuid"
+                if fn in ("reserve", "complete", "halt", "is_halted"):
+                    params += ",'test_run'"
+                try:
+                    cur.execute("select public.robotics_simulation_" + fn + "(" + params + ")")
+                except psycopg2.errors.InsufficientPrivilege:
+                    print("PASS role denied function", role, fn, flush=True)
+                else:
+                    raise AssertionError(("function callable by", role, fn))
+        finally:
+            cur.execute("reset role")
+    print("PASS direct nonprivileged SQL denial", flush=True)
 print("F19 SQL-load and ACL subset passed; actor binding and concurrent membership/role revocation NOT certified", flush=True)
 conn.close()
