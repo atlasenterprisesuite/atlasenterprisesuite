@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { UniversalSetupWizard } from './UniversalSetupWizard';
 import { LocalNetworkAccessPanel } from './LocalNetworkAccessPanel';
 import { LocalControlPlanePanel } from './LocalControlPlanePanel';
 import { LocalCorePanel } from './LocalCorePanel';
@@ -86,6 +87,7 @@ export function DeviceOSPage() {
         <article><strong>Zero Trust</strong><span>permission boundary</span></article>
       </div>
 
+      <UniversalSetupWizard />
       <DeviceEvolutionPanel />
       <LocalCorePanel />
       <LocalNetworkAccessPanel />
