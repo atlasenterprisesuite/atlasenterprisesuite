@@ -38,11 +38,20 @@ export async function handleAtlasChatGptHttp(req: AtlasChatGptHttpRequest, optio
       !(typeof rpc.id === 'number' || typeof rpc.id === 'string' || (rpc.id === undefined && rpc.method === 'notifications/initialized')) ||
       (rpc.params !== undefined && (rpc.params === null || typeof rpc.params !== 'object' || Array.isArray(rpc.params))))
     return {status:400,headers,body:{error:'invalid_jsonrpc'}};
-  // Notifications do not receive JSON-RPC responses, but require valid authorization.
+  // A stateless initialized notification is acknowledged only after full token verification.
+  // No session state is created and no user-supplied tenant is accepted.
   if (rpc.method === 'notifications/initialized') {
-    if (!req.authorization) return unauthorized();
-    // A notification is deliberately unsupported until session lifecycle certification.
-    return {status:400,headers,body:{error:'session_lifecycle_not_certified'}};
+    if (rpc.params !== undefined && Object.keys(rpc.params as Record<string,unknown>).length !== 0)
+      return {status:400,headers,body:{error:'invalid_notification_parameters'}};
+    if (!req.authorization || !/^Bearer [A-Za-z0-9._~+\/-]+={0,2}$/.test(req.authorization)) return unauthorized();
+    let principal;
+    try { principal = await options.verifyToken(req.authorization.slice(7)); } catch { return unauthorized(); }
+    const now=options.nowSeconds ?? Math.floor(Date.now()/1000);
+    if (!principal || principal.revoked !== false || principal.issuer !== metadata.authorization_servers[0] ||
+        principal.audience !== metadata.resource || !Number.isFinite(principal.expiresAt) || principal.expiresAt <= now ||
+        !Array.isArray(principal.scopes) || !principal.scopes.includes(ATLAS_CHATGPT_SCOPE) ||
+        !principal.subject?.trim() || !principal.tenantId?.trim() || !principal.organizationId?.trim()) return unauthorized();
+    return {status:202,headers,body:null};
   }
   const result=await handleChatGptCatalogMcp({
     request:rpc as unknown as JsonRpcRequest, authorization:req.authorization,verifyToken:options.verifyToken,
