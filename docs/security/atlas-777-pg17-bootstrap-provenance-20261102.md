@@ -78,3 +78,13 @@ Both `public.profiles` and `public.organization_modules` exist in the live catal
 The Supabase migration history was enumerated in ascending version order. Relevant ordered versions include `20260808183211 atlas_core_schema`, `20260809032705 atlas_identity_foundation`, `20260809032710 atlas_identity_audit_hardening`, `20260809032746 atlas_identity_invoker_hardening`, `20260809040445 atlas_identity_member_admin`, `20260809040925 atlas_identity_hierarchy_locking`, `20260810021509 atlas_work_graph_conversation_execution`, `20260821174551 atlas_audit_recursive_secret_redaction`, `20260910111459 harden_synthetic_e2e_membership_roles_v1`. Migration-history names do not alone establish the complete dependency graph; no tenant bootstrap/data migrations should be replayed blindly.
 
 P0 OPEN: native Supabase Auth bootstrap and transitive tables/policies remain incomplete. No SQL changes to production and no permissive stubs.
+
+## RUN 2.0 MAX — Auth/profile/module schema metadata and Browser regression (2026-11-02)
+
+Read-only catalog queries recovered all 35 current column names, types, nullability and defaults of `auth.users` (including the generated `confirmed_at` expression), plus the columns of `public.profiles` and `public.organization_modules`. These are **metadata only**, not user records. This column inventory alone is not a complete native Supabase Auth bootstrap: PK/FK/index/check constraints, schema and role privileges, extensions, managed Auth dependencies, trigger enablement and default ACL still require provenance and verification.
+
+Current RLS policy catalog: `public.profiles` has `profiles_self` for `authenticated` ALL, `USING` and `WITH CHECK` both require `id=(SELECT auth.uid())`. `public.organization_modules` has four `authenticated` policies: `modules_read` uses `is_org_member(org_id)`, and `modules_insert`/`modules_update`/`modules_delete` require owner/admin via `has_org_role(org_id,ARRAY['owner','admin'])` (update also has WITH CHECK). No user rows queried. These policies create additional dependency edges to `auth.uid`, `is_org_member`, and `has_org_role`.
+
+Independent #976 Browser regression at SHA `a9dbe0864a7e9d831ba03686309e3fb5a5f76008`: consensus security job 125267560094 failed unit test `tests/unit/sovereign-browser.test.ts:30`: expected `unsafe_navigation` for reserved/internal DNS suffixes but got `browser_action_not_allowed`. 1612 tests passed, 1 failed. This is a concrete regression to fix on #976's own branch, not in Foundation #974.
+
+Fail Closed: no incomplete PG17 bootstrap was wired, no People/Advisory migrations or negative runtime tests were executed. Production remains untouched.
