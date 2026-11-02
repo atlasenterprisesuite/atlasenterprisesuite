@@ -63,7 +63,7 @@ export async function resolvePublicDns(
   resolver: PublicDnsResolver = { resolve4, resolve6 },
 ): Promise<{ hostname: string; addresses: string[] }> {
   const url = approvedUrl(rawUrl, allowedDomains);
-  const hostname = url.hostname.toLowerCase().replace(/\\.$/, '');
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
   const [ipv4, ipv6] = await Promise.all([
     readDnsFamily(() => resolver.resolve4(hostname)),
     readDnsFamily(() => resolver.resolve6(hostname)),
