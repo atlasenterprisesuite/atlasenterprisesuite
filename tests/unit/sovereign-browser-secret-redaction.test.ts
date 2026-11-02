@@ -103,6 +103,19 @@ describe('ATLAS 777 browser queue must not persist unapproved side effects or ra
     input.allowedDomains.push('unapproved.example');
     expect(prepared.executionEnvelope.allowedDomains).toEqual(['example.com']);
   });
+  it('rejects untrusted envelope domain entries before persisting the entire allowlist', () => {
+    // A valid action host does not make other envelope entries safe audit data.
+    for (const untrusted of [
+      'https://example.com/?note=synthetic-only-private-value',
+      'example.com/path/synthetic-only-private-value',
+      'service.internal',
+    ]) {
+      const input = { ...restrictedEnvelope, allowedDomains: ['example.com', untrusted] };
+      expect(() => prepareBrowserJob(input,
+        { type: 'read_text', domain: 'example.com', target: 'h1' },
+        '2026-11-02T00:00:00Z')).toThrow('browser_envelope_domain_invalid');
+    }
+  });
   it('rejects noncanonical domain input before read-only queue persistence', () => {
     for (const domain of ['https://example.com/?note=synthetic-only', 'example.com/path', 'example.com:443']) {
       expect(() => prepareBrowserJob(restrictedEnvelope,
