@@ -22,6 +22,9 @@ with conn.cursor() as cur:
     for role in ("anon", "authenticated"):
         if role not in existing:
             cur.execute("create role " + role + " nologin")
+    cur.execute("create schema if not exists auth")
+    cur.execute("""create or replace function auth.uid() returns uuid language sql stable as
+      $select nullif(current_setting('test.verified_actor',true),'')::uuid$""")
     for file in FILES:
         sql = file.read_bytes()
         print("SQL_SHA256", file, hashlib.sha256(sql).hexdigest(), flush=True)
@@ -42,7 +45,7 @@ with conn.cursor() as cur:
         for table in ("atlas_robotics_simulation_runs", "atlas_robotics_simulation_grants"):
             cur.execute("select has_table_privilege(%s,%s,'SELECT') or has_table_privilege(%s,%s,'INSERT') or has_table_privilege(%s,%s,'UPDATE') or has_table_privilege(%s,%s,'DELETE')", (role, "public."+table, role, "public."+table, role, "public."+table, role, "public."+table))
             assert not cur.fetchone()[0], (role, table)
-        for name, signature in (("reserve","text,uuid,uuid,text"),("complete","text,uuid,uuid,text"),("revoke","text,uuid,uuid"),("halt","text,uuid,uuid,text"),("is_halted","text,uuid,uuid,text")):
+        for name, signature in (("reserve","text,uuid,text"),("complete","text,uuid,text"),("revoke","text,uuid"),("halt","text,uuid,text"),("is_halted","text,uuid,text")):
             cur.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role, "public.robotics_simulation_"+name+"("+signature+")"))
             assert not cur.fetchone()[0], (role, name)
     print("PASS anon/authenticated ACL denies both tables and all 5 functions", flush=True)
@@ -59,7 +62,7 @@ with conn.cursor() as cur:
                 else:
                     raise AssertionError(("table readable by", role, table))
             for fn in ("reserve", "complete", "revoke", "halt", "is_halted"):
-                params = "'tenant','00000000-0000-0000-0000-000000000001'::uuid,'00000000-0000-0000-0000-000000000002'::uuid"
+                params = "'tenant','00000000-0000-0000-0000-000000000001'::uuid"
                 if fn in ("reserve", "complete", "halt", "is_halted"):
                     params += ",'test_run'"
                 try:
@@ -88,8 +91,8 @@ with conn.cursor() as cur:
                 for operation in ("reserve", "complete", "halt"):
                     try:
                         cur.execute("select public.robotics_simulation_" + operation +
-                                    "(%s,%s::uuid,%s::uuid,%s)",
-                                    (tenant,org,claimed_actor,"f19_negative"))
+                                    "(%s,%s::uuid,%s)",
+                                    (tenant,org,"f19_negative"))
                     except psycopg2.errors.InsufficientPrivilege:
                         print("PASS fail-closed spoof/tenant", role, operation, tenant, flush=True)
                     else:
