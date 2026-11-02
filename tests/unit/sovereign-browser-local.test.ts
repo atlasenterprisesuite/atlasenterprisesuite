@@ -49,4 +49,31 @@ describe('Sovereign browser local transport negative gates', () => {
     await page.close();
   });
 
+  it('fails closed without a trusted DNS-aware egress decision',async()=>{
+    let handler: (route:any)=>Promise<void> = async()=>{};
+    const route={request:()=>({url:()=> 'https://example.com/',method:()=> 'GET'}),abort:vi.fn(),continue:vi.fn()};
+    await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed);
+    await handler(route);
+    expect(route.abort).toHaveBeenCalledOnce();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+  it('blocks egress denied by trusted policy despite allowlisted hostname',async()=>{
+    let handler: (route:any)=>Promise<void> = async()=>{};
+    const route={request:()=>({url:()=> 'https://example.com/',method:()=> 'GET'}),abort:vi.fn(),continue:vi.fn()};
+    const authorize=vi.fn().mockResolvedValue(false);
+    await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed,{authorize});
+    await handler(route);
+    expect(authorize).toHaveBeenCalledOnce();
+    expect(route.abort).toHaveBeenCalledOnce();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+  it('allows GET only after explicit trusted egress authorization',async()=>{
+    let handler: (route:any)=>Promise<void> = async()=>{};
+    const route={request:()=>({url:()=> 'https://example.com/',method:()=> 'GET'}),abort:vi.fn(),continue:vi.fn()};
+    await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed,{authorize:async()=>true});
+    await handler(route);
+    expect(route.continue).toHaveBeenCalledOnce();
+    expect(route.abort).not.toHaveBeenCalled();
+  });
+
 });
