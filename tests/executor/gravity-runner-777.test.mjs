@@ -70,3 +70,24 @@ test('artifact upload failure is explicitly configured as a failing step',()=>{
 test('applicability API 403/404 blocks exact-SHA certification',async()=>{
  for(const status of [403,404]) await assert.rejects(inspect({api:mock({error:{path:'/rules/branches/',status}}),repo:'atlasenterprisesuite/atlasenterprisesuite',prs:[976]}));
 });
+
+import { main } from '../../scripts/gravity-runner-777.mjs';
+test('PR gate executes native tests on the exact head and never performs live inspection', () => {
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /github\.event\.pull_request\.head\.sha/);
+  assert.match(workflow, /if:.*github\.event_name != 'pull_request'/);
+  assert.match(workflow, /persist-credentials: false/);
+});
+test('unresolved applicable ruleset cannot be silently omitted', async () => {
+  const base = mock();
+  const api = async path => path.includes('/rules/branches/')
+    ? [{ruleset_id:1},{ruleset_id:2}] : base(path);
+  await assert.rejects(inspect({api,repo:'atlasenterprisesuite/atlasenterprisesuite',prs:[976]}));
+});
+test('ledger write failure propagates rather than reporting success', async () => {
+  await assert.rejects(main({api:mock(),repo:'atlasenterprisesuite/atlasenterprisesuite',write:()=>{throw Error('artifact write failed');}}), /artifact write failed/);
+});
+test('coordinated inspection follows all five existing PRs', async () => {
+  const results = await inspect({api:mock(),repo:'atlasenterprisesuite/atlasenterprisesuite'});
+  assert.deepEqual(results.map(r => r.pr), [976,968,974,979,980]);
+});

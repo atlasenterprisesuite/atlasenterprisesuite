@@ -24,7 +24,7 @@ export function validateChecks(data, head, required) {
   for (const name of required) if (!data.check_runs.some(c =>
     c.name === name && c.head_sha === head && c.status === 'completed' && c.conclusion === 'success')) throw Error('P0: required check not successful on exact SHA: '+name);
 }
-export async function inspect({api, repo, prs=[976,968]}) {
+export async function inspect({api, repo, prs=[976,968,974,979,980]}) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('P0: invalid repo');
   const rulesets = await api('repos/'+repo+'/rulesets?includes_parents=true');
   if (!Array.isArray(rulesets) || !rulesets.length) throw Error('P0: no rulesets');
@@ -43,7 +43,8 @@ export async function inspect({api, repo, prs=[976,968]}) {
     const appliedIds = new Set(applicable.map(rule=>rule.ruleset_id));
     if (applicable.some(rule=>!Number.isInteger(rule.ruleset_id))) throw Error('P0: incomplete applicable ruleset identifiers');
     const matching = detailed.filter(rule=>appliedIds.has(rule.id));
-    if (!matching.length) throw Error('P0: no matching active rulesets');
+    if (!matching.length || [...appliedIds].some(id => !matching.some(r => r.id === id)))
+      throw Error('P0: unresolved applicable rulesets');
     const required=requiredFromRulesets(matching);
     const data=await api('repos/'+repo+'/commits/'+head+'/check-runs?per_page=100');
     validateChecks(data,head,required);
