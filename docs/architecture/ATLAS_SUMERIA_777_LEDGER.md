@@ -21,3 +21,12 @@ Reuse: apps/web/src/modules/creator/writing/ATLASWritingDeskPage.tsx; tests/unit
 - Explicitly do not label this an operational PDF/DOCX converter or a certified document editor.
 
 Evidence: The only current evidence is committed source and test definitions. Test execution and CI must be checked separately; absence of green evidence blocks release.
+
+## RUN NEXT — 2026-11-02 (isolated branch)
+- Added `tests/unit/atlas-sumeria-boundary.test.ts` with seven additional preflight-only contracts SUM-06..SUM-12.
+- Verified test commit `0911c3f4d9b8c2abc6555cc63c5a1208df60fb8c` using GitHub commit fetch.
+- GitHub Actions pull-request runs for that SHA: none returned. Combined commit statuses: none returned. Neither constitutes a passing CI gate.
+- No local Vitest, typecheck, build, parser, database, visual diff, or E2E execution evidence in this run.
+- SUM-06..SUM-12 are preflight boundary tests, **not** the previously required integration/security acceptance tests; those remain P0.
+- Known limit: `originalImmutable: true` is metadata, not immutable storage enforcement.
+- Release verdict: **P0 NO-GO**. No merge, deploy, production writes, or certification.
