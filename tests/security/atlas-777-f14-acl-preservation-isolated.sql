@@ -18,6 +18,7 @@ DO $$
 BEGIN
  IF (SELECT count(*) FROM f14_before) <> 7 THEN RAISE EXCEPTION 'P0_F14_INCOMPLETE_FOUNDATION'; END IF;
  IF EXISTS (SELECT 1 FROM f14_before WHERE NOT relrowsecurity OR NOT service_truncate) THEN RAISE EXCEPTION 'P0_F14_UNSAFE_BASELINE'; END IF;
+ IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('audit_logs','identity_permissions','identity_role_permissions','organization_members','organization_modules','organization_role_permissions','organizations') AND (NOT has_table_privilege('anon',c.oid,'TRUNCATE') OR NOT has_table_privilege('authenticated',c.oid,'TRUNCATE'))) THEN RAISE EXCEPTION 'P0_F14_RED_BASELINE_NOT_PRESENT'; END IF;
 END $$;
 COMMIT;
 -- RED: this assertion must succeed before the revocation (the bad privilege is present).
