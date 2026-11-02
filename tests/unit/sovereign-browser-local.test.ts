@@ -14,6 +14,16 @@ describe('Sovereign browser local transport negative gates', () => {
     await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed);
     await handler(route);expect(route.abort).toHaveBeenCalledOnce();expect(route.continue).not.toHaveBeenCalled();
   });
+  it('does not invoke egress authorization for a forbidden POST',async()=>{
+    let handler: (route:any)=>Promise<void> = async()=>{};
+    const authorize=vi.fn().mockResolvedValue(true);
+    const route={request:()=>({url:()=> 'https://example.com/',method:()=> 'POST'}),abort:vi.fn(),continue:vi.fn()};
+    await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed,{authorize});
+    await handler(route);
+    expect(authorize).not.toHaveBeenCalled();
+    expect(route.abort).toHaveBeenCalledOnce();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
   it('rejects duplicate execution before side effects',async()=>{
     const claim=vi.fn().mockResolvedValue('duplicate');
     const run=vi.fn();
