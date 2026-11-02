@@ -19,6 +19,10 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - name: Checkout for isolated negative tests
+        uses: actions/checkout@v4
+      - name: Execute negative evidence tests
+        run: node --test tests/executor/gravity-runner-777.test.mjs
       - name: Inspect P0 PRs (fail closed; never certify)
         shell: bash
         run: |
