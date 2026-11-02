@@ -1,4 +1,5 @@
-export type AdsScope = { tenantId: string; organizationId: string };
+import { sameScope, type TenantScope } from '../../core/src/scope';
+export type AdsScope = TenantScope;
 export type AdsCampaign = { id: string; scope: AdsScope; status: 'draft' | 'approved' | 'paused'; budgetMinor: number; reservedMinor: number; currency: string };
 export type AdsActor = { scope: AdsScope; permissions: readonly string[] };
 export type AdsReadiness = { authorized: boolean; providerVerified: boolean; state: string };
@@ -6,7 +7,7 @@ export type AdsMetric = { value: number; sourceState: 'verified' | 'demo' | 'ext
 export type AdsDecision = { ok: true } | { ok: false; reason: string };
 const deny = (reason: string): AdsDecision => ({ ok: false, reason });
 export function adsSameScope(a: AdsScope, b: AdsScope): boolean {
-  return !!a.tenantId && !!a.organizationId && a.tenantId === b.tenantId && a.organizationId === b.organizationId;
+  return !!a.tenantId && !!a.organizationId && sameScope(a, b);
 }
 export function authorizeAdsDraft(actor: AdsActor, campaign: AdsCampaign): AdsDecision {
   if (!adsSameScope(actor.scope, campaign.scope)) return deny('scope_mismatch');
