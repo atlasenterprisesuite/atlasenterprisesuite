@@ -24,6 +24,15 @@ export type BrowserActionResult = {
 };
 
 const SENSITIVE_KEY = /token|secret|password|cookie|authorization|recovery/i;
+const SAFE_ENVELOPE_ACTIONS = new Set<BrowserActionType>([
+  'navigate', 'read_text', 'click', 'type', 'submit', 'create_dns_txt', 'click_openai_check',
+]);
+function safeEnvelopeActionList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= 32 &&
+    value.every(item => typeof item === 'string' &&
+      SAFE_ENVELOPE_ACTIONS.has(item as BrowserActionType));
+}
+
 // Queue evidence is durable: CSS attribute selectors can embed raw form values,
 // access tokens, or other secrets. Only a deliberately small read-only selector
 // subset is permitted until a typed selector builder and vault are certified.
@@ -77,6 +86,12 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
         try { approvedUrl('https://' + domain + '/', [domain]); return true; }
         catch { return false; }
       })) throw new Error('browser_envelope_domain_invalid');
+  // Action grants are also durable queue evidence. Reject unknown or unbounded
+  // entries rather than persisting arbitrary strings supplied by a caller.
+  if (!safeEnvelopeActionList(envelope.allowedActions) ||
+      !safeEnvelopeActionList(envelope.deniedActions)) {
+    throw new Error('browser_envelope_action_invalid');
+  }
   const decision = evaluateBrowserAction(
     envelope,
     { domain: action.domain, action: action.type },
