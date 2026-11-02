@@ -71,6 +71,13 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
     { workflowId: envelope.workflowId, stepId: envelope.stepId }
   );
   if (!decision.allowed) throw new Error('browser_action_not_allowed');
+  // Envelope evaluation also permits subdomains for legacy workflows. A browser
+  // queue grant must name the exact host: an implicit subdomain can be controlled
+  // by a different principal and must never inherit network authorization.
+  if (!envelope.allowedDomains.some(allowed =>
+    typeof allowed === 'string' && allowed.toLowerCase() === action.domain.toLowerCase())) {
+    throw new Error('browser_domain_not_allowed');
+  }
   // The legacy queue persists prepared actions verbatim. Never persist raw form
   // input or queue sensitive side effects without an auditable approval/vault path.
   if (action.type === 'type') throw new Error('browser_sensitive_input_requires_vault');
