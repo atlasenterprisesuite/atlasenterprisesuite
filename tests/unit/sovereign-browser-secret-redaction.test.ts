@@ -96,6 +96,29 @@ describe('ATLAS 777 browser queue must not persist unapproved side effects or ra
         .toThrow('browser_domain_invalid');
     }
   });
+  it('rejects untrusted read_text selectors before they reach the persisted queue', () => {
+    for (const target of [
+      'input[value="synthetic-only-test-value"]',
+      'h1, input',
+      '#main\nbody',
+      'h1'.repeat(100),
+      'https://example.com/?access_token=synthetic-only',
+    ]) {
+      expect(() => prepareBrowserJob(restrictedEnvelope,
+        { type: 'read_text', domain: 'example.com', target },
+        '2026-11-02T00:00:00Z')).toThrow('browser_selector_invalid');
+    }
+    expect(() => prepareBrowserJob(restrictedEnvelope,
+      { type: 'read_text', domain: 'example.com' },
+      '2026-11-02T00:00:00Z')).toThrow('browser_selector_invalid');
+  });
+  it('keeps simple read-only CSS selectors usable', () => {
+    for (const target of ['h1', '#main', '.headline', 'main h1', 'h1.title']) {
+      expect(prepareBrowserJob(restrictedEnvelope,
+        { type: 'read_text', domain: 'example.com', target },
+        '2026-11-02T00:00:00Z').action.target).toBe(target);
+    }
+  });
   it('retains safe read-only queue preparation', () => {
     expect(prepareBrowserJob(restrictedEnvelope, { type: 'navigate', domain: 'example.com',
       target: 'https://example.com/' }, '2026-11-02T00:00:00Z').action.type).toBe('navigate');
