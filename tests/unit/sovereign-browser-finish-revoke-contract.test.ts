@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-const sql=readFileSync(new URL('../../supabase/migrations/20261102092000_atlas_browser_finish_revoke_777.sql',import.meta.url),'utf8');
+const sql=readFileSync('supabase/migrations/20261102092000_atlas_browser_finish_revoke_777.sql','utf8');
 describe('ATLAS 777 browser finalization and revocation contract',()=>{
   it('derives finalization identity from authenticated database context',()=>{
     expect(sql).toContain('auth.uid()');
