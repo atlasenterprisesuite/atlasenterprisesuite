@@ -51,9 +51,18 @@ function isPublicDnsAddress(address: string): boolean {
   return false;
 }
 
+// Bound DNS preflight latency even when a resolver never settles. A timed-out
+// lookup is NOT cancelled; its result must never authorize browser egress.
+const DNS_PREFLIGHT_TIMEOUT_MS = 2_000;
 async function readDnsFamily(lookup: () => Promise<string[]>): Promise<string[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const answers = await lookup();
+    const answers = await Promise.race([
+      Promise.resolve().then(lookup),
+      new Promise<string[]>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('network_dns_lookup_failed')), DNS_PREFLIGHT_TIMEOUT_MS);
+      }),
+    ]);
     if (!Array.isArray(answers)) throw new Error('invalid_dns_response');
     return answers;
   } catch (error) {
@@ -63,6 +72,8 @@ async function readDnsFamily(lookup: () => Promise<string[]>): Promise<string[]>
     // closed rather than silently authorizing a partial DNS result.
     if (code === 'ENODATA') return [];
     throw new Error('network_dns_lookup_failed');
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 
