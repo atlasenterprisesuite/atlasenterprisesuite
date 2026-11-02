@@ -95,3 +95,24 @@
     --atlas-duration-slow: 0ms;
   }
 }
+
+/* ATLAS Rainbow: optional prism accents, not operational status indicators. */
+:root {
+  --atlas-rainbow-red: #ff7777;
+  --atlas-rainbow-orange: #ffad66;
+  --atlas-rainbow-yellow: #f8d76c;
+  --atlas-rainbow-green: #59dfae;
+  --atlas-rainbow-blue: #64cfff;
+  --atlas-rainbow-indigo: #9d9aff;
+  --atlas-rainbow-violet: #d6a2ff;
+  --atlas-rainbow-gradient: linear-gradient(105deg, var(--atlas-rainbow-red), var(--atlas-rainbow-orange), var(--atlas-rainbow-yellow), var(--atlas-rainbow-green), var(--atlas-rainbow-blue), var(--atlas-rainbow-indigo), var(--atlas-rainbow-violet));
+}
+
+/* Opt-in surfaces only: preserve existing ATLAS identity by default. */
+[data-atlas-theme="rainbow"] {
+  --atlas-prism-accent: var(--atlas-rainbow-gradient);
+}
+
+@media (forced-colors: active) {
+  [data-atlas-theme="rainbow"] { --atlas-prism-accent: none; }
+}

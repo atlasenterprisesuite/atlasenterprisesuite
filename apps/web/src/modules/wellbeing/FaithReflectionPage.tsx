@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './faith-reflection.css';
+import { ATLAS_SYMBOLIC_NUMBERS, ATLAS_NUMEROLOGY_NOTICE } from '../../atlas-rainbow-numbers';
 
 type SacredCode = {
   code: string;
@@ -64,6 +65,8 @@ export function FaithReflectionPage() {
   const [evidence, setEvidence] = useState(initial.evidence);
   const [entries, setEntries] = useState<FaithEntry[]>(initial.entries);
   const [saved, setSaved] = useState(false);
+  const [rainbowNumber, setRainbowNumber] = useState<string>('777');
+  const selectedRainbow = ATLAS_SYMBOLIC_NUMBERS.find((item) => item.code === rainbowNumber) ?? ATLAS_SYMBOLIC_NUMBERS[0];
 
   const selected = sacredCodes.find((item) => item.code === selectedCode) ?? sacredCodes[0];
   const progress = Math.round((count / 45) * 100);
@@ -117,6 +120,19 @@ export function FaithReflectionPage() {
           Los códigos se presentan como símbolos espirituales y de enfoque. ATLAS no afirma que los números tengan poderes sobrenaturales ni garantiza resultados.
         </div>
       </header>
+
+      <section className="faith-panel" aria-labelledby="rainbow-numbers-title">
+        <div className="faith-section-heading"><span>🌈</span><div><strong id="rainbow-numbers-title">ATLAS Rainbow Numbers</strong><small>Reflexión simbólica opcional</small></div></div>
+        <p role="note">{ATLAS_NUMEROLOGY_NOTICE}</p>
+        <div className="faith-code-grid" role="group" aria-label="Seleccionar número para reflexionar">
+          {ATLAS_SYMBOLIC_NUMBERS.map((item) => (
+            <button key={item.code} type="button" className={item.code === rainbowNumber ? 'faith-code active' : 'faith-code'} aria-pressed={item.code === rainbowNumber} onClick={() => setRainbowNumber(item.code)}>
+              <span>{item.code}</span><small>{item.label}</small>
+            </button>
+          ))}
+        </div>
+        <p className="faith-prompt" aria-live="polite"><strong>{selectedRainbow.label}:</strong> {selectedRainbow.action}</p>
+      </section>
 
       <div className="faith-layout">
         <aside className="faith-panel faith-library" aria-label="Biblioteca de códigos">
