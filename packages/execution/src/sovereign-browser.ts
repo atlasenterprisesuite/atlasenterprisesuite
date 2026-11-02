@@ -22,7 +22,10 @@ function safeUrl(input: string, domain: string): string {
       url.hostname.toLowerCase() !== domain.toLowerCase() ||
       /^(localhost|.*\.localhost)$/.test(url.hostname) ||
       /^\d+\.\d+\.\d+\.\d+$/.test(url.hostname) ||
-      url.hostname.includes(':')) throw new Error('unsafe_navigation');
+      url.hostname.includes(':') || url.hostname.endsWith('.internal') ||
+      url.hostname.endsWith('.local') || url.hostname.endsWith('.test') ||
+      url.hostname.endsWith('.invalid') || url.hostname.endsWith('.example') ||
+      url.hostname === 'metadata.google.internal') throw new Error('unsafe_navigation');
   return url.href;
 }
 function selector(input?: string): string {
