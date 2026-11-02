@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './faith-reflection.css';
 
@@ -39,39 +39,16 @@ paciencia para esperar lo necesario y claridad para alejarme de aquello que no m
 Que todo lo que llegue a mi vida sea para bien, sin perjudicar a nadie y de acuerdo con Tu voluntad.
 Bendice mi trabajo, mis finanzas, mi hogar, mi salud, mis relaciones y cada puerta que deba abrirse. Amén.`;
 
-const STORAGE_KEY = 'atlas.faith-reflection.v1';
-
-function loadState(): { selectedCode: string; count: number; action: string; evidence: string; entries: FaithEntry[] } {
-  if (typeof window === 'undefined') return { selectedCode: '520', count: 0, action: '', evidence: '', entries: [] };
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '{}');
-    return {
-      selectedCode: typeof parsed.selectedCode === 'string' ? parsed.selectedCode : '520',
-      count: Number.isInteger(parsed.count) ? Math.max(0, Math.min(45, parsed.count)) : 0,
-      action: typeof parsed.action === 'string' ? parsed.action : '',
-      evidence: typeof parsed.evidence === 'string' ? parsed.evidence : '',
-      entries: Array.isArray(parsed.entries) ? parsed.entries.slice(0, 21) : []
-    };
-  } catch {
-    return { selectedCode: '520', count: 0, action: '', evidence: '', entries: [] };
-  }
-}
-
 export function FaithReflectionPage() {
-  const initial = useMemo(loadState, []);
-  const [selectedCode, setSelectedCode] = useState(initial.selectedCode);
-  const [count, setCount] = useState(initial.count);
-  const [action, setAction] = useState(initial.action);
-  const [evidence, setEvidence] = useState(initial.evidence);
-  const [entries, setEntries] = useState<FaithEntry[]>(initial.entries);
+  const [selectedCode, setSelectedCode] = useState('520');
+  const [count, setCount] = useState(0);
+  const [action, setAction] = useState('');
+  const [evidence, setEvidence] = useState('');
+  const [entries, setEntries] = useState<FaithEntry[]>([]);
   const [saved, setSaved] = useState(false);
 
   const selected = sacredCodes.find((item) => item.code === selectedCode) ?? sacredCodes[0];
   const progress = Math.round((count / 45) * 100);
-
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ selectedCode, count, action, evidence, entries }));
-  }, [selectedCode, count, action, evidence, entries]);
 
   function chooseCode(code: string) {
     setSelectedCode(code);
@@ -115,7 +92,7 @@ export function FaithReflectionPage() {
         <h1 id="faith-title">Código de Fe 45</h1>
         <p>Fe, oración, intención y acción verificable en una práctica diaria de 7–12 minutos.</p>
         <div className="faith-boundary" role="note">
-          Los códigos se presentan como símbolos espirituales y de enfoque. ATLAS no afirma que los números tengan poderes sobrenaturales ni garantiza resultados.
+          Los códigos se presentan como símbolos espirituales y de enfoque. ATLAS no afirma que los números tengan poderes sobrenaturales ni garantiza resultados. Por privacidad, los datos de esta página son temporales y no se guardan en el navegador.
         </div>
       </header>
 
@@ -186,7 +163,7 @@ export function FaithReflectionPage() {
             <button type="button" className="faith-primary" onClick={saveDay} disabled={!action.trim()}>
               Guardar día en mi ciclo de 21 días
             </button>
-            {saved && <p className="faith-success" role="status">Día registrado localmente. No constituye una ejecución verificada.</p>}
+            {saved && <p className="faith-success" role="status">Día registrado solo en esta sesión. No constituye una ejecución verificada.</p>}
             <p role="note">Una reflexión guardada no certifica tareas, permisos ni resultados de ATLAS Execution.</p>
             <Link to="/execution/manager/readiness">Abrir ATLAS Execution (requiere identidad y permisos)</Link>
           </article>
@@ -196,10 +173,10 @@ export function FaithReflectionPage() {
       <section className="faith-panel faith-history">
         <div className="faith-section-heading">
           <span>05</span>
-          <div><strong>Ciclo de 21 días</strong><small>{entries.length} de 21 registros guardados en este dispositivo</small></div>
+          <div><strong>Ciclo de 21 días</strong><small>{entries.length} de 21 registros temporales de esta sesión</small></div>
         </div>
         {entries.length === 0 ? (
-          <div className="faith-empty">Todavía no hay registros. Completa tu primera sesión y guarda una acción real.</div>
+          <div className="faith-empty">Todavía no hay registros en esta sesión. Los datos se perderán al cerrar o recargar la página.</div>
         ) : (
           <div className="faith-entry-list">
             {entries.map((entry, index) => (
