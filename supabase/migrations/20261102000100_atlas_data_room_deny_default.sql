@@ -26,11 +26,13 @@ create table if not exists public.atlas_data_room_grants (
 create table if not exists public.atlas_data_room_access_events (
   id uuid primary key default gen_random_uuid(),
   document_id uuid,
-  organization_id uuid not null,
+  organization_id uuid not null references public.organizations(id),
   tenant_id uuid not null,
   actor_user_id uuid,
   outcome text not null check (outcome in ('allow','deny')),
-  occurred_at timestamptz not null default now()
+  occurred_at timestamptz not null default now(),
+  foreign key (document_id, organization_id, tenant_id)
+    references public.atlas_data_room_documents(id, organization_id, tenant_id)
 );
 create index if not exists atlas_data_room_grants_actor_idx
   on public.atlas_data_room_grants(grantee_user_id, organization_id, tenant_id);
