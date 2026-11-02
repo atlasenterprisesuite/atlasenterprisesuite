@@ -77,3 +77,16 @@ test('fails closed when authorization provider errors or returns ambiguous data'
     }), /app_factory_forbidden/);
   }
 });
+
+test('rejects input empty after control-character normalization', () => {
+  for (const key of ['idea', 'name']) {
+    assert.throws(() => createAppFactoryPreview({ ...valid, [key]: '\u0000\u0001' }), /invalid_normalized_content/);
+  }
+});
+test('embeds restrictive CSP into iframe srcDoc HTML', () => {
+  const { preview } = createAppFactoryPreview(valid);
+  assert.match(preview.html, /http-equiv="Content-Security-Policy"/);
+  assert.match(preview.html, /default-src 'none'/);
+  assert.match(preview.html, /connect-src 'none'/);
+  assert.match(preview.html, /form-action 'none'/);
+});
