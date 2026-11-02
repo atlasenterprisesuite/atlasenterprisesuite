@@ -59,6 +59,16 @@ describe('ATLAS 777 browser queue must not persist unapproved side effects or ra
       expect(() => prepareBrowserJob(restrictedEnvelope, { type, domain: 'example.com' },
         '2026-11-02T00:00:00Z')).toThrow('human_approval_required');
     });
+  it.each(['navigate', 'read_text'] as const)(
+    'rejects unexpected payload on read-only %s before queue persistence', type => {
+      const target = type === 'navigate' ? 'https://example.com/' : 'h1';
+      expect(() => prepareBrowserJob(restrictedEnvelope,
+        { type, domain: 'example.com', target, value: 'synthetic-form-input-only' },
+        '2026-11-02T00:00:00Z')).toThrow('browser_unexpected_payload');
+      expect(() => prepareBrowserJob(restrictedEnvelope,
+        { type, domain: 'example.com', target, metadata: { note: 'synthetic-unclassified-private-value' } },
+        '2026-11-02T00:00:00Z')).toThrow('browser_unexpected_payload');
+    });
   it('retains safe read-only queue preparation', () => {
     expect(prepareBrowserJob(restrictedEnvelope, { type: 'navigate', domain: 'example.com',
       target: 'https://example.com/' }, '2026-11-02T00:00:00Z').action.type).toBe('navigate');
