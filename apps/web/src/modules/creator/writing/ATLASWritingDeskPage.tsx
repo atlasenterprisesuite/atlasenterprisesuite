@@ -7,6 +7,7 @@ import {
   sendAssistantMessage,
   type AssistantStatusResponse
 } from '../../../assistant/client';
+import { createSumeriaDocx, recognizeSumeriaImage } from '../../../../../../packages/core/src/sumeriaDocument';
 import './atlas-writing-desk.css';
 
 type FileState = 'idle' | 'reading' | 'ready' | 'error';
@@ -47,7 +48,7 @@ async function extractImageNotes(file: File) {
   const bitmap = await createImageBitmap(file);
   try {
     const blocks = await new TextDetectorCtor().detect(bitmap);
-    return blocks.map(block => String(block.rawValue || '').trim()).filter(Boolean).join('\n');
+    return recognizeSumeriaImage(bitmap, { detect: source => new TextDetectorCtor().detect(source) });
   } finally {
     bitmap.close();
   }
@@ -175,6 +176,30 @@ export function ATLASWritingDeskPage() {
     }
   }
 
+  function exportDraftDocx() {
+    const text = output || sourceText;
+    if (!text.trim()) {
+      setNotice('Write or import text before exporting a working copy.');
+      return;
+    }
+    try {
+      const bytes = createSumeriaDocx({
+        title: 'ATLAS Sumeria working copy',
+        paragraphs: text.split(/\r?\n/)
+      });
+      const blob = new Blob([bytes as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'ATLAS-Sumeria-working-copy.docx';
+      link.click();
+      URL.revokeObjectURL(url);
+      setNotice('DOCX working copy generated. This is not a layout-preserving PDF conversion.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'docx_export_failed');
+    }
+  }
+
   function startOver() {
     setInstruction('');
     setSourceText('');
@@ -258,7 +283,7 @@ export function ATLASWritingDeskPage() {
       <aside className="atlas-writing-output" aria-live="polite">
         <div className="atlas-writing-section-heading compact">
           <div><p className="eyebrow">Draft</p><h2>Ready to refine</h2></div>
-          <button type="button" className="atlas-writing-text-button" onClick={copyDraft} disabled={!output}>Copy</button>
+          <div><button type="button" className="atlas-writing-text-button" onClick={copyDraft} disabled={!output}>Copy</button><button type="button" className="atlas-writing-text-button" onClick={exportDraftDocx} disabled={!output && !sourceText.trim()}>Export DOCX</button></div>
         </div>
         {runState === 'running' ? <div className="atlas-writing-empty"><strong>Creating your draft…</strong><span>ATLAS is using a server-verified provider.</span></div>
           : output ? <pre>{output}</pre>
