@@ -7,6 +7,7 @@ on:
     paths:
       - 'packages/robotics/**'
       - 'tests/robotics/**'
+      - 'tests/unit/robotics-h-series-supabase-auth.test.ts'
       - '.github/workflows/robotics-postgres-revocation.yml'
       - 'supabase/migrations/20261101_robotics_simulation_isolated_draft.sql'
       - 'docs/robotics/phase5-postgres-isolated-prototype.sql'
@@ -38,6 +39,14 @@ jobs:
       PGDATABASE: robotics_test
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked test dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Robotics F21 scoped identity negative tests (Vitest)
+        run: npx vitest run tests/unit/robotics-h-series-supabase-auth.test.ts
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
