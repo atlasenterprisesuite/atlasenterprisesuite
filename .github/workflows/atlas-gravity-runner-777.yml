@@ -1,0 +1,44 @@
+name: ATLAS Gravity Runner 777 (Read-only P0)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+concurrency:
+  group: atlas-gravity-runner-777
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Inspect P0 PRs without mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          echo '{"mode":"read-only","certified":false,"p0":"NO-GO"}' > evidence/ledger.json
+          for pr in 976 968; do
+            gh api "repos/$GH_REPO/pulls/$pr" --jq '{number, state, draft, head_sha:.head.sha, base_sha:.base.sha, updated_at}' > "evidence/pr-$pr.json"
+            sha="$(jq -r '.head_sha' "evidence/pr-$pr.json")"
+            gh api "repos/$GH_REPO/commits/$sha/check-runs" --jq '{total_count,check_runs:[.check_runs[]|{name,status,conclusion,head_sha,html_url}]}' > "evidence/checks-$pr.json"
+            if jq -e '[.check_runs[] | select(.status != "completed" or .conclusion != "success" or .head_sha != $sha)] | length > 0' --arg sha "$sha" "evidence/checks-$pr.json" >/dev/null; then
+              echo "P0: incomplete or failed checks on PR $pr" >> evidence/blockers.txt
+            fi
+          done
+          echo "Read-only inspection does not certify required checks, runtime security or PostgreSQL revocation." >> evidence/blockers.txt
+          cat evidence/pr-976.json
+          cat evidence/pr-968.json
+      - name: Publish inspectable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-gravity-p0-ledger
+          path: evidence/
+          retention-days: 7
