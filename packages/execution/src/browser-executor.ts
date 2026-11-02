@@ -40,7 +40,7 @@ export function sanitizeBrowserResult(value: unknown, depth = 0): unknown {
   if (value && typeof value === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value as Record<string, unknown>).slice(0, 100)) {
-      if (SENSITIVE_KEY.test(key)) continue;
+      // Object keys are untrusted too: credential-shaped property names must not enter evidence.\n      if (key.length > 200 || SENSITIVE_KEY.test(key) || SENSITIVE_TEXT.test(key)) continue;
       result[key] = sanitizeBrowserResult(nested, depth + 1);
     }
     return result;
