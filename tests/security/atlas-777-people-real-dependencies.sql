@@ -1,6 +1,6 @@
 -- ATLAS 777: prerequisite audit before loading the ORIGINAL People migration.
 -- No synthetic substitute for auth.uid, permissions, or audit hooks is permitted.
-\set ON_ERROR_STOP on
+\\set ON_ERROR_STOP on
 DO $$
 DECLARE missing text[];
 BEGIN
@@ -16,4 +16,4 @@ BEGIN
     RAISE EXCEPTION 'P0_PEOPLE_REAL_MIGRATION_DEPENDENCIES_MISSING: %', missing;
   END IF;
 END $$;
-\echo PEOPLE_REAL_DEPENDENCIES_PRESENT
+\\echo PEOPLE_REAL_DEPENDENCIES_PRESENT
