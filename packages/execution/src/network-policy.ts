@@ -10,6 +10,11 @@ export function approvedUrl(raw: string, allowedDomains: readonly string[]): URL
   }
   return url;
 }
+/** A trusted DNS-aware egress decision is mandatory for production transport.
+ * The browser route handler alone cannot validate the socket's resolved IP. */
+export interface EgressDecision {
+  authorize(url: URL): Promise<boolean>;
+}
 export interface NetworkRoute {
   request(): { url(): string; method(): string };
   abort(): Promise<void>;
@@ -19,10 +24,11 @@ export interface RouteContext {
   route(pattern: string, handler: (route: NetworkRoute) => Promise<void>): Promise<unknown>;
 }
 /** Defense in depth; requires an external DNS-aware egress firewall for SSRF certification. */
-export async function installNetworkGuard(context: RouteContext, allowedDomains: readonly string[]): Promise<void> {
+export async function installNetworkGuard(context: RouteContext, allowedDomains: readonly string[], egress?: EgressDecision): Promise<void> {
   await context.route('**/*', async route => {
     try {
-      approvedUrl(route.request().url(), allowedDomains);
+      const destination = approvedUrl(route.request().url(), allowedDomains);
+      if (!egress || !(await egress.authorize(destination))) throw new Error('network_egress_unverified');
       if (route.request().method() !== 'GET') throw new Error('network_method_denied');
       await route.continue();
     } catch { await route.abort(); }
