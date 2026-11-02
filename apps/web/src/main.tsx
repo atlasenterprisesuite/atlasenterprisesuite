@@ -4,6 +4,7 @@ import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AtlasRuntimeIntegrityProvider } from './runtime/AtlasRuntimeIntegrityProvider';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
+import { TravelExperiencesPage } from './modules/travel/TravelExperiencesPage';
 import { RideRoutes } from './modules/ride/RideRoutes';
 import './atlas-design-tokens.css';
 import './styles.css';
@@ -23,6 +24,7 @@ import './runtime/runtime-integrity.css';
 
 function RootRouter() {
   const location = useLocation();
+  if (location.pathname === '/travel') return <TravelExperiencesPage />;
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
   if (location.pathname.startsWith('/ride')) return <RideRoutes />;
   return <App />;
