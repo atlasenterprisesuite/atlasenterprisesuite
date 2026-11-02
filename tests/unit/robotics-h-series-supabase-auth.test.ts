@@ -95,6 +95,25 @@ describe('F11 real ATLAS membership adapter (isolated mocks)', () => {
     const f=fixture('revoked');await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope);
     expect(f.rpc).not.toHaveBeenCalled();
   });
+  it('F21-001 denies missing bearer token without consulting the client',async()=>{
+    const f=fixture();
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('',org,f.client),scope)).ok).toBe(false);
+    expect(f.getUser).not.toHaveBeenCalled();
+    expect(f.from).not.toHaveBeenCalled();
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+  it('F21-002 denies failed scoped-client identity check before any database read',async()=>{
+    const f=fixture();f.getUser.mockResolvedValueOnce({data:{user:{id:user}},error:null});
+    f.getUser.mockRejectedValueOnce(new Error('scoped JWT unavailable'));
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
+    expect(f.from).not.toHaveBeenCalled();
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+  it('F21-003 denies missing membership without consulting effective permission',async()=>{
+    const f=fixture();f.tables.organization_members=[];
+    expect((await readAuthorizedHSeriesCatalog(createHSeriesSupabaseAuthorization('token',org,f.client),scope)).ok).toBe(false);
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
   it('F11-008 denies changed membership on next read',async()=>{
     const f=fixture();const provider=createHSeriesSupabaseAuthorization('token',org,f.client);
     expect((await readAuthorizedHSeriesCatalog(provider,scope)).ok).toBe(true);
