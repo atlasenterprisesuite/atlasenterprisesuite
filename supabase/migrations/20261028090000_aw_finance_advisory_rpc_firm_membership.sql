@@ -20,6 +20,12 @@ declare
   v_client uuid;
 begin
   if v_user is null or v_org is null then raise exception 'Authentication and active organization required'; end if;
+  -- Serialize organization membership revocation before firm-level membership.
+  -- Lock order: organization_members -> advisory_firm_memberships -> business row.
+  perform 1 from public.organization_members om
+  where om.org_id = v_org and om.user_id = v_user and om.status = 'active'
+  for share;
+  if not found then raise exception 'Active organization membership required'; end if;
   if not public.has_identity_permission(v_org, 'advisory.manage') then raise exception 'Advisory manage permission required'; end if;
   if not exists (select 1 from public.advisory_firms f where f.id = p_firm_id and f.org_id = v_org and f.status = 'active') then
     raise exception 'Firm not available in active organization';
@@ -60,6 +66,12 @@ declare
   v_engagement uuid;
 begin
   if v_user is null or v_org is null then raise exception 'Authentication and active organization required'; end if;
+  -- Serialize organization membership revocation before firm-level membership.
+  -- Lock order: organization_members -> advisory_firm_memberships -> business row.
+  perform 1 from public.organization_members om
+  where om.org_id = v_org and om.user_id = v_user and om.status = 'active'
+  for share;
+  if not found then raise exception 'Active organization membership required'; end if;
   if not public.has_identity_permission(v_org, 'advisory.manage') then raise exception 'Advisory manage permission required'; end if;
   if not exists (select 1 from public.advisory_firms f where f.id = p_firm_id and f.org_id = v_org and f.status = 'active') then
     raise exception 'Firm not available in active organization';
@@ -107,6 +119,12 @@ declare
   v_row uuid;
 begin
   if v_user is null or v_org is null then raise exception 'Authentication and active organization required'; end if;
+  -- Serialize organization membership revocation before firm-level membership.
+  -- Lock order: organization_members -> advisory_firm_memberships -> business row.
+  perform 1 from public.organization_members om
+  where om.org_id = v_org and om.user_id = v_user and om.status = 'active'
+  for share;
+  if not found then raise exception 'Active organization membership required'; end if;
   if not public.has_identity_permission(v_org, 'advisory.manage') then raise exception 'Advisory manage permission required'; end if;
 
   select e.firm_id, e.service_id into v_firm, v_service
