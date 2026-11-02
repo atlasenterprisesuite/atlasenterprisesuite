@@ -43,7 +43,7 @@ export function AppFactoryPreviewPage() {
       {requested && !preview && <p role="alert">Please provide a valid application name and idea.</p>}
       {preview && <section aria-label="Generated concept preview" className="space-y-3">
         <h2 className="text-xl font-semibold">Proposed plan (not approved)</h2>
-        <ol>{preview.plan.steps.map((step) => <li key={step.id}>{step.label}: pending</li>)}</ol>
+        <ol>{preview.plan.steps.map((step: { id: string; label: string }) => <li key={step.id}>{step.label}: pending</li>)}</ol>
         <iframe
           title="Isolated application concept preview"
           sandbox=""
