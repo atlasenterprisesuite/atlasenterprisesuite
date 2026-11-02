@@ -24,7 +24,7 @@ BEGIN
         ELSE NULL END AS problem
     FROM expected e LEFT JOIN pg_namespace n ON n.nspname=e.schema_name
       LEFT JOIN pg_proc p ON p.pronamespace=n.oid AND p.proname=e.function_name
-       AND pg_get_function_identity_arguments(p.oid) ~ ('^'||replace(e.args,', ','.*')||'$')
+       AND p.oid=to_regprocedure(e.schema_name||'.'||e.function_name||'('||e.args||')')
   ) SELECT string_agg(target||':'||problem,'; ') INTO bad FROM findings WHERE problem IS NOT NULL;
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'P0_PRIVILEGED_FUNCTION_CONTRACT_FAILURE: %',bad; END IF;
 END $$;
