@@ -1,0 +1,85 @@
+name: PR973 Isolated Certification (no deploy)
+on:
+  push:
+    branches:
+      - test/pr973-isolated-certification-20261102
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pr973-isolated-certification
+  cancel-in-progress: false
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: atlas_test
+          POSTGRES_PASSWORD: disposable_only
+          POSTGRES_DB: atlas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas_test -d atlas_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://atlas_test:disposable_only@127.0.0.1:5432/atlas_test
+      ATLAS_CERTIFIED_SOURCE_SHA: b86aa6ec04f925602829efe288d06cd67a7fb292
+    steps:
+      - name: Checkout exact PR source SHA (not main)
+        uses: actions/checkout@v4
+        with:
+          ref: b86aa6ec04f925602829efe288d06cd67a7fb292
+          persist-credentials: false
+      - name: Record source identity
+        run: |
+          mkdir -p artifacts/pr973
+          test "$(git rev-parse HEAD)" = "$ATLAS_CERTIFIED_SOURCE_SHA"
+          git rev-parse HEAD | tee artifacts/pr973/source-sha.txt
+          printf 'workflow_sha=%s\n' "$GITHUB_SHA" >> artifacts/pr973/source-sha.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - name: Install repository dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install isolated Playwright runner
+        run: npm install --no-save --ignore-scripts --no-package-lock --no-audit --no-fund @playwright/test@1.56.1
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Build real React application
+        run: npm run build
+      - name: Start isolated Vite preview
+        run: |
+          npm --workspace apps/web exec -- vite preview --host 127.0.0.1 --port 4173 --strictPort > artifacts/pr973/vite.log 2>&1 &
+          echo $! > artifacts/pr973/vite.pid
+          for i in $(seq 1 45); do curl --fail --silent http://127.0.0.1:4173/work/app-factory >/dev/null && exit 0; sleep 2; done
+          cat artifacts/pr973/vite.log
+          exit 1
+      - name: Execute real Playwright Chromium tests
+        run: |
+          set -o pipefail
+          PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" npx playwright test tests/browser/app-factory-preview.spec.mjs --project=chromium --config=artifacts/pr973/playwright.config.mjs 2>&1 | tee artifacts/pr973/playwright.log
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Load disposable PG17 fixture
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/fixtures/app-factory-postgres17-revocation.sql 2>&1 | tee artifacts/pr973/postgres-fixture.log
+      - name: Run negative A/B and concurrent revocation proof
+        run: python3 artifacts/pr973/revocation-check.py 2>&1 | tee artifacts/pr973/postgres-revocation.log
+      - name: Always publish exact-SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr973-certification-${{ github.run_id }}
+          path: |
+            artifacts/pr973/*.log
+            artifacts/pr973/source-sha.txt
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 30
