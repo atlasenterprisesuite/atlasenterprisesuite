@@ -1,0 +1,47 @@
+name: ATLAS 777 Isolated PostgreSQL 17 Runtime
+on:
+  push:
+    branches:
+      - audit/supabase-definer-rls-777-20261101
+    paths:
+      - '.github/workflows/atlas-777-isolated-postgres.yml'
+      - 'tests/security/atlas-777-postgres-smoke.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: atlas_test
+          POSTGRES_PASSWORD: isolated_fixture_only
+          POSTGRES_DB: atlas_777_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas_test -d atlas_777_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: atlas_test
+      PGPASSWORD: isolated_fixture_only
+      PGDATABASE: atlas_777_test
+      PGOPTIONS: '-c default_transaction_isolation=read committed'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify isolated PostgreSQL 17 and tenant fixtures
+        run: |
+          set -euo pipefail
+          test "$(psql -Atqc 'show server_version_num')" -ge 170000
+          psql -v ON_ERROR_STOP=1 -f tests/security/atlas-777-postgres-smoke.sql
+      - name: Explicitly reject premature RPC certification
+        run: |
+          echo 'ENGINE_SMOKE_ONLY: real 22 RPC migration/authorization/revocation certification not yet executed'
+          echo 'ATLAS 777 P0 NO-GO'
