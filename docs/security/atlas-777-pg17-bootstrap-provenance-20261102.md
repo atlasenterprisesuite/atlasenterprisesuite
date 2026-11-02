@@ -47,3 +47,17 @@ Queried `pg_class.relacl`, owners and `pg_policies` on atlas-core; no tenant/use
 - `public.organization_members`, `public.organization_role_permissions`, `public.identity_permissions`, `public.identity_role_permissions`: RLS enabled; explicit ACLs and read policies differ from their historical source definitions. Do not infer effective access from ACLs alone.
 
 P0 remains OPEN. A matching bootstrap requires role ownership, explicit and default privileges, current RLS policies, trigger dependencies and native Auth setup. No permission broadening or production edits authorized.
+
+## 2026-11-02 RUN NEXT — live trigger provenance and CI gate
+
+Read-only `pg_trigger`/`pg_get_triggerdef` query on atlas-core returned these **non-internal** triggers, without reading auth/user rows:
+
+- `auth.users`: `atlas_auth_user_profile` — AFTER INSERT OR UPDATE OF `raw_user_meta_data` -> `handle_new_auth_user()`.
+- `public.organization_members`: `atlas_updated_organization_members` — BEFORE UPDATE -> `set_updated_at()`; `trg_atlas_enforce_synthetic_e2e_role` — BEFORE INSERT OR UPDATE OF `role,user_id` -> `atlas_enforce_synthetic_e2e_role()`.
+- `public.organizations`: `atlas_seed_work_modules` — AFTER INSERT -> `seed_atlas_work_modules()`; `atlas_updated_organizations` — BEFORE UPDATE -> `set_updated_at()`.
+
+These are additional transitive dependencies for a faithful PostgreSQL 17 bootstrap. In particular, the auth.users trigger crosses the managed Auth/public boundary. Recover exact function definitions, ownership, grants, and trigger enablement before creating a fixture. Avoid synthetic trigger bodies and avoid executing auth/profile effects in production.
+
+CI exact-SHA `1dae1c0fc2a773b9dd243461238971fba97879b4`: seven workflows SUCCESS and `ATLAS 777 Isolated PostgreSQL 17 Runtime` FAILURE (run 41440762396, job 125261732032). The prerequisite gate reports all seven expected foundational objects missing because recovered sources have not been loaded; this is a deliberate fail-closed outcome, not proof the recovered SQL is invalid.
+
+P0 OPEN; no bootstrap execution, migration, merge, or deployment performed in this checkpoint.
