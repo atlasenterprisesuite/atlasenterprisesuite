@@ -10,8 +10,27 @@ declare v_actor uuid;
 declare v_status text;
 begin
   v_actor := auth.uid();
-  if v_actor is null or p_org is null or p_tenant is distinct from p_org::text
-     or p_run !~ '^[A-Za-z0-9_-]{1,128}$' then return false; end if;
+  if v_actor is null or p_org is null or p_tenant is null
+     or p_tenant is distinct from p_org::text
+     or p_run is null or p_run !~ '^[A-Za-z0-9_-]{1,128}
+  -- Transaction-scoped serialization key. All revocation writers MUST acquire
+  -- the same exclusive lock before changing membership or effective permissions.
+  -- Shared lock covers the authorization check and completion in this transaction.
+  perform pg_advisory_xact_lock_shared(777019, hashtext(p_org::text));
+  -- Lock membership before the grant; membership revoker must use this same row.
+  select om.status into v_status from public.organization_members om
+    where om.org_id=p_org and om.user_id=v_actor for update;
+  if v_status is distinct from 'active' then return false; end if;
+  -- Permission check occurs after membership lock, not before.
+  -- P0: effective role-permission revocation must share a lock protocol.
+  if not coalesce(public.has_identity_permission(p_org,'execution.write'),false)
+    then return false; end if;
+  return public.robotics_simulation_complete(p_tenant,p_org,p_run);
+end $$;
+revoke all on function public.robotics_f19_guarded_complete(text,uuid,text)
+  from public, anon, authenticated, service_role;
+-- Fail closed: do not GRANT EXECUTE or expose via PostgREST.
+ then return false; end if;
   -- Transaction-scoped serialization key. All revocation writers MUST acquire
   -- the same exclusive lock before changing membership or effective permissions.
   -- Shared lock covers the authorization check and completion in this transaction.
