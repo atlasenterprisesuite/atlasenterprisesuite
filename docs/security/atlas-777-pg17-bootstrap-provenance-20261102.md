@@ -36,3 +36,14 @@ Evidence: live read-only queries against pg_class/pg_proc/pg_namespace, pg_get_f
 - Current `.github/workflows/atlas-777-isolated-postgres.yml` intentionally fails the prerequisites gate and ends with unconditional NO-GO. Do not remove the fail-closed gate, change `auth.uid()` to a permissive stub, or treat engine smoke as RPC certification.
 
 Next: recover exact Auth dependency graph and current grants/owners/policies; build an isolated deterministic bootstrap only after matching provenance, then run original People/Advisory migrations and two-session negative revocation tests on PostgreSQL 17. P0 remains OPEN.
+
+## Read-only ACL/RLS reconciliation — 2026-11-02
+
+Queried `pg_class.relacl`, owners and `pg_policies` on atlas-core; no tenant/user rows read or mutations made.
+
+- `auth.users`: owner `supabase_auth_admin`, RLS enabled, no `anon`/`authenticated` table grant shown in explicit ACL. Native Auth ownership and role setup must be reproduced faithfully, not inferred from the ATLAS migrations.
+- `public.audit_logs`: owner `postgres`, RLS enabled, ACL grants `anon=arwdDxtm` (including DML) and `authenticated=rDxtm`. Only an `authenticated` SELECT policy (`audit_read`, requiring `has_identity_permission(org_id,'audit.read')`) was returned. The broad `anon` ACL is defense-in-depth debt, **not** proof of anonymous write access because RLS may deny rows; verify role inheritance, other policies and runtime denial in isolated tests before changing grants.
+- `public.organizations`: owner `postgres`, RLS enabled, ACL grants DML to `anon` and `authenticated`; policies returned only `org_read` (authenticated SELECT) and `org_update` (authenticated UPDATE). No INSERT policy was returned. Historical `org_create` policy is absent in the current catalog; investigate migration provenance before asserting bootstrap equivalence.
+- `public.organization_members`, `public.organization_role_permissions`, `public.identity_permissions`, `public.identity_role_permissions`: RLS enabled; explicit ACLs and read policies differ from their historical source definitions. Do not infer effective access from ACLs alone.
+
+P0 remains OPEN. A matching bootstrap requires role ownership, explicit and default privileges, current RLS policies, trigger dependencies and native Auth setup. No permission broadening or production edits authorized.
