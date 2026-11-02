@@ -8,6 +8,7 @@ import {
 } from './peopleApi';
 import { PeopleKnowledgePage } from './PeopleKnowledgePage';
 import { parseCandidateImportCsv } from './candidateImport';
+import { JobOfferSafetyCheck } from './JobOfferSafetyCheck';
 
 type WorkspaceState =
   | { status: 'loading' }
@@ -120,7 +121,7 @@ function Recruiting() {
       event.currentTarget.reset(); reload();
     }catch(e){setError(e instanceof Error?e.message:'candidate_import_failed');}
   }
-  return <Layout><State state={state}>{(data)=><>
+  return <Layout><JobOfferSafetyCheck /><State state={state}>{(data)=><>
     <div className="module-experience-grid">
       <form className="atlas-form" onSubmit={addRequisition}><h2>Open requisition</h2><label>Title<input name="title" required /></label><label>Department<input name="department" /></label><button type="submit">Open requisition</button></form>
       <form className="atlas-form" onSubmit={addCandidate}><h2>Add candidate</h2><label>Full name<input name="fullName" required /></label><label>Email<input name="email" type="email" /></label><label>Phone<input name="phone" /></label><button type="submit">Add candidate</button></form>
