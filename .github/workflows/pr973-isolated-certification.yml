@@ -71,11 +71,15 @@ jobs:
           set -o pipefail
           PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" npx playwright test tests/browser/app-factory-preview.spec.mjs --project=chromium --config=cert-harness/artifacts/pr973/playwright.config.mjs 2>&1 | tee artifacts/pr973/playwright.log
       - name: Install PostgreSQL client
+        if: always()
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Load disposable PG17 fixture
+        id: pg_fixture
+        if: always()
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/fixtures/app-factory-postgres17-revocation.sql 2>&1 | tee artifacts/pr973/postgres-fixture.log
       - name: Run negative A/B and concurrent revocation proof
+        if: steps.pg_fixture.outcome == 'success'
         run: python3 cert-harness/artifacts/pr973/revocation-check.py 2>&1 | tee artifacts/pr973/postgres-revocation.log
       - name: Always publish exact-SHA evidence
         if: always()
