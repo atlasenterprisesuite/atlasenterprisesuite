@@ -65,14 +65,19 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
     throw new Error('human_approval_required');
   }
 
+  // A read-only job must have a closed payload schema. Unknown metadata and
+  // values may contain secrets that redaction heuristics cannot recognize.
+  if (action.type !== 'navigate' && action.type !== 'read_text') throw new Error('unsupported_action');
+  if (action.value !== undefined || action.metadata !== undefined) {
+    throw new Error('browser_unexpected_payload');
+  }
+
   return {
     executionEnvelope: { ...envelope },
     action: {
       type: action.type,
       domain: action.domain,
-      ...(action.target ? { target: action.target.slice(0, 1000) } : {}),
-      ...(action.value !== undefined ? { value: action.value.slice(0, 4000) } : {}),
-      ...(action.metadata ? { metadata: sanitizeBrowserResult(action.metadata) as Record<string, unknown> } : {})
+      ...(action.target ? { target: action.target.slice(0, 1000) } : {})
     }
   };
 }
