@@ -10,6 +10,15 @@ describe('ATLAS owned links tenant isolation and safe redirects', () => {
   it.each(['http://example.com', 'https://localhost/x', 'https://127.0.0.1/x', 'https://[::1]/', 'https://user:pass@example.com', 'javascript:alert(1)', 'https://example.com:444/x', 'https://metadata.google.internal'])('denies unsafe destination %s', destination => {
     expect(() => validateDestination(destination)).toThrow();
   });
+  it('normalizes the root destination using URL semantics', () => {
+    const link = createShortLink({ ...scope, slug: 'root', destination: 'https://example.com' });
+    expect(resolveShortLink(link, scope, 100)).toBe('https://example.com/');
+  });
+  it('denies redirect destinations that contain credentials or internal hosts', () => {
+    const link = createShortLink({ ...scope, slug: 'redirect', destination: 'https://example.com' });
+    expect(() => resolveShortLink({ ...link, destination: 'https://127.0.0.1/admin' }, scope, 100)).toThrow('link_destination_denied');
+    expect(() => resolveShortLink({ ...link, destination: 'https://admin:pass@example.com' }, scope, 100)).toThrow('link_destination_denied');
+  });
   it('rejects lookalike tenant and organization scopes', () => {
     const link = createShortLink({ ...scope, slug: 'launch', destination: 'https://example.com' });
     expect(() => resolveShortLink(link, { organizationId: 'org-b', tenantId: scope.tenantId }, 100)).toThrow('link_scope_denied');
