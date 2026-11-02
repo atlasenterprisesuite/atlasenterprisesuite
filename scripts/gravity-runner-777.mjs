@@ -28,13 +28,23 @@ export async function inspect({api, repo, prs=[976,968]}) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('P0: invalid repo');
   const rulesets = await api('repos/'+repo+'/rulesets?includes_parents=true');
   if (!Array.isArray(rulesets) || !rulesets.length) throw Error('P0: no rulesets');
-  const detailed = await Promise.all(rulesets.filter(r=>r.enforcement==='active').map(r=>api('repos/'+repo+'/rulesets/'+r.id)));
-  const required = requiredFromRulesets(detailed);
+  const active = rulesets.filter(r=>r.enforcement==='active' && r.target==='branch');
+  if (!active.length || active.some(r=>!Number.isInteger(r.id))) throw Error('P0: active branch rulesets unavailable');
+  const detailed = await Promise.all(active.map(r=>api('repos/'+repo+'/rulesets/'+r.id)));
   const results=[];
   for (const pr of prs) {
     const p=await api('repos/'+repo+'/pulls/'+pr);
     const head=p?.head?.sha;
-    if (!shaPattern.test(head)) throw Error('P0: invalid PR SHA');
+    const base=p?.base?.ref;
+    if (!shaPattern.test(head) || !base || !/^[\w.\/-]+$/.test(base)) throw Error('P0: invalid PR SHA or base');
+    // GitHub evaluates applicable rules for the target branch. Do not guess from repository-wide rulesets.
+    const applicable = await api('repos/'+repo+'/rules/branches/'+encodeURIComponent(base));
+    if (!Array.isArray(applicable) || !applicable.length) throw Error('P0: applicable branch rules unavailable');
+    const appliedIds = new Set(applicable.map(rule=>rule.ruleset_id));
+    if (applicable.some(rule=>!Number.isInteger(rule.ruleset_id))) throw Error('P0: incomplete applicable ruleset identifiers');
+    const matching = detailed.filter(rule=>appliedIds.has(rule.id));
+    if (!matching.length) throw Error('P0: no matching active rulesets');
+    const required=requiredFromRulesets(matching);
     const data=await api('repos/'+repo+'/commits/'+head+'/check-runs?per_page=100');
     validateChecks(data,head,required);
     results.push({pr,head,required});
