@@ -1,4 +1,5 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { CardTable } from './cards/CardTable';
 import { AtlasShell } from '../../components/AtlasShell';
 import { RequireAtlasIdentity } from '../../identity/RequireAtlasIdentity';
 
@@ -19,6 +20,7 @@ function EventsHome() {
     <div className="notice strong">External ticketing, payments and artist-booking providers remain fail-closed until explicitly authorized and verified.</div>
     <div className="module-grid">{areas.map(([title, description]) => <article className="module-card enabled" key={title}><span>Events & Entertainment</span><strong>{title}</strong><p>{description}</p></article>)}</div>
     <div className="module-grid compact">
+      <Link className="module-card enabled" to="/events/cards"><span>Juegos de cartas</span><strong>Carta Mayor</strong><p>Práctica local contra un bot, reglas y puntuación. Sin apuestas.</p></Link>
       <Link className="module-card enabled" to="/hospitality"><span>Shared capability</span><strong>Hospitality & event spaces</strong><p>Reuse properties, spaces and access-provider boundaries.</p></Link>
       <Link className="module-card enabled" to="/studio"><span>Shared capability</span><strong>Creator Studio</strong><p>Reuse approved media assets and campaign production workflows.</p></Link>
       <Link className="module-card enabled" to="/finance"><span>Shared capability</span><strong>Finance</strong><p>Keep accounting and settlement postings in the canonical financial system.</p></Link>
@@ -29,6 +31,7 @@ function EventsHome() {
 export function EventsRoutes() {
   return <AtlasShell><RequireAtlasIdentity><Routes>
     <Route path="/events" element={<EventsHome />} />
+    <Route path="/events/cards" element={<CardTable />} />
     <Route path="/events/*" element={<Navigate to="/events" replace />} />
   </Routes></RequireAtlasIdentity></AtlasShell>;
 }
