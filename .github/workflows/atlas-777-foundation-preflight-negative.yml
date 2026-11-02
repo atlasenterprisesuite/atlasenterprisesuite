@@ -1,0 +1,61 @@
+name: ATLAS 777 Foundation Preflight Negative Gate
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/atlas-777-foundation-preflight-negative.yml'
+      - 'tests/security/atlas-777-foundation-preflight.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  foundation-preflight-negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: atlas_test
+          POSTGRES_PASSWORD: isolated_fixture_only
+          POSTGRES_DB: atlas_777_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas_test -d atlas_777_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: atlas_test
+      PGPASSWORD: isolated_fixture_only
+      PGDATABASE: atlas_777_test
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - name: Assert disposable PostgreSQL 17
+        run: |
+          set -euo pipefail
+          version="$(psql -X -Atqc 'show server_version_num')"
+          [[ "$version" =~ ^[0-9]+$ ]] && test "$version" -ge 170000
+          echo "ATLAS_FOUNDATION_NEGATIVE_ENGINE SHA=$GITHUB_SHA"
+      - name: Assert missing authentic foundation is rejected
+        run: |
+          set -euo pipefail
+          set +e
+          psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-foundation-preflight.sql >preflight.log 2>&1
+          status=$?
+          set -e
+          if test "$status" -eq 0; then
+            echo "P0_FAIL_OPEN: preflight unexpectedly accepted missing foundation"
+            exit 1
+          fi
+          if ! grep -q 'P0_FOUNDATION_DEPENDENCIES_MISSING' preflight.log; then
+            echo "P0_UNEXPECTED_FAILURE: preflight failed for a reason other than missing authentic dependencies"
+            sed -E 's/(password|token|secret)=[^[:space:]]+/\1=[REDACTED]/Ig' preflight.log
+            exit 1
+          fi
+          echo "EXPECTED_NEGATIVE_REJECTION SHA=$GITHUB_SHA"
+      - name: Explicitly retain P0 NO-GO
+        run: |
+          echo "NEGATIVE_HARNESS_ONLY: authentic bootstrap and People/Advisory tests not certified"
