@@ -41,7 +41,7 @@ export class SovereignBrowserAdapter {
       if (context.signal?.aborted) throw new Error('execution_cancelled');
       if (!(await context.authorize!())) throw new Error('authorization_revoked');
     };
-    if (DENY.has(action.type)) throw new Error('human_approval_required');
+    if (DENY.has(action.type) || action.type === 'click') throw new Error('human_approval_required');
     if (action.type === 'type') throw new Error('browser_sensitive_input_requires_vault');
     prepareBrowserJob(envelope, action);
     const destination = safeUrl(action.type === 'navigate' ? action.target ?? '' : 'https://' + action.domain + '/', action.domain);
@@ -56,7 +56,7 @@ export class SovereignBrowserAdapter {
       switch (action.type) {
         case 'navigate': result = { navigated: true }; break;
         case 'read_text': result = await page.textContent(selector(action.target)); break;
-        case 'click': await check(); await page.click(selector(action.target)); result = { clicked: true }; break;
+        case 'click': throw new Error('human_approval_required');
         default: throw new Error('unsupported_action');
       }
       await check();
