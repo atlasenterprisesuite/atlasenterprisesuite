@@ -18,6 +18,7 @@ on:
       - 'scripts/test-advisory-isolated.sh'
       - 'scripts/advisory-db-preflight.mjs'
       - 'scripts/advisory-postgres-smoke.sh'
+      - 'scripts/advisory-lock-wait-observed-777.sh'
       - 'tests/executor/advisory-db-preflight.test.mjs'
       - 'tests/integration/business-launch-360-commercial.test.ts'
       - 'tests/integration/root-router-sanity.test.ts'
@@ -48,7 +49,7 @@ jobs:
       - run: npm run build
 
   isolated-postgres-environment:
-    if: github.head_ref == 'fix/advisory-multiempresa-777-20261031'
+    if: github.head_ref == 'fix/advisory-multiempresa-777-20261031' || github.head_ref == 'test/777-deterministic-lock-barrier-20261031'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -63,6 +64,7 @@ jobs:
         run: |
           bash -n scripts/test-advisory-isolated.sh
           bash -n scripts/advisory-postgres-smoke.sh
+          bash -n scripts/advisory-lock-wait-observed-777.sh
           node --test tests/executor/*.test.mjs
       - name: Provision disposable PostgreSQL tooling before isolation
         run: |
