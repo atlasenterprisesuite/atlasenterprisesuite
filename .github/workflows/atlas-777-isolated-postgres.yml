@@ -57,6 +57,11 @@ jobs:
           set -euo pipefail
           psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-people-real-dependencies.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20260923201500_atlas_people_core.sql
+      - name: Verify original privileged-function security contract (after authentic bootstrap)
+        if: success()
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-privileged-function-contract.sql
       - name: Explicitly reject premature RPC certification
         run: |
           echo 'ENGINE_SMOKE_ONLY: real 22 RPC migration/authorization/revocation certification not yet executed'
