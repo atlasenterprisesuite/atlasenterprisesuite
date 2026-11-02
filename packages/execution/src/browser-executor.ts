@@ -1,4 +1,5 @@
 import { evaluateBrowserAction, type BrowserExecutionEnvelope } from './browser-envelope';
+import { approvedUrl } from './network-policy';
 
 export type BrowserActionType =
   | 'navigate'
@@ -70,6 +71,12 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
   if (action.type !== 'navigate' && action.type !== 'read_text') throw new Error('unsupported_action');
   if (action.value !== undefined || action.metadata !== undefined) {
     throw new Error('browser_unexpected_payload');
+  }
+  if (action.type === 'navigate') {
+    // Validate before queue persistence: URLs with query/fragment can carry
+    // credentials or untrusted payloads even when the hostname is allowed.
+    const destination = approvedUrl(action.target ?? '', [action.domain]);
+    if (destination.search || destination.hash) throw new Error('browser_navigation_query_not_allowed');
   }
 
   return {
