@@ -65,6 +65,9 @@ const health_contract_verified = Boolean(
   healthPayload &&
   typeof healthPayload === 'object' &&
   healthPayload.status === expected_status &&
+  healthPayload.scope === 'worker_liveness' &&
+  healthPayload.dependencies?.supabase_database === 'not_checked' &&
+  healthPayload.dependencies?.supabase_auth === 'not_checked' &&
   String(healthResponse.headers.get('content-type') || '').toLowerCase().includes('application/json')
 );
 
@@ -80,14 +83,18 @@ const result = {
   version: 1,
   production_origin: productionOrigin,
   mode: 'fail-closed',
+  verification_scope: 'worker_liveness_and_edge_security_only',
   ok: !failure && health_contract_verified && security_headers_verified,
   checks: {
     health_contract_verified,
+    backend_readiness_verified: false,
     security_headers_verified,
     health: {
       path: healthPath,
       http_status: healthResponse?.status ?? null,
       payload_status: healthPayload?.status ?? null,
+      scope: healthPayload?.scope ?? null,
+      dependencies: healthPayload?.dependencies ?? null,
       expected_status,
       content_type: healthResponse?.headers.get('content-type') || null
     },
@@ -109,7 +116,8 @@ if (process.env.GITHUB_STEP_SUMMARY) {
     process.env.GITHUB_STEP_SUMMARY,
     [
       '## ATLAS P0 production contract',
-      `- Machine health JSON: ${health_contract_verified ? 'passed' : 'failed'}`,
+      `- Worker liveness JSON (not backend readiness): ${health_contract_verified ? 'passed' : 'failed'}`,
+      '- Supabase Auth/DB readiness: not checked by this verifier (P0 #557 remains open)',
       `- HSTS + CSP on public root: ${security_headers_verified ? 'passed' : 'failed'}`,
       `- Policy: fail-closed`,
       ''

@@ -12,7 +12,7 @@ describe('ATLAS global production P0 hardening', () => {
   it('defines and serves a dedicated machine health contract without replacing Health OS', () => {
     const contract = JSON.parse(read(contractPath)) as {
       public_routes?: string[];
-      health_check?: { path?: string; expected_status?: string };
+      health_check?: { path?: string; expected_status?: string; scope?: string };
     };
     const workerEntry = read(workerEntryPath);
     const workerCore = read(workerCorePath);
@@ -21,7 +21,8 @@ describe('ATLAS global production P0 hardening', () => {
     expect(contract.public_routes).toContain('/health');
     expect(contract.health_check).toEqual({
       path: '/api/v1/health',
-      expected_status: 'healthy'
+      expected_status: 'healthy',
+      scope: 'worker_liveness'
     });
     expect(wrangler).toContain('"main": "worker/entry.ts"');
     expect(workerEntry).toContain("url.pathname === '/api/v1/health'");
@@ -48,6 +49,22 @@ describe('ATLAS global production P0 hardening', () => {
     expect(verifier).toContain('strict-transport-security');
     expect(verifier).toContain('content-security-policy');
     expect(verifier).toContain('process.exit(1)');
+  });
+
+
+  it('labels Worker liveness without pretending to have checked backend readiness', () => {
+    const workerEntry = read(workerEntryPath);
+    const verifier = read(verifierPath);
+    const contract = JSON.parse(read(contractPath)) as { health_check?: { scope?: string } };
+
+    expect(contract.health_check?.scope).toBe('worker_liveness');
+    expect(workerEntry).toContain("scope: 'worker_liveness'");
+    expect(workerEntry).toContain("supabase_database: 'not_checked'");
+    expect(workerEntry).toContain("supabase_auth: 'not_checked'");
+    expect(verifier).toContain("healthPayload.scope === 'worker_liveness'");
+    expect(verifier).toContain("healthPayload.dependencies?.supabase_database === 'not_checked'");
+    expect(verifier).toContain('backend_readiness_verified: false');
+    expect(verifier).toContain("verification_scope: 'worker_liveness_and_edge_security_only'");
   });
 
   it('runs the P0 verifier before the existing global verifier', () => {
