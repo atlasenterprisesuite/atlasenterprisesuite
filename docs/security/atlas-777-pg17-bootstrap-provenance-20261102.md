@@ -139,3 +139,17 @@ Read-only catalog enumeration of `auth` relations (no data rows) returned 27 reg
 The Supabase `list_migrations` API enumerates **ATLAS project migrations** in ascending version order, starting `20260808183211 atlas_core_schema`; this does **not** provide the managed GoTrue/Supabase Auth internal migration SQL. Do not mistake project migration history for the native Auth bootstrap. The Auth schema also has `auth.schema_migrations` owned by `supabase_auth_admin`, but its contents were intentionally not read. To reproduce a faithful local Auth instance, obtain a pinned, authentic Supabase Auth migration chain/version and verify schema/ACL/function/trigger parity before integrating the isolated PG17 workflow.
 
 No new PG17 bootstrap executed: no authenticated native Auth DDL chain has been recovered and proven complete. P0 Fail Closed remains mandatory.
+
+## RUN NEXT — upstream native Supabase Auth provenance and parity gap (2026-11-02)
+
+Official upstream source candidates identified:
+
+- `https://github.com/supabase/auth/tree/master/migrations`: GoTrue/Supabase Auth's native migration chain, applied by Auth's own migration command. Its `00_init_auth_schema.up.sql` has an older `auth.users` definition and `auth.uid()` implementation.
+- `https://github.com/supabase/auth/blob/master/migrations/20220224000811_update_auth_functions.up.sql`: upstream `auth.uid()` reads `request.jwt.claim.sub` with JSON `request.jwt.claims` fallback, matching the current atlas-core function body inspected from `pg_proc`. This is **partial function provenance**, not proof of deployed Auth release.
+- `https://github.com/supabase/postgres/tree/develop/migrations`: native Postgres initialization, role/schema/default-ACL migrations; upstream README specifies initialization scripts before database migrations. The moving `develop` branch must **not** be used as a reproducible version pin.
+
+The current atlas-core catalog contains 27 Auth tables and one sequence with 24 native Auth FKs, including modern MFA, OAuth, SSO/SCIM and WebAuthn. The upstream initial schema is much older, and a complete version/commit plus ordered migration replay and parity comparison (columns, constraints, indexes, triggers, owner, grants, default ACL, policies and function definitions) is still missing. Do not use only `00_init_auth_schema.up.sql`, or substitute minimal `auth.users`/`auth.uid` objects.
+
+Revalidated #974 HEAD `20d24ed2d3bfe482bd9a3e4b54780182b2e31b4c`: eight workflows were queued/pending/in progress at observation, including PG17. #976 HEAD `8f4278676aef0e6c4b5b761ca86b3ab05c2e9fbc`: Security Baseline, Sentinel and CodeQL successful, remaining checks running. Neither HEAD certified for P0.
+
+No new isolated bootstrap, People/Advisory migration, or negative runtime suite executed. P0 NO-GO.
