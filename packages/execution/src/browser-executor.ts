@@ -72,11 +72,18 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
   if (action.value !== undefined || action.metadata !== undefined) {
     throw new Error('browser_unexpected_payload');
   }
-  if (action.type === 'navigate') {
-    // Validate before queue persistence: URLs with query/fragment can carry
-    // credentials or untrusted payloads even when the hostname is allowed.
-    const destination = approvedUrl(action.target ?? '', [action.domain]);
-    if (destination.search || destination.hash) throw new Error('browser_navigation_query_not_allowed');
+  let safeTarget = action.target;
+  if (action.type === 'navigate' && action.target !== undefined) {
+    // Existing queue clients may supply relative paths. Resolve them against
+    // the approved host before persistence; deny queries and fragments.
+    try {
+      const destination = approvedUrl(new URL(action.target, 'https://' + action.domain + '/').href, [action.domain]);
+      if (destination.search || destination.hash) throw new Error('browser_navigation_query_not_allowed');
+      safeTarget = destination.href;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'browser_navigation_query_not_allowed') throw error;
+      throw new Error('unsafe_navigation');
+    }
   }
 
   return {
@@ -84,7 +91,7 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
     action: {
       type: action.type,
       domain: action.domain,
-      ...(action.target ? { target: action.target.slice(0, 1000) } : {})
+      ...(safeTarget ? { target: safeTarget.slice(0, 1000) } : {})
     }
   };
 }
