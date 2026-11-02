@@ -7,6 +7,7 @@ on:
       - 'packages/execution/src/browser-*.ts'
       - 'packages/execution/src/sovereign-browser.ts'
       - 'packages/execution/src/network-policy.ts'
+      - 'packages/execution/src/dns-egress-node.ts'
       - 'packages/execution/src/playwright-local.ts'
       - 'packages/execution/src/idempotency.ts'
       - 'tests/unit/sovereign-browser*.test.ts'
