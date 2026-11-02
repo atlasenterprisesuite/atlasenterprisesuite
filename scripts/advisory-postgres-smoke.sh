@@ -48,4 +48,5 @@ DO $$ BEGIN
   END IF;
 END $$;
 SQL
-printf '%s\n' 'ENVIRONMENT SMOKE PASSED; Advisory migrations and revocation proof NOT EXECUTED'
+PGHOST="$work/socket" PGPORT=5432 PGDATABASE=postgres bash "$(dirname "$0")/advisory-lock-wait-observed-777.sh"
+printf '%s\n' 'SYNTHETIC LOCK FIXTURE EXECUTED; Advisory migrations and revocation proof NOT EXECUTED'
