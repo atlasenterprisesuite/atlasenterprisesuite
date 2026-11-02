@@ -58,7 +58,10 @@ async function readDnsFamily(lookup: () => Promise<string[]>): Promise<string[]>
     return answers;
   } catch (error) {
     const code = (error as { code?: unknown } | null)?.code;
-    if (code === 'ENODATA' || code === 'ENOTFOUND') return [];
+    // ENODATA means this record family is absent. ENOTFOUND (NXDOMAIN)
+    // contradicts any successful answer from the other family and must fail
+    // closed rather than silently authorizing a partial DNS result.
+    if (code === 'ENODATA') return [];
     throw new Error('network_dns_lookup_failed');
   }
 }
