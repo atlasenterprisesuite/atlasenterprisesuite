@@ -50,7 +50,9 @@ export async function handleAtlasChatGptHttp(req: AtlasChatGptHttpRequest, optio
     if (!principal || principal.revoked !== false || principal.issuer !== metadata.authorization_servers[0] ||
         principal.audience !== metadata.resource || !Number.isFinite(principal.expiresAt) || principal.expiresAt <= now ||
         !Array.isArray(principal.scopes) || !principal.scopes.includes(ATLAS_CHATGPT_SCOPE) ||
-        !principal.subject?.trim() || !principal.tenantId?.trim() || !principal.organizationId?.trim()) return unauthorized();
+        typeof principal.subject !== 'string' || !principal.subject.trim() ||
+        typeof principal.tenantId !== 'string' || !principal.tenantId.trim() ||
+        typeof principal.organizationId !== 'string' || !principal.organizationId.trim()) return unauthorized();
     return {status:202,headers,body:null};
   }
   const result=await handleChatGptCatalogMcp({
