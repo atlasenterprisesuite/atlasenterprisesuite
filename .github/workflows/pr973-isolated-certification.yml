@@ -28,12 +28,12 @@ jobs:
     env:
       CI: "true"
       DATABASE_URL: postgresql://atlas_test:disposable_only@127.0.0.1:5432/atlas_test
-      ATLAS_CERTIFIED_SOURCE_SHA: b86aa6ec04f925602829efe288d06cd67a7fb292
+      ATLAS_CERTIFIED_SOURCE_SHA: 2ede02abfa44b6459a8e67f9f4770ff89f9024fb
     steps:
       - name: Checkout exact PR source SHA (not main)
         uses: actions/checkout@v4
         with:
-          ref: b86aa6ec04f925602829efe288d06cd67a7fb292
+          ref: 2ede02abfa44b6459a8e67f9f4770ff89f9024fb
           persist-credentials: false
       - name: Checkout isolated certification harness
         uses: actions/checkout@v4
