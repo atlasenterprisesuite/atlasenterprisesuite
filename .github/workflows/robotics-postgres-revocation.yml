@@ -44,3 +44,4 @@ jobs:
           python tests/robotics/postgres_revocation_proof.py
           python tests/robotics/postgres_membership_revocation_proof.py
           python tests/robotics/f19_real_sql_gate.py
+          python tests/robotics/f19_original_sql_transaction_proof.py
