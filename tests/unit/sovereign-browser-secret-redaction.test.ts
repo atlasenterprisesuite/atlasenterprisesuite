@@ -80,6 +80,20 @@ describe('ATLAS 777 browser queue must not persist unapproved side effects or ra
         '2026-11-02T00:00:00Z')).toThrow();
     }
   });
+  it('rejects credential-shaped navigation path segments before durable queue persistence', () => {
+    // Paths are persisted as evidence just like queries; encoded credentials
+    // must not bypass the read-only queue's confidentiality boundary.
+    for (const target of [
+      'https://example.com/reset/' + 'sk-proj-' + 'a'.repeat(32),
+      'https://example.com/session/' + syntheticJwt,
+      'https://example.com/%73%6b-proj-' + 'b'.repeat(32),
+      'https://example.com/access_token/synthetic-only-value',
+    ]) {
+      expect(() => prepareBrowserJob(restrictedEnvelope,
+        { type: 'navigate', domain: 'example.com', target },
+        '2026-11-02T00:00:00Z')).toThrow('browser_navigation_sensitive_path');
+    }
+  });
   it('does not persist unexpected envelope properties or alias mutable scope arrays', () => {
     const input = { ...restrictedEnvelope, metadata: { raw: 'synthetic-unclassified-private-value' } };
     const prepared = prepareBrowserJob(input, { type: 'read_text', domain: 'example.com', target: 'h1' },
