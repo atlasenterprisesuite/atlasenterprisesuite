@@ -23,10 +23,18 @@ export type BrowserActionResult = {
 };
 
 const SENSITIVE_KEY = /token|secret|password|cookie|authorization|recovery/i;
+// Page text is untrusted. Redact the entire field when common credential
+// signatures appear; never retain the surrounding snippet in evidence/logs.
+// This is defense in depth, not a substitute for vault/DLP certification.
+const SENSITIVE_TEXT = /\b(?:authorization\s*[:=]\s*(?:bearer\s+)?\S+|bearer\s+[a-z0-9._~+/-]{8,}|(?:api[_-]?key|client[_-]?secret|password|secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*\S+|(?:set-cookie|cookie)\s*:\s*\S+|sk-(?:proj-)?[a-z0-9_-]{16,}|eyJ[a-z0-9_-]{8,}\.eyJ[a-z0-9_-]{8,}\.[a-z0-9_-]{8,})/i;
+function sanitizeBrowserText(text: string): string {
+  const bounded = text.slice(0, 2000);
+  return SENSITIVE_TEXT.test(bounded) ? '[redacted-sensitive-content]' : bounded;
+}
 
 export function sanitizeBrowserResult(value: unknown, depth = 0): unknown {
   if (depth > 8) return '[depth-limited]';
-  if (typeof value === 'string') return value.slice(0, 2000);
+  if (typeof value === 'string') return sanitizeBrowserText(value);
   if (typeof value === 'number' || typeof value === 'boolean' || value === null) return value;
   if (Array.isArray(value)) return value.slice(0, 50).map((item) => sanitizeBrowserResult(item, depth + 1));
   if (value && typeof value === 'object') {
@@ -37,7 +45,7 @@ export function sanitizeBrowserResult(value: unknown, depth = 0): unknown {
     }
     return result;
   }
-  return String(value ?? '').slice(0, 2000);
+  return sanitizeBrowserText(String(value ?? ''));
 }
 
 export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: BrowserAction, now: string | Date = new Date()) {
