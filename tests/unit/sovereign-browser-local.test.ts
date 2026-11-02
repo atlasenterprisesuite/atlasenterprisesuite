@@ -77,13 +77,13 @@ describe('Sovereign browser local transport negative gates', () => {
     expect(route.abort).toHaveBeenCalledOnce();
     expect(route.continue).not.toHaveBeenCalled();
   });
-  it('allows GET only after explicit trusted egress authorization',async()=>{
+  it('does not continue GET on a URL-level allow decision without socket pinning',async()=>{
     let handler: (route:any)=>Promise<void> = async()=>{};
     const route={request:()=>({url:()=> 'https://example.com/',method:()=> 'GET'}),abort:vi.fn(),continue:vi.fn()};
     await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed,{authorize:async()=>true});
     await handler(route);
-    expect(route.continue).toHaveBeenCalledOnce();
-    expect(route.abort).not.toHaveBeenCalled();
+    expect(route.abort).toHaveBeenCalledOnce();
+    expect(route.continue).not.toHaveBeenCalled();
   });
 
   it('fails closed even when an unbound boolean egress approval returns true',async()=>{
