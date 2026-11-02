@@ -34,11 +34,16 @@ jobs:
       PGPASSWORD: isolated_fixture_only
       PGDATABASE: atlas_777_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Verify isolated PostgreSQL 17 and tenant fixtures
         run: |
           set -euo pipefail
-          test "$(psql -Atqc 'show server_version_num')" -ge 170000
+          version="$(psql -X -Atqc 'show server_version_num')"
+          [[ "$version" =~ ^[0-9]+$ ]] || { echo 'POSTGRES_VERSION_QUERY_FAILED'; exit 1; }
+          test "$version" -ge 170000
+          isolation="$(psql -X -Atqc 'show transaction_isolation')"
+          test "$isolation" = 'read committed' || { echo "UNEXPECTED_ISOLATION: $isolation"; exit 1; }
+          echo "POSTGRES_17_ENGINE_READY SHA=${GITHUB_SHA} isolation=${isolation}"
           psql -v ON_ERROR_STOP=1 -f tests/security/atlas-777-postgres-smoke.sql
       - name: Explicitly reject premature RPC certification
         run: |
