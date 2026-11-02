@@ -6,6 +6,12 @@ on:
     paths:
       - '.github/workflows/atlas-777-isolated-postgres.yml'
       - 'tests/security/atlas-777-postgres-smoke.sql'
+  pull_request:
+    paths:
+      - '.github/workflows/atlas-777-isolated-postgres.yml'
+      - 'tests/security/**'
+      - 'tests/integration/supabase-privileged-rpc-static-777.test.ts'
+      - 'supabase/migrations/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -48,4 +54,5 @@ jobs:
       - name: Explicitly reject premature RPC certification
         run: |
           echo 'ENGINE_SMOKE_ONLY: real 22 RPC migration/authorization/revocation certification not yet executed'
-          echo 'ATLAS 777 P0 NO-GO'
+          echo 'ATLAS 777 P0 NO-GO: required RPC certification evidence missing'
+          exit 1
