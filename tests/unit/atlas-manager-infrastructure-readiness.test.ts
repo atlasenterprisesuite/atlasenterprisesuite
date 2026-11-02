@@ -36,7 +36,7 @@ describe('ATLAS Manager infrastructure readiness', () => {
     ]);
   });
 
-  it('blocks on Vercel only when a release explicitly makes it required', () => {
+  it('ignores a legacy Vercel required flag after provider retirement', () => {
     const result = evaluateInfrastructure({
       github: { state: 'ready', required: true },
       supabase: { state: 'ready', required: true },
@@ -45,13 +45,10 @@ describe('ATLAS Manager infrastructure readiness', () => {
       vercel: { state: 'not_configured', required: true }
     });
 
-    expect(result.status).toBe('partial');
-    expect(result.blockers[0]).toEqual({
-      provider: 'vercel',
-      reason: 'not_configured',
-      nextAction: 'verify_or_repair_vercel'
-    });
-    expect(result.requiredPath).toEqual(['github', 'supabase', 'cloudflare', 'production', 'vercel']);
+    expect(result.status).toBe('ready');
+    expect(result.blockers).toEqual([]);
+    expect(result.providers.vercel.required).toBe(false);
+    expect(result.requiredPath).toEqual(['github', 'supabase', 'cloudflare', 'production']);
   });
 
   it('keeps optional provider failures visible without promoting them to blockers', () => {
