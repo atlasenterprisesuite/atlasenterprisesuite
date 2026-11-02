@@ -26,6 +26,6 @@ describe('Morning Focus read-only execution bridge', () => {
   });
 
   it('returns a deterministic path only for a validated reference', () => {
-    expect(executionLinkTarget(link)).toBe('/execution/workflows/123e4567-e89b-42d3-a456-426614174000');
+    expect(executionLinkTarget(link)).toBe('/execution/123e4567-e89b-42d3-a456-426614174000');
   });
 });
