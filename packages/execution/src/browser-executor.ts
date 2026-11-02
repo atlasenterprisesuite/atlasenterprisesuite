@@ -33,6 +33,9 @@ const SAFE_READ_SELECTOR = /^(?:[a-z][a-z0-9_-]*|[.#][a-z_][a-z0-9_-]*)(?:[.#][a
 // signatures appear; never retain the surrounding snippet in evidence/logs.
 // This is defense in depth, not a substitute for vault/DLP certification.
 const SENSITIVE_TEXT = /\b(?:authorization\s*[:=]\s*(?:bearer\s+)?\S+|bearer\s+[a-z0-9._~+/-]{8,}|(?:api[_-]?key|client[_-]?secret|password|secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*\S+|(?:set-cookie|cookie)\s*:\s*\S+|sk-(?:proj-)?[a-z0-9_-]{16,}|eyJ[a-z0-9_-]{8,}\.eyJ[a-z0-9_-]{8,}\.[a-z0-9_-]{8,})/i;
+// Navigation paths are persisted in the durable queue. Credential-shaped
+// segments (including percent-encoded forms) are not safe audit metadata.
+const SENSITIVE_PATH_SEGMENT = /(?:^|\\/)(?:access[_-]?token|refresh[_-]?token|api[_-]?key|secret|password|authorization|bearer)(?:\\/|$|[=:])/i;
 function sanitizeBrowserText(text: string): string {
   const bounded = text.slice(0, 2000);
   return SENSITIVE_TEXT.test(bounded) ? '[redacted-sensitive-content]' : bounded;
@@ -105,9 +108,22 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
     try {
       const destination = approvedUrl(new URL(action.target, 'https://' + action.domain + '/').href, [action.domain]);
       if (destination.search || destination.hash) throw new Error('browser_navigation_query_not_allowed');
+      // Reject path-borne secrets before they become durable queue evidence.
+      // Repeated decoding also catches double-encoded credential signatures.
+      let decodedPath = destination.pathname;
+      for (let i = 0; i < 3; i++) {
+        const next = decodeURIComponent(decodedPath);
+        if (next === decodedPath) break;
+        decodedPath = next;
+      }
+      if (destination.href.length > 1000 || /%[0-9a-f]{2}/i.test(decodedPath) ||
+          SENSITIVE_TEXT.test(decodedPath) || SENSITIVE_PATH_SEGMENT.test(decodedPath)) {
+        throw new Error('browser_navigation_sensitive_path');
+      }
       safeTarget = destination.href;
     } catch (error) {
-      if (error instanceof Error && error.message === 'browser_navigation_query_not_allowed') throw error;
+      if (error instanceof Error && (error.message === 'browser_navigation_query_not_allowed' ||
+          error.message === 'browser_navigation_sensitive_path')) throw error;
       throw new Error('unsafe_navigation');
     }
   }
