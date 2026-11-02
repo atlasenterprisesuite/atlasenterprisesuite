@@ -131,6 +131,12 @@ describe('Sovereign browser local transport negative gates', () => {
       resolve4: async () => [], resolve6: async () => []
     })).rejects.toThrow('network_dns_empty');
   });
+  it('fails closed on contradictory DNS NXDOMAIN despite a public A answer', async () => {
+    await expect(resolvePublicDns('https://example.com/', allowed, {
+      resolve4: async () => ['8.8.8.8'],
+      resolve6: async () => { throw Object.assign(new Error('NXDOMAIN'), { code: 'ENOTFOUND' }); }
+    })).rejects.toThrow('network_dns_lookup_failed');
+  });
   it('accepts only bounded public A/AAAA answers as preflight evidence, not socket authorization', async () => {
     const verified = await resolvePublicDns('https://example.com/', allowed, {
       resolve4: async () => ['8.8.8.8'], resolve6: async () => ['2606:4700:4700::1111']
