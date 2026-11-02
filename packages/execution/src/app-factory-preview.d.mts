@@ -1,0 +1,5 @@
+export interface AppFactoryPlanStep { id: string; label: string; status: 'pending' }
+export interface AppFactoryPlan { version: number; organizationId: string; actorId: string; title: string; summary: string; status: 'proposal'; steps: AppFactoryPlanStep[]; approvalRequired: true; executable: false; deployable: false }
+export interface AppFactoryPreviewResult { plan: AppFactoryPlan; preview: { kind: 'static-html'; html: string; scriptsAllowed: false; networkAllowed: false } }
+export function createAppFactoryPreview(input?: { idea?: string; organizationId?: string; actorId?: string; name?: string }): AppFactoryPreviewResult;
+export function createAuthorizedAppFactoryPreview(input: { idea?: string; organizationId?: string; actorId?: string; name?: string }, context?: { session?: { actorId: string }; authorize?: (scope: { actorId: string; organizationId: string; permission: string }) => Promise<boolean> | boolean }): Promise<AppFactoryPreviewResult & { preview: AppFactoryPreviewResult['preview'] & { sandbox: ''; referrerPolicy: 'no-referrer'; csp: string; integrationStatus: 'not-mounted' } }>;
