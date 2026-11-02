@@ -80,6 +80,22 @@ describe('ATLAS 777 browser queue must not persist unapproved side effects or ra
         '2026-11-02T00:00:00Z')).toThrow();
     }
   });
+  it('does not persist unexpected envelope properties or alias mutable scope arrays', () => {
+    const input = { ...restrictedEnvelope, metadata: { raw: 'synthetic-unclassified-private-value' } };
+    const prepared = prepareBrowserJob(input, { type: 'read_text', domain: 'example.com', target: 'h1' },
+      '2026-11-02T00:00:00Z');
+    expect(JSON.stringify(prepared)).not.toContain('synthetic-unclassified-private-value');
+    expect(prepared.executionEnvelope).not.toHaveProperty('metadata');
+    input.allowedDomains.push('unapproved.example');
+    expect(prepared.executionEnvelope.allowedDomains).toEqual(['example.com']);
+  });
+  it('rejects noncanonical domain input before read-only queue persistence', () => {
+    for (const domain of ['https://example.com/?note=synthetic-only', 'example.com/path', 'example.com:443']) {
+      expect(() => prepareBrowserJob(restrictedEnvelope,
+        { type: 'read_text', domain, target: 'h1' }, '2026-11-02T00:00:00Z'))
+        .toThrow('browser_domain_invalid');
+    }
+  });
   it('retains safe read-only queue preparation', () => {
     expect(prepareBrowserJob(restrictedEnvelope, { type: 'navigate', domain: 'example.com',
       target: 'https://example.com/' }, '2026-11-02T00:00:00Z').action.type).toBe('navigate');
