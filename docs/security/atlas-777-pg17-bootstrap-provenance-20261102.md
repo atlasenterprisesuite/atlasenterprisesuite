@@ -88,3 +88,15 @@ Current RLS policy catalog: `public.profiles` has `profiles_self` for `authentic
 Independent #976 Browser regression at SHA `a9dbe0864a7e9d831ba03686309e3fb5a5f76008`: consensus security job 125267560094 failed unit test `tests/unit/sovereign-browser.test.ts:30`: expected `unsafe_navigation` for reserved/internal DNS suffixes but got `browser_action_not_allowed`. 1612 tests passed, 1 failed. This is a concrete regression to fix on #976's own branch, not in Foundation #974.
 
 Fail Closed: no incomplete PG17 bootstrap was wired, no People/Advisory migrations or negative runtime tests were executed. Production remains untouched.
+
+## RUN NEXT — constraints, indexes, roles and default ACL provenance
+
+Read-only catalog inspection on atlas-core (no application/user rows):
+
+- `auth.users`: 3 constraints (`users_pkey`, `users_phone_key`, `users_email_change_confirm_status_check`) and 15 indexes, including partial unique indexes for non-SSO email and token columns. The table is managed by `supabase_auth_admin` and is not equivalent to an `id`-only substitute.
+- `public.profiles`: `profiles_pkey` and `profiles_id_fkey REFERENCES auth.users(id) ON DELETE CASCADE`; corresponding primary-key index.
+- `public.organization_modules`: composite `organization_modules_pkey(org_id,module_code)` and FK to `public.organizations(id) ON DELETE CASCADE`; corresponding primary-key index.
+- Role attributes observed: `anon` and `authenticated` are NOLOGIN/INHERIT/NOBYPASSRLS; `authenticator` LOGIN/NOINHERIT/NOBYPASSRLS; `service_role` NOLOGIN/INHERIT/BYPASSRLS; `supabase_auth_admin` LOGIN/NOINHERIT/NOBYPASSRLS; `postgres` LOGIN/INHERIT/BYPASSRLS (not superuser). These are observed attributes, not instructions to grant elevated privileges in a fixture.
+- Default ACLs differ by creator and schema: `auth` objects owned by `supabase_auth_admin` grant tables/sequences/functions to `postgres` and `dashboard_user`; `public` objects created by `postgres` have function EXECUTE restricted to `postgres` and `service_role`, whereas `public` objects created by `supabase_admin` have broader function default EXECUTE. Reproducing only per-object grants misses creator-specific default ACL semantics.
+
+P0 still OPEN: verify role membership inheritance, exact Auth schema constraints/indexes/extension dependencies, schema privileges and current migration chain before wiring any bootstrap. This is catalog provenance, not a PostgreSQL 17 execution result.
