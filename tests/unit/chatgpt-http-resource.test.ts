@@ -62,6 +62,10 @@ describe('isolated OAuth HTTP transport',()=>{
   expect(denied.status).toBe(401);
   const injected=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:{jsonrpc:'2.0',method:'notifications/initialized',params:{organizationId:'other'}}},opts);
   expect(injected.status).toBe(400);
+  // A malformed verifier result must deny access rather than throw or return HTTP 500.
+  const malformed={...opts,verifyToken:async()=>({...await opts.verifyToken(),tenantId:123}) as never};
+  const malformedResult=await handleAtlasChatGptHttp({method:'POST',path:'/mcp',authorization:'Bearer opaque',body:{jsonrpc:'2.0',method:'notifications/initialized'}},malformed);
+  expect(malformedResult.status).toBe(401);
  });
 
 });
