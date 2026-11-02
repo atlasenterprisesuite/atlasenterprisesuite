@@ -6,7 +6,7 @@ vi.mock('node:dns/promises', () => ({
 }));
 
 import { resolve4, resolve6 } from 'node:dns/promises';
-import { resolvePublicDnsNode } from '../../packages/execution/src/dns-egress-node';
+import { resolvePublicDnsNode } from '../../packages/execution/src/dns-egress-node.mjs';
 
 describe('Node-only DNS preflight adapter (network-free fixture)', () => {
   it('uses both real resolver interfaces and checks all answers before returning preflight evidence', async () => {
