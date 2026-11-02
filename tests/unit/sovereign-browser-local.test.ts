@@ -150,4 +150,17 @@ describe('Sovereign browser local transport negative gates', () => {
     expect(resolve4).toHaveBeenCalledWith('example.com');
     expect(result.hostname).toBe('example.com');
   });
+  it('does not call URL-level egress preflight when all browser sockets are disabled', async () => {
+    let handler: (route:any)=>Promise<void> = async()=>{};
+    const authorize = vi.fn().mockResolvedValue(true);
+    const route = {request:()=>({url:()=> 'https://example.com/',method:()=> 'GET'}),abort:vi.fn(),continue:vi.fn()};
+    await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed,{authorize});
+    await handler(route);
+    // Even a URL-level preflight may perform DNS I/O or stall. With no
+    // socket-bound transport, do not invoke it before denying the request.
+    expect(authorize).not.toHaveBeenCalled();
+    expect(route.abort).toHaveBeenCalledOnce();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+
 });
