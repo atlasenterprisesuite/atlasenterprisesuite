@@ -25,6 +25,13 @@ begin
     raise exception 'Firm not available in active organization';
   end if;
   if not public.is_advisory_firm_member(v_org, p_firm_id) then raise exception 'Active Advisory firm membership required'; end if;
+  -- Lock the actual membership row through transaction commit. Concurrent UPDATE/DELETE
+  -- revocation of this row must serialize with the protected write.
+  perform 1 from public.advisory_firm_memberships m
+  where m.org_id = v_org and m.firm_id = p_firm_id
+    and m.user_id = v_user and m.status = 'active'
+  for share;
+  if not found then raise exception 'Active Advisory firm membership required'; end if;
   if length(trim(coalesce(p_display_name,''))) = 0 then raise exception 'Client name required'; end if;
   if p_client_type not in ('person','business') then raise exception 'Invalid client type'; end if;
 
@@ -58,6 +65,13 @@ begin
     raise exception 'Firm not available in active organization';
   end if;
   if not public.is_advisory_firm_member(v_org, p_firm_id) then raise exception 'Active Advisory firm membership required'; end if;
+  -- Lock the actual membership row through transaction commit. Concurrent UPDATE/DELETE
+  -- revocation of this row must serialize with the protected write.
+  perform 1 from public.advisory_firm_memberships m
+  where m.org_id = v_org and m.firm_id = p_firm_id
+    and m.user_id = v_user and m.status = 'active'
+  for share;
+  if not found then raise exception 'Active Advisory firm membership required'; end if;
   if not exists (select 1 from public.advisory_clients c where c.id = p_client_id and c.org_id = v_org and c.firm_id = p_firm_id and c.status <> 'inactive') then
     raise exception 'Client not available in firm';
   end if;
@@ -101,6 +115,13 @@ begin
 
   if v_firm is null then raise exception 'Engagement not available in active organization'; end if;
   if not public.is_advisory_firm_member(v_org, v_firm) then raise exception 'Active Advisory firm membership required'; end if;
+  -- Lock the actual membership row through transaction commit. Concurrent UPDATE/DELETE
+  -- revocation of this row must serialize with the protected write.
+  perform 1 from public.advisory_firm_memberships m
+  where m.org_id = v_org and m.firm_id = v_firm
+    and m.user_id = v_user and m.status = 'active'
+  for share;
+  if not found then raise exception 'Active Advisory firm membership required'; end if;
   if v_service <> 'business-launch-360' then raise exception 'Launch evidence requires Business Launch 360 engagement'; end if;
   if p_dimension not in ('business_setup','brand','website','contact_channels','crm','payments','accounting','marketing','compliance','analytics') then
     raise exception 'Invalid readiness dimension';
