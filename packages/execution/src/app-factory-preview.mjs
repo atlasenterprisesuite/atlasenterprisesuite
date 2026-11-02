@@ -45,3 +45,47 @@ export function createAppFactoryPreview({ idea, organizationId, actorId, name } 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(normalizedIdea)}</p><p role="status">Concept preview only — not deployed</p></main></body></html>`;
   return { plan, preview: { kind: 'static-html', html, scriptsAllowed: false, networkAllowed: false } };
 }
+
+/**
+ * Authenticated integration boundary. Caller identity MUST originate from a
+ * verified server session; authorization callback MUST query the authoritative
+ * membership/permission store, never user-submitted claims.
+ *
+ * The second check prevents publishing a preview after a revocation observed
+ * while the preview is being prepared. This is not a transactional guarantee:
+ * persistence and execution require database-side authorization at commit time.
+ */
+export async function createAuthorizedAppFactoryPreview(input, { session, authorize } = {}) {
+  if (!session || typeof session.actorId !== 'string' || !SAFE_ID.test(session.actorId)) {
+    throw new Error('app_factory_unauthenticated');
+  }
+  if (!input || typeof input !== 'object' || typeof authorize !== 'function') {
+    throw new Error('app_factory_authorization_unavailable');
+  }
+  const organizationId = input.organizationId;
+  if (typeof organizationId !== 'string' || !SAFE_ID.test(organizationId)) {
+    throw new Error('app_factory_organization_invalid');
+  }
+  const check = async () => {
+    try {
+      const decision = await authorize({ actorId: session.actorId, organizationId, permission: 'app_factory.preview' });
+      if (decision !== true) throw new Error('denied');
+    } catch {
+      throw new Error('app_factory_forbidden');
+    }
+  };
+  await check();
+  const result = createAppFactoryPreview({ ...input, actorId: session.actorId, organizationId });
+  await check();
+  return {
+    ...result,
+    preview: {
+      ...result.preview,
+      // Consumer MUST render as iframe srcDoc, never dangerouslySetInnerHTML.
+      sandbox: '',
+      referrerPolicy: 'no-referrer',
+      csp: "default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; style-src 'none'; form-action 'none'; base-uri 'none'",
+      integrationStatus: 'not-mounted'
+    }
+  };
+}
