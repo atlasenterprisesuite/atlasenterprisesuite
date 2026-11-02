@@ -19,8 +19,10 @@ BEGIN
         WHEN pg_get_userbyid(p.proowner) <> 'postgres' THEN 'owner'
         WHEN p.prosecdef IS DISTINCT FROM e.definer THEN 'security_definer'
         WHEN coalesce((select replace(split_part(cfg,'=',2),'"','') from unnest(p.proconfig) cfg where cfg like 'search_path=%'),'') <> e.expected_path THEN 'search_path'
-        WHEN EXISTS (SELECT 1 FROM (VALUES ('PUBLIC'),('anon'),('authenticated'),('service_role')) r(role_name)
-          WHERE has_function_privilege(r.role_name, p.oid, 'EXECUTE') IS DISTINCT FROM (r.role_name=ANY(e.allowed_roles))) THEN 'execute_privileges'
+        WHEN EXISTS (SELECT 1 FROM (VALUES ('anon'),('authenticated'),('service_role')) r(role_name)
+          WHERE has_function_privilege(r.role_name, p.oid, 'EXECUTE') IS DISTINCT FROM (r.role_name=ANY(e.allowed_roles)))
+          OR EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+                     WHERE acl.grantee=0 AND acl.privilege_type='EXECUTE') THEN 'execute_privileges'
         ELSE NULL END AS problem
     FROM expected e LEFT JOIN pg_namespace n ON n.nspname=e.schema_name
       LEFT JOIN pg_proc p ON p.pronamespace=n.oid AND p.proname=e.function_name
