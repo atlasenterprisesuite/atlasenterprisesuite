@@ -52,6 +52,21 @@ jobs:
           test "$isolation" = 'read committed' || { echo "UNEXPECTED_ISOLATION: $isolation"; exit 1; }
           echo "POSTGRES_17_ENGINE_READY SHA=${GITHUB_SHA} isolation=${isolation}"
           psql -v ON_ERROR_STOP=1 -f tests/security/atlas-777-postgres-smoke.sql
+      - name: Negative foundation preflight rejects an incomplete database
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp)"
+          trap 'rm -f "$log_file"' EXIT
+          if psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-foundation-preflight.sql >"$log_file" 2>&1; then
+            echo 'P0_PREFLIGHT_FALSE_GREEN: incomplete foundation was accepted'
+            exit 1
+          else
+            result=$?
+          fi
+          cat "$log_file"
+          test "$result" -eq 3 || { echo 'P0_PREFLIGHT_UNEXPECTED_CLIENT_FAILURE'; exit 1; }
+          grep -Fq 'P0_FOUNDATION_DEPENDENCIES_MISSING:' "$log_file" || { echo 'P0_PREFLIGHT_EXPECTED_DENIAL_MISSING'; exit 1; }
+          echo 'NEGATIVE_PREFLIGHT_CONFIRMED: dependency rejection only; bootstrap and RPC certification remain blocked'
       - name: Check prerequisites for original People migration (fail closed)
         run: |
           set -euo pipefail
