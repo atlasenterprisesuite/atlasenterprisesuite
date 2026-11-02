@@ -51,6 +51,14 @@ export function sanitizeBrowserResult(value: unknown, depth = 0): unknown {
 }
 
 export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: BrowserAction, now: string | Date = new Date()) {
+  // Only a canonical hostname may be used as a queue domain. Envelope matching
+  // normalizes URL-like strings, which must never be persisted as raw domains.
+  if (typeof action.domain !== 'string' ||
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$/i.test(action.domain)) {
+    throw new Error('browser_domain_invalid');
+  }
+  try { approvedUrl('https://' + action.domain + '/', [action.domain]); }
+  catch { throw new Error('browser_domain_invalid'); }
   const decision = evaluateBrowserAction(
     envelope,
     { domain: action.domain, action: action.type },
@@ -87,7 +95,19 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
   }
 
   return {
-    executionEnvelope: { ...envelope },
+    // Closed persisted schema: runtime callers can attach extra keys even if
+    // TypeScript's declared envelope type does not include them.
+    executionEnvelope: {
+      workflowId: envelope.workflowId,
+      stepId: envelope.stepId,
+      tenantId: envelope.tenantId,
+      organizationId: envelope.organizationId,
+      allowedDomains: [...envelope.allowedDomains],
+      allowedActions: [...envelope.allowedActions],
+      deniedActions: [...envelope.deniedActions],
+      autonomyLevel: envelope.autonomyLevel,
+      expiresAt: envelope.expiresAt,
+    },
     action: {
       type: action.type,
       domain: action.domain,
