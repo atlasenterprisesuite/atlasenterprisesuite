@@ -15,6 +15,8 @@ with db() as c:
     q.execute("alter table public.organization_members add column if not exists org_id uuid")
     q.execute("update public.organization_members set org_id=organization_id")
     q.execute("create schema if not exists auth")
+    q.execute("select 1 from pg_roles where rolname=%s",("service_role",))
+    if q.fetchone() is None: q.execute("create role service_role nologin")
     q.execute("""create or replace function auth.uid() returns uuid language sql stable as
       $$select nullif(current_setting('test.verified_actor',true),'')::uuid$$""")
     q.execute("""create or replace function public.has_identity_permission(o uuid,p text)
