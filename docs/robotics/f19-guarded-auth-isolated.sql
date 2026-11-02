@@ -24,7 +24,7 @@ begin
   -- P0: effective role-permission revocation must share a lock protocol.
   if not coalesce(public.has_identity_permission(p_org,'execution.write'),false)
     then return false; end if;
-  return public.robotics_simulation_complete(p_tenant,p_org,v_actor,p_run);
+  return public.robotics_simulation_complete(p_tenant,p_org,p_run);
 end $$;
 revoke all on function public.robotics_f19_guarded_complete(text,uuid,text)
   from public, anon, authenticated, service_role;
