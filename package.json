@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm --workspace apps/web run dev",
+    "dev": "npm --workspace apps/web run dev --",
     "build": "npm --workspace apps/web run build && node scripts/write-deployment-manifest.mjs apps/web/dist/deployment.json",
     "typecheck": "npm --workspace apps/web run typecheck",
     "test": "vitest run",
