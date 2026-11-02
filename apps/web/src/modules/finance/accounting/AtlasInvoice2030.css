@@ -1,0 +1,65 @@
+/* ATLAS 2030: presentation only. No ledger or payment side effects. */
+.atlas-2030-wrap { max-width: 1040px; margin: 1.25rem auto; color: #17243a; }
+.atlas-2030-controls { display: flex; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: .8rem; margin: 0 0 1rem; }
+.atlas-2030-controls label { color: inherit; display: grid; gap: .25rem; font-size: .85rem; font-weight: 600; }
+.atlas-2030-controls select { color: inherit; background: var(--surface, #fff); border: 1px solid #9aa9bd; border-radius: .45rem; padding: .4rem .7rem; }
+.atlas-invoice-2030 { color: #18263e; background: #fff; border: 1px solid #c8d3e2; border-radius: 18px; padding: 2rem; box-shadow: 0 12px 40px rgba(18, 39, 63, .11); }
+.atlas-invoice-2030 h3, .atlas-invoice-2030 h4, .atlas-invoice-2030 p, .atlas-invoice-2030 dl { margin: 0; }
+.atlas-invoice-2030 h4 { color: #305f88; font-size: .77rem; letter-spacing: .06em; margin: 0 0 .4rem; }
+.atlas-2030-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding-bottom: 1.6rem; border-bottom: 2px solid #1b507e; }
+.atlas-2030-wordmark { font-size: 2.15rem; font-weight: 900; letter-spacing: -.06em; line-height: 1.15; color: #0a3974; }
+.atlas-2030-wordmark span { margin-left: .25rem; color: #066d8b; font-size: .75rem; letter-spacing: .05em; vertical-align: top; }
+.atlas-2030-wordmark small { display: block; font-size: .61rem; letter-spacing: .28em; font-weight: 700; color: #44617c; margin-top: .45rem; }
+.atlas-2030-heading { text-align: right; }
+.atlas-2030-heading h3 { font-size: 1.8rem; letter-spacing: .1em; color: #0a3974; }
+.atlas-2030-heading p { color: #425675; font-size: .82rem; }
+.atlas-2030-heading strong { display: inline-block; padding-top: .45rem; overflow-wrap: anywhere; }
+.atlas-2030-watermark { background: #fff2d9; border: 1px solid #9c5e00; color: #703e00; text-align: center; font-size: .8rem; font-weight: 750; padding: .75rem; border-radius: .5rem; margin: 1rem 0 !important; }
+.atlas-2030-parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; margin: 1.6rem 0; }
+.atlas-2030-parties p { font-size: .82rem; color: #455471; line-height: 1.5; margin-top: .4rem; }
+.atlas-2030-parties strong { display: block; overflow-wrap: anywhere; }
+.atlas-2030-meta { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); background: #f0f5fb; padding: 1rem; gap: .85rem; border-radius: 8px; margin: 1rem 0 !important; }
+.atlas-2030-meta dt { font-size: .76rem; color: #3a516b; }
+.atlas-2030-meta dd { margin: .2rem 0 0; font-weight: 650; font-size: .84rem; overflow-wrap: anywhere; }
+.atlas-2030-table-scroll { max-width: 100%; overflow-x: auto; }
+.atlas-invoice-2030 table { width: 100%; border-collapse: collapse; color: #15233c; font-size: .85rem; }
+.atlas-invoice-2030 th { text-align: left; color: #fff; background: #123e74; padding: .8rem; }
+.atlas-invoice-2030 td { padding: .85rem .8rem; border-bottom: 1px solid #dce5f1; overflow-wrap: anywhere; }
+.atlas-invoice-2030 :is(td,th):not(:first-child) { text-align: right; }
+.atlas-2030-totals { width: min(100%, 330px); margin: 1.6rem 0 1.6rem auto; }
+.atlas-2030-totals > div { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem; font-size: .9rem; }
+.atlas-2030-total { border-top: 2px solid #173f6e; }
+.atlas-2030-balance { border-radius: 7px; background: #e4eff9; color: #0c3765; font-weight: 800; font-size: 1.05rem !important; }
+.atlas-2030-foot { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1rem 2rem; border-top: 1px solid #ccd6e4; padding: 1.4rem 0; }
+.atlas-2030-foot p { font-size: .8rem; color: #455471; line-height: 1.5; }
+.atlas-invoice-2030 footer { border-top: 1px solid #ccd6e4; display: flex; flex-wrap: wrap; gap: .7rem; justify-content: space-between; font-size: .7rem; color: #49647c; padding-top: 1rem; overflow-wrap: anywhere; }
+.atlas-2030-error { padding: 1rem; border: 2px solid #b91c1c; border-radius: .6rem; background: #fff7f7; color: #8b1010; }
+.atlas-2030-error p { margin: .5rem 0; }
+.atlas-invoice-2030.atlas-2030-thermal { max-width: 340px; padding: .65rem; border-radius: 4px; margin: auto; }
+.atlas-2030-thermal .atlas-2030-parties, .atlas-2030-thermal .atlas-2030-foot { grid-template-columns: 1fr; gap: .7rem; }
+.atlas-2030-thermal .atlas-2030-meta { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.atlas-2030-thermal .atlas-2030-heading { text-align: left; }
+.atlas-2030-thermal .atlas-2030-table-scroll { overflow: visible; }
+.atlas-2030-thermal table { font-size: .66rem; table-layout: fixed; }
+.atlas-2030-thermal :is(td,th) { padding: .35rem .15rem; }
+@media (max-width: 600px) {
+  .atlas-invoice-2030 { padding: 1rem; border-radius: 10px; }
+  .atlas-2030-parties, .atlas-2030-foot { grid-template-columns: 1fr; }
+  .atlas-2030-meta { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .atlas-2030-heading { text-align: left; }
+  .atlas-2030-controls { justify-content: flex-start; }
+}
+@media print {
+  @page { margin: 10mm; }
+  body:has(.atlas-invoice-print-scope) * { visibility: hidden !important; }
+  body:has(.atlas-invoice-print-scope) .atlas-invoice-print-scope,
+  body:has(.atlas-invoice-print-scope) .atlas-invoice-print-scope * { visibility: visible !important; }
+  .atlas-invoice-print-scope { position: absolute; top: 0; left: 0; width: 100%; max-width: unset; border: 0; box-shadow: none; border-radius: 0; margin: 0; padding: 0; color-adjust: exact; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .atlas-invoice-print-scope .atlas-2030-head { break-inside: avoid; }
+  .atlas-invoice-print-scope tr { break-inside: avoid; }
+  .atlas-invoice-print-scope .atlas-2030-foot { break-inside: avoid; }
+  .atlas-invoice-print-scope.atlas-2030-thermal { width: 76mm; max-width: 76mm; padding: 0; }
+  .atlas-invoice-print-scope.atlas-2030-thermal .atlas-2030-wordmark { font-size: 1.25rem; }
+  .atlas-invoice-print-scope.atlas-2030-thermal .atlas-2030-heading h3 { font-size: 1.1rem; }
+  .atlas-invoice-print-scope.atlas-2030-thermal .atlas-2030-head { display: block; }
+}
