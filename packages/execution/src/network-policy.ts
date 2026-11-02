@@ -28,8 +28,8 @@ export async function installNetworkGuard(context: RouteContext, allowedDomains:
   await context.route('**/*', async route => {
     try {
       const destination = approvedUrl(route.request().url(), allowedDomains);
-      if (!egress || !(await egress.authorize(destination))) throw new Error('network_egress_unverified');
       if (route.request().method() !== 'GET') throw new Error('network_method_denied');
+      if (!egress || !(await egress.authorize(destination))) throw new Error('network_egress_unverified');
       await route.continue();
     } catch { await route.abort(); }
   });
