@@ -23,6 +23,20 @@ begin
   if (select count(*) from atlas_777_fixture.tenant_rows) <> 1 then
     raise exception 'TENANT_A_VISIBILITY_FAILED';
   end if;
+  -- Cross-tenant rows must remain invisible and unmodifiable.
+  if (select count(*) from atlas_777_fixture.tenant_rows where org = 'B') <> 0 then
+    raise exception 'TENANT_B_READ_LEAK';
+  end if;
+  update atlas_777_fixture.tenant_rows set value = 'tampered' where org = 'B';
+  if found then
+    raise exception 'CROSS_TENANT_UPDATE_ACCEPTED';
+  end if;
+  -- A tenant may not move its own row into a different organization.
+  begin
+    update atlas_777_fixture.tenant_rows set org = 'B' where org = 'A';
+    raise exception 'CROSS_TENANT_REASSIGN_ACCEPTED';
+  exception when insufficient_privilege then null;
+  end;
   begin
     insert into atlas_777_fixture.tenant_rows(org,value) values ('B','cross-tenant');
     raise exception 'CROSS_TENANT_WRITE_ACCEPTED';
