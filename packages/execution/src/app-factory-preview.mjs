@@ -25,6 +25,7 @@ export function createAppFactoryPreview({ idea, organizationId, actorId, name } 
   }
   const normalizedIdea = clean(idea);
   const title = name === undefined ? 'New ATLAS application' : clean(name);
+  if (!normalizedIdea || !title) throw new TypeError('invalid_normalized_content');
   const plan = {
     version: 1,
     organizationId,
@@ -42,7 +43,7 @@ export function createAppFactoryPreview({ idea, organizationId, actorId, name } 
     executable: false,
     deployable: false
   };
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(normalizedIdea)}</p><p role="status">Concept preview only — not deployed</p></main></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; style-src 'none'; form-action 'none'; base-uri 'none'"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(normalizedIdea)}</p><p role="status">Concept preview only — not deployed</p></main></body></html>`;
   return { plan, preview: { kind: 'static-html', html, scriptsAllowed: false, networkAllowed: false } };
 }
 
