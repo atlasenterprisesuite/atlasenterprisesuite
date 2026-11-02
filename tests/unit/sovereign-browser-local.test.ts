@@ -136,4 +136,11 @@ describe('Sovereign browser local transport negative gates', () => {
     });
     expect(verified).toEqual({ hostname: 'example.com', addresses: ['8.8.8.8', '2606:4700:4700::1111'] });
   });
+  it('normalizes an allowed absolute DNS name before resolving its addresses', async () => {
+    const resolve4 = vi.fn().mockResolvedValue(['8.8.8.8']);
+    const resolve6 = vi.fn().mockResolvedValue([]);
+    const result = await resolvePublicDns('https://example.com./', allowed, { resolve4, resolve6 });
+    expect(resolve4).toHaveBeenCalledWith('example.com');
+    expect(result.hostname).toBe('example.com');
+  });
 });
