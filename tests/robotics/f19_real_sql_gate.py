@@ -71,5 +71,31 @@ with conn.cursor() as cur:
         finally:
             cur.execute("reset role")
     print("PASS direct nonprivileged SQL denial", flush=True)
+
+    # Cross-tenant and actor-spoof attempts must fail closed for both API roles.
+    # No privileged bypass is introduced: real positive authorization remains P0.
+    import uuid
+    org_a, org_b, actor_a, actor_b = [str(uuid.uuid4()) for _ in range(4)]
+    cur.execute("insert into public.organizations(id) values (%s),(%s)", (org_a,org_b))
+    cur.execute("insert into public.organization_members(id,organization_id,user_id,status) values (%s,%s,%s,'active'),(%s,%s,%s,'active')",
+                (str(uuid.uuid4()),org_a,actor_a,str(uuid.uuid4()),org_b,actor_b))
+    for role in ("anon", "authenticated"):
+        cur.execute("set role " + role)
+        try:
+            for tenant, org, claimed_actor in (("tenant-a",org_a,actor_a),
+                                               ("tenant-b",org_b,actor_a),
+                                               ("tenant-a",org_a,actor_b)):
+                for operation in ("reserve", "complete", "halt"):
+                    try:
+                        cur.execute("select public.robotics_simulation_" + operation +
+                                    "(%s,%s::uuid,%s::uuid,%s)",
+                                    (tenant,org,claimed_actor,"f19_negative"))
+                    except psycopg2.errors.InsufficientPrivilege:
+                        print("PASS fail-closed spoof/tenant", role, operation, tenant, flush=True)
+                    else:
+                        raise AssertionError(("unsafe RPC exposure",role,operation,tenant))
+        finally:
+            cur.execute("reset role")
+    print("PASS cross-tenant and actor-spoof denial; positive authorization NOT certified",flush=True)
 print("F19 SQL-load and ACL subset passed; actor binding and concurrent membership/role revocation NOT certified", flush=True)
 conn.close()
