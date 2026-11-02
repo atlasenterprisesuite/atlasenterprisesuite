@@ -5,6 +5,7 @@ import { PersonalVoicePage } from './PersonalVoicePage';
 import { PersonalVoiceWizard, type PersonalVoiceWizardStep } from './PersonalVoiceWizard';
 import { VoiceHomePage } from './VoiceHomePage';
 import { VoiceStudioPage } from './VoiceStudioPage';
+import { DubbingStudioPage } from './DubbingStudioPage';
 import './voice.css';
 import './voiceStudio.css';
 
@@ -30,6 +31,7 @@ export function VoiceRoutes() {
       <Route path="/voice" element={<VoiceHomePage />} />
       <Route path="/voice/assistant" element={<AtlasVoicePage />} />
       <Route path="/voice/studio" element={<VoiceStudioPage />} />
+      <Route path="/voice/dubbing" element={<DubbingStudioPage />} />
       <Route path="/voice/personal-voice" element={<PersonalVoicePage />} />
       <Route path="/voice/personal-voice/apple" element={<AppleVoicePage />} />
       <Route path="/voice/personal-voice/setup" element={<PersonalVoiceWizard initialStep="setup" />} />
