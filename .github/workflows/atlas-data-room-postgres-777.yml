@@ -4,6 +4,8 @@ on:
     paths:
       - 'supabase/migrations/20261102000100_atlas_data_room_deny_default.sql'
       - 'tests/postgres/secure-data-room-deny-default-777.sql'
+      - 'tests/postgres/secure-data-room-negative-authorization-777.sql'
+      - 'supabase/migrations/20261102000200_atlas_data_room_locked_authorization.sql'
       - '.github/workflows/atlas-data-room-postgres-777.yml'
   workflow_dispatch:
 permissions:
@@ -43,3 +45,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102000100_atlas_data_room_deny_default.sql
       - name: Assert PostgreSQL RLS and privileges
         run: psql -v ON_ERROR_STOP=1 -f tests/postgres/secure-data-room-deny-default-777.sql
+
+      - name: Apply locked authorization migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102000200_atlas_data_room_locked_authorization.sql
+      - name: Negative authorization and sequential revocation
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/secure-data-room-negative-authorization-777.sql
