@@ -35,7 +35,7 @@ const SAFE_READ_SELECTOR = /^(?:[a-z][a-z0-9_-]*|[.#][a-z_][a-z0-9_-]*)(?:[.#][a
 const SENSITIVE_TEXT = /\b(?:authorization\s*[:=]\s*(?:bearer\s+)?\S+|bearer\s+[a-z0-9._~+/-]{8,}|(?:api[_-]?key|client[_-]?secret|password|secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*\S+|(?:set-cookie|cookie)\s*:\s*\S+|sk-(?:proj-)?[a-z0-9_-]{16,}|eyJ[a-z0-9_-]{8,}\.eyJ[a-z0-9_-]{8,}\.[a-z0-9_-]{8,})/i;
 // Navigation paths are persisted in the durable queue. Credential-shaped
 // segments (including percent-encoded forms) are not safe audit metadata.
-const SENSITIVE_PATH_SEGMENT = /(?:^|\\/)(?:access[_-]?token|refresh[_-]?token|api[_-]?key|secret|password|authorization|bearer)(?:\\/|$|[=:])/i;
+const SENSITIVE_PATH_SEGMENT = /(?:^|\/)(?:access[_-]?token|refresh[_-]?token|api[_-]?key|secret|password|authorization|bearer)(?:\/|$|[=:])/i;
 function sanitizeBrowserText(text: string): string {
   const bounded = text.slice(0, 2000);
   return SENSITIVE_TEXT.test(bounded) ? '[redacted-sensitive-content]' : bounded;
