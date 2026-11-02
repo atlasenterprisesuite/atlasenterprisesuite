@@ -44,6 +44,26 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
+// Production builds select the already deployed, JWT-protected Supabase slot.
+// This default is independent of Cloudflare's external build environment.
+// Local development retains the canonical source-controlled handler.
+// Explicit overrides are restricted to the allowlist below (fail closed).
+const TELEPHONY_FUNCTION_SLUG =
+  import.meta.env.VITE_ATLAS_TELEPHONY_FUNCTION_SLUG ||
+  (import.meta.env.PROD
+    ? 'atlas-cloudflare-seed-build-once'
+    : 'atlas-communication-telephony');
+
+function telephonyEndpoint(operation: 'readiness' | 'call'): string {
+  if (
+    TELEPHONY_FUNCTION_SLUG !== 'atlas-communication-telephony' &&
+    TELEPHONY_FUNCTION_SLUG !== 'atlas-cloudflare-seed-build-once'
+  ) {
+    throw new Error('telephony_endpoint_not_allowed');
+  }
+  return `/functions/v1/${TELEPHONY_FUNCTION_SLUG}?api=${operation}`;
+}
+
 async function telephonyFetch(path: string, init: RequestInit = {}) {
   const organization = await getActiveAtlasOrganization();
   return authorizedAtlasFetch(path, {
@@ -57,7 +77,7 @@ async function telephonyFetch(path: string, init: RequestInit = {}) {
 
 export async function getTelephonyReadiness(): Promise<TelephonyReadiness> {
   return parseResponse<TelephonyReadiness>(
-    await telephonyFetch('/functions/v1/atlas-communication-telephony?api=readiness', {
+    await telephonyFetch(telephonyEndpoint('readiness'), {
       method: 'GET'
     })
   );
@@ -69,7 +89,7 @@ export async function startTelephonyCall(input: {
   consentReference: string;
 }): Promise<TelephonyCallAccepted> {
   return parseResponse<TelephonyCallAccepted>(
-    await telephonyFetch('/functions/v1/atlas-communication-telephony?api=call', {
+    await telephonyFetch(telephonyEndpoint('call'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
