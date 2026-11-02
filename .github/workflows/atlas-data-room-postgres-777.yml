@@ -7,6 +7,10 @@ on:
       - 'tests/postgres/secure-data-room-negative-authorization-777.sql'
       - 'supabase/migrations/20261102000200_atlas_data_room_locked_authorization.sql'
       - '.github/workflows/atlas-data-room-postgres-777.yml'
+      - 'packages/security/secure-data-room-*.ts'
+      - 'tests/unit/secure-data-room-*.test.ts'
+      - 'tests/integration/secure-data-room-*.test.ts'
+      - 'supabase/functions/atlas-secure-data-room/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -53,3 +57,13 @@ jobs:
 
       - name: Concurrent authorization and revocation with two PostgreSQL sessions
         run: bash tests/postgres/secure-data-room-concurrent-revocation-777.sh
+
+      - name: Set up Node.js for focused security tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned dependencies without postinstall side effects
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test Data Room user-scoped sources and HTTP release denial
+        run: npx vitest run tests/unit/secure-data-room-authorization-777.test.ts tests/unit/secure-data-room-read-boundary-777.test.ts tests/unit/secure-data-room-trusted-adapter-777.test.ts tests/unit/secure-data-room-trusted-source-negative-777.test.ts tests/unit/secure-data-room-supabase-sources-777.test.ts tests/unit/secure-data-room-http-777.test.ts tests/integration/secure-data-room-release-denial-777.test.ts
