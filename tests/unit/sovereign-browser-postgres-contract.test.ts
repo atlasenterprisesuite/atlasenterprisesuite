@@ -17,4 +17,13 @@ describe('ATLAS 777 Sovereign Browser PostgreSQL prerequisite', () => {
     expect(migration).toContain("'revoked'");
     expect(migration).not.toMatch(/on conflict.*do update/is);
   });
+  it('does not cascade-delete idempotency evidence when parent records are removed', () => {
+    // A cascade would release (org, tenant, key) and permit replay of an
+    // indeterminate external side effect after workflow/step deletion.
+    expect(migration).not.toMatch(/on delete cascade/i);
+    for (const parent of ['organizations', 'execution_workflows', 'execution_steps']) {
+      expect(migration).toContain(`references public.${parent}(id) on delete restrict`);
+    }
+  });
+
 });
