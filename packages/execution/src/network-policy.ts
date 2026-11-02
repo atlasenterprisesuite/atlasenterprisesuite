@@ -30,7 +30,10 @@ export async function installNetworkGuard(context: RouteContext, allowedDomains:
       const destination = approvedUrl(route.request().url(), allowedDomains);
       if (route.request().method() !== 'GET') throw new Error('network_method_denied');
       if (!egress || !(await egress.authorize(destination))) throw new Error('network_egress_unverified');
-      await route.continue();
+      // A URL-level allow decision cannot pin the browser socket to the DNS-checked IP.
+      // Playwright route.continue() may resolve a different address (DNS rebinding).
+      // Until a socket-bound transport is certified, abort even approved GET requests.
+      throw new Error('network_socket_binding_unverified');
     } catch { await route.abort(); }
   });
 }
