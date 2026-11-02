@@ -86,4 +86,15 @@ describe('Sovereign browser local transport negative gates', () => {
     expect(route.abort).not.toHaveBeenCalled();
   });
 
+  it('fails closed even when an unbound boolean egress approval returns true',async()=>{
+    let handler: (route:any)=>Promise<void> = async()=>{};
+    const route={request:()=>({url:()=> 'https://example.com/',method:()=> 'GET'}),abort:vi.fn(),continue:vi.fn()};
+    const authorize=vi.fn().mockResolvedValue(true);
+    await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed,{authorize});
+    await handler(route);
+    // A URL-level boolean does not pin the browser socket to a validated IP.
+    expect(route.abort).toHaveBeenCalledOnce();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+
 });
