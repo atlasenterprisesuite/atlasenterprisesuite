@@ -1,5 +1,8 @@
 name: Robotics PostgreSQL 17 isolated revocation proof
 on:
+  push:
+    branches:
+      - 'feat/robotics-simulation-tdd-777-20261101'
   pull_request:
     paths:
       - 'packages/robotics/**'
