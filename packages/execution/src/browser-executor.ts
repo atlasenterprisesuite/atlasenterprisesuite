@@ -56,6 +56,13 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
     { workflowId: envelope.workflowId, stepId: envelope.stepId }
   );
   if (!decision.allowed) throw new Error('browser_action_not_allowed');
+  // The legacy queue persists prepared actions verbatim. Never persist raw form
+  // input or queue sensitive side effects without an auditable approval/vault path.
+  if (action.type === 'type') throw new Error('browser_sensitive_input_requires_vault');
+  if (action.type === 'click' || action.type === 'submit' ||
+      action.type === 'create_dns_txt' || action.type === 'click_openai_check') {
+    throw new Error('human_approval_required');
+  }
 
   return {
     executionEnvelope: { ...envelope },
