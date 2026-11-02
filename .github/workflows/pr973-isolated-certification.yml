@@ -28,12 +28,12 @@ jobs:
     env:
       CI: "true"
       DATABASE_URL: postgresql://atlas_test:disposable_only@127.0.0.1:5432/atlas_test
-      ATLAS_CERTIFIED_SOURCE_SHA: 2ede02abfa44b6459a8e67f9f4770ff89f9024fb
+      ATLAS_CERTIFIED_SOURCE_SHA: 915cc18f7a279f702d4443a5552beeab166c02f1
     steps:
       - name: Checkout exact PR source SHA (not main)
         uses: actions/checkout@v4
         with:
-          ref: 2ede02abfa44b6459a8e67f9f4770ff89f9024fb
+          ref: 915cc18f7a279f702d4443a5552beeab166c02f1
           persist-credentials: false
       - name: Checkout isolated certification harness
         uses: actions/checkout@v4
@@ -79,7 +79,7 @@ jobs:
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/fixtures/app-factory-postgres17-revocation.sql 2>&1 | tee artifacts/pr973/postgres-fixture.log
       - name: Run negative A/B and concurrent revocation proof
-        if: steps.pg_fixture.outcome == 'success'
+        if: always() && steps.pg_fixture.outcome == 'success'
         run: python3 cert-harness/artifacts/pr973/revocation-check.py 2>&1 | tee artifacts/pr973/postgres-revocation.log
       - name: Always publish exact-SHA evidence
         if: always()
