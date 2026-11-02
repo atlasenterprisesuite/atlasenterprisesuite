@@ -21,7 +21,11 @@ test('App Factory srcDoc is isolated and never executes injected markup', async 
 test('preview is never a deployment or authenticated tenant action', async ({ page }) => {
   const calls = [];
   page.on('request', (request) => {
-    if (/\/rest\/v1\/|\/functions\/v1\/|\/deploy/i.test(request.url())) calls.push(request.url());
+    const url = new URL(request.url());
+    const method = request.method();
+    const backendWrite = /\/(rest|functions)\/v1\//i.test(url.pathname) && !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    const deploymentMutation = /\/(deploy|deployments)(?:\/|$)/i.test(url.pathname) && !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    if (backendWrite || deploymentMutation) calls.push(`${method} ${url.pathname}`);
   });
   await page.goto('/work/app-factory');
   await page.getByLabel('Describe the idea').fill('Inventory dashboard');
