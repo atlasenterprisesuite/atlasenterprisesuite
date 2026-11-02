@@ -19,6 +19,17 @@ describe('ATLAS Digital District Orlando pilot', () => {
     }
   });
 
+  it('keeps map provider problems separate from real city telemetry and offers recovery', () => {
+    expect(page).toContain('aerialFallbackStyle()');
+    expect(page).toContain('USGSImageryOnly');
+    expect(page).toContain('MAP_LOAD_TIMEOUT_MS');
+    expect(page).toContain('Retry map');
+    expect(page).toContain('External map unavailable');
+    expect(page).toContain('getVisibleDistrictSimulationPoints(mode, activeLayers)');
+    expect(page).toContain("disabled={mode === 'live'}");
+    expect(page).not.toContain("instance.once('error'");
+  });
+
   it('registers a protected canonical city route', () => {
     expect(registry).toContain("id: 'city'");
     expect(registry).toContain("route: '/city'");
