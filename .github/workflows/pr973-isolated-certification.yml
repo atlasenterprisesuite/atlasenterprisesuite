@@ -35,7 +35,13 @@ jobs:
         with:
           ref: b86aa6ec04f925602829efe288d06cd67a7fb292
           persist-credentials: false
-      - name: Checkout isolated certification harness\n        uses: actions/checkout@v4\n        with:\n          ref: test/pr973-isolated-certification-20261102\n          path: cert-harness\n          persist-credentials: false\n      - name: Record source identity
+      - name: Checkout isolated certification harness
+        uses: actions/checkout@v4
+        with:
+          ref: test/pr973-isolated-certification-20261102
+          path: cert-harness
+          persist-credentials: false
+      - name: Record source identity
         run: |
           mkdir -p artifacts/pr973
           test "$(git rev-parse HEAD)" = "$ATLAS_CERTIFIED_SOURCE_SHA"
