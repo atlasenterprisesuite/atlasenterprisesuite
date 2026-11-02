@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ATLAS Teleprompter — isolated media capability test</title>
+</head>
+<body>
+<h1>ATLAS Teleprompter — media capability test</h1>
+<p>This tests local browser capture, playback and track cleanup only. It does not upload to ATLAS or verify Supabase storage, speech transcription or physical device ownership.</p>
+<button id="run" type="button">Test camera and microphone</button>
+<pre id="status" role="status">Not tested</pre>
+<video id="playback" controls playsinline muted width="320"></video>
+<a id="download" hidden>Download local test video</a>
+<script>
+(() => {
+  const status = document.getElementById('status');
+  const button = document.getElementById('run');
+  const video = document.getElementById('playback');
+  const download = document.getElementById('download');
+  const automated = new URLSearchParams(location.search).get('autorun') === '1';
+  let running = false;
+  async function report(result) {
+    status.textContent = JSON.stringify(result);
+    document.documentElement.dataset.testResult = result.ok ? 'passed' : 'failed';
+    if (automated) {
+      await fetch('/report', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(result),
+        cache: 'no-store'
+      });
+    }
+  }
+  async function test() {
+    if (running) return;
+    running = true;
+    button.disabled = true;
+    status.textContent = 'Requesting local camera/microphone access...';
+    let stream;
+    let objectUrl;
+    try {
+      if (!isSecureContext) throw Error('secure_context_required');
+      if (!navigator.mediaDevices?.getUserMedia) throw Error('getUserMedia_unavailable');
+      if (typeof MediaRecorder === 'undefined') throw Error('MediaRecorder_unavailable');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: true });
+      const audioTracks = stream.getAudioTracks().length;
+      const videoTracks = stream.getVideoTracks().length;
+      if (!audioTracks || !videoTracks) throw Error('audio_video_track_missing');
+      const mime = [
+        'video/mp4;codecs=h264,aac',
+        'video/mp4',
+        'video/webm;codecs=vp8,opus',
+        'video/webm'
+      ].find(value => MediaRecorder.isTypeSupported(value));
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const chunks = [];
+      const stopped = new Promise((resolve, reject) => {
+        recorder.addEventListener('stop', resolve, { once: true });
+        recorder.addEventListener('error', () => reject(Error('recorder_error')), { once: true });
+      });
+      recorder.addEventListener('dataavailable', event => { if (event.data?.size) chunks.push(event.data); });
+      recorder.start(250);
+      await new Promise(resolve => setTimeout(resolve, 2200));
+      recorder.stop();
+      await Promise.race([
+        stopped,
+        new Promise((_, reject) => setTimeout(() => reject(Error('recorder_stop_timeout')), 12000))
+      ]);
+      const blob = new Blob(chunks, { type: recorder.mimeType.split(';')[0] || 'video/webm' });
+      if (blob.size < 1024) throw Error('recording_empty_or_too_small:' + blob.size);
+      objectUrl = URL.createObjectURL(blob);
+      await new Promise((resolve, reject) => {
+        video.addEventListener('loadedmetadata', resolve, { once: true });
+        video.addEventListener('error', () => reject(Error('recorded_video_not_decodable')), { once: true });
+        video.src = objectUrl;
+        video.load();
+        setTimeout(() => reject(Error('playback_metadata_timeout')), 10000);
+      });
+      if (video.videoWidth < 16 || video.videoHeight < 16) throw Error('invalid_video_dimensions');
+      stream.getTracks().forEach(track => track.stop());
+      const tracksStopped = stream.getTracks().every(track => track.readyState === 'ended');
+      if (!tracksStopped) throw Error('media_tracks_not_released');
+      download.href = objectUrl;
+      download.download = 'atlas-teleprompter-media-test.' + (blob.type === 'video/mp4' ? 'mp4' : 'webm');
+      download.hidden = false;
+      await report({
+        ok: true,
+        mode: automated ? 'synthetic_browser_media' : 'manual_device_media',
+        secureContext: isSecureContext,
+        audioTracks, videoTracks,
+        mime: recorder.mimeType,
+        bytes: blob.size,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        tracksStopped
+      });
+    } catch (error) {
+      stream?.getTracks().forEach(track => track.stop());
+      await report({ ok: false, error: String(error), mode: automated ? 'synthetic_browser_media' : 'manual_device_media' });
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    } finally {
+      running = false;
+      button.disabled = false;
+    }
+  }
+  button.addEventListener('click', test);
+  if (automated) test();
+})();
+</script>
+</body>
+</html>
