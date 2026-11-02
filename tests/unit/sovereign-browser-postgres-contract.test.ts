@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-const migration = readFileSync(new URL('../../supabase/migrations/20261102090000_atlas_sovereign_browser_idempotency_777.sql', import.meta.url), 'utf8');
+const migration = readFileSync('supabase/migrations/20261102090000_atlas_sovereign_browser_idempotency_777.sql', 'utf8');
 describe('ATLAS 777 Sovereign Browser PostgreSQL prerequisite', () => {
   it('keys idempotency by organization, tenant and key', () => {
     expect(migration).toContain('unique (org_id, tenant_id, idempotency_key)');
