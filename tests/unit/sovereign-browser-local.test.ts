@@ -67,13 +67,13 @@ describe('Sovereign browser local transport negative gates', () => {
     expect(route.abort).toHaveBeenCalledOnce();
     expect(route.continue).not.toHaveBeenCalled();
   });
-  it('blocks egress denied by trusted policy despite allowlisted hostname',async()=>{
+  it('does not consult legacy egress policy even when it would deny a GET',async()=>{
     let handler: (route:any)=>Promise<void> = async()=>{};
     const route={request:()=>({url:()=> 'https://example.com/',method:()=> 'GET'}),abort:vi.fn(),continue:vi.fn()};
     const authorize=vi.fn().mockResolvedValue(false);
     await installNetworkGuard({route:async (_pattern,h)=>{handler=h;}},allowed,{authorize});
     await handler(route);
-    expect(authorize).toHaveBeenCalledOnce();
+    expect(authorize).not.toHaveBeenCalled();
     expect(route.abort).toHaveBeenCalledOnce();
     expect(route.continue).not.toHaveBeenCalled();
   });
