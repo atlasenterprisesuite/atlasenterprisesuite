@@ -1,5 +1,5 @@
 import type { SovereignBrowser, SovereignPage } from './sovereign-browser';
-import { approvedUrl, installNetworkGuard } from './network-policy';
+import { approvedUrl, installNetworkGuard, type EgressDecision } from './network-policy';
 
 export interface PlaywrightBrowserLike {
   newContext(options: { serviceWorkers: 'block'; acceptDownloads: false; javaScriptEnabled: boolean }): Promise<{
@@ -10,11 +10,11 @@ export interface PlaywrightBrowserLike {
 }
 /** Adapter for a locally supplied Playwright Browser; never launches or downloads browsers. */
 export class PlaywrightLocalBrowser implements SovereignBrowser {
-  constructor(private readonly browser: PlaywrightBrowserLike, private readonly allowedDomains: readonly string[]) {}
+  constructor(private readonly browser: PlaywrightBrowserLike, private readonly allowedDomains: readonly string[], private readonly egress?: EgressDecision) {}
   async newPage(): Promise<SovereignPage> {
     const context = await this.browser.newContext({ serviceWorkers: 'block', acceptDownloads: false, javaScriptEnabled: false });
     try {
-      await installNetworkGuard(context, this.allowedDomains);
+      await installNetworkGuard(context, this.allowedDomains, this.egress);
       const page = await context.newPage();
       return {
         goto: async (url: string) => { approvedUrl(url, this.allowedDomains); await page.goto(url, { waitUntil: 'domcontentloaded' }); approvedUrl(page.url(), this.allowedDomains); },
