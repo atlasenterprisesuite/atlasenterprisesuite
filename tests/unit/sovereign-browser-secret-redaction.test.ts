@@ -166,3 +166,18 @@ describe('ATLAS 777 browser explicit hostname authorization', () => {
       '2026-11-02T00:00:00Z').action.domain).toBe('example.com');
   });
 });
+
+
+describe('ATLAS 777 browser queue rejects untrusted persisted action grants', () => {
+  it('rejects unrecognized allowedActions and deniedActions entries before persistence', () => {
+    for (const field of ['allowedActions', 'deniedActions'] as const) {
+      const input = {
+        ...restrictedEnvelope,
+        [field]: [...restrictedEnvelope[field], 'https://example.com/private/synthetic-only'],
+      };
+      expect(() => prepareBrowserJob(input,
+        { type: 'read_text', domain: 'example.com', target: 'h1' },
+        '2026-11-02T00:00:00Z')).toThrow('browser_envelope_action_invalid');
+    }
+  });
+});
