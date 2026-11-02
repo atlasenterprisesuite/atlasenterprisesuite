@@ -28,4 +28,25 @@ describe('Sovereign browser local transport negative gates', () => {
     expect(newContext).toHaveBeenCalledWith({serviceWorkers:'block',acceptDownloads:false,javaScriptEnabled:false});
     await page.close();expect(context.close).toHaveBeenCalled();
   });
+  it('denies a redirected final navigation outside the allowlist',async()=>{
+    const context={route:vi.fn(),newPage:vi.fn().mockResolvedValue({
+      goto:vi.fn(),url:()=> 'https://evil.example/',textContent:vi.fn(),click:vi.fn(),fill:vi.fn()
+    }),close:vi.fn()};
+    const browser=new PlaywrightLocalBrowser({newContext:vi.fn().mockResolvedValue(context)},allowed);
+    const page=await browser.newPage();
+    await expect(page.goto('https://example.com/')).rejects.toThrow('network_destination_denied');
+    await page.close();
+  });
+  it('rejects disallowed initial navigation before touching the browser',async()=>{
+    const goto=vi.fn();
+    const context={route:vi.fn(),newPage:vi.fn().mockResolvedValue({
+      goto,url:()=> 'https://example.com/',textContent:vi.fn(),click:vi.fn(),fill:vi.fn()
+    }),close:vi.fn()};
+    const browser=new PlaywrightLocalBrowser({newContext:vi.fn().mockResolvedValue(context)},allowed);
+    const page=await browser.newPage();
+    await expect(page.goto('https://other.example/')).rejects.toThrow('network_destination_denied');
+    expect(goto).not.toHaveBeenCalled();
+    await page.close();
+  });
+
 });
