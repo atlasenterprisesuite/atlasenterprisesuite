@@ -56,7 +56,7 @@ export class SovereignBrowserAdapter {
       switch (action.type) {
         case 'navigate': result = { navigated: true }; break;
         case 'read_text': result = await page.textContent(selector(action.target)); break;
-        case 'click': throw new Error('human_approval_required');
+
         default: throw new Error('unsupported_action');
       }
       await check();
