@@ -1,0 +1,32 @@
+name: Domains Web Studio Pilot
+on:
+  push:
+    branches:
+      - 'feat/domains-web-studio-pilot-20261016'
+  pull_request:
+    paths:
+      - 'prototypes/domains-web-studio/**'
+      - 'apps/web/src/modules/business/domains/**'
+      - 'apps/web/src/App.tsx'
+      - 'tests/unit/domains-web-studio-pilot.contract.mjs'
+      - '.github/workflows/domains-web-studio-pilot.yml'
+  workflow_dispatch:
+jobs:
+  pilot-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate pilot safety contracts
+        run: node --test tests/unit/domains-web-studio-pilot.contract.mjs
+      - name: Typecheck integrated React route
+        run: npm run typecheck
+      - name: Build ATLAS web
+        run: npm run build
