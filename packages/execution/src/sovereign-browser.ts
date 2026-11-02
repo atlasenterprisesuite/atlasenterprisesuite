@@ -46,8 +46,10 @@ export class SovereignBrowserAdapter {
     };
     if (DENY.has(action.type) || action.type === 'click') throw new Error('human_approval_required');
     if (action.type === 'type') throw new Error('browser_sensitive_input_requires_vault');
-    prepareBrowserJob(envelope, action);
+    // Reject unsafe destinations before the envelope allowlist check so reserved
+    // and internal hosts are consistently classified as unsafe_navigation.
     const destination = safeUrl(action.type === 'navigate' ? action.target ?? '' : 'https://' + action.domain + '/', action.domain);
+    prepareBrowserJob(envelope, action);
     await check();
     const page = await this.browser.newPage();
     try {
