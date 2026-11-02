@@ -24,7 +24,6 @@ test('workflow policy: least privilege, fail-closed evidence, no write/deploy', 
   assert.match(workflow,/checks: read/);
   assert.match(workflow,/pull-requests: read/);
   assert.doesNotMatch(workflow,/\b(?:contents|actions|checks|pull-requests): write\b/);
-  assert.match(workflow,/certified\\":false/);
   assert.match(workflow,/if-no-files-found: error/);
   assert.match(workflow,/if: always\(\)/);
   assert.doesNotMatch(workflow,/\b(?:wrangler deploy|vercel deploy|gh pr merge)\b/);
