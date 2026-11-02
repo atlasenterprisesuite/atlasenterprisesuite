@@ -67,6 +67,16 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
   }
   try { approvedUrl('https://' + action.domain + '/', [action.domain]); }
   catch { throw new Error('browser_domain_invalid'); }
+  // The complete allowlist is stored durably, not just the selected host.
+  // Reject URL-like, internal or malformed extra entries before persistence.
+  // Legacy envelope matching is deliberately permissive; browser queues are not.
+  if (!Array.isArray(envelope.allowedDomains) || envelope.allowedDomains.length > 64 ||
+      !envelope.allowedDomains.every((domain) => {
+        if (typeof domain !== 'string' ||
+            !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$/i.test(domain)) return false;
+        try { approvedUrl('https://' + domain + '/', [domain]); return true; }
+        catch { return false; }
+      })) throw new Error('browser_envelope_domain_invalid');
   const decision = evaluateBrowserAction(
     envelope,
     { domain: action.domain, action: action.type },
