@@ -30,13 +30,14 @@ test('workflow policy: least privilege, fail-closed evidence, no write/deploy', 
 });
 
 import { inspect, requiredFromRulesets, validateChecks } from '../../scripts/gravity-runner-777.mjs';
-const details={rules:[{type:'required_status_checks',parameters:{required_status_checks:[{context:'required'}]}}]};
-function mock({error=null, total=1, checkSha=sha, rules=[{id:1,enforcement:'active'}], detailsResponse=details}={}){
+const details={id:1,rules:[{type:'required_status_checks',parameters:{required_status_checks:[{context:'required'}]}}]};
+function mock({error=null, total=1, checkSha=sha, rules=[{id:1,enforcement:'active',target:'branch'}], detailsResponse=details}={}){
  return async path=>{
   if(error && path.includes(error.path)) {const e=new Error('HTTP '+error.status);e.status=error.status;throw e;}
+  if(path.includes('/rules/branches/')) return [{ruleset_id:1}];
   if(path.includes('/rulesets/')) return detailsResponse;
   if(path.includes('/rulesets?')) return rules;
-  if(path.includes('/pulls/')) return {head:{sha}};
+  if(path.includes('/pulls/')) return {head:{sha},base:{ref:'main'}};
   if(path.includes('/check-runs?')) return {total_count:total,check_runs:[{name:'required',status:'completed',conclusion:'success',head_sha:checkSha}]};
   throw Error('unexpected path '+path);
  };
@@ -53,8 +54,8 @@ test('real inspector: 403/404, truncation, mismatch, missing rulesets fail close
  {total:2},
  {checkSha:'b'.repeat(40)},
  {rules:[]},
- {detailsResponse:{rules:[]}},
- {detailsResponse:{rules:[{type:'required_status_checks',parameters:{required_status_checks:[]}}]}}
+ {detailsResponse:{id:1,rules:[]}},
+ {detailsResponse:{id:1,rules:[{type:'required_status_checks',parameters:{required_status_checks:[]}}]}}
  ];
  for(const x of bad) await assert.rejects(inspect({api:mock(x),repo:'atlasenterprisesuite/atlasenterprisesuite',prs:[976]}));
 });
@@ -64,4 +65,8 @@ test('ruleset malformed and absent required checks reject',()=>{
 test('artifact upload failure is explicitly configured as a failing step',()=>{
  assert.match(workflow,/if-no-files-found: error/);
  assert.match(workflow,/actions\/upload-artifact@v4/);
+});
+
+test('applicability API 403/404 blocks exact-SHA certification',async()=>{
+ for(const status of [403,404]) await assert.rejects(inspect({api:mock({error:{path:'/rules/branches/',status}}),repo:'atlasenterprisesuite/atlasenterprisesuite',prs:[976]}));
 });
