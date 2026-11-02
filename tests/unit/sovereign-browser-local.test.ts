@@ -123,6 +123,20 @@ describe('Sovereign browser local transport negative gates', () => {
       resolve4: async () => ['8.8.8.8', '10.1.2.3'], resolve6: async () => []
     })).rejects.toThrow('network_dns_address_denied');
   });
+  it('times out an unresolved DNS family instead of holding preflight forever', async () => {
+    vi.useFakeTimers();
+    try {
+      const pending = resolvePublicDns('https://example.com/', allowed, {
+        resolve4: () => new Promise<string[]>(() => {}),
+        resolve6: async () => ['2606:4700:4700::1111'],
+      });
+      const rejected = expect(pending).rejects.toThrow('network_dns_lookup_failed');
+      await vi.advanceTimersByTimeAsync(2500);
+      await rejected;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('fails closed on DNS resolver failure or empty answer sets', async () => {
     await expect(resolvePublicDns('https://example.com/', allowed, {
       resolve4: async () => { throw new Error('SERVFAIL'); }, resolve6: async () => []
