@@ -37,4 +37,4 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check psycopg2-binary==2.9.10
       - name: PostgreSQL 17 transactional revocation negative tests
-        run: python tests/robotics/postgres_revocation_proof.py
+        run: |\n          python tests/robotics/postgres_revocation_proof.py\n          python tests/robotics/postgres_membership_revocation_proof.py
