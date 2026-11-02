@@ -1,6 +1,3 @@
-import { resolve4, resolve6 } from 'node:dns/promises';
-import { isIP } from 'node:net';
-
 /**
  * Server-side DNS preflight only. It is NOT a capability to connect:
  * the socket-bound egress implementation remains disabled below.
@@ -11,8 +8,22 @@ export interface PublicDnsResolver {
   resolve6(hostname: string): Promise<string[]>;
 }
 
+// URL's IPv6 parser validates full syntax without a Node-only dependency.
+// IPv4 requires canonical dotted-decimal syntax (no octal/hex ambiguity).
+function ipFamily(address: string): 0 | 4 | 6 {
+  if (/^(?:0|[1-9][0-9]{0,2})(?:\\.(?:0|[1-9][0-9]{0,2})){3}$/.test(address) &&
+      address.split('.').every(octet => Number(octet) <= 255)) return 4;
+  if (address.includes(':')) {
+    try {
+      const parsed = new URL('https://[' + address + ']/');
+      if (parsed.hostname.startsWith('[')) return 6;
+    } catch { /* invalid IPv6 syntax */ }
+  }
+  return 0;
+}
+
 function isPublicDnsAddress(address: string): boolean {
-  const family = isIP(address);
+  const family = ipFamily(address);
   if (family === 4) {
     const [a, b, c] = address.split('.').map(Number);
     return !(
@@ -53,14 +64,14 @@ async function readDnsFamily(lookup: () => Promise<string[]>): Promise<string[]>
 }
 
 /**
- * Resolves the actual DNS A and AAAA records by default. Injectable resolver
+ * Requires a server-provided DNS A and AAAA resolver. Injectable resolver
  * permits deterministic, network-free tests. Never use this result to call
  * Playwright route.continue(): a later DNS lookup can return a different IP.
  */
 export async function resolvePublicDns(
   rawUrl: string,
   allowedDomains: readonly string[],
-  resolver: PublicDnsResolver = { resolve4, resolve6 },
+  resolver: PublicDnsResolver,
 ): Promise<{ hostname: string; addresses: string[] }> {
   const url = approvedUrl(rawUrl, allowedDomains);
   const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
