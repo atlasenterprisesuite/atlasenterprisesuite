@@ -121,3 +121,13 @@ Live `pg_trigger` shows all seven non-internal triggers on `auth.users`, `public
 Exact-SHA CI on Foundation `66bdb68b2641ab02de48a82d6a0309e48b060817`: isolated PostgreSQL 17 runtime run 41444184366 fails at original People prerequisite gate, while Security Baseline and Sentinel succeeded at time checked. Browser #976 advanced to HEAD `3ccb44edd03c56c4dbab66bea0213b3180281d91`; its new CI was queued/pending and earlier green checks do not certify that HEAD.
 
 No native Auth bootstrap installed into PG17; the CI workflow still runs smoke then prerequisite gate without loading recovered migrations. P0 NO-GO until Auth schema/roles/ACL/trigger graph and original migrations can be replayed and verified in isolation.
+
+## RUN NEXT — executable bootstrap gate review (2026-11-02)
+
+Rechecked `.github/workflows/atlas-777-isolated-postgres.yml` and `tests/security/atlas-777-people-real-dependencies.sql` at `5ffface7fa8f79da06cd0900613a3bb2b498732c`. Workflow runs a genuine PostgreSQL 17 container, validates engine/isolation, then checks seven prerequisites and executes original People SQL **without loading recovered foundation SQL**. A final unconditional P0 NO-GO explicitly rejects premature 22-RPC certification. This explains the repeatable prerequisite failure; removing the gate or introducing placeholder objects is not an acceptable fix.
+
+The original `20260923201500_atlas_people_core.sql` references `auth.users` via worker/creator/approval foreign keys, inserts identity permissions, attaches `audit_row_change()` triggers, enables RLS, and uses `has_identity_permission()` and `auth.uid()` in policies. Recovered historical SQL is explicitly marked source-only in `tests/security/recovered/README.md`. The missing complete native Auth role/schema/ACL/index/trigger chain still blocks faithful replay.
+
+CI on the previous Foundation SHA `5ffface7fa8f79da06cd0900613a3bb2b498732c` was queued/pending when checked; Browser #976 moved to `8f4278676aef0e6c4b5b761ca86b3ab05c2e9fbc`, with only Security Baseline and Sentinel success at observation. Other PRs: #968 `609217b7` 4/4 listed success, #948 `8fce4d6b` 8/8, #977 `7350d417` 8/8. These workflow counts do not certify outstanding P0 acceptance tests.
+
+NO-GO: no isolated bootstrap run of the original People/Advisory migrations and no new negative runtime evidence. Keep fail-closed prerequisite and unconditional rejection intact until exact provenance and reproducible E2E evidence exist.
