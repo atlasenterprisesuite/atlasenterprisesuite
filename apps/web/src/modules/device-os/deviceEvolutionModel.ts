@@ -35,6 +35,14 @@ export const ATLAS_RECOVERY_PIPELINE = [
 
 export const ATLAS_HARDWARE_CONCEPTS: readonly AtlasHardwareConcept[] = [
   {
+    id: 'protective-wear',
+    name: 'ATLAS Protective Wear',
+    category: 'Personal safety / technical apparel',
+    purpose: 'Inclusive modular protective apparel concept for delivery, mobility and night operations, with separately verified protection requirements.',
+    status: 'research-track',
+    dependency: 'Independent hazard assessment; certified protective components and approved configuration; sample fit and third-party testing. No protection claims at research stage.'
+  },
+  {
     id: 'device-dna',
     name: 'ATLAS Device DNA',
     category: 'Firmware intelligence',
