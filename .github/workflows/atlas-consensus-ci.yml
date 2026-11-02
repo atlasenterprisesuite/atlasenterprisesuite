@@ -42,6 +42,8 @@ jobs:
       - run: npm ci
       - name: TypeScript contract
         run: npm run typecheck
+      - name: MCP independent TypeScript contract
+        run: npx tsc --project packages/atlas-mcp/tsconfig.json --noEmit
       - name: Production build
         run: npm run build
 
