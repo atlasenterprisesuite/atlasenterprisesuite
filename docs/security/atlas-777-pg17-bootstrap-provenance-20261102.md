@@ -111,3 +111,13 @@ Read-only production `pg_namespace` and `pg_auth_members` catalog queries, no us
 - `postgres` has inherited memberships in `anon`, `authenticated`, `service_role`, `authenticator`, plus managed roles. Do **not** copy broad managed privileges into a test role or infer client permissions from postgres-owned execution.
 
 Exact-SHA CI on `8fb127d5620083f05f56cb759aef1ce6543663ea` still fails the isolated PostgreSQL 17 prerequisites gate, run 41443624952, before People migration. Browser #976 commit `9d8e999f27ec3c548e972ca4ce617eddf9caecf4` has successful Consensus CI and unit suite at that SHA, with readiness gate still running at observation. No complete native Auth/bootstrap proof yet; P0 remains OPEN.
+
+## RUN NEXT — native Auth helpers and trigger enablement (2026-11-02)
+
+Read-only live `pg_proc` inspection confirms `auth.uid()`, `auth.jwt()` and `auth.role()` are owned by `supabase_auth_admin`, `LANGUAGE sql STABLE`, `SECURITY INVOKER`, and read JWT request GUCs. `auth.uid()` returns UUID from `request.jwt.claim.sub` or `request.jwt.claims` JSON `sub`; `auth.jwt()` returns JSONB from `request.jwt.claim` or `request.jwt.claims`; `auth.role()` returns text from `request.jwt.claim.role` or JSON claims `role`. Their ACLs differ: `auth.jwt` grants EXECUTE to PUBLIC, while `auth.uid`/`auth.role` ACLs do not list PUBLIC EXECUTE. Preserve exact definitions and privileges, not a mock identity constant.
+
+Live `pg_trigger` shows all seven non-internal triggers on `auth.users`, `public.profiles`, `public.organization_modules`, `public.organizations`, `public.organization_members` are enabled `O` (origin/local): `atlas_auth_user_profile`, `atlas_updated_profiles`, `atlas_updated_organization_modules`, `atlas_seed_work_modules`, `atlas_updated_organizations`, `atlas_updated_organization_members`, `trg_atlas_enforce_synthetic_e2e_role`. All require faithful function and relation dependencies.
+
+Exact-SHA CI on Foundation `66bdb68b2641ab02de48a82d6a0309e48b060817`: isolated PostgreSQL 17 runtime run 41444184366 fails at original People prerequisite gate, while Security Baseline and Sentinel succeeded at time checked. Browser #976 advanced to HEAD `3ccb44edd03c56c4dbab66bea0213b3180281d91`; its new CI was queued/pending and earlier green checks do not certify that HEAD.
+
+No native Auth bootstrap installed into PG17; the CI workflow still runs smoke then prerequisite gate without loading recovered migrations. P0 NO-GO until Auth schema/roles/ACL/trigger graph and original migrations can be replayed and verified in isolation.
