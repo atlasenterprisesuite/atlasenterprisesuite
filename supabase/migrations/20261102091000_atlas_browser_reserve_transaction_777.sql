@@ -21,6 +21,8 @@ begin
   if not exists (
     select 1 from public.execution_workflows w
     join public.execution_steps s on s.id = p_step_id and s.org_id = w.org_id and s.tenant_id = w.tenant_id
+    join public.execution_tasks t on t.id = s.task_id
+      and t.workflow_id = w.id and t.org_id = w.org_id and t.tenant_id = w.tenant_id
     where w.id = p_workflow_id and w.org_id = p_org_id and w.tenant_id = p_tenant_id
   ) then raise exception 'browser_scope_denied' using errcode = '42501'; end if;
   insert into public.execution_browser_idempotency
