@@ -3,6 +3,7 @@ import type { BrowserExecutionEnvelope } from './browser-envelope';
 
 export interface SovereignPage {
   goto(url: string): Promise<void>;
+  url(): string;
   textContent(selector: string): Promise<string | null>;
   click(selector: string): Promise<void>;
   fill(selector: string, value: string): Promise<void>;
@@ -12,11 +13,16 @@ export interface SovereignBrowser { newPage(): Promise<SovereignPage> }
 export interface SovereignContext {
   tenantId: string; organizationId: string; workflowId: string; stepId: string;
   signal?: AbortSignal;
+  authorize?: () => Promise<boolean>;
 }
 const DENY = new Set(['submit', 'create_dns_txt', 'click_openai_check']);
 function safeUrl(input: string, domain: string): string {
   const url = new URL(input);
-  if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hostname.toLowerCase() !== domain.toLowerCase()) throw new Error('unsafe_navigation');
+  if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+      url.hostname.toLowerCase() !== domain.toLowerCase() ||
+      /^(localhost|.*\.localhost)$/.test(url.hostname) ||
+      /^\d+\.\d+\.\d+\.\d+$/.test(url.hostname) ||
+      url.hostname.includes(':')) throw new Error('unsafe_navigation');
   return url.href;
 }
 function selector(input?: string): string {
@@ -30,15 +36,21 @@ export class SovereignBrowserAdapter {
     if (!context.tenantId || !context.organizationId || !context.workflowId || !context.stepId ||
         envelope.tenantId !== context.tenantId || envelope.organizationId !== context.organizationId ||
         envelope.workflowId !== context.workflowId || envelope.stepId !== context.stepId) throw new Error('execution_scope_mismatch');
-    if (context.signal?.aborted) throw new Error('execution_cancelled');
+    if (!context.authorize) throw new Error('authorization_checker_required');
+    const check = async () => {
+      if (context.signal?.aborted) throw new Error('execution_cancelled');
+      if (!(await context.authorize!())) throw new Error('authorization_revoked');
+    };
     if (DENY.has(action.type)) throw new Error('human_approval_required');
     prepareBrowserJob(envelope, action);
+    const destination = safeUrl(action.type === 'navigate' ? action.target ?? '' : 'https://' + action.domain + '/', action.domain);
+    await check();
     const page = await this.browser.newPage();
     try {
-      if (context.signal?.aborted) throw new Error('execution_cancelled');
-      const destination = safeUrl(action.type === 'navigate' ? action.target ?? '' : 'https://' + action.domain + '/', action.domain);
+      await check();
       await page.goto(destination);
-      if (context.signal?.aborted) throw new Error('execution_cancelled');
+      safeUrl(page.url(), action.domain);
+      await check();
       let result: unknown = null;
       switch (action.type) {
         case 'navigate': result = { navigated: true }; break;
@@ -47,7 +59,8 @@ export class SovereignBrowserAdapter {
         case 'type': await page.fill(selector(action.target), action.value ?? ''); result = { typed: true }; break;
         default: throw new Error('unsupported_action');
       }
-      if (context.signal?.aborted) throw new Error('execution_cancelled');
+      await check();
+      safeUrl(page.url(), action.domain);
       return { state: 'completed', result: sanitizeBrowserResult(result) };
     } finally { await page.close(); }
   }
