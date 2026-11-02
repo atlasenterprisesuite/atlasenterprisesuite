@@ -37,3 +37,13 @@ Ads owns campaign drafts, creatives, audience eligibility references, budget cei
 
 ## Evidence status
 Documentation authored only; no tests executed; no CI certified; no production claims. P0 NO-GO.
+
+## F1.2 execution — 2026-11-02
+- Checkpoint before changes: 8b6b0708830d0610271c7b111ae7cff54ca932f2; branch identical to checkpoint at inspection.
+- Added packages/ads/src/index.ts, commit 80087944e536c4c14683dcb788a7804a07f48a2f.
+- Added tests/unit/ads-safety.test.ts, commit fbd7244dd788d7803926995aa4fdbe8964476459.
+- Verified branch HEAD matched fbd7244dd788d7803926995aa4fdbe8964476459 after code changes.
+- Tests authored but NOT executed. GitHub pull-request workflow query returned zero runs; combined status query returned zero statuses for this SHA. These queries do not establish complete CI coverage.
+- ADS-05 is local permission recheck, not concurrent revocation certification; ADS-06 is key generation, not durable deduplication; ADS-09 is integer validation, not transactional concurrency. These remain P0.
+- Code has no external publishing or payment adapter and activation always returns external_activation_disabled.
+- Server RLS, persisted idempotency, actual RevOps runtime integration, PostgreSQL 17, and exact-SHA CI remain pending. NO-GO. No merge/deploy.
