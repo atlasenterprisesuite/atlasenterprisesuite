@@ -51,3 +51,20 @@ Catalog privileges reported `TRUNCATE` and `TRIGGER` for `anon` and `authenticat
 6. Record tests, exact SHA, logs and check names. Do not certify P0 based on a successful smoke test alone.
 
 **No bootstrap or tests certified by this ledger.** Existing #974 isolated PostgreSQL workflow failure remains authoritative.
+
+## 2026-11-02 bootstrap-build follow-up — catalog evidence
+
+Additional read-only pg_catalog extraction established:
+
+- Private membership functions `atlas_private.is_org_member(uuid)` and `atlas_private.has_org_role(uuid,text[])` are STABLE SECURITY DEFINER, owned by `postgres`, with explicit EXECUTE ACL for `authenticated` and `postgres`; their predicates require `auth.uid()` and membership `status='active'`. `anon` has no schema USAGE for `atlas_private`.
+- `public.has_identity_permission(uuid,text)` is SECURITY INVOKER and evaluates organization-specific overrides before default role permissions, with inactive memberships excluded.
+- `public.seed_atlas_work_modules()` is SECURITY DEFINER and inserts into **public.organization_modules**; that table is a transitive dependency for organization INSERT. Its columns (org_id, module_code, enabled, launch_status, created_at, updated_at) were inspected; full constraints, indexes and grants remain to be recovered.
+- `public.atlas_enforce_synthetic_e2e_role()` is SECURITY DEFINER and inspects `auth.users`; do not substitute a dummy auth table for certification.
+- `public.set_updated_at()` updates timestamps; `public.audit_row_change()` uses recursive secret redaction.
+- 13 column default expressions and 14 indexes were enumerated across six public foundation tables; all six owners are `postgres`.
+- Schema USAGE: `anon` and `authenticated` can use `public`; `authenticated` can use `atlas_private`, `anon` cannot. ACLs for several public foundation tables include `TRUNCATE` for `anon` and `authenticated`. **P0 review: RLS does not restrict TRUNCATE.** This is an observed privilege configuration, not a verified exploit or recommendation to reproduce unsafe grants.
+- Function EXECUTE ACLs for private membership functions are restricted to `postgres` and `authenticated`; audit trigger function is restricted to `postgres` and `service_role`.
+
+Proposed dependency order (subject to full DDL verification): native Supabase auth roles/schema/users and `auth.uid` → organizations and organization_modules → organization_members → identity_permissions → identity_role_permissions and organization_role_permissions → private membership functions → public membership wrappers and identity permission function → redaction and audit_logs → audit trigger function → trigger functions and triggers → indexes, constraints, RLS policies, ACL verification → unchanged People/Advisory migrations → negative tests.
+
+**Do not treat this order as runnable or complete.** Remaining P0 blockers: full native Supabase auth initialization, organization_modules constraints/ACL, sequences and audit_logs id default, all transitive trigger dependencies, exact roles/ownership and effective grants, original migration provenance, and disposable PostgreSQL 17 environment. No production changes or tests were performed in this follow-up.
