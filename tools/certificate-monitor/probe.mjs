@@ -62,6 +62,12 @@ if (!tokenResponse.ok) throw new Error('github_oidc_token_unavailable');
 const token = (await tokenResponse.json()).value;
 if (typeof token !== 'string' || !token.includes('.')) throw new Error('github_oidc_token_invalid');
 const observed = { hostname, port, observed_at: new Date().toISOString(), ...await probeTls() };
+const expiryDays = observed.not_after
+  ? Math.floor((Date.parse(observed.not_after) - Date.now()) / (24 * 60 * 60 * 1000))
+  : null;
+const expiryWarning = observed.observation_status === 'verified_tls'
+  && expiryDays !== null && expiryDays <= 30;
+
 const passed = observed.observation_status === 'verified_tls';
 const record = {
   provider: 'cloudflare',
@@ -92,7 +98,11 @@ const result = await fetch(endpoint, {
 const data = await result.json().catch(() => ({}));
 if (!result.ok || data.ok !== true || !data.evidence?.id)
   throw new Error('certificate_evidence_ingestion_rejected:' + (data.error || result.status));
-console.log(JSON.stringify({ host: hostname, status: observed.observation_status, evidence_id: data.evidence.id, sha256: createHash('sha256').update(JSON.stringify(record)).digest('hex') }));
+console.log(JSON.stringify({ host: hostname, status: observed.observation_status, expires_in_days: expiryDays, renewal_required: expiryWarning, evidence_id: data.evidence.id, sha256: createHash('sha256').update(JSON.stringify(record)).digest('hex') }));
+if (expiryWarning) {
+  console.error('::error::ATLAS public TLS certificate expires within 30 days: immediate renewal required.');
+  process.exitCode = 1;
+}
 if (!passed) {
   // Successful recording of a failed handshake is still a failed security verification.
   process.exitCode = 1;

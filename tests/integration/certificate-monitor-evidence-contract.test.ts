@@ -24,6 +24,10 @@ describe('ATLAS authenticated certificate monitor contract', () => {
     expect(workflow).toContain("if: github.event_name == 'schedule' || github.event_name == 'push'");
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('tools/certificate-monitor/probe.mjs');
+    expect(workflow).toContain("probe_worker '/security/certificates' 'certificates'");
+    expect(workflow).toContain('probe_route "ATLAS Certificates" "/security/certificates"');
+    expect(workflow).toContain('CERTIFICATES_VERSION#*|}');
+
   });
 
   it('rejects unauthenticated and forged observations at database level', () => {
