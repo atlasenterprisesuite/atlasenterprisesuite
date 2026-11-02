@@ -131,3 +131,11 @@ The original `20260923201500_atlas_people_core.sql` references `auth.users` via 
 CI on the previous Foundation SHA `5ffface7fa8f79da06cd0900613a3bb2b498732c` was queued/pending when checked; Browser #976 moved to `8f4278676aef0e6c4b5b761ca86b3ab05c2e9fbc`, with only Security Baseline and Sentinel success at observation. Other PRs: #968 `609217b7` 4/4 listed success, #948 `8fce4d6b` 8/8, #977 `7350d417` 8/8. These workflow counts do not certify outstanding P0 acceptance tests.
 
 NO-GO: no isolated bootstrap run of the original People/Advisory migrations and no new negative runtime evidence. Keep fail-closed prerequisite and unconditional rejection intact until exact provenance and reproducible E2E evidence exist.
+
+## RUN NEXT — native Supabase Auth transitive graph, 2026-11-02
+
+Read-only catalog enumeration of `auth` relations (no data rows) returned 27 regular tables and one sequence, all owned by `supabase_auth_admin`, including `users`, `identities`, `sessions`, `refresh_tokens`, MFA tables, OAuth clients/authorizations/consents, SAML/SSO, SCIM, WebAuthn, and Auth migration history. `pg_constraint` returned 24 native Auth foreign keys, e.g. identities/sessions/MFA factors -> users, refresh_tokens -> sessions, OAuth authorizations -> clients/users, and SAML relay states -> flow_state/SSO providers. This establishes that the full managed Auth schema is significantly larger than the minimum seven-object People prerequisite gate.
+
+The Supabase `list_migrations` API enumerates **ATLAS project migrations** in ascending version order, starting `20260808183211 atlas_core_schema`; this does **not** provide the managed GoTrue/Supabase Auth internal migration SQL. Do not mistake project migration history for the native Auth bootstrap. The Auth schema also has `auth.schema_migrations` owned by `supabase_auth_admin`, but its contents were intentionally not read. To reproduce a faithful local Auth instance, obtain a pinned, authentic Supabase Auth migration chain/version and verify schema/ACL/function/trigger parity before integrating the isolated PG17 workflow.
+
+No new PG17 bootstrap executed: no authenticated native Auth DDL chain has been recovered and proven complete. P0 Fail Closed remains mandatory.
