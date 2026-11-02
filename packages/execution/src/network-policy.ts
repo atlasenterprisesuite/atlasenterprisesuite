@@ -11,7 +11,7 @@ export interface PublicDnsResolver {
 // URL's IPv6 parser validates full syntax without a Node-only dependency.
 // IPv4 requires canonical dotted-decimal syntax (no octal/hex ambiguity).
 function ipFamily(address: string): 0 | 4 | 6 {
-  if (/^(?:0|[1-9][0-9]{0,2})(?:\\.(?:0|[1-9][0-9]{0,2})){3}$/.test(address) &&
+  if (/^(?:0|[1-9][0-9]{0,2})(?:\.(?:0|[1-9][0-9]{0,2})){3}$/.test(address) &&
       address.split('.').every(octet => Number(octet) <= 255)) return 4;
   if (address.includes(':')) {
     try {
