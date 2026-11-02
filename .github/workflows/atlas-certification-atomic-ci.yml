@@ -1,0 +1,38 @@
+name: ATLAS 777 Certification Atomic PostgreSQL CI
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261026_atlas_certification_atomic_777.sql'
+      - 'tests/integration/atlas-certification-atomic-postgres.sh'
+      - '.github/workflows/atlas-certification-atomic-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atlas_certification_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d atlas_certification_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGDATABASE: atlas_certification_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolated certification transaction tests
+        run: bash tests/integration/atlas-certification-atomic-postgres.sh

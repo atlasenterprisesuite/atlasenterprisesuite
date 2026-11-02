@@ -6,6 +6,7 @@ import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { GuidedExecutionPage } from './execution/GuidedExecutionPage';
+import { IntegrationReadiness777Page } from './modules/integration/IntegrationReadiness777Page';
 import { ManagerReadinessLauncher } from './execution/ManagerReadinessLauncher';
 import { resolveAtlasExtension } from './extensions/resolveAtlasExtension';
 import { IdentityPage } from './identity/IdentityPage';
@@ -293,6 +294,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/execution/integration-readiness-777" element={<RequireAtlasIdentity><IntegrationReadiness777Page /></RequireAtlasIdentity>} />
         <Route path="/security/certificates" element={<RequireAtlasIdentity><CertificateLifecyclePage /></RequireAtlasIdentity>} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
