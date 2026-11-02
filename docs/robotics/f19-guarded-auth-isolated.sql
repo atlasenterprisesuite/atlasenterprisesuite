@@ -12,6 +12,10 @@ begin
   v_actor := auth.uid();
   if v_actor is null or p_org is null or p_tenant is distinct from p_org::text
      or p_run !~ '^[A-Za-z0-9_-]{1,128}$' then return false; end if;
+  -- Transaction-scoped serialization key. All revocation writers MUST acquire
+  -- the same exclusive lock before changing membership or effective permissions.
+  -- Shared lock covers the authorization check and completion in this transaction.
+  perform pg_advisory_xact_lock_shared(777019, hashtext(p_org::text));
   -- Lock membership before the grant; membership revoker must use this same row.
   select om.status into v_status from public.organization_members om
     where om.org_id=p_org and om.user_id=v_actor for update;
