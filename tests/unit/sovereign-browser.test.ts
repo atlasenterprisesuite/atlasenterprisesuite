@@ -44,15 +44,15 @@ describe('ATLAS Sovereign Browser fail closed', () => {
     await expect(adapter.execute(job({type:'navigate',domain:'example.com',target:'https://example.com/'}),{...context,authorize:undefined})).rejects.toThrow('authorization_checker_required');
     expect(browser.newPage).not.toHaveBeenCalled();
   });
-  it('blocks revoked authorization before click', async () => {
+  it('blocks revoked authorization before permitted read', async () => {
     const {adapter,page}=setup();let count=0;
-    await expect(adapter.execute(job({type:'click',domain:'example.com',target:'button'}),{...context,authorize:async()=>++count<3})).rejects.toThrow('authorization_revoked');
-    expect(page.click).not.toHaveBeenCalled();
+    await expect(adapter.execute(job({type:'read_text',domain:'example.com',target:'h1'}),{...context,authorize:async()=>++count<3})).rejects.toThrow('authorization_revoked');
+    expect(page.textContent).not.toHaveBeenCalled();
     expect(page.close).toHaveBeenCalled();
   });
-  it('detects redirect to a different host before click', async () => {
+  it('detects redirect to a different host before permitted read', async () => {
     const {adapter,page}=setup();page.url.mockReturnValue('https://evil.com/');
-    await expect(adapter.execute(job({type:'click',domain:'example.com',target:'button'}),context)).rejects.toThrow('unsafe_navigation');
-    expect(page.click).not.toHaveBeenCalled();
+    await expect(adapter.execute(job({type:'read_text',domain:'example.com',target:'h1'}),context)).rejects.toThrow('unsafe_navigation');
+    expect(page.textContent).not.toHaveBeenCalled();
   });
 });
