@@ -11,6 +11,7 @@
     "typecheck": "npm --workspace apps/web run typecheck",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
+    "test:node": "node --test tests/node/*.test.mjs tools/local-agent/tests/*.test.mjs",
     "test:local-core": "node --test tools/local-agent/tests/*.test.mjs",
     "test:integration": "vitest run tests/integration",
     "verify:edge": "node scripts/verify-edge-source.mjs",
