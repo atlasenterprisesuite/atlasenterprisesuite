@@ -1,5 +1,6 @@
 import { evaluateBrowserAction, type BrowserExecutionEnvelope } from './browser-envelope';
 import { approvedUrl } from './network-policy';
+import { WORK_AUTONOMY_LEVELS } from './work-types';
 
 export type BrowserActionType =
   | 'navigate'
@@ -24,6 +25,8 @@ export type BrowserActionResult = {
 };
 
 const SENSITIVE_KEY = /token|secret|password|cookie|authorization|recovery/i;
+// Durable identity/scope keys are identifiers, not arbitrary audit text.
+const SAFE_PERSISTED_SCOPE_ID = /^[a-z0-9][a-z0-9_.:/@-]{0,199}$/i;
 const SAFE_ENVELOPE_ACTIONS = new Set<BrowserActionType>([
   'navigate', 'read_text', 'click', 'type', 'submit', 'create_dns_txt', 'click_openai_check',
 ]);
@@ -72,6 +75,11 @@ export function sanitizeBrowserResult(value: unknown, depth = 0): unknown {
 }
 
 export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: BrowserAction, now: string | Date = new Date()) {
+  if (![envelope.tenantId, envelope.organizationId, envelope.workflowId, envelope.stepId]
+      .every(value => typeof value === 'string' && SAFE_PERSISTED_SCOPE_ID.test(value)) ||
+      !WORK_AUTONOMY_LEVELS.includes(envelope.autonomyLevel)) {
+    throw new Error('browser_envelope_scope_invalid');
+  }
   // Only a canonical hostname may be used as a queue domain. Envelope matching
   // normalizes URL-like strings, which must never be persisted as raw domains.
   if (typeof action.domain !== 'string' ||
