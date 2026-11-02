@@ -19,6 +19,7 @@ import {
   type AIUniverseModality,
   type AIUniversePriority
 } from '../../../../../packages/creator/ai_universe';
+import { EnterpriseUsageInsights } from '../intelligence/EnterpriseUsageInsights';
 import type { CreativeEngineReadiness } from '../../../../../packages/creator/creative_engine';
 import type { CreatorAsset, ProductionSummary } from '../../../../../packages/creator/types';
 import './creator.css';
@@ -322,6 +323,8 @@ export function AIUniversePage() {
       </div> : <div className="creator-empty"><strong>Telemetry unavailable</strong><span>No usage totals are inferred when the authenticated telemetry endpoint cannot be read.</span></div>}
       {usage && usage.providers.length > 0 && <div className="provider-list">{usage.providers.map(item => <article key={item.provider}><div><h3>{item.provider}</h3><p>{item.requests} requests · {item.completed} completed · {item.failed} failed</p><small>{item.average_latency_ms === null ? 'No latency observation' : `Average ${item.average_latency_ms} ms`} · {fmtCost(item.automatic_api_cost_usd)}</small></div></article>)}</div>}
     </section>
+
+    <EnterpriseUsageInsights usage={usage} />
 
     <section className="creator-section" aria-labelledby="ai-universe-history-title">
       <div className="section-heading"><div><p className="eyebrow">Unified history</p><h2 id="ai-universe-history-title">Recent AI & Creator activity</h2></div></div>
