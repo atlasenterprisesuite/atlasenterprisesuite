@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import './faith-reflection.css';
 
 type SacredCode = {
@@ -185,7 +186,9 @@ export function FaithReflectionPage() {
             <button type="button" className="faith-primary" onClick={saveDay} disabled={!action.trim()}>
               Guardar día en mi ciclo de 21 días
             </button>
-            {saved && <p className="faith-success" role="status">Día registrado localmente.</p>}
+            {saved && <p className="faith-success" role="status">Día registrado localmente. No constituye una ejecución verificada.</p>}
+            <p role="note">Una reflexión guardada no certifica tareas, permisos ni resultados de ATLAS Execution.</p>
+            <Link to="/execution/manager/readiness">Abrir ATLAS Execution (requiere identidad y permisos)</Link>
           </article>
         </main>
       </div>
