@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-const sql=readFileSync(new URL('../../supabase/migrations/20261102091000_atlas_browser_reserve_transaction_777.sql',import.meta.url),'utf8');
+const sql=readFileSync('supabase/migrations/20261102091000_atlas_browser_reserve_transaction_777.sql','utf8');
 describe('ATLAS 777 reservation transaction negative contract',()=>{
  it('requires database-derived identity',()=>{expect(sql).toContain('auth.uid()');expect(sql).toContain('v_actor is null');});
  it('serializes against membership revocation',()=>{expect(sql).toContain("m.status = 'active'");expect(sql).toContain('for share');});
