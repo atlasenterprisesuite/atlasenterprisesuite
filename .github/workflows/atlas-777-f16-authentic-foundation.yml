@@ -1,0 +1,52 @@
+name: ATLAS 777 F16 Authentic Foundation Gate
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/atlas-777-f16-authentic-foundation.yml'
+      - 'tests/security/atlas-777-f1*.sql'
+      - 'tests/security/recovered/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authentic-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: atlas_test
+          POSTGRES_PASSWORD: isolated_fixture_only
+          POSTGRES_DB: atlas_777_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U atlas_test -d atlas_777_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: atlas_test
+      PGPASSWORD: isolated_fixture_only
+      PGDATABASE: atlas_777_test
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - name: Verify disposable PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(psql -X -Atqc 'SHOW server_version_num')"
+          [[ "$version" =~ ^[0-9]+$ ]] && test "$version" -ge 170000
+          echo "F16_PG17_READY SHA=$GITHUB_SHA"
+      - name: Fail closed until authentic Supabase Auth and recovered migrations are present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f tests/security/recovered/20260808183211_atlas_core_schema.sql || { echo 'P0_F16_RECOVERED_CORE_MISSING'; exit 1; }
+          test -f tests/security/recovered/20260809032705_atlas_identity_foundation.sql || { echo 'P0_F16_RECOVERED_IDENTITY_MISSING'; exit 1; }
+          test -f tests/security/recovered/20260821174551_atlas_audit_recursive_secret_redaction.sql || { echo 'P0_F16_RECOVERED_AUDIT_MISSING'; exit 1; }
+          psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-foundation-preflight.sql
+          echo 'P0_F16_AUTH_EQUIVALENCE_AND_REVOCATION_UNCERTIFIED'
+          exit 1
