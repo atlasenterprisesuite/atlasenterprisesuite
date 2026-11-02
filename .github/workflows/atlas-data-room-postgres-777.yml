@@ -1,0 +1,45 @@
+name: ATLAS Secure Data Room PostgreSQL 777
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261102000100_atlas_data_room_deny_default.sql'
+      - 'tests/postgres/secure-data-room-deny-default-777.sql'
+      - '.github/workflows/atlas-data-room-postgres-777.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deny-default:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap disposable Supabase-like roles and organization table
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create table public.organizations (id uuid primary key);
+          SQL
+      - name: Apply isolated deny-default migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102000100_atlas_data_room_deny_default.sql
+      - name: Assert PostgreSQL RLS and privileges
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/secure-data-room-deny-default-777.sql
