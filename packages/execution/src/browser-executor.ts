@@ -54,7 +54,7 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
   // Only a canonical hostname may be used as a queue domain. Envelope matching
   // normalizes URL-like strings, which must never be persisted as raw domains.
   if (typeof action.domain !== 'string' ||
-      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$/i.test(action.domain)) {
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$/i.test(action.domain)) {
     throw new Error('browser_domain_invalid');
   }
   try { approvedUrl('https://' + action.domain + '/', [action.domain]); }
