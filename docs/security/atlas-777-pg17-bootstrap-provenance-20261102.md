@@ -61,3 +61,20 @@ These are additional transitive dependencies for a faithful PostgreSQL 17 bootst
 CI exact-SHA `1dae1c0fc2a773b9dd243461238971fba97879b4`: seven workflows SUCCESS and `ATLAS 777 Isolated PostgreSQL 17 Runtime` FAILURE (run 41440762396, job 125261732032). The prerequisite gate reports all seven expected foundational objects missing because recovered sources have not been loaded; this is a deliberate fail-closed outcome, not proof the recovered SQL is invalid.
 
 P0 OPEN; no bootstrap execution, migration, merge, or deployment performed in this checkpoint.
+
+## RUN NEXT — authoritative trigger function catalog, 2026-11-02
+
+Live catalog read-only `pg_proc` returned exact current definitions, ownership and ACL (no user rows):
+
+| Function | Owner | Security | EXECUTE ACL | Direct dependencies |
+| --- | --- | --- | --- | --- |
+| `public.handle_new_auth_user()` | `postgres` | DEFINER, `search_path=public` | `postgres`, `service_role` | `public.profiles(id,full_name,updated_at)` and `auth.users.raw_user_meta_data` trigger |
+| `public.set_updated_at()` | `postgres` | INVOKER, `search_path=pg_catalog,public` | `postgres`, `service_role` | target row `updated_at` |
+| `public.atlas_enforce_synthetic_e2e_role()` | `postgres` | DEFINER, `search_path=pg_catalog,public,auth,pg_temp` | `postgres`, `service_role` | reads `auth.users(id,email)`; mutates NEW.role on `organization_members` |
+| `public.seed_atlas_work_modules()` | `postgres` | DEFINER, `search_path=public` | `postgres`, `service_role` | `public.organization_modules(org_id,module_code,enabled,launch_status,updated_at)` |
+
+Both `public.profiles` and `public.organization_modules` exist in the live catalog, are owned by `postgres`, have RLS enabled and explicit `anon`/`authenticated`/`service_role` table ACLs. Their current policy and schema definitions, and the native `auth.users` schema/roles, must be recovered before faithful replay. Trigger function execution is not certified merely by recovering its DDL.
+
+The Supabase migration history was enumerated in ascending version order. Relevant ordered versions include `20260808183211 atlas_core_schema`, `20260809032705 atlas_identity_foundation`, `20260809032710 atlas_identity_audit_hardening`, `20260809032746 atlas_identity_invoker_hardening`, `20260809040445 atlas_identity_member_admin`, `20260809040925 atlas_identity_hierarchy_locking`, `20260810021509 atlas_work_graph_conversation_execution`, `20260821174551 atlas_audit_recursive_secret_redaction`, `20260910111459 harden_synthetic_e2e_membership_roles_v1`. Migration-history names do not alone establish the complete dependency graph; no tenant bootstrap/data migrations should be replayed blindly.
+
+P0 OPEN: native Supabase Auth bootstrap and transitive tables/policies remain incomplete. No SQL changes to production and no permissive stubs.
