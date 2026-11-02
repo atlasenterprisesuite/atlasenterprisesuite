@@ -33,7 +33,6 @@ jobs:
       PGUSER: atlas_test
       PGPASSWORD: isolated_fixture_only
       PGDATABASE: atlas_777_test
-      PGOPTIONS: '-c default_transaction_isolation=read committed'
     steps:
       - uses: actions/checkout@v4
       - name: Verify isolated PostgreSQL 17 and tenant fixtures
