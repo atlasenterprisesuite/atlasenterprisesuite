@@ -1,5 +1,11 @@
 -- ATLAS 777: prerequisite audit before loading the ORIGINAL People migration.
 -- No synthetic substitute for auth.uid, permissions, or audit hooks is permitted.
+-- Dependency provenance: People migration 20260923201500 inserts into
+-- identity_permissions/identity_role_permissions and references organizations/auth.users.
+-- Advisory migration 20260918031500 uses the same identity tables and
+-- has_identity_permission(org_id, permission). Neither migration creates these prerequisites.
+-- Load the original foundational Supabase/ATLAS migrations before this gate;
+-- never turn missing prerequisites into permissive stubs.
 \set ON_ERROR_STOP on
 DO $$
 DECLARE missing text[];
