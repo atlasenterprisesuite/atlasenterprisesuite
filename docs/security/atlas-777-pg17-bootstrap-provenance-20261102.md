@@ -100,3 +100,14 @@ Read-only catalog inspection on atlas-core (no application/user rows):
 - Default ACLs differ by creator and schema: `auth` objects owned by `supabase_auth_admin` grant tables/sequences/functions to `postgres` and `dashboard_user`; `public` objects created by `postgres` have function EXECUTE restricted to `postgres` and `service_role`, whereas `public` objects created by `supabase_admin` have broader function default EXECUTE. Reproducing only per-object grants misses creator-specific default ACL semantics.
 
 P0 still OPEN: verify role membership inheritance, exact Auth schema constraints/indexes/extension dependencies, schema privileges and current migration chain before wiring any bootstrap. This is catalog provenance, not a PostgreSQL 17 execution result.
+
+## RUN NEXT — schema ACL and role membership provenance (2026-11-02)
+
+Read-only production `pg_namespace` and `pg_auth_members` catalog queries, no user/tenant rows:
+
+- `auth` schema owner is `supabase_admin`; `supabase_auth_admin` and `dashboard_user` have USAGE+CREATE; `anon`, `authenticated`, `service_role` and `postgres` have USAGE. This is distinct from the owner of `auth.users` (`supabase_auth_admin`).
+- `public` schema owner is `pg_database_owner`, with USAGE for PUBLIC (`=U`) and explicitly for `postgres`, `anon`, `authenticated`, `service_role`; no CREATE for those four roles in the returned schema ACL.
+- `authenticator` has memberships in `anon`, `authenticated`, and `service_role` with `inherit_option=false`, `set_option=true`, `admin_option=false`. The `SET ROLE` boundary is security-significant.
+- `postgres` has inherited memberships in `anon`, `authenticated`, `service_role`, `authenticator`, plus managed roles. Do **not** copy broad managed privileges into a test role or infer client permissions from postgres-owned execution.
+
+Exact-SHA CI on `8fb127d5620083f05f56cb759aef1ce6543663ea` still fails the isolated PostgreSQL 17 prerequisites gate, run 41443624952, before People migration. Browser #976 commit `9d8e999f27ec3c548e972ca4ce617eddf9caecf4` has successful Consensus CI and unit suite at that SHA, with readiness gate still running at observation. No complete native Auth/bootstrap proof yet; P0 remains OPEN.
