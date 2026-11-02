@@ -19,6 +19,11 @@ describe('ATLAS Sovereign Browser fail closed', () => {
     await expect(adapter.execute(job({type:'navigate',domain:'evil.com',target:'https://evil.com/'}),context)).rejects.toThrow();
     expect(browser.newPage).not.toHaveBeenCalled();
   });
+  it('denies click before opening browser until transport and approval are certified', async () => {
+    const {adapter,browser}=setup();
+    await expect(adapter.execute(job({type:'click',domain:'example.com',target:'#confirm'}),context)).rejects.toThrow('human_approval_required');
+    expect(browser.newPage).not.toHaveBeenCalled();
+  });
   it('rejects privileged submission', async () => {
     const {adapter,browser}=setup();
     await expect(adapter.execute(job({type:'submit',domain:'example.com'}),context)).rejects.toThrow('human_approval_required');
