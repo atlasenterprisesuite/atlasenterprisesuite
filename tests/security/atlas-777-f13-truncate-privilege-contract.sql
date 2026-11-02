@@ -8,6 +8,7 @@
   \echo P0_F13_EXPECTED_TRUNCATE_NOT_SET
   \quit 3
 \endif
+SELECT set_config('atlas.f13_expected_truncate', :'expected_truncate', false);
 DO $f13$
 DECLARE t text; oid oid; a boolean; b boolean; svc boolean;
 BEGIN
@@ -20,8 +21,8 @@ BEGIN
   b := has_table_privilege('authenticated',oid,'TRUNCATE');
   svc := has_table_privilege('service_role',oid,'TRUNCATE');
   IF NOT svc THEN RAISE EXCEPTION 'P0_F13_SERVICE_TRUNCATE_MISSING:%',t; END IF;
-  IF a <> :'expected_truncate'::boolean OR b <> :'expected_truncate'::boolean THEN
-    RAISE EXCEPTION 'P0_F13_TRUNCATE_STATE_MISMATCH:% anon=% authenticated=% expected=%',t,a,b,:'expected_truncate';
+  IF a <> current_setting('atlas.f13_expected_truncate')::boolean OR b <> current_setting('atlas.f13_expected_truncate')::boolean THEN
+    RAISE EXCEPTION 'P0_F13_TRUNCATE_STATE_MISMATCH:% anon=% authenticated=% expected=%',t,a,b,current_setting('atlas.f13_expected_truncate');
   END IF;
  END LOOP;
 END $f13$;
