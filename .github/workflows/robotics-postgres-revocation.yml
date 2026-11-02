@@ -8,6 +8,9 @@ on:
       - 'packages/robotics/**'
       - 'tests/robotics/**'
       - '.github/workflows/robotics-postgres-revocation.yml'
+      - 'supabase/migrations/20261101_robotics_simulation_isolated_draft.sql'
+      - 'docs/robotics/phase5-postgres-isolated-prototype.sql'
+      - 'docs/robotics/f19-guarded-auth-isolated.sql'
   workflow_dispatch:
 permissions:
   contents: read
