@@ -1,13 +1,16 @@
 -- ATLAS 777 PR #976: additive, fail-closed browser idempotency ledger.
 -- This is a schema-only prerequisite. No API role may claim or replay work.
 -- Do not deploy before PostgreSQL 17 concurrency and revocation certification.
+-- Retain terminal idempotency evidence when org/workflow/step deletion is requested.
+-- RESTRICT deliberately blocks parent deletion until a separately audited
+-- retention/tombstone migration preserves replay protection; no cascade cleanup.
 create table if not exists public.execution_browser_idempotency (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.organizations(id) on delete cascade,
+  org_id uuid not null references public.organizations(id) on delete restrict,
   tenant_id text not null check (length(btrim(tenant_id)) > 0),
   idempotency_key text not null check (length(btrim(idempotency_key)) between 1 and 200),
-  workflow_id uuid not null references public.execution_workflows(id) on delete cascade,
-  step_id uuid not null references public.execution_steps(id) on delete cascade,
+  workflow_id uuid not null references public.execution_workflows(id) on delete restrict,
+  step_id uuid not null references public.execution_steps(id) on delete restrict,
   actor_user_id uuid not null,
   state text not null default 'reserved' check (state in ('reserved','completed','indeterminate','revoked')),
   action_digest text not null check (action_digest ~ '^[a-f0-9]{64}$'),
