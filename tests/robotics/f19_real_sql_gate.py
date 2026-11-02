@@ -23,8 +23,8 @@ with conn.cursor() as cur:
         if role not in existing:
             cur.execute("create role " + role + " nologin")
     cur.execute("create schema if not exists auth")
-    cur.execute("""create or replace function auth.uid() returns uuid language sql stable as
-      $select nullif(current_setting('test.verified_actor',true),'')::uuid$""")
+    cur.execute("""create or replace function auth.uid() returns uuid language sql stable
+      AS 'select nullif(current_setting(''test.verified_actor'',true),'''')::uuid'""")
     for file in FILES:
         sql = file.read_bytes()
         print("SQL_SHA256", file, hashlib.sha256(sql).hexdigest(), flush=True)
