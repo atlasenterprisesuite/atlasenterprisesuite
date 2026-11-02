@@ -24,6 +24,11 @@ export type BrowserActionResult = {
 };
 
 const SENSITIVE_KEY = /token|secret|password|cookie|authorization|recovery/i;
+// Queue evidence is durable: CSS attribute selectors can embed raw form values,
+// access tokens, or other secrets. Only a deliberately small read-only selector
+// subset is permitted until a typed selector builder and vault are certified.
+const SAFE_READ_SELECTOR = /^(?:[a-z][a-z0-9_-]*|[.#][a-z_][a-z0-9_-]*)(?:[.#][a-z_][a-z0-9_-]*)*(?: +(?:[a-z][a-z0-9_-]*|[.#][a-z_][a-z0-9_-]*)(?:[.#][a-z_][a-z0-9_-]*)*)*$/i;
+
 // Page text is untrusted. Redact the entire field when common credential
 // signatures appear; never retain the surrounding snippet in evidence/logs.
 // This is defense in depth, not a substitute for vault/DLP certification.
@@ -79,6 +84,12 @@ export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: Br
   if (action.type !== 'navigate' && action.type !== 'read_text') throw new Error('unsupported_action');
   if (action.value !== undefined || action.metadata !== undefined) {
     throw new Error('browser_unexpected_payload');
+  }
+  if (action.type === 'read_text' &&
+      (typeof action.target !== 'string' || action.target.length === 0 ||
+       action.target.length > 160 || !SAFE_READ_SELECTOR.test(action.target) ||
+       SENSITIVE_TEXT.test(action.target))) {
+    throw new Error('browser_selector_invalid');
   }
   let safeTarget = action.target;
   if (action.type === 'navigate' && action.target !== undefined) {
