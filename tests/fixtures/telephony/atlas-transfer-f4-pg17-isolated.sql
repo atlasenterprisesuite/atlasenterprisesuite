@@ -3,7 +3,7 @@
 create schema if not exists atlas_transfer_test;
 create table atlas_transfer_test.allowed_destinations(
  organization_id uuid not null references public.organizations(id),
- destination text not null check(destination ~ '^\\+[1-9][0-9]{7,14}$'),
+ destination text not null check(destination ~ '^\+[1-9][0-9]{7,14}$'),
  primary key(organization_id,destination)
 );
 create table atlas_transfer_test.reservations(
@@ -36,7 +36,7 @@ declare v_existing atlas_transfer_test.reservations%rowtype;
 begin
  if p_org is null or p_actor is null or p_call is null or p_live is null
  or p_live !~ '^live_[a-zA-Z0-9_-]+$' or p_key is null or length(p_key) not between 1 and 128
- or p_destination is null or p_destination !~ '^\\+[1-9][0-9]{7,14}$'
+ or p_destination is null or p_destination !~ '^\+[1-9][0-9]{7,14}$'
  then return 'invalid_request'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
   p_org::text||':'||p_call::text||':'||p_key,0));
