@@ -96,7 +96,11 @@ export async function resolvePublicDns(
   const addresses = [...ipv4, ...ipv6];
   if (!addresses.length) throw new Error('network_dns_empty');
   if (addresses.length > 16) throw new Error('network_dns_answer_limit');
-  if (!addresses.every(address => typeof address === 'string' && isPublicDnsAddress(address))) {
+  // Resolver outputs are untrusted: an A answer must actually be IPv4 and
+  // an AAAA answer must actually be IPv6. A public address of the wrong family
+  // is not valid DNS preflight evidence for this record type.
+  if (!ipv4.every(address => typeof address === 'string' && ipFamily(address) === 4 && isPublicDnsAddress(address)) ||
+      !ipv6.every(address => typeof address === 'string' && ipFamily(address) === 6 && isPublicDnsAddress(address))) {
     throw new Error('network_dns_address_denied');
   }
   return { hostname, addresses };
