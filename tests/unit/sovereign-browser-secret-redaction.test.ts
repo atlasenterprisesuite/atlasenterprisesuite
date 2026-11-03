@@ -185,6 +185,16 @@ describe('ATLAS 777 browser queue rejects untrusted persisted action grants', ()
 // Runtime payloads can bypass TypeScript types. The queue must not persist
 // credential-bearing identity fields or an unrecognized autonomy level.
 describe('ATLAS 777 durable browser envelope scope validation', () => {
+  it('rejects canonical-looking credential values in persisted scope IDs', () => {
+    // A synthetic token has only characters permitted by the scope-ID regex.
+    // Never let such data become durable queue identity/audit evidence.
+    const syntheticCredential = 'sk-proj-' + 'a'.repeat(32);
+    for (const field of ['tenantId', 'organizationId', 'workflowId', 'stepId'] as const) {
+      expect(() => prepareBrowserJob({ ...restrictedEnvelope, [field]: syntheticCredential },
+        { type: 'read_text', domain: 'example.com', target: 'h1' },
+        '2026-11-02T00:00:00Z')).toThrow('browser_envelope_scope_invalid');
+    }
+  });
   it('rejects credential-shaped scope fields and unrecognized autonomy before persistence', () => {
     const untrusted = 'Authorization: Bearer ' + 'x'.repeat(24);
     for (const override of [
