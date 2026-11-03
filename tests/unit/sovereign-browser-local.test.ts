@@ -118,6 +118,17 @@ describe('Sovereign browser local transport negative gates', () => {
       })).rejects.toThrow('network_dns_address_denied');
     }
   );
+  it('rejects cross-family DNS answers before recording public preflight evidence', async () => {
+    // An A response must contain IPv4 and an AAAA response must contain IPv6.
+    // Injectable resolver responses are untrusted, even when addresses are public.
+    for (const resolver of [
+      { resolve4: async () => ['2606:4700:4700::1111'], resolve6: async () => [] },
+      { resolve4: async () => [], resolve6: async () => ['8.8.8.8'] },
+    ]) {
+      await expect(resolvePublicDns('https://example.com/', allowed, resolver))
+        .rejects.toThrow('network_dns_address_denied');
+    }
+  });
   it('rejects mixed public and private answers instead of selecting a safe subset', async () => {
     await expect(resolvePublicDns('https://example.com/', allowed, {
       resolve4: async () => ['8.8.8.8', '10.1.2.3'], resolve6: async () => []
