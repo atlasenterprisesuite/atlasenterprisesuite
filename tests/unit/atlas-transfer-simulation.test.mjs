@@ -1,5 +1,5 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { it as test, expect } from 'vitest';
+const assert = { equal(actual, expected) { expect(actual).toBe(expected); } };
 import {createSimulationTransferEngine} from '../../packages/voice/transfer-engine-simulation.mjs';
 const destination='+14075550101';
 const sample={orgId:'orgA',actorId:'userA',sessionId:'live_test123',idempotencyKey:'unique-1',destination,sessionActive:true,tenantActive:true};
