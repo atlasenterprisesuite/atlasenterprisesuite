@@ -76,7 +76,10 @@ export function sanitizeBrowserResult(value: unknown, depth = 0): unknown {
 
 export function prepareBrowserJob(envelope: BrowserExecutionEnvelope, action: BrowserAction, now: string | Date = new Date()) {
   if (![envelope.tenantId, envelope.organizationId, envelope.workflowId, envelope.stepId]
-      .every(value => typeof value === 'string' && SAFE_PERSISTED_SCOPE_ID.test(value)) ||
+      .every(value => typeof value === 'string' && SAFE_PERSISTED_SCOPE_ID.test(value) &&
+        // Canonical syntax alone still permits token-shaped strings.
+        // Never persist those as tenant/org/workflow/step audit identifiers.
+        !SENSITIVE_TEXT.test(value)) ||
       !WORK_AUTONOMY_LEVELS.includes(envelope.autonomyLevel)) {
     throw new Error('browser_envelope_scope_invalid');
   }
