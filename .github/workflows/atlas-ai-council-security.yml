@@ -4,6 +4,15 @@ on:
     paths:
       - 'supabase/functions/atlas-copilot/**'
       - 'tests/node/atlas-ai-council-security-gates.test.mjs'
+      - 'packages/execution/src/browser-*.ts'
+      - 'packages/execution/src/sovereign-browser.ts'
+      - 'packages/execution/src/network-policy.ts'
+      - 'packages/execution/src/dns-egress-node.mjs'
+      - 'packages/execution/src/playwright-local.ts'
+      - 'packages/execution/src/idempotency.ts'
+      - 'tests/unit/sovereign-browser*.test.ts'
+      - 'supabase/migrations/*_atlas_browser_*_777.sql'
+      - 'supabase/migrations/*_atlas_sovereign_browser_*_777.sql'
       - '.github/workflows/atlas-ai-council-security.yml'
   workflow_dispatch:
 permissions:
@@ -16,3 +25,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Council authentication and fail-closed boundaries
         run: node --test tests/node/atlas-ai-council-security-gates.test.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies for browser security contracts
+        run: npm ci
+      - name: Verify Sovereign Browser security and authorization contracts
+        run: npx vitest run tests/unit/sovereign-browser*.test.ts
