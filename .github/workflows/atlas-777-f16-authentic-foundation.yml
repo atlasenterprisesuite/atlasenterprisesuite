@@ -40,6 +40,24 @@ jobs:
           version="$(psql -X -Atqc 'SHOW server_version_num')"
           [[ "$version" =~ ^[0-9]+$ ]] && test "$version" -ge 170000
           echo "F16_PG17_READY SHA=$GITHUB_SHA"
+      - name: Verify all seven recovered Git blob hashes (source PR 974)
+        shell: bash
+        run: |
+          set -euo pipefail
+          while read -r expected path; do
+            test -f "$path" || { echo "P0_F17_MISSING_RECOVERED_FILE: $path"; exit 1; }
+            actual="$(git hash-object "$path")"
+            test "$actual" = "$expected" || { echo "P0_F17_BLOB_MISMATCH: $path"; exit 1; }
+          done <<'EXPECTED_BLOBS'
+          692424bb99bb3dcbe4d7c1da016a018b0f9a28a2 tests/security/recovered/20260808183211_atlas_core_schema.sql
+          32ab38e9ec9ad91eb08b1ed7c577af2bcfacac6f tests/security/recovered/20260809032705_atlas_identity_foundation.sql
+          048a989c93690b16a3713c25561f550c547ff95b tests/security/recovered/20260809032710_atlas_identity_audit_hardening.sql
+          a3d4e869ec4e74ee318dfd0cb00877d7e9f0e18d tests/security/recovered/20260809032746_atlas_identity_invoker_hardening.sql
+          d7df2c3c47d2400a12574a702d795af1ef55df8e tests/security/recovered/20260809040445_atlas_identity_member_admin.sql
+          889837e5f4ba7a4b57d5fca8cda7903d7fe15308 tests/security/recovered/20260809040925_atlas_identity_hierarchy_locking.sql
+          7b7e2af77dee27edbb2282688f8fde581791b81f tests/security/recovered/20260821174551_atlas_audit_recursive_secret_redaction.sql
+          EXPECTED_BLOBS
+          echo "F17_RECOVERED_BLOBS_MATCH_SHA=$GITHUB_SHA"
       - name: Fail closed until authentic Supabase Auth and recovered migrations are present
         shell: bash
         run: |
