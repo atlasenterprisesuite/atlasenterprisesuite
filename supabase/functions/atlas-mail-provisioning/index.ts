@@ -199,6 +199,10 @@ Deno.serve(async (req: Request) => {
       });
     }
     if (api === 'bulk-provision' && req.method === 'POST') {
+      // P0 fail-closed: provider-side effects must not run without an atomic,
+      // tenant-bound claim and durable audit receipt. Existing list-then-create
+      // is racy under concurrent requests and cannot safely be enabled.
+      throw new MailError('mail_atomic_claim_and_audit_required', 503);
       if (!cfg) throw new MailError('cloudflare_mail_configuration_incomplete', 503);
       const evidence = await verify(cfg);
       if (!evidence.verified) {
