@@ -182,33 +182,16 @@ export async function enqueueWorkRuntimeJob(admin: any, context: UserContext, in
 }
 
 export async function claimWorkRuntimeJob(admin: any, context: RuntimeAuthContext) {
-  const { data: candidate, error: candidateError } = await admin
-    .from('execution_runtime_jobs')
-    .select('id')
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .eq('runtime_kind', context.kind)
-    .eq('state', 'queued')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (candidateError) throw new WorkRuntimeError('persistence_error', 500);
-  if (!candidate) return null;
-
-  const leaseId = crypto.randomUUID();
-  const leaseExpiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
-  const { data: job, error } = await admin
-    .from('execution_runtime_jobs')
-    .update({ runtime_id: context.runtimeId, state: 'claimed', lease_id: leaseId, lease_expires_at: leaseExpiresAt, updated_at: new Date().toISOString() })
-    .eq('id', String(candidate.id))
-    .eq('org_id', context.orgId)
-    .eq('tenant_id', context.tenantId)
-    .eq('runtime_kind', context.kind)
-    .eq('state', 'queued')
-    .select('id,workflow_id,task_id,step_id,runtime_kind,state,execution_envelope,action,lease_id,lease_expires_at')
-    .maybeSingle();
+  // Database-side claim uses FOR UPDATE SKIP LOCKED in one transaction.
+  // Never use a client-side select-then-update loop: it can race across workers.
+  const { data, error } = await admin.rpc('execution_claim_runtime_job_777', {
+    p_runtime_id: context.runtimeId,
+    p_org_id: context.orgId,
+    p_tenant_id: context.tenantId,
+    p_runtime_kind: context.kind
+  });
   if (error) throw new WorkRuntimeError('persistence_error', 500);
-  return job || null;
+  return Array.isArray(data) ? (data[0] || null) : (data || null);
 }
 
 export async function completeWorkRuntimeJob(admin: any, context: RuntimeAuthContext, input: {
@@ -244,6 +227,7 @@ export async function completeWorkRuntimeJob(admin: any, context: RuntimeAuthCon
     .eq('org_id', context.orgId)
     .eq('tenant_id', context.tenantId)
     .eq('lease_id', leaseId)
+    .gt('lease_expires_at', new Date().toISOString())
     .in('state', ['claimed', 'running'])
     .select('id,workflow_id,task_id,step_id,state,sanitized_result,updated_at')
     .maybeSingle();
