@@ -37,14 +37,14 @@ export function gradeAcademyAssessment(
       rubric.questions.length === 0) throw new Error('Invalid rubric');
   const keys = new Map<string, string>();
   for (const question of rubric.questions) {
-    if (!question.id || !question.correctAnswer || keys.has(question.id)) throw new Error('Invalid rubric questions');
+    if (!question || typeof question.id !== 'string' || !question.id.trim() ||\n        typeof question.correctAnswer !== 'string' || !question.correctAnswer || keys.has(question.id)) throw new Error('Invalid rubric questions');
     keys.set(question.id, question.correctAnswer);
   }
   if (submission.answers.length !== keys.size) throw new Error('Incomplete submission');
   const seen = new Set<string>();
   let correct = 0;
   for (const entry of submission.answers) {
-    if (!entry.questionId || typeof entry.answer !== 'string' || seen.has(entry.questionId) || !keys.has(entry.questionId)) {
+    if (!entry || typeof entry.questionId !== 'string' || !entry.questionId.trim() ||\n        typeof entry.answer !== 'string' || seen.has(entry.questionId) || !keys.has(entry.questionId)) {
       throw new Error('Invalid submission answers');
     }
     seen.add(entry.questionId);
