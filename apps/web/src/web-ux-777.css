@@ -1,0 +1,25 @@
+/* ATLAS 777: keyboard and touch accessibility, scoped to the existing shell.
+   Non-invasive: no route, authentication, or integration behavior changes. */
+.atlas-shell :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid #67e8f9;
+  outline-offset: 3px;
+}
+.atlas-shell .atlas-nav-group-summary {
+  cursor: pointer;
+}
+@media (max-width: 1024px) {
+  .atlas-shell .atlas-sidebar .nav-item,
+  .atlas-shell .atlas-nav-group-summary,
+  .atlas-shell .atlas-mobile-nav-toggle,
+  .atlas-shell .atlas-mobile-nav-close {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-shell .module-card.enabled,
+  .atlas-shell .atlas-sidebar,
+  .atlas-shell .atlas-nav-backdrop {
+    animation: none !important;
+    transition: none !important;
+  }
+}
