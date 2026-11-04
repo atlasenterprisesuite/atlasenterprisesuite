@@ -60,22 +60,14 @@ jobs:
               return;
             }
 
-            const body = issue.body || '';
-            const readField = (heading) => {
-              const escaped = heading.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-              const match = body.match(new RegExp(`### ${escaped}\\s*\\n+([\\s\\S]*?)(?=\\n### |$)`, 'i'));
-              if (!match) return '';
-              return match[1]
-                .replace(/<!--.*?-->/gs, '')
-                .trim();
-            };
-
-            const ownerModule = readField('Owner module');
-            const issueType = readField('Issue type');
-            const priority = readField('Priority');
-            const tenantSensitive = readField('Tenant-sensitive?');
-            const securitySensitive = readField('Security-sensitive?');
-            const productionMutation = readField('Production mutation or deployment required?');
+            const { classify } = require('./.github/workflows/lib/atlas-issue-classifier.cjs');
+            const classification = classify(issue);
+            const ownerModule = classification.module;
+            const issueType = classification.type;
+            const priority = classification.priority;
+            const tenantSensitive = classification.tenant;
+            const securitySensitive = classification.security;
+            const productionMutation = classification.production;
 
             const slug = (value) => value
               .toLowerCase()
@@ -87,7 +79,8 @@ jobs:
 
             const priorityMatch = priority.match(/P[0-4]/i);
             const prioritySlug = priorityMatch ? priorityMatch[0].toLowerCase() : '';
-            const structured = Boolean(ownerModule && issueType && prioritySlug);
+            const structured = classification.structured;
+            const classified = classification.complete;
 
             const implementationTypes = new Set([
               'bug',
@@ -105,9 +98,9 @@ jobs:
             ]);
 
             const typeSlug = slug(issueType);
-            const labels = structured
+            const labels = classified
               ? [
-                  'intake:structured',
+                  structured ? 'intake:structured' : 'intake:legacy',
                   `module:${slug(ownerModule)}`,
                   `type:${typeSlug}`,
                   `priority:${prioritySlug}`,
@@ -120,20 +113,17 @@ jobs:
                 ];
 
             let executor = 'ATLAS Director';
-            if (structured && implementationTypes.has(typeSlug)) {
+            if (classified && implementationTypes.has(typeSlug)) {
               labels.push('agent:codex');
               executor = 'Codex (orchestrated by ATLAS Director)';
-            } else if (structured) {
+            } else if (classified) {
               labels.push('agent:director');
             }
 
-            const sensitive =
-              prioritySlug === 'p0' ||
-              /^yes$/i.test(securitySensitive) ||
-              /^yes$/i.test(productionMutation);
+            const sensitive = classification.sensitive;
 
-            if (structured) {
-              labels.push(sensitive ? 'review:human-required' : 'execution:auto-eligible');
+            if (classified) {
+              labels.push(classification.autoEligible ? 'execution:auto-eligible' : 'review:human-required');
               if (/^yes$/i.test(tenantSensitive)) labels.push('tenant:sensitive');
               if (/^yes$/i.test(securitySensitive)) labels.push('security:sensitive');
               if (/^yes$/i.test(productionMutation)) labels.push('production:mutation');
@@ -251,9 +241,9 @@ jobs:
               core.warning(`Human assignee could not be applied: ${error.message}`);
             }
 
-            const governance = structured
-              ? (sensitive ? 'Human review required' : 'Governed auto-execution eligible')
-              : 'Legacy intake — human review required';
+            const governance = classification.autoEligible
+              ? 'Governed auto-execution eligible'
+              : (classified ? 'Human review required — inferred or sensitive metadata' : 'Unresolved intake — human review required');
 
             const marker = '<!-- atlas-intelligent-issue-routing -->';
             const routingComment = [
