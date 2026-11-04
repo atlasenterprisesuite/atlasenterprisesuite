@@ -28,4 +28,17 @@ describe('ATLAS Academy assessment F2 isolated grading', () => {
     expect(() => gradeAcademyAssessment({ ...rubric, questions: [rubric.questions[0], rubric.questions[0]] }, submission)).toThrow();
     expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: Number.NaN }, submission)).toThrow();
   });
+  it('rejects malformed runtime payloads without issuing a grade', () => {
+    expect(() => gradeAcademyAssessment(rubric, null as unknown as typeof submission)).toThrow();
+    expect(() => gradeAcademyAssessment(rubric, { ...submission, answers: null } as unknown as typeof submission)).toThrow();
+    expect(() => gradeAcademyAssessment(rubric, { ...submission, answers: [null, answers[1]] } as unknown as typeof submission)).toThrow();
+    expect(() => gradeAcademyAssessment(rubric, { ...submission, answers: [answers[0], { questionId: 'q2', answer: 3 }] } as unknown as typeof submission)).toThrow();
+  });
+
+  it('rejects invalid rubric thresholds and non-string answer keys', () => {
+    expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: -1 }, submission)).toThrow();
+    expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: 101 }, submission)).toThrow();
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: [{ id: 'q1', correctAnswer: 1 }, rubric.questions[1]] } as unknown as AcademyRubricV1, submission)).toThrow();
+  });
+
 });
