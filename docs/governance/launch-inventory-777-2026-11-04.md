@@ -31,3 +31,35 @@ Security RBAC/RLS and cross-tenant revocation; data privacy; CI exact-SHA; E2E a
 
 ## Operating boundaries
 No merge, deploy, production writes, financial transactions, secrets, mass deletion or unauthorized chat access. The Master Orchestrator owns this inventory; Academy Agent owns #990/#992; RUN 2.0 P0 owns prioritized remediation. Preserve originals and evidence provenance.
+
+
+## F1 reconciliation — existing authorities (2026-11-04)
+
+Source inspection: [Global Execution Ledger #841](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/841), [Chat Archive #871](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/871), and [Master Evidence Registry contract](../governance/ATLAS_MASTER_EVIDENCE_REGISTRY.md) on main. These are verified *documented contracts*, not evidence of live runtime behavior.
+
+| Concern | Canonical authority | This inventory's role | Gate |
+| --- | --- | --- | --- |
+| Execution events, job provenance, errors and correlation | #841; existing execution_workflows/tasks/steps and Evidence Engine | Link module to existing execution record; do not create another execution event store | P0: tenant isolation, append-only, exact-SHA |
+| Historical chat sources, attachments and restoration hashes | #871 | Link only source IDs, classification and provenance; no raw personal chat contents | P0: consent, confidentiality and restoration verification |
+| Release evidence, supersession and production claims | `docs/governance/ATLAS_MASTER_EVIDENCE_REGISTRY.md`; `public.atlas_master_evidence_registry` contract | Reference authoritative claim and source; never certify production from this Markdown | P0: deployed SHA, environment, RLS and machine evidence |
+| Launch navigation and product ownership | #993 and this PR #994 inventory | Non-authoritative coordination index and gap list | P0: full census and reconciled ownership |
+
+### Source-backed scope decisions
+- **#841 and #871 are not duplicates.** They have distinct execution-event versus historical-source purposes. Cross-link them under #993; do not close or merge.
+- **#993 does not replace the Master Evidence Registry.** It only tracks ownership and missing gates; operational authority remains with existing Release Control.
+- **#990 / PR #992 remains Academy Agent-owned.** This branch must not modify Academy implementation or CI.
+- **Tax IRS alerts remain candidates, not proven duplicates.** Match official source, form, effective date, revision and content digest before consolidating.
+
+### Launch-readiness evidence matrix (sample; unverified = NO-GO)
+| Surface | Security/RLS | Exact-SHA CI | E2E/accessibility | Production integrity | Commercial controls | Launch decision |
+| --- | --- | --- | --- | --- | --- | --- |
+| Academy #990 / PR #992 | Missing authorization/tenant negative evidence | Not established | Not established | Not established | Checkout sandbox only | P0 NO-GO |
+| Offline AI #987 | LAN pairing/revocation not verified | Not established | Device tests pending | Not established | N/A | P0 NO-GO |
+| Tax #989 | Versioned rules approval pending | Not established | Regression tests pending | Not established | N/A | P0 NO-GO |
+| Launch organization #993 / PR #994 | No production writes authorized | CI not established | Not applicable to documentation | No production change | N/A | Documentation-only |
+
+### Chat ingestion boundary
+Only references actually accessible through authorized tools may be indexed. Record source ID, date, classification, consent basis and content hash if obtained. Do not put raw chat transcripts, credentials, financial/health/legal personal details or unapproved files in public GitHub. Missing sources remain `PENDING_ACCESS`; never mark `ARCHIVED` or `READY_TO_CLEAN` without verified restoration.
+
+### Next verified action
+Inspect registry module routes and compare current main HEAD with PR #994 base; add evidence-backed route mapping in a later isolated change. No merge/deploy/delete.
