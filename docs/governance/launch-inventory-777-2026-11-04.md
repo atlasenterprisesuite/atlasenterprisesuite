@@ -63,3 +63,57 @@ Only references actually accessible through authorized tools may be indexed. Rec
 
 ### Next verified action
 Inspect registry module routes and compare current main HEAD with PR #994 base; add evidence-backed route mapping in a later isolated change. No merge/deploy/delete.
+
+
+## F2 — 40 registered modules, source-mapped (2026-11-04)
+
+Source: [apps/web/src/modules/registry.ts](../../apps/web/src/modules/registry.ts), blob SHA `f0ae19bc7d92b49ded0d24e4a4935dd8eef57366` from main at inspection. Parsed **40** distinct module IDs. This is a **source declaration inventory**, not a census of all services, nor proof of route rendering, authorization, provider readiness, CI or deployment. The registry's `implemented` status explicitly does not certify production. Owner labels marked unconfirmed are classification placeholders, not assigned people.
+
+| Slug | Classification | Registry domain | Declared route | Logical owner | Declared state | Cross-reference | Gate | Next action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `certificate-lifecycle` | Plataforma y Seguridad | Platform | `/security/certificates` | Platform owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `cloud` | Plataforma y Seguridad | Platform | `/cloud` | Platform owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `work` | Plataforma y Seguridad | Platform | `/work` | Platform owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `automations` | Plataforma y Seguridad | Platform | `/automations` | Platform owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `assistant` | Plataforma y Seguridad | Intelligence | `/assistant` | Intelligence owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `knowledge` | Plataforma y Seguridad | Intelligence | `/knowledge` | Intelligence owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `bible-os` | Plataforma y Seguridad | Intelligence | `/knowledge/bible` | Intelligence owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `business` | Productos y Módulos | Business | `/business` | Business owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `revenue` | Productos y Módulos | Business | `/revenue` | Business owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `advisory` | Productos y Módulos | Business | `/advisory` | Business owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `finance` | Productos y Módulos | Finance | `/finance` | Finance owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `accounting` | Productos y Módulos | Finance | `/finance/accounting` | Finance owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `pay` | Productos y Módulos | Finance | `/finance/pay` | Finance / Pay (#885) | `external-gated` (registry declaration only) | #885 | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `tax` | Productos y Módulos | Finance | `/tax` | Tax (#989) | `implemented` (registry declaration only) | #989 | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `crm` | Productos y Módulos | Business | `/crm` | Business owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `commerce` | Productos y Módulos | Business | `/commerce` | Business owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `inventory` | Productos y Módulos | Operations | `/inventory/procure-to-pay` | Operations owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `analytics` | Productos y Módulos | Business | `/analytics` | Business owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `connect` | Productos y Módulos | Communications | `/connect` | Communications owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `telecom` | Productos y Módulos | Communications | `/telecom` | Communications owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `people` | Productos y Módulos | People | `/people` | People owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `payroll` | Productos y Módulos | People | `/payroll` | People owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `learning` | Productos y Módulos | People | `/learning` | Learning / Academy (#990) | `implemented` (registry declaration only) | #990 / PR #992 (Academy extension) | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `health` | Productos y Módulos | Health | `/health` | Health owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `care` | Productos y Módulos | Health | `/care` | Care | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `insurance` | Productos y Módulos | Protection | `/insurance` | Protection owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `studio` | Productos y Módulos | Creative | `/studio` | Studio | `external-gated` (registry declaration only) | PR #939 | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `site-review` | Productos y Módulos | Creative | `/site-review` | Creative owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `voice` | Productos y Módulos | Creative | `/voice` | Creative owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `events` | Productos y Módulos | Entertainment | `/events` | Entertainment owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `frontier` | Productos y Módulos | Entertainment | `/frontier` | Entertainment owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `hospitality` | Productos y Módulos | Hospitality | `/hospitality` | Hospitality / Academy (#990) | `external-gated` (registry declaration only) | #990 / PR #992 (Academy extension) | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `ride` | Productos y Módulos | Mobility | `/ride` | Ride OS | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `gps` | Productos y Módulos | Mobility | `/gps` | GPS | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `city` | Productos y Módulos | Spatial | `/city` | Spatial owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `aviation` | Productos y Módulos | Mobility | `/mobility/aviation` | Mobility owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `galaxy` | Plataforma y Seguridad | Platform | `/galaxy` | Platform owner (unconfirmed) | `implemented` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `device-os` | Plataforma y Seguridad | Platform | `/device-os` | Platform owner (unconfirmed) | `external-gated` (registry declaration only) | not reconciled | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `release-control` | Plataforma y Seguridad | Platform | `/release` | Release Control | `implemented` (registry declaration only) | Master Evidence Registry | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+| `execution` | Plataforma y Seguridad | Platform | `/execution/manager/readiness` | Execution (#841) | `implemented` (registry declaration only) | #841 | P0 NO-GO | Validate route, owner, dependency and runtime exact-SHA |
+
+**Other classification areas:** Development & Tests → [#841](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/841) execution evidence and CI; Business & Commercialization → [#842](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/842) pilot, [#885](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/885) pricing; Documentation & Evidence → [#871](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/871) chat archive, [#993](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/993) organization and Master Evidence Registry. These are governance workstreams, not extra product module IDs.
+
+**Reconciliation:** Previous ten-row sample includes non-registry workstreams (offline-ai, academy-credentials, chat-archive, global-ledger, launch-organization) and must not be added to the 40 as if they were product modules. Academy is a proposed extension of Learning/Hospitality, not yet a separately registered module. Potential duplicates remain proposals only.
+
+**Missing P0 evidence for all 40:** route E2E, authentication/authorization, tenant isolation and revocation, accessibility, current CI exact-SHA, deployed-SHA runtime checks, privacy, support and provider-specific commercial readiness. No launch GO is implied.
