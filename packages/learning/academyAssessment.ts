@@ -29,7 +29,10 @@ export function gradeAcademyAssessment(
   if (!rubric || !submission || !Array.isArray(rubric.questions) || !Array.isArray(submission.answers)) {
     throw new Error('Invalid assessment input');
   }
-  if (!rubric.version || !rubric.courseVersion ||
+  if (typeof rubric.version !== 'string' || !rubric.version.trim() ||
+      typeof rubric.courseVersion !== 'string' || !rubric.courseVersion.trim() ||
+      typeof submission.courseVersion !== 'string' || !submission.courseVersion.trim() ||
+      typeof submission.rubricVersion !== 'string' || !submission.rubricVersion.trim() ||
       submission.courseVersion !== rubric.courseVersion || submission.rubricVersion !== rubric.version) {
     throw new Error('Assessment version mismatch');
   }
