@@ -1,6 +1,7 @@
 import { getAtlasNavigationNode } from '../navigation/atlasNavigation';
 
 export function resolveAssistantModule(pathname: string): string {
+  if (pathname === '/cloud' || pathname.startsWith('/cloud/')) return 'cloud';
   if (pathname.startsWith('/assistant')) return 'assistant';
   if (pathname.startsWith('/voice')) return 'voice';
   if (pathname.startsWith('/finance/accounting/accounts-payable')) return 'finance.accounting.accounts-payable';
