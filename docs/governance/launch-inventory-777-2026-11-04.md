@@ -373,3 +373,24 @@ Next: inspect coverage of exact-SHA jobs and add isolated negative COSMOS eviden
 **Inventory routing:** Platform/Security = existing atlas-memory boundary (P0); Products/Modules = Knowledge Atlas / Bible OS / Humanity Atlas, COSMOS #995 still PLANIFICADO; Development/Tests = KNOW-01..05 pending; Business/Commercialization = launch NO-GO; Documentation/Evidence = this checkpoint + #995. Unclassified source: @followtheyellowbird post URL not independently verified; phrases remain user-provided examples only, never executable. Do not create duplicate COSMOS or intent engine. Academy #990/#992 and RUN 2.0 P0 untouched.
 
 **Health Radar:** local Thursday 2026-11-05; Friday 2026-11-06 report not due, idempotency key `2026-W45+ATLAS-Health` not claimed. **Next:** isolated transaction/authorization test with actual runner, exact-SHA CI; audit current main/branch HEAD before editing code. No merge, deploy, secrets, expenses or production changes.
+
+
+## F24 — new open-PR intake and F23 CI reconciliation (2026-11-05T20:45Z)
+
+**RUN-ID:** `MASTER-0014`; previous file checkpoint `MASTER-0013` (F23), commit `4b25bc26adb4030a881d19331e58de5f10d7979d`. **Global P0 NO-GO.** This is an optimistic blob-SHA documentation update, not an exclusive distributed lease. The default-branch source files were read but a fresh exact main HEAD commit was not established in this run.
+
+**Exact-SHA CI for F23:** seven PR-triggered workflows for `4b25bc26adb4030a881d19331e58de5f10d7979d` now report completed/success: Build 42096734875, Sentinel 42096735651, CodeQL 42096734507, Ride 42096734594, Hospitality 42096734551, Security Baseline 42096734803, Consensus 42096734616. This resolves F23's initial zero-run observation; no KNOW-01..05 transaction tests, tenant revocation E2E or deployed SHA are certified.
+
+**New intake (open PRs discovered; no ownership reassignment):**
+- `gps-earth-links` — Products and Modules / GPS 4D, [PR #999](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/999), owner: GPS 4D executor (logical; not verified assignee). Scope: coordinate validation and user-initiated Google/Apple map links. P0: exact-head CI, accessibility/mobile E2E, licensing and UI integration. Next: verify tests and provider attribution. Do not conflate with panorama.
+- `spatial-panorama-evidence` — Development and Tests / GPS Spatial, [PR #998](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/998), owner: GPS Spatial executor (logical). Scope: synthetic panorama evidence gate, **not** live renderer or indoor route. P0: evidence provenance, rights, mobile E2E, exact-SHA CI. Next: compare shared URL-validation helpers with #999 without modifying either PR.
+- `knowledge-plant-atlas` — Products and Modules / Knowledge Atlas, [PR #996](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/996), owner: Knowledge/Work executor (logical). Scope: Global Plant Atlas route and governed RUN workflow. P0: exact-SHA CI, trusted dispatch authorization, E2E. Next: inspect integration and distinguish from COSMOS #995.
+These are **inventory observations**, not validated PR HEAD SHAs or completed features; canonical PRs remain unchanged. Duplicate ledger candidate: #998 vs #999 share GPS Spatial context, but have different responsibilities; **do not consolidate** without API/file overlap evidence. #996 and #995 both use Knowledge Atlas but are different subject domains; cross-link, do not merge.
+
+**COSMOS #995:** open and PLANIFICADO, with existing Knowledge Atlas and `docs/knowledge/humanity-atlas/README.md` (main blob `c58803a363708caf00e1084ab0f9164a5e44a494`). Bible OS path `apps/web/src/modules/knowledge/BibleOSPage.tsx` returned 404; locate actual component before claiming audit. External Instagram phrases remain user-provided unverified examples, not executable instructions. KNOW-01..05 still pending isolated PostgreSQL/auth tests.
+
+**Five-area routing:** Platform and Security = trusted intent/tenant/RLS and knowledge transaction P0; Products and Modules = #995/#996/#998/#999 intake; Development and Tests = exact-SHA and E2E gates; Business and Commercialization = NO-GO pending licensing/support/privacy; Documentation and Evidence = this append-only inventory and original PR/issue links. No source files moved or deleted.
+
+**Health Radar:** Thursday America/New_York; Friday 2026-11-06 not due. Idempotency key `2026-W45+ATLAS-Health` not claimed or persisted as an issued report. Academy #990/#992 and RUN 2.0 P0 are separate owners; no edits there.
+
+**Next priority:** locate actual Bible OS component and audit isolated KNOW-01 rollback test seam; verify latest branch/main HEAD and lease before code changes. No merge, deploy, production, secrets, expenses or payments.
