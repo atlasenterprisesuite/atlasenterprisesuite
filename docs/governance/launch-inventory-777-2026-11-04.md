@@ -356,3 +356,20 @@ Next: inspect coverage of exact-SHA jobs and add isolated negative COSMOS eviden
 **Health:** Thursday in America/New_York; no Friday Radar emitted, no idempotency key claimed. Next Friday run must check persistent `2026-W45+ATLAS-Health` record before generating once.
 
 **Next priority:** trace trusted runtime caller/dispatcher, then add narrow negative tests for priority-only routing, implicit capabilities, spoofed origin and cross-tenant execution with exact-SHA CI. No merge, deploy, payments, production or secrets.
+
+
+## F23 — Knowledge RPC caller derivation and transaction gate (2026-11-05T19:43Z)
+
+**RUN-ID:** `MASTER-0013` (next *file-persisted* checkpoint after MASTER-0012; F16–F22 were issue-comment checkpoints). **P0 NO-GO.** Source inspection only; this file write is documentation, not a distributed lock or security test. Previous F22 issue evidence: https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/995#issuecomment-6666184447.
+
+**Verified main source blobs:** `supabase/functions/atlas-memory/index.ts` `ac0e4b4392c2fe86628a4d8d97ba92271028e81b`; `apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx` `ec6e9aa178fccf45634712e94f68f379e509d0a0`; `docs/knowledge/humanity-atlas/README.md` `c58803a363708caf00e1084ab0f9164a5e44a494`. Exact live main commit SHA and deployment remain unverified in this checkpoint.
+
+**F23 finding, narrowing F22:** `context(req)` calls `auth.getUser(token)`, loads active `organization_members` for that authenticated user, and selects a requested organization only if in that membership list. `listRecords()` and `memoryStats()` pass `ctx.orgId` and `ctx.role` (rather than request body role) to `atlas_memory_search` and `atlas_memory_stats` through a service-role client. This establishes **source-level derivation** of RPC organization/role from membership; it does not prove runtime revocation safety, effective grants, or a transaction-scoped authorization recheck.
+
+**Confirmed separate write steps:** `saveDraft()` inserts then audits; `approve()` updates approval, attempts supersession without checking the returned error, then audits; `importRecords()` iterates up to 50 records with individual create/approve calls and a final audit. A failure can require rollback/reconciliation. Do not assert exploitation or all-or-nothing semantics without isolated DB tests.
+
+**Prioritized negative TDD:** KNOW-01 inject failure in audit after draft insert and require atomic rollback; KNOW-02 fail supersession update and reject approval; KNOW-03 revoke membership after context resolution but before service-role mutation and reject; KNOW-04 fail import row N and verify defined atomic or explicitly resumable contract; KNOW-05 verify RPC tenant/role scope with authenticated, anon and service-role contexts. Use isolated PostgreSQL and authenticated edge fixture; never production.
+
+**Inventory routing:** Platform/Security = existing atlas-memory boundary (P0); Products/Modules = Knowledge Atlas / Bible OS / Humanity Atlas, COSMOS #995 still PLANIFICADO; Development/Tests = KNOW-01..05 pending; Business/Commercialization = launch NO-GO; Documentation/Evidence = this checkpoint + #995. Unclassified source: @followtheyellowbird post URL not independently verified; phrases remain user-provided examples only, never executable. Do not create duplicate COSMOS or intent engine. Academy #990/#992 and RUN 2.0 P0 untouched.
+
+**Health Radar:** local Thursday 2026-11-05; Friday 2026-11-06 report not due, idempotency key `2026-W45+ATLAS-Health` not claimed. **Next:** isolated transaction/authorization test with actual runner, exact-SHA CI; audit current main/branch HEAD before editing code. No merge, deploy, secrets, expenses or production changes.
