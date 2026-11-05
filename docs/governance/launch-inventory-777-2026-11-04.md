@@ -137,3 +137,19 @@ Inspected main source at registry blob `f0ae19bc7d92b49ded0d24e4a4935dd8eef57366
 5. Record source blob/commit, path, security boundary, test run and deployed SHA independently before changing launch verdict.
 
 **Current decision:** 3/40 module routes have additional static-source references inspected; 37/40 still need this level of reconciliation. All 40 remain P0 NO-GO for release certification. This document is a coordination index, not the Release Control authority.
+
+
+## F4 — COSMOS intake and non-duplication (2026-11-04)
+
+**Canonical issue:** [#995](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/995). **Classification:** Productos y Módulos / Knowledge research extension, *not* a 41st registry module. **Slug:** `knowledge-cosmos`. **Logical owner:** Knowledge Atlas (unconfirmed). **Status:** specification / P0 NO-GO. **Next:** source taxonomy tests, route and authorization audit; do not displace critical release/security P0.
+
+**Inspected source pointers (main file blob SHA):**
+- Knowledge Atlas UI: `apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx` — `ec6e9aa178fccf45634712e94f68f379e509d0a0`. Existing memory and library surfaces; no COSMOS functionality verified.
+- Bible OS UI: `apps/web/src/modules/knowledge/bible/BibleOSPage.tsx` — `2ec621b222541d714be7c6c8b70e968b6275e079`. Existing manuscript/source research presentation; not proof of COSMOS integration.
+- Humanity Atlas: `docs/knowledge/humanity-atlas/README.md` — `c58803a363708caf00e1084ab0f9164a5e44a494`. Existing cross-module knowledge ownership; preserve original source.
+
+**Evidence categories for future COSMOS records:** observed scientific result (dated primary source and methodology); testable hypothesis (explicit uncertainty); theological interpretation (named tradition/text and interpretive scope); unverified belief (never asserted as established science). Require source, date, review state, confidence and correction history. Do not mix claims across categories or infer extraterrestrial existence from anecdotal narratives.
+
+**Duplication ledger:** COSMOS #995 extends Knowledge Atlas and links Bible OS/Humanity Atlas; no separate database, module registry ID or competing source of truth authorized. Keep original artifacts and provenance. P0 gates: content provenance/licensing, accessible UI, RBAC/RLS if persisted, cross-tenant negative tests, CI exact-SHA, E2E and release integrity.
+
+**ATLAS Health weekly radar:** separate governance workstream, not a new registry product. Friday America/New_York only; idempotency key format `YYYY-Www+ATLAS-Health` must be persisted/checked before any weekly report. No report issued in this Wednesday run. If persistence or prior issuance cannot be checked, never assert uniqueness or publication.
