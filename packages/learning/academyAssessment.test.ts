@@ -19,6 +19,13 @@ describe('ATLAS Academy assessment F2 isolated grading', () => {
     expect(() => gradeAcademyAssessment(rubric, { ...submission, rubricVersion: 'r2' })).toThrow();
     expect(() => gradeAcademyAssessment(rubric, { ...submission, courseVersion: 'c2' })).toThrow();
   });
+  it('rejects malformed version identifiers even when client and rubric match', () => {
+    const invalid = { ...rubric, version: 7, courseVersion: 8 } as unknown as AcademyRubricV1;
+    const matching = { ...submission, rubricVersion: 7, courseVersion: 8 } as unknown as typeof submission;
+    expect(() => gradeAcademyAssessment(invalid, matching)).toThrow('Assessment version mismatch');
+    expect(() => gradeAcademyAssessment({ ...rubric, version: '   ' }, { ...submission, rubricVersion: '   ' })).toThrow();
+    expect(() => gradeAcademyAssessment(rubric, { ...submission, courseVersion: null } as unknown as typeof submission)).toThrow();
+  });
   it('rejects duplicate, unknown and missing answers', () => {
     expect(() => gradeAcademyAssessment(rubric, { ...submission, answers: [answers[0], answers[0]] })).toThrow();
     expect(() => gradeAcademyAssessment(rubric, { ...submission, answers: [answers[0], { questionId: 'unknown', answer: 'B' }] })).toThrow();
