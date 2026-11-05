@@ -194,3 +194,17 @@ Nine additional registry surfaces have source-backed flag/route classification, 
 **Health radar delivery contract (not yet executed):** four categories—medical AI/diagnosis; treatments/medicines/trials; devices/digital health; access/cost/regulation. Every item requires dated authoritative source, study design/limitations, maturity, safety risk, module owner, acceptance gate and follow-up. Preliminary research is not clinical readiness. Do not duplicate a Friday report if its ISO-week idempotency key is already recorded. Next Friday is 2026-11-06, ISO week 45.
 
 **Coordination boundary:** issue #995 already contains a previous source inspection comment; preserve it rather than repeating the same update. Academy #990/PR #992 and RUN 2.0 P0 remain independently owned. COSMOS and radar do not supersede security, CI or tenant-isolation P0 gates. No chat-wide live access is claimed.
+
+
+## F6 — COSMOS / Knowledge source-contract reconciliation (2026-11-04)
+
+Scope: coordination-only, linked to [COSMOS #995](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/995). Main source blobs inspected: `apps/web/src/extensions/resolveAtlasExtension.tsx` `6b1c70ced282dea6d120a6a89967b14c4e155d65`, `apps/web/src/modules/knowledge/memoryApi.ts` `332ec4aaa853f599f8e460cc2519d492140a4ca5`, and `tests/integration/atlas-memory-core.test.ts` `0e7d7d2994b593cc90748810b6a5f00a827af0b2`.
+
+- **Existing route ownership:** `/knowledge` resolves to `KnowledgeAtlasPage`, and `/knowledge/bible` to `BibleOSPage`; both are wrapped in `RequireAtlasIdentity` in the extension resolver. COSMOS should extend Knowledge, not add a duplicate top-level route without architecture review.
+- **Existing API contract:** `memoryApi.ts` uses `getActiveAtlasOrganization`, `authorizedAtlasFetch` and `x-atlas-org-id`. Client-supplied organization headers are **not** authorization proof; server must derive and validate membership against authenticated principal and enforce RLS.
+- **Existing test contracts:** `atlas-memory-core.test.ts` contains static assertions for organization-scoped RLS, authenticated membership, audit, approved tenant-scoped retrieval and the protected Knowledge route. Test file presence is not evidence that tests ran or that cross-tenant attacks were blocked.
+- **COSMOS evidence schema proposal (not implemented):** `claim_id`, `claim_text`, `claim_type` (scientific observation / hypothesis / theological interpretation / unverified belief), `source_url`, `source_date`, `reviewed_at`, `confidence`, `provenance`, `organization_id` (if tenant content), `review_status`, `supersedes_id`. Reject untyped claims and prohibit displaying theological or unverified assertions as scientific observations.
+- **Next negative tests:** reject missing/invalid claim type, reject evidence without provenance, reject unauthenticated or cross-tenant retrieval, reject spoofed organization header, test revoked membership and accessible uncertainty labels. Prefer isolated fixtures and existing Knowledge tests; do not alter Academy or RUN 2.0 P0.
+- **Health weekly radar:** no publication or idempotent ledger write was performed in this run. Friday report requires verified ISO-week key, source dates and explicit four-part deliverable; never claim emitted without persisted evidence.
+
+**F6 status:** source contracts inspected, COSMOS remains PLANIFICADO and P0 NO-GO; no executed CI, database, E2E or production verification is implied.
