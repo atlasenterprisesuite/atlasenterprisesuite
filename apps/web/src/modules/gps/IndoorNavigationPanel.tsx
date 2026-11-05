@@ -106,7 +106,7 @@ export function IndoorNavigationPanel({
       <div className="gps4d-indoor-route" role="status">
         {route.length > 0 ? (
           <>
-            <strong>Ruta indoor verificada</strong>
+            <strong>Ruta calculada · verificación física pendiente</strong>
             <ol>
               {route.map((node) => (
                 <li key={node.id}>
