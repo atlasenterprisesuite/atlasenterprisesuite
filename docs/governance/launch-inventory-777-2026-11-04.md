@@ -208,3 +208,25 @@ Scope: coordination-only, linked to [COSMOS #995](https://github.com/atlasenterp
 - **Health weekly radar:** no publication or idempotent ledger write was performed in this run. Friday report requires verified ISO-week key, source dates and explicit four-part deliverable; never claim emitted without persisted evidence.
 
 **F6 status:** source contracts inspected, COSMOS remains PLANIFICADO and P0 NO-GO; no executed CI, database, E2E or production verification is implied.
+
+
+## F7 — delayed exact-SHA CI reconciliation (2026-11-04)
+
+**Correction to F6 provisional observation:** GitHub Actions data for commit `7c5bb35c1f7997bbfbebf2e72a56b23146b2ca04` became available on re-query. The earlier zero-run observation was a point-in-time result, **not** a permanent absence of CI.
+
+Seven PR-triggered workflows were returned, each `completed/success`:
+1. ATLAS Consensus CI — run 41957634488
+2. ATLAS Hospitality OS TDD — run 41957634531
+3. ATLAS Build + Production Readiness Gate — run 41957634440
+4. CodeQL Advanced — run 41957634327
+5. ATLAS Ride Profile Photo CI — run 41957634396
+6. ATLAS Sentinel Shield (advisory) — run 41957634306
+7. ATLAS GitHub Security Baseline — run 41957634326
+
+Evidence: [GitHub Actions for exact commit](https://github.com/atlasenterprisesuite/atlasenterprisesuite/actions?query=sha%3A7c5bb35c1f7997bbfbebf2e72a56b23146b2ca04). Combined commit statuses endpoint returned zero status entries; this does not negate the seven GitHub Actions runs. Workflow list is first-page and PR-triggered only, not an exhaustive assertion about every possible check.
+
+**Gate interpretation:** successful workflows certify only their configured checks for that SHA. They do not establish COSMOS implementation, actual tenant-isolation negative tests, E2E accessibility, deployed-SHA identity, or production readiness. P0 NO-GO remains.
+
+**Issue #995:** still an issue for planned research integration; its scope remains Knowledge/Bible OS/Humanity Atlas reuse. No changes to its product implementation. **Health radar:** Wednesday, not Friday; no weekly report emitted or persisted in this run.
+
+Next: inspect coverage of exact-SHA jobs and add isolated negative COSMOS evidence-schema tests on an authorized branch, without touching Academy or RUN 2.0 P0.
