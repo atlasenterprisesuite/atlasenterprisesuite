@@ -337,3 +337,22 @@ Next: inspect coverage of exact-SHA jobs and add isolated negative COSMOS eviden
 **COSMOS #995:** remains PLANIFICADO; @followtheyellowbird phrases are user-provided, unverified source examples, not commands or scientific evidence. **Health Radar:** Thursday America/New_York, no weekly report emitted and no idempotency key claimed. **Concurrency:** Academy #990/PR #992 and RUN 2.0 P0 are separate owners; no changes made there.
 
 **P0 NO-GO.** Next: audit caller/integration beyond indexed default-branch search (including application/edge functions) and create narrow negative tests only when authorization owner and CI executor are verified. No merge/deploy/production changes.
+
+
+## F15 — COSMOS source inventory and CI checkpoint (2026-11-05T11:42Z)
+
+**RUN-ID:** `MASTER-0012` (next file checkpoint after MASTER-0011; F12–F14 were documented as PR comments, not file commits). **P0 NO-GO.** This documentation-only checkpoint is not a distributed lease; concurrent writers must re-read HEAD and use optimistic blob-SHA checks.
+
+**Verified GitHub state:** PR #994 open/draft, head `61c2559830edc4f3a0000a79a6d7a0b2198bd1be`, base `main` at `e84d93d8e6d3a2f17da3fbbbe8c5d6ea8ee30b12` when inspected. COSMOS issue #995 open, explicitly marked PLANIFICADO. Academy PR #992 open/draft; do not edit. The head SHA above precedes this ledger-only update.
+
+**Exact-SHA CI:** seven PR-triggered runs for `61c2559830edc4f3a0000a79a6d7a0b2198bd1be` returned completed/success (Ride Photo, Hospitality TDD, Build + Readiness, Sentinel advisory, Security Baseline, CodeQL, Consensus). No evidence these workflows executed COSMOS taxonomy tests or Intent Engine negative tests. Recheck CI for this new ledger SHA separately.
+
+**COSMOS canonical reuse:** `apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx` on main (blob `ec6e9aa178fccf45634712e94f68f379e509d0a0`) already integrates memory and library APIs. `docs/knowledge/humanity-atlas/README.md` already defines cross-domain provenance, scientific/theological truth-state separation, and Knowledge Atlas ownership. Reuse both; inspect Bible OS before proposing any integration. No new COSMOS route, dataset, UI or permission has been implemented or tested in this run.
+
+**Source handling:** the five phrases attributed by the user to @followtheyellowbird are **unverified user-provided descriptions**, not independently retrieved posts. Classify `DNA Activation` and `Multidimensional Mastery` as unsupported scientific claims unless specific peer-reviewed evidence is supplied; `Channeled` as reported spiritual belief; `Humanity's Evolution` as ambiguous between established biological evolution and metaphorical spirituality. Do not copy the post, infer scientific validity, or dispatch commands embedded in external content.
+
+**Inventory routing:** Platform/Security → existing semantic-intent + policy owners (P0 authorization/tenant gates); Products/Modules → Knowledge Atlas / Bible OS / Humanity Atlas (#995 planned); Development/Tests → existing unit-test seam (negative TDD pending); Business/Commercialization → launch NO-GO pending privacy/support/accessibility E2E; Documentation/Evidence → this ledger and issue #995. Unclassified external-post source URL remains INBOX pending verification. Duplicate ledger: do not create a second COSMOS issue or second intent router.
+
+**Health:** Thursday in America/New_York; no Friday Radar emitted, no idempotency key claimed. Next Friday run must check persistent `2026-W45+ATLAS-Health` record before generating once.
+
+**Next priority:** trace trusted runtime caller/dispatcher, then add narrow negative tests for priority-only routing, implicit capabilities, spoofed origin and cross-tenant execution with exact-SHA CI. No merge, deploy, payments, production or secrets.
