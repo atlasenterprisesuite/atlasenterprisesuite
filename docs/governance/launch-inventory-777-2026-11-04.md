@@ -153,3 +153,26 @@ Inspected main source at registry blob `f0ae19bc7d92b49ded0d24e4a4935dd8eef57366
 **Duplication ledger:** COSMOS #995 extends Knowledge Atlas and links Bible OS/Humanity Atlas; no separate database, module registry ID or competing source of truth authorized. Keep original artifacts and provenance. P0 gates: content provenance/licensing, accessible UI, RBAC/RLS if persisted, cross-tenant negative tests, CI exact-SHA, E2E and release integrity.
 
 **ATLAS Health weekly radar:** separate governance workstream, not a new registry product. Friday America/New_York only; idempotency key format `YYYY-Www+ATLAS-Health` must be persisted/checked before any weekly report. No report issued in this Wednesday run. If persistence or prior issuance cannot be checked, never assert uniqueness or publication.
+
+
+## F4 — platform identity-boundary review (2026-11-04)
+
+Static sources inspected on main: `apps/web/src/modules/registry.ts` (blob `f0ae19bc7d92b49ded0d24e4a4935dd8eef57366`) and `apps/web/src/identity/RequireAtlasIdentity.tsx` (blob `d2e0e8b342186f772121f17f8db854e05a2a6f4a`). No runtime execution or privileged database inspection was performed.
+
+| Slug | Declared route | Registry auth flag | Source-based boundary | Next P0 evidence |
+| --- | --- | --- | --- | --- |
+| `cloud` | `/cloud` | true | Requires further route/resolver reconciliation | Route guard and server authorization, tenant isolation, CI/E2E |
+| `work` | `/work` | true | Requires further route/resolver reconciliation | Work operation RBAC, execution authority, revocation |
+| `automations` | `/automations` | true | Requires further route/resolver reconciliation | Scheduled action authorization and idempotency |
+| `assistant` | `/assistant` | true | Requires further route/resolver reconciliation | Provider isolation and private conversation access |
+| `knowledge` | `/knowledge` | true | Requires further route/resolver reconciliation | Tenant-scoped retrieval and document permissions |
+| `business` | `/business` | false | Public entry flag does not authorize protected business operations | Verify protected nested actions and data access |
+| `finance` | `/finance` | false | Public entry flag; registry description says live org data is session/RLS guarded | Test unauthenticated read and cross-tenant denial |
+| `accounting` | `/finance/accounting` | false | Public entry flag does not imply public ledger access | Test ledger/API RLS and account permissions |
+| `pay` | `/finance/pay` | false | Public product experience; operational wallet must remain gated | Verify no unauthenticated balance/issuing/payout actions |
+
+### Identity wrapper finding
+`RequireAtlasIdentity` checks for an access token and awaits `getActiveAtlasOrganization()`; on error it clears the session and redirects to `/identity`. It displays an accessible status region while checking. **This is a client-side navigation gate only**: it does not itself demonstrate RBAC/RLS, token freshness, membership revocation handling, or server-side tenant enforcement. It must never be treated as sufficient release evidence.
+
+### F4 release decision
+Nine additional registry surfaces have source-backed flag/route classification, but **none** gained runtime certification. The three F3 critical routes remain separately reconciled; no overlap is counted as a new verified E2E route. P0 NO-GO across the platform. Next: inspect actual App/extension route declarations and API permission boundaries for Cloud/Work/Automations, then run isolated negative tests on an exact SHA.
