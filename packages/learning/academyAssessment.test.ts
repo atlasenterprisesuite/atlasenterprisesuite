@@ -48,6 +48,13 @@ describe('ATLAS Academy assessment F2 isolated grading', () => {
     expect(() => gradeAcademyAssessment({ ...rubric, questions: [] }, { ...submission, answers: [] })).toThrow('Invalid rubric');
   });
 
+  it('rejects malformed rubric shapes and coercible thresholds', () => {
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: null } as unknown as AcademyRubricV1, submission)).toThrow('Invalid assessment input');
+    expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: '75' } as unknown as AcademyRubricV1, submission)).toThrow('Invalid rubric');
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: [{ id: ' ', correctAnswer: 'A' }, rubric.questions[1]] }, submission)).toThrow('Invalid rubric questions');
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: [{ id: 'q1', correctAnswer: '' }, rubric.questions[1]] }, submission)).toThrow('Invalid rubric questions');
+  });
+
   it('rejects invalid rubric thresholds and non-string answer keys', () => {
     expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: -1 }, submission)).toThrow();
     expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: 101 }, submission)).toThrow();
