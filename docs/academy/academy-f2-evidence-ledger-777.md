@@ -32,3 +32,12 @@ GitHub combined commit status returned an empty `statuses` array. This does not 
 
 ## Next safe action
 Audit actual workflow jobs to determine whether the Academy tests ran; add a dedicated Academy test command/check only after inspecting existing CI conventions. Do not issue credentials or enable production paths.
+
+
+## F2.8 — Canonical unit CI coverage alignment (2026-11-05, America/New_York)
+
+- Pre-change Academy assessment test SHA: `f3c960f60ddb1a25f68fb4722ff81c28783fb532`; seven PR-triggered workflows returned `completed/success` for that exact SHA (runs 41982378166, 41982378150, 41982378111, 41982378152, 41982377965, 41982377960, 41982377976).
+- Inspected job `127095208860` (Hospitality Core focused TDD): Typecheck, Unit suite, Integration suite and Production build steps all `success`; inspected job `127095209125` (Build + Production Readiness Gate): Verify complete repository `success`. **Step summaries alone do not identify which Academy test file was executed.**
+- Discovered existing `tests/unit/academy-assessment-security.test.ts` (canonical unit-suite smoke test) and `packages/learning/academyAssessment.test.ts` (domain-specific tests). Rather than creating another runner or workflow, added seven fail-closed assertions to the existing canonical unit smoke test covering non-finite/coercible thresholds, null/empty question arrays and malformed question IDs/answer keys.
+- Test change commit: `ef3518807cc7bf3c59dd300221465e500384745e`. This is a **test-only** commit, no issuer, DB, auth or production changes. CI and direct test execution for this SHA must be independently verified. No claim of red/green TDD execution.
+- Gate: obtain exact-SHA CI for test commit and ledger commit; inspect job logs for explicit test filename or reporter output. Then address server-side authenticated enrollment and tenant-isolated credential issuance with negative tests; P0 NO-GO remains.
