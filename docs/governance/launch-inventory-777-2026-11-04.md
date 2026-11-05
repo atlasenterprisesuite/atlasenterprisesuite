@@ -117,3 +117,23 @@ Source: [apps/web/src/modules/registry.ts](../../apps/web/src/modules/registry.t
 **Reconciliation:** Previous ten-row sample includes non-registry workstreams (offline-ai, academy-credentials, chat-archive, global-ledger, launch-organization) and must not be added to the 40 as if they were product modules. Academy is a proposed extension of Learning/Hospitality, not yet a separately registered module. Potential duplicates remain proposals only.
 
 **Missing P0 evidence for all 40:** route E2E, authentication/authorization, tenant isolation and revocation, accessibility, current CI exact-SHA, deployed-SHA runtime checks, privacy, support and provider-specific commercial readiness. No launch GO is implied.
+
+
+## F3 — critical-route source reconciliation (2026-11-04)
+
+Inspected main source at registry blob `f0ae19bc7d92b49ded0d24e4a4935dd8eef57366` and route references in `apps/web/src/App.tsx`, `apps/web/src/extensions/resolveAtlasExtension.tsx`, `scripts/verify-neural-integrity.mjs` and `data/ops/module-production-acceptance.json`. This is a **static-source check**, not an executed E2E or production observation.
+
+| Module | Route | Static source finding | Identity boundary | Evidence gap / next gate |
+| --- | --- | --- | --- | --- |
+| `certificate-lifecycle` | `/security/certificates` | Explicit `App.tsx` Route renders `CertificateLifecyclePage`; acceptance JSON declares `VERIFICATION_HOLD` | `RequireAtlasIdentity` wrapper in route declaration | Validate tenant RLS, live TLS/mTLS, CI and deployed route exact-SHA |
+| `execution` | `/execution/manager/readiness` | Explicit `App.tsx` Route renders `ManagerReadinessLauncher`; prior regression documented in `docs/audit/2026-09-13-manager-readiness-route-verification.md` | `RequireAtlasIdentity` wrapper in route declaration | Run current regression, RBAC/revocation and E2E at exact SHA |
+| `release-control` | `/release` | Resolved by `resolveAtlasExtension.tsx` to `ReleaseControlIntegrationHub`; do not assume absence merely because not an explicit `App.tsx` Route | `RequireAtlasIdentity` wrapper in extension resolver | Verify resolver integration, route E2E, evidence registry and deployed SHA |
+
+### Reconciliation rules for remaining 37 routes
+1. Match registry `route` against **both** explicit React routes and extension resolver paths, not only a string search of `App.tsx`.
+2. Distinguish an identity wrapper in source from effective server-side authorization and RLS. Neither follows automatically from the other.
+3. Distinguish a route declaration from a passing browser E2E or live production route.
+4. Preserve `VERIFICATION_HOLD` where acceptance evidence says so; do not promote based on `implemented`.
+5. Record source blob/commit, path, security boundary, test run and deployed SHA independently before changing launch verdict.
+
+**Current decision:** 3/40 module routes have additional static-source references inspected; 37/40 still need this level of reconciliation. All 40 remain P0 NO-GO for release certification. This document is a coordination index, not the Release Control authority.
