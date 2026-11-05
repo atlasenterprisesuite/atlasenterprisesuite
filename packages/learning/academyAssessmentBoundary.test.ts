@@ -29,4 +29,36 @@ describe('Academy F2 server-only authorization boundary', () => {
     await expect(evaluateAuthorizedAcademyAttempt(request, context({ getEnrollment: async () => ({ id: 'enroll-1', userId: 'other', organizationId: 'org-1', courseVersion: 'c1', status: 'active' }) }))).rejects.toThrow();
     await expect(evaluateAuthorizedAcademyAttempt(request, context({ getRubric: async () => null }))).rejects.toThrow();
   });
+  it('rejects mismatched enrollment identifier and stale course version', async () => {
+    await expect(evaluateAuthorizedAcademyAttempt(request, context({
+      getEnrollment: async () => ({ id: 'different', userId: 'user-1', organizationId: 'org-1', courseVersion: 'c1', status: 'active' })
+    }))).rejects.toThrow('Unauthorized enrollment');
+    await expect(evaluateAuthorizedAcademyAttempt(request, context({
+      getEnrollment: async () => ({ id: 'enroll-1', userId: 'user-1', organizationId: 'org-1', courseVersion: 'obsolete', status: 'active' })
+    }))).rejects.toThrow('Unauthorized enrollment');
+  });
+  it('rejects malformed authenticated actor identifiers', async () => {
+    await expect(evaluateAuthorizedAcademyAttempt(request, context({
+      authenticate: async () => ({ userId: ' ', organizationId: 'org-1' })
+    }))).rejects.toThrow('Unauthorized assessment');
+    await expect(evaluateAuthorizedAcademyAttempt(request, context({
+      authenticate: async () => ({ userId: 'user-1', organizationId: '' })
+    }))).rejects.toThrow('Unauthorized assessment');
+  });
+  it('passes only server-authenticated tenant and user scope to trusted dependencies', async () => {
+    const enrollmentCalls: unknown[] = [];
+    const rubricCalls: unknown[] = [];
+    await evaluateAuthorizedAcademyAttempt(request, context({
+      getEnrollment: async (args: unknown) => {
+        enrollmentCalls.push(args);
+        return { id: 'enroll-1', userId: 'user-1', organizationId: 'org-1', courseVersion: 'c1', status: 'active' };
+      },
+      getRubric: async (args: unknown) => {
+        rubricCalls.push(args);
+        return { organizationId: 'org-1', ...rubric };
+      }
+    }));
+    expect(enrollmentCalls).toEqual([{ enrollmentId: 'enroll-1', organizationId: 'org-1', userId: 'user-1' }]);
+    expect(rubricCalls).toEqual([{ organizationId: 'org-1', courseVersion: 'c1', rubricVersion: 'r1' }]);
+  });
 });
