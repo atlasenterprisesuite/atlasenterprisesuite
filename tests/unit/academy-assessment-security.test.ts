@@ -28,4 +28,13 @@ describe('Academy F2 fail-closed grading in canonical unit CI', () => {
     expect(() => gradeAcademyAssessment(rubric, { ...submission, answers: [null, submission.answers[1]] } as unknown as typeof submission)).toThrow();
     expect(() => gradeAcademyAssessment(rubric, { ...submission, rubricVersion: 'stale' })).toThrow();
   });
+  it('rejects non-finite or coercible thresholds and malformed rubric questions', () => {
+    expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: Infinity }, submission)).toThrow('Invalid rubric');
+    expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: -Infinity }, submission)).toThrow('Invalid rubric');
+    expect(() => gradeAcademyAssessment({ ...rubric, passThreshold: '100' } as unknown as AcademyRubricV1, submission)).toThrow('Invalid rubric');
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: null } as unknown as AcademyRubricV1, submission)).toThrow('Invalid assessment input');
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: [] }, { ...submission, answers: [] })).toThrow('Invalid rubric');
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: [{ id: ' ', correctAnswer: 'A' }, rubric.questions[1]] }, submission)).toThrow('Invalid rubric questions');
+    expect(() => gradeAcademyAssessment({ ...rubric, questions: [{ id: 'q1', correctAnswer: '' }, rubric.questions[1]] }, submission)).toThrow('Invalid rubric questions');
+  });
 });
