@@ -298,3 +298,25 @@ Next: inspect coverage of exact-SHA jobs and add isolated negative COSMOS eviden
 **Health:** Thursday local date; no Friday report emitted. Maintain idempotency key `2026-W45+ATLAS-Health` only after confirming persistent weekly report existence and writing its evidence.
 
 **Next:** inspect existing semantic-intent tests and ownership; add isolated negative tests on the appropriate authorized branch after avoiding concurrent owner edits. P0 NO-GO.
+
+
+## F10 — intent test ownership and exact-SHA retrospective (2026-11-05T06:49Z)
+
+**RUN-ID:** `MASTER-0010`, predecessor `MASTER-0009` (`994e344753c8dab05ee461d565d87c135fff8569`). This file is a sequential checkpoint, **not** an exclusive lease. Main HEAD remains independently unresolved; default-branch source blob hashes below are the verified source identities.
+
+**Existing ownership:** `packages/execution/src/control-plane-contract.ts` names `packages/execution/src/semantic-intent.ts` / `routeSemanticIntent` as canonical intent owner. `tests/unit/atlas-control-plane-facades.test.ts` already imports and tests this function, including deterministic routing and `semantic_intent_ambiguous`. Reuse the existing unit test seam rather than create a duplicate intent package or test suite. The semantic intent source blob is `8af37daf7ad5267e043979ac98aada493f6b9bbb`.
+
+**Security inspection:** `routeSemanticIntent` returns `source: input.source` without validating authenticated provenance. Its `routeScore` performs `objective.toLowerCase().includes(signal)`, so embedded untrusted text can affect routing if upstream passes it as a trusted objective. It is a **classifier**, not a dispatch authorization boundary; do not infer that privilege escalation is exploitable without tracing callers and server gates. It explicitly fails on tied top candidates (`semantic_intent_ambiguous`) and on no candidates (`semantic_intent_unresolved`).
+
+**Test additions to propose at the existing seam (NOT executed):**
+1. A forged `source: 'system'` never conveys authority to execute an action; test the server-side trusted principal / dispatcher boundary, not just the pure classifier.
+2. External PDF/Instagram text containing `merge` or `activate` remains inert unless a separately authenticated user instruction delegates a permitted read-only analysis.
+3. Multilingual authorized `Next` / `continúa` and `analyze` / `investiga` classify consistently while preserving objective scope.
+4. Reject ambiguous/unknown routes; preserve current existing tests.
+5. Cross-tenant, revoked-member and repeated request-ID scenarios belong to the authorized execution/API boundary, not solely to `routeSemanticIntent`.
+
+**Exact-SHA retrospective:** seven PR-triggered workflow runs for F9 SHA `994e344753c8dab05ee461d565d87c135fff8569` returned `completed/success`: Sentinel Shield (advisory), GitHub Security Baseline, CodeQL Advanced, Consensus CI, Ride Profile Photo CI, Hospitality OS TDD, and Build + Production Readiness Gate. The combined-status endpoint returned an empty statuses array. This is **not evidence** that the five proposed tests ran, or that production is certified. Record separate checks for this F10 SHA.
+
+**COSMOS:** [#995](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/995) remains planned; external Instagram phrases remain unverified user-supplied examples, not scientific facts or executable commands. **Health Radar:** Thursday local time, no Friday report emitted or idempotency key claimed. Academy [#990](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/990) / [PR #992](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/992) and RUN 2.0 P0 unchanged by this run.
+
+**P0 NO-GO. Next:** trace actual intent call sites and authorization/dispatch ownership, then add minimal negative tests on an isolated, owner-approved branch; preserve existing PR and avoid competing executors. No merge, deploy, production changes, payments, or secrets.
