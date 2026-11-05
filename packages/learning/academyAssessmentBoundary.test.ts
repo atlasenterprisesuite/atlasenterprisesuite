@@ -61,4 +61,21 @@ describe('Academy F2 server-only authorization boundary', () => {
     expect(enrollmentCalls).toEqual([{ enrollmentId: 'enroll-1', organizationId: 'org-1', userId: 'user-1' }]);
     expect(rubricCalls).toEqual([{ organizationId: 'org-1', courseVersion: 'c1', rubricVersion: 'r1' }]);
   });
+  it('fails closed before authentication for malformed request identifiers and answers', async () => {
+    let authCalls = 0;
+    const server = context({ authenticate: async () => { authCalls++; return { userId: 'user-1', organizationId: 'org-1' }; } });
+    await expect(evaluateAuthorizedAcademyAttempt({ ...request, enrollmentId: '   ' }, server)).rejects.toThrow('Invalid attempt');
+    await expect(evaluateAuthorizedAcademyAttempt({ ...request, rubricVersion: '' }, server)).rejects.toThrow('Invalid attempt');
+    await expect(evaluateAuthorizedAcademyAttempt({ ...request, answers: null } as unknown as typeof request, server)).rejects.toThrow('Invalid attempt');
+    expect(authCalls).toBe(0);
+  });
+  it('fails closed when trusted enrollment or rubric lookup rejects', async () => {
+    await expect(evaluateAuthorizedAcademyAttempt(request, context({
+      getEnrollment: async () => { throw new Error('storage unavailable'); }
+    }))).rejects.toThrow('storage unavailable');
+    await expect(evaluateAuthorizedAcademyAttempt(request, context({
+      getRubric: async () => { throw new Error('storage unavailable'); }
+    }))).rejects.toThrow('storage unavailable');
+  });
+
 });
