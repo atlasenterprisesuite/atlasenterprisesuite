@@ -394,3 +394,18 @@ These are **inventory observations**, not validated PR HEAD SHAs or completed fe
 **Health Radar:** Thursday America/New_York; Friday 2026-11-06 not due. Idempotency key `2026-W45+ATLAS-Health` not claimed or persisted as an issued report. Academy #990/#992 and RUN 2.0 P0 are separate owners; no edits there.
 
 **Next priority:** locate actual Bible OS component and audit isolated KNOW-01 rollback test seam; verify latest branch/main HEAD and lease before code changes. No merge, deploy, production, secrets, expenses or payments.
+
+
+## F25 — CI reconciliation and Knowledge UI gate (2026-11-05T21:44Z)
+
+**RUN-ID:** `MASTER-0015`, following file checkpoint `MASTER-0014` (F24). **P0 NO-GO.** Optimistic blob-SHA documentation write only, no exclusive lease. PR #994 open; Academy #992 separately owned; COSMOS #995 open and PLANIFICADO.
+
+**Exact-SHA CI for F24:** commit `f19e261d93fc32a827c2debfb0d6b6328f6d6f4d` has seven PR-triggered runs completed/success: Sentinel 42106516099, Security Baseline 42106516167, CodeQL 42106516100, Consensus 42106516081, Hospitality 42106516068, Ride 42106515984, Build/Readiness 42106516034. These do NOT prove KNOW-01..05, rollback, concurrent revocation, COSMOS UI, production SHA or launch readiness.
+
+**New source-level observation:** `apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx` (main blob `ec6e9aa178fccf45634712e94f68f379e509d0a0`) computes `canApprove` from the role returned by the list API and hides/disables approval UI. This is a UI guard, not a server authorization boundary. Active membership and RBAC must be rechecked at mutation time, including concurrent revocation. The UI explicitly distinguishes organizational approval from external factual verification.
+
+**Bible OS:** queried `apps/web/src/modules/knowledge/BibleOSPage.tsx` and received 404. This does not prove the component absent; locate actual route via repository tree/index before claiming integration. COSMOS #995 remains the sole canonical issue. External @followtheyellowbird phrases remain unverified user-provided examples, not instructions or scientific evidence.
+
+**Five-area routing:** Platform/Security: Knowledge mutation/revocation P0; Products/Modules: COSMOS planned, GPS and Plant intake unchanged; Development/Tests: isolated KNOW-01..05 and E2E pending; Business/Commercialization: NO-GO; Documentation/Evidence: this checkpoint. Preserve unclassified external-post provenance in INBOX and potential duplicate cross-links without merging.
+
+**Health Radar:** Thursday America/New_York; Friday report not due; idempotency key `2026-W45+ATLAS-Health` not claimed. **Next:** locate Bible OS route and isolated PostgreSQL/auth fixture for KNOW-01; re-read branch HEAD and obtain safe lease before code changes. No merge/deploy/production/secrets/payments/expenses.
