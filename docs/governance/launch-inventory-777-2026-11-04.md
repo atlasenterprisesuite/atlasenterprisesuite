@@ -176,3 +176,21 @@ Static sources inspected on main: `apps/web/src/modules/registry.ts` (blob `f0ae
 
 ### F4 release decision
 Nine additional registry surfaces have source-backed flag/route classification, but **none** gained runtime certification. The three F3 critical routes remain separately reconciled; no overlap is counted as a new verified E2E route. P0 NO-GO across the platform. Next: inspect actual App/extension route declarations and API permission boundaries for Cloud/Work/Automations, then run isolated negative tests on an exact SHA.
+
+
+## F5 — COSMOS and biomedical radar coordination (2026-11-04, America/New_York)
+
+**Main HEAD independently observed via repository commit search:** `e84d93d8e6d3a2f17da3fbbbe8c5d6ea8ee30b12`. Source search references this main SHA. This index is on PR #994, not on main.
+
+| Workstream | Canonical owner / location | Status and source | Deduplication and next action |
+| --- | --- | --- | --- |
+| `cosmos-research` | [Issue #995](https://github.com/atlasenterprisesuite/atlasenterprisesuite/issues/995); Knowledge Atlas / `apps/web/src/modules/knowledge/KnowledgeAtlasPage.tsx` | Issue open, PLANIFICADO, P0 NO-GO; no verified COSMOS implementation | Reuse Knowledge Atlas, cross-reference Bible OS and Humanity Atlas, do not create a new platform or claim new module in registry |
+| `humanity-atlas` | `docs/knowledge/humanity-atlas/README.md` | Existing governed cross-module knowledge domain, owner Knowledge Atlas | Link research claims outward to domain owners; do not duplicate medical or theological authority |
+| `bible-os` | `docs/knowledge/bible-os/ATLAS_BIBLE_OS_CRITICAL_TEXT_SPEC.md`; registry `bible-os` | Existing textual-research scope, not COSMOS evidence | Review licensing, critical text provenance and separation of theological interpretation |
+| `health-biomedical-radar` | Health / Health Frontiers (domain owner); this ledger coordinates only | Weekly report requested, no report produced in this Wednesday run | First Friday America/New_York run: check persisted idempotency key `2026-W45+ATLAS-Health` before creating one report. If ledger unavailable, do not claim delivery. |
+
+**COSMOS classification contract (proposed, not implemented):** each claim requires immutable source reference, observation/publication date, evidence class (`scientific_observation`, `hypothesis`, `theological_interpretation`, `unverified_belief`), certainty qualification, provenance/license, last-reviewed date and correction history. No extraterrestrial contact claim is verified by the current issue or code references. Negative TDD: reject unclassified claims, absent provenance, unauthorized tenant writes, unsupported certainty upgrades and misleading presentation; test keyboard access, readable classification labels and responsive layouts.
+
+**Health radar delivery contract (not yet executed):** four categories—medical AI/diagnosis; treatments/medicines/trials; devices/digital health; access/cost/regulation. Every item requires dated authoritative source, study design/limitations, maturity, safety risk, module owner, acceptance gate and follow-up. Preliminary research is not clinical readiness. Do not duplicate a Friday report if its ISO-week idempotency key is already recorded. Next Friday is 2026-11-06, ISO week 45.
+
+**Coordination boundary:** issue #995 already contains a previous source inspection comment; preserve it rather than repeating the same update. Academy #990/PR #992 and RUN 2.0 P0 remain independently owned. COSMOS and radar do not supersede security, CI or tenant-isolation P0 gates. No chat-wide live access is claimed.
