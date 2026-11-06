@@ -114,7 +114,7 @@ async function checkViewport(browser, width, height) {
     'wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa', 'best-practice'
   ]).analyze();
   if (a11y.violations.length) {
-    throw new Error(`MAX Axe violations at ${width}px: ${JSON.stringify(a11y.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help })))}`);
+    throw new Error(`MAX Axe violations at ${width}px: ${JSON.stringify(a11y.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.map(n => ({ target: n.target, html: n.html.slice(0, 450), failureSummary: n.failureSummary })) })))}`);
   }
   console.log(`PASS authenticated simulated /max: ${width}x${height}; axe 0 violations`);
 
