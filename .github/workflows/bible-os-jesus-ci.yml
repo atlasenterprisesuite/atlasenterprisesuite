@@ -5,6 +5,8 @@ on:
     paths:
       - 'apps/web/src/modules/knowledge/bible/**'
       - 'tests/integration/jesus-*.test.ts'
+      - 'tests/integration/atlas-identity-route.test.tsx'
+      - 'tests/integration/bible-os-jesus-accessibility.test.tsx'
       - 'tests/integration/bible-os-functional-p0.test.ts'
       - '.github/workflows/bible-os-jesus-ci.yml'
   workflow_dispatch:
@@ -31,7 +33,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
       - name: Evidence and UI integration tests
-        run: npx vitest run tests/integration/jesus-teachings-evidence.test.ts tests/integration/jesus-timeline-ui.test.ts tests/integration/jesus-evidence-negative.test.ts tests/integration/bible-os-jesus-accessibility.test.tsx tests/integration/bible-os-functional-p0.test.ts
+        run: npx vitest run tests/integration/jesus-teachings-evidence.test.ts tests/integration/jesus-timeline-ui.test.ts tests/integration/jesus-evidence-negative.test.ts tests/integration/bible-os-jesus-accessibility.test.tsx tests/integration/bible-os-functional-p0.test.ts tests/integration/atlas-identity-route.test.tsx
       - name: Typecheck
         run: npm run typecheck
       - name: Production build (no deploy)
