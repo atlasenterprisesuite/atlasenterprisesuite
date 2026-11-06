@@ -46,8 +46,8 @@ begin
   return inserted_count = 1;
 end;
 $$;
-revoke all on function private.atlas_multiagent_claim_internal(text,text,text,text,text) from public, authenticated;
-grant execute on function private.atlas_multiagent_claim_internal(text,text,text,text,text) to anon, service_role;
+revoke all on function private.atlas_multiagent_claim_internal(text,text,text,text,text) from public, anon, authenticated;
+grant execute on function private.atlas_multiagent_claim_internal(text,text,text,text,text) to service_role;
 create or replace function public.atlas_multiagent_claim(
   p_tenant_id text, p_organization_id text, p_idempotency_key text,
   p_task_id text, p_provider_id text
@@ -55,5 +55,5 @@ create or replace function public.atlas_multiagent_claim(
 as $$
  select private.atlas_multiagent_claim_internal(p_tenant_id,p_organization_id,p_idempotency_key,p_task_id,p_provider_id);
 $$;
-revoke all on function public.atlas_multiagent_claim(text,text,text,text,text) from public, authenticated;
-grant execute on function public.atlas_multiagent_claim(text,text,text,text,text) to anon, service_role;
+revoke all on function public.atlas_multiagent_claim(text,text,text,text,text) from public, anon, authenticated;
+grant execute on function public.atlas_multiagent_claim(text,text,text,text,text) to service_role;
