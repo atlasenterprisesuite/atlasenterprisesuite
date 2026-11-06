@@ -312,3 +312,134 @@
   .atlas-max-experience a { transition: none; }
   .atlas-max-link-primary:hover { transform: none; }
 }
+
+/* Client journeys: real route discovery without pretending that a preview executes work. */
+.atlas-max-journeys-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, .84fr) minmax(0, 1.16fr);
+  gap: 15px;
+}
+.atlas-max-journey-options { display: grid; align-content: start; gap: 10px; }
+.atlas-max-journey-option {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  min-height: 94px;
+  padding: 19px;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-lg);
+  color: var(--atlas-text);
+  background: var(--atlas-surface-1);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: background var(--atlas-duration-base) var(--atlas-ease), border-color var(--atlas-duration-base) var(--atlas-ease);
+}
+.atlas-max-journey-option:hover,
+.atlas-max-journey-option.selected {
+  border-color: var(--atlas-border-strong);
+  background: var(--atlas-surface-2);
+}
+.atlas-max-journey-option.selected {
+  box-shadow: inset 3px 0 var(--atlas-cyan), var(--atlas-glow-cyan);
+}
+.atlas-max-journey-number {
+  font-size: var(--atlas-font-size-xs);
+  font-weight: 800;
+  letter-spacing: .08em;
+  color: var(--atlas-cyan);
+}
+.atlas-max-journey-option-copy { display: grid; gap: 5px; flex: 1; }
+.atlas-max-journey-option-copy strong { font-size: var(--atlas-font-size-base); }
+.atlas-max-journey-option-copy small { color: var(--atlas-text-muted); font-size: var(--atlas-font-size-sm); }
+.atlas-max-journey-detail {
+  min-width: 0;
+  padding: clamp(23px, 3vw, 40px);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-xl);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(33,135,255,.12), transparent 62%),
+    var(--atlas-surface-1);
+}
+.atlas-max-journey-detail h3 { margin: 15px 0; font-size: clamp(25px, 3vw, 39px); letter-spacing: -.04em; }
+.atlas-max-journey-detail > p { color: var(--atlas-text-muted); font-size: var(--atlas-font-size-md); line-height: 1.55; }
+.atlas-max-journey-steps { list-style: none; margin: 25px 0; padding: 0; display: grid; }
+.atlas-max-journey-steps li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--atlas-border-subtle);
+  font-size: var(--atlas-font-size-md);
+  line-height: 1.4;
+}
+.atlas-max-step-number { flex: 0 0 26px; color: var(--atlas-cyan); font-weight: 750; font-size: var(--atlas-font-size-xs); }
+.atlas-max-journey-detail > .atlas-max-meta-note { margin-top: 15px; font-size: var(--atlas-font-size-xs); }
+.atlas-max-gateway-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 14px;
+}
+.atlas-max-gateway-stat {
+  min-height: 185px;
+  padding: clamp(20px, 2.3vw, 28px);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-lg);
+  background: var(--atlas-surface-1);
+}
+.atlas-max-gateway-stat strong {
+  display: block;
+  margin: 17px 0 9px;
+  font-size: clamp(19px, 2vw, 28px);
+  letter-spacing: -.03em;
+  overflow-wrap: anywhere;
+}
+.atlas-max-gateway-stat p { color: var(--atlas-text-muted); line-height: 1.55; font-size: var(--atlas-font-size-md); }
+.atlas-max-provider-list { padding: 0; margin: 12px 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.atlas-max-provider-list li {
+  padding: 6px 10px;
+  background: var(--atlas-surface-3);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-pill);
+  font-size: var(--atlas-font-size-sm);
+}
+.atlas-max-gateway-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 17px;
+  color: var(--atlas-text-muted);
+  font-size: var(--atlas-font-size-sm);
+}
+.atlas-max-refresh {
+  cursor: pointer;
+  min-height: var(--atlas-touch-target);
+  padding: 10px 16px;
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: var(--atlas-radius-sm);
+  background: var(--atlas-surface-2);
+  color: var(--atlas-text-strong);
+  font: inherit;
+  font-size: var(--atlas-font-size-md);
+  font-weight: 700;
+}
+.atlas-max-refresh:hover:not(:disabled) { background: var(--atlas-surface-3); }
+.atlas-max-refresh:disabled { cursor: not-allowed; opacity: .6; }
+@media (max-width: 920px) {
+  .atlas-max-journeys-layout { grid-template-columns: 1fr; }
+  .atlas-max-journey-options { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .atlas-max-journey-option { gap: 10px; align-items: flex-start; }
+  .atlas-max-journey-option-copy strong { line-height: 1.25; }
+  .atlas-max-gateway-grid { grid-template-columns: 1fr; }
+  .atlas-max-gateway-stat { min-height: 0; }
+}
+@media (max-width: 620px) {
+  .atlas-max-journey-options { grid-template-columns: 1fr; }
+  .atlas-max-journey-option { min-height: 76px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-max-journey-option { transition: none; }
+}
