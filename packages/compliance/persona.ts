@@ -18,12 +18,13 @@ function record(value: unknown): Record<string, unknown> | null {
 function text(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
-function hexBytes(hex: string): Uint8Array {
-  const output = new Uint8Array(hex.length / 2);
+function hexBytes(hex: string): ArrayBuffer {
+  const buffer = new ArrayBuffer(hex.length / 2);
+  const output = new Uint8Array(buffer);
   for (let i = 0; i < output.length; i++) {
     output[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
-  return output;
+  return buffer;
 }
 
 /** Validates the HMAC on the unmodified body, timestamps and rotated signatures. */
