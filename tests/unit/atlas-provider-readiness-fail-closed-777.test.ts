@@ -41,6 +41,23 @@ describe('ATLAS PRO model registry readiness P0 contracts', () => {
     expect(state).toMatchObject({ configured: false, verified: false, state: 'configuration-required' });
   });
 
+  it('never borrows a generic model when a profile-specific model map exists', async () => {
+    const probe = vi.fn(async () => ({ configured: true, verified: true, model: 'generic-model' }));
+    const value = {
+      descriptor: () => ({
+        id: 'openai', configured: true,
+        profiles: ['fast', 'balanced', 'deep'], capabilities: ['generation'],
+        models: { fast: 'fast-only', balanced: null, deep: null },
+        model: 'generic-model',
+      }),
+      probe,
+    };
+    const states = await createProviderRegistry({ providers: [value] }).readiness({ profile: 'balanced' });
+    expect(probe).not.toHaveBeenCalled();
+    expect(states.find((item: { id: string }) => item.id === 'openai'))
+      .toMatchObject({ configured: false, verified: false, state: 'configuration-required', model: null });
+  });
+
   it('does not accept a fabricated verified response for an unconfigured adapter', async () => {
     const value = adapter({ configured: false });
     const state = await openaiState(value);
