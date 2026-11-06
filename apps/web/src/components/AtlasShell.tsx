@@ -162,7 +162,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
     const items = [
-      { level: 'menu', label: 'ATLAS', to: '/' },
+      { level: 'menu', label: 'ATLAS', to: '/platform' },
       { level: 'submenu', label: activeModule?.area ?? 'Workspace', to: activeModule?.route ?? location.pathname },
       { level: 'section', label: activeModule?.navLabel ?? (segments[0] ? titleize(segments[0]) : 'Home'), to: activeModule?.route ?? location.pathname }
     ];
@@ -234,7 +234,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <span aria-hidden="true">×</span>
         </button>
 
-        <NavLink className="brand-lockup" to="/" onClick={closeMobileNav} aria-label="ATLAS home">
+        <NavLink className="brand-lockup" to="/platform" onClick={closeMobileNav} aria-label="ATLAS home">
           <div className="brand-mark atlas-slash-mark" aria-hidden="true"><i /><i /><i /></div>
           <div><span>ATLAS OS</span><small>Total Control</small></div>
         </NavLink>
@@ -248,7 +248,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
         <nav aria-label="ATLAS modules">
           <div className="atlas-nav-primary">
             <NavLink
-              to="/"
+              to="/platform"
               end
               className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
               onClick={closeMobileNav}
@@ -401,7 +401,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <nav className="atlas-history-controls" aria-label="ATLAS persistent navigation">
             <button type="button" onClick={() => navigate(-1)} aria-label="Back">← <span>Back</span></button>
             <button type="button" onClick={() => navigate(1)} aria-label="Forward"><span>Forward</span> →</button>
-            <button type="button" onClick={() => navigate('/')} aria-label="Home">⌂ <span>Home</span></button>
+            <button type="button" onClick={() => navigate('/platform')} aria-label="Home">⌂ <span>Home</span></button>
           </nav>
           <nav className="atlas-breadcrumbs" aria-label="ATLAS breadcrumb">
             {breadcrumbItems.map((item, index) => (

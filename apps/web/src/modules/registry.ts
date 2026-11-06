@@ -461,7 +461,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
 ] as const;
 
 export const ATLAS_NAV_ITEMS = [
-  { to: '/', label: 'Home' },
+  { to: '/platform', label: 'Home' },
   { to: '/suite', label: 'All Modules' },
   ...ATLAS_MODULES
     .filter((module) => module.showInNavigation)
