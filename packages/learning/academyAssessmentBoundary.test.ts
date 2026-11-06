@@ -58,7 +58,7 @@ describe('Academy F2 server-only authorization boundary', () => {
         return { organizationId: 'org-1', ...rubric };
       }
     }));
-    expect(enrollmentCalls).toEqual([{ enrollmentId: 'enroll-1', organizationId: 'org-1', userId: 'user-1' }]);
+    expect(enrollmentCalls).toEqual(Array.from({ length: 2 }, () => ({ enrollmentId: 'enroll-1', organizationId: 'org-1', userId: 'user-1' })));
     expect(rubricCalls).toEqual([{ organizationId: 'org-1', courseVersion: 'c1', rubricVersion: 'r1' }]);
   });
   it('fails closed before authentication for malformed request identifiers and answers', async () => {
