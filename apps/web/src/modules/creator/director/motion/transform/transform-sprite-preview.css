@@ -1,0 +1,5 @@
+.atlas-transform-preview { display: grid; gap: .75rem; max-width: 32rem; }
+.atlas-transform-frame { width: 100%; aspect-ratio: 159 / 119; background-repeat: no-repeat; background-color: var(--surface, #182331); border-radius: .5rem; }
+.atlas-transform-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.atlas-transform-controls button { min-height: 44px; min-width: 44px; }
+@media (prefers-reduced-motion: reduce) { .atlas-transform-preview * { animation: none !important; transition: none !important; } }
