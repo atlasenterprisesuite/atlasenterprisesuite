@@ -75,7 +75,7 @@ jobs:
             "INSERT INTO academy_concurrency.credentials SELECT 'shared-key', id FROM academy_concurrency.enrollments WHERE id='e1' AND status='active';" >&3
           first_ready=0
           for attempt in $(seq 1 100); do
-            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND classid=777 AND objid=992 AND granted")" = 1 ]; then
+            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_locks a JOIN pg_locks t ON a.pid=t.pid WHERE a.locktype='advisory' AND a.classid=777 AND a.objid=992 AND a.granted AND t.locktype='transactionid' AND t.mode='ExclusiveLock' AND t.granted")" = 1 ]; then
               first_ready=1
               break
             fi
