@@ -49,11 +49,14 @@ function routeScore(
   requestedCapabilities: readonly string[],
   route: AtlasIntentRoute
 ) {
-  let score = Number.isFinite(route.priority) ? Number(route.priority) : 0;
+  let score = 0;
+  let matched = false;
+  const priority = Number.isFinite(route.priority) ? Number(route.priority) : 0;
   let reason: AtlasSemanticIntent['routeReason'] = 'semantic_signal';
 
   if (moduleHint && route.ownerModule.toLowerCase() === moduleHint.toLowerCase()) {
     score += 100;
+    matched = true;
     reason = 'module_hint';
   }
 
@@ -62,17 +65,22 @@ function routeScore(
   ).length;
   if (capabilityMatches > 0) {
     score += capabilityMatches * 20;
+    matched = true;
     if (reason !== 'module_hint') reason = 'capability_match';
   }
 
   const normalizedObjective = objective.toLowerCase();
   const signalMatches = route.signals.filter((signal) => {
     const normalized = String(signal).trim().toLowerCase();
-    return normalized && normalizedObjective.includes(normalized);
+    if (!normalized) return false;
+    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\    return normalized && normalizedObjective.includes(normalized);');
+    return new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}(?=$|[^\\p{L}\\p{N}_])`, 'u').test(normalizedObjective);
   }).length;
   score += signalMatches * 5;
+  if (signalMatches > 0) matched = true;
+  if (matched) score += priority;
 
-  return { score, reason };
+  return { score: matched ? Math.max(score, 1) : 0, reason };
 }
 
 export function routeSemanticIntent(
@@ -101,14 +109,20 @@ export function routeSemanticIntent(
 
   if (!candidates.length) throw new Error('semantic_intent_unresolved');
 
-  candidates.sort((a, b) =>
+  // Route metadata is not authority to execute capabilities not requested by the caller.
+  const supportedCandidates = candidates.filter(({ route }) =>
+    requestedCapabilities.every((capability) => route.capabilities.includes(capability))
+  );
+  if (!supportedCandidates.length) throw new Error('semantic_intent_capability_unsupported');
+
+  supportedCandidates.sort((a, b) =>
     b.score - a.score ||
     a.route.ownerModule.localeCompare(b.route.ownerModule) ||
     a.route.id.localeCompare(b.route.id)
   );
 
-  const top = candidates[0];
-  const tied = candidates.filter((candidate) => candidate.score === top.score);
+  const top = supportedCandidates[0];
+  const tied = supportedCandidates.filter((candidate) => candidate.score === top.score);
   if (tied.length > 1) throw new Error('semantic_intent_ambiguous');
 
   const successCriteria = unique(input.successCriteria);
