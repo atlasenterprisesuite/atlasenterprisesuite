@@ -23,6 +23,11 @@ create table atlas_transfer_test.reservations(
  foreign key(organization_id,destination)
   references atlas_transfer_test.allowed_destinations(organization_id,destination)
 );
+-- P0: prevent two concurrent transfers of the same call even with distinct idempotency keys.
+-- An unknown or confirmed transfer must not be automatically reissued.
+create unique index atlas_transfer_one_active_per_call_uidx
+ on atlas_transfer_test.reservations (organization_id,call_session_id)
+ where state in ('transfer_pending','transfer_unknown','transfer_confirmed');
 create table atlas_transfer_test.transfer_events(
  id bigint generated always as identity primary key,
  reservation_id uuid not null references atlas_transfer_test.reservations(id),
@@ -40,6 +45,10 @@ begin
  then return 'invalid_request'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
   p_org::text||':'||p_call::text||':'||p_key,0));
+ -- Membership is checked before replay inspection: revoked actors must not read reservation state.
+ perform 1 from public.organization_members om
+ where om.org_id=p_org and om.user_id=p_actor and om.status='active' for share;
+ if not found then return 'membership_inactive'; end if;
  select * into v_existing from atlas_transfer_test.reservations
  where organization_id=p_org and call_session_id=p_call and idempotency_key=p_key for update;
  if found then
@@ -47,16 +56,18 @@ begin
    or v_existing.live_session_id<>p_live then return 'idempotency_conflict'; end if;
   return 'already_reserved_no_reissue';
  end if;
- -- Conflicts with concurrent membership revoke; caller must separately pass real permission gate.
- perform 1 from public.organization_members om
- where om.org_id=p_org and om.user_id=p_actor and om.status='active' for share;
- if not found then return 'membership_inactive'; end if;
+ -- Membership lock acquired before replay check; real permission authorization remains an external P0 gate.
  perform 1 from public.atlas_call_sessions s
  where s.id=p_call and s.organization_id=p_org and s.state='connected' for share;
  if not found then return 'call_inactive_or_cross_tenant'; end if;
  if not exists(select 1 from atlas_transfer_test.allowed_destinations d
    where d.organization_id=p_org and d.destination=p_destination)
  then return 'destination_denied'; end if;
+ -- Serialize distinct keys for a call; index remains final defense across workers.
+ if exists (select 1 from atlas_transfer_test.reservations r
+ where r.organization_id=p_org and r.call_session_id=p_call
+ and r.state in ('transfer_pending','transfer_unknown','transfer_confirmed'))
+ then return 'call_already_has_transfer'; end if;
  with inserted as(
   insert into atlas_transfer_test.reservations(
    organization_id,actor_user_id,call_session_id,live_session_id,idempotency_key,destination)
