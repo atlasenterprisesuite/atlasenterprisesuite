@@ -2,6 +2,8 @@ import React from 'react';
 import type { EntitlementDecision } from '../../services/atlas-max/contracts';
 import { OperatorPanel } from './OperatorPanel';
 import { PlanComparison } from './PlanComparison';
+import { AtlasMaxJourneys } from './AtlasMaxJourneys';
+import { GatewayPanel, type AtlasMaxGatewayPanelState } from './GatewayPanel';
 import { UsagePanel } from './UsagePanel';
 import './atlasMax.css';
 
@@ -34,7 +36,7 @@ const CAPABILITY_DOMAINS = [
 
 function entitlementLabel(entitlement: EntitlementDecision) {
   if (entitlement.status === 'allowed') {
-    return entitlement.evidenceRef?.trim() ? 'MAX entitlement verified' : 'ATLAS MAX entitlement evidence required';
+    return entitlement.planId === 'max' && entitlement.evidenceRef?.trim() ? 'MAX entitlement verified' : 'ATLAS MAX entitlement evidence required';
   }
   if (entitlement.status === 'degraded') return 'ATLAS MAX degraded';
   if (entitlement.status === 'denied') return 'ATLAS MAX unavailable';
@@ -44,12 +46,16 @@ function entitlementLabel(entitlement: EntitlementDecision) {
 export function AtlasMaxPage({
   entitlement,
   usage,
+  gateway,
+  onGatewayRefresh,
 }: {
   entitlement: EntitlementDecision;
   usage: { used: number; limit: number; evidenceRef?: string };
+  gateway?: AtlasMaxGatewayPanelState;
+  onGatewayRefresh?: () => void;
 }) {
   const statusLabel = entitlementLabel(entitlement);
-  const hasEntitlementEvidence = entitlement.status === 'allowed' && Boolean(entitlement.evidenceRef?.trim());
+  const hasEntitlementEvidence = entitlement.status === 'allowed' && entitlement.planId === 'max' && Boolean(entitlement.evidenceRef?.trim());
 
   return (
     <div className="atlas-max-experience">
@@ -128,12 +134,13 @@ export function AtlasMaxPage({
         </div>
       </section>
 
+      <AtlasMaxJourneys />
       <PlanComparison />
 
       <section className="atlas-max-operations" aria-labelledby="atlas-max-operations-title">
         <div className="atlas-max-section-heading">
           <div>
-            <p className="atlas-max-kicker">03 / Operational controls</p>
+            <p className="atlas-max-kicker">04 / Operational controls</p>
             <h2 id="atlas-max-operations-title">Every action should have evidence.</h2>
           </div>
           <p>Entitlements, capacity and delegated work remain visible without manufacturing readiness or utilization.</p>
@@ -143,6 +150,7 @@ export function AtlasMaxPage({
           <OperatorPanel />
         </div>
       </section>
+      {gateway && <GatewayPanel gateway={gateway} onRefresh={onGatewayRefresh} />}
       <footer className="atlas-max-footer">
         <span>ATLAS / INTELLIGENCE SYSTEMS</span>
         <span>Identity · Tenant isolation · Approval · Audit</span>
