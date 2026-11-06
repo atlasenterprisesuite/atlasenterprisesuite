@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../apps/web/src/App';
@@ -44,7 +44,7 @@ describe('Guided Execution adjacent route regression', () => {
     const main = screen.getByRole('main');
     expect(main).toHaveTextContent('Finance, Payroll and Health share one shell');
     expect(main.querySelector('.public-home')).toBeNull();
-    expect(screen.getByRole('link', { name: /business suite/i })).toHaveAttribute('href', '/business');
+    expect(within(main).getByRole('link', { name: /business suite/i })).toHaveAttribute('href', '/business');
   });
 
 });
