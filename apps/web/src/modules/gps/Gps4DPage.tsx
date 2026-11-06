@@ -285,8 +285,11 @@ export function Gps4DPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const lat = Number(params.get('lat'));
-    const lon = Number(params.get('lon'));
+    const rawLat = params.get('lat');
+    const rawLon = params.get('lon');
+    if (rawLat === null || rawLon === null || !rawLat.trim() || !rawLon.trim()) return;
+    const lat = Number(rawLat);
+    const lon = Number(rawLon);
     if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
       setSelected({ lat, lon, label: params.get('label') || 'Destino compartido' });
     }
