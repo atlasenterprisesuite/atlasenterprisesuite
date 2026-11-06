@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '22'
       - name: Portable runtime and memory tests
-        run: node --test tools/local-agent/tests/local-core-client.test.mjs tools/local-agent/tests/local-core-vault.test.mjs tools/local-agent/tests/local-core-installer.test.mjs
+        run: npm run test:local-core
       - name: Ubuntu unprivileged installation smoke test
         if: runner.os == 'Linux'
         shell: bash
