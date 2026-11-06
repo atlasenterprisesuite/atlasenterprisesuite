@@ -55,6 +55,15 @@ export const defaultAgents: AtlasAgentDefinition[] = [
     allowedEnvironments: ['development', 'test'], maxDelegationDepth: 0
   },
   {
+    id: 'atlas-osiris', providerId: 'openai',
+    role: 'Evidence-backed research and incident diagnosis (read-only)',
+    capabilities: ['research'],
+    permissions: ['ai.task.read', 'ai.repo.read', 'ai.ci.read', 'ai.audit.read'],
+    allowedTools: ['atlas.task.read', 'atlas.repo.inspect', 'atlas.ci.verify', 'atlas.audit.read'],
+    allowedStates: ['queued', 'planning', 'implementation', 'review', 'qa', 'ci', 'blocked'],
+    allowedEnvironments: ['development', 'test'], maxDelegationDepth: 0
+  },
+  {
     id: 'atlas-release-governor', providerId: 'external-mcp', role: 'Release evidence governor',
     capabilities: ['release-govern'],
     permissions: ['ai.task.read', 'ai.ci.read', 'ai.approval.read', 'ai.audit.read', 'ai.deploy.request'],
