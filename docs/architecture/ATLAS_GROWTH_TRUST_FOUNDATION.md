@@ -48,3 +48,15 @@ Existing Supabase production schema was inspected without DDL or data mutations:
 - No provider credentials, campaign launches, costs or deployed endpoints are introduced by this PR.
 
 Release status: **DRAFT / FAIL CLOSED**. GitHub Actions checks for phase 2 must be verified on the final commit before any promotion.
+
+## Campaign economics planning increment (2026-11-05)
+
+The existing authenticated Advisory route now includes `/advisory/campaign-economics`, linked in Advisory navigation and global navigation search. It reuses the Enterprise Automation responsive input/result styles and links to existing CRM, provider readiness and accounting routes.
+
+`campaignEconomics.ts` calculates cost per click, cost per lead, advertising cost per customer and attributed revenue/spend (ROAS) from a single USD reporting scope. Money is parsed into safe integer cents without floating-point input rounding. Negative, fractional-count, nonfinite and unsafe integer inputs are rejected. Zero denominators produce unavailable ratios. A zero advertising cost remains a legitimate zero when an outcome exists.
+
+All inputs and outputs are explicitly simulation-only, ephemeral browser state. No organization records, provider requests, campaign activation, tracking pixel, conversion-event submission or spending authorization are introduced. ROAS is not profit; advertising cost per customer is not full acquisition cost. There is no implied funnel containment between the independently entered counts.
+
+The OpenAI Ads email reviewed on 2026-11-05 motivates future average-cost target support. Target CPA/CPC must never be represented as individual bid ceilings. Reference: https://help.openai.com/en/articles/20001634-bidding-strategies-and-how-pricing-works-in-chatgpt-ads . No new API fields or transition behavior are assumed by this increment.
+
+Remaining: trusted campaign/conversion storage with authenticated tenant/firm scope and privacy controls; actual event quality and attribution evidence; verified provider API schema; atomic budget reservation; permissioned production UI and E2E. Existing Growth + Trust P0 blockers remain in force. Merge readiness must be reassessed against the current base and exact revision; a mergeable Git state does not certify the P0 security gates.
