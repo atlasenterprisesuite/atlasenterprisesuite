@@ -203,3 +203,62 @@ describe('ATLAS unified control-plane facades', () => {
   });
 
 });
+
+describe('ATLAS semantic intent AUTH RED regressions', () => {
+  const apiIntent = (objective: string, requestedCapabilities: string[] = []) => ({
+    requestId: 'auth-red-regression',
+    source: 'api' as const,
+    objective,
+    requestedCapabilities
+  });
+
+  it('AUTH-RED-01 rejects priority without any matching evidence', () => {
+    expect(() => routeSemanticIntent(apiIntent('weather forecast'), [{
+      id: 'privileged', ownerModule: 'payroll',
+      capabilities: ['payroll.read', 'payroll.delete'], signals: ['payroll'], priority: 100
+    }])).toThrow('semantic_intent_unresolved');
+  });
+
+  it('REG-02 prefers a compatible route over an incompatible high-priority route', () => {
+    const result = routeSemanticIntent(apiIntent('payroll read', ['payroll.read']), [
+      { id: 'delete', ownerModule: 'payroll', capabilities: ['payroll.delete'], signals: ['payroll', 'read'], priority: 500 },
+      { id: 'read', ownerModule: 'payroll', capabilities: ['payroll.read'], signals: ['payroll'] }
+    ]);
+    expect(result.routeId).toBe('read');
+  });
+
+  it('SEC-03 rejects a requested capability outside the route contract', () => {
+    expect(() => routeSemanticIntent(apiIntent('payroll status', ['payroll.delete']), [{
+      id: 'payroll', ownerModule: 'payroll', capabilities: ['payroll.read'], signals: ['payroll']
+    }])).toThrow('semantic_intent_capability_unsupported');
+  });
+
+  it('SEC-04 preserves a genuine match even when route priority is negative', () => {
+    const result = routeSemanticIntent(apiIntent('payroll status', ['payroll.read']), [{
+      id: 'payroll', ownerModule: 'payroll',
+      capabilities: ['payroll.read'], signals: ['payroll'], priority: -1000
+    }]);
+    expect(result.routeId).toBe('payroll');
+  });
+
+  it('SEC-05 does not interpret a substring inside an unrelated word as a command', () => {
+    expect(() => routeSemanticIntent(apiIntent('prepare repayment'), [{
+      id: 'payroll', ownerModule: 'payroll', capabilities: ['payroll.read'], signals: ['pay']
+    }])).toThrow('semantic_intent_unresolved');
+  });
+
+  it('REG-04 treats punctuation in a semantic signal as literal text', () => {
+    const result = routeSemanticIntent(apiIntent('execute c++ operation'), [{
+      id: 'cpp', ownerModule: 'cpp', capabilities: ['compile'], signals: ['c++']
+    }]);
+    expect(result.routeId).toBe('cpp');
+  });
+
+  it('REG-06 deduplicates explicit capabilities without granting other route capabilities', () => {
+    const result = routeSemanticIntent(apiIntent('payroll read', ['payroll.read', 'payroll.read']), [{
+      id: 'read', ownerModule: 'payroll',
+      capabilities: ['payroll.read', 'payroll.delete'], signals: ['payroll']
+    }]);
+    expect(result.requestedCapabilities).toEqual(['payroll.read']);
+  });
+});
