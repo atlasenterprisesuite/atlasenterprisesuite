@@ -102,6 +102,7 @@ export type AdvisoryIntegrationConnectionRow = {
   auth_kind: string;
   authorized: boolean;
   provider_verified: boolean;
+  revoked_at: string | null;
   state: AdvisoryProviderConnectionEvidence['state'];
   metadata: Record<string, unknown> | null;
   provider_account_label: string | null;
@@ -157,6 +158,7 @@ export async function listAdvisoryProviderAuthorizations(): Promise<AdvisoryProv
     capability: row.capability,
     authorized: row.authorized,
     authorizedAt: row.authorized_at,
+    revokedAt: row.revoked_at,
     authorizationReference: row.authorization_reference
   }));
 }
@@ -167,7 +169,7 @@ export async function listAdvisoryProviderConnections(): Promise<AdvisoryProvide
   const firm = await bootstrapAdvisoryFirm();
   const response = await authorizedAtlasFetch(
     '/rest/v1/atlas_integration_connections?org_id=eq.' + encodeURIComponent(organization.id) +
-    '&select=id,org_id,provider,connection_name,auth_kind,authorized,provider_verified,state,metadata,provider_account_label,last_verified_at,last_success_at,last_error_code&order=updated_at.desc',
+    '&select=id,org_id,provider,connection_name,auth_kind,authorized,provider_verified,revoked_at,state,metadata,provider_account_label,last_verified_at,last_success_at,last_error_code&order=updated_at.desc',
     { method: 'GET' }
   );
   const rows = await parseJson<AdvisoryIntegrationConnectionRow[]>(response);
@@ -182,6 +184,7 @@ export async function listAdvisoryProviderConnections(): Promise<AdvisoryProvide
       state: row.state,
       authorized: row.authorized,
       providerVerified: row.provider_verified,
+      revokedAt: row.revoked_at,
       providerAccountLabel: row.provider_account_label,
       lastVerifiedAt: row.last_verified_at,
       lastSuccessAt: row.last_success_at,

@@ -5,6 +5,20 @@ import {
 } from '../../packages/advisory/src';
 
 describe('Advisory external provider readiness', () => {
+  it('never treats a revoked authorization or connection as current evidence', () => {
+    const readiness = resolveAdvisoryProviderReadiness([{
+      provider: 'media', connectionName: 'advisory:paid_media:primary',
+      state: 'connected', authorized: true, providerVerified: true,
+      revokedAt: '2026-11-05T12:00:00Z'
+    }], [{
+      capability: 'paid_media', authorized: true, authorizedAt: '2026-11-01T00:00:00Z',
+      revokedAt: '2026-11-05T12:00:00Z'
+    }]);
+    const media = readiness.find(item => item.capability === 'paid_media');
+    expect(media?.organizationAuthorized).toBe(false);
+    expect(media?.status).toBe('authorization_required');
+    expect(media?.authorizedAt).toBeNull();
+  });
   it('keeps every external capability authorization-gated without verified evidence', () => {
     const readiness = resolveAdvisoryProviderReadiness([]);
     expect(readiness).toHaveLength(5);

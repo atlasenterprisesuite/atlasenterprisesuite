@@ -34,6 +34,7 @@ export type AdvisoryProviderConnectionEvidence = {
   state: 'unconfigured' | 'authorizing' | 'connected' | 'degraded' | 'expired' | 'revoked' | 'error';
   authorized: boolean;
   providerVerified: boolean;
+  revokedAt?: string | null;
   providerAccountLabel?: string | null;
   lastVerifiedAt?: string | null;
   lastSuccessAt?: string | null;
@@ -45,6 +46,7 @@ export type AdvisoryProviderAuthorizationEvidence = {
   capability: AdvisoryExternalCapability;
   authorized: boolean;
   authorizedAt: string | null;
+  revokedAt?: string | null;
   authorizationReference?: string | null;
 };
 
@@ -84,6 +86,7 @@ function capabilityForConnection(connection: AdvisoryProviderConnectionEvidence)
 }
 
 function statusForConnection(connection: AdvisoryProviderConnectionEvidence): AdvisoryProviderReadinessStatus {
+  if (connection.revokedAt != null) return 'authorization_required';
   if (connection.state === 'connected' && connection.authorized && connection.providerVerified) {
     return 'connected';
   }
@@ -113,7 +116,7 @@ export function resolveAdvisoryProviderReadiness(
 ): AdvisoryProviderReadiness[] {
   return ADVISORY_EXTERNAL_CAPABILITIES.map((capability) => {
     const authorization = authorizations.find(
-      (item) => item.capability === capability.id && item.authorized
+      (item) => item.capability === capability.id && item.authorized && item.revokedAt == null
     ) || null;
     const candidates = connections
       .filter((connection) => capabilityForConnection(connection) === capability.id)
