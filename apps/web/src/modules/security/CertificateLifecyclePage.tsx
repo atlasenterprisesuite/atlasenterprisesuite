@@ -33,6 +33,7 @@ export function CertificateLifecyclePage() {
   const [inventory, setInventory] = useState<CertificateInventory | null>(null);
   const [inventoryState, setInventoryState] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [reload, setReload] = useState(0);
+  const [reviewMessage, setReviewMessage] = useState('Verificación pendiente. No se han ejecutado reparaciones.');
   useEffect(() => {
     let active = true;
     setInventoryState('loading');
@@ -47,6 +48,17 @@ export function CertificateLifecyclePage() {
     });
     return () => { active = false; };
   }, [reload]);
+  const reviewBlocked = inventoryState !== 'loaded' || !inventory || inventory.targets.length === 0;
+  const verifyCurrentEvidence = () => {
+    if (reviewBlocked || !inventory) {
+      setReviewMessage('P0: inventario no disponible o vacío. No se puede verificar ni reparar.');
+      return;
+    }
+    const verified = inventory.targets.filter((target) => certificateVerdict(target, inventory.observations, Date.now()) === 'verified').length;
+    setReviewMessage(verified === inventory.targets.length
+      ? 'Inventario: todos los destinos cuentan con evidencia TLS reciente. Esto no certifica producción ni autoriza reparaciones.'
+      : 'P0: ' + (inventory.targets.length - verified) + ' destino(s) sin evidencia TLS válida. Reparación bloqueada hasta integrar el ejecutor autorizado.');
+  };
   const verifiedCount = inventory?.targets.filter((target) =>
     certificateVerdict(target, inventory.observations, Date.now()) === 'verified'
   ).length ?? 0;
@@ -130,6 +142,18 @@ export function CertificateLifecyclePage() {
           <ol className="clm-timeline"><li><strong>Marzo 2026</strong><span>Hasta 200 días</span></li><li><strong>Marzo 2027</strong><span>Hasta 100 días</span></li><li><strong>Marzo 2029</strong><span>Hasta 47 días</span></li></ol>
           <p className="clm-muted">Referencias de planificación para certificados TLS públicos; confirmar exigencias y fechas del proveedor antes de automatizar.</p></section>
       </div>
+      <section className="clm-panel" aria-labelledby="clm-review-controls-title">
+        <h2 id="clm-review-controls-title">ATLAS 777 REVIEW · Centro de verificación</h2>
+        <p>Verificación de evidencia existente, sin iniciar conexiones TLS nuevas ni modificar certificados.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBlock: '1rem' }}>
+          <button type="button" className="clm-refresh" onClick={() => { setReviewMessage('Actualizando inventario autenticado…'); setReload((value) => value + 1); }}>Verificar ahora</button>
+          <button type="button" className="clm-refresh" disabled title="Bloqueado: requiere ejecutor autenticado, autorización administrativa y auditoría del servidor">Reparar · bloqueado</button>
+          <button type="button" className="clm-refresh" onClick={() => { verifyCurrentEvidence(); setSelected((value) => Math.min(value + 1, phases.length - 1)); }}>Siguiente fase</button>
+        </div>
+        <p role="status" aria-live="polite">{reviewMessage}</p>
+        {inventoryState === 'loaded' ? <p>Última lectura autenticada: {inventory?.loadedAt ? new Date(inventory.loadedAt).toLocaleString() : 'sin evidencia'}. {reviewBlocked ? 'P0: sin destinos verificables.' : 'Use Siguiente fase para revisar el plan.'}</p> : null}
+        <p className="clm-muted">Fail-closed: sin endpoint autorizado de reparación, no se habilitan mutaciones ni se declara producción verificada.</p>
+      </section>
       <footer className="clm-panel clm-footer"><div><strong>ATLAS 777 REVIEW</strong><p>Especificación registrada en GitHub; implementación y producción no certificadas.</p></div><a href="https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/730" target="_blank" rel="noopener noreferrer">Revisar PR #730 ↗</a><span className="clm-footer-state">PRODUCCIÓN: SIN VERIFICAR</span></footer>
     </section>
   );
