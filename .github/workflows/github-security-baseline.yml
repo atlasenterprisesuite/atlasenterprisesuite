@@ -124,9 +124,9 @@ jobs:
 
           {
             echo "## ATLAS GitHub identity baseline"
-            printf "%s\n" " - Repository: \`$REPOSITORY\`"
-            printf "%s\n" " - Owner: \`$OWNER_LOGIN\`"
-            printf "%s\n" " - Owner type: \`$OWNER_TYPE\`"
+            printf "%s\n" "- Repository: \`$REPOSITORY\`"
+            printf "%s\n" "- Owner: \`$OWNER_LOGIN\`"
+            printf "%s\n" "- Owner type: \`$OWNER_TYPE\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$OWNER_TYPE" != "Organization" ]; then
