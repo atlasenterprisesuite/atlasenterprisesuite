@@ -18,7 +18,7 @@ export function TransformSpritePreview({
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   useEffect(() => { setFrame(0); setReady(false); setError(false); }, [src, sequence]);
-  const local = /^\/[a-zA-Z0-9/_-]+\.png$/.test(src) && !src.split('/').includes('..');
+  const local = src === '/atlas/transform/frames.png'; // exact same-origin path; reject //host protocol-relative URLs
   if (!validateTransformSequence(sequence) || !local) return <p role="alert">Secuencia o recurso no autorizado.</p>;
   const current = Math.min(frame, sequence.frames - 1);
   const col = current % sequence.columns;
