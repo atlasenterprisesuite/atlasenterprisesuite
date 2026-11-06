@@ -81,7 +81,8 @@ Deno.serve(async (req: Request) => {
 
     // RPC rechecks canonical organization_members + identity grants in one DB transaction.
     const { data: reservation, error: reserveError } = await admin.rpc('atlas_persona_reserve_inquiry', {
-      p_organization_id:orgId,p_actor_user_id:identity.user.id,p_template_id:settings.templateId
+      p_organization_id:orgId,p_actor_user_id:identity.user.id,p_template_id:settings.templateId,
+      p_consent_version:'atlas-persona-sandbox-v1'
     });
     if (reserveError) {
       const denied = /persona_authorization_denied/.test(reserveError.message);
