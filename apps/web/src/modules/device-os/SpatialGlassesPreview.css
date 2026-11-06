@@ -1,0 +1,20 @@
+.atlas-glasses-preview { overflow: hidden; }
+.atlas-glasses-preview-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.atlas-glasses-preview-header h2 { margin: .25rem 0; }
+.atlas-glasses-preview-header p { max-width: 60ch; }
+.atlas-glasses-preview-tabs { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
+.atlas-glasses-preview-tab { border: 1px solid rgba(130, 200, 240, .4); border-radius: 999px; padding: .6rem 1rem; background: rgba(13, 33, 59, .75); color: inherit; cursor: pointer; }
+.atlas-glasses-preview-tab.selected { background: rgba(20, 122, 194, .4); border-color: #83d7ff; }
+.atlas-glasses-preview-tab:focus-visible { outline: 3px solid #ffd36c; outline-offset: 3px; }
+.atlas-glasses-preview-stage { position: relative; isolation: isolate; min-height: 300px; display: grid; place-items: center; padding: 1.4rem; overflow: hidden; border: 1px solid rgba(94, 181, 247, .4); border-radius: 20px; background: radial-gradient(ellipse at 50% 35%, #164c78 0%, #09192c 42%, #050a18 100%); }
+.atlas-glasses-preview-stage::before { position: absolute; inset: 0; content: ''; z-index: -1; background-image: linear-gradient(rgba(89, 192, 245, .06) 1px, transparent 1px), linear-gradient(90deg, rgba(89, 192, 245, .06) 1px, transparent 1px); background-size: 28px 28px; transform: perspective(320px) rotateX(35deg) scale(1.5); }
+.atlas-glasses-preview-reticle { position: absolute; width: min(60%, 280px); aspect-ratio: 1; border: 1px solid rgba(101, 212, 255, .28); border-radius: 50%; box-shadow: 0 0 60px rgba(0, 153, 255, .1), inset 0 0 60px rgba(0, 153, 255, .1); pointer-events: none; }
+.atlas-glasses-preview-hud { position: relative; width: min(100%, 480px); padding: 1.5rem; background: rgba(3, 21, 39, .9); border: 1px solid rgba(125, 218, 255, .65); border-radius: 18px; box-shadow: 0 12px 48px rgba(0, 0, 0, .5); color: #edfaff; }
+.atlas-glasses-preview-kicker { font-size: .7rem; font-weight: 700; letter-spacing: .14em; color: #a7def8; }
+.atlas-glasses-preview-hud h3 { font-size: clamp(1.15rem, 3vw, 1.6rem); color: white; margin: .6rem 0; }
+.atlas-glasses-preview-hud p { color: #d0e3f2; }
+.atlas-glasses-preview-hud ul { padding-left: 1.2rem; margin-bottom: 0; }
+.atlas-glasses-preview-hud li { margin-top: .45rem; }
+.atlas-glasses-preview-footnote { font-size: .85rem; margin-top: .8rem; }
+@media (max-width: 600px) { .atlas-glasses-preview-stage { min-height: 280px; padding: .8rem; } .atlas-glasses-preview-hud { padding: 1.1rem; } }
+@media (prefers-reduced-motion: reduce) { .atlas-glasses-preview-stage *, .atlas-glasses-preview-stage::before { animation: none !important; transition: none !important; } }

@@ -4,6 +4,7 @@ import { LocalControlPlanePanel } from './LocalControlPlanePanel';
 import { LocalCorePanel } from './LocalCorePanel';
 import { DeviceEvolutionPanel } from './DeviceEvolutionPanel';
 import { RemoteAssistPanel } from './RemoteAssistPanel';
+import { SpatialGlassesPreview } from './SpatialGlassesPreview';
 import {
   ATLAS_DEVICE_PROFILES,
   getAtlasDeviceProfile,
@@ -78,6 +79,8 @@ export function DeviceOSPage() {
           ))}
         </div>
       </article>
+
+      {selectedId === 'glasses' ? <SpatialGlassesPreview /> : null}
 
       <div className="stat-grid" aria-label="Selected device readiness">
         <article><strong>{readiness.softwareReady}</strong><span>software capabilities ready</span></article>
