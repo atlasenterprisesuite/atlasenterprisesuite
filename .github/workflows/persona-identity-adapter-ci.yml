@@ -1,0 +1,23 @@
+name: ATLAS Persona Identity Adapter CI
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["feat/persona-identity-adapter-777-20261106"]
+
+permissions:
+  contents: read
+
+jobs:
+  persona-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify Persona signed-event contract
+        run: npx vitest run tests/unit/persona-verification.test.ts
+      - name: Typecheck
+        run: npm run typecheck
