@@ -50,7 +50,10 @@ export async function issueAcademyCredential(request: AcademyIssueRequest, store
       !Array.isArray(actor.capabilities) || !actor.capabilities.includes('academy:issue')) {
     throw new Error('Unauthorized credential issuance');
   }
-  // Canonical tuple binds idempotency to all security-relevant request dimensions.\n  // The durable adapter must store and compare this exact tuple under a unique key.\n  const requestFingerprint = JSON.stringify([actor.organizationId, actor.userId, request.enrollmentId, request.courseVersion, request.rubricVersion, request.evidenceDigest]);\n  return store.transaction(async tx => {
+  // Canonical tuple binds idempotency to all security-relevant request dimensions.
+  // The durable adapter must store and compare this exact tuple under a unique key.
+  const requestFingerprint = JSON.stringify([actor.organizationId, actor.userId, request.enrollmentId, request.courseVersion, request.rubricVersion, request.evidenceDigest]);
+  return store.transaction(async tx => {
     const enrollment = await tx.lockEnrollment({
       enrollmentId: request.enrollmentId, organizationId: actor.organizationId, userId: actor.userId
     });
