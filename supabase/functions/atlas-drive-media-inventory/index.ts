@@ -86,6 +86,15 @@ export async function handleDriveMediaInventoryRequest(
   if (typeof orgId !== 'string' || !UUID.test(orgId)) {
     return json(400, { error: 'INVALID_ORGANIZATION_ID' }, cors);
   }
+  if (
+    typeof input.driveFileId !== 'string' ||
+    typeof input.name !== 'string' ||
+    typeof input.mimeType !== 'string' ||
+    typeof input.sha256 !== 'string'
+  ) return json(400, { error: 'INVALID_MEDIA_METADATA' }, cors);
+  if (input.collection !== 'production-covers' && input.collection !== 'chatgpt-library') {
+    return json(400, { error: 'INVALID_MEDIA_COLLECTION' }, cors);
+  }
 
   const authHeaders = { apikey: key, Authorization: 'Bearer ' + token };
   const fetcher = deps.fetchImpl ?? fetch;
@@ -115,11 +124,11 @@ export async function handleDriveMediaInventoryRequest(
     const scope = { tenantId: orgId, organizationId: orgId };
     const asset = registerDriveMedia({
       scope,
-      driveFileId: String(input.driveFileId ?? ''),
-      name: String(input.name ?? ''),
-      mimeType: String(input.mimeType ?? ''),
-      sha256: String(input.sha256 ?? ''),
-      collection: input.collection === 'chatgpt-library' ? 'chatgpt-library' : 'production-covers'
+      driveFileId: input.driveFileId,
+      name: input.name,
+      mimeType: input.mimeType,
+      sha256: input.sha256,
+      collection: input.collection
     }, { scope, permissions: ['integrations.write'] });
 
     // No persisted record, Drive identifier, source image, or rights claim in the response.

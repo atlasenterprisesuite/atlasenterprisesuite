@@ -117,6 +117,8 @@ describe('ATLAS Drive media authenticated HTTP boundary — fail closed', () => 
     expect((await invoke({ ...asset, mimeType: 'text/html' })).status).toBe(400);
     expect((await invoke({ ...asset, sha256: 'not-a-hash' })).status).toBe(400);
     expect((await invoke({ ...asset, organizationId: 'invalid' })).status).toBe(400);
+    expect((await invoke({ ...asset, collection: 'arbitrary-source' })).status).toBe(400);
+    expect((await invoke({ ...asset, name: { forged: 'name' } })).status).toBe(400);
     expect((await invoke(asset, { env: () => undefined })).status).toBe(503);
   });
 
