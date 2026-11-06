@@ -261,6 +261,7 @@ async function approve(ctx: MemoryContext, input: Record<string, any>) {
       memory_not_found: 404,
       memory_not_approvable: 409,
       memory_superseded_source_invalid: 409,
+      memory_approval_evidence_missing: 409,
       memory_approval_conflict: 409,
       memory_supersession_conflict: 409
     };
