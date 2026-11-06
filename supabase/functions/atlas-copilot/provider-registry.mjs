@@ -1,4 +1,6 @@
 const ORDER=Object.freeze(['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','codex-sovereign']);
+const SAFE_PROBE_ERRORS=new Set(['provider_not_configured','provider_verification_required','provider_rate_limited','provider_auth_failed','provider_unavailable','capability_unavailable']);
+function safeProbeError(error){return SAFE_PROBE_ERRORS.has(error)?error:'provider_unavailable';}
 function stateFor(probe){if(probe?.verified===true)return'verified';if(probe?.configured!==true||probe?.error==='provider_not_configured')return'configuration-required';if(probe?.error==='provider_verification_required')return'configured-unverified';if(probe?.error==='provider_rate_limited')return'rate-limited';return'unavailable';}
 function safeDescriptor(adapter){
   const raw=adapter?.descriptor?.()||{};
@@ -25,14 +27,26 @@ export function createProviderRegistry({providers=[]}={}){
     return Promise.all(ORDER.map(async id=>{
       const adapter=get(id);
       if(!adapter)return {id,state:'configuration-required',configured:false,verified:false,model:null,capabilities:[],profiles:[],error:'provider_not_configured'};
-      const descriptor=safeDescriptor(adapter);let probe;
-      try{probe=await adapter.probe({profile});}catch(error){probe={configured:descriptor.configured,verified:false,provider:id,model:descriptor.model||descriptor.models?.[profile]||null,error:error?.code||'provider_unavailable'};}
+      const descriptor=safeDescriptor(adapter);
+      const configuredModel=descriptor.models?.[profile]||descriptor.model||null;
+      // A different configured profile cannot authorize this profile.
+      if(!descriptor.configured||!descriptor.profiles.includes(profile)||typeof configuredModel!=='string'||!configuredModel.trim()){
+        return {id,state:'configuration-required',configured:false,verified:false,model:configuredModel,
+          capabilities:descriptor.capabilities,profiles:descriptor.profiles,error:'provider_not_configured'};
+      }
+      let probe;
+      try{probe=await adapter.probe({profile});}
+      catch(error){probe={configured:true,verified:false,model:configuredModel,error:safeProbeError(error?.code)};}
+      // Never trust a probe claiming success for a different/unconfigured model.
+      const verified=probe?.configured===true&&probe?.verified===true&&probe?.model===configuredModel;
+      const error=verified?null:(probe?.verified===true?'provider_verification_required':safeProbeError(probe?.error));
+      const result={configured:probe?.configured===true,verified,error};
       return {
         id,
-        state:stateFor(probe),
-        configured:probe?.configured===true,
-        verified:probe?.verified===true,
-        model:probe?.model||descriptor.model||descriptor.models?.[profile]||null,
+        state:stateFor(result),
+        configured:result.configured,
+        verified,
+        model:configuredModel,
         capabilities:descriptor.capabilities,
         profiles:descriptor.profiles,
         api:descriptor.api,
@@ -41,7 +55,7 @@ export function createProviderRegistry({providers=[]}={}){
         region:descriptor.region,
         feature_support:descriptor.feature_support,
         prompt_cache:descriptor.prompt_cache,
-        error:probe?.error||null
+        error
       };
     }));
   }
