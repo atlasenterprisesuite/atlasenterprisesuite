@@ -7,5 +7,9 @@ describe('Growth Engine F1 fail closed', () => {
   it('denies revoked tenant access', () => expect(transitionGrowthLead({ ...base, verifiedTenantAccess: false }, 'qualified', 'org-a')).toEqual({ allowed: false, reason: 'ACCESS_DENIED' }));
   it('denies skipped stages', () => expect(transitionGrowthLead(base, 'customer', 'org-a')).toEqual({ allowed: false, reason: 'INVALID_TRANSITION' }));
   it('requires contact consent for enrollment', () => expect(transitionGrowthLead({ ...base, stage: 'qualified', consentToContact: false }, 'enrolled', 'org-a')).toEqual({ allowed: false, reason: 'CONSENT_REQUIRED' }));
+  it('rejects malformed authorization and consent flags', () => {
+    expect(transitionGrowthLead({ ...base, verifiedTenantAccess: 'true' as unknown as boolean }, 'qualified', 'org-a')).toEqual({ allowed: false, reason: 'INVALID_INPUT' });
+    expect(transitionGrowthLead({ ...base, consentToContact: undefined as unknown as boolean }, 'qualified', 'org-a')).toEqual({ allowed: false, reason: 'INVALID_INPUT' });
+  });
   it('denies unknown stages', () => expect(transitionGrowthLead({ ...base, stage: 'hacked' as GrowthLead['stage'] }, 'qualified', 'org-a')).toEqual({ allowed: false, reason: 'INVALID_INPUT' }));
 });
