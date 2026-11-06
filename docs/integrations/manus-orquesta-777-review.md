@@ -40,7 +40,7 @@ Manus agent execution **must not** be conflated with an unauthenticated `/app/..
 | 777 bounded execution | `scripts/atlas-777-autonomous-executor.mjs` | Keep deny by default for merge/deploy/secret operations |
 | Retry vs. manual review policy | `packages/execution/src/retry-policy.ts` | Added pure, deterministic policy with negative tests |
 | Dead Letter Queue | Existing execution persistence + future authenticated adapter | **Not implemented**. The pure decision `dead_letter` does not enqueue a message |
-| Manus task adapter | Future provider-neutral integration in existing Orchestrator | **Not implemented**; requires API access and contract |
+| Manus task adapter | `apps/atlas-orchestrator/src/providers/manus-v2.ts` | **Preflight contract implemented; network dispatch, durable claim and API credential flow not enabled** |
 | WebSocket ephemeral auth | Existing ATLAS Identity/security layer | **Not verified**; no ticket issuer/revocation code supplied |
 | Streamlit dashboard | `/work`, ATLAS Manager and shared observability | Do not duplicate UI with a second dashboard |
 | CI orchestration | Existing npm/Vitest/GitHub Actions gates | Do not overwrite with a standalone Python+RabbitMQ pipeline |
@@ -50,6 +50,20 @@ Manus agent execution **must not** be conflated with an unauthenticated `/app/..
 The pure `planAtlasExecutionRecovery()` helper returns one of `retry_scheduled`, `dead_letter` or `blocked`; it does **not** execute/replay/publish/ACK tasks. It validates trusted actor/task tenant+organization equality, 40-char source SHA and evidence SHA, authorization and bounded attempt/backoff limits. Unknown/security errors block; permanent errors and exhausted transient attempts require manual review.
 
 `tests/unit/atlas-execution-retry-policy.test.ts` verifies bounded exponential backoff, exhausted attempts, rejected permissions, mismatched tenants, invalid evidence and malformed retry parameters.
+
+
+## 2026-11-06 next increment: Manus API v2 dispatch preflight
+
+The server-only `prepareManusV2Dispatch()` module validates the active execution scope, tenant isolation, authorized permission `execution.delegate.manus`, exactly requested read-only capability, approved source SHA, budget approval, authenticated durable-claim evidence and opt-in execution gate. It prepares a **private** v2 `task.create` request with `clear_connectors: true`, `agent_profile: lite`, and no inherited account connectors, project ID, website target, custom tool permissions or credentials.
+
+Manus API reference: https://open.manus.ai/docs/v2/task.create. The provider documentation states that omitted/empty message connectors can inherit account defaults; `clear_connectors: true` is required to prevent that inheritance. Built-in Manus tools may still exist, so no claim is made that the task is a fully isolated read-only sandbox.
+
+Implementation: `apps/atlas-orchestrator/src/providers/manus-v2.ts`
+Negative tests: `tests/unit/manus-v2-dispatch-contract.test.ts`
+
+This is only a **pure request preparation** boundary, intentionally without `fetch`, provider secrets, network calls or active task creation. An upstream boolean `durableClaimVerified` alone does not create an atomic durable claim: it MUST be supplied by a trusted server-side persistence operation, never from client JSON. The real dispatch adapter still needs an authoritative atomic-claim + persist-result/reconcile state machine. API `task.create` does not document an idempotency header, so unsafe automatic repetition of an uncertain POST is prohibited. Provider-side non-execution and connectors restrictions must be verified separately.
+
+P0 remains NO-GO: real Manus authentication, signed webhook validation, external execution authorization, durable DLQ, independent review, E2E and post-deployment verification are outstanding.
 
 ## Missing P0 for real integration
 
