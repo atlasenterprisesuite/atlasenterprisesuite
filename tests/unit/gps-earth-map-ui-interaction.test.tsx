@@ -55,13 +55,13 @@ describe('ATLAS Earth GPS 4D selected-point UI interaction', () => {
   it('accepts explicitly supplied zero coordinates but rejects an empty coordinate', async () => {
     window.history.replaceState(null, '', '/gps?lat=0&lon=0');
     const view = render(<Gps4DPage />);
-    const google = await screen.findByRole('link', { name: /Google Maps \\(servicio externo\\)/ });
+    const google = await screen.findByRole('link', { name: /Google Maps \(servicio externo\)/ });
     expect(new URL(google.getAttribute('href')!).searchParams.get('query')).toBe('0,0');
     view.unmount();
 
     window.history.replaceState(null, '', '/gps?lat=&lon=0');
     render(<Gps4DPage />);
-    expect(screen.queryByRole('link', { name: /Google Maps \\(servicio externo\\)/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Google Maps \(servicio externo\)/ })).toBeNull();
   });
 
 });
