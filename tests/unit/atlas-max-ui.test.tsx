@@ -34,6 +34,12 @@ describe('ATLAS MAX client experience', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
+  it('does not mark Pro as MAX from unrelated entitlement evidence', () => {
+    render(<AtlasMaxPage entitlement={{ status: 'allowed', planId: 'pro', evidenceRef: 'entitlement:pro' }} usage={{ used: 4, limit: 10, evidenceRef: 'meter:verified' }} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/evidence required/i);
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
   it('discloses degraded state without inventing operational metrics', () => {
     render(<AtlasMaxPage entitlement={{ status: 'degraded', reason: 'metering_unavailable' }} usage={{ used: 0, limit: 0 }} />);
     expect(screen.getByRole('status')).toHaveTextContent(/degraded/i);
