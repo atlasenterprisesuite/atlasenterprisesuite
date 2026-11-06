@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePersonaInquiryEvent, verifyPersonaWebhookSignature } from '../../packages/compliance/persona';
+import { verifyAndResolvePersonaInquiryEvent, verifyPersonaWebhookSignature } from '../../packages/compliance/persona';
 
 const now = new Date('2026-11-06T12:00:00.000Z');
 const timestamp = Math.floor(now.getTime() / 1000);
@@ -28,8 +28,14 @@ async function sign(body: string, key = secret, time = timestamp) {
   return 't=' + time + ',v1=' +
     Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
+async function verified(rawBody: string, overrides: Partial<typeof binding> = {}, signatureHeader?: string | null) {
+  return verifyAndResolvePersonaInquiryEvent({
+    rawBody, signatureHeader: signatureHeader === undefined ? await sign(rawBody) : signatureHeader,
+    webhookSecret: secret, now, ...binding, ...overrides
+  });
+}
 
-describe('ATLAS Persona signature verification — negative boundary', () => {
+describe('ATLAS Persona HMAC — negative boundary', () => {
   it('accepts a correct HMAC on untouched raw body', async () => {
     const rawBody = eventBody('inquiry.approved', 'approved');
     expect(await verifyPersonaWebhookSignature({
@@ -51,7 +57,7 @@ describe('ATLAS Persona signature verification — negative boundary', () => {
       rawBody, signatureHeader: header, webhookSecret: '', now
     })).toBe(false);
   });
-  it('blocks delayed and future replays', async () => {
+  it('blocks delayed and future replay attempts', async () => {
     const rawBody = eventBody('inquiry.approved', 'approved');
     for (const time of [timestamp - 301, timestamp + 301]) {
       expect(await verifyPersonaWebhookSignature({
@@ -59,7 +65,7 @@ describe('ATLAS Persona signature verification — negative boundary', () => {
       })).toBe(false);
     }
   });
-  it('accepts an active signature during secret rotation', async () => {
+  it('accepts the active HMAC during a signing-secret rotation', async () => {
     const rawBody = eventBody('inquiry.approved', 'approved');
     expect(await verifyPersonaWebhookSignature({
       rawBody, signatureHeader: (await sign(rawBody, 'old-secret')) + ' ' + (await sign(rawBody)),
@@ -68,46 +74,46 @@ describe('ATLAS Persona signature verification — negative boundary', () => {
   });
 });
 
-describe('ATLAS Persona signed inquiry decision — no automatic privilege', () => {
-  it('only maps approved + approved to an identity-proofing approval', () => {
-    expect(resolvePersonaInquiryEvent({
-      rawBody: eventBody('inquiry.approved', 'approved'), ...binding
-    }).decision).toBe('approved');
-    expect(resolvePersonaInquiryEvent({
-      rawBody: eventBody('inquiry.completed', 'completed'), ...binding
-    }).decision).toBe('pending');
-    expect(resolvePersonaInquiryEvent({
-      rawBody: eventBody('inquiry.approved', 'completed'), ...binding
-    }).decision).toBe('ignored');
-    expect(resolvePersonaInquiryEvent({
-      rawBody: eventBody('verification.passed', 'approved'), ...binding
-    }).decision).toBe('ignored');
+describe('ATLAS Persona verdict requires a verified signature in the same call', () => {
+  it('returns an approved proofing event only from a correctly signed matching inquiry', async () => {
+    const approved = await verified(eventBody('inquiry.approved', 'approved'));
+    expect(approved.decision).toBe('approved');
+    expect(approved.inquiryId).toBe(binding.expectedInquiryId);
+    expect(approved.eventId).toBe('evt_TEST_1');
   });
-  it('maps denial and review to non-approval states', () => {
-    expect(resolvePersonaInquiryEvent({
-      rawBody: eventBody('inquiry.declined', 'declined'), ...binding
-    }).decision).toBe('rejected');
-    expect(resolvePersonaInquiryEvent({
-      rawBody: eventBody('inquiry.marked-for-review', 'needs-review'), ...binding
-    }).decision).toBe('review');
+  it('never maps completed, unrelated, or conflicting states to approved', async () => {
+    expect((await verified(eventBody('inquiry.completed', 'completed'))).decision).toBe('pending');
+    expect((await verified(eventBody('inquiry.approved', 'completed'))).decision).toBe('ignored');
+    expect((await verified(eventBody('verification.passed', 'approved'))).decision).toBe('ignored');
   });
-  it('rejects different subject, tenant inquiry, or verification template', () => {
+  it('maps denied and review results without privileged side effects', async () => {
+    expect((await verified(eventBody('inquiry.declined', 'declined'))).decision).toBe('rejected');
+    expect((await verified(eventBody('inquiry.marked-for-review', 'needs-review'))).decision).toBe('review');
+  });
+  it('rejects a plausible fake approval when unsigned or signed with an attacker key', async () => {
+    const rawBody = eventBody('inquiry.approved', 'approved');
+    await expect(verified(rawBody, {}, null)).rejects.toThrow('persona_signature_invalid');
+    await expect(verified(rawBody, {}, await sign(rawBody, 'forged-secret')))
+      .rejects.toThrow('persona_signature_invalid');
+    await expect(verified(rawBody, {}, '')).rejects.toThrow('persona_signature_invalid');
+  });
+  it('rejects a body edited after its approval signature was computed', async () => {
+    const original = eventBody('inquiry.completed', 'completed');
+    const modified = eventBody('inquiry.approved', 'approved');
+    await expect(verified(modified, {}, await sign(original))).rejects.toThrow('persona_signature_invalid');
+  });
+  it('rejects cross-subject, cross-inquiry, and cross-template swaps even with valid signatures', async () => {
     for (const substitute of [{ referenceId: 'other-subject' }, { inquiryId: 'inq_OTHER' },
       { templateId: 'itmpl_OTHER' }]) {
-      expect(() => resolvePersonaInquiryEvent({
-        rawBody: eventBody('inquiry.approved', 'approved', substitute), ...binding
-      })).toThrow('persona_binding_mismatch');
+      await expect(verified(eventBody('inquiry.approved', 'approved', substitute)))
+        .rejects.toThrow('persona_binding_mismatch');
     }
   });
-  it('rejects malformed events and incomplete server-owned bindings', () => {
-    expect(() => resolvePersonaInquiryEvent({
-      rawBody: 'not-json', ...binding
-    })).toThrow('persona_invalid_payload');
-    expect(() => resolvePersonaInquiryEvent({
-      rawBody: eventBody('inquiry.approved', 'approved'), ...binding, expectedReferenceId: ''
-    })).toThrow('persona_binding_missing');
-    expect(() => resolvePersonaInquiryEvent({
-      rawBody: JSON.stringify({ data: { type: 'event' } }), ...binding
-    })).toThrow('persona_invalid_payload');
+  it('rejects malformed events and incomplete server-owned bindings', async () => {
+    await expect(verified('not-json')).rejects.toThrow('persona_invalid_payload');
+    await expect(verified(eventBody('inquiry.approved', 'approved'), { expectedReferenceId: '' }))
+      .rejects.toThrow('persona_binding_missing');
+    await expect(verified(JSON.stringify({ data: { type: 'event' } })))
+      .rejects.toThrow('persona_invalid_payload');
   });
 });
