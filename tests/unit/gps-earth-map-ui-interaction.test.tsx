@@ -36,9 +36,12 @@ describe('ATLAS Earth GPS 4D selected-point UI interaction', () => {
     const apple = screen.getByRole('link', { name: /Apple Maps \(servicio externo\)/ });
     expect(new URL(google.getAttribute('href')!).searchParams.get('query')).toBe('48.8566,2.3522');
     expect(new URL(apple.getAttribute('href')!).searchParams.get('ll')).toBe('48.8566,2.3522');
+    expect(screen.getByText(/Al abrir Google Maps o Apple Maps/)).toHaveAttribute('id', 'gps4d-external-provider-privacy');
     for (const link of [google, apple]) {
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(link).toHaveAttribute('referrerpolicy', 'no-referrer');
+      expect(link).toHaveAttribute('aria-describedby', 'gps4d-external-provider-privacy');
     }
   });
 
