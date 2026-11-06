@@ -30,6 +30,8 @@ export function createToolGateway({allowedComputerDomains=[]}={}){
       const dedupeKey=stable(proposalCore(item));
       if(seen.has(dedupeKey))continue;
       seen.add(dedupeKey);
+      if(!isComputerAction(item)&&item.required_permissions.length===0){denied.push({...item,decision_reason:'permission_policy_missing'});continue;}
+      if(isComputerAction(item)&&!item.required_permissions.includes('computer.use')){denied.push({...item,decision_reason:'permission_policy_missing'});continue;}
       if(item.required_permissions.some(permission=>!has(context,permission))){denied.push({...item,decision_reason:'permission_denied'});continue;}
       if(isComputerAction(item)){
         if(!item.target_domain||!domainAllowlist.has(item.target_domain)){denied.push({...item,decision_reason:'domain_not_allowed'});continue;}
