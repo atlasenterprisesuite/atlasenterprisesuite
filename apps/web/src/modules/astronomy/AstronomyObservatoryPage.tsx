@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { equatorialToHorizontal, validateLunarImage, verifyImageBytes } from './astronomyMath.mjs';
+import { SkyLensPanel } from './SkyLensPanel';
 
 type Confidence='confirmed'|'probable'|'hypothesis';
 const formations=[{name:'Mare Imbrium',confidence:'hypothesis'},{name:'Mare Tranquillitatis',confidence:'hypothesis'},{name:'Tycho',confidence:'hypothesis'}] as const;
@@ -32,13 +33,15 @@ export function AstronomyObservatoryPage() {
    catch {setError('Coordenadas inválidas. Cálculo bloqueado.');}
  }
  return <main style={{maxWidth:1100,margin:'0 auto',padding:'clamp(16px,4vw,48px)',color:'inherit'}}>
-   <p>ATLAS SCIENCE / ASTRONOMY 777</p><h1>Observatorio lunar</h1>
+   <p>ATLAS SCIENCE / ASTRONOMY 777</p><h1>Observatorio astronómico</h1>
    <p>Investigación local: los originales no se envían al servidor. Los cálculos requieren coordenadas de una efeméride identificable. No se infieren cráteres automáticamente.</p>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,320px),1fr))',gap:24}}>
-     <section aria-label="Fotografía lunar">
-       <h2>Fotografía original</h2>
+     <section aria-label="Fotografía astronómica">
+       <h2>Fotografía original del cielo</h2>
        <label htmlFor="lunar-image">Seleccionar imagen JPEG, PNG o WebP</label>
        <input id="lunar-image" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void selectFile(e.target.files?.[0])}/>
+       <label htmlFor="sky-camera" style={{display:'block',marginTop:12}}>Tomar nueva fotografía con el iPhone</label>
+       <input id="sky-camera" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={e=>void selectFile(e.target.files?.[0])}/>
        {url&&<img src={url} alt="Fotografía lunar original sin modificaciones" style={{width:'100%',maxHeight:460,objectFit:'contain',background:'#101827'}}/>}
        {file&&<><p>Original conservado en memoria durante esta sesión: {file.name}</p><p style={{overflowWrap:'anywhere'}}>SHA-256: <code>{sha}</code></p></>}
        <p>No hay persistencia ni sincronización habilitada. Descarga o conserva el archivo original por separado.</p>
@@ -62,6 +65,7 @@ export function AstronomyObservatoryPage() {
        {result&&<p role="status">Azimut: {result.azimuthDegrees.toFixed(2)}° · Elevación: {result.altitudeDegrees.toFixed(2)}°. Resultado geométrico; procedencia de entradas no verificada.</p>}
      </section>
    </div>
+   <SkyLensPanel file={file} originalSha256={sha}/>
    {error&&<p role="alert">{error}</p>}
  </main>;
 }
