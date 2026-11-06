@@ -42,7 +42,7 @@ GRANT USAGE ON SCHEMA academy_f232 TO academy_f232_reader;
 GRANT SELECT, INSERT ON academy_f232.enrollments TO academy_f232_reader;
 SET ROLE academy_f232_reader;
 -- Fail closed if tenant context is absent or blank; never infer tenant from a request.
-DO $
+DO $academy_missing_scope$
 BEGIN
  IF EXISTS (SELECT 1 FROM academy_f232.enrollments) THEN
    RAISE EXCEPTION 'P0: enrollment visible without tenant context';
@@ -63,7 +63,7 @@ BEGIN
    RAISE EXCEPTION 'P0: write accepted with blank tenant context';
  EXCEPTION WHEN insufficient_privilege THEN NULL;
  END;
-END $;
+END $academy_missing_scope$;
 SELECT set_config('app.tenant_id','org-a',true);
 DO $$
 BEGIN
