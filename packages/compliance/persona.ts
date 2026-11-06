@@ -1,7 +1,7 @@
 /**
  * ATLAS 777 REVIEW — Persona identity-proofing adapter.
  * Does not authenticate ATLAS users, grant permissions or store PII.
- * Only call resolvePersonaInquiryEvent after checking the raw-body HMAC.
+ * Public decision API verifies the raw-body HMAC before parsing a verdict.
  */
 export type PersonaDecision = 'approved' | 'rejected' | 'review' | 'pending' | 'ignored';
 export interface PersonaVerifiedEvent {
@@ -55,7 +55,7 @@ export async function verifyPersonaWebhookSignature(input: {
 /** Bind a *signed* Persona inquiry to an existing ATLAS server-owned record.
  * Consumer MUST enforce tenant-scoped lookup, atomic idempotency and audit.
  */
-export function resolvePersonaInquiryEvent(input: {
+function resolvePersonaInquiryEvent(input: {
   rawBody: string; expectedInquiryId: string;
   expectedReferenceId: string; expectedTemplateId: string;
 }): PersonaVerifiedEvent {
@@ -95,4 +95,22 @@ export function resolvePersonaInquiryEvent(input: {
     (status === 'needs-review' || status === 'pending')) decision = 'review';
   else if (eventName === 'inquiry.completed' && status === 'completed') decision = 'pending';
   return { eventId, inquiryId, referenceId, templateId, eventName, decision, occurredAt };
+}
+
+
+/**
+ * Single fail-closed entry point for Persona decisions.
+ *
+ * Signature verification and tenant-owned inquiry binding MUST both succeed
+ * before the caller can receive an approval-shaped event.
+ * Persistence is a separate, transactional responsibility of the caller.
+ */
+export async function verifyAndResolvePersonaInquiryEvent(input: {
+  rawBody: string; signatureHeader: string | null; webhookSecret: string;
+  expectedInquiryId: string; expectedReferenceId: string; expectedTemplateId: string;
+  now?: Date;
+}): Promise<PersonaVerifiedEvent> {
+  const valid = await verifyPersonaWebhookSignature(input);
+  if (!valid) throw new Error('persona_signature_invalid');
+  return resolvePersonaInquiryEvent(input);
 }
