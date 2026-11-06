@@ -48,7 +48,7 @@ export function createOpenAICompatibleChatAdapter({id,apiKey,baseUrl,models,back
     }catch{return {configured:true,verified:false,provider,model,error:'provider_unavailable'};}
     if(!response.ok){const error=errorForStatus(provider,response.status);return {configured:true,verified:false,provider,model,error:error.code};}
     const payload=await response.json().catch(()=>null);
-    const available=Array.isArray(payload?.data)?payload.data.some(item=>String(item?.id||'')===model):true;
+    const available=Array.isArray(payload?.data)&&payload.data.some(item=>String(item?.id||'')===model);
     return available
       ?{configured:true,verified:true,provider,model,error:null}
       :{configured:true,verified:false,provider,model,error:'provider_verification_required'};
