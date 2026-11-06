@@ -48,6 +48,15 @@
 .gps4d-actions a:hover { border-color:rgba(105,192,255,.85); }
 .gps4d-actions a:focus-visible { outline:3px solid #78d4ff; outline-offset:2px; }
 
+.gps4d-provider-privacy {
+  grid-column:1 / -1;
+  margin:0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--muted,#c5d1e7);
+}
+
+
 .gps4d-alternatives { display:grid; gap:8px; margin-bottom:16px; }
 .gps4d-alternatives button { text-align:left; padding:8px 10px; }
 .gps4d-alternatives button[aria-pressed="true"] { outline:2px solid currentColor; }
