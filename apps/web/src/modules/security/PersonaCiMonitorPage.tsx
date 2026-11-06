@@ -82,12 +82,14 @@ export function PersonaCiMonitorPage() {
       });
       setError(false);
     } catch {
-      if (!request.signal.aborted) setError(true);
+      if (controller.current === request) setError(true);
     } finally {
       window.clearTimeout(timeout);
-      if (controller.current === request) controller.current = null;
-      busy.current = false;
-      if (!request.signal.aborted) setRefreshing(false);
+      if (controller.current === request) {
+        controller.current = null;
+        busy.current = false;
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -103,7 +105,10 @@ export function PersonaCiMonitorPage() {
     return () => {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', resume);
-      controller.current?.abort();
+      const current = controller.current;
+      controller.current = null;
+      busy.current = false;
+      current?.abort();
     };
   }, [refresh]);
 
