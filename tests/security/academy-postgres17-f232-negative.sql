@@ -36,6 +36,12 @@ INSERT INTO academy_f232.enrollments VALUES
  ('enroll-b','org-b','user-b','active'),
  ('enroll-revoked','org-a','user-a','revoked');
 ALTER TABLE academy_f232.enrollments ENABLE ROW LEVEL SECURITY;
+-- The postgres service administrator bypasses RLS; verify using a restricted role.
+CREATE ROLE academy_f232_reader NOLOGIN NOSUPERUSER NOBYPASSRLS;
+GRANT academy_f232_reader TO CURRENT_USER;
+GRANT USAGE ON SCHEMA academy_f232 TO academy_f232_reader;
+GRANT SELECT ON academy_f232.enrollments TO academy_f232_reader;
+SET ROLE academy_f232_reader;
 SELECT set_config('app.tenant_id','org-a',true);
 DO $$
 BEGIN
@@ -48,7 +54,8 @@ BEGIN
  IF EXISTS (SELECT 1 FROM academy_f232.enrollments WHERE id='enroll-revoked' AND status='active') THEN
    RAISE EXCEPTION 'P0: revoked enrollment accepted';
  END IF;
-END $$;
+END $;
+RESET ROLE;
 -- Simulate an atomic issuance/audit unit. A failed audit must undo issuance.
 DO $$
 BEGIN
