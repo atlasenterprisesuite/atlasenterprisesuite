@@ -51,7 +51,9 @@ describe('ATLAS Bible OS functional P0', () => {
   it('limits the Mark 16 folio source to one directly linked manuscript witness', () => {
     const source = BIBLE_OS_SOURCES.find(item => item.id === 'sinaiticus-mark16-folio-228');
     const variant = BIBLE_OS_VARIANTS.find(item => item.id === 'mark-long-ending');
-    expect(source?.url).toBe('https://www.codexsinaiticus.org/en/manuscript.aspx?book=35');
+    expect(source?.url).toBe('https://www.codexsinaiticus.org/en/manuscript.aspx?book=34&chapter=16&lid=en&side=r&verse=8&zoomslider=0');
+    expect(new URL(source?.url ?? 'https://example.invalid').searchParams.get('book')).toBe('34');
+    expect(new URL(source?.url ?? 'https://example.invalid').searchParams.get('chapter')).toBe('16');
     expect(source?.scope).toContain('This is one witness, not all textual traditions.');
     expect(source?.scope).toContain('reproduction rights not cleared');
     expect(variant?.sourceIds).toContain('sinaiticus-mark16-folio-228');
