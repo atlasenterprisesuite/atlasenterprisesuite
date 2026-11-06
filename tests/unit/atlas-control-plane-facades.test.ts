@@ -184,4 +184,22 @@ describe('ATLAS unified control-plane facades', () => {
       }]
     })).toThrow('authenticated_execution_evidence_required:provider_receipt');
   });
+
+  it('does not turn semantic route capabilities into requested permissions', () => {
+    const routed = routeSemanticIntent({
+      requestId: 'req-unscoped',
+      source: 'assistant',
+      objective: 'Review employee payroll information',
+      moduleHint: 'payroll'
+    }, [{
+      id: 'payroll.review',
+      ownerModule: 'payroll',
+      capabilities: ['payroll.read', 'payroll.write', 'payroll.export'],
+      signals: ['payroll', 'review']
+    }]);
+
+    expect(routed.routeId).toBe('payroll.review');
+    expect(routed.requestedCapabilities).toEqual([]);
+  });
+
 });
