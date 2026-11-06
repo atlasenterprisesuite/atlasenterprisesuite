@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './transform-sprite-preview.css';
 
 export type TransformSequence = Readonly<{ columns: number; rows: number; frames: number; fps: number }>;
