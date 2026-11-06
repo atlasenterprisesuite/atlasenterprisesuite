@@ -7,10 +7,12 @@ on:
       - 'apps/web/public/atlas/transform/**'
       - 'docs/creator/ATLAS_TRANSFORM_ENGINE_ASSET_MANIFEST.json'
       - 'scripts/creator/verify-transform-sprite.mjs'
+      - 'scripts/creator/verify-transform-review.mjs'
       - '.github/workflows/atlas-transform-engine-asset-gate.yml'
   workflow_dispatch:
 permissions:
   contents: read
+  pull-requests: read
 jobs:
   verify-sprite:
     runs-on: ubuntu-latest
@@ -22,5 +24,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Verify manifest, exact binary SHA and independent visual review
+      - name: Verify image structure and SHA fail-closed
         run: node scripts/creator/verify-transform-sprite.mjs
+      - name: Verify independent GitHub approval, permissions and exact HEAD
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATLAS_PR_NUMBER: ${{ github.event.pull_request.number }}
+          ATLAS_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ATLAS_PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node scripts/creator/verify-transform-review.mjs
