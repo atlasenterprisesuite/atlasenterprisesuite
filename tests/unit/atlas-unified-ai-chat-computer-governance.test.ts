@@ -120,4 +120,16 @@ describe('ATLAS managed runtime computer-use governance', () => {
     expect(result.accepted).toHaveLength(0);
     expect(result.denied).toEqual([expect.objectContaining({ tool_name: 'records.export.all' })]);
   });
+  it('denies computer navigation when the proposal omits computer.use permission', () => {
+    const gateway = createToolGateway({ allowedComputerDomains: ['atlasenterprisesuite.com'] });
+    const result = gateway.evaluate({
+      context: { permissions: [] },
+      proposals: [{
+        tool_name: 'computer.navigate', arguments: { url: 'https://atlasenterprisesuite.com/' },
+        risk_class: 'read-only', required_permissions: [], side_effect: 'none', cost_class: 'none',
+      }],
+    });
+    expect(result.accepted).toHaveLength(0);
+    expect(result.denied).toEqual([expect.objectContaining({ decision_reason: 'permission_policy_missing' })]);
+  });
 });
