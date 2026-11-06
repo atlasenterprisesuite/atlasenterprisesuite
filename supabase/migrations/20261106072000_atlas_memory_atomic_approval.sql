@@ -49,7 +49,19 @@ begin
   end if;
 
   if v_record.status = 'approved' then
-    return v_record; -- Idempotent: do not insert a second approval audit.
+    -- Historical approvals may predate the atomic path. Never report success
+    -- when the matching authoritative audit record is absent.
+    if not exists (
+      select 1 from public.audit_logs as a
+       where a.org_id = p_org_id
+         and a.user_id = v_record.approved_by
+         and a.action = 'knowledge.memory.approved'
+         and a.table_name = 'atlas_memory_records'
+         and a.record_id = p_record_id::text
+    ) then
+      raise exception 'memory_approval_evidence_missing' using errcode = 'P0001';
+    end if;
+    return v_record; -- Idempotent: no second audit insert.
   end if;
 
   if v_record.status <> 'draft' then
