@@ -38,7 +38,6 @@ INSERT INTO academy_f232.enrollments VALUES
 ALTER TABLE academy_f232.enrollments ENABLE ROW LEVEL SECURITY;
 -- The postgres service administrator bypasses RLS; verify using a restricted role.
 CREATE ROLE academy_f232_reader NOLOGIN NOSUPERUSER NOBYPASSRLS;
-GRANT academy_f232_reader TO CURRENT_USER;
 GRANT USAGE ON SCHEMA academy_f232 TO academy_f232_reader;
 GRANT SELECT ON academy_f232.enrollments TO academy_f232_reader;
 SET ROLE academy_f232_reader;
