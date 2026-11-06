@@ -70,6 +70,57 @@ function normalizeStewardshipConfig(input, riskLevel) {
   });
 }
 
+
+function normalizeExternalAccess(input) {
+  if (input === undefined || input === null) return undefined;
+  if (typeof input !== 'object' || Array.isArray(input)) throw new TypeError('invalid_external_access');
+  return Object.freeze({
+    provider: requireText(input.provider, 'external_provider'),
+    capability: requireText(input.capability, 'external_capability'),
+    action: requireText(input.action, 'external_action')
+  });
+}
+
+function canonicalConsentValue(value) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value))) return value;
+  if (Array.isArray(value)) return value.map(canonicalConsentValue);
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalConsentValue(value[key])]));
+  }
+  throw new TypeError('invalid_external_action_arguments');
+}
+
+async function externalActionDigest(tool, args) {
+  const payload = canonicalConsentValue({
+    provider: tool.external_access.provider,
+    capability: tool.external_access.capability,
+    action: tool.external_access.action,
+    arguments: args
+  });
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  const result = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(result)].map(value => value.toString(16).padStart(2, '0')).join('');
+}
+
+function validExternalConsent(grant, context, tool, approvalId, payloadDigest) {
+  if (!grant || typeof grant !== 'object' || Array.isArray(grant)) return false;
+  const expiresAt = typeof grant.expires_at === 'string' ? Date.parse(grant.expires_at) : NaN;
+  return grant.status === 'approved' &&
+    grant.source === 'interactive_owner' &&
+    grant.owner_verified === true &&
+    grant.tenant_verified === true &&
+    grant.owner_user_id === context.user_id &&
+    grant.organization_id === context.organization_id &&
+    grant.approval_id === approvalId &&
+    grant.provider === tool.external_access.provider &&
+    grant.capability === tool.external_access.capability &&
+    grant.action === tool.external_access.action &&
+    grant.payload_digest === payloadDigest &&
+    !grant.revoked_at &&
+    Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
 function fallbackStewardshipContext(context, tool) {
   return Object.freeze({
     actorId: context.agent_id || context.user_id,
@@ -188,7 +239,9 @@ export class AtlasToolRegistry {
     }
 
     const stewardship = normalizeStewardshipConfig(tool.stewardship, risk_level);
+    const external_access = normalizeExternalAccess(tool.external_access);
     const requires_approval = Boolean(
+      external_access ||
       tool.requires_approval ||
       risk_level === 'HIGH' ||
       risk_level === 'CRITICAL' ||
@@ -204,6 +257,7 @@ export class AtlasToolRegistry {
       permission: requireText(tool.permission, 'tool_permission'),
       requires_approval,
       input_schema: clone(tool.input_schema || { type: 'object' }),
+      ...(external_access ? { external_access } : {}),
       ...(stewardship ? { stewardship } : {}),
       handler: tool.handler
     });
@@ -246,8 +300,9 @@ export class AtlasAgenticDispatcher {
   #approvals;
   #audit;
   #resolveStewardshipContext;
+  #resolveExternalConsent;
 
-  constructor({ registry, policy, approvals, audit, resolveStewardshipContext } = {}) {
+  constructor({ registry, policy, approvals, audit, resolveStewardshipContext, resolveExternalConsent } = {}) {
     if (!registry) throw new TypeError('registry_required');
     if (!policy) throw new TypeError('policy_required');
     if (!audit) throw new TypeError('audit_required');
@@ -257,6 +312,9 @@ export class AtlasAgenticDispatcher {
     this.#audit = audit;
     this.#resolveStewardshipContext = typeof resolveStewardshipContext === 'function'
       ? resolveStewardshipContext
+      : null;
+    this.#resolveExternalConsent = typeof resolveExternalConsent === 'function'
+      ? resolveExternalConsent
       : null;
   }
 
@@ -352,6 +410,35 @@ export class AtlasAgenticDispatcher {
       }
     }
 
+
+    // External accounts and private provider data require separate, exact-action owner consent.
+    // This is a trusted server-side resolver, never consent supplied by the prompt or request.
+    if (tool.external_access) {
+      let grant = null;
+      let payloadDigest = null;
+      try {
+        payloadDigest = await externalActionDigest(tool, args);
+        if (this.#resolveExternalConsent) {
+          grant = await this.#resolveExternalConsent({
+            context: normalized,
+            tool: { ...tool, handler: undefined },
+            approvalId: approval_id,
+            payloadDigest
+          });
+        }
+      } catch {
+        grant = null;
+      }
+      if (!validExternalConsent(grant, normalized, tool, approval_id, payloadDigest)) {
+        this.#audit.append({
+          ...baseAudit,
+          action: 'agent.tool.rejected',
+          details: { request_id: normalized.request_id, reason: 'owner_consent_required' }
+        });
+        throw createDenied('owner_consent_required', 403, { tool_name });
+      }
+    }
+
     this.#audit.append({
       ...baseAudit,
       action: 'agent.tool.authorized',
@@ -392,7 +479,7 @@ export class AtlasAgenticDispatcher {
   }
 }
 
-export function createAtlasAgenticCore({ approvals, audit, resolveStewardshipContext } = {}) {
+export function createAtlasAgenticCore({ approvals, audit, resolveStewardshipContext, resolveExternalConsent } = {}) {
   const registry = new AtlasToolRegistry();
   const policy = new AtlasAgentPolicyGateway();
   const dispatcher = new AtlasAgenticDispatcher({
@@ -400,7 +487,8 @@ export function createAtlasAgenticCore({ approvals, audit, resolveStewardshipCon
     policy,
     approvals,
     audit,
-    resolveStewardshipContext
+    resolveStewardshipContext,
+    resolveExternalConsent
   });
   return { registry, policy, dispatcher };
 }
