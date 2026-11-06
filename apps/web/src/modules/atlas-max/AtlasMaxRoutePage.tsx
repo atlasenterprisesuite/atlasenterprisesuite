@@ -5,6 +5,14 @@ import { AtlasMaxPage } from './AtlasMaxPage';
 import { deriveAtlasMaxGatewaySnapshot } from './gatewaySnapshot';
 import type { AtlasMaxGatewayPanelState } from './GatewayPanel';
 
+const UNAVAILABLE_GATEWAY: AtlasMaxGatewayPanelState = {
+  state: 'unavailable',
+  verifiedProviders: [],
+  requests: null,
+  usageScope: null,
+  checkedAt: null
+};
+
 /**
  * Route-only authenticated read path. The product catalog remains visible if
  * the gateway is unavailable; no API result can activate a MAX entitlement.
@@ -31,7 +39,7 @@ export function AtlasMaxRoutePage() {
 
         if (cancelled) return;
         if (before.id !== after.id || statusResult.status !== 'fulfilled') {
-          setGateway({ state: 'unavailable' });
+          setGateway(UNAVAILABLE_GATEWAY);
           return;
         }
 
@@ -42,7 +50,7 @@ export function AtlasMaxRoutePage() {
         );
         setGateway(snapshot);
       } catch {
-        if (!cancelled) setGateway({ state: 'unavailable' });
+        if (!cancelled) setGateway(UNAVAILABLE_GATEWAY);
       }
     })();
 
