@@ -16,6 +16,8 @@ const transitions: Readonly<Record<LeadStage, readonly LeadStage[]>> = {
 export function transitionGrowthLead(lead: GrowthLead, requested: LeadStage, actorTenantId: string): GrowthDecision {
   if (!lead || typeof lead.tenantId !== 'string' || !lead.tenantId.trim() ||
       typeof lead.leadId !== 'string' || !lead.leadId.trim() ||
+      typeof lead.consentToContact !== 'boolean' ||
+      typeof lead.verifiedTenantAccess !== 'boolean' ||
       !Object.prototype.hasOwnProperty.call(transitions, lead.stage) ||
       !Object.prototype.hasOwnProperty.call(transitions, requested)) {
     return { allowed: false, reason: 'INVALID_INPUT' };
