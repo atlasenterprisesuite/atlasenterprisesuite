@@ -9,7 +9,8 @@ const baseline: AtlasProactiveOpportunityInput = {
   agentState: 'idle',
   context: {
     source: 'server',
-    scope: { tenantId: 'tenant-a', organizationId: 'org-a' }
+    scope: { tenantId: 'tenant-a', organizationId: 'org-a' },
+    authorizedModules: ['academy']
   },
   hasPriorityWork: false,
   dailyProposalCount: 0,
@@ -64,6 +65,17 @@ describe('ATLAS Virtual Enterprise V7 proactive proposal policy', () => {
         scope: { tenantId: 'tenant-b', organizationId: 'org-a' }
       }
     })).toEqual({ outcome: 'defer', reason: 'proactive_scope_mismatch' });
+  });
+
+  it('fails closed for a module outside the server-authorized office boundary', () => {
+    expect(evaluateProactiveOpportunity({
+      ...baseline,
+      opportunity: { ...baseline.opportunity, moduleId: 'finance' }
+    })).toEqual({ outcome: 'defer', reason: 'proactive_module_scope_denied' });
+    expect(evaluateProactiveOpportunity({
+      ...baseline,
+      context: { ...baseline.context, authorizedModules: [] }
+    })).toEqual({ outcome: 'defer', reason: 'proactive_module_scope_denied' });
   });
 
   it('never treats suggested capabilities as self-granted authority', () => {
