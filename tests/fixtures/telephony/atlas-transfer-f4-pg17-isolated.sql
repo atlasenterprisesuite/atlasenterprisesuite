@@ -44,7 +44,7 @@ begin
  or p_destination is null or p_destination !~ '^\+[1-9][0-9]{7,14}$'
  then return 'invalid_request'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
-  p_org::text||':'||p_call::text||':'||p_key,0));
+  p_org::text||':'||p_call::text,0));
  -- Membership is checked before replay inspection: revoked actors must not read reservation state.
  perform 1 from public.organization_members om
  where om.org_id=p_org and om.user_id=p_actor and om.status='active' for share;
