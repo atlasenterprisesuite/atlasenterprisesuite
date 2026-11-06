@@ -32,6 +32,15 @@ describe('ATLAS PRO model registry readiness P0 contracts', () => {
     expect(state).toMatchObject({ configured: false, verified: false, state: 'configuration-required' });
   });
 
+  it('does not bypass an empty profile with a generic model fallback', async () => {
+    const value = adapter({ models: { fast: 'fast-only', balanced: null, deep: null } });
+    const originalDescriptor = value.descriptor;
+    value.descriptor = () => ({ ...originalDescriptor(), model: 'other-profile-default' });
+    const state = await openaiState(value);
+    expect(value.probe).not.toHaveBeenCalled();
+    expect(state).toMatchObject({ configured: false, verified: false, state: 'configuration-required' });
+  });
+
   it('does not accept a fabricated verified response for an unconfigured adapter', async () => {
     const value = adapter({ configured: false });
     const state = await openaiState(value);
