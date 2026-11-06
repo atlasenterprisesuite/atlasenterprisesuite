@@ -106,7 +106,7 @@ export function FuturisticEnterpriseHome() {
         <div className="atlas-visual-home__veil" aria-hidden="true" />
 
         <nav className="atlas-visual-home__nav" aria-label="Accesos principales de ATLAS">
-          <Link className="atlas-visual-home__brand" to="/" aria-label="ATLAS Home">
+          <Link className="atlas-visual-home__brand" to="/platform" aria-label="ATLAS Home">
             <span className="atlas-visual-home__brand-mark" aria-hidden="true">A</span>
             <span>ATLAS</span>
           </Link>

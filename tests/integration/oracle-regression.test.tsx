@@ -27,7 +27,7 @@ describe('ATLAS Private Oracle route regression', () => {
     expect(resolveAtlasIdentityTarget('/finance/accounting')).toBe('/finance/accounting');
     expect(resolveAtlasIdentityTarget('/health')).toBe('/health');
     expect(resolveAtlasIdentityTarget('/studio')).toBe('/studio');
-    expect(resolveAtlasIdentityTarget('https://example.com')).toBe('/');
-    expect(resolveAtlasIdentityTarget('//example.com')).toBe('/');
+    expect(resolveAtlasIdentityTarget('https://example.com')).toBe('/platform');
+    expect(resolveAtlasIdentityTarget('//example.com')).toBe('/platform');
   });
 });

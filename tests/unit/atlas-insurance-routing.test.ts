@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveAtlasIdentityTarget } from '../../apps/web/src/identity/IdentityPage';
 import { resolveInsuranceReturnTo } from '../../apps/web/src/modules/insurance/insuranceApi';
+import { ATLAS_MODULES } from '../../apps/web/src/modules/registry';
+import { resolveAtlasExtension } from '../../apps/web/src/extensions/resolveAtlasExtension';
+import { FuturisticEnterpriseHome } from '../../apps/web/src/components/FuturisticEnterpriseHome';
 
 const root = process.cwd();
 const moduleRoot = resolve(root, 'apps/web/src/modules/insurance');
@@ -34,9 +37,9 @@ describe('ATLAS Insurance routing boundaries', () => {
     expect(source).toContain('path="/insurance/verify"');
   });
 
-  it('exposes ATLAS Insurance from Enterprise Home', () => {
-    const source = readFileSync(appPath, 'utf8');
-    expect(source).toContain('to="/insurance"');
-    expect(source).toContain('ATLAS Insurance');
+  it('keeps Insurance registered and reachable from the active platform home', () => {
+    expect(ATLAS_MODULES.find(module => module.id === 'insurance')?.route).toBe('/insurance');
+    expect(resolveAtlasExtension('/platform')?.type).toBe(FuturisticEnterpriseHome);
+    expect(readFileSync(appPath, 'utf8')).toContain('InsuranceRoutes');
   });
 });

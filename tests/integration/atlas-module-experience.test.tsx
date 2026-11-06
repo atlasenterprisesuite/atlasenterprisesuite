@@ -70,7 +70,6 @@ describe('ATLAS ASTRA-derived module experience', () => {
   });
 
   it.each([
-    ['/', 'ATLAS Enterprise Suite', 'One governed enterprise ecosystem', 'One operating system for governed enterprise work.'],
     ['/finance', 'ATLAS Finance', 'Finance', 'Finance intelligence, execution and control.'],
     ['/finance/accounting', 'ATLAS Accounting', 'Accounting', 'Accounting intelligence with governed execution.']
   ])('applies the module experience at %s while preserving implemented destinations', (path, eyebrow, heading, narrative) => {
@@ -79,6 +78,13 @@ describe('ATLAS ASTRA-derived module experience', () => {
     expect(within(main).getByText(eyebrow)).toBeInTheDocument();
     expect(within(main).getByRole('heading', { name: heading })).toBeInTheDocument();
     expect(within(main).getByText(narrative)).toBeInTheDocument();
+  });
+
+  it('keeps the existing registry-backed visual home and Command Center at /platform', () => {
+    render(<MemoryRouter initialEntries={['/platform']}><App /></MemoryRouter>);
+    expect(screen.getByRole('region', { name: 'ATLAS Enterprise Suite visual home' })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: 'ATLAS command search' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'ATLAS Command Center' })).toBeInTheDocument();
   });
 
   it('keeps Finance operational routes reachable from the new experience', () => {

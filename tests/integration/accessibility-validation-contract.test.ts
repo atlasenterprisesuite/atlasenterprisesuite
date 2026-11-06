@@ -9,6 +9,8 @@ describe('ATLAS Inclusive Communication validation contract', () => {
     expect(workflow).toContain('best-practice');
     expect(workflow).toContain('--exit');
     expect(workflow).toContain('/settings/accessibility/communication');
+    expect(workflow).toContain('"/platform"');
+    expect(workflow).toContain('"/identity"');
     expect(workflow).toContain('/finance');
     expect(workflow).toContain('/health');
   });

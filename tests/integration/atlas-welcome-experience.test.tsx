@@ -91,11 +91,11 @@ describe('ATLAS avatar welcome on canonical home', () => {
     expect(screen.getByRole('heading', { name: 'Bienvenido a ATLAS' })).toBeInTheDocument();
   });
 
-  it('renders the approved greeting through the canonical root route resolver', () => {
+  it('renders the approved greeting through the canonical platform route resolver', () => {
     const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx', 'utf8');
-    expect(resolver).toContain("if (pathname === '/') return <FuturisticEnterpriseHome />;");
+    expect(resolver).toContain("if (pathname === '/platform') return <FuturisticEnterpriseHome />;");
 
-    const home = resolveAtlasExtension('/');
+    const home = resolveAtlasExtension('/platform');
     expect(home).not.toBeNull();
     render(<MemoryRouter>{home}</MemoryRouter>);
     expect(screen.getByRole('button', { name: 'Escuchar bienvenida' })).toBeInTheDocument();
