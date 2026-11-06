@@ -41,6 +41,29 @@ CREATE ROLE academy_f232_reader NOLOGIN NOSUPERUSER NOBYPASSRLS;
 GRANT USAGE ON SCHEMA academy_f232 TO academy_f232_reader;
 GRANT SELECT, INSERT ON academy_f232.enrollments TO academy_f232_reader;
 SET ROLE academy_f232_reader;
+-- Fail closed if tenant context is absent or blank; never infer tenant from a request.
+DO $
+BEGIN
+ IF EXISTS (SELECT 1 FROM academy_f232.enrollments) THEN
+   RAISE EXCEPTION 'P0: enrollment visible without tenant context';
+ END IF;
+ BEGIN
+   INSERT INTO academy_f232.enrollments(id,org_id,user_id,status)
+     VALUES ('no-context','org-a','user-a','active');
+   RAISE EXCEPTION 'P0: write accepted without tenant context';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ PERFORM set_config('app.tenant_id','',true);
+ IF EXISTS (SELECT 1 FROM academy_f232.enrollments) THEN
+   RAISE EXCEPTION 'P0: enrollment visible with blank tenant context';
+ END IF;
+ BEGIN
+   INSERT INTO academy_f232.enrollments(id,org_id,user_id,status)
+     VALUES ('blank-context','org-a','user-a','active');
+   RAISE EXCEPTION 'P0: write accepted with blank tenant context';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $;
 SELECT set_config('app.tenant_id','org-a',true);
 DO $$
 BEGIN
