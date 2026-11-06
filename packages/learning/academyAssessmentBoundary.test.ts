@@ -94,4 +94,16 @@ describe('Academy F2 server-only authorization boundary', () => {
     await expect(evaluateAuthorizedAcademyAttempt(request, server)).rejects.toThrow('Unauthorized enrollment');
   });
 
+  it('fails closed when enrollment ownership changes during the final authorization read', async () => {
+    let reads = 0;
+    const server = context({
+      getEnrollment: async () => {
+        reads++;
+        return { id: 'enroll-1', userId: reads === 1 ? 'user-1' : 'other-user', organizationId: 'org-1', courseVersion: 'c1', status: 'active' };
+      }
+    });
+    await expect(evaluateAuthorizedAcademyAttempt(request, server)).rejects.toThrow('Unauthorized enrollment');
+    expect(reads).toBe(2);
+  });
+
 });
