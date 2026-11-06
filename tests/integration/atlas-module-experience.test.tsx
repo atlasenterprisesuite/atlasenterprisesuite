@@ -70,7 +70,7 @@ describe('ATLAS ASTRA-derived module experience', () => {
   });
 
   it.each([
-    ['/', 'ATLAS Enterprise Suite', 'One governed enterprise ecosystem', 'One operating system for governed enterprise work.'],
+    ['/platform', 'ATLAS Enterprise Suite', 'One governed enterprise ecosystem', 'One operating system for governed enterprise work.'],
     ['/finance', 'ATLAS Finance', 'Finance', 'Finance intelligence, execution and control.'],
     ['/finance/accounting', 'ATLAS Accounting', 'Accounting', 'Accounting intelligence with governed execution.']
   ])('applies the module experience at %s while preserving implemented destinations', (path, eyebrow, heading, narrative) => {
