@@ -2,10 +2,8 @@
   "assetPath": "apps/web/public/atlas/transform/frames.png",
   "expectedSha256": null,
   "reviewedFrames": [],
-  "independentReview": {
-    "approved": false,
-    "reference": null
-  },
   "rejectedF5SinglePhotoSha256": "ea8008405be4f448c4a52c472716ffe6b87837820eff1f6a5e46821f2f7c6f32",
-  "status": "P0_NO_GO_SINGLE_PHOTO_NOT_A_SPRITESHEET"
+  "status": "P0_NO_GO_MISSING_APPROVED_SPRITE",
+  "reviewEvidenceSource": "GitHub APPROVED review by another authorized writer on exact PR HEAD, containing the certified asset SHA-256 and 9/9 visual check",
+  "sourcePhotoSha256": "e02344bf0c0fff6a8f92e79226db8a7f2fa52d47beb8974700c01fc78b710d2a"
 }
