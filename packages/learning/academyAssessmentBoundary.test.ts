@@ -106,4 +106,17 @@ describe('Academy F2 server-only authorization boundary', () => {
     expect(reads).toBe(2);
   });
 
+  it('fails closed when the final enrollment recheck becomes unavailable', async () => {
+    let reads = 0;
+    const server = context({
+      getEnrollment: async () => {
+        reads++;
+        if (reads === 2) throw new Error('recheck unavailable');
+        return { id: 'enroll-1', userId: 'user-1', organizationId: 'org-1', courseVersion: 'c1', status: 'active' };
+      }
+    });
+    await expect(evaluateAuthorizedAcademyAttempt(request, server)).rejects.toThrow('recheck unavailable');
+    expect(reads).toBe(2);
+  });
+
 });
