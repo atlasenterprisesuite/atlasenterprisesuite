@@ -48,6 +48,18 @@ export async function evaluateAuthorizedAcademyAttempt(
       rubric.courseVersion !== request.courseVersion || rubric.version !== request.rubricVersion) {
     throw new Error('Unauthorized rubric');
   }
+  // Recheck after loading the rubric: a concurrent revocation must not be
+  // silently accepted by this non-persistent evaluation boundary.
+  // Durable issuance still requires an atomic, locked server-side transaction.
+  const currentEnrollment = await server.getEnrollment({
+    enrollmentId: request.enrollmentId, organizationId: actor.organizationId, userId: actor.userId
+  });
+  if (!currentEnrollment || currentEnrollment.id !== request.enrollmentId ||
+      currentEnrollment.userId !== actor.userId ||
+      currentEnrollment.organizationId !== actor.organizationId ||
+      currentEnrollment.courseVersion !== request.courseVersion || currentEnrollment.status !== 'active') {
+    throw new Error('Unauthorized enrollment');
+  }
   return gradeAcademyAssessment(rubric, {
     courseVersion: request.courseVersion, rubricVersion: request.rubricVersion, answers: request.answers
   });
