@@ -124,9 +124,9 @@ jobs:
 
           {
             echo "## ATLAS GitHub identity baseline"
-            echo "- Repository: `$REPOSITORY`"
-            echo "- Owner: `$OWNER_LOGIN`"
-            echo "- Owner type: `$OWNER_TYPE`"
+            printf "%s\n" "- Repository: \`$REPOSITORY\`"
+            printf "%s\n" "- Owner: \`$OWNER_LOGIN\`"
+            printf "%s\n" "- Owner type: \`$OWNER_TYPE\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$OWNER_TYPE" != "Organization" ]; then
@@ -138,7 +138,7 @@ jobs:
           ORG_JSON="$(curl --fail --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/orgs/$OWNER_LOGIN")"
 
           TWO_FACTOR="$(printf '%s' "$ORG_JSON" | jq -r 'if has("two_factor_requirement_enabled") then .two_factor_requirement_enabled else "unknown" end')"
-          echo "- Organization 2FA requirement: `$TWO_FACTOR`" >> "$GITHUB_STEP_SUMMARY"
+          printf "%s\n" "- Organization 2FA requirement: \`$TWO_FACTOR\`" >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$TWO_FACTOR" = "false" ]; then
             echo "::error::GitHub Organization exists but organization-wide 2FA is explicitly disabled."
