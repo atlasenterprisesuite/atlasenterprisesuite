@@ -21,7 +21,7 @@ export interface AcademyIssuerTransaction {
     id: string; userId: string; organizationId: string; courseVersion: string; status: string;
   } | null>;
   getExisting(args: { organizationId: string; idempotencyKey: string }): Promise<{
-    evidenceDigest: string; credentialId: string;
+    evidenceDigest: string; requestFingerprint: string; credentialId: string; status: string;
   } | null>;
   getVerifiedAssessment(args: { enrollmentId: string; organizationId: string; courseVersion: string }): Promise<{
     passed: boolean; rubricVersion: string; evidenceDigest: string;
@@ -29,7 +29,7 @@ export interface AcademyIssuerTransaction {
   insertCredential(args: { organizationId: string; enrollmentId: string; evidenceDigest: string }): Promise<{
     id: string; status: string;
   }>;
-  insertIdempotency(args: { organizationId: string; idempotencyKey: string; evidenceDigest: string; credentialId: string }): Promise<void>;
+  insertIdempotency(args: { organizationId: string; idempotencyKey: string; evidenceDigest: string; requestFingerprint: string; credentialId: string }): Promise<void>;
   appendAudit(args: { organizationId: string; actorId: string; action: string; credentialId: string }): Promise<void>;
 }
 export interface AcademyIssuerStore {
@@ -50,7 +50,7 @@ export async function issueAcademyCredential(request: AcademyIssueRequest, store
       !Array.isArray(actor.capabilities) || !actor.capabilities.includes('academy:issue')) {
     throw new Error('Unauthorized credential issuance');
   }
-  return store.transaction(async tx => {
+  // Canonical tuple binds idempotency to all security-relevant request dimensions.\n  // The durable adapter must store and compare this exact tuple under a unique key.\n  const requestFingerprint = JSON.stringify([actor.organizationId, actor.userId, request.enrollmentId, request.courseVersion, request.rubricVersion, request.evidenceDigest]);\n  return store.transaction(async tx => {
     const enrollment = await tx.lockEnrollment({
       enrollmentId: request.enrollmentId, organizationId: actor.organizationId, userId: actor.userId
     });
@@ -61,10 +61,10 @@ export async function issueAcademyCredential(request: AcademyIssueRequest, store
     }
     const previous = await tx.getExisting({ organizationId: actor.organizationId, idempotencyKey: request.idempotencyKey });
     if (previous) {
-      if (previous.evidenceDigest !== request.evidenceDigest || !valid(previous.credentialId)) {
+      if (previous.evidenceDigest !== request.evidenceDigest || previous.requestFingerprint !== requestFingerprint || !valid(previous.credentialId) || !['active', 'revoked'].includes(previous.status)) {
         throw new Error('Idempotency conflict');
       }
-      return { id: previous.credentialId, status: 'active' };
+      return { id: previous.credentialId, status: previous.status };
     }
     const assessment = await tx.getVerifiedAssessment({
       enrollmentId: request.enrollmentId, organizationId: actor.organizationId, courseVersion: request.courseVersion
@@ -80,7 +80,7 @@ export async function issueAcademyCredential(request: AcademyIssueRequest, store
     if (!credential || !valid(credential.id) || credential.status !== 'active') throw new Error('Invalid credential persistence');
     await tx.insertIdempotency({
       organizationId: actor.organizationId, idempotencyKey: request.idempotencyKey,
-      evidenceDigest: request.evidenceDigest, credentialId: credential.id
+      evidenceDigest: request.evidenceDigest, requestFingerprint, credentialId: credential.id
     });
     await tx.appendAudit({
       organizationId: actor.organizationId, actorId: actor.userId, action: 'academy.credential.issued', credentialId: credential.id
