@@ -15,7 +15,7 @@ export function PlanComparison() {
     <section className="atlas-max-comparison" aria-labelledby="atlas-max-plans-title">
       <div className="atlas-max-section-heading">
         <div>
-          <p className="atlas-max-kicker">02 / Capability catalog</p>
+          <p className="atlas-max-kicker">03 / Capability catalog</p>
           <h2 id="atlas-max-plans-title">Capacity shaped around the work.</h2>
         </div>
         <p>Compare product definitions, not active subscriptions. Actual capacity requires server-verified entitlement and metering.</p>
