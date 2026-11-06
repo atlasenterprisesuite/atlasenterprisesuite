@@ -345,7 +345,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="atlas-mobile-nav-toggle"
-            aria-label="Open ATLAS navigation"
+            aria-label="Menu — Open ATLAS navigation"
             aria-controls="atlas-primary-navigation"
             aria-expanded={mobileNavOpen}
             onClick={() => setMobileNavOpen((current) => !current)}
@@ -391,7 +391,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
             <NavLink to="/galaxy" aria-label="◇ — ATLAS Galaxy">◇</NavLink>
           </nav>
 
-          <NavLink className="atlas-profile-chip" to="/identity" aria-label="Open identity and organization">
+          <NavLink className="atlas-profile-chip" to="/identity" aria-label={`Open identity and organization: ${organizationInitials} ${organizationName} ${roleLabel}`}>
             <span>{organizationInitials}</span>
             <div><strong>{organizationName}</strong><small>{roleLabel}</small></div>
           </NavLink>
