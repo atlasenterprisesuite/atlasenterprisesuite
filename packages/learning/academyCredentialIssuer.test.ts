@@ -43,7 +43,7 @@ describe('Academy issuer isolated fail-closed boundary', () => {
     await expect(issueAcademyCredential(request, store({
       transaction: async fn => fn({
         lockEnrollment: async () => ({ id: 'e1', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active' }),
-        getExisting: async () => ({ evidenceDigest: 'sha256:different', credentialId: 'opaque-1' }),
+        getExisting: async () => ({ evidenceDigest: 'sha256:different', requestFingerprint: JSON.stringify(['org1', 'u1', 'e1', 'c1', 'r1', 'sha256:abc']), credentialId: 'opaque-1', status: 'active' }),
         getVerifiedAssessment: async () => { throw new Error('must not read'); },
         insertCredential: async () => { throw new Error('must not insert'); },
         insertIdempotency: async () => {}, appendAudit: async () => {}
@@ -55,13 +55,36 @@ describe('Academy issuer isolated fail-closed boundary', () => {
     const result = await issueAcademyCredential(request, store({
       transaction: async fn => fn({
         lockEnrollment: async () => ({ id: 'e1', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active' }),
-        getExisting: async () => ({ evidenceDigest: 'sha256:abc', credentialId: 'opaque-1' }),
+        getExisting: async () => ({ evidenceDigest: 'sha256:abc', requestFingerprint: JSON.stringify(['org1', 'u1', 'e1', 'c1', 'r1', 'sha256:abc']), credentialId: 'opaque-1', status: 'active' }),
         getVerifiedAssessment: async () => null, insertCredential: insert,
         insertIdempotency: async () => {}, appendAudit: async () => {}
       })
     }));
     expect(result.id).toBe('opaque-1');
     expect(insert).not.toHaveBeenCalled();
+  });
+  it('rejects replay for another enrollment with same evidence and key', async () => {
+    await expect(issueAcademyCredential({ ...request, enrollmentId: 'e2' }, store({
+      transaction: async fn => fn({
+        lockEnrollment: async () => ({ id: 'e2', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active' }),
+        getExisting: async () => ({ evidenceDigest: 'sha256:abc', requestFingerprint: JSON.stringify(['org1', 'u1', 'e1', 'c1', 'r1', 'sha256:abc']), credentialId: 'opaque-1', status: 'active' }),
+        getVerifiedAssessment: async () => null,
+        insertCredential: async () => { throw new Error('must not insert'); },
+        insertIdempotency: async () => {}, appendAudit: async () => {}
+      })
+    }))).rejects.toThrow('Idempotency conflict');
+  });
+  it('preserves revoked status on an identical retry', async () => {
+    const result = await issueAcademyCredential(request, store({
+      transaction: async fn => fn({
+        lockEnrollment: async () => ({ id: 'e1', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active' }),
+        getExisting: async () => ({ evidenceDigest: 'sha256:abc', requestFingerprint: JSON.stringify(['org1', 'u1', 'e1', 'c1', 'r1', 'sha256:abc']), credentialId: 'opaque-1', status: 'revoked' }),
+        getVerifiedAssessment: async () => null,
+        insertCredential: async () => { throw new Error('must not insert'); },
+        insertIdempotency: async () => {}, appendAudit: async () => {}
+      })
+    }));
+    expect(result.status).toBe('revoked');
   });
   it('requires passing durable evidence and fails closed on audit failure', async () => {
     await expect(issueAcademyCredential(request, store({
