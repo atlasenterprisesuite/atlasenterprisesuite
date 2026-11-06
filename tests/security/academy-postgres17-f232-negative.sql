@@ -53,7 +53,7 @@ BEGIN
  IF EXISTS (SELECT 1 FROM academy_f232.enrollments WHERE id='enroll-revoked' AND status='active') THEN
    RAISE EXCEPTION 'P0: revoked enrollment accepted';
  END IF;
-END $;
+END $$;
 RESET ROLE;
 -- Simulate an atomic issuance/audit unit. A failed audit must undo issuance.
 DO $$
