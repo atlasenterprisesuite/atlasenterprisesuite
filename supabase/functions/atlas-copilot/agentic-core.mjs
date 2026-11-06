@@ -91,7 +91,7 @@ function canonicalConsentValue(value) {
   throw new TypeError('invalid_external_action_arguments');
 }
 
-async function externalActionDigest(tool, args) {
+export async function computeExternalActionDigest(tool, args) {
   const payload = canonicalConsentValue({
     provider: tool.external_access.provider,
     capability: tool.external_access.capability,
@@ -417,7 +417,7 @@ export class AtlasAgenticDispatcher {
       let grant = null;
       let payloadDigest = null;
       try {
-        payloadDigest = await externalActionDigest(tool, args);
+        payloadDigest = await computeExternalActionDigest(tool, args);
         if (this.#resolveExternalConsent) {
           grant = await this.#resolveExternalConsent({
             context: normalized,
