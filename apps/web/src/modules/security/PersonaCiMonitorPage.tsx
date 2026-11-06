@@ -156,6 +156,7 @@ export function PersonaCiMonitorPage() {
                 <strong>{heading(checks!.result)}</strong>
                 <small>SHA exacto: <code>{snapshot.sha}</code></small>
                 <small>PR: {snapshot.draft ? 'Draft' : snapshot.state} · Última lectura: {new Date(snapshot.fetchedAt).toLocaleString('es-US')}</small>
+                {checks!.partial ? <small role="alert">Lectura parcial: GitHub informa {checks!.totalReported} controles, pero solo se cargaron {checks!.total}. No se declara CI completo.</small> : null}
               </div>
               <div className="persona-ci-total" aria-label={checks!.total + ' comprobaciones reportadas'}>
                 <b>{checks!.total}</b><span>controles</span>
