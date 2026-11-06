@@ -86,7 +86,7 @@ export const BIBLE_OS_SOURCES: readonly BibleSource[] = [
     id: 'sinaiticus-mark16-folio-228',
     title: 'Codex Sinaiticus: Mark 16, folio 228',
     institution: 'Codex Sinaiticus Project',
-    url: 'https://www.codexsinaiticus.org/en/manuscript.aspx?book=35',
+    url: 'https://www.codexsinaiticus.org/en/manuscript.aspx?book=34&chapter=16&lid=en&side=r&verse=8&zoomslider=0',
     scope: 'Passage-specific manuscript viewer for folio 228: Mark 16:1–8 followed by Luke 1. This is one witness, not all textual traditions. Link only; image and transcription reproduction rights not cleared.',
     status: 'curated_seed'
   },
