@@ -299,6 +299,16 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           </div>
 
           <NavLink
+            to="/security/persona-monitor"
+            className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+            onClick={closeMobileNav}
+            aria-label="Persona CI Monitor, GitHub Actions"
+          >
+            <span className="atlas-nav-glyph" aria-hidden="true">CI</span>
+            <span>Persona CI Monitor</span>
+          </NavLink>
+
+          <NavLink
             to="/settings/accessibility/communication"
             className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
             onClick={closeMobileNav}
