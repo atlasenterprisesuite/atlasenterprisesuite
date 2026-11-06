@@ -27,4 +27,16 @@ describe('F4 isolated PostgreSQL transfer fixture contract (static only)', () =>
     expect(sql).toContain('revoke all on schema atlas_transfer_test from public,anon,authenticated');
     expect(sql).toContain('from public,anon,authenticated');
   });
+  it('F6 serializes distinct keys for the same call and blocks second active reservation', () => {
+    expect(sql).toContain("p_org::text||':'||p_call::text,0");
+    expect(sql).toContain('atlas_transfer_one_active_per_call_uidx');
+    expect(sql).toContain("where state in ('transfer_pending','transfer_unknown','transfer_confirmed')");
+    expect(sql).toContain("return 'call_already_has_transfer'");
+  });
+  it('F6 checks active membership before any replay result', () => {
+    const membership = sql.indexOf("om.user_id=p_actor and om.status='active' for share");
+    const replay = sql.indexOf('select * into v_existing');
+    expect(membership).toBeGreaterThan(-1);
+    expect(replay).toBeGreaterThan(membership);
+  });
 });
