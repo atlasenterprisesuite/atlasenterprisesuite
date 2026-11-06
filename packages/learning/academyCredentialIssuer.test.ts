@@ -103,6 +103,34 @@ describe('Academy issuer isolated fail-closed boundary', () => {
       })
     }))).rejects.toThrow('Idempotency conflict');
   });
+  it('rejects idempotency replay when rubric version changes despite identical digest', async () => {
+    const insert = vi.fn();
+    const audit = vi.fn();
+    await expect(issueAcademyCredential({ ...request, rubricVersion: 'r2' }, store({
+      transaction: async fn => fn({
+        lockEnrollment: async () => ({ id: 'e1', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active' }),
+        getExisting: async () => ({ evidenceDigest: 'sha256:abc', requestFingerprint: JSON.stringify(['org1', 'u1', 'e1', 'c1', 'r1', 'sha256:abc']), credentialId: 'opaque-1', status: 'active' }),
+        getVerifiedAssessment: async () => { throw new Error('must not read'); },
+        insertCredential: insert,
+        insertIdempotency: async () => {}, appendAudit: audit
+      })
+    }))).rejects.toThrow('Idempotency conflict');
+    expect(insert).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+  });
+  it('rejects forged persisted credential status without duplicate writes', async () => {
+    const insert = vi.fn();
+    await expect(issueAcademyCredential(request, store({
+      transaction: async fn => fn({
+        lockEnrollment: async () => ({ id: 'e1', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active' }),
+        getExisting: async () => ({ evidenceDigest: 'sha256:abc', requestFingerprint: JSON.stringify(['org1', 'u1', 'e1', 'c1', 'r1', 'sha256:abc']), credentialId: 'opaque-1', status: 'pending' }),
+        getVerifiedAssessment: async () => { throw new Error('must not read'); },
+        insertCredential: insert,
+        insertIdempotency: async () => {}, appendAudit: async () => {}
+      })
+    }))).rejects.toThrow('Idempotency conflict');
+    expect(insert).not.toHaveBeenCalled();
+  });
   it('preserves revoked status on an identical retry', async () => {
     const result = await issueAcademyCredential(request, store({
       transaction: async fn => fn({
