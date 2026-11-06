@@ -42,3 +42,45 @@ Six lessons: discovery, quotation, negotiation, CRM, prospecting, final KPIs/int
 
 ## Next gate
 Implement isolated failing tests and schemas on this branch; do not merge or deploy while P0 evidence is missing.
+
+
+## F2.45 — Transactional issuance design gate (design only, NOT implemented)
+
+Academic credentials are distinct from Hospitality physical-access credentials.
+The current `evaluateAuthorizedAcademyAttempt` returns a grade only and does not
+persist an attempt, create a credential, or authorize issuance.
+
+A future trusted **server-side** issuer MUST enforce the following in one
+database transaction, under an authenticated actor and tenant-scoped role:
+
+1. Derive `actor_id` and `org_id` from trusted authentication, never from
+   request fields. Validate issuer capability and tenant membership; enforce
+   database RLS in addition to endpoint RBAC.
+2. Lock the target enrollment row with `SELECT ... FOR UPDATE`, scoped by
+   `org_id`, `user_id`, course/version and active status. Revocation must
+   acquire the **same enrollment-row lock** before changing status.
+3. After acquiring the lock, revalidate active enrollment, passing
+   server-calculated assessment, immutable rubric/version and durable evidence.
+   Do not trust a previous grade response as issuance authorization.
+4. Atomically insert the credential, unique tenant-scoped idempotency record,
+   and immutable audit event. A retry with the same key and same request
+   digest returns the same result; a reused key with a different digest
+   fails closed. On any audit failure, roll back the entire transaction.
+5. A revocation that wins the row lock first prevents issuance. If issuance
+   wins first, revocation must subsequently invalidate the credential and
+   record an audit event. Define and test the ordering contract explicitly.
+6. Public verification requires opaque, enumeration-resistant IDs and a
+   separately authorized minimum-data projection; never expose enrollment,
+   assessment answers, private learner identity or tenant records by default.
+
+**Required RED tests before implementation:** two sessions with a deterministic
+barrier for revocation-before-issuance and issuance-before-revocation; two
+workers using one idempotency key; cross-tenant read/write/issue/revoke under
+a non-BYPASSRLS role; audit insert failure rollback; revoked credential
+verification; mismatched digest replay; no public enumeration; keyboard and
+screen-reader accessible verification. Inspect actual PostgreSQL lock waits
+and exact-SHA CI logs. A synthetic fixture is not proof of a production
+issuer.
+
+**Current gate:** P0 NO-GO. This section is a design contract, not an
+implementation or CI result.
