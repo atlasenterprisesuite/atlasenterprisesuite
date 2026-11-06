@@ -93,7 +93,7 @@ async function checkViewport(browser, width, height) {
 
   const page = await context.newPage();
   await page.goto(`${ORIGIN}/max`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('heading', { name: 'ATLAS MAX', exact: true }).waitFor({ timeout: 20_000 });
+  await page.getByRole('heading', { name: 'ATLAS MAX', exact: true, level: 1 }).waitFor({ timeout: 20_000 });
   await page.getByText('Authenticated snapshot', { exact: true }).waitFor({ timeout: 20_000 });
 
   assert.ok(fixture.membershipCalls > 0, 'canonical membership API must be checked');
