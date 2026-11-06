@@ -107,4 +107,17 @@ describe('ATLAS managed runtime computer-use governance', () => {
     expect(result.accepted[0]).not.toHaveProperty('tools_executed');
     expect(result.accepted[0]).not.toHaveProperty('execution_state');
   });
+  it('denies unknown tool proposals even when the model claims no permissions are required', () => {
+    const gateway = createToolGateway();
+    const result = gateway.evaluate({
+      context: { organization_id: 'org-a', user_id: 'user-1', permissions: [] },
+      proposals: [{
+        provider: 'openai', runtime: 'openai-agents', tool_name: 'records.export.all',
+        arguments: { organization_id: 'org-b' }, risk_class: 'read-only',
+        required_permissions: [], side_effect: 'none', cost_class: 'none',
+      }],
+    });
+    expect(result.accepted).toHaveLength(0);
+    expect(result.denied).toEqual([expect.objectContaining({ tool_name: 'records.export.all' })]);
+  });
 });
