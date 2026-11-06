@@ -183,6 +183,7 @@ function JesusLifePanel() {
         <p className="eyebrow">Gospel study · Optional Christian perspective</p>
         <h2 id="bible-os-jesus-heading">Life and teachings of Jesus</h2>
         <p className="muted">A thematic Gospel timeline, not a verified absolute chronology. Gospel narratives and theological interpretations are distinct from independently established historical facts.</p>
+        <p className="muted">Institutional research entry point, not passage-level verification. Passage references are curated study pointers pending edition-specific and witness-level review.</p>
       </div>
       <div className="module-grid" aria-label="Jesus timeline">
         {JESUS_TIMELINE_SEEDS.map(event => (
