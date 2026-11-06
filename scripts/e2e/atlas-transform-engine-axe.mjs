@@ -109,6 +109,8 @@ async function scenario(browser, activeOrg) {
       assert.ok(imageRequests > 0, 'isolated binary fixture was not requested');
       const next = panel.getByRole('button', { name: 'Siguiente' });
       await next.waitFor({ state: 'visible' });
+      // A trial click waits for enabled/actionable without activating the control.
+      await next.click({ trial: true });
       await next.focus();
       await page.keyboard.press('Enter');
       await panel.getByRole('img', { name: /fotograma 2 de 9/ }).waitFor();
