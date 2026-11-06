@@ -177,12 +177,19 @@ function assertOrchestration(
   ) {
     throw new Error('control_plane_orchestration_identity_required');
   }
+  if (orchestration.module !== intent.module) {
+    throw new Error('control_plane_module_mismatch');
+  }
   assertSameScope(context.actor.scope, orchestration.scope);
 }
 
 function assertCapability(intent: AtlasIntentEnvelope, capability: AtlasCapabilityEnvelope) {
   assertLineage(intent, 'capability', capability.requestId);
   if (!nonEmpty(capability.capabilityId)) throw new Error('control_plane_capability_id_required');
+  // Provider readiness is not authorization: capabilities must be present in the intent.
+  if (!intent.capabilitiesRequested.includes(capability.capabilityId)) {
+    throw new Error(`control_plane_capability_unrequested:${capability.capabilityId}`);
+  }
   if (capability.readiness !== 'ready') {
     throw new Error(`control_plane_capability_not_ready:${capability.readiness}`);
   }
