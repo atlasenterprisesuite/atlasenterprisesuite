@@ -73,3 +73,50 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(edge).not.toMatch(/OPENAI_API_KEY|GEMINI_API_KEY|ANTHROPIC_API_KEY|STRIPE_SECRET/i);
   });
 });
+
+
+const atomicSql = (() => {
+  try {
+    return readFileSync('supabase/migrations/20261106072000_atlas_memory_atomic_approval.sql', 'utf8');
+  } catch {
+    return '';
+  }
+})();
+
+describe('KNOW-01 transactional knowledge approval P0 contract', () => {
+  const approveHandler = edge.slice(edge.indexOf('async function approve('), edge.indexOf('async function importRecords('));
+
+  it('calls a single server-only transactional RPC, without separate update/audit writes', () => {
+    expect(approveHandler).toContain("rpc('atlas_memory_approve_atomic'");
+    expect(approveHandler).not.toContain(".update({");
+    expect(approveHandler).not.toContain("await audit(ctx, 'knowledge.memory.approved'");
+    expect(approveHandler).toContain('memory_atomic_runtime_unavailable');
+  });
+
+  it('keeps approval, supersession and audit in one PostgreSQL function', () => {
+    expect(atomicSql).toContain('create or replace function public.atlas_memory_approve_atomic(');
+    expect(atomicSql).toContain('update public.atlas_memory_records');
+    expect(atomicSql).toContain('insert into public.audit_logs');
+    expect(atomicSql).not.toMatch(/exception\s+when\s+others/is);
+  });
+
+  it('rechecks tenant membership inside transaction and locks affected rows', () => {
+    expect(atomicSql).toContain("status = 'active'");
+    expect(atomicSql).toContain("('owner', 'admin', 'platform_admin')");
+    expect(atomicSql).toMatch(/organization_members[\s\S]+for share/i);
+    expect(atomicSql).toMatch(/atlas_memory_records[\s\S]+for update/i);
+    expect(atomicSql).toContain('r.organization_id = p_org_id');
+  });
+
+  it('prohibits direct RPC access from browser roles', () => {
+    expect(atomicSql).toMatch(/security invoker/i);
+    expect(atomicSql).toMatch(/revoke\s+execute\s+on\s+function\s+public\.atlas_memory_approve_atomic[\s\S]*from\s+public,\s*anon,\s*authenticated/i);
+    expect(atomicSql).toMatch(/grant\s+execute\s+on\s+function\s+public\.atlas_memory_approve_atomic[\s\S]*to\s+service_role/i);
+  });
+
+  it('rejects invalid supersession and preserves idempotent approval', () => {
+    expect(atomicSql).toContain('memory_superseded_source_invalid');
+    expect(atomicSql).toContain("if v_record.status = 'approved' then");
+    expect(atomicSql).toContain('memory_not_approvable');
+  });
+});
