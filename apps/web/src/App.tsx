@@ -36,7 +36,7 @@ import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPag
 import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
 import { FaithReflectionPage } from './modules/wellbeing/FaithReflectionPage';
 import { PublicBusinessLaunch360Page } from './modules/advisory/PublicBusinessLaunch360Page';
-import { AtlasMaxPage } from './modules/atlas-max/AtlasMaxPage';
+import { AtlasMaxRoutePage } from './modules/atlas-max/AtlasMaxRoutePage';
 import { curabilityDefinitions } from '../../../packages/health/curability';
 import { evidenceLabel } from '../../../packages/health/evidence';
 import { graphForDisease, validateGraph } from '../../../packages/health/neural-graph';
@@ -294,7 +294,7 @@ export function App() {
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
         <Route path="/security/certificates" element={<RequireAtlasIdentity><CertificateLifecyclePage /></RequireAtlasIdentity>} />
-        <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
+        <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxRoutePage /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
         <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
