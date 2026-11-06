@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../apps/web/src/modules/gps/gpsApi', () => ({
   searchGpsPlaces: vi.fn(async () => ({ ok: true, source: 'fixture', results: [
@@ -18,7 +18,8 @@ vi.mock('../../apps/web/src/modules/gps/CoverageControlPanel', () => ({ Coverage
 
 import { Gps4DPage } from '../../apps/web/src/modules/gps/Gps4DPage';
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+beforeEach(() => { window.history.replaceState(null, '', '/gps'); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); window.history.replaceState(null, '', '/gps'); });
 
 describe('ATLAS Earth GPS 4D selected-point UI interaction', () => {
   it('does not expose external links until a user chooses a point', async () => {
@@ -51,4 +52,16 @@ describe('ATLAS Earth GPS 4D selected-point UI interaction', () => {
     expect(new URL(screen.getByRole('link', { name: /Apple Maps \(servicio externo\)/ }).getAttribute('href')!)
       .searchParams.get('ll')).toBe('30.0444,31.2357');
   });
+  it('accepts explicitly supplied zero coordinates but rejects an empty coordinate', async () => {
+    window.history.replaceState(null, '', '/gps?lat=0&lon=0');
+    const view = render(<Gps4DPage />);
+    const google = await screen.findByRole('link', { name: /Google Maps \\(servicio externo\\)/ });
+    expect(new URL(google.getAttribute('href')!).searchParams.get('query')).toBe('0,0');
+    view.unmount();
+
+    window.history.replaceState(null, '', '/gps?lat=&lon=0');
+    render(<Gps4DPage />);
+    expect(screen.queryByRole('link', { name: /Google Maps \\(servicio externo\\)/ })).toBeNull();
+  });
+
 });
