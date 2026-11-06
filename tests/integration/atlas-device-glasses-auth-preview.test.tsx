@@ -41,13 +41,21 @@ describe('ATLAS Device OS Glasses preview through the existing Identity gate', (
   });
 
   it('authenticates with a synthetic organization and switches all three local scenes without requesting device permissions', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        access_token: 'synthetic-preview-token', refresh_token: 'synthetic-preview-refresh'
-      }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify([
-        { org_id: 'org-1', role: 'owner', status: 'active' }
-      ]), { status: 200 }));
+    // IdentityPage and RequireAtlasIdentity independently verify membership.
+    // Match requests by endpoint rather than exhausting a two-response sequence.
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).includes('/auth/v1/token?grant_type=password')) {
+        return Promise.resolve(Response.json({
+          access_token: 'synthetic-preview-token', refresh_token: 'synthetic-preview-refresh'
+        }));
+      }
+      if (String(url).includes('/rest/v1/organization_members')) {
+        return Promise.resolve(Response.json([
+          { org_id: 'org-1', role: 'owner', status: 'active' }
+        ]));
+      }
+      throw new Error('Unexpected remote request in spatial glasses preview test');
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(
