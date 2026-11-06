@@ -220,4 +220,38 @@ describe('ATLAS control-plane contract', () => {
       evidence: { ...evidence, auditEventIds: [] }
     })).toThrow('control_plane_audit_required');
   });
+
+  it('rejects an orchestrator that switches away from the requested module', () => {
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent,
+      context,
+      policy,
+      orchestration: { ...orchestration, module: 'finance' },
+      capability,
+      evidence
+    })).toThrow('control_plane_module_mismatch');
+  });
+
+  it('rejects a ready capability that the intention never requested', () => {
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent,
+      context,
+      policy,
+      orchestration,
+      capability: { ...capability, capabilityId: 'payroll.export' },
+      evidence
+    })).toThrow('control_plane_capability_unrequested:payroll.export');
+  });
+
+  it('does not let administrative actor permissions bypass intent scope', () => {
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent,
+      context: { ...context, actor: { ...context.actor, permissions: ['execution.admin'] } },
+      policy: { ...policy, permissionsRequired: [] },
+      orchestration,
+      capability: { ...capability, capabilityId: 'payroll.export' },
+      evidence
+    })).toThrow('control_plane_capability_unrequested:payroll.export');
+  });
+
 });
