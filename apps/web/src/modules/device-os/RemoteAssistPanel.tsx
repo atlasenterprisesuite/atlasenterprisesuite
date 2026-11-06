@@ -5,21 +5,9 @@ import {
   type AtlasLocalAgent,
   type AtlasLocalDevice
 } from './localControlApi';
+import { summarizeRemoteCandidates } from './remoteAssistCompatibility';
 
 type AssistReadiness = 'loading' | 'not-enrolled' | 'secure-agent-required' | 'adapter-required' | 'error';
-
-function isWindows(agent: AtlasLocalAgent) {
-  const platform = agent.platform.toLowerCase();
-  return platform === 'win32' || platform.includes('windows');
-}
-
-function hasRemoteView(device: AtlasLocalDevice) {
-  return device.capabilities.includes('remote.desktop.view');
-}
-
-function hasRemoteControl(device: AtlasLocalDevice) {
-  return device.capabilities.includes('remote.desktop.control');
-}
 
 function statusLabel(status: AssistReadiness) {
   switch (status) {
@@ -46,27 +34,21 @@ export function RemoteAssistPanel() {
         setAgents(nextAgents);
         setDevices(nextDevices);
 
-        const liveWindowsAgents = nextAgents.filter(
-          (agent) => isWindows(agent) && agent.status === 'online'
-        );
-        const secureWindowsAgents = liveWindowsAgents.filter(
-          (agent) => agent.mtls_status === 'active'
-        );
-        const remoteDevices = nextDevices.filter(
-          (device) => hasRemoteView(device) || hasRemoteControl(device)
+        const { onlineAgents, secureAgents, declaredDevices } = summarizeRemoteCandidates(
+          nextAgents, nextDevices
         );
 
-        if (!liveWindowsAgents.length) {
+        if (!onlineAgents.length) {
           setState('not-enrolled');
-          setMessage('No online Windows Local Agent is currently reporting to ATLAS.');
+          setMessage('No online supported desktop or attended-mobile Local Agent is currently reporting to ATLAS.');
           return;
         }
-        if (!secureWindowsAgents.length) {
+        if (!secureAgents.length) {
           setState('secure-agent-required');
-          setMessage('A Windows agent is online, but no active mTLS binding is verified.');
+          setMessage('An eligible agent is online, but no active mTLS binding is verified.');
           return;
         }
-        if (!remoteDevices.length) {
+        if (!declaredDevices.length) {
           setState('adapter-required');
           setMessage('The secure agent is online. Full desktop assistance remains blocked until a signed native remote-desktop adapter reports its real capabilities.');
           return;
@@ -96,10 +78,11 @@ export function RemoteAssistPanel() {
     [devices]
   );
 
-  const remoteDevices = useMemo(
-    () => devices.filter((device) => hasRemoteView(device) || hasRemoteControl(device)),
-    [devices]
+  const candidateSummary = useMemo(
+    () => summarizeRemoteCandidates(agents, devices),
+    [agents, devices]
   );
+  const remoteDevices = candidateSummary.declaredDevices;
 
   return (
     <article className="feature-card wide" aria-labelledby="remote-assist-title">
@@ -114,9 +97,10 @@ export function RemoteAssistPanel() {
       </div>
 
       <p>
-        ATLAS reuses the existing Local Control Plane for identity, tenant scope, mTLS,
-        command audit and approvals. It does not claim full desktop control unless a real
-        native adapter reports explicit screen-view or input-control capabilities.
+        ATLAS reuses the existing Local Control Plane across Windows, macOS, Linux and
+        eligible attended mobile hosts. Browser viewers may use iPhone, iPad, Android
+        and compatible computers. iOS does not expose unattended native input control.
+        Capability declarations are not proof of a live or authorized session.
       </p>
 
       <div className="notice strong" role="status">{message}</div>
@@ -124,11 +108,11 @@ export function RemoteAssistPanel() {
       <div className="module-grid compact" aria-label="ATLAS Remote Assist readiness">
         <div className="module-card">
           <span>Identity & transport</span>
-          <strong>Windows Local Agent</strong>
+          <strong>Cross-platform Local Agent</strong>
           <p>
-            {agents.some((agent) => isWindows(agent) && agent.status === 'online')
-              ? 'An online Windows Local Agent is reporting to ATLAS.'
-              : 'Enroll this PC with the existing Windows Local Agent installer.'}
+            {candidateSummary.onlineAgents.length
+              ? 'An eligible desktop or attended-mobile Local Agent is reporting to ATLAS.'
+              : 'Enroll an authorized supported host through the existing Local Control Plane. Browser viewers can use other device types.'}
           </p>
           <a href="#local-control-title">Open Local Control Plane</a>
         </div>
@@ -137,9 +121,9 @@ export function RemoteAssistPanel() {
           <span>Zero Trust</span>
           <strong>mTLS session boundary</strong>
           <p>
-            {agents.some((agent) => isWindows(agent) && agent.status === 'online' && agent.mtls_status === 'active')
-              ? 'An active mTLS binding is present for an online Windows agent.'
-              : 'Remote support stays blocked until the agent has an active mTLS certificate binding.'}
+            {candidateSummary.secureAgents.length
+              ? 'An active mTLS binding is present on an eligible online host agent.'
+              : 'Remote support stays blocked until a host agent has an active mTLS certificate binding.'}
           </p>
         </div>
 
@@ -158,7 +142,7 @@ export function RemoteAssistPanel() {
           <strong>Screen + input control</strong>
           <p>
             {remoteDevices.length
-              ? `${remoteDevices.length} device(s) declare remote desktop capabilities. ATLAS still relies on Local Control Plane policy and audit for each command.`
+              ? `${remoteDevices.length} device(s) declare remote desktop capabilities. These are matching host declarations, not signed adapter or active session evidence.`
               : 'No native remote-desktop adapter is registered. ATLAS will not simulate or falsely label unattended desktop control as active.'}
           </p>
         </div>
@@ -166,8 +150,10 @@ export function RemoteAssistPanel() {
 
       <div className="notice">
         Microsoft Quick Assist remains a manual, user-approved fallback outside the ATLAS control plane.
-        The ATLAS target is provider-neutral remote support with explicit consent, least privilege,
-        expiring sessions, visible session state, audit evidence and immediate revocation.
+        The universal ATLAS viewer is a planned authenticated HTTPS experience, not a provisioned
+        remote-control URL. A supported host needs its own authorized adapter and internet connection.
+        Remote support requires explicit consent, least privilege, short-lived sessions, audit
+        evidence and immediate revocation.
       </div>
     </article>
   );
