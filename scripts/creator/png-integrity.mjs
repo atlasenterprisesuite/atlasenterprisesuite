@@ -62,9 +62,14 @@ export function assertValidTransformPng(bytes) {
   }
   ensure(ihdr && idat && iend, 'missing required chunks');
   const stride=width*channels, expected=height*(stride+1);
-  let decoded;
-  try { decoded=inflateSync(Buffer.concat(compressed), { maxOutputLength: expected+1 }); }
-  catch { throw new Error('PNG_INVALID: invalid compressed pixel data'); }
+  const compressedBytes = Buffer.concat(compressed);
+  let decoded, consumed;
+  try {
+    const result=inflateSync(compressedBytes, { maxOutputLength: expected+1, info: true });
+    decoded=result.buffer;
+    consumed=result.engine.bytesWritten;
+  } catch { throw new Error('PNG_INVALID: invalid compressed pixel data'); }
+  ensure(consumed===compressedBytes.length, 'trailing compressed bytes');
   ensure(decoded.length===expected, 'invalid decompressed pixel length');
   let prev=Buffer.alloc(stride);
   for (let y=0;y<height;y++) {
