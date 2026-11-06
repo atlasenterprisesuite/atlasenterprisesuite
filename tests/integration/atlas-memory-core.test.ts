@@ -114,6 +114,13 @@ describe('KNOW-01 transactional knowledge approval P0 contract', () => {
     expect(atomicSql).toMatch(/grant\s+execute\s+on\s+function\s+public\.atlas_memory_approve_atomic[\s\S]*to\s+service_role/i);
   });
 
+  it('does not return idempotent success for historical approval without audit', () => {
+    expect(atomicSql).toContain('memory_approval_evidence_missing');
+    expect(atomicSql).toContain("a.action = 'knowledge.memory.approved'");
+    expect(atomicSql).toContain('a.record_id = p_record_id::text');
+    expect(approveHandler).toContain('memory_approval_evidence_missing');
+  });
+
   it('rejects invalid supersession and preserves idempotent approval', () => {
     expect(atomicSql).toContain('memory_superseded_source_invalid');
     expect(atomicSql).toContain("if v_record.status = 'approved' then");
