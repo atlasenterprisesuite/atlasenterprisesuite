@@ -19,5 +19,7 @@ jobs:
         run: npm ci
       - name: Verify Persona signed-event contract
         run: npx vitest run tests/unit/persona-verification.test.ts
+      - name: Verify Persona backend fail-closed source contract
+        run: npx vitest run tests/integration/persona-sandbox-backend-contract.test.ts
       - name: Typecheck
         run: npm run typecheck
