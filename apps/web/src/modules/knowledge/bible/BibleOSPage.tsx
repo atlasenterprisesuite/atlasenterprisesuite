@@ -9,14 +9,18 @@ import {
   type BibleEvidenceState
 } from './bibleOsData';
 
-type BibleOSView = 'overview' | 'canon' | 'manuscripts' | 'variants' | 'graph';
+import { JESUS_TEACHING_SEEDS } from './jesusTeachingData';
+import { JESUS_TIMELINE_SEEDS } from './jesusTimelineData';
+
+type BibleOSView = 'overview' | 'canon' | 'manuscripts' | 'variants' | 'graph' | 'jesus';
 
 const VIEWS: ReadonlyArray<{ id: BibleOSView; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'canon', label: 'Canon Matrix' },
   { id: 'manuscripts', label: 'Manuscripts' },
   { id: 'variants', label: 'Variant Explorer' },
-  { id: 'graph', label: 'Relationship Graph' }
+  { id: 'graph', label: 'Relationship Graph' },
+  { id: 'jesus', label: 'Life & Teachings of Jesus' }
 ];
 
 function EvidenceBadge({ state }: { state: BibleEvidenceState }) {
@@ -172,6 +176,44 @@ function RelationshipGraphPanel() {
   );
 }
 
+function JesusLifePanel() {
+  return (
+    <section className="page-stack" aria-labelledby="bible-os-jesus-heading">
+      <div className="workspace-card">
+        <p className="eyebrow">Gospel study · Optional Christian perspective</p>
+        <h2 id="bible-os-jesus-heading">Life and teachings of Jesus</h2>
+        <p className="muted">A thematic Gospel timeline, not a verified absolute chronology. Gospel narratives and theological interpretations are distinct from independently established historical facts.</p>
+        <p className="muted">Institutional research entry point, not passage-level verification. Passage references are curated study pointers pending edition-specific and witness-level review.</p>
+      </div>
+      <div className="module-grid" aria-label="Jesus timeline">
+        {JESUS_TIMELINE_SEEDS.map(event => (
+          <article className="module-card enabled" key={event.id}>
+            <span>{event.order}. {event.periodLabel}</span>
+            <strong>{event.title}</strong>
+            <p>{event.summary}</p>
+            <small className="muted">Gospel reference: {event.passage}</small>
+            <EvidenceBadge state={event.evidenceState} />
+            <SourceLinks sourceIds={[event.sourceId]} />
+          </article>
+        ))}
+      </div>
+      <h2>Teachings and ethical themes</h2>
+      <div className="module-grid" aria-label="Teachings of Jesus">
+        {JESUS_TEACHING_SEEDS.map(teaching => (
+          <article className="module-card enabled" key={teaching.id}>
+            <span>{teaching.theme}</span>
+            <strong>{teaching.title}</strong>
+            <p>{teaching.summary}</p>
+            <small className="muted">Gospel reference: {teaching.passage}</small>
+            <EvidenceBadge state={teaching.evidenceState} />
+            <SourceLinks sourceIds={[teaching.sourceId]} />
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function BibleOSPage() {
   const [view, setView] = useState<BibleOSView>('overview');
 
@@ -202,6 +244,7 @@ export function BibleOSPage() {
       {view === 'manuscripts' ? <ManuscriptsPanel /> : null}
       {view === 'variants' ? <VariantExplorerPanel /> : null}
       {view === 'graph' ? <RelationshipGraphPanel /> : null}
+      {view === 'jesus' ? <JesusLifePanel /> : null}
 
       <aside className="workspace-card" aria-labelledby="bible-os-limitations-heading">
         <p className="eyebrow">Evidence & limitations</p>

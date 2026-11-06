@@ -1,10 +1,8 @@
 name: ATLAS AI Council Security Gates
 on:
+  # Required status check for main; path-filtered runs would leave unrelated PRs blocked.
   pull_request:
-    paths:
-      - 'supabase/functions/atlas-copilot/**'
-      - 'tests/node/atlas-ai-council-security-gates.test.mjs'
-      - '.github/workflows/atlas-ai-council-security.yml'
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

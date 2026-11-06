@@ -132,4 +132,69 @@ describe('ATLAS Identity route', () => {
     expect(localStorage.getItem('atlas_access_token')).toBeNull();
     expect(localStorage.getItem('atlas_refresh_token')).toBeNull();
   });
+
+  it('gates Bible OS through existing Identity and requires active organization before opening Jesus view', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes('/auth/v1/token?grant_type=password')) {
+        return Promise.resolve(Response.json({ access_token: 'isolated-bible-test-token', refresh_token: 'isolated-refresh-token' }));
+      }
+      if (url.includes('/rest/v1/organization_members')) {
+        return Promise.resolve(Response.json([{ org_id: 'isolated-org', role: 'member', status: 'active' }]));
+      }
+      throw new Error(`Unexpected request in isolated Bible OS identity fixture: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/knowledge/bible']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'ATLAS Identity' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'ATLAS Bible OS' })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'operator@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'isolated-test-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
+
+    expect(await screen.findByRole('heading', { name: 'ATLAS Bible OS' })).toBeInTheDocument();
+    const jesusView = screen.getByRole('button', { name: 'Life & Teachings of Jesus' });
+    expect(jesusView).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('heading', { name: 'Life and teachings of Jesus' })).not.toBeInTheDocument();
+
+    fireEvent.click(jesusView);
+    expect(jesusView).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('heading', { name: 'Life and teachings of Jesus' })).toBeInTheDocument();
+    expect(screen.getAllByRole('list', { name: 'Evidence sources' }).length).toBeGreaterThan(0);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rest/v1/organization_members'))).toBe(true);
+  });
+
+  it('fails closed for Bible OS when a signed-in identity lacks an active organization', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes('/auth/v1/token?grant_type=password')) {
+        return Promise.resolve(Response.json({ access_token: 'isolated-bible-test-token', refresh_token: 'isolated-refresh-token' }));
+      }
+      if (url.includes('/rest/v1/organization_members')) return Promise.resolve(Response.json([]));
+      throw new Error(`Unexpected request in isolated Bible OS identity fixture: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/knowledge/bible']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'ATLAS Identity' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'operator@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'isolated-test-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
+
+    expect(await screen.findByText('Your account is authenticated but has no active ATLAS organization access.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'ATLAS Bible OS' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('atlas_access_token')).toBeNull();
+    expect(window.localStorage.getItem('atlas_refresh_token')).toBeNull();
+  });
+
 });

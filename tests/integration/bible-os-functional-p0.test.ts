@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { BIBLE_OS_SOURCES, BIBLE_OS_VARIANTS } from '../../apps/web/src/modules/knowledge/bible/bibleOsData';
 
 const read = (path: string) => (existsSync(path) ? readFileSync(path, 'utf8') : '');
 
@@ -44,6 +45,19 @@ describe('ATLAS Bible OS functional P0', () => {
     expect(data).toContain('https://www.codexsinaiticus.org/');
     expect(data).toContain('https://www.deadseascrolls.org.il/');
     expect(data).toContain("status: 'curated_seed'");
+  });
+
+
+  it('limits the Mark 16 folio source to one directly linked manuscript witness', () => {
+    const source = BIBLE_OS_SOURCES.find(item => item.id === 'sinaiticus-mark16-folio-228');
+    const variant = BIBLE_OS_VARIANTS.find(item => item.id === 'mark-long-ending');
+    expect(source?.url).toBe('https://www.codexsinaiticus.org/en/manuscript.aspx?book=34&chapter=16&lid=en&side=r&verse=8&zoomslider=0');
+    expect(new URL(source?.url ?? 'https://example.invalid').searchParams.get('book')).toBe('34');
+    expect(new URL(source?.url ?? 'https://example.invalid').searchParams.get('chapter')).toBe('16');
+    expect(source?.scope).toContain('This is one witness, not all textual traditions.');
+    expect(source?.scope).toContain('reproduction rights not cleared');
+    expect(variant?.sourceIds).toContain('sinaiticus-mark16-folio-228');
+    expect(variant?.evidenceState).toBe('DISPUTED');
   });
 
   it('makes Bible OS a fail-closed production route with authorized verification', () => {
