@@ -386,9 +386,9 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           </form>
 
           <nav className="atlas-top-actions" aria-label="ATLAS quick access">
-            <NavLink to="/assistant" aria-label="ATLAS Assistant">AI</NavLink>
-            <NavLink to="/connect" aria-label="ATLAS Connect">↗</NavLink>
-            <NavLink to="/galaxy" aria-label="ATLAS Galaxy">◇</NavLink>
+            <NavLink to="/assistant" aria-label="AI — ATLAS Assistant">AI</NavLink>
+            <NavLink to="/connect" aria-label="↗ — ATLAS Connect">↗</NavLink>
+            <NavLink to="/galaxy" aria-label="◇ — ATLAS Galaxy">◇</NavLink>
           </nav>
 
           <NavLink className="atlas-profile-chip" to="/identity" aria-label="Open identity and organization">
