@@ -234,7 +234,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <span aria-hidden="true">×</span>
         </button>
 
-        <NavLink className="brand-lockup" to="/" onClick={closeMobileNav} aria-label="ATLAS home">
+        <NavLink className="brand-lockup" to="/" onClick={closeMobileNav} title="ATLAS home">
           <div className="brand-mark atlas-slash-mark" aria-hidden="true"><i /><i /><i /></div>
           <div><span>ATLAS OS</span><small>Total Control</small></div>
         </NavLink>
@@ -391,7 +391,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
             <NavLink to="/galaxy" aria-label="◇ — ATLAS Galaxy">◇</NavLink>
           </nav>
 
-          <NavLink className="atlas-profile-chip" to="/identity" aria-label={`Open identity and organization: ${organizationInitials} ${organizationName} ${roleLabel}`}>
+          <NavLink className="atlas-profile-chip" to="/identity" title="Open identity and organization">
             <span>{organizationInitials}</span>
             <div><strong>{organizationName}</strong><small>{roleLabel}</small></div>
           </NavLink>
