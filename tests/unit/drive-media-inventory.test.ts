@@ -30,10 +30,8 @@ describe('ATLAS Drive media inventory — tenant-scoped fail closed', () => {
       rightsStatus: 'unverified',
       reviewStatus: 'pending'
     });
-    const forgedClaims = registerDriveMedia(
-      { ...base, visualReviewed: true, permissionReviewed: true },
-      owner
-    );
+    const untrustedClaims = { ...base, visualReviewed: true, permissionReviewed: true };
+    const forgedClaims = registerDriveMedia(untrustedClaims, owner);
     expect(forgedClaims).toMatchObject({
       publishable: false,
       rightsStatus: 'unverified',
