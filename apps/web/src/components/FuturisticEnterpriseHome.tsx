@@ -247,15 +247,15 @@ export function FuturisticEnterpriseHome() {
         <section className="atlas-command-lower">
           <article className="atlas-system-panel">
             <header>
-              <div><strong>Resumen general del sistema</strong><span>Estados independientes derivados del catálogo canónico</span></div>
+              <div><strong>Resumen general del sistema</strong><span>Indicadores del catálogo canónico; las categorías pueden superponerse</span></div>
               <Link to="/suite">Ver módulos →</Link>
             </header>
             <div className="atlas-readiness-chart" role="img" aria-label={`${implemented} módulos con baseline operativo, ${activeEvolution} en evolución activa y ${gated} con conexión externa requerida`}>
               <div className="chart-grid" aria-hidden="true" />
               <div className="chart-bars">
-                <div><span style={{ height: `${Math.max(18, (implemented / total) * 100)}%` }} /><small>Operativos</small></div>
-                <div><span style={{ height: `${Math.max(18, (activeEvolution / total) * 100)}%` }} /><small>En evolución</small></div>
-                <div><span style={{ height: `${Math.max(18, (gated / total) * 100)}%` }} /><small>Conexión</small></div>
+                <div><span style={{ height: `${(implemented / total) * 100}%` }} /><small>Operativos</small></div>
+                <div><span style={{ height: `${(activeEvolution / total) * 100}%` }} /><small>En evolución</small></div>
+                <div><span style={{ height: `${(gated / total) * 100}%` }} /><small>Conexión</small></div>
               </div>
             </div>
           </article>
