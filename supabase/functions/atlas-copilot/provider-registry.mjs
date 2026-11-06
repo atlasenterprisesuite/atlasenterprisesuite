@@ -28,7 +28,7 @@ export function createProviderRegistry({providers=[]}={}){
       const adapter=get(id);
       if(!adapter)return {id,state:'configuration-required',configured:false,verified:false,model:null,capabilities:[],profiles:[],error:'provider_not_configured'};
       const descriptor=safeDescriptor(adapter);
-      const configuredModel=descriptor.models?.[profile]||descriptor.model||null;
+      const configuredModel=descriptor.models?descriptor.models[profile]||null:descriptor.model||null;
       // A different configured profile cannot authorize this profile.
       if(!descriptor.configured||!descriptor.profiles.includes(profile)||typeof configuredModel!=='string'||!configuredModel.trim()){
         return {id,state:'configuration-required',configured:false,verified:false,model:configuredModel,
