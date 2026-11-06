@@ -73,7 +73,7 @@ function routeScore(
   const signalMatches = route.signals.filter((signal) => {
     const normalized = String(signal).trim().toLowerCase();
     if (!normalized) return false;
-    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\    return normalized && normalizedObjective.includes(normalized);');
+    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}(?=$|[^\\p{L}\\p{N}_])`, 'u').test(normalizedObjective);
   }).length;
   score += signalMatches * 5;
