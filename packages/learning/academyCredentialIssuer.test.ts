@@ -23,6 +23,35 @@ describe('Academy issuer isolated fail-closed boundary', () => {
     await expect(issueAcademyCredential(request, store({ authenticate: async () => null, transaction }))).rejects.toThrow();
     expect(transaction).not.toHaveBeenCalled();
   });
+  it('rejects malformed evidence before authentication or transaction', async () => {
+    const authenticate = vi.fn();
+    const transaction = vi.fn();
+    await expect(issueAcademyCredential({ ...request, evidenceDigest: 'not-a-digest' }, store({ authenticate, transaction }))).rejects.toThrow('Invalid credential request');
+    expect(authenticate).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it('rejects missing trusted tenant scope before transaction', async () => {
+    const transaction = vi.fn();
+    await expect(issueAcademyCredential(request, store({
+      authenticate: async () => ({ ...actor, organizationId: '' }), transaction
+    }))).rejects.toThrow('Unauthorized credential issuance');
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it('rejects enrollment owned by a different learner or course version', async () => {
+    for (const patch of [{ userId: 'other-user' }, { courseVersion: 'stale-course' }]) {
+      const insert = vi.fn();
+      await expect(issueAcademyCredential(request, store({
+        transaction: async fn => fn({
+          lockEnrollment: async () => ({ id: 'e1', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active', ...patch }),
+          getExisting: async () => null,
+          getVerifiedAssessment: async () => null,
+          insertCredential: insert,
+          insertIdempotency: async () => {}, appendAudit: async () => {}
+        })
+      }))).rejects.toThrow('Unauthorized enrollment');
+      expect(insert).not.toHaveBeenCalled();
+    }
+  });
   it('rejects missing issuer capability', async () => {
     await expect(issueAcademyCredential(request, store({ authenticate: async () => ({ ...actor, capabilities: [] }) }))).rejects.toThrow();
   });
