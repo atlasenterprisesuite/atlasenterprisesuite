@@ -39,12 +39,31 @@ ALTER TABLE academy_f232.enrollments ENABLE ROW LEVEL SECURITY;
 -- The postgres service administrator bypasses RLS; verify using a restricted role.
 CREATE ROLE academy_f232_reader NOLOGIN NOSUPERUSER NOBYPASSRLS;
 GRANT USAGE ON SCHEMA academy_f232 TO academy_f232_reader;
-GRANT SELECT ON academy_f232.enrollments TO academy_f232_reader;
+GRANT SELECT, INSERT ON academy_f232.enrollments TO academy_f232_reader;
 SET ROLE academy_f232_reader;
 SELECT set_config('app.tenant_id','org-a',true);
 DO $$
 BEGIN
- IF (SELECT count(*) FROM academy_f232.enrollments) <> 2 THEN
+ IF current_user <> 'academy_f232_reader' THEN
+   RAISE EXCEPTION 'P0: RLS assertions executed with wrong database role';
+ END IF;
+ -- Negative WRITE test: the same tenant policy must reject cross-tenant inserts.
+ BEGIN
+   INSERT INTO academy_f232.enrollments(id,org_id,user_id,status)
+     VALUES ('forbidden-write','org-b','user-a','active');
+   RAISE EXCEPTION 'P0: cross-tenant write accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+ IF EXISTS (SELECT 1 FROM academy_f232.enrollments WHERE id='forbidden-write') THEN
+   RAISE EXCEPTION 'P0: cross-tenant write persisted';
+ END IF;
+ -- Positive control: tenant-scoped writes remain allowed.
+ INSERT INTO academy_f232.enrollments(id,org_id,user_id,status)
+   VALUES ('allowed-write','org-a','user-a','active');
+ IF NOT EXISTS (SELECT 1 FROM academy_f232.enrollments WHERE id='allowed-write') THEN
+   RAISE EXCEPTION 'P0: own-tenant write denied';
+ END IF;
+ IF (SELECT count(*) FROM academy_f232.enrollments) <> 3 THEN
    RAISE EXCEPTION 'P0: cross-tenant enrollment visible';
  END IF;
  IF EXISTS (SELECT 1 FROM academy_f232.enrollments WHERE id='enroll-b') THEN
