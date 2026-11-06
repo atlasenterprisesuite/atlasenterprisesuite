@@ -1,0 +1,51 @@
+name: ATLAS Academy PostgreSQL 17 Isolated Security
+on:
+  pull_request:
+    paths:
+      - 'tests/security/academy-postgres17-*.sql'
+      - '.github/workflows/atlas-academy-postgres17.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  academy-postgres17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: academy_test
+          POSTGRES_PASSWORD: academy_local_only
+          POSTGRES_DB: academy_isolated
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U academy_test -d academy_isolated"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: academy_test
+      PGPASSWORD: academy_local_only
+      PGDATABASE: academy_isolated
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify isolated PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -Atqc "SHOW server_version_num" | grep -E '^17[0-9]{4}$'
+          test "$(psql -X -v ON_ERROR_STOP=1 -Atqc 'SELECT current_database()')" = academy_isolated
+      - name: Run Academy negative tenant and atomicity fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/security/academy-postgres17-f232-negative.sql
+      - name: Confirm fixture rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_namespace WHERE nspname='academy_f232'")" = 0
