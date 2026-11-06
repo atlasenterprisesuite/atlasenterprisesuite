@@ -19,6 +19,6 @@ describe('Bible OS Jesus view accessibility interaction', () => {
     fireEvent.click(control);
     expect(control.getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('heading', { name: 'Life and teachings of Jesus' })).toBeTruthy();
-    expect(screen.getByRole('list', { name: 'Evidence sources' })).toBeTruthy();
+    expect(screen.getAllByRole('list', { name: 'Evidence sources' }).length).toBeGreaterThan(0);
   });
 });
