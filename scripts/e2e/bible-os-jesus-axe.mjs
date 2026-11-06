@@ -62,6 +62,31 @@ async function checkScenario(browser, activeOrganization) {
         return;
       }
 
+      // Existing ATLAS Shell requests assistant status after organization validation.
+      // Keep that status deliberately unconfigured; this is NOT a live provider session.
+      if (url.origin === FAKE_SUPABASE && request.method() === 'GET'
+        && url.pathname === '/functions/v1/atlas-copilot'
+        && url.searchParams.get('api') === 'status') {
+        const headers = request.headers();
+        if (headers.authorization !== 'Bearer ' + TOKEN
+          || headers['x-atlas-org-id'] !== 'isolated-e2e-organization') {
+          rejected.push('Assistant status requested without the authorized synthetic organization');
+          await route.abort();
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true, authenticated: true, provider: 'none',
+            provider_state: 'not_configured', model: null,
+            storage_state: 'not_configured', organization: 'isolated-e2e-organization',
+            role: 'member', capabilities: [], providers: []
+          })
+        });
+        return;
+      }
+
       // Fail closed: any production provider, CDN or unrecognized backend request.
       rejected.push('Unexpected network request: ' + request.method() + ' ' + url.origin + url.pathname);
       await route.abort();
