@@ -14,7 +14,7 @@ describe('ATLAS persistent shell navigation context', () => {
     expect(shell).toContain('aria-label="ATLAS persistent navigation"');
     expect(shell).toContain('onClick={() => navigate(-1)}');
     expect(shell).toContain('onClick={() => navigate(1)}');
-    expect(shell).toContain("onClick={() => navigate('/')}");
+    expect(shell).toContain("onClick={() => navigate('/platform')}");
     expect(shell).toContain('aria-label="Back"');
     expect(shell).toContain('aria-label="Forward"');
     expect(shell).toContain('aria-label="Home"');
