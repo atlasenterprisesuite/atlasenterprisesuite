@@ -948,11 +948,19 @@ export function Gps4DPage() {
 
           {externalMapLinks && (
             <nav aria-label="Abrir punto seleccionado en mapas externos" className="gps4d-actions">
+              <p id="gps4d-external-provider-privacy" className="gps4d-provider-privacy">
+                Al abrir Google Maps o Apple Maps, compartirás las coordenadas seleccionadas con
+                ese proveedor y se aplicará su política de privacidad.
+              </p>
               <a href={externalMapLinks.googleMaps} target="_blank" rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+                aria-describedby="gps4d-external-provider-privacy"
                 aria-label="Abrir punto seleccionado en Google Maps (servicio externo)">
                 Google Maps ↗
               </a>
               <a href={externalMapLinks.appleMaps} target="_blank" rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+                aria-describedby="gps4d-external-provider-privacy"
                 aria-label="Abrir punto seleccionado en Apple Maps (servicio externo)">
                 Apple Maps ↗
               </a>
