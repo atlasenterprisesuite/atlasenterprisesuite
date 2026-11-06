@@ -16,7 +16,7 @@ function chunk(type, data) {
   crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type),data])));
   return Buffer.concat([size,Buffer.from(type),data,crc]);
 }
-function makePng({badStream=false,filter=0,paletteEntries=9,colorType=6}={}) {
+function makePng({badStream=false,extraCompressed=false,filter=0,paletteEntries=9,colorType=6}={}) {
   const width=477,height=357,channels=colorType===6?4:1;
   const ihdr=Buffer.alloc(13);
   ihdr.writeUInt32BE(width,0);ihdr.writeUInt32BE(height,4);
@@ -34,7 +34,8 @@ function makePng({badStream=false,filter=0,paletteEntries=9,colorType=6}={}) {
   if(colorType===3) {
     parts.push(chunk('PLTE', Buffer.from(Array.from({length:3*paletteEntries},(_,i)=>(i*23)%256))));
   }
-  parts.push(chunk('IDAT',badStream?Buffer.from('not valid zlib'):deflateSync(pixels)));
+  const stream=badStream?Buffer.from('not valid zlib'):deflateSync(pixels);
+  parts.push(chunk('IDAT',extraCompressed?Buffer.concat([stream,Buffer.from('junk')]):stream));
   parts.push(chunk('IEND',Buffer.alloc(0)));
   return Buffer.concat(parts);
 }
@@ -47,6 +48,7 @@ test('rejects truncated IEND chunk',()=>reject(makePng().subarray(0,-5)));
 test('rejects corrupted chunk CRC',()=>{const b=makePng();b[38]^=1;reject(b);});
 test('rejects invalid compressed image stream with valid CRC',()=>reject(makePng({badStream:true})));
 test('rejects invalid scanline filter',()=>reject(makePng({filter:7})));
+test('rejects extra bytes after zlib stream within an IDAT',()=>reject(makePng({extraCompressed:true})));
 test('rejects bytes after IEND',()=>reject(Buffer.concat([makePng(),Buffer.from('junk')])));
 test('rejects invalid indexed palette value',()=>reject(makePng({colorType:3,paletteEntries:3})));
 test('rejects arbitrary data',()=>reject(Buffer.alloc(100)));
