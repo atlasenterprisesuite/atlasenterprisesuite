@@ -9,8 +9,9 @@ import {
 import { ATLAS_MODULES } from '../modules/registry';
 import './identity.css';
 
-const DEFAULT_TARGET = '/';
+const DEFAULT_TARGET = '/platform';
 const SUPPORTED_PREFIXES = [
+  '/platform',
   '/finance',
   '/health',
   '/studio',

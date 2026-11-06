@@ -24,7 +24,7 @@ export function PublicHome() {
         </nav>
 
         <div className="public-nav-actions">
-          <Link className="public-link-button" to="/identity">Sign in</Link>
+          <Link className="public-link-button" to="/identity?app=%2Fplatform">Sign in</Link>
           <Link className="public-primary-button compact" to="/platform">Enter ATLAS</Link>
         </div>
       </header>
@@ -132,7 +132,7 @@ export function PublicHome() {
         </div>
         <p>Built as a unified enterprise ecosystem.</p>
         <div>
-          <Link to="/identity">Sign in</Link>
+          <Link to="/identity?app=%2Fplatform">Sign in</Link>
           <Link to="/platform">Platform</Link>
         </div>
       </footer>

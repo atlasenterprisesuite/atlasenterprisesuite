@@ -126,7 +126,7 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><WorkRoutes /></RequireAtlasIdentity>;
   }
 
-  if (pathname === '/') return <FuturisticEnterpriseHome />;
+  if (pathname === '/platform') return <FuturisticEnterpriseHome />;
 
   if (pathname === '/advisory' || pathname.startsWith('/advisory/')) {
     return <RequireAtlasIdentity><AdvisoryRoutes /></RequireAtlasIdentity>;

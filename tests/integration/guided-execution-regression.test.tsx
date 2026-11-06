@@ -36,15 +36,15 @@ describe('Guided Execution adjacent route regression', () => {
     expect(main).toHaveClass('public-home');
     expect(screen.getByRole('link', { name: 'Explore the platform' })).toHaveAttribute('href', '/platform');
     expect(screen.getByRole('link', { name: 'Enter ATLAS' })).toHaveAttribute('href', '/platform');
-    expect(screen.getAllByRole('link', { name: 'Sign in' }).some(link => link.getAttribute('href') === '/identity')).toBe(true);
+    expect(screen.getAllByRole('link', { name: 'Sign in' }).every(link => link.getAttribute('href') === '/identity?app=%2Fplatform')).toBe(true);
   });
 
   it('keeps the existing enterprise shell and live module links at /platform', () => {
     render(<MemoryRouter initialEntries={['/platform']}><App /></MemoryRouter>);
     const main = screen.getByRole('main');
-    expect(main).toHaveTextContent('Finance, Payroll and Health share one shell');
     expect(main.querySelector('.public-home')).toBeNull();
-    expect(within(main).getByRole('link', { name: /business suite/i })).toHaveAttribute('href', '/business');
+    expect(screen.getByRole('region', { name: 'ATLAS Enterprise Suite visual home' })).toBeInTheDocument();
+    expect(within(main).getByRole('link', { name: 'AI surface' })).toHaveAttribute('href', '/assistant');
   });
 
 });

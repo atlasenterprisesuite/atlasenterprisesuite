@@ -59,28 +59,6 @@ function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: s
   return <header className="page-header"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></header>;
 }
 
-function EnterpriseHome() {
-  return (
-    <section className="page-stack">
-      <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
-      <div className="module-grid">
-        <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
-        <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting operations with live Accounts Payable, Accounts Receivable and governed financial reporting.</p></Link>
-        <Link className="module-card enabled" to="/tax"><span>Finance • Compliance</span><strong>ATLAS Tax</strong><p>Connected personal and business return preparation with governed source-document mapping.</p></Link>
-        <Link className="module-card enabled" to="/payroll"><span>People • Pay • Progress</span><strong>ATLAS Payroll</strong><p>Governed payroll workspace with real configuration boundaries and no fabricated metrics.</p></Link>
-        <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
-        <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tooling with explicit evidence boundaries.</p></Link>
-        <Link className="module-card enabled" to="/wellbeing/faith"><span>Wellbeing · Reflection</span><strong>ATLAS Faith & Reflection</strong><p>Guided prayer, symbolic sacred codes, a 45-count practice, real-world action and a 21-day evidence journal.</p></Link>
-        <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
-        <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
-        <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
-        <Link className="module-card enabled" to="/max"><span>Intelligence · Governed capacity</span><strong>ATLAS MAX</strong><p>Provider-neutral premium intelligence with evidence-backed entitlements, usage controls and Operators.</p></Link>
-      </div>
-      <div className="notice">Only implemented routes are presented as active. Planned ATLAS modules remain gated until their code, data contracts and tests exist.</div>
-    </section>
-  );
-}
-
 function BusinessHome() {
   return (
     <section className="page-stack">
@@ -293,7 +271,6 @@ export function App() {
   return (
     <AtlasShell>
       <Routes>
-        <Route path="/platform" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
         <Route path="/security/certificates" element={<RequireAtlasIdentity><CertificateLifecyclePage /></RequireAtlasIdentity>} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />

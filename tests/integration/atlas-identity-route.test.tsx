@@ -109,7 +109,7 @@ describe('ATLAS Identity route', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'not-a-real-password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to ATLAS' }));
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /One intelligent platform/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('region', { name: 'ATLAS Enterprise Suite visual home' })).toBeInTheDocument());
   });
 
   it('clears the session when authentication succeeds but no active ATLAS organization is available', async () => {
