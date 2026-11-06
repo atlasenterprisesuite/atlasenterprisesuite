@@ -78,4 +78,20 @@ describe('Academy F2 server-only authorization boundary', () => {
     }))).rejects.toThrow('storage unavailable');
   });
 
+  it('rejects an enrollment revoked while the rubric is being loaded (TOCTOU regression)', async () => {
+    let enrollmentStatus = 'active';
+    const server = context({
+      getEnrollment: async () => ({
+        id: 'enroll-1', userId: 'user-1', organizationId: 'org-1',
+        courseVersion: 'c1', status: enrollmentStatus
+      }),
+      getRubric: async () => {
+        // Simulate a committed revocation by another session after the first enrollment read.
+        enrollmentStatus = 'revoked';
+        return { organizationId: 'org-1', ...rubric };
+      }
+    });
+    await expect(evaluateAuthorizedAcademyAttempt(request, server)).rejects.toThrow('Unauthorized enrollment');
+  });
+
 });
