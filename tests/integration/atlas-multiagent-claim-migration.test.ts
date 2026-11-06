@@ -8,8 +8,8 @@ describe('ATLAS multiagent durable claim migration contract',()=>{
  it('keeps table inaccessible to clients',()=>{expect(sql).toContain('enable row level security');expect(sql).toContain('revoke all on public.atlas_multiagent_dispatch_claims from public, anon, authenticated');});
 
  it('never grants anonymous API users EXECUTE on provider-claim functions',()=>{
-   expect(sql).not.toMatch(/grant\\s+execute\\s+on\\s+function\\s+private\\.atlas_multiagent_claim_internal\\([^)]*\\)\\s+to\\s+anon/i);
-   expect(sql).not.toMatch(/grant\\s+execute\\s+on\\s+function\\s+public\\.atlas_multiagent_claim\\([^)]*\\)\\s+to\\s+anon/i);
+   expect(sql).not.toMatch(/grant\s+execute\s+on\s+function\s+private\.atlas_multiagent_claim_internal\([^)]*\)\s+to\s+anon/i);
+   expect(sql).not.toMatch(/grant\s+execute\s+on\s+function\s+public\.atlas_multiagent_claim\([^)]*\)\s+to\s+anon/i);
    expect(sql).toContain('to service_role;');
  });
 });
