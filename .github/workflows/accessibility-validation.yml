@@ -68,6 +68,8 @@ jobs:
         run: |
           routes=(
             "/"
+            "/platform"
+            "/identity"
             "/finance"
             "/health"
             "/settings/accessibility/communication"

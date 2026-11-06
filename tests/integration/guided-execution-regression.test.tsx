@@ -30,4 +30,21 @@ describe('Guided Execution adjacent route regression', () => {
     render(<MemoryRouter initialEntries={['/studio']}><App /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: 'Create beyond the prompt.' })).toBeInTheDocument();
   });
+  it('links public homepage actions to real platform and identity routes', () => {
+    render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>);
+    const main = screen.getByRole('main');
+    expect(main).toHaveClass('public-home');
+    expect(screen.getByRole('link', { name: 'Explore the platform' })).toHaveAttribute('href', '/platform');
+    expect(screen.getByRole('link', { name: 'Enter ATLAS' })).toHaveAttribute('href', '/platform');
+    expect(screen.getAllByRole('link', { name: 'Sign in' }).some(link => link.getAttribute('href') === '/identity')).toBe(true);
+  });
+
+  it('keeps the existing enterprise shell and live module links at /platform', () => {
+    render(<MemoryRouter initialEntries={['/platform']}><App /></MemoryRouter>);
+    const main = screen.getByRole('main');
+    expect(main).toHaveTextContent('Finance, Payroll and Health share one shell');
+    expect(main.querySelector('.public-home')).toBeNull();
+    expect(screen.getByRole('link', { name: /business suite/i })).toHaveAttribute('href', '/business');
+  });
+
 });
