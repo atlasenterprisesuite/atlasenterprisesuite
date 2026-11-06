@@ -143,6 +143,27 @@ describe('Academy issuer isolated fail-closed boundary', () => {
     }));
     expect(result.status).toBe('revoked');
   });
+  it('rejects mismatched rubric or evidence digest without credential or audit writes', async () => {
+    for (const assessment of [
+      { passed: true, rubricVersion: 'outdated-rubric', evidenceDigest: 'sha256:abc' },
+      { passed: true, rubricVersion: 'r1', evidenceDigest: 'sha256:other' }
+    ]) {
+      const insertCredential = vi.fn();
+      const insertIdempotency = vi.fn();
+      const appendAudit = vi.fn();
+      await expect(issueAcademyCredential(request, store({
+        transaction: async fn => fn({
+          lockEnrollment: async () => ({ id: 'e1', userId: 'u1', organizationId: 'org1', courseVersion: 'c1', status: 'active' }),
+          getExisting: async () => null,
+          getVerifiedAssessment: async () => assessment,
+          insertCredential, insertIdempotency, appendAudit
+        })
+      }))).rejects.toThrow('Unverified assessment evidence');
+      expect(insertCredential).not.toHaveBeenCalled();
+      expect(insertIdempotency).not.toHaveBeenCalled();
+      expect(appendAudit).not.toHaveBeenCalled();
+    }
+  });
   it('requires passing durable evidence and fails closed on audit failure', async () => {
     await expect(issueAcademyCredential(request, store({
       transaction: async fn => fn({
