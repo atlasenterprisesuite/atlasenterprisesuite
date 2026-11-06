@@ -15,7 +15,8 @@ beforeEach(() => {
 
 describe('Guided Execution adjacent route regression', () => {
   it.each([
-    ['/', 'One governed enterprise ecosystem'],
+    ['/', 'One intelligent platform. Your world, connected.'],
+    ['/platform', 'One governed enterprise ecosystem'],
     ['/finance', 'Finance'],
     ['/finance/accounting/accounts-payable', 'Accounts Payable'],
     ['/health', 'Health']
