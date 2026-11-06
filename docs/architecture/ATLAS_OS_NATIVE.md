@@ -99,3 +99,35 @@ revocation, independent review, signed updates and rollback evidence all exist.
 - https://live-team.pages.debian.net/live-manual/html/live-manual/managing-a-configuration.en.html
 - https://live-team.pages.debian.net/live-manual/html/live-manual/customizing-contents.en.html
 - https://live-team.pages.debian.net/live-manual/html/live-manual/customizing-run-time-behaviours.en.html
+
+## Native navigation and local continuity loop
+
+The native application now has working menus:
+
+| Menu | Available functions |
+| --- | --- |
+| Archivo | New/open encrypted note, save, lock, exit; unsaved-change protection |
+| Editar | Undo, redo, cut, copy, paste, select all through native text widgets |
+| Ver | Interactive navigation graph, real journal counters, optional local polling, stop polling |
+| Sistema | Host/runtime diagnostics and explicit sync/backup/persistence readiness explanations |
+| Ayuda | Keyboard shortcuts and usage guide |
+
+The graph connects the notes catalog, journal status, vault/storage explanation,
+connection readiness, diagnostics and help. Every graph action also has a native
+keyboard-focusable button. It does not represent implemented enterprise modules.
+The encrypted catalog lists actual saved records; identifiers are encrypted on disk.
+Existing single-note content remains under the `notes` record. Opening another record
+asks before discarding unsaved changes; locking closes catalog windows and clears text.
+
+The user's continuity/infinity direction is implemented here as an **optional local
+status loop**, not unlimited autonomous execution: every 30 seconds while unlocked,
+read actual encrypted journal counters. No network or automatic writes. One timer per
+application; lock, close, stop or any read error cancels it. This does not synchronize
+other devices, retry external jobs, resolve remote conflicts or prove persistence
+across an operating-system restart.
+
+Native GUI CI also exercises multiple notes, menu dialogs, the graph, a single owned
+polling timer, cancellation on lock, catalog privacy, retention of text after failed
+save and unsaved-change protection. Disk/ISO and multidevice acceptance gates remain
+open. Broad repository tests previously blocked for unverified Supabase access are
+not retried by these focused checks.

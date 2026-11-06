@@ -19,8 +19,8 @@ class NativeNotesTests(unittest.TestCase):
         spec.loader.exec_module(notes)
         with tempfile.TemporaryDirectory() as directory:
             os.chmod(directory, 0o700)
-            def local_request(action, passphrase, value=None):
-                payload = {'action': action, 'passphrase': passphrase, 'value': value}
+            def local_request(action, passphrase, value=None, record="notes"):
+                payload = {'action': action, 'passphrase': passphrase, 'value': value, 'record': record}
                 result = subprocess.run(['node', str(BASE / 'notes-bridge.mjs'), directory],
                                         input=json.dumps(payload), text=True, capture_output=True, check=True)
                 return json.loads(result.stdout)
@@ -41,8 +41,44 @@ class NativeNotesTests(unittest.TestCase):
                     self.assertEqual(app.text.get('1.0', 'end-1c'), '')
                     app.unlock.invoke()
                     self.assertEqual(app.text.get('1.0', 'end-1c'), 'Native offline text')
+                    with patch.object(notes.simpledialog, 'askstring', return_value='work'):
+                        app.new_note()
+                    app.text.insert('1.0', 'Separate work note')
+                    root.update()
+                    app.save()
+                    self.assertTrue(app.select_note('notes'))
+                    self.assertEqual(app.text.get('1.0', 'end-1c'), 'Native offline text')
+                    app.catalog()
+                    catalog = app.private_windows[-1]
+                    self.assertTrue(catalog.winfo_exists())
+                    with patch.object(notes.messagebox, 'showinfo') as information:
+                        app.show_status()
+                        app.diagnostics()
+                        app.connection_status()
+                        app.storage_status()
+                        app.help()
+                        self.assertEqual(information.call_count, 5)
+                    app.web_map()
+                    root.update()
+                    app.monitoring.set(True)
+                    app.toggle_monitor()
+                    timer = app.timer
+                    self.assertIsNotNone(timer)
+                    app.toggle_monitor()
+                    self.assertEqual(timer, app.timer)
+                    app.lock()
+                    self.assertIsNone(app.timer)
+                    self.assertFalse(app.monitoring.get())
+                    self.assertFalse(catalog.winfo_exists())
+                    app.open()
                     app.text.insert('end', ' unsaved')
                     root.update()
+                    preserved = app.text.get('1.0', 'end-1c')
+                    with patch.object(notes, 'request', side_effect=RuntimeError('vault_locked')), \
+                         patch.object(notes.messagebox, 'showerror'):
+                        app.save()
+                    self.assertEqual(app.text.get('1.0', 'end-1c'), preserved)
+                    self.assertTrue(app.dirty)
                     with patch.object(notes.messagebox, 'askyesno', return_value=False):
                         self.assertFalse(app.lock())
                         self.assertIsNotNone(app.passphrase)

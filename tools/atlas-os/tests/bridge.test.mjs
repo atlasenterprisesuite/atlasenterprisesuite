@@ -29,3 +29,17 @@ test('bridge rejects network operations, malformed requests and oversized input'
     assert.equal(call(d, request).code, 1);
   }
 });
+test('encrypted note catalog supports separate records and rejects unsafe record names', async t => {
+  const d = await mkdtemp(join(tmpdir(), 'atlas-native-')); await chmod(d, 0o700);
+  t.after(() => rm(d, { recursive: true, force: true }));
+  const auth = { passphrase: 'catalog fixture passphrase only' };
+  assert.equal(call(d, { ...auth, action: 'save', record: 'work', value: 'work note' }).code, 0);
+  assert.equal(call(d, { ...auth, action: 'save', record: 'personal', value: 'personal note' }).code, 0);
+  const work = call(d, { ...auth, action: 'load', record: 'work' });
+  assert.equal(work.data.value, 'work note');
+  assert.deepEqual(work.data.records, ['personal', 'work']);
+  assert.equal(call(d, { ...auth, action: 'load', record: 'personal' }).data.value, 'personal note');
+  for (const record of ['../escape', '__proto__', 'constructor']) {
+    assert.equal(call(d, { ...auth, action: 'save', record, value: 'bad' }).code, 1);
+  }
+});

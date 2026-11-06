@@ -44,6 +44,9 @@ export function createContinuity({ directory, passphrase, tenant } = {}) {
       if (!safe(record)) throw new Error('continuity_invalid_record');
       const state = await load(); return Object.hasOwn(state.records, record) ? state.records[record].value : null;
     },
+    async list() {
+      return Object.keys((await load()).records).sort();
+    },
     async status() {
       const state = await load(); return { pending: state.pending.length, conflicts: state.conflicts.length, versions: state.events.length };
     },

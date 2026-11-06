@@ -9,9 +9,10 @@ try {
   const request = JSON.parse(raw);
   if (!request || !['load', 'save'].includes(request.action)) throw new Error('native_invalid_action');
   const core = createContinuity({ directory: process.argv[2], passphrase: request.passphrase, tenant: 'local-device' });
-  if (request.action === 'save') await core.edit('notes', request.value);
-  const value = await core.read('notes');
-  process.stdout.write(JSON.stringify({ ok: true, value: value ?? '', status: await core.status() }));
+  const record = request.record === undefined ? 'notes' : request.record;
+  if (request.action === 'save') await core.edit(record, request.value);
+  const value = await core.read(record);
+  process.stdout.write(JSON.stringify({ ok: true, value: value ?? '', status: await core.status(), records: await core.list() }));
 } catch (error) {
   const known = /^(vault_|continuity_|native_)[a-z0-9_]+$/;
   process.stdout.write(JSON.stringify({ ok: false, error: known.test(error.message) ? error.message : 'native_request_failed' }));
