@@ -66,6 +66,7 @@ const WORK_GROUPS: readonly WorkGroup[] = [
       { name: 'Guided Execution', area: 'Execution', description: 'Step-by-step controlled execution through the Universal Execution Engine.', to: '/execution/manager/readiness', status: 'active' },
       { name: 'Connections', area: 'Integrations', description: 'Provider connections remain explicit, revocable and organization-bound.', to: '/work/connections', status: 'active' },
       { name: 'Computer Operations', area: 'Computer use', description: 'Governed computer operation surface under Work runtime and approval boundaries.', to: '/work/computer-operations', status: 'active' },
+      { name: 'Screen Share Pilot', area: 'Remote support', description: 'Opt-in view-only WebRTC screen sharing from Device OS. Native desktop control is not available without a signed adapter.', to: '/device-os#remote-assist-title', status: 'gated', boundary: 'Only browser view with manual participant verification is available; no remote control or unattended access.' },
       { name: 'Runtimes', area: 'Runtime', description: 'Inspect execution runtimes and provider availability without fabricated connected state.', to: '/work/runtimes', status: 'active' }
     ]
   },
