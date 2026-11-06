@@ -49,3 +49,56 @@ jobs:
         run: |
           set -euo pipefail
           test "$(psql -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_namespace WHERE nspname='academy_f232'")" = 0
+      - name: Two-session concurrent idempotency and committed revocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA academy_concurrency;
+          CREATE TABLE academy_concurrency.enrollments (
+            id text PRIMARY KEY, status text NOT NULL
+          );
+          CREATE TABLE academy_concurrency.credentials (
+            idempotency_key text PRIMARY KEY, enrollment_id text NOT NULL
+          );
+          INSERT INTO academy_concurrency.enrollments VALUES ('e1','active'),('e2','active');
+          SQL
+          (
+            psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          INSERT INTO academy_concurrency.credentials
+            SELECT 'shared-key', id FROM academy_concurrency.enrollments
+            WHERE id='e1' AND status='active';
+          SELECT pg_sleep(3);
+          COMMIT;
+          SQL
+          ) &
+          first_pid=$!
+          sleep 1
+          (
+            psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          INSERT INTO academy_concurrency.credentials
+            SELECT 'shared-key', id FROM academy_concurrency.enrollments
+            WHERE id='e1' AND status='active'
+            ON CONFLICT (idempotency_key) DO NOTHING;
+          COMMIT;
+          SQL
+          ) &
+          second_pid=$!
+          wait "$first_pid"
+          wait "$second_pid"
+          test "$(psql -X -Atqc "SELECT count(*) FROM academy_concurrency.credentials WHERE idempotency_key='shared-key'")" = 1
+          psql -X -v ON_ERROR_STOP=1 -c "UPDATE academy_concurrency.enrollments SET status='revoked' WHERE id='e2'"
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO academy_concurrency.credentials
+            SELECT 'revoked-key', id FROM academy_concurrency.enrollments
+            WHERE id='e2' AND status='active';
+          DO $$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM academy_concurrency.credentials WHERE idempotency_key='revoked-key') THEN
+              RAISE EXCEPTION 'P0: issuance accepted after committed revocation';
+            END IF;
+          END $$;
+          DROP SCHEMA academy_concurrency CASCADE;
+          SQL
