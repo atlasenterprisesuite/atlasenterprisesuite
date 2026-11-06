@@ -83,6 +83,14 @@ export const BIBLE_OS_SOURCES: readonly BibleSource[] = [
     status: 'curated_seed'
   },
   {
+    id: 'sinaiticus-mark16-folio-228',
+    title: 'Codex Sinaiticus: Mark 16, folio 228',
+    institution: 'Codex Sinaiticus Project',
+    url: 'https://www.codexsinaiticus.org/en/manuscript.aspx?book=35',
+    scope: 'Passage-specific manuscript viewer for folio 228: Mark 16:1–8 followed by Luke 1. This is one witness, not all textual traditions. Link only; image and transcription reproduction rights not cleared.',
+    status: 'curated_seed'
+  },
+  {
     id: 'dss',
     title: 'Leon Levy Dead Sea Scrolls Digital Library',
     institution: 'Israel Antiquities Authority',
@@ -166,7 +174,7 @@ export const BIBLE_OS_VARIANTS: readonly VariantSeed[] = [
     passage: 'Mark 16:9–20',
     issue: 'The ending of Mark is a well-known textual-variation unit whose manuscript attestation is not uniform.',
     assessment: 'Bible OS must display competing manuscript evidence and editorial judgments rather than label one modern wording as an extant autograph.',
-    sourceIds: ['intf', 'sinaiticus'],
+    sourceIds: ['intf', 'sinaiticus', 'sinaiticus-mark16-folio-228'],
     evidenceState: 'DISPUTED',
     confidence: 'high',
     status: 'curated_seed'
