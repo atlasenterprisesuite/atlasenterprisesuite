@@ -36,6 +36,14 @@ describe('ATLAS Persona CI live monitor — evidence truth', () => {
     }
   });
 
+  it('refuses to certify a partial paginated check run list', () => {
+    const result = summarizePersonaChecks({
+      total_count: 120,
+      check_runs: [{id:1,name:'one passing check',status:'completed',conclusion:'success'}]
+    });
+    expect(result).toMatchObject({total:1,totalReported:120,partial:true,passed:1,result:'inconclusive'});
+  });
+
   it('treats unknown results as inconclusive rather than passing', () => {
     expect(summarizePersonaChecks({check_runs:[
       {id:1,name:'new conclusion',status:'completed',conclusion:'unknown'}
