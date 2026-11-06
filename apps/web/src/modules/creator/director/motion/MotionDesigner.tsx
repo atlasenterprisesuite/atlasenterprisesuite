@@ -4,6 +4,7 @@ import { evaluateTrack } from '../../../../../../../packages/creator/motion/eval
 import { evaluateMotionExpression, parseMotionExpression } from '../../../../../../../packages/creator/motion/expression';
 import { validateMotionComposition } from '../../../../../../../packages/creator/motion/validator';
 import type { MotionCompositionSpec, MotionEasing, MotionLayer, MotionTrack } from '../../../../../../../packages/creator/motion/types';
+import { TransformEnginePreviewSlot } from './transform/TransformEnginePreviewSlot';
 import './MotionDesigner.css';
 
 type MotionDesignerProps = {
@@ -272,5 +273,6 @@ export function MotionDesigner({ value, durationSeconds, onChange }: MotionDesig
         </div>
       </>}
     </section>
+    <TransformEnginePreviewSlot />
   </section>;
 }
