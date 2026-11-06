@@ -112,9 +112,9 @@ export function routeSemanticIntent(
   if (tied.length > 1) throw new Error('semantic_intent_ambiguous');
 
   const successCriteria = unique(input.successCriteria);
-  const capabilities = requestedCapabilities.length
-    ? requestedCapabilities
-    : [...top.route.capabilities];
+  // Route metadata helps select a module; it never grants executable capabilities.
+  // A downstream policy may authorize an action, but routing alone must stay unprivileged.
+  const capabilities = requestedCapabilities;
 
   return {
     requestId,
