@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 /**
  * Fail closed: do not accept a self-asserted review in the JSON manifest.
  * Require a GitHub APPROVED review by another authorized writer, tied to exact PR head.
@@ -45,7 +46,18 @@ if (!valid) {
         latestByReviewer.set(login, review);
       }
     }
-    const matches = [...latestByReviewer.values()].filter(review => review.state === 'APPROVED');
+    const manifest = JSON.parse(readFileSync('docs/creator/ATLAS_TRANSFORM_ENGINE_ASSET_MANIFEST.json', 'utf8'));
+    const assetSha = manifest.expectedSha256;
+    if (typeof assetSha !== 'string' || !/^[a-f0-9]{64}$/.test(assetSha)) {
+      throw new Error('approved asset SHA-256 is absent from reviewed commit');
+    }
+    const evidence = 'ATLAS_TRANSFORM_VISUAL_SHA256: ' + assetSha;
+    const matches = [...latestByReviewer.values()].filter(review =>
+      review.state === 'APPROVED' &&
+      typeof review.body === 'string' &&
+      review.body.includes(evidence) &&
+      review.body.includes('9/9')
+    );
     let approved = false;
     for (const review of matches) {
       const permission = await fetch(`https://api.github.com/repos/${repository}/collaborators/${encodeURIComponent(review.user.login)}/permission`, { headers });
