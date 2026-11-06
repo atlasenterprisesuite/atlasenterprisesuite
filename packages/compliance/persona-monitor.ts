@@ -9,6 +9,8 @@ export type PersonaCiCheck = {
 };
 export type PersonaCiSummary = {
   total: number;
+  totalReported: number;
+  partial: boolean;
   passed: number;
   failed: number;
   running: number;
@@ -62,11 +64,15 @@ export function summarizePersonaChecks(payload: unknown): PersonaCiSummary {
       };
     })
     : [];
+  const declaredCount = object(payload)?.total_count;
+  const totalReported = typeof declaredCount === 'number' && Number.isSafeInteger(declaredCount) && declaredCount >= 0
+    ? declaredCount : checks.length;
+  const partial = totalReported > checks.length;
   const tally = (state: CheckState) => checks.filter(check => check.state === state).length;
   const [passed, failed, running, skipped, inconclusive] =
     (['passed', 'failed', 'running', 'skipped', 'inconclusive'] as const).map(tally);
   const result = !checks.length ? 'no_evidence'
-    : failed ? 'blocked' : running ? 'running' : inconclusive ? 'inconclusive'
+    : failed ? 'blocked' : running ? 'running' : (inconclusive || partial) ? 'inconclusive'
     : passed ? 'passed' : 'no_evidence';
-  return { total: checks.length, passed, failed, running, skipped, inconclusive, result, checks };
+  return { total: checks.length, totalReported, partial, passed, failed, running, skipped, inconclusive, result, checks };
 }
