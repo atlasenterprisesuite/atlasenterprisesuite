@@ -1,10 +1,9 @@
 name: ATLAS AI Council Security Gates
+# This job is a required branch ruleset check. Path filters would leave the
+# required council-security context absent for unrelated PRs, blocking merges.
+# Run the existing negative security tests for every pull request (fail closed).
 on:
   pull_request:
-    paths:
-      - 'supabase/functions/atlas-copilot/**'
-      - 'tests/node/atlas-ai-council-security-gates.test.mjs'
-      - '.github/workflows/atlas-ai-council-security.yml'
   workflow_dispatch:
 permissions:
   contents: read
