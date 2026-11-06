@@ -1,0 +1,82 @@
+name: ATLAS MAX Authenticated Browser
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/web/src/modules/atlas-max/**"
+      - "apps/web/src/App.tsx"
+      - "tests/browser/atlas-max-authenticated.mjs"
+      - "tests/integration/atlas-max-authenticated-route.test.tsx"
+      - ".github/workflows/atlas-max-authenticated-browser.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-max-auth-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  max-browser:
+    name: MAX isolated authenticated Chromium + Axe
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked ATLAS dependencies
+        run: npm ci
+      - name: Verify MAX authenticated route integration
+        run: npx vitest run tests/integration/atlas-max-authenticated-route.test.tsx tests/unit/atlas-max-route.test.tsx tests/unit/atlas-max-gateway-snapshot.test.ts
+      - name: Typecheck and build exact revision
+        run: |
+          npm run typecheck
+          npm run build
+      - name: Install pinned browser dependencies outside the monorepo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/atlas-max-browser-tools
+          cd /tmp/atlas-max-browser-tools
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --ignore-scripts --save-exact playwright@1.64.1 @axe-core/playwright@4.14.0
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p node_modules/@axe-core
+          ln -s /tmp/atlas-max-browser-tools/node_modules/playwright node_modules/playwright
+          ln -s /tmp/atlas-max-browser-tools/node_modules/@axe-core/playwright node_modules/@axe-core/playwright
+          /tmp/atlas-max-browser-tools/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start build preview
+        run: |
+          cd apps/web
+          npx vite preview --host 127.0.0.1 --port 4173 > /tmp/atlas-max-preview.log 2>&1 &
+          echo $! > /tmp/atlas-max-preview.pid
+      - name: Wait for preview
+        shell: bash
+        run: |
+          for attempt in {1..35}; do
+            if curl -fsS http://127.0.0.1:4173/max > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/atlas-max-preview.log
+          exit 1
+      - name: Browser authentication, tenant isolation, navigation, responsive and Axe
+        run: node tests/browser/atlas-max-authenticated.mjs
+      - name: Upload synthetic browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-max-isolated-browser-evidence
+          path: artifacts/atlas-max-browser/*.png
+          if-no-files-found: ignore
+      - name: Upload preview log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-max-browser-preview-log
+          path: /tmp/atlas-max-preview.log
+          if-no-files-found: ignore

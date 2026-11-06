@@ -234,7 +234,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <span aria-hidden="true">×</span>
         </button>
 
-        <NavLink className="brand-lockup" to="/" onClick={closeMobileNav} aria-label="ATLAS home">
+        <NavLink className="brand-lockup" to="/" onClick={closeMobileNav} title="ATLAS home">
           <div className="brand-mark atlas-slash-mark" aria-hidden="true"><i /><i /><i /></div>
           <div><span>ATLAS OS</span><small>Total Control</small></div>
         </NavLink>
@@ -345,7 +345,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="atlas-mobile-nav-toggle"
-            aria-label="Open ATLAS navigation"
+            aria-label="Menu — Open ATLAS navigation"
             aria-controls="atlas-primary-navigation"
             aria-expanded={mobileNavOpen}
             onClick={() => setMobileNavOpen((current) => !current)}
@@ -386,12 +386,12 @@ export function AtlasShell({ children }: { children: ReactNode }) {
           </form>
 
           <nav className="atlas-top-actions" aria-label="ATLAS quick access">
-            <NavLink to="/assistant" aria-label="ATLAS Assistant">AI</NavLink>
-            <NavLink to="/connect" aria-label="ATLAS Connect">↗</NavLink>
-            <NavLink to="/galaxy" aria-label="ATLAS Galaxy">◇</NavLink>
+            <NavLink to="/assistant" aria-label="AI — ATLAS Assistant">AI</NavLink>
+            <NavLink to="/connect" aria-label="↗ — ATLAS Connect">↗</NavLink>
+            <NavLink to="/galaxy" aria-label="◇ — ATLAS Galaxy">◇</NavLink>
           </nav>
 
-          <NavLink className="atlas-profile-chip" to="/identity" aria-label="Open identity and organization">
+          <NavLink className="atlas-profile-chip" to="/identity" title="Open identity and organization">
             <span>{organizationInitials}</span>
             <div><strong>{organizationName}</strong><small>{roleLabel}</small></div>
           </NavLink>
