@@ -32,6 +32,7 @@ Privileged ATLAS GitHub access must use phishing-resistant authentication wherev
 - Privileged mutations must preserve MFA/AAL and approval requirements where applicable.
 - Cloudflare edge behavior must fail safely and must not substitute for application authorization.
 - External/provider capabilities must not be labeled connected, live, ready or verified without current evidence.
+- External AI agents and provider adapters that access accounts, private data, sessions, or external actions must require explicit, owner-verified, exact-action consent; no delegated agent or prompt may self-authorize. See `docs/security/ATLAS_EXTERNAL_AGENT_OWNER_CONSENT.md`.
 - Sensitive mutations require audit evidence and must not be made merely to silence a linter/advisor.
 - GitHub Actions must not use `permissions: write-all` or `pull_request_target` without an explicit reviewed exception and compensating controls.
 
