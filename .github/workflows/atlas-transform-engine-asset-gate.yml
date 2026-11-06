@@ -1,0 +1,26 @@
+name: ATLAS Transform Engine Verified Sprite Gate
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/src/modules/creator/director/motion/transform/**'
+      - 'apps/web/public/atlas/transform/**'
+      - 'docs/creator/ATLAS_TRANSFORM_ENGINE_ASSET_MANIFEST.json'
+      - 'scripts/creator/verify-transform-sprite.mjs'
+      - '.github/workflows/atlas-transform-engine-asset-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-sprite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify manifest, exact binary SHA and independent visual review
+        run: node scripts/creator/verify-transform-sprite.mjs
