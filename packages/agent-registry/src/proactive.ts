@@ -12,7 +12,7 @@ import { getAgent } from './registry';
 export interface AtlasProactiveOpportunityInput {
   agentId: string;
   agentState: 'idle' | 'assigned' | 'blocked';
-  context: { source: 'server'; scope: TenantScope };
+  context: { source: 'server'; scope: TenantScope; authorizedModules: readonly string[] };
   hasPriorityWork: boolean;
   dailyProposalCount: number;
   dailyProposalLimit: number;
@@ -85,6 +85,12 @@ export function evaluateProactiveOpportunity(input: AtlasProactiveOpportunityInp
   ) return defer('proactive_agent_read_scope_required');
 
   const op = input.opportunity;
+  // Only server-authorized modules may receive a proposal. A registered agent
+  // must not manufacture a new departmental assignment while it is idle.
+  if (
+    !Array.isArray(input.context.authorizedModules)
+    || !input.context.authorizedModules.includes(op.moduleId)
+  ) return defer('proactive_module_scope_denied');
   if (
     !nonempty(op.repository)
     || !/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(op.repository)
