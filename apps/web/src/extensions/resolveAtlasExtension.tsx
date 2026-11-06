@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom';
+import { AstronomyObservatoryPage } from '../modules/astronomy/AstronomyObservatoryPage';
 import { FuturisticEnterpriseHome } from '../components/FuturisticEnterpriseHome';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
@@ -108,6 +109,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/assistant') {
     return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/knowledge/astronomy') {
+    return <RequireAtlasIdentity><AstronomyObservatoryPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/knowledge/bible') {
