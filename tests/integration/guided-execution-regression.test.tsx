@@ -45,9 +45,8 @@ describe('Guided Execution adjacent route regression', () => {
     expect(main.querySelector('.public-home')).toBeNull();
     expect(screen.getByRole('region', { name: 'ATLAS Enterprise Suite visual home' })).toBeInTheDocument();
     expect(within(main).getByRole('link', { name: 'AI surface' })).toHaveAttribute('href', '/assistant');
-    const homeLinks = within(screen.getByRole('navigation', { name: 'ATLAS modules' })).getAllByRole('link', { name: 'Home' });
-    expect(homeLinks.length).toBeGreaterThan(0);
-    expect(homeLinks.every(link => link.getAttribute('href') === '/platform')).toBe(true);
+    expect(within(screen.getByRole('navigation', { name: 'ATLAS modules' })).getByRole('link', { name: 'Home' }))
+      .toHaveAttribute('href', '/platform');
     expect(within(screen.getByRole('region', { name: 'ATLAS Enterprise Suite visual home' }))
       .getByRole('link', { name: 'ATLAS Home' })).toHaveAttribute('href', '/platform');
   });

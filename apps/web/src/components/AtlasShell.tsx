@@ -189,7 +189,7 @@ export function AtlasShell({ children }: { children: ReactNode }) {
     );
 
     for (const item of ATLAS_NAV_ITEMS) {
-      if (item.to === '/' || item.to === '/suite') continue;
+      if (item.to === '/' || item.to === '/platform' || item.to === '/suite') continue;
 
       const area = moduleAreaByRoute.get(item.to)
         ?? (item.to.startsWith('/finance/') ? 'Finance' : 'Platform');
