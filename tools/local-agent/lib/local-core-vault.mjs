@@ -161,3 +161,19 @@ export async function memoryDelete({ id, passphrase, directory } = {}) {
     return true;
   });
 }
+
+/** Atomic read/modify/write for encrypted application state. Callback must not perform network I/O. */
+export async function memoryUpdate({ id, update, passphrase, directory } = {}) {
+  validateId(id); validatePassphrase(passphrase);
+  if (typeof update !== 'function') throw new Error('vault_invalid_update');
+  const dir = await prepareDirectory(directory);
+  return withLock(dir, async () => {
+    const entries = await load(dir, passphrase);
+    const value = await update(Object.hasOwn(entries, id) ? entries[id] : null);
+    if (typeof value !== 'string' || !value.trim() || Buffer.byteLength(value, 'utf8') > MAX_VALUE) throw new Error('vault_invalid_value');
+    if (Object.keys(entries).length >= MAX_ENTRIES && !Object.hasOwn(entries, id)) throw new Error('vault_entry_limit');
+    entries[id] = value;
+    await persist(dir, entries, passphrase);
+    return true;
+  });
+}

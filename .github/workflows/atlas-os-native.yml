@@ -1,0 +1,35 @@
+name: ATLAS OS native foundation
+on:
+  pull_request:
+    paths:
+      - 'tools/atlas-os/**'
+      - 'tools/local-agent/lib/**'
+      - '.github/workflows/atlas-os-native.yml'
+permissions:
+  contents: read
+jobs:
+  native-notes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native GUI test dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
+      - name: Native storage and image preparation tests
+        run: npm run test:atlas-os
+      - name: Real Tk widget and vault smoke test
+        run: xvfb-run -a /usr/bin/python3 -m unittest discover -s tools/atlas-os/tests -p 'test_notes_gui.py'
+      - name: Prepare image configuration (does not build an ISO)
+        run: python3 tools/atlas-os/image.py prepare "$RUNNER_TEMP/atlas-live"
+      - name: Upload inspectable image configuration
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-os-live-config-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/atlas-live
+          retention-days: 7
