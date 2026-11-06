@@ -39,3 +39,10 @@ verify_jwt = true
 [functions.atlas-crm-salesforce]
 verify_jwt = false
 
+# Persona identity-proofing: separate ATLAS-user JWT and signed-provider webhook.
+# Both endpoints additionally fail closed until ATLAS-owned Sandbox credentials exist.
+[functions.atlas-persona-start]
+verify_jwt = true
+
+[functions.atlas-persona-webhook]
+verify_jwt = false
