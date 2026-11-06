@@ -97,5 +97,6 @@ export * from './growthTrustPolicy';
 export * from './growthAdDeliveryGate';
 export * from './growthEvidenceAdapters';
 export * from './campaignEconomics';
+export * from './growthAttributionPreview';
 
 export * from './financialGuidance';
