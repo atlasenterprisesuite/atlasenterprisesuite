@@ -243,49 +243,39 @@ async function approve(ctx: MemoryContext, input: Record<string, any>) {
   if (!ADMIN_ROLES.has(ctx.role)) throw fail('memory_approval_role_required', 403);
   const id = safeText(input.id, 80);
   if (!uuid(id)) throw fail('memory_id_required', 422);
-  const sb = adminClient();
-  const { data: existing, error: existingError } = await sb
-    .from('atlas_memory_records')
-    .select('id,status,version,supersedes_id')
-    .eq('organization_id', ctx.orgId)
-    .eq('id', id)
-    .maybeSingle();
-  if (existingError) throw fail('memory_read_failed', 500);
-  if (!existing) throw fail('memory_not_found', 404);
-  if (existing.status === 'approved') return existing;
-  if (existing.status !== 'draft') throw fail('memory_not_approvable', 409);
 
-  const now = new Date().toISOString();
-  const { data, error } = await sb
-    .from('atlas_memory_records')
-    .update({
-      status: 'approved',
-      approved_by: ctx.userId,
-      approved_at: now,
-      updated_at: now,
-      version: Number(existing.version || 1) + 1
-    })
-    .eq('organization_id', ctx.orgId)
-    .eq('id', id)
-    .eq('status', 'draft')
-    .select('*')
-    .single();
-  if (error || !data) throw fail('memory_approval_failed', 500);
+  // No read-modify-write sequence outside a database transaction.
+  // The RPC independently locks and validates the actor's active org membership.
+  // Only the service role may execute the function; never accept actor/role from input.
+  const { data, error } = await adminClient().rpc('atlas_memory_approve_atomic', {
+    p_org_id: ctx.orgId,
+    p_actor_id: ctx.userId,
+    p_record_id: id
+  });
 
-  if (data.supersedes_id) {
-    await sb.from('atlas_memory_records')
-      .update({ status: 'superseded', updated_at: now })
-      .eq('organization_id', ctx.orgId)
-      .eq('id', data.supersedes_id)
-      .eq('status', 'approved');
+  if (error) {
+    const message = String(error.message || '');
+    const known: Record<string, number> = {
+      memory_approval_scope_required: 422,
+      memory_approval_role_required: 403,
+      memory_not_found: 404,
+      memory_not_approvable: 409,
+      memory_superseded_source_invalid: 409,
+      memory_approval_conflict: 409,
+      memory_supersession_conflict: 409
+    };
+    const mapped = Object.keys(known).find((code) => message === code);
+    if (mapped) throw fail(mapped, known[mapped]);
+    if (String(error.code) === 'PGRST202') throw fail('memory_atomic_runtime_unavailable', 503);
+    throw fail('memory_approval_failed', 500);
   }
 
-  await audit(ctx, 'knowledge.memory.approved', id, {
-    kind: data.kind,
-    source_type: data.source_type,
-    supersedes_id: data.supersedes_id || null
-  });
-  return data;
+  const record = Array.isArray(data) ? data[0] : data;
+  if (!record || typeof record !== 'object' ||
+      String(record.organization_id) !== ctx.orgId || String(record.id) !== id) {
+    throw fail('memory_approval_failed', 500);
+  }
+  return record;
 }
 
 async function importRecords(ctx: MemoryContext, input: Record<string, any>) {
