@@ -1,0 +1,11 @@
+{
+  "assetPath": "apps/web/public/atlas/transform/frames.png",
+  "expectedSha256": null,
+  "reviewedFrames": [],
+  "independentReview": {
+    "approved": false,
+    "reference": null
+  },
+  "rejectedF5SinglePhotoSha256": "ea8008405be4f448c4a52c472716ffe6b87837820eff1f6a5e46821f2f7c6f32",
+  "status": "P0_NO_GO_SINGLE_PHOTO_NOT_A_SPRITESHEET"
+}
