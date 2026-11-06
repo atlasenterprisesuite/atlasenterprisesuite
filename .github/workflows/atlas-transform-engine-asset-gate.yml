@@ -7,6 +7,8 @@ on:
       - 'apps/web/public/atlas/transform/**'
       - 'docs/creator/ATLAS_TRANSFORM_ENGINE_ASSET_MANIFEST.json'
       - 'scripts/creator/verify-transform-sprite.mjs'
+      - 'scripts/creator/png-integrity.mjs'
+      - 'tests/creator/png-integrity.test.mjs'
       - 'scripts/creator/verify-transform-review.mjs'
       - '.github/workflows/atlas-transform-engine-asset-gate.yml'
   workflow_dispatch:
@@ -24,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Test PNG decoder with valid and adversarial fixtures
+        run: node --test tests/creator/png-integrity.test.mjs
       - name: Verify image structure and SHA fail-closed
         run: node scripts/creator/verify-transform-sprite.mjs
       - name: Verify independent GitHub approval, permissions and exact HEAD
