@@ -1,4 +1,5 @@
 import {createIntelligenceGateway,createIntelligenceRouter,normalizeIntelligenceError} from './intelligence-gateway.mjs';
+import {resolveConfiguredModels} from './model-configuration.mjs';
 import {resolveIntelligenceContext} from './atlas-intelligence-auth.mjs';
 import {createIntelligenceStore} from './atlas-intelligence-store.mjs';
 import {createOpenAIResponsesAdapter} from './openai-responses-adapter.mjs';
@@ -21,35 +22,22 @@ const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const ORACLE='/functions/v1/atlas-oracle';
-const VERSION=17;
+const VERSION=18;
 const READINESS_CACHE_TTL_MS=15_000;
 const readinessCache=new Map();
 const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','codex-sovereign'];
-const DEFAULT_OPENAI_MODEL='gpt-6-astra';
 const DEFAULT_BEDROCK_REGION='us-west-2';
 const DEFAULT_BEDROCK_ENDPOINT='runtime';
-const DEFAULT_BEDROCK_RUNTIME_MODEL='us.openai.gpt-6-astra';
-const DEFAULT_BEDROCK_MANTLE_MODEL='openai.gpt-6-astra';
-const DEFAULT_GEMINI_MODEL='gemini-3.8-flash';
-const DEFAULT_ANTHROPIC_MODEL='claude-sonnet-5-5';
-const DEFAULT_GROK_MODEL='grok-4.7';
-const DEFAULT_DEEPSEEK_FAST_MODEL='deepseek-flash';
-const DEFAULT_DEEPSEEK_MODEL='deepseek-v4-pro';
-const DEFAULT_MISTRAL_MODEL='mistral-large-latest';
-const DEFAULT_QWEN_MODEL='qwen-plus';
 const DEFAULT_GROK_BASE_URL='https://api.x.ai/v1';
 const DEFAULT_DEEPSEEK_BASE_URL='https://api.deepseek.com';
 const DEFAULT_MISTRAL_BASE_URL='https://api.mistral.ai/v1';
 const DEFAULT_QWEN_BASE_URL='https://dashscope-us.aliyuncs.com/compatible-mode/v1';
 
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
-function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null,defaultModel=null){
-  const shared=clean(Deno.env.get(sharedName))||clean(legacySharedName?Deno.env.get(legacySharedName):null)||clean(defaultModel);
-  return {
-    fast:clean(Deno.env.get(fastName))||shared,
-    balanced:clean(Deno.env.get(balancedName))||shared,
-    deep:clean(Deno.env.get(deepName))||shared,
-  };
+function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null){
+  return resolveConfiguredModels(name=>Deno.env.get(name),{
+    shared:sharedName,fast:fastName,balanced:balancedName,deep:deepName,legacyShared:legacySharedName
+  });
 }
 function csvEnv(name){return String(Deno.env.get(name)||'').split(',').map(v=>v.trim()).filter(Boolean);}
 function boolEnv(name,fallback=false){const raw=clean(Deno.env.get(name));if(raw===null)return fallback;return ['1','true','yes','on'].includes(raw.toLowerCase());}
@@ -93,24 +81,18 @@ function runtime(){
   const deepseekKey=Deno.env.get('DEEPSEEK_API_KEY')||'';
   const mistralKey=Deno.env.get('MISTRAL_API_KEY')||'';
   const qwenKey=Deno.env.get('QWEN_API_KEY')||Deno.env.get('DASHSCOPE_API_KEY')||'';
-  const openaiModels=profileModels('ATLAS_OPENAI_MODEL','ATLAS_OPENAI_MODEL_FAST','ATLAS_OPENAI_MODEL_BALANCED','ATLAS_OPENAI_MODEL_DEEP','ATLAS_OPENAI_ASTRA_MODEL',DEFAULT_OPENAI_MODEL);
+  const openaiModels=profileModels('ATLAS_OPENAI_MODEL','ATLAS_OPENAI_MODEL_FAST','ATLAS_OPENAI_MODEL_BALANCED','ATLAS_OPENAI_MODEL_DEEP','ATLAS_OPENAI_ASTRA_MODEL');
   const bedrockEndpoint=clean(Deno.env.get('ATLAS_BEDROCK_ENDPOINT'))||DEFAULT_BEDROCK_ENDPOINT;
   const bedrockRegion=clean(Deno.env.get('ATLAS_BEDROCK_REGION'))||DEFAULT_BEDROCK_REGION;
   const bedrockBaseUrl=clean(Deno.env.get('ATLAS_BEDROCK_BASE_URL'));
-  const bedrockDefaultModel=bedrockEndpoint==='mantle'?DEFAULT_BEDROCK_MANTLE_MODEL:DEFAULT_BEDROCK_RUNTIME_MODEL;
-  const bedrockModels=profileModels('ATLAS_BEDROCK_MODEL','ATLAS_BEDROCK_MODEL_FAST','ATLAS_BEDROCK_MODEL_BALANCED','ATLAS_BEDROCK_MODEL_DEEP',null,bedrockDefaultModel);
+  const bedrockModels=profileModels('ATLAS_BEDROCK_MODEL','ATLAS_BEDROCK_MODEL_FAST','ATLAS_BEDROCK_MODEL_BALANCED','ATLAS_BEDROCK_MODEL_DEEP');
   const bedrockRuntimeVerified=boolEnv('ATLAS_BEDROCK_RUNTIME_VERIFIED',false);
-  const geminiModels=profileModels('ATLAS_GEMINI_MODEL','ATLAS_GEMINI_MODEL_FAST','ATLAS_GEMINI_MODEL_BALANCED','ATLAS_GEMINI_MODEL_DEEP',null,DEFAULT_GEMINI_MODEL);
-  const anthropicModels=profileModels('ATLAS_ANTHROPIC_MODEL','ATLAS_ANTHROPIC_MODEL_FAST','ATLAS_ANTHROPIC_MODEL_BALANCED','ATLAS_ANTHROPIC_MODEL_DEEP',null,DEFAULT_ANTHROPIC_MODEL);
-  const grokModels=profileModels('ATLAS_GROK_MODEL','ATLAS_GROK_MODEL_FAST','ATLAS_GROK_MODEL_BALANCED','ATLAS_GROK_MODEL_DEEP',null,DEFAULT_GROK_MODEL);
-  const deepseekShared=clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL'));
-  const deepseekModels={
-    fast:clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL_FAST'))||deepseekShared||DEFAULT_DEEPSEEK_FAST_MODEL,
-    balanced:clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL_BALANCED'))||deepseekShared||DEFAULT_DEEPSEEK_MODEL,
-    deep:clean(Deno.env.get('ATLAS_DEEPSEEK_MODEL_DEEP'))||deepseekShared||DEFAULT_DEEPSEEK_MODEL,
-  };
-  const mistralModels=profileModels('ATLAS_MISTRAL_MODEL','ATLAS_MISTRAL_MODEL_FAST','ATLAS_MISTRAL_MODEL_BALANCED','ATLAS_MISTRAL_MODEL_DEEP',null,DEFAULT_MISTRAL_MODEL);
-  const qwenModels=profileModels('ATLAS_QWEN_MODEL','ATLAS_QWEN_MODEL_FAST','ATLAS_QWEN_MODEL_BALANCED','ATLAS_QWEN_MODEL_DEEP',null,DEFAULT_QWEN_MODEL);
+  const geminiModels=profileModels('ATLAS_GEMINI_MODEL','ATLAS_GEMINI_MODEL_FAST','ATLAS_GEMINI_MODEL_BALANCED','ATLAS_GEMINI_MODEL_DEEP');
+  const anthropicModels=profileModels('ATLAS_ANTHROPIC_MODEL','ATLAS_ANTHROPIC_MODEL_FAST','ATLAS_ANTHROPIC_MODEL_BALANCED','ATLAS_ANTHROPIC_MODEL_DEEP');
+  const grokModels=profileModels('ATLAS_GROK_MODEL','ATLAS_GROK_MODEL_FAST','ATLAS_GROK_MODEL_BALANCED','ATLAS_GROK_MODEL_DEEP');
+  const deepseekModels=profileModels('ATLAS_DEEPSEEK_MODEL','ATLAS_DEEPSEEK_MODEL_FAST','ATLAS_DEEPSEEK_MODEL_BALANCED','ATLAS_DEEPSEEK_MODEL_DEEP');
+  const mistralModels=profileModels('ATLAS_MISTRAL_MODEL','ATLAS_MISTRAL_MODEL_FAST','ATLAS_MISTRAL_MODEL_BALANCED','ATLAS_MISTRAL_MODEL_DEEP');
+  const qwenModels=profileModels('ATLAS_QWEN_MODEL','ATLAS_QWEN_MODEL_FAST','ATLAS_QWEN_MODEL_BALANCED','ATLAS_QWEN_MODEL_DEEP');
   const grokBaseUrl=clean(Deno.env.get('ATLAS_GROK_BASE_URL'))||DEFAULT_GROK_BASE_URL;
   const deepseekBaseUrl=clean(Deno.env.get('ATLAS_DEEPSEEK_BASE_URL'))||DEFAULT_DEEPSEEK_BASE_URL;
   const mistralBaseUrl=clean(Deno.env.get('ATLAS_MISTRAL_BASE_URL'))||DEFAULT_MISTRAL_BASE_URL;

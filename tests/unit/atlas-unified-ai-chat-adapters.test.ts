@@ -462,6 +462,26 @@ describe('ATLAS Unified AI provider adapters', () => {
     }
   });
 
+  it('fails closed on malformed or incomplete model lists from compatible providers', async () => {
+    for (const payload of [{}, { data: null }, { data: [] }, { data: [{ id: 'another-model' }] }]) {
+      const fetchFn = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
+      const adapter = createOpenAICompatibleChatAdapter({
+        id: 'grok',
+        apiKey: 'synthetic-test-key',
+        baseUrl: 'https://example.test/v1',
+        models: { balanced: 'configured-test-model' },
+        fetchFn,
+      });
+      await expect(adapter.probe({ profile: 'balanced' })).resolves.toMatchObject({
+        configured: true,
+        verified: false,
+        model: 'configured-test-model',
+        error: 'provider_verification_required',
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it('implements Codex Sovereign only when its runtime health probe verifies', async () => {
     const fetchFn = vi.fn(async (url: string) => {
       if (url.endsWith('/health')) return new Response(JSON.stringify({ ok: true, model: 'codex-sovereign' }), { status: 200 });
