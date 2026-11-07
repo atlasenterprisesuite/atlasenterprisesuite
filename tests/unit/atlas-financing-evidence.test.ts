@@ -153,6 +153,14 @@ describe('ATLAS financing evidence projector (read-only, fail-closed)', () => {
     expect(result.accountAvailableMinor).toBeNull();
   });
 
+  it('fails closed for a malformed event identifier rather than throwing', () => {
+    const malformed = event('official_approval', { eventId: null as unknown as string });
+    expect(deriveFinancingTruth(scope, [malformed])).toMatchObject({
+      status: 'conflict',
+      reason: 'INVALID_EVIDENCE'
+    });
+  });
+
   it('rejects invalid case identifiers or expected amounts', () => {
     expect(deriveFinancingTruth({ ...scope, organizationId: '' }, []).reason).toBe('INVALID_SCOPE');
     expect(deriveFinancingTruth({ ...scope, expectedAmountMinor: 0n }, []).reason).toBe('INVALID_SCOPE');
