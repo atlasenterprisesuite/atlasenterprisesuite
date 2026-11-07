@@ -6,6 +6,7 @@ import {
   type AtlasLocalDevice
 } from './localControlApi';
 import { summarizeRemoteCandidates } from './remoteAssistCompatibility';
+import { discoverRecognizedHosts } from './remoteTrustedDeviceDiscovery';
 
 type AssistReadiness = 'loading' | 'not-enrolled' | 'secure-agent-required' | 'adapter-required' | 'error';
 
@@ -24,15 +25,22 @@ export function RemoteAssistPanel() {
   const [devices, setDevices] = useState<AtlasLocalDevice[]>([]);
   const [state, setState] = useState<AssistReadiness>('loading');
   const [message, setMessage] = useState('Checking remote-assistance prerequisites…');
+  const [lastInventoryAt, setLastInventoryAt] = useState<number | null>(null);
+  const [refreshEpoch, requestRefresh] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
-    void Promise.all([listLocalAgents(), listLocalDevices()])
+    let fetching = false;
+    const pollInventory = () => {
+      if (fetching) return;
+      fetching = true;
+      void Promise.all([listLocalAgents(), listLocalDevices()])
       .then(([nextAgents, nextDevices]) => {
         if (!mounted) return;
         setAgents(nextAgents);
         setDevices(nextDevices);
+        setLastInventoryAt(Date.now());
 
         const { onlineAgents, secureAgents, declaredDevices } = summarizeRemoteCandidates(
           nextAgents, nextDevices
@@ -62,14 +70,21 @@ export function RemoteAssistPanel() {
       })
       .catch((error: unknown) => {
         if (!mounted) return;
+        setAgents([]);
+        setDevices([]);
+        setLastInventoryAt(null);
         setState('error');
         setMessage(error instanceof Error ? error.message.replaceAll('_', ' ') : 'Remote Assist readiness could not be loaded.');
-      });
-
+      })
+      .finally(() => { fetching = false; });
+    };
+    pollInventory();
+    const interval = setInterval(pollInventory, 30_000);
     return () => {
       mounted = false;
+      clearInterval(interval);
     };
-  }, []);
+  }, [refreshEpoch]);
 
   const browserOperator = useMemo(
     () => devices.find(
@@ -83,6 +98,9 @@ export function RemoteAssistPanel() {
     [agents, devices]
   );
   const remoteDevices = candidateSummary.declaredDevices;
+  const recognizedHosts = useMemo(() => discoverRecognizedHosts(
+    agents, devices, lastInventoryAt ?? 0
+  ), [agents, devices, lastInventoryAt]);
 
   return (
     <article className="feature-card wide" aria-labelledby="remote-assist-title">
@@ -147,6 +165,38 @@ export function RemoteAssistPanel() {
           </p>
         </div>
       </div>
+
+      <section aria-labelledby="pair-once-title">
+        <h3 id="pair-once-title">ATLAS Pair Once · Registered devices</h3>
+        <p>
+          A single ATLAS account can discover an already enrolled host through the existing
+          organization-scoped Local Agent. A shared ChatGPT email or open browser tab does
+          not enroll devices or grant desktop access.
+        </p>
+        <button type="button" onClick={() => requestRefresh((value) => value + 1)}>
+          Discover my ATLAS devices
+        </button>
+        <div className="module-grid compact" aria-label="Recognized ATLAS hosts">
+          {recognizedHosts.length ? recognizedHosts.map((host) => (
+            <article className="module-card" key={host.agentId}>
+              <span>{host.platform} · Enrolled host</span>
+              <strong>{host.label}</strong>
+              <p>Recent agent heartbeat and active mTLS binding observed.</p>
+              <p>{host.registeredDevices} registered local device(s) · Last seen {new Date(host.lastSeenAt).toLocaleString()}</p>
+              <span className="status-chip neutral">Discovered only · Remote control not authorized</span>
+            </article>
+          )) : (
+            <div className="notice" role="status">
+              No recently verified host. First enroll the Windows Local Agent under this
+              ATLAS organization, then return here to discover it.
+            </div>
+          )}
+        </div>
+        <p>
+          First-time enrollment uses the existing Local Control Plane below.
+          Revoking an agent there removes its eligibility for this list.
+        </p>
+      </section>
 
       <div className="notice">
         Microsoft Quick Assist remains a manual, user-approved fallback outside the ATLAS control plane.
