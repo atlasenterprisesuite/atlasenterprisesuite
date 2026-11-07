@@ -213,6 +213,21 @@ export function RealEstateIntelligencePage() {
           <strong>Control de seguridad:</strong> ninguna casilla libera fondos, valida títulos, autoriza contratos, solicita crédito ni demuestra cumplimiento regulatorio. Las decisiones reales dependen de documentos, profesionales autorizados y los proveedores correspondientes.
         </div>
       </section>
+      <section className="feature-card wide" aria-label="Registros públicos para Orlando">
+        <div className="atlas-re-heading">
+          <div><p className="eyebrow">04 · Evidencia externa</p><h2>Fuentes oficiales · Orlando / Orange County, Florida</h2></div>
+          <span className="atlas-re-chip">Enlaces externos, sin conexión automática</span>
+        </div>
+        <p>Consulta fuentes oficiales cuando una propiedad esté ubicada en esta jurisdicción. Estas páginas no verifican automáticamente ningún expediente dentro de ATLAS.</p>
+        <ul className="atlas-re-sources">
+          <li><a href="https://ocpaweb.ocpafl.org/?locale=en_us" target="_blank" rel="noopener noreferrer">Orange County Property Appraiser: parcela, titularidad, valor y estimador fiscal</a></li>
+          <li><a href="https://www.octaxcol.com/taxes/about-property-tax/" target="_blank" rel="noopener noreferrer">Orange County Tax Collector: recibos y deudas tributarias</a></li>
+          <li><a href="https://www.occompt.com/161/Official-Records" target="_blank" rel="noopener noreferrer">Orange County Comptroller: escrituras, hipotecas y gravámenes registrados</a></li>
+          <li><a href="https://www.orlando.gov/Our-Government/Records-and-Documents/Property-Information" target="_blank" rel="noopener noreferrer">City of Orlando: permisos, zoning y code enforcement (si pertenece a la ciudad)</a></li>
+          <li><a href="https://floridarevenue.com/taxes/taxesfees/Pages/doc_stamp.aspx" target="_blank" rel="noopener noreferrer">Florida Department of Revenue: documentary stamp tax</a></li>
+        </ul>
+        <p className="atlas-re-subnote">Para propiedades fuera de Orlando o del condado, comprueba la jurisdicción competente antes de usar estas fuentes. Ningún mapa catastral sustituye un survey, un título asegurado o una inspección.</p>
+      </section>
     </section>
   );
 }
