@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const deviceOs = readFileSync('apps/web/src/modules/device-os/DeviceOSPage.tsx', 'utf8');
 const remoteAssist = readFileSync('apps/web/src/modules/device-os/RemoteAssistPanel.tsx', 'utf8');
+const compatibility = readFileSync('apps/web/src/modules/device-os/remoteAssistCompatibility.ts', 'utf8');
 
 describe('ATLAS Remote Assist foundation', () => {
   it('is surfaced inside the existing Device OS instead of a duplicate module', () => {
@@ -11,11 +12,12 @@ describe('ATLAS Remote Assist foundation', () => {
   });
 
   it('fails closed until real agent, mTLS and native desktop capabilities exist', () => {
-    expect(remoteAssist).toContain("agent.status === 'online'");
-    expect(remoteAssist).toContain("agent.mtls_status === 'active'");
-    expect(remoteAssist).toContain("'remote.desktop.view'");
-    expect(remoteAssist).toContain("'remote.desktop.control'");
+    expect(compatibility).toContain("agent.status === 'online'");
+    expect(compatibility).toContain("agent.mtls_status === 'active'");
+    expect(compatibility).toContain("'remote.desktop.view'");
+    expect(compatibility).toContain("'remote.desktop.control'");
     expect(remoteAssist).toContain('Native adapter required');
+    expect(remoteAssist).toContain('summarizeRemoteCandidates');
     expect(remoteAssist).toContain('will not simulate or falsely label unattended desktop control as active');
   });
 

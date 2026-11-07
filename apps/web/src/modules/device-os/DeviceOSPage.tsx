@@ -4,6 +4,7 @@ import { LocalControlPlanePanel } from './LocalControlPlanePanel';
 import { LocalCorePanel } from './LocalCorePanel';
 import { DeviceEvolutionPanel } from './DeviceEvolutionPanel';
 import { RemoteAssistPanel } from './RemoteAssistPanel';
+import { PhoenixControlPanel } from './PhoenixControlPanel';
 import {
   ATLAS_DEVICE_PROFILES,
   getAtlasDeviceProfile,
@@ -90,6 +91,7 @@ export function DeviceOSPage() {
       <LocalCorePanel />
       <LocalNetworkAccessPanel />
       <RemoteAssistPanel />
+      <PhoenixControlPanel />
       <LocalControlPlanePanel />
     </section>
   );
