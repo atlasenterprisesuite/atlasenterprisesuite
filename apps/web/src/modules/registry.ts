@@ -100,7 +100,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Real Estate',
     area: 'Business',
     route: '/real-estate',
-    readiness: 'partial',
+    readiness: 'external-gated',
     requiresAuth: false,
     description: 'Manual deterministic property investment scenarios and fail-closed due-diligence checklist; no verified listings, tax records, financing or closing provider connected.',
     showInNavigation: true
