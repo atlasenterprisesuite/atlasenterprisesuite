@@ -28,6 +28,7 @@ import { AIUniversePage } from './modules/creator/AIUniversePage';
 import { ProductivityProPage } from './modules/creator/ProductivityProPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
+import { RealEstateIntelligencePage } from './modules/real-estate/RealEstateIntelligencePage';
 import { AccessibilityCommunicationSettingsPage } from './modules/settings/AccessibilityCommunicationSettings';
 import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
@@ -63,6 +64,7 @@ function EnterpriseHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/real-estate"><span>Property · Investment</span><strong>Real Estate Intelligence</strong><p>Manual property underwriting and fail-closed due diligence: taxes, title, inspections, repairs and financing.</p></Link>
         <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting operations with live Accounts Payable, Accounts Receivable and governed financial reporting.</p></Link>
         <Link className="module-card enabled" to="/tax"><span>Finance • Compliance</span><strong>ATLAS Tax</strong><p>Connected personal and business return preparation with governed source-document mapping.</p></Link>
@@ -306,6 +308,7 @@ export function App() {
         <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />
         <Route path="/studio/teleprompter" element={<RequireAtlasIdentity><TeleprompterPage /></RequireAtlasIdentity>} />
+        <Route path="/real-estate" element={<RealEstateIntelligencePage />} />
         <Route path="/business" element={<BusinessHome />} />
         <Route path="/business/network" element={<NetworkPublicPage section="network" />} />
         <Route path="/business/network/pricing" element={<NetworkPublicPage section="pricing" />} />
