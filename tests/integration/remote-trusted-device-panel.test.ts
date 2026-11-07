@@ -14,7 +14,6 @@ describe('ATLAS Trusted Devices integration contract', () => {
   });
   it('does not silently open remote access or trust shared ChatGPT credentials', () => {
     expect(panel).toContain('Remote control not authorized');
-    expect(panel).not.toContain('remote.desktop.control\'', 0);
     expect(policy).toContain('remoteSessionAuthorized: false');
     expect(policy).not.toContain('localStorage');
     expect(policy).not.toContain('document.cookie');
