@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createEmptyMotionComposition } from '../../../../../../../packages/creator/motion/defaults';
+import { createDataReelComposition, parseDataReelRows } from '../../../../../../../packages/creator/motion/data_reel';
 import { evaluateTrack } from '../../../../../../../packages/creator/motion/evaluator';
 import { evaluateMotionExpression, parseMotionExpression } from '../../../../../../../packages/creator/motion/expression';
 import { validateMotionComposition } from '../../../../../../../packages/creator/motion/validator';
@@ -10,11 +11,12 @@ type MotionDesignerProps = {
   value: MotionCompositionSpec | null;
   durationSeconds: number;
   onChange: (composition: MotionCompositionSpec) => void;
+  onCreateDataReel?: (composition: MotionCompositionSpec, title: string) => void;
 };
 
 const HISTORY_LIMIT = 50;
 
-export function MotionDesigner({ value, durationSeconds, onChange }: MotionDesignerProps) {
+export function MotionDesigner({ value, durationSeconds, onChange, onCreateDataReel }: MotionDesignerProps) {
   const spec = useMemo(() => value ?? createEmptyMotionComposition({ durationSeconds: Math.max(1, durationSeconds || 10) }), [durationSeconds, value]);
   const [selected, setSelected] = useState<string | null>(null);
   const [playhead, setPlayhead] = useState(0);
@@ -22,6 +24,9 @@ export function MotionDesigner({ value, durationSeconds, onChange }: MotionDesig
   const [redoStack, setRedoStack] = useState<MotionCompositionSpec[]>([]);
   const [expressionDraft, setExpressionDraft] = useState('');
   const [expressionError, setExpressionError] = useState('');
+  const [reelTitle, setReelTitle] = useState('');
+  const [reelRows, setReelRows] = useState('');
+  const [reelError, setReelError] = useState('');
   const issues = useMemo(() => validateMotionComposition(spec), [spec]);
   const selectedLayer = spec.layers.find(layer => layer.id === selected) || null;
 
@@ -190,6 +195,24 @@ export function MotionDesigner({ value, durationSeconds, onChange }: MotionDesig
     return Math.max(0, Math.min(1, opacity));
   }
 
+  function createReel() {
+    try {
+      const points = parseDataReelRows(reelRows);
+      const chosenDuration = Math.max(10, 2 + points.length * 3, Number.isFinite(durationSeconds) ? durationSeconds : 0);
+      const generated = createDataReelComposition({ id: crypto.randomUUID(), title: reelTitle, points, durationSeconds: chosenDuration });
+      if (spec.layers.length && !window.confirm('Replace existing motion layers with this data reel?')) return;
+      setUndoStack([]);
+      setRedoStack([]);
+      setPlayhead(0);
+      setSelected(generated.layers.find(layer => layer.dataReelRole === 'value')?.id ?? null);
+      setReelError('');
+      if (onCreateDataReel) onCreateDataReel(generated, reelTitle.trim());
+      else onChange(generated);
+    } catch (error) {
+      setReelError(error instanceof Error ? error.message : 'Unable to create sourced data reel.');
+    }
+  }
+
   const opacity = selectedLayer ? opacityTrack(selectedLayer) : undefined;
 
   return <section className="motion-designer" aria-label="Motion Designer">
@@ -200,6 +223,18 @@ export function MotionDesigner({ value, durationSeconds, onChange }: MotionDesig
       <button type="button" onClick={redo} disabled={!redoStack.length}>Redo</button>
       <span role="status">{issues.length ? `${issues.length} validation issue(s)` : 'Composition valid'}</span>
     </div>
+
+    <section className="motion-panel motion-data-reel" aria-label="Sourced data reel generator">
+      <h3>Data Reel · sourced motion template</h3>
+      <p>Build a vertical 1080 × 1920 motion composition with editable facts. Sources are user-provided and are not independently verified. No AI credits, render or publication are triggered.</p>
+      <label>Reel title<input value={reelTitle} maxLength={80} placeholder="What do the figures show?" onChange={event => setReelTitle(event.target.value)} /></label>
+      <label>Data rows (up to 5)
+        <textarea rows={4} value={reelRows} placeholder="Label | Value | https://source.example/report" onChange={event => setReelRows(event.target.value)} aria-describedby="data-reel-row-help" />
+      </label>
+      <p id="data-reel-row-help">One claim per line: label | value | public HTTPS source. Review factual accuracy and licensing before rendering or publishing. Existing motion layers will be replaced after confirmation.</p>
+      <button type="button" onClick={createReel}>Create editable data reel</button>
+      {reelError && <p role="alert" className="motion-error">{reelError}</p>}
+    </section>
 
     <div className="motion-grid">
       <aside className="motion-panel" aria-label="Layers">
@@ -236,6 +271,7 @@ export function MotionDesigner({ value, durationSeconds, onChange }: MotionDesig
         <h3>Properties</h3>
         {selectedLayer ? <>
           <label>Name<input value={selectedLayer.name} disabled={selectedLayer.locked} onChange={event => updateLayer({ name: event.target.value })} /></label>
+          {selectedLayer.sourceUrl && <p>Source supplied (unverified): <a href={selectedLayer.sourceUrl} target="_blank" rel="noopener noreferrer">View reference</a>. Editing a sourced value blocks the render review until it is regenerated with attribution.</p>}
           <div className="motion-property-grid">
             <label>X<input type="number" value={selectedLayer.transform.positionX ?? 0} disabled={selectedLayer.locked} onChange={event => updateTransform('positionX', Number(event.target.value))} /></label>
             <label>Y<input type="number" value={selectedLayer.transform.positionY ?? 0} disabled={selectedLayer.locked} onChange={event => updateTransform('positionY', Number(event.target.value))} /></label>
