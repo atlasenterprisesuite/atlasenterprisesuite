@@ -4,6 +4,8 @@ type Gate = { id: string; label: string; status: 'NO-GO' | 'PENDING'; evidence: 
 const snapshot = {
   observedAt: '2026-11-06',
   source: 'ATLAS 777 REVIEW — historical inspected GitHub run, not a live feed',
+  verifiedCommit: '00e9582b207cdf5b20fd18b9f6984bfe48e7b754',
+  ciEvidence: 'https://github.com/atlasenterprisesuite/atlasenterprisesuite/actions/runs/42299574021',
   gates: [
     { id: 'foundation', label: 'Foundation / Auth', status: 'NO-GO', detail: 'PostgreSQL 17 bootstrap and 22 RPC certification not proven', evidence: 'https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/974' },
     { id: 'auth-red', label: 'AUTH RED', status: 'PENDING', detail: 'Integration and server-derived authorization not certified', evidence: 'https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/1007' },
@@ -23,7 +25,7 @@ export function MissionControlPage() {
       <div className="notice strong" role="status">GLOBAL: P0 NO-GO · Snapshot observed {snapshot.observedAt} · Never interpret this page as live status.</div>
       <div className="module-grid">
         <article className="module-card"><span>Foundation</span><strong>0 / 22 RPC certified</strong><p>Certification pending. No inferred passes.</p></article>
-        <article className="module-card"><span>Data provenance</span><strong>Historical snapshot</strong><p>{snapshot.source}</p></article>
+        <article className="module-card"><span>Data provenance</span><strong>Historical snapshot</strong><p>{snapshot.source}</p><p>Previously inspected commit: <code>{snapshot.verifiedCommit}</code></p><p><a href={snapshot.ciEvidence} target="_blank" rel="noopener noreferrer">Inspect historical CI evidence</a>. CI success does not certify authenticated E2E or release readiness.</p></article>
       </div>
       <section aria-label="Release gates">
         <h2>Release gates and evidence</h2>
