@@ -93,3 +93,21 @@ test('secret contents are not searchable; recovery validation does not erase cod
   await assert.rejects(vault.setRecoveryCodes({ id, codes: ['', ''], passphrase }), /codes/);
   assert.deepEqual((await vault.reveal({ id, passphrase })).recoveryCodes, ['FICTIONAL_ONLY']);
 });
+
+test('exported sensitive URLs never expose path, query, fragment or cookie/session columns', async t => {
+  const { vault } = await setup(t);
+  const csv = [
+    'name,url,username,password,note',
+    'Test,https://example.test/private/FAKEPATH?code=FAKEQUERY#FAKEFRAGMENT,user@example.test,FAKEPASS,private'
+  ].join('\n');
+  await vault.importCsv({ source: 'google', csv, passphrase });
+  const results = await vault.search({ passphrase });
+  assert.equal(results.length, 1);
+  assert.equal(results[0].url, 'https://example.test/');
+  assert.doesNotMatch(JSON.stringify(results), /FAKEPATH|FAKEQUERY|FAKEFRAGMENT|FAKEPASS|private/);
+  assert.deepEqual(await vault.search({ query: 'FAKEQUERY', passphrase }), []);
+
+  const forbidden = 'name,url,username,password,cookie\nOther,https://other.test,u,FAKE,cookie_value';
+  await assert.rejects(vault.importCsv({ source: 'google', csv: forbidden, passphrase }), /sensitive_columns/);
+  assert.equal((await vault.search({ passphrase })).length, 1);
+});
