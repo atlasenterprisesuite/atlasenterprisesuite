@@ -75,7 +75,7 @@ function truth(
 }
 
 function isValidEvent(row: AtlasFinancingEvidence): boolean {
-  return Boolean(row.eventId.trim())
+  return typeof row.eventId === 'string' && Boolean(row.eventId.trim())
     && financingKinds.includes(row.kind)
     && /^[A-Z]{3}$/.test(row.currency)
     && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(row.observedAt)
