@@ -271,7 +271,7 @@ export function MotionDesigner({ value, durationSeconds, onChange, onCreateDataR
         <h3>Properties</h3>
         {selectedLayer ? <>
           <label>Name<input value={selectedLayer.name} disabled={selectedLayer.locked} onChange={event => updateLayer({ name: event.target.value })} /></label>
-          {selectedLayer.sourceUrl && <p>Source supplied (unverified): <a href={selectedLayer.sourceUrl} target="_blank" rel="noopener noreferrer">View reference</a>. Editing a sourced value blocks the render review until it is regenerated with attribution.</p>}
+          {selectedLayer.sourceUrl && <p>Source supplied (unverified): <code className="motion-source-url">{selectedLayer.sourceUrl}</code>. Copy the reference manually to review it; editing a sourced value blocks render review until it is regenerated with attribution.</p>}
           <div className="motion-property-grid">
             <label>X<input type="number" value={selectedLayer.transform.positionX ?? 0} disabled={selectedLayer.locked} onChange={event => updateTransform('positionX', Number(event.target.value))} /></label>
             <label>Y<input type="number" value={selectedLayer.transform.positionY ?? 0} disabled={selectedLayer.locked} onChange={event => updateTransform('positionY', Number(event.target.value))} /></label>
