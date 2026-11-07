@@ -37,7 +37,10 @@ function safeUrl(input) {
   try {
     const url = new URL(input);
     if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) fail('url');
-    // Keep only the origin: exported login URLs may embed bearer tokens in\n    // path, query or fragment. Never return those values in account metadata.\n    if (url.origin === 'null') fail('url');\n    return `${url.origin}/`;
+    // Keep only the origin: exported login URLs may embed bearer tokens in
+    // path, query or fragment. Never return those values in account metadata.
+    if (url.origin === 'null') fail('url');
+    return `${url.origin}/`;
   } catch { fail('url'); }
 }
 function accounts(raw) {
@@ -56,7 +59,9 @@ function imported(csv, source) {
   const [header, ...rows] = parseCsv(csv);
   if (!header) fail('columns');
   const names = header.map(h => h.trim().toLowerCase());
-  if (new Set(names).size !== names.length) fail('columns');\n  // Explicitly fail instead of silently pretending to migrate live sessions.\n  if (names.some(name => /^(?:cookies?|session(?:_?(?:id|token))?|(?:access|refresh|auth|bearer)_?token)$/.test(name))) fail('sensitive_columns');
+  if (new Set(names).size !== names.length) fail('columns');
+  // Explicitly fail instead of silently pretending to migrate live sessions.
+  if (names.some(name => /^(?:cookies?|session(?:_?(?:id|token))?|(?:access|refresh|auth|bearer)_?token)$/.test(name))) fail('sensitive_columns');
   const title = source === 'google' ? 'name' : 'title';
   if (![title, 'url', 'username', 'password'].every(n => names.includes(n))) fail('columns');
   return rows.map(row => {
