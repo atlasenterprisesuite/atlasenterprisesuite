@@ -33,7 +33,7 @@ describe('ATLAS Studio sourced data reels', () => {
     expect(spec.layers.filter(layer => layer.dataReelRole === 'value')).toHaveLength(2);
     expect(spec.layers.filter(layer => layer.dataReelRole === 'source')).toHaveLength(2);
     expect(spec.layers.find(layer => layer.dataReelRole === 'value')?.sourceUrl).toBe(points[0].sourceUrl);
-    expect(spec.layers.some(layer => layer.dataReelRole === 'source' && layer.name.includes('example.org'))).toBe(true);
+    expect(spec.layers.find(layer => layer.dataReelRole === 'source')?.name).toBe('Source supplied (unverified): example.org');
     expect(spec.layers.filter(layer => layer.dataReelRole === 'value').every(layer => layer.tracks.length > 0)).toBe(true);
     expect(validateMotionComposition(spec)).toEqual([]);
     expect(JSON.stringify(create())).toBe(JSON.stringify(spec));
