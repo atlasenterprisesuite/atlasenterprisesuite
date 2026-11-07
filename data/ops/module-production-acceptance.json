@@ -27,6 +27,12 @@
       "path": "/security/certificates",
       "verdict": "VERIFICATION_HOLD",
       "reason": "The authenticated certificate inventory and security dashboard are implemented only in the pull-request branch. Live GitHub OIDC ingestion, end-to-end mTLS verification, release tests and exact-SHA production route evidence have not passed all acceptance gates; the route must remain explicitly on verification hold."
+    },
+    {
+      "module_id": "real-estate",
+      "path": "/real-estate",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "The real-estate route is implemented for manually entered underwriting scenarios only; verified tenant-scoped parcel records, property tax and title sources, provider-side loan authorization, durable evidence storage, complete browser E2E and exact-SHA production route certification are not yet available. Keep investment decisions and external transactions fail-closed."
     }
   ],
   "shared_ux_evidence": {

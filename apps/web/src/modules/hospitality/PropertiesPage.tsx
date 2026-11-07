@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { HospitalitySubnav } from './HospitalitySubnav';
 import { getCachedHospitalityProperty } from './hospitalityContext';
 
@@ -29,6 +30,7 @@ export function PropertiesPage() {
         <p className="eyebrow">Property catalog</p>
         <h2>No verified property catalog is connected</h2>
         <p>ATLAS will not invent properties or expose mutation controls. Connect a tenant-scoped backend source before property records can be listed or managed here.</p>
+        <p>Analyze a manually entered scenario without importing unverified property context: <Link className="text-link" to="/real-estate">Open ATLAS Real Estate Intelligence</Link>.</p>
       </div>
     </section>
   );
