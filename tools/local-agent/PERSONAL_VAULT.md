@@ -57,3 +57,36 @@ conflicts, metadata-only search, recovery separation and concurrent imports.
 
 No merge, deploy, production write or real secret access is authorized by
 this implementation. Keep existing Apple/Google entries unchanged.
+
+## Browser import and trusted-device boundary (2026-11-07)
+
+**Current implemented subset:** Explicit Google/Apple password CSV import into a
+dedicated encrypted local vault. All stored account URLs are reduced to their
+HTTP(S) **origin**. Paths, query parameters and fragments are never persisted
+or returned by metadata search because they may contain access tokens or
+private identifiers. This deliberately loses path-level account distinctions;
+duplicate origin+username with differing secrets rejects atomically rather
+than silently overwriting. Existing data is not migrated automatically.
+
+Any CSV header implying cookies, live sessions, authorization tokens,
+access tokens, refresh tokens, or bearer tokens is rejected with
+`personal_vault_sensitive_columns`. This prevents presenting a session
+transfer as a password import. No browser cookie extraction, token replay,
+session cloning, website login, or bypass of authentication is implemented
+or authorized.
+
+**Not implemented:** Browser-history import, iPhone/Android/Windows system
+browser integration, one-click login, automatic remote syncing, encrypted
+multi-device backups, trusted-device pairing, authenticated metadata-only
+ChatGPT app integration, or cross-device cookie transfers. Signing into
+ChatGPT on multiple devices does **not** grant local password-store or
+browser access to ATLAS. Any future history importer must use a user-selected
+export, redact URLs before persistence, exclude private/incognito browsing,
+and require separate permission and deletion controls.
+
+Cross-device P0 gates: owner-initiated device enrollment, challenge-based
+device authentication and revocation, end-to-end encryption with keys held
+by devices, independent security validation, local unlock UI, Windows ACL
+enforcement, real export format tests, backup/recovery, and exact-SHA
+CI/E2E evidence. Until these exist, no credentials or browsing history
+should be uploaded to ChatGPT or to an ATLAS cloud endpoint.
