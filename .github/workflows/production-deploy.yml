@@ -22,7 +22,7 @@ permissions:
 jobs:
   verify-build-readiness:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
         with:
@@ -92,6 +92,9 @@ jobs:
               sudo mv "$source" "$source.disabled"
             fi
           done
+          # Bound stalled package mirrors and retry transient network failures.
+          # Keep the native toolchain and its existing repository contract intact.
+          printf '%s\n' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80atlas-ci-network >/dev/null
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
           ffmpeg -version
