@@ -49,6 +49,10 @@ describe('ATLAS Studio sourced data reels', () => {
     hidden.layers = hidden.layers.filter(layer => !(layer.dataReelRole === 'source' && layer.sourceUrl === points[0].sourceUrl));
     expect(validateMotionComposition(hidden).map(issue => issue.code)).toContain('motion.data_reel_source_missing');
 
+    const relabeled = create();
+    relabeled.layers.find(layer => layer.dataReelRole === 'source')!.name = 'Independently verified by ATLAS';
+    expect(validateMotionComposition(relabeled).map(issue => issue.code)).toContain('motion.data_reel_source_changed');
+
     const deleted = create();
     deleted.layers = deleted.layers.filter(layer => layer.dataReelRole !== 'value');
     expect(validateMotionComposition(deleted).map(issue => issue.code)).toContain('motion.data_reel_count_mismatch');
