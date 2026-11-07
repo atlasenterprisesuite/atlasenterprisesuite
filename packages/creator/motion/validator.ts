@@ -1,5 +1,5 @@
 import type { MotionCompositionSpec, MotionValidationIssue } from './types.ts';
-import { isAllowedDataSourceUrl } from './data_reel';
+import { isAllowedDataSourceUrl } from './data_reel.ts';
 
 export function validateMotionComposition(spec: MotionCompositionSpec): MotionValidationIssue[] {
   const issues: MotionValidationIssue[] = [];
