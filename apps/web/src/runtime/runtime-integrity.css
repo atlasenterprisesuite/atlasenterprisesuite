@@ -1,0 +1,139 @@
+.atlas-runtime-fallback {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 5vw, 4rem);
+  background: #07101d;
+  color: #eef6ff;
+}
+
+.atlas-runtime-fallback > div {
+  width: min(720px, 100%);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid rgba(132, 184, 255, 0.28);
+  border-radius: 24px;
+  background: rgba(10, 24, 42, 0.92);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.atlas-runtime-fallback h1 {
+  margin: 0.4rem 0 1rem;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+}
+
+.atlas-runtime-fallback-actions,
+.atlas-runtime-integrity .atlas-cloud-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.atlas-runtime-fallback-actions {
+  margin-top: 1.5rem;
+}
+
+.atlas-runtime-fallback button,
+.atlas-runtime-fallback a,
+.atlas-runtime-integrity button {
+  min-height: 44px;
+}
+
+.atlas-runtime-integrity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.atlas-runtime-definition-list,
+.atlas-runtime-incident-list article dl {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+}
+
+.atlas-runtime-definition-list div,
+.atlas-runtime-incident-list article dl div {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.45fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.atlas-runtime-definition-list dt,
+.atlas-runtime-incident-list dt {
+  color: var(--atlas-muted, #8fa5bf);
+}
+
+.atlas-runtime-definition-list dd,
+.atlas-runtime-incident-list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.atlas-runtime-contract {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.atlas-runtime-contract p {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.atlas-runtime-contract strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-runtime-incident-list {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.atlas-runtime-incident-list > article {
+  border: 1px solid rgba(132, 184, 255, 0.18);
+  border-radius: 16px;
+  padding: 1rem;
+  background: rgba(9, 22, 39, 0.54);
+}
+
+.atlas-runtime-incident-list > article > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.atlas-runtime-severity {
+  min-width: 34px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.atlas-runtime-incident-list article p {
+  margin: 0.8rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.atlas-runtime-incident-list article.severity-p0 {
+  border-color: rgba(255, 104, 104, 0.58);
+}
+
+.atlas-runtime-incident-list article.severity-p1 {
+  border-color: rgba(255, 179, 71, 0.5);
+}
+
+@media (max-width: 780px) {
+  .atlas-runtime-integrity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-runtime-definition-list div,
+  .atlas-runtime-incident-list article dl div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}

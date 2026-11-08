@@ -9,7 +9,7 @@ const AUDIENCE = 'atlas-production-http-verifier';
 const ALLOWED_WORKFLOWS = GITHUB_SCOPE.workflowRefs;
 const PRODUCTION_URL = 'https://www.atlasenterprisesuite.com';
 const PRODUCTION_ORIGIN = new URL(PRODUCTION_URL).origin;
-const VERSION = 31;
+const VERSION = 32;
 const MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CANONICAL_MODULE_ROUTES = [
@@ -53,12 +53,14 @@ const CANONICAL_MODULE_ROUTES = [
   '/payroll',
   '/learning',
   '/health',
+  '/care',
   '/studio',
   '/voice',
   '/events',
   '/frontier',
   '/hospitality',
   '/ride',
+  '/city',
   '/mobility/aviation',
   '/galaxy',
   '/device-os',

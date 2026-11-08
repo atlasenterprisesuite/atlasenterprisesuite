@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "policy": "fail-closed",
+  "verdicts": [
+    "FINAL_PRODUCTION_VERIFIED",
+    "PRODUCTION_VERIFIED_GATED",
+    "VERIFICATION_HOLD",
+    "NOT_PRODUCTION_VERIFIED"
+  ],
+  "required_dimensions": [
+    "canonical_navigation",
+    "ux_flow",
+    "responsive_desktop_tablet_mobile",
+    "ui_states_loading_empty_error_success_unauthorized",
+    "real_functionality_and_validation",
+    "persistence_after_refresh",
+    "tenant_scope_and_cross_tenant_denial",
+    "server_side_rbac",
+    "audit_and_secret_safety",
+    "integration_handshake_and_fail_closed",
+    "tests_build_deploy",
+    "public_e2e_exact_sha"
+  ],
+  "navigation_route_holds": [
+    {
+      "module_id": "certificate-lifecycle",
+      "path": "/security/certificates",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "The authenticated certificate inventory and security dashboard are implemented only in the pull-request branch. Live GitHub OIDC ingestion, end-to-end mTLS verification, release tests and exact-SHA production route evidence have not passed all acceptance gates; the route must remain explicitly on verification hold."
+    }
+  ],
+  "shared_ux_evidence": {
+    "persistent_navigation": {
+      "state": "implemented",
+      "source": "apps/web/src/components/AtlasShell.tsx",
+      "evidence": "Persistent Back, Forward and Home controls use React Router navigation from the shared shell."
+    },
+    "breadcrumbs": {
+      "state": "implemented",
+      "source": "apps/web/src/components/AtlasShell.tsx",
+      "evidence": "Shared breadcrumbs expose menu, submenu, section and action-or-record hierarchy for canonical routes."
+    },
+    "responsive_shell": {
+      "state": "implemented",
+      "source": "apps/web/src/styles.css",
+      "evidence": "Shared navigation context has desktop, tablet and mobile responsive rules; module-specific responsive evidence remains separately required."
+    },
+    "unauthorized_gate": {
+      "state": "implemented",
+      "source": "apps/web/src/identity/RequireAtlasIdentity.tsx",
+      "evidence": "Protected modules redirect unauthenticated or invalid sessions through the canonical ATLAS Identity gate."
+    }
+  }
+}

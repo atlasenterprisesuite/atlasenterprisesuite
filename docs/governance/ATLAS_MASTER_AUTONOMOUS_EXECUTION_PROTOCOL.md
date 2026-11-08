@@ -144,3 +144,36 @@ At completion, report:
 5. any external gate that remains, without representing it as complete.
 
 Do not claim completion where evidence is absent.
+
+## 9. 777 REVIEW — mandatory production P0/P1 verification
+
+ATLAS reuses `data/ops/global-production-verification.json`,
+`scripts/verify-production-p0.mjs`, and
+`scripts/verify-global-production.mjs`. Do not create a second verifier.
+
+### P0 — blocking release contract
+
+- Public origin over HTTPS, root HTTP 200 with HSTS and CSP, API health HTTP 200 with JSON `status: healthy`.
+- `public_routes`, `critical_network_routes`, and `critical_crm_routes` respond successfully under the established same-origin redirect policy.
+- Protected routes produce one of their explicitly authorized HTTP statuses.
+- If CI supplies `--expected-sha`, every successful P0 application route must expose `x-atlas-version-id` and `x-atlas-version-tag` equal to that expected commit.
+- An observed P0 failure causes a nonzero exit under `fail-closed`. An edge challenge is not a pass: it requires the existing, authorized, exact-SHA fallback to succeed.
+
+### P1 — advisory coverage
+
+The explicit `p1_routes` array contains supplemental modules and operational views. They are probed and reported with `p1_warning_count` and `checks.p1_routes`. A P1 error can yield `passed-with-warnings` only when **every P0 and exact-SHA gate passes**. P1 failures must never be suppressed from machine-readable reports.
+
+### Policy and result truth
+
+- `fail-closed` is the default. `warning-only` permits an informational job exit, but reports `ok: false` and `verified: false` after a P0 failure.
+- A passing build, merged PR, HTTP 200, or valid P1 check alone does not prove a successful production deployment.
+- Collect and review the exact PR head SHA, CI jobs, Cloudflare deployment evidence, P0 result, and public-domain SHA before declaring **FINAL PRODUCTION VERIFIED**.
+- Human intervention remains required for real credentials, explicit authorization, irreversible production effects, provider billing, or other genuine external boundaries.
+
+### Asset-first execution
+
+Before generating images, audio, video, templates, or new software primitives, search existing ATLAS repository assets, libraries, modules, components, and approved provider adapters. Reuse or refactor an adequate asset before making a new one, and do not spend provider credits on a redundant artifact.
+
+### Closure rule
+
+Use `[FIN DEL PROCESO CONFIRMADO]` and the approved archival sentence only when the scoped task actually passed all mandatory evidence gates. A branch or PR with pending CI, review, merge, deployment, or runtime checks remains **in progress**, not ✅.

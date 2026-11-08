@@ -1,0 +1,18 @@
+name: ATLAS AI Council Security Gates
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/atlas-copilot/**'
+      - 'tests/node/atlas-ai-council-security-gates.test.mjs'
+      - '.github/workflows/atlas-ai-council-security.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  council-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Council authentication and fail-closed boundaries
+        run: node --test tests/node/atlas-ai-council-security-gates.test.mjs

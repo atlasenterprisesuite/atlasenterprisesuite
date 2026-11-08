@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { ATLAS_MODULES } from '../registry';
 import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManager } from './AtlasCloudNextLevel';
 import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
+import { AtlasRuntimeIntegrityPage } from './AtlasRuntimeIntegrityPage';
 import { AtlasCloudDomains } from './AtlasCloudDomains';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
 import { atlasCloudTruthBadge } from './truthStatus';
@@ -239,6 +240,10 @@ function ConsoleHome() {
           <span>Operations</span><strong>Observability</strong>
           <p>View native incidents, traces, metrics and runtime verification evidence.</p>
         </Link>
+        <Link to="/cloud/runtime-integrity">
+          <span>Runtime</span><strong>Runtime Integrity</strong>
+          <p>Classify browser, application, provider and policy failures without promoting extension noise to P0.</p>
+        </Link>
         <Link to="/cloud/resources">
           <span>Resources</span><strong>Resource Manager</strong>
           <p>Manage organization projects and inspect the canonical ATLAS service registry.</p>
@@ -323,6 +328,7 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/docs/operations') return <DocumentationArticle kind="operations" />;
   if (pathname === '/cloud/api-explorer') return <AtlasCloudApiExplorer />;
   if (pathname === '/cloud/observability') return <AtlasCloudObservability />;
+  if (pathname === '/cloud/runtime-integrity') return <AtlasRuntimeIntegrityPage />;
   if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
   if (pathname === '/cloud/domains') return <AtlasCloudDomains />;
   if (pathname === '/cloud/service-graph') return <AtlasCloudServiceGraph />;

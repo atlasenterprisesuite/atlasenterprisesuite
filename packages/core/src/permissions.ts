@@ -68,6 +68,11 @@ export type PayrollPermission =
   | 'payroll.approve'
   | 'payroll.self';
 
+export type CarePermission =
+  | 'care.read'
+  | 'care.write'
+  | 'care.approve';
+
 export type SecurityPermission = 'security.admin';
 export type AuditPermission = 'audit.read';
 
@@ -87,6 +92,7 @@ export type AtlasPermission =
   | AdvisoryPermission
   | HrPermission
   | PayrollPermission
+  | CarePermission
   | SecurityPermission
   | AuditPermission
   | AnalyticsPermission;

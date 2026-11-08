@@ -22,6 +22,9 @@ verify_jwt = true
 [functions.atlas-wireless-mvno]
 verify_jwt = true
 
+[functions.atlas-mail-provisioning]
+verify_jwt = true
+
 [functions.atlas-wireless-network]
 verify_jwt = true
 
@@ -30,3 +33,9 @@ verify_jwt = true
 
 [functions.atlas-platform-controls]
 verify_jwt = true
+
+
+# Public OAuth callback; the function enforces OAuth state, ATLAS session and RBAC internally.
+[functions.atlas-crm-salesforce]
+verify_jwt = false
+

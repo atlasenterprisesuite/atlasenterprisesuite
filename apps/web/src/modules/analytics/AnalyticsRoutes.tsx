@@ -10,6 +10,9 @@ import './analytics.css';
 
 const NAV = [
   { to: '/analytics', label: 'Overview' },
+  { to: '/analytics/executive', label: 'Executive' },
+  { to: '/analytics/operations', label: 'Operations' },
+  { to: '/analytics/finance', label: 'Finance' },
   { to: '/analytics/metrics', label: 'Metrics' },
   { to: '/analytics/sources', label: 'Sources' },
   { to: '/analytics/insights', label: 'Insights' },
@@ -66,6 +69,118 @@ function MetricCards() {
   );
 }
 
+
+const DASHBOARD_PERSPECTIVES = [
+  {
+    id: 'executive',
+    label: 'Executive',
+    title: 'Executive dashboard',
+    description: 'A decision surface for revenue, margin, customers and company performance.',
+    metricIds: ['revenue', 'gross-margin', 'pipeline-conversion', 'customer-retention'],
+    sourceIds: ['commerce', 'crm']
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    title: 'Operations dashboard',
+    description: 'Operational intelligence for inventory, fulfillment and workforce capacity.',
+    metricIds: ['inventory-turnover', 'fulfillment-time', 'labor-cost-rate'],
+    sourceIds: ['inventory', 'commerce', 'payroll']
+  },
+  {
+    id: 'finance',
+    label: 'Finance',
+    title: 'Finance dashboard',
+    description: 'A governed view of margin, working capital and revenue.',
+    metricIds: ['gross-margin', 'cash-conversion-cycle', 'revenue'],
+    sourceIds: ['finance-automotive-demo', 'inventory', 'commerce']
+  }
+] as const;
+
+type DashboardPerspective = (typeof DASHBOARD_PERSPECTIVES)[number];
+
+function DashboardPerspectives({ active }: { active?: string }) {
+  return (
+    <nav className="analytics-perspective-nav" aria-label="Dashboard perspectives">
+      {DASHBOARD_PERSPECTIVES.map((view) => (
+        <Link
+          key={view.id}
+          to={`/analytics/${view.id}`}
+          className="analytics-perspective-link"
+          aria-label={view.label}
+          aria-current={active === view.id ? 'page' : undefined}
+        >
+          <span className="analytics-perspective-kicker">{view.label}</span>
+          <strong>{view.title}</strong>
+          <span>{view.description}</span>
+          <span className="analytics-perspective-action">Open workspace →</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function DashboardWorkspace({ perspective }: { perspective: DashboardPerspective }) {
+  const metrics = perspective.metricIds.flatMap((id) => {
+    const metric = METRIC_CATALOG.find((candidate) => candidate.id === id);
+    return metric ? [metric] : [];
+  });
+  const sources = perspective.sourceIds.flatMap((id) => {
+    const source = sourceById(id);
+    return source ? [source] : [];
+  });
+
+  return (
+    <section className="analytics-section analytics-dashboard" aria-labelledby="analytics-dashboard-heading">
+      <DashboardPerspectives active={perspective.id} />
+      <div className="analytics-dashboard-heading">
+        <div>
+          <p className="eyebrow">ATLAS · Governed intelligence</p>
+          <h2 id="analytics-dashboard-heading">{perspective.title}</h2>
+          <p>{perspective.description}</p>
+          <p>Values appear only after authorized, verified data is available. Contract definitions are not live business results.</p>
+        </div>
+        <Link className="analytics-dashboard-gate" to="/analytics/sources">Review source gates</Link>
+      </div>
+      <div className="analytics-dashboard-metrics" aria-label={`${perspective.label} metric definitions`}>
+        {metrics.map((metric) => {
+          const readiness = evaluateMetricReadiness(metric);
+          const sourceVerified = readiness.ready && metric.requiredSources.every(
+            (id) => sourceById(id)?.state === 'verified'
+          );
+          return (
+            <article className="analytics-dashboard-metric" key={metric.id}>
+              <div className="analytics-card-topline">
+                <span>{metric.category}</span>
+                <StateBadge state={sourceVerified ? 'verified' : 'contract-gated'} />
+              </div>
+              <h3>{metric.name}</h3>
+              <strong aria-label="Metric value unavailable">—</strong>
+              <p>{metric.description}</p>
+              <Link to="/analytics/metrics">View metric definition →</Link>
+            </article>
+          );
+        })}
+      </div>
+      <section className="analytics-dashboard-sources" aria-label="Owning source modules">
+        <div className="analytics-section-heading">
+          <h3>Source modules</h3>
+          <p>Access each owning module directly. Live aggregation remains unavailable until lineage, quality and tenant-scoped authorization are verified.</p>
+        </div>
+        <div className="analytics-dashboard-source-list">
+          {sources.map((source) => (
+            <article className="analytics-dashboard-source" key={source.id}>
+              <div><strong>{source.name}</strong><StateBadge state={source.state} /></div>
+              <p>{source.evidence}</p>
+              <Link to={source.route}>Open source module →</Link>
+            </article>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
 function Overview() {
   const summary = analyticsReadinessSummary();
   const lifecycle = [
@@ -81,6 +196,14 @@ function Overview() {
 
   return (
     <>
+      <section className="analytics-section analytics-dashboard-introduction" aria-label="Dashboard perspectives">
+        <div className="analytics-section-heading">
+          <p className="eyebrow">Three perspectives · One governed ecosystem</p>
+          <h2>Explore ATLAS dashboards</h2>
+          <p>Executive, operations and finance views use the same source contracts and never display invented balances or performance.</p>
+        </div>
+        <DashboardPerspectives />
+      </section>
       <section className="analytics-summary-grid" aria-label="Analytics readiness summary">
         <article><span>Sources</span><strong>{summary.totalSources}</strong><small>registered contracts</small></article>
         <article><span>Verified live</span><strong>{summary.verifiedSources}</strong><small>production-eligible now</small></article>
@@ -209,6 +332,9 @@ export function AnalyticsRoutes() {
       </nav>
 
       {tab === 'overview' ? <Overview /> : null}
+      {DASHBOARD_PERSPECTIVES.map((perspective) => tab === perspective.id
+        ? <DashboardWorkspace key={perspective.id} perspective={perspective} />
+        : null)}
       {tab === 'metrics' ? <section className="analytics-section"><div className="analytics-section-heading"><p className="eyebrow">Semantic layer</p><h2>Metric catalog</h2><p>Definitions are visible before values. A metric stays gated until every required source contract passes.</p></div><MetricCards /></section> : null}
       {tab === 'sources' ? <section className="analytics-section"><div className="analytics-section-heading"><p className="eyebrow">Source registry</p><h2>Data sources & lineage gates</h2><p>These are capability contracts, not claims that a live provider session currently exists.</p></div><SourceCards /></section> : null}
       {tab === 'insights' ? <Insights /> : null}

@@ -32,6 +32,11 @@ const MODES: Array<{ value: AssistantMode; label: string; short: string }> = [
   { value: 'openai', label: 'OpenAI', short: 'OpenAI' },
   { value: 'bedrock', label: 'OpenAI on AWS Bedrock', short: 'Bedrock' },
   { value: 'gemini', label: 'Gemini', short: 'Gemini' },
+  { value: 'anthropic', label: 'Claude / Anthropic', short: 'Claude' },
+  { value: 'grok', label: 'Grok / xAI', short: 'Grok' },
+  { value: 'deepseek', label: 'DeepSeek', short: 'DeepSeek' },
+  { value: 'mistral', label: 'Mistral', short: 'Mistral' },
+  { value: 'qwen', label: 'Qwen', short: 'Qwen' },
   { value: 'codex-sovereign', label: 'Codex Sovereign', short: 'Codex' },
   { value: 'council', label: 'Council', short: 'Council' }
 ];
@@ -162,6 +167,7 @@ export function UnifiedAIChatPage() {
   const diarizationSessionIdRef = useRef('');
   const diarizationSpeakerMapRef = useRef(new Map<string, ConversationSpeaker>());
   const messageEnd = useRef<HTMLDivElement | null>(null);
+  const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const pageActiveRef = useRef(true);
   const voice = useAssistantVoice();
 
@@ -389,9 +395,10 @@ export function UnifiedAIChatPage() {
     const value = message.trim();
     if (!value || busy || !routeReady) return;
 
+    const optimisticKey = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     setMessages((current) => [
       ...current,
-      { key: 'local-' + Date.now(), role: 'user', text: value }
+      { key: optimisticKey, role: 'user', text: value }
     ]);
     setToolsOpen(false);
     setBusy(true);
@@ -449,7 +456,12 @@ export function UnifiedAIChatPage() {
       }
       void refreshHistory();
     } catch (cause) {
+      // A failed request was not delivered: do not leave an optimistic user turn
+      // pretending it was persisted. Keep the draft available for a manual retry.
+      setMessages((current) => current.filter((item) => item.key !== optimisticKey));
+      setPrompt((current) => current || value);
       setError(cause instanceof Error ? cause.message : 'assistant_request_failed');
+      promptRef.current?.focus();
     } finally {
       setBusy(false);
     }
@@ -712,6 +724,8 @@ export function UnifiedAIChatPage() {
     setPrompt(text);
     setPromptLibraryOpen(false);
     setMobileActionsOpen(false);
+    setSidebarOpen(false);
+    promptRef.current?.focus();
   }
 
   function activateTranslator() {
@@ -775,15 +789,20 @@ export function UnifiedAIChatPage() {
         onClick={() => setSidebarOpen(false)}
       />
 
-      <aside className="atlas-ai-sidebar" aria-label="ATLAS AI conversations">
+      <aside id="atlas-ai-conversation-sidebar" className="atlas-ai-sidebar" aria-label="ATLAS AI conversations">
         <div className="atlas-ai-sidebar-head">
           <Link className="atlas-ai-brand" to="/suite" aria-label="ATLAS Enterprise Suite">
             <img src="/atlas/assistant/atlas-assistant-avatar.png" alt="" />
             <span>ATLAS</span>
           </Link>
-          <button className="atlas-ai-icon-button" type="button" onClick={startNewConversation} aria-label="New chat">
-            <span aria-hidden="true">＋</span>
-          </button>
+          <div className="atlas-ai-sidebar-head-actions">
+            <button className="atlas-ai-icon-button" type="button" onClick={startNewConversation} aria-label="New chat">
+              <span aria-hidden="true">＋</span>
+            </button>
+            <button className="atlas-ai-icon-button atlas-ai-sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Close conversation sidebar">
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
         </div>
 
         <button className="atlas-ai-new-chat" type="button" onClick={startNewConversation}>
@@ -844,6 +863,8 @@ export function UnifiedAIChatPage() {
               className="atlas-ai-icon-button atlas-ai-mobile-menu"
               type="button"
               aria-label="Open conversation sidebar"
+              aria-expanded={sidebarOpen}
+              aria-controls="atlas-ai-conversation-sidebar"
               onClick={() => setSidebarOpen(true)}
             >
               <span aria-hidden="true">☰</span>
@@ -904,7 +925,15 @@ export function UnifiedAIChatPage() {
                   <strong>AI controls</strong>
                   <span>Provider routing and governance</span>
                 </div>
-                <button type="button" onClick={refreshStatus}>Refresh</button>
+                <div className="atlas-ai-status-panel-actions">
+                  <button type="button" onClick={refreshStatus}>Refresh</button>
+                  <button
+                    type="button"
+                    className="atlas-ai-status-close"
+                    onClick={() => setStatusOpen(false)}
+                    aria-label="Close AI controls"
+                  >×</button>
+                </div>
               </div>
 
               <label className="atlas-ai-select-row">
@@ -937,16 +966,22 @@ export function UnifiedAIChatPage() {
               </div>
 
               {providers.length ? (
-                <div className="atlas-ai-provider-list">
-                  {providers.map((provider) => (
-                    <div key={provider.id}>
-                      <span>{provider.id}</span>
-                      <strong className={provider.verified && provider.state === 'verified' ? 'ready' : ''}>
-                        {providerStateLabel(provider.state)}
-                      </strong>
-                    </div>
-                  ))}
-                </div>
+                <details className="atlas-ai-provider-details">
+                  <summary>
+                    <span>Provider details</span>
+                    <strong>{verifiedProviders.length}/{providers.length} verified</strong>
+                  </summary>
+                  <div className="atlas-ai-provider-list">
+                    {providers.map((provider) => (
+                      <div key={provider.id}>
+                        <span>{provider.id}</span>
+                        <strong className={provider.verified && provider.state === 'verified' ? 'ready' : ''}>
+                          {providerStateLabel(provider.state)}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ) : null}
 
               <div className="atlas-ai-status-links">
@@ -961,7 +996,12 @@ export function UnifiedAIChatPage() {
           {error ? (
             <div className="atlas-ai-alert" role="alert">
               <span>{humanizeError(error)}</span>
-              <button type="button" onClick={() => setError('')} aria-label="Dismiss error">×</button>
+              <div className="atlas-ai-alert-actions">
+                {!status || !routeReady ? (
+                  <button type="button" onClick={() => void refreshStatus()}>Retry readiness check</button>
+                ) : null}
+                <button type="button" onClick={() => setError('')} aria-label="Dismiss error">×</button>
+              </div>
             </div>
           ) : null}
 
@@ -975,7 +1015,7 @@ export function UnifiedAIChatPage() {
             </div>
           ) : null}
 
-          <div className={'atlas-ai-messages' + (messages.length ? '' : ' empty')}>
+          <div className={'atlas-ai-messages' + (messages.length ? '' : ' empty')} role="log" aria-live="polite" aria-relevant="additions text" aria-label="ATLAS AI conversation">
             {messages.length ? messages.map((message) => (
               <article key={message.key} className={'atlas-ai-message ' + message.role}>
                 {message.role === 'assistant' ? (
@@ -1198,6 +1238,7 @@ export function UnifiedAIChatPage() {
 
             <form className={'atlas-ai-composer' + (translatorEnabled ? ' translator-active' : '')} onSubmit={submit}>
               <textarea
+                ref={promptRef}
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={(event) => {
@@ -1218,6 +1259,7 @@ export function UnifiedAIChatPage() {
                     : 'Open AI controls to restore a verified provider'
                   : 'Checking ATLAS AI readiness…'}
                 aria-label="Message ATLAS Assistant"
+                aria-describedby="atlas-ai-composer-help"
                 disabled={busy || conversationActive}
                 rows={1}
               />
@@ -1312,7 +1354,7 @@ export function UnifiedAIChatPage() {
               </section>
             ) : null}
 
-            <p className="atlas-ai-disclaimer">
+            <p id="atlas-ai-composer-help" className="atlas-ai-disclaimer">
               ATLAS can make mistakes. Verify important information and governed actions.
             </p>
           </div>

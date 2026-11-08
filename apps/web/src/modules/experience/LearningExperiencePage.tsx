@@ -1,3 +1,4 @@
+import { InteractiveLearningLabs } from '../learning/InteractiveLearningLabs';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
 
 const learningSections: ModuleExperienceSection[] = [
@@ -55,6 +56,7 @@ const learningSections: ModuleExperienceSection[] = [
 
 export function LearningExperiencePage() {
   return (
+    <>
     <ModuleExperiencePage
       eyebrow="ATLAS Learning"
       title="Learning"
@@ -64,5 +66,7 @@ export function LearningExperiencePage() {
       sections={learningSections}
       statusNote="ATLAS Learning reports practice activity and program state only. It does not convert educational engagement into a clinical or neurological claim."
     />
+    <InteractiveLearningLabs />
+    </>
   );
 }

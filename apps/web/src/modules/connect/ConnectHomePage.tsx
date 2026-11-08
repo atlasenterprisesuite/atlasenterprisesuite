@@ -19,6 +19,10 @@ export function ConnectHomePage() {
           <span>Broadcast · Configured</span><strong>ATLAS Network</strong>
           <p>Official bilingual ATLAS broadcast feed with notifications, reactions and governed handoff to Social Publisher.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/mail">
+          <span>Email · Provider-gated</span><strong>ATLAS Mail Provisioning</strong>
+          <p>Create governed departmental aliases only after Cloudflare Email Routing is authenticated and verified server-side.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/calling">
           <span>Voice · Provider-gated</span><strong>ATLAS Calling</strong>
           <p>Governed outbound calling with live provider verification, RBAC, consent controls and signed lifecycle evidence.</p>

@@ -48,4 +48,19 @@ describe('ATLAS Assistant mobile layout', () => {
     expect(unifiedAiStyles).toContain('max-height:min(62dvh,560px);');
     expect(unifiedAiStyles).not.toContain('width:calc(100vw - 20px);');
   });
+
+  it('keeps the mobile AI controls readable and compact', () => {
+    expect(unifiedAiStyles).toContain('.atlas-ai-provider-details');
+    expect(unifiedAiStyles).toContain('position:sticky;');
+    expect(unifiedAiStyles).toContain('font-size:.68rem;');
+    expect(unifiedAiStyles).toContain('min-height:42px;');
+  });
+
+  it('renders a visible three-line mobile navigation icon', () => {
+    const shellStyles = readFileSync(
+      resolve(process.cwd(), 'apps/web/src/styles.css'),
+      'utf8'
+    );
+    expect(shellStyles).toContain('.atlas-mobile-nav-icon i{display:block;width:100%;height:2px');
+  });
 });

@@ -39,13 +39,14 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 function defaultCapabilities(): AccessibilityCapabilities {
-  const hasVibration = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
   return {
     aslRecognition: 'not_configured',
     aslAvatar: 'not_configured',
     liveCaptions: 'not_configured',
     brailleHardware: 'unavailable',
-    haptics: hasVibration ? 'available' : 'unavailable',
+    // Browser API presence is not evidence of tested, connected haptic hardware.
+    // A validated adapter may explicitly override this state once verified.
+    haptics: 'unavailable',
     humanInterpreter: 'not_configured'
   };
 }
@@ -71,6 +72,7 @@ export function AtlasAccessibility({
   const [transcript, setTranscript] = useState('');
   const [confidence, setConfidence] = useState<number | null>(null);
   const [recognitionState, setRecognitionState] = useState<RecognitionState>('idle');
+  const [blockedReason, setBlockedReason] = useState<'low-confidence' | 'provider-unavailable' | null>(null);
   const [pendingRecognition, setPendingRecognition] = useState<AccessibilityRecognitionInput | null>(null);
 
   const capabilities = useMemo(
@@ -89,12 +91,28 @@ export function AtlasAccessibility({
 
   useEffect(() => {
     if (!recognitionInput) return;
+    // An injected recognition result is not sufficient evidence that an ASL provider
+    // is verified for the language deliberately selected by this user.
+    if (profile.preferredInput !== 'asl' || !selectedSignLanguage || capabilities.aslRecognition !== 'available') {
+      setTranscript('');
+      setConfidence(null);
+      setPendingRecognition(null);
+      setBlockedReason('provider-unavailable');
+      setRecognitionState('blocked');
+      onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', {
+        reason: 'sign_language_provider_not_verified',
+        signLanguage: profile.preferredSignLanguage
+      });
+      return;
+    }
+    setBlockedReason(null);
     const evaluation = AtlasConfidenceEngine.evaluate(recognitionInput.confidence);
     setTranscript(recognitionInput.text);
     setConfidence(recognitionInput.confidence);
 
     if (!evaluation.actionRecommended) {
       setPendingRecognition(recognitionInput);
+      setBlockedReason('low-confidence');
       setRecognitionState('blocked');
       onActionTriggered('ACCESSIBILITY_INTERPRETATION_BLOCKED', {
         text: recognitionInput.text,
@@ -120,7 +138,7 @@ export function AtlasAccessibility({
       confirmed: false,
       signLanguage: profile.preferredSignLanguage
     });
-  }, [recognitionInput, onActionTriggered, profile.preferredSignLanguage]);
+  }, [recognitionInput, onActionTriggered, profile.preferredInput, profile.preferredSignLanguage, selectedSignLanguage, capabilities.aslRecognition]);
 
   const closeAccessibilityCenter = () => {
     setIsOpen(false);
@@ -249,6 +267,19 @@ export function AtlasAccessibility({
               <span><strong>Captions</strong>{profile.captionsEnabled ? 'Enabled' : 'Off'}</span>
             </div>
 
+            {selectedSignLanguage && (capabilities.aslRecognition !== 'available' || capabilities.aslAvatar !== 'available') && (
+              <div className="accessibility-preference-notice" role="status">
+                <strong>Sign language selected — service not yet connected</strong>
+                <p>
+                  {selectedSignLanguage.languageName} is saved as a preference. Selecting a language does not enable
+                  sign recognition or the avatar. These require separately verified providers for that language.
+                </p>
+                <Link className="text-link" to="/settings/accessibility/communication" onClick={closeAccessibilityCenter}>
+                  Change communication preferences
+                </Link>
+              </div>
+            )}
+
             <div className="accessibility-provider-boundary" aria-label="Accessibility provider status">
               <h3>Capability status</h3>
               <div className="accessibility-capability-grid">
@@ -282,7 +313,9 @@ export function AtlasAccessibility({
               {recognitionState === 'blocked' && (
                 <div className="accessibility-decision blocked" role="alert">
                   <strong>Automation blocked</strong>
-                  <p>The recognition confidence is too low for ATLAS to execute the interpreted action.</p>
+                  <p>{blockedReason === 'provider-unavailable'
+                    ? 'No verified sign-language recognition provider is connected for the selected language. No action was executed.'
+                    : 'The recognition confidence is too low for ATLAS to execute the interpreted action.'}</p>
                 </div>
               )}
             </div>

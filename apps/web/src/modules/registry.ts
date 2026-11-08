@@ -18,6 +18,17 @@ export type AtlasModuleDefinition = {
 
 export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
   {
+    id: 'certificate-lifecycle',
+    title: 'ATLAS Certificate Lifecycle & Trust Management',
+    navLabel: 'Certificates',
+    area: 'Platform',
+    route: '/security/certificates',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Authenticated RLS certificate inventory and accessible security dashboard; active TLS observations and mTLS compliance remain evidence-gated.',
+    showInNavigation: true
+  },
+  {
     id: 'cloud',
     title: 'ATLAS Cloud',
     navLabel: 'Cloud',
@@ -268,6 +279,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     readiness: 'implemented',
     requiresAuth: false,
     description: 'Research and wellbeing tooling with explicit evidence boundaries.',
+    showInNavigation: true
+  },
+  {
+    id: 'care',
+    title: 'ATLAS Care',
+    navLabel: 'Care',
+    area: 'Health',
+    route: '/care',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Governed participant and family care coordination across eligibility, caregivers, care plans, timecards and payroll handoff with payer/EHR integrations fail-closed.',
     showInNavigation: true
   },
   {

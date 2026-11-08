@@ -1,0 +1,19 @@
+{
+  "provider": "openai",
+  "incidentId": "01M4ADHMMBK7K92NJFJ0DXRYJM",
+  "title": "Unable to create new ChatGPT Work threads in latest version of desktop app",
+  "status": "identified",
+  "impact": "partial_outage",
+  "affectedComponents": ["ChatGPT", "Codex in ChatGPT Desktop"],
+  "affectedVersion": "26.1002.51308",
+  "observedAt": "2026-10-07T05:54:00.000Z",
+  "firstObservedAt": "2026-10-07T02:00:00.000Z",
+  "remediation": "Provider identified the issue and is rolling back to the previous version.",
+  "source": "https://status.openai.com/incidents/01M4ADHMMBK7K92NJFJ0DXRYJM",
+  "classification": {
+    "defaultPriority": "P1",
+    "defaultGate": "warning",
+    "elevateToP0WhenRequiredDependency": true,
+    "attributedTo": "provider"
+  }
+}

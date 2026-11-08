@@ -60,6 +60,7 @@ describe('ATLAS global production verification', () => {
       '/payroll',
       '/learning',
       '/health',
+      '/care',
       '/studio',
       '/voice',
       '/events',
@@ -77,6 +78,7 @@ describe('ATLAS global production verification', () => {
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
       '/gps',
+      '/city',
       '/finance/accounting',
       '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel',
       '/studio/teleprompter',
@@ -124,7 +126,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('classified_required_route_challenge_deferred');
     expect(verifier).toContain('classified_root_challenge_deferred');
     expect(verifier).toContain('manager_readiness_route_reachable');
-    expect(verifier).toContain('const verified = directlyVerified;');
+    expect(verifier).toContain('const verified = directlyVerified && integrityGatePassed;');
     expect(verifier).toContain('AbortSignal.timeout');
     expect(verifier).toContain("redirect: 'manual'");
     expect(verifier).toContain('blocked-cross-origin-redirect');
@@ -213,7 +215,7 @@ describe('ATLAS global production verification', () => {
     expect(verifier).toContain('challengeFailures.length > 0');
     expect(verifier).toContain('nonChallengeFailures.length === 0');
     expect(verifier).toContain('classified_required_route_challenge_deferred');
-    expect(verifier).toContain('const verified = directlyVerified;');
+    expect(verifier).toContain('const verified = directlyVerified && integrityGatePassed;');
     expect(verifier).toContain('requires_authorized_fallback: challengeDeferred');
     expect(verifier).not.toMatch(/challengeDeferred[\s\S]{0,260}productionCommitShaVerified/);
     expect(verifier).not.toContain('passed-edge-secured');
@@ -264,6 +266,8 @@ describe('ATLAS global production verification', () => {
     }
     expect(authorizedVerifier).toContain("'/voice'");
     expect(authorizedVerifier).toContain("'/health'");
+    expect(authorizedVerifier).toContain("'/care'");
+    expect(authorizedVerifier).toContain("'/city'");
     expect(authorizedVerifier).toContain("'/frontier'");
     expect(authorizedVerifier).toContain("'/studio/write'");
     expect(authorizedVerifier).toContain("'/commerce'");

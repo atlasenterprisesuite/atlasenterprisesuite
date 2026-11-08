@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
+import { CertificateLifecyclePage } from './modules/security/CertificateLifecyclePage';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
@@ -22,6 +23,7 @@ import { TaxRoutes } from './modules/tax/TaxRoutes';
 import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
+import { LocalDJMixPage } from './modules/creator/music/LocalDJMixPage';
 import { AIUniversePage } from './modules/creator/AIUniversePage';
 import { ProductivityProPage } from './modules/creator/ProductivityProPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
@@ -291,6 +293,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
         <Route path="/identity" element={<IdentityPage />} />
+        <Route path="/security/certificates" element={<RequireAtlasIdentity><CertificateLifecyclePage /></RequireAtlasIdentity>} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
@@ -298,6 +301,7 @@ export function App() {
         <Route path="/studio/ai-universe" element={<RequireAtlasIdentity><AIUniversePage /></RequireAtlasIdentity>} />
         <Route path="/studio/productivity-pro" element={<RequireAtlasIdentity><ProductivityProPage /></RequireAtlasIdentity>} />
         <Route path="/studio/create" element={<RequireAtlasIdentity><CreatorWorkspace /></RequireAtlasIdentity>} />
+        <Route path="/studio/mix" element={<RequireAtlasIdentity><LocalDJMixPage /></RequireAtlasIdentity>} />
         <Route path="/studio/library" element={<RequireAtlasIdentity><CreatorLibrary /></RequireAtlasIdentity>} />
         <Route path="/studio/providers" element={<RequireAtlasIdentity><CreatorProviders /></RequireAtlasIdentity>} />
         <Route path="/studio/voice" element={<RequireAtlasIdentity><VoiceStudioPage /></RequireAtlasIdentity>} />

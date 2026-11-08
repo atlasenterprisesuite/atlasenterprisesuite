@@ -206,6 +206,7 @@ describe('ATLAS Creator', () => {
     }]);
 
     render(<MemoryRouter initialEntries={['/studio/create?type=music']}><CreatorWorkspace /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: 'Open Local DJ Mixer' })).toHaveAttribute('href', '/studio/mix');
     fireEvent.change(screen.getByLabelText('Creative brief'), { target: { value: 'Wondering cinematic ambient score' } });
 
     expect(await screen.findByRole('button', { name: 'Generate music' })).toBeDisabled();

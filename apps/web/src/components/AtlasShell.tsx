@@ -142,6 +142,44 @@ export function AtlasShell({ children }: { children: ReactNode }) {
 
   const searchResults = useMemo(() => searchAtlasNavigation(searchQuery), [searchQuery]);
 
+  const activeModule = useMemo(() => {
+    return [...ATLAS_MODULES]
+      .filter((module) =>
+        location.pathname === module.route ||
+        location.pathname.startsWith(`${module.route}/`)
+      )
+      .sort((left, right) => right.route.length - left.route.length)[0] ?? null;
+  }, [location.pathname]);
+
+  const breadcrumbItems = useMemo(() => {
+    const normalizedPath = location.pathname.replace(/^\/+|\/+$/g, '');
+    const segments = normalizedPath ? normalizedPath.split('/') : [];
+    const sectionPath = activeModule?.route.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean) ?? [];
+    const remaining = segments.slice(sectionPath.length);
+    const titleize = (value: string) =>
+      decodeURIComponent(value)
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+
+    const items = [
+      { level: 'menu', label: 'ATLAS', to: '/' },
+      { level: 'submenu', label: activeModule?.area ?? 'Workspace', to: activeModule?.route ?? location.pathname },
+      { level: 'section', label: activeModule?.navLabel ?? (segments[0] ? titleize(segments[0]) : 'Home'), to: activeModule?.route ?? location.pathname }
+    ];
+
+    for (let index = 0; index < remaining.length; index += 1) {
+      const segment = remaining[index];
+      const routeSegments = segments.slice(0, sectionPath.length + index + 1);
+      items.push({
+        level: 'action-or-record',
+        label: titleize(segment),
+        to: `/${routeSegments.join('/')}`
+      });
+    }
+
+    return items;
+  }, [activeModule, location.pathname]);
+
   const navigationGroups = useMemo(() => {
     const grouped = new Map<string, Array<{ to: string; label: string }>>();
     const moduleAreaByRoute = new Map(
@@ -358,6 +396,26 @@ export function AtlasShell({ children }: { children: ReactNode }) {
             <div><strong>{organizationName}</strong><small>{roleLabel}</small></div>
           </NavLink>
         </header>
+
+        <div className="atlas-context-bar">
+          <nav className="atlas-history-controls" aria-label="ATLAS persistent navigation">
+            <button type="button" onClick={() => navigate(-1)} aria-label="Back">← <span>Back</span></button>
+            <button type="button" onClick={() => navigate(1)} aria-label="Forward"><span>Forward</span> →</button>
+            <button type="button" onClick={() => navigate('/')} aria-label="Home">⌂ <span>Home</span></button>
+          </nav>
+          <nav className="atlas-breadcrumbs" aria-label="ATLAS breadcrumb">
+            {breadcrumbItems.map((item, index) => (
+              <span key={`${item.level}-${item.to}-${index}`} className="atlas-breadcrumb-item" data-breadcrumb-level={item.level}>
+                {index > 0 ? <span className="atlas-breadcrumb-separator" aria-hidden="true">›</span> : null}
+                {index === breadcrumbItems.length - 1 ? (
+                  <span aria-current="page">{item.label}</span>
+                ) : (
+                  <button type="button" onClick={() => navigate(item.to)}>{item.label}</button>
+                )}
+              </span>
+            ))}
+          </nav>
+        </div>
 
         <main>{children}</main>
         {organization && !routeOwnsAssistantSurface ? <AtlasAssistant /> : null}

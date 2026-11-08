@@ -7,6 +7,9 @@ on:
   # never be inherited by a newer main commit.
   push:
     branches: ["main"]
+  # Read-only TLS inventory runs daily without invoking the deployment job.
+  schedule:
+    - cron: '20 12 * * *'
 
 concurrency:
   group: atlas-cloudflare-worker
@@ -19,6 +22,7 @@ permissions:
 
 jobs:
   validate-deploy-verify:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
@@ -140,6 +144,30 @@ jobs:
       - name: Verify complete repository
         run: npm run verify:all
 
+      - name: Verify ATLAS Copilot live release contract
+        env:
+          COPILOT_READINESS_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-copilot?api=readiness
+        run: |
+          set -euo pipefail
+
+          EXPECTED_VERSION="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const VERSION=(\\d+);/);if(!m)process.exit(2);process.stdout.write(m[1]);")"
+          EXPECTED_PROVIDERS="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const PROVIDER_IDS=\\[([^\\]]+)\\];/s);if(!m)process.exit(2);const ids=[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1]).sort();process.stdout.write(ids.join(','));")"
+          EXPECTED_MODES="$(node -e "const fs=require('fs');const s=fs.readFileSync('supabase/functions/atlas-copilot/index.ts','utf8');const m=s.match(/const PROVIDER_IDS=\\[([^\\]]+)\\];/s);if(!m)process.exit(2);const ids=[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1]);process.stdout.write(['auto',...ids,'council'].sort().join(','));")"
+
+          curl --fail --silent --show-error --max-time 30             -H 'Cache-Control: no-cache, no-store'             "$COPILOT_READINESS_URL"             > /tmp/atlas-copilot-readiness.json
+
+          LIVE_OK="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));process.stdout.write(String(j.ok===true&&j.state==='ready'&&j.service==='atlas-copilot'));")"
+          LIVE_VERSION="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));process.stdout.write(String(j.version??''));")"
+          LIVE_PROVIDERS="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));const ids=(j.providers||[]).map(x=>String(x.id||'')).filter(Boolean).sort();process.stdout.write(ids.join(','));")"
+          LIVE_MODES="$(node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/atlas-copilot-readiness.json','utf8'));const ids=(j.modes||[]).map(String).sort();process.stdout.write(ids.join(','));")"
+
+          test "$LIVE_OK" = "true" || { echo "::error::ATLAS Copilot live readiness is not ready."; exit 1; }
+          test "$LIVE_VERSION" = "$EXPECTED_VERSION" || { echo "::error::ATLAS Copilot live version does not match repository VERSION (repo=$EXPECTED_VERSION live=$LIVE_VERSION)."; exit 1; }
+          test "$LIVE_PROVIDERS" = "$EXPECTED_PROVIDERS" || { echo "::error::ATLAS Copilot live provider catalog does not match repository contract."; exit 1; }
+          test "$LIVE_MODES" = "$EXPECTED_MODES" || { echo "::error::ATLAS Copilot live mode catalog does not match repository contract."; exit 1; }
+
+          echo "ATLAS Copilot live release contract verified: version=$LIVE_VERSION providers=$LIVE_PROVIDERS" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Deploy Workers Static Assets
         if: steps.deployment_mode.outputs.mode == 'direct-wrangler'
         id: deploy
@@ -158,6 +186,7 @@ jobs:
         id: direct_edge
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          CANONICAL_PRODUCTION_URL: https://www.atlasenterprisesuite.com
         run: |
           set -euo pipefail
           read_header() {
@@ -169,19 +198,42 @@ jobs:
             local path="$1"
             local prefix="$2"
             local headers="/tmp/atlas-worker-${prefix}.headers"
-            local status version_id version_tag
+            local result status effective_url effective_origin effective_host deployment_origin canonical_origin origin_allowed used_canonical_fallback version_id version_tag
+            deployment_origin="$(node -e "process.stdout.write(new URL(process.argv[1]).origin)" "$DEPLOYMENT_URL")"
+            canonical_origin="$(node -e "process.stdout.write(new URL(process.argv[1]).origin)" "$CANONICAL_PRODUCTION_URL")"
             for ATTEMPT in $(seq 1 20); do
               : > "$headers"
-              status="$(curl --silent --show-error --max-time 15 \
+              result="$(curl --silent --show-error --max-time 15 \
+                --location --max-redirs 5 --proto '=https' --proto-redir '=https' \
                 -H 'Cache-Control: no-cache, no-store' \
-                -D "$headers" --output /dev/null --write-out '%{http_code}' "$DEPLOYMENT_URL$path" || true)"
+                -D "$headers" --output /dev/null --write-out '%{http_code}|%{url_effective}' "$DEPLOYMENT_URL$path" || true)"
+              status="${result%%|*}"
+              effective_url="${result#*|}"
+              effective_origin="$(node -e "try{process.stdout.write(new URL(process.argv[1]).origin)}catch{}" "$effective_url")"
+              effective_host="$(node -e "try{process.stdout.write(new URL(process.argv[1]).hostname)}catch{}" "$effective_url")"
+              used_canonical_fallback=false
+              if [[ "$effective_host" = *.cloudflareaccess.com ]]; then
+                : > "$headers"
+                result="$(curl --silent --show-error --max-time 15 \
+                  --location --max-redirs 5 --proto '=https' --proto-redir '=https' \
+                  -H 'Cache-Control: no-cache, no-store' \
+                  -D "$headers" --output /dev/null --write-out '%{http_code}|%{url_effective}' "$CANONICAL_PRODUCTION_URL$path" || true)"
+                status="${result%%|*}"
+                effective_url="${result#*|}"
+                effective_origin="$(node -e "try{process.stdout.write(new URL(process.argv[1]).origin)}catch{}" "$effective_url")"
+                used_canonical_fallback=true
+              fi
+              origin_allowed=false
+              if [ "$effective_origin" = "$deployment_origin" ] || [ "$effective_origin" = "$canonical_origin" ]; then
+                origin_allowed=true
+              fi
               version_id="$(read_header "$headers" 'X-Atlas-Version-Id')"
               version_tag="$(read_header "$headers" 'X-Atlas-Version-Tag')"
-              if [ "$status" = "200" ] && [ -n "$version_id" ] && [ "$version_tag" = "$GITHUB_SHA" ]; then
+              if [ "$status" = "200" ] && [ "$origin_allowed" = "true" ] && [ -n "$version_id" ] && [ "$version_tag" = "$GITHUB_SHA" ]; then
                 printf '%s|%s\n' "$version_id" "$version_tag"
                 return 0
               fi
-              echo "Waiting for workers.dev to serve the deployed version (path=$path attempt=$ATTEMPT/20 status=${status:-none} version_id_present=$([ -n "$version_id" ] && echo true || echo false) tag_match=$([ "$version_tag" = "$GITHUB_SHA" ] && echo true || echo false))." >&2
+              echo "Waiting for workers.dev to serve the deployed version (path=$path attempt=$ATTEMPT/20 status=${status:-none} origin_allowed=$origin_allowed access_fallback=$used_canonical_fallback version_id_present=$([ -n "$version_id" ] && echo true || echo false) tag_match=$([ "$version_tag" = "$GITHUB_SHA" ] && echo true || echo false))." >&2
               sleep 3
             done
             echo "::error::workers.dev propagation timed out for $path before the exact deployed version became observable." >&2
@@ -461,7 +513,7 @@ jobs:
 
             if [ "$HTTP_STATUS" = "200" ] && \
                [ "$AUTHORIZED_OK" = "true" ] && \
-               [ "$AUTHORIZED_VERIFIER_VERSION" = "31" ] && \
+               [ "$AUTHORIZED_VERIFIER_VERSION" = "32" ] && \
                [ "$TARGET_SHA" = "$GITHUB_SHA" ] && \
                [ "$STATUS_OK" = "true" ] && \
                [ "$MODULES_OK" = "true" ] && \
@@ -739,3 +791,19 @@ jobs:
     uses: ./.github/workflows/global-production-verify.yml
     with:
       mode: fail-closed
+  
+  certificate-monitor:
+    name: Verify ATLAS public TLS certificate
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout allowlisted certificate monitor
+        uses: actions/checkout@v7
+      - name: Capture and persist signed TLS evidence
+        env:
+          ATLAS_CERTIFICATE_INGEST_URL: https://ggmanzcgtlrvqfoccgsh.supabase.co/functions/v1/atlas-infra-evidence?api=record
+        run: node tools/certificate-monitor/probe.mjs

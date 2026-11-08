@@ -153,4 +153,15 @@ describe('Cloudflare Workers Static Assets deployment contract', () => {
     expect(workflow).toContain('workers.dev propagation timed out');
   });
 
+  it('uses the canonical exact-SHA probe only when workers.dev is gated by Cloudflare Access', () => {
+    expect(workflow).toContain("CANONICAL_PRODUCTION_URL: https://www.atlasenterprisesuite.com");
+    expect(workflow).toContain("--location --max-redirs 5 --proto '=https' --proto-redir '=https'");
+    expect(workflow).toContain("--write-out '%{http_code}|%{url_effective}'");
+    expect(workflow).toContain("*.cloudflareaccess.com");
+    expect(workflow).toContain('used_canonical_fallback');
+    expect(workflow).toContain('effective_origin');
+    expect(workflow).toContain('origin_allowed');
+    expect(workflow).toContain('canonical_origin');
+  });
+
 });

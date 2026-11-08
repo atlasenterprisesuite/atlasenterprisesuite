@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="atlas-mv-title atlas-mv-desc">
+<title id="atlas-mv-title">ATLAS Music and Video Studio visual concept</title>
+<desc id="atlas-mv-desc">Two ATLAS mobile interfaces: music playback and lyrics on the left, and a camera teleprompter with recording controls on the right.</desc>
+<defs>
+  <radialGradient id="bg"><stop stop-color="#101e4c"/><stop offset=".6" stop-color="#070e26"/><stop offset="1" stop-color="#020613"/></radialGradient>
+  <radialGradient id="album"><stop stop-color="#4b45ad"/><stop offset=".35" stop-color="#102a7a"/><stop offset=".7" stop-color="#17134a"/><stop offset="1" stop-color="#04091d"/></radialGradient>
+  <linearGradient id="neon" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#da76ff"/><stop offset=".52" stop-color="#5b8dff"/><stop offset="1" stop-color="#51ecfb"/></linearGradient>
+  <linearGradient id="camera" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#142749"/><stop offset=".55" stop-color="#1c2147"/><stop offset="1" stop-color="#070f29"/></linearGradient>
+  <linearGradient id="phone" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#141d34"/><stop offset=".55" stop-color="#01040d"/><stop offset="1" stop-color="#2e3549"/></linearGradient>
+  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+  <clipPath id="left-screen"><rect x="235" y="87" width="453" height="728" rx="52"/></clipPath>
+  <clipPath id="right-screen"><rect x="913" y="87" width="453" height="728" rx="52"/></clipPath>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/>
+<ellipse cx="800" cy="460" rx="620" ry="400" fill="#233988" opacity=".2" filter="url(#glow)"/>
+<g aria-hidden="true">
+<rect x="221" y="73" width="481" height="756" rx="76" fill="url(#phone)" stroke="#6d789c" stroke-width="3"/>
+<rect x="899" y="73" width="481" height="756" rx="76" fill="url(#phone)" stroke="#6d789c" stroke-width="3"/>
+<rect x="235" y="87" width="453" height="728" rx="52" fill="#02071a"/>
+<rect x="913" y="87" width="453" height="728" rx="52" fill="#030915"/>
+</g>
+<g clip-path="url(#left-screen)">
+<rect x="235" y="87" width="453" height="728" fill="#050c23"/>
+<rect x="248" y="174" width="427" height="334" rx="20" fill="url(#album)"/>
+<path d="M248 464L335 333 405 413 478 345 551 451 605 400 675 470V508H248Z" fill="#040b29"/>
+<path d="M248 486L323 423 379 461 446 409 512 477 583 439 675 485V508H248Z" fill="#091942"/>
+<ellipse cx="462" cy="336" rx="144" ry="132" fill="#4b65fd" opacity=".25" filter="url(#glow)"/>
+<ellipse cx="462" cy="336" rx="142" ry="125" fill="none" stroke="url(#neon)" stroke-width="3"/>
+<path d="M320 330a142 125 0 0 1 280 0" fill="none" stroke="#9ed7ff" stroke-width="5" opacity=".85"/>
+<text x="461" y="145" font-size="32" font-family="Arial, sans-serif" font-weight="700" letter-spacing="5" fill="#fff" text-anchor="middle">ATLAS</text>
+<text x="461" y="167" font-size="12" font-family="Arial, sans-serif" letter-spacing="4" fill="#a4c7ec" text-anchor="middle">MUSIC</text>
+<text x="263" y="544" font-size="24" font-family="Arial, sans-serif" font-weight="700" fill="#fff">Atlas Horizon</text>
+<text x="263" y="568" font-size="17" font-family="Arial, sans-serif" fill="#a0b1d7">ATLAS Music</text>
+<path d="M260 617 Q277 590 294 615 T328 615 T362 611 T396 616 T430 615 T464 603 T498 615 T532 613 T566 616 T600 609 T634 616 T671 612" fill="none" stroke="url(#neon)" stroke-width="3"/>
+<path d="M260 635H660" stroke="#33435e" stroke-width="3"/><path d="M260 635H442" stroke="#87a2ff" stroke-width="3"/><circle cx="442" cy="635" r="6" fill="#89e8ff"/>
+<text x="264" y="654" font-size="13" fill="#9fb5d6" font-family="Arial, sans-serif">1:24</text><text x="646" y="654" text-anchor="end" font-size="13" fill="#9fb5d6" font-family="Arial, sans-serif">3:48</text>
+<circle cx="459" cy="704" r="37" fill="#0c214e" stroke="#8daaff" stroke-width="2"/><path d="M449 689v31m20-31v31" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+<path d="M369 695l-18 10 18 10zm4 0v20M545 695l18 10-18 10zm-4 0v20" fill="#fff" stroke="#fff" stroke-width="3"/>
+<text x="300" y="780" font-family="Arial, sans-serif" font-size="14" fill="#9fe8ff">AUDIO</text><text x="454" y="780" font-family="Arial, sans-serif" font-size="14" fill="#a5b9df">VIDEO</text><text x="586" y="780" font-family="Arial, sans-serif" font-size="14" fill="#a5b9df">LYRICS</text>
+</g>
+<g clip-path="url(#right-screen)">
+<rect x="913" y="87" width="453" height="728" fill="#040919"/>
+<rect x="913" y="293" width="453" height="356" fill="url(#camera)"/>
+<path d="M923 650 Q1050 480 1134 535T1365 468V650Z" fill="#10152e"/>
+<circle cx="1138" cy="511" r="52" fill="#090d22"/>
+<path d="M1030 655q0-118 108-118t108 118" fill="#090d22"/>
+<text x="1140" y="145" font-size="32" font-family="Arial, sans-serif" font-weight="700" letter-spacing="5" fill="#fff" text-anchor="middle">ATLAS</text>
+<text x="1140" y="167" font-size="12" font-family="Arial, sans-serif" letter-spacing="2" fill="#a4c7ec" text-anchor="middle">TELEPROMPTER STUDIO</text>
+<rect x="1056" y="190" width="175" height="43" rx="21" fill="#0d152a" stroke="#5e718e" stroke-width="1.5"/>
+<circle cx="1090" cy="211" r="7" fill="#ff514e"/><text x="1109" y="217" font-size="18" font-family="Arial, sans-serif" fill="#ff6262">REC</text><text x="1187" y="217" font-size="18" font-family="Arial, sans-serif" fill="#d7e5ff">00:18</text>
+<rect x="944" y="252" width="393" height="264" rx="22" fill="#060d22" opacity=".92" stroke="#2e4064"/>
+<text x="978" y="303" font-size="26" fill="#d6dff5" font-family="Arial, sans-serif">The future belongs to</text>
+<text x="978" y="350" font-size="26" fill="#d6dff5" font-family="Arial, sans-serif">those who prepare for it</text>
+<text x="978" y="397" font-size="26" font-weight="700" fill="#54e3ff" font-family="Arial, sans-serif">today. Innovation is not</text>
+<text x="978" y="444" font-size="26" fill="#d6dff5" font-family="Arial, sans-serif">about technology—</text>
+<text x="978" y="491" font-size="26" fill="#d6dff5" font-family="Arial, sans-serif">it’s about people.</text>
+<path d="M961 392l12 8-12 8z" fill="#5ce4ff"/>
+<path d="M1003 592h275" stroke="#59def5" stroke-width="2" stroke-dasharray="10 7" opacity=".75"/>
+<circle cx="1140" cy="592" r="9" fill="#49d8ff"/>
+<rect x="943" y="662" width="395" height="65" rx="21" fill="#0b152a" stroke="#30436e"/>
+<path d="M966 696v-10m11 15v-20m11 12v-9m11 20v-28m11 23v-17m11 20v-22m11 13v-11m11 19v-23m11 18v-13m11 16v-22m11 21v-20m11 12v-9m11 20v-26m11 21v-19m11 15v-12m11 21v-23m11 19v-17m11 18v-18m11 21v-23m11 16v-9m11 12v-10" stroke="url(#neon)" stroke-width="4" stroke-linecap="round"/>
+<rect x="944" y="740" width="392" height="65" rx="20" fill="#0c1931" stroke="#405582"/>
+<text x="985" y="781" font-size="19" font-family="Arial, sans-serif" fill="#e6f2ff">1.0×</text><text x="1071" y="781" font-size="20" font-family="Arial, sans-serif" fill="#e6f2ff">Aa</text>
+<circle cx="1190" cy="773" r="27" fill="#112f70" stroke="#77dfff" stroke-width="3"/><path d="M1182 761v23m16-23v23" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+<rect x="1280" y="759" width="20" height="23" rx="2" fill="#fff"/>
+</g>
+</svg>

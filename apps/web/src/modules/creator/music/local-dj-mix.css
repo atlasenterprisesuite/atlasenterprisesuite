@@ -1,0 +1,32 @@
+.atlas-dj-page{max-width:1200px;color:#eff2ff}
+.atlas-dj-header{border-radius:26px;border:1px solid #483478;background:radial-gradient(circle at 82% 15%,#74358c55,transparent 46%),linear-gradient(125deg,#171029,#080d1f);padding:clamp(22px,4vw,48px)}
+.atlas-dj-header h1{font-size:clamp(34px,5vw,60px);margin:8px 0}
+.atlas-dj-header p{max-width:650px;color:#c3b8d9;line-height:1.6}
+.atlas-dj-chip{display:inline-block;border:1px solid #9778cb;border-radius:24px;padding:8px 12px;color:#dec6ff}
+.atlas-dj-panel{border-radius:22px;border:1px solid #3f3458;background:#101425;padding:clamp(15px,3vw,26px);display:grid;gap:18px;min-width:0}
+.atlas-dj-upload{display:grid;gap:10px;border:1px dashed #957cc8;border-radius:14px;padding:16px;color:#e3d8fa;font-weight:650}
+.atlas-dj-upload input{max-width:100%}
+.atlas-dj-decks{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.atlas-dj-decks>div{display:grid;gap:12px;min-width:0;padding:22px;border:1px solid #514276;border-radius:18px;background:linear-gradient(125deg,#27183a,#131b2f)}
+.atlas-dj-decks small,.atlas-dj-decks span{color:#b1a7c6}
+.atlas-dj-decks strong{font-size:clamp(16px,2.5vw,26px);overflow-wrap:anywhere}
+.atlas-dj-controls{display:grid;gap:14px}
+.atlas-dj-controls label{display:grid;gap:8px;max-width:400px}
+.atlas-dj-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.atlas-dj-buttons button,.atlas-dj-list button{border:1px solid #8464b9;border-radius:12px;background:#37235d;color:#fff;padding:11px 16px;min-height:44px;cursor:pointer}
+.atlas-dj-buttons button:disabled,.atlas-dj-list button:disabled{opacity:.45;cursor:not-allowed}
+.atlas-dj-status,.atlas-dj-error{margin:0;line-height:1.5;color:#b7e7e4}
+.atlas-dj-error{color:#ffc1c1}
+.atlas-dj-list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.atlas-dj-list li{display:grid;grid-template-columns:minmax(160px,1fr) 96px 110px auto auto;gap:12px;align-items:end;padding:12px;border:1px solid #373b58;border-radius:12px}
+.atlas-dj-list label{display:grid;gap:5px;color:#c4c0d7}
+.atlas-dj-list input,.atlas-dj-list select{width:100%;background:#12172b;color:#f0eaff;border:1px solid #6b6293;border-radius:8px;padding:9px;min-height:42px}
+.atlas-dj-track{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}.atlas-dj-track span{color:#bbb5cc;font-size:13px}
+.atlas-dj-disclaimer{color:#bdb3cb;line-height:1.65;font-size:13px}
+.atlas-dj-page :is(button,input,select,a):focus-visible{outline:3px solid #c3a5ff;outline-offset:3px}
+@media(max-width:720px){.atlas-dj-decks{grid-template-columns:1fr}.atlas-dj-list li{grid-template-columns:1fr 1fr}.atlas-dj-track{grid-column:1/-1}.atlas-dj-list button{align-self:end}}
+@media(prefers-reduced-motion:reduce){.atlas-dj-page *{scroll-behavior:auto}}
+
+/* Signal-derived, read-only RMS envelope; never a decorative or fabricated waveform. */
+.atlas-dj-waveform{display:flex;align-items:center;gap:2px;width:100%;height:58px;padding:7px;border:1px solid #5d507f;border-radius:10px;background:#080e22;overflow:hidden}
+.atlas-dj-waveform span{flex:1 1 0;min-width:0;max-width:10px;background:linear-gradient(0deg,#67b9ff,#c18aff);border-radius:2px;min-height:0}

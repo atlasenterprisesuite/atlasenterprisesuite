@@ -45,6 +45,9 @@ export function StepDetailPanel({ step, task, dependencies, evidence, approvals,
   const unresolved = dependencies.filter((item) => !item.resolvedAt && (item.stepId === step.id || (!item.stepId && item.taskId === task.id)));
   const stepEvidence = evidence.filter((item) => item.stepId === step.id || (item.stepId === null && item.taskId === task.id));
   const taskApprovals = approvals.filter((item) => item.taskId === task.id);
+  const hasVerifiedCompletionEvidence = step.status === 'completed' &&
+    step.evidenceRequirement.every((kind) => stepEvidence.some((item) => item.kind === kind && item.verified)) &&
+    (step.evidenceRequirement.length > 0 || stepEvidence.some((item) => item.verified));
 
   return (
     <div className="execution-detail-stack">
@@ -52,7 +55,12 @@ export function StepDetailPanel({ step, task, dependencies, evidence, approvals,
         <p className="eyebrow">Step {step.sequence}</p>
         <h2 id="execution-step-detail-title">{humanizeExecutionValue(step.actionType)}</h2>
         <p>Status: <strong>{humanizeExecutionValue(step.status)}</strong></p>
-        {executionDecision ? (
+        {hasVerifiedCompletionEvidence ? (
+          <div className="execution-decision" aria-label="Completed step evidence status">
+            <p>Execution status: <strong>Completed with verified evidence</strong></p>
+            <small>Execution route and policy evaluation apply to pending actions, not this completed verification.</small>
+          </div>
+        ) : executionDecision ? (
           <div className="execution-decision" aria-label="Server execution decision">
             <p>Execution route: <strong>{executionDecision.route.mechanism === 'api' ? 'API' : executionDecision.route.mechanism === 'browser' ? 'Browser' : 'Blocked'}</strong></p>
             <p>Policy: <strong>{policyLabel(executionDecision)}</strong></p>
