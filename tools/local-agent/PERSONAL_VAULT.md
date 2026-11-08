@@ -1,5 +1,29 @@
 # Personal Vault — local development core
 
+## Interactive local console
+
+Run from the repository root in your own trusted local terminal:
+
+```sh
+node tools/local-agent/atlas-personal-vault.mjs /absolute/private/credentials-directory
+```
+
+The directory must be dedicated to credentials. Choose `import` then
+`google` or `apple` and provide a local export path, or choose `search`.
+Every operation asks for a hidden passphrase. `exit` closes the console.
+Terminal history is disabled. Piped execution and extra command arguments
+are rejected. Only account metadata and import counts are printed; there
+is no reveal command or AI/network endpoint. Export input is bounded to
+1 MiB and symlinks/nonregular files are rejected. Remove plaintext exports
+through your OS after a successful verified migration; this console does
+not automatically delete source files.
+
+Validation: 24 local-agent tests pass, including console import/search,
+secret-free output, control-character sanitization and file boundary tests.
+A Linux pseudo-terminal check confirmed hidden unlock input, completed
+search and clean exit using fictional input. Windows interactive behavior,
+backup/restore, device sync and security certification remain unverified.
+
 Status: predeploy, not a certified password manager. No real credentials imported.
 
 ## Implementation
