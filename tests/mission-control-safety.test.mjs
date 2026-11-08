@@ -19,3 +19,20 @@ test('Mission Control links to evidence without using a privileged client token'
   assert.match(panel, /https:\/\/github\.com\/atlasenterprisesuite\/atlasenterprisesuite\/pull\/974/);
   assert.doesNotMatch(panel, /fetch\(|localStorage|service_role|SUPABASE_SERVICE_ROLE_KEY|process\.env/);
 });
+
+const identityGate = readFileSync(new URL('../apps/web/src/identity/RequireAtlasIdentity.tsx', import.meta.url), 'utf8');
+
+test('P0 RED: Mission Control must not rely on route identity alone for ledger authorization', () => {
+  assert.match(panel, /useMissionControlEvidence|loadMissionControlEvidence|fetchMissionControlEvidence/, 'Missing server-authorized evidence reader');
+  assert.match(panel, /permission|capabilit|authorization/i, 'Missing explicit permission handling for ledger read');
+});
+
+test('P0 RED: evidence reader must expose denied and unverified states', () => {
+  assert.match(panel, /denied|forbidden|unauthorized/i, 'No explicit denied state in Mission Control');
+  assert.match(panel, /unverified|unavailable|error/i, 'No explicit unavailable-evidence state in Mission Control');
+});
+
+test('P0 baseline: identity guard checks organization, but does not prove ledger authorization', () => {
+  assert.match(identityGate, /getActiveAtlasOrganization/);
+  assert.doesNotMatch(identityGate, /service_role|SUPABASE_SERVICE_ROLE_KEY/);
+});
