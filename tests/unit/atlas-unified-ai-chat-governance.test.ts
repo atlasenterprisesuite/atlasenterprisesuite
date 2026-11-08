@@ -126,13 +126,10 @@ describe('ATLAS Council', () => {
         return {
           provider: 'gemini',
           model: 'gemini-model',
-          text: [
-            'ATLAS_REVIEW:',
-            '- Strong structure.',
-            '- Add one missing qualification.',
-            'ATLAS_FINAL:',
-            'Refined ATLAS answer.',
-          ].join('\n'),
+          text: JSON.stringify({
+            review: '- Strong structure.\n- Add one missing qualification.',
+            final: 'Refined ATLAS answer.',
+          }),
           finish_reason: 'STOP',
           capabilities_used: ['generation'],
           usage: { output_tokens: 12 },
@@ -172,15 +169,10 @@ describe('ATLAS Council', () => {
       execute: async () => ({
         provider: 'gemini',
         model: 'gemini-model',
-        text: [
-          'ATLAS_REVIEW:',
-          '- Removed a stray ATLAS_FINAL: label from the draft.',
-          '- Preserved the useful explanation.',
-          'ATLAS_FINAL:',
-          'Correct refined answer.',
-          'ATLAS_FINAL:',
-          'This standalone marker belongs to the requested final content.',
-        ].join('\n'),
+        text: JSON.stringify({
+          review: '- Removed a stray ATLAS_FINAL: label from the draft.\n- Preserved the useful explanation.',
+          final: 'Correct refined answer.\nATLAS_FINAL:\nThis standalone marker belongs to the requested final content.',
+        }),
         finish_reason: 'STOP',
         capabilities_used: ['generation'],
         usage: {},
@@ -202,6 +194,45 @@ describe('ATLAS Council', () => {
 
     expect(result.review).toContain('Removed a stray ATLAS_FINAL: label');
     expect(result.text).toBe('Correct refined answer.\nATLAS_FINAL:\nThis standalone marker belongs to the requested final content.');
+  });
+
+  it('rejects ambiguous marker-formatted reviewer output even with STOP', async () => {
+    const openai = adapter('openai', { text: 'Draft.' });
+    const gemini = {
+      ...adapter('gemini'),
+      execute: async () => ({
+        provider: 'gemini', model: 'gemini-model',
+        text: 'ATLAS_REVIEW:\nQuoted ATLAS_FINAL: marker.\nATLAS_FINAL:\nIncorrectly exposed final.',
+        finish_reason: 'STOP', capabilities_used: ['generation'],
+        usage: {}, provenance: [], tool_calls: [],
+      }),
+    };
+    const council = createCouncilOrchestrator({ registry: createProviderRegistry({ providers: [openai, gemini] }) });
+    await expect(council.execute({
+      providerIds: ['openai', 'gemini'], strategy: 'editorial',
+      context: { organization_id: 'org-1', user_id: 'user-1' },
+      route: { profile: 'balanced', capabilities: ['generation'] },
+      instructions: 'ATLAS', input: [{ role: 'user', content: 'Explain.' }],
+    })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+  });
+
+  it('rejects malformed structured editorial responses, empty review, and unexpected keys', async () => {
+    const openai = adapter('openai', { text: 'Draft.' });
+    for (const text of ['not-json', '{"review":"","final":"Answer"}', '{"review":"Reviewed","final":"Answer","untrusted":true}', '["review","final"]']) {
+      const gemini = {
+        ...adapter('gemini'),
+        execute: async () => ({ provider: 'gemini', model: 'gemini-model', text,
+          finish_reason: 'STOP', capabilities_used: ['generation'],
+          usage: {}, provenance: [], tool_calls: [] }),
+      };
+      const council = createCouncilOrchestrator({ registry: createProviderRegistry({ providers: [openai, gemini] }) });
+      await expect(council.execute({
+        providerIds: ['openai', 'gemini'], strategy: 'editorial',
+        context: { organization_id: 'org-1', user_id: 'user-1' },
+        route: { profile: 'balanced', capabilities: ['generation'] },
+        instructions: 'ATLAS', input: [{ role: 'user', content: 'Explain.' }],
+      })).rejects.toMatchObject({ code: 'provider_invalid_output', status: 502 });
+    }
   });
 
   it('fails closed when Gemini finishes editorial review because of MAX_TOKENS', async () => {
