@@ -1,4 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { atlasAuthorizedJson } from '../../lib/atlasSession';
+
+type EvidenceResult = { verified: boolean; observed_at: string; gates: unknown[]; authorization: 'granted' };
+
+// Fail closed: this endpoint must be implemented and authorized server-side before live evidence is displayed.
+async function loadMissionControlEvidence(): Promise<EvidenceResult> {
+  const evidence = await atlasAuthorizedJson<EvidenceResult>('/functions/v1/atlas-mission-control-evidence', { method: 'GET' });
+  if (evidence?.verified !== true || evidence.authorization !== 'granted' || !Array.isArray(evidence.gates) || !evidence.observed_at) {
+    throw new Error('unverified_evidence');
+  }
+  return evidence;
+}
 
 type Gate = { id: string; label: string; status: 'NO-GO' | 'PENDING'; evidence: string; detail: string };
 const snapshot = {
@@ -15,6 +27,19 @@ const snapshot = {
 
 export function MissionControlPage() {
   const [expanded, setExpanded] = useState<string | null>('foundation');
+  const [evidenceState, setEvidenceState] = useState<'checking' | 'denied' | 'unavailable'>('checking');
+  useEffect(() => {
+    let active = true;
+    void loadMissionControlEvidence().then(() => {
+      // Server-side permission, tenant isolation and signed provenance are not yet certified.
+      if (active) setEvidenceState('unavailable');
+    }).catch((error: unknown) => {
+      if (!active) return;
+      const message = error instanceof Error ? error.message : '';
+      setEvidenceState(/authentication_required|session_expired|401|403|forbidden|unauthorized/i.test(message) ? 'denied' : 'unavailable');
+    });
+    return () => { active = false; };
+  }, []);
   return (
     <section className="page-stack" aria-labelledby="mission-title">
       <header className="page-header">
@@ -22,6 +47,7 @@ export function MissionControlPage() {
         <h1 id="mission-title">Launch readiness</h1>
         <p>Read-only historical evidence. No live telemetry, automatic refresh, or deployment certification is connected.</p>
       </header>
+      <p role="status">Server evidence: {evidenceState === 'checking' ? 'Checking authorization' : evidenceState === 'denied' ? 'Access denied' : 'Unavailable or unverified'} — no live release certification.</p>
       <div className="notice strong" role="status">GLOBAL: P0 NO-GO · Snapshot observed {snapshot.observedAt} · Never interpret this page as live status.</div>
       <div className="module-grid">
         <article className="module-card"><span>Foundation</span><strong>0 / 22 RPC certified</strong><p>Certification pending. No inferred passes.</p></article>
