@@ -1,5 +1,5 @@
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
-const LABEL=Object.freeze({'atlas-local':'ATLAS Local',openai:'OpenAI',bedrock:'OpenAI on Amazon Bedrock',gemini:'Gemini','codex-sovereign':'Codex Sovereign'});
+const LABEL=Object.freeze({'atlas-local':'ATLAS Local',openai:'OpenAI',bedrock:'OpenAI on Amazon Bedrock',gemini:'Gemini',anthropic:'Claude / Anthropic',grok:'Grok / xAI',deepseek:'DeepSeek',mistral:'Mistral',qwen:'Qwen','codex-sovereign':'Codex Sovereign'});
 const EDITORIAL_DRAFTER='openai';
 const EDITORIAL_REVIEWER='gemini';
 
@@ -35,7 +35,7 @@ function editorialInput(input,draft){
   return [
     ...(Array.isArray(input)?input:[]),
     {role:'assistant',content:`ATLAS draft candidate from ${LABEL[EDITORIAL_DRAFTER]}:\n${draft}`},
-    {role:'user',content:'Independently review the draft above and produce the required ATLAS_REVIEW and ATLAS_FINAL sections.'},
+    {role:'user',content:'Independently review the draft above. Return only valid JSON with the exact nonempty string fields review and final; no markdown or prose outside JSON.'},
   ];
 }
 function aggregateUsage(contributions){return {by_provider:Object.fromEntries(contributions.map(item=>[item.provider,item.usage||{}]))};}
