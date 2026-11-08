@@ -283,7 +283,7 @@ describe('ATLAS Unified AI gateway', () => {
     gemini.execute = async () => ({
       provider: 'gemini',
       model: 'gemini-model',
-      text: 'ATLAS_REVIEW:\n- Improve precision.\nATLAS_FINAL:\nRefined final answer.',
+      text: JSON.stringify({ review: '- Improve precision.', final: 'Refined final answer.' }),
       finish_reason: 'STOP',
       capabilities_used: ['generation'],
       usage: {},
@@ -351,7 +351,7 @@ describe('ATLAS Unified AI gateway', () => {
     gemini.execute = async () => ({
       provider: 'gemini',
       model: 'gemini-model',
-      text: `ATLAS_REVIEW:\n${longReview}\nATLAS_FINAL:\nFinal.`,
+      text: JSON.stringify({ review: longReview, final: 'Final.' }),
       finish_reason: 'STOP',
       capabilities_used: ['generation'],
       usage: {},
