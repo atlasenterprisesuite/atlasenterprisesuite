@@ -22,11 +22,11 @@ export function createGeminiAdapter({apiKey,models,fetchFn=fetch}={}){
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'gemini'});
     const contents=(Array.isArray(input)?input:[]).map(item=>({role:item?.role==='assistant'?'model':'user',parts:[{text:contentText(item?.content)}]}));
     let response;
-    try{response=await fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':apiKey,'content-type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:String(instructions||'')}]},contents,generationConfig:{maxOutputTokens:max_output_tokens,thinkingConfig:{thinkingLevel:THINKING_LEVEL[route?.profile]||THINKING_LEVEL.balanced}}})});}catch{throw fail('provider_unavailable',502,{provider:'gemini'});}
+    try{response=await fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':apiKey,'content-type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:String(instructions||'')}]},contents,generationConfig:{maxOutputTokens:max_output_tokens,thinkingConfig:{thinkingLevel:THINKING_LEVEL[route?.profile]||THINKING_LEVEL.balanced},...(route?.strategy==='editorial'?{responseMimeType:'application/json'}:{})}})});}catch{throw fail('provider_unavailable',502,{provider:'gemini'});}
     if(!response.ok)throw errorForStatus(response.status);
-    const data=await response.json().catch(()=>({})),text=outputText(data);
+    const data=await response.json().catch(()=>({})),text=outputText(data),finishReason=data?.candidates?.[0]?.finishReason?String(data.candidates[0].finishReason):null;
     if(!text)throw fail('internal_error',500,{provider:'gemini'});
-    return {provider:'gemini',model,text,capabilities_used:[...(route?.capabilities||['generation'])],usage:data.usageMetadata||{},provenance:[],tool_calls:[]};
+    return {provider:'gemini',model,text,finish_reason:finishReason,capabilities_used:[...(route?.capabilities||['generation'])],usage:data.usageMetadata||{},provenance:[],tool_calls:[]};
   }
   return Object.freeze({descriptor,probe,execute});
 }

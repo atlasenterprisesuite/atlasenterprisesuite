@@ -378,6 +378,23 @@ describe('ATLAS Unified AI provider adapters', () => {
     expect((await adapter.execute({ context, route, instructions: 'ATLAS', input: [{ role: 'user', content: 'hello' }] })).text).toBe('gemini-ok');
   });
 
+  it('requests JSON only for editorial calls while preserving reasoning levels and finish status', async () => {
+    const configs: any[] = [];
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      configs.push(JSON.parse(String(init?.body)).generationConfig);
+      return new Response(JSON.stringify({
+        candidates: [{ content: { parts: [{ text: '{"review":"Reviewed.","final":"Final."}' }] }, finishReason: 'STOP' }],
+        usageMetadata: {},
+      }), { status: 200 });
+    });
+    const adapter = createGeminiAdapter({ apiKey: 'synthetic-test-key', models: { balanced: 'configured-model' }, fetchFn });
+    const editorial = await adapter.execute({ route: { ...route, strategy: 'editorial' }, instructions: 'ATLAS', input: [{ role: 'user', content: 'Review.' }] });
+    expect(editorial).toMatchObject({ finish_reason: 'STOP' });
+    expect(configs[0]).toMatchObject({ responseMimeType: 'application/json', thinkingConfig: { thinkingLevel: 'medium' } });
+    await adapter.execute({ route, instructions: 'ATLAS', input: [{ role: 'user', content: 'Normal.' }] });
+    expect(configs[1].responseMimeType).toBeUndefined();
+  });
+
   it('maps ATLAS fast and deep profiles to Gemini thinking levels', async () => {
     const observed: string[] = [];
     const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {

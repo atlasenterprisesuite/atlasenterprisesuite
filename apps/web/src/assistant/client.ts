@@ -125,7 +125,8 @@ export type AssistantChatResponse = {
   mode?: AssistantMode;
   profile?: AssistantProfile;
   fallback_used?: boolean;
-  contributions?: Array<{ provider: string; model: string | null; text: string }>;
+  strategy?: 'editorial' | 'parallel' | string | null;
+  contributions?: Array<{ provider: string; model: string | null; role?: 'draft' | 'review' | 'contributor' | string | null; text?: string }>;
   background?: boolean;
   status?: string;
   persisted?: boolean;
