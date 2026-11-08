@@ -7,19 +7,13 @@ function reconcile(contributions){return contributions.map(item=>`### ${LABEL[it
 function cleanText(value){return typeof value==='string'?value.trim():'';}
 function parseEditorialReview(value){
   const text=cleanText(value);
-  if(!text)return {review:null,final:'',valid:false};
-  const reviewMatch=/^ATLAS_REVIEW:[ \t]*$/m.exec(text);
-  const finalMatches=[...text.matchAll(/^ATLAS_FINAL:[ \t]*$/gm)];
-  const finalMatch=reviewMatch?finalMatches.find(match=>(match.index??-1)>reviewMatch.index):null;
-  const cleanPrefix=reviewMatch?cleanText(text.slice(0,reviewMatch.index)):null;
-  const ordered=Boolean(reviewMatch&&finalMatch&&!cleanPrefix);
-  const review=ordered
-    ?cleanText(text.slice(reviewMatch.index+reviewMatch[0].length,finalMatch.index))
-    :null;
-  const final=ordered
-    ?cleanText(text.slice((finalMatch.index??0)+finalMatch[0].length))
-    :'';
-  return {review:review||null,final,valid:Boolean(ordered&&review&&final)};
+  let payload;
+  try{payload=JSON.parse(text);}catch{return {review:null,final:'',valid:false};}
+  if(!payload||typeof payload!=='object'||Array.isArray(payload))return {review:null,final:'',valid:false};
+  const keys=Object.keys(payload);
+  if(keys.length!==2||!Object.hasOwn(payload,'review')||!Object.hasOwn(payload,'final'))return {review:null,final:'',valid:false};
+  const review=cleanText(payload.review),final=cleanText(payload.final);
+  return {review:review||null,final,valid:Boolean(review&&final)};
 }
 function editorialInstructions(base){
   return `${String(base||'').trim()}
@@ -31,12 +25,11 @@ ATLAS collaborative review role:
 - Preserve useful details from the draft unless they are wrong, redundant, or unsupported.
 - Do not invent sources, tool results, records, or production state.
 - Match the user's language unless the request explicitly asks for another language.
-- Return exactly two sections:
-ATLAS_REVIEW:
-A concise quality review with strengths and corrections.
-ATLAS_FINAL:
-The complete improved answer that should be shown to the user.
-- Do not add text before ATLAS_REVIEW or after the final answer.`;
+- Return ONLY a valid JSON object with exactly these two nonempty string fields:
+{"review":"Quality findings and corrections.","final":"The complete user-facing answer."}
+- Include independent review details only in "review"; include only the improved final answer in "final".
+- Escape embedded quotes, backslashes and line breaks as required by JSON.
+- Do not include markdown code fences or text outside the JSON object.`;
 }
 function editorialInput(input,draft){
   return [
@@ -105,7 +98,7 @@ export function createCouncilOrchestrator({registry}={}){
     try{
       reviewed=await reviewer.execute({
         context,
-        route:{...route,mode:'council',providers:ids,provider:EDITORIAL_REVIEWER},
+        route:{...route,mode:'council',providers:ids,provider:EDITORIAL_REVIEWER,strategy:'editorial'},
         instructions:editorialInstructions(instructions),
         input:editorialInput(input,draft.text),
         max_output_tokens,
