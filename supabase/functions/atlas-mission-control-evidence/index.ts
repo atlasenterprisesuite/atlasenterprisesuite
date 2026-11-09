@@ -22,7 +22,7 @@ function respond(req: Request, status: number, payload: Record<string, unknown>)
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return respond(req, 204, {});
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'GET, OPTIONS', 'access-control-allow-headers': 'authorization, apikey, content-type', 'access-control-allow-origin': origins.has(req.headers.get('origin') || '') ? req.headers.get('origin')! : 'https://atlasenterprisesuite.com', 'vary': 'Origin' } });
   if (req.method !== 'GET') return respond(req, 405, { error: 'method_not_allowed' });
   const match = /^Bearer\s+([^\s]+)$/i.exec(req.headers.get('authorization') || '');
   if (!match) return respond(req, 401, { error: 'authentication_required' });
