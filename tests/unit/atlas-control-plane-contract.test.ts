@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ATLAS_CONTROL_PLANE_STAGES,
+  routeSemanticIntent,
   validateAtlasControlPlaneHandoff,
   type AtlasCapabilityEnvelope,
   type AtlasContextEnvelope,
@@ -73,6 +74,56 @@ const evidence: AtlasEvidenceEnvelope = {
 };
 
 describe('ATLAS control-plane contract', () => {
+  function routedIntent(requestedCapabilities?: string[]): AtlasIntentEnvelope {
+    const routed = routeSemanticIntent({
+      requestId: intent.requestId,
+      source: 'api',
+      objective: intent.objective,
+      requestedCapabilities,
+      moduleHint: intent.module
+    }, [{
+      id: 'payroll.enroll', ownerModule: 'payroll',
+      capabilities: ['payroll.enroll', 'payroll.export'], signals: ['payroll']
+    }]);
+    return { ...intent, module: routed.ownerModule, capabilitiesRequested: routed.requestedCapabilities };
+  }
+
+  it('AUTH-RED-CHAIN-01 routing without explicit capabilities cannot reach verified handoff', () => {
+    const routed = routedIntent();
+    expect(routed.capabilitiesRequested).toEqual([]);
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent: routed, context, policy, orchestration, capability, evidence
+    })).toThrow('control_plane_capability_request_required');
+  });
+
+  it('AUTH-RED-CHAIN-02 explicit supported capability still needs actor permission', () => {
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent: routedIntent(['payroll.enroll']),
+      context: { ...context, actor: { ...context.actor, permissions: [] } },
+      policy, orchestration, capability, evidence
+    })).toThrow('control_plane_permission_missing:payroll.write');
+  });
+
+  it('AUTH-RED-CHAIN-03 routed capability cannot be replaced by a different ready capability', () => {
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent: routedIntent(['payroll.enroll']), context, policy, orchestration,
+      capability: { ...capability, capabilityId: 'payroll.export' }, evidence
+    })).toThrow('control_plane_capability_unrequested:payroll.export');
+  });
+
+  it('AUTH-RED-CHAIN-04 routed module cannot be switched downstream', () => {
+    expect(() => validateAtlasControlPlaneHandoff({
+      intent: routedIntent(['payroll.enroll']), context, policy,
+      orchestration: { ...orchestration, module: 'finance' }, capability, evidence
+    })).toThrow('control_plane_module_mismatch');
+  });
+
+  it('AUTH-RED-CHAIN-05 explicit authorized routing preserves the verified chain', () => {
+    expect(validateAtlasControlPlaneHandoff({
+      intent: routedIntent(['payroll.enroll']), context, policy, orchestration, capability, evidence
+    })).toEqual({ requestId: intent.requestId, stage: 'evidence', verified: true });
+  });
+
   it('locks the canonical stage order', () => {
     expect(ATLAS_CONTROL_PLANE_STAGES).toEqual([
       'intent',
