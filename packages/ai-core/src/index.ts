@@ -6,3 +6,4 @@ export * from './supabaseRpcPersistence';
 export * from './providers';
 export * from './completionReadiness';
 export * from './orchestrator';
+export * from './model-genome';
