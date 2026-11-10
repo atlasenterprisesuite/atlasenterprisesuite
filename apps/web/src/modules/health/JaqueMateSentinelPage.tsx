@@ -135,6 +135,25 @@ export function JaqueMateSentinelPage() {
         ) : null}
       </section>
 
+      <section className="feature-card wide" aria-labelledby="public-evidence-heading">
+        <p className="eyebrow">Public Health Evidence Watch · Issue #849</p>
+        <h2 id="public-evidence-heading">Independent public-health evidence</h2>
+        <div className="notice" role="status">
+          <strong>Public surveillance feed not connected.</strong> No current outbreak, source
+          verification, or CDC wastewater values can be inferred from this research screen.
+        </div>
+        <p>
+          The public-evidence evaluator and schema-configured CDC adapter are under review.
+          No surveillance findings will appear here until a service-controlled ingestion
+          pipeline passes source provenance, organization authorization, freshness and quality gates.
+        </p>
+        <div className="module-grid compact" aria-label="Public evidence integration status">
+          <article className="module-card disabled"><span>CDC wastewater adapter</span><strong>Not connected</strong><p>Schema mapping and source authentication require verification.</p></article>
+          <article className="module-card disabled"><span>Evidence comparison</span><strong>No validated public signals</strong><p>Conflicting reports remain unresolved until independently reviewed.</p></article>
+          <article className="module-card disabled"><span>Outbreak notifications</span><strong>Disabled</strong><p>No automatic outbreak classification or clinical action is allowed.</p></article>
+        </div>
+      </section>
+
       <section className="feature-card wide" aria-labelledby="evidence-boundary-heading">
         <p className="eyebrow">Evidence boundary</p>
         <h2 id="evidence-boundary-heading">Validated evidence, hypotheses and simulations remain isolated</h2>
