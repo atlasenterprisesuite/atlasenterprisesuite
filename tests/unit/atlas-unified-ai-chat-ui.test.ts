@@ -31,10 +31,13 @@ describe('ATLAS Unified AI Chat UI', () => {
     expect(html).toContain("zeroMode&&!zeroReady");
   });
 
-  it('provides ChatGPT only as an external optional link', () => {
-    expect(html).toContain('https://chatgpt.com');
-    expect(html).toContain('target="_blank"');
-    expect(html).toContain('rel="noopener noreferrer"');
+  it('keeps upstream AI brands out of the primary assistant surface', () => {
+    expect(html).not.toContain('Open in ChatGPT');
+    expect(html).not.toContain('>ChatGPT / OpenAI<');
+    expect(html).not.toContain('>Gemini<');
+    expect(html).not.toContain('>Claude / Anthropic<');
+    expect(html).toContain('ATLAS Engine 01');
+    expect(html).toContain('ATLAS Council');
   });
 
   it('does not expose internal model identifiers in the static HTML', () => {

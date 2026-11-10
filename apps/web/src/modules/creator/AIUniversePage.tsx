@@ -24,6 +24,24 @@ import type { CreatorAsset, ProductionSummary } from '../../../../../packages/cr
 import './creator.css';
 
 const MODALITIES: AIUniverseModality[] = ['text', 'image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'];
+function atlasEngineLabel(providerId: string | null | undefined) {
+  const id = String(providerId || '').toLowerCase();
+  if (!id) return 'ATLAS Engine';
+  if (id === 'atlas-local') return 'ATLAS Local';
+  if (id.includes('bedrock')) return 'ATLAS Engine 02';
+  if (id.includes('gemini') || id.includes('google')) return 'ATLAS Engine 03';
+  if (id.includes('anthropic') || id.includes('claude')) return 'ATLAS Engine 04';
+  if (id.includes('grok') || id.includes('xai')) return 'ATLAS Engine 05';
+  if (id.includes('deepseek')) return 'ATLAS Engine 06';
+  if (id.includes('mistral')) return 'ATLAS Engine 07';
+  if (id.includes('qwen')) return 'ATLAS Engine 08';
+  if (id.includes('elevenlabs')) return 'ATLAS Audio Engine';
+  if (id.includes('openart')) return 'ATLAS Creative Engine';
+  if (id.includes('openai') || id.includes('gpt')) return 'ATLAS Engine 01';
+  if (id.includes('codex')) return 'ATLAS Sovereign';
+  return 'ATLAS Engine';
+}
+
 const PRIORITIES: Array<{ value: AIUniversePriority; label: string }> = [
   { value: 'cost', label: 'Cost policy' },
   { value: 'latency', label: 'Observed latency' },
@@ -176,7 +194,7 @@ export function AIUniversePage() {
       ...assets.map(item => ({
         id: `asset:${item.id}`,
         kind: 'Creator asset',
-        title: item.providerId ? `${item.mediaType} · ${item.providerId}` : item.mediaType,
+        title: item.providerId ? `${item.mediaType} · ${atlasEngineLabel(item.providerId)}` : item.mediaType,
         detail: item.mimeType || 'Persisted creator asset',
         date: item.updatedAt
       }))
@@ -253,16 +271,16 @@ export function AIUniversePage() {
       </div>
       <label className="creator-search">
         <span>Search catalog</span>
-        <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Provider, model, modality, capability…" />
+        <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Engine, modality, capability…" />
       </label>
       {filteredCatalog.length === 0 ? <div className="creator-empty"><strong>No matching verified catalog data</strong><span>ATLAS does not fabricate unavailable models.</span></div> :
         <div className="ai-universe-grid">
           {filteredCatalog.map(entry => <article className="ai-universe-card" key={entry.id}>
             <div className="ai-universe-card-heading">
-              <div><small>{entry.source} · {entry.costClass}</small><h3>{entry.displayName}</h3></div>
+              <div><small>{entry.source} · {entry.costClass}</small><h3>{atlasEngineLabel(entry.providerId)}</h3></div>
               <span className={`provider-state ${entry.verified ? 'is-ready' : ''}`}>{entry.connectionState}</span>
             </div>
-            <p>{entry.model ? `Model: ${entry.model}` : `Engine: ${entry.providerId}`}</p>
+            <p>{`Route: ${atlasEngineLabel(entry.providerId)}`}</p>
             <div className="ai-universe-chips">{entry.modalities.map(value => <span key={value}>{value}</span>)}</div>
             <dl className="ai-universe-facts">
               <div><dt>Executable</dt><dd>{entry.executionAvailable ? 'Yes' : entry.costClass === 'planning-only' ? 'Planning only' : 'No'}</dd></div>
@@ -300,8 +318,8 @@ export function AIUniversePage() {
     <section className="creator-section" aria-labelledby="ai-universe-compare-title">
       <div className="section-heading"><div><p className="eyebrow">Comparison</p><h2 id="ai-universe-compare-title">Side-by-side providers</h2></div><span>{comparison.length}/3 selected</span></div>
       {comparison.length < 2 ? <div className="creator-empty"><strong>Select two or three catalog entries</strong><span>Comparison uses only their reported readiness, capabilities and observed telemetry.</span></div> :
-        <div className="ai-universe-table-wrap"><table className="ai-universe-table"><thead><tr><th>Attribute</th>{comparison.map(entry => <th key={entry.id}>{entry.displayName}</th>)}</tr></thead><tbody>
-          <tr><th>Model / engine</th>{comparison.map(entry => <td key={entry.id}>{entry.model || entry.providerId}</td>)}</tr>
+        <div className="ai-universe-table-wrap"><table className="ai-universe-table"><thead><tr><th>Attribute</th>{comparison.map(entry => <th key={entry.id}>{atlasEngineLabel(entry.providerId)}</th>)}</tr></thead><tbody>
+          <tr><th>ATLAS route</th>{comparison.map(entry => <td key={entry.id}>{atlasEngineLabel(entry.providerId)}</td>)}</tr>
           <tr><th>State</th>{comparison.map(entry => <td key={entry.id}>{entry.connectionState}</td>)}</tr>
           <tr><th>Cost class</th>{comparison.map(entry => <td key={entry.id}>{entry.costClass}</td>)}</tr>
           <tr><th>Modalities</th>{comparison.map(entry => <td key={entry.id}>{entry.modalities.join(', ')}</td>)}</tr>
@@ -320,7 +338,7 @@ export function AIUniversePage() {
         <article><strong>{fmtCost(usage.automatic_api_cost_usd)}</strong><span>automatic API cost</span></article>
         <article><strong>{fmtNumber(usage.tokens.total)}</strong><span>reported tokens</span></article>
       </div> : <div className="creator-empty"><strong>Telemetry unavailable</strong><span>No usage totals are inferred when the authenticated telemetry endpoint cannot be read.</span></div>}
-      {usage && usage.providers.length > 0 && <div className="provider-list">{usage.providers.map(item => <article key={item.provider}><div><h3>{item.provider}</h3><p>{item.requests} requests · {item.completed} completed · {item.failed} failed</p><small>{item.average_latency_ms === null ? 'No latency observation' : `Average ${item.average_latency_ms} ms`} · {fmtCost(item.automatic_api_cost_usd)}</small></div></article>)}</div>}
+      {usage && usage.providers.length > 0 && <div className="provider-list">{usage.providers.map(item => <article key={item.provider}><div><h3>{atlasEngineLabel(item.provider)}</h3><p>{item.requests} requests · {item.completed} completed · {item.failed} failed</p><small>{item.average_latency_ms === null ? 'No latency observation' : `Average ${item.average_latency_ms} ms`} · {fmtCost(item.automatic_api_cost_usd)}</small></div></article>)}</div>}
     </section>
 
     <section className="creator-section" aria-labelledby="ai-universe-history-title">
@@ -346,15 +364,15 @@ export function AIUniversePage() {
       <div className="ai-universe-policy">
         <h3>Current intelligence policy</h3>
         <dl className="ai-universe-facts">
-          <div><dt>Allowed providers</dt><dd>{status?.cost_policy?.allowed_providers?.length ? status.cost_policy.allowed_providers.join(', ') : 'Server default / not reported'}</dd></div>
-          <div><dt>Zero-cost providers</dt><dd>{status?.cost_policy?.zero_cost_providers?.length ? status.cost_policy.zero_cost_providers.join(', ') : 'None reported'}</dd></div>
+          <div><dt>Allowed providers</dt><dd>{status?.cost_policy?.allowed_providers?.length ? status.cost_policy.allowed_providers.map(atlasEngineLabel).join(', ') : 'Server default / not reported'}</dd></div>
+          <div><dt>Zero-cost providers</dt><dd>{status?.cost_policy?.zero_cost_providers?.length ? status.cost_policy.zero_cost_providers.map(atlasEngineLabel).join(', ') : 'None reported'}</dd></div>
           <div><dt>Paid single-provider calls</dt><dd>{status?.cost_policy?.allow_paid_single ? 'Allowed by policy' : 'Blocked by policy'}</dd></div>
           <div><dt>Council mode</dt><dd>{status?.cost_policy?.allow_council ? 'Allowed by policy' : 'Blocked by policy'}</dd></div>
           <div><dt>Emergency fallback daily budget</dt><dd>{status?.cost_policy?.emergency_openai_fallback?.enabled ? fmtCost(status.cost_policy.emergency_openai_fallback.daily_budget_usd ?? null) : 'Disabled'}</dd></div>
           <div><dt>Automatic API cost policy</dt><dd>{status?.cost_policy?.automatic_api_cost_usd === null || status?.cost_policy?.automatic_api_cost_usd === undefined ? 'Approval / route dependent' : fmtCost(status.cost_policy.automatic_api_cost_usd)}</dd></div>
         </dl>
       </div>
-      <div className="provider-list">{catalog.map(entry => <article key={`onboarding:${entry.id}`}><div><h3>{entry.displayName}</h3><p>{entry.configured ? 'Configured' : 'Configuration required'} · {entry.verified ? 'verified' : 'not verified'} · {entry.costClass}</p><small>{entry.model || entry.providerId}</small></div><span className="provider-state">{entry.connectionState}</span></article>)}</div>
+      <div className="provider-list">{catalog.map(entry => <article key={`onboarding:${entry.id}`}><div><h3>{atlasEngineLabel(entry.providerId)}</h3><p>{entry.configured ? 'Configured' : 'Configuration required'} · {entry.verified ? 'verified' : 'not verified'} · {entry.costClass}</p><small>Governed adapter · technical source available in provider readiness</small></div><span className="provider-state">{entry.connectionState}</span></article>)}</div>
       <div className="creator-actions"><Link className="creator-primary" to="/studio/providers">Open provider readiness</Link>{roleCanManage && <Link className="ai-universe-secondary" to="/assistant">Open Assistant policy surface</Link>}</div>
     </section>
 
