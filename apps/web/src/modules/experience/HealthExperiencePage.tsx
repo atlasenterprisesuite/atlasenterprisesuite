@@ -8,6 +8,12 @@ const healthSections: ModuleExperienceSection[] = [
     description: 'The current Health surface exposes implemented research and wellbeing routes while clinical and hospital-system claims remain gated until real integrations exist.',
     cards: [
       {
+        label: 'Labs',
+        title: 'Urinalysis Guidance',
+        description: 'Educational interpretation for urine protein dipstick findings with age-aware follow-up and explicit safety boundaries.',
+        to: '/health/labs/urinalysis'
+      },
+      {
         label: 'Research & Innovation',
         title: 'Health Frontiers',
         description: 'Evidence registry, Neural Graph, falsification and transparent disease-reconstruction models.',
