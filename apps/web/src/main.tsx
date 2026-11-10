@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
+import { VenezuelaPage } from './countries/VenezuelaPage';
 import { AtlasRuntimeIntegrityProvider } from './runtime/AtlasRuntimeIntegrityProvider';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { RideRoutes } from './modules/ride/RideRoutes';
@@ -23,6 +24,7 @@ import './runtime/runtime-integrity.css';
 
 function RootRouter() {
   const location = useLocation();
+  if (location.pathname === '/ve' || location.pathname === '/ve/') return <VenezuelaPage />;
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
   if (location.pathname.startsWith('/ride')) return <RideRoutes />;
   return <App />;
