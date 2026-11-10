@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { SpotifyCompanionPanel } from './SpotifyCompanionPanel';
 import { CAMELOT_KEYS, normalizeBpm, reorderMixTracks, transitionCompatibility, type MixTrackMetadata } from '../../../../../../packages/creator/audio/mix';
 import { analyzeLocalAudioFile, type LocalAudioDNA } from '../../../../../../packages/creator/audio/local_analysis';
 import './local-dj-mix.css';
@@ -314,6 +315,7 @@ export function LocalDJMixPage() {
         })}
       </ol>}
     </div>
+    <SpotifyCompanionPanel />
     <p className="atlas-dj-disclaimer">Private, temporary playback and estimated signal analysis. Files never leave this page. Audio DNA decodes at most 30 MB per file and inspects at most the first 90 seconds, using a heuristic that can return unknown or incorrect BPM/key. Waveform bars show relative RMS amplitude of the analyzed portion only; signal scores are not calibrated probabilities. No audio export, recording, cloud persistence, license validation, guaranteed beat detection, beat synchronization or mastering is claimed. Do not use copyrighted files for public or commercial distribution without appropriate rights.</p>
   </section>;
 }
