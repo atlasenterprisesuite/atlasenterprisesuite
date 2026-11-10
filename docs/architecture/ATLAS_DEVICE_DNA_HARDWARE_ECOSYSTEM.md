@@ -30,7 +30,7 @@ If normal boot cannot continue:
 
 ## Truth boundary
 
-A browser UI cannot prove firmware, storage health, secure-element status, battery telemetry, radios or sensors. The first native reference path is Linux Local Agent Device DNA v1, which reports bounded read-only observations through an authenticated ATLAS agent session. Its content digest is integrity evidence, not hardware attestation; TPM/manufacturer-backed attestation remains a later gate.
+A browser UI cannot prove firmware, storage health, secure-element status, battery telemetry, radios or sensors. The native reference paths are Linux and Windows Local Agent Device DNA v1 collectors, which report bounded read-only observations through an authenticated ATLAS agent session. Its content digest is integrity evidence, not hardware attestation; TPM/manufacturer-backed attestation remains a later gate.
 
 No hardware concept may be labeled connected, production-ready or verified based solely on design approval.
 
@@ -40,13 +40,13 @@ No hardware concept may be labeled connected, production-ready or verified based
 - Standard: general-purpose desktop/laptop operation.
 - Performance: high-memory/high-core systems with locally verified acceleration.
 
-The initial classifier remains deterministic and testable. The web estimator accepts declared values only, while the Linux reference agent can now supply agent-observed Device DNA v1 evidence. Performance still requires separately verified local-AI capability; Device DNA does not infer that from RAM/CPU alone.
+The initial classifier remains deterministic and testable. The web estimator accepts declared values only, while Linux and Windows reference agents can now supply agent-observed Device DNA v1 evidence. Performance still requires separately verified local-AI capability; Device DNA does not infer that from RAM/CPU alone.
 
 ## Prototype sequence
 
 1. Reuse the existing ATLAS Device OS control plane.
 2. Define the Device DNA v1 evidence schema, privacy exclusions and deterministic content digest. ✅ Software implemented.
-3. Build a Linux reference agent for authorized read-only hardware inventory and wire it to Device OS. ✅ Software implemented; physical-device validation still required.
+3. Build Linux and Windows reference collectors for authorized read-only hardware inventory and wire them to Device OS. ✅ Software implemented; physical-device validation still required.
 4. Add cryptographic hardware attestation only where the platform can prove it; do not label the v1 digest as a hardware signature.
 5. Build Phoenix as a bootable recovery image in a disposable lab environment.
 6. Validate read-only Phoenix diagnostics before any repair operation.
@@ -67,11 +67,11 @@ The initial classifier remains deterministic and testable. The web estimator acc
 
 ## Definition of done for the first physical milestone
 
-The first milestone is not a commercial laptop. It is a verified reference path that can inspect one authorized Linux device, produce an evidence-backed Device DNA report, classify its ATLAS runtime profile, and enter Phoenix diagnostics without inventing hardware state.
+The first milestone is not a commercial laptop. It is a verified reference path that can inspect one authorized Linux or Windows device, produce an evidence-backed Device DNA report, classify its ATLAS runtime profile, and enter Phoenix diagnostics without inventing hardware state.
 
 ## Device DNA v1 evidence contract
 
-The Linux reference collector is intentionally conservative. It may report only bounded facts that can be observed without destructive actions or secret extraction:
+The Linux and Windows reference collectors are intentionally conservative. They may report only bounded facts that can be observed without destructive actions or secret extraction:
 
 - CPU model, logical cores, total memory, architecture and kernel release;
 - manufacturer/product family when exposed by DMI;
@@ -94,12 +94,12 @@ Evidence semantics are explicit:
 
 Software acceptance requires all of the following:
 
-1. Linux collector produces `atlas.device-dna.v1` without privileged destructive commands.
-2. The Local Agent registers `device-dna-linux` with read-only capability `device.dna.read`.
+1. Linux and Windows collectors produce `atlas.device-dna.v1` without privileged destructive commands.
+2. The Local Agent registers `device-dna-linux` or `device-dna-windows` with read-only capability `device.dna.read`.
 3. Device OS displays only reports actually returned by the Local Control Plane.
 4. A refresh command writes an auditable `device.dna.observed` event.
 5. Automated tests verify classification, privacy boundaries and non-attestation semantics.
 6. Repository CI/typecheck/build gates pass.
 
-Physical acceptance remains separate: one authorized Linux machine must run the released Local Agent and return a real Device DNA report before the physical milestone can be marked complete.
+Physical acceptance remains separate: an authorized Linux or Windows machine must run the released Local Agent and return a real Device DNA report before the physical milestone can be marked complete.
 
