@@ -1,12 +1,17 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { evaluateInfrastructure } from '../_shared/infrastructure-readiness.ts';
+import {
+  SupabaseProviderAdapter,
+  type AssuranceEvidenceRecord,
+  type AssurancePolicyRecord
+} from '../_shared/infrastructure-assurance.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const CANONICAL_REPO = (Deno.env.get('ATLAS_GITHUB_REPOSITORIES') || Deno.env.get('ATLAS_CANONICAL_REPO') || 'atlasenterprisesuite/atlasenterprisesuite').split(',')[0].trim();
 const PRODUCTION_URL = Deno.env.get('ATLAS_PRODUCTION_URL') || 'https://www.atlasenterprisesuite.com';
-const VERSION = 7;
+const VERSION = 8;
 
 type Blocker = {
   stage: string;
@@ -302,6 +307,35 @@ async function cloudflareState() {
   }
 }
 
+function assuranceEvidenceBoolean(records: AssuranceEvidenceRecord[], claim: string): boolean | null {
+  for (const record of records) {
+    const metadata = record.metadata || {};
+    const metadataClaim = typeof metadata.claim === 'string' ? metadata.claim : null;
+    if (record.claim !== claim && metadataClaim !== claim) continue;
+
+    const provider = typeof metadata.provider === 'string' ? metadata.provider : 'supabase';
+    if (provider !== 'supabase') continue;
+
+    const value = metadata.observed_value ?? metadata.verified ?? metadata.value;
+    if (typeof value === 'boolean') return value;
+
+    if (
+      metadata.status === 'verified' &&
+      record.status === 'VIGENTE' &&
+      record.verified_at
+    ) {
+      return true;
+    }
+
+    return null;
+  }
+  return null;
+}
+
+function assuranceEvidenceVerified(records: AssuranceEvidenceRecord[], claim: string): boolean {
+  return assuranceEvidenceBoolean(records, claim) === true;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'GET') {
     return json({ ok: false, error: 'method_not_allowed' }, 405);
@@ -324,6 +358,8 @@ Deno.serve(async (req: Request) => {
     runtimeQ,
     infraQ,
     controlQ,
+    assurancePolicyQ,
+    assuranceEvidenceQ,
     productionRoot,
     productionStatus,
     github,
@@ -352,6 +388,19 @@ Deno.serve(async (req: Request) => {
       .eq('verification_type', 'infrastructure-control')
       .order('created_at', { ascending: false })
       .limit(1),
+    admin
+      .from('atlas_infrastructure_assurance_policies')
+      .select('id,domain,requirement,severity,required_status,blocking')
+      .eq('org_id', auth.orgId)
+      .eq('environment', 'production'),
+    admin
+      .from('atlas_master_evidence_registry')
+      .select('id,module,claim,source_type,evidence_level,status,environment,verified_at,source_ref,supersedes_id,production_impact,metadata,created_at')
+      .eq('org_id', auth.orgId)
+      .eq('environment', 'production')
+      .eq('module', 'infrastructure-assurance')
+      .order('created_at', { ascending: false })
+      .limit(100),
     probe(`${PRODUCTION_URL}/`),
     probe(`${PRODUCTION_URL}/status`),
     githubState(),
@@ -365,6 +414,91 @@ Deno.serve(async (req: Request) => {
   const latestControlVerification = controlQ.data?.[0] || null;
   const supabaseState =
     releaseQ.error || runtimeQ.error || infraQ.error || controlQ.error ? 'degraded' : 'ready';
+
+  const policies = (assurancePolicyQ.data || []) as AssurancePolicyRecord[];
+  const assuranceEvidence = (assuranceEvidenceQ.data || []) as AssuranceEvidenceRecord[];
+  const assuranceProbeFailures: string[] = [];
+  if (supabaseState !== 'ready') assuranceProbeFailures.push('supabase_core_registry_degraded');
+  if (assurancePolicyQ.error) assuranceProbeFailures.push('assurance_policy_registry_unavailable');
+  if (assuranceEvidenceQ.error) assuranceProbeFailures.push('assurance_evidence_registry_unavailable');
+
+  const adapter = new SupabaseProviderAdapter();
+  const generatedAt = new Date().toISOString();
+  const assurance = adapter.buildSnapshot(
+    {
+      providerId: 'supabase-production',
+      organizationId: auth.orgId,
+      environment: 'production',
+      project: {
+        configured: Boolean(SUPABASE_URL && SERVICE_ROLE),
+        reachable: supabaseState === 'ready',
+        region: Deno.env.get('SUPABASE_REGION') || null
+      },
+      resilience: {
+        readReplicaPresent: assuranceEvidenceBoolean(assuranceEvidence, 'read_replica_present'),
+        automaticCrossRegionFailoverSupported: assuranceEvidenceBoolean(
+          assuranceEvidence,
+          'automatic_cross_region_failover_supported'
+        ),
+        failoverRunbookVerified: assuranceEvidenceBoolean(
+          assuranceEvidence,
+          'cross_region_failover_runbook_verified'
+        ),
+        pitrConfigured: assuranceEvidenceBoolean(assuranceEvidence, 'pitr_configured'),
+        restoreDrillVerified: assuranceEvidenceBoolean(assuranceEvidence, 'restore_drill_verified')
+      },
+      networking: {
+        privateLinkDatabase: assuranceEvidenceBoolean(assuranceEvidence, 'database_private'),
+        apiPrivate: assuranceEvidenceBoolean(assuranceEvidence, 'api_private'),
+        authPrivate: assuranceEvidenceBoolean(assuranceEvidence, 'auth_private'),
+        storagePrivate: assuranceEvidenceBoolean(assuranceEvidence, 'storage_private'),
+        realtimePrivate: assuranceEvidenceBoolean(assuranceEvidence, 'realtime_private')
+      },
+      compliance: {
+        providerCertificationEvidence: assuranceEvidenceVerified(
+          assuranceEvidence,
+          'provider_certification_evidence'
+        ),
+        atlasControlEvidence: assuranceEvidenceVerified(
+          assuranceEvidence,
+          'atlas_compliance_control_evidence'
+        ),
+        sharedControlEvidence: assuranceEvidenceVerified(
+          assuranceEvidence,
+          'shared_responsibility_control_evidence'
+        )
+      },
+      probeFailures: assuranceProbeFailures,
+      evidenceRefs: assuranceEvidence.map((record) => record.source_ref)
+    },
+    {
+      policies,
+      evidence: assuranceEvidence,
+      generatedAt
+    }
+  );
+
+  if (assurancePolicyQ.error) {
+    assurance.release_gate.blocked = true;
+    assurance.release_gate.blockers.push({
+      policy_id: 'system:assurance-policy-registry',
+      domain: 'governance',
+      requirement: 'assurance_policy_registry_available',
+      severity: 'P0',
+      reason: 'policy_registry_unavailable'
+    });
+  }
+
+  if (assuranceEvidenceQ.error) {
+    assurance.release_gate.blocked = true;
+    assurance.release_gate.blockers.push({
+      policy_id: 'system:assurance-evidence-registry',
+      domain: 'evidence',
+      requirement: 'assurance_evidence_registry_available',
+      severity: 'P0',
+      reason: 'evidence_registry_unavailable'
+    });
+  }
 
   const normalized = evaluateInfrastructure({
     github: { state: ['ready', 'oidc_bridge_reachable_token_not_present'].includes(github.state) ? 'ready' : github.state, required: false },
@@ -476,7 +610,7 @@ Deno.serve(async (req: Request) => {
         state: supabaseState,
         project: 'atlas-core',
         project_ref: 'ggmanzcgtlrvqfoccgsh',
-        database: 'reachable',
+        database: supabaseState === 'ready' ? 'reachable' : 'degraded',
         latest_release: latestRelease,
         latest_runtime_verification: latestRuntimeVerification,
         latest_infrastructure_verification: latestInfrastructureVerification,
@@ -487,13 +621,16 @@ Deno.serve(async (req: Request) => {
         status_page: productionStatus
       }
     },
+    assurance,
     blockers,
     evidence: {
       release_registry: !releaseQ.error,
       runtime_verification_registry: !runtimeQ.error,
+      assurance_policy_registry: !assurancePolicyQ.error,
+      assurance_evidence_registry: !assuranceEvidenceQ.error,
       infrastructure_evidence: latestInfrastructureVerification,
       control_evidence: latestControlVerification,
-      generated_at: new Date().toISOString()
+      generated_at: generatedAt
     }
   });
 });
