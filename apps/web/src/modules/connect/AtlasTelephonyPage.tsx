@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getTelephonyReadiness,
@@ -23,6 +23,11 @@ export function AtlasTelephonyPage() {
   const [to, setTo] = useState('');
   const [purpose, setPurpose] = useState('');
   const [consentReference, setConsentReference] = useState('');
+  const callIdempotencyKeyRef = useRef<string | null>(null);
+
+  const resetCallIdempotency = useCallback(() => {
+    callIdempotencyKeyRef.current = null;
+  }, []);
 
   const refresh = useCallback(async () => {
     setChecking(true);
@@ -59,15 +64,20 @@ export function AtlasTelephonyPage() {
     setError('');
     setAccepted(null);
     try {
+      if (!callIdempotencyKeyRef.current) {
+        callIdempotencyKeyRef.current = crypto.randomUUID();
+      }
       const result = await startTelephonyCall({
         to: to.trim(),
         purpose: purpose.trim(),
-        consentReference: consentReference.trim()
+        consentReference: consentReference.trim(),
+        idempotencyKey: callIdempotencyKeyRef.current
       });
       setAccepted(result);
       setTo('');
       setPurpose('');
       setConsentReference('');
+      resetCallIdempotency();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'call_request_failed');
     } finally {
@@ -116,22 +126,22 @@ export function AtlasTelephonyPage() {
           <div>
             <p className="eyebrow">Controlled outbound call</p>
             <h2>Start a verified call</h2>
-            <p>A fresh provider check, active organization membership, RBAC permission, purpose, and consent evidence are required before ATLAS submits the call.</p>
+            <p>A fresh provider check, active organization membership, RBAC permission, purpose, consent evidence, and one stable idempotency key are required before ATLAS submits the call.</p>
           </div>
 
           <label className="field">
             <span>Destination · E.164</span>
-            <input value={to} onChange={(event) => setTo(event.target.value)} inputMode="tel" autoComplete="tel" placeholder="+1407…" maxLength={16} required disabled={!callable || calling} />
+            <input value={to} onChange={(event) => { setTo(event.target.value); resetCallIdempotency(); }} inputMode="tel" autoComplete="tel" placeholder="+1407…" maxLength={16} required disabled={!callable || calling} />
           </label>
 
           <label className="field">
             <span>Call purpose</span>
-            <input value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="e.g. Authorized appointment follow-up" maxLength={300} required disabled={!callable || calling} />
+            <input value={purpose} onChange={(event) => { setPurpose(event.target.value); resetCallIdempotency(); }} placeholder="e.g. Authorized appointment follow-up" maxLength={300} required disabled={!callable || calling} />
           </label>
 
           <label className="field">
             <span>Consent / authorization reference</span>
-            <input value={consentReference} onChange={(event) => setConsentReference(event.target.value)} placeholder="Internal consent record or authorization reference" maxLength={300} required disabled={!callable || calling} />
+            <input value={consentReference} onChange={(event) => { setConsentReference(event.target.value); resetCallIdempotency(); }} placeholder="Internal consent record or authorization reference" maxLength={300} required disabled={!callable || calling} />
           </label>
 
           <button className="atlas-telephony-call" type="submit" disabled={!callable || calling || !to.trim() || !purpose.trim() || !consentReference.trim()}>
@@ -149,8 +159,10 @@ export function AtlasTelephonyPage() {
             <li>Server-side provider credentials only</li>
             <li>Telnyx webhook signing key configured server-side</li>
             <li>Exact Call Control connection readiness</li>
+            <li>Verified ATLAS caller-number ownership/evidence</li>
             <li>E.164 destination validation</li>
             <li>Purpose and consent reference</li>
+            <li>Stable idempotency across retries</li>
             <li>Signed provider webhook before lifecycle updates</li>
             <li>Duplicate provider events rejected by persistent evidence ID</li>
           </ul>
