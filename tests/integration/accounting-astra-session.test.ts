@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   clearAtlasSession,
   getAccountingInsight,
+  getActiveAtlasOrganization,
+  getCachedAtlasShellOrganization,
   getLivePayablesLedger,
   signInAtlas
 } from '../../apps/web/src/lib/atlasSession';
@@ -13,6 +15,20 @@ afterEach(() => {
 });
 
 describe('ATLAS accounting Astra session bridge', () => {
+  it.each([
+    ['inactive', { id: 'org-1', name: 'ATLAS', active: false }],
+    ['missing', null]
+  ])('rejects an %s organization despite active membership', async (_name, organizations) => {
+    localStorage.setItem('atlas_access_token', 'live-token');
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([
+      { org_id: 'org-1', role: 'owner', status: 'active', organizations }
+    ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(getActiveAtlasOrganization()).rejects.toThrow('no_active_organization');
+    expect(getCachedAtlasShellOrganization()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('persists the same ATLAS access-token convention used by atlas-live', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: 'token-a', refresh_token: 'token-r' }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -36,7 +52,7 @@ describe('ATLAS accounting Astra session bridge', () => {
       execution: { payments: false, journal_entries: false, mutations: false }
     };
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(insight), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -56,7 +72,7 @@ describe('ATLAS accounting Astra session bridge', () => {
   it('loads live bills and vendor data from the same RLS-scoped organization', async () => {
     localStorage.setItem('atlas_access_token', 'live-token');
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([
         {
           id: 'bill-1', org_id: 'org-1', vendor_id: 'vendor-1', bill_number: 'WAL-1', bill_date: '2026-08-20', due_date: null,
