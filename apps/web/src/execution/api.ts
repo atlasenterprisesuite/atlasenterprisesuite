@@ -86,7 +86,7 @@ function normalizeDependency(raw: RawRecord): GuidedDependency {
 function normalizeEvidence(raw: RawRecord): GuidedEvidence {
   return {
     id: String(raw.id || ''), taskId: String(raw.task_id || ''), stepId: nullableString(raw.step_id), kind: String(raw.kind || ''),
-    reference: String(raw.reference || ''), verified: raw.verified === true, createdAt: String(raw.created_at || '')
+    reference: String(raw.reference || ''), verified: raw.verified === true, metadata: record(raw.metadata), createdAt: String(raw.created_at || '')
   };
 }
 
@@ -190,5 +190,15 @@ export async function resumeWorkStep(taskId: string) {
 export async function syncManagerReadiness() {
   const data = await executionPost({ operation: 'sync_manager_readiness' });
   if (!data.workflow_id) throw new Error('manager_readiness_workflow_missing');
+  return { workflowId: String(data.workflow_id) };
+}
+
+export async function startManagerSovereignCi(input: { repository: string; requestedRef: string }) {
+  const data = await executionPost({
+    operation: 'start_manager_sovereign_ci',
+    repository: input.repository,
+    requested_ref: input.requestedRef
+  });
+  if (!data.workflow_id) throw new Error('manager_sovereign_ci_workflow_missing');
   return { workflowId: String(data.workflow_id) };
 }
