@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 const edge = readFileSync('supabase/functions/atlas-execution/index.ts', 'utf8');
 const pilot = readFileSync('supabase/functions/atlas-execution/openai-domain.ts', 'utf8');
 const runtime = readFileSync('supabase/functions/atlas-execution/work-runtime.ts', 'utf8');
-const migration = readFileSync('supabase/migrations/20260912_atlas_work_runtime.sql', 'utf8');
+const migration = readFileSync('supabase/migrations/20260918184010_atlas_work_runtime.sql', 'utf8');
 
 describe('ATLAS Work security boundaries', () => {
   it('never hard-codes the OpenAI verification value or common credential names', () => {

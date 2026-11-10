@@ -6,7 +6,7 @@ const registry = readFileSync('apps/web/src/modules/registry.ts', 'utf8');
 const page = readFileSync('apps/web/src/modules/finance/pay/AtlasPayPage.tsx', 'utf8');
 const core = readFileSync('packages/pay/src/index.ts', 'utf8');
 const payApi = readFileSync('apps/web/src/lib/payApi.ts', 'utf8');
-const accountsMigration = readFileSync('supabase/migrations/20261006190000_atlas_pay_accounts_center.sql', 'utf8');
+const accountsMigration = readFileSync('supabase/migrations_legacy_pre_remote_sync/20261006190000_atlas_pay_accounts_center.sql', 'utf8');
 const productionContract = JSON.parse(readFileSync('data/ops/global-production-verification.json', 'utf8')) as { public_routes: string[] };
 
 describe('ATLAS Pay web integration', () => {

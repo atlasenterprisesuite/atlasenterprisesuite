@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const path = 'supabase/migrations/20260918113000_atlas_commerce_core.sql';
+const path = 'supabase/migrations/20260918134123_atlas_commerce_core.sql';
 const sql = existsSync(path) ? readFileSync(path, 'utf8') : '';
 
 const scopedTables = [

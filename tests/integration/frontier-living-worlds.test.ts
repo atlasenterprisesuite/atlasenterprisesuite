@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  `${process.cwd()}/supabase/migrations/20260920024000_frontier_living_worlds.sql`,
+  `${process.cwd()}/supabase/migrations/20260920064109_frontier_living_worlds.sql`,
   'utf8'
 );
 

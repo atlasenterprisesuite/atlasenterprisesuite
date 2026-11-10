@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = resolve(process.cwd(), 'supabase/migrations/20260911_hospitality_room_access.sql');
-const onityMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260916_hospitality_add_onity_provider.sql');
+const migrationPath = resolve(process.cwd(), 'supabase/migrations/20260912014255_hospitality_room_access.sql');
+const onityMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260916184257_hospitality_add_onity_provider.sql');
 
 describe('ATLAS Hospitality Supabase schema contract', () => {
   it('defines the three organization/property-scoped Hospitality tables', () => {

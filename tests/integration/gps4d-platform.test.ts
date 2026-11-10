@@ -5,8 +5,8 @@ const page = readFileSync('apps/web/src/modules/gps/Gps4DPage.tsx', 'utf8');
 const api = readFileSync('apps/web/src/modules/gps/gpsApi.ts', 'utf8');
 const domain = readFileSync('apps/web/src/modules/gps/gpsDomain.ts', 'utf8');
 const edge = readFileSync('supabase/functions/atlas-gps/index.ts', 'utf8');
-const migration = readFileSync('supabase/migrations/20260923235500_atlas_gps4d_core.sql', 'utf8');
-const hardening = readFileSync('supabase/migrations/20260924001200_harden_atlas_gps4d_internal_tables.sql', 'utf8');
+const migration = readFileSync('supabase/migrations/20260924001019_atlas_gps4d_core.sql', 'utf8');
+const hardening = readFileSync('supabase/migrations/20260924001101_harden_atlas_gps4d_internal_tables.sql', 'utf8');
 const production = readFileSync('data/ops/global-production-verification.json', 'utf8');
 
 describe('ATLAS GPS 4D platform', () => {

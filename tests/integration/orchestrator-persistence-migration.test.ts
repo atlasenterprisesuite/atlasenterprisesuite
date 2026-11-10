@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const path = 'supabase/migrations/20260916232000_atlas_orchestrator_persistence.sql';
+const path = 'supabase/migrations/20260918073823_atlas_orchestrator_persistence.sql';
 
 describe('ATLAS orchestrator durable persistence migration', () => {
   it('creates tenant-scoped task and event tables with locked-down RLS', () => {

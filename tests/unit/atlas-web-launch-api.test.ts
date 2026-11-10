@@ -6,7 +6,7 @@ const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf
 
 describe('ATLAS Web Launch persistence and API contract', () => {
   it('persists blueprints in a tenant-scoped RLS table', () => {
-    const path = 'supabase/migrations/20260918153000_creator_web_launch_blueprints.sql';
+    const path = 'supabase/migrations/20260918190551_creator_web_launch_blueprints.sql';
     expect(existsSync(resolve(process.cwd(), path))).toBe(true);
     const sql = source(path);
     expect(sql).toContain('creator_web_launch_blueprints');

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const migrationPath = resolve(
   process.cwd(),
-  'supabase/migrations/20260913_harden_atlas_bootstrap_owner_aal2.sql',
+  'supabase/migrations/20260914001959_harden_atlas_bootstrap_owner_aal2.sql',
 );
 
 describe('ATLAS owner bootstrap source security', () => {

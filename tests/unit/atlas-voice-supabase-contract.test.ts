@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = 'supabase/migrations/20260920050000_atlas_personal_voice_activation.sql';
+const migrationPath = 'supabase/migrations/20260920133713_atlas_personal_voice_activation.sql';
 
 describe('ATLAS Personal Voice Supabase activation contract', () => {
   it('versions the private Voice persistence hardening migration', () => {

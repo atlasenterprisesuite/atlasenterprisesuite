@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('ATLAS Tax client intake persistence', () => {
-  const sql = readFileSync(process.cwd() + '/supabase/migrations/20260924132000_tax_client_intake_profile.sql', 'utf8');
+  const sql = readFileSync(process.cwd() + '/supabase/migrations_legacy_pre_remote_sync/20260924132000_tax_client_intake_profile.sql', 'utf8');
 
   it('creates a one-to-one tax profile and repeatable household members', () => {
     expect(sql).toContain('create table if not exists public.tax_client_profiles');

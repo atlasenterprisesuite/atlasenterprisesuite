@@ -1,0 +1,14 @@
+create index if not exists inventory_count_lines_adjustment_movement_id_idx on public.inventory_count_lines(adjustment_movement_id);
+create index if not exists inventory_count_lines_item_id_idx on public.inventory_count_lines(item_id);
+create index if not exists inventory_counts_location_id_idx on public.inventory_counts(location_id);
+create index if not exists inventory_movements_item_id_idx on public.inventory_movements(item_id);
+create index if not exists inventory_movements_location_id_idx on public.inventory_movements(location_id);
+create index if not exists pos_catalog_items_inventory_item_id_idx on public.pos_catalog_items(inventory_item_id);
+create index if not exists pos_catalog_items_location_id_idx on public.pos_catalog_items(location_id);
+create index if not exists pos_order_lines_catalog_item_id_idx on public.pos_order_lines(catalog_item_id);
+create index if not exists pos_order_lines_inventory_item_id_idx on public.pos_order_lines(inventory_item_id);
+create index if not exists pos_order_lines_order_id_idx on public.pos_order_lines(order_id);
+create index if not exists pos_orders_location_id_idx on public.pos_orders(location_id);
+create index if not exists pos_tenders_order_id_idx on public.pos_tenders(order_id);
+create index if not exists project_tasks_project_id_idx on public.project_tasks(project_id);
+create index if not exists project_milestones_project_id_idx on public.project_milestones(project_id);
