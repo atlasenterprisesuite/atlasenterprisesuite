@@ -114,6 +114,11 @@ export type AssistantStoredMessage = {
 
 export type AssistantChatResponse = {
   ok: boolean;
+  memory?: {
+    approved_records_used: number;
+    record_ids: string[];
+    sources?: Array<{ id: string; citation_ref: string; title: string; kind: string; updated_at: string }>;
+  };
   text: string;
   output?: string;
   conversation_id?: string | null;

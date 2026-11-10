@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { getAtlasMemoryRecord } from '../modules/knowledge/memoryApi';
+import { buildMemoryWorkDraft, knowledgeRecordUrl, parseAtlasMemoryReference } from '../modules/knowledge/memoryIntegration';
 import { compileWorkIntent, type WorkPlanPreview } from '../../../../packages/execution/src/work-intent';
 import { runtimeIsHealthy } from '../../../../packages/execution/src/work-runtime';
 import type { WorkAutonomyLevel, WorkExecutionMode, WorkRuntimePreference } from '../../../../packages/execution/src/work-types';
@@ -28,6 +30,13 @@ function runtimeMatchesPreference(runtime: WorkRuntimeSummary, preference: WorkR
 
 export function WorkComposerPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sourceRef = searchParams.get('source');
+  const sourceId = parseAtlasMemoryReference(sourceRef);
+  const [sourceState, setSourceState] = useState<'idle' | 'loading' | 'ready' | 'blocked'>('idle');
+  const [sourceResolvedId, setSourceResolvedId] = useState<string | null>(null);
+  const [sourceVersion, setSourceVersion] = useState<string | null>(null);
+  const [sourceTitle, setSourceTitle] = useState('');
   const [intent, setIntent] = useState('');
   const [ownerModule, setOwnerModule] = useState('manager');
   const [executionMode, setExecutionMode] = useState<WorkExecutionMode>('hybrid');
@@ -62,6 +71,42 @@ export function WorkComposerPage() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    setSourceResolvedId(null);
+    setSourceVersion(null);
+    setSourceTitle('');
+    setPreview(null);
+    if (!sourceRef) {
+      setSourceState('idle');
+      return () => controller.abort();
+    }
+    setIntent('');
+    if (!sourceId) {
+      setSourceState('blocked');
+      return () => controller.abort();
+    }
+    setSourceState('loading');
+    void getAtlasMemoryRecord(sourceId, controller.signal)
+      .then(({ record }) => {
+        if (controller.signal.aborted) return;
+        const draft = buildMemoryWorkDraft(record, OWNER_MODULES.map(module => module.id));
+        setIntent(draft.intent);
+        setOwnerModule(draft.ownerModule);
+        setAutonomyLevel(draft.autonomyLevel);
+        setBudgetLimit(draft.budgetLimit);
+        setConnectionRefs(draft.connectionRefs);
+        setSourceVersion(record.updated_at);
+        setSourceResolvedId(sourceId);
+        setSourceTitle(record.title);
+        setSourceState('ready');
+      })
+      .catch(() => { if (!controller.signal.aborted) setSourceState('blocked'); });
+    return () => controller.abort();
+  }, [sourceId, sourceRef]);
+
+  const sourceBlocked = Boolean(sourceRef) && (sourceState !== 'ready' || sourceResolvedId !== sourceId);
+
   const launchInput = useMemo(() => ({
     intent,
     ownerModule,
@@ -83,7 +128,7 @@ export function WorkComposerPage() {
 
   const browserReady = healthyBrowserRuntimes.length > 0;
   const browserRequired = executionMode === 'browser';
-  const launchBlocked = browserRequired && !browserReady;
+  const launchBlocked = (browserRequired && !browserReady) || sourceBlocked;
 
   const invalidatePreview = () => {
     setPreview(null);
@@ -91,6 +136,10 @@ export function WorkComposerPage() {
   };
 
   const reviewPlan = () => {
+    if (sourceBlocked) {
+      setError('source_authorization_required');
+      return;
+    }
     setError(null);
     try {
       setPreview(compileWorkIntent(launchInput));
@@ -105,6 +154,17 @@ export function WorkComposerPage() {
     setCreating(true);
     setError(null);
     try {
+      if (sourceId) {
+        // Recheck authorization and approval immediately before creating the workflow.
+        const fresh = await getAtlasMemoryRecord(sourceId);
+        buildMemoryWorkDraft(fresh.record, OWNER_MODULES.map(module => module.id));
+        if (fresh.record.updated_at !== sourceVersion) {
+          setSourceState('blocked');
+          setError('Source changed; reopen the authorized record and review the plan again.');
+          setCreating(false);
+          return;
+        }
+      }
       const result = await createWorkWorkflow(launchInput);
       navigate(`/execution/${encodeURIComponent(result.workflowId)}`);
     } catch (caught) {
@@ -128,6 +188,17 @@ export function WorkComposerPage() {
         <h1>Create work</h1>
         <p>Review organization scope, authorized capabilities and the execution envelope before ATLAS persists a canonical workflow.</p>
       </header>
+
+      {sourceRef ? (
+        <section className="execution-panel" aria-labelledby="work-knowledge-source-title">
+          <h2 id="work-knowledge-source-title">Knowledge Atlas → Work</h2>
+          {sourceState === 'loading' ? <p role="status" aria-busy="true">Rechecking the active organization's source permissions…</p> : null}
+          {sourceBlocked && sourceState !== 'loading' ? <p role="alert" className="work-error">This knowledge source is unavailable, not approved, or no longer authorized. Work creation is blocked.</p> : null}
+          {sourceState === 'ready' && sourceId && sourceResolvedId === sourceId ? (
+            <p role="status">Authorized memory: <strong>{sourceTitle}</strong>. Guided work draft only; no execution or spending is authorized by this handoff. <Link to={knowledgeRecordUrl(sourceId)}>Review original record</Link></p>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="work-composer execution-panel">
         <label htmlFor="work-intent">What do you want ATLAS to accomplish?</label>
@@ -232,7 +303,7 @@ export function WorkComposerPage() {
         </section>
 
         <div className="work-actions">
-          <button type="button" className="execution-action" onClick={reviewPlan}>Review plan</button>
+          <button type="button" className="execution-action" onClick={reviewPlan} disabled={sourceBlocked}>Review plan</button>
         </div>
         {error ? <p role="alert" className="work-error">{error}</p> : null}
       </div>

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { isAtlasMemoryId, workDraftUrl } from './memoryIntegration';
 import {
   approveAtlasMemory,
   createAtlasMemoryDraft,
   getAtlasLibraryStats,
   getAtlasMemoryStats,
+  getAtlasMemoryRecord,
   listAtlasLibraryAssets,
   listAtlasMemory,
   type AtlasLibraryAsset,
@@ -151,6 +154,10 @@ export function KnowledgeAtlasPage({
   heading?: string;
   description?: string;
 } = {}) {
+  const [searchParams] = useSearchParams();
+  const selectedId = searchParams.get('record');
+  const [selectedRecord, setSelectedRecord] = useState<AtlasMemoryRecord | null>(null);
+  const [selectedState, setSelectedState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
   const [records, setRecords] = useState<AtlasMemoryRecord[] | null>(null);
   const [memoryStats, setMemoryStats] = useState<AtlasMemoryStats | null>(null);
   const [memoryTotal, setMemoryTotal] = useState(0);
@@ -176,6 +183,35 @@ export function KnowledgeAtlasPage({
   const [success, setSuccess] = useState<string | null>(null);
 
   const canApprove = ['owner','admin','platform_admin'].includes(role);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setSelectedRecord(null);
+    if (!selectedId) {
+      setSelectedState('idle');
+      return () => controller.abort();
+    }
+    if (!isAtlasMemoryId(selectedId)) {
+      setSelectedState('unavailable');
+      return () => controller.abort();
+    }
+    setSelectedState('loading');
+    void getAtlasMemoryRecord(selectedId, controller.signal)
+      .then(({ record }) => {
+        if (controller.signal.aborted) return;
+        if (record.id !== selectedId || record.status !== 'approved' ||
+            !['organization', 'restricted'].includes(record.sensitivity)) {
+          setSelectedState('unavailable');
+          return;
+        }
+        setSelectedRecord(record);
+        setSelectedState('ready');
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSelectedState('unavailable');
+      });
+    return () => controller.abort();
+  }, [selectedId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -296,6 +332,23 @@ export function KnowledgeAtlasPage({
         <article><span>Role</span><strong>{role}</strong><small>{canApprove ? 'Approval enabled' : 'Read and draft access'}</small></article>
       </div>
 
+      {selectedId ? (
+        <section className="workspace-card page-stack" aria-labelledby="atlas-memory-selected-title">
+          <h2 id="atlas-memory-selected-title">Source record review</h2>
+          {selectedState === 'loading' ? <p role="status" aria-busy="true">Checking the source in the active organization…</p> : null}
+          {selectedState === 'unavailable' ? <p role="alert">Source unavailable, unapproved or no longer authorized. ATLAS will not display cached source content.</p> : null}
+          {selectedState === 'ready' && selectedRecord ? (
+            <>
+              <strong>{selectedRecord.title}</strong>
+              <p>{selectedRecord.summary || 'No source summary is available.'}</p>
+              <p className="muted">Approved organizational context · {selectedRecord.kind} · updated {selectedRecord.updated_at}</p>
+              <p className="muted">This record is not independent external verification. Permissions are checked again before Work prefill.</p>
+              <div className="work-actions"><Link className="execution-action" to={workDraftUrl(selectedRecord.id)}>Prepare governed Work proposal</Link></div>
+            </>
+          ) : null}
+        </section>
+      ) : null}
+
       <LibraryRegistryPanel moduleScope={moduleScope} />
 
       <section className="workspace-card" aria-label="Filter ATLAS Memory">
@@ -364,6 +417,9 @@ export function KnowledgeAtlasPage({
               <p>{record.summary || String(record.content_json?.text || '').slice(0, 220)}</p>
               <small className="muted">Source: {record.source_type}{record.source_ref ? ` · ${record.source_ref}` : ''}</small>
               <small className="muted">Modules: {record.module_ids.length ? record.module_ids.join(', ') : 'Cross-module'} · v{record.version}</small>
+              {record.status === 'approved' && isAtlasMemoryId(record.id) ? (
+                <Link to={workDraftUrl(record.id)}>Prepare Work proposal</Link>
+              ) : null}
               {record.status === 'draft' && canApprove ? (
                 <button className="execution-action" type="button" disabled={busy} onClick={() => void approve(record.id)}>Approve memory</button>
               ) : null}
