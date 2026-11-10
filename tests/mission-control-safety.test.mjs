@@ -36,3 +36,11 @@ test('P0 baseline: identity guard checks organization, but does not prove ledger
   assert.match(identityGate, /getActiveAtlasOrganization/);
   assert.doesNotMatch(identityGate, /service_role|SUPABASE_SERVICE_ROLE_KEY/);
 });
+
+const evidenceEndpoint = readFileSync(new URL('../supabase/functions/atlas-mission-control-evidence/index.ts', import.meta.url), 'utf8');
+
+test('P0: CORS preflight rejects untrusted origins without reflecting or substituting an allowed origin', () => {
+  assert.match(evidenceEndpoint, /status: origins\.has\(origin\) \? 204 : 403/);
+  assert.match(evidenceEndpoint, /\.\.\.\(origins\.has\(origin\) \? \{/);
+  assert.doesNotMatch(evidenceEndpoint, /access-control-allow-origin'\s*:\s*origins\.has\([^\n]+\?[^\n]+:\s*'https:\/\//);
+});
