@@ -1,0 +1,119 @@
+.mobile-settings-shell {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.75rem);
+}
+
+.mobile-settings-header,
+.mobile-settings-runtime,
+.mobile-settings-nav,
+.mobile-settings-content,
+.mobile-settings-unavailable {
+  border: 1px solid var(--atlas-border, rgba(148, 163, 184, 0.28));
+  border-radius: 1rem;
+  background: var(--atlas-surface, rgba(15, 23, 42, 0.72));
+}
+
+.mobile-settings-header,
+.mobile-settings-runtime,
+.mobile-settings-content {
+  padding: 1rem;
+}
+
+.mobile-settings-header h1,
+.mobile-settings-page h2 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.mobile-settings-runtime {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mobile-settings-runtime.is-warning,
+.mobile-settings-unavailable {
+  border-style: dashed;
+}
+
+.mobile-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.mobile-settings-nav {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.mobile-settings-link {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mobile-settings-link:hover,
+.mobile-settings-link:focus-visible,
+.mobile-settings-link.is-active {
+  background: var(--atlas-surface-emphasis, rgba(148, 163, 184, 0.12));
+}
+
+.mobile-settings-link span,
+.mobile-settings-runtime span,
+.mobile-settings-unavailable span {
+  opacity: 0.78;
+}
+
+.mobile-settings-page {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mobile-settings-unavailable {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .mobile-settings-grid {
+    grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+  }
+
+  .mobile-settings-runtime {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .mobile-settings-shell {
+    padding: 0.75rem;
+  }
+
+  .mobile-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-settings-nav {
+    position: static;
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+  }
+
+  .mobile-settings-link {
+    min-width: 10.5rem;
+    scroll-snap-align: start;
+  }
+}
