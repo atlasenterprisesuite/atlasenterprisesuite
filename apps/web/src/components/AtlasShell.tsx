@@ -306,6 +306,14 @@ export function AtlasShell({ children }: { children: ReactNode }) {
             <span className="atlas-nav-glyph" aria-hidden="true">A11Y</span>
             <span>Accessibility</span>
           </NavLink>
+          <NavLink
+            to="/about/founder"
+            className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+            onClick={closeMobileNav}
+          >
+            <span className="atlas-nav-glyph" aria-hidden="true">WA</span>
+            <span>Fundador</span>
+          </NavLink>
         </nav>
 
         {organization ? (

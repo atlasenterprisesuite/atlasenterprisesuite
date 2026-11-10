@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
+import { FounderPage } from './modules/public/FounderPage';
 import { CertificateLifecyclePage } from './modules/security/CertificateLifecyclePage';
 import { LabNav } from './components/LabNav';
 import { NeuralGraphPanel } from './components/NeuralGraphPanel';
@@ -63,6 +64,7 @@ function EnterpriseHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/about/founder"><span>ATLAS · Leadership</span><strong>Conoce al fundador</strong><p>Winder Aranguren: experiencia profesional, visión y trayectoria del proyecto ATLAS.</p></Link>
         <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting operations with live Accounts Payable, Accounts Receivable and governed financial reporting.</p></Link>
         <Link className="module-card enabled" to="/tax"><span>Finance • Compliance</span><strong>ATLAS Tax</strong><p>Connected personal and business return preparation with governed source-document mapping.</p></Link>
@@ -292,6 +294,7 @@ export function App() {
     <AtlasShell>
       <Routes>
         <Route path="/" element={<EnterpriseHome />} />
+        <Route path="/about/founder" element={<FounderPage />} />
         <Route path="/identity" element={<IdentityPage />} />
         <Route path="/security/certificates" element={<RequireAtlasIdentity><CertificateLifecyclePage /></RequireAtlasIdentity>} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
