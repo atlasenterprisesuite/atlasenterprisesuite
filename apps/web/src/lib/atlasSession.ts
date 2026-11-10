@@ -102,7 +102,7 @@ function getAtlasRefreshToken() {
   return readRefreshToken();
 }
 
-function persistSession(data: { access_token?: string; refresh_token?: string }) {
+export function persistAtlasSession(data: { access_token?: string; refresh_token?: string }) {
   if (writeSession(data)) announceSessionChange();
 }
 
@@ -139,7 +139,7 @@ export async function signInAtlas(email: string, password: string) {
     body: JSON.stringify({ email, password })
   });
   const data = await parseResponse(response);
-  persistSession(data);
+  persistAtlasSession(data);
   return data;
 }
 
@@ -156,7 +156,7 @@ async function refreshAtlasSession() {
     return '';
   }
   const data = await response.json();
-  persistSession(data);
+  persistAtlasSession(data);
   return data?.access_token || '';
 }
 
