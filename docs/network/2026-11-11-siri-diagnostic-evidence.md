@@ -51,6 +51,10 @@ https://support.apple.com/guide/shortcuts/apd07c25bb38/ios
   `node:test` suites in Vitest. The test command now runs these suites through
   Node, preserving the default Vitest exclusions and the existing Local Core
   command. No security tests are omitted.
+- The active main ruleset requires `council-security` on every PR. Its workflow
+  previously filtered by paths, leaving unrelated PRs blocked with a missing
+  check. It now runs on all PRs targeting main; the required security gate and
+  its test command are unchanged.
 - CI, merge, Cloudflare deployment and canonical exact-SHA P0 verification must
   pass before calling the change production verified.
 
