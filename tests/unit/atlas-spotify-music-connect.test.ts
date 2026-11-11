@@ -55,6 +55,28 @@ describe('Spotify authorization primitives (not a live connection)', () => {
     expect(() => validateSpotifyCallback(redirect + '?state=s&state=s&code=x', redirect, 's')).toThrow('state');
     expect(() => validateSpotifyCallback(redirect + '?state=s&code=x&code=y', redirect, 's')).toThrow('duplicate');
   });
+  it('binds fixed redirect query values and rejects tenant substitution', () => {
+    const registered = redirect + '?tenant=atlas-team-a';
+    expect(validateSpotifyCallback(registered + '&state=s&code=good', registered, 's')).toBe('good');
+    expect(() => validateSpotifyCallback(redirect + '?tenant=atlas-team-b&state=s&code=bad', registered, 's'))
+      .toThrow('redirect mismatch');
+    expect(() => validateSpotifyCallback(registered + '&tenant=atlas-team-b&state=s&code=bad', registered, 's'))
+      .toThrow('redirect mismatch');
+    expect(() => validateSpotifyCallback(redirect + '?state=s&code=bad', registered, 's'))
+      .toThrow('redirect mismatch');
+  });
+  it('rejects duplicate and OAuth response keys in registered redirect URLs', async () => {
+    await expect(createSpotifyPkceAuthorization(clientId, redirect + '?tenant=a&tenant=b'))
+      .rejects.toThrow('Redirect URI');
+    await expect(createSpotifyPkceAuthorization(clientId, redirect + '?state=prebound'))
+      .rejects.toThrow('Redirect URI');
+    await expect(createSpotifyPkceAuthorization(clientId, redirect + '?code=prebound'))
+      .rejects.toThrow('Redirect URI');
+  });
+  it('fails closed when Spotify reports an authorization error', () => {
+    expect(() => validateSpotifyCallback(redirect + '?state=s&error=access_denied', redirect, 's'))
+      .toThrow('denied or failed');
+  });
   it('extracts code only on a verified callback', () => {
     expect(validateSpotifyCallback(redirect + '?state=s&code=abc', redirect, 's')).toBe('abc');
   });

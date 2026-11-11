@@ -17,6 +17,13 @@ Explicitly excluded: Spotify private-account access, token exchange, Supabase/Cl
 3. Spotify PKCE-S256 utilities: minimal read/modify playback scopes, random verifier/state, explicit callback validation. They do **not** perform authorization, token exchange or token persistence.
 4. Injected-token Spotify Connect transport: list available devices, read player state, transfer to a single selected device with playback off by default. This is *not wired to a user account* without separate consent.
 
+## Hardened callback and UI test coverage
+
+- The registered OAuth redirect's fixed query parameters must match on callback; substituted, duplicate and missing static parameters fail closed.
+- Registered OAuth redirect parameters cannot pre-populate `code`, `state`, or provider error response keys.
+- Offline component tests verify tracker stripping, unknown short-link destination, and that rendering/link analysis do not initiate `fetch`.
+- Passing static checks does not constitute a session-bound one-time state store, provider authorization, or tenant-scoped credential custody.
+
 ## P0 gates
 
 - Spotify app quota mode, Premium requirement and commercial policy eligibility must be verified.

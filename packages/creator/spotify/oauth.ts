@@ -24,6 +24,13 @@ function secureRedirect(input: string): URL {
   if (!(url.protocol === 'https:' || loopback) || url.username || url.password || url.hash) {
     throw new Error('Redirect URI must be HTTPS or approved IP loopback');
   }
+  const keys = new Set<string>();
+  url.searchParams.forEach((_value, key) => {
+    if (keys.has(key) || ['code', 'state', 'error', 'error_description'].includes(key)) {
+      throw new Error('Redirect URI contains duplicate or OAuth response query parameters');
+    }
+    keys.add(key);
+  });
   return url;
 }
 export interface SpotifyPkceAuthorization {
@@ -58,7 +65,17 @@ export async function createSpotifyPkceAuthorization(
 /** Validates origin/path and unique state/code; does not initiate network access. */
 export function validateSpotifyCallback(callbackUrl: string, configuredRedirectUri: string, expectedState: string): string {
   const callback = new URL(callbackUrl), expected = secureRedirect(configuredRedirectUri);
-  if (callback.origin !== expected.origin || callback.pathname !== expected.pathname || callback.hash) {
+  // Bind every registered static callback parameter (such as a tenant hint).
+  // No token exchange is performed here; server custody must also bind session
+  // and tenant identity and consume the state exactly once.
+  let staticQueryMismatch = false;
+  expected.searchParams.forEach((value, key) => {
+    if (callback.searchParams.getAll(key).length !== 1 || callback.searchParams.get(key) !== value) {
+      staticQueryMismatch = true;
+    }
+  });
+  if (callback.origin !== expected.origin || callback.pathname !== expected.pathname ||
+      callback.hash || staticQueryMismatch) {
     throw new Error('Spotify OAuth redirect mismatch');
   }
   if (!expectedState || callback.searchParams.getAll('state').length !== 1 ||
