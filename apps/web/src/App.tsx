@@ -7,6 +7,7 @@ import { NeuralGraphPanel } from './components/NeuralGraphPanel';
 import { ResearchBadge } from './components/ResearchBadge';
 import { GuidedExecutionPage } from './execution/GuidedExecutionPage';
 import { ManagerReadinessLauncher } from './execution/ManagerReadinessLauncher';
+import { MissionControlPage } from './execution/MissionControlPage';
 import { resolveAtlasExtension } from './extensions/resolveAtlasExtension';
 import { IdentityPage } from './identity/IdentityPage';
 import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
@@ -295,6 +296,7 @@ export function App() {
         <Route path="/identity" element={<IdentityPage />} />
         <Route path="/security/certificates" element={<RequireAtlasIdentity><CertificateLifecyclePage /></RequireAtlasIdentity>} />
         <Route path="/max" element={<RequireAtlasIdentity><AtlasMaxPage entitlement={{ status: 'unknown' }} usage={{ used: 0, limit: 0 }} /></RequireAtlasIdentity>} />
+        <Route path="/execution/mission-control" element={<RequireAtlasIdentity><MissionControlPage /></RequireAtlasIdentity>} />
         <Route path="/execution/manager/readiness" element={<RequireAtlasIdentity><ManagerReadinessLauncher /></RequireAtlasIdentity>} />
         <Route path="/execution/:workflowId" element={<RequireAtlasIdentity><GuidedExecutionPage /></RequireAtlasIdentity>} />
         <Route path="/studio" element={<RequireAtlasIdentity><CreatorHome /></RequireAtlasIdentity>} />
