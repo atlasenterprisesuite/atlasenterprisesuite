@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   verify-build-readiness:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
@@ -94,9 +94,9 @@ jobs:
           done
           # Bound stalled package mirrors and retry transient network failures.
           # Keep the native toolchain and its existing repository contract intact.
-          printf '%s\n' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80atlas-ci-network >/dev/null
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "15";' 'Acquire::https::Timeout "15";' | sudo tee /etc/apt/apt.conf.d/80atlas-ci-network >/dev/null
+          timeout --signal=TERM --kill-after=10s 240s sudo apt-get update
+          timeout --signal=TERM --kill-after=10s 240s sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
           ffmpeg -version
           ffprobe -version
           espeak --version
