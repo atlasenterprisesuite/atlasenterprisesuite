@@ -81,10 +81,17 @@ function edgeHarness({ user = { id: 'synthetic-user' }, memberships = [member()]
     auth: { getUser: async () => ({ data: { user }, error: user ? null : new Error('invalid_token') }) },
     from(table) {
       assert.equal(table, 'organization_members');
+      // Fail if the endpoint ever drops its authenticated-user or active-status filters.
+      // A permissive mock would otherwise let cross-user membership regressions pass CI.
+      const filters = [];
       const query = {
         select(fields) { assert.equal(fields, 'org_id,role,status'); return query; },
-        eq() { return query; },
-        limit(n) { assert.equal(n, 2); return Promise.resolve({ data: memberships, error: membershipError }); }
+        eq(field, value) { filters.push([field, value]); return query; },
+        limit(n) {
+          assert.equal(n, 2);
+          assert.deepEqual(filters, [['user_id', user.id], ['status', 'active']]);
+          return Promise.resolve({ data: memberships, error: membershipError });
+        }
       };
       return query;
     },
