@@ -78,7 +78,10 @@ function edgeHarness({ user = { id: 'synthetic-user' }, memberships = [member()]
   let handler;
   const rpcCalls = [];
   const client = {
-    auth: { getUser: async () => ({ data: { user }, error: user ? null : new Error('invalid_token') }) },
+    auth: { getUser: async (token) => {
+      assert.equal(token, 'synthetic-token', 'getUser must validate the incoming bearer');
+      return { data: { user }, error: user ? null : new Error('invalid_token') };
+    } },
     from(table) {
       assert.equal(table, 'organization_members');
       // Fail if the endpoint ever drops its authenticated-user or active-status filters.
@@ -101,7 +104,16 @@ function edgeHarness({ user = { id: 'synthetic-user' }, memberships = [member()]
     }
   };
   runInNewContext(transpiled, {
-    createClient: () => client,
+    createClient: (clientUrl, key, options) => {
+      // An authenticated read must use the public client and forward this request's bearer.
+      // A permissive mock would miss service-role substitution or a dropped user JWT.
+      assert.equal(clientUrl, 'https://example.invalid');
+      assert.equal(key, 'synthetic-anon');
+      assert.equal(options?.auth?.persistSession, false);
+      assert.equal(options?.auth?.autoRefreshToken, false);
+      assert.equal(options?.global?.headers?.Authorization, 'Bearer synthetic-token');
+      return client;
+    },
     Deno: {
       env: { get: (key) => ({ SUPABASE_URL: 'https://example.invalid', SUPABASE_ANON_KEY: 'synthetic-anon' }[key]) },
       serve(fn) { handler = fn; }
@@ -153,5 +165,14 @@ test('Mission Control runtime rejects untrusted CORS preflight without origin re
   const response = await handler(runtimeRequest({ method: 'OPTIONS', origin: 'https://evil.invalid', auth: false }));
   assert.equal(response.status, 403);
   assert.equal(response.headers.get('access-control-allow-origin'), null);
+  assert.equal(rpcCalls.length, 0);
+});
+
+
+test('Mission Control runtime denies state-changing POST before identity or permission lookup', async () => {
+  const { handler, rpcCalls } = edgeHarness();
+  const response = await handler(runtimeRequest({ method: 'POST', auth: false }));
+  assert.equal(response.status, 405);
+  assert.equal((await response.json()).error, 'method_not_allowed');
   assert.equal(rpcCalls.length, 0);
 });
