@@ -119,6 +119,8 @@ for (const { name, config, options, status, error, rpcCount } of [
   { name: 'member without admin role', config: { memberships: [member(orgA, 'member')] }, status: 403, error: 'evidence_access_denied', rpcCount: 0 },
   { name: 'ambiguous multiple active organizations', config: { memberships: [member(orgA), member(orgB)] }, status: 403, error: 'evidence_access_denied', rpcCount: 0 },
   { name: 'membership lookup failure', config: { membershipError: new Error('db_unavailable') }, status: 503, error: 'membership_verification_unavailable', rpcCount: 0 },
+  { name: 'missing server-derived organization id', config: { memberships: [member('')], permission: true }, status: 403, error: 'evidence_access_denied', rpcCount: 0 },
+  { name: 'malformed server-derived organization id', config: { memberships: [member('tenant-not-a-uuid')], permission: true }, status: 403, error: 'evidence_access_denied', rpcCount: 0 },
   { name: 'missing releases.read permission', config: { permission: false }, status: 403, error: 'evidence_access_denied', rpcCount: 1 },
   { name: 'permission RPC failure', config: { permissionError: new Error('db_unavailable') }, status: 503, error: 'permission_verification_unavailable', rpcCount: 1 },
   { name: 'authorized identity still cannot fetch unconfigured evidence', config: { permission: true }, status: 503, error: 'trusted_evidence_source_not_configured', rpcCount: 1 }

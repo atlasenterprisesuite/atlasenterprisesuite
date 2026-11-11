@@ -68,6 +68,10 @@ Deno.serve(async (req: Request) => {
     // (including an admin role) does not grant releases.read. Evaluate the
     // authenticated user's permission for the server-derived organization.
     const orgId = String(memberships[0].org_id || '');
+    // An absent or malformed server-derived tenant identifier must never reach the permission RPC.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orgId)) {
+      return respond(req, 403, { error: 'evidence_access_denied' });
+    }
     const { data: permissionAllowed, error: permissionError } = await client.rpc(
       'has_identity_permission', { o: orgId, p: 'releases.read' }
     );
