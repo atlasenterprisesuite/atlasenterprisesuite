@@ -64,6 +64,16 @@ Deno.serve(async (req: Request) => {
       return respond(req, 403, { error: 'evidence_access_denied' });
     }
 
+    // Match the canonical evidence registry RLS contract: active membership alone
+    // (including an admin role) does not grant releases.read. Evaluate the
+    // authenticated user's permission for the server-derived organization.
+    const orgId = String(memberships[0].org_id || '');
+    const { data: permissionAllowed, error: permissionError } = await client.rpc(
+      'has_identity_permission', { o: orgId, p: 'releases.read' }
+    );
+    if (permissionError) return respond(req, 503, { error: 'permission_verification_unavailable' });
+    if (permissionAllowed !== true) return respond(req, 403, { error: 'evidence_access_denied' });
+
     // No GitHub evidence is fetched or asserted here. Do not return verified=true
     // until permission-scoped provenance, freshness, CI and E2E are independently proven.
     return respond(req, 503, {
