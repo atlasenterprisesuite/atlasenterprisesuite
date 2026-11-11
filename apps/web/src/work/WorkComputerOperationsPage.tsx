@@ -12,6 +12,8 @@ import {
   type ComputerOperationsProbe
 } from './computerOperations';
 import { NetworkConnectivityPanel } from './NetworkConnectivityPanel';
+import { ComputerOperationsEvidencePanel } from './ComputerOperationsEvidencePanel';
+import { buildComputerOperationsEvidence, type ComputerOperationsEvidence } from './computerOperationsEvidence';
 import { WorkSubnav } from './WorkSubnav';
 
 type ProbeScope = 'essential' | 'full';
@@ -44,6 +46,7 @@ export function WorkComputerOperationsPage() {
   const [runtimes, setRuntimes] = useState<WorkRuntimeSummary[] | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reports, setReports] = useState<ComputerOperationsEvidence[]>([]);
   const currentOrigin = typeof window === 'undefined' ? '' : window.location.origin;
   const canProbeProduction = browserProductionProbeSupported(currentOrigin);
 
@@ -61,7 +64,10 @@ export function WorkComputerOperationsPage() {
     })));
 
     try {
-      setProbes(await probeComputerOperationsRoutes(routes));
+      const results = await probeComputerOperationsRoutes(routes);
+      setProbes(results);
+      const report = buildComputerOperationsEvidence(results, nextScope, new Date().toISOString());
+      setReports((previous) => [report, ...previous].slice(0, 5));
     } finally {
       setBusy(false);
     }
@@ -195,6 +201,7 @@ export function WorkComputerOperationsPage() {
       </section>
 
       <NetworkConnectivityPanel />
+      <ComputerOperationsEvidencePanel reports={reports} onClear={() => setReports([])} />
 
       <div className="work-card-grid">
         <article className="execution-panel">
