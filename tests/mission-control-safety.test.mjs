@@ -40,14 +40,14 @@ test('P0 baseline: identity guard checks organization, but does not prove ledger
 const evidenceEndpoint = readFileSync(new URL('../supabase/functions/atlas-mission-control-evidence/index.ts', import.meta.url), 'utf8');
 
 test('P0: releases.read is required in addition to an active admin membership', () => {
-  assert.match(evidenceEndpoint, /await client\\.rpc\\(\\s*'has_identity_permission'\\s*,\\s*\\{\\s*o:\\s*orgId,\\s*p:\\s*'releases\\.read'/);
-  assert.match(evidenceEndpoint, /permissionError\\) return respond\\(req, 503, \\{ error: 'permission_verification_unavailable' \\}\\)/);
-  assert.match(evidenceEndpoint, /permissionAllowed !== true\\) return respond\\(req, 403, \\{ error: 'evidence_access_denied' \\}\\)/);
+  assert.match(evidenceEndpoint, /await client\.rpc\(\s*'has_identity_permission'\s*,\s*\{\s*o:\s*orgId,\s*p:\s*'releases\.read'/);
+  assert.match(evidenceEndpoint, /permissionError\) return respond\(req, 503, \{ error: 'permission_verification_unavailable' \}\)/);
+  assert.match(evidenceEndpoint, /permissionAllowed !== true\) return respond\(req, 403, \{ error: 'evidence_access_denied' \}\)/);
   assert.ok(evidenceEndpoint.indexOf('has_identity_permission') < evidenceEndpoint.indexOf('trusted_evidence_source_not_configured'));
 });
 
 test('P0: no verified evidence is returned before a trusted source is integrated', () => {
-  assert.match(evidenceEndpoint, /return respond\\(req, 503, \\{/);
+  assert.match(evidenceEndpoint, /return respond\(req, 503, \{/);
   assert.match(evidenceEndpoint, /verified: false/);
   assert.match(evidenceEndpoint, /trusted_evidence_source_not_configured/);
 });
