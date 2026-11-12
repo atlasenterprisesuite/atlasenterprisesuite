@@ -33,7 +33,7 @@ function openingTags(markup: string, tag: string): string[] {
 }
 
 function attribute(tag: string, name: string): string | null {
-  const expression = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\`]+))`, 'i');
+  const expression = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>]+))`, 'i');
   const match = tag.match(expression);
   return match ? match[1] ?? match[2] ?? match[3] ?? '' : null;
 }
