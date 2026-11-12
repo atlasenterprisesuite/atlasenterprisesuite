@@ -1,0 +1,33 @@
+name: ATLAS Sovereign Source Continuity
+
+on:
+  pull_request:
+    paths:
+      - 'tools/sovereignty/git-continuity.mjs'
+      - 'tools/sovereignty/tests/git-continuity.test.mjs'
+      - '.github/workflows/atlas-sov-source-continuity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-continuity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Ensure exact PR head SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_SHA"
+      - name: Test offline evidence and source continuity
+        run: |
+          node --version
+          git --version
+          node --test tools/sovereignty/tests/*.test.mjs
