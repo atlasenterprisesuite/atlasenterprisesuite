@@ -88,6 +88,10 @@ export function AtlasAssistant() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const sequence = useRef(0);
   const greetingSpoken = useRef(false);
+  // Session events invalidate both pending provider checks and in-flight replies.
+  const sessionEpoch = useRef(0);
+  const replyEpoch = useRef(0);
+  const activeOrganizationId = useRef<string | null>(null);
   const moduleName = useMemo(() => resolveAssistantModule(location.pathname), [location.pathname]);
   const voice = useAssistantVoice();
 
@@ -97,13 +101,23 @@ export function AtlasAssistant() {
   }, []);
 
   const refreshProviderStatus = useCallback(async () => {
+    const epoch = sessionEpoch.current;
     try {
       const status = await getAssistantStatus();
+      if (epoch !== sessionEpoch.current) return;
+      // Never treat a verified provider response from a different tenant as ready.
+      if (!activeOrganizationId.current || status.organization !== activeOrganizationId.current) {
+        setTextCapability('unavailable');
+        setProviderLabel('unavailable (organization mismatch)');
+        setProviderError('ATLAS provider status does not match the active organization.');
+        return;
+      }
       const mapped = providerCapability(status);
       setTextCapability(mapped.capability);
       setProviderLabel(mapped.label);
       setProviderError(mapped.message);
     } catch (cause) {
+      if (epoch !== sessionEpoch.current) return;
       if (identityFailure(cause)) throw cause;
       const message = errorMessage(cause);
       if (errorCode(cause) === 'permission_denied') {
@@ -119,16 +133,36 @@ export function AtlasAssistant() {
   }, []);
 
   const refreshAuthorization = useCallback(async () => {
+    const epoch = sessionEpoch.current;
     try {
-      await getActiveAtlasOrganization();
+      const organization = await getActiveAtlasOrganization();
+      if (epoch !== sessionEpoch.current) return;
+      if (activeOrganizationId.current && activeOrganizationId.current !== organization.id) {
+        // Also fail closed when an organization switch occurs without an auth event.
+        replyEpoch.current += 1;
+        voice.stopMicrophone();
+        voice.stopSpeech();
+        setMessages([]);
+        setConversationId(null);
+        setOpen(false);
+        setState('closed');
+        setError('');
+      }
+      activeOrganizationId.current = organization.id;
       setAuthorized(true);
       await refreshProviderStatus();
     } catch {
+      if (epoch !== sessionEpoch.current) return;
+      sessionEpoch.current += 1;
+      replyEpoch.current += 1;
+      activeOrganizationId.current = null;
       voice.stopMicrophone();
       voice.stopSpeech();
       setAuthorized(false);
       setOpen(false);
       setState('closed');
+      setMessages([]);
+      setConversationId(null);
       setProviderLabel('checking');
       setTextCapability('configuration-required');
       setProviderError('');
@@ -138,10 +172,31 @@ export function AtlasAssistant() {
 
   useEffect(() => {
     void refreshAuthorization();
-    const handleSession = () => void refreshAuthorization();
+    const handleSession = () => {
+      // Clear sensitive UI state before the asynchronous identity recheck.
+      sessionEpoch.current += 1;
+      replyEpoch.current += 1;
+      activeOrganizationId.current = null;
+      voice.stopMicrophone();
+      voice.stopSpeech();
+      setAuthorized(false);
+      setOpen(false);
+      setState('closed');
+      setMessages([]);
+      setConversationId(null);
+      setProviderLabel('checking');
+      setTextCapability('configuration-required');
+      setProviderError('');
+      setError('');
+      void refreshAuthorization();
+    };
     window.addEventListener(ATLAS_SESSION_EVENT, handleSession);
-    return () => window.removeEventListener(ATLAS_SESSION_EVENT, handleSession);
-  }, [refreshAuthorization]);
+    return () => {
+      sessionEpoch.current += 1;
+      replyEpoch.current += 1;
+      window.removeEventListener(ATLAS_SESSION_EVENT, handleSession);
+    };
+  }, [refreshAuthorization, voice.stopMicrophone, voice.stopSpeech]);
 
   useEffect(() => {
     if (!authorized || textCapability === 'ready' || textCapability === 'permission-required') return;
@@ -162,10 +217,14 @@ export function AtlasAssistant() {
 
     if (!greetingSpoken.current && voice.speechEnabled && voice.speechCapability === 'ready') {
       greetingSpoken.current = true;
+      const session = sessionEpoch.current;
+      const turn = replyEpoch.current;
       setState('speaking');
       void voice.speak(GREETING).then(() => {
+        if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
         setState(open ? 'idle' : 'closed');
       }).catch((cause) => {
+        if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
         setError(errorMessage(cause));
         setState(open ? 'error' : 'closed');
       });
@@ -175,6 +234,9 @@ export function AtlasAssistant() {
   if (!authorized) return null;
 
   async function submit(message: string, modality: 'text' | 'voice' = 'text') {
+    const session = sessionEpoch.current;
+    if (!authorized || !activeOrganizationId.current) return;
+    const turn = ++replyEpoch.current;
     if (textCapability !== 'ready') {
       setError(providerError || 'ATLAS Intelligence is not ready for requests.');
       setState('error');
@@ -192,6 +254,7 @@ export function AtlasAssistant() {
         conversationId,
         modality
       });
+      if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
       if (response.conversation_id) setConversationId(response.conversation_id);
       setMessages((current) => [...current, {
         id: nextId('assistant'),
@@ -203,8 +266,10 @@ export function AtlasAssistant() {
         setState('speaking');
         try {
           await voice.speak(response.text);
+          if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
           setState('idle');
         } catch (cause) {
+          if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
           setError(errorMessage(cause));
           setState('error');
         }
@@ -212,6 +277,7 @@ export function AtlasAssistant() {
         setState('idle');
       }
     } catch (cause) {
+      if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
       setError(errorMessage(cause));
       setState('error');
       if (identityFailure(cause)) {
@@ -223,6 +289,8 @@ export function AtlasAssistant() {
   }
 
   async function toggleMicrophone() {
+    const session = sessionEpoch.current;
+    const turn = replyEpoch.current;
     setError(providerError);
     if (voice.microphoneActive) {
       voice.stopMicrophone();
@@ -239,16 +307,23 @@ export function AtlasAssistant() {
     try {
       await voice.startVoiceTurn(
         (transcript) => {
+          if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
           setState('thinking');
           void submit(transcript, 'voice');
         },
         (cause) => {
+          if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
           setError(errorMessage(cause));
           setState('error');
         }
       );
+      if (session !== sessionEpoch.current || turn !== replyEpoch.current) {
+        voice.stopMicrophone();
+        return;
+      }
       setState('listening');
     } catch (cause) {
+      if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
       setError(errorMessage(cause));
       setState('error');
     }
@@ -262,8 +337,13 @@ export function AtlasAssistant() {
 
     if (!greetingSpoken.current && voice.speechEnabled && voice.speechCapability === 'ready' && messages.some((message) => message.role === 'assistant' && message.text === GREETING)) {
       greetingSpoken.current = true;
+      const session = sessionEpoch.current;
+      const turn = replyEpoch.current;
       setState('speaking');
-      void voice.speak(GREETING).then(() => setState('idle')).catch((cause) => {
+      void voice.speak(GREETING).then(() => {
+        if (session === sessionEpoch.current && turn === replyEpoch.current) setState('idle');
+      }).catch((cause) => {
+        if (session !== sessionEpoch.current || turn !== replyEpoch.current) return;
         setError(errorMessage(cause));
         setState('error');
       });
@@ -271,6 +351,7 @@ export function AtlasAssistant() {
   }
 
   function closeAssistant() {
+    replyEpoch.current += 1;
     voice.stopMicrophone();
     voice.stopSpeech();
     setOpen(false);
