@@ -204,4 +204,81 @@ describe('ATLAS Assistant on current mainline architecture', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('ATLAS did not hear a complete phrase');
     expect(mocks.sendAssistantMessage).not.toHaveBeenCalled();
   });
+
+  it('clears conversation and messages on an ATLAS session change, including the same organization', async () => {
+    render(<MemoryRouter><AtlasAssistant /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i }));
+    fireEvent.change(screen.getByLabelText('Message ATLAS Assistant'), { target: { value: 'Private prior-session question' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText('Voice answer')).toBeInTheDocument();
+
+    await act(async () => {
+      window.dispatchEvent(new Event('atlas-session-changed'));
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i }));
+    expect(screen.queryByText('Private prior-session question')).not.toBeInTheDocument();
+    expect(screen.queryByText('Voice answer')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Message ATLAS Assistant'), { target: { value: 'New session question' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledTimes(2));
+    expect(mocks.sendAssistantMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      message: 'New session question',
+      conversationId: null
+    }));
+  });
+
+  it('ignores in-flight replies from a revoked session instead of exposing them to the next organization', async () => {
+    let completeOldReply: ((value: { text: string; conversation_id: string }) => void) | undefined;
+    mocks.sendAssistantMessage.mockImplementationOnce(() => new Promise((resolve) => {
+      completeOldReply = resolve;
+    }));
+
+    render(<MemoryRouter><AtlasAssistant /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i }));
+    fireEvent.change(screen.getByLabelText('Message ATLAS Assistant'), { target: { value: 'Org one confidential request' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledOnce());
+
+    const statusForOrgOne = await mocks.getAssistantStatus();
+    mocks.getActiveAtlasOrganization.mockResolvedValue({ id: 'org-2', role: 'owner' });
+    mocks.getAssistantStatus.mockResolvedValue({ ...statusForOrgOne, organization: 'org-2' });
+
+    await act(async () => {
+      window.dispatchEvent(new Event('atlas-session-changed'));
+    });
+    await screen.findByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i });
+
+    await act(async () => {
+      completeOldReply?.({ text: 'Old private response', conversation_id: 'org-1-conversation' });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Open ATLAS Assistant, Intelligence gemini ready/i }));
+    expect(screen.queryByText('Old private response')).not.toBeInTheDocument();
+    expect(screen.queryByText('Org one confidential request')).not.toBeInTheDocument();
+    expect(mocks.stopMicrophone).toHaveBeenCalled();
+    expect(mocks.stopSpeech).toHaveBeenCalled();
+  });
+
+  it('does not enable provider access when status belongs to a different organization', async () => {
+    mocks.getAssistantStatus.mockResolvedValue({
+      ok: true,
+      authenticated: true,
+      provider: 'gemini',
+      provider_state: 'verified_for_request',
+      organization: 'another-org',
+      role: 'owner',
+      model: 'gemini-live',
+      storage_state: 'configured',
+      capabilities: ['generation'],
+      providers: [{ id: 'gemini', state: 'verified', configured: true, verified: true, model: 'gemini-live', capabilities: ['generation'], profiles: ['balanced'], error: null }]
+    });
+
+    render(<MemoryRouter><AtlasAssistant /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: /Intelligence unavailable/i }));
+    expect(screen.getByLabelText('Message ATLAS Assistant')).toBeDisabled();
+    expect(mocks.sendAssistantMessage).not.toHaveBeenCalled();
+  });
+
 });
