@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import { prepareSiteReviewTarget, type PreparedSiteReviewTarget } from './site-review-target';
 import './site-review-intake.css';
 
