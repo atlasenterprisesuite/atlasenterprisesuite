@@ -51,6 +51,11 @@ export function EarthExplorationPage() {
           <p className="eyebrow">GEBCO_2026 · WMS público</p>
           <h2 id="atlas-earth-map-heading">Mapa científico remoto</h2>
           <p>Comparación entre superficie, topografía bajo el hielo y procedencia de los datos.</p>
+          <p className="muted">
+            Procedencia: la versión subglacial GEBCO_2026 utiliza BedMachine Antarctica v3;
+            Bedmap3 es un conjunto independiente registrado por ATLAS, todavía no fusionado
+            con el visor. La capa TID identifica categorías de origen, no ruinas ni certidumbre arqueológica.
+          </p>
         </div>
         <div className="atlas-earth-controls">
           <label htmlFor="atlas-earth-layer">
