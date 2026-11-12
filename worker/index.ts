@@ -1,10 +1,11 @@
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "connect-src 'self' https://ggmanzcgtlrvqfoccgsh.supabase.co wss://ggmanzcgtlrvqfoccgsh.supabase.co https://unpkg.com https://tiles.openfreemap.org https://basemap.nationalmap.gov https://tiles.mapterhorn.com https://tile.googleapis.com https://ajax.googleapis.com",
+  "connect-src 'self' https://ggmanzcgtlrvqfoccgsh.supabase.co wss://ggmanzcgtlrvqfoccgsh.supabase.co https://unpkg.com https://tiles.openfreemap.org https://basemap.nationalmap.gov https://tiles.mapterhorn.com https://tile.googleapis.com https://ajax.googleapis.com https://apis.google.com https://www.googleapis.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "style-src 'self' 'unsafe-inline' https://unpkg.com https://ajax.googleapis.com",
-  "script-src 'self' https://unpkg.com https://ajax.googleapis.com",
+  "script-src 'self' https://unpkg.com https://ajax.googleapis.com https://apis.google.com",
+  "frame-src 'self' https://docs.google.com https://accounts.google.com",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
   "font-src 'self' data:",

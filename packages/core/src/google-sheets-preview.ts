@@ -39,6 +39,7 @@ export function previewGoogleSheetTransactions(values: readonly (readonly unknow
     if (cells.some(value => typeof value !== 'string')) { issue('invalid_row'); continue; }
     const [reference, date, description, amount, currency] = (cells as string[]).map(value => value.trim());
     if (!reference) { issue('missing_reference'); continue; }
+    if (reference.length > 256 || description.length > 2000) { issue('invalid_row'); continue; }
     const parsedDate = new Date(`${date}T00:00:00.000Z`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
       issue('invalid_date'); continue;
@@ -47,7 +48,7 @@ export function previewGoogleSheetTransactions(values: readonly (readonly unknow
     if (!/^-?\d{1,14}(?:\.\d{1,2})?$/.test(amount)) { issue('invalid_amount'); continue; }
     const [whole, fraction = ''] = amount.replace(/^-/, '').split('.');
     const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
-    if (minor > BigInt(Number.MAX_SAFE_INTEGER)) { issue('invalid_amount'); continue; }
+    if (minor === 0n || minor > BigInt(Number.MAX_SAFE_INTEGER)) { issue('invalid_amount'); continue; }
     if (references.has(reference)) { issue('duplicate_reference'); continue; }
     references.add(reference);
     rows.push({ rowNumber, reference, date, description, amountMinor: Number(minor) * (amount.startsWith('-') ? -1 : 1), currency });

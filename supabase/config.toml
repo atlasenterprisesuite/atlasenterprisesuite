@@ -39,3 +39,7 @@ verify_jwt = true
 [functions.atlas-crm-salesforce]
 verify_jwt = false
 
+
+# Validates the ATLAS session and organization permission in the handler.
+[functions.atlas-google-workspace]
+verify_jwt = false

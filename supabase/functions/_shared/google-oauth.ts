@@ -188,7 +188,9 @@ export function buildGoogleAuthorizationUrl(input: {
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', scopes.join(' '));
   url.searchParams.set('access_type', 'offline');
-  url.searchParams.set('include_granted_scopes', 'true');
+  const selectedOnly = input.permissions.length === 1 && input.permissions[0] === 'google.drive.selected';
+  url.searchParams.set('include_granted_scopes', selectedOnly ? 'false' : 'true');
+  if (selectedOnly) url.searchParams.set('prompt', 'consent');
   url.searchParams.set('state', state);
   return url.toString();
 }

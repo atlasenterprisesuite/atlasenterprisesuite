@@ -1,13 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import * as core from '../../packages/core/src/index';
-import { normalizeGooglePermissions, googleOAuthScopesForPermissions } from '../../supabase/functions/_shared/google-oauth';
+import { normalizeGooglePermissions, googleOAuthScopesForPermissions, buildGoogleAuthorizationUrl as buildServerAuthorizationUrl } from '../../supabase/functions/_shared/google-oauth';
 
 describe('Google selected-file import foundation', () => {
+  it('rejects zero amounts and oversized references before enabling import', () => {
+    const header=['reference','date','description','amount','currency'];
+    const result=core.previewGoogleSheetTransactions([header,['A','2026-11-11','','0','USD'],['x'.repeat(257),'2026-11-11','','1','USD']]);
+    expect(result.rows).toEqual([]);
+    expect(result.issues.map(i=>i.code)).toEqual(['invalid_amount','invalid_row']);
+  });
   it('requests only selected-file access through the existing OAuth helpers', () => {
     const permissions = normalizeGooglePermissions(['google.drive.selected']);
     expect(googleOAuthScopesForPermissions(permissions)).toEqual(['https://www.googleapis.com/auth/drive.file']);
     const url = core.buildGoogleAuthorizationUrl({ clientId: 'client', redirectUri: 'https://atlas.example/callback', state: 'signed', permissions });
     expect(new URL(url).searchParams.get('scope')).toBe('https://www.googleapis.com/auth/drive.file');
+    for (const build of [core.buildGoogleAuthorizationUrl, buildServerAuthorizationUrl]) {
+      const selectedUrl = new URL(build({clientId:'client',redirectUri:'https://atlas.example/callback',state:'signed',permissions}));
+      expect(selectedUrl.searchParams.get('include_granted_scopes')).toBe('false');
+      expect(selectedUrl.searchParams.get('prompt')).toBe('consent');
+    }
   });
 
   it('previews amounts without floating-point rounding and flags duplicate references', () => {
