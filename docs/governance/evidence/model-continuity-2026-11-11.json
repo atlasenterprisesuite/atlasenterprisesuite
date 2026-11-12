@@ -6,7 +6,7 @@
     "supabase/functions/atlas-copilot/atlas-intelligence-store.mjs": "5adaec4f6e3c3ba12935738d28c7faff3fbb02fce8e9c85bcde99272d8b22bb1",
     "supabase/functions/atlas-copilot/sovereign-brain-prompt.mjs": "4cf542269fc686a3110c003218a8de35b5f2309e732b6cd8ac4b54b1154ea7af",
     "supabase/functions/atlas-copilot/background-brain.mjs": "5e60dc2c4a642eeef01639471148009c153a023d05b42b54a610e90c64e90f1a",
-    "supabase/functions/atlas-copilot/index.ts": "ef5a15f366aa08aff9feb221bc9df799c40c6ca78be329015566a0608316a444",
+    "supabase/functions/atlas-copilot/index.ts": "211eff74dfe4e4c1d5adb8a69a9fc781c3766a04fd945c3784c311303f492eab",
     "apps/web/src/assistant/client.ts": "677c6dc6f6ea09fd6a236aba2b3fed036e646d0468fac1cc1ffe891c670767b0",
     "apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx": "326a6c43407a08b29021d6fdded1648f0114e66f3e2c90659dab1779179b3bc4",
     ".github/workflows/atlas-ai-council-security.yml": "354ee7b96693989012db46de559c778afdc28eaf9dc3a824dfb5a51826265829",
@@ -60,5 +60,6 @@
     "Browser interaction and authenticated production E2E are pending.",
     "Style preferences are page-session only.",
     "Initial council suite attempts failed because the retrieved snapshot omitted the auth module; all four rounds passed after materializing the unchanged dependency."
-  ]
+  ],
+  "ci_followup": "First readiness run correctly blocked Copilot changes without a monotonic VERSION bump. Advanced VERSION from 17 to 18; full CI must pass on the new head."
 }
