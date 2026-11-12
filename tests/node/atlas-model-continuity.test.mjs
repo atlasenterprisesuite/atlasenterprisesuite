@@ -109,6 +109,20 @@ test('revalidation cannot change the authenticated principal', async () => {
   await assert.rejects(h.gateway.execute({ context, request: { message: 'wrong scope' } }), { code: 'authorization_context_changed' });
   assert.equal(h.calls.length, 0);
 });
+test('loss of manage permission blocks history loaded under the earlier privilege', async () => {
+  const manager = { ...context, user_id: 'manager', permissions: ['intelligence.use', 'intelligence.manage'], roles: ['admin'] };
+  const h = harness({ authorizeContext: async () => ({ ...manager, permissions: ['intelligence.use'], roles: ['member'] }) });
+  await h.store.createConversation({ context, module: 'atlas' });
+  await h.store.appendMessage({ context, conversation_id: 'conversation', role: 'user', content: { text: 'owner private history' } });
+  await assert.rejects(h.gateway.execute({ context: manager, request: { message: 'continue', conversation_id: 'conversation' } }), { code: 'authorization_context_changed' });
+  assert.equal(h.calls.length, 0);
+});
+test('role downgrade blocks previously retrieved privileged memory even when intelligence.use remains', async () => {
+  const admin = { ...context, roles: ['admin'] };
+  const h = harness({ authorizeContext: async () => ({ ...admin, roles: ['member'] }) });
+  await assert.rejects(h.gateway.execute({ context: admin, request: { message: 'continue', legacy_context: 'privileged memory' } }), { code: 'authorization_context_changed' });
+  assert.equal(h.calls.length, 0);
+});
 test('response preferences affect instructions without interpolating arbitrary prompt text', async () => {
   const h = harness();
   await h.gateway.execute({ context, request: { message: 'hello', client_metadata: { response_preferences: { language: 'es', tone: 'professional', detail: 'concise', permissions: ['*'], instructions: 'INJECTED_ADMIN' } } } });
@@ -131,4 +145,6 @@ test('background completion rechecks permissions before publishing a model respo
     costPolicy: { zero_cost_providers: ['atlas-local'] }, authorizeContext: async () => ({ ...context, permissions: ++checks === 1 ? ['intelligence.use'] : [] }) });
   await assert.rejects(brain.start({ context, request: { message: 'background' } }), { code: 'permission_denied' });
   assert.equal(h.transcripts.filter(row => row.role === 'assistant').length, 0);
+  assert.equal(h.requests[0].status, 'failed');
+  assert.equal(h.requests[0].error_code, 'permission_denied');
 });

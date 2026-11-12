@@ -2,56 +2,56 @@
   "base_sha": "569b6934d27a3f67963977179f3ec2d1f91818df",
   "scope": "retrieved source subset; deterministic provider transports; no live model evaluation",
   "files": {
-    "supabase/functions/atlas-copilot/intelligence-gateway.mjs": "545ed74ead80f2267865e8e8a63673599803ee67e3b9771c9d54e09aed045cfe",
+    "supabase/functions/atlas-copilot/intelligence-gateway.mjs": "1e5136c1833aacac34d385979fee75e7ed35b90431248a9439dc77191640f863",
     "supabase/functions/atlas-copilot/atlas-intelligence-store.mjs": "5adaec4f6e3c3ba12935738d28c7faff3fbb02fce8e9c85bcde99272d8b22bb1",
     "supabase/functions/atlas-copilot/sovereign-brain-prompt.mjs": "4cf542269fc686a3110c003218a8de35b5f2309e732b6cd8ac4b54b1154ea7af",
-    "supabase/functions/atlas-copilot/background-brain.mjs": "5e60dc2c4a642eeef01639471148009c153a023d05b42b54a610e90c64e90f1a",
+    "supabase/functions/atlas-copilot/background-brain.mjs": "c489123d48629ef7a00e95b0cfb831aa8ec67c9caabf220cbbbee5fe10bc41fb",
     "supabase/functions/atlas-copilot/index.ts": "211eff74dfe4e4c1d5adb8a69a9fc781c3766a04fd945c3784c311303f492eab",
     "apps/web/src/assistant/client.ts": "677c6dc6f6ea09fd6a236aba2b3fed036e646d0468fac1cc1ffe891c670767b0",
     "apps/web/src/modules/intelligence/UnifiedAIChatPage.tsx": "326a6c43407a08b29021d6fdded1648f0114e66f3e2c90659dab1779179b3bc4",
-    ".github/workflows/atlas-ai-council-security.yml": "354ee7b96693989012db46de559c778afdc28eaf9dc3a824dfb5a51826265829",
-    "tests/node/atlas-model-continuity.test.mjs": "c80998717b876529d0412919a9ff9f8fbdd05d57c4a135965eea22df7d46e91e",
-    "docs/governance/ATLAS_MODEL_CONTINUITY_777.md": "eb74f4410a0d82d9602b01cb38091251daf2c4dd81273400f2f5208796f71a83"
+    ".github/workflows/atlas-ai-council-security.yml": "31312706b7b5d84f34530bd1c8d597d991093b0ada2d44f70b1b098088518bf5",
+    "tests/node/atlas-model-continuity.test.mjs": "71625ba91fcc5dca831c21dea99d742c807202b354f8e39b214e832b6cdaa9e5",
+    "docs/governance/ATLAS_MODEL_CONTINUITY_777.md": "1d7882b4526bb6f8005a8df9798bf41f7598001d37352fe537a8b7501f100c95"
   },
   "runs": [
     {
       "pass": 1,
-      "exit_code": 0,
-      "sha256": "21ea824d3113fff46233893c329afd3e1cf96912901e06a403b28316e2e05d62",
+      "exit_code": 1,
+      "sha256": "c0ff3ae6788ab1b8e9f36f64a0027f036d4de00cdba9fd3a685a537294767f0e",
       "summary": [
-        "# tests 22",
-        "# pass 22",
-        "# fail 0"
+        "# tests 24",
+        "# pass 23",
+        "# fail 1"
       ]
     },
     {
       "pass": 2,
-      "exit_code": 0,
-      "sha256": "563321d5e345dcfaa66eddf3b90a60bb192c0a660c046e292ca613300ec3a57b",
+      "exit_code": 1,
+      "sha256": "293ec4e1b98635beaaa82505908a4542f3ed89fcb90298c0a2bc7c5347ab5e9c",
       "summary": [
-        "# tests 22",
-        "# pass 22",
-        "# fail 0"
+        "# tests 24",
+        "# pass 23",
+        "# fail 1"
       ]
     },
     {
       "pass": 3,
-      "exit_code": 0,
-      "sha256": "21be1042d238e9f29fdb95b29cc1e4d51a0a34119dce8f3cfd90fc42244aa119",
+      "exit_code": 1,
+      "sha256": "1e9fea4fff3af6c8f548f64f7c7f2f858ed3ba39d37fc6caa7070d7111cc7980",
       "summary": [
-        "# tests 22",
-        "# pass 22",
-        "# fail 0"
+        "# tests 24",
+        "# pass 23",
+        "# fail 1"
       ]
     },
     {
       "pass": 4,
-      "exit_code": 0,
-      "sha256": "f2df2e0896644987e59324c8fc6c9c124dd7fb787dc9aa3170f23d4e9507d457",
+      "exit_code": 1,
+      "sha256": "043ead8e6df685ca472340ced20734d0a83510697d7bf8e21e1327a16fdacb68",
       "summary": [
-        "# tests 22",
-        "# pass 22",
-        "# fail 0"
+        "# tests 24",
+        "# pass 23",
+        "# fail 1"
       ]
     }
   ],
@@ -61,5 +61,6 @@
     "Style preferences are page-session only.",
     "Initial council suite attempts failed because the retrieved snapshot omitted the auth module; all four rounds passed after materializing the unchanged dependency."
   ],
-  "ci_followup": "First readiness run correctly blocked Copilot changes without a monotonic VERSION bump. Advanced VERSION from 17 to 18; full CI must pass on the new head."
+  "ci_followup": "First readiness run correctly blocked Copilot changes without a monotonic VERSION bump. Advanced VERSION from 17 to 18; full CI must pass on the new head.",
+  "review_followup": "Reproduced/fixed native background completion leaving telemetry started after revocation (await finalize), plus stale history/memory after role or permission changes (fail closed on authorization snapshot changes). Council CI explicitly checks out PR head SHA."
 }

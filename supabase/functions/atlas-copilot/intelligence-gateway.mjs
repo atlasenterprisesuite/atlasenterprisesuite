@@ -80,6 +80,8 @@ export async function reauthorizeIntelligenceContext(principal,authorizeContext)
   const current=normalizeAgentContext(await authorizeContext());
   if(current.organization_id!==principal.organization_id||current.user_id!==principal.user_id)throw fail('authorization_context_changed',403);
   if(!has(current,'intelligence.use'))throw fail('permission_denied',403);
+  const unchanged=(before,after)=>before.length===after.length&&before.every(value=>after.includes(value));
+  if(!unchanged(principal.permissions,current.permissions)||!unchanged(principal.roles,current.roles))throw fail('authorization_context_changed',403);
   return Object.freeze({...current,session_id:principal.session_id,request_id:principal.request_id});
 }
 

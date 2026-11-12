@@ -12,6 +12,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -29,6 +31,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: atlas-model-continuity-${{ github.sha }}
+          name: atlas-model-continuity-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/model-continuity
           if-no-files-found: error

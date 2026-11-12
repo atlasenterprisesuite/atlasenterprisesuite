@@ -140,7 +140,7 @@ export function createBackgroundBrain({router,registry,store,costPolicy,authoriz
         });
         const requestRow={...telemetry,provider:result.provider||selected.providerId,model:result.model||null,usage:{atlas_background:{response_id:result.response_id,status:result.status||'queued',kind:'provider-native'},atlas_routing:routing}};
         if(result.status==='completed'){
-          return finalize({context,requestRow,providerResult:result,routing});
+          return await finalize({context,requestRow,providerResult:result,routing});
         }
         return {
           status:result.status||'queued',
