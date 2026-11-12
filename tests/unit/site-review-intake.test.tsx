@@ -33,7 +33,7 @@ describe('Site Review offline intake UI', () => {
     const field = screen.getByLabelText('Website address');
     fireEvent.change(field, { target: { value: 'https://example.org/' } });
     fireEvent.click(screen.getByRole('button', { name: 'Prepare review' }));
-    const input = screen.getByLabelText(/HTML snapshot/);
+    const input = screen.getByLabelText('HTML snapshot (.html or .htm, max 256 KiB)');
     const html = '<html lang="en"><head><title>SUPER_SECRET_TITLE</title></head><body><h1>Safe heading</h1><script>window.leak="SUPER_SECRET"</script></body></html>';
     const file = new File([html], 'source.html', { type: 'text/html' });
     Object.defineProperty(file, 'text', { value: async () => html });
@@ -50,7 +50,7 @@ describe('Site Review offline intake UI', () => {
     fireEvent.change(screen.getByLabelText('Website address'), { target: { value: 'https://example.org/' } });
     fireEvent.click(screen.getByRole('button', { name: 'Prepare review' }));
     const file = new File(['not html'], 'file.txt', { type: 'text/plain' });
-    fireEvent.change(screen.getByLabelText(/HTML snapshot/), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText('HTML snapshot (.html or .htm, max 256 KiB)'), { target: { files: [file] } });
     expect(screen.getByRole('alert').textContent).toContain('.html or .htm');
     expect(screen.queryByText('Static source signals · Not a live site scan')).toBeNull();
   });
