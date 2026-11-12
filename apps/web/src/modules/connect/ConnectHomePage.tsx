@@ -11,6 +11,7 @@ export function ConnectHomePage() {
       </header>
 
       <div className="module-grid">
+        <Link className="module-card enabled" to="/connect/google"><span>Productivity · Accounting</span><strong>Google Workspace</strong><p>Select Google Sheets, review transactions and import balanced journal drafts.</p></Link>
         <Link className="module-card enabled" to="/connect/chat">
           <span>Messaging · Governed</span><strong>ATLAS Chat</strong>
           <p>Organization-scoped realtime messaging with durable history, ordered delivery, RBAC, audit and polling recovery.</p>

@@ -1,0 +1,74 @@
+.google-workspace {
+  max-width: 1200px;
+  margin-inline: auto;
+}
+.google-workspace-actions,
+.google-workspace-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.google-workspace-fields > label {
+  flex: 1;
+  min-width: 230px;
+}
+.google-workspace label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+.google-workspace select {
+  padding: 0.75rem;
+  max-width: 100%;
+  border: 1px solid #518bd2;
+  border-radius: 0.5rem;
+  background: #101d32;
+  color: #f2f7ff;
+}
+.google-workspace button {
+  padding: 0.75rem 1rem;
+  border: 1px solid #518bd2;
+  border-radius: 0.5rem;
+  background: #16365c;
+  color: #f2f7ff;
+  cursor: pointer;
+}
+.google-workspace button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.google-workspace button:focus-visible,
+.google-workspace select:focus-visible {
+  outline: 3px solid #e8c868;
+  outline-offset: 3px;
+}
+.google-workspace-table {
+  overflow: auto;
+  border: 1px solid #518bd2;
+  border-radius: 0.5rem;
+}
+.google-workspace table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.google-workspace th,
+.google-workspace td {
+  padding: 0.7rem;
+  text-align: left;
+  border-bottom: 1px solid #334f72;
+}
+.google-workspace details {
+  margin-block: 1rem;
+}
+.google-workspace caption {
+  padding: 0.75rem;
+}
+@media (max-width: 600px) {
+  .google-workspace-actions {
+    flex-direction: column;
+  }
+  .google-workspace-fields > label {
+    min-width: 100%;
+  }
+}

@@ -28,6 +28,7 @@
     "verify:evidence": "vitest run tests/unit/core-evidence.test.ts tests/unit/evidence-engine.test.ts tests/unit/provider-incident-evidence.test.ts && bash -n scripts/network/verify-openai-connectivity.sh && node --experimental-strip-types scripts/evidence/build-evidence-manifest.mjs tests/fixtures/evidence/openai-network-pass.json artifacts/evidence/openai-network-ci.json docs/network/evidence/2026-10-07-openai-connectivity-evidence.json"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

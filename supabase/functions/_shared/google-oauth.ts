@@ -3,6 +3,7 @@ export type GoogleIntegrationPermission =
   | 'google.gmail.write'
   | 'google.calendar.read'
   | 'google.calendar.write'
+  | 'google.drive.selected'
   | 'google.drive.read'
   | 'google.drive.write';
 
@@ -24,6 +25,7 @@ const GOOGLE_OAUTH_SCOPES: Record<GoogleIntegrationPermission, readonly string[]
     'https://www.googleapis.com/auth/calendar.events.readonly'
   ],
   'google.calendar.write': ['https://www.googleapis.com/auth/calendar.events'],
+  'google.drive.selected': ['https://www.googleapis.com/auth/drive.file'],
   'google.drive.read': ['https://www.googleapis.com/auth/drive.readonly'],
   'google.drive.write': ['https://www.googleapis.com/auth/drive.file']
 };
@@ -186,7 +188,9 @@ export function buildGoogleAuthorizationUrl(input: {
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', scopes.join(' '));
   url.searchParams.set('access_type', 'offline');
-  url.searchParams.set('include_granted_scopes', 'true');
+  const selectedOnly = input.permissions.length === 1 && input.permissions[0] === 'google.drive.selected';
+  url.searchParams.set('include_granted_scopes', selectedOnly ? 'false' : 'true');
+  if (selectedOnly) url.searchParams.set('prompt', 'consent');
   url.searchParams.set('state', state);
   return url.toString();
 }
