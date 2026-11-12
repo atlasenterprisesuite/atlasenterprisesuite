@@ -55,6 +55,39 @@ export const EARTH_EXPLORATION_SOURCES: readonly EarthExplorationSource[] = [
   }
 ] as const;
 
+/**
+ * GEBCO_2026 Type Identifier (TID) examples documented by GEBCO.
+ * The TID describes the source method of a grid cell, not its accuracy,
+ * archaeological relevance, or presence of a physical structure.
+ * This is a textual key, NOT a legend mapping the WMS image's pixel colors.
+ */
+export type TidSourceClass = 'land' | 'direct' | 'indirect' | 'unknown';
+export type TidGuideEntry = {
+  code: number;
+  label: string;
+  sourceClass: TidSourceClass;
+};
+
+export const GEBCO_TID_EXAMPLES: readonly TidGuideEntry[] = [
+  { code: 0, label: 'Tierra firme', sourceClass: 'land' },
+  { code: 10, label: 'Ecosonda monohaz', sourceClass: 'direct' },
+  { code: 11, label: 'Multihaz', sourceClass: 'direct' },
+  { code: 12, label: 'Método sísmico', sourceClass: 'direct' },
+  { code: 15, label: 'Lidar batimétrico', sourceClass: 'direct' },
+  { code: 40, label: 'Predicción por gravedad satelital', sourceClass: 'indirect' },
+  { code: 41, label: 'Interpolación computacional', sourceClass: 'indirect' },
+  { code: 70, label: 'Cuadrícula de fuentes mixtas', sourceClass: 'unknown' },
+  { code: 71, label: 'Fuente desconocida', sourceClass: 'unknown' },
+  { code: 72, label: 'Puntos de control de interpolación', sourceClass: 'unknown' }
+] as const;
+
+export function classifyGebcoTid(code: number): TidSourceClass {
+  if (code === 0) return 'land';
+  if (Number.isInteger(code) && code >= 10 && code <= 17) return 'direct';
+  if (Number.isInteger(code) && code >= 40 && code <= 48) return 'indirect';
+  return 'unknown';
+}
+
 // Official GEBCO 2026 WMS GetMap examples, including the color-coded Type Identifier layer.
 // GEBCO_2026 under-ice topography relies on BedMachine Antarctica v3, not Bedmap3.
 // Bedmap3 remains a separately cited source catalog entry until its own grids are ingested.
