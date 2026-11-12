@@ -622,7 +622,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   v_user uuid := auth.uid();
   v_return public.tax_returns := public.tax_assert_return_mutable(p_return_id, 'tax.prepare');
@@ -730,8 +730,8 @@ begin
   );
 
   return jsonb_build_object('document_id', v_document_id, 'mapping_count', v_count);
-end
-$;
+end;
+$$;
 
 create or replace function public.tax_record_line_mapping(
   p_return_id uuid,
