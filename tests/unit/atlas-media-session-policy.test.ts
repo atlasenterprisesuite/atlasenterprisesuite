@@ -47,8 +47,14 @@ describe('ATLAS Universal Media policy / fail-closed contract', () => {
   it('blocks transferring without a target, unsupported video, and absent remote permissions', () => {
     expect(authorizeMediaCommand({ ...base(), action: 'transfer' }).code).toBe('device_required');
     const target = { id: 'laptop-1', organizationId: 'tenant-a', enrolled: true, online: true, explicitlySelected: true, consentGranted: true, capabilities: ['audio.playback'] as const };
-    expect(authorizeMediaCommand({ ...base(), session: { ...base().session, kind: 'video' }, target }).code).toBe('capability_unsupported');
+    expect(authorizeMediaCommand({ ...base(), session: { ...base().session, kind: 'video' }, source: { ...base().source, remotePlaybackAuthorized: true }, target }).code).toBe('capability_unsupported');
     expect(authorizeMediaCommand({ ...base(), target }).code).toBe('rights_unverified');
+  });
+
+  it('rejects unknown runtime actions and malformed remote device identities', () => {
+    expect(authorizeMediaCommand({ ...base(), action: 'remote-shell' as never }).code).toBe('invalid_request');
+    const target = { id: 'laptop\\nother', organizationId: 'tenant-a', enrolled: true, online: true, explicitlySelected: true, consentGranted: true, capabilities: ['audio.playback'] as const };
+    expect(authorizeMediaCommand({ ...base(), source: { ...base().source, remotePlaybackAuthorized: true }, target }).code).toBe('invalid_request');
   });
 
   it('allows delegated admins but never skips the explicit control permission', () => {
