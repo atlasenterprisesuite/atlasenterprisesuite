@@ -53,7 +53,7 @@ describe('ATLAS Universal Media policy / fail-closed contract', () => {
 
   it('rejects unknown runtime actions and malformed remote device identities', () => {
     expect(authorizeMediaCommand({ ...base(), action: 'remote-shell' as never }).code).toBe('invalid_request');
-    const target = { id: 'laptop\\nother', organizationId: 'tenant-a', enrolled: true, online: true, explicitlySelected: true, consentGranted: true, capabilities: ['audio.playback'] as const };
+    const target = { id: 'laptop' + String.fromCharCode(10) + 'other', organizationId: 'tenant-a', enrolled: true, online: true, explicitlySelected: true, consentGranted: true, capabilities: ['audio.playback'] as const };
     expect(authorizeMediaCommand({ ...base(), source: { ...base().source, remotePlaybackAuthorized: true }, target }).code).toBe('invalid_request');
   });
 
