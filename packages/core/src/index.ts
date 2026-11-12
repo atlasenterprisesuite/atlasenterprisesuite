@@ -15,6 +15,7 @@ export type GoogleIntegrationPermission =
   | 'google.gmail.write'
   | 'google.calendar.read'
   | 'google.calendar.write'
+  | 'google.drive.selected'
   | 'google.drive.read'
   | 'google.drive.write';
 
@@ -51,6 +52,7 @@ const GOOGLE_OAUTH_SCOPES: Record<GoogleOAuthPermission, readonly string[]> = {
     'https://www.googleapis.com/auth/calendar.events.readonly'
   ],
   'google.calendar.write': ['https://www.googleapis.com/auth/calendar.events'],
+  'google.drive.selected': ['https://www.googleapis.com/auth/drive.file'],
   'google.drive.read': ['https://www.googleapis.com/auth/drive.readonly'],
   'google.drive.write': ['https://www.googleapis.com/auth/drive.file']
 };
@@ -320,3 +322,5 @@ export * from './whatsapp-ai-council';
 export * from './whatsapp-provider';
 
 export * from './deploymentControl';
+
+export * from './google-sheets-preview';
