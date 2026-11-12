@@ -40,7 +40,7 @@ export function SiteReviewIntake() {
             placeholder="https://www.example.com/"
             value={value}
             maxLength={2048}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => { setValue(event.target.value); setTarget(null); setError(null); }}
             required
             aria-describedby="site-review-intake-help"
           />
