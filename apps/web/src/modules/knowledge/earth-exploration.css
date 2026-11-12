@@ -84,3 +84,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+.atlas-earth-tid-guide {
+  border: 1px solid rgba(100, 212, 255, .4);
+  border-radius: .75rem;
+  padding: 1rem;
+  background: rgba(6, 25, 46, .22);
+}
+.atlas-earth-tid-guide h3 {
+  margin-block: 0 .6rem;
+}
+.atlas-earth-tid-guide ul {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: .65rem;
+}
+.atlas-earth-tid-guide li {
+  border: 1px solid rgba(100, 212, 255, .25);
+  border-radius: .5rem;
+  padding: .7rem;
+  display: grid;
+  gap: .25rem;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+.atlas-earth-tid-code {
+  font-variant-numeric: tabular-nums;
+  color: #f8cc75;
+  font-weight: 700;
+  min-width: 2ch;
+}
+.atlas-earth-tid-class {
+  grid-column: 2;
+  font-size: .85rem;
+}
