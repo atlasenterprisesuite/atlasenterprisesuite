@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   EARTH_EXPLORATION_SOURCES,
+  GEBCO_TID_EXAMPLES,
+  classifyGebcoTid,
   buildGebcoMapUrl,
   type GebcoLayer,
   type GebcoRegion
@@ -45,4 +47,23 @@ describe('ATLAS Earth Exploration — official datasets and source boundaries', 
     expect(url.searchParams.get('width')).toBe('1200');
     expect(url.searchParams.get('height')).toBe('600');
   });
+
+  it('classifies direct, indirect and unknown TID methods without manufacturing certainty', () => {
+    expect(classifyGebcoTid(0)).toBe('land');
+    expect(classifyGebcoTid(10)).toBe('direct');
+    expect(classifyGebcoTid(11)).toBe('direct');
+    expect(classifyGebcoTid(17)).toBe('direct');
+    expect(classifyGebcoTid(40)).toBe('indirect');
+    expect(classifyGebcoTid(48)).toBe('indirect');
+    expect(classifyGebcoTid(70)).toBe('unknown');
+    expect(classifyGebcoTid(71)).toBe('unknown');
+    expect(classifyGebcoTid(72)).toBe('unknown');
+    expect(classifyGebcoTid(99)).toBe('unknown');
+    expect(classifyGebcoTid(NaN)).toBe('unknown');
+    expect(classifyGebcoTid(40.5)).toBe('unknown');
+    for (const example of GEBCO_TID_EXAMPLES) {
+      expect(classifyGebcoTid(example.code)).toBe(example.sourceClass);
+    }
+  });
+
 });
