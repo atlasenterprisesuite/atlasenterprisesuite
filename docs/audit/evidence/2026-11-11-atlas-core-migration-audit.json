@@ -1,0 +1,3541 @@
+{
+  "schemaVersion": 1,
+  "mode": "read-only",
+  "ok": false,
+  "status": "blocked",
+  "liveVerified": false,
+  "databaseMutated": false,
+  "observedAt": "2026-11-12T00:06:32.534764Z",
+  "projectId": "ggmanzcgtlrvqfoccgsh",
+  "localCount": 142,
+  "remoteCount": 319,
+  "errors": [],
+  "invalidLocalVersions": [
+    {
+      "version": "20260907",
+      "name": "accounting_ai_insights",
+      "sourceSha256": "6b252cfb9f87aad49d46e5ec3fe689ec1939ad6773d167af809d5f50a4217325"
+    },
+    {
+      "version": "20260910",
+      "name": "harden_public_infra_verification",
+      "sourceSha256": "330684b722fab7a5e2c6f042a4e88ad63acdb764554a89cc01c1aef79f2090be"
+    },
+    {
+      "version": "20260911",
+      "name": "hospitality_room_access",
+      "sourceSha256": "8a9aaf1c7d90e02cb45d2fefc9321f1331e0bf78d6469bcd24b9d1745a09ed52"
+    },
+    {
+      "version": "20260912",
+      "name": "atlas_work_runtime",
+      "sourceSha256": "41f03e5632c1c05aab859ecb00f5f2b31eebf0539eff5e00ae6e4da6ff8560ca"
+    },
+    {
+      "version": "20260912",
+      "name": "creator_director",
+      "sourceSha256": "c50f1fe455140a75e1fb2e5f446e4713b57c67b795e9af152be9f364c6859318"
+    },
+    {
+      "version": "20260912",
+      "name": "hospitality_rls_initplan_hardening",
+      "sourceSha256": "52aa6c85c1fe6224b6f378b4341571850408fe69d8487efe8bf07efe717f9894"
+    },
+    {
+      "version": "20260912",
+      "name": "manager_readiness_execution",
+      "sourceSha256": "26c8b87a8031bb57d45d60ebfa4787f963a25354acf8e7eca1e7e28bc6d2c583"
+    },
+    {
+      "version": "20260912",
+      "name": "ride_profile_photo_atomicity",
+      "sourceSha256": "2fcef6543599fc759863fb6da05cfcbdbe4e368bd94168db767bc9f0a41076f8"
+    },
+    {
+      "version": "20260912",
+      "name": "ride_profile_photo_compliance_hardening",
+      "sourceSha256": "56d28542d22bac3c3e2a8dc11b92d83d63aa58e5e3e8dfa55736126eea02a04b"
+    },
+    {
+      "version": "20260912",
+      "name": "ride_profile_photo_compliance",
+      "sourceSha256": "2663ab971da14ebd860d2e975e060c3040954942279d7dfea8051b020c896979"
+    },
+    {
+      "version": "20260912",
+      "name": "universal_execution_engine",
+      "sourceSha256": "91c6fab9668e77dd909bf4a846742352bc448b19bc570efab23ee5cce429ff88"
+    },
+    {
+      "version": "20260913",
+      "name": "harden_atlas_bootstrap_owner_aal2",
+      "sourceSha256": "3bfe0037f9f6f92b4a238fd60e0b9b977b41abf6eef1b54782c072c4a82a807f"
+    },
+    {
+      "version": "20260914",
+      "name": "private_oracle",
+      "sourceSha256": "c22fc1ba83aee60b3e086e8f1ed8c3b64b5c510afb109cf40d1328c478a339ea"
+    },
+    {
+      "version": "20260916",
+      "name": "hospitality_add_onity_provider",
+      "sourceSha256": "4fea32a34bb2092d92f40bf8a1617249072c6bdc0ddde6d6b78894a794b3559a"
+    },
+    {
+      "version": "20260918",
+      "name": "creator_teleprompter_recordings",
+      "sourceSha256": "4557b4412b9649e29acc1ae2f18bd27ca3a3eaca93dcf4286fe2294452ca8af3"
+    }
+  ],
+  "duplicateLocalVersions": [
+    "20260912",
+    "20260920160000"
+  ],
+  "missingLocal": [
+    {
+      "version": "20260808183211",
+      "name": "atlas_core_schema",
+      "sourceSha256": "113e949972995b79edad7e0cc29ec47d228d7abe10010b0bcf61925eeec497ac"
+    },
+    {
+      "version": "20260808183220",
+      "name": "atlas_storage",
+      "sourceSha256": "861a527465d35904a6dc2165fa7d1f96ddce1a4351cba672ae3eb0bb8ea43f83"
+    },
+    {
+      "version": "20260808183306",
+      "name": "atlas_cloud_operations",
+      "sourceSha256": "75ee88dc514bcde0b30df0c7f264e02c2d6bac0aff65f6220bfbad9ebfc7f305"
+    },
+    {
+      "version": "20260808183316",
+      "name": "atlas_security_patch",
+      "sourceSha256": "6fe5dc282be7bcb57fe0eafe569c715f107a7c8bc0316534c07e3f2fb954d529"
+    },
+    {
+      "version": "20260808183355",
+      "name": "atlas_production_function_hardening",
+      "sourceSha256": "c836b0483327b3a9b691df191e4f3fd2a82066ded3592d7e2de1443cc7519543"
+    },
+    {
+      "version": "20260808183529",
+      "name": "atlas_personal_intelligence_cloud_core",
+      "sourceSha256": "ad07f78a59f03e0c3041bf960e6ad591bfd476a3a8773646c58398e521569589"
+    },
+    {
+      "version": "20260808183851",
+      "name": "atlas_private_authorization_helpers",
+      "sourceSha256": "d6cd63a9a7246c599c5cb14f06632d5a37a19fd095f8a18bb5076c4634b5bee2"
+    },
+    {
+      "version": "20260808184042",
+      "name": "atlas_calendar_owner_isolation",
+      "sourceSha256": "5c12f300b24323cad5cce065b32c351fa9feb1bcd8d9ecb0829243273996620d"
+    },
+    {
+      "version": "20260809032705",
+      "name": "atlas_identity_foundation",
+      "sourceSha256": "17d846641b25a52fa7de4cdcfe587d8bd502d5b16fd8b5dcde75abcbd22d5fec"
+    },
+    {
+      "version": "20260809032710",
+      "name": "atlas_identity_audit_hardening",
+      "sourceSha256": "4829af6b59f91919d427506fd891476a110b21d371e7b014e6b2eb10b23e3926"
+    },
+    {
+      "version": "20260809032746",
+      "name": "atlas_identity_invoker_hardening",
+      "sourceSha256": "55c62cd0dc8455a1a6956467616c82df8628f84b2e92fd4df49c69c4e1c4eb7a"
+    },
+    {
+      "version": "20260809032851",
+      "name": "atlas_identity_indexes",
+      "sourceSha256": "fe2a4b7406d4464015364460b7b0119d28395383547a4a5f1c2f51025a835e7b"
+    },
+    {
+      "version": "20260809035356",
+      "name": "atlas_identity_mfa_stepup",
+      "sourceSha256": "b69691c4ef6bddc202e639fb6566af8d0a5bbb5c2758b321421b91807ee697aa"
+    },
+    {
+      "version": "20260809040445",
+      "name": "atlas_identity_member_admin",
+      "sourceSha256": "22282cea8ae6de10196d30627c231a18af11641deab52a4f748f8b5e188d1125"
+    },
+    {
+      "version": "20260809040925",
+      "name": "atlas_identity_hierarchy_locking",
+      "sourceSha256": "9befe126c053e3b1adb1ceb7549f4f4a308fbd9c18512a010e64f516c91db7d6"
+    },
+    {
+      "version": "20260809040959",
+      "name": "atlas_identity_member_indexes",
+      "sourceSha256": "06248d83d5970d76267a416dfda267b914710aeb1ef61f63f92d23c2f7073f95"
+    },
+    {
+      "version": "20260809041349",
+      "name": "atlas_identity_invitations",
+      "sourceSha256": "e05045618cde355975a608641e0889ae8a8ed6f4518e9583d6b428442419f19e"
+    },
+    {
+      "version": "20260809041745",
+      "name": "atlas_identity_invitation_confirmation",
+      "sourceSha256": "69f5926f5776298fb7d0afd7732b0968d771da9f0ce6d775c182295b74280cbe"
+    },
+    {
+      "version": "20260809042001",
+      "name": "atlas_identity_invitation_indexes",
+      "sourceSha256": "1358f7e1c31c3573e170f99095b9cdc7e825723d9dfcd74388dcef7397b988d2"
+    },
+    {
+      "version": "20260809042222",
+      "name": "atlas_identity_invitation_rls",
+      "sourceSha256": "5558bdb9c2ea879b6f50938efeb3883ce5db96f0f8fa4fe3acbde5e81866e805"
+    },
+    {
+      "version": "20260809042533",
+      "name": "atlas_identity_security_history",
+      "sourceSha256": "311ed700239fcfc25f9ba34b2f089ef1dd0da5a6d2a04aa0ed83d902111d01f1"
+    },
+    {
+      "version": "20260809043021",
+      "name": "atlas_identity_security_event_privileges",
+      "sourceSha256": "abcfd0405a30c23ef1f300c89d7ac181abe94399cb4aa2cfdfe0b216821b683a"
+    },
+    {
+      "version": "20260809223037",
+      "name": "atlas_private_beta_access_hardening",
+      "sourceSha256": "be0ece1dfcd00b6dafca26cdcb653a6a20f45be230964c55c4012ed7bb6e8b9e"
+    },
+    {
+      "version": "20260809223324",
+      "name": "atlas_horizontal_production_fabric",
+      "sourceSha256": "829743624182fa1aaf63d5783599dbca49456b9180e1b584d516cd5f81c6aafc"
+    },
+    {
+      "version": "20260809224013",
+      "name": "bootstrap_atlas_production_tenant",
+      "sourceSha256": "f75154487b1c7d2a164611b2baa4146031758fb2de375e0b8b2aba61159983b3"
+    },
+    {
+      "version": "20260809224140",
+      "name": "atlas_horizontal_fabric_hardening",
+      "sourceSha256": "b390b507aeb9971c505ec48f0b1b120059bc2dde67457ff15f44a7304e21a84f"
+    },
+    {
+      "version": "20260809224811",
+      "name": "atlas_core_performance_hardening",
+      "sourceSha256": "23165ac4d1da6d2348d3aa0679be98362d9f4dc109e5b47ec120179e24d5e2bf"
+    },
+    {
+      "version": "20260810021509",
+      "name": "atlas_work_graph_conversation_execution",
+      "sourceSha256": "fccb34732e9561c33489781642fe52d7008fd19c9aae1af4b82da32aaeb3d4be"
+    },
+    {
+      "version": "20260810021519",
+      "name": "atlas_work_graph_referential_hardening",
+      "sourceSha256": "12d3822f28e1d7650f0abb0caa9c86e476e7ed97b9d095b42f56c3474aa44f3a"
+    },
+    {
+      "version": "20260810021646",
+      "name": "atlas_work_graph_rpc_hardening",
+      "sourceSha256": "dee95aa76ef00d4850ddeb68ed07004f7509ef09fec7cf706b91584f0f92a28f"
+    },
+    {
+      "version": "20260810021734",
+      "name": "atlas_work_graph_performance_hardening",
+      "sourceSha256": "e30a7d03ab2f877582bb8e016fea31e884116cada9019f35beb18365f4e4bb7d"
+    },
+    {
+      "version": "20260810022127",
+      "name": "atlas_work_graph_production_registry",
+      "sourceSha256": "916e9d697e1531d2114d0ca5f63f4f5921acd034ab2c3095abe33264f0912703"
+    },
+    {
+      "version": "20260810022656",
+      "name": "atlas_work_graph_codex_review_hardening",
+      "sourceSha256": "3c4702b0d827e03ab7f73cef718abe3f0f518e8bfd5a34ac279a22852891d7f1"
+    },
+    {
+      "version": "20260816023303",
+      "name": "atlas_owner_bootstrap_rpc",
+      "sourceSha256": "31d1ce3d3e86f76f7b297582016cc2130da73fe3bab16f555f4498e14f8cbc50"
+    },
+    {
+      "version": "20260816024547",
+      "name": "secure_atlas_bootstrap_owner_execution",
+      "sourceSha256": "9f294a509b1eaddc8f81fbbeeb74d7406d551d401294aabca4b4d82d0339d8a1"
+    },
+    {
+      "version": "20260816065444",
+      "name": "atlas_transportation_core",
+      "sourceSha256": "e95c93b0a82a735a814e210d0af578bc7c67f475d3b80031d1c5643b1cf16695"
+    },
+    {
+      "version": "20260818201734",
+      "name": "atlas_autonomous_accounting_foundation",
+      "sourceSha256": "4391a73fc20081a806d65034a40185d709c3a57d4cfbbc2abe6791e63c1c709a"
+    },
+    {
+      "version": "20260818201801",
+      "name": "atlas_autonomous_accounting_fk_indexes",
+      "sourceSha256": "c55803b0344c7dcf8f04e305825b169c5e31376a5204cbef2b13a266cc1d0994"
+    },
+    {
+      "version": "20260821174011",
+      "name": "atlas_bootstrap_owner_role_accuracy",
+      "sourceSha256": "a5f7453f4c65118767b73176e32b905b0019eece44f70380d22e7f3ab4866ed0"
+    },
+    {
+      "version": "20260821174121",
+      "name": "atlas_product_telemetry_capture",
+      "sourceSha256": "aa4e27e544ae02b313bf197bac5512d8e8c8d9003b0998afff9b1ec585d1d4bc"
+    },
+    {
+      "version": "20260821174345",
+      "name": "atlas_transport_audit_coverage",
+      "sourceSha256": "3d311beab4df0b66331f37e2c3185a6328462047db65cc250723bc39a720490a"
+    },
+    {
+      "version": "20260821174504",
+      "name": "atlas_autonomous_accounting_audit_coverage",
+      "sourceSha256": "5ad7dddfa2e3f61e2c0b109f7b491ba4dbe6a6a2301bb730551b5570b1ba7145"
+    },
+    {
+      "version": "20260821174551",
+      "name": "atlas_audit_recursive_secret_redaction",
+      "sourceSha256": "9b0881bceaa7012a1ec2474ea0a25c6ffb7d54be92785021ff3e4869fd4dc13e"
+    },
+    {
+      "version": "20260821174808",
+      "name": "atlas_transport_rls_policy_consolidation",
+      "sourceSha256": "b86f6f63a49eb7df30eade825633f1710027fc42245f7f11affda9c7c60866ac"
+    },
+    {
+      "version": "20260821174843",
+      "name": "atlas_work_graph_fk_index_alignment",
+      "sourceSha256": "8759f273e42819c274813f773824d00e7f9687b8bad297186b1b152a40f60865"
+    },
+    {
+      "version": "20260821174944",
+      "name": "atlas_conversation_capture_security_invoker",
+      "sourceSha256": "1578a20ba4e8b8cdb430b816a84232746e46054d866f8c646f303f6df1d03095"
+    },
+    {
+      "version": "20260821175104",
+      "name": "atlas_accounting_rpc_security_invoker",
+      "sourceSha256": "55e8c70a25f10ec489d23589f18c1dea478d45f5860592bf7e58e4d430c774b3"
+    },
+    {
+      "version": "20260821224214",
+      "name": "atlas_sovereign_feature_flags_v1",
+      "sourceSha256": "1652dfd409f99601367233b0bac10ec0c80a9ab3b5d538e1a201e4dc3bbe54af"
+    },
+    {
+      "version": "20260821224245",
+      "name": "atlas_observability_core_v1",
+      "sourceSha256": "9ff1748cf2bd9341baa50723c8b4b7ae1bbe04f19b585aaacb870e6b82920a77"
+    },
+    {
+      "version": "20260821224357",
+      "name": "atlas_observability_rls_initplan_optimization",
+      "sourceSha256": "3e78067a5852c4ce14412b229c048d7ef701e2f5ce65d442937443171d70e8fe"
+    },
+    {
+      "version": "20260821224524",
+      "name": "atlas_ai_gateway_registry_v1",
+      "sourceSha256": "21f02ab70d74592d738cc5e3f2f8ce578c719929ce94c73e0df10f1ddea03ade"
+    },
+    {
+      "version": "20260821224631",
+      "name": "atlas_workflow_outbox_resilience_v1",
+      "sourceSha256": "cb7648d9b53df5c8193e0931b2b58e6e7c85f91d1dde8f3c21761ed424ab4a0c"
+    },
+    {
+      "version": "20260821224725",
+      "name": "atlas_ai_gateway_fk_index_alignment",
+      "sourceSha256": "049f50fbf9e41baec9045aa3d43209b73b53953bec10a9b885fe01261faadf2c"
+    },
+    {
+      "version": "20260822092417",
+      "name": "atlas_sovereign_ai_governance_v1",
+      "sourceSha256": "a7dd1c08826ab62d858719ffc83622bef228ee54c998af2daa39964770bdffd1"
+    },
+    {
+      "version": "20260822092503",
+      "name": "atlas_sovereign_ai_governance_lint_fixes",
+      "sourceSha256": "48b21436175c1ab15a8cb8f8340c0dac14f123e3edd81bbc227e470fe00e4dc0"
+    },
+    {
+      "version": "20260822093104",
+      "name": "atlas_release_registry_v1",
+      "sourceSha256": "6072bd618999b843a74bee4be3186b094d2344a6d928c622da91322dfcc8e557"
+    },
+    {
+      "version": "20260825212333",
+      "name": "atlas_live_entertainment_core_v1",
+      "sourceSha256": "36148c52f283294d6aed335eee29103c75127c6bf1dcaf34ca2aa0542ace4e7b"
+    },
+    {
+      "version": "20260825231212",
+      "name": "atlas_payroll_identity_permissions_v1",
+      "sourceSha256": "5cc1e3fa86564bfe01fddd3f4f8e68b007f43009aff8c547044304487f281882"
+    },
+    {
+      "version": "20260825233548",
+      "name": "atlas_ai_repair_queue_v1",
+      "sourceSha256": "a4f4d4698a869d7f9d22030ee93d6aabeef9d89a8cd9a27c4375e51625b931dd"
+    },
+    {
+      "version": "20260825235838",
+      "name": "harden_atlas_ai_repair_queue_v2",
+      "sourceSha256": "16d6be618d143095e84dc829bae033a61ddb8b2de99150e30efab0b77955a338"
+    },
+    {
+      "version": "20260827010234",
+      "name": "atlas_payroll_self_service_permission_v2",
+      "sourceSha256": "429b0a63c23ec9bbe9c18e97f7b4f457f003fc25a1fc537deeff400bd938f1bd"
+    },
+    {
+      "version": "20260828015713",
+      "name": "atlas_inventory_core_v1",
+      "sourceSha256": "925ab1fded3078c16e9d49aedf686fa80f7607bd1879f2ccca080858615e0a8c"
+    },
+    {
+      "version": "20260828015841",
+      "name": "atlas_inventory_atomic_transfer_v1",
+      "sourceSha256": "8bbc18f065b560e07989124e037a393bff8e1ac7e0129d70aa8bc1ae6e96cb59"
+    },
+    {
+      "version": "20260828020146",
+      "name": "atlas_inventory_permission_alignment_v1",
+      "sourceSha256": "fb1e861e8b209dd69c2bb2b7456b38a581ea5378f696811978d052ae6b400917"
+    },
+    {
+      "version": "20260828020258",
+      "name": "atlas_pos_identity_permissions_v1",
+      "sourceSha256": "9b248d33dbd6996cda6c769120cfafd4003c627a8f0c33a60949279ade84696d"
+    },
+    {
+      "version": "20260828020317",
+      "name": "atlas_pos_core_v1",
+      "sourceSha256": "0eacbf1015ed309cefc3831f5f8dbfb60f7704242014d41db0205daf65b1185a"
+    },
+    {
+      "version": "20260828020342",
+      "name": "atlas_pos_atomic_cash_sale_v1",
+      "sourceSha256": "c08dc17445842b5c107c9e31ec91121d5a75d010a8b0475307a2d30d9f942b65"
+    },
+    {
+      "version": "20260828020714",
+      "name": "atlas_projects_core_v1",
+      "sourceSha256": "bb81af2084994e19f790d9c49c75c503bf6a373307f0fba9c31f3b9c8e2484b8"
+    },
+    {
+      "version": "20260828021218",
+      "name": "atlas_work_identity_permissions_v1",
+      "sourceSha256": "82243ecb3935e71d7a98e01da609ba9e4c82ad135fd5c937b90733902d8b52a7"
+    },
+    {
+      "version": "20260828021929",
+      "name": "atlas_bootstrap_owner_platform_admin_hardening_v1",
+      "sourceSha256": "9f1a71d97405c0a1ee48ab2bfb63385b84bcfb0f0fd8e3a7e1f3cc4ed7c7896b"
+    },
+    {
+      "version": "20260829040159",
+      "name": "atlas_ride_os_core_v1",
+      "sourceSha256": "f1a51102820b2d1ad2f3b1f4fb9fd001ba40f8071cd621ad86bece7742876047"
+    },
+    {
+      "version": "20260829040232",
+      "name": "atlas_ride_identity_permissions_v1",
+      "sourceSha256": "eeb2923e0844c6ee80e8f4e72e267447b62d147130956de0ddb9ee6d1026f0ec"
+    },
+    {
+      "version": "20260830231944",
+      "name": "atlas_business_fk_index_hardening_v1",
+      "sourceSha256": "12bf0a398ef54588e2d58e8ad73241e3a45f9e59074fce5e67c2200eff68a581"
+    },
+    {
+      "version": "20260830232234",
+      "name": "atlas_ride_rls_performance_hardening_v1",
+      "sourceSha256": "36e2556392ed9472083c6182824ed12052b0eec83efe5fc88c38c945eec5ac1b"
+    },
+    {
+      "version": "20260830232540",
+      "name": "atlas_ai_repair_rls_initplan_hardening_v1",
+      "sourceSha256": "add9d5900ede53513f893ced662a65fd70f4109561edaa1cfafbd16a0d7aee43"
+    },
+    {
+      "version": "20260830232659",
+      "name": "atlas_live_entertainment_fk_index_hardening_v1",
+      "sourceSha256": "920c5b02dff3c5e9ac029d4017e5aad59248b6d7181d35687314fc52ece2d122"
+    },
+    {
+      "version": "20260901191119",
+      "name": "atlas_purchasing_core_v1",
+      "sourceSha256": "f209a7678961e8468e8703b2ed5547324531847f08ca4173b6f9926059f9d466"
+    },
+    {
+      "version": "20260901191136",
+      "name": "atlas_sales_orders_core_v1",
+      "sourceSha256": "eb78428770f94990d2dbee071bc5f8268e022c0121cacb1459a9cf945caf3bfb"
+    },
+    {
+      "version": "20260901191229",
+      "name": "atlas_inventory_audit_v1",
+      "sourceSha256": "78fc9a2454a6f2eb03bebb84687a5d9d194849cde108aa0c3dd86bf2af53d217"
+    },
+    {
+      "version": "20260902025442",
+      "name": "atlas_pos_terminal_fabric_phase1",
+      "sourceSha256": "6462d3312d1caf6a3a811252753c1a16f16a11d4e36d3515b02458af9cf6c59b"
+    },
+    {
+      "version": "20260902025721",
+      "name": "atlas_pos_terminal_fabric_phase1_performance_hardening",
+      "sourceSha256": "a056b8865a6df182a9f57fee570d7fcd4f5072c08611722616f5b97459c38740"
+    },
+    {
+      "version": "20260902025813",
+      "name": "atlas_pos_terminal_fabric_phase1_trigger_scope_fix",
+      "sourceSha256": "41f246dbedb7c414a2733755760dbef5e84670e413017665c815f56906dc04be"
+    },
+    {
+      "version": "20260902081551",
+      "name": "atlas_intelligence_core_v1",
+      "sourceSha256": "5e5f6f55ae61a2b36f538446f8a64dcc05f676bd705d4e336043c3df371e646e"
+    },
+    {
+      "version": "20260902093853",
+      "name": "atlas_intelligence_fk_index_hardening_v1",
+      "sourceSha256": "f0d515bb791bc28c05ea27e005f286fc15d5cee73716a02c52bb8fdd3f178989"
+    },
+    {
+      "version": "20260902100159",
+      "name": "atlas_education_core_v1",
+      "sourceSha256": "f9f7ef38d4f2dd2b1133233dc129de7fb3e525836ba9bafa97e8eb1cb765d949"
+    },
+    {
+      "version": "20260902100525",
+      "name": "atlas_education_identity_permissions_v1",
+      "sourceSha256": "8f728fe2419c8a43ab0c5ee5a8b50b53b0ccee25612b472cee589014a9e296ff"
+    },
+    {
+      "version": "20260902100652",
+      "name": "atlas_sales_audit_trigger_hardening_v1",
+      "sourceSha256": "57eb92e20acd02d88fb352465bc4f1dc98dda7e383d7e1583fe9ad6a2e1e211e"
+    },
+    {
+      "version": "20260902181119",
+      "name": "atlas_native_verification_plane_evidence_v1",
+      "sourceSha256": "c638a99344d43de9844098a6d15df61b6261c96ee365136e250935d7d8cea1d1"
+    },
+    {
+      "version": "20260902181209",
+      "name": "atlas_native_verification_plane_vault_scheduler_primitives_v1",
+      "sourceSha256": "d900189286d9f34f398b7dc17016fbc78c4140590fb56be5a8795e61702041f3"
+    },
+    {
+      "version": "20260902181526",
+      "name": "atlas_native_verification_plane_trigger_cron_v1",
+      "sourceSha256": "fd448d037b710fbf979da2861938cbe8bed738367ffdb532bfd76ffd6c9d853e"
+    },
+    {
+      "version": "20260902181814",
+      "name": "atlas_native_verification_rls_initplan_hardening_v1",
+      "sourceSha256": "96675f7fc9cd97e34fc250f320164639bbd5b29439f3d737a05d65f45709d4dd"
+    },
+    {
+      "version": "20260902181835",
+      "name": "atlas_native_verification_pg_net_schema_hardening_v1",
+      "sourceSha256": "ce3ffe18064d440dd3f7198906f0511e2f3103ebd8bc822544630aa2133c3f3c"
+    },
+    {
+      "version": "20260903234634",
+      "name": "governed_journal_reversals",
+      "sourceSha256": "a5a5cfd7cccc192b2b3a0fc6bead8b3c3f75f13cdcbd3fef2cb2f7b71f304c5f"
+    },
+    {
+      "version": "20260903234805",
+      "name": "journal_reversal_security_invoker",
+      "sourceSha256": "7117630e1c6c0c9a1a8b08e1cd9705093a815097fa2ee544f15001d7408ce33d"
+    },
+    {
+      "version": "20260904001916",
+      "name": "govern_chart_of_accounts_writes",
+      "sourceSha256": "44697584fedde1882b11d37ad9af3980365c99993e614ec5b3b911e0a8c58e8d"
+    },
+    {
+      "version": "20260904075627",
+      "name": "govern_accounting_bill_approval",
+      "sourceSha256": "7c53bf17d3b9486f3df2f196c5e0e48825ebea17331c92266b4d85e0f58edd74"
+    },
+    {
+      "version": "20260904090207",
+      "name": "govern_accounting_reconciliation",
+      "sourceSha256": "30dd501f356497c4e7f462c2fffbf83078116b18660ce35f19df692bbabf0071"
+    },
+    {
+      "version": "20260904153041",
+      "name": "govern_accounting_close_assets_settings",
+      "sourceSha256": "49215ef977ca36cbdb9fb8968793fb0d0d6cbcb015564a2cbae9320249156c21"
+    },
+    {
+      "version": "20260906173047",
+      "name": "revoke_public_execute_from_accounting_audit_triggers",
+      "sourceSha256": "5f2755b6ab55c9452347fb4481de5966adefd74f8e68223c5fe28d423dd12590"
+    },
+    {
+      "version": "20260906180632",
+      "name": "lock_platform_admins_direct_client_access",
+      "sourceSha256": "448f2803865f1d5734d6fb6fc21816c2734fb319e0c0fc978f8f3b1407044993"
+    },
+    {
+      "version": "20260906180728",
+      "name": "add_missing_fk_indexes_core_modules",
+      "sourceSha256": "d174537e60f13bff029fc61f270b5f0795db6823cf32927bcc15c3ab4a5e41fe"
+    },
+    {
+      "version": "20260906180929",
+      "name": "enable_http_extension_for_infra_verification",
+      "sourceSha256": "b5b79f616c8cc09827b263ca33c134a193821285b414e16488b6bd533cd7480b"
+    },
+    {
+      "version": "20260906181040",
+      "name": "schedule_public_infra_verification",
+      "sourceSha256": "8e6317948275b71706a93b47ce77353beed63b2cf5089b5ddf6e1e024d2caa06"
+    },
+    {
+      "version": "20260906181432",
+      "name": "split_write_rls_policies_by_operation",
+      "sourceSha256": "c67eb668bf3a05b03a47fbb4804b14fdad6afa0cd512357195488304c0354aa8"
+    },
+    {
+      "version": "20260906235721",
+      "name": "revoke_anon_identity_catalog_reads",
+      "sourceSha256": "a08a6499bd55675f8d6d2d7baef149b8a17c21c0adea45a5544f98e23000337e"
+    },
+    {
+      "version": "20260906235829",
+      "name": "add_identity_security_posture_monitor",
+      "sourceSha256": "3bd71bfbdf4132a5de5fc64ff9e9f0b9fb7ede2c82a305cbf8afe983565dd093"
+    },
+    {
+      "version": "20260907000221",
+      "name": "schedule_identity_security_verification",
+      "sourceSha256": "12938e6c39908ab7114a6022fb19be215119d56005103e62fbce8fc092c326e1"
+    },
+    {
+      "version": "20260907002404",
+      "name": "create_atlas_governance_approvals",
+      "sourceSha256": "4e4518b5c9157fd76d5587917e91711a97e9f8baa35daf20d02f7a6640c7c90c"
+    },
+    {
+      "version": "20260907002427",
+      "name": "harden_atlas_approval_transition_actor_detection",
+      "sourceSha256": "bce0e78dd64e5c3a550d99fb57662dc8562cdb57222cbd65ea5e25917d43e204"
+    },
+    {
+      "version": "20260907002541",
+      "name": "add_atlas_governance_posture_verification",
+      "sourceSha256": "bc48fb0ff63ac182bb8fe69d476ca2955ccce99e20b0d0fca41f68393c4304ef"
+    },
+    {
+      "version": "20260907002638",
+      "name": "add_sanitized_agent_governance_audit",
+      "sourceSha256": "106912897d9ea9e575b897f42205f958f2db573fed3a33064e0b48e07a00d257"
+    },
+    {
+      "version": "20260907002717",
+      "name": "use_latest_states_in_governance_posture",
+      "sourceSha256": "662e75bbce2acb3c17cee32d0a8219acab99a640ad312f901fd81fa7336d58b6"
+    },
+    {
+      "version": "20260907003028",
+      "name": "index_atlas_approvals_decided_by",
+      "sourceSha256": "42db48c05dcca11c9e094c9e00588963958de2eec3f41a4c999eb91c666be11c"
+    },
+    {
+      "version": "20260907174942",
+      "name": "atlas_personal_voice_persistence_and_rls_v1",
+      "sourceSha256": "3d51fc3efe6e8fdd535043bbdfb0c3a6622b580cc4e1f5f3b7934d08f6f784d1"
+    },
+    {
+      "version": "20260907175253",
+      "name": "atlas_connect_publication_backend_v1",
+      "sourceSha256": "5a54bf5e071bd677420b5925a9d9b364e963b1c6c44071a39184db9d8afc644f"
+    },
+    {
+      "version": "20260907175334",
+      "name": "atlas_voice_revoke_anon_data_api_v1",
+      "sourceSha256": "8175302a7820287367e2567ab95903cece0927cb99c64eee8039c70bf18cf702"
+    },
+    {
+      "version": "20260907175540",
+      "name": "register_atlas_voice_module_blocked_v1",
+      "sourceSha256": "501a71c7bd8ccdb0dd467fe461f837df79f8b6901be0b5a1c160715301d36ab9"
+    },
+    {
+      "version": "20260907175553",
+      "name": "atlas_connect_private_trigger_fix_v1",
+      "sourceSha256": "dc0864aa3e58e2f22d4f5d9fc13303288b2278f8d9f524aff08dff29a0c2c37f"
+    },
+    {
+      "version": "20260908021356",
+      "name": "accounting_ai_insights",
+      "sourceSha256": "b2c78c9ce57630488700bb6a285d929161893868bf726189d36f565b591ca55e"
+    },
+    {
+      "version": "20260908021904",
+      "name": "accounting_ai_insights_least_privilege",
+      "sourceSha256": "6bc6b6a3e8e1613e31dd101215e51d877688071aa2b8564bf1b6418d2dcd16f9"
+    },
+    {
+      "version": "20260908061236",
+      "name": "atlas_observability_incident_model",
+      "sourceSha256": "6dee6e68cc868ee79d51048e47e6464f87841bf611a73872dea3c86069a8f17d"
+    },
+    {
+      "version": "20260908061336",
+      "name": "harden_atlas_observability_incident_functions",
+      "sourceSha256": "3af5fa40956a7260cbef8c8070461346a565b3850a021fe4cbd6d3e0cde28b4d"
+    },
+    {
+      "version": "20260908061400",
+      "name": "optimize_atlas_incidents_rls_auth_initplan",
+      "sourceSha256": "8cb1b555f97e9016915cca86f9206b53e6987b11d3300bf1610fc882f3ec642f"
+    },
+    {
+      "version": "20260908061554",
+      "name": "atlas_observability_incident_audit",
+      "sourceSha256": "153b4dc3055e1db02e3d9b8a028ec182fc356e717e454762e4ce95ec8776c07b"
+    },
+    {
+      "version": "20260908061756",
+      "name": "atlas_observability_correlation",
+      "sourceSha256": "44d441c7abdd7b25fd29db9d3108e5334549f374c7ec7deab962d7e1a12f4b63"
+    },
+    {
+      "version": "20260908061926",
+      "name": "fix_incident_resolution_evidence_check",
+      "sourceSha256": "9b13f1b8c0a335b518f26a3976f83fbbe464ae1b00c4146caf7382b9c34a916c"
+    },
+    {
+      "version": "20260908062031",
+      "name": "atlas_observability_posture_cron",
+      "sourceSha256": "626599215e0da9a41e175c59ee81823c92fc605cb6aefa80ca3e0cbd1c7c1c24"
+    },
+    {
+      "version": "20260908062247",
+      "name": "atlas_observability_telemetry_helpers",
+      "sourceSha256": "14883824590e321592a74ed356464a45c961fd304192c3387267a8b18a22d1c6"
+    },
+    {
+      "version": "20260908062724",
+      "name": "atlas_observability_first_wave_instrumentation",
+      "sourceSha256": "dd64d39c05f8ba1e8ab3a0d4f145571ae0e6715701c80cc39755a047b1865090"
+    },
+    {
+      "version": "20260908152348",
+      "name": "atlas_observability_auth_verifier_trigger",
+      "sourceSha256": "1b15a041afeef5176be3d03d8379a7390c4d9183a915193a62049bb64e844bb1"
+    },
+    {
+      "version": "20260908152607",
+      "name": "atlas_observability_governance_timeline_and_public_health_contract",
+      "sourceSha256": "1e76db5c11eca6a3cc33dea0681c083728060ed149037cb93b624fa9a00c816b"
+    },
+    {
+      "version": "20260908152731",
+      "name": "fix_governance_timeline_parameter_ambiguity",
+      "sourceSha256": "0ee7cb1d22f49dc5f616bedf51a97c5426e4688a5db8113b3fe06beb75fb197a"
+    },
+    {
+      "version": "20260908153109",
+      "name": "atlas_observability_e2e_completion_gate",
+      "sourceSha256": "d48f1de805163aace534314851c573b8597fa9932b6dc8ecbb02c28c48e95866"
+    },
+    {
+      "version": "20260908153200",
+      "name": "fix_observability_e2e_audit_trigger_detection",
+      "sourceSha256": "ac58983977bcb61b34e8c196ec03413a1d259fa8310e129994a7314b8d56ff7f"
+    },
+    {
+      "version": "20260908153513",
+      "name": "restrict_platform_incident_visibility_to_platform_admins",
+      "sourceSha256": "3c89f9d3e3476c2e3010ca340d69d23331fdc755f01fdd8157864bf679934d98"
+    },
+    {
+      "version": "20260908153613",
+      "name": "use_private_platform_admin_helper_for_incident_rls",
+      "sourceSha256": "a624645f5de708e84faca977d163170942beeaddc989d14db75c33c418a71f9b"
+    },
+    {
+      "version": "20260908202857",
+      "name": "knowledge_animal_atlas",
+      "sourceSha256": "2a59fee879376729eed4a16f69f7d429ffccede57aa04a62e9098fcdae55cfec"
+    },
+    {
+      "version": "20260908203314",
+      "name": "knowledge_animal_atlas_seed",
+      "sourceSha256": "9be70d78c9cd4373d5c6b0689f04d24245f2d08e0077c8ff277451d939909fcc"
+    },
+    {
+      "version": "20260908232000",
+      "name": "atlas_release_control_foundation",
+      "sourceSha256": "457300c5e10877fe184e2859dbb4438d97dc049ec6d8aaf501cfd2a6152d4acb"
+    },
+    {
+      "version": "20260908232156",
+      "name": "atlas_release_control_state_machines",
+      "sourceSha256": "0de6ba3f94bb976f729582117b61ef8cdd10643fee3faa5165546c6d8d7097c3"
+    },
+    {
+      "version": "20260908232224",
+      "name": "guard_release_candidate_transition_for_manifest_freeze",
+      "sourceSha256": "c5e8f4e6bcf138e294ebf9faa5ac450feb87790636172b1bbbab8d5bd6678e93"
+    },
+    {
+      "version": "20260908232357",
+      "name": "atlas_release_control_manifest",
+      "sourceSha256": "3742b8a7e5b8895f4c1701901be99d3e60ae9d5f8f042c4f3481543c3175e2c3"
+    },
+    {
+      "version": "20260908232606",
+      "name": "atlas_release_control_gates",
+      "sourceSha256": "ef2140b61062514f1e3d6c8b3d2370e1b387161f6cc3210dfe28c25617516f37"
+    },
+    {
+      "version": "20260908232842",
+      "name": "atlas_release_control_approval_rollback",
+      "sourceSha256": "8c2eb53d3593f8e959b55b00164ab288c1b08f19f56265df992a9b34dc14ab1e"
+    },
+    {
+      "version": "20260908233337",
+      "name": "atlas_release_control_audit_observability",
+      "sourceSha256": "4d5f2d74c48ec30fcb8cafcc508f652a69656c87b42967a25a5f1a48a1a38ba8"
+    },
+    {
+      "version": "20260908233607",
+      "name": "atlas_release_control_posture_cron",
+      "sourceSha256": "0f1fd3b4a089c5986978114ae5b74c428240eb45960d831f1236eccdde961fa0"
+    },
+    {
+      "version": "20260908233641",
+      "name": "fix_release_verifier_gate_error_code_qualification",
+      "sourceSha256": "11a28553bc21d6e32bf52aa1857e5d373d1508d6d41fb638a16fab4b5467be58"
+    },
+    {
+      "version": "20260908233825",
+      "name": "atlas_release_control_atomic_draft_create",
+      "sourceSha256": "5c92d32b376e581ecd275c658a96776417832da853f8c03053e5b350a02ad44a"
+    },
+    {
+      "version": "20260909025912",
+      "name": "atlas_release_control_baseline",
+      "sourceSha256": "0a3a886b71daca6bb35931ac339d0a130b3307ec64be37112c7b6ae6d538aeb8"
+    },
+    {
+      "version": "20260909030109",
+      "name": "atlas_release_control_reverify_approval_consistency",
+      "sourceSha256": "42e8cb69bafec88d4758bf153edf7bca8b778b1c3f05d2a8d26b836db8a5dcd1"
+    },
+    {
+      "version": "20260909030304",
+      "name": "atlas_release_control_trigger_execute_hardening",
+      "sourceSha256": "565f589f293fbae57cf3bd18fdad67f62d38ca54364b3d24c548c9f6c88afcb4"
+    },
+    {
+      "version": "20260909030812",
+      "name": "atlas_release_control_e2e",
+      "sourceSha256": "8a2cdc85f3fc7641e203e7a9aae00170970d09dfbb94063971fd459b8e47cb29"
+    },
+    {
+      "version": "20260909030848",
+      "name": "atlas_release_control_e2e_uuid_fix",
+      "sourceSha256": "23154b6e548f083e7ab5685aeb064be600e7a8913981d7583d9d4170d354aff6"
+    },
+    {
+      "version": "20260910031611",
+      "name": "atlas_release_control_auth_verifier_trigger",
+      "sourceSha256": "94453468988df72b6bd6982a2d24f2c3cee7ad2cce1c38aaa65693528bdcaf98"
+    },
+    {
+      "version": "20260910043608",
+      "name": "harden_public_infra_verification",
+      "sourceSha256": "330684b722fab7a5e2c6f042a4e88ad63acdb764554a89cc01c1aef79f2090be"
+    },
+    {
+      "version": "20260910111459",
+      "name": "harden_synthetic_e2e_membership_roles_v1",
+      "sourceSha256": "c9362fa2425a5a9b1133e26602a8e809baa0e28a4e5cc8d8fc37ff2ca98e2346"
+    },
+    {
+      "version": "20260910111746",
+      "name": "direct_deploy_public_verifier_v2",
+      "sourceSha256": "2f3b991d0749a756a09a4435367b8cb26a7261c3fe47fe99816b230519be63c7"
+    },
+    {
+      "version": "20260910112017",
+      "name": "cloudflare_access_vault_bridge_v1",
+      "sourceSha256": "160ed2470fd3f39a0752c3a08fed8fbdd9f5f4026edb9805782f35b32639144d"
+    },
+    {
+      "version": "20260910112338",
+      "name": "cloudflare_control_vault_access_v1",
+      "sourceSha256": "2c24f771806a163f3c6be7339cee09b0fad456dd95c4e07e406bdfbcd2044745"
+    },
+    {
+      "version": "20260910122806",
+      "name": "atlas_runtime_token_service_accessor_v1",
+      "sourceSha256": "42d32817908f00cc9557718bb481fa9662cf0ea09564d6d3344a10e0b0f68a6b"
+    },
+    {
+      "version": "20260911044210",
+      "name": "atlas_global_approval_center",
+      "sourceSha256": "a0cdf02a903866f5bed43e67561a880e3f4246c4b1e3c739aef831de918568f5"
+    },
+    {
+      "version": "20260911044309",
+      "name": "atlas_bulk_approval_propagation",
+      "sourceSha256": "8775545000b6a6d1793e9896687437c7d651931af8d5d718661896ec3118c6bc"
+    },
+    {
+      "version": "20260911044425",
+      "name": "harden_atlas_bulk_approval_metadata",
+      "sourceSha256": "6495db6172410fbffeace9a02603c40087c004d5adc96677810b13741d58db95"
+    },
+    {
+      "version": "20260911055442",
+      "name": "atlas_user_default_org_preference",
+      "sourceSha256": "fd73384d383bfd18403495559d8eecd7f79c053ed51295cd9954148032985bb0"
+    },
+    {
+      "version": "20260911062646",
+      "name": "atlas_platform_master_and_client_provisioning",
+      "sourceSha256": "ac4975bb554788fbb0a21a3d8a81dde38bb04a82580ca13657a43d011477f1f2"
+    },
+    {
+      "version": "20260911062957",
+      "name": "atlas_platform_client_directory",
+      "sourceSha256": "79ab9497c4a97b619f6328d60f1e37e477cfa256c0293edf7ba365f8fefbdcd3"
+    },
+    {
+      "version": "20260911092725",
+      "name": "harden_future_function_execute_defaults",
+      "sourceSha256": "a39b3d172880351db7fd9aeee168ef96e1f344a821e3821364cf037343056aa7"
+    },
+    {
+      "version": "20260912014255",
+      "name": "hospitality_room_access",
+      "sourceSha256": "8a9aaf1c7d90e02cb45d2fefc9321f1331e0bf78d6469bcd24b9d1745a09ed52"
+    },
+    {
+      "version": "20260912014547",
+      "name": "hospitality_rls_initplan_hardening",
+      "sourceSha256": "52aa6c85c1fe6224b6f378b4341571850408fe69d8487efe8bf07efe717f9894"
+    },
+    {
+      "version": "20260914001959",
+      "name": "harden_atlas_bootstrap_owner_aal2",
+      "sourceSha256": "3bfe0037f9f6f92b4a238fd60e0b9b977b41abf6eef1b54782c072c4a82a807f"
+    },
+    {
+      "version": "20260914005402",
+      "name": "optimize_auth_rls_initplan_v1",
+      "sourceSha256": "1b234493357c7eda62a656a2830ad742ee6ac1b825d05b910251f70a7a22605e"
+    },
+    {
+      "version": "20260915090932",
+      "name": "creator_content_intelligence",
+      "sourceSha256": "0f0b85e5b1dd791a8462baa6ee88061fd2665331423fc68c46a20a0f30e696b8"
+    },
+    {
+      "version": "20260915091127",
+      "name": "creator_director",
+      "sourceSha256": "c50f1fe455140a75e1fb2e5f446e4713b57c67b795e9af152be9f364c6859318"
+    },
+    {
+      "version": "20260915091306",
+      "name": "accounting_back_to_front_completion",
+      "sourceSha256": "0f69b45f6dd2723a26159a815283e1da9fe4a9c29108fac12794092d782c8c16"
+    },
+    {
+      "version": "20260915091529",
+      "name": "add_finances_accounting_batch_import",
+      "sourceSha256": "c40fd580175701eb734f9b28e748de985ec1e3e1e27be7657008e84229e6038c"
+    },
+    {
+      "version": "20260915091753",
+      "name": "allow_postgres_admin_finances_import",
+      "sourceSha256": "78897239253abbc67d2d8e2996b8dae1fe42b2dd43f3bc9a833ce6e2bec95310"
+    },
+    {
+      "version": "20260915092049",
+      "name": "add_privacy_minimized_finances_batch_import",
+      "sourceSha256": "51351cc72cf56280a092cc122815aedc8fbccd9dd643f25df20e43ce644cfa06"
+    },
+    {
+      "version": "20260915092255",
+      "name": "add_compact_finances_batch_import",
+      "sourceSha256": "3f0f64d86c4354dc9550830fae82a028905c5a680cd92fb75bc81bf34e1482a0"
+    },
+    {
+      "version": "20260915092453",
+      "name": "add_ultracompact_finances_batch_import",
+      "sourceSha256": "01684d4a06fa3301f5eba66400c1b3908faea66446afcf16998bce581e242eca"
+    },
+    {
+      "version": "20260915095233",
+      "name": "creator_director_hardening",
+      "sourceSha256": "a7876e5d39058436ba5bb3eab870133f4301fc921cd420cd3f78e5fc5475d308"
+    },
+    {
+      "version": "20260915102540",
+      "name": "add_compact_finances_importer_v5",
+      "sourceSha256": "da4952c35e9d68051a592a8c1f47b1a321b42068a9a27fff93ed158f4c2338ef"
+    },
+    {
+      "version": "20260915102626",
+      "name": "fix_compact_finances_importer_v5_columns",
+      "sourceSha256": "d1bf90cd2bad2578266e29cb0e6e7c315dfbe9bda0a5cccfdb9cfba98deb39a8"
+    },
+    {
+      "version": "20260915102657",
+      "name": "fix_compact_finances_importer_v5_digest",
+      "sourceSha256": "37f91aca354935d34c89b22f59fc6a61dbaa5b5f276cd27a6bf1cee324535efa"
+    },
+    {
+      "version": "20260915102834",
+      "name": "add_compact_finances_importer_v6",
+      "sourceSha256": "599e7d2cabaca362f735fadd38e8613e10efdc112610d95d902c7dc97be9ec21"
+    },
+    {
+      "version": "20260915161424",
+      "name": "add_atlas_public_www_reconcile_invoker",
+      "sourceSha256": "3af3abddbd4686131ca74ddca3759313e0d086f4fc91906c0b4314f6d40617ca"
+    },
+    {
+      "version": "20260915161606",
+      "name": "extend_atlas_public_www_reconcile_timeout",
+      "sourceSha256": "5f61b080cac7b058dc0cdb67a3547e1711ccca8eeb4459ca693ebb676c34b170"
+    },
+    {
+      "version": "20260915161813",
+      "name": "add_atlas_cloudflare_worker_map_invoker",
+      "sourceSha256": "97aa9cd21620a788d37c088b21f1a76b7eb57d754d90821eed6e4c5ef4d30a91"
+    },
+    {
+      "version": "20260915161936",
+      "name": "add_atlas_www_domain_rebind_invoker",
+      "sourceSha256": "d8c8f998e3e39df9f86fb05c382a773c3a7d19bf31efb96d078b3206349c3743"
+    },
+    {
+      "version": "20260915162546",
+      "name": "add_atlas_www_bypass_reconcile_invoker",
+      "sourceSha256": "fc38bfd7e310ab8538c54f80570d487977440206434caa671341773a0a295a53"
+    },
+    {
+      "version": "20260915210532",
+      "name": "insurance_verification",
+      "sourceSha256": "72a5dc2563724ac9bfc33114131349a84714f72238f0c27ad789f61daaab583a"
+    },
+    {
+      "version": "20260916044714",
+      "name": "health_jaque_mate_sentinel",
+      "sourceSha256": "98a5ab9ed313d2d92c0871a482951f9f8e691fdc1bf5da3f918f4b084393bf11"
+    },
+    {
+      "version": "20260916045900",
+      "name": "health_jaque_mate_sentinel_hardening",
+      "sourceSha256": "959c13413eb6f51bed03101982c8841e4af6130d17fdec3f13dbe6685d50229e"
+    },
+    {
+      "version": "20260916184257",
+      "name": "hospitality_add_onity_provider",
+      "sourceSha256": "4fea32a34bb2092d92f40bf8a1617249072c6bdc0ddde6d6b78894a794b3559a"
+    },
+    {
+      "version": "20260918031936",
+      "name": "advisory_office_core",
+      "sourceSha256": "3b71ba55e800439e7f0e4c418714e3e752a8adb624c89d8fd82f4850eb0630dc"
+    },
+    {
+      "version": "20260918032931",
+      "name": "advisory_firm_scope_rls",
+      "sourceSha256": "61c518806d10cc53095a3301d1a83bc6e28d65293c4eca7789fe4647c1c2ebbb"
+    },
+    {
+      "version": "20260918073823",
+      "name": "atlas_orchestrator_persistence",
+      "sourceSha256": "56596ac9ecac7276bc8f18cd67337170ecc0cfd4d52cb22237f030aa49945058"
+    },
+    {
+      "version": "20260918091404",
+      "name": "atlas_orchestrator_runtime_rpc",
+      "sourceSha256": "25d986b3bfcac638fec30340d8361e026149a3b012acc3f8c92a0cd3f4e3f8dd"
+    },
+    {
+      "version": "20260918092900",
+      "name": "atlas_orchestrator_runtime_rpc",
+      "sourceSha256": "25d986b3bfcac638fec30340d8361e026149a3b012acc3f8c92a0cd3f4e3f8dd"
+    },
+    {
+      "version": "20260918134123",
+      "name": "atlas_commerce_core",
+      "sourceSha256": "d6fd58d3db6045377cda5088b111ece5e0fb57a10a034b2dbc368fd19b22473d"
+    },
+    {
+      "version": "20260918134130",
+      "name": "atlas_commerce_order_commit",
+      "sourceSha256": "d8315ad64a0acf5044814afb362c7ade31b28d15817bca5ca8164b9d9b3c5f96"
+    },
+    {
+      "version": "20260918134133",
+      "name": "atlas_commerce_delivery_state",
+      "sourceSha256": "33edf048fd4eaedf84830ec8a9661038c36be5018912dd0e585eed17cad30b14"
+    },
+    {
+      "version": "20260918155451",
+      "name": "atlas_insurance_otp_vault_secret",
+      "sourceSha256": "631433e83fb9e78b15599552cb640186c7d07a9da489311de631ac7eefb2db35"
+    },
+    {
+      "version": "20260918180505",
+      "name": "creator_creative_plans",
+      "sourceSha256": "2cf104873756d98859906dcfaf4de9955ebe8de5fabc35ccc8bf756a97a65c00"
+    },
+    {
+      "version": "20260918181721",
+      "name": "creator_teleprompter_recordings",
+      "sourceSha256": "4557b4412b9649e29acc1ae2f18bd27ca3a3eaca93dcf4286fe2294452ca8af3"
+    },
+    {
+      "version": "20260918184006",
+      "name": "atlas_universal_execution_engine",
+      "sourceSha256": "91c6fab9668e77dd909bf4a846742352bc448b19bc570efab23ee5cce429ff88"
+    },
+    {
+      "version": "20260918184010",
+      "name": "atlas_work_runtime",
+      "sourceSha256": "41f03e5632c1c05aab859ecb00f5f2b31eebf0539eff5e00ae6e4da6ff8560ca"
+    },
+    {
+      "version": "20260918190544",
+      "name": "atlas_crm_hubspot_integration",
+      "sourceSha256": "9e1429525e3501e9aa77e50415f9aca2b5ed0cb9ce61eb33646a765d51b69583"
+    },
+    {
+      "version": "20260918190551",
+      "name": "creator_web_launch_blueprints",
+      "sourceSha256": "b646c17535ea10246eb18ea3c1d761b7385b3d8bf255fae822960757b088cc07"
+    },
+    {
+      "version": "20260918191213",
+      "name": "crm_integration_policy_consolidation",
+      "sourceSha256": "b3c5b8420542337f806450ce88328388a69e8c857444a122f1c0f3f8ad3e84dd"
+    },
+    {
+      "version": "20260918192936",
+      "name": "crm_secure_oauth_config",
+      "sourceSha256": "cacd4c58bca862d2102a46925368bb5437a9a51d8b50f465618f163a42266493"
+    },
+    {
+      "version": "20260918211001",
+      "name": "atlas_local_network_access",
+      "sourceSha256": "7a836789abad0194e629ab2996e0390af85eb838504f72e5405d569239f08347"
+    },
+    {
+      "version": "20260918231705",
+      "name": "atlas_local_control_plane",
+      "sourceSha256": "d436186a8c6f68f97169588891dc28cefa043d14fdbf84270ad4537a4e3d3c92"
+    },
+    {
+      "version": "20260918234506",
+      "name": "health_cure_candidate_registry",
+      "sourceSha256": "7545a4ff03c0a9f7be021a66413615d77ac6ee1c0c286f2b098c60b4a41d4a36"
+    },
+    {
+      "version": "20260919000247",
+      "name": "atlas_local_agent_mtls_realtime",
+      "sourceSha256": "d43ae75f0c6a1417762bb29b3007cfe4150b40f0477e6684105d15c0d171153c"
+    },
+    {
+      "version": "20260919000707",
+      "name": "health_jaque_mate_live_research",
+      "sourceSha256": "cf3e37f2aa33453fd5db060de7f9c5ddacbe66f649f93a2bf4374dbd1d82dd38"
+    },
+    {
+      "version": "20260919021634",
+      "name": "atlas_local_ai_runtime_bootstrap",
+      "sourceSha256": "84f2175c1a9baa3f846cf400abf59b95f128e307a95fc257581e3e6e9a58c2f4"
+    },
+    {
+      "version": "20260919035705",
+      "name": "atlas_local_ai_offline_state",
+      "sourceSha256": "4a7ddb43e2911a6274ecfe8b2f87e634b9467aa2de7514b2a74bd88c49f77cc6"
+    },
+    {
+      "version": "20260919041653",
+      "name": "atlas_social_command_center",
+      "sourceSha256": "d117c2e4d53433049fccaf2ecf9d3401ad869f715443b28f9fb68aa10bf3c131"
+    },
+    {
+      "version": "20260919061418",
+      "name": "atlas_browser_operator_payload",
+      "sourceSha256": "636a45f454e7eebc34bfcd2868e1c7c0ab2d3530b3cd021e50c1bf0e2c5149d4"
+    },
+    {
+      "version": "20260919061623",
+      "name": "atlas_render_free_local_ai_existing_identity",
+      "sourceSha256": "ab7f9b4d6744a0f0956b5310c63f8a853ee73a7f11d0c4eb152e4a2a62551de1"
+    },
+    {
+      "version": "20260919065044",
+      "name": "crm_hubspot_resilience",
+      "sourceSha256": "2f2e2a66668608e81b77e7f2cf0952561a84953c37bd0542e152ed7b7ea8144a"
+    },
+    {
+      "version": "20260919181438",
+      "name": "restrict_advisory_audit_trigger_execution",
+      "sourceSha256": "e44a677410100ac26b2892612f070bc01cf44428710681f84864b5ec07c8d13f"
+    },
+    {
+      "version": "20260919214201",
+      "name": "atlas_frontier_vertical_slice",
+      "sourceSha256": "1e2fc3829cbaa3c50bb8c5398971f10e8f595529a78bad8f6f068926c46dcd5d"
+    },
+    {
+      "version": "20260919225601",
+      "name": "frontier_awakening_campaign",
+      "sourceSha256": "2980af92a2b1f7c42b4d52ae2e855bbfb2082d825c19e64be3fadcd712d7d0e3"
+    },
+    {
+      "version": "20260919232620",
+      "name": "frontier_persistent_world",
+      "sourceSha256": "21a02ddc13dcd886551d3c5976a9fa0acec27bbf4ae91afc65db0bad26b0791d"
+    },
+    {
+      "version": "20260919232759",
+      "name": "frontier_persistent_world_hardening",
+      "sourceSha256": "09c993efe934d6417795ee5f6f0278964e32139936c3f72b595657e0de66961f"
+    },
+    {
+      "version": "20260920064109",
+      "name": "frontier_living_worlds",
+      "sourceSha256": "26393ccf832998bf199a31017473d884fdd05c9263b3ac0551e02958731dc28c"
+    },
+    {
+      "version": "20260920072347",
+      "name": "frontier_campaign_6_10",
+      "sourceSha256": "5dd72bb581def0d6d6b246851e18390371f0c01a4e5184be9679bd7777956f5b"
+    },
+    {
+      "version": "20260920072427",
+      "name": "ride_profile_photo_compliance",
+      "sourceSha256": "2663ab971da14ebd860d2e975e060c3040954942279d7dfea8051b020c896979"
+    },
+    {
+      "version": "20260920072429",
+      "name": "ride_profile_photo_compliance_hardening",
+      "sourceSha256": "56d28542d22bac3c3e2a8dc11b92d83d63aa58e5e3e8dfa55736126eea02a04b"
+    },
+    {
+      "version": "20260920072431",
+      "name": "ride_profile_photo_atomicity",
+      "sourceSha256": "2fcef6543599fc759863fb6da05cfcbdbe4e368bd94168db767bc9f0a41076f8"
+    },
+    {
+      "version": "20260920073009",
+      "name": "frontier_survival_events",
+      "sourceSha256": "5d09503225b8894112f3ecefd284b63684fcfa62bea74aba819056ae68e088dd"
+    },
+    {
+      "version": "20260920073539",
+      "name": "frontier_world_codex",
+      "sourceSha256": "6f64e2f0821a32b99d1a52cd2615944666d2391efddcc09a399fa5b8ea8f08c7"
+    },
+    {
+      "version": "20260920080208",
+      "name": "frontier_biome_canon_alignment",
+      "sourceSha256": "088a46c1e4d59c8c69b09769b2b09e08a7810bf290578e1635dffca882b9415a"
+    },
+    {
+      "version": "20260920082059",
+      "name": "frontier_physical_biomes",
+      "sourceSha256": "45c83c0f33af9603a9c13942cc45538ef8d162e3c299be26edf9251c90b39d40"
+    },
+    {
+      "version": "20260920085413",
+      "name": "atlas_personal_voice_activation_v2",
+      "sourceSha256": "cf74720b70ad3cb1953e799aad2d72db7cc8fbed2b7747a69461ff4d3e33d153"
+    },
+    {
+      "version": "20260920133713",
+      "name": "atlas_personal_voice_activation",
+      "sourceSha256": "cf74720b70ad3cb1953e799aad2d72db7cc8fbed2b7747a69461ff4d3e33d153"
+    },
+    {
+      "version": "20260920152720",
+      "name": "atlas_voice_provider_native_verification",
+      "sourceSha256": "0270b30d32a5386b1a89c433f2563c480c0084648a0ca9bc3372705b70684054"
+    },
+    {
+      "version": "20260920153003",
+      "name": "atlas_voice_provider_native_verification",
+      "sourceSha256": "515813aa6c360efc7c66f8e642c99b3268c869ca2b95b5603535c6d64e4acaea"
+    },
+    {
+      "version": "20260920160501",
+      "name": "atlas_github_app_manifest_credentials",
+      "sourceSha256": "37897d295be7a18a4c1c4032253b17284d6044266b24c45bcbf47f450786deef"
+    },
+    {
+      "version": "20260920161055",
+      "name": "atlas_ai_emergency_fallback_budget",
+      "sourceSha256": "e958c5b86cc0f28753a3658376723dd80497948a59d1a18c618df6482a505340"
+    },
+    {
+      "version": "20260921010117",
+      "name": "procure_to_pay_inventory_margin",
+      "sourceSha256": "7f8e55f43c83616f93edf6f3f915bb0035e204e699a1b228975a1150b0e007ac"
+    },
+    {
+      "version": "20260921010522",
+      "name": "inventory_product_quantity_sync",
+      "sourceSha256": "73a1adf8e4427dc510eea90dc89feedb78be0e858ee014a3c1f76aaa3dae7eff"
+    },
+    {
+      "version": "20260921011233",
+      "name": "procure_to_pay_posting_guard_fix",
+      "sourceSha256": "1670bd5befc52428053e350c562e259b91c24909468cf6d4560accbced6c777d"
+    },
+    {
+      "version": "20260921011623",
+      "name": "finalize_purchase_cost_before_sale",
+      "sourceSha256": "2eda9a3207737751f888ea844110eda627a493d32c7bf37d400512eb60627261"
+    },
+    {
+      "version": "20260921011809",
+      "name": "p2p_integrity_guards",
+      "sourceSha256": "76ba35beb1ddf037625f201840434e3316f1d2c5c96fb52dc33916634d74c12d"
+    },
+    {
+      "version": "20260921011835",
+      "name": "invoice_line_issue_guard_fix",
+      "sourceSha256": "38108169f0063d865047828525565d3331828f40fa909d77f3166b1de6b3eec2"
+    },
+    {
+      "version": "20260921011913",
+      "name": "p2p_least_privilege",
+      "sourceSha256": "c4e47f41f9fe2be5aa9b45d792d777c0f7aab2c7e6cdfbb7a2615b9357ae63ce"
+    },
+    {
+      "version": "20260921014904",
+      "name": "vendor_w9_intake",
+      "sourceSha256": "3aa5eea0ab025c20fff8cd0fceff0a1c91d416a2391ee81d40848cb488534a0b"
+    },
+    {
+      "version": "20260921022903",
+      "name": "business_launch_360_commercial",
+      "sourceSha256": "b384b843bb1978cd00a37d3fbb3e3159343eb20f569a71b6b87f93086cf57624"
+    },
+    {
+      "version": "20260921124125",
+      "name": "advisory_external_provider_registry",
+      "sourceSha256": "a6229fa468c0bfa28adc28f19dcbfeed7428b7b4e59daa9aa7cf1c7871cf7727"
+    },
+    {
+      "version": "20260921174632",
+      "name": "advisory_provider_authorizations",
+      "sourceSha256": "80bc6ac07323fbffbe840596627abb8a79c58b396a7ccb1bfab160885b1a781a"
+    },
+    {
+      "version": "20260922033917",
+      "name": "atlas_memory_core",
+      "sourceSha256": "d0bef6fe4b46d011acb028f2af7cb7b498c83d4e30a8983ff6a693c518de4eb0"
+    },
+    {
+      "version": "20260923185553",
+      "name": "optimize_auth_rls_initplans",
+      "sourceSha256": "1270ce41cdf7d86c2025a5bcbfc510cae491a03150c25d6f6f0b365686ead40f"
+    },
+    {
+      "version": "20260923185854",
+      "name": "harden_identity_rpc_security_definer_boundary",
+      "sourceSha256": "640632cf89637fb738b9525f3e7df3a315de17aa137e408e8a3b057b22eb57e5"
+    },
+    {
+      "version": "20260923190004",
+      "name": "lock_orchestrator_rpc_execution_to_service_role",
+      "sourceSha256": "cb31d044f9c74103d7bf90a71a503548c6dcdeb27f3cd0ec744abc3baeae0ded"
+    },
+    {
+      "version": "20260923190454",
+      "name": "harden_authenticated_security_definer_rpc_boundaries",
+      "sourceSha256": "d20e20f26862e42c33008b4b234f0d6da554cff55fe6a803d9ee348f1c74bf15"
+    },
+    {
+      "version": "20260923190525",
+      "name": "explicit_deny_policies_for_internal_service_tables",
+      "sourceSha256": "ce467412ada8cc78aebcb6377e674632edc5c5296282d8d68418ec846c7cee37"
+    },
+    {
+      "version": "20260923190631",
+      "name": "index_missing_foreign_keys_batch_1",
+      "sourceSha256": "82252ebc913fbc71aa011f6263d8d1e7b15c5bfde922a6123639c5bee406464a"
+    },
+    {
+      "version": "20260923190633",
+      "name": "index_missing_foreign_keys_batch_2",
+      "sourceSha256": "20283ccfc97e91159b41277982d3c71491c8c104430e1c9be9b5e367bf5a7ead"
+    },
+    {
+      "version": "20260923190635",
+      "name": "index_missing_foreign_keys_batch_3",
+      "sourceSha256": "7a576aef5ca31f9f65f3628798ea4635df12739fd39c40933b6c58c7543d7977"
+    },
+    {
+      "version": "20260923190656",
+      "name": "index_remaining_foreign_keys",
+      "sourceSha256": "e0d7622323a5a3f77b5d64c70914430eb3238c5f26e845e5c896a2accf131ad6"
+    },
+    {
+      "version": "20260923192046",
+      "name": "verify_public_artifact_via_version_attestation_headers",
+      "sourceSha256": "b2875d79168c50f8df08c12a3aca161a55adbeb8aa79c75e8e3cb89240cd3c92"
+    },
+    {
+      "version": "20260924001019",
+      "name": "atlas_gps4d_core",
+      "sourceSha256": "eadf8b20e39e2beabb5a4dd7ab3bfacd68c2f0bee4f707d36f2bfe7e1cacbea9"
+    },
+    {
+      "version": "20260924001101",
+      "name": "harden_atlas_gps4d_internal_tables",
+      "sourceSha256": "1bfae9502229df8b4c7322945f0b694ef586b90431f473229ab627257f01889f"
+    },
+    {
+      "version": "20260924005706",
+      "name": "atlas_library_ingestion",
+      "sourceSha256": "0da862cc9c5f56a45abfb3ec0a0a6b56de00d0a45f94b94d0c2115c9def06e55"
+    },
+    {
+      "version": "20260924162513",
+      "name": "private_oracle",
+      "sourceSha256": "c22fc1ba83aee60b3e086e8f1ed8c3b64b5c510afb109cf40d1328c478a339ea"
+    },
+    {
+      "version": "20260924204337",
+      "name": "atlas_knowledge_audit_hardening",
+      "sourceSha256": "a4f0e35e7a84c28f265f06562bceeef5098c2b0a88d95f8a06f071385c540fa5"
+    },
+    {
+      "version": "20260924204443",
+      "name": "atlas_knowledge_advisor_cleanup",
+      "sourceSha256": "edc3f7326abca9d39a7b58719e6373b17a48e0d086a3fb74fab0c15cea4bd45c"
+    },
+    {
+      "version": "20260925071244",
+      "name": "atlas_master_evidence_registry",
+      "sourceSha256": "acc24cf712a2ba3b2becf6ae5a2d3934f167deb405af01ad6427886d801b9df0"
+    },
+    {
+      "version": "20260925071646",
+      "name": "atlas_master_evidence_registry_index_hardening",
+      "sourceSha256": "afdefb4bf9d55847f6fa12ee4617f7d5246bfa3265b7c75737a1df0b255014eb"
+    },
+    {
+      "version": "20260925095246",
+      "name": "atlas_chat_core",
+      "sourceSha256": "776d5ebfbb7d23ee5e5d3ccb002c03683a618c0fbbed925257d8c61736d4c394"
+    },
+    {
+      "version": "20260925095507",
+      "name": "atlas_chat_postgrest_runtime",
+      "sourceSha256": "a6760d8a6cd7616990b27945ed9d0a94dca17253d251d8dab668fb1cebb8c15e"
+    },
+    {
+      "version": "20260926125052",
+      "name": "harden_exposed_security_definer_functions",
+      "sourceSha256": "4357fa837d191d9c207eed90013c7d4ba0403c9fb1b1927bdbd81c87df09272f"
+    },
+    {
+      "version": "20260926223752",
+      "name": "atlas_orchestrator_rpc_runtime_grants",
+      "sourceSha256": "40003228765e23644ae3200307fef663d46bfde7bdcd51eaa84fe17b93364a9e"
+    },
+    {
+      "version": "20260926223841",
+      "name": "fix_orchestrator_runtime_vault_auth",
+      "sourceSha256": "89eed12b70609e7a10ef7f73ee37b0d5c17a7846b27108d699eb01d2f494f968"
+    },
+    {
+      "version": "20260927155742",
+      "name": "atlas_carrier_numbering",
+      "sourceSha256": "e2696081d6e0a8d1e1d524065a0b6563c5bee04ab3dd67a590b302e7a1836582"
+    },
+    {
+      "version": "20260927165333",
+      "name": "atlas_native_sovereign_consensus",
+      "sourceSha256": "67e1cae68d467745abcb8b347296e8672db33694852a352d8dd89bd0c2081951"
+    },
+    {
+      "version": "20260927211719",
+      "name": "atlas_communication_telephony",
+      "sourceSha256": "304e320c23e16d85def8384e38b8a5e6456af03a6d2be536a561a566091fffa3"
+    },
+    {
+      "version": "20260927211721",
+      "name": "atlas_communication_telephony_permissions",
+      "sourceSha256": "c2f344b922c44b87dd995bc628c69beb99022f6690aebfef5880abcbe639f2e0"
+    },
+    {
+      "version": "20260927211755",
+      "name": "atlas_communication_telephony_anon_hardening",
+      "sourceSha256": "99a95b042da279058bb1c20b93ee78665cce897d82bce4942a3b0f4f7968695a"
+    },
+    {
+      "version": "20260928230758",
+      "name": "atlas_communication_carrier_hardening",
+      "sourceSha256": "6e2083782e63d858da80cd557863fdba1f5e04072d49900b0b752362e2921efc"
+    },
+    {
+      "version": "20261001172715",
+      "name": "atlas_pay_control_plane",
+      "sourceSha256": "cc8b74ba5a3462682284278cad4f80eb6b1a4810c8dd22e69b0bf5d8d9a57f45"
+    },
+    {
+      "version": "20261001172914",
+      "name": "atlas_pay_fk_index_hardening",
+      "sourceSha256": "dd5ab45783b97fdc10e43f2553bc052fa77b0685b32ed36652f084944afffb68"
+    },
+    {
+      "version": "20261002133301",
+      "name": "integration_auth_kind_alignment_20261002",
+      "sourceSha256": "4cf02e8e41004a9227cbf634c5dd51e0e045f69f0256f93c7b8cad26e5a66653"
+    },
+    {
+      "version": "20261002133440",
+      "name": "atlas_mvno_permissions_sync_20261002",
+      "sourceSha256": "5d5791e368a6e069d3c8aef636ae2abdee1a740e998fe7794497e20ec11bbcb9"
+    },
+    {
+      "version": "20261002133442",
+      "name": "atlas_wireless_owned_network_permissions_sync_20261002",
+      "sourceSha256": "8ec61aa7366d77e15739bcb536dd4be6f300759504fdfd9f9b3d823ab29cc1b3"
+    },
+    {
+      "version": "20261003211725",
+      "name": "atlas_carrier_number_truth_gate",
+      "sourceSha256": "4757cc99182831f37496f888cc0998cc012e23d080a79f61eb7d62288246efab"
+    },
+    {
+      "version": "20261004134824",
+      "name": "atlas_telephony_provider_state_clock",
+      "sourceSha256": "0ab18138a0dd87de3a1b7ab88dcb1f214fd6a7c0cdc2c79b89900a00372ef471"
+    },
+    {
+      "version": "20261004183250",
+      "name": "atlas_people_core",
+      "sourceSha256": "39e1e9d6f9a736746068ee5e68c719b4ec9b3c341aa7797a9b3ce72f1bf2fcb9"
+    },
+    {
+      "version": "20261004183449",
+      "name": "atlas_payroll_core_governed",
+      "sourceSha256": "46805d4922f73dea0055e254c05e3fecbf91a04bc4eb01a627b15ee1c79ee813"
+    },
+    {
+      "version": "20261004183528",
+      "name": "atlas_payroll_core",
+      "sourceSha256": "46805d4922f73dea0055e254c05e3fecbf91a04bc4eb01a627b15ee1c79ee813"
+    },
+    {
+      "version": "20261004183620",
+      "name": "atlas_payroll_control_plane_wave1",
+      "sourceSha256": "da6dae7c52b174fa476497fba314af159986f549fa442301fa75b4db78278a15"
+    },
+    {
+      "version": "20261004183630",
+      "name": "atlas_payroll_settlement_guard",
+      "sourceSha256": "88c630fb7138ee9632e800250cc8adf717be13b397cec2814ff500a6008b6743"
+    },
+    {
+      "version": "20261004183637",
+      "name": "atlas_payroll_readiness_security",
+      "sourceSha256": "3a936a34a5d66f4700f3578c0ad5e16957c20b2ca510dba178c16c4953db0dc8"
+    },
+    {
+      "version": "20261004183643",
+      "name": "atlas_payroll_provider_column_security",
+      "sourceSha256": "2972361570c52cabbe83162dd9e458b16958028eeff5b3ccf395f0754a4b7745"
+    },
+    {
+      "version": "20261004192132",
+      "name": "atlas_people_payroll_least_privilege",
+      "sourceSha256": "16e4d9b72e4ad6889d30adf75867019c3369fb58d73540f64bcf6803c031c146"
+    },
+    {
+      "version": "20261004204812",
+      "name": "atlas_payroll_us_federal_tax_2026",
+      "sourceSha256": "516e2c9123db73719e83205a6c0b8b6720a6b6fed7c1fcc28f385078f143e370"
+    },
+    {
+      "version": "20261004204839",
+      "name": "atlas_payroll_us_federal_determination_persistence",
+      "sourceSha256": "a4e89bce4515a818e6d055259f618d192ab60566f31b948a35118aa525a434b6"
+    },
+    {
+      "version": "20261007071557",
+      "name": "atlas_care_core",
+      "sourceSha256": "27e4232abb37218f62560b77bdc8389b01debb590be15f393220f4c18f258cf9"
+    }
+  ],
+  "localNotRecorded": [
+    {
+      "version": "20260906034500",
+      "name": "google_workspace_integration",
+      "sourceSha256": "12a30e3fbd8f3c322e909bcba5c7924ef06d9c74e17d976fe89eaec2cd42adc7"
+    },
+    {
+      "version": "20260907",
+      "name": "accounting_ai_insights",
+      "sourceSha256": "6b252cfb9f87aad49d46e5ec3fe689ec1939ad6773d167af809d5f50a4217325"
+    },
+    {
+      "version": "20260910",
+      "name": "harden_public_infra_verification",
+      "sourceSha256": "330684b722fab7a5e2c6f042a4e88ad63acdb764554a89cc01c1aef79f2090be"
+    },
+    {
+      "version": "20260911",
+      "name": "hospitality_room_access",
+      "sourceSha256": "8a9aaf1c7d90e02cb45d2fefc9321f1331e0bf78d6469bcd24b9d1745a09ed52"
+    },
+    {
+      "version": "20260912",
+      "name": "atlas_work_runtime",
+      "sourceSha256": "41f03e5632c1c05aab859ecb00f5f2b31eebf0539eff5e00ae6e4da6ff8560ca"
+    },
+    {
+      "version": "20260912",
+      "name": "creator_director",
+      "sourceSha256": "c50f1fe455140a75e1fb2e5f446e4713b57c67b795e9af152be9f364c6859318"
+    },
+    {
+      "version": "20260912",
+      "name": "hospitality_rls_initplan_hardening",
+      "sourceSha256": "52aa6c85c1fe6224b6f378b4341571850408fe69d8487efe8bf07efe717f9894"
+    },
+    {
+      "version": "20260912",
+      "name": "manager_readiness_execution",
+      "sourceSha256": "26c8b87a8031bb57d45d60ebfa4787f963a25354acf8e7eca1e7e28bc6d2c583"
+    },
+    {
+      "version": "20260912",
+      "name": "ride_profile_photo_atomicity",
+      "sourceSha256": "2fcef6543599fc759863fb6da05cfcbdbe4e368bd94168db767bc9f0a41076f8"
+    },
+    {
+      "version": "20260912",
+      "name": "ride_profile_photo_compliance_hardening",
+      "sourceSha256": "56d28542d22bac3c3e2a8dc11b92d83d63aa58e5e3e8dfa55736126eea02a04b"
+    },
+    {
+      "version": "20260912",
+      "name": "ride_profile_photo_compliance",
+      "sourceSha256": "2663ab971da14ebd860d2e975e060c3040954942279d7dfea8051b020c896979"
+    },
+    {
+      "version": "20260912",
+      "name": "universal_execution_engine",
+      "sourceSha256": "91c6fab9668e77dd909bf4a846742352bc448b19bc570efab23ee5cce429ff88"
+    },
+    {
+      "version": "20260913",
+      "name": "harden_atlas_bootstrap_owner_aal2",
+      "sourceSha256": "3bfe0037f9f6f92b4a238fd60e0b9b977b41abf6eef1b54782c072c4a82a807f"
+    },
+    {
+      "version": "20260914",
+      "name": "private_oracle",
+      "sourceSha256": "c22fc1ba83aee60b3e086e8f1ed8c3b64b5c510afb109cf40d1328c478a339ea"
+    },
+    {
+      "version": "20260914004900",
+      "name": "optimize_auth_rls_initplan_v1",
+      "sourceSha256": "1b234493357c7eda62a656a2830ad742ee6ac1b825d05b910251f70a7a22605e"
+    },
+    {
+      "version": "20260914170000",
+      "name": "atlas_crm_hubspot_integration",
+      "sourceSha256": "9e1429525e3501e9aa77e50415f9aca2b5ed0cb9ce61eb33646a765d51b69583"
+    },
+    {
+      "version": "20260915043000",
+      "name": "creator_content_intelligence",
+      "sourceSha256": "0f0b85e5b1dd791a8462baa6ee88061fd2665331423fc68c46a20a0f30e696b8"
+    },
+    {
+      "version": "20260915094600",
+      "name": "creator_director_hardening",
+      "sourceSha256": "a7876e5d39058436ba5bb3eab870133f4301fc921cd420cd3f78e5fc5475d308"
+    },
+    {
+      "version": "20260915124500",
+      "name": "insurance_verification",
+      "sourceSha256": "72a5dc2563724ac9bfc33114131349a84714f72238f0c27ad789f61daaab583a"
+    },
+    {
+      "version": "20260915233000",
+      "name": "health_jaque_mate_sentinel",
+      "sourceSha256": "98a5ab9ed313d2d92c0871a482951f9f8e691fdc1bf5da3f918f4b084393bf11"
+    },
+    {
+      "version": "20260916",
+      "name": "hospitality_add_onity_provider",
+      "sourceSha256": "4fea32a34bb2092d92f40bf8a1617249072c6bdc0ddde6d6b78894a794b3559a"
+    },
+    {
+      "version": "20260916005000",
+      "name": "health_jaque_mate_sentinel_hardening",
+      "sourceSha256": "959c13413eb6f51bed03101982c8841e4af6130d17fdec3f13dbe6685d50229e"
+    },
+    {
+      "version": "20260916150000",
+      "name": "atlas_network_core",
+      "sourceSha256": "1ae4ef474fe287511d5dfb14a45cfa20f3ac39a8cceb713178ef99201226743b"
+    },
+    {
+      "version": "20260916150500",
+      "name": "atlas_network_governance",
+      "sourceSha256": "dd751f2285f38685e156739c90032d083a58c6fa5e09f74593a93ae7aa268eed"
+    },
+    {
+      "version": "20260916232000",
+      "name": "atlas_orchestrator_persistence",
+      "sourceSha256": "56596ac9ecac7276bc8f18cd67337170ecc0cfd4d52cb22237f030aa49945058"
+    },
+    {
+      "version": "20260918",
+      "name": "creator_teleprompter_recordings",
+      "sourceSha256": "4557b4412b9649e29acc1ae2f18bd27ca3a3eaca93dcf4286fe2294452ca8af3"
+    },
+    {
+      "version": "20260918031500",
+      "name": "advisory_office_core",
+      "sourceSha256": "3b71ba55e800439e7f0e4c418714e3e752a8adb624c89d8fd82f4850eb0630dc"
+    },
+    {
+      "version": "20260918033500",
+      "name": "advisory_firm_scope_rls",
+      "sourceSha256": "61c518806d10cc53095a3301d1a83bc6e28d65293c4eca7789fe4647c1c2ebbb"
+    },
+    {
+      "version": "20260918091500",
+      "name": "atlas_orchestrator_runtime_rpc",
+      "sourceSha256": "25d986b3bfcac638fec30340d8361e026149a3b012acc3f8c92a0cd3f4e3f8dd"
+    },
+    {
+      "version": "20260918113000",
+      "name": "atlas_commerce_core",
+      "sourceSha256": "d6fd58d3db6045377cda5088b111ece5e0fb57a10a034b2dbc368fd19b22473d"
+    },
+    {
+      "version": "20260918114500",
+      "name": "atlas_commerce_order_commit",
+      "sourceSha256": "d8315ad64a0acf5044814afb362c7ade31b28d15817bca5ca8164b9d9b3c5f96"
+    },
+    {
+      "version": "20260918120000",
+      "name": "atlas_commerce_delivery_state",
+      "sourceSha256": "33edf048fd4eaedf84830ec8a9661038c36be5018912dd0e585eed17cad30b14"
+    },
+    {
+      "version": "20260918141000",
+      "name": "creator_creative_plans",
+      "sourceSha256": "2cf104873756d98859906dcfaf4de9955ebe8de5fabc35ccc8bf756a97a65c00"
+    },
+    {
+      "version": "20260918153000",
+      "name": "creator_web_launch_blueprints",
+      "sourceSha256": "b646c17535ea10246eb18ea3c1d761b7385b3d8bf255fae822960757b088cc07"
+    },
+    {
+      "version": "20260918155000",
+      "name": "atlas_insurance_otp_vault_secret",
+      "sourceSha256": "631433e83fb9e78b15599552cb640186c7d07a9da489311de631ac7eefb2db35"
+    },
+    {
+      "version": "20260918191500",
+      "name": "crm_integration_policy_consolidation",
+      "sourceSha256": "eb2d78d636e679694de361dcaa5cfc680fd51e8b1d57e81f9bcd8e306285bc61"
+    },
+    {
+      "version": "20260918193000",
+      "name": "crm_secure_oauth_config",
+      "sourceSha256": "cacd4c58bca862d2102a46925368bb5437a9a51d8b50f465618f163a42266493"
+    },
+    {
+      "version": "20260918210000",
+      "name": "atlas_local_network_access",
+      "sourceSha256": "7a836789abad0194e629ab2996e0390af85eb838504f72e5405d569239f08347"
+    },
+    {
+      "version": "20260918213000",
+      "name": "atlas_local_control_plane",
+      "sourceSha256": "d436186a8c6f68f97169588891dc28cefa043d14fdbf84270ad4537a4e3d3c92"
+    },
+    {
+      "version": "20260918233500",
+      "name": "health_cure_candidate_registry",
+      "sourceSha256": "7545a4ff03c0a9f7be021a66413615d77ac6ee1c0c286f2b098c60b4a41d4a36"
+    },
+    {
+      "version": "20260918234500",
+      "name": "atlas_local_agent_mtls_realtime",
+      "sourceSha256": "d43ae75f0c6a1417762bb29b3007cfe4150b40f0477e6684105d15c0d171153c"
+    },
+    {
+      "version": "20260918235500",
+      "name": "health_jaque_mate_live_research",
+      "sourceSha256": "cf3e37f2aa33453fd5db060de7f9c5ddacbe66f649f93a2bf4374dbd1d82dd38"
+    },
+    {
+      "version": "20260919015000",
+      "name": "crm_hubspot_resilience",
+      "sourceSha256": "2f2e2a66668608e81b77e7f2cf0952561a84953c37bd0542e152ed7b7ea8144a"
+    },
+    {
+      "version": "20260919022000",
+      "name": "atlas_local_ai_runtime_bootstrap",
+      "sourceSha256": "84f2175c1a9baa3f846cf400abf59b95f128e307a95fc257581e3e6e9a58c2f4"
+    },
+    {
+      "version": "20260919033500",
+      "name": "atlas_local_ai_offline_state",
+      "sourceSha256": "4a7ddb43e2911a6274ecfe8b2f87e634b9467aa2de7514b2a74bd88c49f77cc6"
+    },
+    {
+      "version": "20260919034000",
+      "name": "atlas_render_free_local_ai",
+      "sourceSha256": "45f7e9f5342e4c79abb984f83aa212303a168a5cf72d6c44ea94a6dfc761c403"
+    },
+    {
+      "version": "20260919034500",
+      "name": "atlas_render_existing_identity",
+      "sourceSha256": "5d030c45b6a93573926b2e60c46482ff857359ad48cac0c3c557ee5857bc83d0"
+    },
+    {
+      "version": "20260919043000",
+      "name": "atlas_social_command_center",
+      "sourceSha256": "d117c2e4d53433049fccaf2ecf9d3401ad869f715443b28f9fb68aa10bf3c131"
+    },
+    {
+      "version": "20260919061000",
+      "name": "atlas_browser_operator_payload",
+      "sourceSha256": "f7564fd4f013e6ff2dc2fd7ac333f84da49a9493933e4c50831973b0bde6a1e2"
+    },
+    {
+      "version": "20260919213000",
+      "name": "atlas_frontier_vertical_slice",
+      "sourceSha256": "1e2fc3829cbaa3c50bb8c5398971f10e8f595529a78bad8f6f068926c46dcd5d"
+    },
+    {
+      "version": "20260919224500",
+      "name": "frontier_awakening_campaign",
+      "sourceSha256": "2980af92a2b1f7c42b4d52ae2e855bbfb2082d825c19e64be3fadcd712d7d0e3"
+    },
+    {
+      "version": "20260919232000",
+      "name": "frontier_persistent_world",
+      "sourceSha256": "21a02ddc13dcd886551d3c5976a9fa0acec27bbf4ae91afc65db0bad26b0791d"
+    },
+    {
+      "version": "20260919232800",
+      "name": "frontier_persistent_world_hardening",
+      "sourceSha256": "09c993efe934d6417795ee5f6f0278964e32139936c3f72b595657e0de66961f"
+    },
+    {
+      "version": "20260920024000",
+      "name": "frontier_living_worlds",
+      "sourceSha256": "26393ccf832998bf199a31017473d884fdd05c9263b3ac0551e02958731dc28c"
+    },
+    {
+      "version": "20260920033000",
+      "name": "frontier_campaign_6_10",
+      "sourceSha256": "5dd72bb581def0d6d6b246851e18390371f0c01a4e5184be9679bd7777956f5b"
+    },
+    {
+      "version": "20260920041000",
+      "name": "frontier_survival_events",
+      "sourceSha256": "5d09503225b8894112f3ecefd284b63684fcfa62bea74aba819056ae68e088dd"
+    },
+    {
+      "version": "20260920044500",
+      "name": "frontier_world_codex",
+      "sourceSha256": "6f64e2f0821a32b99d1a52cd2615944666d2391efddcc09a399fa5b8ea8f08c7"
+    },
+    {
+      "version": "20260920050000",
+      "name": "atlas_personal_voice_activation",
+      "sourceSha256": "cf74720b70ad3cb1953e799aad2d72db7cc8fbed2b7747a69461ff4d3e33d153"
+    },
+    {
+      "version": "20260920080500",
+      "name": "frontier_biome_canon_alignment",
+      "sourceSha256": "088a46c1e4d59c8c69b09769b2b09e08a7810bf290578e1635dffca882b9415a"
+    },
+    {
+      "version": "20260920083000",
+      "name": "frontier_physical_biomes",
+      "sourceSha256": "45c83c0f33af9603a9c13942cc45538ef8d162e3c299be26edf9251c90b39d40"
+    },
+    {
+      "version": "20260920152000",
+      "name": "atlas_voice_provider_native_verification",
+      "sourceSha256": "0270b30d32a5386b1a89c433f2563c480c0084648a0ca9bc3372705b70684054"
+    },
+    {
+      "version": "20260920154000",
+      "name": "atlas_github_webhook_delivery_dedupe",
+      "sourceSha256": "5bbbd41eb407c91d47ba3b99691f62939bf583f0885199d2763ab20c7819663f"
+    },
+    {
+      "version": "20260920160000",
+      "name": "atlas_ai_emergency_fallback_budget",
+      "sourceSha256": "e958c5b86cc0f28753a3658376723dd80497948a59d1a18c618df6482a505340"
+    },
+    {
+      "version": "20260920160000",
+      "name": "atlas_github_app_manifest_credentials",
+      "sourceSha256": "37897d295be7a18a4c1c4032253b17284d6044266b24c45bcbf47f450786deef"
+    },
+    {
+      "version": "20260920190000",
+      "name": "procure_to_pay_inventory_margin",
+      "sourceSha256": "7c47f0fd08441fb19f9a2d7523f5c9076e5ec281784ecb63fc97385152a7804b"
+    },
+    {
+      "version": "20260920190500",
+      "name": "inventory_product_quantity_sync",
+      "sourceSha256": "c02f7030f8809318a6dd5a12287cf96593c42326b5be11da12a18ffd92168f5c"
+    },
+    {
+      "version": "20260920191500",
+      "name": "procure_to_pay_posting_guard_fix",
+      "sourceSha256": "1670bd5befc52428053e350c562e259b91c24909468cf6d4560accbced6c777d"
+    },
+    {
+      "version": "20260920192000",
+      "name": "finalize_purchase_cost_before_sale",
+      "sourceSha256": "2eda9a3207737751f888ea844110eda627a493d32c7bf37d400512eb60627261"
+    },
+    {
+      "version": "20260920192500",
+      "name": "p2p_integrity_guards",
+      "sourceSha256": "76ba35beb1ddf037625f201840434e3316f1d2c5c96fb52dc33916634d74c12d"
+    },
+    {
+      "version": "20260920193000",
+      "name": "invoice_line_issue_guard_fix",
+      "sourceSha256": "38108169f0063d865047828525565d3331828f40fa909d77f3166b1de6b3eec2"
+    },
+    {
+      "version": "20260920193500",
+      "name": "p2p_least_privilege",
+      "sourceSha256": "c4e47f41f9fe2be5aa9b45d792d777c0f7aab2c7e6cdfbb7a2615b9357ae63ce"
+    },
+    {
+      "version": "20260920214500",
+      "name": "vendor_w9_intake",
+      "sourceSha256": "3aa5eea0ab025c20fff8cd0fceff0a1c91d416a2391ee81d40848cb488534a0b"
+    },
+    {
+      "version": "20260920223000",
+      "name": "business_launch_360_commercial",
+      "sourceSha256": "b384b843bb1978cd00a37d3fbb3e3159343eb20f569a71b6b87f93086cf57624"
+    },
+    {
+      "version": "20260921082000",
+      "name": "advisory_external_provider_registry",
+      "sourceSha256": "a6229fa468c0bfa28adc28f19dcbfeed7428b7b4e59daa9aa7cf1c7871cf7727"
+    },
+    {
+      "version": "20260921134500",
+      "name": "advisory_provider_authorizations",
+      "sourceSha256": "80bc6ac07323fbffbe840596627abb8a79c58b396a7ccb1bfab160885b1a781a"
+    },
+    {
+      "version": "20260921201000",
+      "name": "tax_productive_core",
+      "sourceSha256": "bd1da04ab40003ba91c6e3413bc51c767fcdf0a88908644918427d994023304f"
+    },
+    {
+      "version": "20260922033000",
+      "name": "atlas_memory_core",
+      "sourceSha256": "d0bef6fe4b46d011acb028f2af7cb7b498c83d4e30a8983ff6a693c518de4eb0"
+    },
+    {
+      "version": "20260923185500",
+      "name": "optimize_auth_rls_initplans",
+      "sourceSha256": "169d234cef1a6b3864b17e51099d5862602e63f416e5bb087abe29a5fc559f90"
+    },
+    {
+      "version": "20260923201500",
+      "name": "atlas_people_core",
+      "sourceSha256": "39e1e9d6f9a736746068ee5e68c719b4ec9b3c341aa7797a9b3ce72f1bf2fcb9"
+    },
+    {
+      "version": "20260923203000",
+      "name": "atlas_payroll_core",
+      "sourceSha256": "46805d4922f73dea0055e254c05e3fecbf91a04bc4eb01a627b15ee1c79ee813"
+    },
+    {
+      "version": "20260923235300",
+      "name": "release_deployment_control_backfill",
+      "sourceSha256": "e0dadd59ce592b5584fc6c3fae22ee3670e0d90522b612909649f5e958efaf47"
+    },
+    {
+      "version": "20260923235400",
+      "name": "release_deployment_control_completion_gate",
+      "sourceSha256": "e90c27fdcd20587b8e987e64906b8fb4518ab6197236d5cbe8f153e5a7b5c5b9"
+    },
+    {
+      "version": "20260923235500",
+      "name": "atlas_gps4d_core",
+      "sourceSha256": "eadf8b20e39e2beabb5a4dd7ab3bfacd68c2f0bee4f707d36f2bfe7e1cacbea9"
+    },
+    {
+      "version": "20260924001200",
+      "name": "harden_atlas_gps4d_internal_tables",
+      "sourceSha256": "1bfae9502229df8b4c7322945f0b694ef586b90431f473229ab627257f01889f"
+    },
+    {
+      "version": "20260924005000",
+      "name": "atlas_library_ingestion",
+      "sourceSha256": "0da862cc9c5f56a45abfb3ec0a0a6b56de00d0a45f94b94d0c2115c9def06e55"
+    },
+    {
+      "version": "20260924132000",
+      "name": "tax_client_intake_profile",
+      "sourceSha256": "0765bf8f4f7c3519efb1e413edd03c76c60bf7425ef689fe6af717b34b02854a"
+    },
+    {
+      "version": "20260924205000",
+      "name": "atlas_knowledge_audit_hardening",
+      "sourceSha256": "a4f0e35e7a84c28f265f06562bceeef5098c2b0a88d95f8a06f071385c540fa5"
+    },
+    {
+      "version": "20260924211000",
+      "name": "atlas_knowledge_advisor_cleanup",
+      "sourceSha256": "edc3f7326abca9d39a7b58719e6373b17a48e0d086a3fb74fab0c15cea4bd45c"
+    },
+    {
+      "version": "20260925031000",
+      "name": "atlas_chat_core",
+      "sourceSha256": "776d5ebfbb7d23ee5e5d3ccb002c03683a618c0fbbed925257d8c61736d4c394"
+    },
+    {
+      "version": "20260925072000",
+      "name": "atlas_master_evidence_registry",
+      "sourceSha256": "acc24cf712a2ba3b2becf6ae5a2d3934f167deb405af01ad6427886d801b9df0"
+    },
+    {
+      "version": "20260925072500",
+      "name": "atlas_master_evidence_registry_index_hardening",
+      "sourceSha256": "afdefb4bf9d55847f6fa12ee4617f7d5246bfa3265b7c75737a1df0b255014eb"
+    },
+    {
+      "version": "20260925093000",
+      "name": "atlas_chat_postgrest_runtime",
+      "sourceSha256": "a6760d8a6cd7616990b27945ed9d0a94dca17253d251d8dab668fb1cebb8c15e"
+    },
+    {
+      "version": "20260925122500",
+      "name": "atlas_mvno_permissions",
+      "sourceSha256": "5d5791e368a6e069d3c8aef636ae2abdee1a740e998fe7794497e20ec11bbcb9"
+    },
+    {
+      "version": "20260925123500",
+      "name": "extend_atlas_gps_indoor_provider",
+      "sourceSha256": "c0bfca77236e8c8329ff2a7752f2aeefa0114494fdf002c23d96d6060a71bf9c"
+    },
+    {
+      "version": "20260925174500",
+      "name": "atlas_wireless_owned_network_permissions",
+      "sourceSha256": "8ec61aa7366d77e15739bcb536dd4be6f300759504fdfd9f9b3d823ab29cc1b3"
+    },
+    {
+      "version": "20260925182000",
+      "name": "atlas_wireless_network_control_plane",
+      "sourceSha256": "36385f3b4e4966ca8cb63f282f333d970bce7a7214497c608b97efb2411a465a"
+    },
+    {
+      "version": "20260926104500",
+      "name": "atlas_wireless_physical_commissioning",
+      "sourceSha256": "0b087d41a5bf5f8b6ffaa893c39078f423bf736b51306b623af7738ef5e5f33a"
+    },
+    {
+      "version": "20260926131500",
+      "name": "harden_exposed_security_definer_functions",
+      "sourceSha256": "4357fa837d191d9c207eed90013c7d4ba0403c9fb1b1927bdbd81c87df09272f"
+    },
+    {
+      "version": "20260926201000",
+      "name": "atlas_communication_telephony",
+      "sourceSha256": "d8f94d24353d6ca7cf2a5cc12639d8bdff432b0167322dbd2375f0acbf2c8db5"
+    },
+    {
+      "version": "20260926203500",
+      "name": "atlas_communication_telephony_permissions",
+      "sourceSha256": "76651d99dcb25320ca4cf4b2dd2a8a072c501fdd3e4ce1e0a8b6ea38b188bb2d"
+    },
+    {
+      "version": "20260926223800",
+      "name": "atlas_orchestrator_rpc_runtime_grants",
+      "sourceSha256": "21b03db3722390dda848a05f1f7e2332e2c9ac5cc02eeb9994c83c6bc04ff0d1"
+    },
+    {
+      "version": "20260926224000",
+      "name": "fix_orchestrator_runtime_vault_auth",
+      "sourceSha256": "0ee1da7a837b9450d347949f4dec549f5ec8e315f5f0ae7d7e2e90d15efb94ce"
+    },
+    {
+      "version": "20260927001500",
+      "name": "atlas_gps_coverage_progress",
+      "sourceSha256": "eb51d7a4f72219eb46b5ea10df01b46894b1f60fdeddf1966b2e071f4ef0b1a0"
+    },
+    {
+      "version": "20260927120000",
+      "name": "atlas_carrier_numbering",
+      "sourceSha256": "3f43802077ad7fb70e6e4037ad53964415e21076f11497de48dae661e28694c4"
+    },
+    {
+      "version": "20260927125500",
+      "name": "atlas_native_sovereign_consensus",
+      "sourceSha256": "67e1cae68d467745abcb8b347296e8672db33694852a352d8dd89bd0c2081951"
+    },
+    {
+      "version": "20260928015000",
+      "name": "atlas_communication_carrier_hardening",
+      "sourceSha256": "722f3acd07c6d4cb830bd500da24b0e8ebeb1a07f6e161452d4cd5046dd5a25b"
+    },
+    {
+      "version": "20260928202500",
+      "name": "atlas_communication_carrier_hardening",
+      "sourceSha256": "896203871d71cd5329269b339d4f21360bfc24c5dcfd3bca4a648dde970b6e31"
+    },
+    {
+      "version": "20260929150000",
+      "name": "atlas_business_analytics_core",
+      "sourceSha256": "f0cc0947d370e26e95d2cffdcb32f2ada3449f2c82af7f19628f10a583d825df"
+    },
+    {
+      "version": "20261001153000",
+      "name": "atlas_carrier_number_truth_gate",
+      "sourceSha256": "f4fa23208484b044f34d819cf09db29f68f37dd8e1390ef5d204cb073ffa66b1"
+    },
+    {
+      "version": "20261001173000",
+      "name": "atlas_pay_control_plane",
+      "sourceSha256": "cc8b74ba5a3462682284278cad4f80eb6b1a4810c8dd22e69b0bf5d8d9a57f45"
+    },
+    {
+      "version": "20261001173100",
+      "name": "atlas_pay_fk_index_hardening",
+      "sourceSha256": "1bdfb21cbdd44f3cf5235bb4f1a5476504f1d73b2bfebe2c004287cde4fd6eed"
+    },
+    {
+      "version": "20261002133000",
+      "name": "integration_auth_kind_alignment",
+      "sourceSha256": "4cf02e8e41004a9227cbf634c5dd51e0e045f69f0256f93c7b8cad26e5a66653"
+    },
+    {
+      "version": "20261004002900",
+      "name": "orchestrator_private_security_boundary",
+      "sourceSha256": "f92c0121bb0da8131d3df5a3de55452be59a2ed1a45bd8a2a476cce353e6dd28"
+    },
+    {
+      "version": "20261004143000",
+      "name": "atlas_telephony_provider_state_clock",
+      "sourceSha256": "0ab18138a0dd87de3a1b7ab88dcb1f214fd6a7c0cdc2c79b89900a00372ef471"
+    },
+    {
+      "version": "20261004190000",
+      "name": "atlas_payroll_control_plane",
+      "sourceSha256": "070cf8339d426e791dd82f1e0e03138eab6c85f7264e3e249c98266c001f756b"
+    },
+    {
+      "version": "20261004191500",
+      "name": "atlas_payroll_settlement_guard",
+      "sourceSha256": "88c630fb7138ee9632e800250cc8adf717be13b397cec2814ff500a6008b6743"
+    },
+    {
+      "version": "20261004193000",
+      "name": "atlas_payroll_readiness_security",
+      "sourceSha256": "3a936a34a5d66f4700f3578c0ad5e16957c20b2ca510dba178c16c4953db0dc8"
+    },
+    {
+      "version": "20261004194500",
+      "name": "atlas_payroll_provider_column_security",
+      "sourceSha256": "2972361570c52cabbe83162dd9e458b16958028eeff5b3ccf395f0754a4b7745"
+    },
+    {
+      "version": "20261004195000",
+      "name": "atlas_people_payroll_least_privilege",
+      "sourceSha256": "16e4d9b72e4ad6889d30adf75867019c3369fb58d73540f64bcf6803c031c146"
+    },
+    {
+      "version": "20261004203000",
+      "name": "atlas_payroll_us_federal_tax_2026",
+      "sourceSha256": "cd614bf839804622ba8c5fc7dd6065953a8e25ef878de48c672aa11d8c3f0fab"
+    },
+    {
+      "version": "20261004204500",
+      "name": "atlas_payroll_us_federal_determination_persistence",
+      "sourceSha256": "22ed1a89dc35818791e7477a46baf025f29439bc99e278b11759ef81c426a5b7"
+    },
+    {
+      "version": "20261006190000",
+      "name": "atlas_pay_accounts_center",
+      "sourceSha256": "79bb19a0583f587af5ad0ad62867187f83a361a699d1e1381ff88980a5eabfa0"
+    },
+    {
+      "version": "20261007081500",
+      "name": "atlas_care_core",
+      "sourceSha256": "27e4232abb37218f62560b77bdc8389b01debb590be15f393220f4c18f258cf9"
+    }
+  ],
+  "nameMismatch": [],
+  "sourceMismatch": [
+    {
+      "local": {
+        "version": "20260911192327",
+        "name": "harden_accounting_period_close",
+        "sourceSha256": "da7d352200a0791e8b80b9ed78c9fc33574c810b3979e74b273f3ca332ba9d94"
+      },
+      "remote": {
+        "version": "20260911192327",
+        "name": "harden_accounting_period_close",
+        "sourceSha256": "55a32f4822dcdd1a5860d86176390ebfdfb96492d1886706cc604b1bd5d467c2"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912065841",
+        "name": "accounting_intercompany_consolidation",
+        "sourceSha256": "e832ab6a854caf14827aeb7e4ac76eb790bb80cf988acb9ad6416125d8536362"
+      },
+      "remote": {
+        "version": "20260912065841",
+        "name": "accounting_intercompany_consolidation",
+        "sourceSha256": "82df8748ac4e9c282c0fea5309ac04bbab3f78b72b9c85fa00f0a3cae73eec36"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912070014",
+        "name": "harden_accounting_consolidation_governance",
+        "sourceSha256": "2bd52c272da30ba806acf3777f8d590b5338c40011743e2b5dbbf6a309c1bf5c"
+      },
+      "remote": {
+        "version": "20260912070014",
+        "name": "harden_accounting_consolidation_governance",
+        "sourceSha256": "f5f23cc529fcea62388674bb5eac7f150686ca34fe9cb7d5558ba9456ff046c3"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912070120",
+        "name": "accounting_consolidation_workspace",
+        "sourceSha256": "ade4775e9c5636fdd125a46bfa71d4ac4fd76fb160a5d24f0173acea324d183a"
+      },
+      "remote": {
+        "version": "20260912070120",
+        "name": "accounting_consolidation_workspace",
+        "sourceSha256": "3c43d7f44d8684aff71075865e3cee87f17e7e1b1eacc8112e4de3615db0f92d"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919053622",
+        "name": "harden_atlas_fin_import_staging",
+        "sourceSha256": "927b4a2ffa3fa2a5220e3f3fd7ea37142fb04d4047e95451815687f34ce9d3a0"
+      },
+      "remote": {
+        "version": "20260919053622",
+        "name": "harden_atlas_fin_import_staging",
+        "sourceSha256": "88fc8d0452f79c9bfff237883436a761c68c967dcada1635fa75c953372690f3"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919053745",
+        "name": "explicitly_deny_browser_atlas_fin_import_staging",
+        "sourceSha256": "aa0869cd1471b22cfaf959c6add192dd9c0fbec9d0d069db4135c323b0ffccd5"
+      },
+      "remote": {
+        "version": "20260919053745",
+        "name": "explicitly_deny_browser_atlas_fin_import_staging",
+        "sourceSha256": "6bc21a866f886524935480c1add441d97c8ed9d6216cc3046a4fff67735b0c45"
+      }
+    },
+    {
+      "local": {
+        "version": "20261009155301",
+        "name": "atlas_certificate_existing_oidc_evidence_adapter",
+        "sourceSha256": "2cf273af2262169559589c1533607c2e1886d53145ab32fd08ddd586d8e4350b"
+      },
+      "remote": {
+        "version": "20261009155301",
+        "name": "atlas_certificate_existing_oidc_evidence_adapter",
+        "sourceSha256": "365943239623eed9490da6d566982c4ef95740179fcd111806c4306098c139e4"
+      }
+    },
+    {
+      "local": {
+        "version": "20261009155535",
+        "name": "atlas_certificate_evidence_ref_operator_fix",
+        "sourceSha256": "206c9adb980e29512a0e7bc4774d9ab04c52c49b37c5c9079fe1361593d00e2c"
+      },
+      "remote": {
+        "version": "20261009155535",
+        "name": "atlas_certificate_evidence_ref_operator_fix",
+        "sourceSha256": "b61f61fcf84a4e2b4d05be44e3d1619770a6a2efa535119f6137f713dc2bca06"
+      }
+    }
+  ],
+  "bodyEquivalentCandidates": [
+    {
+      "local": {
+        "version": "20260910",
+        "name": "harden_public_infra_verification",
+        "sourceSha256": "330684b722fab7a5e2c6f042a4e88ad63acdb764554a89cc01c1aef79f2090be"
+      },
+      "remote": {
+        "version": "20260910043608",
+        "name": "harden_public_infra_verification",
+        "sourceSha256": "330684b722fab7a5e2c6f042a4e88ad63acdb764554a89cc01c1aef79f2090be"
+      }
+    },
+    {
+      "local": {
+        "version": "20260911",
+        "name": "hospitality_room_access",
+        "sourceSha256": "8a9aaf1c7d90e02cb45d2fefc9321f1331e0bf78d6469bcd24b9d1745a09ed52"
+      },
+      "remote": {
+        "version": "20260912014255",
+        "name": "hospitality_room_access",
+        "sourceSha256": "8a9aaf1c7d90e02cb45d2fefc9321f1331e0bf78d6469bcd24b9d1745a09ed52"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912",
+        "name": "hospitality_rls_initplan_hardening",
+        "sourceSha256": "52aa6c85c1fe6224b6f378b4341571850408fe69d8487efe8bf07efe717f9894"
+      },
+      "remote": {
+        "version": "20260912014547",
+        "name": "hospitality_rls_initplan_hardening",
+        "sourceSha256": "52aa6c85c1fe6224b6f378b4341571850408fe69d8487efe8bf07efe717f9894"
+      }
+    },
+    {
+      "local": {
+        "version": "20260913",
+        "name": "harden_atlas_bootstrap_owner_aal2",
+        "sourceSha256": "3bfe0037f9f6f92b4a238fd60e0b9b977b41abf6eef1b54782c072c4a82a807f"
+      },
+      "remote": {
+        "version": "20260914001959",
+        "name": "harden_atlas_bootstrap_owner_aal2",
+        "sourceSha256": "3bfe0037f9f6f92b4a238fd60e0b9b977b41abf6eef1b54782c072c4a82a807f"
+      }
+    },
+    {
+      "local": {
+        "version": "20260914004900",
+        "name": "optimize_auth_rls_initplan_v1",
+        "sourceSha256": "1b234493357c7eda62a656a2830ad742ee6ac1b825d05b910251f70a7a22605e"
+      },
+      "remote": {
+        "version": "20260914005402",
+        "name": "optimize_auth_rls_initplan_v1",
+        "sourceSha256": "1b234493357c7eda62a656a2830ad742ee6ac1b825d05b910251f70a7a22605e"
+      }
+    },
+    {
+      "local": {
+        "version": "20260915043000",
+        "name": "creator_content_intelligence",
+        "sourceSha256": "0f0b85e5b1dd791a8462baa6ee88061fd2665331423fc68c46a20a0f30e696b8"
+      },
+      "remote": {
+        "version": "20260915090932",
+        "name": "creator_content_intelligence",
+        "sourceSha256": "0f0b85e5b1dd791a8462baa6ee88061fd2665331423fc68c46a20a0f30e696b8"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912",
+        "name": "creator_director",
+        "sourceSha256": "c50f1fe455140a75e1fb2e5f446e4713b57c67b795e9af152be9f364c6859318"
+      },
+      "remote": {
+        "version": "20260915091127",
+        "name": "creator_director",
+        "sourceSha256": "c50f1fe455140a75e1fb2e5f446e4713b57c67b795e9af152be9f364c6859318"
+      }
+    },
+    {
+      "local": {
+        "version": "20260915094600",
+        "name": "creator_director_hardening",
+        "sourceSha256": "a7876e5d39058436ba5bb3eab870133f4301fc921cd420cd3f78e5fc5475d308"
+      },
+      "remote": {
+        "version": "20260915095233",
+        "name": "creator_director_hardening",
+        "sourceSha256": "a7876e5d39058436ba5bb3eab870133f4301fc921cd420cd3f78e5fc5475d308"
+      }
+    },
+    {
+      "local": {
+        "version": "20260915124500",
+        "name": "insurance_verification",
+        "sourceSha256": "72a5dc2563724ac9bfc33114131349a84714f72238f0c27ad789f61daaab583a"
+      },
+      "remote": {
+        "version": "20260915210532",
+        "name": "insurance_verification",
+        "sourceSha256": "72a5dc2563724ac9bfc33114131349a84714f72238f0c27ad789f61daaab583a"
+      }
+    },
+    {
+      "local": {
+        "version": "20260915233000",
+        "name": "health_jaque_mate_sentinel",
+        "sourceSha256": "98a5ab9ed313d2d92c0871a482951f9f8e691fdc1bf5da3f918f4b084393bf11"
+      },
+      "remote": {
+        "version": "20260916044714",
+        "name": "health_jaque_mate_sentinel",
+        "sourceSha256": "98a5ab9ed313d2d92c0871a482951f9f8e691fdc1bf5da3f918f4b084393bf11"
+      }
+    },
+    {
+      "local": {
+        "version": "20260916005000",
+        "name": "health_jaque_mate_sentinel_hardening",
+        "sourceSha256": "959c13413eb6f51bed03101982c8841e4af6130d17fdec3f13dbe6685d50229e"
+      },
+      "remote": {
+        "version": "20260916045900",
+        "name": "health_jaque_mate_sentinel_hardening",
+        "sourceSha256": "959c13413eb6f51bed03101982c8841e4af6130d17fdec3f13dbe6685d50229e"
+      }
+    },
+    {
+      "local": {
+        "version": "20260916",
+        "name": "hospitality_add_onity_provider",
+        "sourceSha256": "4fea32a34bb2092d92f40bf8a1617249072c6bdc0ddde6d6b78894a794b3559a"
+      },
+      "remote": {
+        "version": "20260916184257",
+        "name": "hospitality_add_onity_provider",
+        "sourceSha256": "4fea32a34bb2092d92f40bf8a1617249072c6bdc0ddde6d6b78894a794b3559a"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918031500",
+        "name": "advisory_office_core",
+        "sourceSha256": "3b71ba55e800439e7f0e4c418714e3e752a8adb624c89d8fd82f4850eb0630dc"
+      },
+      "remote": {
+        "version": "20260918031936",
+        "name": "advisory_office_core",
+        "sourceSha256": "3b71ba55e800439e7f0e4c418714e3e752a8adb624c89d8fd82f4850eb0630dc"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918033500",
+        "name": "advisory_firm_scope_rls",
+        "sourceSha256": "61c518806d10cc53095a3301d1a83bc6e28d65293c4eca7789fe4647c1c2ebbb"
+      },
+      "remote": {
+        "version": "20260918032931",
+        "name": "advisory_firm_scope_rls",
+        "sourceSha256": "61c518806d10cc53095a3301d1a83bc6e28d65293c4eca7789fe4647c1c2ebbb"
+      }
+    },
+    {
+      "local": {
+        "version": "20260916232000",
+        "name": "atlas_orchestrator_persistence",
+        "sourceSha256": "56596ac9ecac7276bc8f18cd67337170ecc0cfd4d52cb22237f030aa49945058"
+      },
+      "remote": {
+        "version": "20260918073823",
+        "name": "atlas_orchestrator_persistence",
+        "sourceSha256": "56596ac9ecac7276bc8f18cd67337170ecc0cfd4d52cb22237f030aa49945058"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918091500",
+        "name": "atlas_orchestrator_runtime_rpc",
+        "sourceSha256": "25d986b3bfcac638fec30340d8361e026149a3b012acc3f8c92a0cd3f4e3f8dd"
+      },
+      "remote": {
+        "version": "20260918091404",
+        "name": "atlas_orchestrator_runtime_rpc",
+        "sourceSha256": "25d986b3bfcac638fec30340d8361e026149a3b012acc3f8c92a0cd3f4e3f8dd"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918091500",
+        "name": "atlas_orchestrator_runtime_rpc",
+        "sourceSha256": "25d986b3bfcac638fec30340d8361e026149a3b012acc3f8c92a0cd3f4e3f8dd"
+      },
+      "remote": {
+        "version": "20260918092900",
+        "name": "atlas_orchestrator_runtime_rpc",
+        "sourceSha256": "25d986b3bfcac638fec30340d8361e026149a3b012acc3f8c92a0cd3f4e3f8dd"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918113000",
+        "name": "atlas_commerce_core",
+        "sourceSha256": "d6fd58d3db6045377cda5088b111ece5e0fb57a10a034b2dbc368fd19b22473d"
+      },
+      "remote": {
+        "version": "20260918134123",
+        "name": "atlas_commerce_core",
+        "sourceSha256": "d6fd58d3db6045377cda5088b111ece5e0fb57a10a034b2dbc368fd19b22473d"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918114500",
+        "name": "atlas_commerce_order_commit",
+        "sourceSha256": "d8315ad64a0acf5044814afb362c7ade31b28d15817bca5ca8164b9d9b3c5f96"
+      },
+      "remote": {
+        "version": "20260918134130",
+        "name": "atlas_commerce_order_commit",
+        "sourceSha256": "d8315ad64a0acf5044814afb362c7ade31b28d15817bca5ca8164b9d9b3c5f96"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918120000",
+        "name": "atlas_commerce_delivery_state",
+        "sourceSha256": "33edf048fd4eaedf84830ec8a9661038c36be5018912dd0e585eed17cad30b14"
+      },
+      "remote": {
+        "version": "20260918134133",
+        "name": "atlas_commerce_delivery_state",
+        "sourceSha256": "33edf048fd4eaedf84830ec8a9661038c36be5018912dd0e585eed17cad30b14"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918155000",
+        "name": "atlas_insurance_otp_vault_secret",
+        "sourceSha256": "631433e83fb9e78b15599552cb640186c7d07a9da489311de631ac7eefb2db35"
+      },
+      "remote": {
+        "version": "20260918155451",
+        "name": "atlas_insurance_otp_vault_secret",
+        "sourceSha256": "631433e83fb9e78b15599552cb640186c7d07a9da489311de631ac7eefb2db35"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918141000",
+        "name": "creator_creative_plans",
+        "sourceSha256": "2cf104873756d98859906dcfaf4de9955ebe8de5fabc35ccc8bf756a97a65c00"
+      },
+      "remote": {
+        "version": "20260918180505",
+        "name": "creator_creative_plans",
+        "sourceSha256": "2cf104873756d98859906dcfaf4de9955ebe8de5fabc35ccc8bf756a97a65c00"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918",
+        "name": "creator_teleprompter_recordings",
+        "sourceSha256": "4557b4412b9649e29acc1ae2f18bd27ca3a3eaca93dcf4286fe2294452ca8af3"
+      },
+      "remote": {
+        "version": "20260918181721",
+        "name": "creator_teleprompter_recordings",
+        "sourceSha256": "4557b4412b9649e29acc1ae2f18bd27ca3a3eaca93dcf4286fe2294452ca8af3"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912",
+        "name": "atlas_work_runtime",
+        "sourceSha256": "41f03e5632c1c05aab859ecb00f5f2b31eebf0539eff5e00ae6e4da6ff8560ca"
+      },
+      "remote": {
+        "version": "20260918184010",
+        "name": "atlas_work_runtime",
+        "sourceSha256": "41f03e5632c1c05aab859ecb00f5f2b31eebf0539eff5e00ae6e4da6ff8560ca"
+      }
+    },
+    {
+      "local": {
+        "version": "20260914170000",
+        "name": "atlas_crm_hubspot_integration",
+        "sourceSha256": "9e1429525e3501e9aa77e50415f9aca2b5ed0cb9ce61eb33646a765d51b69583"
+      },
+      "remote": {
+        "version": "20260918190544",
+        "name": "atlas_crm_hubspot_integration",
+        "sourceSha256": "9e1429525e3501e9aa77e50415f9aca2b5ed0cb9ce61eb33646a765d51b69583"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918153000",
+        "name": "creator_web_launch_blueprints",
+        "sourceSha256": "b646c17535ea10246eb18ea3c1d761b7385b3d8bf255fae822960757b088cc07"
+      },
+      "remote": {
+        "version": "20260918190551",
+        "name": "creator_web_launch_blueprints",
+        "sourceSha256": "b646c17535ea10246eb18ea3c1d761b7385b3d8bf255fae822960757b088cc07"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918193000",
+        "name": "crm_secure_oauth_config",
+        "sourceSha256": "cacd4c58bca862d2102a46925368bb5437a9a51d8b50f465618f163a42266493"
+      },
+      "remote": {
+        "version": "20260918192936",
+        "name": "crm_secure_oauth_config",
+        "sourceSha256": "cacd4c58bca862d2102a46925368bb5437a9a51d8b50f465618f163a42266493"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918210000",
+        "name": "atlas_local_network_access",
+        "sourceSha256": "7a836789abad0194e629ab2996e0390af85eb838504f72e5405d569239f08347"
+      },
+      "remote": {
+        "version": "20260918211001",
+        "name": "atlas_local_network_access",
+        "sourceSha256": "7a836789abad0194e629ab2996e0390af85eb838504f72e5405d569239f08347"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918213000",
+        "name": "atlas_local_control_plane",
+        "sourceSha256": "d436186a8c6f68f97169588891dc28cefa043d14fdbf84270ad4537a4e3d3c92"
+      },
+      "remote": {
+        "version": "20260918231705",
+        "name": "atlas_local_control_plane",
+        "sourceSha256": "d436186a8c6f68f97169588891dc28cefa043d14fdbf84270ad4537a4e3d3c92"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918233500",
+        "name": "health_cure_candidate_registry",
+        "sourceSha256": "7545a4ff03c0a9f7be021a66413615d77ac6ee1c0c286f2b098c60b4a41d4a36"
+      },
+      "remote": {
+        "version": "20260918234506",
+        "name": "health_cure_candidate_registry",
+        "sourceSha256": "7545a4ff03c0a9f7be021a66413615d77ac6ee1c0c286f2b098c60b4a41d4a36"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918234500",
+        "name": "atlas_local_agent_mtls_realtime",
+        "sourceSha256": "d43ae75f0c6a1417762bb29b3007cfe4150b40f0477e6684105d15c0d171153c"
+      },
+      "remote": {
+        "version": "20260919000247",
+        "name": "atlas_local_agent_mtls_realtime",
+        "sourceSha256": "d43ae75f0c6a1417762bb29b3007cfe4150b40f0477e6684105d15c0d171153c"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918235500",
+        "name": "health_jaque_mate_live_research",
+        "sourceSha256": "cf3e37f2aa33453fd5db060de7f9c5ddacbe66f649f93a2bf4374dbd1d82dd38"
+      },
+      "remote": {
+        "version": "20260919000707",
+        "name": "health_jaque_mate_live_research",
+        "sourceSha256": "cf3e37f2aa33453fd5db060de7f9c5ddacbe66f649f93a2bf4374dbd1d82dd38"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919022000",
+        "name": "atlas_local_ai_runtime_bootstrap",
+        "sourceSha256": "84f2175c1a9baa3f846cf400abf59b95f128e307a95fc257581e3e6e9a58c2f4"
+      },
+      "remote": {
+        "version": "20260919021634",
+        "name": "atlas_local_ai_runtime_bootstrap",
+        "sourceSha256": "84f2175c1a9baa3f846cf400abf59b95f128e307a95fc257581e3e6e9a58c2f4"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919033500",
+        "name": "atlas_local_ai_offline_state",
+        "sourceSha256": "4a7ddb43e2911a6274ecfe8b2f87e634b9467aa2de7514b2a74bd88c49f77cc6"
+      },
+      "remote": {
+        "version": "20260919035705",
+        "name": "atlas_local_ai_offline_state",
+        "sourceSha256": "4a7ddb43e2911a6274ecfe8b2f87e634b9467aa2de7514b2a74bd88c49f77cc6"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919043000",
+        "name": "atlas_social_command_center",
+        "sourceSha256": "d117c2e4d53433049fccaf2ecf9d3401ad869f715443b28f9fb68aa10bf3c131"
+      },
+      "remote": {
+        "version": "20260919041653",
+        "name": "atlas_social_command_center",
+        "sourceSha256": "d117c2e4d53433049fccaf2ecf9d3401ad869f715443b28f9fb68aa10bf3c131"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919015000",
+        "name": "crm_hubspot_resilience",
+        "sourceSha256": "2f2e2a66668608e81b77e7f2cf0952561a84953c37bd0542e152ed7b7ea8144a"
+      },
+      "remote": {
+        "version": "20260919065044",
+        "name": "crm_hubspot_resilience",
+        "sourceSha256": "2f2e2a66668608e81b77e7f2cf0952561a84953c37bd0542e152ed7b7ea8144a"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919213000",
+        "name": "atlas_frontier_vertical_slice",
+        "sourceSha256": "1e2fc3829cbaa3c50bb8c5398971f10e8f595529a78bad8f6f068926c46dcd5d"
+      },
+      "remote": {
+        "version": "20260919214201",
+        "name": "atlas_frontier_vertical_slice",
+        "sourceSha256": "1e2fc3829cbaa3c50bb8c5398971f10e8f595529a78bad8f6f068926c46dcd5d"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919224500",
+        "name": "frontier_awakening_campaign",
+        "sourceSha256": "2980af92a2b1f7c42b4d52ae2e855bbfb2082d825c19e64be3fadcd712d7d0e3"
+      },
+      "remote": {
+        "version": "20260919225601",
+        "name": "frontier_awakening_campaign",
+        "sourceSha256": "2980af92a2b1f7c42b4d52ae2e855bbfb2082d825c19e64be3fadcd712d7d0e3"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919232000",
+        "name": "frontier_persistent_world",
+        "sourceSha256": "21a02ddc13dcd886551d3c5976a9fa0acec27bbf4ae91afc65db0bad26b0791d"
+      },
+      "remote": {
+        "version": "20260919232620",
+        "name": "frontier_persistent_world",
+        "sourceSha256": "21a02ddc13dcd886551d3c5976a9fa0acec27bbf4ae91afc65db0bad26b0791d"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919232800",
+        "name": "frontier_persistent_world_hardening",
+        "sourceSha256": "09c993efe934d6417795ee5f6f0278964e32139936c3f72b595657e0de66961f"
+      },
+      "remote": {
+        "version": "20260919232759",
+        "name": "frontier_persistent_world_hardening",
+        "sourceSha256": "09c993efe934d6417795ee5f6f0278964e32139936c3f72b595657e0de66961f"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920024000",
+        "name": "frontier_living_worlds",
+        "sourceSha256": "26393ccf832998bf199a31017473d884fdd05c9263b3ac0551e02958731dc28c"
+      },
+      "remote": {
+        "version": "20260920064109",
+        "name": "frontier_living_worlds",
+        "sourceSha256": "26393ccf832998bf199a31017473d884fdd05c9263b3ac0551e02958731dc28c"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920033000",
+        "name": "frontier_campaign_6_10",
+        "sourceSha256": "5dd72bb581def0d6d6b246851e18390371f0c01a4e5184be9679bd7777956f5b"
+      },
+      "remote": {
+        "version": "20260920072347",
+        "name": "frontier_campaign_6_10",
+        "sourceSha256": "5dd72bb581def0d6d6b246851e18390371f0c01a4e5184be9679bd7777956f5b"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912",
+        "name": "ride_profile_photo_compliance",
+        "sourceSha256": "2663ab971da14ebd860d2e975e060c3040954942279d7dfea8051b020c896979"
+      },
+      "remote": {
+        "version": "20260920072427",
+        "name": "ride_profile_photo_compliance",
+        "sourceSha256": "2663ab971da14ebd860d2e975e060c3040954942279d7dfea8051b020c896979"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912",
+        "name": "ride_profile_photo_compliance_hardening",
+        "sourceSha256": "56d28542d22bac3c3e2a8dc11b92d83d63aa58e5e3e8dfa55736126eea02a04b"
+      },
+      "remote": {
+        "version": "20260920072429",
+        "name": "ride_profile_photo_compliance_hardening",
+        "sourceSha256": "56d28542d22bac3c3e2a8dc11b92d83d63aa58e5e3e8dfa55736126eea02a04b"
+      }
+    },
+    {
+      "local": {
+        "version": "20260912",
+        "name": "ride_profile_photo_atomicity",
+        "sourceSha256": "2fcef6543599fc759863fb6da05cfcbdbe4e368bd94168db767bc9f0a41076f8"
+      },
+      "remote": {
+        "version": "20260920072431",
+        "name": "ride_profile_photo_atomicity",
+        "sourceSha256": "2fcef6543599fc759863fb6da05cfcbdbe4e368bd94168db767bc9f0a41076f8"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920041000",
+        "name": "frontier_survival_events",
+        "sourceSha256": "5d09503225b8894112f3ecefd284b63684fcfa62bea74aba819056ae68e088dd"
+      },
+      "remote": {
+        "version": "20260920073009",
+        "name": "frontier_survival_events",
+        "sourceSha256": "5d09503225b8894112f3ecefd284b63684fcfa62bea74aba819056ae68e088dd"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920044500",
+        "name": "frontier_world_codex",
+        "sourceSha256": "6f64e2f0821a32b99d1a52cd2615944666d2391efddcc09a399fa5b8ea8f08c7"
+      },
+      "remote": {
+        "version": "20260920073539",
+        "name": "frontier_world_codex",
+        "sourceSha256": "6f64e2f0821a32b99d1a52cd2615944666d2391efddcc09a399fa5b8ea8f08c7"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920080500",
+        "name": "frontier_biome_canon_alignment",
+        "sourceSha256": "088a46c1e4d59c8c69b09769b2b09e08a7810bf290578e1635dffca882b9415a"
+      },
+      "remote": {
+        "version": "20260920080208",
+        "name": "frontier_biome_canon_alignment",
+        "sourceSha256": "088a46c1e4d59c8c69b09769b2b09e08a7810bf290578e1635dffca882b9415a"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920083000",
+        "name": "frontier_physical_biomes",
+        "sourceSha256": "45c83c0f33af9603a9c13942cc45538ef8d162e3c299be26edf9251c90b39d40"
+      },
+      "remote": {
+        "version": "20260920082059",
+        "name": "frontier_physical_biomes",
+        "sourceSha256": "45c83c0f33af9603a9c13942cc45538ef8d162e3c299be26edf9251c90b39d40"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920050000",
+        "name": "atlas_personal_voice_activation",
+        "sourceSha256": "cf74720b70ad3cb1953e799aad2d72db7cc8fbed2b7747a69461ff4d3e33d153"
+      },
+      "remote": {
+        "version": "20260920133713",
+        "name": "atlas_personal_voice_activation",
+        "sourceSha256": "cf74720b70ad3cb1953e799aad2d72db7cc8fbed2b7747a69461ff4d3e33d153"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920152000",
+        "name": "atlas_voice_provider_native_verification",
+        "sourceSha256": "0270b30d32a5386b1a89c433f2563c480c0084648a0ca9bc3372705b70684054"
+      },
+      "remote": {
+        "version": "20260920152720",
+        "name": "atlas_voice_provider_native_verification",
+        "sourceSha256": "0270b30d32a5386b1a89c433f2563c480c0084648a0ca9bc3372705b70684054"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920160000",
+        "name": "atlas_github_app_manifest_credentials",
+        "sourceSha256": "37897d295be7a18a4c1c4032253b17284d6044266b24c45bcbf47f450786deef"
+      },
+      "remote": {
+        "version": "20260920160501",
+        "name": "atlas_github_app_manifest_credentials",
+        "sourceSha256": "37897d295be7a18a4c1c4032253b17284d6044266b24c45bcbf47f450786deef"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920160000",
+        "name": "atlas_ai_emergency_fallback_budget",
+        "sourceSha256": "e958c5b86cc0f28753a3658376723dd80497948a59d1a18c618df6482a505340"
+      },
+      "remote": {
+        "version": "20260920161055",
+        "name": "atlas_ai_emergency_fallback_budget",
+        "sourceSha256": "e958c5b86cc0f28753a3658376723dd80497948a59d1a18c618df6482a505340"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920191500",
+        "name": "procure_to_pay_posting_guard_fix",
+        "sourceSha256": "1670bd5befc52428053e350c562e259b91c24909468cf6d4560accbced6c777d"
+      },
+      "remote": {
+        "version": "20260921011233",
+        "name": "procure_to_pay_posting_guard_fix",
+        "sourceSha256": "1670bd5befc52428053e350c562e259b91c24909468cf6d4560accbced6c777d"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920192000",
+        "name": "finalize_purchase_cost_before_sale",
+        "sourceSha256": "2eda9a3207737751f888ea844110eda627a493d32c7bf37d400512eb60627261"
+      },
+      "remote": {
+        "version": "20260921011623",
+        "name": "finalize_purchase_cost_before_sale",
+        "sourceSha256": "2eda9a3207737751f888ea844110eda627a493d32c7bf37d400512eb60627261"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920192500",
+        "name": "p2p_integrity_guards",
+        "sourceSha256": "76ba35beb1ddf037625f201840434e3316f1d2c5c96fb52dc33916634d74c12d"
+      },
+      "remote": {
+        "version": "20260921011809",
+        "name": "p2p_integrity_guards",
+        "sourceSha256": "76ba35beb1ddf037625f201840434e3316f1d2c5c96fb52dc33916634d74c12d"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920193000",
+        "name": "invoice_line_issue_guard_fix",
+        "sourceSha256": "38108169f0063d865047828525565d3331828f40fa909d77f3166b1de6b3eec2"
+      },
+      "remote": {
+        "version": "20260921011835",
+        "name": "invoice_line_issue_guard_fix",
+        "sourceSha256": "38108169f0063d865047828525565d3331828f40fa909d77f3166b1de6b3eec2"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920193500",
+        "name": "p2p_least_privilege",
+        "sourceSha256": "c4e47f41f9fe2be5aa9b45d792d777c0f7aab2c7e6cdfbb7a2615b9357ae63ce"
+      },
+      "remote": {
+        "version": "20260921011913",
+        "name": "p2p_least_privilege",
+        "sourceSha256": "c4e47f41f9fe2be5aa9b45d792d777c0f7aab2c7e6cdfbb7a2615b9357ae63ce"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920214500",
+        "name": "vendor_w9_intake",
+        "sourceSha256": "3aa5eea0ab025c20fff8cd0fceff0a1c91d416a2391ee81d40848cb488534a0b"
+      },
+      "remote": {
+        "version": "20260921014904",
+        "name": "vendor_w9_intake",
+        "sourceSha256": "3aa5eea0ab025c20fff8cd0fceff0a1c91d416a2391ee81d40848cb488534a0b"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920223000",
+        "name": "business_launch_360_commercial",
+        "sourceSha256": "b384b843bb1978cd00a37d3fbb3e3159343eb20f569a71b6b87f93086cf57624"
+      },
+      "remote": {
+        "version": "20260921022903",
+        "name": "business_launch_360_commercial",
+        "sourceSha256": "b384b843bb1978cd00a37d3fbb3e3159343eb20f569a71b6b87f93086cf57624"
+      }
+    },
+    {
+      "local": {
+        "version": "20260921082000",
+        "name": "advisory_external_provider_registry",
+        "sourceSha256": "a6229fa468c0bfa28adc28f19dcbfeed7428b7b4e59daa9aa7cf1c7871cf7727"
+      },
+      "remote": {
+        "version": "20260921124125",
+        "name": "advisory_external_provider_registry",
+        "sourceSha256": "a6229fa468c0bfa28adc28f19dcbfeed7428b7b4e59daa9aa7cf1c7871cf7727"
+      }
+    },
+    {
+      "local": {
+        "version": "20260921134500",
+        "name": "advisory_provider_authorizations",
+        "sourceSha256": "80bc6ac07323fbffbe840596627abb8a79c58b396a7ccb1bfab160885b1a781a"
+      },
+      "remote": {
+        "version": "20260921174632",
+        "name": "advisory_provider_authorizations",
+        "sourceSha256": "80bc6ac07323fbffbe840596627abb8a79c58b396a7ccb1bfab160885b1a781a"
+      }
+    },
+    {
+      "local": {
+        "version": "20260922033000",
+        "name": "atlas_memory_core",
+        "sourceSha256": "d0bef6fe4b46d011acb028f2af7cb7b498c83d4e30a8983ff6a693c518de4eb0"
+      },
+      "remote": {
+        "version": "20260922033917",
+        "name": "atlas_memory_core",
+        "sourceSha256": "d0bef6fe4b46d011acb028f2af7cb7b498c83d4e30a8983ff6a693c518de4eb0"
+      }
+    },
+    {
+      "local": {
+        "version": "20260923235500",
+        "name": "atlas_gps4d_core",
+        "sourceSha256": "eadf8b20e39e2beabb5a4dd7ab3bfacd68c2f0bee4f707d36f2bfe7e1cacbea9"
+      },
+      "remote": {
+        "version": "20260924001019",
+        "name": "atlas_gps4d_core",
+        "sourceSha256": "eadf8b20e39e2beabb5a4dd7ab3bfacd68c2f0bee4f707d36f2bfe7e1cacbea9"
+      }
+    },
+    {
+      "local": {
+        "version": "20260924001200",
+        "name": "harden_atlas_gps4d_internal_tables",
+        "sourceSha256": "1bfae9502229df8b4c7322945f0b694ef586b90431f473229ab627257f01889f"
+      },
+      "remote": {
+        "version": "20260924001101",
+        "name": "harden_atlas_gps4d_internal_tables",
+        "sourceSha256": "1bfae9502229df8b4c7322945f0b694ef586b90431f473229ab627257f01889f"
+      }
+    },
+    {
+      "local": {
+        "version": "20260924005000",
+        "name": "atlas_library_ingestion",
+        "sourceSha256": "0da862cc9c5f56a45abfb3ec0a0a6b56de00d0a45f94b94d0c2115c9def06e55"
+      },
+      "remote": {
+        "version": "20260924005706",
+        "name": "atlas_library_ingestion",
+        "sourceSha256": "0da862cc9c5f56a45abfb3ec0a0a6b56de00d0a45f94b94d0c2115c9def06e55"
+      }
+    },
+    {
+      "local": {
+        "version": "20260914",
+        "name": "private_oracle",
+        "sourceSha256": "c22fc1ba83aee60b3e086e8f1ed8c3b64b5c510afb109cf40d1328c478a339ea"
+      },
+      "remote": {
+        "version": "20260924162513",
+        "name": "private_oracle",
+        "sourceSha256": "c22fc1ba83aee60b3e086e8f1ed8c3b64b5c510afb109cf40d1328c478a339ea"
+      }
+    },
+    {
+      "local": {
+        "version": "20260924205000",
+        "name": "atlas_knowledge_audit_hardening",
+        "sourceSha256": "a4f0e35e7a84c28f265f06562bceeef5098c2b0a88d95f8a06f071385c540fa5"
+      },
+      "remote": {
+        "version": "20260924204337",
+        "name": "atlas_knowledge_audit_hardening",
+        "sourceSha256": "a4f0e35e7a84c28f265f06562bceeef5098c2b0a88d95f8a06f071385c540fa5"
+      }
+    },
+    {
+      "local": {
+        "version": "20260924211000",
+        "name": "atlas_knowledge_advisor_cleanup",
+        "sourceSha256": "edc3f7326abca9d39a7b58719e6373b17a48e0d086a3fb74fab0c15cea4bd45c"
+      },
+      "remote": {
+        "version": "20260924204443",
+        "name": "atlas_knowledge_advisor_cleanup",
+        "sourceSha256": "edc3f7326abca9d39a7b58719e6373b17a48e0d086a3fb74fab0c15cea4bd45c"
+      }
+    },
+    {
+      "local": {
+        "version": "20260925072000",
+        "name": "atlas_master_evidence_registry",
+        "sourceSha256": "acc24cf712a2ba3b2becf6ae5a2d3934f167deb405af01ad6427886d801b9df0"
+      },
+      "remote": {
+        "version": "20260925071244",
+        "name": "atlas_master_evidence_registry",
+        "sourceSha256": "acc24cf712a2ba3b2becf6ae5a2d3934f167deb405af01ad6427886d801b9df0"
+      }
+    },
+    {
+      "local": {
+        "version": "20260925072500",
+        "name": "atlas_master_evidence_registry_index_hardening",
+        "sourceSha256": "afdefb4bf9d55847f6fa12ee4617f7d5246bfa3265b7c75737a1df0b255014eb"
+      },
+      "remote": {
+        "version": "20260925071646",
+        "name": "atlas_master_evidence_registry_index_hardening",
+        "sourceSha256": "afdefb4bf9d55847f6fa12ee4617f7d5246bfa3265b7c75737a1df0b255014eb"
+      }
+    },
+    {
+      "local": {
+        "version": "20260925031000",
+        "name": "atlas_chat_core",
+        "sourceSha256": "776d5ebfbb7d23ee5e5d3ccb002c03683a618c0fbbed925257d8c61736d4c394"
+      },
+      "remote": {
+        "version": "20260925095246",
+        "name": "atlas_chat_core",
+        "sourceSha256": "776d5ebfbb7d23ee5e5d3ccb002c03683a618c0fbbed925257d8c61736d4c394"
+      }
+    },
+    {
+      "local": {
+        "version": "20260925093000",
+        "name": "atlas_chat_postgrest_runtime",
+        "sourceSha256": "a6760d8a6cd7616990b27945ed9d0a94dca17253d251d8dab668fb1cebb8c15e"
+      },
+      "remote": {
+        "version": "20260925095507",
+        "name": "atlas_chat_postgrest_runtime",
+        "sourceSha256": "a6760d8a6cd7616990b27945ed9d0a94dca17253d251d8dab668fb1cebb8c15e"
+      }
+    },
+    {
+      "local": {
+        "version": "20260926131500",
+        "name": "harden_exposed_security_definer_functions",
+        "sourceSha256": "4357fa837d191d9c207eed90013c7d4ba0403c9fb1b1927bdbd81c87df09272f"
+      },
+      "remote": {
+        "version": "20260926125052",
+        "name": "harden_exposed_security_definer_functions",
+        "sourceSha256": "4357fa837d191d9c207eed90013c7d4ba0403c9fb1b1927bdbd81c87df09272f"
+      }
+    },
+    {
+      "local": {
+        "version": "20260927125500",
+        "name": "atlas_native_sovereign_consensus",
+        "sourceSha256": "67e1cae68d467745abcb8b347296e8672db33694852a352d8dd89bd0c2081951"
+      },
+      "remote": {
+        "version": "20260927165333",
+        "name": "atlas_native_sovereign_consensus",
+        "sourceSha256": "67e1cae68d467745abcb8b347296e8672db33694852a352d8dd89bd0c2081951"
+      }
+    },
+    {
+      "local": {
+        "version": "20261001173000",
+        "name": "atlas_pay_control_plane",
+        "sourceSha256": "cc8b74ba5a3462682284278cad4f80eb6b1a4810c8dd22e69b0bf5d8d9a57f45"
+      },
+      "remote": {
+        "version": "20261001172715",
+        "name": "atlas_pay_control_plane",
+        "sourceSha256": "cc8b74ba5a3462682284278cad4f80eb6b1a4810c8dd22e69b0bf5d8d9a57f45"
+      }
+    },
+    {
+      "local": {
+        "version": "20261004143000",
+        "name": "atlas_telephony_provider_state_clock",
+        "sourceSha256": "0ab18138a0dd87de3a1b7ab88dcb1f214fd6a7c0cdc2c79b89900a00372ef471"
+      },
+      "remote": {
+        "version": "20261004134824",
+        "name": "atlas_telephony_provider_state_clock",
+        "sourceSha256": "0ab18138a0dd87de3a1b7ab88dcb1f214fd6a7c0cdc2c79b89900a00372ef471"
+      }
+    },
+    {
+      "local": {
+        "version": "20260923201500",
+        "name": "atlas_people_core",
+        "sourceSha256": "39e1e9d6f9a736746068ee5e68c719b4ec9b3c341aa7797a9b3ce72f1bf2fcb9"
+      },
+      "remote": {
+        "version": "20261004183250",
+        "name": "atlas_people_core",
+        "sourceSha256": "39e1e9d6f9a736746068ee5e68c719b4ec9b3c341aa7797a9b3ce72f1bf2fcb9"
+      }
+    },
+    {
+      "local": {
+        "version": "20260923203000",
+        "name": "atlas_payroll_core",
+        "sourceSha256": "46805d4922f73dea0055e254c05e3fecbf91a04bc4eb01a627b15ee1c79ee813"
+      },
+      "remote": {
+        "version": "20261004183528",
+        "name": "atlas_payroll_core",
+        "sourceSha256": "46805d4922f73dea0055e254c05e3fecbf91a04bc4eb01a627b15ee1c79ee813"
+      }
+    },
+    {
+      "local": {
+        "version": "20261004191500",
+        "name": "atlas_payroll_settlement_guard",
+        "sourceSha256": "88c630fb7138ee9632e800250cc8adf717be13b397cec2814ff500a6008b6743"
+      },
+      "remote": {
+        "version": "20261004183630",
+        "name": "atlas_payroll_settlement_guard",
+        "sourceSha256": "88c630fb7138ee9632e800250cc8adf717be13b397cec2814ff500a6008b6743"
+      }
+    },
+    {
+      "local": {
+        "version": "20261004193000",
+        "name": "atlas_payroll_readiness_security",
+        "sourceSha256": "3a936a34a5d66f4700f3578c0ad5e16957c20b2ca510dba178c16c4953db0dc8"
+      },
+      "remote": {
+        "version": "20261004183637",
+        "name": "atlas_payroll_readiness_security",
+        "sourceSha256": "3a936a34a5d66f4700f3578c0ad5e16957c20b2ca510dba178c16c4953db0dc8"
+      }
+    },
+    {
+      "local": {
+        "version": "20261004194500",
+        "name": "atlas_payroll_provider_column_security",
+        "sourceSha256": "2972361570c52cabbe83162dd9e458b16958028eeff5b3ccf395f0754a4b7745"
+      },
+      "remote": {
+        "version": "20261004183643",
+        "name": "atlas_payroll_provider_column_security",
+        "sourceSha256": "2972361570c52cabbe83162dd9e458b16958028eeff5b3ccf395f0754a4b7745"
+      }
+    },
+    {
+      "local": {
+        "version": "20261004195000",
+        "name": "atlas_people_payroll_least_privilege",
+        "sourceSha256": "16e4d9b72e4ad6889d30adf75867019c3369fb58d73540f64bcf6803c031c146"
+      },
+      "remote": {
+        "version": "20261004192132",
+        "name": "atlas_people_payroll_least_privilege",
+        "sourceSha256": "16e4d9b72e4ad6889d30adf75867019c3369fb58d73540f64bcf6803c031c146"
+      }
+    },
+    {
+      "local": {
+        "version": "20261007081500",
+        "name": "atlas_care_core",
+        "sourceSha256": "27e4232abb37218f62560b77bdc8389b01debb590be15f393220f4c18f258cf9"
+      },
+      "remote": {
+        "version": "20261007071557",
+        "name": "atlas_care_core",
+        "sourceSha256": "27e4232abb37218f62560b77bdc8389b01debb590be15f393220f4c18f258cf9"
+      }
+    }
+  ],
+  "differentBodyCandidates": [
+    {
+      "local": {
+        "version": "20260907",
+        "name": "accounting_ai_insights",
+        "sourceSha256": "6b252cfb9f87aad49d46e5ec3fe689ec1939ad6773d167af809d5f50a4217325"
+      },
+      "remote": {
+        "version": "20260908021356",
+        "name": "accounting_ai_insights",
+        "sourceSha256": "b2c78c9ce57630488700bb6a285d929161893868bf726189d36f565b591ca55e"
+      }
+    },
+    {
+      "local": {
+        "version": "20260918191500",
+        "name": "crm_integration_policy_consolidation",
+        "sourceSha256": "eb2d78d636e679694de361dcaa5cfc680fd51e8b1d57e81f9bcd8e306285bc61"
+      },
+      "remote": {
+        "version": "20260918191213",
+        "name": "crm_integration_policy_consolidation",
+        "sourceSha256": "b3c5b8420542337f806450ce88328388a69e8c857444a122f1c0f3f8ad3e84dd"
+      }
+    },
+    {
+      "local": {
+        "version": "20260919061000",
+        "name": "atlas_browser_operator_payload",
+        "sourceSha256": "f7564fd4f013e6ff2dc2fd7ac333f84da49a9493933e4c50831973b0bde6a1e2"
+      },
+      "remote": {
+        "version": "20260919061418",
+        "name": "atlas_browser_operator_payload",
+        "sourceSha256": "636a45f454e7eebc34bfcd2868e1c7c0ab2d3530b3cd021e50c1bf0e2c5149d4"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920152000",
+        "name": "atlas_voice_provider_native_verification",
+        "sourceSha256": "0270b30d32a5386b1a89c433f2563c480c0084648a0ca9bc3372705b70684054"
+      },
+      "remote": {
+        "version": "20260920153003",
+        "name": "atlas_voice_provider_native_verification",
+        "sourceSha256": "515813aa6c360efc7c66f8e642c99b3268c869ca2b95b5603535c6d64e4acaea"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920190000",
+        "name": "procure_to_pay_inventory_margin",
+        "sourceSha256": "7c47f0fd08441fb19f9a2d7523f5c9076e5ec281784ecb63fc97385152a7804b"
+      },
+      "remote": {
+        "version": "20260921010117",
+        "name": "procure_to_pay_inventory_margin",
+        "sourceSha256": "7f8e55f43c83616f93edf6f3f915bb0035e204e699a1b228975a1150b0e007ac"
+      }
+    },
+    {
+      "local": {
+        "version": "20260920190500",
+        "name": "inventory_product_quantity_sync",
+        "sourceSha256": "c02f7030f8809318a6dd5a12287cf96593c42326b5be11da12a18ffd92168f5c"
+      },
+      "remote": {
+        "version": "20260921010522",
+        "name": "inventory_product_quantity_sync",
+        "sourceSha256": "73a1adf8e4427dc510eea90dc89feedb78be0e858ee014a3c1f76aaa3dae7eff"
+      }
+    },
+    {
+      "local": {
+        "version": "20260923185500",
+        "name": "optimize_auth_rls_initplans",
+        "sourceSha256": "169d234cef1a6b3864b17e51099d5862602e63f416e5bb087abe29a5fc559f90"
+      },
+      "remote": {
+        "version": "20260923185553",
+        "name": "optimize_auth_rls_initplans",
+        "sourceSha256": "1270ce41cdf7d86c2025a5bcbfc510cae491a03150c25d6f6f0b365686ead40f"
+      }
+    },
+    {
+      "local": {
+        "version": "20260926223800",
+        "name": "atlas_orchestrator_rpc_runtime_grants",
+        "sourceSha256": "21b03db3722390dda848a05f1f7e2332e2c9ac5cc02eeb9994c83c6bc04ff0d1"
+      },
+      "remote": {
+        "version": "20260926223752",
+        "name": "atlas_orchestrator_rpc_runtime_grants",
+        "sourceSha256": "40003228765e23644ae3200307fef663d46bfde7bdcd51eaa84fe17b93364a9e"
+      }
+    },
+    {
+      "local": {
+        "version": "20260926224000",
+        "name": "fix_orchestrator_runtime_vault_auth",
+        "sourceSha256": "0ee1da7a837b9450d347949f4dec549f5ec8e315f5f0ae7d7e2e90d15efb94ce"
+      },
+      "remote": {
+        "version": "20260926223841",
+        "name": "fix_orchestrator_runtime_vault_auth",
+        "sourceSha256": "89eed12b70609e7a10ef7f73ee37b0d5c17a7846b27108d699eb01d2f494f968"
+      }
+    },
+    {
+      "local": {
+        "version": "20260927120000",
+        "name": "atlas_carrier_numbering",
+        "sourceSha256": "3f43802077ad7fb70e6e4037ad53964415e21076f11497de48dae661e28694c4"
+      },
+      "remote": {
+        "version": "20260927155742",
+        "name": "atlas_carrier_numbering",
+        "sourceSha256": "e2696081d6e0a8d1e1d524065a0b6563c5bee04ab3dd67a590b302e7a1836582"
+      }
+    },
+    {
+      "local": {
+        "version": "20260926201000",
+        "name": "atlas_communication_telephony",
+        "sourceSha256": "d8f94d24353d6ca7cf2a5cc12639d8bdff432b0167322dbd2375f0acbf2c8db5"
+      },
+      "remote": {
+        "version": "20260927211719",
+        "name": "atlas_communication_telephony",
+        "sourceSha256": "304e320c23e16d85def8384e38b8a5e6456af03a6d2be536a561a566091fffa3"
+      }
+    },
+    {
+      "local": {
+        "version": "20260926203500",
+        "name": "atlas_communication_telephony_permissions",
+        "sourceSha256": "76651d99dcb25320ca4cf4b2dd2a8a072c501fdd3e4ce1e0a8b6ea38b188bb2d"
+      },
+      "remote": {
+        "version": "20260927211721",
+        "name": "atlas_communication_telephony_permissions",
+        "sourceSha256": "c2f344b922c44b87dd995bc628c69beb99022f6690aebfef5880abcbe639f2e0"
+      }
+    },
+    {
+      "local": {
+        "version": "20260928015000",
+        "name": "atlas_communication_carrier_hardening",
+        "sourceSha256": "722f3acd07c6d4cb830bd500da24b0e8ebeb1a07f6e161452d4cd5046dd5a25b"
+      },
+      "remote": {
+        "version": "20260928230758",
+        "name": "atlas_communication_carrier_hardening",
+        "sourceSha256": "6e2083782e63d858da80cd557863fdba1f5e04072d49900b0b752362e2921efc"
+      }
+    },
+    {
+      "local": {
+        "version": "20260928202500",
+        "name": "atlas_communication_carrier_hardening",
+        "sourceSha256": "896203871d71cd5329269b339d4f21360bfc24c5dcfd3bca4a648dde970b6e31"
+      },
+      "remote": {
+        "version": "20260928230758",
+        "name": "atlas_communication_carrier_hardening",
+        "sourceSha256": "6e2083782e63d858da80cd557863fdba1f5e04072d49900b0b752362e2921efc"
+      }
+    },
+    {
+      "local": {
+        "version": "20261001173100",
+        "name": "atlas_pay_fk_index_hardening",
+        "sourceSha256": "1bdfb21cbdd44f3cf5235bb4f1a5476504f1d73b2bfebe2c004287cde4fd6eed"
+      },
+      "remote": {
+        "version": "20261001172914",
+        "name": "atlas_pay_fk_index_hardening",
+        "sourceSha256": "dd5ab45783b97fdc10e43f2553bc052fa77b0685b32ed36652f084944afffb68"
+      }
+    },
+    {
+      "local": {
+        "version": "20261001153000",
+        "name": "atlas_carrier_number_truth_gate",
+        "sourceSha256": "f4fa23208484b044f34d819cf09db29f68f37dd8e1390ef5d204cb073ffa66b1"
+      },
+      "remote": {
+        "version": "20261003211725",
+        "name": "atlas_carrier_number_truth_gate",
+        "sourceSha256": "4757cc99182831f37496f888cc0998cc012e23d080a79f61eb7d62288246efab"
+      }
+    },
+    {
+      "local": {
+        "version": "20261004203000",
+        "name": "atlas_payroll_us_federal_tax_2026",
+        "sourceSha256": "cd614bf839804622ba8c5fc7dd6065953a8e25ef878de48c672aa11d8c3f0fab"
+      },
+      "remote": {
+        "version": "20261004204812",
+        "name": "atlas_payroll_us_federal_tax_2026",
+        "sourceSha256": "516e2c9123db73719e83205a6c0b8b6720a6b6fed7c1fcc28f385078f143e370"
+      }
+    },
+    {
+      "local": {
+        "version": "20261004204500",
+        "name": "atlas_payroll_us_federal_determination_persistence",
+        "sourceSha256": "22ed1a89dc35818791e7477a46baf025f29439bc99e278b11759ef81c426a5b7"
+      },
+      "remote": {
+        "version": "20261004204839",
+        "name": "atlas_payroll_us_federal_determination_persistence",
+        "sourceSha256": "a4e89bce4515a818e6d055259f618d192ab60566f31b948a35118aa525a434b6"
+      }
+    }
+  ],
+  "nextAction": "Recover and compare historical source, resolve aliases and prove isolated replay. Do not repair history or replay production SQL from this report."
+}
