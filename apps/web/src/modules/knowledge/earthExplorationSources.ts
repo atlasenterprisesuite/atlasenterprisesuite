@@ -55,11 +55,14 @@ export const EARTH_EXPLORATION_SOURCES: readonly EarthExplorationSource[] = [
   }
 ] as const;
 
-// Documented layer names and example request: gebco.net/data-products/gebco-web-services/web-map-service
+// Official GEBCO 2026 WMS GetMap examples, including the color-coded Type Identifier layer.
+// GEBCO_2026 under-ice topography relies on BedMachine Antarctica v3, not Bedmap3.
+// Bedmap3 remains a separately cited source catalog entry until its own grids are ingested.
+// https://www.gebco.net/data-products/gebco-web-services/web-map-service
 const LAYERS: Readonly<Record<GebcoLayer, string>> = {
   surface: 'gebco_latest',
   subice: 'gebco_latest_sub_ice_topo',
-  tid: 'gebco_latest_tid'
+  tid: 'gebco_latest_tid_2'
 };
 // WMS 1.3.0 EPSG:4326 BBOX is latitude/longitude order (not longitude/latitude).
 const REGIONS: Readonly<Record<GebcoRegion, string>> = {
