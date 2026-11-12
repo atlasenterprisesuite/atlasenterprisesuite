@@ -77,6 +77,7 @@ export function normalizeIntelligenceError(error){
 
 export async function reauthorizeIntelligenceContext(principal,authorizeContext){
   if(typeof authorizeContext!=='function')return principal;
+  principal=normalizeAgentContext(principal);
   const current=normalizeAgentContext(await authorizeContext());
   if(current.organization_id!==principal.organization_id||current.user_id!==principal.user_id)throw fail('authorization_context_changed',403);
   if(!has(current,'intelligence.use'))throw fail('permission_denied',403);
