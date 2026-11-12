@@ -22,7 +22,7 @@ describe('ATLAS Earth Exploration — official datasets and source boundaries', 
   it.each([
     ['surface', 'gebco_latest'],
     ['subice', 'gebco_latest_sub_ice_topo'],
-    ['tid', 'gebco_latest_tid']
+    ['tid', 'gebco_latest_tid_2']
   ] as [GebcoLayer, string][])('maps %s to the documented GEBCO WMS layer', (layer, expected) => {
     const url = new URL(buildGebcoMapUrl(layer, 'world'));
     expect(url.origin).toBe('https://wms.gebco.net');
