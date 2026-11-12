@@ -36,6 +36,11 @@ describe('Site Review safe offline target intake', () => {
     if (result.ok) expect(result.target.remoteInspection).toBe('not_configured');
   });
 
+  it('rejects raw newlines that the WHATWG URL parser might strip', () => {
+    const unsafe = 'https://example.com' + String.fromCharCode(10);
+    expect(prepareSiteReviewTarget(unsafe).ok).toBe(false);
+  });
+
   it('fails closed for missing and excessive input', () => {
     expect(prepareSiteReviewTarget(' ').ok).toBe(false);
     expect(prepareSiteReviewTarget(`https://example.com/${'a'.repeat(2100)}`).ok).toBe(false);
