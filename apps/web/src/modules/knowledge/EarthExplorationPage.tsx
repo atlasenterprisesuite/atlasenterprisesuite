@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   EARTH_EXPLORATION_SOURCES,
+  GEBCO_TID_EXAMPLES,
   buildGebcoMapUrl,
   type GebcoLayer,
   type GebcoRegion
@@ -90,6 +91,35 @@ export function EarthExplorationPage() {
             style={imageState === 'error' ? { display: 'none' } : undefined}
           />
         </div>
+        {layer === 'tid' ? (
+          <section className="atlas-earth-tid-guide" aria-labelledby="atlas-earth-tid-heading">
+            <h3 id="atlas-earth-tid-heading">Códigos TID y procedencia</h3>
+            <p>
+              GEBCO distingue mediciones directas, valores derivados y fuentes mixtas o desconocidas;
+              un código de origen no determina la certeza arqueológica ni la precisión de cada celda.
+              Esta lista interpreta códigos, pero no representa los colores exactos del servicio WMS.
+            </p>
+            <ul>
+              {GEBCO_TID_EXAMPLES.map(item => (
+                <li key={item.code}>
+                  <span className="atlas-earth-tid-code">{item.code}</span>
+                  <strong>{item.label}</strong>
+                  <span className="atlas-earth-tid-class">
+                    {item.sourceClass === 'direct' ? 'Medición directa'
+                      : item.sourceClass === 'indirect' ? 'Valor estimado o interpolado'
+                      : item.sourceClass === 'land' ? 'Tierra'
+                      : 'Origen mixto o incierto'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p>
+              Referencia: <a href="https://www.gebco.net/data-products/gridded-bathymetry-data"
+                target="_blank" rel="noopener noreferrer">documentación GEBCO_2026 y códigos TID</a>.
+              La imagen es ilustración cartográfica remota, no un análisis local de cada píxel.
+            </p>
+          </section>
+        ) : null}
         <p className="atlas-earth-attribution">
           GEBCO Bathymetric Compilation Group 2026 · DOI:
           {' '}<a href="https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa" target="_blank" rel="noopener noreferrer">10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa</a>.
