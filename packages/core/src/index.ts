@@ -320,4 +320,6 @@ export * from './whatsapp-ai-council';
 export * from './whatsapp-provider';
 
 export * from './deploymentControl';
-\nexport * from './sumeriaPreflight';\nexport * from './sumeriaDocument';\n
+
+export * from './sumeriaPreflight';
+export * from './sumeriaDocument';
