@@ -21,7 +21,7 @@ const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const ORACLE='/functions/v1/atlas-oracle';
-const VERSION=17;
+const VERSION=18;
 const READINESS_CACHE_TTL_MS=15_000;
 const readinessCache=new Map();
 const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','codex-sovereign'];
@@ -330,8 +330,8 @@ async function approvedMemoryForAssistant(rt,context,{message,module}={}){
 }
 async function handleUsage(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),url=new URL(req.url),days=Math.min(90,Math.max(1,Number(url.searchParams.get('days'))||30)),summary=await store.usageSummary({context:resolved.context,days});return json({ok:true,...summary});}
 async function handleHistory(req){const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),conversations=await store.listConversations({context:resolved.context});return json({ok:true,conversations});}
-async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});await brain.reconcileConversation({context:resolved.context,conversationId:id}).catch(()=>[]);const conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
-async function handleBackground(req,url){if(req.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);const traceId=String(url.searchParams.get('trace_id')||'').trim();if(!traceId)return json({ok:false,error:'invalid_input'},400);const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy});const result=await brain.poll({context:resolved.context,traceId});return json({ok:true,...result});}
+async function handleConversation(req,url){const rt=runtime(),resolved=await contextFor(req),id=url.searchParams.get('id');if(!id)return json({ok:false,error:'invalid_input'},400);const store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy,authorizeContext:async()=>(await contextFor(req)).context});await brain.reconcileConversation({context:resolved.context,conversationId:id}).catch(()=>[]);const conversation=await store.getConversation({context:resolved.context,id}),messages=await store.listMessages({context:resolved.context,conversation_id:id,limit:50});return json({ok:true,conversation,messages});}
+async function handleBackground(req,url){if(req.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);const traceId=String(url.searchParams.get('trace_id')||'').trim();if(!traceId)return json({ok:false,error:'invalid_input'},400);const rt=runtime(),resolved=await contextFor(req),store=storeFor(rt.serviceRoleKey),localAi=await resolveLocalAiRuntime(rt),registry=registryFor(rt,localAi),brain=createBackgroundBrain({registry,store,costPolicy:rt.costPolicy,authorizeContext:async()=>(await contextFor(req)).context});const result=await brain.poll({context:resolved.context,traceId});return json({ok:true,...result});}
 async function handleStatus(req){
   const rt=runtime(),resolved=await contextFor(req),{providers,localAi}=await readinessFor(rt,'balanced',true),diarization=await diarizationReadiness(rt,localAi);
   const openai=providers.find(p=>p.id==='openai');
@@ -367,12 +367,12 @@ async function handleChat(req){
   const {registry,providers}=await readinessFor(rt,intent);
   const router=createIntelligenceRouter({providers,allowedProviders:rt.costPolicy.allowed_providers,preferredProviders:rt.costPolicy.zero_cost_providers});
   const council=createCouncilOrchestrator({registry});
-  const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway()});
+  const gateway=createIntelligenceGateway({router,registry,council,store,costPolicy:rt.costPolicy,toolGateway:createToolGateway(),authorizeContext:async()=>(await contextFor(req,body?.organization_id)).context});
   const request=body?.context!==undefined&&body?.module===undefined
     ?{module:'workbench',intent:'balanced',mode,message,capabilities_requested:['generation'],client_metadata:{legacy_context_present:Boolean(legacy),atlas_memory_records:memory.recordIds},legacy_context:legacy}
     :{module:body?.module||'atlas',intent,mode,message,conversation_id:body?.conversation_id||null,capabilities_requested:Array.isArray(body?.capabilities_requested)?body.capabilities_requested:['generation'],client_metadata:{...(body?.client_metadata&&typeof body.client_metadata==='object'?body.client_metadata:{}),atlas_memory_records:memory.recordIds},legacy_context:legacy};
   if(shouldRunInBackground({executionMode,message,profile:intent})){
-    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,runDetached:edgeBackgroundRunner()});
+    const brain=createBackgroundBrain({router,registry,store,costPolicy:rt.costPolicy,runDetached:edgeBackgroundRunner(),authorizeContext:async()=>(await contextFor(req,body?.organization_id)).context});
     try{
       const background=await brain.start({context:resolved.context,request});
       return json({ok:true,...background,text:background.text||'',provider_state:'verified_for_request',provider_readiness:providers,memory:{approved_records_used:memory.recordIds.length,record_ids:memory.recordIds},execution:{repositoryMutation:false,repairQueue:'available',mode:'background'}},background.status==='completed'?200:202);

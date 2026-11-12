@@ -12,5 +12,25 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - name: Verify Council authentication and fail-closed boundaries
         run: node --test tests/node/atlas-ai-council-security-gates.test.mjs
+      - name: Verify model continuity and revocation four times
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/model-continuity
+          for pass in 1 2 3 4; do
+            node --experimental-strip-types --test --test-reporter=tap tests/node/atlas-model-continuity.test.mjs | tee "artifacts/model-continuity/pass-${pass}.tap"
+          done
+      - name: Retain model continuity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-model-continuity-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/model-continuity
+          if-no-files-found: error

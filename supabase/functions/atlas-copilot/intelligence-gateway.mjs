@@ -17,7 +17,7 @@ export function normalizeIntelligenceRequest(input={}){
   const mode=String(input.mode||'auto').trim();
   const message=String(input.message||'').trim();
   if(!message)throw fail('invalid_input',400,{field:'message'});
-  if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
+  if(!Object.hasOwn(REASONING_PROFILES,intent))throw fail('invalid_input',400,{field:'intent'});
   if(!INTELLIGENCE_MODES.includes(mode))throw fail('invalid_input',400,{field:'mode'});
   const capabilities_requested=Array.isArray(input.capabilities_requested)&&input.capabilities_requested.length?[...new Set(input.capabilities_requested.map(String))]:['generation'];
   for(const capability of capabilities_requested)if(!INTELLIGENCE_CAPABILITIES.includes(capability))throw fail('capability_unavailable',409,{capability});
@@ -33,7 +33,7 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[],prefe
   return Object.freeze({
     route({mode='auto',intent='balanced',capabilities_requested=['generation']}={}){
       if(!INTELLIGENCE_MODES.includes(mode))throw fail('invalid_input',400,{field:'mode'});
-      if(!REASONING_PROFILES[intent])throw fail('invalid_input',400,{field:'intent'});
+      if(!Object.hasOwn(REASONING_PROFILES,intent))throw fail('invalid_input',400,{field:'intent'});
       const capabilities=[...capabilities_requested];
       if(mode==='council'){
         const compatible=ordered.filter(p=>allowed(p)&&supports(p,intent,capabilities));
@@ -41,6 +41,7 @@ export function createIntelligenceRouter({providers=[],allowedProviders=[],prefe
         return Object.freeze({mode:'council',providers:compatible.map(p=>p.id),provider:compatible[0].id,profile:intent,capabilities,fallback_used:false,reason:'council_verified_capability_match'});
       }
       if(mode!=='auto'){
+        if(allowedSet&&!allowedSet.has(mode))throw fail('provider_not_allowed',403,{provider:mode});
         const selected=ordered.find(p=>p.id===mode);
         if(!selected||selected.configured!==true)throw fail('provider_not_configured',503,{provider:mode});
         if(!supports(selected,intent,capabilities))throw fail(selected.verified===true?'capability_unavailable':'provider_unavailable',503,{provider:mode});
@@ -74,11 +75,25 @@ export function normalizeIntelligenceError(error){
   return {code:'internal_error',status:500,trace_id:null};
 }
 
-export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,clock=Date.now}={}){
+export async function reauthorizeIntelligenceContext(principal,authorizeContext){
+  if(typeof authorizeContext!=='function')return principal;
+  principal=normalizeAgentContext(principal);
+  const current=normalizeAgentContext(await authorizeContext());
+  if(current.organization_id!==principal.organization_id||current.user_id!==principal.user_id)throw fail('authorization_context_changed',403);
+  if(!has(current,'intelligence.use'))throw fail('permission_denied',403);
+  const unchanged=(before,after)=>before.length===after.length&&before.every(value=>after.includes(value));
+  if(!unchanged(principal.permissions,current.permissions)||!unchanged(principal.roles,current.roles))throw fail('authorization_context_changed',403);
+  return Object.freeze({...current,session_id:principal.session_id,request_id:principal.request_id});
+}
+
+export function createIntelligenceGateway({router,provider,registry,council,store,costPolicy,toolGateway,authorizeContext,clock=Date.now}={}){
   if(!router||!store||(!provider&&!registry))throw new TypeError('gateway_dependencies_required');
   const effectiveCostPolicy=costPolicy||{allowed_providers:[],allow_paid_single:false,allow_council:false,zero_cost_providers:[],enforce_zero_cost:true};
   return Object.freeze({async execute({context,request}){
-    const principal=normalizeAgentContext(context);
+    let principal=normalizeAgentContext(context);
+    const reauthorize=async()=>{
+      principal=await reauthorizeIntelligenceContext(principal,authorizeContext);
+    };
     if(!has(principal,'intelligence.use'))throw fail('permission_denied',403);
     const normalized=normalizeIntelligenceRequest(request);
     const route=router.route(normalized);
@@ -95,11 +110,12 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       const messages=await store.listMessages({context:principal,conversation_id:conversation.id,limit:50});
       const history=messages.map(m=>({role:m.role,content:m.content?.text??m.content}));
       if(normalized.legacy_context)history.push({role:'user',content:`Current ATLAS context:\n${normalized.legacy_context}`});
-      const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:route.mode,intent:normalized.intent});
+      const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:route.mode,intent:normalized.intent,responsePreferences:normalized.client_metadata.response_preferences});
       let result,executionRoute=route,executionCostDecision=costDecision;
       const fallbackAttempts=[];
       if(route.mode==='council'){
         if(!council)throw fail('capability_unavailable',503,{mode:'council'});
+        await reauthorize();
         result=await council.execute({providerIds:route.providers,context:principal,route,instructions,input:history,max_output_tokens:3000});
       }else{
         const candidates=route.mode==='auto'
@@ -108,6 +124,7 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
         let lastRetryableError=null,lastBlockingError=null;
         for(let index=0;index<candidates.length;index+=1){
           const providerId=candidates[index];
+          await reauthorize();
           let candidateCost=index===0
             ?costDecision
             :evaluateIntelligenceCostPolicy({mode:'auto',providers:[providerId],policy:effectiveCostPolicy});
@@ -182,6 +199,7 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
           throw fail('provider_unavailable',502,{fallback_attempts:fallbackAttempts});
         }
       }
+      await reauthorize();
       const proposals=toolGateway?toolGateway.evaluate({proposals:result.tool_calls||[],context:principal}):{accepted:[],approval_required:[],denied:[]};
       const latency=Math.max(0,clock()-started);
       const automaticApiCostUsd=Number.isFinite(executionCostDecision.estimated_automatic_cost_usd)?executionCostDecision.estimated_automatic_cost_usd:null;

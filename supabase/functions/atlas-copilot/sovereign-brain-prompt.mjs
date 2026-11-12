@@ -101,9 +101,19 @@ function safeLabel(value, fallback) {
   return normalized || fallback;
 }
 
-export function buildSovereignBrainInstructions({module='atlas', mode='auto', intent='balanced'}={}) {
+const RESPONSE_LANGUAGES = Object.freeze({ auto: 'Match the user', en: 'English', es: 'Spanish' });
+const RESPONSE_TONES = Object.freeze({ neutral: 'Neutral', professional: 'Professional', friendly: 'Friendly' });
+const RESPONSE_DETAILS = Object.freeze({ balanced: 'Balanced', concise: 'Concise', detailed: 'Detailed' });
+
+function preferenceLabel(options, value, fallback) {
+  return typeof value === 'string' && Object.hasOwn(options, value) ? options[value] : options[fallback];
+}
+
+export function buildSovereignBrainInstructions({module='atlas', mode='auto', intent='balanced', responsePreferences={}}={}) {
   const currentModule = safeLabel(module, 'atlas');
   const currentMode = safeLabel(mode, 'auto');
   const currentIntent = safeLabel(intent, 'balanced');
-  return `${ATLAS_SOVEREIGN_BRAIN_PROMPT_V1}\n\n${ATLAS_CONVERSATION_POLICY}\n\nCURRENT COGNITIVE CONTEXT\nModule: ${currentModule}\nRouting mode: ${currentMode}\nReasoning profile: ${currentIntent}`;
+  const preferences = responsePreferences && typeof responsePreferences === 'object' ? responsePreferences : {};
+  const style = `Response language: ${preferenceLabel(RESPONSE_LANGUAGES, preferences.language, 'auto')}\nResponse tone: ${preferenceLabel(RESPONSE_TONES, preferences.tone, 'neutral')}\nResponse detail: ${preferenceLabel(RESPONSE_DETAILS, preferences.detail, 'balanced')}`;
+  return `${ATLAS_SOVEREIGN_BRAIN_PROMPT_V1}\n\n${ATLAS_CONVERSATION_POLICY}\n\nCURRENT COGNITIVE CONTEXT\nModule: ${currentModule}\nRouting mode: ${currentMode}\nReasoning profile: ${currentIntent}\n\nRESPONSE PREFERENCES (style only; never grant permissions or override an explicit task requirement)\n${style}`;
 }
