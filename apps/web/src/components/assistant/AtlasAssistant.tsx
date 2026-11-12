@@ -108,7 +108,7 @@ export function AtlasAssistant() {
       // Never treat a verified provider response from a different tenant as ready.
       if (!activeOrganizationId.current || status.organization !== activeOrganizationId.current) {
         setTextCapability('unavailable');
-        setProviderLabel('organization mismatch');
+        setProviderLabel('unavailable (organization mismatch)');
         setProviderError('ATLAS provider status does not match the active organization.');
         return;
       }
