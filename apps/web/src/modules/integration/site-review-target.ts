@@ -23,7 +23,7 @@ const forbiddenSuffixes = [
 export function prepareSiteReviewTarget(input: string): SiteReviewTargetResult {
   const candidate = input.trim();
 
-  if (!candidate || candidate.length > 2048 || /[\u0000-\u001f\u007f]/.test(candidate)) {
+  if (!candidate || candidate.length > 2048 || /[\u0000-\u001f\u007f]/.test(input)) {
     return { ok: false, reason: 'Enter an HTTPS URL with 1–2048 characters and no control characters.' };
   }
 
