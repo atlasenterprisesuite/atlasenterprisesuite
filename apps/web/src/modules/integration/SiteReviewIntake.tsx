@@ -28,7 +28,7 @@ export function SiteReviewIntake() {
     event.currentTarget.value = '';
     invalidateSnapshot();
     if (!file || !target) return;
-    if (!/\\.html?$/i.test(file.name) || file.size > MAX_HTML_SNAPSHOT_BYTES || file.size === 0) {
+    if (!/\.html?$/i.test(file.name) || file.size > MAX_HTML_SNAPSHOT_BYTES || file.size === 0) {
       setSnapshotError('Choose a nonempty .html or .htm file of at most 256 KiB.');
       return;
     }
