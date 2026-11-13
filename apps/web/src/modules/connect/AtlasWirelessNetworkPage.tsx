@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getWirelessNetworkInventory,
@@ -8,24 +8,30 @@ import {
 export function AtlasWirelessNetworkPage() {
   const [state, setState] = useState<WirelessNetworkInventory | null>(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const requestId = useRef(0);
+
+  const refresh = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    setLoading(true);
+    try {
+      const next = await getWirelessNetworkInventory();
+      if (currentRequest !== requestId.current) return;
+      setState(next);
+      setError('');
+    } catch (reason) {
+      if (currentRequest !== requestId.current) return;
+      setState(null);
+      setError(reason instanceof Error ? reason.message : 'network_inventory_unavailable');
+    } finally {
+      if (currentRequest === requestId.current) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    getWirelessNetworkInventory()
-      .then((next) => {
-        if (!active) return;
-        setState(next);
-        setError('');
-      })
-      .catch((reason) => {
-        if (!active) return;
-        setState(null);
-        setError(reason instanceof Error ? reason.message : 'network_inventory_unavailable');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    void refresh();
+    return () => { requestId.current += 1; };
+  }, [refresh]);
 
   const blockers = state?.blockers ?? [error || 'network_inventory_unavailable'];
 
@@ -36,6 +42,12 @@ export function AtlasWirelessNetworkPage() {
         <h1 id="atlas-wireless-network-title">ATLAS-Owned Network</h1>
         <p>Governed inventory and readiness for ATLAS core, RAN, spectrum and backhaul. Physical infrastructure is never inferred from configuration alone.</p>
       </header>
+
+      <div className="row-actions">
+        <button type="button" onClick={() => void refresh()} disabled={loading} aria-busy={loading}>
+          {loading ? "Verificando red…" : "Verificar estado de red"}
+        </button>
+      </div>
 
       <div className="stat-grid" aria-label="ATLAS owned-network readiness">
         <article>
