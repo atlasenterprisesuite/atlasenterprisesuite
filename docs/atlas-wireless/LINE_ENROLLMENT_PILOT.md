@@ -1,6 +1,8 @@
 # ATLAS Wireless — Private Line Enrollment Pilot
 
-Status: IMPLEMENTATION IN DRAFT BRANCH / NOT DEPLOYED / NOT VERIFIED IN PRODUCTION.
+Status: BASE PRIVATE TABLE APPLIED / RPC IN DRAFT BRANCH / WEB NOT DEPLOYED / E2E NOT VERIFIED.
+The live Supabase project has 100/100 Edge Function slots; a new Edge Function was rejected
+with PaymentRequiredException. No subscription upgrade, service deletion or plan change was performed.
 This work reuses ATLAS Connect, the existing MVNO permission model, organization membership,
 Supabase Auth and the carrier control plane. It does not activate a commercial provider.
 
@@ -16,16 +18,18 @@ Supabase Auth and the carrier control plane. It does not activate a commercial p
 
 ## Data security
 - `atlas_wireless_line_claims`: RLS enabled, direct anon/authenticated table privileges
-  revoked. Service-role access restricted to a server-only Edge Function.
-- JWT `verify_jwt=true`, explicit active organization, live membership check, and
-  `wireless.mvno.read` permission on every request. GET returns only current user's claims.
+  revoked. A PostgreSQL private-schema SECURITY DEFINER implementation authenticates each caller,
+  enforces current-user ownership and organization membership/RBAC. Public RPC wrappers are SECURITY INVOKER.
+- Existing Supabase Auth JWT is validated by PostgREST; private SQL routines derive caller from
+  `auth.uid()`, enforce live organization membership and `wireless.mvno.read`. Both RPCs use POST;
+  list returns only the authenticated current user's claims.
 - Uniqueness is scoped to each applicant as well as organization to avoid cross-user number-enumeration via duplicate errors.
 - Only masked numbers appear in API responses. Full E.164 is stored solely in the private
   database, not in source control, issue comments, URL parameters or telemetry.
 - The record carries explicit consent/assertion time. It is a registration *request*, not a
   telecom contract, port-in instruction or carrier service activation.
 - No public rollout until security review, organization-isolation negative tests,
-  the edge deployment and exact-SHA E2E verification have passed.
+  the SQL RPC migration, guarded E2E checks and exact-SHA verification have passed.
 
 ## Operator transition: external gates
 1. Identify the current carrier via authorized account evidence, not from a screenshot alone.
@@ -40,9 +44,10 @@ Supabase Auth and the carrier control plane. It does not activate a commercial p
 
 ## P0 acceptance gates
 - [ ] Integration tests exercise real authenticated/unauthenticated requests and cross-org denial
-- [ ] Security validation of service-role usage, RLS and PII redaction
-- [ ] SQL migration applied through an authorized and reversible deployment process
-- [ ] `atlas-wireless-line` function deployed with JWT verification and monitored
+- [ ] Security validation of restricted private definer functions, invoker wrappers, RLS and PII redaction
+- [x] Base SQL table migration applied to ATLAS Core with RLS enabled and anon/authenticated table access denied (verified 2026-11-13)
+- [ ] SQL RPC migration applied through an authorized and reversible deployment process
+- [ ] Private SQL RPCs deployed, execute privilege checked, negative Auth/tenant tests run and monitored
 - [ ] Web build, unit/integration tests, security checks and CI exact-SHA pass
 - [ ] Signed-in user submits line in production, reads back masked pending record
 - [ ] Provider ownership proof and live MVNO authorization before any change to verified/active
