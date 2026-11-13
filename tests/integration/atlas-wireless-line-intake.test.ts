@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(path, 'utf8');
-const schema = read('supabase/migrations/20261113145200_atlas_wireless_line_claims.sql');
+const schema = read('supabase/migrations/20261113143649_atlas_wireless_line_claims.sql');
 const rpc = read('supabase/migrations/20261113162000_atlas_wireless_line_rpc.sql');
 const ui = read('apps/web/src/modules/connect/AtlasWirelessLinePage.tsx');
 const client = read('apps/web/src/lib/wirelessLineApi.ts');
