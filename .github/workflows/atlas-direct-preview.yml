@@ -53,6 +53,14 @@ jobs:
           printf '%s' "$(git rev-parse HEAD)" > dist-direct-preview/source-sha.txt
           echo "Preview compiled from exact source SHA: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Preserve independently testable standalone preview build
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-direct-https-preview-${{ github.event.pull_request.head.sha }}
+          path: dist-direct-preview/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Cloudflare preview provider preflight
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
