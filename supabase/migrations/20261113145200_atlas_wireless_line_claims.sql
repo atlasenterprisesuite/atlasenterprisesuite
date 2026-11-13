@@ -10,7 +10,7 @@ create table if not exists public.atlas_wireless_line_claims (
   ownership_asserted_at timestamptz not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (org_id, e164)
+  unique (org_id, submitted_by, e164)
 );
 
 create index if not exists atlas_wireless_line_claims_submitter_idx
