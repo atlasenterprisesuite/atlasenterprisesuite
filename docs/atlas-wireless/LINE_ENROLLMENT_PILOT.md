@@ -1,6 +1,6 @@
 # ATLAS Wireless — Private Line Enrollment Pilot
 
-Status: BASE PRIVATE TABLE APPLIED / RPC IN DRAFT BRANCH / WEB NOT DEPLOYED / E2E NOT VERIFIED.
+Status: PRIVATE TABLE AND GUARDED SQL RPC APPLIED TO ATLAS CORE / WEB PR DRAFT / AUTHENTICATED E2E NOT VERIFIED.
 The live Supabase project has 100/100 Edge Function slots; a new Edge Function was rejected
 with PaymentRequiredException. No subscription upgrade, service deletion or plan change was performed.
 This work reuses ATLAS Connect, the existing MVNO permission model, organization membership,
@@ -46,8 +46,8 @@ Supabase Auth and the carrier control plane. It does not activate a commercial p
 - [ ] Integration tests exercise real authenticated/unauthenticated requests and cross-org denial
 - [ ] Security validation of restricted private definer functions, invoker wrappers, RLS and PII redaction
 - [x] Base SQL table migration applied to ATLAS Core with RLS enabled and anon/authenticated table access denied (verified 2026-11-13)
-- [ ] SQL RPC migration applied through an authorized and reversible deployment process
-- [ ] Private SQL RPCs deployed, execute privilege checked, negative Auth/tenant tests run and monitored
+- [x] SQL RPC migration applied as Supabase version 20261113145248; private and public execute privileges verified 2026-11-13
+- [ ] Private SQL RPCs deployed and execute privileges checked; anonymous-context negative tests passed. Real cross-tenant authenticated E2E and monitoring remain pending
 - [ ] Web build, unit/integration tests, security checks and CI exact-SHA pass
 - [ ] Signed-in user submits line in production, reads back masked pending record
 - [ ] Provider ownership proof and live MVNO authorization before any change to verified/active
