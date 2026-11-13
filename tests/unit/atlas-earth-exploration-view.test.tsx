@@ -13,7 +13,7 @@ describe('ATLAS Earth Exploration — evidence-first viewer behavior', () => {
     expect(map).toHaveAttribute('src', expect.stringContaining('wms.gebco.net/mapserv'));
     expect(screen.getByRole('note')).toHaveTextContent(/no prueban la presencia de ciudades/i);
     expect(screen.getByText(/BedMachine Antarctica v3/i)).toBeInTheDocument();
-    expect(screen.getByText(/No se pudo cargar/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No se pudo cargar/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Volver a Knowledge Atlas/i })).toHaveAttribute('href', '/knowledge');
   });
 
