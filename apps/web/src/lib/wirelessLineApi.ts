@@ -9,30 +9,31 @@ export type WirelessLineClaim = {
   network_active: false;
 };
 
-async function request<T>(api: 'list' | 'submit', init: RequestInit = {}): Promise<T> {
+async function rpc<T>(name: 'atlas_wireless_line_list' | 'atlas_wireless_line_submit',
+  parameters: Record<string, unknown> = {}): Promise<T> {
   const org = await getActiveAtlasOrganization();
-  const response = await authorizedAtlasFetch(`/functions/v1/atlas-wireless-line?api=${api}`, {
-    ...init,
-    headers: { ...(init.headers || {}), 'x-atlas-org-id': org.id }
+  const response = await authorizedAtlasFetch(`/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ p_org_id: org.id, ...parameters })
   });
   const body = await response.json().catch(() => ({ error: 'invalid_response' }));
-  if (!response.ok) throw new Error(String(body?.error || `request_failed_${response.status}`));
+  if (!response.ok) throw new Error(String(body?.message || body?.error || `request_failed_${response.status}`));
   return body as T;
 }
 
 export async function listWirelessLineClaims(): Promise<WirelessLineClaim[]> {
-  const result = await request<{ claims: WirelessLineClaim[] }>('list', { method: 'GET' });
-  return result.claims;
+  const response = await rpc<{ claims: WirelessLineClaim[] }>('atlas_wireless_line_list');
+  return response.claims;
 }
 
 export async function submitWirelessLineClaim(
   number: string,
   ownershipAsserted: boolean
 ): Promise<WirelessLineClaim> {
-  const result = await request<{ claim: WirelessLineClaim }>('submit', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ number, ownership_asserted: ownershipAsserted })
+  const response = await rpc<{ claim: WirelessLineClaim }>('atlas_wireless_line_submit', {
+    p_number: number,
+    p_ownership_asserted: ownershipAsserted
   });
-  return result.claim;
+  return response.claim;
 }
