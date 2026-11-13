@@ -35,6 +35,10 @@ export function ConnectHomePage() {
           <span>Wireless · Pilot control</span><strong>ATLAS MVNO</strong>
           <p>Provider-neutral subscriber lifecycle for the first internal test line, with fail-closed provisioning and audit evidence.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/wireless/line">
+          <span>Wireless · Private intake</span><strong>Register personal line</strong>
+          <p>Submit a number you control for future carrier verification. Submission is not activation or number ownership proof.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/google-fi">
           <span>Wireless · External-gated</span><strong>Google Fi Wireless</strong>
           <p>Official account portal and local statement staging without claiming unsupported private carrier APIs.</p>
