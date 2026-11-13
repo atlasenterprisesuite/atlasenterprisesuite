@@ -8,6 +8,16 @@ const ui = read('apps/web/src/modules/connect/AtlasWirelessLinePage.tsx');
 const client = read('apps/web/src/lib/wirelessLineApi.ts');
 
 describe('ATLAS Wireless line registration is safe, private and not service activation', () => {
+  it('accepts valid E.164 US numbers under the exact PostgreSQL constraint regex', () => {
+    const source = migration.match(/e164 text not null check \(e164 ~ '([^']+)'\)/);
+    expect(source).not.toBeNull();
+    const pattern = new RegExp(source![1]);
+    expect(pattern.test('+12025550100')).toBe(true);
+    expect(pattern.test('+17865550123')).toBe(true);
+    expect(pattern.test('2025550100')).toBe(false);
+    expect(pattern.test('+10005550100')).toBe(false);
+  });
+
   it('keeps self-attested claims separate from authoritative carrier numbering', () => {
     expect(migration).toContain('create table if not exists public.atlas_wireless_line_claims');
     expect(migration).toContain("'pending_verification'");
