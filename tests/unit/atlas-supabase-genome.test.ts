@@ -22,6 +22,9 @@ describe('ATLAS Supabase Genome — immutable evidence and fail-closed export', 
     expect(absent).toHaveLength(66);
     expect(manifest.deployed_edge_functions_without_source_dir_in_git_main).toBe(66);
     expect(manifest.applied_migrations_count).toBe(321);
+    expect(manifest.git_main_migration_sql_files).toBe(142);
+    expect(manifest.applied_migration_versions_present_in_git_main).toBe(19);
+    expect(manifest.applied_migration_versions_absent_from_git_main).toBe(302);
   });
 
   it('exports locally with encryption and refuses partial copies', () => {
