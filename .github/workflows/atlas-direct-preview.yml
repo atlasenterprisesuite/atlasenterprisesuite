@@ -50,8 +50,8 @@ jobs:
           ./node_modules/.bin/vite build --config apps/web/vite.direct-preview.config.ts
           test -s dist-direct-preview/direct-preview.html
           test -n "$(find dist-direct-preview/assets -name '*.js' -print -quit)"
-          printf '%s' "$GITHUB_SHA" > dist-direct-preview/source-sha.txt
-          echo "Preview compiled from exact source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s' "$(git rev-parse HEAD)" > dist-direct-preview/source-sha.txt
+          echo "Preview compiled from exact source SHA: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cloudflare preview provider preflight
         env:
@@ -76,7 +76,7 @@ jobs:
           URL="$(node -e "const fs=require('fs');const s=fs.readFileSync('/tmp/atlas-direct-preview.json','utf8');const m=s.match(/https:\/\/[a-zA-Z0-9.-]+\.workers\.dev/);if(!m)process.exit(2);process.stdout.write(m[0])")"
           echo "ATLAS_DIRECT_PREVIEW_URL=$URL" >> "$GITHUB_ENV"
           echo "Preview: $URL/connect/direct" >> "$GITHUB_STEP_SUMMARY"
-          echo "Source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Source SHA: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify HTTPS preview exact-SHA and access boundaries
         shell: bash
@@ -86,7 +86,7 @@ jobs:
           test "$(curl -L --silent --show-error --max-time 30 -o /tmp/direct-voice.html -w '%{http_code}' "$ATLAS_DIRECT_PREVIEW_URL/connect/direct")" = "200"
           grep -q 'ATLAS Direct Voice' /tmp/direct-voice.html
           test "$(curl -L --silent --show-error --max-time 30 -o /tmp/direct-sha.txt -w '%{http_code}' "$ATLAS_DIRECT_PREVIEW_URL/source-sha.txt")" = "200"
-          test "$(cat /tmp/direct-sha.txt)" = "$GITHUB_SHA"
+          test "$(cat /tmp/direct-sha.txt)" = "$(git rev-parse HEAD)"
           test "$(curl -L --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' "$ATLAS_DIRECT_PREVIEW_URL/finance")" = "404"
-          echo "Isolated HTTPS preview verified for SHA $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Isolated HTTPS preview verified for SHA $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
           echo "Note: live iPhone-Windows microphone/audio E2E remains a separate P0 gate." >> "$GITHUB_STEP_SUMMARY"
