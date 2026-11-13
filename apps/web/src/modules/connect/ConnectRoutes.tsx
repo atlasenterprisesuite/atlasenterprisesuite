@@ -6,6 +6,7 @@ import { AtlasMvnoControlPage } from './AtlasMvnoControlPage';
 import { AtlasTelephonyPage } from './AtlasTelephonyPage';
 import { AtlasWirelessCommissioningPage } from './AtlasWirelessCommissioningPage';
 import { AtlasWirelessNetworkPage } from './AtlasWirelessNetworkPage';
+import { AtlasWirelessLinePage } from './AtlasWirelessLinePage';
 import { AtlasWirelessPage } from './AtlasWirelessPage';
 import { ConnectHomePage } from './ConnectHomePage';
 import { GoogleFiWirelessPage } from './GoogleFiWirelessPage';
@@ -22,6 +23,7 @@ export function ConnectRoutes() {
       <Route path="/connect/wireless/network" element={<AtlasWirelessNetworkPage />} />
       <Route path="/connect/wireless/commissioning" element={<AtlasWirelessCommissioningPage />} />
       <Route path="/connect/wireless/mvno" element={<AtlasMvnoControlPage />} />
+      <Route path="/connect/wireless/line" element={<AtlasWirelessLinePage />} />
       <Route path="/connect/google-fi" element={<GoogleFiWirelessPage />} />
     </Routes>
   );
