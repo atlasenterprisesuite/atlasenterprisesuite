@@ -19,6 +19,7 @@ Supabase Auth and the carrier control plane. It does not activate a commercial p
   revoked. Service-role access restricted to a server-only Edge Function.
 - JWT `verify_jwt=true`, explicit active organization, live membership check, and
   `wireless.mvno.read` permission on every request. GET returns only current user's claims.
+- Uniqueness is scoped to each applicant as well as organization to avoid cross-user number-enumeration via duplicate errors.
 - Only masked numbers appear in API responses. Full E.164 is stored solely in the private
   database, not in source control, issue comments, URL parameters or telemetry.
 - The record carries explicit consent/assertion time. It is a registration *request*, not a
