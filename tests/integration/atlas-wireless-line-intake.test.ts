@@ -30,7 +30,7 @@ describe('ATLAS Wireless line registration is safe, private and not service acti
     expect(edge).toContain("p: 'wireless.mvno.read'");
     expect(edge).toContain(".eq('org_id', orgId)");
     expect(edge).toContain(".eq('submitted_by', userId)");
-    expect(edge).toContain("ownership_asserted:"); // ensures no accidental claim promotion
+    expect(edge).toContain("input.ownership_asserted !== true"); // explicit human assertion
   });
 
   it('only returns masked numbers and never leaks raw input to URL or logs', () => {
