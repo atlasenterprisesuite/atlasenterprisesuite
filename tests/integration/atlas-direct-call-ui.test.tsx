@@ -57,13 +57,13 @@ describe('ATLAS Direct voice UX', () => {
   it('does not open the microphone without an explicit user gesture', () => {
     mount();
     expect(getUserMedia).not.toHaveBeenCalled();
-    expect(screen.getByText(/cannot dial phone numbers or reach 911/i)).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent('It cannot dial phone numbers or reach 911.');
   });
 
   it('creates local offer, keeps it private, and releases microphone on hangup', async () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: 'Create call offer' }));
-    await waitFor(() => expect(screen.getByText('Offer ready to send')).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryAllByText('Offer ready to send').length).toBeGreaterThan(0));
     expect(getUserMedia).toHaveBeenCalledTimes(1);
     expect((screen.getByLabelText('Outgoing connection details') as HTMLTextAreaElement).value)
       .toContain('m=audio');
