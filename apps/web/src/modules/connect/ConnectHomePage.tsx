@@ -23,6 +23,10 @@ export function ConnectHomePage() {
           <span>Email · Provider-gated</span><strong>ATLAS Mail Provisioning</strong>
           <p>Create governed departmental aliases only after Cloudflare Email Routing is authenticated and verified server-side.</p>
         </Link>
+        <Link className="module-card enabled" to="/connect/direct">
+          <span>Voice · Local Wi-Fi</span><strong>ATLAS Direct</strong>
+          <p>Browser-to-browser encrypted voice using WebRTC without an external mobile carrier, phone number or new backend function. Requires a private LAN connection.</p>
+        </Link>
         <Link className="module-card enabled" to="/connect/calling">
           <span>Voice · Provider-gated</span><strong>ATLAS Calling</strong>
           <p>Governed outbound calling with live provider verification, RBAC, consent controls and signed lifecycle evidence.</p>
