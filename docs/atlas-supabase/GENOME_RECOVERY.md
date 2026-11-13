@@ -9,6 +9,7 @@ Status: **read-only metadata fingerprint captured; encrypted recovery exporter i
 - Supabase migrations: 321. Edge Functions: 100 / 100 available Free slots.
 - Storage: 5 buckets, 2 object metadata rows.
 - Source drift: 66 of the 100 deployed Edge Functions have **no matching function directory** in the public GitHub `main` branch. This does not prove they have no source elsewhere.
+- Migration drift: 321 remote applied versions versus 142 SQL files in GitHub `main`; **302 remote versions have no exact matching version** in that directory. The two histories are not interchangeable and must be reconciled before a restore. This does not mean the live database is missing schema.
 - Snapshot of deployed function **bundle SHA256** and versions: [genome-live-20261113.json](genome-live-20261113.json). These are not Git commit SHAs and do not include source code, tokens or user data.
 
 ## No-cost production capacity resolution
