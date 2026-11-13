@@ -1,0 +1,16 @@
+.atlas-direct{max-width:1180px}
+.atlas-direct-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.atlas-direct-grid .feature-card{display:flex;flex-direction:column;gap:13px;min-width:0}
+.atlas-direct .feature-card{border:1px solid rgba(91,184,240,.27);background:linear-gradient(145deg,rgba(7,29,55,.9),rgba(7,18,35,.94));border-radius:18px;padding:20px}
+.atlas-direct .feature-card h2{margin:0;color:#d9f6ff}
+.atlas-direct .feature-card p{margin:0;line-height:1.55;color:#a4c5d7}
+.atlas-direct .feature-card label{display:block;color:#d8effb;font-size:13px;font-weight:700}
+.atlas-direct textarea{display:block;width:100%;min-width:0;resize:vertical;padding:12px;border:1px solid rgba(99,201,243,.35);border-radius:12px;background:rgba(1,14,29,.95);color:#eefcff;line-height:1.4;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}
+.atlas-direct textarea:focus-visible,.atlas-direct button:focus-visible{outline:3px solid #55daff;outline-offset:3px}
+.atlas-direct-actions{display:flex;gap:10px;flex-wrap:wrap}
+.atlas-direct-actions button{padding:12px 14px;border:1px solid rgba(79,186,244,.35);background:linear-gradient(110deg,rgba(18,94,160,.9),rgba(13,146,174,.88));border-radius:12px;color:#fff;font:inherit;font-weight:650;cursor:pointer;min-height:44px}
+.atlas-direct-actions button:disabled{opacity:.5;cursor:not-allowed}
+.atlas-direct-actions .atlas-direct-hangup{background:rgba(158,49,68,.72);border-color:rgba(255,157,165,.5)}
+.atlas-direct audio{width:100%;min-height:44px}
+.atlas-direct .atlas-direct-error{color:#ffb9bc}
+@media(max-width:840px){.atlas-direct-grid{grid-template-columns:1fr}.atlas-direct-actions button{flex:1}}
