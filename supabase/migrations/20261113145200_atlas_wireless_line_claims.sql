@@ -4,7 +4,7 @@ create table if not exists public.atlas_wireless_line_claims (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations(id) on delete cascade,
   submitted_by uuid not null references auth.users(id) on delete cascade,
-  e164 text not null check (e164 ~ '^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$'),
+  e164 text not null check (e164 ~ '^\+1[2-9][0-9]{2}[2-9][0-9]{6}$'),
   status text not null default 'pending_verification'
     check (status in ('pending_verification', 'withdrawn')),
   ownership_asserted_at timestamptz not null,
