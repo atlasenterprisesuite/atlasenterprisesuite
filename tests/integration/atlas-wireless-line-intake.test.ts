@@ -32,7 +32,7 @@ describe('ATLAS Wireless line registration is safe, private and not service acti
   it('protects personal numbers from anonymous and direct browser table access', () => {
     expect(migration).toContain('enable row level security');
     expect(migration).toContain('revoke all on public.atlas_wireless_line_claims from public, anon, authenticated');
-    expect(migration).toContain('unique (org_id, e164)');
+    expect(migration).toContain('unique (org_id, submitted_by, e164)');
     expect(edge).toContain("sb.auth.getUser(token)");
     expect(edge).toContain(".from('organization_members')");
     expect(edge).toContain(".eq('status', 'active')");
