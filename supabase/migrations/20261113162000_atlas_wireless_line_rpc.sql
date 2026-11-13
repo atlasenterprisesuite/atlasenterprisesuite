@@ -32,8 +32,9 @@ language plpgsql
 security definer
 set search_path = pg_catalog, pg_temp
 as $$
-declare v_user uuid;
-declare v_claims jsonb;
+declare
+  v_user uuid;
+  v_claims jsonb;
 begin
   v_user := private.atlas_wireless_line_claim_actor(p_org_id);
   select coalesce(jsonb_agg(jsonb_build_object(
@@ -64,11 +65,12 @@ language plpgsql
 security definer
 set search_path = pg_catalog, pg_temp
 as $$
-declare v_user uuid;
-declare v_number text;
-declare v_e164 text;
-declare v_row public.atlas_wireless_line_claims%rowtype;
-declare v_inserted integer := 0;
+declare
+  v_user uuid;
+  v_number text;
+  v_e164 text;
+  v_row public.atlas_wireless_line_claims%rowtype;
+  v_inserted integer := 0;
 begin
   v_user := private.atlas_wireless_line_claim_actor(p_org_id);
   if p_ownership_asserted is distinct from true then
