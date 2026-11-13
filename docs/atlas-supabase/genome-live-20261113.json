@@ -1,0 +1,626 @@
+{
+  "version": 1,
+  "snapshot_date": "2026-11-13",
+  "source_project_ref": "ggmanzcgtlrvqfoccgsh",
+  "kind": "READ_ONLY_METADATA_FINGERPRINT_NOT_BACKUP",
+  "database_counts": {
+    "tables": 317,
+    "sql_functions": 340,
+    "rls_policies": 682,
+    "triggers": 251,
+    "storage_buckets": 5,
+    "storage_objects": 2
+  },
+  "applied_migrations_count": 321,
+  "edge_function_count": 100,
+  "edge_source_directories_in_git_main": 45,
+  "deployed_edge_functions_without_source_dir_in_git_main": 66,
+  "edge_functions": [
+    {
+      "slug": "atlas-accounting-insights",
+      "deployed_version": 9,
+      "bundle_sha256": "f6da94dc6ec60b8b18eccf96ef7517aa4ac8f15d6bcfcc4d05e4ee0e1310f64e",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-advisory-public",
+      "deployed_version": 3,
+      "bundle_sha256": "a695aaf154c29e179588b54d685c1e1b4d2719300ec56f96ecf2aa93e9ba0d20",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-astra-demo",
+      "deployed_version": 12,
+      "bundle_sha256": "1362cf7bea35ef92c3802e4311d9d5a12d5de6f52df41d1eb982b65457ccedac",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-auth",
+      "deployed_version": 16,
+      "bundle_sha256": "b756ef55486ac5a52e0fa05562cd62f9778cd507b99c2c498587976a78da53bc",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-auth-page-bootstrap",
+      "deployed_version": 11,
+      "bundle_sha256": "0cd66563231e3ad9f69440a58e4399cc6b5de0c1f2893f391cbe318405882a8d",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-access-inspect",
+      "deployed_version": 5,
+      "bundle_sha256": "332b17b84ccc46bee7359988f7541c23189ab07e6d0bb6a5c1fa59c8515d3405",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-bootstrap",
+      "deployed_version": 10,
+      "bundle_sha256": "e4b74309259b82e0b1f671c008679e3a0b55ceadcbfe003cba04889ef32f68db",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-build-config-probe",
+      "deployed_version": 5,
+      "bundle_sha256": "76ff219506e9ff8b4bba9066b58016fa31c8d0022d82ceee0bab94a8f8db6cab",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-build-control",
+      "deployed_version": 6,
+      "bundle_sha256": "e2a4b02f1693f64e4f3520b746241c73d598aedb83eb89de8fb5265c03bd52c2",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-build-diagnostic",
+      "deployed_version": 20,
+      "bundle_sha256": "a8d364b33a56bc384e5d861542fea42166e48fd177298fb920f8b814d703b28d",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-build-token-readiness",
+      "deployed_version": 4,
+      "bundle_sha256": "4e602e18c66999f533151ee021c94502c0ea30aaefd83a2135cfd45869e2c569",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-build-token-rotate-once",
+      "deployed_version": 4,
+      "bundle_sha256": "2478e43ee4cdf08cdc0535ea334219ea0fbd2d36c929bdf41d902e0c6fae8453",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-builds-readiness",
+      "deployed_version": 7,
+      "bundle_sha256": "2b6616eaa2c609b3567cb7d306ddc8fa42fd70b36f77896790b4212ec15df509",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-canonical-build-control",
+      "deployed_version": 5,
+      "bundle_sha256": "2d0d3ef22f36e362363931fa73680f9d0363d2e072a17eddd8951a608b65913e",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-canonical-repo-readiness",
+      "deployed_version": 4,
+      "bundle_sha256": "a4ceccc327c6f889e66339220bff40c39625d78c16636865e9516c5ec8db3d35",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-canonical-trigger-swap",
+      "deployed_version": 5,
+      "bundle_sha256": "0bd3be6dec0586c85d3f2ef51d91465fa1af8a6a5720005e74586b81282a7e07",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-edge-challenge-inspect",
+      "deployed_version": 3,
+      "bundle_sha256": "60305b446222915d2103147f686e9384a0ee3db645a9dbc820c9907fd0639a40",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-fresh-worker-build-once",
+      "deployed_version": 4,
+      "bundle_sha256": "ff1225688d67b9b79911daa7cef53e5046eaf0bb61360b8d26a67924a88e7431",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-fresh-worker-create-once",
+      "deployed_version": 4,
+      "bundle_sha256": "43893feb3358e7843afcd424015afa252b700eb66807dc4fe9f9e8127e41ef5d",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-hospitality-build-status",
+      "deployed_version": 7,
+      "bundle_sha256": "fd5b6321cf9179bf94edaa11f9cde6543ce820617d58bba5a233382dc87df2d2",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-hospitality-green-once",
+      "deployed_version": 4,
+      "bundle_sha256": "b7018295e6ce5e34c574e4e024a6e4216c6635b0e2ca6dae3be3f3b47c22a8d0",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-hospitality-main-status",
+      "deployed_version": 4,
+      "bundle_sha256": "b582bd66f1513cc63d8eb06097debdeb66d05e8eed6c3906df1f3e4056aa161b",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-hospitality-red-once",
+      "deployed_version": 5,
+      "bundle_sha256": "4494eb347a43c473d74ccfab0c9aca3b72c76cae5821e1d46465a17761f1b526",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-identity-deploy-once",
+      "deployed_version": 6,
+      "bundle_sha256": "47a7fd2d9137ba465cf8fe694499e455082c16f41108ad0ac37aec9670ddc6d1",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-main-build-once",
+      "deployed_version": 5,
+      "bundle_sha256": "356c417c6a42da778a64fd433ab89f06585800630fdec02f264c0b4fb15f2ae0",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-production-http-verify",
+      "deployed_version": 30,
+      "bundle_sha256": "3c0f0196b3dd174d06c2ce6308e06d979b857da9c5eb0a8084a63402419d2f56",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-cloudflare-provider-readiness",
+      "deployed_version": 12,
+      "bundle_sha256": "c84040917359fab2e26050dd6ec905f042b4bc8d944bc3a62316e2e2d8d58733",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-public-www-reconcile",
+      "deployed_version": 3,
+      "bundle_sha256": "7deb2b419201d5b33061b3b9e29162da30db149ee0fddd4174eb0ca6a4addd96",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-reconcile-once",
+      "deployed_version": 7,
+      "bundle_sha256": "423ecb9aca5e1e0ffc71ebd7daa8348640f38d217a02c594052138772722941e",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-redeploy-once",
+      "deployed_version": 4,
+      "bundle_sha256": "018a0acb41e9499e2f3ad6bc0432ed942815253b57f2ceae6bd11f420dc19604",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-repo-control",
+      "deployed_version": 6,
+      "bundle_sha256": "d7918322a6179ae08c99db8fccc82365f6924e42f2598238a878332aabb07452",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-route-cutover-once",
+      "deployed_version": 6,
+      "bundle_sha256": "75332275d622dd7dfb0937f0087e9f6a07268ad3ecd1611dbc670e3c910256b5",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-route-pattern-fix-once",
+      "deployed_version": 4,
+      "bundle_sha256": "549995be4de7f51ad0c4e00e6649de8da07ccf656ac4e11f342bd0589c811d29",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-routing-inspect-once",
+      "deployed_version": 4,
+      "bundle_sha256": "0fee10dae181854baa8281d0b1c2335f2cb9de23f58f11282c59185c902a10ef",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-seed-build-once",
+      "deployed_version": 5,
+      "bundle_sha256": "c77723fa6017744357c85ecfe14fe2cadfa8ade57b6bc7a6e310ecde43928acc",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-temp-branch-build-once",
+      "deployed_version": 6,
+      "bundle_sha256": "aac0b1d466386ecdc058173e4bcc3d54a247c370fd2e6f5d8559b53aedb80463",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-token-check",
+      "deployed_version": 8,
+      "bundle_sha256": "62c7e1000f888219e9a5757655563576dbf63359257f10df96c35f2b8312c7bf",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-trigger-transition-once",
+      "deployed_version": 4,
+      "bundle_sha256": "55c4c35c095c133308a6fa1832ced3f7f6f99fe138303218ed1bd320fd2bfb8f",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-vault-builds-probe",
+      "deployed_version": 5,
+      "bundle_sha256": "8711c4196d456c4c3a650a6d512e398735a86d3b8495ed96689f5be82b5e4672",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-worker-destination-inspect",
+      "deployed_version": 3,
+      "bundle_sha256": "817c36d33b5aa3273c22bfbe9a436bcc915fa5c6fc70dd5cbd5376a4635b2aff",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-worker-preservation-probe",
+      "deployed_version": 5,
+      "bundle_sha256": "75c1828d89ae9825055dc619d2cab378bc07c6a5cccc58d6e9a08df61f49dc4e",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-workers-map-inspect",
+      "deployed_version": 3,
+      "bundle_sha256": "943d1f70a36a0d06153d439eafacbfa2d6c36717cbd911da8e1af308834d6206",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-www-bypass-reconcile",
+      "deployed_version": 3,
+      "bundle_sha256": "f5341a2c4c1235a24583e7bfc38ceadcaa0824b6c8e4cb39bcba2d28a41b3dca",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-cloudflare-www-domain-rebind",
+      "deployed_version": 4,
+      "bundle_sha256": "fd09867a46df796078787a88fb20e5ed178b1107d38cbdc8679eff5b63bc4bec",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-commerce",
+      "deployed_version": 3,
+      "bundle_sha256": "0d36615f8c5e49798d259363f4ff3c0ac78a796681b659e5dd06e7e997cce800",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-commerce-dispatch",
+      "deployed_version": 3,
+      "bundle_sha256": "28ac80753677bef8883c26cabb28dd20f49fd236d18d0299908841e6b7c7b2fa",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-control",
+      "deployed_version": 12,
+      "bundle_sha256": "0ff54822f38572fbaa0ff7d7c6f0c7d8f1c0dca67d5423a2ba9314b258120165",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-copilot",
+      "deployed_version": 40,
+      "bundle_sha256": "201193acdd858be47b0defed27a1aabab846ccb752481d4ea5de0ef58e7d201c",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-creator",
+      "deployed_version": 7,
+      "bundle_sha256": "428ebe2e947bb9451cf1870d681bccf1875d4dba2cd684006752fe178e8b50a6",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-creator-e2e-verifier",
+      "deployed_version": 5,
+      "bundle_sha256": "d1e740e002a0ccb613b28960e8f456cd836a46b8e122b22f155e18691143121a",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-creator-generate",
+      "deployed_version": 3,
+      "bundle_sha256": "fcf240f4f247913a59eb2be84d3e8f97d476891fe01c3f8e6437788ff4f687f5",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-creator-native",
+      "deployed_version": 3,
+      "bundle_sha256": "1cad3fb48fe31494cda89a262ecf75ec7d8237eb0ff34475cc0d286334aa0558",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-crm-hubspot",
+      "deployed_version": 8,
+      "bundle_sha256": "07427a3b7f920d59d5bd2eaef8a5e138902b88aa3cf5998f8fcfb1ba1ee48672",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-enterprise-web",
+      "deployed_version": 12,
+      "bundle_sha256": "52abf998fd4d5cb50e7e1f5fdc1f7afac61e852e15cde5d1dd44928485b3b629",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-execution",
+      "deployed_version": 10,
+      "bundle_sha256": "6119320372cb357f482832f19ca0ee1ab7957a95f0282b44537cfb4ac92fce1b",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-explore",
+      "deployed_version": 11,
+      "bundle_sha256": "b198037c01d6c074f2d95ca34e3795613ba8c2bebc5a3d1e2c21b2061ed359d6",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-github-pr-bridge",
+      "deployed_version": 3,
+      "bundle_sha256": "4a5f2f829ce764c8d539713598f176cf9b0f1123fb26d3e98f6e73bc0e2b3903",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-governance",
+      "deployed_version": 8,
+      "bundle_sha256": "66ce9e9d8941a1d718dbe005cd3fe101a4e6c7510b80bae31871994a46243e1b",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-gps",
+      "deployed_version": 4,
+      "bundle_sha256": "a463883ec71ea619ab5bf85f6b80fc981c639070f47a05ff09323bb27ccc933d",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-health-jaque-mate-research",
+      "deployed_version": 3,
+      "bundle_sha256": "fb5f97312ed44439353f66f2797495234ebf6b06205e63fb8dcc041900361a67",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-hospitality-access",
+      "deployed_version": 5,
+      "bundle_sha256": "238788064d59fb23d8fc5e5ece9230233ef965ee0d744cd2e0eb8f0ab4678f46",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-hospitality-cors-build-status",
+      "deployed_version": 7,
+      "bundle_sha256": "9cdeb6986f5e06cf2ecaa6f5a1ba3e9b5aeaa0fc7e4c0792ac53c22f9be9818b",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-hospitality-cors-probe-once",
+      "deployed_version": 5,
+      "bundle_sha256": "e994f59497061ee1888cc2b6ce81db56032d72bfd8a124e1786220e586903dae",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-hospitality-cors-red-build-once",
+      "deployed_version": 5,
+      "bundle_sha256": "e631dee50fab34610df686bf5f8bd72f42aff731179db392b128fce6ea2870b5",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-hub",
+      "deployed_version": 14,
+      "bundle_sha256": "c14320c0519e6099b062bfb3537c61602d471cc854ce6645079fd9f443e9418a",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-hubspot-live-verify",
+      "deployed_version": 3,
+      "bundle_sha256": "112042fbb8253b7f8a471c62c4ac9b53635beda274582c031e714222a206ea8d",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-identity-direct",
+      "deployed_version": 4,
+      "bundle_sha256": "90872cea34e1181ae9d6ea228c646de73288741c969a46bc582376b840293615",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-identity-storage-bootstrap",
+      "deployed_version": 6,
+      "bundle_sha256": "6e588985d8aa15676309bb4ce1209835d9ca0ce342d7877cb1c8cba5d19229f8",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-infra-evidence",
+      "deployed_version": 14,
+      "bundle_sha256": "8ac3c43ff2681ba4aeb0b224338cf3cf465b7fd19afbd220f3eb46f8f7360eb6",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-infra-status",
+      "deployed_version": 17,
+      "bundle_sha256": "d947adfe6f9c8c8e24ea938248a5a24b9728abb56569a55386ab7bb6d95ac2ef",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-insurance-verification",
+      "deployed_version": 4,
+      "bundle_sha256": "c36d9c25e60dbb56bc10f11d23edcccac2c3826316174557a22ec7f1c17262bb",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-intelligence-e2e-bootstrap",
+      "deployed_version": 12,
+      "bundle_sha256": "7f739556d9f867dda11ad6b03140f722edea8ee434f18c7f83dfbba843e73c8d",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-live",
+      "deployed_version": 17,
+      "bundle_sha256": "29cb0af5e43c5ad147bd490d09d6ee96d33e66594eee8e824a8276242479b0ed",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-local-ai-bootstrap",
+      "deployed_version": 9,
+      "bundle_sha256": "0face8ce34eb62264b63d0b4bf18ad98d1bdda0dcb1058f22f8788a1da5ed7d3",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-local-control",
+      "deployed_version": 5,
+      "bundle_sha256": "a613cead6d204a7ac530f4da6c2f78353be916648be2d779c0720dab6a1ad253",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-master-admin",
+      "deployed_version": 8,
+      "bundle_sha256": "81092afe2148020c1d8b98fec790258b1192d0d1163570f69407c7c11c2b9c37",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-memory",
+      "deployed_version": 5,
+      "bundle_sha256": "bb1f39dbe885ddaa3ae2edfb71015f72679cda08ff49ddab8b7ba1db23639079",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-observability",
+      "deployed_version": 10,
+      "bundle_sha256": "5eaf0181d485025c310e61ce66896e71b229a48efeeb6b4d5413eb508f39723a",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-observability-verifier",
+      "deployed_version": 9,
+      "bundle_sha256": "3fcfe533b75f1bf0ae2c9018815fe338c95722f985ee7d291e3b12629a15d4fa",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-openai-readiness",
+      "deployed_version": 12,
+      "bundle_sha256": "f28d22e90b790ae706c4a9df0849c4e7710ab6160dfd45022f84252ed1c1278e",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-payroll-e2e-bootstrap",
+      "deployed_version": 11,
+      "bundle_sha256": "37bbce579a4f3c03eadb2371577f7567f9f6a6abc6d0179391921b981b496e9b",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-permissions",
+      "deployed_version": 12,
+      "bundle_sha256": "46f2a99975d87a3a1bfd1b4ada7ebda0b8ccfb4c8bc74e8797f00940796cb387",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-personal-intelligence",
+      "deployed_version": 12,
+      "bundle_sha256": "d239f4326a0ca5f2298cb11991369c6661efef39e073bca96350543f14d3fe35",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-platform-controls",
+      "deployed_version": 9,
+      "bundle_sha256": "cd1329b35fe9962a72bbb1197e48d9ec50cfb122728f8e8196541d7af919c7e7",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-public-health",
+      "deployed_version": 12,
+      "bundle_sha256": "8d624632ea36fcfa5612b63feeaaa1b19e772dc8a00f5dbcf8ee7665439c6ba7",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-release-control",
+      "deployed_version": 11,
+      "bundle_sha256": "34de11bf88efda6c9672f7f5a8b9f24b1d4ebd2f89e891ce4a316ee5a50c01e1",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-release-control-auth-verifier",
+      "deployed_version": 11,
+      "bundle_sha256": "6aadf9d335fa7dba48a3ba8b39774c0cbca48f72006bb0a248d5ebdff3bfdaa2",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-repair-bridge",
+      "deployed_version": 17,
+      "bundle_sha256": "7e44b7d97f69b87c1892447f44bc0417f9ca809da069856e5ab15a647ba492df",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-repair-bridge-verifier",
+      "deployed_version": 3,
+      "bundle_sha256": "1a7c2a290427bb8e8fe9f63ab52225e1362e3a220fa462e4aa2e93c23c73a4e0",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-ride-compliance",
+      "deployed_version": 4,
+      "bundle_sha256": "f9330d73b8698c7d50096527732d4635c21ff7f8b65090c03e9af5404820972a",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-ride-data",
+      "deployed_version": 11,
+      "bundle_sha256": "9c18ec60d66c12bd2e5e25fa69ae2be0cac2e0d325562799fa588351809bca91",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-runtime-verifier",
+      "deployed_version": 16,
+      "bundle_sha256": "2e71a4c1600242a5abebc0998c324a05a683eec0ce84abc4bc01398624046c82",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-shell-identity-build-status-once",
+      "deployed_version": 10,
+      "bundle_sha256": "093d6ea75983e0d74250e59f57277ac1efd23e955e6a4914ca67bf2ae9a8e2ff",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-shell-identity-red-build-once",
+      "deployed_version": 10,
+      "bundle_sha256": "6aeb11ee8185543965ae3b786f1b1ec21550a093306be979283d8e95f892d160",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-sign-interpret",
+      "deployed_version": 14,
+      "bundle_sha256": "046e6687f6867369289e7d91a5535cadb0fe1309c25496f530907bdc90594848",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-sovereign-console",
+      "deployed_version": 12,
+      "bundle_sha256": "16e1639f94d5daddccae70c946a0a137890aded24448de300a08d21491038974",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-sovereign-control-plane",
+      "deployed_version": 12,
+      "bundle_sha256": "7ba5caef58ae7ad1c078a892ec64ad6edf6a7c1fb7d6cec02477e3a709359522",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-sovereign-runtime",
+      "deployed_version": 13,
+      "bundle_sha256": "7f6a865eb7a3d6e9086d4fa03cc93faea991afc58f567a85996fc30504026f50",
+      "source_dir_in_git_main": false
+    },
+    {
+      "slug": "atlas-voice-native-verification",
+      "deployed_version": 4,
+      "bundle_sha256": "60584d2e60cac134a6a34b3dd0356f3f4be75c3e2ebcd05435f90cab626c85a2",
+      "source_dir_in_git_main": true
+    },
+    {
+      "slug": "atlas-voice-provider",
+      "deployed_version": 6,
+      "bundle_sha256": "0ed708732e33ca663fce0973c91e7e530a8aa69c75437498f393ed9354522178",
+      "source_dir_in_git_main": true
+    }
+  ],
+  "notes": [
+    "No user rows, secrets, API keys, environment variables, or Edge Function source code in this manifest.",
+    "Bundle hashes are Supabase deployment hashes, not Git commit SHA.",
+    "Full recovery requires separately encrypted CLI export, Auth/Storage configuration, and E2E restore test.",
+    "Do not retire missing-source functions until their source is safely exported and references verified."
+  ]
+}
