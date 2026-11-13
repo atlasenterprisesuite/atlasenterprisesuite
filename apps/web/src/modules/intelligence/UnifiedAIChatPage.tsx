@@ -38,6 +38,7 @@ const MODES: Array<{ value: AssistantMode; label: string; short: string }> = [
   { value: 'deepseek', label: 'DeepSeek', short: 'DeepSeek' },
   { value: 'mistral', label: 'Mistral', short: 'Mistral' },
   { value: 'qwen', label: 'Qwen', short: 'Qwen' },
+  { value: 'nvidia', label: 'NVIDIA NIM', short: 'NVIDIA' },
   { value: 'codex-sovereign', label: 'Codex Sovereign', short: 'Codex' },
   { value: 'council', label: 'Council', short: 'Council' }
 ];
