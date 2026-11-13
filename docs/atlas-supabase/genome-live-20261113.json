@@ -621,6 +621,11 @@
     "No user rows, secrets, API keys, environment variables, or Edge Function source code in this manifest.",
     "Bundle hashes are Supabase deployment hashes, not Git commit SHA.",
     "Full recovery requires separately encrypted CLI export, Auth/Storage configuration, and E2E restore test.",
-    "Do not retire missing-source functions until their source is safely exported and references verified."
-  ]
+    "Do not retire missing-source functions until their source is safely exported and references verified.",
+    "Migration comparison is exact by version string; differences can reflect divergent histories, not necessarily lost DDL."
+  ],
+  "git_main_migration_sql_files": 142,
+  "applied_migration_versions_present_in_git_main": 19,
+  "applied_migration_versions_absent_from_git_main": 302,
+  "git_main_sql_versions_not_in_applied_history": 123
 }
