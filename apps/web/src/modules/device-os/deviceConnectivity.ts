@@ -107,3 +107,56 @@ export async function probeCurrentAtlasOrigin(options: {
     clearTimeout(timer);
   }
 }
+
+
+/**
+ * Accepts only the sanitized, user-pasted output of our opt-in Windows script.
+ * The result is user-provided evidence, never a trusted agent attestation.
+ */
+export type WindowsConnectivityReport = Readonly<{
+  schema: 'atlas-network-diagnostics-v1';
+  source: 'user-run-windows-powershell';
+  measuredAt: string;
+  adaptersUpCount: number;
+  dnsResolved: boolean;
+  tcp443Reachable: boolean;
+  wireGuardAdapterPresent: boolean;
+  wireGuardAdapterUp: boolean;
+}>;
+
+export function parseWindowsConnectivityReport(text: string): WindowsConnectivityReport {
+  if (!text || text.length > 4096) throw new Error('invalid_windows_connectivity_report');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('invalid_windows_connectivity_report');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('invalid_windows_connectivity_report');
+  }
+  const data = parsed as Record<string, unknown>;
+  const keys = [
+    'schema', 'source', 'measuredAt', 'adaptersUpCount',
+    'dnsResolved', 'tcp443Reachable', 'wireGuardAdapterPresent', 'wireGuardAdapterUp'
+  ];
+  if (Object.keys(data).length !== keys.length || keys.some((key) => !Object.prototype.hasOwnProperty.call(data, key))) {
+    throw new Error('unexpected_windows_connectivity_fields');
+  }
+  if (data.schema !== 'atlas-network-diagnostics-v1' ||
+      data.source !== 'user-run-windows-powershell' ||
+      typeof data.measuredAt !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}T/.test(data.measuredAt) ||
+      !Number.isFinite(Date.parse(data.measuredAt)) ||
+      !Number.isInteger(data.adaptersUpCount) ||
+      (data.adaptersUpCount as number) < 0 ||
+      (data.adaptersUpCount as number) > 256 ||
+      typeof data.dnsResolved !== 'boolean' ||
+      typeof data.tcp443Reachable !== 'boolean' ||
+      typeof data.wireGuardAdapterPresent !== 'boolean' ||
+      typeof data.wireGuardAdapterUp !== 'boolean' ||
+      (data.wireGuardAdapterUp && !data.wireGuardAdapterPresent)) {
+    throw new Error('invalid_windows_connectivity_report');
+  }
+  return data as WindowsConnectivityReport;
+}
