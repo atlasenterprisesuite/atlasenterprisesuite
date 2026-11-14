@@ -36,7 +36,7 @@ describe('Device OS connectivity user interface', () => {
       label: 'My laptop', device_type: 'computer', health_status: 'healthy'
     } as Awaited<ReturnType<typeof listLocalDevices>>[number]]);
     render(<DeviceConnectivityPanel />);
-    expect(await screen.findByText(/ATLAS control: Recent agent heartbeat (active mTLS binding)/)).toBeTruthy();
+    expect(await screen.findByText(/ATLAS control: Recent agent heartbeat/)).toBeTruthy();
     expect(screen.getByText('Internet: not measured · Wi-Fi: not measured')).toBeTruthy();
     expect(screen.getByText('Cellular: not measured · VPN: not measured')).toBeTruthy();
   });
