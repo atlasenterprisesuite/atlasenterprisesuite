@@ -13,7 +13,7 @@ Status: draft PR; read-only code integration; no production verification.
 ## Current integrated vertical slice
 
 The Device OS page displays registered devices from the canonical Local Control API and safely projects:
-1. Recent, authenticated agent reporting, or an explicit stale/offline/unverified reason.
+1. Recent agent reporting and recorded mTLS binding, or an explicit stale/offline/unverified reason.
 2. Separate **not-measured** states for general Internet, Wi-Fi, cellular and VPN.
 3. A user-initiated GET of the current ATLAS origin with no credentials, redirects or persistence. Its result is intentionally labeled **ATLAS HTTP origin**, not Internet connectivity.
 
