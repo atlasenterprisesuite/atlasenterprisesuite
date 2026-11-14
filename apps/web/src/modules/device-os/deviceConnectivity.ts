@@ -32,6 +32,9 @@ export function projectDeviceConnectivity(
     let controlEvidence: DeviceConnectivityRow['controlEvidence'] = 'none';
     const seenAt = agent?.last_seen_at;
     const seenMs = seenAt ? Date.parse(seenAt) : Number.NaN;
+    const certExpiresMs = agent?.mtls_cert_expires_at ? Date.parse(agent.mtls_cert_expires_at) : Number.NaN;
+    const secureBindingCurrent = agent?.mtls_status === 'active' &&
+      Number.isFinite(certExpiresMs) && certExpiresMs > nowMs;
     const heartbeatRecent =
       Number.isFinite(nowMs) && Number.isFinite(seenMs) &&
       seenMs <= nowMs + CLOCK_SKEW_MS && nowMs - seenMs <= HEARTBEAT_MAX_AGE_MS;
@@ -39,8 +42,8 @@ export function projectDeviceConnectivity(
     if (agent?.status === 'revoked') controlState = 'revoked';
     else if (agent?.status === 'offline') controlState = 'offline';
     else if (agent?.status === 'online' && !heartbeatRecent) controlState = 'stale';
-    else if (agent?.status === 'online' && agent.mtls_status !== 'active') controlState = 'secure-channel-required';
-    else if (agent?.status === 'online' && heartbeatRecent && agent.mtls_status === 'active') {
+    else if (agent?.status === 'online' && !secureBindingCurrent) controlState = 'secure-channel-required';
+    else if (agent?.status === 'online' && heartbeatRecent && secureBindingCurrent) {
       controlState = 'agent-recent';
       controlEvidence = 'registered-agent-heartbeat';
     }
