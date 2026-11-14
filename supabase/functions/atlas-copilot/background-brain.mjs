@@ -1,5 +1,5 @@
 import {evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
-import {normalizeIntelligenceRequest} from './intelligence-gateway.mjs';
+import {normalizeIntelligenceRequest,reauthorizeIntelligenceContext} from './intelligence-gateway.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
 
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
@@ -19,10 +19,11 @@ function terminalFailure(status){
   return ['failed','cancelled','incomplete'].includes(String(status||'').toLowerCase());
 }
 
-export function createBackgroundBrain({router,registry,store,costPolicy,runDetached=null,clock=Date.now}={}){
+export function createBackgroundBrain({router,registry,store,costPolicy,authorizeContext,runDetached=null,clock=Date.now}={}){
   if(!registry||!store)throw new TypeError('background_brain_dependencies_required');
 
   async function finalize({context,requestRow,providerResult,routing}){
+    context=await reauthorizeIntelligenceContext(context,authorizeContext);
     const conversationId=String(requestRow.conversation_id||'');
     const traceId=String(requestRow.trace_id||'');
     if(!conversationId||!traceId)throw fail('background_request_invalid',500);
@@ -120,7 +121,8 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
       background:true
     };
     try{
-      const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:candidateRoute.mode,intent:normalized.intent});
+      context=await reauthorizeIntelligenceContext(context,authorizeContext);
+      const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:candidateRoute.mode,intent:normalized.intent,responsePreferences:normalized.client_metadata.response_preferences});
       if(typeof selected.adapter.startBackground==='function'){
         const result=await selected.adapter.startBackground({
           context,
@@ -138,7 +140,7 @@ export function createBackgroundBrain({router,registry,store,costPolicy,runDetac
         });
         const requestRow={...telemetry,provider:result.provider||selected.providerId,model:result.model||null,usage:{atlas_background:{response_id:result.response_id,status:result.status||'queued',kind:'provider-native'},atlas_routing:routing}};
         if(result.status==='completed'){
-          return finalize({context,requestRow,providerResult:result,routing});
+          return await finalize({context,requestRow,providerResult:result,routing});
         }
         return {
           status:result.status||'queued',
