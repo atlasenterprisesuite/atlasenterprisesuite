@@ -4,6 +4,9 @@ import {
   probeCurrentAtlasOrigin,
   projectDeviceConnectivity,
   parseWindowsConnectivityReport,
+  assessWindowsConnectivityReport,
+  guideIphoneManualCheck,
+  type IphoneManualCheck,
   type AtlasOriginProbe,
   type DeviceConnectivityRow,
   type DeviceControlState,
@@ -28,6 +31,10 @@ export function DeviceConnectivityPanel() {
   const [windowsInput, setWindowsInput] = useState('');
   const [windowsReport, setWindowsReport] = useState<WindowsConnectivityReport | null>(null);
   const [windowsError, setWindowsError] = useState('');
+  const [iphoneCheck, setIphoneCheck] = useState<IphoneManualCheck>({
+    wifi: 'unknown', cellular: 'unknown', hotspot: 'unknown', vpn: 'unknown'
+  });
+  const [showIphoneGuidance, setShowIphoneGuidance] = useState(false);
 
   async function refresh() {
     setState('loading');
@@ -167,9 +174,63 @@ export function DeviceConnectivityPanel() {
                 : windowsReport.wireGuardAdapterPresent ? 'present, not up' : 'not detected'}
             </p>
             <small>Local report timestamp: {new Date(windowsReport.measuredAt).toLocaleString()}</small>
+            <p>Diagnosis: {assessWindowsConnectivityReport(windowsReport).state.replaceAll('-', ' ')}</p>
+            <ul>
+              {assessWindowsConnectivityReport(windowsReport).findings.map((finding) => (
+                <li key={finding}>{finding}</li>
+              ))}
+            </ul>
           </div>
         ) : null}
       </div>
+      <section className="page-stack" aria-labelledby="iphone-connectivity-title">
+        <h3 id="iphone-connectivity-title">iPhone — manual connectivity check</h3>
+        <p>
+          Choose only what you can verify yourself in iOS Settings. ATLAS does not
+          access your iPhone settings, carrier account, Wi-Fi passwords or VPN keys.
+          Answers remain in this page session and are not transmitted.
+        </p>
+        {([
+          ['wifi', 'Wi-Fi connected in iOS Settings?'],
+          ['cellular', 'Cellular data available?'],
+          ['hotspot', 'Personal Hotspot enabled?'],
+          ['vpn', 'VPN switch enabled?']
+        ] as const).map(([field, fieldLabel]) => (
+          <label key={field}>
+            {fieldLabel}
+            <select
+              value={iphoneCheck[field]}
+              onChange={(event) => {
+                setIphoneCheck((old) => ({ ...old, [field]: event.target.value as IphoneManualCheck[typeof field] }));
+                setShowIphoneGuidance(false);
+              }}
+            >
+              <option value="unknown">Not checked</option>
+              <option value="yes">Yes, observed in Settings</option>
+              <option value="no">No, observed in Settings</option>
+            </select>
+          </label>
+        ))}
+        <div>
+          <button type="button" onClick={() => setShowIphoneGuidance(true)}>
+            Explain my iPhone results
+          </button>
+          <button type="button" onClick={() => {
+            setIphoneCheck({ wifi: 'unknown', cellular: 'unknown', hotspot: 'unknown', vpn: 'unknown' });
+            setShowIphoneGuidance(false);
+          }}>Clear my iPhone answers</button>
+        </div>
+        {showIphoneGuidance ? (
+          <div role="status" className="notice">
+            <strong>iPhone self-report — not device-verified</strong>
+            <ul>
+              {guideIphoneManualCheck(iphoneCheck).map((finding) => (
+                <li key={finding}>{finding}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
       <a href="/work/computer-operations">Open ATLAS advanced network diagnostics</a>
     </article>
   );
