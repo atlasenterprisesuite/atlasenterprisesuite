@@ -29,7 +29,8 @@ describe('Device OS connectivity user interface', () => {
   it('renders enrolled device status without promoting its Internet or VPN to verified', async () => {
     vi.mocked(listLocalAgents).mockResolvedValue([{
       id: 'a1', org_id: 'org1', platform: 'win32', status: 'online',
-      mtls_status: 'active', last_seen_at: new Date().toISOString()
+      mtls_status: 'active', mtls_cert_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      last_seen_at: new Date().toISOString()
     } as Awaited<ReturnType<typeof listLocalAgents>>[number]]);
     vi.mocked(listLocalDevices).mockResolvedValue([{
       id: 'd1', org_id: 'org1', agent_id: 'a1',
