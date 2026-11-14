@@ -26,6 +26,7 @@ const mandate: AgentMandate = {
 };
 const validInput = {
   actor,
+  agentRegistered: true,
   targetScope: scope,
   mandate,
   permission: 'ai.code.write' as const,
@@ -40,7 +41,10 @@ describe('ATLAS KYA server-resolved agent mandates', () => {
     });
   });
 
-  it('fails closed for absent mandates, spoofed agents, and human actors', () => {
+  it('fails closed for absent registration, mandates, spoofed agents, and human actors', () => {
+    expect(evaluateAgentMandate({ ...validInput, agentRegistered: false })).toMatchObject({
+      allowed: false, reason: 'agent_unregistered'
+    });
     expect(evaluateAgentMandate({ ...validInput, mandate: null })).toMatchObject({
       allowed: false, reason: 'mandate_required'
     });
