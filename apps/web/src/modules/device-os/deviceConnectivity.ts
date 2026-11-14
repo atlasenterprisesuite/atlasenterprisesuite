@@ -77,6 +77,8 @@ export async function probeCurrentAtlasOrigin(options: {
   timeoutMs?: number;
 }): Promise<AtlasOriginProbe> {
   const url = new URL(options.origin);
+  const browserOrigin = typeof window === 'undefined' ? null : window.location.origin;
+  if (browserOrigin && url.origin !== browserOrigin) throw new Error('non_current_origin');
   const loopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
   if (url.username || url.password || url.pathname !== '/' || url.search || url.hash ||
       !(url.protocol === 'https:' || (loopback && url.protocol === 'http:'))) {
