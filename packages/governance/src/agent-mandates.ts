@@ -26,6 +26,8 @@ export type AgentMandate = {
 
 export type AgentMandateInput = {
   actor: AtlasActor;
+  /** Server-resolved registration state; never trust a client-declared value. */
+  agentRegistered: boolean;
   targetScope: TenantScope;
   mandate: AgentMandate | null;
   permission: AiPermission;
@@ -40,6 +42,7 @@ export type AgentMandateDecision =
   | { allowed: false; reason:
       | 'agent_actor_required'
       | 'mandate_required'
+      | 'agent_unregistered'
       | 'invalid_mandate'
       | 'agent_mismatch'
       | 'scope_mismatch'
@@ -61,6 +64,7 @@ const deny = (reason: Extract<AgentMandateDecision, { allowed: false }>['reason'
 export function evaluateAgentMandate(input: AgentMandateInput): AgentMandateDecision {
   const { actor, targetScope, mandate, permission, actionId } = input;
   if (actor.kind !== 'agent') return deny('agent_actor_required');
+  if (input.agentRegistered !== true) return deny('agent_unregistered');
   if (!mandate) return deny('mandate_required');
   if (!mandate.mandateId?.trim() || !mandate.agentId?.trim() || !mandate.principalId?.trim()) {
     return deny('invalid_mandate');
