@@ -17,6 +17,8 @@ The Device OS page displays registered devices from the canonical Local Control 
 2. Separate **not-measured** states for general Internet, Wi-Fi, cellular and VPN.
 3. A user-initiated GET of the current ATLAS origin with no credentials, redirects or persistence. Its result is intentionally labeled **ATLAS HTTP origin**, not Internet connectivity.
 
+An opt-in read-only Windows script at `scripts/network/atlas-windows-connectivity.ps1` can print a sanitized local JSON report; the browser validates a strict schema and displays it as user-provided evidence only. It never uploads reports, exposes IP/SSID/password/key data, or claims that an active WireGuard interface proves a VPN tunnel is working.
+
 The page refreshes without retaining stale connected-looking values after an API permission or transport failure. No passwords, router administration, Wi-Fi enumeration, carrier subscriptions, WireGuard keys or raw IP telemetry are collected.
 
 ## Trust and ownership boundaries
@@ -31,7 +33,7 @@ The page refreshes without retaining stale connected-looking values after an API
 ## TDD and acceptance matrix
 
 - [x] Pure model and negative unit tests authored.
-- [x] Device OS page integration authored.
+- [x] Device OS page integration, sanitized Windows diagnostic script, and local JSON parser authored.
 - [ ] Targeted Vitest and TypeScript against complete repository dependencies (CI evidence required).
 - [ ] Exact PR-head SHA check runs complete.
 - [ ] Browser E2E on authenticated Device OS and iPhone VoiceOver/accessibility.
