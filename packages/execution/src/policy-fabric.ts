@@ -50,6 +50,21 @@ export function evaluateAtlasPolicy(input: AtlasPolicyEvaluationInput): AtlasPol
 
   if (input.requireAgentMandate || input.agentMandate) {
     const trust = input.agentMandate ? evaluateAgentMandate(input.agentMandate) : null;
+    const cost = input.action.paidCost;
+    const monetaryBindingMissing = !Number.isFinite(cost) || cost < 0 ||
+      (cost > 0 && (input.agentMandate?.amount == null ||
+        !Number.isFinite(input.agentMandate.amount) ||
+        input.agentMandate.amount < cost));
+    if (monetaryBindingMissing) {
+      return {
+        requestId,
+        outcome: 'deny',
+        reason: 'agent_mandate:spending_amount_unbound',
+        permissionsRequired,
+        approvalRequired: false,
+        approvalSatisfied: false
+      };
+    }
     if (!trust?.allowed) {
       return {
         requestId,
