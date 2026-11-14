@@ -9,7 +9,7 @@ import {
 } from './deviceConnectivity';
 
 const CONTROL_LABELS: Record<DeviceControlState, string> = {
-  'agent-recent': 'Recent authenticated agent heartbeat',
+  'agent-recent': 'Recent agent heartbeat (active mTLS binding)',
   'secure-channel-required': 'Secure mTLS channel required',
   stale: 'Heartbeat missing or stale',
   offline: 'Agent reports offline',
