@@ -16,6 +16,8 @@ The Device OS page displays registered devices from the canonical Local Control 
 1. Recent agent reporting and recorded mTLS binding, or an explicit stale/offline/unverified reason.
 2. Separate **not-measured** states for general Internet, Wi-Fi, cellular and VPN.
 3. A user-initiated GET of the current ATLAS origin with no credentials, redirects or persistence. Its result is intentionally labeled **ATLAS HTTP origin**, not Internet connectivity.
+4. Windows user-provided JSON with strict allowed fields; triage warns on missing adapters, failed DNS and unreachable TCP 443, but never certifies VPN health. Reports older than 15 minutes (or future dated) are stale.
+5. iPhone manual Wi-Fi, cellular, Hotspot and VPN inputs remain in React memory only, are resettable and provide context-specific troubleshooting without asserting device access.
 
 An opt-in read-only Windows script at `scripts/network/atlas-windows-connectivity.ps1` can print a sanitized local JSON report; the browser validates a strict schema and displays it as user-provided evidence only. It never uploads reports, exposes IP/SSID/password/key data, or claims that an active WireGuard interface proves a VPN tunnel is working.
 
@@ -32,9 +34,9 @@ The page refreshes without retaining stale connected-looking values after an API
 
 ## TDD and acceptance matrix
 
-- [x] Pure model and negative unit tests authored.
+- [x] Pure model, negative unit tests, read-only Windows diagnostics assessment and iPhone manual guidance authored.
 - [x] Device OS page integration, sanitized Windows diagnostic script, and local JSON parser authored.
-- [ ] Targeted Vitest and TypeScript against complete repository dependencies (CI evidence required).
+- [ ] Exact-current-head Vitest and TypeScript against complete repository dependencies (CI evidence required). Prior SHA 2167a541 showed 1 failed assertion for invalid-origin validation order; fixed in later commit, but do not inherit previous test results.
 - [ ] Exact PR-head SHA check runs complete.
 - [ ] Browser E2E on authenticated Device OS and iPhone VoiceOver/accessibility.
 - [ ] Authorized enrolled Windows agent with independent verified connectivity telemetry.
