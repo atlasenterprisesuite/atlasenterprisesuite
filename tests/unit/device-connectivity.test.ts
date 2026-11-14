@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AtlasLocalAgent, AtlasLocalDevice } from '../../apps/web/src/modules/device-os/localControlApi';
-import { probeCurrentAtlasOrigin, projectDeviceConnectivity } from '../../apps/web/src/modules/device-os/deviceConnectivity';
+import { parseWindowsConnectivityReport, probeCurrentAtlasOrigin, projectDeviceConnectivity } from '../../apps/web/src/modules/device-os/deviceConnectivity';
 
 const now = Date.parse('2026-11-13T20:00:00Z');
 const origin = typeof window === 'undefined' ? 'https://www.atlasenterprisesuite.com' : window.location.origin;
@@ -63,5 +63,30 @@ describe('ATLAS same-origin browser check', () => {
       await expect(probeCurrentAtlasOrigin({ origin: 'https://other-site.example', ...target })).rejects.toThrow('non_current_origin');
     }
     expect(target.fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Sanitized Windows diagnostics import', () => {
+  const sample = {
+    schema: 'atlas-network-diagnostics-v1',
+    source: 'user-run-windows-powershell',
+    measuredAt: '2026-11-13T21:00:00Z',
+    adaptersUpCount: 2,
+    dnsResolved: true,
+    tcp443Reachable: true,
+    wireGuardAdapterPresent: true,
+    wireGuardAdapterUp: false
+  };
+
+  it('accepts and returns only a strict, user-reported summary', () => {
+    expect(parseWindowsConnectivityReport(JSON.stringify(sample))).toEqual(sample);
+  });
+  it('rejects secrets, unknown properties, untrusted sources and inconsistent VPN status', () => {
+    expect(() => parseWindowsConnectivityReport(JSON.stringify({ ...sample, wifiPassword: 'secret' }))).toThrow('unexpected_windows_connectivity_fields');
+    expect(() => parseWindowsConnectivityReport(JSON.stringify({ ...sample, source: 'verified-agent' }))).toThrow();
+    expect(() => parseWindowsConnectivityReport(JSON.stringify({ ...sample, wireGuardAdapterUp: true, wireGuardAdapterPresent: false }))).toThrow();
+    expect(() => parseWindowsConnectivityReport('not-json')).toThrow();
+    expect(() => parseWindowsConnectivityReport('x'.repeat(5000))).toThrow();
   });
 });
