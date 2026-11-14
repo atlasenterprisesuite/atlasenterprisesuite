@@ -6,7 +6,7 @@ const now = Date.parse('2026-11-13T20:00:00Z');
 const origin = typeof window === 'undefined' ? 'https://www.atlasenterprisesuite.com' : window.location.origin;
 const agent = {
   id: 'a1', org_id: 'org1', platform: 'win32', status: 'online',
-  mtls_status: 'active', last_seen_at: '2026-11-13T19:59:00Z'
+  mtls_status: 'active', mtls_cert_expires_at: '2026-11-15T19:59:00Z', last_seen_at: '2026-11-13T19:59:00Z'
 } as AtlasLocalAgent;
 const device = {
   id: 'd1', label: 'Owned laptop', org_id: 'org1', agent_id: 'a1',
@@ -26,6 +26,8 @@ describe('Device OS connectivity projection: fail closed', () => {
     expect(projectDeviceConnectivity([{ ...agent, last_seen_at: '2026-11-13T19:40:00Z' }], [device], now)[0].controlState).toBe('stale');
     expect(projectDeviceConnectivity([{ ...agent, last_seen_at: null }], [device], now)[0].controlState).toBe('stale');
     expect(projectDeviceConnectivity([{ ...agent, mtls_status: 'pending' }], [device], now)[0].controlState).toBe('secure-channel-required');
+    expect(projectDeviceConnectivity([{ ...agent, mtls_cert_expires_at: null }], [device], now)[0].controlState).toBe('secure-channel-required');
+    expect(projectDeviceConnectivity([{ ...agent, mtls_cert_expires_at: '2026-11-12T19:59:00Z' }], [device], now)[0].controlState).toBe('secure-channel-required');
     expect(projectDeviceConnectivity([{ ...agent, status: 'revoked' }], [device], now)[0].controlState).toBe('revoked');
   });
 
