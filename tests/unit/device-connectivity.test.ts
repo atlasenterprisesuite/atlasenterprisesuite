@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AtlasLocalAgent, AtlasLocalDevice } from '../../apps/web/src/modules/device-os/localControlApi';
-import { parseWindowsConnectivityReport, probeCurrentAtlasOrigin, projectDeviceConnectivity } from '../../apps/web/src/modules/device-os/deviceConnectivity';
+import { assessWindowsConnectivityReport, guideIphoneManualCheck, parseWindowsConnectivityReport, probeCurrentAtlasOrigin, projectDeviceConnectivity } from '../../apps/web/src/modules/device-os/deviceConnectivity';
 
 const now = Date.parse('2026-11-13T20:00:00Z');
 const origin = typeof window === 'undefined' ? 'https://www.atlasenterprisesuite.com' : window.location.origin;
@@ -88,5 +88,49 @@ describe('Sanitized Windows diagnostics import', () => {
     expect(() => parseWindowsConnectivityReport(JSON.stringify({ ...sample, wireGuardAdapterUp: true, wireGuardAdapterPresent: false }))).toThrow();
     expect(() => parseWindowsConnectivityReport('not-json')).toThrow();
     expect(() => parseWindowsConnectivityReport('x'.repeat(5000))).toThrow();
+  });
+});
+
+
+describe('Connectivity guidance is bounded by evidence', () => {
+  const report = {
+    schema: 'atlas-network-diagnostics-v1',
+    source: 'user-run-windows-powershell',
+    measuredAt: '2026-11-13T20:00:00Z',
+    adaptersUpCount: 1,
+    dnsResolved: true,
+    tcp443Reachable: true,
+    wireGuardAdapterPresent: true,
+    wireGuardAdapterUp: true
+  } as const;
+  const clock = Date.parse(report.measuredAt) + 30_000;
+
+  it('calls simple DNS and TCP checks only basic, never verified Internet or VPN', () => {
+    const assessment = assessWindowsConnectivityReport(report, clock);
+    expect(assessment.state).toBe('basic-checks-passed');
+    expect(assessment.findings.join(' ')).toMatch(/handshake.*not verified/);
+  });
+
+  it('alerts on DNS failure, no adapters and unreachable TCP', () => {
+    const assessment = assessWindowsConnectivityReport({
+      ...report, adaptersUpCount: 0, dnsResolved: false, tcp443Reachable: false
+    }, clock);
+    expect(assessment.state).toBe('needs-attention');
+    expect(assessment.findings.join(' ')).toContain('DNS');
+    expect(assessment.findings.join(' ')).toContain('TCP');
+  });
+
+  it('rejects outdated or future-dated self-reports as current evidence', () => {
+    expect(assessWindowsConnectivityReport(report, clock + 16 * 60_000).state).toBe('stale');
+    expect(assessWindowsConnectivityReport(report, clock - 3 * 60_000).state).toBe('stale');
+  });
+
+  it('does not call an iPhone switch a confirmed connection', () => {
+    const guide = guideIphoneManualCheck({
+      wifi: 'yes', cellular: 'no', hotspot: 'no', vpn: 'yes'
+    }).join(' ');
+    expect(guide).toMatch(/does not prove/);
+    expect(guide).toMatch(/WireGuard peer handshake/);
+    expect(guide).toMatch(/carrier support/);
   });
 });
