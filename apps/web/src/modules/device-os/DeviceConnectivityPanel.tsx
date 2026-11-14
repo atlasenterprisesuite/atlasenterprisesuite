@@ -147,6 +147,11 @@ export function DeviceConnectivityPanel() {
           and paste the sanitized JSON. Nothing is uploaded or saved; results are self-reported,
           not proof of an enrolled device, Internet service or a working VPN tunnel.
         </p>
+        <p>
+          <a href="https://github.com/atlasenterprisesuite/atlasenterprisesuite/blob/main/scripts/network/atlas-windows-connectivity.ps1" target="_blank" rel="noreferrer">
+            Review the read-only PowerShell script in the canonical repository
+          </a>
+        </p>
         <label htmlFor="atlas-windows-connectivity-report">Sanitized Windows diagnostic JSON</label>
         <textarea
           id="atlas-windows-connectivity-report"
