@@ -3,6 +3,7 @@ import type { AtlasLocalAgent, AtlasLocalDevice } from '../../apps/web/src/modul
 import { probeCurrentAtlasOrigin, projectDeviceConnectivity } from '../../apps/web/src/modules/device-os/deviceConnectivity';
 
 const now = Date.parse('2026-11-13T20:00:00Z');
+const origin = typeof window === 'undefined' ? 'https://www.atlasenterprisesuite.com' : window.location.origin;
 const agent = {
   id: 'a1', org_id: 'org1', platform: 'win32', status: 'online',
   mtls_status: 'active', last_seen_at: '2026-11-13T19:59:00Z'
@@ -38,19 +39,19 @@ describe('Device OS connectivity projection: fail closed', () => {
 describe('ATLAS same-origin browser check', () => {
   it('uses credential-free, no-cache, redirect-rejecting GET', async () => {
     const fetchImpl = vi.fn(async () => ({ status: 200 })) as unknown as typeof fetch;
-    await expect(probeCurrentAtlasOrigin({ origin: 'https://www.atlasenterprisesuite.com', fetchImpl })).resolves.toEqual({
+    await expect(probeCurrentAtlasOrigin({ origin, fetchImpl })).resolves.toEqual({
       state: 'reachable', httpStatus: 200, scope: 'current-atlas-origin-only'
     });
-    expect(fetchImpl).toHaveBeenCalledWith('https://www.atlasenterprisesuite.com/', expect.objectContaining({
+    expect(fetchImpl).toHaveBeenCalledWith(origin + '/', expect.objectContaining({
       method: 'GET', credentials: 'omit', cache: 'no-store', redirect: 'error'
     }));
   });
 
   it('does not promote redirects, errors or arbitrary HTTP to success', async () => {
     const redirect = vi.fn(async () => { throw new Error('redirect denied'); }) as unknown as typeof fetch;
-    expect((await probeCurrentAtlasOrigin({ origin: 'https://www.atlasenterprisesuite.com', fetchImpl: redirect })).state).toBe('unavailable');
+    expect((await probeCurrentAtlasOrigin({ origin, fetchImpl: redirect })).state).toBe('unavailable');
     const denied = vi.fn(async () => ({ status: 403 })) as unknown as typeof fetch;
-    expect((await probeCurrentAtlasOrigin({ origin: 'https://www.atlasenterprisesuite.com', fetchImpl: denied })).state).toBe('unavailable');
+    expect((await probeCurrentAtlasOrigin({ origin, fetchImpl: denied })).state).toBe('unavailable');
   });
 
   it('rejects unsafe or malformed target origins', async () => {
@@ -58,6 +59,9 @@ describe('ATLAS same-origin browser check', () => {
     await expect(probeCurrentAtlasOrigin({ origin: 'http://public.example', ...target })).rejects.toThrow('invalid_current_atlas_origin');
     await expect(probeCurrentAtlasOrigin({ origin: 'https://user:pass@public.example', ...target })).rejects.toThrow();
     await expect(probeCurrentAtlasOrigin({ origin: 'https://public.example/path', ...target })).rejects.toThrow();
+    if (typeof window !== 'undefined') {
+      await expect(probeCurrentAtlasOrigin({ origin: 'https://other-site.example', ...target })).rejects.toThrow('non_current_origin');
+    }
     expect(target.fetchImpl).not.toHaveBeenCalled();
   });
 });
