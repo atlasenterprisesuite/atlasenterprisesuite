@@ -158,5 +158,14 @@ export function parseWindowsConnectivityReport(text: string): WindowsConnectivit
       (data.wireGuardAdapterUp && !data.wireGuardAdapterPresent)) {
     throw new Error('invalid_windows_connectivity_report');
   }
-  return data as WindowsConnectivityReport;
+  return {
+    schema: 'atlas-network-diagnostics-v1',
+    source: 'user-run-windows-powershell',
+    measuredAt: data.measuredAt as string,
+    adaptersUpCount: data.adaptersUpCount as number,
+    dnsResolved: data.dnsResolved as boolean,
+    tcp443Reachable: data.tcp443Reachable as boolean,
+    wireGuardAdapterPresent: data.wireGuardAdapterPresent as boolean,
+    wireGuardAdapterUp: data.wireGuardAdapterUp as boolean
+  };
 }
