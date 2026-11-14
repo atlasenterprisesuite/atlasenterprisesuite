@@ -169,3 +169,85 @@ export function parseWindowsConnectivityReport(text: string): WindowsConnectivit
     wireGuardAdapterUp: data.wireGuardAdapterUp as boolean
   };
 }
+
+
+export type WindowsConnectivityAssessment = Readonly<{
+  state: 'stale' | 'needs-attention' | 'basic-checks-passed';
+  findings: readonly string[];
+}>;
+
+/**
+ * Deterministic triage, not network certification. User-reported diagnostics
+ * are never bound to a registered ATLAS device without agent-side evidence.
+ */
+export function assessWindowsConnectivityReport(
+  report: WindowsConnectivityReport,
+  nowMs: number = Date.now()
+): WindowsConnectivityAssessment {
+  const measuredMs = Date.parse(report.measuredAt);
+  if (!Number.isFinite(nowMs) || !Number.isFinite(measuredMs) ||
+      measuredMs > nowMs + 60_000 || nowMs - measuredMs > 15 * 60_000) {
+    return {
+      state: 'stale',
+      findings: ['The report is older than 15 minutes or its clock is inconsistent. Repeat the local diagnostic.']
+    };
+  }
+
+  const findings: string[] = [];
+  if (report.adaptersUpCount === 0) {
+    findings.push('No network adapter reported an Up state. Check an authorized Wi-Fi, Ethernet or mobile hotspot connection.');
+  }
+  if (!report.dnsResolved) {
+    findings.push('The DNS lookup of example.com did not return an IPv4 result. Check Windows DNS settings or the network connection.');
+  }
+  if (!report.tcp443Reachable) {
+    findings.push('TCP 443 to 1.1.1.1 was not confirmed. Check permitted Internet access and firewall settings; do not disable security controls.');
+  }
+  if (report.wireGuardAdapterPresent && !report.wireGuardAdapterUp) {
+    findings.push('A WireGuard adapter was detected but is not Up. Verify the authorized tunnel in the WireGuard app.');
+  }
+  if (report.wireGuardAdapterUp) {
+    findings.push('WireGuard interface reports Up, but peer handshake and traffic routing are not verified by this script.');
+  }
+  if (findings.length === 0) {
+    findings.push('DNS and one public TCP endpoint passed. This does not establish general Internet, Wi-Fi or VPN health.');
+  }
+  const needsAttention = report.adaptersUpCount === 0 || !report.dnsResolved ||
+    !report.tcp443Reachable || (report.wireGuardAdapterPresent && !report.wireGuardAdapterUp);
+  return {
+    state: needsAttention ? 'needs-attention' : 'basic-checks-passed',
+    findings
+  };
+}
+
+export type IphoneManualCheck = Readonly<{
+  wifi: 'yes' | 'no' | 'unknown';
+  cellular: 'yes' | 'no' | 'unknown';
+  hotspot: 'yes' | 'no' | 'unknown';
+  vpn: 'yes' | 'no' | 'unknown';
+}>;
+
+export function guideIphoneManualCheck(check: IphoneManualCheck): readonly string[] {
+  const notes: string[] = [];
+  if (check.wifi === 'no' && check.cellular === 'no') {
+    notes.push('Neither Wi-Fi nor mobile data was reported available. Check a permitted Wi-Fi connection or an active mobile plan.');
+  }
+  if (check.wifi === 'yes') {
+    notes.push('Wi-Fi selected in Settings does not prove that an Internet route works.');
+  }
+  if (check.cellular === 'no') {
+    notes.push('Cellular data is not currently reported available. Personal Hotspot may require an active plan and carrier support.');
+  }
+  if (check.hotspot === 'yes') {
+    notes.push('Hotspot was reported enabled. Verify that Windows explicitly joins your iPhone hotspot and can access a permitted site.');
+  } else if (check.hotspot === 'no') {
+    notes.push('If you want iPhone-to-Windows sharing, check Settings → Personal Hotspot and confirm carrier support.');
+  }
+  if (check.vpn === 'yes') {
+    notes.push('An enabled VPN switch does not prove a WireGuard peer handshake or usable tunnel.');
+  }
+  if (!notes.length) {
+    notes.push('No connection status is independently verified. Check Settings → Wi-Fi, Cellular, Personal Hotspot and VPN.');
+  }
+  return notes;
+}
