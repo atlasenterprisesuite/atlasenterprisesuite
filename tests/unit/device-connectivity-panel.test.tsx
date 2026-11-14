@@ -41,6 +41,22 @@ describe('Device OS connectivity user interface', () => {
     expect(screen.getByText('Cellular: not measured · VPN: not measured')).toBeTruthy();
   });
 
+  it('validates a pasted report locally without network upload or changing verified agent status', async () => {
+    render(<DeviceConnectivityPanel />);
+    await screen.findByText(/No registered devices are reporting/);
+    const sample = JSON.stringify({
+      schema: 'atlas-network-diagnostics-v1',
+      source: 'user-run-windows-powershell',
+      measuredAt: '2026-11-13T21:00:00Z',
+      adaptersUpCount: 1, dnsResolved: true, tcp443Reachable: false,
+      wireGuardAdapterPresent: true, wireGuardAdapterUp: true
+    });
+    fireEvent.change(screen.getByLabelText('Sanitized Windows diagnostic JSON'), { target: { value: sample } });
+    fireEvent.click(screen.getByRole('button', { name: 'Validate locally' }));
+    expect(screen.getByText(/User-reported Windows diagnostics/)).toBeTruthy();
+    expect(screen.getByText(/interface up; tunnel handshake not verified/)).toBeTruthy();
+  });
+
   it('removes inventory after an authorization or API failure on refresh', async () => {
     render(<DeviceConnectivityPanel />);
     expect(await screen.findByText(/No registered devices are reporting/)).toBeTruthy();
