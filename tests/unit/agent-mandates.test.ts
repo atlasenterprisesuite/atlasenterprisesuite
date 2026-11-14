@@ -127,6 +127,23 @@ describe('ATLAS KYA server-resolved agent mandates', () => {
     });
   });
 
+  it('the execution policy refuses paid actions whose monetary amount is not bound to the mandate', () => {
+    const result = evaluateAtlasPolicy({
+      requestId: 'paid-request',
+      permissions: ['ai.code.write'],
+      requiredPermissions: ['ai.code.write'],
+      requireAgentMandate: true,
+      agentMandate: validInput,
+      action: {
+        autonomyLevel: 'autonomous', sensitivity: 'low', reversible: true,
+        mutation: true, paidCost: 25, budgetLimit: 100, envelopeAllowed: true, regulated: false
+      }
+    });
+    expect(result).toMatchObject({
+      outcome: 'deny', reason: 'agent_mandate:spending_amount_unbound'
+    });
+  });
+
   it('the execution policy permits an authorized reversible action but rejects revoked mandates', () => {
     const base = {
       requestId: 'request-2',
