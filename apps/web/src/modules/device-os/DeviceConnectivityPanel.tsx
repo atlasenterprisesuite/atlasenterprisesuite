@@ -3,9 +3,11 @@ import { listLocalAgents, listLocalDevices } from './localControlApi';
 import {
   probeCurrentAtlasOrigin,
   projectDeviceConnectivity,
+  parseWindowsConnectivityReport,
   type AtlasOriginProbe,
   type DeviceConnectivityRow,
-  type DeviceControlState
+  type DeviceControlState,
+  type WindowsConnectivityReport
 } from './deviceConnectivity';
 
 const CONTROL_LABELS: Record<DeviceControlState, string> = {
@@ -23,6 +25,9 @@ export function DeviceConnectivityPanel() {
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
   const [originProbe, setOriginProbe] = useState<AtlasOriginProbe | null>(null);
+  const [windowsInput, setWindowsInput] = useState('');
+  const [windowsReport, setWindowsReport] = useState<WindowsConnectivityReport | null>(null);
+  const [windowsError, setWindowsError] = useState('');
 
   async function refresh() {
     setState('loading');
@@ -54,6 +59,17 @@ export function DeviceConnectivityPanel() {
       setOriginProbe({ state: 'unavailable', httpStatus: null, scope: 'current-atlas-origin-only' });
     } finally {
       setChecking(false);
+    }
+  }
+
+  function inspectWindowsReport() {
+    setWindowsReport(null);
+    try {
+      setWindowsReport(parseWindowsConnectivityReport(windowsInput));
+      setWindowsError('');
+      setWindowsInput('');
+    } catch {
+      setWindowsError('Invalid report. Paste only sanitized JSON from the ATLAS read-only Windows diagnostics script.');
     }
   }
 
@@ -116,6 +132,43 @@ export function DeviceConnectivityPanel() {
         Windows: run read-only adapter, IP, DNS and HTTPS diagnostics on your own laptop.
         ATLAS cannot control operating-system radios, hotspot settings or WireGuard
         without an enrolled, authorized platform adapter.
+      </div>
+      <div className="page-stack">
+        <h3>Windows local diagnostics (optional)</h3>
+        <p>
+          Run scripts/network/atlas-windows-connectivity.ps1 locally on your own Windows laptop
+          and paste the sanitized JSON. Nothing is uploaded or saved; results are self-reported,
+          not proof of an enrolled device, Internet service or a working VPN tunnel.
+        </p>
+        <label htmlFor="atlas-windows-connectivity-report">Sanitized Windows diagnostic JSON</label>
+        <textarea
+          id="atlas-windows-connectivity-report"
+          rows={3}
+          maxLength={4096}
+          value={windowsInput}
+          onChange={(event) => setWindowsInput(event.target.value)}
+          placeholder="Paste JSON produced by the ATLAS read-only Windows diagnostic"
+        />
+        <div>
+          <button type="button" disabled={!windowsInput.trim()} onClick={inspectWindowsReport}>
+            Validate locally
+          </button>
+        </div>
+        {windowsError ? <p role="alert">{windowsError}</p> : null}
+        {windowsReport ? (
+          <div role="status" className="notice">
+            <strong>User-reported Windows diagnostics — not independently verified</strong>
+            <p>Adapter(s) reporting up: {windowsReport.adaptersUpCount}</p>
+            <p>DNS example.com: {windowsReport.dnsResolved ? 'resolved' : 'not resolved by this check'}</p>
+            <p>TCP 443 to 1.1.1.1: {windowsReport.tcp443Reachable ? 'reachable' : 'not reachable by this check'}</p>
+            <p>
+              WireGuard adapter: {windowsReport.wireGuardAdapterUp
+                ? 'interface up; tunnel handshake not verified'
+                : windowsReport.wireGuardAdapterPresent ? 'present, not up' : 'not detected'}
+            </p>
+            <small>Local report timestamp: {new Date(windowsReport.measuredAt).toLocaleString()}</small>
+          </div>
+        ) : null}
       </div>
       <a href="/work/computer-operations">Open ATLAS advanced network diagnostics</a>
     </article>
