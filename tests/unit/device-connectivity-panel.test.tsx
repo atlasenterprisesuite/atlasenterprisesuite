@@ -57,6 +57,18 @@ describe('Device OS connectivity user interface', () => {
     expect(screen.getByText(/interface up; tunnel handshake not verified/)).toBeTruthy();
   });
 
+  it('explains selected iPhone settings without misrepresenting device access', async () => {
+    render(<DeviceConnectivityPanel />);
+    await screen.findByText(/No registered devices are reporting/);
+    fireEvent.change(screen.getByLabelText('Wi-Fi connected in iOS Settings?'), { target: { value: 'no' } });
+    fireEvent.change(screen.getByLabelText('Cellular data available?'), { target: { value: 'no' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Explain my iPhone results' }));
+    expect(screen.getByText(/iPhone self-report/)).toBeTruthy();
+    expect(screen.getByText(/Neither Wi-Fi nor mobile data was reported/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear my iPhone answers' }));
+    expect(screen.queryByText(/iPhone self-report/)).toBeNull();
+  });
+
   it('removes inventory after an authorization or API failure on refresh', async () => {
     render(<DeviceConnectivityPanel />);
     expect(await screen.findByText(/No registered devices are reporting/)).toBeTruthy();
