@@ -1,0 +1,42 @@
+# ATLAS Device OS — Internet & Device Connectivity 777
+
+Date: 2026-11-13
+Status: draft PR; read-only code integration; no production verification.
+
+## Reused components
+
+- Existing Device OS route and Local Control Plane (organization-scoped, authorized local-agent APIs).
+- Existing Local Network Access allowlist. This change does not expand it or scan networks.
+- Network Sentinel user-reported quality measurement; the new dashboard never fabricates a measurement.
+- Work Computer Operations advanced network guidance and production-route diagnostics.
+
+## Current integrated vertical slice
+
+The Device OS page displays registered devices from the canonical Local Control API and safely projects:
+1. Recent, authenticated agent reporting, or an explicit stale/offline/unverified reason.
+2. Separate **not-measured** states for general Internet, Wi-Fi, cellular and VPN.
+3. A user-initiated GET of the current ATLAS origin with no credentials, redirects or persistence. Its result is intentionally labeled **ATLAS HTTP origin**, not Internet connectivity.
+
+The page refreshes without retaining stale connected-looking values after an API permission or transport failure. No passwords, router administration, Wi-Fi enumeration, carrier subscriptions, WireGuard keys or raw IP telemetry are collected.
+
+## Trust and ownership boundaries
+
+- This browser feature cannot read iOS network interfaces or manage Personal Hotspot / cellular; Apple OS permissions remain authoritative.
+- It cannot manage Windows adapters, services or WireGuard tunnels without a separately installed and enrolled local agent capability with signed native adapter.
+- A local-agent heartbeat, healthy device or successful HTTP route probe does not imply Internet or VPN works.
+- Device and agent inventory comes from the existing authenticated, organization-scoped API. The client additionally refuses to join agent/device records across organization IDs.
+- No background auto-scans or unauthorized network probes, no automatic association with hotel/public Wi-Fi, no changes to host firewalls, VPN or DNS.
+- Future mutating commands require capability declaration, organization RBAC/RLS, audit, fresh authorization, and ATLAS Approval Center on risky actions.
+
+## TDD and acceptance matrix
+
+- [x] Pure model and negative unit tests authored.
+- [x] Device OS page integration authored.
+- [ ] Targeted Vitest and TypeScript against complete repository dependencies (CI evidence required).
+- [ ] Exact PR-head SHA check runs complete.
+- [ ] Browser E2E on authenticated Device OS and iPhone VoiceOver/accessibility.
+- [ ] Authorized enrolled Windows agent with independent verified connectivity telemetry.
+- [ ] WireGuard adapter read-only telemetry with real consent and no private key capture.
+- [ ] Separate authorization for merge / production deployment and exact-deployed-SHA verification.
+
+P0: if any required authorization, cross-organization isolation, source provenance or evidence check fails, retain **NO-GO**. Do not label deployment completed from source code alone.
