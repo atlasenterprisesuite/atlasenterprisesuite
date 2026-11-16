@@ -101,7 +101,7 @@ acceptance result therefore does not certify a later commit's CI or production.
 ## Repeatable acceptance
 
 ```sh
-npm test -- tests/unit/atlas-777-local-cycle.test.ts \
+npm exec --no -- vitest run tests/unit/atlas-777-local-cycle.test.ts \
   tests/unit/atlas-777-atomic-store.test.ts \
   tests/unit/atlas-777-executor.test.ts \
   tests/unit/atlas-777-autonomous-executor.test.ts
@@ -124,6 +124,26 @@ tests, TypeScript and production build passed. Vite reported its existing large
 bundle advisory. The worktree overlays #867's files onto local base
 `6f7bc8bf7ccb4c50afb347281c934b4cf1925786`; those aggregate results are not
 whole-PR exact-SHA certification. GitHub CI must verify the published commit.
+
+### CI diagnosis on the initial published pilot
+
+At `692a72830ddd0774dcff101c4bb5692312a32e32`, nine other PR workflows passed,
+but the local proof and Council security workflows failed. The proof job checked
+out a merge tree whose `npm test` script chained several runners, sending the
+focused Vitest arguments to the wrong runner. It now checks out the exact PR
+head, invokes the installed Vitest binary directly and requires its JSON
+artifact. The same focused command passed all 32 tests locally.
+
+Council job `133373595190` failed because the old PR head does not contain
+`tests/node/atlas-ai-council-security-gates.test.mjs`; its continuity step was
+therefore never reached. This is a blocking branch-reconciliation issue, not a
+Cloudflare/network diagnosis. Current main `f632c3140e20e99b34808682f3109f24146078b4`
+contains that suite and `tests/node/atlas-model-continuity.test.mjs`, but its
+intelligence gateway, message store and background authorization implementation
+also differ from this branch. Do not copy only tests, skip the gate or assert
+whole-PR certification. Reconcile the reviewed main changes on the canonical
+branch and rerun both security suites and all required CI on the resulting SHA.
+This pilot does not change those unrelated runtime modules.
 
 ## Remaining delivery gates
 

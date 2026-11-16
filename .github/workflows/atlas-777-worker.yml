@@ -37,6 +37,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -44,7 +45,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Prove implementation, process restart and acceptance with synthetic repositories
         run: >-
-          npm test --
+          npm exec --no -- vitest run
           tests/unit/atlas-777-local-cycle.test.ts
           tests/unit/atlas-777-atomic-store.test.ts
           tests/unit/atlas-777-executor.test.ts
@@ -54,9 +55,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: atlas-777-local-resume-${{ github.sha }}
+          name: atlas-777-local-resume-${{ github.event.pull_request.head.sha }}
           path: artifacts/atlas-777/local-resume-tests.json
-          if-no-files-found: warn
+          if-no-files-found: error
   observe-queue:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
