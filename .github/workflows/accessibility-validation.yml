@@ -9,6 +9,7 @@ on:
       - "tests/**accessibility**"
       - "tests/unit/sign-language-registry.test.ts"
       - "docs/validation/**"
+      - "scripts/verify-accounting-reconciliation-browser.mjs"
       - ".github/workflows/accessibility-validation.yml"
   push:
     branches: ["main"]
@@ -18,6 +19,7 @@ on:
       - "tests/**accessibility**"
       - "tests/unit/sign-language-registry.test.ts"
       - "docs/validation/**"
+      - "scripts/verify-accounting-reconciliation-browser.mjs"
       - ".github/workflows/accessibility-validation.yml"
   workflow_dispatch:
 
@@ -69,6 +71,7 @@ jobs:
           routes=(
             "/"
             "/finance"
+            "/finance/accounting/reconciliation"
             "/health"
             "/settings/accessibility/communication"
           )
@@ -91,6 +94,20 @@ jobs:
           tests/integration/atlas-accessibility-shell.test.tsx
           tests/integration/accessibility-settings-route.test.tsx
           tests/integration/accessibility-validation-contract.test.ts
+      - name: Install isolated browser verification tooling
+        run: npm install --prefix /tmp/atlas-reconciliation-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.62.1
+      - name: Reconciliation import, export and responsive browser verification
+        env:
+          ATLAS_PLAYWRIGHT_MODULE: /tmp/atlas-reconciliation-browser/node_modules/playwright/index.mjs
+          ATLAS_RECONCILIATION_BASE_URL: http://127.0.0.1:4173
+        run: node scripts/verify-accounting-reconciliation-browser.mjs
+      - name: Upload reconciliation browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-reconciliation-browser-evidence
+          path: .tmp/accounting-reconciliation-browser/
+          if-no-files-found: ignore
       - name: Upload preview log on failure
         if: failure()
         uses: actions/upload-artifact@v4

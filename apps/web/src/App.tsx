@@ -17,6 +17,7 @@ import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { AtlasPayPage } from './modules/finance/pay/AtlasPayPage';
 import { PublicAtlasPayPage } from './modules/finance/pay/PublicAtlasPayPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
+import { BankReconciliationPage } from './modules/finance/accounting/BankReconciliationPage';
 import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
 import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
 import { TaxRoutes } from './modules/tax/TaxRoutes';
@@ -321,6 +322,7 @@ export function App() {
         <Route path="/finance/pay/workspace" element={<RequireAtlasIdentity><AtlasPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting" element={<AccountingHome />} />
         <Route path="/finance/accounting/accounts-payable" element={<PayablesPage />} />
+        <Route path="/finance/accounting/reconciliation" element={<BankReconciliationPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
         <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />
         <Route path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />} />
