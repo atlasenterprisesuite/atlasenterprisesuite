@@ -131,6 +131,7 @@ const accountingSections: ModuleExperienceSection[] = [
       { label: 'Operations', title: 'Accounts Payable', description: 'Vendor obligations, aging, approvals and payment application state.', to: '/finance/accounting/accounts-payable' },
       { label: 'Inventory', title: 'Procure to Pay', description: 'Receive inventory by PO, preserve packing-slip evidence, three-way match vendor invoices and post Inventory/AP.', to: '/inventory/procure-to-pay' },
       { label: 'AR', title: 'Accounts Receivable', description: 'Customer invoices can relieve inventory and post Revenue, COGS and gross-margin evidence when products are inventory-backed.', to: '/finance/accounting/accounts-receivable' },
+      { label: 'Local files', title: 'Conciliación de archivos', description: 'Compare user-selected bank and ledger CSV files, review proposals and export source-hashed local evidence.', to: '/finance/accounting/reconciliation' },
       { label: 'Reports', title: 'Automotive Sales Financial Reporting', description: 'Departmental dealership reporting with F&I, fixed operations, inventory and floorplan controls.', to: '/finance/accounting/reports/automotive-sales' }
     ]
   },
@@ -140,7 +141,7 @@ const accountingSections: ModuleExperienceSection[] = [
     description: 'These capabilities are required for commercial completeness but remain gated until implementation, data contracts and tests converge in the canonical route graph.',
     cards: [
       { label: 'GL', title: 'General Ledger', description: 'Journal and ledger domain work requires final route and workflow reconciliation.', status: 'Reconciliation required' },
-      { label: 'Cash', title: 'Bank Reconciliation', description: 'Cash and bank matching remains gated until verified accounting capability is recovered into the current architecture.', status: 'Canonical route not active' },
+      { label: 'Cash', title: 'Connected Bank Reconciliation', description: 'Local file comparison is available above. Live bank connections, durable reconciliation approval and ledger posting require their own verified provider and authorization contracts.', status: 'Connected workflow gated' },
       { label: 'Close', title: 'Period Close', description: 'A complete governed close workflow is not yet proven in the canonical product surface.', status: 'Commercial workflow incomplete' }
     ]
   },

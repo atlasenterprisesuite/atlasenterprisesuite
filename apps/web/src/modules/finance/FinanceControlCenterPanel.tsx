@@ -83,6 +83,13 @@ export function FinanceControlCenterPanel() {
 
       {error ? <div className="notice strong" role="alert">{error}</div> : null}
 
+      <Link className="module-experience-card is-active" to="/finance/accounting/reconciliation">
+        <span className="module-experience-card-label">Local files · no bank connection</span>
+        <strong>Conciliación de archivos</strong>
+        <p>Import bank and ledger CSV files, review unique proposals and exceptions, and export source-hashed evidence.</p>
+        <span className="module-experience-card-action">Open file comparison ↗</span>
+      </Link>
+
       {snapshot && derived ? (
         <>
           <div className="metric-grid" aria-label="Live Finance summary">

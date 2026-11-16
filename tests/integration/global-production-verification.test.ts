@@ -74,6 +74,7 @@ describe('ATLAS global production verification', () => {
       '/settings/accessibility/communication',
       '/finance/accounting/accounts-payable',
       '/finance/accounting/accounts-receivable',
+      '/finance/accounting/reconciliation',
       '/finance/accounting/reports/automotive-sales',
       '/advisory/business-launch-360',
       '/identity?app=%2Ffinance',
