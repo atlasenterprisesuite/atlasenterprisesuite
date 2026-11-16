@@ -1,0 +1,93 @@
+name: ATLAS 777 Isolated PostgreSQL 17 Runtime
+on:
+  push:
+    branches:
+      - audit/supabase-definer-rls-777-20261101
+    paths:
+      - '.github/workflows/atlas-777-isolated-postgres.yml'
+      - 'tests/security/**'
+      - 'supabase/migrations/**'
+  pull_request:
+    paths:
+      - '.github/workflows/atlas-777-isolated-postgres.yml'
+      - 'tests/security/**'
+      - 'tests/integration/supabase-privileged-rpc-static-777.test.ts'
+      - 'tests/integration/atlas-777-foundation-provenance-static.test.ts'
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: atlas_test
+          POSTGRES_PASSWORD: isolated_fixture_only
+          POSTGRES_DB: atlas_777_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas_test -d atlas_777_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: atlas_test
+      PGPASSWORD: isolated_fixture_only
+      PGDATABASE: atlas_777_test
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 node24
+      - name: Verify isolated PostgreSQL 17 and tenant fixtures
+        run: |
+          set -euo pipefail
+          version="$(psql -X -Atqc 'show server_version_num')"
+          [[ "$version" =~ ^[0-9]+$ ]] || { echo 'POSTGRES_VERSION_QUERY_FAILED'; exit 1; }
+          test "$version" -ge 170000
+          isolation="$(psql -X -Atqc 'show transaction_isolation')"
+          test "$isolation" = 'read committed' || { echo "UNEXPECTED_ISOLATION: $isolation"; exit 1; }
+          echo "POSTGRES_17_ENGINE_READY SHA=${GITHUB_SHA} isolation=${isolation}"
+          psql -v ON_ERROR_STOP=1 -f tests/security/atlas-777-postgres-smoke.sql
+      - name: Negative foundation preflight rejects an incomplete database
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp)"
+          trap 'rm -f "$log_file"' EXIT
+          if psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-foundation-preflight.sql >"$log_file" 2>&1; then
+            echo 'P0_PREFLIGHT_FALSE_GREEN: incomplete foundation was accepted'
+            exit 1
+          else
+            result=$?
+          fi
+          cat "$log_file"
+          test "$result" -eq 3 || { echo 'P0_PREFLIGHT_UNEXPECTED_CLIENT_FAILURE'; exit 1; }
+          grep -Fq 'P0_FOUNDATION_DEPENDENCIES_MISSING:' "$log_file" || { echo 'P0_PREFLIGHT_EXPECTED_DENIAL_MISSING'; exit 1; }
+          echo 'NEGATIVE_PREFLIGHT_CONFIRMED: dependency rejection only; bootstrap and RPC certification remain blocked'
+      - name: Negative People prerequisite gate rejects missing authentic foundation
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp)"
+          trap 'rm -f "$log_file"' EXIT
+          if psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-people-real-dependencies.sql >"$log_file" 2>&1; then
+            echo 'P0_PEOPLE_FALSE_GREEN: original People dependencies unexpectedly passed without bootstrap'
+            exit 1
+          else
+            result=$?
+          fi
+          cat "$log_file"
+          test "$result" -eq 3 || { echo 'P0_PEOPLE_GATE_UNEXPECTED_CLIENT_FAILURE'; exit 1; }
+          grep -Fq 'P0_PEOPLE_REAL_MIGRATION_DEPENDENCIES_MISSING:' "$log_file" || { echo 'P0_PEOPLE_GATE_EXPECTED_DENIAL_MISSING'; exit 1; }
+          echo 'NEGATIVE_PEOPLE_GATE_CONFIRMED: original People migration deliberately NOT executed without authentic foundation'
+      # Authentic Supabase Auth/ATLAS Identity bootstrap is not yet reconstructed.
+      # Never run the original People migration or privileged-function contract
+      # against missing foundations or replace them with permissive stubs.
+      - name: Explicitly reject premature RPC certification
+        run: |
+          echo 'ENGINE_SMOKE_ONLY: real 22 RPC migration/authorization/revocation certification not yet executed'
+          echo 'ATLAS 777 P0 NO-GO: required RPC certification evidence missing'
+          exit 1
