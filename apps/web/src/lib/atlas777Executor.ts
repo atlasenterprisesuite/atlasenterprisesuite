@@ -6,7 +6,7 @@ export type Job = Readonly<{
   sourceEventId: string;
   repository: string;
   targetSha: string;
-  action: 'inspect' | 'test' | 'draft_pr';
+  action: 'inspect' | 'test' | 'draft_pr' | 'implement';
   status: JobStatus;
   attempts: number;
   maxAttempts: number;
@@ -26,7 +26,7 @@ function valid(job: Job): boolean {
     && Number.isSafeInteger(job.nextAttemptMs)
     && (job.leaseUntilMs === null || Number.isSafeInteger(job.leaseUntilMs))
     && (job.leaseOwner === null || ID.test(job.leaseOwner))
-    && ['inspect', 'test', 'draft_pr'].includes(job.action);
+    && ['inspect', 'test', 'draft_pr', 'implement'].includes(job.action);
 }
 function deny(job: Job, reason: string): Transition { return { job, accepted: false, reason }; }
 export function enqueue(input: Omit<Job, 'status' | 'attempts' | 'leaseOwner' | 'leaseUntilMs' | 'nextAttemptMs'>, nowMs: number): Job {

@@ -1,6 +1,13 @@
 name: ATLAS 777 Autonomous Worker (observation gate)
 
 on:
+  pull_request:
+    paths:
+      - 'apps/web/src/lib/atlas777*.ts'
+      - 'scripts/atlas-777/**'
+      - 'scripts/atlas-777-local-cycle.mjs'
+      - 'tests/unit/atlas-777-*.test.ts'
+      - '.github/workflows/atlas-777-worker.yml'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -20,7 +27,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  local-resume-proof:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Prove implementation, process restart and acceptance with synthetic repositories
+        run: >-
+          npm test --
+          tests/unit/atlas-777-local-cycle.test.ts
+          tests/unit/atlas-777-atomic-store.test.ts
+          tests/unit/atlas-777-executor.test.ts
+          tests/unit/atlas-777-autonomous-executor.test.ts
+          --reporter=default --reporter=json
+          --outputFile=artifacts/atlas-777/local-resume-tests.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-777-local-resume-${{ github.sha }}
+          path: artifacts/atlas-777/local-resume-tests.json
+          if-no-files-found: warn
   observe-queue:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
