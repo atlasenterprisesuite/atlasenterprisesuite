@@ -20,17 +20,19 @@ Two files, 2 MiB each, 10,000 data rows each. Required CSV headers id,date,amoun
 ### Task 1: Safe comparison domain
 Files: packages/accounting/src/bankReconciliation.ts; packages/accounting/src/index.ts; tests/unit/accounting-bank-reconciliation.test.ts.
 Interfaces: parseReconciliationCsv(text) returns ReconciliationEntry[]; reconcileStatements(bank, ledger, {dateWindowDays}) returns ReconciliationResult; buildReconciliationEvidence(sources, options, createdAt) returns an unsigned local report.
-- [ ] Write behavior tests for CSV parsing, cents/dates/currency validation, matching and ambiguity, totals and evidence.
-- [ ] Run focused tests and retain expected failure evidence before adding implementation.
-- [ ] Implement minimal domain functions and export them from the accounting package.
-- [ ] Run domain tests and adjacent accounting tests; commit.
+- [x] Write behavior tests for CSV parsing, cents/dates/currency validation, matching and ambiguity, totals and evidence.
+- [x] Run focused tests and retain expected failure evidence before adding implementation.
+- [x] Implement minimal domain functions and export them from the accounting package.
+- [x] Run domain tests and adjacent accounting tests; commit.
 
 ### Task 2: Usable workspace and roadmap
 Files: apps/web/src/modules/finance/accounting/BankReconciliationPage.tsx; App.tsx; FinanceControlCenterPanel.tsx; registry.ts; navigation/atlasNavigation.ts; tests/integration/accounting-bank-reconciliation-ui.test.tsx; docs/roadmaps/2026-11-16-future-initiatives.md.
 Consumes Task 1 interfaces. Produces /finance/accounting/reconciliation with two file inputs, validated import state, comparison, clear, CSV template downloads and full JSON export.
-- [ ] Write real-component tests for empty/import/compare/error/reset/race/export behavior; observe failure.
-- [ ] Implement UI and navigation using existing classes and file-byte SHA-256.
-- [ ] Document all six tracks with reused modules, acceptance evidence, next steps and actual dependencies.
+- [x] Write real-component tests for empty/import/compare/error/reset/race/export behavior; observe failure.
+- [x] Implement UI and navigation using existing classes and file-byte SHA-256.
+- [x] Document all six tracks with reused modules, acceptance evidence, next steps and actual dependencies.
 - [ ] Run focused UI/domain checks, typecheck, npm test and production build; inspect affected route at mobile/desktop sizes.
-- [ ] Review the branch; fix material findings with failing regression tests; commit and prepare a draft PR through authorized tooling.
+- [x] Review the branch; fix material findings with failing regression tests; commit and prepare a draft PR through authorized tooling.
 - [ ] Record CI and production dependencies separately; do not represent pending gates as passed.
+
+Local full tests, typecheck and build passed. Local browser access was blocked; the existing accessibility workflow now owns the browser acceptance fixture and route audit. Wait for its evidence before claiming responsive/browser acceptance.
