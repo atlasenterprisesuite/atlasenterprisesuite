@@ -1,0 +1,262 @@
+name: ATLAS Academy PostgreSQL 17 Isolated Security
+on:
+  pull_request:
+    paths:
+      - 'tests/security/academy-postgres17-*.sql'
+      - '.github/workflows/atlas-academy-postgres17.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  academy-postgres17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: academy_test
+          POSTGRES_PASSWORD: academy_local_only
+          POSTGRES_DB: academy_isolated
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U academy_test -d academy_isolated"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: academy_test
+      PGPASSWORD: academy_local_only
+      PGDATABASE: academy_isolated
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify isolated PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -Atqc "SHOW server_version_num" | grep -E '^17[0-9]{4}$'
+          test "$(psql -X -v ON_ERROR_STOP=1 -Atqc 'SELECT current_database()')" = academy_isolated
+      - name: Run Academy negative tenant and atomicity fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/security/academy-postgres17-f232-negative.sql
+      - name: Confirm fixture rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_namespace WHERE nspname='academy_f232'")" = 0
+      - name: Two-session concurrent idempotency and committed revocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA academy_concurrency;
+          CREATE TABLE academy_concurrency.enrollments (
+            id text PRIMARY KEY, status text NOT NULL
+          );
+          CREATE TABLE academy_concurrency.credentials (
+            idempotency_key text PRIMARY KEY, enrollment_id text NOT NULL
+          );
+          INSERT INTO academy_concurrency.enrollments VALUES ('e1','active'),('e2','active');
+          SQL
+          # Session A holds an uncommitted unique key. Session B must
+          # visibly block on that key before A is permitted to commit.
+          # Polling only observes state; it does not determine the ordering.
+          fifo="$(mktemp -u)"
+          mkfifo "$fifo"
+          psql -X -v ON_ERROR_STOP=1 -f "$fifo" > /tmp/academy-session-a.log 2>&1 &
+          first_pid=$!
+          exec 3>"$fifo"
+          printf '%s\n' "BEGIN;" "SELECT pg_advisory_xact_lock(777, 992);" \
+            "INSERT INTO academy_concurrency.credentials SELECT 'shared-key', id FROM academy_concurrency.enrollments WHERE id='e1' AND status='active';" >&3
+          first_ready=0
+          for attempt in $(seq 1 100); do
+            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_locks a JOIN pg_locks t ON a.pid=t.pid WHERE a.locktype='advisory' AND a.classid=777 AND a.objid=992 AND a.granted AND t.locktype='transactionid' AND t.mode='ExclusiveLock' AND t.granted")" = 1 ]; then
+              first_ready=1
+              break
+            fi
+            sleep 0.1
+          done
+          test "$first_ready" = 1 || { cat /tmp/academy-session-a.log; exit 1; }
+          (
+            psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          INSERT INTO academy_concurrency.credentials
+            SELECT 'shared-key', id FROM academy_concurrency.enrollments
+            WHERE id='e1' AND status='active'
+            ON CONFLICT (idempotency_key) DO NOTHING;
+          COMMIT;
+          SQL
+          ) > /tmp/academy-session-b.log 2>&1 &
+          second_pid=$!
+          blocked=0
+          for attempt in $(seq 1 100); do
+            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND wait_event='transactionid'")" -ge 1 ]; then
+              blocked=1
+              break
+            fi
+            sleep 0.1
+          done
+          if [ "$blocked" != 1 ]; then
+            cat /tmp/academy-session-a.log /tmp/academy-session-b.log
+            printf '%s\n' "P0: concurrent idempotency contender never blocked"
+            printf '%s\n' "ROLLBACK;" >&3
+            exec 3>&-
+            wait "$first_pid" || true
+            wait "$second_pid" || true
+            exit 1
+          fi
+          printf '%s\n' "COMMIT;" >&3
+          exec 3>&-
+          wait "$first_pid" || { cat /tmp/academy-session-a.log; exit 1; }
+          wait "$second_pid" || { cat /tmp/academy-session-b.log; exit 1; }
+          rm -f "$fifo"
+          test "$(psql -X -Atqc "SELECT count(*) FROM academy_concurrency.credentials WHERE idempotency_key='shared-key'")" = 1
+          psql -X -v ON_ERROR_STOP=1 -c "UPDATE academy_concurrency.enrollments SET status='revoked' WHERE id='e2'"
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO academy_concurrency.credentials
+            SELECT 'revoked-key', id FROM academy_concurrency.enrollments
+            WHERE id='e2' AND status='active';
+          DO $$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM academy_concurrency.credentials WHERE idempotency_key='revoked-key') THEN
+              RAISE EXCEPTION 'P0: issuance accepted after committed revocation';
+            END IF;
+          END $$;
+          DROP SCHEMA academy_concurrency CASCADE;
+          SQL
+
+      - name: Revocation versus issuance row-lock ordering (isolated F2.46)
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA academy_revocation_race;
+          CREATE TABLE academy_revocation_race.enrollments (id text PRIMARY KEY, status text NOT NULL);
+          CREATE TABLE academy_revocation_race.credentials (idempotency_key text PRIMARY KEY, enrollment_id text NOT NULL);
+          INSERT INTO academy_revocation_race.enrollments VALUES ('enrollment-race','active');
+          SQL
+          # Revoker holds the enrollment row lock while the issuer starts.
+          # The issuer must wait, then observe revoked status after commit.
+          fifo="$(mktemp -u)"
+          mkfifo "$fifo"
+          psql -X -v ON_ERROR_STOP=1 -f "$fifo" > /tmp/academy-revoker.log 2>&1 &
+          revoker_pid=$!
+          exec 3>"$fifo"
+          printf '%s\n' "BEGIN;" "SELECT pg_advisory_xact_lock(777, 946);" \
+            "UPDATE academy_revocation_race.enrollments SET status='revoked' WHERE id='enrollment-race';" >&3
+          ready=0
+          for attempt in $(seq 1 100); do
+            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_locks a JOIN pg_locks t ON a.pid=t.pid WHERE a.locktype='advisory' AND a.classid=777 AND a.objid=946 AND a.granted AND t.locktype='transactionid' AND t.mode='ExclusiveLock' AND t.granted")" = 1 ]; then
+              ready=1
+              break
+            fi
+            sleep 0.1
+          done
+          test "$ready" = 1 || { cat /tmp/academy-revoker.log; exit 1; }
+          (
+            psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          INSERT INTO academy_revocation_race.credentials (idempotency_key, enrollment_id)
+            SELECT 'race-issue', id FROM academy_revocation_race.enrollments
+            WHERE id='enrollment-race' AND status='active' FOR UPDATE;
+          COMMIT;
+          SQL
+          ) > /tmp/academy-issuer.log 2>&1 &
+          issuer_pid=$!
+          blocked=0
+          for attempt in $(seq 1 100); do
+            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND wait_event='transactionid'")" -ge 1 ]; then
+              blocked=1
+              break
+            fi
+            sleep 0.1
+          done
+          if [ "$blocked" != 1 ]; then
+            cat /tmp/academy-revoker.log /tmp/academy-issuer.log
+            printf '%s\n' "ROLLBACK;" >&3
+            exec 3>&-
+            wait "$revoker_pid" || true
+            wait "$issuer_pid" || true
+            exit 1
+          fi
+          printf '%s\n' "COMMIT;" >&3
+          exec 3>&-
+          wait "$revoker_pid" || { cat /tmp/academy-revoker.log; exit 1; }
+          wait "$issuer_pid" || { cat /tmp/academy-issuer.log; exit 1; }
+          rm -f "$fifo"
+          test "$(psql -X -Atqc "SELECT count(*) FROM academy_revocation_race.credentials WHERE idempotency_key='race-issue'")" = 0
+          test "$(psql -X -Atqc "SELECT status FROM academy_revocation_race.enrollments WHERE id='enrollment-race'")" = revoked
+          psql -X -v ON_ERROR_STOP=1 -c "DROP SCHEMA academy_revocation_race CASCADE"
+
+      - name: Issuance-first revocation race (isolated F2.48)
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA academy_reverse_race;
+          CREATE TABLE academy_reverse_race.enrollments (id text PRIMARY KEY, status text NOT NULL);
+          CREATE TABLE academy_reverse_race.credentials (idempotency_key text PRIMARY KEY, enrollment_id text NOT NULL, status text NOT NULL);
+          INSERT INTO academy_reverse_race.enrollments VALUES ('e-reverse','active');
+          SQL
+          fifo="$(mktemp -u)"
+          mkfifo "$fifo"
+          psql -X -v ON_ERROR_STOP=1 -f "$fifo" > /tmp/academy-reverse-issuer.log 2>&1 &
+          issuer_pid=$!
+          exec 3>"$fifo"
+          printf '%s\n' "BEGIN;" "SELECT pg_advisory_xact_lock(777, 948);" \
+            "SELECT id FROM academy_reverse_race.enrollments WHERE id='e-reverse' AND status='active' FOR UPDATE;" \
+            "INSERT INTO academy_reverse_race.credentials VALUES ('reverse-key','e-reverse','active');" >&3
+          ready=0
+          for attempt in $(seq 1 100); do
+            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_locks a JOIN pg_locks t ON a.pid=t.pid WHERE a.locktype='advisory' AND a.classid=777 AND a.objid=948 AND a.granted AND t.locktype='transactionid' AND t.mode='ExclusiveLock' AND t.granted")" = 1 ]; then
+              ready=1
+              break
+            fi
+            sleep 0.1
+          done
+          if [ "$ready" != 1 ]; then
+            cat /tmp/academy-reverse-issuer.log
+            printf '%s\n' "ROLLBACK;" >&3
+            exec 3>&-
+            wait "$issuer_pid" || true
+            exit 1
+          fi
+          (
+            psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          UPDATE academy_reverse_race.enrollments SET status='revoked' WHERE id='e-reverse';
+          UPDATE academy_reverse_race.credentials SET status='revoked' WHERE enrollment_id='e-reverse';
+          COMMIT;
+          SQL
+          ) > /tmp/academy-reverse-revoker.log 2>&1 &
+          revoker_pid=$!
+          blocked=0
+          for attempt in $(seq 1 100); do
+            if [ "$(psql -X -Atqc "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND wait_event='transactionid'")" -ge 1 ]; then
+              blocked=1
+              break
+            fi
+            sleep 0.1
+          done
+          if [ "$blocked" != 1 ]; then
+            cat /tmp/academy-reverse-issuer.log /tmp/academy-reverse-revoker.log
+            printf '%s\n' "ROLLBACK;" >&3
+            exec 3>&-
+            wait "$issuer_pid" || true
+            wait "$revoker_pid" || true
+            exit 1
+          fi
+          printf '%s\n' "COMMIT;" >&3
+          exec 3>&-
+          wait "$issuer_pid" || { cat /tmp/academy-reverse-issuer.log; exit 1; }
+          wait "$revoker_pid" || { cat /tmp/academy-reverse-revoker.log; exit 1; }
+          rm -f "$fifo"
+          test "$(psql -X -Atqc "SELECT status FROM academy_reverse_race.enrollments WHERE id='e-reverse'")" = revoked
+          test "$(psql -X -Atqc "SELECT count(*) FROM academy_reverse_race.credentials WHERE enrollment_id='e-reverse' AND status='active'")" = 0
+          test "$(psql -X -Atqc "SELECT count(*) FROM academy_reverse_race.credentials WHERE enrollment_id='e-reverse' AND status='revoked'")" = 1
+          psql -X -v ON_ERROR_STOP=1 -c "DROP SCHEMA academy_reverse_race CASCADE"
