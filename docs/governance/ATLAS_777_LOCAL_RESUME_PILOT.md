@@ -103,8 +103,7 @@ acceptance result therefore does not certify a later commit's CI or production.
 ```sh
 npm exec --no -- vitest run tests/unit/atlas-777-local-cycle.test.ts \
   tests/unit/atlas-777-atomic-store.test.ts \
-  tests/unit/atlas-777-executor.test.ts \
-  tests/unit/atlas-777-autonomous-executor.test.ts
+  tests/unit/atlas-777-executor.test.ts
 ```
 
 The first local-cycle test creates a synthetic Git repository and launches three
@@ -115,7 +114,9 @@ missing evidence, concurrency/CAS, namespace isolation, expired interrupted
 leases, exhausted retries, protected paths, symlinks, SHA drift and failing tests.
 This proves a local functional loop with synthetic data, not an always-on service.
 
-The existing `atlas-777-worker.yml` includes a PR-only Ubuntu proof job and
+The three pilot suites contain 20 tests: 13 resumable-loop cases and seven
+existing state/CAS cases. The existing `atlas-777-worker.yml` includes a PR-only
+Ubuntu proof job, requires those three suites and all 20 passing results, and
 uploads test results under the PR SHA. Scheduled observation remains unchanged
 and has no source-write authority. No new scheduler is created.
 
@@ -132,7 +133,17 @@ but the local proof and Council security workflows failed. The proof job checked
 out a merge tree whose `npm test` script chained several runners, sending the
 focused Vitest arguments to the wrong runner. It now checks out the exact PR
 head, invokes the installed Vitest binary directly and requires its JSON
-artifact. The same focused command passed all 32 tests locally.
+artifact. The earlier reconstructed local run passed 32 tests, including a
+separate verification-kernel suite as explained below.
+
+The exact-head proof at `0d6851713903ba06a5b582c05d77a3de44515be9` passed 20 tests
+and uploaded artifact `14236666859` in run `43890183670`. Log review exposed that
+the reconstructed local 32-test command also named a 12-test verification-kernel
+suite absent from this older PR head; Vitest silently ignored that unmatched
+path. The proof now explicitly names only the three pilot suites and checks
+their identities, count, success and zero failed/pending tests. The additional
+12 local kernel tests belong to the aggregate reproduction, not this exact-head
+pilot proof. Do not report 32 hosted tests for this branch.
 
 Council job `133373595190` failed because the old PR head does not contain
 `tests/node/atlas-ai-council-security-gates.test.mjs`; its continuity step was

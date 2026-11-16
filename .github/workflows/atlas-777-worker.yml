@@ -49,9 +49,23 @@ jobs:
           tests/unit/atlas-777-local-cycle.test.ts
           tests/unit/atlas-777-atomic-store.test.ts
           tests/unit/atlas-777-executor.test.ts
-          tests/unit/atlas-777-autonomous-executor.test.ts
           --reporter=default --reporter=json
           --outputFile=artifacts/atlas-777/local-resume-tests.json
+      - name: Require all three reviewed pilot suites and twenty passing tests
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('artifacts/atlas-777/local-resume-tests.json', 'utf8'));
+          assert.equal(report.success, true);
+          assert.equal(report.numPassedTests, 20);
+          assert.equal(report.numFailedTests, 0);
+          assert.equal(report.numPendingTests, 0);
+          const actual = report.testResults.map(result => result.name.replaceAll('\\', '/'));
+          const required = ['atlas-777-local-cycle.test.ts', 'atlas-777-atomic-store.test.ts', 'atlas-777-executor.test.ts'];
+          assert.equal(actual.length, required.length);
+          for (const name of required) assert.equal(actual.filter(path => path.endsWith('/tests/unit/' + name)).length, 1);
+          NODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
