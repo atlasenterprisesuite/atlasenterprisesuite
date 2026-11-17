@@ -65,7 +65,7 @@ export function DirectorWorkspace() {
   const location = useLocation();
   const handoff = (location.state as AtlasDirectorLocationState | null)?.atlasContentHandoff;
   const [state, dispatch] = useReducer(directorReducer, handoff, initialHandoff => createDirectorState(createInitialDirectorSpec(initialHandoff)));
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = useState(() => new URLSearchParams(location.search).get('workspace') === 'video-universe' ? 9 : 0);
   const [readiness, setReadiness] = useState<CreatorReadinessResponse | null>(null);
   const [readinessState, setReadinessState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [nativeReadinessState, setNativeReadinessState] = useState<'loading' | 'ready' | 'error'>('loading');
