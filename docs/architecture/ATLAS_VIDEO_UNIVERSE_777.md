@@ -128,3 +128,31 @@ No new authentication system, duplicate RLS tables, no parallel editor,
 no copyright-infringing asset ingestion, no stealth avatar cloning,
 no scraping private provider resources, no background generation,
 no unauthorized external spending, and no deployment claim.
+
+
+## Verified CI blocker recorded 2026-11-17
+
+- Parent PR #1061 head `b7c5484bf97c6b4807abc1a5e3703b13a97ebf90`:
+  ATLAS Consensus CI, CodeQL, Design contract/typecheck/build,
+  WCAG automated gate and GitGuardian passed at that head.
+- `verify-build-readiness` FAILED because `npm run verify:all`
+  stops at `npm audit --audit-level=high`.
+  The log names `picomatch` and GHSA-fc5q-39xc-vjpf (single-branch
+  repeated-extglob regex denial of service), with five high-severity
+  advisories/paths in the dependency graph.
+- Advisory URL: https://github.com/advisories/GHSA-fc5q-39xc-vjpf
+  As checked on 2026-11-17, no verified fixed release is specified for
+  the reported picomatch range through 4.0.7. Do NOT run an unsafe
+  `npm audit fix --force`, suppress audit, or claim P0 passed.
+- This stacked PR #1063 targets parent branch rather than `main`;
+  its GitHub security checks are **not** a substitute for full
+  end-to-end CI. Full exact-HEAD `verify:all` remains pending.
+- This known P0 blocker is unrelated to claims of video generation.
+  Unblocking it requires a separately reviewed compatible dependency
+  remediation or an upstream patch supported by test and audit evidence.
+
+## Direct user entry point
+
+`/studio/create?type=video&workspace=video-universe` routes to the
+existing protected Creator Workspace and opens Director's existing
+Provider & Cost step. Creator Home contains a Video Universe card.
