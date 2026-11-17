@@ -7,7 +7,7 @@
 .video-universe-links a, .video-universe-reference { text-decoration: underline; text-underline-offset: .2em; }
 .video-universe-grid { display: grid; gap: 1.35rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .video-universe-main, .video-universe-form { display: grid; align-content: start; gap: .55rem; min-width: 0; }
-.video-universe select, .video-universe input:not([type="checkbox"]):not([type="radio"]), .video-universe textarea { width: 100%; min-width: 0; box-sizing: border-box; padding: .7rem; border-radius: .5rem; border: 1px solid var(--border, #64748b); background: var(--background, #101827); color: inherit; font: inherit; }
+.video-universe select, .video-universe input:not([type="checkbox"]):not([type="radio"]), .video-universe textarea { width: 100%; min-width: 0; box-sizing: border-box; padding: .7rem; border-radius: .5rem; border: 1px solid var(--border, #64748b); background: transparent; color: inherit; font: inherit; }
 .video-universe label, .video-universe legend { font-weight: 600; font-size: .89rem; }
 .video-universe-help { font-size: .82rem; opacity: .78; margin: 0 0 .35rem; }
 .video-universe-providers { min-width: 0; display: grid; gap: .4rem; padding: .75rem; border: 1px solid var(--border, #64748b); border-radius: .75rem; }
