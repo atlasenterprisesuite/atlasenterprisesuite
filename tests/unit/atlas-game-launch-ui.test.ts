@@ -9,6 +9,7 @@ describe('ATLAS Content Intelligence game-launch integration', () => {
     const page = read('apps/web/src/modules/creator/content/ContentIntelligencePage.tsx');
     expect(page).toContain('GameLaunchPlannerPanel');
     expect(page).toContain('chooseLaunchIdea');
+    expect(page).toContain('...newWorkspace()'); // Never overwrite the active saved workspace
     expect(page).toContain('createDirectorHandoff');
     expect(page).toContain('to="/studio/create?type=video"');
     expect(page).toContain('launch-game-');
