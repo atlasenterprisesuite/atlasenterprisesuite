@@ -34,6 +34,7 @@ import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityP
 import { OracleRoutes } from '../modules/oracle/OracleRoutes';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
+import { MeetingNotesPage } from '../modules/knowledge/MeetingNotesPage';
 import { BibleOSPage } from '../modules/knowledge/bible/BibleOSPage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
 import { AnalyticsRoutes } from '../modules/analytics/AnalyticsRoutes';
@@ -108,6 +109,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/assistant') {
     return <RequireAtlasIdentity><UnifiedAIChatPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/knowledge/meeting-notes') {
+    return <RequireAtlasIdentity><MeetingNotesPage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/knowledge/bible') {

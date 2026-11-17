@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   approveAtlasMemory,
   createAtlasMemoryDraft,
@@ -287,6 +288,7 @@ export function KnowledgeAtlasPage({
         <p className="eyebrow">{eyebrow}</p>
         <h1 id="knowledge-atlas-heading">{heading}</h1>
         <p>{description}</p>
+        {!moduleScope ? <Link className="text-link" to="/knowledge/meeting-notes">Open meeting notes</Link> : null}
       </header>
 
       <div className="metric-grid" aria-label="ATLAS Memory status" aria-live="polite">

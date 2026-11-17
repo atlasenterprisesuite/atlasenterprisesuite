@@ -34,7 +34,7 @@ const WORK_GROUPS: readonly WorkGroup[] = [
       { name: 'Projects', area: 'Execution', description: 'Use active work, templates and team policies as the current project-execution foundation.', to: '/work/active', status: 'active' },
       { name: 'Forms', area: 'Intake', description: 'Structured intake belongs on the shared execution and data fabric instead of a parallel form silo.', status: 'gated', boundary: 'Dedicated form-builder UI is not yet implemented.' },
       { name: 'Lists', area: 'Structured data', description: 'Operational lists should resolve to canonical domain records, not detached spreadsheets.', to: '/analytics', status: 'active' },
-      { name: 'Notes', area: 'Knowledge', description: 'Promote approved notes, decisions and evidence into Knowledge Atlas.', to: '/knowledge', status: 'active' },
+      { name: 'Notes', area: 'Knowledge', description: 'Capture meeting notes and save reviewed drafts to Knowledge Atlas.', to: '/knowledge/meeting-notes', status: 'active' },
       { name: 'Board', area: 'Collaboration', description: 'Visual planning will reuse Work tasks and approvals instead of inventing another task model.', status: 'gated', boundary: 'Dedicated collaborative board UI is not yet implemented.' },
       { name: 'Scheduling', area: 'Operations', description: 'Scheduled execution is handled by Work policies, connections and automation runtime controls.', to: '/work/policies', status: 'active' },
       { name: 'Drive', area: 'Files', description: 'Organization files require a governed storage surface with provenance, access control and audit.', status: 'gated', boundary: 'A canonical ATLAS Drive route is not yet registered.' },
