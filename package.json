@@ -9,7 +9,8 @@
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build && node scripts/write-deployment-manifest.mjs apps/web/dist/deployment.json",
     "typecheck": "npm --workspace apps/web run typecheck",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:node && npm run test:local-core",
+    "test:node": "node --test tests/node/*.test.mjs",
     "test:unit": "vitest run tests/unit",
     "test:local-core": "node --test tools/local-agent/tests/*.test.mjs",
     "test:integration": "vitest run tests/integration",
@@ -37,7 +38,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "typescript": "^5.7.2",
-    "vite": "6.4.3",
-    "vitest": "5.0.1"
+    "vite": "6.4.5",
+    "vitest": "5.0.5"
   }
 }

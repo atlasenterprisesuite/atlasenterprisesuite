@@ -38,14 +38,29 @@ async function safeFile(root, path) {
   const handle = await fs.open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.nlink !== 1 || stat.size > 1048576) fail('UNSAFE_FILE');
-    return { file, content: await handle.readFile('utf8'), mode: stat.mode & 0o777 };
+    if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.getuid()
+        || (stat.mode & 0o022) || stat.size > 1048576) fail('UNSAFE_FILE');
+    const bytes = await handle.readFile();
+    return { file, bytes, content: bytes.toString('utf8'), mode: stat.mode & 0o777, uid: stat.uid };
   } finally { await handle.close(); }
 }
 const cleanEnv = () => ({ PATH: process.env.PATH || '/usr/bin:/bin', LANG: 'C', GIT_TERMINAL_PROMPT: '0', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' });
 async function git(root, ...args) {
   const result = await run('git', args, { cwd: root, env: cleanEnv(), timeout: 10000, maxBuffer: 1048576 });
   return result.stdout;
+}
+
+function temporaryPath(sourcePath, owner) {
+  if (typeof owner !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(owner)) fail('STATE_INVALID');
+  return join(dirname(sourcePath), `.atlas-${owner}.tmp`);
+}
+async function verifyRepository(root, plan, allowedTemporary = async () => []) {
+  if ((await git(root, 'branch', '--show-current')).trim() !== plan.branch
+      || (await git(root, 'rev-parse', 'HEAD')).trim() !== plan.baseSha) fail('REPOSITORY_MISMATCH');
+  if ((await git(root, 'diff', '--cached', '--name-only')).trim()) fail('REPOSITORY_DIRTY');
+  const dirty = [...(await git(root, 'diff', '--name-only', '-z')).split('\0'), ...(await git(root, 'ls-files', '--others', '--exclude-standard', '-z')).split('\0')].filter(Boolean);
+  const permitted = await allowedTemporary();
+  if (dirty.some(path => path !== plan.change.path && !permitted.includes(path))) fail('REPOSITORY_DIRTY');
 }
 
 export async function runLocalCycle({ repositoryRoot, stateDirectory, plan, approvedDigest, maxJobs = 1 }) {
@@ -57,21 +72,22 @@ export async function runLocalCycle({ repositoryRoot, stateDirectory, plan, appr
   const root = resolve(repositoryRoot);
   const stateRelative = relative(root, resolve(stateDirectory));
   if (await fs.realpath(root) !== root || !(stateRelative === '..' || stateRelative.startsWith('../'))) fail('CYCLE_CONFIGURATION');
-  const branch = (await git(root, 'branch', '--show-current')).trim();
-  const head = (await git(root, 'rev-parse', 'HEAD')).trim();
-  if (branch !== plan.branch || head !== plan.baseSha) fail('REPOSITORY_MISMATCH');
-  if ((await git(root, 'diff', '--cached', '--name-only')).trim()) fail('REPOSITORY_DIRTY');
-  const dirty = [...(await git(root, 'diff', '--name-only', '-z')).split('\0'), ...(await git(root, 'ls-files', '--others', '--exclude-standard', '-z')).split('\0')].filter(Boolean);
-  if (dirty.some(path => path !== plan.change.path)) fail('REPOSITORY_DIRTY');
+  const digest = planDigest(plan);
+  const store = createLocalJobStore({ directory: stateDirectory, organizationId: plan.organizationId,
+    repository: plan.repository, approvedPlanDigest: digest });
+  await verifyRepository(root, plan, async () => {
+    // Read after the dirt scan: another worker must persist its lease before creating a temp.
+    const pending = await store.get(`${plan.id}:implement`);
+    return pending?.job.status === 'leased' && pending.job.sourceEventId === digest
+      && pending.job.targetSha === plan.baseSha && pending.job.action === 'implement'
+      ? [temporaryPath(plan.change.path, pending.job.leaseOwner)] : [];
+  });
   const source = await safeFile(root, plan.change.path);
   const testFile = await safeFile(root, plan.test.path);
   if (sha256(testFile.content) !== plan.test.sha256) fail('TEST_CONFLICT');
   const afterDigest = sha256(plan.change.content);
   if (![plan.change.beforeSha256, afterDigest].includes(sha256(source.content))) fail('SOURCE_CONFLICT');
 
-  const digest = planDigest(plan);
-  const store = createLocalJobStore({ directory: stateDirectory, organizationId: plan.organizationId,
-    repository: plan.repository, approvedPlanDigest: digest });
   const owner = `worker-${randomUUID()}`;
   const executed = [];
   for (const action of ['implement', 'test']) {
@@ -99,15 +115,30 @@ export async function runLocalCycle({ repositoryRoot, stateDirectory, plan, appr
     if (!await store.compareAndSwap(id, snapshot.version, transition.job)) return { status: 'paused', executed, reason: 'CONCURRENT_CLAIM' };
     let proof;
     try {
+      const orphanPath = action === 'implement' && snapshot.job.status === 'leased'
+        ? temporaryPath(plan.change.path, snapshot.job.leaseOwner) : null;
+      await verifyRepository(root, plan, async () => orphanPath ? [orphanPath] : []);
       if (action === 'implement') {
+        if (orphanPath) {
+          let orphan;
+          try { orphan = await safeFile(root, orphanPath); }
+          catch (error) { if (error.code !== 'ENOENT') throw error; }
+          if (orphan) {
+            const approved = Buffer.from(plan.change.content);
+            if (orphan.uid !== process.getuid() || (orphan.mode & 0o022)
+                || !approved.subarray(0, orphan.bytes.length).equals(orphan.bytes)) fail('UNSAFE_TEMPORARY');
+            // Only this expired lease's file, with approved complete/partial bytes, is recoverable.
+            await fs.unlink(orphan.file);
+          }
+        }
         const latest = await safeFile(root, plan.change.path);
         const latestDigest = sha256(latest.content);
         if (latestDigest !== afterDigest) {
           if (latestDigest !== plan.change.beforeSha256) fail('SOURCE_CONFLICT');
-          const temp = join(dirname(latest.file), `.atlas-${randomUUID()}.tmp`);
-          const handle = await fs.open(temp, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, latest.mode);
+          const temp = join(root, temporaryPath(plan.change.path, owner));
+          const handle = await fs.open(temp, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
           try {
-            await handle.writeFile(plan.change.content); await handle.sync(); await handle.close();
+            await handle.writeFile(plan.change.content); await handle.chmod(latest.mode); await handle.sync(); await handle.close();
             await fs.rename(temp, latest.file);
             const parent = await fs.open(dirname(latest.file), constants.O_RDONLY);
             try { await parent.sync(); } finally { await parent.close(); }
@@ -123,6 +154,8 @@ export async function runLocalCycle({ repositoryRoot, stateDirectory, plan, appr
             || sha256((await safeFile(root, plan.change.path)).content) !== afterDigest) fail('SOURCE_CONFLICT');
         proof = { kind: 'node-test', digest: plan.test.sha256, exitCode: 0 };
       }
+      // A passing process cannot certify a branch, commit or dirty worktree changed by that process.
+      await verifyRepository(root, plan);
     } catch {
       const denied = finish(transition.job, owner, Date.now(), 'blocked');
       if (denied.accepted) await store.compareAndSwap(id, snapshot.version + 1, denied.job);
@@ -136,5 +169,6 @@ export async function runLocalCycle({ repositoryRoot, stateDirectory, plan, appr
     }
     executed.push(id);
   }
+  await verifyRepository(root, plan);
   return { status: 'completed', executed, planDigest: digest, baseSha: plan.baseSha, productionVerified: false };
 }

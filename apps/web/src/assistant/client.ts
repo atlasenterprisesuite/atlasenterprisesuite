@@ -4,6 +4,11 @@ import { resolveAssistantModule } from './routeContext';
 export type AssistantMode = 'auto' | 'atlas-local' | 'openai' | 'bedrock' | 'gemini' | 'anthropic' | 'grok' | 'deepseek' | 'mistral' | 'qwen' | 'codex-sovereign' | 'council';
 export type AssistantProfile = 'fast' | 'balanced' | 'deep';
 export type AssistantExecutionMode = 'auto' | 'interactive' | 'background';
+export type AssistantResponsePreferences = {
+  language: 'auto' | 'en' | 'es';
+  tone: 'neutral' | 'professional' | 'friendly';
+  detail: 'balanced' | 'concise' | 'detailed';
+};
 
 export type AssistantProviderState =
   | 'verified_for_request'
@@ -263,6 +268,7 @@ export async function sendAssistantWorkspaceMessage(input: {
   mode: AssistantMode;
   profile: AssistantProfile;
   executionMode?: AssistantExecutionMode;
+  responsePreferences?: AssistantResponsePreferences;
 }): Promise<AssistantChatResponse> {
   const message = input.message.trim();
   if (!message) throw new Error('assistant_message_required');
@@ -282,7 +288,8 @@ export async function sendAssistantWorkspaceMessage(input: {
       capabilities_requested: ['generation', 'reasoning'],
       client_metadata: {
         modality: 'text',
-        surface: 'atlas-assistant-workspace'
+        surface: 'atlas-assistant-workspace',
+        response_preferences: input.responsePreferences
       }
     })
   });

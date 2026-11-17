@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, stat, chmod } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -36,6 +36,85 @@ async function fixture() {
 }
 
 describe.skipIf(process.platform === 'win32')('ATLAS 777 resumable local implementation pilot (POSIX)', () => {
+  it.each(['source', 'acceptance test'])('rejects a group-writable %s before claiming or editing', async kind => {
+    const f = await fixture();
+    try {
+      await chmod(join(f.root, kind === 'source' ? f.plan.change.path : f.plan.test.path), 0o664);
+      await expect(runLocalCycle(f.options)).rejects.toThrow('UNSAFE_FILE');
+      const store = createLocalJobStore({ directory: f.stateDirectory, organizationId: f.plan.organizationId,
+        repository: f.plan.repository, approvedPlanDigest: planDigest(f.plan) });
+      expect(await store.get('pilot:implement')).toBeNull();
+      expect(await readFile(join(f.root, f.plan.change.path), 'utf8')).toBe(f.before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it.each([
+    ['branch', "execFileSync('git', ['switch', '-c', 'main']);"],
+    ['commit', "execFileSync('git', ['commit', '--allow-empty', '-m', 'unexpected concurrent commit']);"],
+    ['unrelated file', "writeFileSync('unexpected.txt', 'unrelated side effect');"]
+  ])('never certifies acceptance after the %s changes during the test', async (_kind, mutation) => {
+    const f = await fixture();
+    try {
+      const test = "import {execFileSync} from 'node:child_process';\nimport {writeFileSync} from 'node:fs';\n" + mutation + '\n';
+      await writeFile(join(f.root, f.plan.test.path), test);
+      git(f.root, 'add', f.plan.test.path); git(f.root, 'commit', '-m', 'reviewed acceptance fixture');
+      f.plan.baseSha = git(f.root, 'rev-parse', 'HEAD');
+      f.plan.test.sha256 = hash(test);
+      const options = { ...f.options, approvedDigest: planDigest(f.plan) };
+      await runLocalCycle(options);
+      expect((await runLocalCycle(options)).status).toBe('blocked');
+      const store = createLocalJobStore({ directory: f.stateDirectory, organizationId: f.plan.organizationId,
+        repository: f.plan.repository, approvedPlanDigest: planDigest(f.plan) });
+      const receipt = await store.get('pilot:test');
+      expect(receipt.job.status).toBe('blocked');
+      expect(receipt.evidence).toBeUndefined();
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it.each(['complete', 'partial'])('recovers an expired worker-owned %s source temporary before retrying', async kind => {
+    const f = await fixture();
+    try {
+      const store = createLocalJobStore({ directory: f.stateDirectory, organizationId: f.plan.organizationId,
+        repository: f.plan.repository, approvedPlanDigest: planDigest(f.plan) });
+      const job = enqueue({ id: 'pilot:implement', sourceEventId: planDigest(f.plan), repository: f.plan.repository,
+        targetSha: f.plan.baseSha, action: 'implement', maxAttempts: 2 }, 0);
+      await store.insert(job);
+      await store.compareAndSwap(job.id, 0, claim(job, 'previous-process', 0, 1000).job);
+      const temporary = join(f.root, 'packages/pilot/.atlas-previous-process.tmp');
+      await writeFile(temporary, kind === 'complete' ? f.after : f.after.slice(0, 10), { mode: 0o600 });
+      expect((await runLocalCycle(f.options)).executed).toEqual(['pilot:implement']);
+      await expect(stat(temporary)).rejects.toMatchObject({ code: 'ENOENT' });
+      expect(await readFile(join(f.root, f.plan.change.path), 'utf8')).toBe(f.after);
+      expect((await store.get(job.id)).job.attempts).toBe(2);
+      expect((await runLocalCycle(f.options)).status).toBe('completed');
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it('keeps an unknown temporary intact instead of deleting an unrelated file', async () => {
+    const f = await fixture();
+    try {
+      const temporary = join(f.root, 'packages/pilot/.atlas-unrelated.tmp');
+      await writeFile(temporary, f.after);
+      await expect(runLocalCycle(f.options)).rejects.toThrow('REPOSITORY_DIRTY');
+      expect(await readFile(temporary, 'utf8')).toBe(f.after);
+      expect(await readFile(join(f.root, f.plan.change.path), 'utf8')).toBe(f.before);
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
+  it.each(['active lease', 'conflicting content'])('keeps a known temporary intact with %s', async reason => {
+    const f = await fixture();
+    try {
+      const store = createLocalJobStore({ directory: f.stateDirectory, organizationId: f.plan.organizationId,
+        repository: f.plan.repository, approvedPlanDigest: planDigest(f.plan) });
+      const job = enqueue({ id: 'pilot:implement', sourceEventId: planDigest(f.plan), repository: f.plan.repository,
+        targetSha: f.plan.baseSha, action: 'implement', maxAttempts: 2 }, 0);
+      await store.insert(job);
+      await store.compareAndSwap(job.id, 0, claim(job, 'previous-process', reason === 'active lease' ? Date.now() : 0, 300000).job);
+      const temporary = join(f.root, 'packages/pilot/.atlas-previous-process.tmp');
+      const content = reason === 'active lease' ? f.after : 'unrelated bytes';
+      await writeFile(temporary, content, { mode: 0o600 });
+      expect((await runLocalCycle(f.options)).status).toBe(reason === 'active lease' ? 'paused' : 'blocked');
+      expect(await readFile(temporary, 'utf8')).toBe(content);
+      expect(await readFile(join(f.root, f.plan.change.path), 'utf8')).toBe(f.before);
+      expect((await store.get(job.id)).evidence).toBeUndefined();
+    } finally { await rm(f.dir, { recursive: true, force: true }); }
+  });
   it('never trusts a completed checkpoint without acceptance evidence', async () => {
     const f = await fixture();
     try {

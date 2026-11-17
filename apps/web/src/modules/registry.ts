@@ -468,5 +468,6 @@ export const ATLAS_NAV_ITEMS = [
     .map((module) => ({ to: module.route, label: module.navLabel })),
   { to: '/finance/accounting/accounts-payable', label: 'Payables' },
   { to: '/finance/accounting/accounts-receivable', label: 'Receivables' },
+  { to: '/finance/accounting/reconciliation', label: 'Reconciliation' },
   { to: '/finance/accounting/reports/automotive-sales', label: 'Automotive' }
 ] as const;

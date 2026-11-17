@@ -12,6 +12,7 @@ import {
   type AssistantConversation,
   type AssistantMode,
   type AssistantProfile,
+  type AssistantResponsePreferences,
   type AssistantStatusResponse,
   type AssistantStoredMessage
 } from '../../assistant/client';
@@ -143,6 +144,7 @@ export function UnifiedAIChatPage() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [mode, setMode] = useState<AssistantMode>('auto');
   const [profile, setProfile] = useState<AssistantProfile>('balanced');
+  const [responsePreferences, setResponsePreferences] = useState<AssistantResponsePreferences>({ language: 'auto', tone: 'neutral', detail: 'balanced' });
   const [prompt, setPrompt] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
   const [busy, setBusy] = useState(false);
@@ -410,7 +412,8 @@ export function UnifiedAIChatPage() {
         conversationId: conversationIdRef.current,
         mode,
         profile,
-        executionMode: 'auto'
+        executionMode: 'auto',
+        responsePreferences
       });
       if (result.conversation_id) {
         setConversationId(result.conversation_id);
@@ -497,7 +500,8 @@ export function UnifiedAIChatPage() {
         conversationId: conversationIdRef.current,
         mode,
         profile,
-        executionMode: 'interactive'
+        executionMode: 'interactive',
+        responsePreferences
       });
       if (result.conversation_id) {
         setConversationId(result.conversation_id);
@@ -949,6 +953,29 @@ export function UnifiedAIChatPage() {
                   {PROFILES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                 </select>
               </label>
+
+              <fieldset>
+                <legend>Response style · this session</legend>
+                <label className="atlas-ai-select-row">
+                  <span>Response language</span>
+                  <select value={responsePreferences.language} onChange={event => setResponsePreferences(current => ({ ...current, language: event.target.value as AssistantResponsePreferences['language'] }))}>
+                    <option value="auto">Match my message</option><option value="en">English</option><option value="es">Spanish</option>
+                  </select>
+                </label>
+                <label className="atlas-ai-select-row">
+                  <span>Response tone</span>
+                  <select value={responsePreferences.tone} onChange={event => setResponsePreferences(current => ({ ...current, tone: event.target.value as AssistantResponsePreferences['tone'] }))}>
+                    <option value="neutral">Neutral</option><option value="professional">Professional</option><option value="friendly">Friendly</option>
+                  </select>
+                </label>
+                <label className="atlas-ai-select-row">
+                  <span>Response detail</span>
+                  <select value={responsePreferences.detail} onChange={event => setResponsePreferences(current => ({ ...current, detail: event.target.value as AssistantResponsePreferences['detail'] }))}>
+                    <option value="balanced">Balanced</option><option value="concise">Concise</option><option value="detailed">Detailed</option>
+                  </select>
+                </label>
+                <p>Style preferences do not change your permissions. Reloading resets these choices.</p>
+              </fieldset>
 
               <div className="atlas-ai-status-grid">
                 <span><i className={status?.authenticated ? 'ok' : ''} />Identity</span>

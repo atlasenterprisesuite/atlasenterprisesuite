@@ -1,0 +1,19 @@
+.bank-reconciliation { min-width: 0; }
+.bank-reconciliation .workspace-card { min-width: 0; }
+.reconciliation-imports { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin: 1.5rem 0; }
+.reconciliation-source { min-width: 0; padding: 1rem; border: 1px solid rgba(109, 181, 238, .22); border-radius: 14px; }
+.reconciliation-source label { display: block; font-weight: 700; margin-bottom: .75rem; }
+.reconciliation-source input { max-width: 100%; min-height: 44px; }
+.reconciliation-source code, .reconciliation-source p { overflow-wrap: anywhere; }
+.reconciliation-source code { display: block; color: #a9c7df; font-size: .8rem; }
+.reconciliation-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.reconciliation-actions label { display: grid; gap: .35rem; }
+.reconciliation-actions input { max-width: 8rem; min-height: 44px; }
+.bank-reconciliation button { min-height: 44px; }
+.bank-reconciliation button:disabled { opacity: .55; cursor: not-allowed; }
+.bank-reconciliation :is(button, input, a):focus-visible { outline: 3px solid #64cfff; outline-offset: 3px; }
+.bank-reconciliation .table-wrap { max-width: 100%; overflow-x: auto; }
+@media (max-width: 700px) {
+  .reconciliation-imports { grid-template-columns: minmax(0, 1fr); }
+  .reconciliation-actions { align-items: stretch; flex-direction: column; }
+}

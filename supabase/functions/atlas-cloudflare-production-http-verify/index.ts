@@ -68,6 +68,7 @@ const CANONICAL_MODULE_ROUTES = [
   '/settings/accessibility/communication',
   '/finance/accounting/accounts-payable',
   '/finance/accounting/accounts-receivable',
+  '/finance/accounting/reconciliation',
   '/finance/accounting/reports/automotive-sales'
 ] as const;
 

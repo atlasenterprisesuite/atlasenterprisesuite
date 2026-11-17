@@ -21,7 +21,8 @@ export async function claimPersisted(
   const snapshot = await store.get(jobId);
   if (!snapshot) return null;
   const transition = claim(snapshot.job, owner, nowMs, leaseMs);
-  if (!transition.accepted) return { ...transition, persisted: false };
+  // Exhaustion changes durable state even though it grants no execution lease.
+  if (!transition.accepted && transition.reason !== 'retry_exhausted') return { ...transition, persisted: false };
   const saved = await store.compareAndSwap(jobId, snapshot.version, transition.job);
   return saved ? { ...transition, persisted: true } : denied(snapshot.job, 'version_conflict');
 }

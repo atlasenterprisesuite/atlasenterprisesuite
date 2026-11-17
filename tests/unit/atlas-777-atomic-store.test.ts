@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { enqueue, type Job } from '../../apps/web/src/lib/atlas777Executor';
+import { enqueue, claim, type Job } from '../../apps/web/src/lib/atlas777Executor';
 import { claimPersisted, finishPersisted, type AtomicJobStore, type VersionedJob } from '../../apps/web/src/lib/atlas777AtomicStore';
 
 const job = () => enqueue({
@@ -20,6 +20,17 @@ function memoryStore(initial: Job): AtomicJobStore & { snapshot(): VersionedJob 
   };
 }
 describe('ATLAS 777 durable persistence boundary', () => {
+  it('durably dead-letters an expired exhausted lease without granting another claim', async () => {
+    const initial = { ...claim(job(), 'interrupted-worker', 0, 1000).job, attempts: 2 };
+    const store = memoryStore(initial);
+    const result = await claimPersisted(store, 'job-1', 'new-worker', 1000, 1000);
+    expect(result?.accepted).toBe(false);
+    expect(result?.reason).toBe('retry_exhausted');
+    expect(result?.persisted).toBe(true);
+    expect(store.snapshot().job.status).toBe('dead_letter');
+    expect(store.snapshot().job.leaseOwner).toBeNull();
+    expect(store.snapshot().version).toBe(1);
+  });
   it('allows one winner when two workers race on the same snapshot', async () => {
     const store = memoryStore(job());
     const [a, b] = await Promise.all([
