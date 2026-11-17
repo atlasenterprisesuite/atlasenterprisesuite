@@ -9,6 +9,7 @@ export * from './audit';
 export * from './integrations';
 export * from './endpoints';
 export * from './evidence';
+export * from './continuity';
 
 export type GoogleIntegrationPermission =
   | 'google.gmail.read'
