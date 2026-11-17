@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const director = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/director/DirectorWorkspace.tsx'), 'utf8');
 const panel = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/director/VideoUniversePanel.tsx'), 'utf8');
+const studio = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/CreatorStudioPage.tsx'), 'utf8');
 const css = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/director/video-universe.css'), 'utf8');
 
 describe('ATLAS Video Universe source integration', () => {
@@ -12,6 +13,11 @@ describe('ATLAS Video Universe source integration', () => {
     expect(director).toContain('<VideoUniversePanel spec={state.spec} providers={providers} nativeReadinessState={nativeReadinessState} />');
     expect(director).toContain('<Avatar6HandoffPanel spec={state.spec} />');
     expect(director).toContain('<ProviderGate providers={providers}');
+  });
+
+  it('uses a navigable existing Video Lab route without creating a parallel app', () => {
+    expect(studio).toContain("/studio/create?type=video&workspace=video-universe");
+    expect(director).toContain("new URLSearchParams(location.search).get('workspace') === 'video-universe'");
   });
 
   it('offers working local copy/export controls and real internal navigation', () => {
