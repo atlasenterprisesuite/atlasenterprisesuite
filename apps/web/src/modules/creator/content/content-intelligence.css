@@ -511,3 +511,60 @@
     min-height: 44px;
   }
 }
+
+
+/* Game launch planning extends Content Intelligence, not a parallel app. */
+.game-launch-planner {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--content-border);
+  border-radius: 16px;
+  padding: clamp(14px, 2vw, 20px);
+  background: rgba(13, 33, 60, 0.54);
+}
+.game-launch-planner h3 { margin: 4px 0 0; font-size: 1.3rem; }
+.game-launch-planner p { margin: 0; line-height: 1.5; }
+.game-launch-planner button { min-height: 44px; }
+.game-launch-idea-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.game-launch-idea-list button {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--content-border);
+  border-radius: 12px;
+  text-align: left;
+  color: inherit;
+  background: rgba(6, 17, 34, 0.7);
+  cursor: pointer;
+}
+.game-launch-idea-list button.selected {
+  border-color: rgba(104, 190, 255, 0.8);
+  background: rgba(16, 54, 92, 0.84);
+}
+.game-launch-idea-list small { opacity: 0.8; }
+.game-launch-idea-list button:focus-visible,
+.game-launch-planner button:focus-visible {
+  outline: 3px solid #b0e5ff;
+  outline-offset: 2px;
+}
+.game-launch-selected {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--content-border);
+  border-radius: 12px;
+  padding: 14px;
+}
+@media (max-width: 640px) {
+  .game-launch-planner .content-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .game-launch-planner .content-section-heading { flex-direction: column; }
+}
