@@ -38,6 +38,12 @@ const creatorSections: ModuleExperienceSection[] = [
         to: '/studio/create?type=video'
       },
       {
+        label: 'Video Universe',
+        title: 'ATLAS Video Universe 777',
+        description: 'Discover 12 governed audiovisual workflows and 14 optional provider families, then prepare a reusable ATLAS production manifest without generating or spending credits.',
+        to: '/studio/create?type=video&workspace=video-universe'
+      },
+      {
         label: 'Music',
         title: 'Music & Sound',
         description: 'Prepare governed music requests and route execution only when a compatible engine is actually verified.',
