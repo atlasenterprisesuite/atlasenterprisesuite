@@ -191,7 +191,7 @@ export function ContentIntelligencePage() {
         : 'Verified sources, original footage and permissions are required before publishing.';
       const hooks = generateHookVariants(contentIdea, profile);
       return {
-        ...current,
+        ...newWorkspace(),
         title: idea.title,
         profile,
         audienceSeed,
@@ -206,7 +206,7 @@ export function ContentIntelligencePage() {
       };
     });
     setActiveStage('Hooks');
-    setNotice('Unverified launch concept selected. Editorial score is unranked; publisher handoff stays blocked until verified rights and evidence.');
+    setNotice('A new unsaved workspace was opened for this launch idea. Unverified launch concept selected. Editorial score is unranked; publisher handoff stays blocked until verified rights and evidence.');
   }
 
   async function loadWorkspace(id: string) {
