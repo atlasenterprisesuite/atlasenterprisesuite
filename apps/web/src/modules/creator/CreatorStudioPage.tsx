@@ -30,6 +30,7 @@ export const studioEntryPoints = [
   { title: 'Web Launch Lab', route: '/studio/web-launch' },
   { title: 'Image Lab', route: '/studio/create?type=image' },
   { title: 'ATLAS Director', route: '/studio/create?type=video' },
+  { title: 'ATLAS Video Universe', route: '/studio/create?type=video&workspace=video-universe' },
   { title: 'Music Lab', route: '/studio/create?type=music' },
   { title: 'Voice & Agents', route: '/studio/voice' },
   { title: 'Smart Teleprompter', route: '/studio/teleprompter' },
