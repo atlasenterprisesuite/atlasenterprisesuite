@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const director = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/director/DirectorWorkspace.tsx'), 'utf8');
 const panel = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/director/VideoUniversePanel.tsx'), 'utf8');
 const studio = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/CreatorStudioPage.tsx'), 'utf8');
+const home = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/experience/CreatorExperiencePage.tsx'), 'utf8');
 const css = readFileSync(resolve(process.cwd(), 'apps/web/src/modules/creator/director/video-universe.css'), 'utf8');
 
 describe('ATLAS Video Universe source integration', () => {
@@ -17,6 +18,8 @@ describe('ATLAS Video Universe source integration', () => {
 
   it('uses a navigable existing Video Lab route without creating a parallel app', () => {
     expect(studio).toContain("/studio/create?type=video&workspace=video-universe");
+    expect(home).toContain("title: 'ATLAS Video Universe 777'");
+    expect(home).toContain("to: '/studio/create?type=video&workspace=video-universe'");
     expect(director).toContain("new URLSearchParams(location.search).get('workspace') === 'video-universe'");
   });
 
