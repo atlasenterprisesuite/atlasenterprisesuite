@@ -41,7 +41,7 @@ export function VideoUniversePanel({ spec, providers, nativeReadinessState }: Vi
     lastVerifiedAt: provider.lastVerifiedAt
   }));
   const choices = catalogVideoCandidates(mode, runtimeSignals, nativeReadinessState === 'ready');
-  const selected = choices.find(item => item.id === providerId) || choices[0];
+  const selected = choices.find(item => item.id === providerId) || choices[0]!;
   const manifest = useMemo(() => {
     const input: VideoUniverseDraftInput = {
       mode,
