@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   approveAtlasMemory,
   createAtlasMemoryDraft,
@@ -288,6 +289,13 @@ export function KnowledgeAtlasPage({
         <h1 id="knowledge-atlas-heading">{heading}</h1>
         <p>{description}</p>
       </header>
+
+      {!moduleScope ? <div className="workspace-card">
+        <p className="eyebrow">Earth Exploration · scientific sources</p>
+        <strong>Antártida y océanos — atlas de datos verificados</strong>
+        <p>Consulta mapas GEBCO_2026 mediante WMS y el registro oficial Bedmap3 sin mezclar observaciones, interpolaciones ni hipótesis arqueológicas.</p>
+        <Link className="execution-action" to="/knowledge/earth-exploration">Abrir Earth Exploration</Link>
+      </div> : null}
 
       <div className="metric-grid" aria-label="ATLAS Memory status" aria-live="polite">
         <article><span>Approved</span><strong>{memoryStats?.approved ?? '—'}</strong><small>Approved organizational knowledge</small></article>
