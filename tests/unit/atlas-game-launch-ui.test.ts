@@ -25,7 +25,7 @@ describe('ATLAS Content Intelligence game-launch integration', () => {
     expect(panel).toContain('buildGameLaunchIdeaPack');
     expect(panel).toContain('assessGameLaunchHandoff');
     expect(panel).toContain('editorial hypotheses');
-    expect(panel).toContain('NO_GO');
+    expect(panel).toContain('UNVERIFIED.status');
     expect(panel).not.toContain('uploadVideo(');
     expect(panel).not.toContain('publishVideo(');
   });
