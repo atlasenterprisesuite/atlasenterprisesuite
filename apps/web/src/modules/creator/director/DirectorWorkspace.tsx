@@ -19,6 +19,7 @@ import { AudioEditor, CameraMotionEditor, ContinuityEditor, VisualStyleEditor } 
 import { MotionDesigner } from './motion/MotionDesigner';
 import { ProviderGate } from './ProviderGate';
 import { Avatar6HandoffPanel } from './Avatar6HandoffPanel';
+import { VideoUniversePanel } from './VideoUniversePanel';
 import { ReviewPanel } from './ReviewPanel';
 import { LocalDirectorCommands } from './LocalDirectorCommands';
 import './director.css';
@@ -144,7 +145,7 @@ export function DirectorWorkspace() {
     if (activeStep === 6) return <CameraMotionEditor {...props} />;
     if (activeStep === 7) return <MotionDesigner value={state.spec.motionComposition ?? null} durationSeconds={state.spec.durationSeconds} onChange={composition => dispatch({ type: 'motion.replace', composition })} />;
     if (activeStep === 8) return <AudioEditor {...props} />;
-    if (activeStep === 9) return <><ProviderGate providers={providers} spec={state.spec} dispatch={dispatch} loading={providerState === 'loading'} error={providerError} /><Avatar6HandoffPanel spec={state.spec} /></>;
+    if (activeStep === 9) return <><VideoUniversePanel spec={state.spec} providers={providers} nativeReadinessState={nativeReadinessState} /><ProviderGate providers={providers} spec={state.spec} dispatch={dispatch} loading={providerState === 'loading'} error={providerError} /><Avatar6HandoffPanel spec={state.spec} /></>;
     return <ReviewPanel
       spec={state.spec}
       providers={providers}
