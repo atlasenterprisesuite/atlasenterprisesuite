@@ -68,7 +68,7 @@ export function Avatar6HandoffPanel({ spec }: { spec: ProductionSpec }) {
           <option value="pro">Avatar 6 Pro · higher credit use</option>
         </select>
       </label>
-      <label>Spoken language
+      <label>Script language (metadata only — choose a compatible voice in HeyGen)
         <select aria-label="Avatar 6 spoken language" value={language} onChange={event => setLanguage(event.target.value as 'es' | 'en')}>
           <option value="es">Spanish</option><option value="en">English</option>
         </select>
@@ -91,6 +91,7 @@ export function Avatar6HandoffPanel({ spec }: { spec: ProductionSpec }) {
       </div>
     </>}
     {copyState && <p role="status">{copyState}</p>}
+    <p role="note">Selecting Spanish or English organizes this draft; it does not select a verified HeyGen voice or voice locale. Check the actual speaking voice and pronunciation in HeyGen before generating.</p>
     <p className="director-context-note">Rendering stays unavailable in ATLAS until the server verifies identity and avatar consent, tenant ownership, creator.generate permission, provider readiness, a durable idempotency reservation and per-render credit approval. AI-generated media must be disclosed, with captions and a transcript.</p>
   </section>;
 }
