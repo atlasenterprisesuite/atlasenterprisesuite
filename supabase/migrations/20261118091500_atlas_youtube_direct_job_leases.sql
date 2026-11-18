@@ -138,6 +138,7 @@ begin
     and channel_id = p_channel_id
     and status = 'leased'
     and lease_owner = p_worker_id
+    and lease_expires_at > now()
   returning * into v_job;
 
   if not found then
@@ -195,6 +196,7 @@ begin
     and channel_id = p_channel_id
     and status = 'leased'
     and lease_owner = p_worker_id
+    and lease_expires_at > now()
     and attempts < max_attempts
   returning * into v_job;
 
