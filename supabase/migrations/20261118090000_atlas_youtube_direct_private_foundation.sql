@@ -44,12 +44,16 @@ create table if not exists public.atlas_youtube_drafts (
     on delete restrict
 );
 
+create unique index if not exists atlas_social_scheduled_posts_org_id_unique
+  on public.atlas_social_scheduled_posts(org_id, id);
+
 create table if not exists public.atlas_youtube_publication_jobs (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null,
   channel_id text not null,
   connection_id uuid not null,
   draft_id uuid not null,
+  social_post_id uuid not null,
   publication_key text not null check (length(btrim(publication_key)) between 1 and 256),
   status text not null default 'queued'
     check (status in ('queued', 'leased', 'published', 'blocked', 'failed')),
@@ -63,12 +67,16 @@ create table if not exists public.atlas_youtube_publication_jobs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (org_id, channel_id, publication_key),
+  unique (org_id, channel_id, social_post_id),
   unique (org_id, channel_id, id),
   foreign key (org_id, channel_id, connection_id)
     references public.atlas_youtube_connections (org_id, channel_id, id)
     on delete restrict,
   foreign key (org_id, channel_id, draft_id)
     references public.atlas_youtube_drafts (org_id, channel_id, id)
+    on delete restrict,
+  foreign key (org_id, social_post_id)
+    references public.atlas_social_scheduled_posts (org_id, id)
     on delete restrict,
   check (
     (status = 'leased' and lease_owner is not null and lease_expires_at is not null)
