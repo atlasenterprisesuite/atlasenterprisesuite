@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {evaluateClosure} from '../../scripts/atlas-777-closure.mjs';
+const sha='a'.repeat(40);
+const passing=()=>({ledger:{sha,phases:Array.from({length:14},(_,i)=>({name:`phase-${i+1}`,status:'verified',evidence:[{ref:`proof-${i+1}` }]}))},evidence:{outcome:'PASS',sha},approval:{status:'approved',sha},production:{verified:true,sha,environment:'production'}});
+test('fail closed with no evidence',()=>assert.deepEqual(evaluateClosure().close_allowed,false));
+test('allows closure only with every gate verified',()=>assert.equal(evaluateClosure(passing()).outcome,'PASS'));
+test('rejects missing phase evidence',()=>{const x=passing();x.ledger.phases[5].evidence=[];assert.equal(evaluateClosure(x).outcome,'BLOCKED')});
+test('rejects stale exact-SHA approval',()=>{const x=passing();x.approval.sha='b'.repeat(40);assert.equal(evaluateClosure(x).close_allowed,false)});
+test('rejects different deployed SHA',()=>{const x=passing();x.production.sha='b'.repeat(40);assert.equal(evaluateClosure(x).outcome,'BLOCKED')});
+test('rejects missing production verification',()=>{const x=passing();x.production.verified=false;assert.equal(evaluateClosure(x).outcome,'BLOCKED')});
+test('canonical observed FAIL remains FAIL',()=>{const x=passing();x.evidence.outcome='FAIL';assert.equal(evaluateClosure(x).outcome,'FAIL')});
+test('rejects wrong environment',()=>{const x=passing();x.production.environment='staging';assert.equal(evaluateClosure(x).close_allowed,false)});
