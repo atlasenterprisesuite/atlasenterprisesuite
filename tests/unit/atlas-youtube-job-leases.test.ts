@@ -8,6 +8,8 @@ const sql = readFileSync(
 
 describe('ATLAS YouTube durable job lease P0 static preflight', () => {
   it('claims only due, authorized, media-ready jobs under an atomic row lock', () => {
+    expect(sql).toContain('where j.org_id = p_org_id');
+    expect(sql).toContain('and j.channel_id = p_channel_id');
     expect(sql).toContain("j.status = 'queued'");
     expect(sql).toContain('j.scheduled_for <= now()');
     expect(sql).toContain('j.attempts < j.max_attempts');
@@ -43,9 +45,9 @@ describe('ATLAS YouTube durable job lease P0 static preflight', () => {
 
   it('keeps worker RPCs service-role-only', () => {
     for (const signature of [
-      'atlas_youtube_claim_due_job(text, integer)',
-      'atlas_youtube_confirm_published(uuid, text, text, uuid)',
-      'atlas_youtube_requeue_after_confirmed_absence(uuid, text, boolean, uuid)',
+      'atlas_youtube_claim_due_job(uuid, text, text, integer)',
+      'atlas_youtube_confirm_published(uuid, text, uuid, text, text, uuid)',
+      'atlas_youtube_requeue_after_confirmed_absence(uuid, text, uuid, text, boolean, uuid)',
       'atlas_youtube_quarantine_expired_leases()',
     ]) {
       expect(sql).toContain(
