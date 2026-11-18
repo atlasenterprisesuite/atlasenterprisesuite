@@ -41,3 +41,17 @@ No claim of a 6G carrier, commercial availability, 6G mobile device capability, 
 - `tests/unit/atlas-wireless-6g-ui.test.tsx` checks rendering, invalid inputs, reset, and explicit activation blockade.
 - This PR does not expose an evidence-upload system, measure a 6G radio, or assert that production is deployed.
 - A successful PR CI run, accessibility verification, integration/E2E, code review, and exact-SHA proof are outstanding acceptance gates.
+
+## IMT-2030 experiment suite (new)
+
+`imt2030-lab.mjs` runs deterministic, bounded **synthetic** batches of up to 32 scenarios with aggregated capacity/latency/loss heuristics. It records `complianceStatus: not_assessed`, `evidenceClass: simulation_not_measurement` and explicitly disallows radio transmissions, 6G commercial claims and subscriber activation. The new `imt2030-lab.test.mjs` covers repeatability, invalid inputs and fail-closed behavior; `npm run test:6g` runs both test files.
+
+`planSecondLine()` represents a **new number request only**; it never assigns a number, issues an eSIM or charges an account. A real number with calls/SMS/mobile data requires an authorized carrier, compatible unlocked device, paid plan where applicable, and the operator's explicit activation flow. ATLAS cannot produce 6G network service using software alone. Existing SIM/eSIM must not be removed by research workflows.
+
+### Primary references and engineering milestones
+
+- ITU-R M.2160: https://www.itu.int/rec/R-REC-M.2160/en (framework, **not** certification).
+- ITU-R WP5D IMT-2030 status: https://www.itu.int/en/ITU-R/study-groups/rsg5/rwp5d/imt-2030/pages/default.aspx
+- 3GPP Release 20 6G studies and Release 21 normative roadmap require edition-pinned verification before conformance claims.
+- Implementation sequence: synthetic repeatability → version-pinned requirements → authorized measurement pipeline → controlled RAN research hardware and licensed spectrum/lab → external interoperability/conformance review. Current phase is **synthetic repeatability only**.
+- Security #1065 (`picomatch`), commercial launch #503, independent review, release CI and production E2E remain P0 blockers.
