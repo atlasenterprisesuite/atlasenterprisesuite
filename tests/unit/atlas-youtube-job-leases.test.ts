@@ -21,6 +21,9 @@ describe('ATLAS YouTube durable job lease P0 static preflight', () => {
       "'https://www.googleapis.com/auth/youtube.upload' = any(c.granted_scopes)",
     );
     expect(sql).toContain("d.media_status = 'ready'");
+    expect(sql).toContain("s.platform = 'youtube'");
+    expect(sql).toContain("s.status in ('scheduled', 'ready')");
+    expect(sql).toContain('s.scheduled_for = j.scheduled_for');
     expect(sql).toContain('for update of j skip locked');
     expect(sql).toContain('attempts = attempts + 1');
   });
