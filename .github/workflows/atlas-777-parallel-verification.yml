@@ -40,6 +40,15 @@ jobs:
           cache: npm
       - name: Install exact locked dependencies
         run: npm ci
+      - name: Install native media tools for infrastructure tests
+        if: matrix.lane == 'infrastructure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak
+          ffmpeg -version | head -n 1
+          command -v espeak
       - name: Verify lane independently
         shell: bash
         run: |
