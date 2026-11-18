@@ -46,3 +46,9 @@ The existing hourly `atlas-777-persistent-runner.yml` remains canonical for sche
 Each lane checks out the GitHub event SHA and uses `npm ci` from the lockfile, with maximum four concurrent GitHub-hosted runner jobs. The workflow has read-only contents permission, no third-party credentials, no production deploy/merge, no changes to Supabase and no new paid self-hosted machines. The `pull_request` path filter restricts automated launches to Reel Lab changes; `workflow_dispatch` supports manual reruns. Concurrency cancellation only affects superseded runs of the same PR.
 
 **Limitations:** a successful matrix is a *CI verdict only*, not an external Instagram access attestation, production evidence, signed provenance, or deploy confirmation. Until full legacy `verify:all`, security advisories and production E2E/exact SHA checks have passed, P0 remains **NO-GO**. Failed tests are not treated as warnings.
+
+### CI incident: native-media prerequisites
+
+The first matrix run identified `ffmpeg_not_available` during `services/creator-native/test_native_composer.py`. The infrastructure lane now installs Ubuntu `ffmpeg` and `espeak` before running Python tests, matching the existing dependency-repair workflow. This is a test-environment correction; the Python test remains enabled and is not converted to advisory. Its passing outcome must be established by a subsequent CI run.
+
+Security remains P0 NO-GO due to GHSA-fc5q-39xc-vjpf (`picomatch` ReDoS, five npm audit high-severity dependency-tree findings). No `npm audit --force`, override to a vulnerable version, exception, or audit-level relaxation is authorized without a demonstrably patched version and full regression verification.
