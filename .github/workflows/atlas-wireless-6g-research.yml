@@ -29,3 +29,27 @@ jobs:
         run: |
           echo "Research tests do not replace npm audit, typecheck, UI tests, integration tests or build." >> "$GITHUB_STEP_SUMMARY"
           echo "Commercial activation and public 6G claims remain blocked." >> "$GITHUB_STEP_SUMMARY"
+
+  research-ui-diagnostic:
+    name: 6G React UI and TypeScript diagnostics (non-release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify focused 6G model and React UI tests
+        run: |
+          npm run test:6g
+          npx vitest run tests/unit/atlas-wireless-6g-ui.test.tsx
+      - name: Typecheck web app
+        run: npm run typecheck
+      - name: Non-release warning
+        if: always()
+        run: |
+          echo "Diagnostics only: this job does not replace npm audit or verify:all." >> "$GITHUB_STEP_SUMMARY"
+          echo "P0 security gate, exact-SHA release verification, merge and deploy remain blocked." >> "$GITHUB_STEP_SUMMARY"
