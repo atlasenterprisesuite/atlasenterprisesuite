@@ -39,6 +39,10 @@
     "react-dom": "18.3.1",
     "typescript": "^5.7.2",
     "vite": "6.4.5",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "picomatch": "file:vendor/atlas-picomatch-secure.tgz"
+  },
+  "overrides": {
+    "picomatch": "$picomatch"
   }
 }
