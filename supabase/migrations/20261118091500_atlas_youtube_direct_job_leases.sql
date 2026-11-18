@@ -2,6 +2,8 @@
 -- Backend only. These functions never call YouTube and never infer publication success.
 
 create or replace function public.atlas_youtube_claim_due_job(
+  p_org_id uuid,
+  p_channel_id text,
   p_worker_id text,
   p_lease_seconds integer default 120
 )
@@ -13,6 +15,9 @@ as $$
 declare
   v_job public.atlas_youtube_publication_jobs;
 begin
+  if p_org_id is null or p_channel_id is null or btrim(p_channel_id) = '' then
+    raise exception 'youtube_tenant_channel_required' using errcode = '22023';
+  end if;
   if p_worker_id is null or btrim(p_worker_id) = '' then
     raise exception 'youtube_worker_id_required' using errcode = '22023';
   end if;
@@ -31,7 +36,9 @@ begin
     on d.id = j.draft_id
    and d.org_id = j.org_id
    and d.channel_id = j.channel_id
-  where j.status = 'queued'
+  where j.org_id = p_org_id
+    and j.channel_id = p_channel_id
+    and j.status = 'queued'
     and j.scheduled_for <= now()
     and j.attempts < j.max_attempts
     and c.status = 'connected'
@@ -78,6 +85,8 @@ end;
 $$;
 
 create or replace function public.atlas_youtube_confirm_published(
+  p_org_id uuid,
+  p_channel_id text,
   p_job_id uuid,
   p_worker_id text,
   p_provider_video_id text,
@@ -91,6 +100,9 @@ as $$
 declare
   v_job public.atlas_youtube_publication_jobs;
 begin
+  if p_org_id is null or p_channel_id is null or btrim(p_channel_id) = '' then
+    raise exception 'youtube_tenant_channel_required' using errcode = '22023';
+  end if;
   if p_worker_id is null or btrim(p_worker_id) = '' then
     raise exception 'youtube_worker_id_required' using errcode = '22023';
   end if;
@@ -108,6 +120,8 @@ begin
       lease_expires_at = null,
       updated_at = now()
   where id = p_job_id
+    and org_id = p_org_id
+    and channel_id = p_channel_id
     and status = 'leased'
     and lease_owner = p_worker_id
   returning * into v_job;
@@ -132,6 +146,8 @@ end;
 $$;
 
 create or replace function public.atlas_youtube_requeue_after_confirmed_absence(
+  p_org_id uuid,
+  p_channel_id text,
   p_job_id uuid,
   p_worker_id text,
   p_provider_confirmed_absent boolean,
@@ -145,6 +161,9 @@ as $$
 declare
   v_job public.atlas_youtube_publication_jobs;
 begin
+  if p_org_id is null or p_channel_id is null or btrim(p_channel_id) = '' then
+    raise exception 'youtube_tenant_channel_required' using errcode = '22023';
+  end if;
   if p_provider_confirmed_absent is distinct from true then
     raise exception 'youtube_provider_absence_not_confirmed' using errcode = '42501';
   end if;
@@ -158,6 +177,8 @@ begin
       lease_expires_at = null,
       updated_at = now()
   where id = p_job_id
+    and org_id = p_org_id
+    and channel_id = p_channel_id
     and status = 'leased'
     and lease_owner = p_worker_id
     and attempts < max_attempts
@@ -221,16 +242,16 @@ begin
 end;
 $$;
 
-revoke all on function public.atlas_youtube_claim_due_job(text, integer)
+revoke all on function public.atlas_youtube_claim_due_job(uuid, text, text, integer)
   from public, anon, authenticated;
-revoke all on function public.atlas_youtube_confirm_published(uuid, text, text, uuid)
+revoke all on function public.atlas_youtube_confirm_published(uuid, text, uuid, text, text, uuid)
   from public, anon, authenticated;
-revoke all on function public.atlas_youtube_requeue_after_confirmed_absence(uuid, text, boolean, uuid)
+revoke all on function public.atlas_youtube_requeue_after_confirmed_absence(uuid, text, uuid, text, boolean, uuid)
   from public, anon, authenticated;
 revoke all on function public.atlas_youtube_quarantine_expired_leases()
   from public, anon, authenticated;
 
-grant execute on function public.atlas_youtube_claim_due_job(text, integer) to service_role;
-grant execute on function public.atlas_youtube_confirm_published(uuid, text, text, uuid) to service_role;
-grant execute on function public.atlas_youtube_requeue_after_confirmed_absence(uuid, text, boolean, uuid) to service_role;
+grant execute on function public.atlas_youtube_claim_due_job(uuid, text, text, integer) to service_role;
+grant execute on function public.atlas_youtube_confirm_published(uuid, text, uuid, text, text, uuid) to service_role;
+grant execute on function public.atlas_youtube_requeue_after_confirmed_absence(uuid, text, uuid, text, boolean, uuid) to service_role;
 grant execute on function public.atlas_youtube_quarantine_expired_leases() to service_role;
