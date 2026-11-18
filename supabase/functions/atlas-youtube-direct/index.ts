@@ -186,7 +186,8 @@ async function resolvedLifecycle(
     secret('GOOGLE_OAUTH_STATE_SECRET', 'google_oauth_state_secret', deps),
     secret('ATLAS_INTEGRATION_CREDENTIAL_KEY', 'atlas_integration_credential_key', deps),
   ]);
-  if (!clientId || !clientSecret || stateSecret.length < 32 || !credentialKey) return null;
+  const effectiveCredentialKey = deps.lifecycle?.credentialKey ?? credentialKey;
+  if (!clientId || !clientSecret || stateSecret.length < 32 || !effectiveCredentialKey) return null;
 
   const store = deps.store ?? new SupabaseYouTubeConnectionStore({
     supabaseUrl,
@@ -201,7 +202,7 @@ async function resolvedLifecycle(
     clientSecret,
     redirectUri,
     stateSecret,
-    credentialKey: deps.lifecycle?.credentialKey ?? credentialKey,
+    credentialKey: effectiveCredentialKey,
     keyVersion: deps.lifecycle?.keyVersion ?? 'v1',
     ...(deps.lifecycle?.now ? { now: deps.lifecycle.now } : {}),
     ...(deps.lifecycle?.exchangeCode ? { exchangeCode: deps.lifecycle.exchangeCode } : {}),
