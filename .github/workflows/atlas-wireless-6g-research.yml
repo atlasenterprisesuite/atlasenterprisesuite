@@ -1,0 +1,31 @@
+name: ATLAS Wireless 6G Research Unit CI
+
+on:
+  pull_request:
+    paths:
+      - "research/atlas-wireless-6g/**"
+      - "apps/web/src/modules/connect/AtlasWireless6GResearchPage.tsx"
+      - "tests/unit/atlas-wireless-6g-ui.test.tsx"
+      - ".github/workflows/atlas-wireless-6g-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-model:
+    name: 6G synthetic model and fail-closed contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record exact checked-out SHA
+        run: |
+          echo "HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Run dependency-free 6G research tests
+        run: node --test research/atlas-wireless-6g/atlas-6g-pioneer.test.mjs
+      - name: Explain acceptance boundary
+        run: |
+          echo "Research tests do not replace npm audit, typecheck, UI tests, integration tests or build." >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial activation and public 6G claims remain blocked." >> "$GITHUB_STEP_SUMMARY"
