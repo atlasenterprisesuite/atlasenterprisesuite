@@ -106,7 +106,7 @@ jobs:
       # dependency-audit failure cannot hide regression evidence. This is
       # diagnostic only; the mandatory verify:all gate still fails closed.
       - name: Verify YouTube Direct P0 publication guard
-        run: npx --no-install vitest run tests/unit/atlas-youtube-publication-guard.test.ts tests/unit/atlas-youtube-job-policy.test.ts tests/unit/atlas-youtube-oauth-policy.test.ts tests/unit/atlas-youtube-private-schema.test.ts
+        run: npx --no-install vitest run tests/unit/atlas-youtube-publication-guard.test.ts tests/unit/atlas-youtube-job-policy.test.ts tests/unit/atlas-youtube-oauth-policy.test.ts tests/unit/atlas-youtube-private-schema.test.ts tests/unit/atlas-youtube-job-leases.test.ts
 
       - name: Verify complete repository
         run: npm run verify:all
