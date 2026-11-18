@@ -20,6 +20,8 @@ import {
   saveContentWorkspace,
   type ContentWorkspaceRecord
 } from '../../../lib/creatorApi';
+import { makeYouTubeNicheProfile, makeYouTubeNicheResearchSeed, type YouTubeNiche2027 } from '../../../../../../packages/creator/youtube_niches_2027';
+import { YouTubeNicheResearchPanel } from './YouTubeNicheResearchPanel';
 import './content-intelligence.css';
 
 const STAGES = ['Creator Profile', 'Audience', 'Ideas', 'Hooks', 'Content Builder', 'Repurpose', 'Review'] as const;
@@ -100,6 +102,19 @@ export function ContentIntelligencePage() {
       variants: [],
       review: null
     }));
+  }
+
+  function useYouTubeNiche(niche: YouTubeNiche2027) {
+    const state = newWorkspace();
+    setWorkspace({
+      ...state,
+      title: `YouTube · ${niche.title}`,
+      profile: makeYouTubeNicheProfile(niche),
+      audienceSeed: makeYouTubeNicheResearchSeed(niche)
+    });
+    setSelectedVariantId(null);
+    setActiveStage('Creator Profile');
+    setNotice('Nicho aplicado a un nuevo borrador local. Revisa los datos, investiga fuentes y guarda el workspace cuando corresponda.');
   }
 
   function togglePlatform(platform: ContentPlatform) {
@@ -239,6 +254,8 @@ export function ContentIntelligencePage() {
       <strong>{workspaceState === 'loading' ? 'Reading organization workspace…' : workspaceState === 'error' ? 'Workspace connection needs attention' : 'Workspace ready'}</strong>
       <span>{notice || 'All generated text in this workspace is deterministic local transformation until a verified AI/provider action is explicitly invoked elsewhere.'}</span>
     </div>
+
+    <YouTubeNicheResearchPanel onUseNiche={useYouTubeNiche} />
 
     <div className="content-stage-tabs" role="tablist" aria-label="Content Intelligence stages">
       {STAGES.map((stage, index) => <button
