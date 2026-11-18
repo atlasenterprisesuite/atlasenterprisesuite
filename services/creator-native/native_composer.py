@@ -46,6 +46,14 @@ def _require_binary(name: str) -> str:
     return path
 
 
+def _require_speech_binary() -> str:
+    for name in ('espeak', 'espeak-ng'):
+        path = shutil.which(name)
+        if path:
+            return path
+    raise RuntimeError('espeak_not_available')
+
+
 def _probe_duration(path: Path) -> float:
     raw = subprocess.check_output([
         _require_binary('ffprobe'), '-v', 'error', '-show_entries',
@@ -105,7 +113,7 @@ def _write_srt(captions: list[dict[str, Any]], path: Path, duration: float) -> N
 def render_video(payload: dict[str, Any], output_path: str | Path) -> dict[str, Any]:
     request = validate_request(payload)
     ffmpeg = _require_binary('ffmpeg')
-    espeak = _require_binary('espeak')
+    espeak = _require_speech_binary()
     width, height = _ALLOWED_RATIOS[request['aspectRatio']]
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -167,7 +175,7 @@ def render_video(payload: dict[str, Any], output_path: str | Path) -> dict[str, 
 def readiness() -> dict[str, Any]:
     ffmpeg = shutil.which('ffmpeg')
     ffprobe = shutil.which('ffprobe')
-    espeak = shutil.which('espeak')
+    espeak = shutil.which('espeak') or shutil.which('espeak-ng')
     ready = bool(ffmpeg and ffprobe and espeak)
     return {
         'ok': True,
