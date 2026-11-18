@@ -1,33 +1,20 @@
--- ATLAS YouTube Direct 777 — private, non-public foundation.
--- NO OAuth credentials or media bytes live in these tables. Never dispatch
--- directly from these rows; worker must revalidate provider authorization.
--- Deliberate fail-closed RLS: NO authenticated/anon policies or DML grants.
+-- ATLAS YouTube Direct 777 — private execution foundation.
+-- Reuses canonical ATLAS integration registry + encrypted credential vault.
+-- NO OAuth plaintext tokens or media bytes live in these tables.
+-- Deliberate fail-closed RLS: no authenticated/anon policies or DML grants.
 
-create table if not exists public.atlas_youtube_connections (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null,
-  owner_user_id uuid not null,
-  channel_id text not null check (length(btrim(channel_id)) between 1 and 128),
-  status text not null default 'pending'
-    check (status in ('pending', 'connected', 'revoked', 'failed')),
-  -- A reference only, not plaintext/ciphertext tokens.
-  vault_secret_name text null check (vault_secret_name is null or length(btrim(vault_secret_name)) > 0),
-  granted_scopes text[] not null default '{}',
-  consent_expires_at timestamptz null,
-  connected_at timestamptz null,
-  revoked_at timestamptz null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (org_id, channel_id),
-  unique (org_id, channel_id, id),
-  check ((status <> 'connected') or (vault_secret_name is not null and consent_expires_at is not null)),
-  check ((status <> 'revoked') or revoked_at is not null)
-);
+-- Composite identity for tenant-bound references to the existing canonical
+-- integration and social scheduling registries.
+create unique index if not exists atlas_integration_connections_org_id_unique
+  on public.atlas_integration_connections(org_id, id);
+
+create unique index if not exists atlas_social_scheduled_posts_org_id_unique
+  on public.atlas_social_scheduled_posts(org_id, id);
 
 create table if not exists public.atlas_youtube_drafts (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null,
-  channel_id text not null,
+  channel_id text not null check (length(btrim(channel_id)) between 1 and 128),
   connection_id uuid not null,
   created_by uuid not null,
   title text not null check (length(btrim(title)) between 1 and 100),
@@ -39,13 +26,10 @@ create table if not exists public.atlas_youtube_drafts (
     check (media_status in ('pending', 'ready', 'rejected')),
   created_at timestamptz not null default now(),
   unique (org_id, channel_id, id),
-  foreign key (org_id, channel_id, connection_id)
-    references public.atlas_youtube_connections (org_id, channel_id, id)
+  foreign key (org_id, connection_id)
+    references public.atlas_integration_connections (org_id, id)
     on delete restrict
 );
-
-create unique index if not exists atlas_social_scheduled_posts_org_id_unique
-  on public.atlas_social_scheduled_posts(org_id, id);
 
 create table if not exists public.atlas_youtube_publication_jobs (
   id uuid primary key default gen_random_uuid(),
@@ -69,8 +53,8 @@ create table if not exists public.atlas_youtube_publication_jobs (
   unique (org_id, channel_id, publication_key),
   unique (org_id, channel_id, social_post_id),
   unique (org_id, channel_id, id),
-  foreign key (org_id, channel_id, connection_id)
-    references public.atlas_youtube_connections (org_id, channel_id, id)
+  foreign key (org_id, connection_id)
+    references public.atlas_integration_connections (org_id, id)
     on delete restrict,
   foreign key (org_id, channel_id, draft_id)
     references public.atlas_youtube_drafts (org_id, channel_id, id)
@@ -108,25 +92,18 @@ create table if not exists public.atlas_youtube_publication_events (
 create index if not exists atlas_youtube_events_job_idx
   on public.atlas_youtube_publication_events(org_id, channel_id, job_id, created_at);
 
-alter table public.atlas_youtube_connections enable row level security;
 alter table public.atlas_youtube_drafts enable row level security;
 alter table public.atlas_youtube_publication_jobs enable row level security;
 alter table public.atlas_youtube_publication_events enable row level security;
 
--- Prevent any future table-owner bypass by clients; service operations only.
-alter table public.atlas_youtube_connections force row level security;
 alter table public.atlas_youtube_drafts force row level security;
 alter table public.atlas_youtube_publication_jobs force row level security;
 alter table public.atlas_youtube_publication_events force row level security;
 
-revoke all on table public.atlas_youtube_connections from public, anon, authenticated;
 revoke all on table public.atlas_youtube_drafts from public, anon, authenticated;
 revoke all on table public.atlas_youtube_publication_jobs from public, anon, authenticated;
 revoke all on table public.atlas_youtube_publication_events from public, anon, authenticated;
 
--- Regrant only to trusted backend. No end-user/API access until reviewed RPC
--- functions enforce membership, channel ownership and role checks.
-grant select, insert, update, delete on table public.atlas_youtube_connections to service_role;
 grant select, insert, update, delete on table public.atlas_youtube_drafts to service_role;
 grant select, insert, update, delete on table public.atlas_youtube_publication_jobs to service_role;
 grant select, insert on table public.atlas_youtube_publication_events to service_role;
