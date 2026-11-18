@@ -13,13 +13,19 @@ describe('ATLAS YouTube durable job lease P0 static preflight', () => {
     expect(sql).toContain("j.status = 'queued'");
     expect(sql).toContain('j.scheduled_for <= now()');
     expect(sql).toContain('j.attempts < j.max_attempts');
-    expect(sql).toContain("c.status = 'connected'");
+    expect(sql).toContain("c.provider = 'google'");
+    expect(sql).toContain("c.state = 'connected'");
+    expect(sql).toContain('c.authorized = true');
+    expect(sql).toContain('c.provider_verified = true');
+    expect(sql).toContain('c.provider_account_id = j.channel_id');
+    expect(sql).toContain('c.credential_ref is not null');
     expect(sql).toContain(
-      "c.consent_expires_at > now() + make_interval(secs => p_lease_seconds)",
+      "cred.expires_at is null or cred.expires_at > now() + make_interval(secs => p_lease_seconds)",
     );
     expect(sql).toContain(
       "'https://www.googleapis.com/auth/youtube.upload' = any(c.granted_scopes)",
     );
+    expect(sql).toContain('join public.atlas_integration_credentials cred');
     expect(sql).toContain("d.media_status = 'ready'");
     expect(sql).toContain("s.platform = 'youtube'");
     expect(sql).toContain("s.status in ('scheduled', 'ready')");
