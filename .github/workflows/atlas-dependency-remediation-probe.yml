@@ -1,16 +1,16 @@
 name: ATLAS Dependency Remediation Probe
 
 on:
-  push:
-    branches: ["feat/atlas-youtube-direct-777"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: atlas-dependency-remediation-${{ github.sha }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   probe:
@@ -26,6 +26,7 @@ jobs:
 
       - name: Install native verification dependencies
         run: |
+          set -euo pipefail
           for source in /etc/apt/sources.list.d/*; do
             if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
               sudo mv "$source" "$source.disabled"
@@ -42,37 +43,48 @@ jobs:
           npm ls picomatch fdir tinyglobby vite vitest || true
           npm audit --audit-level=high || true
 
-      - name: Generate npm-supported remediation candidate
-        id: remediate
-        continue-on-error: true
-        run: npm audit fix --force
-
-      - name: Record generated package diff
-        if: always()
+      - name: Generate targeted remediation candidate
         run: |
-          git diff -- package.json package-lock.json > dependency-remediation.diff || true
-          echo "### npm-generated remediation diff" >> "$GITHUB_STEP_SUMMARY"
-          if [ -s dependency-remediation.diff ]; then
-            sed -n '1,240p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "No package manifest or lockfile changes were generated." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          set -euo pipefail
+          npm install             --save-dev             --save-exact             --package-lock-only             --ignore-scripts             vite@5.4.21             vitest@2.1.9
 
-      - name: Verify candidate audit
-        id: audit
-        continue-on-error: true
+      - name: Reject residual picomatch dependency
+        run: |
+          node - <<'NODE'
+          const lock = require('./package-lock.json');
+          const entry = lock.packages?.['node_modules/picomatch'];
+          if (entry) {
+            console.error(`Residual picomatch dependency detected: ${entry.version || 'unknown'}`);
+            process.exit(1);
+          }
+          console.log('No picomatch package remains in the candidate lockfile.');
+          NODE
+
+      - name: Install candidate locked tree
+        run: npm ci
+
+      - name: Require clean high-severity audit
         run: npm audit --audit-level=high
 
       - name: Verify complete repository against candidate
-        id: verify
-        continue-on-error: true
         run: npm run verify:all
 
       - name: Record candidate dependency tree
         if: always()
         run: npm ls picomatch fdir tinyglobby vite vitest || true
 
-      - name: Upload npm-generated candidate
+      - name: Record generated package diff
+        if: always()
+        run: |
+          git diff -- package.json package-lock.json > dependency-remediation.diff || true
+          echo "### targeted dependency remediation diff" >> "$GITHUB_STEP_SUMMARY"
+          if [ -s dependency-remediation.diff ]; then
+            sed -n '1,260p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No package manifest or lockfile changes were generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload candidate evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -83,26 +95,3 @@ jobs:
             dependency-remediation.diff
           if-no-files-found: error
           retention-days: 3
-
-      - name: Apply verified npm-generated manifests to branch
-        if: ${{ always() && github.event_name == 'push' && github.ref_name == 'feat/atlas-youtube-direct-777' && steps.audit.outcome == 'success' && steps.verify.outcome == 'success' }}
-        run: |
-          if git diff --quiet -- package.json package-lock.json; then
-            echo "No dependency manifest changes to apply."
-            exit 0
-          fi
-          git config user.name "atlas-777-bot"
-          git config user.email "atlas-777-bot@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "chore(deps): apply verified npm audit remediation"
-          git push origin HEAD:feat/atlas-youtube-direct-777
-
-      - name: Enforce probe result
-        if: always()
-        env:
-          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
-          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
-        run: |
-          echo "audit=$AUDIT_OUTCOME verify=$VERIFY_OUTCOME"
-          test "$AUDIT_OUTCOME" = "success"
-          test "$VERIFY_OUTCOME" = "success"
