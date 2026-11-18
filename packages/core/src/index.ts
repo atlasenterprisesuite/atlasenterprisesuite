@@ -16,7 +16,8 @@ export type GoogleIntegrationPermission =
   | 'google.calendar.read'
   | 'google.calendar.write'
   | 'google.drive.read'
-  | 'google.drive.write';
+  | 'google.drive.write'
+  | 'google.youtube.upload';
 
 type GoogleOAuthPermission = 'integrations.admin' | GoogleIntegrationPermission;
 
@@ -52,7 +53,8 @@ const GOOGLE_OAUTH_SCOPES: Record<GoogleOAuthPermission, readonly string[]> = {
   ],
   'google.calendar.write': ['https://www.googleapis.com/auth/calendar.events'],
   'google.drive.read': ['https://www.googleapis.com/auth/drive.readonly'],
-  'google.drive.write': ['https://www.googleapis.com/auth/drive.file']
+  'google.drive.write': ['https://www.googleapis.com/auth/drive.file'],
+  'google.youtube.upload': ['https://www.googleapis.com/auth/youtube.upload']
 };
 
 const textEncoder = new TextEncoder();
