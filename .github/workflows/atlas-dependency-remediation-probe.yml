@@ -1,0 +1,97 @@
+name: ATLAS Dependency Remediation Probe
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-dependency-remediation-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install native verification dependencies
+        run: |
+          for source in /etc/apt/sources.list.d/*; do
+            if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+
+      - name: Install current locked tree
+        run: npm ci
+
+      - name: Record vulnerable tree before remediation
+        run: |
+          npm ls picomatch fdir tinyglobby vite vitest || true
+          npm audit --audit-level=high || true
+
+      - name: Generate npm-supported remediation candidate
+        id: remediate
+        continue-on-error: true
+        run: npm audit fix --force
+
+      - name: Record generated package diff
+        if: always()
+        run: |
+          git diff -- package.json package-lock.json > dependency-remediation.diff || true
+          echo "### npm-generated remediation diff" >> "$GITHUB_STEP_SUMMARY"
+          if [ -s dependency-remediation.diff ]; then
+            sed -n '1,240p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No package manifest or lockfile changes were generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Verify candidate audit
+        id: audit
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: Verify complete repository against candidate
+        id: verify
+        continue-on-error: true
+        run: npm run verify:all
+
+      - name: Record candidate dependency tree
+        if: always()
+        run: npm ls picomatch fdir tinyglobby vite vitest || true
+
+      - name: Upload npm-generated candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-dependency-remediation-candidate-${{ github.sha }}
+          path: |
+            package.json
+            package-lock.json
+            dependency-remediation.diff
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Enforce probe result
+        if: always()
+        env:
+          REMEDIATION_OUTCOME: ${{ steps.remediate.outcome }}
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          echo "remediation=$REMEDIATION_OUTCOME audit=$AUDIT_OUTCOME verify=$VERIFY_OUTCOME"
+          test "$REMEDIATION_OUTCOME" = "success"
+          test "$AUDIT_OUTCOME" = "success"
+          test "$VERIFY_OUTCOME" = "success"
