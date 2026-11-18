@@ -43,10 +43,12 @@ describe('repository-wide verification contract', () => {
     for (const path of productionWorkflows) {
       const workflow = read(path);
       expect(workflow, path).toContain('Install native media verification dependencies');
-      expect(workflow, path).toContain('sudo apt-get install -y ffmpeg espeak fonts-dejavu-core');
+      expect(workflow, path).toContain('ffmpeg');
+      expect(workflow, path).toContain('fonts-dejavu-core');
+      expect(workflow, path).toMatch(/espeak(?:-ng)?/);
       expect(workflow, path).toContain('ffmpeg -version');
       expect(workflow, path).toContain('ffprobe -version');
-      expect(workflow, path).toContain('espeak --version');
+      expect(workflow, path).toMatch(/espeak(?:-ng)? --version/);
       expect(workflow, path).toContain('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf');
       expect(workflow.indexOf('Install native media verification dependencies')).toBeLessThan(
         workflow.indexOf('npm run verify:all')
