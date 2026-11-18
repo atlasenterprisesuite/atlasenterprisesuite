@@ -13,7 +13,7 @@ describe('ATLAS Wireless 6G research-only page', () => {
     expect(screen.getByText(/No radio control, provider credentials, eSIM activation/)).toBeTruthy();
     expect(screen.getByText('100.0 Mbps')).toBeTruthy();
     expect(screen.getByText('33.3%')).toBeTruthy();
-    expect(screen.getByText(/Commercial activation:/).textContent).toContain('Blocked');
+    expect(screen.getByText(/Commercial activation:/).parentElement?.textContent).toContain('Blocked');
   });
 
   it('allows bounded interactive simulation but rejects invalid capacity', () => {
