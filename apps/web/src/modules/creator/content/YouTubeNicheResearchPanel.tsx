@@ -56,7 +56,7 @@ export function YouTubeNicheResearchPanel({ onUseNiche }: Props) {
         <input id="youtube-niche-search" type="search" value={filter}
           onChange={event => setFilter(event.target.value)} placeholder="Ciencia, historia, negocios..." />
         <div className="youtube-niche-choice-list">
-          {visible.map((niche, index) => <button
+          {visible.map(niche => <button
             type="button" key={niche.id} aria-pressed={selected.id === niche.id}
             className={selected.id === niche.id ? 'youtube-niche-choice selected' : 'youtube-niche-choice'}
             onClick={() => selectNiche(niche)}
