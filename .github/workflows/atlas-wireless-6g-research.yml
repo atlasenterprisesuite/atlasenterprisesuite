@@ -53,3 +53,47 @@ jobs:
         run: |
           echo "Diagnostics only: this job does not replace npm audit or verify:all." >> "$GITHUB_STEP_SUMMARY"
           echo "P0 security gate, exact-SHA release verification, merge and deploy remain blocked." >> "$GITHUB_STEP_SUMMARY"
+
+  full-integration-diagnostic:
+    name: Full repository integration diagnostics (non-release; audit still required)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Record source SHA and explicit release prohibition
+        run: |
+          echo "DIAGNOSTIC_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Not a release gate. Required npm audit and verify:all must pass independently.**" >> "$GITHUB_STEP_SUMMARY"
+      - name: Install exact lockfile
+        run: npm ci
+      - name: Design and evidence checks
+        run: |
+          npm run verify:design
+          npm run verify:evidence
+      - name: TypeScript and unit tests
+        run: |
+          npm run typecheck
+          npm run test:unit
+          npm run test:6g
+      - name: Local core and integration tests
+        run: |
+          npm run test:local-core
+          npm run test:integration
+      - name: Edge and source integrity checks
+        run: |
+          npm run verify:edge
+          npm run verify:python
+          npm run verify:neural
+          npm run verify:navigation
+      - name: Application build
+        run: npm run build
+      - name: Preserve P0 audit blockade
+        if: always()
+        run: |
+          echo "This independent diagnostic does not run past or suppress a failed required npm audit." >> "$GITHUB_STEP_SUMMARY"
+          echo "Merge, deploy and commercial activation remain blocked while security P0 is open." >> "$GITHUB_STEP_SUMMARY"
