@@ -164,6 +164,7 @@ export function buildGoogleAuthorizationUrl(input: {
   redirectUri: string;
   state: string;
   permissions: readonly string[];
+  codeChallenge?: string;
 }): string {
   const clientId = input.clientId.trim();
   const redirectUri = input.redirectUri.trim();
@@ -252,6 +253,7 @@ export async function prepareGoogleOAuthAuthorization(input: {
   nonce: string;
   now: number;
   ttlMs?: number;
+  codeChallenge?: string;
 }): Promise<{ authorizationUrl: string; state: string; expiresAt: number }> {
   const ttlMs = input.ttlMs ?? 10 * 60 * 1000;
   if (!Number.isFinite(input.now) || input.now <= 0) {
