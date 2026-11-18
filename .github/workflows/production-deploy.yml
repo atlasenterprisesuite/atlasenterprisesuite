@@ -23,6 +23,20 @@ jobs:
   verify-build-readiness:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: atlas_ci_password
+          POSTGRES_DB: atlas_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d atlas_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v7
         with:
@@ -93,11 +107,23 @@ jobs:
             fi
           done
           sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core postgresql-client
           ffmpeg -version
           ffprobe -version
           espeak --version
           test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+
+      - name: Verify YouTube Direct PostgreSQL 17 isolation
+        env:
+          PGPASSWORD: atlas_ci_password
+        run: |
+          psql \
+            --host=127.0.0.1 \
+            --port=5432 \
+            --username=postgres \
+            --dbname=atlas_ci \
+            --set=ON_ERROR_STOP=1 \
+            --file=tests/sql/atlas-youtube-direct-db.test.sql
 
       - name: Install locked dependencies
         run: npm ci
