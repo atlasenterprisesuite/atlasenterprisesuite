@@ -1,0 +1,67 @@
+.youtube-niche-research {
+  display: grid;
+  gap: 18px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--content-border, rgba(132, 194, 255, .2));
+  border-radius: 20px;
+  background: linear-gradient(125deg, rgba(8, 30, 56, .91), rgba(5, 18, 36, .88));
+}
+.youtube-niche-research-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.youtube-niche-research-heading h2 { margin: 4px 0 8px; font-size: clamp(1.3rem, 2.2vw, 1.8rem); }
+.youtube-niche-research-heading p { margin: 0; line-height: 1.55; max-width: 720px; }
+.youtube-niche-source, .youtube-niche-detail-title a {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 11px;
+  border: 1px solid rgba(115, 195, 255, .44);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  white-space: normal;
+}
+.youtube-niche-source:hover, .youtube-niche-detail-title a:hover { background: rgba(42, 113, 177, .24); }
+.youtube-niche-research-layout { display: grid; grid-template-columns: minmax(205px, .72fr) minmax(0, 1.7fr); gap: 16px; }
+.youtube-niche-choices { display: grid; align-content: start; gap: 10px; }
+.youtube-niche-choices > label { font-weight: 650; font-size: .9rem; }
+.youtube-niche-choice-list { display: grid; gap: 6px; max-height: 450px; overflow-y: auto; }
+.youtube-niche-choice {
+  width: 100%; min-height: 44px; display: flex; align-items: center; gap: 9px;
+  border: 1px solid rgba(117, 189, 251, .17); border-radius: 11px;
+  background: rgba(6, 19, 39, .68); color: inherit; text-align: left;
+  padding: 9px 12px; cursor: pointer;
+}
+.youtube-niche-choice > span { opacity: .66; font-variant-numeric: tabular-nums; }
+.youtube-niche-choice:hover, .youtube-niche-choice.selected,
+.youtube-niche-choice:focus-visible { background: rgba(17, 70, 119, .84); border-color: #67bdff; }
+.youtube-niche-detail {
+  min-width: 0; display: grid; gap: 11px; align-content: start;
+  border: 1px solid rgba(132, 194, 255, .2); border-radius: 16px;
+  background: rgba(6, 18, 34, .64); padding: clamp(14px, 2.5vw, 22px);
+}
+.youtube-niche-detail > p { margin: 0; line-height: 1.55; }
+.youtube-niche-detail-title { display: flex; justify-content: space-between; align-items: start; gap: 14px; }
+.youtube-niche-detail-title small { opacity: .72; }
+.youtube-niche-detail-title h3 { margin: 4px 0 0; font-size: 1.35rem; }
+.youtube-niche-evidence {
+  display: grid; gap: 7px; border: 1px solid rgba(132, 194, 255, .25);
+  border-radius: 12px; padding: 12px;
+}
+.youtube-niche-evidence legend { padding: 0 5px; font-weight: 600; }
+.youtube-niche-evidence label { display: flex; align-items: center; gap: 9px; min-height: 32px; }
+.youtube-niche-evidence label input { width: auto; flex: none; }
+.youtube-niche-preflight { border-left: 3px solid #e2b66d; padding-left: 12px; }
+.youtube-niche-policy-note { font-size: .85rem; opacity: .78; }
+@media (max-width: 900px) {
+  .youtube-niche-research-layout { grid-template-columns: 1fr; }
+  .youtube-niche-choice-list { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 230px; }
+}
+@media (max-width: 580px) {
+  .youtube-niche-research-heading, .youtube-niche-detail-title { flex-direction: column; }
+  .youtube-niche-choice-list { grid-template-columns: 1fr; }
+  .youtube-niche-research { padding: 14px; }
+}
