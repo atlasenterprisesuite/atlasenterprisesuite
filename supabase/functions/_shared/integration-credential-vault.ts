@@ -21,6 +21,8 @@ export type SealedCredential = {
 
 export type CredentialKey = string | Uint8Array;
 
+export type SecretValueBundle = Record<string, string>;
+
 const ALGORITHM = 'AES-GCM-256' as const;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -110,8 +112,20 @@ function assertCredential(value: unknown): asserts value is ProviderCredentialPa
   }
 }
 
-function additionalData(organizationId: string, provider: IntegrationProvider): Uint8Array {
-  return textEncoder.encode(`atlas:${organizationId}:${provider}`);
+function additionalData(
+  organizationId: string,
+  provider: IntegrationProvider,
+  purpose = 'credential'
+): Uint8Array {
+  return textEncoder.encode(`atlas:${organizationId}:${provider}:${purpose}`);
+}
+
+function validatePurpose(purpose: string): string {
+  const normalized = purpose.trim();
+  if (!/^[a-z0-9._-]{1,80}$/.test(normalized)) {
+    throw new Error('Secret purpose is invalid');
+  }
+  return normalized;
 }
 
 async function importAesKey(key: CredentialKey): Promise<CryptoKey> {
@@ -141,7 +155,7 @@ export async function sealCredential(input: {
     {
       name: 'AES-GCM',
       iv,
-      additionalData: additionalData(input.organizationId, input.provider),
+      additionalData: additionalData(input.organizationId, input.provider, 'credential'),
       tagLength: 128
     },
     cryptoKey,
@@ -189,7 +203,7 @@ export async function openCredential(input: {
       {
         name: 'AES-GCM',
         iv,
-        additionalData: additionalData(input.organizationId, input.provider),
+        additionalData: additionalData(input.organizationId, input.provider, 'credential'),
         tagLength: 128
       },
       cryptoKey,
@@ -219,4 +233,98 @@ export function destroyCredentialPayload(credential: ProviderCredentialPayload):
     }
   }
   credential.expiresAt = null;
+}
+
+
+export async function sealSecretValues(input: {
+  organizationId: string;
+  provider: IntegrationProvider;
+  purpose: string;
+  values: SecretValueBundle;
+  key: CredentialKey;
+  keyVersion?: string;
+}): Promise<SealedCredential> {
+  assertScope(input.organizationId, input.provider);
+  assertSecretValues(input.values);
+  const purpose = validatePurpose(input.purpose);
+  const keyVersion = input.keyVersion?.trim() || 'v1';
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cryptoKey = await importAesKey(input.key);
+  const plaintext = textEncoder.encode(JSON.stringify(input.values));
+  const ciphertext = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv,
+      additionalData: additionalData(input.organizationId, input.provider, purpose),
+      tagLength: 128
+    },
+    cryptoKey,
+    plaintext
+  );
+
+  return {
+    ciphertext: bytesToBase64Url(new Uint8Array(ciphertext)),
+    iv: bytesToBase64Url(iv),
+    algorithm: ALGORITHM,
+    keyVersion
+  };
+}
+
+export async function openSecretValues(input: {
+  organizationId: string;
+  provider: IntegrationProvider;
+  purpose: string;
+  sealed: SealedCredential;
+  key: CredentialKey;
+}): Promise<SecretValueBundle> {
+  assertScope(input.organizationId, input.provider);
+  const purpose = validatePurpose(input.purpose);
+  if (input.sealed.algorithm !== ALGORITHM) {
+    throw new Error('Unsupported credential encryption algorithm');
+  }
+  if (!input.sealed.keyVersion?.trim()) {
+    throw new Error('Credential key version is required');
+  }
+
+  let iv: Uint8Array;
+  let ciphertext: Uint8Array;
+  try {
+    iv = base64UrlToBytes(input.sealed.iv);
+    ciphertext = base64UrlToBytes(input.sealed.ciphertext);
+  } catch {
+    throw new Error('Sealed credential encoding is invalid');
+  }
+  if (iv.byteLength !== 12 || ciphertext.byteLength === 0) {
+    throw new Error('Sealed credential payload is invalid');
+  }
+
+  const cryptoKey = await importAesKey(input.key);
+  let plaintext: ArrayBuffer;
+  try {
+    plaintext = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv,
+        additionalData: additionalData(input.organizationId, input.provider, purpose),
+        tagLength: 128
+      },
+      cryptoKey,
+      ciphertext
+    );
+  } catch {
+    throw new Error('Credential decryption failed');
+  }
+
+  let values: unknown;
+  try {
+    values = JSON.parse(textDecoder.decode(plaintext));
+  } catch {
+    throw new Error('Credential plaintext is invalid');
+  }
+  assertSecretValues(values);
+  return values;
+}
+
+export function destroySecretValues(values: SecretValueBundle): void {
+  for (const key of Object.keys(values)) values[key] = '';
 }
