@@ -24,7 +24,7 @@ jobs:
           echo "HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
           echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_STEP_SUMMARY"
       - name: Run dependency-free 6G research tests
-        run: node --test research/atlas-wireless-6g/atlas-6g-pioneer.test.mjs
+        run: node --test research/atlas-wireless-6g/*.test.mjs
       - name: Explain acceptance boundary
         run: |
           echo "Research tests do not replace npm audit, typecheck, UI tests, integration tests or build." >> "$GITHUB_STEP_SUMMARY"
