@@ -15,7 +15,7 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -24,7 +24,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Generate official-upstream exact-SHA candidate
+      - name: Materialize reviewed exact-SHA patch source
         shell: bash
         run: |
           set -euo pipefail
@@ -38,35 +38,93 @@ jobs:
           fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           NODE
           npm install --package-lock-only --ignore-scripts
+          npm ci
 
-      - name: Verify exact upstream source pin
+      - name: Verify reviewed patch before repackaging
         shell: bash
         run: |
           set -euo pipefail
           node - <<'NODE'
-          const fs = require('fs');
-          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-          const entry = lock.packages?.['node_modules/picomatch'];
-          const resolved = String(entry?.resolved || '');
-          const sha = '44f192261f312ddf236cb7bdc05d8f22663f98f9';
-          if (!resolved.includes('micromatch/picomatch') || !resolved.includes(sha)) {
-            console.error('Unexpected picomatch resolution:', resolved);
+          const picomatch = require('picomatch');
+          const source = picomatch.makeRe('+(*a)').source;
+          if (source !== '^(?:\\+\\(\\*a\\))$') {
+            console.error('Unexpected patched regex:', source);
             process.exit(1);
           }
-          console.log('Official upstream exact-SHA pin verified:', resolved);
+          for (const pattern of ['+(*a)', '*(*a)']) {
+            const start = performance.now();
+            const matched = picomatch.isMatch('a'.repeat(80) + '!', pattern);
+            const elapsed = performance.now() - start;
+            if (matched || elapsed > 250) {
+              console.error('CVE regression failure before repackaging:', pattern, { matched, elapsed });
+              process.exit(1);
+            }
+          }
+          console.log('Reviewed exact-SHA patch behavior verified.');
           NODE
 
-      - name: Install candidate locked tree
+      - name: Build ATLAS-owned secure package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .atlas-probe
+          mkdir -p .atlas-probe/picomatch-source
+          cp -a node_modules/picomatch/. .atlas-probe/picomatch-source/
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = '.atlas-probe/picomatch-source/package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.name = '@atlas/picomatch-secure';
+          pkg.version = '4.0.8-atlas.1';
+          delete pkg.private;
+          pkg.repository = {
+            type: 'git',
+            url: 'https://github.com/atlasenterprisesuite/atlasenterprisesuite.git'
+          };
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
+          (
+            cd .atlas-probe/picomatch-source
+            npm pack --ignore-scripts --pack-destination ..
+          )
+          TARBALL="$(find .atlas-probe -maxdepth 1 -name 'atlas-picomatch-secure-*.tgz' -print -quit)"
+          test -n "$TARBALL"
+          mv "$TARBALL" .atlas-probe/atlas-picomatch-secure.tgz
+          sha256sum .atlas-probe/atlas-picomatch-secure.tgz | tee .atlas-probe/atlas-picomatch-secure.sha256
+
+      - name: Generate root-anchored internal package candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout -- package.json package-lock.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.devDependencies = {
+            ...(pkg.devDependencies || {}),
+            picomatch: 'file:.atlas-probe/atlas-picomatch-secure.tgz'
+          };
+          pkg.overrides = {
+            ...(pkg.overrides || {}),
+            picomatch: '$picomatch'
+          };
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+          npm install --package-lock-only --ignore-scripts
+
+      - name: Install internal candidate locked tree
         run: npm ci
 
-      - name: Verify official patch identity and CVE regression
+      - name: Verify internal package identity and CVE regression
         shell: bash
         run: |
           set -euo pipefail
           node - <<'NODE'
           const installed = require('./node_modules/picomatch/package.json');
-          if (installed.name !== 'picomatch') {
-            console.error('Unexpected installed package identity:', installed.name);
+          if (installed.name !== '@atlas/picomatch-secure' || installed.version !== '4.0.8-atlas.1') {
+            console.error('Unexpected ATLAS secure package identity:', installed.name, installed.version);
             process.exit(1);
           }
           const picomatch = require('picomatch');
@@ -75,16 +133,14 @@ jobs:
             console.error('Unexpected +(*a) regex:', source);
             process.exit(1);
           }
-          for (const pattern of ['+(*a)', '*(*a)']) {
-            const start = performance.now();
-            const matched = picomatch.isMatch('a'.repeat(80) + '!', pattern);
-            const elapsed = performance.now() - start;
-            if (matched || elapsed > 250) {
-              console.error('CVE regression failure:', pattern, { matched, elapsed });
-              process.exit(1);
-            }
+          const start = performance.now();
+          const matched = picomatch.isMatch('a'.repeat(80) + '!', '+(*a)');
+          const elapsed = performance.now() - start;
+          if (matched || elapsed > 250) {
+            console.error('CVE regression failure:', { matched, elapsed });
+            process.exit(1);
           }
-          console.log('Official upstream picomatch CVE regression passed.');
+          console.log('ATLAS internal package identity + CVE regression passed.');
           NODE
 
       - name: Require clean high-severity audit
@@ -112,9 +168,9 @@ jobs:
         if: always()
         run: |
           git diff -- package.json package-lock.json > dependency-remediation.diff || true
-          echo "### official-upstream exact-SHA picomatch remediation diff" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ATLAS-owned picomatch remediation diff" >> "$GITHUB_STEP_SUMMARY"
           if [ -s dependency-remediation.diff ]; then
-            sed -n '1,300p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
+            sed -n '1,320p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No package manifest or lockfile changes were generated." >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -128,5 +184,7 @@ jobs:
             package.json
             package-lock.json
             dependency-remediation.diff
+            .atlas-probe/atlas-picomatch-secure.tgz
+            .atlas-probe/atlas-picomatch-secure.sha256
           if-no-files-found: error
           retention-days: 3
