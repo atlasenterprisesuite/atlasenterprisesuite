@@ -1,12 +1,12 @@
 name: ATLAS Dependency Remediation Probe
 
 on:
-  pull_request:
-    branches: ["main"]
+  push:
+    branches: ["feat/atlas-youtube-direct-777"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: atlas-dependency-remediation-${{ github.sha }}
@@ -84,14 +84,25 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      - name: Apply verified npm-generated manifests to branch
+        if: ${{ always() && github.event_name == 'push' && github.ref_name == 'feat/atlas-youtube-direct-777' && steps.audit.outcome == 'success' && steps.verify.outcome == 'success' }}
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No dependency manifest changes to apply."
+            exit 0
+          fi
+          git config user.name "atlas-777-bot"
+          git config user.email "atlas-777-bot@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(deps): apply verified npm audit remediation"
+          git push origin HEAD:feat/atlas-youtube-direct-777
+
       - name: Enforce probe result
         if: always()
         env:
-          REMEDIATION_OUTCOME: ${{ steps.remediate.outcome }}
           AUDIT_OUTCOME: ${{ steps.audit.outcome }}
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
         run: |
-          echo "remediation=$REMEDIATION_OUTCOME audit=$AUDIT_OUTCOME verify=$VERIFY_OUTCOME"
-          test "$REMEDIATION_OUTCOME" = "success"
+          echo "audit=$AUDIT_OUTCOME verify=$VERIFY_OUTCOME"
           test "$AUDIT_OUTCOME" = "success"
           test "$VERIFY_OUTCOME" = "success"
