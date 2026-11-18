@@ -1,0 +1,25 @@
+name: ATLAS SOV-003 Data Readiness
+on:
+  pull_request:
+    paths:
+      - 'tools/sovereignty/backup-readiness.mjs'
+      - 'tools/sovereignty/tests/backup-readiness.test.mjs'
+      - '.github/workflows/atlas-sov-data-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup-readiness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate exact head commit
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Synthetic integrity tests
+        run: node --test tools/sovereignty/tests/backup-readiness.test.mjs
