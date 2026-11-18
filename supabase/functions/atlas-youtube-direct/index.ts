@@ -34,7 +34,7 @@ export type AtlasYouTubeDirectDependencies = {
 function env(name: string, deps: AtlasYouTubeDirectDependencies): string {
   const injected = deps.env?.(name);
   if (injected !== undefined) return injected.trim();
-  return Deno.env.get(name)?.trim() ?? '';
+  return typeof Deno !== 'undefined' ? (Deno.env.get(name)?.trim() ?? '') : '';
 }
 
 function publishableKey(deps: AtlasYouTubeDirectDependencies): string {
