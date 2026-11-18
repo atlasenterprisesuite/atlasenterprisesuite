@@ -8,8 +8,12 @@ async function parseJson<T>(response: Response): Promise<T> {
   let body: unknown = null;
   try { body = text ? JSON.parse(text) : null; } catch { body = null; }
   if (!response.ok) {
-    const message = body && typeof body === 'object' && 'message' in body
-      ? String((body as { message?: unknown }).message || '')
+    const message = body && typeof body === 'object'
+      ? ('message' in body
+          ? String((body as { message?: unknown }).message || '')
+          : 'error' in body
+            ? String((body as { error?: unknown }).error || '')
+            : '')
       : '';
     throw new Error(message || `social_api_failed_${response.status}`);
   }
@@ -157,6 +161,7 @@ export async function createSocialSchedule(input: {
   scheduledFor: string;
   status: SocialScheduledPost['status'];
   providerConnectionState: SocialScheduledPost['providerConnectionState'];
+  mediaManifest?: Array<Record<string, unknown>>;
 }): Promise<SocialScheduledPost> {
   const organization = await getActiveAtlasOrganization();
   const response = await authorizedAtlasFetch('/rest/v1/atlas_social_scheduled_posts', {
@@ -169,7 +174,7 @@ export async function createSocialSchedule(input: {
       scheduled_for: input.scheduledFor,
       status: input.status,
       provider_connection_state: input.providerConnectionState,
-      media_manifest: []
+      media_manifest: input.mediaManifest ?? []
     })
   });
   const rows = await parseJson<ScheduleRow[]>(response);
@@ -191,4 +196,46 @@ export async function cancelSocialSchedule(id: string): Promise<SocialScheduledP
   const rows = await parseJson<ScheduleRow[]>(response);
   if (!rows[0]) throw new Error('social_schedule_cancel_failed');
   return scheduled(rows[0]);
+}
+
+
+export type YouTubeConnectionStatus = {
+  provider: 'youtube';
+  channelId: string;
+  state: 'unconfigured' | 'authorizing' | 'connected' | 'degraded' | 'expired' | 'revoked' | 'error';
+  authorized: boolean;
+  providerVerified: boolean;
+  channelTitle: string | null;
+  grantedScopes: string[];
+  lastVerifiedAt: string | null;
+};
+
+export async function getYouTubeConnectionStatus(
+  channelId: string
+): Promise<YouTubeConnectionStatus> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-youtube-direct', {
+    method: 'POST',
+    body: JSON.stringify({
+      operation: 'connection.status',
+      organizationId: organization.id,
+      channelId: channelId.trim()
+    })
+  });
+  return parseJson<YouTubeConnectionStatus>(response);
+}
+
+export async function prepareYouTubeConnection(
+  channelId: string
+): Promise<{ provider: 'youtube'; authorizationUrl: string; expiresAt: string }> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-youtube-direct', {
+    method: 'POST',
+    body: JSON.stringify({
+      operation: 'oauth.prepare',
+      organizationId: organization.id,
+      channelId: channelId.trim()
+    })
+  });
+  return parseJson(response);
 }

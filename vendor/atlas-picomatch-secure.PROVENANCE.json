@@ -1,0 +1,11 @@
+{
+  "name": "@atlas/picomatch-secure",
+  "version": "4.0.8-atlas.1",
+  "license": "MIT",
+  "upstream": "https://github.com/micromatch/picomatch",
+  "upstreamCommit": "44f192261f312ddf236cb7bdc05d8f22663f98f9",
+  "upstreamPullRequest": "https://github.com/micromatch/picomatch/pull/238",
+  "securityIssue": "CVE-2026-112366 / GHSA-fc5q-39xc-vjpf",
+  "patchStatusAtVendoring": "reviewed upstream PR commit; not represented as a released upstream patch",
+  "tarballSha256": "a994e4dc37fc2be06de84f5271342aaf81c3147933f6b287cd2543aa783c7ba4"
+}

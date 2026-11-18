@@ -4,7 +4,8 @@ export type GoogleIntegrationPermission =
   | 'google.calendar.read'
   | 'google.calendar.write'
   | 'google.drive.read'
-  | 'google.drive.write';
+  | 'google.drive.write'
+  | 'google.youtube.upload';
 
 export type GoogleOAuthStatePayload = {
   version: 1;
@@ -25,7 +26,8 @@ const GOOGLE_OAUTH_SCOPES: Record<GoogleIntegrationPermission, readonly string[]
   ],
   'google.calendar.write': ['https://www.googleapis.com/auth/calendar.events'],
   'google.drive.read': ['https://www.googleapis.com/auth/drive.readonly'],
-  'google.drive.write': ['https://www.googleapis.com/auth/drive.file']
+  'google.drive.write': ['https://www.googleapis.com/auth/drive.file'],
+  'google.youtube.upload': ['https://www.googleapis.com/auth/youtube.upload']
 };
 
 const textEncoder = new TextEncoder();
@@ -169,6 +171,7 @@ export function buildGoogleAuthorizationUrl(input: {
   redirectUri: string;
   state: string;
   permissions: readonly GoogleIntegrationPermission[];
+  codeChallenge?: string;
 }): string {
   const clientId = input.clientId.trim();
   const redirectUri = input.redirectUri.trim();
@@ -188,6 +191,14 @@ export function buildGoogleAuthorizationUrl(input: {
   url.searchParams.set('access_type', 'offline');
   url.searchParams.set('include_granted_scopes', 'true');
   url.searchParams.set('state', state);
+  if (input.codeChallenge !== undefined) {
+    const codeChallenge = input.codeChallenge.trim();
+    if (!/^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)) {
+      throw new Error('Google OAuth PKCE code challenge is invalid');
+    }
+    url.searchParams.set('code_challenge', codeChallenge);
+    url.searchParams.set('code_challenge_method', 'S256');
+  }
   return url.toString();
 }
 
@@ -201,6 +212,7 @@ export async function prepareGoogleOAuthAuthorization(input: {
   nonce: string;
   now: number;
   ttlMs?: number;
+  codeChallenge?: string;
 }): Promise<{
   authorizationUrl: string;
   state: string;
@@ -234,7 +246,8 @@ export async function prepareGoogleOAuthAuthorization(input: {
       clientId: input.clientId,
       redirectUri: input.redirectUri,
       state,
-      permissions
+      permissions,
+      codeChallenge: input.codeChallenge
     })
   };
 }

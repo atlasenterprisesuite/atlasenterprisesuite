@@ -22,6 +22,12 @@ describe('ATLAS integration gateway permissions', () => {
     expect(
       hasIntegrationPermission?.(['integrations.admin'], 'google.gmail.read')
     ).toBe(false);
+    expect(
+      hasIntegrationPermission?.(['google.youtube.upload'], 'google.youtube.upload')
+    ).toBe(true);
+    expect(
+      hasIntegrationPermission?.(['integrations.admin'], 'google.youtube.upload')
+    ).toBe(false);
   });
 });
 
@@ -96,7 +102,8 @@ describe('ATLAS Google OAuth scope registry', () => {
         'google.calendar.read',
         'google.calendar.write',
         'google.drive.read',
-        'google.drive.write'
+        'google.drive.write',
+        'google.youtube.upload'
       ])
     ).toEqual([
       'https://www.googleapis.com/auth/gmail.readonly',
@@ -106,7 +113,20 @@ describe('ATLAS Google OAuth scope registry', () => {
       'https://www.googleapis.com/auth/calendar.events.readonly',
       'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/drive.readonly',
-      'https://www.googleapis.com/auth/drive.file'
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/youtube.upload'
+    ]);
+  });
+
+
+  it('maps YouTube upload permission to only the minimum upload scope', () => {
+    const googleOAuthScopesForPermissions = (core as Record<string, unknown>)
+      .googleOAuthScopesForPermissions as
+      | ((permissions: readonly string[]) => string[])
+      | undefined;
+
+    expect(googleOAuthScopesForPermissions?.(['google.youtube.upload'])).toEqual([
+      'https://www.googleapis.com/auth/youtube.upload'
     ]);
   });
 

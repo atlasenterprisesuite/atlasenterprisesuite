@@ -3,8 +3,9 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from native_composer import build_captions, validate_request, render_video
+from native_composer import build_captions, validate_request, render_video, _require_speech_binary
 
 
 class NativeComposerTests(unittest.TestCase):
@@ -19,6 +20,19 @@ class NativeComposerTests(unittest.TestCase):
                 'aspectRatio': '9:16',
                 'provider': 'heygen'
             })
+
+    def test_resolves_espeak_ng_when_legacy_espeak_is_unavailable(self):
+        with patch('native_composer.shutil.which') as which:
+            which.side_effect = lambda name: {
+                'espeak': None,
+                'espeak-ng': '/usr/bin/espeak-ng',
+            }.get(name)
+            self.assertEqual(_require_speech_binary(), '/usr/bin/espeak-ng')
+
+    def test_speech_binary_fails_closed_when_no_local_tts_exists(self):
+        with patch('native_composer.shutil.which', return_value=None):
+            with self.assertRaisesRegex(RuntimeError, 'espeak_not_available'):
+                _require_speech_binary()
 
     def test_builds_local_captions_when_none_are_supplied(self):
         captions = build_captions([], 'Uno dos tres cuatro cinco seis siete ocho nueve diez.', 8.0)

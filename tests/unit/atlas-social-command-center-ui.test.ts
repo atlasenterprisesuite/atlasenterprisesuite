@@ -26,4 +26,18 @@ describe('ATLAS Social Command Center routing', () => {
     expect(page).toContain("to=\"/business/growth/social-publisher\"");
     expect(page).toContain("navigate('/crm/social-handoff'");
   });
+
+  it('uses verified YouTube OAuth/status and keeps video schedules draft until media is attached', () => {
+    const page = source('apps/web/src/modules/creator/social/SocialCommandCenterPage.tsx');
+    const api = source('apps/web/src/modules/creator/social/socialApi.ts');
+    expect(page).toContain('prepareYouTubeConnection');
+    expect(page).toContain('getYouTubeConnectionStatus');
+    expect(page).toContain('Connect YouTube');
+    expect(page).toContain("status = 'draft'");
+    expect(page).toContain("mediaRequired: true");
+    expect(page).toContain('providerVerified');
+    expect(api).toContain("operation: 'oauth.prepare'");
+    expect(api).toContain("operation: 'connection.status'");
+    expect(api).toContain("'/functions/v1/atlas-youtube-direct'");
+  });
 });

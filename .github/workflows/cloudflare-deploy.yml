@@ -131,11 +131,23 @@ jobs:
 
       - name: Install native media verification dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          set -euo pipefail
+
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || { ! command -v espeak >/dev/null && ! command -v espeak-ng >/dev/null; } || [ ! -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf ]; then
+            sudo apt-get update
+            sudo apt-get install -y software-properties-common
+            sudo add-apt-repository -y universe
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg espeak-ng fonts-dejavu-core
+          fi
+
           ffmpeg -version
           ffprobe -version
-          espeak --version
+          if command -v espeak >/dev/null; then
+            espeak --version
+          else
+            espeak-ng --version
+          fi
           test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
 
       - name: Install locked dependencies
