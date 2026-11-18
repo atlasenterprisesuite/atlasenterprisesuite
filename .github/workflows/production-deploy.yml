@@ -96,27 +96,22 @@ jobs:
 
           echo "ATLAS Copilot VERSION advanced from $BASE_VERSION to $HEAD_VERSION."
 
-      - name: Install native media verification dependencies
+      - name: Verify YouTube Direct PostgreSQL 17 isolation
+        env:
+          PGPASSWORD: atlas_ci_password
         run: |
-          # GitHub-hosted Ubuntu images can inherit optional third-party APT
-          # sources. A 4xx from one of those sources must not prevent ATLAS
-          # from installing the Ubuntu-native packages required by this gate.
+          set -euo pipefail
+          # Run database verification before heavyweight media packages so
+          # migration/RLS failures surface quickly and deterministically.
           for source in /etc/apt/sources.list.d/*; do
             if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
               sudo mv "$source" "$source.disabled"
             fi
           done
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core postgresql-client
-          ffmpeg -version
-          ffprobe -version
-          espeak --version
-          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
-
-      - name: Verify YouTube Direct PostgreSQL 17 isolation
-        env:
-          PGPASSWORD: atlas_ci_password
-        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
           psql \
             --host=127.0.0.1 \
             --port=5432 \
@@ -124,6 +119,16 @@ jobs:
             --dbname=atlas_ci \
             --set=ON_ERROR_STOP=1 \
             --file=tests/sql/atlas-youtube-direct-db.test.sql
+
+      - name: Install native media verification dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          ffmpeg -version
+          ffprobe -version
+          espeak --version
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
 
       - name: Install locked dependencies
         run: npm ci
