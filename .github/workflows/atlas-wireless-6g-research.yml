@@ -94,8 +94,8 @@ jobs:
           npm run verify:python
           npm run verify:neural
           npm run verify:navigation
-      - name: Application build
-        run: npm run build
+      - name: Application build with source-module provenance
+        run: ATLAS_BUNDLE_AUDIT=1 npm run build
       - name: Preserve P0 audit blockade
         if: always()
         run: |
