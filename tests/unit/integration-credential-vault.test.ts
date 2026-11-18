@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   destroyCredentialPayload,
+  destroySecretValues,
   openCredential,
+  openSecretValues,
   sealCredential,
+  sealSecretValues,
   type ProviderCredentialPayload
 } from '../../supabase/functions/_shared/integration-credential-vault';
 
@@ -143,6 +146,42 @@ describe('ATLAS integration credential vault', () => {
         key
       })
     ).rejects.toThrow(/algorithm/i);
+  });
+
+
+
+  it('seals purpose-bound ephemeral secrets and rejects cross-purpose replay', async () => {
+    const values = { codeVerifier: 'pkce-verifier-secret' };
+    const sealed = await sealSecretValues({
+      organizationId: 'org-a',
+      provider: 'google',
+      purpose: 'oauth.pkce',
+      values,
+      key
+    });
+
+    expect(JSON.stringify(sealed)).not.toContain(values.codeVerifier);
+    await expect(openSecretValues({
+      organizationId: 'org-a',
+      provider: 'google',
+      purpose: 'oauth.pkce',
+      sealed,
+      key
+    })).resolves.toEqual(values);
+
+    await expect(openSecretValues({
+      organizationId: 'org-a',
+      provider: 'google',
+      purpose: 'oauth.other',
+      sealed,
+      key
+    })).rejects.toThrow(/decryption/i);
+  });
+
+  it('destroys ephemeral secret bundles in memory', () => {
+    const values = { codeVerifier: 'secret', another: 'value' };
+    destroySecretValues(values);
+    expect(values).toEqual({ codeVerifier: '', another: '' });
   });
 
   it('performs best-effort in-memory payload destruction after persistence/revocation work', () => {
