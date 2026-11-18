@@ -32,3 +32,17 @@ No browser-only tool can guarantee access to arbitrary Instagram Reels, private 
 
 ## Data minimization
 No background jobs, cookies, video upload, analytics or silent synchronization. Data is kept in current page memory unless the user exports it. Exported JSON includes frame thumbnails and personal text, but **not** the video file; protect the export appropriately. File hash is unavailable above the memory safety threshold, and an imported hash is not proof that the currently selected video matches.
+
+## Parallel verification runners (ATLAS 777)
+
+The existing hourly `atlas-777-persistent-runner.yml` remains canonical for scheduled inventory. This PR adds `.github/workflows/atlas-777-parallel-verification.yml` as a **read-only CI fan-out**, not additional self-hosted machines or an autonomous control plane.
+
+- Security lane: `npm audit --audit-level=high`; an unresolved high-severity advisory fails P0.
+- Quality lane: unit, integration, and local-core tests.
+- Build lane: TypeScript typecheck and full production build.
+- Infrastructure lane: design, evidence, edge, Python, neural and navigation checks.
+- The release-gate job runs even if the matrix fails; it is green only if **every** matrix lane succeeds. Each lane exports a status/commit/run evidence artifact with SHA-256 and a 30-day retention policy.
+
+Each lane checks out the GitHub event SHA and uses `npm ci` from the lockfile, with maximum four concurrent GitHub-hosted runner jobs. The workflow has read-only contents permission, no third-party credentials, no production deploy/merge, no changes to Supabase and no new paid self-hosted machines. The `pull_request` path filter restricts automated launches to Reel Lab changes; `workflow_dispatch` supports manual reruns. Concurrency cancellation only affects superseded runs of the same PR.
+
+**Limitations:** a successful matrix is a *CI verdict only*, not an external Instagram access attestation, production evidence, signed provenance, or deploy confirmation. Until full legacy `verify:all`, security advisories and production E2E/exact SHA checks have passed, P0 remains **NO-GO**. Failed tests are not treated as warnings.
