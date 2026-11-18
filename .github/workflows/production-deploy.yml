@@ -130,6 +130,26 @@ jobs:
           espeak --version
           test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
 
+      - name: Verify vendored Picomatch security provenance
+        run: |
+          set -euo pipefail
+          sha256sum -c vendor/atlas-picomatch-secure.sha256
+          node <<'NODE'
+          const fs = require('fs');
+          const cp = require('child_process');
+          const provenance = JSON.parse(fs.readFileSync('vendor/atlas-picomatch-secure.PROVENANCE.json', 'utf8'));
+          if (provenance.upstreamCommit !== '44f192261f312ddf236cb7bdc05d8f22663f98f9') {
+            throw new Error('ATLAS picomatch upstream commit mismatch');
+          }
+          if (provenance.securityIssue !== 'CVE-2026-112366 / GHSA-fc5q-39xc-vjpf') {
+            throw new Error('ATLAS picomatch advisory provenance mismatch');
+          }
+          const pkg = JSON.parse(cp.execFileSync('tar', ['-xOf', 'vendor/atlas-picomatch-secure.tgz', 'package/package.json'], { encoding: 'utf8' }));
+          if (pkg.name !== '@atlas/picomatch-secure' || pkg.version !== '4.0.8-atlas.1') {
+            throw new Error('ATLAS picomatch tarball identity mismatch');
+          }
+          NODE
+
       - name: Install locked dependencies
         run: npm ci
 
@@ -137,7 +157,7 @@ jobs:
       # dependency-audit failure cannot hide regression evidence. This is
       # diagnostic only; the mandatory verify:all gate still fails closed.
       - name: Verify YouTube Direct P0 publication guard
-        run: npx --no-install vitest run tests/unit/atlas-youtube-publication-guard.test.ts tests/unit/atlas-youtube-job-policy.test.ts tests/unit/atlas-youtube-oauth-policy.test.ts tests/unit/atlas-youtube-private-schema.test.ts tests/unit/atlas-youtube-job-leases.test.ts tests/unit/integration-gateway.test.ts tests/unit/google-oauth-prepare.test.ts tests/unit/google-oauth-state.test.ts tests/unit/atlas-youtube-google-oauth-adapter.test.ts tests/unit/atlas-youtube-data-api.test.ts tests/unit/atlas-youtube-connection-lifecycle.test.ts tests/unit/integration-credential-vault.test.ts tests/integration/atlas-youtube-direct-function.test.ts tests/unit/atlas-social-command-center-ui.test.ts
+        run: npx --no-install vitest run tests/unit/atlas-youtube-publication-guard.test.ts tests/unit/atlas-youtube-job-policy.test.ts tests/unit/atlas-youtube-oauth-policy.test.ts tests/unit/atlas-youtube-private-schema.test.ts tests/unit/atlas-youtube-job-leases.test.ts tests/unit/integration-gateway.test.ts tests/unit/google-oauth-prepare.test.ts tests/unit/google-oauth-state.test.ts tests/unit/atlas-youtube-google-oauth-adapter.test.ts tests/unit/atlas-youtube-data-api.test.ts tests/unit/atlas-youtube-connection-lifecycle.test.ts tests/unit/integration-credential-vault.test.ts tests/integration/atlas-youtube-direct-function.test.ts tests/unit/atlas-social-command-center-ui.test.ts tests/unit/atlas-picomatch-security.test.ts
 
       - name: Verify complete repository
         run: npm run verify:all
