@@ -1,3 +1,4 @@
+import { createGovernedPublisherHandoff } from '../../packages/creator/content_intelligence';
 import { describe, expect, it } from 'vitest';
 import {
   createGovernedYouTubeUploadIntent,
@@ -73,5 +74,34 @@ describe('Creator publish gate — P0 fail closed', () => {
 
   it('rejects invalid clock instead of accidentally treating auth as valid', () => {
     expect(evaluateCreatorPublishGate(fixture(), 'not-a-date')).toMatchObject({ allowed: false, errors: expect.arrayContaining(['invalid_clock']) });
+  });
+});
+
+
+describe('Content Intelligence integration', () => {
+  it('passes a verified private-upload intent to the existing publisher format', () => {
+    const result = createGovernedPublisherHandoff(
+      { id: 'youtube-short', platform: 'youtube', format: 'Short', content: 'Original GTA VI fact-check' },
+      fixture(),
+      NOW
+    );
+    expect(result.atlasContentHandoff).toMatchObject({
+      platform: 'youtube',
+      caption: 'Original GTA VI fact-check',
+      uploadIntent: { privacyStatus: 'private', artifactSha256: HASH }
+    });
+  });
+
+  it('cannot bypass authorization through a wrong tenant or mismatched platform', () => {
+    const request = fixture();
+    request.credential!.tenantId = 'foreign-tenant';
+    expect(() => createGovernedPublisherHandoff(
+      { id: '1', platform: 'youtube', format: 'Short', content: 'x' },
+      request, NOW
+    )).toThrow('creator_publish_blocked');
+    expect(() => createGovernedPublisherHandoff(
+      { id: '2', platform: 'instagram', format: 'Reel', content: 'x' },
+      fixture(), NOW
+    )).toThrow('creator_publish_blocked:unsupported_platform');
   });
 });
