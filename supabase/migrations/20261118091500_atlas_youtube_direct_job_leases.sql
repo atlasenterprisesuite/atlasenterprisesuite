@@ -36,6 +36,9 @@ begin
     on d.id = j.draft_id
    and d.org_id = j.org_id
    and d.channel_id = j.channel_id
+  join public.atlas_social_scheduled_posts s
+    on s.id = j.social_post_id
+   and s.org_id = j.org_id
   where j.org_id = p_org_id
     and j.channel_id = p_channel_id
     and j.status = 'queued'
@@ -45,6 +48,9 @@ begin
     and c.consent_expires_at > now() + make_interval(secs => p_lease_seconds)
     and 'https://www.googleapis.com/auth/youtube.upload' = any(c.granted_scopes)
     and d.media_status = 'ready'
+    and s.platform = 'youtube'
+    and s.status in ('scheduled', 'ready')
+    and s.scheduled_for = j.scheduled_for
   order by j.scheduled_for asc, j.created_at asc
   for update of j skip locked
   limit 1;
