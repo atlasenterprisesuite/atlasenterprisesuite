@@ -6,7 +6,6 @@ const defaults = { offeredMbps: 150, capacityMbps: 100, baseLatencyMs: 10, jitte
 
 export function AtlasWireless6GResearchPage() {
   const [scenario, setScenario] = useState(defaults);
-  const [error, setError] = useState('');
   const result = useMemo(() => {
     try { return simulateScenario(scenario); }
     catch (reason) { return null; }
@@ -14,9 +13,8 @@ export function AtlasWireless6GResearchPage() {
   const readiness = evaluateReadiness();
   function change(field: keyof typeof defaults, value: string) {
     setScenario((current) => ({ ...current, [field]: value.trim() === '' ? NaN : Number(value) }));
-    setError('');
   }
-  function onReset() { setScenario(defaults); setError(''); }
+  function onReset() { setScenario(defaults); }
   return (
     <section className="page-stack" aria-labelledby="atlas-wireless-6g-title">
       <header className="page-header">
@@ -48,7 +46,6 @@ export function AtlasWireless6GResearchPage() {
         <div className="row-actions">
           <button type="button" onClick={onReset}>Reset synthetic example</button>
         </div>
-        {error && <p role="alert">{error}</p>}
         {!result ? <p role="alert">Invalid model inputs. Capacity must exceed zero and all inputs must be finite and nonnegative.</p> : (
           <div className="stat-grid" aria-label="Synthetic simulation results">
             <article><strong>{result.deliveredMbps.toFixed(1)} Mbps</strong><span>delivered (modeled)</span></article>
