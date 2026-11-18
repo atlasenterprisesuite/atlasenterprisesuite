@@ -1,140 +1,108 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './public-home.css';
 
-const pillars = [
-  ['Intelligence', 'AI-assisted workflows and decision support across the ATLAS ecosystem.'],
-  ['Operations', 'One governed entry point for business, people, finance, mobility and connected systems.'],
-  ['Trust', 'Identity, permissions, auditability and explicit evidence boundaries by design.']
-] as const;
+type Locale = 'es' | 'en';
+const copy = {
+  es: {
+    platform:'Plataforma', vision:'Visión', enterprise:'Empresas', about:'Acerca de', signIn:'Iniciar sesión', enter:'Entrar a ATLAS',
+    welcome:'Bienvenido a', tagline:'Un universo de posibilidades. Una plataforma conectada.',
+    intro:'ATLAS Enterprise Suite reúne operaciones empresariales, asistencia de inteligencia artificial y conectividad entre dispositivos en un ecosistema diseñado para trabajar de forma integrada.',
+    explore:'Explorar ATLAS', learn:'Conocer la visión',
+    pillars:['Operaciones empresariales','IA y conocimiento','Dispositivos y conectividad'],
+    details:[
+      'Contabilidad, impuestos, nómina, relaciones con clientes y servicios de asesoría.',
+      'ATLAS Assistant y Knowledge Atlas para consultar información y coordinar tareas autorizadas.',
+      'Experiencias conectadas entre iPhone y Windows, sujetas a consentimiento y permisos explícitos.'
+    ],
+    visionTitle:'Una plataforma. Muchas capacidades. Una experiencia coherente.',
+    visionBody:'ATLAS Manager está diseñado para coordinar flujos de trabajo, registrar autorizaciones y conservar evidencia verificable de los resultados.',
+    enterpriseTitle:'Diseñado para evolucionar con confianza.',
+    enterpriseBody:'Las funciones disponibles y las que siguen en desarrollo deben distinguirse claramente. ATLAS 777 REVIEW exige criterios de aceptación, pruebas y verificación de producción antes de declarar una capacidad lista.',
+    status:'Las integraciones descritas son objetivos de producto; su disponibilidad requiere verificación independiente.',
+    footer:'Un ecosistema empresarial conectado.'
+  },
+  en: {
+    platform:'Platform', vision:'Vision', enterprise:'Enterprise', about:'About', signIn:'Sign in', enter:'Enter ATLAS',
+    welcome:'Welcome to', tagline:'A universe of possibilities. One connected platform.',
+    intro:'ATLAS Enterprise Suite brings business operations, AI assistance, and device connectivity into one ecosystem designed to work together.',
+    explore:'Explore ATLAS', learn:'Discover the vision',
+    pillars:['Business operations','AI and knowledge','Devices and connectivity'],
+    details:[
+      'Accounting, tax, payroll, customer relationships, and advisory services.',
+      'ATLAS Assistant and Knowledge Atlas for finding information and coordinating authorized tasks.',
+      'Connected experiences across iPhone and Windows, subject to explicit consent and permissions.'
+    ],
+    visionTitle:'One platform. Many capabilities. One coherent experience.',
+    visionBody:'ATLAS Manager is designed to coordinate workflows, record authorizations, and retain verifiable evidence of outcomes.',
+    enterpriseTitle:'Built to evolve with confidence.',
+    enterpriseBody:'Available features must be distinguished from work still in development. ATLAS 777 REVIEW requires acceptance criteria, testing, and production verification before a capability is declared ready.',
+    status:'The integrations described are product goals; availability requires independent verification.',
+    footer:'A connected enterprise ecosystem.'
+  }
+} as const;
 
 export function PublicHome() {
+  const [locale, setLocale] = useState<Locale>(() => {
+    if (typeof navigator === 'undefined') return 'en';
+    return navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en';
+  });
+  const t = copy[locale];
   return (
-    <main className="public-home">
-      <header className="public-nav" aria-label="ATLAS public navigation">
+    <main className="public-home" lang={locale}>
+      <header className="public-nav">
         <Link className="public-brand" to="/" aria-label="ATLAS Enterprise Suite home">
           <span className="public-brand-mark" aria-hidden="true">A</span>
           <span><strong>ATLAS</strong><small>ENTERPRISE SUITE</small></span>
         </Link>
-
         <nav className="public-nav-links" aria-label="Primary">
-          <a href="#platform">Platform</a>
-          <a href="#vision">Vision</a>
-          <a href="#enterprise">Enterprise</a>
-          <a href="#about">About</a>
+          <a href="#platform">{t.platform}</a><a href="#vision">{t.vision}</a>
+          <a href="#enterprise">{t.enterprise}</a><a href="#about">{t.about}</a>
         </nav>
-
         <div className="public-nav-actions">
-          <Link className="public-link-button" to="/identity">Sign in</Link>
-          <Link className="public-primary-button compact" to="/platform">Enter ATLAS</Link>
+          <label className="public-language-label" htmlFor="public-language">Language</label>
+          <select id="public-language" className="public-language-select" value={locale} onChange={(event) => setLocale(event.target.value as Locale)}>
+            <option value="es">Español</option><option value="en">English</option>
+          </select>
+          <Link className="public-link-button" to="/identity">{t.signIn}</Link>
+          <Link className="public-primary-button compact" to="/platform">{t.enter}</Link>
         </div>
       </header>
-
-      <section className="public-hero" aria-labelledby="atlas-hero-title">
+      <section className="public-hero public-hero-cinematic" aria-labelledby="atlas-hero-title">
+        <div className="public-cosmos" role="img" aria-label={locale === 'es' ? 'Universo ATLAS: planeta conectado y galaxias' : 'ATLAS universe: connected planet and galaxies'}>
+          <div className="public-cosmos-planet" aria-hidden="true"/>
+          <div className="public-cosmos-orbit public-cosmos-orbit-a" aria-hidden="true"/>
+          <div className="public-cosmos-orbit public-cosmos-orbit-b" aria-hidden="true"/>
+        </div>
         <div className="public-hero-copy">
           <p className="public-kicker">ATLAS ENTERPRISE SUITE</p>
-          <h1 id="atlas-hero-title">
-            One intelligent platform.
-            <span> Your world, connected.</span>
-          </h1>
-          <p className="public-hero-lead">
-            ATLAS is being built as a unified operating environment for organizations:
-            connecting people, processes, intelligence and governed digital operations
-            without forcing the public home page to look like an application launcher.
-          </p>
-
+          <h1 id="atlas-hero-title"><span className="public-welcome">{t.welcome}</span><span className="public-atlas-title">ATLAS</span></h1>
+          <p className="public-hero-tagline">{t.tagline}</p>
+          <p className="public-hero-lead">{t.intro}</p>
           <div className="public-hero-actions">
-            <Link className="public-primary-button" to="/platform">Explore the platform</Link>
-            <a className="public-secondary-button" href="#vision">See the vision</a>
-          </div>
-
-          <div className="public-hero-meta" aria-label="ATLAS principles">
-            <span>Unified</span>
-            <span>Governed</span>
-            <span>Adaptive</span>
-            <span>Enterprise-ready</span>
-          </div>
-        </div>
-
-        <div className="public-hero-visual" aria-label="ATLAS connected ecosystem visualization">
-          <div className="public-orbit orbit-one" aria-hidden="true" />
-          <div className="public-orbit orbit-two" aria-hidden="true" />
-          <div className="public-orbit orbit-three" aria-hidden="true" />
-
-          <div className="public-core">
-            <img src="/atlas-avatar-particle.svg" alt="" aria-hidden="true" />
-            <div>
-              <strong>ATLAS</strong>
-              <span>Enterprise Intelligence</span>
-            </div>
-          </div>
-
-          <div className="public-node node-one"><span>AI</span><small>Intelligence</small></div>
-          <div className="public-node node-two"><span>01</span><small>Operations</small></div>
-          <div className="public-node node-three"><span>∞</span><small>Connected</small></div>
-          <div className="public-node node-four"><span>✓</span><small>Governed</small></div>
-
-          <div className="public-visual-caption">
-            <span className="public-live-dot" aria-hidden="true" />
-            <span>One ecosystem. Multiple capabilities. One entry point.</span>
+            <Link className="public-primary-button" to="/platform">{t.explore}</Link>
+            <a className="public-secondary-button" href="#vision">{t.learn}</a>
           </div>
         </div>
       </section>
-
-      <section className="public-intro-strip" id="platform" aria-label="ATLAS platform introduction">
-        <p>BUSINESS</p><span>•</span>
-        <p>INTELLIGENCE</p><span>•</span>
-        <p>FINANCE</p><span>•</span>
-        <p>PEOPLE</p><span>•</span>
-        <p>MOBILITY</p><span>•</span>
-        <p>CONNECTED SYSTEMS</p>
-      </section>
-
-      <section className="public-section" id="vision">
+      <section className="public-section" id="platform">
         <div className="public-section-heading">
-          <p className="public-kicker">THE ATLAS VISION</p>
-          <h2>Start with the mission, not a wall of modules.</h2>
-          <p>
-            The public experience introduces what ATLAS is, how the ecosystem connects and
-            why it exists. Detailed applications remain inside the governed product environment.
-          </p>
+          <p className="public-kicker">ATLAS ENTERPRISE SUITE</p>
+          <h2>{t.visionTitle}</h2><p>{t.visionBody}</p>
         </div>
-
         <div className="public-pillar-grid">
-          {pillars.map(([title, description]) => (
-            <article className="public-pillar-card" key={title}>
-              <span className="public-pillar-index">0{pillars.findIndex(([name]) => name === title) + 1}</span>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
+          {t.pillars.map((name,i) => <article className="public-pillar-card" key={name}>
+            <span className="public-pillar-index">0{i+1}</span><h3>{name}</h3><p>{t.details[i]}</p>
+          </article>)}
         </div>
       </section>
-
       <section className="public-section public-enterprise-section" id="enterprise">
-        <div>
-          <p className="public-kicker">FROM WEBSITE TO OPERATING ENVIRONMENT</p>
-          <h2>A clear front door. A powerful system behind it.</h2>
-        </div>
-        <div className="public-enterprise-copy">
-          <p>
-            Visitors first understand ATLAS as a company and platform. Authenticated users
-            then move into the product shell, where permitted modules, workflows and data
-            become available according to their organization and role.
-          </p>
-          <Link className="public-text-link" to="/platform">Open platform entry →</Link>
-        </div>
+        <div id="vision"><p className="public-kicker">ATLAS 777 REVIEW</p><h2>{t.enterpriseTitle}</h2></div>
+        <div className="public-enterprise-copy"><p>{t.enterpriseBody}</p><p className="public-availability-note">{t.status}</p></div>
       </section>
-
       <footer className="public-footer" id="about">
-        <div className="public-brand footer-brand">
-          <span className="public-brand-mark" aria-hidden="true">A</span>
-          <span><strong>ATLAS</strong><small>ENTERPRISE SUITE</small></span>
-        </div>
-        <p>Built as a unified enterprise ecosystem.</p>
-        <div>
-          <Link to="/identity">Sign in</Link>
-          <Link to="/platform">Platform</Link>
-        </div>
+        <div className="public-brand footer-brand"><span className="public-brand-mark" aria-hidden="true">A</span><span><strong>ATLAS</strong><small>ENTERPRISE SUITE</small></span></div>
+        <p>{t.footer}</p><div><Link to="/identity">{t.signIn}</Link><Link to="/platform">{t.platform}</Link></div>
       </footer>
     </main>
   );
