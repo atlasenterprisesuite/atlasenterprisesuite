@@ -71,6 +71,10 @@ jobs:
           echo "**Not a release gate. Required npm audit and verify:all must pass independently.**" >> "$GITHUB_STEP_SUMMARY"
       - name: Install exact lockfile
         run: npm ci
+      - name: Prepare Python/media verification dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Design and evidence checks
         run: |
           npm run verify:design
