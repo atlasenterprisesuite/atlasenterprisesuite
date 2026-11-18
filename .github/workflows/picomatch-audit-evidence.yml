@@ -1,0 +1,64 @@
+name: ATLAS P0 Picomatch Audit Evidence (non-release)
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/picomatch-audit-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  locked-dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Record exact source and audit policy
+        shell: bash
+        run: |
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Scope: full locked dependency tree (including dev/build tooling)." >> "$GITHUB_STEP_SUMMARY"
+          echo "This evidence workflow does not waive npm audit or grant release readiness." >> "$GITHUB_STEP_SUMMARY"
+      - name: Install lockfile without updating dependency versions
+        run: npm ci
+      - name: Record dependency chain and full npm audit
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          npm ls picomatch fdir tinyglobby vite vitest --all > dependency-tree.txt 2>&1
+          echo "$?" > dependency-tree-exit.txt
+          npm audit --json > npm-audit.json 2> npm-audit-stderr.txt
+          audit_exit=$?
+          printf '%s\n' "$audit_exit" > audit-exit.txt
+          node -e "const fs=require('fs');try{const a=JSON.parse(fs.readFileSync('npm-audit.json','utf8'));const c=a.metadata?.vulnerabilities||{};console.log('Locked audit counts: '+JSON.stringify(c))}catch(e){console.error('Unparseable npm audit JSON');process.exitCode=1}"
+          echo "npm audit exit: $audit_exit"
+          exit "$audit_exit"
+      - name: Upload exact-SHA diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picomatch-audit-${{ github.sha }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            dependency-tree.txt
+            dependency-tree-exit.txt
+            npm-audit.json
+            npm-audit-stderr.txt
+            audit-exit.txt
+      - name: Preserve P0 release blockade
+        if: always()
+        shell: bash
+        run: |
+          echo "Required release checks still include npm audit --audit-level=high and npm run verify:all." >> "$GITHUB_STEP_SUMMARY"
+          echo "Red audit means P0 FAIL-CLOSED. This job must not be treated as deployment approval." >> "$GITHUB_STEP_SUMMARY"
