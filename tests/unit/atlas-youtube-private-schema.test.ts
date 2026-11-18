@@ -21,6 +21,9 @@ describe('ATLAS YouTube private schema P0 static preflight', () => {
   it('requires channel-bound composite references and channel-scoped idempotency', () => {
     expect((sql.match(/foreign key \(org_id, channel_id, /g) || []).length).toBe(4);
     expect(sql).toContain('unique (org_id, channel_id, publication_key)');
+    expect(sql).toContain('unique (org_id, channel_id, social_post_id)');
+    expect(sql).toContain('foreign key (org_id, social_post_id)');
+    expect(sql).toContain('references public.atlas_social_scheduled_posts (org_id, id)');
     expect(sql).toContain("check (status <> 'published' or provider_video_id is not null)");
     expect(sql).toContain('check (attempts >= 0)');
   });
