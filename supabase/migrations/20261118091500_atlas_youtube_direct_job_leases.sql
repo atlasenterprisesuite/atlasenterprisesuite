@@ -28,10 +28,13 @@ begin
   select j.*
     into v_job
   from public.atlas_youtube_publication_jobs j
-  join public.atlas_youtube_connections c
+  join public.atlas_integration_connections c
     on c.id = j.connection_id
    and c.org_id = j.org_id
-   and c.channel_id = j.channel_id
+  join public.atlas_integration_credentials cred
+    on cred.id = c.credential_ref
+   and cred.org_id = c.org_id
+   and cred.provider = c.provider
   join public.atlas_youtube_drafts d
     on d.id = j.draft_id
    and d.org_id = j.org_id
@@ -44,9 +47,14 @@ begin
     and j.status = 'queued'
     and j.scheduled_for <= now()
     and j.attempts < j.max_attempts
-    and c.status = 'connected'
-    and c.consent_expires_at > now() + make_interval(secs => p_lease_seconds)
+    and c.provider = 'google'
+    and c.state = 'connected'
+    and c.authorized = true
+    and c.provider_verified = true
+    and c.provider_account_id = j.channel_id
+    and c.credential_ref is not null
     and 'https://www.googleapis.com/auth/youtube.upload' = any(c.granted_scopes)
+    and (cred.expires_at is null or cred.expires_at > now() + make_interval(secs => p_lease_seconds))
     and d.media_status = 'ready'
     and s.platform = 'youtube'
     and s.status in ('scheduled', 'ready')
