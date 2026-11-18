@@ -1,0 +1,72 @@
+name: ATLAS Gravity Runner 777 (Read-only P0)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/atlas-gravity-runner-777.yml'
+      - 'scripts/gravity-runner-777.mjs'
+      - 'tests/executor/gravity-runner-777.test.mjs'
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+  checks: read
+concurrency:
+  group: atlas-gravity-runner-777-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  negative-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source for isolated negative tests
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Execute negative evidence tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          git rev-parse HEAD > evidence/test-source-sha.txt
+          node --test tests/executor/gravity-runner-777.test.mjs | tee evidence/gravity-tests.tap
+      - name: Publish native test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-gravity-tests-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 7
+  inspect:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: negative-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect effective required checks with exact SHA (fail closed)
+        run: node scripts/gravity-runner-777.mjs
+      - name: Publish inspectable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-gravity-p0-ledger
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 7
