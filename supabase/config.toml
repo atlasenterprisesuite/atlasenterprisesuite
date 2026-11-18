@@ -16,6 +16,10 @@ verify_jwt = false
 [functions.atlas-local-control]
 verify_jwt = false
 
+# The function checks bearer token with Supabase Auth and tenant membership on every request.
+[functions.atlas-remote-assist]
+verify_jwt = false
+
 [functions.atlas-infra-status]
 verify_jwt = true
 

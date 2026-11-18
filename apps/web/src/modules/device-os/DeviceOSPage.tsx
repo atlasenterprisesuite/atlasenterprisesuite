@@ -28,6 +28,8 @@ export function DeviceOSPage() {
         </p>
       </header>
 
+      <p><a href="#remote-assist-title">Open Remote Assist screen sharing pilot</a></p>
+
       <div className="notice strong">
         Production truth: this module exposes the ATLAS software control plane. Hardware radios,
         sensors, secure elements and vehicle interfaces are never reported as connected unless a
