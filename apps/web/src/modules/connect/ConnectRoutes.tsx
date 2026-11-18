@@ -4,6 +4,7 @@ import { AtlasChatPage } from './AtlasChatPage';
 import { AtlasMailProvisioningPage } from './AtlasMailProvisioningPage';
 import { AtlasMvnoControlPage } from './AtlasMvnoControlPage';
 import { AtlasTelephonyPage } from './AtlasTelephonyPage';
+import { AtlasWireless6GResearchPage } from './AtlasWireless6GResearchPage';
 import { AtlasWirelessCommissioningPage } from './AtlasWirelessCommissioningPage';
 import { AtlasWirelessNetworkPage } from './AtlasWirelessNetworkPage';
 import { AtlasWirelessPage } from './AtlasWirelessPage';
@@ -19,6 +20,7 @@ export function ConnectRoutes() {
       <Route path="/connect/mail" element={<AtlasMailProvisioningPage />} />
       <Route path="/connect/calling" element={<AtlasTelephonyPage />} />
       <Route path="/connect/wireless" element={<AtlasWirelessPage />} />
+      <Route path="/connect/wireless/6g-research" element={<AtlasWireless6GResearchPage />} />
       <Route path="/connect/wireless/network" element={<AtlasWirelessNetworkPage />} />
       <Route path="/connect/wireless/commissioning" element={<AtlasWirelessCommissioningPage />} />
       <Route path="/connect/wireless/mvno" element={<AtlasMvnoControlPage />} />
