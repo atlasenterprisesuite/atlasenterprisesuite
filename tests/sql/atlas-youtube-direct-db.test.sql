@@ -410,6 +410,34 @@ begin
   set lease_expires_at = now() - interval '1 second'
   where id = claimed.id;
 
+  begin
+    perform public.atlas_youtube_confirm_published(
+      '11111111-1111-4111-8111-111111111111',
+      'UC_ATLAS_CHANNEL_123',
+      claimed.id,
+      'worker-expire',
+      'video-stale',
+      '16161616-1616-4161-8161-161616161616'
+    );
+    raise exception 'P0 expired worker was permitted to confirm publication';
+  exception
+    when sqlstate '42501' then null;
+  end;
+
+  begin
+    perform public.atlas_youtube_requeue_after_confirmed_absence(
+      '11111111-1111-4111-8111-111111111111',
+      'UC_ATLAS_CHANNEL_123',
+      claimed.id,
+      'worker-expire',
+      true,
+      '17171717-1717-4171-8171-171717171717'
+    );
+    raise exception 'P0 expired worker was permitted to requeue';
+  exception
+    when sqlstate '42501' then null;
+  end;
+
   quarantined := public.atlas_youtube_quarantine_expired_leases();
   if quarantined <> 1 then
     raise exception 'P0 expected exactly one expired lease quarantine, got %', quarantined;
