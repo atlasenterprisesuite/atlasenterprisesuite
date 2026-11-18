@@ -329,5 +329,7 @@ export async function handleAtlasYouTubeDirect(
 }
 
 if (typeof Deno !== 'undefined') {
+  if (typeof Deno !== 'undefined') {
   Deno.serve((req) => handleAtlasYouTubeDirect(req));
+}
 }
