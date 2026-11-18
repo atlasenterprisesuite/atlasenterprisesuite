@@ -124,18 +124,36 @@ jobs:
       - name: Require clean high-severity npm audit
         run: npm audit --audit-level=high
 
-      - name: Install native verification dependencies
+      - name: Verify complete repository against candidate
+        id: verify_without_native_install
+        continue-on-error: true
+        run: npm run verify:all
+
+      - name: Install missing native verification dependencies
+        if: ${{ steps.verify_without_native_install.outcome != 'success' }}
+        shell: bash
         run: |
           set -euo pipefail
+          missing=()
+          command -v ffmpeg >/dev/null 2>&1 || missing+=(ffmpeg)
+          command -v espeak >/dev/null 2>&1 || missing+=(espeak)
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf || missing+=(fonts-dejavu-core)
+
+          if [ "${#missing[@]}" -eq 0 ]; then
+            echo "Native verification dependencies are already available."
+            exit 0
+          fi
+
           for source in /etc/apt/sources.list.d/*; do
             if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
               sudo mv "$source" "$source.disabled"
             fi
           done
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+          timeout 120s sudo apt-get update
+          timeout 120s sudo apt-get install -y "${missing[@]}"
 
-      - name: Verify complete repository against candidate
+      - name: Re-run complete repository verification after native install
+        if: ${{ steps.verify_without_native_install.outcome != 'success' }}
         run: npm run verify:all
 
       - name: Apply verified vendor package to branch
