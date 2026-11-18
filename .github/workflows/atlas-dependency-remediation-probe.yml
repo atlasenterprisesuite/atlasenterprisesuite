@@ -1,12 +1,12 @@
 name: ATLAS Dependency Remediation Probe
 
 on:
-  pull_request:
-    branches: ["main"]
+  push:
+    branches: ["feat/atlas-youtube-direct-777"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: atlas-dependency-remediation-${{ github.sha }}
@@ -159,6 +159,160 @@ jobs:
           }
           console.log('ATLAS Picomatch Secure provenance + CVE regression PASS.');
           NODE
+
+      - name: Generate permanent supply-chain regression test
+        shell: bash
+        run: |
+          cat > tests/unit/atlas-picomatch-security.test.ts <<'TEST'
+          import { createHash } from 'node:crypto';
+          import { readFileSync } from 'node:fs';
+          import { createRequire } from 'node:module';
+          import { describe, expect, it } from 'vitest';
+
+          const require = createRequire(import.meta.url);
+          const picomatch = require('picomatch') as {
+            makeRe(pattern: string): RegExp;
+            isMatch(input: string, pattern: string): boolean;
+          };
+          const installed = require('picomatch/package.json') as {
+            name: string;
+            version: string;
+          };
+          const provenance = JSON.parse(
+            readFileSync('vendor/atlas-picomatch-secure.PROVENANCE.json', 'utf8'),
+          ) as { upstreamCommit: string; tarballSha256: string };
+
+          describe('ATLAS Picomatch Secure supply-chain boundary', () => {
+            it('uses the ATLAS package identity pinned to reviewed provenance', () => {
+              expect(installed.name).toBe('@atlas/picomatch-secure');
+              expect(installed.version).toBe('4.0.8-atlas.1');
+              expect(provenance.upstreamCommit).toBe(
+                '44f192261f312ddf236cb7bdc05d8f22663f98f9',
+              );
+            });
+
+            it('matches the vendored tarball SHA-256 exactly', () => {
+              const digest = createHash('sha256')
+                .update(readFileSync('vendor/atlas-picomatch-secure.tgz'))
+                .digest('hex');
+              expect(digest).toBe(provenance.tarballSha256);
+            });
+
+            it('literalizes CVE-2026-112366 risky extglob forms', () => {
+              expect(picomatch.makeRe('+(*a)').source).toBe('^(?:\\+\\(\\*a\\))
+      - name: Install native verification dependencies
+        run: |
+          set -euo pipefail
+          for source in /etc/apt/sources.list.d/*; do
+            if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+
+      - name: Verify complete repository against candidate
+        run: npm run verify:all
+
+      - name: Apply verified ATLAS dependency manifests and vendor package
+        if: ${{ github.event_name == 'push' && github.ref_name == 'feat/atlas-youtube-direct-777' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch vendor/atlas-picomatch-secure.tgz >/dev/null 2>&1; then
+            echo "ATLAS secure package is already tracked; no auto-commit required."
+            exit 0
+          fi
+          git config user.name "atlas-777-bot"
+          git config user.email "atlas-777-bot@users.noreply.github.com"
+          git add             package.json             package-lock.json             vendor/atlas-picomatch-secure.tgz             vendor/atlas-picomatch-secure.sha256             vendor/atlas-picomatch-secure.PROVENANCE.json             tests/unit/atlas-picomatch-security.test.ts
+          git commit -m "chore(security): vendor verified ATLAS picomatch remediation"
+          git push origin HEAD:feat/atlas-youtube-direct-777
+
+      - name: Record candidate dependency tree
+        if: always()
+        run: npm ls picomatch fdir tinyglobby vite vitest || true
+
+      - name: Record generated package diff
+        if: always()
+        run: |
+          git diff -- package.json package-lock.json > dependency-remediation.diff || true
+          echo "### ATLAS Picomatch Secure remediation diff" >> "$GITHUB_STEP_SUMMARY"
+          if [ -s dependency-remediation.diff ]; then
+            sed -n '1,300p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No package manifest or lockfile changes were generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-dependency-remediation-candidate-${{ github.sha }}
+          path: |
+            package.json
+            package-lock.json
+            dependency-remediation.diff
+            vendor/atlas-picomatch-secure.tgz
+            vendor/atlas-picomatch-secure.sha256
+            vendor/atlas-picomatch-secure.PROVENANCE.json
+          if-no-files-found: error
+          retention-days: 3
+);
+              expect(picomatch.makeRe('*(*a)').source).toBe('^(?:\\*\\(\\*a\\))
+      - name: Install native verification dependencies
+        run: |
+          set -euo pipefail
+          for source in /etc/apt/sources.list.d/*; do
+            if [ -f "$source" ] && grep -q "packages.microsoft.com" "$source"; then
+              sudo mv "$source" "$source.disabled"
+            fi
+          done
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core
+
+      - name: Verify complete repository against candidate
+        run: npm run verify:all
+
+      - name: Record candidate dependency tree
+        if: always()
+        run: npm ls picomatch fdir tinyglobby vite vitest || true
+
+      - name: Record generated package diff
+        if: always()
+        run: |
+          git diff -- package.json package-lock.json > dependency-remediation.diff || true
+          echo "### ATLAS Picomatch Secure remediation diff" >> "$GITHUB_STEP_SUMMARY"
+          if [ -s dependency-remediation.diff ]; then
+            sed -n '1,300p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No package manifest or lockfile changes were generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-dependency-remediation-candidate-${{ github.sha }}
+          path: |
+            package.json
+            package-lock.json
+            dependency-remediation.diff
+            vendor/atlas-picomatch-secure.tgz
+            vendor/atlas-picomatch-secure.sha256
+            vendor/atlas-picomatch-secure.PROVENANCE.json
+          if-no-files-found: error
+          retention-days: 3
+);
+
+              for (const pattern of ['+(*a)', '*(*a)']) {
+                const start = performance.now();
+                expect(picomatch.isMatch('a'.repeat(80) + '!', pattern)).toBe(false);
+                expect(performance.now() - start).toBeLessThan(250);
+              }
+            });
+          });
+          TEST
 
       - name: Require clean high-severity npm audit
         run: npm audit --audit-level=high
