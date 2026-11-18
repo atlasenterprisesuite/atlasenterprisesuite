@@ -11,6 +11,31 @@ create unique index if not exists atlas_integration_connections_org_id_unique
 create unique index if not exists atlas_social_scheduled_posts_org_id_unique
   on public.atlas_social_scheduled_posts(org_id, id);
 
+
+alter table public.atlas_oauth_states
+  add column if not exists flow_context jsonb not null default '{}'::jsonb,
+  add column if not exists pkce_ciphertext text,
+  add column if not exists pkce_iv text,
+  add column if not exists pkce_key_version text;
+
+do $
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'atlas_oauth_states_pkce_bundle_check'
+      and conrelid = 'public.atlas_oauth_states'::regclass
+  ) then
+    alter table public.atlas_oauth_states
+      add constraint atlas_oauth_states_pkce_bundle_check check (
+        (pkce_ciphertext is null and pkce_iv is null and pkce_key_version is null)
+        or
+        (pkce_ciphertext is not null and pkce_iv is not null and pkce_key_version is not null)
+      );
+  end if;
+end
+$;
+
 create table if not exists public.atlas_youtube_drafts (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null,
