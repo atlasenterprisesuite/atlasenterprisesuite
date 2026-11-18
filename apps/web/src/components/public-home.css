@@ -391,3 +391,26 @@
   .public-primary-button,
   .public-secondary-button { transition: none; }
 }
+
+
+/* Public cinematic entry: premium space composition with accessible live typography. */
+.public-language-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.public-language-select { background:#0a1930; border:1px solid rgba(126,191,255,.35); border-radius:9px; color:#eef8ff; padding:10px; min-height:42px; font:inherit; }
+.public-hero.public-hero-cinematic { position:relative; display:flex; justify-content:center; align-items:flex-end; text-align:center; min-height:740px; max-width:none; width:100%; padding:100px max(24px,calc((100vw - 1280px)/2)) 85px; isolation:isolate; }
+.public-cosmos { position:absolute; inset:0; z-index:-2; overflow:hidden; background: radial-gradient(ellipse at 50% 44%,#155aa0 0%,#0b2e63 19%,#071631 46%,#030914 82%); }
+.public-cosmos::before { content:""; position:absolute; inset:0; opacity:.75; background-image:radial-gradient(1px 1px at 13% 18%,white 99%,transparent),radial-gradient(2px 2px at 82% 24%,#bdefff 99%,transparent),radial-gradient(1px 1px at 41% 9%,#fff 99%,transparent),radial-gradient(2px 2px at 64% 75%,#91d9ff 99%,transparent),radial-gradient(1px 1px at 94% 62%,white 99%,transparent); background-size:137px 149px,239px 211px,173px 193px,311px 277px,197px 241px; }
+.public-cosmos::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(3,9,20,.02) 0%,rgba(3,9,20,.18) 36%,rgba(3,9,20,.72) 72%,#050914 100%); }
+.public-cosmos-planet { position:absolute; width:min(68vw,650px); aspect-ratio:1; top:-26%; left:50%; transform:translateX(-50%); border-radius:50%; background:radial-gradient(circle at 32% 26%,rgba(164,224,255,.95),transparent 13%),radial-gradient(circle at 38% 38%,#2a84c0 0%,#104477 27%,#082648 54%,#020b1b 73%); border:2px solid rgba(112,206,255,.65); box-shadow:0 0 70px 18px rgba(32,151,255,.35),inset -80px -55px 95px rgba(0,0,0,.85),inset 15px 10px 35px rgba(125,215,255,.32); }
+.public-cosmos-orbit { position:absolute; width:min(92vw,950px); height:300px; left:50%; top:6%; border:1px solid rgba(114,205,255,.36); border-radius:50%; transform:translateX(-50%) rotate(-15deg); box-shadow:0 0 18px rgba(36,147,255,.15); }
+.public-cosmos-orbit-b { transform:translateX(-50%) rotate(24deg); border-color:rgba(217,182,110,.45); }
+.public-hero-cinematic .public-hero-copy { position:relative; z-index:2; width:100%; max-width:900px; margin:auto auto 0; }
+.public-hero-cinematic .public-hero-copy h1 { max-width:none; font-size:clamp(4.4rem,11vw,9.2rem); letter-spacing:.12em; line-height:.95; text-shadow:0 0 36px rgba(69,164,255,.65); }
+.public-hero-cinematic .public-hero-copy h1 span { display:block; margin:0; }
+.public-hero-cinematic .public-hero-copy h1 .public-welcome { font-size:clamp(1.3rem,2.6vw,2.1rem); font-weight:400; letter-spacing:.25em; color:#f1f6ff; margin-bottom:18px; }
+.public-hero-cinematic .public-hero-copy h1 .public-atlas-title { background:linear-gradient(95deg,#bce9ff,#fff 50%,#d8b66e); background-clip:text; -webkit-background-clip:text; color:transparent; }
+.public-hero-tagline { font-size:clamp(1.15rem,2vw,1.5rem); color:#e4f3ff; margin:25px 0 0; }
+.public-hero-cinematic .public-hero-lead { margin:18px auto 0; max-width:750px; color:#b6c8df; }
+.public-hero-cinematic .public-hero-actions { justify-content:center; }
+.public-availability-note { font-size:.88rem!important; color:#a5b6cc; border-left:2px solid #d6b36a; padding-left:14px; }
+@media(max-width:980px) { .public-nav-actions { gap:5px; } .public-language-select { max-width:100px; } }
+@media(max-width:640px) { .public-hero.public-hero-cinematic { min-height:680px; padding:80px 20px 60px; } .public-cosmos-planet { width:110vw; top:-9%; } .public-cosmos-orbit { width:140vw; top:10%; } .public-hero-cinematic .public-hero-copy h1 { font-size:clamp(3.3rem,15vw,5rem); letter-spacing:.06em; } .public-hero-cinematic .public-hero-copy h1 .public-welcome { font-size:1.1rem; } .public-nav-actions .public-primary-button { display:none; } }
