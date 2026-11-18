@@ -102,6 +102,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      # Run the YouTube-specific security tests independently so that a
+      # dependency-audit failure cannot hide regression evidence. This is
+      # diagnostic only; the mandatory verify:all gate still fails closed.
+      - name: Verify YouTube Direct P0 publication guard
+        run: npx --no-install vitest run tests/unit/atlas-youtube-publication-guard.test.ts
+
       - name: Verify complete repository
         run: npm run verify:all
 
