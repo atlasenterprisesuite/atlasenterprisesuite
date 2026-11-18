@@ -33,3 +33,11 @@ console.log(evaluateReadiness({}));
 5. Maintain Issue #503 as separate P0 blocker for all commercial network activations.
 
 No claim of a 6G carrier, commercial availability, 6G mobile device capability, or measured 6G performance is made.
+
+## Read-only web route (proposed, not deployed)
+
+- The existing authenticated ATLAS Connect router includes `/connect/wireless/6g-research`.
+- The page renders synthetic model outputs locally; no provider API, storage, RF control, eSIM provisioning, or commercial mutation path is invoked.
+- `tests/unit/atlas-wireless-6g-ui.test.tsx` checks rendering, invalid inputs, reset, and explicit activation blockade.
+- This PR does not expose an evidence-upload system, measure a 6G radio, or assert that production is deployed.
+- A successful PR CI run, accessibility verification, integration/E2E, code review, and exact-SHA proof are outstanding acceptance gates.
