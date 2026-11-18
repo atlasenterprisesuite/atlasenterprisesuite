@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>ATLAS Reel Evidence Lab 777 — Local</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#eaf5ff;background:#060d1b;--line:#274462;--blue:#60b6ff;--gold:#e8c178;--muted:#aec2d6;--panel:#0d1b30}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% -5%,#16375a 0,transparent 35%),#060d1b;min-height:100vh}
+a{color:#8fd0ff}button,input,textarea,select{font:inherit}button{cursor:pointer;border:1px solid #416489;border-radius:12px;background:#12304c;color:#f1f7ff;padding:11px 15px;font-weight:650}button:hover{background:#1b4367}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}.primary{background:linear-gradient(105deg,#1b78c3,#07508e);border-color:#4fa3e7}.danger{border-color:#aa676c;background:#39232e}.small{padding:7px 10px;font-size:.86rem}
+label{display:grid;gap:7px;font-size:.88rem;color:#c8d9e9;font-weight:600}input,textarea,select{width:100%;border:1px solid #36516e;background:#091526;color:#eaf5ff;border-radius:10px;padding:12px;min-width:0}textarea{resize:vertical;line-height:1.5}input::placeholder,textarea::placeholder{color:#8097ae}
+header{border-bottom:1px solid #24445f;background:#081727e8;position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+.header{max-width:1260px;margin:auto;padding:13px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:13px}.emblem{border:1px solid #508eca;border-radius:14px;background:linear-gradient(135deg,#143860,#0c122b);width:48px;height:48px;display:grid;place-items:center;color:#e6c781;font-weight:900;letter-spacing:-.07em}
+.brand strong{display:block;font-size:1.05rem;letter-spacing:.04em}.brand small{display:block;color:#92bcd9}.mode{color:#a4d9bf;background:#113329;padding:8px 11px;border-radius:30px;font-size:.8rem;border:1px solid #3c7868}
+main{max-width:1260px;margin:auto;padding:26px 22px 60px}.hero{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:20px;margin-bottom:22px}
+.eyebrow{font-size:.79rem;letter-spacing:.18em;font-weight:750;text-transform:uppercase;color:var(--gold);margin:0 0 9px}h1{font-size:clamp(1.75rem,4.2vw,3.2rem);line-height:1.08;letter-spacing:-.04em;margin:0 0 10px}h2{font-size:1.2rem;margin:0 0 14px}h3{margin:0 0 9px;font-size:1rem}.sub{color:#b8cee2;max-width:780px;line-height:1.55;margin:0}
+.grid{display:grid;grid-template-columns:minmax(0,1.22fr) minmax(310px,.78fr);gap:18px;align-items:start}.stack{display:grid;gap:18px}.panel{border:1px solid var(--line);background:linear-gradient(135deg,#10243b,#0a172a);padding:21px;border-radius:20px;box-shadow:0 12px 32px #02091144;min-width:0}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.tag{font-size:.73rem;border:1px solid #406687;background:#112d47;border-radius:15px;color:#c3d7e8;padding:5px 8px}.fields{display:grid;gap:12px}.row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.hint{color:#9fb6ca;font-size:.83rem;line-height:1.5}.status{padding:11px 13px;background:#102c43;border:1px solid #3a6682;border-radius:11px;color:#d6eefe;line-height:1.45;margin:12px 0 0}
+.status.warn{background:#38281c;border-color:#98734c;color:#ffe2b8}.status.error{background:#3b1f28;border-color:#ae596b;color:#ffdbe3}
+.video-wrap{border:1px dashed #46617d;background:#030812;min-height:215px;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin:14px 0}
+video,audio{max-width:100%;width:100%}video{max-height:440px;object-fit:contain}.empty{color:#8fa9c3;text-align:center;padding:25px;line-height:1.55}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}.stat{border:1px solid #2c4d6b;border-radius:11px;padding:12px;background:#0a192b;min-width:0}.stat strong{display:block;font-size:1rem;color:#edf6ff;overflow-wrap:anywhere}.stat span{font-size:.73rem;color:#a1bad0}
+#meter{display:block;width:100%;height:48px;background:#07111c;border:1px solid #2e4e6b;border-radius:8px;margin-top:12px}
+.meta{overflow-wrap:anywhere;font-size:.82rem;color:#b1cadf}.frames{display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:9px;margin-top:12px}.frame{border:1px solid #30506e;border-radius:10px;background:#071421;overflow:hidden}.frame img{width:100%;aspect-ratio:16/10;object-fit:contain;background:#000}.frame div{display:flex;justify-content:space-between;align-items:center;padding:6px;font-size:.75rem}
+.note{padding:12px;border:1px solid #325270;border-radius:11px;background:#081b30;margin-top:9px;line-height:1.45}.note p{margin:5px 0;overflow-wrap:anywhere}.note small{color:#9bb7cd}.note .row{justify-content:space-between;align-items:center}.capsule{font-size:.72rem;color:#d7e9fc;border:1px solid #3d668b;border-radius:16px;padding:4px 7px}.capsule.unverified{color:#ffc985;border-color:#a57a41}.capsule.supported{color:#a5ecc1;border-color:#3e8263}.capsule.contradicted{color:#ffafba;border-color:#9e4a59}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.pill{border:1px solid #355d7e;color:#a4dbff;border-radius:18px;padding:5px 8px;font-size:.82rem}.guide{border-left:3px solid var(--gold);padding:10px 12px;background:#29241d;color:#f3dfb9;border-radius:0 10px 10px 0;font-size:.85rem;line-height:1.5}
+footer{max-width:1260px;margin:auto;padding:0 22px 30px;color:#87a4bf;font-size:.79rem;line-height:1.5}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.panel{padding:17px}.header{padding:12px 15px}main{padding:22px 14px 36px}.mode{font-size:.72rem}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+@media print{header,.action-bar,.danger,button,#meter{display:none!important}body{background:#fff;color:#111}.panel{box-shadow:none;background:#fff;color:#111}.hint,.sub,.meta{color:#333}}
+</style>
+</head>
+<body>
+<header><div class="header"><div class="brand"><div class="emblem" aria-hidden="true">A<span style="color:#64baff">7</span></div><div><strong>ATLAS REEL EVIDENCE LAB</strong><small>777 REVIEW · Evidence-first media analysis</small></div></div><span class="mode">LOCAL · SIN SERVIDORES</span></div></header>
+<main>
+  <div class="hero"><div><p class="eyebrow">ATLAS Studio / Content Intelligence</p><h1>Analiza el contenido.<br><span style="color:#8dcfff">No inventes la evidencia.</span></h1><p class="sub">Revisa videos, sonidos, fotogramas, texto y afirmaciones con una cadena de evidencias local. Sin TinyFish, registro, créditos, claves API ni envío de archivos.</p></div><div class="row action-bar"><button class="primary" id="exportJson">Exportar caso JSON</button><button id="exportMd">Informe Markdown</button><button class="danger" id="clearAll">Eliminar sesión</button></div></div>
+  <div class="grid">
+    <div class="stack">
+      <section class="panel" aria-labelledby="sourceTitle">
+        <div class="panel-head"><h2 id="sourceTitle">01 · Fuente original</h2><span class="tag">Cadena de procedencia</span></div>
+        <div class="fields">
+          <label>Enlace del Reel o video (referencia, no extracción automática)<input id="sourceUrl" type="url" inputmode="url" placeholder="https://www.instagram.com/reel/..." autocomplete="off"></label>
+          <div class="row"><button id="registerUrl">Registrar enlace</button><a id="openOriginal" target="_blank" rel="noopener noreferrer" hidden>Ver original</a></div>
+          <label>Archivo de video o audio autorizado<input id="mediaFile" type="file" accept="video/*,audio/*,.mp4,.mov,.webm,.m4v,.mp3,.m4a,.wav,.aac"></label>
+        </div>
+        <div id="sourceStatus" class="status" role="status">Introduce un enlace para registrar su procedencia o selecciona un archivo para analizarlo aquí.</div>
+        <div class="video-wrap"><div id="emptyPlayer" class="empty">El contenido no se ha cargado.<br>Un enlace por sí solo no permite afirmar que vimos o escuchamos el Reel.</div><video id="video" controls playsinline preload="metadata" hidden></video><audio id="audio" controls preload="metadata" hidden></audio></div>
+        <div class="row"><button id="capture" disabled>Capturar fotograma actual</button><button id="enableMeter" disabled>Analizar energía al reproducir</button></div>
+        <canvas id="meter" width="700" height="80" aria-label="Medidor de energía del audio durante la reproducción"></canvas>
+        <div class="stats"><div class="stat"><strong id="duration">—</strong><span>Duración</span></div><div class="stat"><strong id="dimensions">—</strong><span>Resolución</span></div><div class="stat"><strong id="fileSize">—</strong><span>Archivo local</span></div></div>
+        <p class="meta" id="integrity">SHA-256: pendiente de archivo local.</p>
+      </section>
+      <section class="panel" aria-labelledby="frameTitle">
+        <div class="panel-head"><h2 id="frameTitle">02 · Fotogramas de evidencia</h2><span class="tag" id="frameCount">0 capturas</span></div>
+        <p class="hint">Reproduce el video y pulsa «Capturar fotograma actual». Cada imagen conserva su marca temporal; no se transcribe ni interpreta automáticamente.</p>
+        <div id="frames" class="frames"></div>
+      </section>
+      <section class="panel" aria-labelledby="wordsTitle">
+        <h2 id="wordsTitle">03 · Texto, audio y contexto</h2>
+        <div class="fields">
+          <label>Descripción original (pegada o transcrita por ti)<textarea id="caption" rows="3" placeholder="Descripción completa, hashtags, menciones, comentarios con fuente..."></textarea></label>
+          <label>Transcripción (manual, subtítulos o resultado de un modelo local propio)<textarea id="transcript" rows="6" placeholder="[00:00] Voz: ...&#10;[00:08] Voz: ..."></textarea></label>
+          <label>Observaciones sobre sonido, música, tono o intención<textarea id="soundNotes" rows="3" placeholder="Qué se escucha, cambios rítmicos, pausas, ruidos. Distingue observación e interpretación."></textarea></label>
+          <div class="row"><button id="extractTokens">Extraer hashtags, menciones y URLs</button></div>
+          <div id="tokens" class="pills" aria-live="polite"></div>
+        </div>
+        <p class="guide">Importante: la transcripción automática, OCR y verificación factual con fuentes externas no están activados. No se atribuirá ninguna palabra, persona ni afirmación que no tenga evidencia real.</p>
+      </section>
+    </div>
+    <div class="stack">
+      <section class="panel" aria-labelledby="claimsTitle">
+        <h2 id="claimsTitle">04 · Evidencias y afirmaciones</h2><p class="hint">Separa lo dicho de lo comprobado. Un estado «Respaldado» indica tu evaluación, no una verificación independiente.</p>
+        <div class="fields">
+          <label>Afirmación o detalle<input id="claimText" placeholder="Afirmación específica observada..."></label>
+          <label>Procedencia<select id="claimOrigin"><option value="transcripcion">Transcripción aportada</option><option value="descripcion">Descripción aportada</option><option value="fotograma">Fotograma visto</option><option value="audio">Audio reproducido</option><option value="referencia">Solo enlace / referencia</option></select></label>
+          <label>Evaluación<select id="claimStatus"><option value="unverified">No verificado</option><option value="supported">Respaldado por evidencia aportada</option><option value="contradicted">Contradicho por evidencia aportada</option></select></label>
+          <label>Detalle / fuente / enlace de contraste<textarea id="claimEvidence" rows="2" placeholder="Describe exactamente qué prueba lo respalda o qué queda pendiente."></textarea></label>
+          <button id="addClaim" class="primary">Agregar al registro</button>
+        </div>
+        <div id="claims" aria-live="polite"></div>
+      </section>
+      <section class="panel" aria-labelledby="notesTitle">
+        <h2 id="notesTitle">05 · Notas por segundo</h2>
+        <label>Observación en el instante actual<textarea id="momentText" rows="2" placeholder="Qué ocurre en este segundo del video..."></textarea></label>
+        <div class="row" style="margin-top:10px"><button id="addMoment">Guardar observación temporal</button></div>
+        <div id="moments" aria-live="polite"></div>
+      </section>
+      <section class="panel" aria-labelledby="resultTitle">
+        <h2 id="resultTitle">06 · Dictamen 777</h2>
+        <p class="hint">Genera un informe trazable con origen, hechos examinados, límites, marcas de tiempo y huella digital disponible.</p>
+        <div class="stats"><div class="stat"><strong id="claimTotal">0</strong><span>Afirmaciones registradas</span></div><div class="stat"><strong id="unverifiedTotal">0</strong><span>Sin verificar</span></div><div class="stat"><strong id="momentTotal">0</strong><span>Notas temporales</span></div></div>
+        <div id="verdict" class="status warn" role="status">P0 · NO VERIFICADO — aún no hay evidencia evaluada.</div>
+        <div class="row" style="margin-top:15px"><button id="copyReport" class="primary">Copiar informe</button><button id="printReport">Imprimir</button><button id="importButton">Importar JSON</button><input id="importJson" type="file" accept=".json,application/json" hidden></div>
+      </section>
+      <section class="panel" aria-labelledby="privacyTitle">
+        <h2 id="privacyTitle">Privacidad y soberanía</h2>
+        <p class="hint">El archivo se reproduce desde tu dispositivo mediante una URL temporal de memoria. No hay llamadas de red en esta herramienta. Los datos se conservan solo mientras esta pestaña esté abierta, salvo exportación explícita. Los informes JSON pueden incluir capturas y transcripciones: trátalos como privados.</p>
+        <p class="guide">Para analizar contenido restringido, usa un archivo obtenido con permiso o el acceso autorizado que la plataforma proporcione. No se eluden inicios de sesión, protecciones técnicas ni restricciones de Instagram.</p>
+      </section>
+    </div>
+  </div>
+</main>
+<footer>ATLAS Reel Evidence Lab 777 · Motor local independiente · Versión 1.0.0 · Sin dependencias externas · La ausencia de datos no se convierte en hechos.</footer>
+<script>
+'use strict';
+(() => {
+  const $ = id => document.getElementById(id);
+  const state = {source:'', media:null, mediaKind:'', mediaName:'', mediaSize:0, duration:null, width:null, height:null, sha256:null, digestState:'no-file', frames:[], claims:[], moments:[], fileUrl:null, meter:null};
+  const MAX_FRAMES=10, MAX_IMPORT=2_000_000;
+  const now=()=>new Date().toISOString();
+  const player=()=>state.mediaKind==='audio'?$('audio'):$('video');
+  const formatTime=s=>Number.isFinite(s)?`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`:'—';
+  const bytes=n=>n>=1048576?`${(n/1048576).toFixed(1)} MB`:`${(n/1024).toFixed(1)} KB`;
+  const setStatus=(text,kind='')=>{$('sourceStatus').textContent=text;$('sourceStatus').className=`status ${kind}`.trim()};
+  function canonicalUrl(text){
+    let url;try{url=new URL(text.trim())}catch{return null}
+    if(url.protocol!=='https:'&&url.protocol!=='http:')return null;
+    if(url.username||url.password)return null;
+    url.hash='';
+    for(const key of [...url.searchParams.keys()])if(/^(utm_|fbclid|gclid|igsh|gwpx)/i.test(key))url.searchParams.delete(key);
+    return url.href;
+  }
+  function registerUrl(){
+    const value=$('sourceUrl').value.trim();
+    if(!value){state.source='';$('openOriginal').hidden=true;setStatus('El enlace se ha quitado. Puedes continuar analizando un archivo local.');return}
+    const clean=canonicalUrl(value);if(!clean){setStatus('URL inválida. Se requiere un enlace HTTP(S) sin credenciales.','error');return}
+    state.source=clean;$('sourceUrl').value=clean;$('openOriginal').href=clean;$('openOriginal').hidden=false;
+    const host=new URL(clean).hostname.toLowerCase();
+    setStatus(/(^|\.)instagram\.com$/.test(host)
+      ?'Instagram registrado como referencia. No se han recuperado el video, la descripción ni comentarios. Adjunta el video autorizado para analizar su contenido.':'Enlace registrado como referencia; su contenido NO se ha descargado ni verificado.', 'warn');
+  }
+  function revokeMedia(){
+    if(state.fileUrl){URL.revokeObjectURL(state.fileUrl);state.fileUrl=null}
+    for(const id of ['video','audio']){const old=$(id);old.pause();old.removeAttribute('src');old.load();old.hidden=true;if(state.meter===null&&old.dataset.audioConnected==='yes'){const fresh=old.cloneNode(false);fresh.removeAttribute('data-audio-connected');old.replaceWith(fresh)}}
+  }
+  async function handleMedia(file){
+    state.meter?.stop();state.meter=null;$('enableMeter').textContent='Analizar energía al reproducir';revokeMedia();state.media=null;state.mediaKind='';state.sha256=null;state.digestState='no-file';state.frames=[];renderFrames();
+    if(!file){$('emptyPlayer').hidden=false;return}
+    const ext=file.name.toLowerCase().split('.').pop();
+    const kind=file.type.startsWith('video/')||['mp4','mov','webm','m4v'].includes(ext)?'video':
+      file.type.startsWith('audio/')||['mp3','m4a','wav','aac'].includes(ext)?'audio':null;
+    if(!kind){setStatus('Formato no compatible para este reproductor.','error');return}
+    state.media=file;state.mediaKind=kind;state.mediaName=file.name;state.mediaSize=file.size;state.duration=null;state.width=null;state.height=null;
+    state.fileUrl=URL.createObjectURL(file);$('emptyPlayer').hidden=true;
+    const media=player();media.src=state.fileUrl;media.hidden=false;
+    $('capture').disabled=kind!=='video';$('enableMeter').disabled=false;
+    $('duration').textContent='…';$('dimensions').textContent='…';$('fileSize').textContent=bytes(file.size);
+    $('integrity').textContent='SHA-256: calculando cuando el archivo lo permite…';
+    setStatus('Archivo local seleccionado: '+file.name+'. No se ha subido a ningún servidor.');
+    media.onloadedmetadata=()=>{state.duration=Number.isFinite(media.duration)?media.duration:null;state.width=kind==='video'?media.videoWidth:null;state.height=kind==='video'?media.videoHeight:null;
+      $('duration').textContent=formatTime(state.duration);$('dimensions').textContent=kind==='video'?`${state.width} × ${state.height}`:'Audio';
+    };
+    media.onerror=()=>setStatus('El navegador no pudo decodificar este formato. Prueba un MP4/H.264 o audio compatible.','error');
+    if(!globalThis.crypto?.subtle){state.digestState='unavailable';$('integrity').textContent='SHA-256: API criptográfica no disponible en este contexto.';return}
+    if(file.size>64*1024*1024){state.digestState='size-limit';$('integrity').textContent='SHA-256: no calculado; archivo mayor a 64 MB (límite preventivo de memoria).';return}
+    state.digestState='pending';
+    try{
+      const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+      if(state.media!==file)return;
+      state.sha256=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('');
+      state.digestState='verified';$('integrity').textContent='SHA-256 del archivo completo: '+state.sha256;
+    }catch{if(state.media!==file)return;state.digestState='error';$('integrity').textContent='SHA-256: falló el cálculo; no se afirma integridad.'}
+  }
+  function capture(){
+    const video=$('video');if(!state.media||state.mediaKind!=='video'||!video.videoWidth||video.readyState<2){setStatus('Espera a que el video cargue un fotograma visible.','warn');return}
+    if(state.frames.length>=MAX_FRAMES){setStatus('Límite de 10 capturas. Borra una para añadir otra.','warn');return}
+    const canvas=document.createElement('canvas');const scale=Math.min(1,480/video.videoWidth);
+    canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);
+    try{canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);state.frames.push({id:crypto.randomUUID?.()||String(Date.now()),at:Number(video.currentTime.toFixed(2)),image:canvas.toDataURL('image/jpeg',.64),createdAt:now()});renderFrames()}
+    catch{setStatus('No se pudo capturar el fotograma del archivo local.','error')}
+  }
+  function node(tag,content,className=''){const el=document.createElement(tag);if(content!==undefined)el.textContent=String(content);if(className)el.className=className;return el}
+  function addDelete(container,callback){const b=node('button','Quitar','small');b.type='button';b.setAttribute('aria-label','Eliminar esta evidencia');b.addEventListener('click',callback);container.append(b)}
+  function renderFrames(){
+    const holder=$('frames');holder.replaceChildren();
+    for(const frame of state.frames){const item=node('div',undefined,'frame');const img=document.createElement('img');img.src=frame.image;img.alt='Fotograma capturado a los '+formatTime(frame.at);item.append(img);const foot=node('div');foot.append(node('span',formatTime(frame.at)));addDelete(foot,()=>{state.frames=state.frames.filter(v=>v.id!==frame.id);renderFrames()});item.append(foot);holder.append(item)}
+    $('frameCount').textContent=state.frames.length+' capturas';updateVerdict()
+  }
+  const input = id => $(id).value.trim();
+  function addClaim(){
+    const text=input('claimText');if(!text){$('claimText').focus();return}
+    const status=input('claimStatus'), evidence=input('claimEvidence');
+    if(status!=='unverified'&&!evidence){setStatus('Para respaldar o contradecir una afirmación debes describir su evidencia.','warn');$('claimEvidence').focus();return}
+    state.claims.push({id:crypto.randomUUID?.()||String(Date.now()),text,origin:input('claimOrigin'),status,evidence,createdAt:now()});
+    $('claimText').value='';$('claimEvidence').value='';$('claimStatus').value='unverified';renderClaims();
+  }
+  function renderClaims(){
+    const holder=$('claims');holder.replaceChildren();
+    for(const claim of state.claims){const card=node('div',undefined,'note');const row=node('div',undefined,'row');
+      const names={unverified:'No verificado',supported:'Respaldado · evaluación propia',contradicted:'Contradicho · evaluación propia'};
+      row.append(node('span',names[claim.status]||names.unverified,'capsule '+claim.status));addDelete(row,()=>{state.claims=state.claims.filter(v=>v.id!==claim.id);renderClaims()});card.append(row,node('p',claim.text),node('small',claim.origin+' · '+(claim.evidence||'Sin evidencia adicional')));holder.append(card)}
+    updateVerdict()
+  }
+  function addMoment(){
+    const text=input('momentText');if(!text){$('momentText').focus();return}
+    const time=Number.isFinite(player().currentTime)?player().currentTime:0;
+    state.moments.push({id:crypto.randomUUID?.()||String(Date.now()),at:Number(time.toFixed(2)),text,createdAt:now()});
+    $('momentText').value='';renderMoments();
+  }
+  function renderMoments(){
+    const holder=$('moments');holder.replaceChildren();
+    for(const moment of state.moments){const card=node('div',undefined,'note');const row=node('div',undefined,'row');row.append(node('small',formatTime(moment.at)));addDelete(row,()=>{state.moments=state.moments.filter(v=>v.id!==moment.id);renderMoments()});card.append(row,node('p',moment.text));holder.append(card)}
+    updateVerdict()
+  }
+  function extractTokens(){
+    const text=input('caption')+'\n'+input('transcript');
+    const values=[...new Set(text.match(/#[\p{L}\p{N}_]+|@[\p{L}\p{N}_.]+|https?:\/\/[^\s)]+/gu)||[])].slice(0,60);
+    $('tokens').replaceChildren(...values.map(token=>node('span',token,'pill')));
+    if(!values.length)$('tokens').append(node('span','No se detectaron tokens con este método local.','hint'));
+  }
+  function updateVerdict(){
+    const unverified=state.claims.filter(c=>c.status==='unverified').length;
+    $('claimTotal').textContent=state.claims.length;$('unverifiedTotal').textContent=unverified;$('momentTotal').textContent=state.moments.length;
+    const hasMedia=Boolean(state.media),hasText=Boolean(input('transcript')||input('caption'));
+    const verdict=$('verdict');
+    if(!hasMedia&&!hasText){verdict.textContent='P0 · NO VERIFICADO — todavía no hay contenido inspeccionado.';verdict.className='status warn'}
+    else if(unverified){verdict.textContent=`P0 · REVISIÓN PENDIENTE — ${unverified} afirmación(es) sin verificar. La evidencia local no valida hechos externos.`;verdict.className='status warn'}
+    else{verdict.textContent='EVIDENCIA LOCAL REGISTRADA — no constituye verificación externa de hechos, personas o autoría.';verdict.className='status'}
+  }
+  function reportData(){
+    return {schema:'atlas-reel-evidence-v1',generatedAt:now(),method:'local-browser-no-network',source:{url:state.source||null,metadataOnly:Boolean(state.source)},media:{filename:state.media?state.mediaName:null,sizeBytes:state.media?state.mediaSize:null,kind:state.mediaKind||null,durationSeconds:state.duration,videoWidth:state.width,videoHeight:state.height,sha256:state.sha256,digestStatus:state.digestState},text:{caption:input('caption'),transcript:input('transcript'),soundNotes:input('soundNotes')},frames:state.frames,claims:state.claims,moments:state.moments,limitations:['An URL does not prove that content was accessed.','No automatic transcription, OCR, factual verification, or identity recognition.','Claim evaluations are user supplied, not independently verified.','Local media is not included in this JSON report.']};
+  }
+  function reportMarkdown(){
+    const d=reportData();const m=d.media;
+    const safe=s=>String(s??'—').replace(/\r/g,'');
+    const lines=['# ATLAS Reel Evidence Lab — Informe 777','',`Fecha UTC: ${d.generatedAt}`,`Método: ${d.method}`,'', '## Fuente',`URL registrada: ${safe(d.source.url)}`,'El enlace es una referencia y NO acredita extracción automática.','', '## Archivo local',`Nombre: ${safe(m.filename)}`,`Tamaño: ${m.sizeBytes??'—'} bytes`,`Duración: ${formatTime(m.durationSeconds)}`,`Resolución: ${m.videoWidth||'—'} x ${m.videoHeight||'—'}`,`SHA-256: ${safe(m.sha256)}`,`Estado de hash: ${m.digestStatus}`,'','## Texto aportado','', '### Descripción',safe(d.text.caption),'','### Transcripción',safe(d.text.transcript),'','### Sonido',safe(d.text.soundNotes),'','## Fotogramas',...d.frames.map(f=>`- ${formatTime(f.at)} — imagen incluida únicamente en exportación JSON.`),'','## Afirmaciones',...d.claims.map(c=>`- [${c.status}] ${safe(c.text)} | Origen: ${c.origin} | Evidencia aportada: ${safe(c.evidence)}`),'','## Observaciones temporales',...d.moments.map(t=>`- ${formatTime(t.at)} — ${safe(t.text)}`),'','## Límites',...d.limitations.map(x=>'- '+x)];
+    return lines.join('\n')
+  }
+  function download(name,contents,type){
+    const url=URL.createObjectURL(new Blob([contents],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)
+  }
+  function exportJson(){download('atlas-reel-evidence-777.json',JSON.stringify(reportData(),null,2),'application/json')}
+  function exportMd(){download('atlas-reel-informe-777.md',reportMarkdown(),'text/markdown;charset=utf-8')}
+  async function importJson(file){
+    if(!file)return;if(file.size>MAX_IMPORT){setStatus('El informe excede el límite de importación (2 MB).','error');return}
+    let d;try{d=JSON.parse(await file.text())}catch{setStatus('JSON inválido.','error');return}
+    if(d?.schema!=='atlas-reel-evidence-v1'||!Array.isArray(d.claims)||!Array.isArray(d.frames)||!Array.isArray(d.moments)){setStatus('Esquema de evidencia desconocido.','error');return}
+    if(d.claims.length>300||d.frames.length>MAX_FRAMES||d.moments.length>300){setStatus('La cantidad de registros excede los límites.','error');return}
+    // The imported report is untrusted; only allow known text fields and bounded payloads.
+    const short=(x,max=15000)=>typeof x==='string'?x.slice(0,max):'';
+    state.claims=d.claims.map((c,i)=>({id:String(i),text:short(c.text,1500),origin:short(c.origin,40),status:['unverified','supported','contradicted'].includes(c.status)?c.status:'unverified',evidence:short(c.evidence,3000),createdAt:short(c.createdAt,50)}));
+    state.moments=d.moments.map((m,i)=>({id:String(i),at:Number.isFinite(m.at)?Math.max(0,m.at):0,text:short(m.text,3000),createdAt:short(m.createdAt,50)}));
+    state.frames=d.frames.filter(f=>typeof f.image==='string'&&/^data:image\/jpeg;base64,[a-z0-9+/=]+$/i.test(f.image)&&f.image.length<130000).map((f,i)=>({id:String(i),at:Number.isFinite(f.at)?Math.max(0,f.at):0,image:f.image,createdAt:short(f.createdAt,50)}));
+    for(const id of ['caption','transcript','soundNotes'])$(id).value=short(d.text?.[id],35000);
+    state.source=canonicalUrl(short(d.source?.url,2200))||'';$('sourceUrl').value=state.source;
+    $('openOriginal').hidden=!state.source;if(state.source)$('openOriginal').href=state.source;
+    // Do not trust an imported hash as verification of a locally loaded file.
+    state.meter?.stop();state.meter=null;revokeMedia();state.media=null;state.mediaKind='';state.mediaName='';state.sha256=null;state.digestState='import-unverified';
+    $('emptyPlayer').hidden=false;$('mediaFile').value='';$('enableMeter').textContent='Analizar energía al reproducir';$('duration').textContent='—';$('dimensions').textContent='—';$('fileSize').textContent='—';$('capture').disabled=true;$('enableMeter').disabled=true;
+    $('integrity').textContent='SHA-256: valor importado no validado contra un archivo local.';
+    renderClaims();renderFrames();renderMoments();extractTokens();
+    setStatus('Caso JSON importado. El archivo multimedia NO está adjunto. Vuelve a seleccionarlo para validar la huella digital.', 'warn')
+  }
+  function enableMeter(){
+    const el=player();if(!state.media){return}
+    if(state.meter){$('enableMeter').textContent='Medidor activado';return}
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx){setStatus('Este navegador no dispone de Web Audio para medir energía.','warn');return}
+    try{
+      const ctx=new AudioCtx();const source=ctx.createMediaElementSource(el),analyser=ctx.createAnalyser();el.dataset.audioConnected='yes';
+      analyser.fftSize=1024;source.connect(analyser);analyser.connect(ctx.destination);
+      const arr=new Uint8Array(analyser.frequencyBinCount),canvas=$('meter'),g=canvas.getContext('2d');
+      let active=true;function draw(){if(!active)return;requestAnimationFrame(draw);analyser.getByteFrequencyData(arr);g.clearRect(0,0,canvas.width,canvas.height);const count=48,w=canvas.width/count;
+        for(let i=0;i<count;i++){const value=arr[Math.min(arr.length-1,Math.floor(i*arr.length/count))]/255;g.fillStyle='#4fa8f0';g.fillRect(i*w+2,canvas.height-(value*canvas.height),w-4,value*canvas.height)}}
+      draw();state.meter={ctx,stop:()=>{active=false;ctx.close().catch(()=>{})}};$('enableMeter').textContent='Medidor activo';ctx.resume().catch(()=>{});setStatus('Medidor de energía activado: muestra bandas de frecuencia durante la reproducción, no un análisis completo de la canción.');
+    }catch{setStatus('El navegador bloqueó Web Audio para este formato; el video sigue disponible.','warn')}
+  }
+  function clearAll(){
+    if(!confirm('¿Borrar todos los textos, observaciones y capturas de esta sesión? Esta acción no puede deshacerse.'))return;
+    state.meter?.stop();state.meter=null;revokeMedia();state.media=null;state.mediaKind='';state.frames=[];state.claims=[];state.moments=[];state.source='';state.sha256=null;state.digestState='no-file';
+    for(const id of ['sourceUrl','caption','transcript','soundNotes','claimText','claimEvidence','momentText'])$(id).value='';
+    $('mediaFile').value='';$('openOriginal').hidden=true;$('emptyPlayer').hidden=false;$('duration').textContent='—';$('dimensions').textContent='—';$('fileSize').textContent='—';$('integrity').textContent='SHA-256: pendiente de archivo local.';
+    $('capture').disabled=true;$('enableMeter').disabled=true;$('enableMeter').textContent='Analizar energía al reproducir';$('tokens').replaceChildren();
+    const g=$('meter').getContext('2d');g.clearRect(0,0,700,80);renderFrames();renderClaims();renderMoments();setStatus('Sesión eliminada de memoria. No hay una copia en un servidor.');
+  }
+  $('registerUrl').addEventListener('click',registerUrl);
+  $('mediaFile').addEventListener('change',e=>handleMedia(e.target.files?.[0]));
+  $('capture').addEventListener('click',capture);
+  $('enableMeter').addEventListener('click',enableMeter);
+  $('addClaim').addEventListener('click',addClaim);
+  $('addMoment').addEventListener('click',addMoment);
+  $('extractTokens').addEventListener('click',extractTokens);
+  $('caption').addEventListener('input',updateVerdict);$('transcript').addEventListener('input',updateVerdict);
+  $('exportJson').addEventListener('click',exportJson);
+  $('exportMd').addEventListener('click',exportMd);
+  $('copyReport').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(reportMarkdown());setStatus('Informe copiado al portapapeles.')}catch{setStatus('El portapapeles está bloqueado aquí. Usa «Informe Markdown».','warn')}});
+  $('printReport').addEventListener('click',()=>window.print());
+  $('importButton').addEventListener('click',()=>$('importJson').click());
+  $('importJson').addEventListener('change',e=>importJson(e.target.files?.[0]));
+  $('clearAll').addEventListener('click',clearAll);
+  window.addEventListener('pagehide',()=>{state.meter?.stop();revokeMedia()});
+  updateVerdict();
+})();
+</script>
+</body>
+</html>
