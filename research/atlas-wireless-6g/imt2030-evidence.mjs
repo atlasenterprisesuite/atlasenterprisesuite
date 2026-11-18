@@ -41,7 +41,7 @@ export function fingerprintMeasurement(record) {
   }
   const when = Date.parse(record.measuredAt);
   if (typeof record.measuredAt !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(record.measuredAt) ||
-      !Number.isFinite(when) || new Date(when).toISOString() !== new Date(record.measuredAt).toISOString()) {
+      !Number.isFinite(when) || new Date(when).toISOString().slice(0, 19) !== record.measuredAt.slice(0, 19) || when > Date.now()) {
     throw new TypeError('timestamp must be valid UTC ISO-8601');
   }
   return createHash('sha256').update(canonical(record)).digest('hex');
