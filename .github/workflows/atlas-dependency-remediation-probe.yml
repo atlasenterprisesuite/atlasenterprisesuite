@@ -18,9 +18,6 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -46,25 +43,47 @@ jobs:
           npm ls picomatch fdir tinyglobby vite vitest || true
           npm audit --audit-level=high || true
 
-      - name: Generate targeted remediation candidate
+      - name: Generate exact-SHA picomatch remediation candidate
         run: |
           set -euo pipefail
-          npm install             --save-dev             --save-exact             --package-lock-only             --ignore-scripts             vite@5.4.21             vitest@2.1.9
-
-      - name: Reject residual picomatch dependency
-        run: |
           node - <<'NODE'
-          const lock = require('./package-lock.json');
-          const entry = lock.packages?.['node_modules/picomatch'];
-          if (entry) {
-            console.error(`Residual picomatch dependency detected: ${entry.version || 'unknown'}`);
-            process.exit(1);
-          }
-          console.log('No picomatch package remains in the candidate lockfile.');
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.overrides = {
+            ...(pkg.overrides || {}),
+            picomatch: 'github:rborlone/picomatch#44f192261f312ddf236cb7bdc05d8f22663f98f9'
+          };
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           NODE
+          npm install --package-lock-only --ignore-scripts
 
       - name: Install candidate locked tree
         run: npm ci
+
+      - name: Verify CVE-2026-112366 regression behavior
+        run: |
+          node - <<'NODE'
+          const picomatch = require('picomatch');
+          const source = picomatch.makeRe('+(*a)').source;
+          if (source !== '^(?:\\+\\(\\*a\\))$') {
+            console.error('Unexpected +(*a) regex:', source);
+            process.exit(1);
+          }
+          for (const pattern of ['+(*a)', '*(*a)']) {
+            const start = performance.now();
+            const matched = picomatch.isMatch('a'.repeat(80) + '!', pattern);
+            const elapsed = performance.now() - start;
+            if (matched) {
+              console.error('Risky pattern unexpectedly matched:', pattern);
+              process.exit(1);
+            }
+            if (elapsed > 250) {
+              console.error('Risky pattern exceeded bounded runtime:', pattern, elapsed);
+              process.exit(1);
+            }
+          }
+          console.log('CVE-2026-112366 regression probe passed.');
+          NODE
 
       - name: Require clean high-severity audit
         run: npm audit --audit-level=high
@@ -80,9 +99,9 @@ jobs:
         if: always()
         run: |
           git diff -- package.json package-lock.json > dependency-remediation.diff || true
-          echo "### targeted dependency remediation diff" >> "$GITHUB_STEP_SUMMARY"
+          echo "### exact-SHA picomatch remediation diff" >> "$GITHUB_STEP_SUMMARY"
           if [ -s dependency-remediation.diff ]; then
-            sed -n '1,260p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
+            sed -n '1,280p' dependency-remediation.diff >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No package manifest or lockfile changes were generated." >> "$GITHUB_STEP_SUMMARY"
           fi
