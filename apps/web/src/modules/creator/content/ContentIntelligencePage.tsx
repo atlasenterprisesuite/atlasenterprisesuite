@@ -231,6 +231,7 @@ export function ContentIntelligencePage() {
             {savedWorkspaces.map(item => <option key={item.id} value={item.id}>{item.title} · v{item.version}</option>)}
           </select>
         </label>
+        <a className="creator-secondary" href="/tools/atlas-reel-evidence-lab.html" target="_blank" rel="noopener noreferrer">Open Reel Evidence Lab · on-device</a>
         <button className="creator-primary" type="button" disabled={saving} onClick={saveWorkspace}>{saving ? 'Saving…' : 'Save workspace'}</button>
       </div>
     </header>

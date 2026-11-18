@@ -1,0 +1,130 @@
+name: ATLAS 777 Parallel Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/web/public/tools/atlas-reel-evidence-lab.*"
+      - "apps/web/src/modules/creator/content/**"
+      - "tests/unit/atlas-reel-evidence-lab.test.ts"
+      - "docs/creator/ATLAS_REEL_EVIDENCE_LAB_777.md"
+      - ".github/workflows/atlas-777-parallel-verification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-777-parallel-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Runner / ${{ matrix.lane }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        lane: [security, quality, build, infrastructure]
+    steps:
+      - name: Checkout exact event SHA
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup Node 22 and locked npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install exact locked dependencies
+        run: npm ci
+      - name: Install native media tools for infrastructure tests
+        if: matrix.lane == 'infrastructure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak
+          ffmpeg -version | head -n 1
+          command -v espeak
+      - name: Verify lane independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.lane }}" in
+            security)
+              npm audit --audit-level=high
+              ;;
+            quality)
+              npm run test:unit
+              npm run test:integration
+              npm run test:local-core
+              ;;
+            build)
+              npm run typecheck
+              npm run build
+              ;;
+            infrastructure)
+              npm run verify:design
+              npm run verify:evidence
+              npm run verify:edge
+              npm run verify:python
+              npm run verify:neural
+              npm run verify:navigation
+              ;;
+            *)
+              echo "Unknown verification lane" >&2
+              exit 1
+              ;;
+          esac
+      - name: Write traceable lane evidence
+        if: always()
+        shell: bash
+        env:
+          LANE: ${{ matrix.lane }}
+          OUTCOME: ${{ job.status }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/atlas-777/parallel
+          test -n "$COMMIT_SHA"
+          printf 'lane=%s\nstatus=%s\ncommit_sha=%s\nrun_id=%s\nrun_attempt=%s\n' \
+            "$LANE" "$OUTCOME" "$COMMIT_SHA" "$RUN_ID" "$RUN_ATTEMPT" \
+            > "artifacts/atlas-777/parallel/${LANE}.txt"
+          sha256sum "artifacts/atlas-777/parallel/${LANE}.txt" > "artifacts/atlas-777/parallel/${LANE}.sha256"
+      - name: Upload lane evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-777-${{ matrix.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/atlas-777/parallel/
+          if-no-files-found: error
+          retention-days: 30
+
+  release-gate:
+    name: ATLAS 777 / P0 Parallel Gate
+    needs: [verify]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Fail closed on missing or failed lanes
+        env:
+          MATRIX_RESULT: ${{ needs.verify.result }}
+          EVENT_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$EVENT_SHA"
+          if [ "$MATRIX_RESULT" != "success" ]; then
+            echo "::error::ATLAS 777 P0 NO-GO: one or more lanes failed, were cancelled, or did not complete. Matrix result: $MATRIX_RESULT"
+            exit 1
+          fi
+          echo "Parallel CI lanes passed for $EVENT_SHA."
+          echo "This is NOT a production deployment or exact-SHA E2E attestation."
