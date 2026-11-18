@@ -18,7 +18,7 @@ alter table public.atlas_oauth_states
   add column if not exists pkce_iv text,
   add column if not exists pkce_key_version text;
 
-do $
+do $atlas_pkce$
 begin
   if not exists (
     select 1
@@ -34,7 +34,7 @@ begin
       );
   end if;
 end
-$;
+$atlas_pkce$;
 
 create table if not exists public.atlas_youtube_drafts (
   id uuid primary key default gen_random_uuid(),
