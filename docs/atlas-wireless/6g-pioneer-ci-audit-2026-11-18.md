@@ -17,9 +17,9 @@
 
 ### Safe remediation plan
 
-1. Inspect actual `npm ls picomatch fdir tinyglobby vite vitest` / `npm audit --json` from a clean checkout at the PR SHA.
-2. Select safe fixed dependency versions from official advisories and compatibility constraints; avoid uncontrolled major downgrades/upgrades.
-3. Regenerate `package-lock.json` using `npm install --package-lock-only` with authorized package registry access in a disposable environment. Do not hand-edit dependency integrity hashes.
+1. GitHub advisory GHSA-fc5q-39xc-vjpf (reviewed 2026-11-17) lists affected `picomatch <=4.0.7` and **no patched version**. Do not claim an npm version bump resolves this advisory. Inspect `npm ls picomatch fdir tinyglobby vite vitest` / `npm audit --json` from a clean checkout at the PR SHA.
+2. Wait for and validate a vendor-published fixed picomatch release, or perform a separately reviewed, evidenced dependency-path elimination / vendor patch with provenance and compatibility tests. Do not blanket-suppress the advisory, use `npm audit --omit=dev` to pass the canonical gate, or force unrelated major upgrades.
+3. Only after choosing a verifiable safe resolution, regenerate `package-lock.json` using `npm install --package-lock-only` with authorized package registry access in a disposable environment. Do not hand-edit dependency integrity hashes.
 4. Run `npm ci`, `npm audit --audit-level=high`, `npm run test:6g`, `npm run typecheck`, `npm run test:unit`, `npm run verify:all` against the resulting commit.
 5. Require successful PR CI and review on the **new exact SHA**. No merge or deploy while P0 remains.
 
@@ -45,3 +45,7 @@
 - P0 BLOCKED — dependency audit failure and missing exact-SHA green CI/readiness chain.
 - P1 — formal ITU/3GPP traceability mapping to individual checks, accessible interaction verification and tested lab-partner onboarding remain outstanding.
 - No payments, contracts, merges, RF activation, or production changes performed.
+
+## Independent research validation
+
+PR branch adds `.github/workflows/atlas-wireless-6g-research.yml` to run dependency-free model tests independently of npm audit. Its status is **not** a substitute for required repository-wide CI. The release remains fail-closed until dependency audit, full tests, typecheck, and deployment evidence all pass.
