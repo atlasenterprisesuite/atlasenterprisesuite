@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { AtlasBroadcastChannelPage } from './AtlasBroadcastChannelPage';
 import { AtlasChatPage } from './AtlasChatPage';
+import { AtlasDirectCallPage } from './AtlasDirectCallPage';
 import { AtlasMailProvisioningPage } from './AtlasMailProvisioningPage';
 import { AtlasMvnoControlPage } from './AtlasMvnoControlPage';
 import { AtlasTelephonyPage } from './AtlasTelephonyPage';
@@ -18,6 +19,7 @@ export function ConnectRoutes() {
       <Route path="/connect/chat" element={<AtlasChatPage />} />
       <Route path="/connect/mail" element={<AtlasMailProvisioningPage />} />
       <Route path="/connect/calling" element={<AtlasTelephonyPage />} />
+      <Route path="/connect/direct" element={<AtlasDirectCallPage />} />
       <Route path="/connect/wireless" element={<AtlasWirelessPage />} />
       <Route path="/connect/wireless/network" element={<AtlasWirelessNetworkPage />} />
       <Route path="/connect/wireless/commissioning" element={<AtlasWirelessCommissioningPage />} />
