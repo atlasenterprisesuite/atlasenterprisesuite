@@ -60,3 +60,12 @@ it('fails closed when an invalid budget is supplied', () => {
     });
   }
 });
+
+it('parses only explicit nonnegative finite paid cost estimates', async () => {
+  const { parseNonnegativePaidCost } = await import('../../packages/execution/src/work-policy');
+  expect(parseNonnegativePaidCost(0)).toBe(0);
+  expect(parseNonnegativePaidCost(1.5)).toBe(1.5);
+  for (const invalid of [undefined, null, '', '0', '12', -1, Number.NaN, Number.POSITIVE_INFINITY, {}, false]) {
+    expect(Number.isNaN(parseNonnegativePaidCost(invalid))).toBe(true);
+  }
+});
