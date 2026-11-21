@@ -23,9 +23,15 @@ export function evaluateWorkActionPolicy(input: WorkActionPolicyInput): WorkActi
   if (!input.permissionsSatisfied) return { outcome: 'deny', reason: 'permission_required' };
   if (!input.envelopeAllowed) return { outcome: 'deny', reason: 'execution_envelope_denied' };
 
+  // An unknown spend must never be silently converted into a free action.
+  if (!Number.isFinite(input.paidCost) || input.paidCost < 0) {
+    return { outcome: 'deny', reason: 'invalid_paid_cost' };
+  }
   const effectiveBudget = input.budgetLimit ?? 0;
-  const paidCost = Number.isFinite(input.paidCost) && input.paidCost > 0 ? input.paidCost : 0;
-  if (paidCost > effectiveBudget) return { outcome: 'deny', reason: 'budget_exceeded' };
+  if (!Number.isFinite(effectiveBudget) || effectiveBudget < 0) {
+    return { outcome: 'deny', reason: 'invalid_budget_limit' };
+  }
+  if (input.paidCost > effectiveBudget) return { outcome: 'deny', reason: 'budget_exceeded' };
 
   if (!input.mutation) return { outcome: 'allow', reason: 'read_only_action_allowed' };
   if (input.regulated) return { outcome: 'require_approval', reason: 'regulated_mutation_requires_approval' };
