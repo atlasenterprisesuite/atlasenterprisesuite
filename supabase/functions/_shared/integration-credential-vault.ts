@@ -34,7 +34,7 @@ function bytesToBase64Url(bytes: Uint8Array): string {
     .replace(/=+$/g, '');
 }
 
-function base64UrlToBytes(value: string): Uint8Array {
+function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
   const binary = atob(padded);
@@ -45,8 +45,8 @@ function base64UrlToBytes(value: string): Uint8Array {
   return bytes;
 }
 
-function normalizeKey(key: CredentialKey): Uint8Array {
-  let bytes: Uint8Array;
+function normalizeKey(key: CredentialKey): Uint8Array<ArrayBuffer> {
+  let bytes: Uint8Array<ArrayBuffer>;
   try {
     bytes = typeof key === 'string' ? base64UrlToBytes(key.trim()) : new Uint8Array(key);
   } catch {
@@ -110,7 +110,7 @@ function assertCredential(value: unknown): asserts value is ProviderCredentialPa
   }
 }
 
-function additionalData(organizationId: string, provider: IntegrationProvider): Uint8Array {
+function additionalData(organizationId: string, provider: IntegrationProvider): Uint8Array<ArrayBuffer> {
   return textEncoder.encode(`atlas:${organizationId}:${provider}`);
 }
 
@@ -170,8 +170,8 @@ export async function openCredential(input: {
     throw new Error('Credential key version is required');
   }
 
-  let iv: Uint8Array;
-  let ciphertext: Uint8Array;
+  let iv: Uint8Array<ArrayBuffer>;
+  let ciphertext: Uint8Array<ArrayBuffer>;
   try {
     iv = base64UrlToBytes(input.sealed.iv);
     ciphertext = base64UrlToBytes(input.sealed.ciphertext);

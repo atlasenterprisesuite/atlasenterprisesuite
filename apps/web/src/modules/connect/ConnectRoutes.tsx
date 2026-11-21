@@ -10,6 +10,8 @@ import { AtlasWirelessPage } from './AtlasWirelessPage';
 import { ConnectHomePage } from './ConnectHomePage';
 import { GoogleFiWirelessPage } from './GoogleFiWirelessPage';
 
+import { GoogleWorkspacePage } from './GoogleWorkspacePage';
+
 export function ConnectRoutes() {
   return (
     <Routes>
@@ -22,6 +24,7 @@ export function ConnectRoutes() {
       <Route path="/connect/wireless/network" element={<AtlasWirelessNetworkPage />} />
       <Route path="/connect/wireless/commissioning" element={<AtlasWirelessCommissioningPage />} />
       <Route path="/connect/wireless/mvno" element={<AtlasMvnoControlPage />} />
+      <Route path="/connect/google" element={<GoogleWorkspacePage />} />
       <Route path="/connect/google-fi" element={<GoogleFiWirelessPage />} />
     </Routes>
   );
