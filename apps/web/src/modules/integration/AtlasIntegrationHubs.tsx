@@ -1,17 +1,21 @@
+import type { ReactNode } from 'react';
 import { ModuleExperiencePage, type ModuleExperienceSection } from '../../components/ModuleExperiencePage';
+import { SiteReviewIntake } from './SiteReviewIntake';
 
 function IntegrationHub({
   title,
   description,
   narrative,
   sections,
-  statusNote
+  statusNote,
+  children
 }: {
   title: string;
   description: string;
   narrative: string;
   sections: ModuleExperienceSection[];
   statusNote: string;
+  children?: ReactNode;
 }) {
   return (
     <ModuleExperiencePage
@@ -22,7 +26,9 @@ function IntegrationHub({
       sections={sections}
       statusNote={statusNote}
       actions={[{ label: 'Open A-Z directory', to: '/suite', variant: 'secondary' }]}
-    />
+    >
+      {children}
+    </ModuleExperiencePage>
   );
 }
 
@@ -166,7 +172,9 @@ export function SiteReviewIntegrationHub() {
         }
       ]}
       statusNote="Site Review is integrated as an orchestration hub; no external scan, DNS, analytics or deployment provider is treated as verified unless its dedicated gate passes."
-    />
+    >
+      <SiteReviewIntake />
+    </IntegrationHub>
   );
 }
 
