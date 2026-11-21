@@ -23,7 +23,7 @@ The previously referenced `winderaranguren-gif/Atlas-enterprise-suite` repositor
 
 ATLAS advances continuously through analysis, implementation, correction, testing, integration, deployment gates, and verification. Work stops only when a real human, legal, authorization, or technically irresolvable dependency makes further progress impossible. Independent work continues even when another dependency is blocked.
 
-ATLAS Manager is the shared infrastructure control plane and deployment brain for the required GitHub → Supabase → Cloudflare → Production path. Vercel and other deployment providers are optional adapters unless an approved release explicitly marks them required. Provider-specific deployment mechanisms must converge through ATLAS Manager instead of becoming isolated sources of infrastructure truth.
+ATLAS Manager is the shared infrastructure control plane and deployment brain for the required GitHub → Supabase → Cloudflare → Production path. Any optional deployment adapters must converge through ATLAS Manager instead of becoming isolated sources of infrastructure truth. Cloudflare remains the canonical production edge.
 
 ## Truthful production state
 
