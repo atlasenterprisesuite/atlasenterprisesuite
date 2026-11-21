@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom';
+import { AtlasCarrierLabPage } from './AtlasCarrierLabPage';
 import { AtlasBroadcastChannelPage } from './AtlasBroadcastChannelPage';
 import { AtlasChatPage } from './AtlasChatPage';
 import { AtlasMailProvisioningPage } from './AtlasMailProvisioningPage';
@@ -22,6 +23,7 @@ export function ConnectRoutes() {
       <Route path="/connect/wireless/network" element={<AtlasWirelessNetworkPage />} />
       <Route path="/connect/wireless/commissioning" element={<AtlasWirelessCommissioningPage />} />
       <Route path="/connect/wireless/mvno" element={<AtlasMvnoControlPage />} />
+      <Route path="/connect/wireless/lab" element={<AtlasCarrierLabPage />} />
       <Route path="/connect/google-fi" element={<GoogleFiWirelessPage />} />
     </Routes>
   );

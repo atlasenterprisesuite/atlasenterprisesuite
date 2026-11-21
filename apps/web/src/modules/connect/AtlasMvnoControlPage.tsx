@@ -95,6 +95,7 @@ export function AtlasMvnoControlPage() {
         <ul>{pilotChecks.map((check) => <li key={check}>{check}</li>)}</ul>
       </article>
 
+      <Link className="text-link" to="/connect/wireless/lab">Open ATLAS Carrier Lab 777 (simulations only)</Link>
       <Link className="text-link" to="/connect/wireless">Back to ATLAS Wireless</Link>
     </section>
   );
