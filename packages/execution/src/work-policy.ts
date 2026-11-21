@@ -44,3 +44,14 @@ export function evaluateWorkActionPolicy(input: WorkActionPolicyInput): WorkActi
   if (input.autonomyLevel === 'autonomous') return { outcome: 'allow', reason: 'autonomous_action_within_policy' };
   return { outcome: 'allow', reason: 'guided_reversible_mutation_allowed' };
 }
+
+/**
+ * Converts a server-side cost estimate into a policy input.
+ * An absent, invalid or coerced value stays unknown (NaN) and is denied
+ * by evaluateWorkActionPolicy. Only a verified numeric 0 means no charge.
+ */
+export function parseNonnegativePaidCost(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value
+    : Number.NaN;
+}
