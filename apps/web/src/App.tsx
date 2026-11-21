@@ -33,6 +33,8 @@ import { AccessibilityCommunicationSettingsPage } from './modules/settings/Acces
 import { EventsRoutes } from './modules/events/EventsRoutes';
 import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { Gps4DPage } from './modules/gps/Gps4DPage';
+import { AtlasWeatherRadarPage } from './modules/weather/AtlasWeatherRadarPage';
+import { AtlasEarthObservatoryPage } from './modules/weather/AtlasEarthObservatoryPage';
 import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPage';
 import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
 import { FaithReflectionPage } from './modules/wellbeing/FaithReflectionPage';
@@ -71,6 +73,8 @@ function EnterpriseHome() {
         <Link className="module-card enabled" to="/learning"><span>People</span><strong>ATLAS Learning</strong><p>Structured practice, active recall and spaced review with measurable progress.</p></Link>
         <Link className="module-card enabled" to="/health"><span>Health</span><strong>ATLAS Health</strong><p>Governed research and wellbeing tooling with explicit evidence boundaries.</p></Link>
         <Link className="module-card enabled" to="/wellbeing/faith"><span>Wellbeing · Reflection</span><strong>ATLAS Faith & Reflection</strong><p>Guided prayer, symbolic sacred codes, a 45-count practice, real-world action and a 21-day evidence journal.</p></Link>
+        <Link className="module-card enabled" to="/earth"><span>Earth observation · NOAA / USGS</span><strong>ATLAS Earth Observatory</strong><p>Satellite imagery, seismic feed and traceable scientific sources.</p></Link>
+        <Link className="module-card enabled" to="/weather/radar"><span>Weather · NOAA</span><strong>ATLAS Weather Radar</strong><p>Official MRMS radar reflectivity and NWS alerts for Florida, with verified source attribution.</p></Link>
         <Link className="module-card enabled" to="/gps"><span>Mobility</span><strong>ATLAS GPS 4D</strong><p>Recovered Orlando navigation surface with explicit external-provider gates.</p></Link>
         <Link className="module-card enabled" to="/insurance"><span>Protection</span><strong>ATLAS Insurance</strong><p>Secure insurance access, member and policy verification, and governed coverage workflows.</p></Link>
         <Link className="module-card enabled" to="/studio"><span>Creative</span><strong>ATLAS Studio</strong><p>Governed image, video, music and voice creation workspaces.</p></Link>
@@ -314,6 +318,8 @@ export function App() {
         <Route path="/business/network/payouts" element={<NetworkPublicPage section="payouts" />} />
         <Route path="/business/network/compliance" element={<NetworkPublicPage section="compliance" />} />
         <Route path="/business/growth/social-publisher" element={<RequireAtlasIdentity><SocialPublisherPage /></RequireAtlasIdentity>} />
+        <Route path="/weather/radar" element={<AtlasWeatherRadarPage />} />
+        <Route path="/earth" element={<AtlasEarthObservatoryPage />} />
         <Route path="/gps" element={<RequireAtlasIdentity><Gps4DPage /></RequireAtlasIdentity>} />
         <Route path="/city" element={<RequireAtlasIdentity><AtlasDigitalDistrictPage /></RequireAtlasIdentity>} />
         <Route path="/city/twin" element={<RequireAtlasIdentity><UrbanTwinPage /></RequireAtlasIdentity>} />
