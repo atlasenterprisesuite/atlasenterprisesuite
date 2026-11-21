@@ -8,6 +8,10 @@ from pathlib import Path
 
 RULES = [
     ("P0", "SECRET_KEY", re.compile(r"(?i)sb_secret_[A-Za-z0-9_-]{12,}"), "Rotate secret and use secret manager"),
+    # Detect only token-shaped strings: report file/line/rule, never matched bytes.
+    ("P0", "GITHUB_LEGACY_TOKEN", re.compile(r"\bgh(?:p|o|u|s|r)_[A-Za-z0-9]{36,}\b"), "Revoke GitHub token, review audit logs and replace with least-privilege short-lived identity"),
+    ("P0", "GITHUB_FINE_GRAINED_TOKEN", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{22,}\b"), "Revoke GitHub token and rotate through approved secret manager"),
+    ("P0", "AWS_ACCESS_KEY_ID", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"), "Investigate potential AWS credential exposure, revoke associated session or key"),
     ("P0", "SERVICE_ROLE_KEY", re.compile(r'(?i)(?:SUPABASE_SERVICE_ROLE_KEY|service_role_key)\s*[:=]\s*[A-Za-z0-9_.-]{20,}'), "Remove embedded privileged credentials"),
     ("P1", "WILDCARD_CORS", re.compile(r"""(?i)Access-Control-Allow-Origin\s*['"]?\s*[:=]\s*['"]?\*"""), "Review authenticated CORS origins"),
     ("P1", "JWT_DISABLED", re.compile(r"(?m)^\s*verify_jwt\s*=\s*false\b"), "Confirm alternate authorization or intentionally public route"),

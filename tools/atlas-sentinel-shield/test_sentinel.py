@@ -66,5 +66,34 @@ class SentinelTests(unittest.TestCase):
             findings = scan(Path(d))["findings"]
             self.assertTrue(any(f["rule"] == "SECRET_KEY" for f in findings))
 
+
+    def test_detects_github_and_aws_tokens_without_exposing_values(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tokens = [
+                "gh" + "p_" + "A" * 36,
+                "github_" + "pat_" + "B" * 28,
+                "AK" + "IA" + "C" * 16,
+                "AS" + "IA" + "D" * 16,
+            ]
+            (root / ".env.leaked").write_text("\n".join(tokens), encoding="utf-8")
+            result = scan(root, [Path(".env.leaked")])
+            self.assertEqual(result["counts"]["P0"], 4)
+            self.assertEqual(
+                {finding["rule"] for finding in result["findings"]},
+                {"GITHUB_LEGACY_TOKEN", "GITHUB_FINE_GRAINED_TOKEN", "AWS_ACCESS_KEY_ID"},
+            )
+            for token in tokens:
+                self.assertNotIn(token, str(result))
+
+    def test_does_not_flag_short_placeholder_credentials(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / ".env.example").write_text(
+                "GITHUB_TOKEN=gh" + "p_example\nAWS_KEY=AK" + "IAEXAMPLE",
+                encoding="utf-8",
+            )
+            self.assertEqual(scan(root)["counts"]["P0"], 0)
+
 if __name__ == "__main__":
     unittest.main()
