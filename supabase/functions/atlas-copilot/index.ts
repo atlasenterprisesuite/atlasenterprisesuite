@@ -21,10 +21,10 @@ const LIVE='/functions/v1/atlas-live';
 const SELF='/functions/v1/atlas-copilot';
 const REPAIR='/functions/v1/atlas-repair-bridge';
 const ORACLE='/functions/v1/atlas-oracle';
-const VERSION=18;
+const VERSION=19;
 const READINESS_CACHE_TTL_MS=15_000;
 const readinessCache=new Map();
-const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','codex-sovereign'];
+const PROVIDER_IDS=['atlas-local','openai','bedrock','gemini','anthropic','grok','deepseek','mistral','qwen','nvidia','codex-sovereign'];
 const DEFAULT_OPENAI_MODEL='gpt-6-astra';
 const DEFAULT_BEDROCK_REGION='us-west-2';
 const DEFAULT_BEDROCK_ENDPOINT='runtime';
@@ -41,6 +41,7 @@ const DEFAULT_GROK_BASE_URL='https://api.x.ai/v1';
 const DEFAULT_DEEPSEEK_BASE_URL='https://api.deepseek.com';
 const DEFAULT_MISTRAL_BASE_URL='https://api.mistral.ai/v1';
 const DEFAULT_QWEN_BASE_URL='https://dashscope-us.aliyuncs.com/compatible-mode/v1';
+const DEFAULT_NVIDIA_BASE_URL='https://integrate.api.nvidia.com/v1';
 
 function clean(value){return typeof value==='string'&&value.trim()?value.trim():null;}
 function profileModels(sharedName,fastName,balancedName,deepName,legacySharedName=null,defaultModel=null){
@@ -93,6 +94,7 @@ function runtime(){
   const deepseekKey=Deno.env.get('DEEPSEEK_API_KEY')||'';
   const mistralKey=Deno.env.get('MISTRAL_API_KEY')||'';
   const qwenKey=Deno.env.get('QWEN_API_KEY')||Deno.env.get('DASHSCOPE_API_KEY')||'';
+  const nvidiaKey=Deno.env.get('NVIDIA_API_KEY')||'';
   const openaiModels=profileModels('ATLAS_OPENAI_MODEL','ATLAS_OPENAI_MODEL_FAST','ATLAS_OPENAI_MODEL_BALANCED','ATLAS_OPENAI_MODEL_DEEP','ATLAS_OPENAI_ASTRA_MODEL',DEFAULT_OPENAI_MODEL);
   const bedrockEndpoint=clean(Deno.env.get('ATLAS_BEDROCK_ENDPOINT'))||DEFAULT_BEDROCK_ENDPOINT;
   const bedrockRegion=clean(Deno.env.get('ATLAS_BEDROCK_REGION'))||DEFAULT_BEDROCK_REGION;
@@ -111,10 +113,15 @@ function runtime(){
   };
   const mistralModels=profileModels('ATLAS_MISTRAL_MODEL','ATLAS_MISTRAL_MODEL_FAST','ATLAS_MISTRAL_MODEL_BALANCED','ATLAS_MISTRAL_MODEL_DEEP',null,DEFAULT_MISTRAL_MODEL);
   const qwenModels=profileModels('ATLAS_QWEN_MODEL','ATLAS_QWEN_MODEL_FAST','ATLAS_QWEN_MODEL_BALANCED','ATLAS_QWEN_MODEL_DEEP',null,DEFAULT_QWEN_MODEL);
+  // Explicit model configuration required: no speculative NVIDIA default.
+  const nvidiaModels=profileModels('ATLAS_NVIDIA_MODEL','ATLAS_NVIDIA_MODEL_FAST','ATLAS_NVIDIA_MODEL_BALANCED','ATLAS_NVIDIA_MODEL_DEEP');
   const grokBaseUrl=clean(Deno.env.get('ATLAS_GROK_BASE_URL'))||DEFAULT_GROK_BASE_URL;
   const deepseekBaseUrl=clean(Deno.env.get('ATLAS_DEEPSEEK_BASE_URL'))||DEFAULT_DEEPSEEK_BASE_URL;
   const mistralBaseUrl=clean(Deno.env.get('ATLAS_MISTRAL_BASE_URL'))||DEFAULT_MISTRAL_BASE_URL;
   const qwenBaseUrl=clean(Deno.env.get('ATLAS_QWEN_BASE_URL'))||DEFAULT_QWEN_BASE_URL;
+  const nvidiaConfiguredBaseUrl=clean(Deno.env.get('ATLAS_NVIDIA_BASE_URL'))||DEFAULT_NVIDIA_BASE_URL;
+  // Non-TLS NIM endpoints are not eligible for provider execution.
+  const nvidiaBaseUrl=/^https:\/\/[^\s]+$/i.test(nvidiaConfiguredBaseUrl)?nvidiaConfiguredBaseUrl:null;
   const codexEndpoint=clean(Deno.env.get('ATLAS_CODEX_SOVEREIGN_URL'));
   const codexToken=Deno.env.get('ATLAS_CODEX_SOVEREIGN_TOKEN')||'';
   const codexModel=clean(Deno.env.get('ATLAS_CODEX_SOVEREIGN_MODEL'));
@@ -133,7 +140,7 @@ function runtime(){
     emergency_openai_reserve_usd:Math.max(0,numberEnv('ATLAS_AI_EMERGENCY_OPENAI_RESERVE_USD',0)),
     emergency_openai_max_output_tokens:Math.max(64,Math.min(3000,Math.trunc(numberEnv('ATLAS_AI_EMERGENCY_OPENAI_MAX_OUTPUT_TOKENS',512))||512)),
   };
-  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,anthropicKey,grokKey,deepseekKey,mistralKey,qwenKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,anthropicModels,grokModels,deepseekModels,mistralModels,qwenModels,grokBaseUrl,deepseekBaseUrl,mistralBaseUrl,qwenBaseUrl,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
+  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,anthropicKey,grokKey,deepseekKey,mistralKey,qwenKey,nvidiaKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,anthropicModels,grokModels,deepseekModels,mistralModels,qwenModels,nvidiaModels,grokBaseUrl,deepseekBaseUrl,mistralBaseUrl,qwenBaseUrl,nvidiaBaseUrl,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
 }
 async function resolveLocalAiRuntime(rt){
   let stored={};
@@ -181,6 +188,7 @@ function registryFor(rt,localAi){
     createOpenAICompatibleChatAdapter({id:'deepseek',apiKey:rt.deepseekKey,baseUrl:rt.deepseekBaseUrl,models:rt.deepseekModels,backend:'deepseek',fetchFn:fetch}),
     createOpenAICompatibleChatAdapter({id:'mistral',apiKey:rt.mistralKey,baseUrl:rt.mistralBaseUrl,models:rt.mistralModels,backend:'mistral',fetchFn:fetch}),
     createOpenAICompatibleChatAdapter({id:'qwen',apiKey:rt.qwenKey,baseUrl:rt.qwenBaseUrl,models:rt.qwenModels,backend:'alibaba-model-studio',fetchFn:fetch}),
+    createOpenAICompatibleChatAdapter({id:'nvidia',apiKey:rt.nvidiaKey,baseUrl:rt.nvidiaBaseUrl,models:rt.nvidiaModels,backend:'nvidia-nim',fetchFn:fetch}),
     createCodexSovereignAdapter({endpoint:rt.codexEndpoint,token:rt.codexToken,model:rt.codexModel,fetchFn:fetch}),
   ]});
 }
