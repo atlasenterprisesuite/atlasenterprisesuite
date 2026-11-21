@@ -1,4 +1,5 @@
 import { approvalMatchesPayload } from './approvals';
+import { evaluateAgentMandate, type AgentMandateInput } from '../../governance/src/agent-mandates';
 import {
   evaluateWorkActionPolicy,
   type WorkActionPolicyInput,
@@ -19,6 +20,10 @@ export type AtlasPolicyEvaluationInput = {
   approval?: AtlasPolicyApproval | null;
   payloadVersion?: number | null;
   payloadDigest?: string | null;
+  /** Set true on agent action entrypoints: missing server-resolved mandate denies access. */
+  requireAgentMandate?: boolean;
+  /** Must be populated from trusted server-side identity and mandate records, not request bodies. */
+  agentMandate?: AgentMandateInput | null;
 };
 
 export type AtlasPolicyEvaluation = WorkActionPolicyDecision & {
@@ -42,6 +47,35 @@ export function evaluateAtlasPolicy(input: AtlasPolicyEvaluationInput): AtlasPol
   const permissionsSatisfied = permissionsRequired.every((permission) =>
     hasPermission(input.permissions, permission)
   );
+
+  if (input.requireAgentMandate || input.agentMandate) {
+    const trust = input.agentMandate ? evaluateAgentMandate(input.agentMandate) : null;
+    const cost = input.action.paidCost;
+    const monetaryBindingMissing = !Number.isFinite(cost) || cost < 0 ||
+      (cost > 0 && (input.agentMandate?.amount == null ||
+        !Number.isFinite(input.agentMandate.amount) ||
+        input.agentMandate.amount < cost));
+    if (monetaryBindingMissing) {
+      return {
+        requestId,
+        outcome: 'deny',
+        reason: 'agent_mandate:spending_amount_unbound',
+        permissionsRequired,
+        approvalRequired: false,
+        approvalSatisfied: false
+      };
+    }
+    if (!trust?.allowed) {
+      return {
+        requestId,
+        outcome: 'deny',
+        reason: `agent_mandate:${trust?.reason ?? 'mandate_required'}`,
+        permissionsRequired,
+        approvalRequired: false,
+        approvalSatisfied: false
+      };
+    }
+  }
 
   const base = evaluateWorkActionPolicy({
     ...input.action,
