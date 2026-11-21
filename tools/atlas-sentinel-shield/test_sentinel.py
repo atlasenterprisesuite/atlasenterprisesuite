@@ -76,8 +76,8 @@ class SentinelTests(unittest.TestCase):
                 "AK" + "IA" + "C" * 16,
                 "AS" + "IA" + "D" * 16,
             ]
-            (root / "leaked.env").write_text("\n".join(tokens), encoding="utf-8")
-            result = scan(root, [Path("leaked.env")])
+            (root / ".env.leaked").write_text("\n".join(tokens), encoding="utf-8")
+            result = scan(root, [Path(".env.leaked")])
             self.assertEqual(result["counts"]["P0"], 4)
             self.assertEqual(
                 {finding["rule"] for finding in result["findings"]},
@@ -89,7 +89,7 @@ class SentinelTests(unittest.TestCase):
     def test_does_not_flag_short_placeholder_credentials(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            (root / "example.env").write_text(
+            (root / ".env.example").write_text(
                 "GITHUB_TOKEN=gh" + "p_example\nAWS_KEY=AK" + "IAEXAMPLE",
                 encoding="utf-8",
             )
