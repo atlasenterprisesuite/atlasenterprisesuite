@@ -70,6 +70,13 @@ describe('Manager readiness launcher', () => {
       production_verification: {
         state: 'verified',
         canary_verified: true,
+        production_commit_sha_verified: true,
+        public_probe: {
+          state: 'verified',
+          checked_at: '2026-09-24T07:12:00Z',
+          error_code: null,
+          health: 'operational'
+        },
         deployment_sha: 'a1ac03f22df4db95766167eee0962529ccf85634',
         verified_at: '2026-09-24T07:11:46.336059Z',
         provider: 'cloudflare',
@@ -131,6 +138,8 @@ describe('Manager readiness launcher', () => {
 
     expect(await screen.findByRole('heading', { name: 'Production verification' })).toBeInTheDocument();
     expect(screen.getByLabelText('Production canary verified')).toHaveTextContent('Canary verified');
+    expect(screen.getByLabelText('Production readiness: Production Verified')).toHaveTextContent('Production Verified');
+    expect(screen.getByText('Current public probe')).toBeInTheDocument();
     expect(screen.getAllByText('a1ac03f22df4db95766167eee0962529ccf85634').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('/business/network')).toBeInTheDocument();
     expect(screen.getByText('/business/network/pricing')).toBeInTheDocument();
@@ -155,6 +164,13 @@ describe('Manager readiness launcher', () => {
       production_verification: {
         state: 'unverified',
         canary_verified: false,
+        production_commit_sha_verified: true,
+        public_probe: {
+          state: 'failed',
+          checked_at: '2026-09-24T08:14:33Z',
+          error_code: 'public_probe_failed',
+          health: null
+        },
         deployment_sha: 'latest-sha',
         verified_at: '2026-09-24T08:14:33.171635Z',
         provider: 'cloudflare',
@@ -211,11 +227,45 @@ describe('Manager readiness launcher', () => {
     );
 
     expect(await screen.findByLabelText('Production regression detected')).toHaveTextContent('Regression detected');
+    expect(screen.getByLabelText('Production readiness: Blocked')).toHaveTextContent('Blocked');
     expect(screen.getByRole('alert')).toHaveTextContent('manager_readiness_regressed');
     expect(screen.getByRole('alert')).toHaveTextContent('live_critical_route_regression');
     expect(screen.getAllByText('previous-sha').length).toBeGreaterThanOrEqual(3);
     expect(screen.getByRole('alert')).toHaveTextContent('Recovery candidate:');
     expect(screen.getByText('0 consecutive verified deployments')).toBeInTheDocument();
+  });
+
+  it('keeps a historically verified canary blocked after the newest public probe fails', async () => {
+    const state = makeGuidedState({ workflowStatus: 'completed', taskStatus: 'completed' });
+    state.workflow.context = {
+      return_path: '/',
+      production_verification: {
+        canary_verified: true,
+        production_commit_sha_verified: true,
+        public_probe: {
+          state: 'failed',
+          checked_at: '2026-11-22T12:22:00Z',
+          error_code: 'public_probe_failed',
+          health: null
+        },
+        deployment_sha: 'd9dfae686d9f0a266be18064b4cf3d410bb09e89',
+        regression_detected: false,
+        critical_routes: [
+          { label: 'ATLAS Network', path: '/business/network', state: 'verified', http_status: 200 }
+        ]
+      }
+    };
+    vi.mocked(loadGuidedExecutionState).mockResolvedValue(state);
+
+    render(
+      <MemoryRouter initialEntries={['/execution/wf-1']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByLabelText('Production readiness: Blocked')).toHaveTextContent('Blocked');
+    expect(screen.getByLabelText('Production canary verified')).toHaveTextContent('Canary verified');
+    expect(screen.getByText('Reason: public_probe_failed')).toBeInTheDocument();
   });
 
   it('shows the exact sync error and retries only when requested', async () => {
