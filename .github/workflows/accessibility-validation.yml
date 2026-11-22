@@ -10,6 +10,7 @@ on:
       - "tests/unit/sign-language-registry.test.ts"
       - "docs/validation/**"
       - "scripts/verify-accounting-reconciliation-browser.mjs"
+      - "scripts/verify-chronos-browser.mjs"
       - ".github/workflows/accessibility-validation.yml"
   push:
     branches: ["main"]
@@ -20,6 +21,7 @@ on:
       - "tests/unit/sign-language-registry.test.ts"
       - "docs/validation/**"
       - "scripts/verify-accounting-reconciliation-browser.mjs"
+      - "scripts/verify-chronos-browser.mjs"
       - ".github/workflows/accessibility-validation.yml"
   workflow_dispatch:
 
@@ -74,6 +76,12 @@ jobs:
             "/finance/accounting/reconciliation"
             "/health"
             "/settings/accessibility/communication"
+            "/chronos"
+            "/chronos/explore"
+            "/chronos/research/01.001"
+            "/chronos/evidence"
+            "/chronos/timeline"
+            "/chronos/review"
           )
           for route in "${routes[@]}"; do
             echo "Auditing ${route}"
@@ -87,6 +95,8 @@ jobs:
       - name: Focused accessibility tests
         run: >-
           npx vitest run
+          tests/unit/chronos-navigation.test.tsx
+          tests/unit/chronos-os.test.ts
           tests/unit/accessibility-confidence.test.ts
           tests/unit/accessibility-profile.test.ts
           tests/unit/accessibility-device-capabilities.test.ts
@@ -101,6 +111,18 @@ jobs:
           ATLAS_PLAYWRIGHT_MODULE: /tmp/atlas-reconciliation-browser/node_modules/playwright/index.mjs
           ATLAS_RECONCILIATION_BASE_URL: http://127.0.0.1:4173
         run: node scripts/verify-accounting-reconciliation-browser.mjs
+      - name: CHRONOS navigation and responsive browser verification
+        env:
+          ATLAS_PLAYWRIGHT_MODULE: /tmp/atlas-reconciliation-browser/node_modules/playwright/index.mjs
+          ATLAS_CHRONOS_BASE_URL: http://127.0.0.1:4173
+        run: node scripts/verify-chronos-browser.mjs
+      - name: Upload CHRONOS browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-chronos-browser-evidence
+          path: .tmp/chronos-browser/
+          if-no-files-found: ignore
       - name: Upload reconciliation browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -108,6 +130,22 @@ jobs:
           name: atlas-reconciliation-browser-evidence
           path: .tmp/accounting-reconciliation-browser/
           if-no-files-found: ignore
+      - name: Verify exact CHRONOS PR head
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/chronos')
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$EXPECTED_HEAD"
+          integration_sha="$(git rev-parse HEAD)"
+          git fetch --no-tags --depth=1 origin "$EXPECTED_HEAD"
+          git checkout --detach FETCH_HEAD
+          trap 'git checkout --detach "$integration_sha"' EXIT
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          echo "CHRONOS exact head: $(git rev-parse HEAD)"
+          npm run typecheck
+          npx vitest run tests/unit/chronos-navigation.test.tsx tests/unit/chronos-os.test.ts
       - name: Upload preview log on failure
         if: failure()
         uses: actions/upload-artifact@v4
