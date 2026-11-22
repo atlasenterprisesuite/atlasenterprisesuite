@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildDigits, buildStroop, colors, countWords, logicForms, readingForms, recallForms, reactionSummary, scoreAnswers, protocolVersion } from '../../../../../packages/learning/cognitive-practice';
+import { curriculum, lessonForWeek, recordPractice } from '../../../../../packages/learning/cognitive-curriculum';
 import type { Color } from '../../../../../packages/learning/cognitive-practice';
 
 const labels = ['C01 · Velocidad e inhibición','C02 · Fluidez verbal','C03 · Recuerdo de acontecimientos','C04 · Memoria de trabajo','C05 · Razonamiento','C06 · Comprensión de lectura'];
@@ -94,15 +95,27 @@ export function CognitivePracticeLab(){
   const [form,setForm]=useState(0);
   const [attempt,setAttempt]=useState(0);
   const [active,setActive]=useState(false);
+  const [agreed,setAgreed]=useState(false);
+  const [week,setWeek]=useState(1);
+  const [mode,setMode]=useState<'guided'|'free'>('guided');
+  const [practiced,setPracticed]=useState<number[]>([]);
+  const lesson=lessonForWeek(week)!;
   const seed=(form+1)*104729+attempt;
+  const offered=mode==='guided'?lesson.exercises:labels.map((_,i)=>i);
+  function clearSession(){setActive(false);setAgreed(false);setPracticed([]);setWeek(1);setMode('guided');setExercise(0);setForm(0);}
   return <section className="feature-card page-stack" id="cognitive-practice" lang="es" aria-labelledby="cognitive-title">
-    <header><p className="eyebrow">ATLAS Cognitive Research 777 · {protocolVersion}</p><h2 id="cognitive-title">Laboratorio de práctica cognitiva</h2><p>Seis ejercicios educativos voluntarios. No son diagnósticos, pruebas clínicas, ni mediciones de IQ o de cambios cerebrales. Puedes detenerte en cualquier momento.</p></header>
-    <p className="notice">Las respuestas permanecen en la memoria de esta página; este laboratorio no guarda ni transmite sus resultados. Las formas son originales, no calibradas y no equivalentes científicamente.</p>
-    {!active?<><label className="field"><span>Ejercicio</span><select value={exercise} onChange={e=>setExercise(Number(e.target.value))}>{labels.map((name,i)=><option key={name} value={i}>{name}</option>)}</select></label>
+    <header><p className="eyebrow">ATLAS Learning · Educación extracurricular 777 · {protocolVersion}</p><h2 id="cognitive-title">Aprender a aprender</h2><p>Seis disciplinas, doce semanas sugeridas y tres etapas: exploración, práctica y aplicación. Avanza a tu ritmo; no hay calificaciones escolares, rankings ni diagnóstico.</p></header>
+    <p className="notice">Las respuestas y el progreso de esta actividad son temporales, no se guardan ni transmiten por este laboratorio. No escribas datos personales. La participación en estudios científicos y su recopilación de datos no están habilitadas. Las formas no están calibradas.</p>
+    {!agreed?<div className="page-stack"><h3>Participación voluntaria</h3><p>La práctica es opcional. Puedes saltar ejercicios o salir sin consecuencias. Si eres menor, pide orientación a un adulto de confianza para usar el programa como actividad educativa. No necesitas meditar para participar.</p><label className="check-field"><input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)}/><span>Quiero comenzar una sesión educativa voluntaria, sin participar en investigación.</span></label></div>:<>
+    <div className="module-grid compact"><button type="button" className="secondary-button" disabled={active} aria-pressed={mode==='guided'} onClick={()=>{setMode('guided');setExercise(lesson.exercises[0]);}}>Ruta guiada</button><button type="button" className="secondary-button" disabled={active} aria-pressed={mode==='free'} onClick={()=>{setMode('free');setExercise(0);}}>Práctica libre</button></div>
+    {mode==='guided'&&<><label className="field"><span>Semana del programa</span><select disabled={active} value={week} onChange={e=>{const n=Number(e.target.value);const target=lessonForWeek(n);if(target){setWeek(n);setExercise(target.exercises[0]);setPracticed([]);}}}>{curriculum.map(l=><option key={l.week} value={l.week}>{l.week} · {l.stage} · {l.title}</option>)}</select></label><h3>{lesson.title}</h3><p>{lesson.goal}</p><p>Reflexión opcional: {lesson.reflection}</p><p role="status">Actividades marcadas por ti en esta sesión: {lesson.exercises.filter(i=>practiced.includes(i)).length}/{lesson.exercises.length}. No mide capacidad intelectual.</p></>}
+    {!active?<><label className="field"><span>Ejercicio</span><select value={exercise} onChange={e=>setExercise(Number(e.target.value))}>{offered.map(i=><option key={i} value={i}>{labels[i]}</option>)}</select></label>
       <label className="field"><span>Forma de práctica</span><select value={form} onChange={e=>setForm(Number(e.target.value))}><option value={0}>A</option><option value={1}>B</option></select></label>
-      <button type="button" className="primary-button" onClick={()=>{setAttempt(n=>n+1);setActive(true);}}>Abrir ejercicio</button></>:<>
+      <button type="button" className="primary-button" disabled={!offered.includes(exercise)} onClick={()=>{setAttempt(n=>n+1);setActive(true);}}>Abrir ejercicio</button></>:<>
       <h3>{labels[exercise]}</h3><div key={attempt}>
       {exercise===0?<Stroop seed={seed}/>:exercise===1?<Fluency form={form}/>:exercise===2?<Recall form={form}/>:exercise===3?<Digits seed={seed}/>:exercise===4?<Quiz questions={logicForms[form]}/>:<Reading form={form}/>}</div>
-      <button type="button" className="secondary-button" onClick={()=>setActive(false)}>Cerrar y borrar respuestas</button></>}
+      <button type="button" className="secondary-button" onClick={()=>{setPracticed(old=>recordPractice(old,exercise,agreed));setActive(false);}}>Marcar como practicado y cerrar</button>
+      <button type="button" className="secondary-button" onClick={()=>setActive(false)}>Omitir y borrar respuestas</button></>}
+    <button type="button" className="secondary-button" onClick={clearSession}>Salir y borrar sesión educativa</button></>}
   </section>;
 }
