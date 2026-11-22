@@ -46,6 +46,16 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
     : 0;
   const greenStreakCapped = summary.green_streak_capped === true;
   const exactRuntimeVerified = summary.production_commit_sha_verified === true;
+  const publicProbe = record(summary.public_probe);
+  const publicProbeState = nullableString(publicProbe.state) ?? 'unavailable';
+  const publicProbeCheckedAt = nullableString(publicProbe.checked_at);
+  const publicProbeErrorCode = nullableString(publicProbe.error_code);
+  const publicHealth = nullableString(publicProbe.health);
+  const publicProbeGate: AtlasReadinessGateStatus = publicProbeState === 'verified'
+    ? 'passed'
+    : publicProbeState === 'failed'
+      ? 'failed'
+      : 'pending';
   const criticalRouteState: AtlasReadinessGateStatus = criticalRoutes.length === 0
     ? 'pending'
     : criticalRoutes.every((route) => nullableString(route.state) === 'verified')
@@ -55,10 +65,11 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
     gates: [
       { key: 'canary', required: true, status: canaryVerified ? 'passed' : 'pending' },
       { key: 'exact-runtime', required: true, status: exactRuntimeVerified ? 'passed' : 'pending' },
+      { key: 'current-public-probe', required: true, status: publicProbeGate, failureReason: publicProbeErrorCode },
       { key: 'critical-routes', required: true, status: criticalRouteState },
       { key: 'no-regression', required: true, status: regressionDetected ? 'failed' : 'passed' }
     ],
-    requiredGateKeys: ['canary', 'exact-runtime', 'critical-routes', 'no-regression'],
+    requiredGateKeys: ['canary', 'exact-runtime', 'current-public-probe', 'critical-routes', 'no-regression'],
     requireExactSha: false
   });
 
@@ -103,6 +114,15 @@ export function ManagerProductionStatusPanel({ workflow }: { workflow: GuidedWor
         <div>
           <dt>Verified at</dt>
           <dd title={verifiedAt ?? undefined}>{readableDate(verifiedAt)}</dd>
+        </div>
+        <div>
+          <dt>Current public probe</dt>
+          <dd>
+            <span data-state={publicProbeState === 'verified' ? 'verified' : 'unverified'}>{publicProbeState}</span>
+            <small className="manager-meta-subline">{readableDate(publicProbeCheckedAt)}</small>
+            {publicHealth ? <small className="manager-meta-subline">Health: {publicHealth}</small> : null}
+            {publicProbeErrorCode ? <small className="manager-meta-subline">Reason: {publicProbeErrorCode}</small> : null}
+          </dd>
         </div>
         <div>
           <dt>Provider</dt>
