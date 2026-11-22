@@ -4,6 +4,13 @@ import { readFileSync } from 'node:fs';
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 describe('App Factory Work preview integration boundaries', () => {
+  it('keeps every Work route behind the canonical identity gate', () => {
+    const root = read('../../apps/web/src/main.tsx');
+    const resolver = read('../../apps/web/src/extensions/resolveAtlasExtension.tsx');
+    expect(root).not.toMatch(/\bWorkRoutes\b/);
+    expect(resolver).toContain("if (pathname === '/work' || pathname.startsWith('/work/'))");
+    expect(resolver).toContain('return <RequireAtlasIdentity><WorkRoutes /></RequireAtlasIdentity>;');
+  });
   it('registers the route and marks Work OS entry gated', () => {
     const routes = read('../../apps/web/src/work/WorkRoutes.tsx');
     const os = read('../../apps/web/src/work/WorkOSPage.tsx');
