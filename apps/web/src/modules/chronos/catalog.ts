@@ -26,12 +26,31 @@ export function resolveChronosRoute(pathname:string):string|null {
  return match && modules.some(m=>m.topics.some(t=>t.id===match[1])) ? route : null;
 }
 export const progress=()=>({total:modules.reduce((n,m)=>n+m.topics.length,0),certified:0});
-export const evidence=[
- {title:'COBE / FIRAS',url:'https://lambda.gsfc.nasa.gov/data/interfaces/cobe/firas_products.html',detail:'Espectros y productos instrumentales'},
- {title:'WMAP',url:'https://lambda.gsfc.nasa.gov/product/wmap/',detail:'Archivo de datos NASA'},
- {title:'Planck',url:'https://pla.esac.esa.int/pla/',detail:'Archivo científico ESA'},
- {title:'Penzias y Wilson (1965)',url:'https://doi.org/10.1086/148307',detail:'Publicación original'},
- {title:'Planck 2018',url:'https://doi.org/10.1051/0004-6361/201833910',detail:'Parámetros cosmológicos'}
+export type ChronosEvidenceKind = 'archive' | 'publication';
+export type ChronosEvidence = {
+ id: string;
+ title: string;
+ url: string;
+ detail: string;
+ kind: ChronosEvidenceKind;
+ institution: string;
+ topicId: string;
+ classification: 'E02';
+ reviewStatus: 'pending';
+};
+// E02 identifies a DOCUMENTARY REFERENCE, not an independently verified finding.
+// No source is marked reviewed until the underlying scientific work is audited.
+export const evidence: ChronosEvidence[] = [
+ {id:'CHR-EV-001',title:'COBE / FIRAS',url:'https://lambda.gsfc.nasa.gov/data/interfaces/cobe/firas_products.html',detail:'Productos instrumentales FIRAS disponibles para investigación',kind:'archive',institution:'NASA LAMBDA',topicId:'01.001',classification:'E02',reviewStatus:'pending'},
+ {id:'CHR-EV-002',title:'WMAP',url:'https://lambda.gsfc.nasa.gov/product/wmap/',detail:'Archivo de observaciones cosmológicas WMAP',kind:'archive',institution:'NASA LAMBDA',topicId:'01.001',classification:'E02',reviewStatus:'pending'},
+ {id:'CHR-EV-003',title:'Planck',url:'https://pla.esac.esa.int/pla/',detail:'Archivo científico de la misión Planck',kind:'archive',institution:'ESA',topicId:'01.001',classification:'E02',reviewStatus:'pending'},
+ {id:'CHR-EV-004',title:'Penzias y Wilson (1965)',url:'https://doi.org/10.1086/148307',detail:'Publicación original sobre exceso de temperatura de antena',kind:'publication',institution:'The Astrophysical Journal',topicId:'01.001',classification:'E02',reviewStatus:'pending'},
+ {id:'CHR-EV-005',title:'Planck 2018',url:'https://doi.org/10.1051/0004-6361/201833910',detail:'Parámetros cosmológicos publicados por la colaboración Planck',kind:'publication',institution:'Astronomy & Astrophysics',topicId:'01.001',classification:'E02',reviewStatus:'pending'}
 ];
+export const filterEvidence = (kind: ChronosEvidenceKind | 'all', query = ''): ChronosEvidence[] => {
+ const terms = normalize(query).split(/\s+/).filter(Boolean);
+ return evidence.filter(source => (kind === 'all' || source.kind === kind)
+  && terms.every(term => normalize([source.id,source.title,source.detail,source.institution,source.topicId].join(' ')).includes(term)));
+};
 export const tasks=['Identificar evidencias fundamentales','Localizar publicación original','Comparar COBE, WMAP y Planck','Contrastar parámetros publicados','Cronología y vacíos','Reprocesar archivos instrumentales','Auditar imágenes y referencias','Verificar expediente definitivo'].map(title=>({title,done:false}));
 export const timeline=[['Hace ~13.800 Ma','Universo temprano'],['~380.000 años después del Big Bang','Radiación cósmica'],['4.567 Ma','Primeros sólidos solares'],['4.540 Ma','Formación terrestre'],['4.404 Ma','Circones de Jack Hills'],['3.500 Ma','Evidencia temprana de vida'],['2026 d. C.','Actualidad']];
