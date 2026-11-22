@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const modulePath=process.env.ATLAS_PLAYWRIGHT_MODULE;
+const { chromium }=await import(modulePath?pathToFileURL(resolve(modulePath)).href:'playwright');
+const base=new URL(process.env.ATLAS_CHRONOS_BASE_URL||'http://127.0.0.1:4173');
+assert.ok(base.protocol==='http:'&&['127.0.0.1','localhost'].includes(base.hostname),'Local preview only');
+const output=resolve('.tmp/chronos-browser');
+await mkdir(output,{recursive:true});
+const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+const context=await browser.newContext({viewport:{width:1440,height:900}});
+await context.route('**/*',r=>new URL(r.request().url()).origin===base.origin?r.continue():r.abort());
+const page=await context.newPage();
+const errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+const screens=[];
+try{
+ await page.goto(new URL('/chronos',base).href);
+ await page.getByRole('heading',{name:'ATLAS CHRONOS OS',exact:true}).waitFor();
+ await page.keyboard.press('Tab');
+ assert.equal(await page.evaluate(()=>document.activeElement?.textContent),'Saltar al contenido');
+ await page.keyboard.press('Enter');
+ assert.equal(await page.evaluate(()=>document.activeElement?.id),'chronos-content');
+ const search=page.getByRole('searchbox',{name:'Buscar expedientes'});
+ await search.fill('radiacion universo');
+ await page.getByRole('link',{name:/01.001 · Big Bang/}).click();
+ await page.getByRole('heading',{name:/01.001 · Big Bang/}).waitFor();
+ assert.equal(new URL(page.url()).pathname,'/chronos/research/01.001');
+ await page.reload();
+ await page.getByRole('heading',{name:/01.001 · Big Bang/}).waitFor();
+ await page.getByRole('link',{name:'Consultar fuentes'}).click();
+ await page.getByRole('heading',{name:'Registro de fuentes'}).waitFor();
+ await page.goto(new URL('/chronos/research/99.999',base).href);
+ await page.getByRole('heading',{name:'Ruta no encontrada'}).waitFor();
+ for(const width of [1440,768,390,320]){
+  await page.setViewportSize({width,height:900});
+  for(const route of ['/chronos','/chronos/explore','/chronos/research/01.001','/chronos/evidence','/chronos/timeline','/chronos/review']){
+   await page.goto(new URL(route,base).href);
+   await page.getByRole('main').waitFor();
+   const dimensions=await page.evaluate(()=>({viewport:innerWidth,scroll:document.documentElement.scrollWidth}));
+   assert.ok(dimensions.scroll<=dimensions.viewport,route+' at '+width+' overflows: '+JSON.stringify(dimensions));
+   await page.screenshot({path:resolve(output,width+'-'+route.replaceAll('/','_')+'.png'),fullPage:true});
+   screens.push({route,width,...dimensions});
+  }
+ }
+ assert.deepEqual(errors,[]);
+ await writeFile(resolve(output,'verification.json'),JSON.stringify({ok:true,sourceSha:process.env.GITHUB_SHA||null,environment:'local production preview',screens,errors},null,2));
+}catch(e){
+ await page.screenshot({path:resolve(output,'failure.png'),fullPage:true}).catch(()=>{});
+ await writeFile(resolve(output,'verification.json'),JSON.stringify({ok:false,sourceSha:process.env.GITHUB_SHA||null,error:String(e),screens,errors},null,2));
+ throw e;
+}finally{await browser.close();}
