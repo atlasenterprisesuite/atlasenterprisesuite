@@ -33,5 +33,5 @@ export const evidence=[
  {title:'Penzias y Wilson (1965)',url:'https://doi.org/10.1086/148307',detail:'Publicación original'},
  {title:'Planck 2018',url:'https://doi.org/10.1051/0004-6361/201833910',detail:'Parámetros cosmológicos'}
 ];
-export const tasks=['Identificar evidencias fundamentales','Localizar publicación original','Comparar COBE, WMAP y Planck','Contrastar parámetros publicados','Cronología y vacíos','Reprocesar archivos instrumentales','Auditar imágenes y referencias','Verificar expediente definitivo'].map((title,i)=>({title,done:i<5}));
+export const tasks=['Identificar evidencias fundamentales','Localizar publicación original','Comparar COBE, WMAP y Planck','Contrastar parámetros publicados','Cronología y vacíos','Reprocesar archivos instrumentales','Auditar imágenes y referencias','Verificar expediente definitivo'].map(title=>({title,done:false}));
 export const timeline=[['Hace ~13.800 Ma','Universo temprano'],['~380.000 años después del Big Bang','Radiación cósmica'],['4.567 Ma','Primeros sólidos solares'],['4.540 Ma','Formación terrestre'],['4.404 Ma','Circones de Jack Hills'],['3.500 Ma','Evidencia temprana de vida'],['2026 d. C.','Actualidad']];
