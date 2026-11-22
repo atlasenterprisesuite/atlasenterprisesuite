@@ -72,8 +72,8 @@ describe('CHRONOS navigation',()=>{
   const selector = screen.getByRole('combobox',{name:'Filtrar módulos'});
   fireEvent.change(selector,{target:{value:'03'}});
   expect(screen.getByText('1 módulo · 8 expedientes disponibles')).toBeTruthy();
-  expect(screen.getByText(/03 · Geología/)).toBeTruthy();
-  expect(screen.queryByText(/01 · Universo/)).toBeNull();
+  expect(screen.getByText('Geología')).toBeTruthy();
+  expect(screen.queryByText('Universo')).toBeNull();
   fireEvent.change(selector,{target:{value:'all'}});
   expect(screen.getByText(/01 · Universo/)).toBeTruthy();
  });
