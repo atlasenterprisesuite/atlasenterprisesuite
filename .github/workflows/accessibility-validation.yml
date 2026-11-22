@@ -130,6 +130,22 @@ jobs:
           name: atlas-reconciliation-browser-evidence
           path: .tmp/accounting-reconciliation-browser/
           if-no-files-found: ignore
+      - name: Verify exact CHRONOS PR head
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/chronos')
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$EXPECTED_HEAD"
+          integration_sha="$(git rev-parse HEAD)"
+          git fetch --no-tags --depth=1 origin "$EXPECTED_HEAD"
+          git checkout --detach FETCH_HEAD
+          trap 'git checkout --detach "$integration_sha"' EXIT
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          echo "CHRONOS exact head: $(git rev-parse HEAD)"
+          npm run typecheck
+          npx vitest run tests/unit/chronos-navigation.test.tsx tests/unit/chronos-os.test.ts
       - name: Upload preview log on failure
         if: failure()
         uses: actions/upload-artifact@v4
