@@ -37,6 +37,13 @@ describe('CHRONOS navigation',()=>{
   fireEvent.change(screen.getByRole('searchbox'),{target:{value:'xyz-no-topic'}});
   expect(screen.getByRole('status').textContent).toContain('No se encontraron');
  });
+ it('renders separate research progress and timeline on the home screen',()=>{
+  open('/chronos');
+  expect(screen.getByRole('heading',{name:'Progreso de investigación'})).toBeTruthy();
+  expect(screen.getByRole('heading',{name:'Cronología universal'})).toBeTruthy();
+  expect(screen.getByText('5/8 tareas preliminares; 0 certificaciones.')).toBeTruthy();
+  expect(screen.getByRole('link',{name:'Abrir cronología completa'}).getAttribute('href')).toBe('/chronos/timeline');
+ });
  it('unknown research ID fails closed',()=>{
   open('/chronos/research/99.999');
   expect(screen.getByRole('heading',{name:'Ruta no encontrada'})).toBeTruthy();
