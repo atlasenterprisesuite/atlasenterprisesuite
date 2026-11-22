@@ -5,7 +5,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { ChronosPage } from '../../apps/web/src/modules/chronos/ChronosPage';
 import { resolveChronosRoute, searchTopics } from '../../apps/web/src/modules/chronos/catalog';
 import { afterEach } from 'vitest';
-afterEach(cleanup);
+import { defaultAccessibilityProfile, resolveAccessibilityUserId, saveAccessibilityProfile } from '../../apps/web/src/services/accessibilityProfile';
+afterEach(() => { cleanup(); window.localStorage.removeItem(`atlas_accessibility_profile:v1:${resolveAccessibilityUserId()}`); });
 const open = (path:string) => render(<MemoryRouter initialEntries={[path]}><ChronosPage /></MemoryRouter>);
 describe('CHRONOS navigation',()=>{
  it('resolves canonical routes and rejects unrelated and unknown paths',()=>{
@@ -41,8 +42,29 @@ describe('CHRONOS navigation',()=>{
   open('/chronos');
   expect(screen.getByRole('heading',{name:'Progreso de investigación'})).toBeTruthy();
   expect(screen.getByRole('heading',{name:'Cronología universal'})).toBeTruthy();
-  expect(screen.getByText('5/8 tareas preliminares; 0 certificaciones.')).toBeTruthy();
+  expect(screen.getByText('0/8 tareas preliminares; 0 certificaciones.')).toBeTruthy();
   expect(screen.getByRole('link',{name:'Abrir cronología completa'}).getAttribute('href')).toBe('/chronos/timeline');
+ });
+ it('preserves the shared ATLAS accessibility profile and Spanish language declaration', () => {
+  const userId=resolveAccessibilityUserId();
+  saveAccessibilityProfile({...defaultAccessibilityProfile(userId), highContrast:true, motionReduced:true, textSizeScale:1.5, screenReaderOptimized:true});
+  const {container}=open('/chronos');
+  const root=container.querySelector('.chronos-os') as HTMLElement;
+  expect(root.getAttribute('lang')).toBe('es');
+  expect(root.classList.contains('accessibility-high-contrast')).toBe(true);
+  expect(root.classList.contains('accessibility-reduced-motion')).toBe(true);
+  expect(root.style.fontSize).toBe('150%');
+  expect(root.dataset.screenReaderOptimized).toBe('true');
+  fireEvent.click(screen.getByRole('button',{name:'Alto contraste'}));
+  expect(root.classList.contains('accessibility-high-contrast')).toBe(false);
+  fireEvent.click(screen.getByRole('button',{name:'Aumentar tamaño del texto'}));
+  expect(root.style.fontSize).toBe('175%');
+ });
+ it('reacts to accessibility preferences changed in another ATLAS view',()=>{
+  const {container}=open('/chronos');
+  const root=container.querySelector('.chronos-os') as HTMLElement;
+  saveAccessibilityProfile({...defaultAccessibilityProfile(resolveAccessibilityUserId()),highContrast:true});
+  expect(root.classList.contains('accessibility-high-contrast')).toBe(true);
  });
  it('unknown research ID fails closed',()=>{
   open('/chronos/research/99.999');
