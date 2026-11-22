@@ -20,6 +20,7 @@ import { MotionDesigner } from './motion/MotionDesigner';
 import { ProviderGate } from './ProviderGate';
 import { ReviewPanel } from './ReviewPanel';
 import { LocalDirectorCommands } from './LocalDirectorCommands';
+import { CinematicTranscriptStudio } from './CinematicTranscriptStudio';
 import './director.css';
 
 type AtlasContentHandoff = { title?: string; brief?: string; narration?: string };
@@ -188,6 +189,7 @@ export function DirectorWorkspace() {
     <nav className="creator-breadcrumb" aria-label="Breadcrumb"><Link to="/studio">ATLAS Studio</Link><span>/</span><span>Video Lab</span><span>/</span><span>Director</span></nav>
     <header className="director-header"><div><p className="eyebrow">Video Lab</p><h1>ATLAS Director</h1><p>Convert a creative brief into a governed production specification, then render internally without external generation fees when ATLAS Native is verified ready. Local compute and storage may have costs.</p></div><div className="director-header-actions"><span className={`director-readiness ${readinessState}`} role="status">{providerSummary}</span><button className="director-action" type="button" onClick={saveDraft} disabled={!canWrite || saving}>Save draft</button></div></header>
     <LocalDirectorCommands spec={state.spec} canWrite={canWrite && !saving && !submitting && !nativeSubmitting} dispatch={dispatch} />
+    <details className="director-cinema-details"><summary>Open Cinematic Captions & Interactive Transcript · Local editor</summary><CinematicTranscriptStudio /></details>
     <div className="director-shell">
       <nav className="director-step-rail" aria-label="Production steps"><div className="director-steps">{DIRECTOR_STEPS.map((step, index) => <button key={step} type="button" className={`director-step-button ${index === activeStep ? 'active' : ''}`} aria-current={index === activeStep ? 'step' : undefined} onClick={() => setActiveStep(index)}><span>{String(index + 1).padStart(2, '0')}</span>{step}</button>)}</div></nav>
       <main className="director-main"><section className="director-panel" aria-labelledby="director-step-title"><p className="eyebrow">Step {activeStep + 1} of {DIRECTOR_STEPS.length}</p><h2 id="director-step-title">{selectedStep}</h2><p>{STEP_HELP[selectedStep]}</p><div className="director-step-content">{renderEditor()}</div></section><div className="director-navigation"><button className="director-action secondary" type="button" disabled={activeStep === 0} onClick={() => setActiveStep(index => Math.max(0, index - 1))}>Back</button><button className="director-action" type="button" disabled={activeStep === DIRECTOR_STEPS.length - 1} onClick={() => setActiveStep(index => Math.min(DIRECTOR_STEPS.length - 1, index + 1))}>Next</button></div></main>
