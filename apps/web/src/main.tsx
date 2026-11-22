@@ -5,7 +5,6 @@ import { App } from './App';
 import { AtlasRuntimeIntegrityProvider } from './runtime/AtlasRuntimeIntegrityProvider';
 import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { RideRoutes } from './modules/ride/RideRoutes';
-import { WorkRoutes } from './work/WorkRoutes';
 import './atlas-design-tokens.css';
 import './styles.css';
 import './health.css';
@@ -26,7 +25,6 @@ function RootRouter() {
   const location = useLocation();
   if (location.pathname.startsWith('/hospitality')) return <HospitalityRoutes />;
   if (location.pathname.startsWith('/ride')) return <RideRoutes />;
-  if (location.pathname === '/work' || location.pathname.startsWith('/work/')) return <WorkRoutes />;
   return <App />;
 }
 
