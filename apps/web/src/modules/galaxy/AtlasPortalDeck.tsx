@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { PortalDestination } from './portalModel';
+import { filterPortalDestinations, type PortalDestination } from './portalModel';
 
 export function AtlasPortalDeck({
   destinations,
@@ -19,17 +19,7 @@ export function AtlasPortalDeck({
     [destinations]
   );
 
-  const visibleDestinations = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase();
-    return destinations.filter((destination) => {
-      const matchesArea = area === 'All' || destination.area === area;
-      const matchesQuery = !normalizedQuery
-        || destination.label.toLocaleLowerCase().includes(normalizedQuery)
-        || destination.title.toLocaleLowerCase().includes(normalizedQuery)
-        || destination.description.toLocaleLowerCase().includes(normalizedQuery);
-      return matchesArea && matchesQuery;
-    });
-  }, [area, destinations, query]);
+  const visibleDestinations = useMemo(() => filterPortalDestinations(destinations, query, area), [area, destinations, query]);
 
   const selected = visibleDestinations.find((destination) => destination.id === selectedId)
     ?? visibleDestinations[0]
@@ -54,6 +44,7 @@ export function AtlasPortalDeck({
           <span>Search portals</span>
           <input
             type="search"
+            maxLength={150}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Health, Finance, Work..."
