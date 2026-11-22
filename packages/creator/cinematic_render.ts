@@ -119,6 +119,7 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
   let raf = 0;
   let watchdog: ReturnType<typeof setTimeout> | null = null;
   let removeAbort = () => {};
+  let removeVisibility = () => {};
 
   try {
     // Request Web Audio activation synchronously from the user click, before media loading.
@@ -135,6 +136,7 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     const timingIssues = validateTimedCaptions(input.cues, video.duration);
     if (timingIssues.length) throw new Error(timingIssues.join(', '));
     if (input.signal?.aborted) throw new Error('local_render_cancelled');
+    if (document.visibilityState === 'hidden') throw new Error('local_render_requires_visible_tab');
 
     const canvas = document.createElement('canvas');
     const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
@@ -190,6 +192,15 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     const timeout = new Promise<never>((_, reject) => {
       watchdog = setTimeout(() => { stop(); reject(new Error('local_render_timeout')); }, video.duration * 1000 + 30_000);
     });
+    const hidden = new Promise<never>((_, reject) => {
+      const check = () => {
+        if (document.visibilityState === 'hidden') {
+          stop(); reject(new Error('local_render_requires_visible_tab'));
+        }
+      };
+      document.addEventListener('visibilitychange', check);
+      removeVisibility = () => document.removeEventListener('visibilitychange', check);
+    });
     recorder.start(500);
     raf = requestAnimationFrame(draw);
     try {
@@ -198,12 +209,13 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
       stop();
       throw new Error('local_render_playback_blocked');
     }
-    const blob = await Promise.race([recorded, aborted, timeout]);
+    const blob = await Promise.race([recorded, aborted, timeout, hidden]);
     input.onProgress?.(100);
     return { blob, extension: mimeType.startsWith('video/mp4') ? 'mp4' : 'webm' };
   } finally {
     if (watchdog) clearTimeout(watchdog);
     removeAbort();
+    removeVisibility();
     if (raf) cancelAnimationFrame(raf);
     if (recorder?.state === 'recording') recorder.stop();
     video.pause();
