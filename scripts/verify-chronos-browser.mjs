@@ -38,6 +38,12 @@ try{
  await page.getByText('1 módulo · 8 expedientes disponibles').waitFor();
  assert.equal(await page.getByText('Geología',{exact:true}).count(),1);
  assert.equal(await page.getByText('Universo',{exact:true}).count(),0);
+ await page.getByRole('link',{name:'Inicio'}).click();
+ await page.getByRole('link',{name:'Planetario'}).click();
+ await page.getByText('Otros mundos',{exact:true}).waitFor();
+ assert.equal(new URL(page.url()).hash,'#08');
+ assert.equal(await page.getByRole('combobox',{name:'Filtrar módulos'}).inputValue(),'08');
+ assert.equal(await page.getByText('Geología',{exact:true}).count(),0);
  await page.goto(new URL('/chronos/evidence',base).href);
  await page.getByRole('button',{name:'Publicaciones'}).click();
  await page.getByText('2 fuentes registradas · 0 auditadas').waitFor();
