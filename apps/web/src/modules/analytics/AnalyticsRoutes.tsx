@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   ANALYTICS_SOURCES,
   METRIC_CATALOG,
   analyticsReadinessSummary,
   evaluateMetricReadiness,
-  sourceById
+  sourceById,
+  planAnalyticsQuestion
 } from '../../../../../packages/analytics/src/index';
 import './analytics.css';
 
@@ -245,6 +247,49 @@ function Overview() {
   );
 }
 
+function QuestionPlanner() {
+  const [question, setQuestion] = useState('');
+  const [submitted, setSubmitted] = useState<string | null>(null);
+  const plan = submitted === null ? null : planAnalyticsQuestion(submitted);
+  return (
+    <section className="analytics-section" aria-labelledby="analytics-question-title">
+      <div className="analytics-section-heading">
+        <p className="eyebrow">Read-only metric discovery</p>
+        <h2 id="analytics-question-title">Ask ATLAS Analytics</h2>
+        <p>Find metric definitions in English or Spanish. This planner does not query live data or execute commands.</p>
+      </div>
+      <form onSubmit={(event) => { event.preventDefault(); setSubmitted(question); }}>
+        <label htmlFor="analytics-question">Question about a registered metric</label>
+        <input id="analytics-question" value={question} maxLength={500}
+          onChange={(event) => { setQuestion(event.target.value); setSubmitted(null); }}
+          placeholder="e.g. Show gross margin / ingresos" required />
+        <button type="submit" disabled={!question.trim()}>Find metric contracts</button>
+      </form>
+      <div aria-live="polite">
+        {plan?.status === 'unsupported' ? <p>No supported metric matched. Review the <Link to="/analytics/metrics">metric catalog</Link>.</p> : null}
+        {plan?.status === 'source-gated' ? (
+          <>
+            <p>Definitions only. Live execution is not enabled.</p>
+            <div className="analytics-grid">
+              {plan.metrics.map(metric => (
+                <article className="analytics-card" key={metric.id}>
+                  <h3>{metric.name}</h3>
+                  <StateBadge state="contract-gated" />
+                  <p>{metric.definition}</p>
+                  <p>Unit: {metric.unit}. Value: unavailable.</p>
+                  <p>Required sources: {metric.requiredSources.join(', ')}</p>
+                  <p>Source blockers: {metric.blockedSources.join(', ') || 'None in catalog; runtime authorization still required'}</p>
+                  <Link to="/analytics/sources">Review source gates</Link>
+                </article>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function Insights() {
   return (
     <section className="analytics-section">
@@ -337,7 +382,7 @@ export function AnalyticsRoutes() {
         : null)}
       {tab === 'metrics' ? <section className="analytics-section"><div className="analytics-section-heading"><p className="eyebrow">Semantic layer</p><h2>Metric catalog</h2><p>Definitions are visible before values. A metric stays gated until every required source contract passes.</p></div><MetricCards /></section> : null}
       {tab === 'sources' ? <section className="analytics-section"><div className="analytics-section-heading"><p className="eyebrow">Source registry</p><h2>Data sources & lineage gates</h2><p>These are capability contracts, not claims that a live provider session currently exists.</p></div><SourceCards /></section> : null}
-      {tab === 'insights' ? <Insights /> : null}
+      {tab === 'insights' ? <><QuestionPlanner /><Insights /></> : null}
       {tab === 'forecasting' ? <Forecasting /> : null}
       {tab === 'governance' ? <Governance /> : null}
 
