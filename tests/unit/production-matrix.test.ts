@@ -100,6 +100,22 @@ describe('ATLAS 777 production matrix — live-probe contract with controlled HT
     expect(result.output.p0_failure_count).toBeGreaterThan(0);
   });
 
+  it('treats all six public CHRONOS routes as exact-SHA P0 contracts', () => {
+    const routes=[
+      '/chronos',
+      '/chronos/explore',
+      '/chronos/research/01.001',
+      '/chronos/evidence',
+      '/chronos/timeline',
+      '/chronos/review'
+    ];
+    for (const route of routes) expect(contract.public_routes).toContain(route);
+    const simulated404=verify({p0Fail:'/chronos/research/01.001'});
+    expect(simulated404.exitCode).toBe(1);
+    expect(simulated404.output.ok).toBe(false);
+    expect(simulated404.output.checks.required_routes.some((result:{path:string;ok:boolean})=>result.path==='/chronos/research/01.001'&&result.ok===false)).toBe(true);
+  });
+
   it('does not certify an older deployed SHA even when all routes return HTTP 200', () => {
     const result = verify({ sha: 'different-commit-sha' });
     expect(result.exitCode).toBe(1);
