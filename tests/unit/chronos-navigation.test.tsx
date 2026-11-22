@@ -66,6 +66,16 @@ describe('CHRONOS navigation',()=>{
   act(()=>{saveAccessibilityProfile({...defaultAccessibilityProfile(resolveAccessibilityUserId()),highContrast:true});});
   expect(root.classList.contains('accessibility-high-contrast')).toBe(true);
  });
+ it('honors home tile deep links even after another module was filtered',()=>{
+  open('/chronos/explore');
+  fireEvent.change(screen.getByRole('combobox',{name:'Filtrar módulos'}),{target:{value:'03'}});
+  expect(screen.getByText('Geología')).toBeTruthy();
+  fireEvent.click(screen.getByRole('link',{name:'Inicio'}));
+  fireEvent.click(screen.getByRole('link',{name:'Planetario'}));
+  expect((screen.getByRole('combobox',{name:'Filtrar módulos'}) as HTMLSelectElement).value).toBe('08');
+  expect(screen.getByText('Otros mundos')).toBeTruthy();
+  expect(screen.queryByText('Geología')).toBeNull();
+ });
  it('filters explorer modules without changing the stable 75 topic catalog', () => {
   open('/chronos/explore');
   expect(screen.getByText('10 módulos · 75 expedientes disponibles')).toBeTruthy();
