@@ -25,6 +25,7 @@ export function supportedVideoRecordingType(): string | null {
   if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return null;
   return [
     'video/mp4;codecs=h264,aac',
+    'video/mp4',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
     'video/webm'
@@ -120,6 +121,9 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
   let removeAbort = () => {};
 
   try {
+    // Request Web Audio activation synchronously from the user click, before media loading.
+    audioContext = new AudioContext();
+    const audioResume = audioContext.resume();
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('local_video_load_timeout')), 20_000);
       video.onloadedmetadata = () => { clearTimeout(timer); resolve(); };
@@ -139,11 +143,10 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('local_canvas_unavailable');
 
-    audioContext = new AudioContext();
     const destination = audioContext.createMediaStreamDestination();
     const source = audioContext.createMediaElementSource(video);
     source.connect(destination);
-    await audioContext.resume();
+    await audioResume;
     if (audioContext.state !== 'running') throw new Error('local_audio_context_not_running');
 
     const videoTracks = canvas.captureStream(24).getVideoTracks();
