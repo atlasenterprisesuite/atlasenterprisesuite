@@ -179,7 +179,7 @@ export function CinematicTranscriptStudio() {
       <div><p className="eyebrow">ATLAS Studio · Local media</p><h2>Cinematic Captions & Interactive Transcript</h2></div>
       <span className="cinema-local-flag">Local-first · no upload</span>
     </div>
-    <p className="cinema-hint">Add your own video and timestamped subtitles, or create cues while previewing. Search the transcript and select any phrase to seek to its exact start. Automatic transcription is not enabled in this browser editor.</p>
+    <p className="cinema-hint">Add your own video and timestamped subtitles, or create cues while previewing. Search the transcript and select any phrase to seek to its exact start. Automatic speech-to-text is not connected; no audio-derived timestamps are invented.</p>
 
     <div className="cinema-grid">
       <div className="cinema-preview-column">
