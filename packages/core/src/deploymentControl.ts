@@ -134,7 +134,10 @@ export function planAtlasDeployQueue(input: {
 
   const available = Math.max(0, policy.maxConcurrent - input.inFlight.length);
   const sorted = [...input.requests].sort(stableQueueSort);
-  const seen = new Set<string>();
+  // An active build for the exact target is also a duplicate; do not start it again.
+  const seen = new Set<string>(
+    policy.coalesceSameSource ? input.inFlight.map(coalesceKey) : []
+  );
   const launch: AtlasDeployRequest[] = [];
   const deferred: AtlasDeployRequest[] = [];
   const coalesced: AtlasDeployRequest[] = [];
