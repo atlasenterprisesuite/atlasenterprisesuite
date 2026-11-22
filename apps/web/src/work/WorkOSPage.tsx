@@ -63,6 +63,7 @@ const WORK_GROUPS: readonly WorkGroup[] = [
     apps: [
       { name: 'Work', area: 'Orchestration', description: 'Canonical workflow lifecycle, active queues, approvals, history and team policy.', to: '/work', status: 'active' },
       { name: 'Automations', area: 'Automation', description: 'Governed orchestration over Work, assistant intelligence and execution readiness.', to: '/automations', status: 'active' },
+      { name: 'App Factory', area: 'Concept preview', description: 'Local-only idea to static preview; no AI generation, authenticated tenant operations or deployment.', to: '/work/app-factory', status: 'gated', boundary: 'Authenticated membership, backend integration and E2E certification are not enabled.' },
       { name: 'Guided Execution', area: 'Execution', description: 'Step-by-step controlled execution through the Universal Execution Engine.', to: '/execution/manager/readiness', status: 'active' },
       { name: 'Connections', area: 'Integrations', description: 'Provider connections remain explicit, revocable and organization-bound.', to: '/work/connections', status: 'active' },
       { name: 'Computer Operations', area: 'Computer use', description: 'Governed computer operation surface under Work runtime and approval boundaries.', to: '/work/computer-operations', status: 'active' },
