@@ -151,7 +151,8 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     output = new MediaStream([...videoTracks, ...destination.stream.getAudioTracks()]);
     recorder = new MediaRecorder(output, { mimeType, videoBitsPerSecond: 3_500_000 });
 
-    paintFrame(ctx, video, input.cues, input.title, input.preset);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     const chunks: Blob[] = [];
     const recorded = new Promise<Blob>((resolve, reject) => {
       if (!recorder) return reject(new Error('local_recorder_unavailable'));
@@ -171,7 +172,9 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     };
     const draw = () => {
       if (stopped) return;
-      paintFrame(ctx, video, input.cues, input.title, input.preset);
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        paintFrame(ctx, video, input.cues, input.title, input.preset);
+      }
       input.onProgress?.(Math.min(99, Math.round(video.currentTime / video.duration * 100)));
       raf = requestAnimationFrame(draw);
     };
