@@ -44,6 +44,22 @@ try{
    screens.push({route,width,...dimensions});
   }
  }
+ await page.goto(new URL('/chronos',base).href);
+ await page.evaluate(()=>{
+  window.localStorage.setItem('atlas_accessibility_profile:v1:local-user',JSON.stringify({highContrast:true,textSizeScale:1.5,motionReduced:true,screenReaderOptimized:true}));
+ });
+ await page.reload();
+ const chronos=page.locator('.chronos-os');
+ assert.equal(await chronos.getAttribute('lang'),'es');
+ assert.equal(await chronos.getAttribute('data-screen-reader-optimized'),'true');
+ assert.equal(await chronos.evaluate(el=>el.classList.contains('accessibility-high-contrast')),true);
+ assert.equal(await chronos.evaluate(el=>el.classList.contains('accessibility-reduced-motion')),true);
+ assert.equal(await chronos.evaluate(el=>getComputedStyle(el).fontSize),'24px');
+ await page.screenshot({path:resolve(output,'accessibility-profile.png'),fullPage:true});
+ await page.getByRole('button',{name:'Alto contraste'}).click();
+ assert.equal(await chronos.evaluate(el=>el.classList.contains('accessibility-high-contrast')),false);
+ await page.getByRole('button',{name:'Aumentar tamaño del texto'}).click();
+ assert.equal(await chronos.evaluate(el=>getComputedStyle(el).fontSize),'28px');
  assert.deepEqual(errors,[]);
  await writeFile(resolve(output,'verification.json'),JSON.stringify({ok:true,sourceSha:process.env.GITHUB_SHA||null,environment:'local production preview',screens,errors},null,2));
 }catch(e){
