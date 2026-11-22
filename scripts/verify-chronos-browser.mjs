@@ -33,6 +33,21 @@ try{
  await page.getByRole('heading',{name:'Registro de fuentes'}).waitFor();
  await page.goto(new URL('/chronos/research/99.999',base).href);
  await page.getByRole('heading',{name:'Ruta no encontrada'}).waitFor();
+ await page.goto(new URL('/chronos/explore',base).href);
+ await page.getByRole('combobox',{name:'Filtrar módulos'}).selectOption('03');
+ await page.getByText('1 módulo · 8 expedientes disponibles').waitFor();
+ assert.equal(await page.getByText(/03 · Geología/).count(),1);
+ assert.equal(await page.getByText(/01 · Universo/).count(),0);
+ await page.goto(new URL('/chronos/evidence',base).href);
+ await page.getByRole('button',{name:'Publicaciones'}).click();
+ await page.getByText('2 fuentes registradas · 0 auditadas').waitFor();
+ assert.equal(await page.getByRole('link',{name:/COBE \/ FIRAS/}).count(),0);
+ assert.equal(await page.getByRole('link',{name:/Planck 2018/}).count(),1);
+ await page.getByRole('button',{name:'Todas'}).click();
+ await page.getByRole('searchbox',{name:'Buscar fuentes'}).fill('NASA');
+ await page.getByText('2 fuentes registradas · 0 auditadas').waitFor();
+ await page.getByRole('searchbox',{name:'Buscar fuentes'}).fill('ninguna-fuente-777');
+ await page.getByText(/No hay fuentes que coincidan/).waitFor();
  for(const width of [1440,768,390,320]){
   await page.setViewportSize({width,height:900});
   for(const route of ['/chronos','/chronos/explore','/chronos/research/01.001','/chronos/evidence','/chronos/timeline','/chronos/review']){
