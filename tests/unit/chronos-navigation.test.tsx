@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ChronosPage } from '../../apps/web/src/modules/chronos/ChronosPage';
 import { resolveChronosRoute, searchTopics } from '../../apps/web/src/modules/chronos/catalog';
@@ -63,7 +63,7 @@ describe('CHRONOS navigation',()=>{
  it('reacts to accessibility preferences changed in another ATLAS view',()=>{
   const {container}=open('/chronos');
   const root=container.querySelector('.chronos-os') as HTMLElement;
-  saveAccessibilityProfile({...defaultAccessibilityProfile(resolveAccessibilityUserId()),highContrast:true});
+  act(()=>{saveAccessibilityProfile({...defaultAccessibilityProfile(resolveAccessibilityUserId()),highContrast:true});});
   expect(root.classList.contains('accessibility-high-contrast')).toBe(true);
  });
  it('unknown research ID fails closed',()=>{
