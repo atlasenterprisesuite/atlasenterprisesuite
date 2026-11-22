@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { modules, searchTopics, progress, evidence, tasks } from '../../apps/web/src/modules/chronos/catalog';
+import { modules, searchTopics, progress, evidence, tasks, filterEvidence } from '../../apps/web/src/modules/chronos/catalog';
 describe('CHRONOS research catalog', () => {
  it('preserves all 75 stable goals', () => {
   const ids = modules.flatMap(m => m.topics.map(t => t.id));
@@ -18,6 +18,22 @@ describe('CHRONOS research catalog', () => {
  it('never reports undocumented research work as completed', () => {
   expect(tasks).toHaveLength(8);
   expect(tasks.every(task => task.done === false)).toBe(true);
+ });
+ it('registers documentary sources without inventing scientific verification', () => {
+  expect(evidence).toHaveLength(5);
+  expect(new Set(evidence.map(source => source.id)).size).toBe(evidence.length);
+  expect(evidence.every(source => source.topicId === '01.001')).toBe(true);
+  expect(evidence.every(source => source.reviewStatus === 'pending')).toBe(true);
+  expect(evidence.every(source => source.classification === 'E02')).toBe(true);
+  expect(evidence.every(source => source.institution.length > 0)).toBe(true);
+ });
+ it('filters scientific archives, publications and source names accessibly', () => {
+  expect(filterEvidence('all')).toHaveLength(5);
+  expect(filterEvidence('archive')).toHaveLength(3);
+  expect(filterEvidence('publication')).toHaveLength(2);
+  expect(filterEvidence('publication', 'cosmologicos')).toHaveLength(1);
+  expect(filterEvidence('archive', 'NASA')).toHaveLength(2);
+  expect(filterEvidence('all', 'sin-fuente')).toEqual([]);
  });
  it('uses HTTPS source references', () => {
   expect(evidence.length).toBeGreaterThan(0);
