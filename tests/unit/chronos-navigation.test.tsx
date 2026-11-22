@@ -1,0 +1,49 @@
+import React from 'react';
+import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { ChronosPage } from '../../apps/web/src/modules/chronos/ChronosPage';
+import { resolveChronosRoute, searchTopics } from '../../apps/web/src/modules/chronos/catalog';
+import { afterEach } from 'vitest';
+afterEach(cleanup);
+const open = (path:string) => render(<MemoryRouter initialEntries={[path]}><ChronosPage /></MemoryRouter>);
+describe('CHRONOS navigation',()=>{
+ it('resolves canonical routes and rejects unrelated and unknown paths',()=>{
+  expect(resolveChronosRoute('/chronos/')).toBe('');
+  expect(resolveChronosRoute('/chronos/research/01.001')).toBe('research/01.001');
+  for(const path of ['/chronos/research/99.999','/chronos/researching','/chronos/research/01.001/extra','/chronos-other','/chronos//review']) expect(resolveChronosRoute(path)).toBeNull();
+ });
+ it('finds nonadjacent normalized search terms',()=>{
+  expect(searchTopics('radiacion universo').map(t=>t.id)).toContain('01.001');
+ });
+ it('renders an active research deep link and source navigation',()=>{
+  open('/chronos/research/01.001');
+  expect(screen.getByRole('heading',{name:/01.001 · Big Bang/})).toBeTruthy();
+  expect(screen.getByRole('link',{name:'Consultar fuentes'}).getAttribute('href')).toBe('/chronos/evidence');
+  expect(screen.getByRole('link',{name:'Investigación'}).getAttribute('aria-current')).toBe('page');
+ });
+ it('navigates to a search result and clears the query',()=>{
+  open('/chronos');
+  const input=screen.getByRole('searchbox',{name:'Buscar expedientes'});
+  fireEvent.change(input,{target:{value:'radiacion'}});
+  fireEvent.click(screen.getByRole('link',{name:/01.001 · Big Bang/}));
+  expect(screen.getByRole('heading',{name:/01.001 · Big Bang/})).toBeTruthy();
+  expect((input as HTMLInputElement).value).toBe('');
+ });
+ it('reports no results and exposes accessible landmarks',()=>{
+  open('/chronos');
+  expect(screen.getByRole('main').id).toBe('chronos-content');
+  expect(screen.getByRole('link',{name:'Saltar al contenido'}).getAttribute('href')).toBe('#chronos-content');
+  fireEvent.change(screen.getByRole('searchbox'),{target:{value:'xyz-no-topic'}});
+  expect(screen.getByRole('status').textContent).toContain('No se encontraron');
+ });
+ it('unknown research ID fails closed',()=>{
+  open('/chronos/research/99.999');
+  expect(screen.getByRole('heading',{name:'Ruta no encontrada'})).toBeTruthy();
+ });
+ it('shows the exact evidence registry and safe external links',()=>{
+  open('/chronos/evidence');
+  expect(screen.getByRole('heading',{name:'Registro de fuentes'})).toBeTruthy();
+  expect(screen.getByRole('link',{name:/COBE/}).getAttribute('rel')).toContain('noopener');
+ });
+});
