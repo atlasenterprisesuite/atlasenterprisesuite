@@ -105,6 +105,14 @@ jobs:
       - name: Verify complete repository
         run: npm run verify:all
 
+      - name: Verify exact-SHA build output evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/verify-build-evidence.mjs apps/web/dist "$GITHUB_SHA" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/atlas-build-evidence.json"
+          node -e 'const e=require(process.argv[1]); console.log("ATLAS_BUILD_EVIDENCE",JSON.stringify({commit_sha:e.commit_sha,run_id:e.run_id,file_count:e.file_count,tree_sha256:e.tree_sha256}));' "$RUNNER_TEMP/atlas-build-evidence.json" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Record Supabase-first readiness boundary
         run: |
           {
