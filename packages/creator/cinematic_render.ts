@@ -118,6 +118,7 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
   let recorder: MediaRecorder | null = null;
   let raf = 0;
   let watchdog: ReturnType<typeof setTimeout> | null = null;
+  let resumeWatchdog: ReturnType<typeof setTimeout> | null = null;
   let removeAbort = () => {};
   let removeVisibility = () => {};
 
@@ -148,7 +149,15 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     const destination = audioContext.createMediaStreamDestination();
     const source = audioContext.createMediaElementSource(video);
     source.connect(destination);
-    await audioResume;
+    await Promise.race([
+      audioResume,
+      new Promise<never>((_, reject) => {
+        resumeWatchdog = setTimeout(() => reject(new Error('local_audio_resume_timeout')), 8_000);
+      })
+    ]);
+    if (resumeWatchdog) { clearTimeout(resumeWatchdog); resumeWatchdog = null; }
+    if (input.signal?.aborted) throw new Error('local_render_cancelled');
+    if (document.visibilityState === 'hidden') throw new Error('local_render_requires_visible_tab');
     if (audioContext.state !== 'running') throw new Error('local_audio_context_not_running');
 
     const videoTracks = canvas.captureStream(24).getVideoTracks();
@@ -214,6 +223,7 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     return { blob, extension: mimeType.startsWith('video/mp4') ? 'mp4' : 'webm' };
   } finally {
     if (watchdog) clearTimeout(watchdog);
+    if (resumeWatchdog) clearTimeout(resumeWatchdog);
     removeAbort();
     removeVisibility();
     if (raf) cancelAnimationFrame(raf);
