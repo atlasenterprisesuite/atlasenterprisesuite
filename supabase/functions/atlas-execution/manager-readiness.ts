@@ -42,6 +42,55 @@ export const MANAGER_CRITICAL_NETWORK_ROUTES = [
 
 type ManagerCriticalRouteState = 'verified' | 'failed' | 'challenge' | 'unavailable';
 
+const PUBLIC_PROBE_MAX_AGE_MS = 30 * 60 * 1000;
+
+export type CurrentPublicProductionProbe = {
+  state: 'verified' | 'failed' | 'stale' | 'unavailable';
+  checked_at: string | null;
+  error_code: string | null;
+  health: string | null;
+};
+
+/**
+ * A historic Cloudflare deployment attestation is not a current public-health
+ * verdict. Evaluate the latest independent public probe as a separate P0 gate.
+ */
+export function evaluateRecentPublicProductionProbe(
+  value: unknown,
+  expectedSha: string,
+  nowMs = Date.now()
+): CurrentPublicProductionProbe {
+  const row = plainRecord(value);
+  const checks = plainRecord(row.checks);
+  const checkedAt = typeof row.created_at === 'string' && row.created_at.trim() ? row.created_at : null;
+  const health = typeof checks.public_health_overall === 'string' ? checks.public_health_overall : null;
+  if (!checkedAt) return { state: 'unavailable', checked_at: null, error_code: 'public_probe_missing', health };
+
+  const checkedMs = Date.parse(checkedAt);
+  if (!Number.isFinite(checkedMs) || checkedMs > nowMs || nowMs - checkedMs > PUBLIC_PROBE_MAX_AGE_MS) {
+    return { state: 'stale', checked_at: checkedAt, error_code: 'public_probe_stale', health };
+  }
+
+  const verified =
+    row.status === 'passed' &&
+    row.provider_state === 'verified' &&
+    checks.root_status === 200 &&
+    checks.status_page_status === 200 &&
+    checks.public_health_status === 200 &&
+    health === 'operational' &&
+    checks.artifact_verified === true &&
+    checks.public_version_id_present === true &&
+    Boolean(expectedSha) &&
+    checks.public_version_tag === expectedSha;
+
+  return {
+    state: verified ? 'verified' : 'failed',
+    checked_at: checkedAt,
+    error_code: verified ? null : typeof row.error_code === 'string' && row.error_code ? row.error_code : 'public_probe_attestation_invalid',
+    health
+  };
+}
+
 export function isPersistedProductionEvidenceHealthy(value: unknown) {
   const row = plainRecord(value);
   const rowChecks = plainRecord(row.checks);
@@ -75,6 +124,8 @@ export function deriveProductionContinuity(historyRows: unknown[], canaryVerifie
 export type ManagerProductionVerificationSummary = {
   state: 'verified' | 'unverified' | 'unavailable';
   canary_verified: boolean;
+  production_commit_sha_verified: boolean;
+  public_probe: CurrentPublicProductionProbe;
   deployment_sha: string | null;
   verified_at: string | null;
   provider: string | null;
@@ -181,6 +232,8 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
     return {
       state: 'unavailable',
       canary_verified: false,
+      production_commit_sha_verified: false,
+      public_probe: evaluateRecentPublicProductionProbe(null, ''),
       deployment_sha: null,
       verified_at: null,
       provider: null,
@@ -209,6 +262,16 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
 
   const checks = plainRecord(latest.checks);
   const deploymentSha = typeof latest.target_version === 'string' ? latest.target_version : '';
+  const { data: publicProbeRow, error: publicProbeError } = await deps.admin
+    .from('atlas_runtime_verification_runs')
+    .select('status,provider_state,created_at,checks,error_code')
+    .eq('verification_type', 'infrastructure-public')
+    .eq('target_service', 'atlas-enterprise-suite-web')
+    .eq('environment', 'production')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const publicProbe = evaluateRecentPublicProductionProbe(publicProbeError ? null : publicProbeRow, deploymentSha);
   const history = historyRows.map((row: any) => {
     const rowChecks = plainRecord(row.checks);
     return {
@@ -261,6 +324,8 @@ async function loadProductionVerificationSummary(deps: SyncDependencies): Promis
   return {
     state: canaryVerified ? 'verified' : 'unverified',
     canary_verified: canaryVerified,
+    production_commit_sha_verified: checks.production_commit_sha_verified === true,
+    public_probe: publicProbe,
     deployment_sha: deploymentSha || null,
     verified_at: typeof latest.created_at === 'string' ? latest.created_at : null,
     provider: typeof latest.provider === 'string' ? latest.provider : null,
