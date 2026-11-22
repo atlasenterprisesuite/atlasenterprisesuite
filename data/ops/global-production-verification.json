@@ -1,5 +1,5 @@
 {
-  "version": 36,
+  "version": 37,
   "production_origin": "https://www.atlasenterprisesuite.com",
   "default_mode": "fail-closed",
   "health_check": {
@@ -84,7 +84,13 @@
     "/advisory/reports",
     "/advisory/providers",
     "/advisory/readiness",
-    "/release/stewardship"
+    "/release/stewardship",
+    "/chronos",
+    "/chronos/explore",
+    "/chronos/research/01.001",
+    "/chronos/evidence",
+    "/chronos/timeline",
+    "/chronos/review"
   ],
   "critical_network_routes": [
     "/business/network",
