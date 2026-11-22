@@ -7,7 +7,7 @@ import {
 } from '../../lib/atlasSession';
 import { AtlasPortalDeck } from './AtlasPortalDeck';
 import { ImmersivePortalPanel } from './ImmersivePortalPanel';
-import { buildPortalDestinations, type PortalDestination } from './portalModel';
+import { buildPortalDestinations, resolveDiscoveryRoute, type PortalDestination } from './portalModel';
 
 export function AtlasPortalsPage() {
   const navigate = useNavigate();
@@ -31,8 +31,9 @@ export function AtlasPortalsPage() {
   );
 
   const handleEnter = (destination: PortalDestination) => {
-    if (!destination.navigable) return;
-    navigate(destination.route);
+    const route = resolveDiscoveryRoute(destinations, destination.id);
+    if (!route || !organization?.id) return;
+    navigate(route);
   };
 
   return (
