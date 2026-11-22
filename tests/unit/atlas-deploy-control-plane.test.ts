@@ -84,3 +84,38 @@ describe('ATLAS deploy control plane', () => {
     expect(result.deferred.map(item => item.id)).toEqual(['low']);
   });
 });
+
+describe('bounded parallel builds', () => {
+  const policy = { maxConcurrent: 4, minProviderIntervalMs: 0, coalesceSameSource: true };
+  it('coalesces a queued intent already represented by an active build', () => {
+    const result = planAtlasDeployQueue({ requests: [request('duplicate')], inFlight: [request('active')], now: 10000, policy });
+    expect(result.launch).toEqual([]);
+    expect(result.coalesced.map(x => x.id)).toEqual(['duplicate']);
+  });
+  it('defaults to one active build per provider', () => {
+    const result = planAtlasDeployQueue({ requests: [request('next', { sourceSha: 'def456' })], inFlight: [request('active')], now: 10000, policy });
+    expect(result.launch).toEqual([]);
+    expect(result.deferred.map(x => x.id)).toEqual(['next']);
+  });
+  it('allows explicit bounded parallelism while retaining global capacity', () => {
+    const result = planAtlasDeployQueue({
+      requests: [request('a', { sourceSha: 'a' }), request('b', { sourceSha: 'b' }), request('c', { sourceSha: 'c' })],
+      inFlight: [request('active')], now: 10000,
+      policy: { ...policy, maxConcurrent: 2, maxConcurrentByProvider: { vercel: 3 } }
+    });
+    expect(result.launch.map(x => x.id)).toEqual(['a']);
+    expect(result.deferred.map(x => x.id)).toEqual(['b', 'c']);
+  });
+  it('does not bypass a nonzero provider cooldown with parallel dispatch', () => {
+    const result = planAtlasDeployQueue({
+      requests: [request('a', { sourceSha: 'a' }), request('b', { sourceSha: 'b' })], inFlight: [], now: 10000,
+      policy: { ...policy, minProviderIntervalMs: 1000, maxConcurrentByProvider: { vercel: 3 } }
+    });
+    expect(result.launch).toHaveLength(1);
+    expect(result.deferred).toHaveLength(1);
+  });
+  it('rejects invalid provider capacity settings', () => {
+    expect(() => planAtlasDeployQueue({ requests: [], inFlight: [], now: 10000,
+      policy: { ...policy, maxConcurrentByProvider: { vercel: -1 } } })).toThrow();
+  });
+});
