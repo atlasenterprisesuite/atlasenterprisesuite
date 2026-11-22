@@ -66,6 +66,28 @@ describe('CHRONOS navigation',()=>{
   act(()=>{saveAccessibilityProfile({...defaultAccessibilityProfile(resolveAccessibilityUserId()),highContrast:true});});
   expect(root.classList.contains('accessibility-high-contrast')).toBe(true);
  });
+ it('filters explorer modules without changing the stable 75 topic catalog', () => {
+  open('/chronos/explore');
+  expect(screen.getByText('10 módulos · 75 expedientes disponibles')).toBeTruthy();
+  const selector = screen.getByRole('combobox',{name:'Filtrar módulos'});
+  fireEvent.change(selector,{target:{value:'03'}});
+  expect(screen.getByText('1 módulo · 9 expedientes disponibles')).toBeTruthy();
+  expect(screen.getByText(/03 · Geología/)).toBeTruthy();
+  expect(screen.queryByText(/01 · Universo/)).toBeNull();
+  fireEvent.change(selector,{target:{value:'all'}});
+  expect(screen.getByText(/01 · Universo/)).toBeTruthy();
+ });
+ it('filters provenance cards while preserving real source links and pending review',()=>{
+  open('/chronos/evidence');
+  expect(screen.getByText('5 fuentes registradas · 0 auditadas')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Publicaciones'}));
+  expect(screen.getByText('2 fuentes registradas · 0 auditadas')).toBeTruthy();
+  expect(screen.getByRole('link',{name:/Penzias y Wilson/})).toBeTruthy();
+  expect(screen.queryByRole('link',{name:/COBE \/ FIRAS/})).toBeNull();
+  expect(screen.getAllByText('Revisión ATLAS pendiente')).toHaveLength(2);
+  fireEvent.click(screen.getByRole('button',{name:'Todas'}));
+  expect(screen.getByRole('link',{name:/COBE \/ FIRAS/}).getAttribute('rel')).toContain('noopener');
+ });
  it('unknown research ID fails closed',()=>{
   open('/chronos/research/99.999');
   expect(screen.getByRole('heading',{name:'Ruta no encontrada'})).toBeTruthy();
