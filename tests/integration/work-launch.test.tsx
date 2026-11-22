@@ -165,3 +165,17 @@ describe('ATLAS Work composer launch flow', () => {
     expect(screen.queryByRole('button', { name: 'Create workflow' })).not.toBeInTheDocument();
   });
 });
+
+
+describe('department work intake', () => {
+  it.each([
+    ['accounting', 'accounting'],
+    ['learning', 'learning'],
+    ['unknown-module', 'manager']
+  ])('validates the requested owner module %s', async (requested, expected) => {
+    render(<MemoryRouter initialEntries={['/work/new?ownerModule=' + requested]}><WorkComposerPage /></MemoryRouter>);
+    expect(screen.getByLabelText('Owner module')).toHaveValue(expected);
+    expect(await screen.findByText('org-1')).toBeInTheDocument();
+    expect(createWorkWorkflow).not.toHaveBeenCalled();
+  });
+});
