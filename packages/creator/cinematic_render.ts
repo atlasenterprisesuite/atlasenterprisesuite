@@ -12,6 +12,11 @@ export const CINEMATIC_PRESETS: Record<CinematicPreset, { label: string; filter:
   gold: { label: 'Golden hour', filter: 'sepia(.35) saturate(1.25) contrast(1.1)' }
 };
 
+function isPageHidden(): boolean {
+  // Read fresh on every call; visibility may change across awaited browser operations.
+  return document.visibilityState === 'hidden';
+}
+
 export type LocalRenderInput = {
   sourceUrl: string;
   cues: readonly CaptionCue[];
@@ -137,7 +142,7 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     const timingIssues = validateTimedCaptions(input.cues, video.duration);
     if (timingIssues.length) throw new Error(timingIssues.join(', '));
     if (input.signal?.aborted) throw new Error('local_render_cancelled');
-    if (document.visibilityState === 'hidden') throw new Error('local_render_requires_visible_tab');
+    if (isPageHidden()) throw new Error('local_render_requires_visible_tab');
 
     const canvas = document.createElement('canvas');
     const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
@@ -157,7 +162,7 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     ]);
     if (resumeWatchdog) { clearTimeout(resumeWatchdog); resumeWatchdog = null; }
     if (input.signal?.aborted) throw new Error('local_render_cancelled');
-    if (document.visibilityState === 'hidden') throw new Error('local_render_requires_visible_tab');
+    if (isPageHidden()) throw new Error('local_render_requires_visible_tab');
     if (audioContext.state !== 'running') throw new Error('local_audio_context_not_running');
 
     const videoTracks = canvas.captureStream(24).getVideoTracks();
@@ -203,7 +208,7 @@ export async function renderLocalCaptionedVideo(input: LocalRenderInput): Promis
     });
     const hidden = new Promise<never>((_, reject) => {
       const check = () => {
-        if (document.visibilityState === 'hidden') {
+        if (isPageHidden()) {
           stop(); reject(new Error('local_render_requires_visible_tab'));
         }
       };
