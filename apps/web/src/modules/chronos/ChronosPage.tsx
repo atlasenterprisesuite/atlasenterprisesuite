@@ -19,6 +19,11 @@ export function ChronosPage(){
  const [moduleFilter,setModuleFilter]=useState('all');
  const [evidenceKind,setEvidenceKind]=useState<ChronosEvidenceKind|'all'>('all');
  const [evidenceQuery,setEvidenceQuery]=useState('');
+ useEffect(()=>{
+  if(route!=='explore')return;
+  const requestedModule=location.hash.startsWith('#')?location.hash.slice(1):'';
+  setModuleFilter(modules.some(module=>module.id===requestedModule)?requestedModule:'all');
+ },[route,location.hash]);
  const [accessibilityProfile,setAccessibilityProfile]=useState<AccessibilityProfile>(()=>loadAccessibilityProfile(resolveAccessibilityUserId()));
  useEffect(()=>{
   const refresh=()=>setAccessibilityProfile(loadAccessibilityProfile(resolveAccessibilityUserId()));
