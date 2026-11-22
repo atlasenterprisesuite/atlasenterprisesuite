@@ -12,7 +12,19 @@ const groups = [
 ];
 export const modules = groups.map(([name,...titles],i)=>({id:String(i+1).padStart(2,'0'),name,topics:titles.map((title,j)=>({id:String(i+1).padStart(2,'0')+'.'+String(j+1).padStart(3,'0'),title,module:name}))}));
 const normalize=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-export const searchTopics=(q:string)=>modules.flatMap(m=>m.topics).filter(t=>normalize(t.id+' '+t.title+' '+t.module).includes(normalize(q)));
+export const searchTopics=(q:string)=> {
+ const terms=normalize(q).split(/\s+/).filter(Boolean);
+ return modules.flatMap(m=>m.topics).filter(t=>terms.every(term=>normalize(t.id+' '+t.title+' '+t.module).includes(term)));
+};
+export function resolveChronosRoute(pathname:string):string|null {
+ const path=pathname.replace(/\/$/,'');
+ if(path === '/chronos') return '';
+ if(!path.startsWith('/chronos/')) return null;
+ const route=path.slice('/chronos/'.length);
+ if(['explore','research','evidence','timeline','review'].includes(route)) return route;
+ const match=/^research\/(\d{2}\.\d{3})$/.exec(route);
+ return match && modules.some(m=>m.topics.some(t=>t.id===match[1])) ? route : null;
+}
 export const progress=()=>({total:modules.reduce((n,m)=>n+m.topics.length,0),certified:0});
 export const evidence=[
  {title:'COBE / FIRAS',url:'https://lambda.gsfc.nasa.gov/data/interfaces/cobe/firas_products.html',detail:'Espectros y productos instrumentales'},
@@ -22,4 +34,4 @@ export const evidence=[
  {title:'Planck 2018',url:'https://doi.org/10.1051/0004-6361/201833910',detail:'Parámetros cosmológicos'}
 ];
 export const tasks=['Identificar evidencias fundamentales','Localizar publicación original','Comparar COBE, WMAP y Planck','Contrastar parámetros publicados','Cronología y vacíos','Reprocesar archivos instrumentales','Auditar imágenes y referencias','Verificar expediente definitivo'].map((title,i)=>({title,done:i<5}));
-export const timeline=[['13.800 Ma','Universo temprano'],['380.000 años después','Radiación cósmica'],['4.567 Ma','Primeros sólidos solares'],['4.540 Ma','Formación terrestre'],['4.404 Ma','Circones de Jack Hills'],['3.500 Ma','Evidencia temprana de vida'],['2026','Actualidad']];
+export const timeline=[['Hace ~13.800 Ma','Universo temprano'],['~380.000 años después del Big Bang','Radiación cósmica'],['4.567 Ma','Primeros sólidos solares'],['4.540 Ma','Formación terrestre'],['4.404 Ma','Circones de Jack Hills'],['3.500 Ma','Evidencia temprana de vida'],['2026 d. C.','Actualidad']];
