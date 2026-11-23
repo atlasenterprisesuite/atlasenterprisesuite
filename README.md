@@ -25,14 +25,15 @@ ATLAS advances continuously through analysis, implementation, correction, testin
 
 ATLAS Manager is the shared infrastructure control plane and deployment brain for the required GitHub → Supabase → Cloudflare → Production path. Vercel and other deployment providers are optional adapters unless an approved release explicitly marks them required. Provider-specific deployment mechanisms must converge through ATLAS Manager instead of becoming isolated sources of infrastructure truth.
 
-## Vercel account selection (2026-11-23)
+## Vercel selected target (2026-11-23)
 
-- Requested Vercel account identity for future ATLAS Vercel work: `atlasenterprisesuite` (account selector observed in signed-in Vercel UI; ChatGPT connector also authenticates as this username).
-- **An account is not a project.** The currently connected Vercel integration enumerates no projects and returns `404` for the previously identified project. This update is **not** a verified Vercel project switch or deployment.
-- Previously observed GitHub-linked Vercel candidate: project `atlas_enterprise_suite`, ID `prj_bEmcb8yOURzifoWObjSw0UnJyslh`, team `winderaranguren-gifs-projects`. This historical candidate is **not** verified as the selected deployment target under the preferred account. Do not silently substitute `atlas-enterprise-suite-web` or create a duplicate project.
-- Before a Vercel deployment: positively verify intended **account/team, project ID, repository link, root directory, build command, output directory, and permissions**. Fail closed on API `404` or `403`; verify build logs, required checks, exact commit, and preview behavior before production promotion.
-- With the Vercel root set to the repository root, this monorepo builds using `npm run build` and emits `apps/web/dist`. See draft [PR #1092](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/1092) for the unmerged `vercel.json` candidate; do not claim it fixed any deployment until verified.
-- Vercel remains **optional** under [ATLAS Manager](docs/architecture/ATLAS_MANAGER_SPEC.md); Cloudflare remains the primary public edge provider. This records preferred account identity only; it does not change production authority, ownership, billing, domains, or live provider settings.
+- User-selected Vercel account/team: `atlasenterprisesuite`. Vercel's GitHub integration for [PR #1131](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/1131) confirms the associated project `atlasenterprisesuite`, project ID `prj_Noqa7O1rBBxXPftJ9Ss3Qv1uIR1F`, team ID `team_7BYVUafzk8OeaXbAy0IPHSeF`, and dashboard URL `https://vercel.com/atlasenterprisesuite/atlasenterprisesuite`.
+- **Target selected, API authorization pending.** The ChatGPT Vercel connection returns `403` for this team's scope. A team-specific authorization is required before reading or changing project settings. The GitHub integration's project link does **not** prove a successful build or deploy.
+- Previous distinct Vercel project `atlas_enterprise_suite` (ID `prj_bEmcb8yOURzifoWObjSw0UnJyslh`; team `winderaranguren-gifs-projects`) is **legacy for Vercel targeting**. Never substitute it for the selected `atlasenterprisesuite` project, and do not delete or transfer it without explicit approval.
+- For the monorepo, when Vercel's root directory is the repository root, the expected build command is `npm run build` and its output directory is `apps/web/dist`. The proposed `vercel.json` remains in unmerged [PR #1092](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/1092); settings on the selected Vercel project have **not** been verified or changed yet.
+- GitHub currently reports Vercel status failures pointing to a **build-rate-limit / upgrade** page; this is not evidence that a new build reached the output-directory step. Do not trigger repeated builds or authorize a paid upgrade to bypass the limit without explicit approval.
+- Before promoting a release, verify account/team access, project settings, Git repository connection, correct SHA, build logs, required CI checks and preview routes; fail closed on authorization or verification errors.
+- This is an optional Vercel adapter under [ATLAS Manager](docs/architecture/ATLAS_MANAGER_SPEC.md). The canonical production edge remains Cloudflare until a separate, verified production cutover is approved. No domain ownership or billing changes are authorized by this record.
 
 ## Truthful production state
 
