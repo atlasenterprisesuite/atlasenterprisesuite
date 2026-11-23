@@ -116,6 +116,31 @@ export function indexChatGptMusicHistory(input: unknown): MusicChatIndex {
   };
 }
 
+/** Combine numbered official export parts while preserving one record per source ID. */
+export function mergeMusicChatIndexes(parts: readonly MusicChatIndex[]): MusicChatIndex {
+  const entries = new Map<string, MusicChatIndexEntry>();
+  let totalConversations = 0;
+  let truncated = false;
+  for (const part of parts) {
+    totalConversations += part.totalConversations;
+    truncated ||= part.truncated;
+    for (const entry of part.musicConversations) {
+      const previous = entries.get(entry.sourceId);
+      if (!previous) {
+        entries.set(entry.sourceId, { ...entry, topics: [...entry.topics] });
+        continue;
+      }
+      entries.set(entry.sourceId, {
+        ...previous,
+        matchedMessages: Math.max(previous.matchedMessages, entry.matchedMessages),
+        createdAt: previous.createdAt ?? entry.createdAt,
+        topics: [...new Set([...previous.topics, ...entry.topics])]
+      });
+    }
+  }
+  return { totalConversations, musicConversations: [...entries.values()], truncated };
+}
+
 export function buildRestrictedMusicDraft(entry: MusicChatIndexEntry) {
   if (!entry.sourceId || !entry.title || !entry.topics.length) throw new Error('invalid_music_chat_index_entry');
   const tags = [...new Set(['music', ...entry.topics])];
