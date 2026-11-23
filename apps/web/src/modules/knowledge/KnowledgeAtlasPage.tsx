@@ -269,12 +269,12 @@ export function KnowledgeAtlasPage({
 
   const approve = async (id: string) => {
     const candidate = records?.find(record => record.id === id);
-    if (!canApprove || busy || (candidate?.source_type === 'chat_import' && reviewedId !== id)) return;
+    if (!canApprove || busy || !candidate || (candidate.source_type === 'chat_import' && reviewedId !== id)) return;
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
-      await approveAtlasMemory(id);
+      await approveAtlasMemory(id, candidate.version, candidate.source_type === 'chat_import' && reviewedId === id);
       setReviewedId(null);
       setSuccess('Memory approved and available as governed ATLAS organizational knowledge.');
       refresh();
