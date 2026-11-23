@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AtlasShell } from './components/AtlasShell';
 import { CertificateLifecyclePage } from './modules/security/CertificateLifecyclePage';
@@ -19,19 +19,14 @@ import { PublicAtlasPayPage } from './modules/finance/pay/PublicAtlasPayPage';
 import { ReceivablesPage } from './modules/finance/accounting/ReceivablesPage';
 import { BankReconciliationPage } from './modules/finance/accounting/BankReconciliationPage';
 import { ProcureToPayPage } from './modules/inventory/ProcureToPayPage';
-import { PayrollRoutes } from './modules/payroll/PayrollRoutes';
-import { TaxRoutes } from './modules/tax/TaxRoutes';
-import { PublicCommerceRoutes } from './modules/commerce/storefront/PublicCommerceRoutes';
 import { VoiceStudioPage } from './modules/voice/VoiceStudioPage';
 import { CreatorHome, CreatorLibrary, CreatorProviders, CreatorWorkspace } from './modules/creator/CreatorStudioPage';
 import { LocalDJMixPage } from './modules/creator/music/LocalDJMixPage';
 import { AIUniversePage } from './modules/creator/AIUniversePage';
 import { ProductivityProPage } from './modules/creator/ProductivityProPage';
 import { TeleprompterPage } from './modules/creator/teleprompter/TeleprompterPage';
-import { HospitalityRoutes } from './modules/hospitality/HospitalityRoutes';
 import { AccessibilityCommunicationSettingsPage } from './modules/settings/AccessibilityCommunicationSettings';
 import { EventsRoutes } from './modules/events/EventsRoutes';
-import { InsuranceRoutes } from './modules/insurance/InsuranceRoutes';
 import { Gps4DPage } from './modules/gps/Gps4DPage';
 import { AtlasDigitalDistrictPage } from './modules/city/AtlasDigitalDistrictPage';
 import { UrbanTwinPage } from './modules/city/UrbanTwinPage';
@@ -52,6 +47,12 @@ import {
   graphNodes,
   vulnerabilityProfiles
 } from '../../../data/research/seed';
+
+const PayrollRoutes = lazy(() => import('./modules/payroll/PayrollRoutes').then(module => ({ default: module.PayrollRoutes })));
+const TaxRoutes = lazy(() => import('./modules/tax/TaxRoutes').then(module => ({ default: module.TaxRoutes })));
+const PublicCommerceRoutes = lazy(() => import('./modules/commerce/storefront/PublicCommerceRoutes').then(module => ({ default: module.PublicCommerceRoutes })));
+const HospitalityRoutes = lazy(() => import('./modules/hospitality/HospitalityRoutes').then(module => ({ default: module.HospitalityRoutes })));
+const InsuranceRoutes = lazy(() => import('./modules/insurance/InsuranceRoutes').then(module => ({ default: module.InsuranceRoutes })));
 
 const labBase = '/health/research/frontiers/disease-reconstruction';
 
