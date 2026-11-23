@@ -125,3 +125,110 @@ grant execute on function public.atlas_memory_import_drafts(uuid, uuid, jsonb)
 
 comment on function public.atlas_memory_import_drafts(uuid, uuid, jsonb) is
   'ATLAS 777: atomic import of draft-only memory with hash replay and in-transaction audit. Never auto-approves chat history.';
+
+-- Approval, supersession and audit also commit or roll back as one transaction.
+create or replace function public.atlas_memory_approve_draft(
+  p_org_id uuid,
+  p_user_id uuid,
+  p_record_id uuid,
+  p_expected_version integer,
+  p_reviewed boolean default false
+)
+returns public.atlas_memory_records
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_record public.atlas_memory_records%rowtype;
+  v_superseded uuid;
+begin
+  if p_org_id is null or p_user_id is null or p_record_id is null
+     or p_expected_version is null or p_expected_version < 1 then
+    raise exception 'memory_approval_invalid_arguments' using errcode = '22023';
+  end if;
+
+  if not exists (
+    select 1 from public.organization_members om
+    where om.org_id = p_org_id
+      and om.user_id = p_user_id
+      and om.status = 'active'
+      and om.role in ('owner', 'admin', 'platform_admin')
+  ) then
+    raise exception 'memory_approval_role_denied' using errcode = '42501';
+  end if;
+
+  select * into v_record
+  from public.atlas_memory_records
+  where organization_id = p_org_id and id = p_record_id
+  for update;
+
+  if not found then
+    raise exception 'memory_not_found' using errcode = 'P0002';
+  end if;
+
+  if v_record.status = 'approved' then
+    return v_record; -- idempotent after a confirmed approval
+  end if;
+  if v_record.status <> 'draft' then
+    raise exception 'memory_not_approvable' using errcode = '23514';
+  end if;
+  if v_record.version <> p_expected_version then
+    raise exception 'memory_approval_stale_version' using errcode = '40001';
+  end if;
+  if v_record.source_type = 'chat_import' and p_reviewed is distinct from true then
+    raise exception 'memory_chat_review_required' using errcode = '42501';
+  end if;
+
+  update public.atlas_memory_records
+  set status = 'approved',
+      approved_by = p_user_id,
+      approved_at = now(),
+      updated_at = now(),
+      version = version + 1
+  where organization_id = p_org_id and id = p_record_id
+  returning * into v_record;
+
+  if v_record.supersedes_id is not null then
+    update public.atlas_memory_records
+    set status = 'superseded', updated_at = now(), version = version + 1
+    where organization_id = p_org_id
+      and id = v_record.supersedes_id
+      and status = 'approved'
+    returning id into v_superseded;
+
+    if v_superseded is null then
+      raise exception 'memory_superseded_record_invalid' using errcode = '23514';
+    end if;
+
+    insert into public.audit_logs(org_id, user_id, action, table_name, record_id, new_data)
+    values (
+      p_org_id, p_user_id, 'knowledge.memory.superseded',
+      'atlas_memory_records', v_superseded::text,
+      jsonb_build_object('superseded_by', v_record.id, 'status', 'superseded')
+    );
+  end if;
+
+  insert into public.audit_logs(org_id, user_id, action, table_name, record_id, new_data)
+  values (
+    p_org_id, p_user_id, 'knowledge.memory.approved',
+    'atlas_memory_records', v_record.id::text,
+    jsonb_build_object(
+      'kind', v_record.kind,
+      'source_type', v_record.source_type,
+      'supersedes_id', v_record.supersedes_id,
+      'version', v_record.version,
+      'explicit_chat_review', p_reviewed
+    )
+  );
+  return v_record;
+end;
+$$;
+
+revoke all on function public.atlas_memory_approve_draft(uuid, uuid, uuid, integer, boolean)
+  from public, anon, authenticated;
+grant execute on function public.atlas_memory_approve_draft(uuid, uuid, uuid, integer, boolean)
+  to service_role;
+
+comment on function public.atlas_memory_approve_draft(uuid, uuid, uuid, integer, boolean) is
+  'ATLAS 777: version-checked, one-transaction approval, supersession and audit.';
