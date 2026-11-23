@@ -111,4 +111,43 @@ describe('ATLAS 777 Chat -> Knowledge offline intake', () => {
       expect(blocked.stderr).toContain('refusing_private_export_inside_repository');
     });
   });
+
+  it('does not match partial words as tax topics and still detects explicit IRS references', () => {
+    inTemporaryDirectory(directory => {
+      const input = join(directory, 'conversations.json');
+      const outDir = join(directory, 'out');
+      writeFileSync(input, JSON.stringify([
+        { id: 'health-topic', title: 'Research notes', mapping: { a: { message: {
+          author: { role: 'user' }, content: { parts: ['First, investigate health research'] }
+        } } } },
+        { id: 'tax-topic', title: 'Federal IRS reference', mapping: { a: { message: {
+          author: { role: 'user' }, content: { parts: ['Review IRS Form 1040'] }
+        } } } }
+      ]));
+      expect(run(input, outDir).status).toBe(0);
+      const payload = JSON.parse(readFileSync(join(outDir, 'atlas-chat-drafts-0001.json'), 'utf8'));
+      expect(payload.records[0].module_ids).toContain('health');
+      expect(payload.records[0].module_ids).not.toContain('tax');
+      expect(payload.records[1].module_ids).toContain('tax');
+    });
+  });
+
+  it('can resume an identical private export, but refuses conflicting existing batches', () => {
+    inTemporaryDirectory(directory => {
+      const input = join(directory, 'chat.srt');
+      const outDir = join(directory, 'out');
+      writeFileSync(input, '1\\n00:00:00,000 --> 00:00:02,000\\nATLAS health research\\n');
+      expect(run(input, outDir).status).toBe(0);
+      expect(run(input, outDir).status).toBe(0);
+      const batchPath = join(outDir, 'atlas-chat-drafts-0001.json');
+      const original = readFileSync(batchPath, 'utf8');
+      writeFileSync(batchPath, '{"corrupted":true}');
+      const result = run(input, outDir);
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain('existing_private_batch_mismatch');
+      expect(readFileSync(batchPath, 'utf8')).toBe('{"corrupted":true}');
+      writeFileSync(batchPath, original);
+      expect(run(input, outDir).status).toBe(0);
+    });
+  });
 });
