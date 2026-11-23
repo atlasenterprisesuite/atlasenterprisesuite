@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
-    "build": "npm --workspace apps/web run build && node scripts/write-deployment-manifest.mjs apps/web/dist/deployment.json",
+    "build": "npm --workspace apps/web run build && node scripts/write-deployment-manifest.mjs apps/web/dist/deployment.json && node scripts/prepare-vercel-dist.mjs",
     "typecheck": "npm --workspace apps/web run typecheck",
     "test": "vitest run && npm run test:node && npm run test:local-core",
     "test:node": "node --test tests/node/*.test.mjs",
