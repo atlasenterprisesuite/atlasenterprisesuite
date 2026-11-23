@@ -7,6 +7,7 @@ export * from './permissions';
 export * from './stewardship';
 export * from './audit';
 export * from './integrations';
+export * from './businessWorkspacePolicy';
 export * from './endpoints';
 export * from './evidence';
 
