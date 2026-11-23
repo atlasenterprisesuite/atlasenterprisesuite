@@ -289,6 +289,13 @@ export function KnowledgeAtlasPage({
         <p>{description}</p>
       </header>
 
+      {!moduleScope ? <section className="workspace-card" aria-labelledby="yume-research-entry-heading">
+        <p className="eyebrow">Knowledge Atlas · Colecciones de investigación</p>
+        <h2 id="yume-research-entry-heading">YUME × Atlántida — Red de conocimiento</h2>
+        <p className="muted">Explora 50 conceptos, 61 relaciones y 16 referencias sobre Platón, Saltimbanco, Alan Walker y el simbolismo del videoclip. Investigación editorial independiente de los registros aprobados de ATLAS Memory.</p>
+        <a href="/knowledge/research/yume-atlantis">Abrir explorador de relaciones y fuentes</a>
+      </section> : null}
+
       <div className="metric-grid" aria-label="ATLAS Memory status" aria-live="polite">
         <article><span>Approved</span><strong>{memoryStats?.approved ?? '—'}</strong><small>Approved organizational knowledge</small></article>
         <article><span>Drafts</span><strong>{memoryStats?.draft ?? '—'}</strong><small>Awaiting explicit approval</small></article>
