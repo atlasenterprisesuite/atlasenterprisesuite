@@ -25,7 +25,7 @@ foreach ($folder in @($InstallRoot, $runtime, $runtimeLib, $private)) {
 foreach ($name in @('atlas-local-core-device.mjs', 'atlas-local-core.mjs', 'atlas-local-ai-runtime.mjs')) {
   Copy-Item -LiteralPath (Join-Path $source $name) -Destination (Join-Path $runtime $name) -Force
 }
-foreach ($name in @('local-core-vault.mjs', 'local-core-client.mjs')) {
+foreach ($name in @('local-core-vault.mjs', 'local-core-client.mjs', 'local-core-runtime-policy.mjs')) {
   Copy-Item -LiteralPath (Join-Path $source "lib\$name") -Destination (Join-Path $runtimeLib $name) -Force
 }
 $launcher = Join-Path $InstallRoot 'atlas-local-core.cmd'
@@ -33,6 +33,8 @@ $command = '@echo off' + [Environment]::NewLine + 'node "%~dp0runtime\atlas-loca
 [IO.File]::WriteAllText($launcher, $command, [Text.UTF8Encoding]::new($false))
 & $node --check (Join-Path $runtime 'atlas-local-core-device.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Local Core script failed syntax validation.' }
+& $node --check (Join-Path $runtimeLib 'local-core-runtime-policy.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Runtime policy script failed syntax validation.' }
 & $node --check (Join-Path $runtimeLib 'local-core-vault.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Vault script failed syntax validation.' }
 & $launcher doctor
