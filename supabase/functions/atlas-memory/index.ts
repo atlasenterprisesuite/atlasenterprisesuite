@@ -290,12 +290,20 @@ async function approve(ctx: MemoryContext, input: Record<string, any>) {
 
 async function importRecords(ctx: MemoryContext, input: Record<string, any>) {
   if (!ADMIN_ROLES.has(ctx.role)) throw fail('memory_import_role_required', 403);
-  const rows = Array.isArray(input.records) ? input.records.slice(0, 50) : [];
+  const rows = Array.isArray(input.records) ? input.records : [];
   if (!rows.length) throw fail('memory_import_records_required', 422);
+  if (rows.length > 50) throw fail('memory_import_batch_limit', 422);
+  if (rows.some(item => !item || typeof item !== 'object' || Array.isArray(item))) {
+    throw fail('memory_import_record_invalid', 422);
+  }
+  // Preflight every row before the first mutation to avoid partial writes on input errors.
+  const validated = rows.map(item => normalizeDraft(item));
   const approveImported = input.approve === true;
+  if (approveImported && validated.some(item => item.source_type === 'chat_import')) {
+    throw fail('chat_import_autoapproval_forbidden', 422);
+  }
   const results = [];
   for (const item of rows) {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) throw fail('memory_import_record_invalid', 422);
     const created = await saveDraft(ctx, item as Record<string, any>);
     results.push(approveImported ? await approve(ctx, { id: created.id }) : created);
   }
