@@ -1,32 +1,42 @@
-# ATLAS ChronoSeed 777 — Portable Capsule Codec (draft, NO-GO)
- 
-ChronoSeed is an offline, opt-in, single-file encrypted knowledge capsule format. This change adds a portable **format codec** and tests. It **does not** connect to ChatGPT exports, ATLAS cloud storage, Supabase, production, or the Windows remote executor.
+# ATLAS ChronoSeed 777 — Offline capsules and Knowledge Atlas draft staging (NO-GO)
 
-## Canonical reuse and scope
-- Continue using the existing ATLAS Local Core encrypted vault for durable *local agent memory*. ChronoSeed is a separate **user-exportable interchange format**, not another autonomous agent, orchestrator or database.
-- Integrate via existing ATLAS Knowledge / Memory workflow only after privacy, approval, and provenance gates.
-- Independent standalone browser prototype exists outside this PR; its UI is not deployed or embedded here.
-- The v1 format is for **short notes**, not large files, photo archives, or full ChatGPT ZIP exports.
+ChronoSeed is an offline, opt-in, single-file encrypted knowledge capsule format. This draft PR adds a portable format codec, format-level bidirectional interoperability tests, and a **read-only local preparation** step for selective Knowledge Atlas drafts. No customer data, credentials or personal conversations are ingested here.
 
-## Format and threat model
-- AES-256-GCM with 96-bit random nonce and 128-bit random salt per capsule; PBKDF2-HMAC-SHA256 (310,000 iterations); AAD ATLAS-CHRONOSEED-V1.
-- An internal SHA-256 digest checks the serialized note structure after authentication; an **external** SHA-256 fingerprint identifies the exact ciphertext file. The fingerprint is not a signature and proves no authorship.
-- No network, implicit persistence, telemetry, cloud credentials, or automatic import.
-- Maximum capsule size: 2 MiB, 200 notes. All operations fail closed on malformed data or wrong passwords.
-- Web Crypto requires a supported secure context. Passwords and unencrypted notes must be handled carefully in clients; local backup remains the user's responsibility.
-- No cryptographic audit; passwords can be guessed offline against exported files. Prefer long random keys. Do not use for production secrets yet.
+## Canonical reuse
+- Reuse ATLAS Local Core encrypted vault for durable **local agent memory**. ChronoSeed is a separate **user-exportable interchange format**, not another agent, database or orchestrator.
+- Reuse existing Knowledge Atlas `atlas-memory` API for later authenticated writes and approval. No new database, organization policy or production backend.
+- The independent single-file browser demo is **not** deployed or included in this PR. Format tests use matching wire rules but **are not an actual browser UI E2E**.
+- v1 is for **short notes**; not a file-storage service, photo archive, or ChatGPT ZIP scraper.
 
-## Local test
+## Format and security constraints
+- AES-256-GCM with random 12-byte nonce and 16-byte salt per capsule; PBKDF2-HMAC-SHA256 (310,000 iterations); authenticated associated data `ATLAS-CHRONOSEED-V1`.
+- The inner SHA-256 digest validates serialized note structure **after** AEAD authentication. An external SHA-256 identifies the exact ciphertext file. Neither digest proves authorship or provenance.
+- Maximum capsule file: 2 MiB; maximum records: 200, plaintext size limited. Wrong passphrase and malformed content fail closed.
+- `createdAt` (unencrypted envelope metadata) and file size are visible to anyone with the capsule. No cryptographic audit. Long random keys recommended; **not for production secrets**.
+- Web Crypto requires a supported secure context. The module does not transmit or persist data.
+
+## Knowledge Atlas staging
+`tools/chronoseed/knowledge-atlas-drafts.mjs` exports `prepareKnowledgeAtlasDrafts`.
+
+- Requires **explicit reviewed=true** and **specific selectedIndices** (no all-by-default). Up to 50 selected notes per batch, matching the existing `atlas-memory?api=import` cap.
+- Produces `{approve:false,records:[...]}` with source provenance, `kind:note`, `sensitivity:restricted`, and `review_required` tags.
+- Does **not** call `fetch`, create or approve memory records, use authorization tokens, or upload personal material.
+- Uses `source_ref` built from the ciphertext file SHA-256 and selected entry index. It **does not** publish a stable plaintext fingerprint, reducing unnecessary disclosure.
+- `reviewed=true` is only a staging input, **not identity, authorization or proof of consent**. Any eventual upload must use the existing authenticated API and per-record review before approval. UI and user authorization are **P0 gates**.
+- A classified `chat_import` source is supported only by explicit caller selection; chat histories never enter automatically.
+
+## Tests
 ```sh
-node --test tools/chronoseed/chronoseed-format.test.mjs
+node --test tools/chronoseed/chronoseed-format.test.mjs tools/chronoseed/chronoseed-browser-interop.test.mjs tools/chronoseed/knowledge-atlas-drafts.test.mjs
 ```
+Checks 12 scenarios on Node 22. CI runs the three suites on Ubuntu and Windows.
 
-## Next acceptance gates (P0)
-1. Full browser-to-codec and codec-to-browser **interoperability** tests, including unicode, corrupted files, wrong passphrases, and edge cases.
-2. UI integration as offline, accessibility-tested responsive module behind an explicit opt-in.
-3. Privacy-safe ingestion workflow (authorized export -> local parsing -> selective review -> approved Knowledge Atlas records).
-4. Security review for file parsing, KDF costs, metadata disclosure, payload limits and backup/recovery.
-5. Windows and Linux CI green, independent review, exact SHA, **no merge/deploy without verification**.
+## Next P0 gates
+1. Embed/integrate actual browser UI only with clear opt-in and **real Chromium/WebKit UI E2E** (this environment blocked navigation, so not yet verified).
+2. Validate exact-browser file roundtrips with DOM interactions (file download -> decrypt and cross-import), Unicode, corruption and a11y.
+3. Add authenticated Knowledge Atlas **draft-only** user flow with review and provenance; never auto-approve or upload private chats without authorization.
+4. Security review for metadata disclosure, password KDF strength, input validation, client memory and backups.
+5. Complete CI, independent review, SHA-exact verification and production checks; **P0 fail-closed, no merge/deploy until evidence**.
 
-## Status
-Prototype **in draft PR**. Tests may pass locally and in CI; production deployment and E2E remain unverified / NO-GO.
+## Current status
+**Draft PR / P0 NO-GO**. Local codec and stage tests pass, but full E2E, security review and production deployment are not verified.
