@@ -21,7 +21,7 @@ for name in atlas-local-core-device.mjs atlas-local-core.mjs atlas-local-ai-runt
   [ -f "$SOURCE/$name" ] || { echo "Missing installer source: $name" >&2; exit 1; }
   install -m 0600 "$SOURCE/$name" "$ROOT/runtime/$name"
 done
-for name in local-core-vault.mjs local-core-client.mjs; do
+for name in local-core-vault.mjs local-core-client.mjs local-core-runtime-policy.mjs; do
   [ -f "$SOURCE/lib/$name" ] || { echo "Missing installer source: $name" >&2; exit 1; }
   install -m 0600 "$SOURCE/lib/$name" "$ROOT/runtime/lib/$name"
 done
@@ -33,6 +33,7 @@ exec node "$ROOT/runtime/atlas-local-core-device.mjs" "$@"
 SH
 chmod 0700 "$ROOT/atlas-local-core"
 node --check "$ROOT/runtime/atlas-local-core-device.mjs"
+node --check "$ROOT/runtime/lib/local-core-runtime-policy.mjs"
 node --check "$ROOT/runtime/lib/local-core-vault.mjs"
 "$ROOT/atlas-local-core" doctor
 printf '\nInstalled to: %s\nRun: "%s/atlas-local-core" help\n' "$ROOT" "$ROOT"
