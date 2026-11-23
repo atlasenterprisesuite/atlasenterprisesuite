@@ -20,8 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Encrypted capsule tests
-        run: node --test tools/chronoseed/chronoseed-format.test.mjs
+      - name: Encrypted capsule and Knowledge Atlas draft tests
+        run: node --test tools/chronoseed/chronoseed-format.test.mjs tools/chronoseed/chronoseed-browser-interop.test.mjs tools/chronoseed/knowledge-atlas-drafts.test.mjs
   portable-windows:
     runs-on: windows-latest
     steps:
@@ -29,5 +29,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Encrypted capsule tests
-        run: node --test tools/chronoseed/chronoseed-format.test.mjs
+      - name: Encrypted capsule and Knowledge Atlas draft tests
+        run: node --test tools/chronoseed/chronoseed-format.test.mjs tools/chronoseed/chronoseed-browser-interop.test.mjs tools/chronoseed/knowledge-atlas-drafts.test.mjs
