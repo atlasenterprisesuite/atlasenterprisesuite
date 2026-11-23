@@ -68,6 +68,19 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(edge).not.toContain('const created = await saveDraft(ctx, item as Record<string, any>)');
   });
 
+  it('offers a manually authorized local batch preview and redaction before upload', () => {
+    const panel = readFileSync('apps/web/src/modules/knowledge/ChatImportReviewPanel.tsx', 'utf8');
+    expect(page).toContain('<ChatImportReviewPanel');
+    expect(api).toContain('importAtlasMemoryDrafts');
+    expect(panel).toContain('type="file"');
+    expect(panel).toContain('type="checkbox"');
+    expect(panel).toContain('approve: false');
+    expect(panel).toContain('crypto.subtle.digest');
+    expect(panel).toContain('Select records to import');
+    expect(panel).toContain('Import selected drafts');
+    expect(panel).toContain('restricted');
+  });
+
   it('uses the canonical authenticated API boundary', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');
