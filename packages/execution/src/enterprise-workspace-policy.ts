@@ -45,8 +45,8 @@ export type EnterpriseWorkspacePolicyDecision = AtlasPolicyEvaluation & {
 const nonEmpty = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
-const validCredits = (value: number) =>
-  Number.isSafeInteger(value) && value >= 0;
+const validCredits = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
 function deny(
   input: EnterpriseWorkspacePolicyInput,
