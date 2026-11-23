@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const saveDraft = vi.fn(async () => ({ ok: true, record: { id: 'new-record' } }));
+const saveDraft = vi.hoisted(() => vi.fn(async (_input: unknown) => ({ ok: true, record: { id: 'new-record' } })));
 vi.mock('../../apps/web/src/modules/knowledge/memoryApi', () => ({
   createAtlasMemoryDraft: (...args: unknown[]) => saveDraft(...args)
 }));
