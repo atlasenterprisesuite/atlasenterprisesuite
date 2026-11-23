@@ -25,6 +25,15 @@ ATLAS advances continuously through analysis, implementation, correction, testin
 
 ATLAS Manager is the shared infrastructure control plane and deployment brain for the required GitHub → Supabase → Cloudflare → Production path. Vercel and other deployment providers are optional adapters unless an approved release explicitly marks them required. Provider-specific deployment mechanisms must converge through ATLAS Manager instead of becoming isolated sources of infrastructure truth.
 
+## Vercel account selection (2026-11-23)
+
+- Requested Vercel account identity for future ATLAS Vercel work: `atlasenterprisesuite` (account selector observed in signed-in Vercel UI; ChatGPT connector also authenticates as this username).
+- **An account is not a project.** The currently connected Vercel integration enumerates no projects and returns `404` for the previously identified project. This update is **not** a verified Vercel project switch or deployment.
+- Previously observed GitHub-linked Vercel candidate: project `atlas_enterprise_suite`, ID `prj_bEmcb8yOURzifoWObjSw0UnJyslh`, team `winderaranguren-gifs-projects`. This historical candidate is **not** verified as the selected deployment target under the preferred account. Do not silently substitute `atlas-enterprise-suite-web` or create a duplicate project.
+- Before a Vercel deployment: positively verify intended **account/team, project ID, repository link, root directory, build command, output directory, and permissions**. Fail closed on API `404` or `403`; verify build logs, required checks, exact commit, and preview behavior before production promotion.
+- With the Vercel root set to the repository root, this monorepo builds using `npm run build` and emits `apps/web/dist`. See draft [PR #1092](https://github.com/atlasenterprisesuite/atlasenterprisesuite/pull/1092) for the unmerged `vercel.json` candidate; do not claim it fixed any deployment until verified.
+- Vercel remains **optional** under [ATLAS Manager](docs/architecture/ATLAS_MANAGER_SPEC.md); Cloudflare remains the primary public edge provider. This records preferred account identity only; it does not change production authority, ownership, billing, domains, or live provider settings.
+
 ## Truthful production state
 
 Code, validation, deployment, runtime, provider authorization, public-edge routing, and public production verification are tracked separately. Provider-dependent capabilities never claim `live`, `online`, `connected`, `ready`, or `verified` status without evidence.
