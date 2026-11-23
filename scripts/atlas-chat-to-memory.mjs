@@ -5,7 +5,7 @@
  */
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
-import { resolve, dirname, extname, sep } from 'node:path';
+import { resolve, extname, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const MAX_CHARS_PER_RECORD = 12000;
