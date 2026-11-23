@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  MUSIC_STYLE_REFERENCES,
   NEUROACOUSTIC_PRESETS,
   createLocalSoundSession,
   makeSoundPlan,
@@ -131,6 +132,11 @@ export function NeuroacousticSoundLab() {
       <button type="button" onClick={() => stop()} disabled={!playingId && !contextRef.current}>Stop</button>
     </div>
     <p className="atlas-sound-status" role="status" aria-live="polite">{message}</p>
+    <section className="atlas-sound-references" aria-labelledby="atlas-sound-reference-title">
+      <h3 id="atlas-sound-reference-title">Music styles and listening references</h3>
+      <p>Examples for discovery and future rights-cleared playlists. No copyrighted songs are included or marked as binaural recordings.</p>
+      <ul>{MUSIC_STYLE_REFERENCES.map(item => <li key={item.example}><strong>{item.label}</strong><span>{item.example}</span><small>Reference only · Audio not hosted</small></li>)}</ul>
+    </section>
     <p className="atlas-dj-disclaimer">Keep the volume low, especially with headphones. Binaural pulses require separate left/right channels; do not drive or perform safety-critical tasks while experimenting. Stop if sound causes discomfort. No external audio, account, tracking, uploads or paid provider is used. Music examples such as Marconi Union, Brian Eno and Alan Walker are references only; their copyrighted recordings are not included.</p>
   </section>;
 }
