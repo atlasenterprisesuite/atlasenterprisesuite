@@ -4,7 +4,7 @@
  * This is an intake tool; the existing authenticated atlas-memory API owns persistence.
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, statSync, lstatSync, existsSync, realpathSync } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -46,14 +46,29 @@ function fold(value) {
   return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+// A substring is not a topic: 'irs' in 'first' must not route health to tax.
+function hasTerm(foldedText, term) {
+  const needle = fold(term);
+  let from = 0;
+  while (true) {
+    const at = foldedText.indexOf(needle, from);
+    if (at < 0) return false;
+    const before = at ? foldedText[at - 1] : '';
+    const after = foldedText[at + needle.length] || '';
+    const word = char => char && /[\\p{L}\\p{N}]/u.test(char);
+    if (!word(before) && !word(after)) return true;
+    from = at + 1;
+  }
+}
+
 export function classifyChatKnowledge(title, content) {
   const foldedTitle = fold(title);
   const foldedBody = fold(content);
   const scored = RULES.map((rule, order) => {
     let score = 0;
     for (const word of rule.patterns) {
-      if (foldedTitle.includes(word)) score += 5;
-      if (foldedBody.includes(word)) score += 1;
+      if (hasTerm(foldedTitle, word)) score += 5;
+      if (hasTerm(foldedBody, word)) score += 1;
     }
     return { id: rule.id, score, order };
   }).filter(item => item.score > 0).sort((a, b) => b.score - a.score || a.order - b.order);
@@ -191,29 +206,57 @@ export function createImportBatches(result) {
 export function writePrivateImportBatches(result, outDir) {
   if (!outDir) throw new Error('output_directory_required');
   const destination = resolve(outDir);
-  const repositoryRoot = resolve(process.cwd());
-  if (destination === repositoryRoot || destination.startsWith(repositoryRoot + sep)) {
-    throw new Error('refusing_private_export_inside_repository');
+  const repositoryRoot = realpathSync(process.cwd());
+  const insideRepository = path => {
+    const a = process.platform === 'win32' ? path.toLowerCase() : path;
+    const b = process.platform === 'win32' ? repositoryRoot.toLowerCase() : repositoryRoot;
+    return a === b || a.startsWith(b + sep);
+  };
+  // Check both lexical and resolved paths; an out-of-repo symlink may point back into Git.
+  if (insideRepository(destination)) throw new Error('refusing_private_export_inside_repository');
+  if (existsSync(destination) && lstatSync(destination).isSymbolicLink()) {
+    throw new Error('output_directory_symlink_forbidden');
   }
   mkdirSync(destination, { recursive: true, mode: 0o700 });
+  if (insideRepository(realpathSync(destination))) {
+    throw new Error('refusing_private_export_inside_repository');
+  }
   if (process.platform !== 'win32' && (statSync(destination).mode & 0o077)) {
     throw new Error('output_directory_must_be_private');
   }
+
   const batches = createImportBatches(result);
-  const written = batches.map((batch, index) => {
-    const filename = 'atlas-chat-drafts-' + String(index + 1).padStart(4, '0') + '.json';
-    const pathname = resolve(destination, filename);
-    writeFileSync(pathname, JSON.stringify(batch, null, 2) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-    return pathname;
-  });
-  writeFileSync(resolve(destination, 'manifest.json'), JSON.stringify({
-    status: 'local_drafts_not_uploaded',
-    record_count: result.records.length,
-    batch_count: batches.length,
-    skipped: result.skipped,
-    approval: 'manual_required'
-  }, null, 2) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-  return written;
+  const outputs = batches.map((batch, index) => ({
+    pathname: resolve(destination, 'atlas-chat-drafts-' + String(index + 1).padStart(4, '0') + '.json'),
+    content: JSON.stringify(batch, null, 2) + '\\n'
+  }));
+  const manifest = {
+    pathname: resolve(destination, 'manifest.json'),
+    content: JSON.stringify({
+      status: 'local_drafts_not_uploaded',
+      record_count: result.records.length,
+      batch_count: batches.length,
+      skipped: result.skipped,
+      approval: 'manual_required'
+    }, null, 2) + '\\n'
+  };
+
+  // Preflight the entire batch set before writing: retries must be idempotent,
+  // while changed/corrupted output must fail closed without overwriting files.
+  for (const file of [...outputs, manifest]) {
+    if (!existsSync(file.pathname)) continue;
+    if (!lstatSync(file.pathname).isFile() || readFileSync(file.pathname, 'utf8') !== file.content) {
+      throw new Error(file.pathname === manifest.pathname
+        ? 'existing_private_manifest_mismatch'
+        : 'existing_private_batch_mismatch');
+    }
+  }
+  for (const file of [...outputs, manifest]) {
+    if (!existsSync(file.pathname)) {
+      writeFileSync(file.pathname, file.content, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    }
+  }
+  return outputs.map(file => file.pathname);
 }
 
 function option(name) {
