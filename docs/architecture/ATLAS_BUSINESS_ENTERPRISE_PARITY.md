@@ -54,6 +54,42 @@ Test specification: `tests/unit/atlas-enterprise-workspace-policy.test.ts`.
 TDD intent is recorded; local RED/GREEN runtime observation and CI must be evaluated
 independently. This branch does not certify runtime enforcement.
 
+## Increment 002 — authenticated AI usage transparency (this branch)
+
+Reuses `atlas-execution`, `organization_members`, `atlas_ai_usage`, `/work/policies`
+and the Work API rather than introducing a billing/identity silo.
+
+- Operation: `get_enterprise_usage` via the canonical authenticated Edge handler.
+- The existing `resolveContext` verifies Supabase JWT and active organization membership;
+  `execution.read` is mandatory before the new operation.
+- The server resolves user and organization IDs and uses both as mandatory filters on
+  `atlas_ai_usage`; no actor override, plan, credits, scope or entitlement is trusted from the request body.
+- Report covers current UTC month with an exact record count and up to 20 latest observed
+  event rows. Values are historical usage records, not financial settlement totals.
+- `/work/policies` renders real loading, refresh, empty, error and recorded-activity states;
+  no fake budget, live provider or quota state is asserted.
+- `creditLimitStatus: 'unconfigured'`, `creditsRemaining: null` and
+  `paidExecutionEnabled: false` are **hard-coded fail-closed** until the canonical
+  transactional allocation/settlement ledger is implemented and authorized.
+- Pure unit tests cover scoped filters, full UTC window, malformed provider responses,
+  authorization, zero-state truth, and absence of mutations; additional source contracts
+  cover Edge integration and Work UI.
+
+### Known limitations
+
+- The existing `atlas_ai_usage` count is **not an atomic credit ledger**, so a request
+  reported here is not proof of a bill, available credit or permitted provider action.
+- Historical usage logs can be incomplete for external providers; `eventCount` is the
+  exact count of rows in the source for the requested UTC window, not guaranteed total
+  AI usage across ATLAS.
+- This stage adds no live member invites, SSO, simultaneous editors or quota write API.
+- Production exposure requires a deployed `atlas-execution` Edge build matching the
+  app client; if the route is not deployed, the UI must show a truthful error and no data.
+- The claim of server authority depends on the existing server-side `resolveContext`
+  implementation and its authenticated membership check. Verify in production E2E,
+  including revocation, invalid sessions and cross-organization attempts.
+- This branch is **NO-GO** until the existing exact-SHA P0 release gates pass.
+
 ## Next increments and acceptance
 
 1. **P0:** Inspect the existing Supabase execution and identity tables/RLS; identify
