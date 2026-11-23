@@ -74,7 +74,8 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(api).toContain('importAtlasMemoryDrafts');
     expect(panel).toContain('type="file"');
     expect(panel).toContain('type="checkbox"');
-    expect(panel).toContain('approve: false');
+    expect(api).toContain('approve: false');
+    expect(panel).toContain('batch.approve !== false');
     expect(panel).toContain('crypto.subtle.digest');
     expect(panel).toContain('Select records to import');
     expect(panel).toContain('Import selected drafts');
