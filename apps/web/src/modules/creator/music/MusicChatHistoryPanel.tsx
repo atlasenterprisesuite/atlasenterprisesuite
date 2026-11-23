@@ -3,12 +3,14 @@ import { createAtlasMemoryDraft } from '../../knowledge/memoryApi';
 import {
   buildRestrictedMusicDraft,
   indexChatGptMusicHistory,
+  mergeMusicChatIndexes,
   type MusicChatIndex
 } from '../../../../../../packages/creator/audio/chat_history';
 import './music-chat-history.css';
 
 const MAX_EXPORT_BYTES = 30 * 1024 * 1024;
 const MAX_BATCH = 20;
+const MAX_FILES = 40;
 const MAX_VISIBLE = 100;
 
 export function MusicChatHistoryPanel() {
@@ -41,26 +43,35 @@ export function MusicChatHistoryPanel() {
   }
 
   async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = '';
     clear();
-    if (!file) return;
-    if (!/\.json$/i.test(file.name)) {
+    if (!files.length) return;
+    if (files.length > MAX_FILES) {
+      setError('Select at most 40 extracted JSON parts per local preview.');
+      return;
+    }
+    if (files.some(file => !/\\.json$/i.test(file.name))) {
       setError('Choose the extracted conversations JSON file, not a ZIP archive. No data was uploaded.');
       return;
     }
-    if (!file.size || file.size > MAX_EXPORT_BYTES) {
-      setError('This JSON file is empty or exceeds the 30 MB local preview limit. No data was uploaded.');
+    if (files.some(file => !file.size || file.size > MAX_EXPORT_BYTES)) {
+      setError('One or more JSON files are empty or exceed the 30 MB per-part local preview limit. No data was uploaded.');
       return;
     }
     const token = ++readingToken.current;
     setWorking(true);
     try {
-      const json = JSON.parse(await file.text()) as unknown;
-      const result = indexChatGptMusicHistory(json);
+      const parts: MusicChatIndex[] = [];
+      for (const file of files) {
+        const json = JSON.parse(await file.text()) as unknown;
+        if (!mounted.current || token !== readingToken.current) return;
+        parts.push(indexChatGptMusicHistory(json));
+      }
+      const result = mergeMusicChatIndexes(parts);
       if (!mounted.current || token !== readingToken.current) return;
       setIndex(result);
-      setMessage(`${result.musicConversations.length} music-related conversation(s) indexed locally out of ${result.totalConversations}. No message text uploaded.`);
+      setMessage(`${result.musicConversations.length} music-related conversation(s) indexed locally from ${files.length} JSON file(s). No message text uploaded.`);
     } catch (caught) {
       if (!mounted.current || token !== readingToken.current) return;
       setError(caught instanceof SyntaxError ? 'Unable to parse JSON. Use the ChatGPT conversations export file.' :
@@ -126,11 +137,11 @@ export function MusicChatHistoryPanel() {
     <header>
       <p className="eyebrow">ATLAS Music Universe 777 · History &amp; Knowledge</p>
       <h2 id="atlas-chat-history-title">Music chat history</h2>
-      <p>Choose a ChatGPT <code>conversations.json</code> export to find music discussions locally. Only conversation titles, IDs, counts and topic labels are retained in this preview. Original chat text, media and lyrics are never uploaded by the preview.</p>
+      <p>Choose one or more ChatGPT <code>conversations.json</code> export parts to find music discussions locally. Only conversation titles, IDs, counts and topic labels are retained in this preview. Original chat text, media and lyrics are never uploaded by the preview.</p>
     </header>
     <div className="atlas-chat-history-tools">
       <label htmlFor="atlas-music-chat-file">Choose ChatGPT conversations JSON</label>
-      <input id="atlas-music-chat-file" type="file" accept=".json,application/json" disabled={working || Boolean(savingId)} onChange={event => void chooseFile(event)} />
+      <input id="atlas-music-chat-file" type="file" accept=".json,application/json" multiple disabled={working || Boolean(savingId)} onChange={event => void chooseFile(event)} />
       <button type="button" onClick={clear} disabled={working || Boolean(savingId) || !index}>Clear local preview</button>
     </div>
     {error && <p role="alert" className="atlas-chat-history-error">{error}</p>}
