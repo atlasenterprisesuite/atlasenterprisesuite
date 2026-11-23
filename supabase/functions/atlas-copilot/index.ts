@@ -85,6 +85,7 @@ function runtime(){
   const localAiModels=profileModels('ATLAS_LOCAL_AI_MODEL','ATLAS_LOCAL_AI_MODEL_FAST','ATLAS_LOCAL_AI_MODEL_BALANCED','ATLAS_LOCAL_AI_MODEL_DEEP');
   const localAiAllowUnauthenticated=boolEnv('ATLAS_LOCAL_AI_ALLOW_UNAUTHENTICATED',false);
   const localAiAllowInsecure=boolEnv('ATLAS_LOCAL_AI_ALLOW_INSECURE',false);
+  const localAiVerifyModelId=boolEnv('ATLAS_LOCAL_AI_VERIFY_MODEL_ID',false);
   const openaiKey=Deno.env.get('OPENAI_API_KEY')||'';
   const bedrockKey=Deno.env.get('AWS_BEARER_TOKEN_BEDROCK')||Deno.env.get('ATLAS_BEDROCK_API_KEY')||'';
   const geminiKey=Deno.env.get('GEMINI_API_KEY')||Deno.env.get('GOOGLE_AI_API_KEY')||'';
@@ -133,7 +134,7 @@ function runtime(){
     emergency_openai_reserve_usd:Math.max(0,numberEnv('ATLAS_AI_EMERGENCY_OPENAI_RESERVE_USD',0)),
     emergency_openai_max_output_tokens:Math.max(64,Math.min(3000,Math.trunc(numberEnv('ATLAS_AI_EMERGENCY_OPENAI_MAX_OUTPUT_TOKENS',512))||512)),
   };
-  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,openaiKey,bedrockKey,geminiKey,anthropicKey,grokKey,deepseekKey,mistralKey,qwenKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,anthropicModels,grokModels,deepseekModels,mistralModels,qwenModels,grokBaseUrl,deepseekBaseUrl,mistralBaseUrl,qwenBaseUrl,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
+  return {serviceRoleKey,storageConfigured:Boolean(serviceRoleKey),localAiBaseUrl,localAiToken,localAiAccessClientId,localAiAccessClientSecret,localAiModels,localAiAllowUnauthenticated,localAiAllowInsecure,localAiVerifyModelId,openaiKey,bedrockKey,geminiKey,anthropicKey,grokKey,deepseekKey,mistralKey,qwenKey,openaiModels,bedrockModels,bedrockEndpoint,bedrockRegion,bedrockBaseUrl,bedrockRuntimeVerified,geminiModels,anthropicModels,grokModels,deepseekModels,mistralModels,qwenModels,grokBaseUrl,deepseekBaseUrl,mistralBaseUrl,qwenBaseUrl,codexEndpoint,codexToken,codexModel,diarizationBaseUrl,diarizationToken,diarizationProvider,diarizationModel,costPolicy};
 }
 async function resolveLocalAiRuntime(rt){
   let stored={};
@@ -168,11 +169,12 @@ async function resolveLocalAiRuntime(rt){
     lastVerifiedAt:clean(stored?.last_verified_at),
     allowUnauthenticated:rt.localAiAllowUnauthenticated,
     allowInsecure:rt.localAiAllowInsecure,
+    verifyModelId:rt.localAiVerifyModelId,
   };
 }
 function registryFor(rt,localAi){
   return createProviderRegistry({providers:[
-    createAtlasLocalResponsesAdapter({baseUrl:localAi.baseUrl,token:localAi.token,accessClientId:localAi.accessClientId,accessClientSecret:localAi.accessClientSecret,models:localAi.models,allowUnauthenticated:localAi.allowUnauthenticated,allowInsecure:localAi.allowInsecure,fetchFn:fetch,probeTimeoutMs:localAi.source==='render-free'?90000:15000}),
+    createAtlasLocalResponsesAdapter({baseUrl:localAi.baseUrl,token:localAi.token,accessClientId:localAi.accessClientId,accessClientSecret:localAi.accessClientSecret,models:localAi.models,allowUnauthenticated:localAi.allowUnauthenticated,allowInsecure:localAi.allowInsecure,verifyModelId:localAi.verifyModelId,fetchFn:fetch,probeTimeoutMs:localAi.source==='render-free'?90000:15000}),
     createOpenAIResponsesAdapter({apiKey:rt.openaiKey,models:rt.openaiModels,fetchFn:fetch}),
     createAmazonBedrockResponsesAdapter({apiKey:rt.bedrockKey,region:rt.bedrockRegion,endpoint:rt.bedrockEndpoint,baseUrl:rt.bedrockBaseUrl,models:rt.bedrockModels,runtimeVerified:rt.bedrockRuntimeVerified,fetchFn:fetch}),
     createGeminiAdapter({apiKey:rt.geminiKey,models:rt.geminiModels,fetchFn:fetch}),
