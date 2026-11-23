@@ -194,10 +194,10 @@ export async function createAtlasMemoryDraft(input: {
   }) as Promise<{ ok: true; record: AtlasMemoryRecord }>;
 }
 
-export async function approveAtlasMemory(id: string) {
+export async function approveAtlasMemory(id: string, expectedVersion: number, reviewed = false) {
   return request('?api=approve', {
     method: 'POST',
-    body: JSON.stringify({ id })
+    body: JSON.stringify({ id, expected_version: expectedVersion, reviewed })
   }) as Promise<{ ok: true; record: AtlasMemoryRecord }>;
 }
 
