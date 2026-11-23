@@ -34,6 +34,26 @@ test('import file reader rejects symlinks, directories and oversized inputs', as
   }
 });
 
+test('console follows an opaque reference only after unlock and never offers a reveal command', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-reference-console-'));
+  await chmod(directory, 0o700); t.after(() => rm(directory, { recursive: true, force: true }));
+  const vault = createPersonalVault({ directory });
+  const passphrase = 'fictional reference unlock phrase';
+  await vault.importCsv({ source: 'google', passphrase,
+    csv: 'name,url,username,password,note\nExample,https://example.test,u,FICTIONAL_PASSWORD,FICTIONAL_NOTE' });
+  const [{ reference, id }] = await vault.search({ passphrase });
+  await vault.setRecoveryCodes({ id, codes: ['FICTIONAL_RECOVERY'], passphrase });
+  const answers = ['lookup', reference, passphrase, 'exit'];
+  const output = []; const prompts = [];
+  await runVaultConsole({ vault, prompt: async (label, secret) => {
+    prompts.push({ label, secret }); return answers.shift();
+  }, write: s => output.push(s) });
+  assert.match(output.join(''), /Accounts: 1/);
+  assert.ok(output.join('').includes(reference));
+  assert.doesNotMatch(output.join(''), /FICTIONAL|unlock phrase/);
+  assert.equal(prompts.filter(p => p.secret).length, 1);
+});
+
 test('terminal output removes controls and errors never echo underlying details', async () => {
   assert.equal(terminalText('\u001b[31mExample\n\u202e'), '[31mExample');
   const answers = ['search', '', 'fictional unlock phrase', 'exit']; const output = [];

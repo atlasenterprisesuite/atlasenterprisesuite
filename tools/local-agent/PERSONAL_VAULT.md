@@ -10,6 +10,9 @@ node tools/local-agent/atlas-personal-vault.mjs /absolute/private/credentials-di
 
 The directory must be dedicated to credentials. Choose `import` then
 `google` or `apple` and provide a local export path, or choose `search`.
+Search results include an opaque `atlas-vault://personal/<uuid>` reference.
+Choose `lookup`, paste that reference and unlock again to retrieve the same
+account metadata. Unknown or deleted references return no account.
 Every operation asks for a hidden passphrase. `exit` closes the console.
 Terminal history is disabled. Piped execution and extra command arguments
 are rejected. Only account metadata and import counts are printed; there
@@ -18,7 +21,7 @@ is no reveal command or AI/network endpoint. Export input is bounded to
 through your OS after a successful verified migration; this console does
 not automatically delete source files.
 
-Validation: 24 local-agent tests pass, including console import/search,
+Validation includes local-agent tests for console import/search,
 secret-free output, control-character sanitization and file boundary tests.
 A Linux pseudo-terminal check confirmed hidden unlock input, completed
 search and clean exit using fictional input. Windows interactive behavior,
@@ -81,6 +84,35 @@ conflicts, metadata-only search, recovery separation and concurrent imports.
 
 No merge, deploy, production write or real secret access is authorized by
 this implementation. Keep existing Apple/Google entries unchanged.
+
+## Credential references — webinar adaptation (2026-11-23)
+
+The supplied GitGuardian/1Password slide motivates referring to a secret
+without returning its value. ATLAS implements the first local part by
+extending this existing vault rather than creating another password store.
+`search` and `lookupReference` return the explicit metadata allowlist:
+`id`, `reference`, `title`, `url`, `username`, `source`, `recoveryCodeCount`.
+The reference is stable across reopening and duplicate imports. It is a
+locator, not a bearer token or an authorization grant. Every lookup still
+requires the vault passphrase and reads only the chosen local directory.
+Foreign providers/namespaces, credentials in the reference, field selectors,
+query strings, fragments, encoded paths and URL normalization are rejected.
+The method never dispatches a network request or resolves `op://` references.
+
+This API is for the trusted local application. Do not register it directly
+as an AI tool or send a passphrase to a model. Account labels and usernames
+can themselves be private; the allowlist removes password/notes/recovery
+fields, not arbitrary sensitive text a user puts in an account label.
+The original local-only `reveal` method remains outside the console and
+outside any AI/MCP interface.
+
+Pending: authenticated ChatGPT/ATLAS metadata bridge, task/operation/recipient
+and expiry-bound runtime authorization, revocation, provider-side rotation,
+secret scanning and controlled delivery to an approved process. References
+alone do not implement any of those controls. No 1Password/GitGuardian
+installation or vendor integration is claimed. The recording itself has not
+been analyzed; this adaptation uses the supplied slide and public vendor
+documentation, including https://github.com/1Password/cursor-plugin .
 
 ## Browser import and trusted-device boundary (2026-11-07)
 

@@ -33,9 +33,9 @@ export async function readImportFile(path) {
 export async function runVaultConsole({ vault, prompt, write }) {
   write('ATLAS Personal Vault · local development console');
   while (true) {
-    const action = (await prompt('Action [import/search/exit]: ', false)).trim().toLowerCase();
+    const action = (await prompt('Action [import/search/lookup/exit]: ', false)).trim().toLowerCase();
     if (action === 'exit') return;
-    if (!['import', 'search'].includes(action)) { write('Choose import, search or exit.'); continue; }
+    if (!['import', 'search', 'lookup'].includes(action)) { write('Choose import, search, lookup or exit.'); continue; }
     let passphrase = '', csv = '';
     try {
       if (action === 'import') {
@@ -46,11 +46,15 @@ export async function runVaultConsole({ vault, prompt, write }) {
         const result = await vault.importCsv({ source, csv, passphrase });
         write(`Imported: ${result.imported}; skipped: ${result.skipped}.`);
       } else {
-        const query = await prompt('Search accounts: ', false);
+        const input = await prompt(action === 'lookup' ? 'Account reference: ' : 'Search accounts: ', false);
         passphrase = await prompt('Unlock passphrase: ', true);
-        const records = await vault.search({ query, passphrase });
+        let records;
+        if (action === 'lookup') {
+          const account = await vault.lookupReference({ reference: input, passphrase });
+          records = account ? [account] : [];
+        } else records = await vault.search({ query: input, passphrase });
         write(`Accounts: ${records.length}`);
-        for (const a of records) write(`${terminalText(a.id)} | ${terminalText(a.title)} | ${terminalText(a.url)} | ${terminalText(a.username)}`);
+        for (const a of records) write(`${terminalText(a.id)} | ${terminalText(a.title)} | ${terminalText(a.url)} | ${terminalText(a.username)} | ${terminalText(a.reference)}`);
       }
     } catch { write('Operation failed. Check unlock, file format, permissions and conflicts.'); }
     finally { passphrase = ''; csv = ''; }

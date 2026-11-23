@@ -52,7 +52,14 @@ function accounts(raw) {
   } catch { fail('corrupt'); }
 }
 function metadata(a) {
-  return { id: a.id, title: a.title, url: a.url, username: a.username, source: a.source, recoveryCodeCount: a.recoveryCodes.length };
+  return { id: a.id, reference: `atlas-vault://personal/${a.id}`, title: a.title, url: a.url, username: a.username, source: a.source, recoveryCodeCount: a.recoveryCodes.length };
+}
+function referenceId(reference) {
+  // Exact local UUID reference only. Do not normalize URLs, follow providers,
+  // accept secret field selectors or treat possession as authorization.
+  const match = typeof reference === 'string' && /^atlas-vault:\/\/personal\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(reference);
+  if (!match || match[0] !== reference) fail('reference');
+  return match[1];
 }
 function imported(csv, source) {
   if (!['google', 'apple'].includes(source)) fail('source');
@@ -103,6 +110,11 @@ export function createPersonalVault({ directory } = {}) {
       if (typeof query !== 'string' || query.length > 256) fail('query');
       const q = query.toLowerCase();
       return (await read(passphrase)).filter(a => [a.title, a.url, a.username].some(s => s.toLowerCase().includes(q))).map(metadata);
+    },
+    async lookupReference({ reference, passphrase }) {
+      const id = referenceId(reference);
+      const account = (await read(passphrase)).find(a => a.id === id);
+      return account ? metadata(account) : null;
     },
     async reveal({ id, passphrase }) {
       return (await read(passphrase)).find(a => a.id === id) || null;

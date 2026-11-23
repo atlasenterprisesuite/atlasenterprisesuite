@@ -15,6 +15,49 @@ async function setup(t) {
 const google = 'name,url,username,password,note\r\nExample,https://example.test,user@example.test,"FAKE,password","line 1\nline 2"';
 const apple = 'Title,URL,Username,Password,Notes\nApple example,https://apple.example.test,another@example.test,FAKE_APPLE,private note';
 
+test('opaque references survive reopening and duplicate imports; lookup returns only metadata', async t => {
+  const { vault, directory } = await setup(t);
+  await vault.importCsv({ source: 'apple', csv: apple, passphrase });
+  const [account] = await vault.search({ passphrase });
+  assert.match(account.reference, /^atlas-vault:\/\/personal\/[0-9a-f-]{36}$/);
+  await vault.setRecoveryCodes({ id: account.id, codes: ['FICTIONAL_REFERENCE_RECOVERY'], passphrase });
+  await vault.importCsv({ source: 'apple', csv: apple, passphrase });
+  const reopened = createPersonalVault({ directory });
+  const result = await reopened.lookupReference({ reference: account.reference, passphrase });
+  assert.deepEqual(Object.keys(result).sort(), ['id', 'reference', 'title', 'url', 'username', 'source', 'recoveryCodeCount'].sort());
+  assert.equal(result.reference, account.reference);
+  assert.equal(result.recoveryCodeCount, 1);
+  assert.doesNotMatch(JSON.stringify(result), /FAKE_APPLE|private note|FICTIONAL_REFERENCE_RECOVERY/);
+  assert.deepEqual(await reopened.search({ query: account.reference, passphrase }), []);
+  await vault.remove({ id: account.id, passphrase });
+  assert.equal(await reopened.lookupReference({ reference: account.reference, passphrase }), null);
+});
+
+test('a reference is not an unlock capability and cannot read another local vault', async t => {
+  const { vault } = await setup(t);
+  const other = (await setup(t)).vault;
+  await vault.importCsv({ source: 'apple', csv: apple, passphrase });
+  await other.importCsv({ source: 'google', csv: google, passphrase });
+  const [{ reference }] = await vault.search({ passphrase });
+  await assert.rejects(vault.lookupReference({ reference, passphrase: 'incorrect fictional unlock' }), /decryption_failed/);
+  await assert.rejects(vault.lookupReference({ reference }), /passphrase/);
+  assert.equal(await other.lookupReference({ reference, passphrase }), null);
+});
+
+test('reference lookup rejects alternate schemes, credentials, fields, encoding and URL normalization', async t => {
+  const { vault } = await setup(t);
+  await vault.importCsv({ source: 'apple', csv: apple, passphrase });
+  const [{ reference, id }] = await vault.search({ passphrase });
+  for (const candidate of [undefined, null, {}, '', id, ' ' + reference, reference + '\n',
+    reference + '/password', reference + '?field=password', reference + '#recoveryCodes',
+    reference.replace('personal/', 'personal/../personal/'),
+    reference.replace('personal/', 'user@personal/'),
+    reference.replace('personal', 'other-vault'), reference.replace('atlas-vault:', 'op:'),
+    reference.replace('personal/', 'personal/%'), reference.toUpperCase()]) {
+    await assert.rejects(vault.lookupReference({ reference: candidate, passphrase }), /^Error: personal_vault_reference$/);
+  }
+});
+
 test('Google and Apple column adapters, encrypted persistence, metadata-only search', async t => {
   const { vault, directory } = await setup(t);
   assert.deepEqual(await vault.importCsv({ source: 'google', csv: google, passphrase }), { imported: 1, skipped: 0 });
