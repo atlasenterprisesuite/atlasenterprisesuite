@@ -1,0 +1,33 @@
+name: ATLAS ChronoSeed Portable Capsule
+on:
+  pull_request:
+    paths:
+      - 'tools/chronoseed/**'
+      - 'docs/architecture/ATLAS_CHRONOSEED_777.md'
+      - '.github/workflows/chronoseed-portable.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/chronoseed/**'
+      - '.github/workflows/chronoseed-portable.yml'
+permissions:
+  contents: read
+jobs:
+  portable-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Encrypted capsule tests
+        run: node --test tools/chronoseed/chronoseed-format.test.mjs
+  portable-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Encrypted capsule tests
+        run: node --test tools/chronoseed/chronoseed-format.test.mjs
