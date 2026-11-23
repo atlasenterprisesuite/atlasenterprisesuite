@@ -88,7 +88,7 @@ test('encrypted vault persists across processes and resists incorrect password a
   assert.equal(result.status,0,result.stderr);
   assert.deepEqual(JSON.parse(result.stdout),[id]);
 
-  result = vaultChild({action:'get',directory,passphrase:'incorrect-test-key-123',id});
+  result = vaultChild({action:'get',directory,passphrase: passphrase + '-incorrect',id});
   assert.notEqual(result.status,0);
   assert.match(result.stderr,/vault_decryption_failed/);
   assert.equal(result.stdout,'');
