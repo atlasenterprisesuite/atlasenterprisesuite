@@ -55,6 +55,19 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(edge).toContain('rows.map(item => normalizeDraft(item))');
   });
 
+  it('makes organization imports and audit writes one database transaction', () => {
+    const atomic = readFileSync('supabase/migrations/20261123195500_atlas_memory_atomic_import.sql', 'utf8');
+    expect(atomic).toContain('returns setof public.atlas_memory_records');
+    expect(atomic).toContain('on conflict (organization_id, source_type, source_hash)');
+    expect(atomic).toContain('insert into public.audit_logs');
+    expect(atomic).toContain('organization_members');
+    expect(atomic).toContain('to service_role');
+    expect(edge).toContain("rpc('atlas_memory_import_drafts'");
+    expect(edge).toContain('memory_import_hash_required');
+    expect(edge).toContain('memory_import_autoapproval_forbidden');
+    expect(edge).not.toContain('const created = await saveDraft(ctx, item as Record<string, any>)');
+  });
+
   it('uses the canonical authenticated API boundary', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');
