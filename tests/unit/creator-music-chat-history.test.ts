@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRestrictedMusicDraft, indexChatGptMusicHistory } from '../../packages/creator/audio/chat_history';
+import { buildRestrictedMusicDraft, indexChatGptMusicHistory, mergeMusicChatIndexes } from '../../packages/creator/audio/chat_history';
 
 const message = (id: string, role: string, text: unknown) => ({
   id, message: { id, author: { role }, content: { content_type: 'text', parts: [text] }, create_time: 1700000000 }
@@ -63,6 +63,20 @@ describe('ATLAS Music Universe — privacy-first ChatGPT music export index', ()
     expect(draft.tags).toContain('music');
     expect(draft.content).not.toContain('Investiga');
     expect(draft.content).toMatch(/not the full transcript/i);
+  });
+
+  it('merges numbered export JSONs without duplicate conversation records or lost topics', () => {
+    const first = indexChatGptMusicHistory([exportSample[0]]);
+    const second = indexChatGptMusicHistory([
+      { id: 'chat-music-1', title: 'Alan Walker Music', mapping: { a: message('a', 'user', 'Learn lyrics for a song in English.') } },
+      exportSample[1]
+    ]);
+    const merged = mergeMusicChatIndexes([first, second]);
+    expect(merged.totalConversations).toBe(3);
+    expect(merged.musicConversations).toHaveLength(2);
+    expect(merged.musicConversations[0].topics).toContain('learning');
+    expect(merged.musicConversations[0].topics).toContain('symbolism');
+    expect(merged.musicConversations[0].matchedMessages).toBe(1);
   });
 
   it('fails closed for unsupported export shapes', () => {
