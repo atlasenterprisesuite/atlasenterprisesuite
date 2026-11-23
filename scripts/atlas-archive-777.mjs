@@ -14,14 +14,14 @@ function fail(message) { throw new Error(message); }
 function command(executable, args, cwd) {
   const result = spawnSync(executable, args, { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
   if (result.error || result.status !== 0) {
-    fail(\`\${executable} operation failed (\${result.status ?? 'unavailable'}): \${(result.stderr || result.error?.message || '').trim().slice(0, 500)}\`);
+    fail(`${executable} operation failed (${result.status ?? 'unavailable'}): ${(result.stderr || result.error?.message || '').trim().slice(0, 500)}`);
   }
   return result.stdout.trim();
 }
 function git(args, cwd) { return command('git', args, cwd); }
 function contained(parent, child) {
   const r = relative(parent, child);
-  return r === '' || (!r.startsWith(\`..\${sep}\`) && r !== '..' && !isAbsolute(r));
+  return r === '' || (!r.startsWith(`..${sep}`) && r !== '..' && !isAbsolute(r));
 }
 function hashFile(path) {
   return new Promise((resolveHash, reject) => {
@@ -40,9 +40,9 @@ async function inspectBundle(bundlePath, sha, branch) {
   const cloneDir = mkdtempSync(join(tmpdir(), 'atlas-archive-verify-'));
   try {
     git(['clone', '--quiet', '--no-checkout', bundlePath, join(cloneDir, 'restored')], cloneDir);
-    const recovered = git(['rev-parse', \`refs/remotes/origin/\${branch}\`], join(cloneDir, 'restored'));
+    const recovered = git(['rev-parse', `refs/remotes/origin/${branch}`], join(cloneDir, 'restored'));
     if (recovered !== sha) fail('P0: independently restored branch SHA differs from original.');
-    git(['cat-file', '-e', \`\${sha}^{commit}\`], join(cloneDir, 'restored'));
+    git(['cat-file', '-e', `${sha}^{commit}`], join(cloneDir, 'restored'));
   } finally {
     rmSync(cloneDir, { recursive: true, force: true });
   }
@@ -61,10 +61,10 @@ async function snapshot(repoInput, outputInput) {
   const branch = git(['symbolic-ref', '--quiet', '--short', 'HEAD'], repo);
   const sha = git(['rev-parse', 'HEAD'], repo);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const name = \`atlas-archive-\${stamp}-\${sha.slice(0, 12)}-\${randomUUID().slice(0, 8)}\`;
-  const finalBundle = join(out, \`\${name}.bundle\`);
-  const finalManifest = join(out, \`\${name}.json\`);
-  const temporary = join(out, \`.\${name}.tmp.bundle\`);
+  const name = `atlas-archive-${stamp}-${sha.slice(0, 12)}-${randomUUID().slice(0, 8)}`;
+  const finalBundle = join(out, `${name}.bundle`);
+  const finalManifest = join(out, `${name}.json`);
+  const temporary = join(out, `.${name}.tmp.bundle`);
   try {
     git(['bundle', 'create', temporary, '--all'], repo);
     await inspectBundle(temporary, sha, branch);
@@ -111,6 +111,6 @@ try {
   else if (mode === 'verify') await verify(option(args, '--manifest'));
   else fail('Usage: node scripts/atlas-archive-777.mjs snapshot --repo PATH --output PRIVATE_DIRECTORY | verify --manifest PATH');
 } catch (error) {
-  process.stderr.write(\`ATLAS Archive 777 NO-GO: \${error.message}\n\`);
+  process.stderr.write(`ATLAS Archive 777 NO-GO: ${error.message}\n`);
   process.exitCode = 1;
 }
