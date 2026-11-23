@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { NEUROACOUSTIC_PRESETS, createLocalSoundSession, makeSoundPlan } from '../../packages/creator/audio/neuroacoustic';
+import { MUSIC_STYLE_REFERENCES, NEUROACOUSTIC_PRESETS, createLocalSoundSession, makeSoundPlan } from '../../packages/creator/audio/neuroacoustic';
 
 const preset = (id: string) => {
   const found = NEUROACOUSTIC_PRESETS.find(item => item.id === id);
@@ -36,6 +36,12 @@ describe('ATLAS Music — local neuroacoustic catalog and synthesis', () => {
     expect(new Set(NEUROACOUSTIC_PRESETS.map(item => item.id)).size).toBe(NEUROACOUSTIC_PRESETS.length);
     expect(new Set(NEUROACOUSTIC_PRESETS.map(item => item.category))).toEqual(new Set(['binaural', 'ambient', 'nature', 'reference-tone']));
     expect(NEUROACOUSTIC_PRESETS.map(item => item.id)).toEqual(expect.arrayContaining(['delta-2', 'theta-7', 'alpha-10', 'gamma-40', 'rain', 'ocean', 'wind', 'tone-432', 'tone-528']));
+  });
+
+  it('classifies music listening references without bundling or mislabeling copyrighted songs as binaural', () => {
+    expect(MUSIC_STYLE_REFERENCES.map(item => item.style)).toEqual(expect.arrayContaining(['ambient', 'chillout', 'melodic-electronic']));
+    expect(MUSIC_STYLE_REFERENCES.map(item => item.example)).toEqual(expect.arrayContaining(['Weightless — Marconi Union', 'Ambient 1: Music for Airports — Brian Eno', 'Faded (Instrumental) — Alan Walker']));
+    expect(MUSIC_STYLE_REFERENCES.every(item => item.playbackAvailable === false && item.isBinauralCertified === false)).toBe(true);
   });
 
   it('uses separate actual audible carriers for binaural perception; 10 Hz is not emitted as an audible tone', () => {
