@@ -41,6 +41,14 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(page).toContain('Save draft');
   });
 
+  it('requires an explicit source and privacy review before approving chat imports in the UI', () => {
+    expect(page).toContain('Review imported conversation');
+    expect(page).toContain('checked={reviewedId === record.id}');
+    expect(page).toContain('reviewedId !== record.id');
+    expect(page).toContain('Check source and remove personal information before approval');
+    expect(page).toContain('content_json?.text');
+  });
+
   it('uses the canonical authenticated API boundary', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');
