@@ -78,9 +78,10 @@ export function indexChatGptMusicHistory(input: unknown): MusicChatIndex {
     const sourceId = conversation?.id;
     if (typeof sourceId !== 'string' || !sourceId.trim() || sourceId.length > 200 || seen.has(sourceId)) continue;
     seen.add(sourceId);
-    const title = typeof conversation.title === 'string'
-      ? conversation.title.slice(0, 180) : 'Untitled chat';
-    const mapping = asObject(conversation.mapping);
+    const rawTitle = conversation?.title;
+    const title = typeof rawTitle === 'string'
+      ? rawTitle.slice(0, 180) : 'Untitled chat';
+    const mapping = asObject(conversation?.mapping);
     const nodes = mapping ? Object.values(mapping) : [];
     if (nodes.length > MAX_NODES_PER_CONVERSATION) truncated = true;
 
@@ -99,9 +100,10 @@ export function indexChatGptMusicHistory(input: unknown): MusicChatIndex {
     if (!titleIsMusic && !matchedMessages) continue;
     if (!topics.size) topics.add('songs');
 
-    const createdAt = typeof conversation.create_time === 'number'
-      && Number.isFinite(conversation.create_time)
-      ? conversation.create_time : null;
+    const rawCreatedAt = conversation?.create_time;
+    const createdAt = typeof rawCreatedAt === 'number'
+      && Number.isFinite(rawCreatedAt)
+      ? rawCreatedAt : null;
     musicConversations.push({
       sourceId, title, createdAt, matchedMessages, topics: [...topics]
     });
