@@ -82,6 +82,16 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(panel).toContain('restricted');
   });
 
+  it('requires version-checked atomic memory approval and audit', () => {
+    const atomic = readFileSync('supabase/migrations/20261123195500_atlas_memory_atomic_import.sql', 'utf8');
+    expect(atomic).toContain('atlas_memory_approve_draft');
+    expect(atomic).toContain('for update');
+    expect(atomic).toContain('knowledge.memory.approved');
+    expect(atomic).toContain('memory_approval_stale_version');
+    expect(edge).toContain("rpc('atlas_memory_approve_draft'");
+    expect(api).toContain('expected_version');
+  });
+
   it('uses the canonical authenticated API boundary', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');
