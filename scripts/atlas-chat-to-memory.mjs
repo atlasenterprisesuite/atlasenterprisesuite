@@ -55,7 +55,7 @@ function hasTerm(foldedText, term) {
     if (at < 0) return false;
     const before = at ? foldedText[at - 1] : '';
     const after = foldedText[at + needle.length] || '';
-    const word = char => char && /[\\p{L}\\p{N}]/u.test(char);
+    const word = char => char && /[\p{L}\p{N}]/u.test(char);
     if (!word(before) && !word(after)) return true;
     from = at + 1;
   }
@@ -228,7 +228,7 @@ export function writePrivateImportBatches(result, outDir) {
   const batches = createImportBatches(result);
   const outputs = batches.map((batch, index) => ({
     pathname: resolve(destination, 'atlas-chat-drafts-' + String(index + 1).padStart(4, '0') + '.json'),
-    content: JSON.stringify(batch, null, 2) + '\\n'
+    content: JSON.stringify(batch, null, 2) + '\n'
   }));
   const manifest = {
     pathname: resolve(destination, 'manifest.json'),
@@ -238,7 +238,7 @@ export function writePrivateImportBatches(result, outDir) {
       batch_count: batches.length,
       skipped: result.skipped,
       approval: 'manual_required'
-    }, null, 2) + '\\n'
+    }, null, 2) + '\n'
   };
 
   // Preflight the entire batch set before writing: retries must be idempotent,
