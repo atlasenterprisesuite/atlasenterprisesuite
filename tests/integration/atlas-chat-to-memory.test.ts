@@ -136,7 +136,7 @@ describe('ATLAS 777 Chat -> Knowledge offline intake', () => {
     inTemporaryDirectory(directory => {
       const input = join(directory, 'chat.srt');
       const outDir = join(directory, 'out');
-      writeFileSync(input, '1\\n00:00:00,000 --> 00:00:02,000\\nATLAS health research\\n');
+      writeFileSync(input, '1\n00:00:00,000 --> 00:00:02,000\nATLAS health research\n');
       expect(run(input, outDir).status).toBe(0);
       expect(run(input, outDir).status).toBe(0);
       const batchPath = join(outDir, 'atlas-chat-drafts-0001.json');
