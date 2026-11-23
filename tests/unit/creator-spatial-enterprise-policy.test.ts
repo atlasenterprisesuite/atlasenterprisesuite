@@ -5,7 +5,7 @@ import { assessSpatialEnterpriseDispatch, type SpatialJobIntent,
 
 const job: SpatialJobIntent = {
   tenantId: 'tenant-a', orgId: 'org-a', actorId: 'actor-a',
-  idempotencyKey: 'spatial_001', fingerprint: 'sha256:abc',
+  idempotencyKey: 'spatial_001', fingerprint: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   capability: 'text-to-3d'
 };
 const policy: SpatialEnterprisePolicy = {
@@ -69,10 +69,10 @@ describe('ATLAS enterprise 3D dispatch contract (no I/O or privilege grants)', (
   });
   it('deduplicates only exact same-scope, same-fingerprint stored tasks', () => {
     const existing = {tenantId:'tenant-a',orgId:'org-a',jobId:'job-123',
-      idempotencyKey:'spatial_001',fingerprint:'sha256:abc'};
+      idempotencyKey:'spatial_001',fingerprint:'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'};
     expect(check(job,policy,{...evidence,existingJob:existing}))
       .toEqual({allowed:true,action:'return-existing',jobId:'job-123',billable:false});
-    deny('idempotency_conflict',job,policy,{...evidence,existingJob:{...existing,fingerprint:'sha256:other'}});
+    deny('idempotency_conflict',job,policy,{...evidence,existingJob:{...existing,fingerprint:'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'}});
     deny('idempotency_conflict',job,policy,{...evidence,existingJob:{...existing,orgId:'org-b'}});
   });
 });
