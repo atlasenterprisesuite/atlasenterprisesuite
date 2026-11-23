@@ -28,3 +28,43 @@ The repository already had switching/fallback tests, approved-memory retrieval, 
 ## Limits
 
 This change does not migrate database schema, persist style preferences across accounts, export all ChatGPT chats, prove live model behavior, or deploy a provider. The current runtime can test a source subset retrieved at a fixed SHA through GitHub; a normal Git clone was unavailable because its gateway required credentials. Full repository checks must be evidenced by CI, not inferred from subset tests.
+
+## Sovereign local multi-model pilot (2026-11-23)
+
+**Status: branch-only guarded implementation; not a deployed or connected provider.** Reuse the existing `atlas-local` provider, `atlas-copilot` registry, routing profiles, authentication and cost policy. Do not create another source of truth, provider identity, tenant boundary or deployment pipeline.
+
+### Candidate open-weight models (independent license and provenance checks required)
+
+| Role example | Official model | Upstream |
+| --- | --- | --- |
+| Agentic/deep | Meta Muse Glimmer 30B | https://huggingface.co/meta-models/Muse-Glimmer-30B-GGUF |
+| Balanced reasoning | OpenAI gpt-oss-20b | https://huggingface.co/openai/gpt-oss-20b |
+| Fast/general | Qwen3-8B | https://huggingface.co/Qwen/Qwen3-8B |
+| Alternative general model | Mistral Small 3.1 24B | https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503 |
+
+These are **model candidates, not installed models**. Each download, inference engine, build, license, dependencies, signature/checksum, hardware fit and actual tool-calling behavior requires its own approval and evidence. The manufacturer may retain separately licensed proprietary services that these weights do not include.
+
+### Existing ATLAS runtime contract
+
+Configure the existing server-side configuration only; never add model keys, access credentials, internal addresses or model files to git or frontend bundles.
+
+- `ATLAS_LOCAL_AI_URL`: explicitly approved, access-controlled ATLAS-owned inference gateway; HTTPS by default.
+- `ATLAS_LOCAL_AI_TOKEN`: server-side authentication secret, with existing Cloudflare Access credentials when needed.
+- `ATLAS_LOCAL_AI_MODEL_FAST`, `ATLAS_LOCAL_AI_MODEL_BALANCED`, `ATLAS_LOCAL_AI_MODEL_DEEP`: **exact model identifiers returned by the private runtime**; these profile slots already exist and are not extra providers.
+- `ATLAS_LOCAL_AI_VERIFY_MODEL_ID=true`: opt-in strict model ID verification; fail closed when the requested model is not advertised by `GET /v1/models` or when listing fails.
+- `ATLAS_AI_ALLOWED_PROVIDERS=atlas-local` and `ATLAS_AI_ENFORCE_ZERO_COST=true`: use the existing routing/cost policy when the required private-only posture applies; validate the effective policy per tenant and request.
+
+When strict checking is on, both readiness and execution verify the requested profile's exact ID before sending conversational content to `/v1/responses`. A healthy server without the selected ID is **not** verified. A model list mismatch, malformed response, authentication error or unreachable catalog blocks invocation; the model cannot silently fall back to another provider. Strict verification is not a guarantee that the advertised model is genuine or that the endpoint has no external forwarding.
+
+A recent `llama.cpp` can offer multi-model router mode (official documentation: https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md). Before using it, prove that its deployment supports both the existing `/v1/responses` request contract and `/v1/models` identifiers, and that the local host has sufficient GPU/RAM/disk. For Muse Glimmer, use a runtime build that explicitly supports the model architecture; see https://dev.meta.ai/docs/muse-glimmer/get-the-model . Never auto-download multi-gigabyte weights as a CI, install, build or deployment side effect.
+
+### Privacy and P0 gates
+
+1. Verify model provenance, license, immutable digest and version with trusted local files; model names alone are insufficient.
+2. Verify model host ownership and actual inference location; restrict runtime egress and DNS, telemetry, remote plug-ins and proxy upstreams to an explicit audited allowlist.
+3. Keep prompts, attachments, memory, tenant data, tokens and logs on approved infrastructure. Do not send sensitive prompts to a vendor-hosted API or untrusted public gateway merely because the adapter says `atlas-local`.
+4. Preserve ATLAS RBAC/RLS, membership reauthorization, secret boundaries, per-tool permission checks, audit event redaction and existing human production approvals.
+5. Run deterministic tests (`node --test tests/node/atlas-local-multimodel-privacy.test.mjs`), then full CI, verified model inference tests, network-egress inspection, adversarial prompt/tool tests and P0 exact-SHA production verification.
+6. Mark hardware unavailable, endpoint unverified, missing licenses, missing proof of isolation or failed security/CI checks as **NO-GO**; never fake model installation, execution or production readiness.
+
+**Not provided by this change:** downloaded weights, local inference hardware, runtime deployment, model-fidelity proof, tool invocation permissions, production deployment, or guarantees about third-party network operators. The strict mode is opt-in to preserve existing provider behavior until the runtime and migration path are verified.
