@@ -243,48 +243,26 @@ async function approve(ctx: MemoryContext, input: Record<string, any>) {
   if (!ADMIN_ROLES.has(ctx.role)) throw fail('memory_approval_role_required', 403);
   const id = safeText(input.id, 80);
   if (!uuid(id)) throw fail('memory_id_required', 422);
-  const sb = adminClient();
-  const { data: existing, error: existingError } = await sb
-    .from('atlas_memory_records')
-    .select('id,status,version,supersedes_id')
-    .eq('organization_id', ctx.orgId)
-    .eq('id', id)
-    .maybeSingle();
-  if (existingError) throw fail('memory_read_failed', 500);
-  if (!existing) throw fail('memory_not_found', 404);
-  if (existing.status === 'approved') return existing;
-  if (existing.status !== 'draft') throw fail('memory_not_approvable', 409);
-
-  const now = new Date().toISOString();
-  const { data, error } = await sb
-    .from('atlas_memory_records')
-    .update({
-      status: 'approved',
-      approved_by: ctx.userId,
-      approved_at: now,
-      updated_at: now,
-      version: Number(existing.version || 1) + 1
-    })
-    .eq('organization_id', ctx.orgId)
-    .eq('id', id)
-    .eq('status', 'draft')
-    .select('*')
-    .single();
-  if (error || !data) throw fail('memory_approval_failed', 500);
-
-  if (data.supersedes_id) {
-    await sb.from('atlas_memory_records')
-      .update({ status: 'superseded', updated_at: now })
-      .eq('organization_id', ctx.orgId)
-      .eq('id', data.supersedes_id)
-      .eq('status', 'approved');
+  const expectedVersion = Number(input.expected_version);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    throw fail('memory_approval_version_required', 422);
   }
-
-  await audit(ctx, 'knowledge.memory.approved', id, {
-    kind: data.kind,
-    source_type: data.source_type,
-    supersedes_id: data.supersedes_id || null
+  // Database row locking, optimistic version and audit are one transaction.
+  const { data, error } = await adminClient().rpc('atlas_memory_approve_draft', {
+    p_org_id: ctx.orgId,
+    p_user_id: ctx.userId,
+    p_record_id: id,
+    p_expected_version: expectedVersion,
+    p_reviewed: input.reviewed === true
   });
+  if (error) {
+    if (error.code === '40001') throw fail('memory_approval_stale_version', 409);
+    if (error.code === 'P0002') throw fail('memory_not_found', 404);
+    if (error.code === '23514') throw fail('memory_not_approvable', 409);
+    if (error.code === '42501') throw fail('memory_approval_role_or_review_required', 403);
+    throw fail('memory_approval_atomic_failed', 500);
+  }
+  if (!data || data.organization_id !== ctx.orgId) throw fail('memory_approval_result_invalid', 500);
   return data;
 }
 
