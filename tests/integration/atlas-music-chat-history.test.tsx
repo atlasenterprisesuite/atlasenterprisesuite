@@ -29,7 +29,7 @@ describe('ATLAS Music private conversation history UI', () => {
     const file = new File([exportData], 'conversations.json', { type: 'application/json' });
     Object.defineProperty(file, 'text', { value: async () => exportData });
     fireEvent.change(screen.getByLabelText(/Choose ChatGPT conversations JSON/i), { target: { files: [file] } });
-    expect(await screen.findByText(/1 music-related conversation/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/1 music-related conversation/i));
     expect(screen.getByText('Atlas Music songs')).toBeInTheDocument();
     expect(screen.queryByText(/Study Spotify music/)).not.toBeInTheDocument();
     expect(saveDraft).not.toHaveBeenCalled();
