@@ -4,6 +4,19 @@ export type AtlasMemoryKind = 'decision' | 'requirement' | 'workflow' | 'configu
 export type AtlasMemoryStatus = 'draft' | 'approved' | 'superseded';
 export type AtlasMemorySource = 'atlas' | 'chat_import' | 'document' | 'user_entry' | 'system_event';
 
+export type AtlasMemoryImportDraft = {
+  kind: AtlasMemoryKind;
+  title: string;
+  summary: string;
+  content_json: Record<string, unknown>;
+  source_type: 'chat_import';
+  source_ref: string;
+  source_hash: string;
+  module_ids: string[];
+  tags: string[];
+  sensitivity: 'restricted';
+};
+
 export type AtlasMemoryRecord = {
   id: string;
   organization_id: string;
@@ -186,4 +199,12 @@ export async function approveAtlasMemory(id: string) {
     method: 'POST',
     body: JSON.stringify({ id })
   }) as Promise<{ ok: true; record: AtlasMemoryRecord }>;
+}
+
+/** Sends only user-reviewed, restricted drafts. The API enforces draft-only import. */
+export async function importAtlasMemoryDrafts(records: AtlasMemoryImportDraft[]) {
+  return request('?api=import', {
+    method: 'POST',
+    body: JSON.stringify({ approve: false, records })
+  }) as Promise<{ ok: true; records: AtlasMemoryRecord[] }>;
 }
