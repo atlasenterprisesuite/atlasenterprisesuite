@@ -39,7 +39,9 @@ async function run() {
       node22OrNewer: Number(process.versions.node.split('.')[0]) >= 22,
       privateDirectoryInstalled: existsSync(dir),
       localModelFileAvailable: Boolean(modelFile && existsSync(modelFile)),
-      localRuntimeConfigured: Boolean(process.env.ATLAS_LOCAL_AI_TOKEN && (modelFile || process.env.ATLAS_LOCAL_AI_HF_REPO)),
+      localRuntimeConfigured: Boolean(process.env.ATLAS_LOCAL_AI_TOKEN && modelFile && existsSync(modelFile)),
+      sovereignRuntimeOfflineDefault: true,
+      modelInferenceVerified: false,
       remoteDeviceValidated: false
     };
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
@@ -47,7 +49,8 @@ async function run() {
     return;
   }
   if (command === 'runtime') {
-    if (process.env.ATLAS_LOCAL_AI_HOST && !['127.0.0.1', '::1', 'localhost'].includes(process.env.ATLAS_LOCAL_AI_HOST)) throw new Error('local_core_runtime_loopback_required');
+    // Personal runtime is offline by default even if a cloud provider is configured elsewhere.
+    process.env.ATLAS_LOCAL_AI_OFFLINE = 'true';
     await import('./atlas-local-ai-runtime.mjs');
     return;
   }
