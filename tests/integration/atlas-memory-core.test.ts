@@ -49,6 +49,12 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(page).toContain('content_json?.text');
   });
 
+  it('rejects automatic chat-import approval and invalid batch sizes before any write', () => {
+    expect(edge).toContain('memory_import_batch_limit');
+    expect(edge).toContain('chat_import_autoapproval_forbidden');
+    expect(edge).toContain('rows.map(item => normalizeDraft(item))');
+  });
+
   it('uses the canonical authenticated API boundary', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');
