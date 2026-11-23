@@ -31,6 +31,14 @@ export const NEUROACOUSTIC_PRESETS: readonly NeuroacousticPreset[] = [
   { id: 'tone-528', title: '528 Hz reference tone', category: 'reference-tone', description: 'Single audible tone; no DNA-repair or medical effect is implied.', toneHz: 528 }
 ];
 
+/** Editorial listening references only. No copyrighted audio or playback rights implied. */
+export const MUSIC_STYLE_REFERENCES = [
+  { style: 'ambient', label: 'Ambient soundscapes', example: 'Weightless — Marconi Union', playbackAvailable: false, isBinauralCertified: false },
+  { style: 'ambient', label: 'Minimal instrumental', example: 'Ambient 1: Music for Airports — Brian Eno', playbackAvailable: false, isBinauralCertified: false },
+  { style: 'chillout', label: 'Downtempo / chillout', example: 'Slow instrumental electronic and acoustic arrangements', playbackAvailable: false, isBinauralCertified: false },
+  { style: 'melodic-electronic', label: 'Melodic electronic', example: 'Faded (Instrumental) — Alan Walker', playbackAvailable: false, isBinauralCertified: false }
+] as const;
+
 export type SoundPlan =
   | { kind: 'binaural'; leftHz: number; rightHz: number; beatHz: number; gain: number; requiresHeadphones: true }
   | { kind: 'ambient'; notes: readonly number[]; gain: number; requiresHeadphones: false }
