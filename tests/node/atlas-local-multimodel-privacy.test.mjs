@@ -95,6 +95,61 @@ test('strict dispatch sends only the chosen model to the authenticated runtime',
   assert.equal(dispatched.store,false);
 });
 
+test('private host allowlist blocks unapproved endpoints before any network request',async()=>{
+  let sent=false;
+  const adapter=createAtlasLocalResponsesAdapter({
+    baseUrl:'https://unapproved-model.vendor.example',
+    token:'synthetic-test-only',
+    models:{deep:'muse-glimmer-30b'},
+    verifyModelId:true,
+    enforceHostAllowlist:true,
+    allowedHosts:['private-ai.atlas.example'],
+    fetchFn:async()=>{sent=true;throw new Error('network request must not occur');},
+  });
+  assert.equal(adapter.descriptor().configured,false);
+  assert.equal((await adapter.probe({profile:'deep'})).error,'provider_untrusted_endpoint');
+  await assert.rejects(
+    adapter.execute({route:{profile:'deep'},input:[{role:'user',content:'synthetic'}]}),
+    e=>e?.code==='provider_untrusted_endpoint',
+  );
+  assert.equal(sent,false);
+});
+
+test('allowlist compares exact hostnames rather than suffixes or userinfo',async()=>{
+  let sent=false;
+  const makeAdapter=url=>createAtlasLocalResponsesAdapter({
+    baseUrl:url, token:'synthetic-test-only',models:{deep:'muse-glimmer-30b'},
+    enforceHostAllowlist:true,allowedHosts:['private-ai.atlas.example'],
+    fetchFn:async()=>{sent=true;throw new Error('should not be called');},
+  });
+  for(const hostname of ['https://private-ai.atlas.example.evil.example','https://private-ai.atlas.example@evil.example']){
+    const adapter=makeAdapter(hostname);
+    assert.equal(adapter.descriptor().configured,false);
+    assert.equal((await adapter.probe({profile:'deep'})).verified,false);
+  }
+  assert.equal(sent,false);
+});
+
+test('local model requests refuse redirects to prevent credential or prompt forwarding',async()=>{
+  const redirects=[];
+  const adapter=createAtlasLocalResponsesAdapter({
+    baseUrl:'https://private-ai.atlas.example',
+    token:'synthetic-test-only',
+    models:{deep:'muse-glimmer-30b'},
+    verifyModelId:true,enforceHostAllowlist:true,allowedHosts:['private-ai.atlas.example'],
+    probeAttempts:1,
+    fetchFn:async(url,opts)=>{
+      redirects.push(opts?.redirect);
+      if(url.endsWith('/health'))return new Response('{}',{status:200});
+      if(url.endsWith('/v1/models'))return new Response(JSON.stringify({data:[{id:'muse-glimmer-30b'}]}),{status:200});
+      return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:'ok'}]}]}),{status:200});
+    },
+  });
+  assert.equal((await adapter.probe({profile:'deep'})).verified,true);
+  await adapter.execute({route:{profile:'deep'},input:[{role:'user',content:'synthetic'}]});
+  assert.deepEqual(redirects,['error','error','error','error']);
+});
+
 test('strict mode does not claim readiness for an unconfigured runtime',async()=>{
   let sent=false;
   const adapter=createAtlasLocalResponsesAdapter({
