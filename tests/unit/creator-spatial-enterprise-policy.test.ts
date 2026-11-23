@@ -51,6 +51,8 @@ describe('ATLAS enterprise 3D dispatch contract (no I/O or privilege grants)', (
   });
   it('enforces local processing, region, encryption and retention', () => {
     deny('external_processing_forbidden',job,policy,{...evidence,providerExternal:true});
+    deny('invalid_accounting',job,policy,{...evidence,providerExternal:undefined as never});
+    deny('invalid_accounting',job,policy,{...evidence,existingJob:undefined as never});
     deny('region_disallowed',job,policy,{...evidence,executionRegion:'eu-central-1'});
     deny('encryption_missing',job,policy,{...evidence,encryptedAtRest:false});
     deny('encryption_missing',job,policy,{...evidence,encryptedInTransit:false});
