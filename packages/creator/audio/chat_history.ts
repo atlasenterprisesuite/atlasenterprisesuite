@@ -39,7 +39,7 @@ const TOPIC_RULES: ReadonlyArray<{ id: MusicChatTopic; pattern: RegExp }> = [
   { id: 'sound-design', pattern: /(?:frecuencia|frequency|binaural|neuroac[uú]stic|solfeggio|ondas cerebrales|mezcla|audio dna|ambient|sound design|sintetizador|synthesizer|sonido)/iu },
   { id: 'playlists', pattern: /(?:playlist|lista de reproducci[oó]n|spotify|dj|mix(?:es|ing)?|session|sesi[oó]n musical)/iu },
   { id: 'music-video', pattern: /(?:videoclip|v[ií]deo musical|videos musicales|music video|visual de la canci[oó]n)/iu },
-  { id: 'learning', pattern: /(?:aprender ingl[eé]s|learn english|pronunciaci[oó]n|vocabulario musical|vocabulary)/iu }
+  { id: 'learning', pattern: /(?:aprender.{0,60}ingl[eé]s|learn.{0,80}(?:english|in english)|pronunciaci[oó]n|vocabulario musical|vocabulary)/iu }
 ];
 
 function asObject(value: unknown): UnknownObject | null {
