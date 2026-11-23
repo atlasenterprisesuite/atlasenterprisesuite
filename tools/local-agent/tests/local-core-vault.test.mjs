@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, stat, symlink, chmod, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, stat, symlink, chmod, rm, writeFile, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { memoryPut, memoryGet, memoryList, memoryDelete } from '../lib/local-core-vault.mjs';
 const passphrase = 'local testing passphrase that is long';
 async function withDir(t) { const d = await mkdtemp(join(tmpdir(), 'atlas-vault-')); await chmod(d, 0o700); t.after(()=>rm(d,{recursive:true,force:true})); return d; }
@@ -48,4 +50,61 @@ test('writes blocked by existing lock rather than racing', async t => {
   const directory = await withDir(t);
   await writeFile(join(directory,'.memory.lock'),'active',{mode:0o600});
   await assert.rejects(memoryPut({directory,id:'hello',value:'world',passphrase}),/vault_locked/);
+});
+
+/** Re-run the real vault module in a fresh process to verify disk persistence. */
+function vaultChild(args) {
+  const href = new URL('../lib/local-core-vault.mjs', import.meta.url).href;
+  const script = `
+import {readFileSync} from 'node:fs';
+import {memoryPut,memoryGet,memoryList} from ${JSON.stringify(href)};
+const a = JSON.parse(readFileSync(0,'utf8'));
+const result = a.action === 'put' ? await memoryPut(a) :
+  a.action === 'get' ? await memoryGet(a) : await memoryList(a);
+process.stdout.write(JSON.stringify(result));
+`;
+  return spawnSync(process.execPath,['--input-type=module','--eval',script],{
+    input:JSON.stringify(args),encoding:'utf8',timeout:15000
+  });
+}
+
+test('encrypted vault persists across processes and resists incorrect password and tampering', async t => {
+  const directory = await withDir(t);
+  const passphrase = randomBytes(32).toString('hex');
+  const id = 'portable-vault-fixture';
+  const value = 'fixture-' + randomBytes(16).toString('hex');
+  let result = vaultChild({action:'put',directory,passphrase,id,value});
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(JSON.parse(result.stdout),true);
+  const file = join(directory,'memory.v1.json');
+  const raw = await readFile(file,'utf8');
+  assert.ok(!raw.includes(value) && !raw.includes(id) && !raw.includes(passphrase));
+  if (process.platform !== 'win32') assert.equal((await stat(file)).mode & 0o777,0o600);
+
+  result = vaultChild({action:'get',directory,passphrase,id});
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(JSON.parse(result.stdout),value);
+  result = vaultChild({action:'list',directory,passphrase});
+  assert.equal(result.status,0,result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout),[id]);
+
+  result = vaultChild({action:'get',directory,passphrase:'incorrect-test-key-123',id});
+  assert.notEqual(result.status,0);
+  assert.match(result.stderr,/vault_decryption_failed/);
+  assert.equal(result.stdout,'');
+
+  const backup = join(directory,'isolated-test-backup.json');
+  await copyFile(file,backup);
+  const corrupted = JSON.parse(raw);
+  corrupted.tag = Buffer.alloc(16,0).toString('base64');
+  await writeFile(file,JSON.stringify(corrupted));
+  result = vaultChild({action:'get',directory,passphrase,id});
+  assert.notEqual(result.status,0);
+  assert.match(result.stderr,/vault_decryption_failed/);
+  assert.equal(result.stdout,'');
+
+  await copyFile(backup,file);
+  result = vaultChild({action:'get',directory,passphrase,id});
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(JSON.parse(result.stdout),value);
 });
