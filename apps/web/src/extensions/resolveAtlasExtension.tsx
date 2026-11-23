@@ -35,6 +35,7 @@ import { OracleRoutes } from '../modules/oracle/OracleRoutes';
 import { UnifiedAIChatPage } from '../modules/intelligence/UnifiedAIChatPage';
 import { KnowledgeAtlasPage } from '../modules/knowledge/KnowledgeAtlasPage';
 import { BibleOSPage } from '../modules/knowledge/bible/BibleOSPage';
+import { YumeAtlantisKnowledgePage } from '../modules/knowledge/research/YumeAtlantisKnowledgePage';
 import { AtlasSuitePage } from '../modules/integration/AtlasSuitePage';
 import { AnalyticsRoutes } from '../modules/analytics/AnalyticsRoutes';
 import {
@@ -112,6 +113,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/knowledge/bible') {
     return <RequireAtlasIdentity><BibleOSPage /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/knowledge/research/yume-atlantis') {
+    return <RequireAtlasIdentity><YumeAtlantisKnowledgePage /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/knowledge') {
