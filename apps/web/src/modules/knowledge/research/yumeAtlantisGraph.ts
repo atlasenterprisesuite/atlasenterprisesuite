@@ -1109,7 +1109,9 @@ export function validateYumeGraph(graph: YumeKnowledgeGraph): string[] {
     if (!ids.has(edge.source) || !ids.has(edge.target)) issues.push('orphan_edge:' + edge.source + ':' + edge.target);
     if (!['documentado', 'relato_antiguo', 'simbolico', 'pendiente'].includes(edge.type)) issues.push('invalid_edge_type:' + edge.type);
     if (!edge.reason.trim()) issues.push('empty_edge_reason:' + edge.source);
-    if (!edge.source_ids.length) issues.push('unsourced_edge:' + edge.source + ':' + edge.target);
+    // Editorial comparisons have no independent source by design; their endpoint nodes retain provenance.
+    // Documented and ancient-text claims must still cite at least one source.
+    if (!edge.source_ids.length && edge.type !== 'simbolico') issues.push('unsourced_edge:' + edge.source + ':' + edge.target);
     for (const source of edge.source_ids) if (!graph.sources[source]) issues.push('missing_edge_source:' + source);
   }
   for (const [id, source] of Object.entries(graph.sources)) {
