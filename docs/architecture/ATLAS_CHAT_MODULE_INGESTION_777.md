@@ -10,9 +10,9 @@ Reuse KnowledgeAtlasPage.tsx and the existing authenticated supabase/functions/a
 
 1. Download your official ChatGPT data export and extract conversations.json, or use a user-supplied SRT transcript. Keep original files private.
 2. Run Node.js with arguments: node scripts/atlas-chat-to-memory.mjs --input /private/conversations.json --out-dir /private/atlas-chat-drafts
-3. Inspect manifest.json, skipped entries, provisional classifications, and each atlas-chat-drafts-NNNN.json file. No network request is made during this process.
+3. Inspect manifest.json, skipped entries, provisional classifications, and each atlas-chat-drafts-NNNN.json file. No network request is made during this process. The same input and output directory may be retried safely after interruption: identical batches are reused; any altered existing batch or manifest is rejected without overwriting it. Do not manually edit these generated batches and then retry the same directory; create a separate sanitized intake folder instead.
 4. An authorized organization owner/admin may separately submit a reviewed batch to the authenticated atlas-memory?api=import endpoint using approve:false. Never import secrets or irrelevant personal content into organization memory.
-5. In Knowledge Atlas, redact/review proposed knowledge, verify provenance, and approve individual records only after review.
+5. In Knowledge Atlas, inspect the full text and provisional module mapping of each imported draft. The review panel requires an explicit acknowledgment before enabling approval. It cannot edit or redact an existing draft: if personal or irrelevant content is present, do not approve it. A separate governed redact-and-replace workflow is required before production launch.
 
 The adapter refuses to write private chat output under the current repository, uses restrictive output permissions on POSIX, and never alters originals. On Windows the user should additionally secure the output folder with account ACLs.
 
@@ -41,13 +41,15 @@ The adapter refuses to write private chat output under the current repository, u
 
 ## ATLAS 777 REVIEW acceptance gates
 
-- [x] Offline adapter and regression tests proposed on feature branch.
+- [x] Offline adapter, boundary-aware topic routing and regression tests added on feature branch (CI verification pending).
 - [x] No network call or automatic approval in the adapter.
-- [ ] Verify exact-head CI, code review, and test execution.
+- [ ] Verify exact-head CI, code review, and test execution. On original b64205e1, 4/8 Actions workflows failed because the SRT test routed \"first\" as IRS/tax; fixes require a new complete exact-head run.
 - [ ] Prove authenticated import, RBAC/RLS tenant isolation, and unauthorized negative cases in staging.
-- [ ] Harden existing audit-write failure recovery, partial-batch idempotency and transactional approval concurrency. Current insert-then-audit sequence is not atomic.
+- [x] Add idempotent local generation and mismatch detection; enforce API batch-size validation and preflight, and prohibit automatic chat-import approval.
+- [ ] Harden server-side audit-write failure recovery, transactional partial-batch idempotency and concurrent approval. The current server insert-then-audit sequence remains non-atomic; local recovery does not fix this.
 - [ ] Govern sensitive-data retention, redaction, erasure and revocation.
-- [ ] Complete user-facing import/review UX and durable incremental import queue.
+- [x] Add explicit full-text review and privacy-acknowledgment gate to the existing Knowledge Atlas draft cards (not yet verified end-to-end).
+- [ ] Complete source-filtered import queue, safe redaction/edit/replacement workflow and durable incremental organization import; UI preview alone is not a complete intake interface.
 - [ ] Verify production deployment, exact-SHA and end-to-end routes.
 
 **P0 NO-GO:** no merge, deploy or production-completion claim until security, integration and release evidence is verified.
