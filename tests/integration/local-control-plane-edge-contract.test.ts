@@ -5,6 +5,7 @@ const edge = readFileSync('supabase/functions/atlas-local-control/index.ts','utf
 const agent = readFileSync('tools/local-agent/atlas-local-agent.mjs','utf8');
 const panel = readFileSync('apps/web/src/modules/device-os/LocalControlPlanePanel.tsx','utf8');
 const localAi = readFileSync('tools/local-agent/atlas-local-ai-runtime.mjs','utf8');
+const localRuntimePolicy = readFileSync('tools/local-agent/lib/local-core-runtime-policy.mjs','utf8');
 const deviceDna = readFileSync('tools/local-agent/lib/device-dna-linux.mjs','utf8');
 const deviceDnaPanel = readFileSync('apps/web/src/modules/device-os/DeviceDnaEvidencePanel.tsx','utf8');
 
@@ -69,9 +70,12 @@ describe('ATLAS Local Control Plane runtime contract', () => {
   });
 
   it('keeps the local AI runtime loopback-bound with environment-backed authentication', () => {
-    expect(localAi).toContain('ATLAS_LOCAL_AI_TOKEN');
-    expect(localAi).toContain('LLAMA_API_KEY:token');
-    expect(localAi).toContain("ATLAS_LOCAL_AI_HOST||'127.0.0.1'");
+    expect(localAi).toContain('resolveLocalRuntimeConfiguration(process.env)');
+    expect(localAi).toContain('LLAMA_API_KEY: token');
+    expect(localRuntimePolicy).toContain('ATLAS_LOCAL_AI_TOKEN');
+    expect(localRuntimePolicy).toContain("['127.0.0.1', '::1']");
+    expect(localRuntimePolicy).toContain('ATLAS_LOCAL_AI_OFFLINE');
+    expect(localRuntimePolicy).toContain('local_core_offline_model_file_required');
     expect(localAi).not.toContain("'0.0.0.0'");
     expect(localAi).not.toContain("'--api-key'");
   });
