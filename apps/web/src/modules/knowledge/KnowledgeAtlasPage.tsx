@@ -13,6 +13,7 @@ import {
   type AtlasMemorySource,
   type AtlasMemoryStats
 } from './memoryApi';
+import { ChatImportReviewPanel } from './ChatImportReviewPanel';
 
 const KINDS: AtlasMemoryKind[] = ['decision','requirement','workflow','configuration','evidence','note'];
 const PAGE_SIZE = 50;
@@ -300,6 +301,7 @@ export function KnowledgeAtlasPage({
       </div>
 
       <LibraryRegistryPanel moduleScope={moduleScope} />
+      {!moduleScope ? <ChatImportReviewPanel canImport={canApprove} onImported={refresh} /> : null}
 
       <section className="workspace-card" aria-label="Filter ATLAS Memory">
         <div className="toolbar">
