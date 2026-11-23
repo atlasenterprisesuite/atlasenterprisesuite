@@ -29,6 +29,8 @@ describe('ATLAS Neuroacoustic Sound Lab experience', () => {
     expect(screen.getByText(/Left 180 Hz \/ right 190 Hz/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Audio category'), { target: { value: 'reference-tone' } });
     expect(screen.getByText(/Single audible 432 Hz tone/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /528 Hz reference tone/ }));
+    expect(screen.getByText(/Single audible 528 Hz tone/)).toBeInTheDocument();
     expect(screen.getByText(/no DNA-repair or medical effect is implied/i)).toBeInTheDocument();
   });
 });
