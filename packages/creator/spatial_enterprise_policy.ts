@@ -99,7 +99,10 @@ export function assessSpatialEnterpriseDispatch(
     return deny('invalid_job');
   if (!evidence || !policy || !Array.isArray(evidence.permissions) ||
       !Array.isArray(policy.allowedCapabilities) || !Array.isArray(policy.allowedProviderIds) ||
-      !Array.isArray(policy.permittedRegions))
+      !Array.isArray(policy.permittedRegions) ||
+      typeof evidence.providerExternal !== 'boolean' ||
+      !Object.prototype.hasOwnProperty.call(evidence, 'existingJob') ||
+      evidence.existingJob === undefined)
     return deny('invalid_accounting');
   if (job.tenantId !== evidence.tenantId || job.orgId !== evidence.orgId ||
       job.actorId !== evidence.actorId)
