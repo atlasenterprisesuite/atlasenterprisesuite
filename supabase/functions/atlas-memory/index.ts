@@ -302,16 +302,28 @@ async function importRecords(ctx: MemoryContext, input: Record<string, any>) {
   if (approveImported && validated.some(item => item.source_type === 'chat_import')) {
     throw fail('chat_import_autoapproval_forbidden', 422);
   }
-  const results = [];
-  for (const item of rows) {
-    const created = await saveDraft(ctx, item as Record<string, any>);
-    results.push(approveImported ? await approve(ctx, { id: created.id }) : created);
+  // Bulk imports are always drafts. An approval must be a separate, explicit
+  // authorized action after source review; no approval is coupled to an import.
+  if (approveImported) throw fail('memory_import_autoapproval_forbidden', 422);
+  if (validated.some(item => !/^[0-9a-f]{64}$/.test(item.source_hash || ''))) {
+    throw fail('memory_import_hash_required', 422);
   }
-  await audit(ctx, 'knowledge.memory.imported', null, {
-    count: results.length,
-    approved: approveImported
+  // All inserts, deduplication and audits run as one Postgres RPC transaction.
+  // A failing insert or audit rolls back the entire batch.
+  const { data, error } = await adminClient().rpc('atlas_memory_import_drafts', {
+    p_org_id: ctx.orgId,
+    p_user_id: ctx.userId,
+    p_records: validated
   });
-  return results;
+  if (error) {
+    if (error.code === '23505') throw fail('memory_import_source_hash_conflict', 409);
+    if (error.code === '42501') throw fail('memory_import_role_required', 403);
+    throw fail('memory_import_atomic_failed', 500);
+  }
+  if (!Array.isArray(data) || data.length !== validated.length) {
+    throw fail('memory_import_result_mismatch', 500);
+  }
+  return data;
 }
 
 
