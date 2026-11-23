@@ -1,0 +1,20 @@
+.atlas-chat-history{margin-block:24px;border-color:#52758a;background:#0f192c}
+.atlas-chat-history h2{margin:6px 0 10px;font-size:clamp(22px,3vw,32px)}
+.atlas-chat-history header p:not(.eyebrow){color:#c8d9e6;line-height:1.6;max-width:860px}
+.atlas-chat-history-tools{display:grid;gap:10px;border:1px dashed #54879a;border-radius:12px;padding:16px}
+.atlas-chat-history-tools input{max-width:100%;min-height:44px}
+.atlas-chat-history-tools button,.atlas-chat-history-batch button,.atlas-chat-history-list button{min-height:44px;border:1px solid #78a6b1;border-radius:10px;background:#1d5265;color:#fff;padding:10px 16px;cursor:pointer}
+.atlas-chat-history-tools button:disabled,.atlas-chat-history-batch button:disabled,.atlas-chat-history-list button:disabled{opacity:.5;cursor:not-allowed}
+.atlas-chat-history-status{color:#aee6d5;margin:0}
+.atlas-chat-history-error{color:#ffc5c5;margin:0;line-height:1.5}
+.atlas-chat-history-count{margin:0;color:#e3f4ff;line-height:1.5}
+.atlas-chat-history-search{display:grid;gap:7px;max-width:600px}
+.atlas-chat-history-search input{border:1px solid #688a9e;border-radius:10px;background:#16253a;color:#fff;min-height:44px;padding:10px 14px}
+.atlas-chat-history-batch{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.atlas-chat-history-batch span{color:#c7d9e6;font-size:13px;line-height:1.5;flex:1 1 250px}
+.atlas-chat-history-list{display:grid;gap:10px;list-style:none;margin:0;padding:0}
+.atlas-chat-history-list li{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid #426176;border-radius:12px;padding:14px;background:#152439}
+.atlas-chat-history-list li div{display:grid;gap:7px;flex:1 1 230px;min-width:0;overflow-wrap:anywhere}
+.atlas-chat-history-list li span{color:#bcd4dd;font-size:13px;line-height:1.5}
+.atlas-chat-history :is(button,input):focus-visible{outline:3px solid #a2edff;outline-offset:3px}
+@media(max-width:620px){.atlas-chat-history-list li button,.atlas-chat-history-batch button{width:100%}}
