@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   approveAtlasMemory,
   createAtlasMemoryDraft,
@@ -288,6 +289,14 @@ export function KnowledgeAtlasPage({
         <h1 id="knowledge-atlas-heading">{heading}</h1>
         <p>{description}</p>
       </header>
+
+      <div className="module-grid" aria-label="Knowledge Atlas research programs">
+        <Link className="module-card enabled" to="/knowledge/plants">
+          <span>Scientific knowledge · biodiversity</span>
+          <strong>Global Plant Atlas</strong>
+          <p>Versioned plant taxonomy, provenance, safety evidence and the Human–Plant Relationship Graph with a governed RUN workflow.</p>
+        </Link>
+      </div>
 
       <div className="metric-grid" aria-label="ATLAS Memory status" aria-live="polite">
         <article><span>Approved</span><strong>{memoryStats?.approved ?? '—'}</strong><small>Approved organizational knowledge</small></article>
