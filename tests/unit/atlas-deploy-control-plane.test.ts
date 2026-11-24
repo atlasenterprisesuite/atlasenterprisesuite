@@ -83,4 +83,30 @@ describe('ATLAS deploy control plane', () => {
     expect(result.launch.map(item => item.id)).toEqual(['high']);
     expect(result.deferred.map(item => item.id)).toEqual(['low']);
   });
+
+  it('coalesces duplicate requests against builds already in flight', () => {
+    const result = planAtlasDeployQueue({
+      requests: [request('duplicate'), request('other', { sourceSha: 'def456', provider: 'cloudflare' })],
+      inFlight: [request('active')],
+      now: 10_000,
+      policy: { maxConcurrent: 3, minProviderIntervalMs: 0, coalesceSameSource: true }
+    });
+    expect(result.launch.map(item => item.id)).toEqual(['other']);
+    expect(result.coalesced.map(item => item.id)).toEqual(['duplicate']);
+  });
+
+  it('does not coalesce across environments or when coalescing is disabled', () => {
+    const active = request('active');
+    const input = {
+      requests: [request('preview', { environment: 'preview' })],
+      inFlight: [active],
+      now: 10_000,
+      policy: { maxConcurrent: 3, minProviderIntervalMs: 0, coalesceSameSource: true }
+    };
+    expect(planAtlasDeployQueue(input).launch.map(item => item.id)).toEqual(['preview']);
+    expect(planAtlasDeployQueue({
+      ...input, requests: [request('repeat')],
+      policy: { ...input.policy, coalesceSameSource: false }
+    }).launch.map(item => item.id)).toEqual(['repeat']);
+  });
 });
