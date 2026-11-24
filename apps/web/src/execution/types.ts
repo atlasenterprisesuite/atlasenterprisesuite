@@ -48,6 +48,7 @@ export type GuidedEvidence = {
   kind: string;
   reference: string;
   verified: boolean;
+  metadata?: Record<string, unknown>;
   createdAt: string;
 };
 

@@ -36,6 +36,47 @@ describe('Guided Execution web API', () => {
     expect(state.workflow.context).toEqual({});
   });
 
+  it('preserves object evidence metadata and drops non-object metadata', () => {
+    const withMetadata = normalizeExecutionState({
+      workflow: { id: 'wf-1', context: {} },
+      tasks: [],
+      steps: [],
+      dependencies: [],
+      evidence: [{
+        id: 'ev-1',
+        task_id: 'task-1',
+        step_id: 'step-1',
+        kind: 'manager.ci.target',
+        reference: 'ref',
+        verified: true,
+        metadata: { repository: 'atlasenterprisesuite/atlasenterprisesuite', resolved_sha: '0123456789abcdef0123456789abcdef01234567' },
+        created_at: '2026-10-10T10:00:00Z'
+      }],
+      approvals: []
+    });
+    expect(withMetadata.evidence[0].metadata).toEqual({
+      repository: 'atlasenterprisesuite/atlasenterprisesuite',
+      resolved_sha: '0123456789abcdef0123456789abcdef01234567'
+    });
+
+    const withoutMetadata = normalizeExecutionState({
+      workflow: { id: 'wf-1', context: {} },
+      tasks: [],
+      steps: [],
+      dependencies: [],
+      evidence: [{
+        id: 'ev-2',
+        task_id: 'task-1',
+        kind: 'manager.ci.target',
+        reference: 'ref',
+        verified: false,
+        metadata: 'must-not-cross-boundary'
+      }],
+      approvals: []
+    });
+    expect(withoutMetadata.evidence[0].metadata).toEqual({});
+  });
+
   it('preserves server error codes', async () => {
     const response = new Response(JSON.stringify({ error: 'workflow_not_found' }), { status: 404 });
     await expect(parseExecutionResponse(response)).rejects.toThrow('workflow_not_found');

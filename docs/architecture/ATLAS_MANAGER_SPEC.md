@@ -424,3 +424,30 @@ All future ATLAS modules MUST integrate with ATLAS Manager for infrastructure st
 The default production architecture is Supabase-first with Cloudflare at the public edge. Vercel remains optional unless a later explicitly approved release architecture makes it required.
 
 This specification is subordinate only to a newer explicitly approved ATLAS architecture directive committed to the canonical repository.
+
+
+## ATLAS Sovereign CI
+
+ATLAS Manager exposes an on-demand read-only repository verification workflow at `/execution/manager/sovereign-ci`.
+
+Canonical execution path:
+
+```text
+authenticated ATLAS user
+  -> atlas-execution / start_manager_sovereign_ci
+  -> manager.sovereign_ci
+  -> allowlisted GitHub Actions workflow_dispatch
+  -> explicit ref -> immutable SHA
+  -> npm ci -> typecheck -> test -> build
+  -> GitHub OIDC
+  -> atlas-sovereign-ci-report
+  -> execution evidence + audit
+```
+
+Sovereign CI reuses the Universal Execution Engine tables and audit model. It does not create a second CI source of truth. GitHub source access is read-only, the command set is fixed, a blank or invalid ref never falls back to `main`, and a green gate requires every required command to succeed exactly once.
+
+The report adapter is a dedicated GitHub-OIDC boundary because the ordinary `atlas-execution` Edge Function remains an authenticated ATLAS user-session boundary. The adapter must verify GitHub issuer/signature, audience, canonical repository/owner, exact workflow identity, workflow-dispatch event, and expiry before using server-side persistence authority.
+
+Sovereign CI does not merge, push, create branches, mutate workflows, modify secrets, or deploy. Production deployment and exact-SHA runtime verification remain separate ATLAS Manager / Release Control gates.
+
+Operational details: `docs/operations/ATLAS_SOVEREIGN_CI.md`.
