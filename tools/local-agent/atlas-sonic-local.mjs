@@ -1,8 +1,10 @@
-import { startSonicJob, querySonicJob } from './lib/sonic-local-client.mjs';
+import { startSonicJob, querySonicJob, retrieveSonicWav } from './lib/sonic-local-client.mjs';
+
+import { writeFile } from 'node:fs/promises';
 
 async function main() {
   const action=process.argv[2];
-  if(!['submit','status'].includes(action) || process.argv.length!==3) throw Error('sonic_invalid_action');
+  if(!['submit','status','retrieve'].includes(action) || process.argv.length!==3) throw Error('sonic_invalid_action');
   const options={
     endpoint:process.env.ATLAS_SONIC_ENDPOINT ?? 'http://127.0.0.1:8001',
     token:process.env.ATLAS_SONIC_TOKEN,
@@ -19,6 +21,13 @@ async function main() {
   try { input=JSON.parse(Buffer.concat(chunks,length).toString('utf8')); }
   catch { throw Error('sonic_invalid_input'); }
   if (!input || typeof input!=='object' || Array.isArray(input)) throw Error('sonic_invalid_input');
+  if(action==='retrieve'){
+    const filename='sonic-'+String(input.taskId)+'.wav';
+    const {bytes,evidence}=await retrieveSonicWav({...options,taskId:input.taskId,expectedSeconds:input.expectedSeconds,outputRoot:process.env.ATLAS_SONIC_OUTPUT_ROOT});
+    await writeFile(filename,bytes,{flag:'wx',mode:0o600});
+    process.stdout.write(JSON.stringify({...evidence,filename})+'\n');
+    return;
+  }
   const result=action==='submit'
     ? await startSonicJob({...options,spec:input})
     : await querySonicJob({...options,taskId:input.taskId});
