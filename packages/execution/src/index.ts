@@ -23,3 +23,4 @@ export * from './context-engine';
 export * from './policy-fabric';
 export * from './capability-catalog';
 export * from './evidence-bridge';
+export * from './retry-policy';
