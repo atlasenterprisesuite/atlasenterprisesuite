@@ -15,6 +15,80 @@ describe('ATLAS Library routing', () => {
     expect(classifyAtlasLibraryAsset({ name:'lab.pdf', path:'/ATLAS/Health/lab.pdf' }).sensitivity).toBe('restricted');
   });
 
+
+  it('routes restaurant and fast-food material into Hospitality and Commerce without creating a parallel food app', () => {
+    const result=classifyAtlasLibraryAsset({
+      name:'USA Fast Food Restaurant Chain Menu POS.pdf',
+      path:'/Library/USA Fast Food Restaurant Chain Menu POS.pdf',
+      mimeType:'application/pdf'
+    });
+    expect(result.primaryModuleId).toBe('hospitality');
+    expect(result.moduleIds).toContain('hospitality');
+    expect(result.moduleIds).toContain('commerce');
+    expect(result.tags).toContain('food-service');
+  });
+
+  it('routes weight, nutrition and wellness material into ATLAS Health', () => {
+    const result=classifyAtlasLibraryAsset({
+      name:'Weight Nutrition BMI Wellness Research.pdf',
+      path:'/Research/Weight Nutrition BMI Wellness Research.pdf',
+      mimeType:'application/pdf'
+    });
+    expect(result.primaryModuleId).toBe('health');
+    expect(result.tags).toContain('weight');
+    expect(result.tags).toContain('nutrition');
+  });
+
+  it('routes biblical and scripture material into Bible OS with Knowledge provenance', () => {
+    const result=classifyAtlasLibraryAsset({
+      name:'Bible Psalms Scripture Study.pdf',
+      path:'/Research/Bible Psalms Scripture Study.pdf',
+      mimeType:'application/pdf'
+    });
+    expect(result.primaryModuleId).toBe('bible-os');
+    expect(result.moduleIds).toContain('knowledge');
+    expect(result.tags).toContain('scripture');
+  });
+
+  it('routes USA geography references into Knowledge Atlas', () => {
+    const result=classifyAtlasLibraryAsset({
+      name:'USA United States Geography and States.pdf',
+      path:'/Reference/USA United States Geography and States.pdf',
+      mimeType:'application/pdf'
+    });
+    expect(result.primaryModuleId).toBe('knowledge');
+    expect(result.tags).toContain('usa');
+    expect(result.tags).toContain('geography');
+  });
+
+  it('can route opaque filenames from analyzed content', () => {
+    const bible=classifyAtlasLibraryAsset({
+      name:'scan-001.pdf',
+      path:'/Inbox/scan-001.pdf',
+      mimeType:'application/pdf',
+      contentText:'Psalm 37 biblical scripture study about Jehovah and Jesus'
+    });
+    expect(bible.primaryModuleId).toBe('bible-os');
+    expect(bible.basis).toBe('content');
+
+    const restaurant=classifyAtlasLibraryAsset({
+      name:'scan-002.pdf',
+      path:'/Inbox/scan-002.pdf',
+      mimeType:'application/pdf',
+      contentText:'restaurant fast food chain menu kitchen POS ordering operations'
+    });
+    expect(restaurant.primaryModuleId).toBe('hospitality');
+    expect(restaurant.basis).toBe('content');
+  });
+
+  it('keeps obvious personal health summaries restricted', () => {
+    expect(classifyAtlasLibraryAsset({
+      name:'My_Health_Summary.pdf',
+      path:'/Inbox/My_Health_Summary.pdf',
+      mimeType:'application/pdf'
+    }).sensitivity).toBe('restricted');
+  });
+
   it('falls back to Knowledge Atlas without inventing a domain', () => {
     const result=classifyAtlasLibraryAsset({ name:'unknown.bin', path:'/unknown.bin', mimeType:'application/octet-stream' });
     expect(result.primaryModuleId).toBe('knowledge');
