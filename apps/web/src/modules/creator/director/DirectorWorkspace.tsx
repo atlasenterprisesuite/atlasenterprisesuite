@@ -141,7 +141,18 @@ export function DirectorWorkspace() {
     if (activeStep === 4) return <ContinuityEditor {...props} />;
     if (activeStep === 5) return <VisualStyleEditor {...props} />;
     if (activeStep === 6) return <CameraMotionEditor {...props} />;
-    if (activeStep === 7) return <MotionDesigner value={state.spec.motionComposition ?? null} durationSeconds={state.spec.durationSeconds} onChange={composition => dispatch({ type: 'motion.replace', composition })} />;
+    if (activeStep === 7) return <MotionDesigner
+      value={state.spec.motionComposition ?? null}
+      durationSeconds={state.spec.durationSeconds}
+      onChange={composition => dispatch({ type: 'motion.replace', composition })}
+      onCreateDataReel={(composition, title) => dispatch({ type: 'root.patch', patch: {
+        motionComposition: composition,
+        aspectRatio: '9:16',
+        resolutionPreference: '1080p',
+        durationSeconds: composition.durationSeconds,
+        title: state.spec.title.trim() ? state.spec.title : title
+      } })}
+    />;
     if (activeStep === 8) return <AudioEditor {...props} />;
     if (activeStep === 9) return <ProviderGate providers={providers} spec={state.spec} dispatch={dispatch} loading={providerState === 'loading'} error={providerError} />;
     return <ReviewPanel
