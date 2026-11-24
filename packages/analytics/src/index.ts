@@ -206,3 +206,45 @@ export function analyticsReadinessSummary(sources: readonly AnalyticsSource[] = 
     ).length
   };
 }
+
+/** Local, read-only intent planning. Never authorizes or executes data access. */
+const QUESTION_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  revenue: ['revenue', 'ingresos'],
+  'gross-margin': ['gross margin', 'margen bruto'],
+  'cash-conversion-cycle': ['cash conversion cycle', 'ciclo de conversion de efectivo'],
+  'pipeline-conversion': ['pipeline conversion', 'conversion de oportunidades'],
+  'customer-retention': ['customer retention', 'retencion de clientes'],
+  'inventory-turnover': ['inventory turnover', 'rotacion de inventario'],
+  'fulfillment-time': ['fulfillment time', 'tiempo de cumplimiento'],
+  'labor-cost-rate': ['labor cost rate', 'tasa de costo laboral'],
+  'social-growth': ['social growth', 'crecimiento social']
+};
+
+export function planAnalyticsQuestion(question: string) {
+  const normalized = question.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const tokens = new Set(normalized.split(' '));
+  const forbidden = ['delete', 'drop', 'truncate', 'insert', 'update', 'alter', 'select', 'execute', 'grant', 'revoke', 'eliminar', 'borrar', 'actualizar', 'ejecutar', 'modificar'];
+  const supported = question.length <= 500 && normalized.length > 0 &&
+    !forbidden.some(word => tokens.has(word));
+  const phrase = ' ' + normalized + ' ';
+  const metrics = supported ? METRIC_CATALOG.filter(metric =>
+    (QUESTION_ALIASES[metric.id] ?? []).some(alias => phrase.includes(' ' + alias + ' '))
+  ).map(metric => ({
+    id: metric.id,
+    name: metric.name,
+    definition: metric.description,
+    unit: metric.unit,
+    requiredSources: metric.requiredSources,
+    blockedSources: metric.requiredSources.filter(id => {
+      const source = sourceById(id);
+      return !source || source.state !== 'verified' || !source.liveEligible;
+    }),
+    value: null
+  })) : [];
+  return {
+    status: metrics.length === 0 ? 'unsupported' as const : 'source-gated' as const,
+    metrics,
+    executionAllowed: false as const
+  };
+}
