@@ -1,3 +1,4 @@
+import { inspectSonicWav, sonicResultUrl, SONIC_MAX_WAV_BYTES } from './sonic-wav.mjs';
 import { localInferenceEndpoint } from './local-core-client.mjs';
 
 const model = 'acestep-v15-turbo';
@@ -63,4 +64,27 @@ export async function querySonicJob(options) {
   const data=await request(options,'/query_result',{task_id_list:[options.taskId]});
   if(!Array.isArray(data) || data.length!==1 || data[0]?.task_id!==options.taskId || ![0,1,2].includes(data[0].status)) throw Error('sonic_invalid_status');
   return {taskId:options.taskId,state:['pending','reported-success','failed'][data[0].status],audioVerified:false};
+}
+
+export async function retrieveSonicWav(options) {
+  const origin=connection(options);
+  if(typeof options.taskId!=='string'||!taskPattern.test(options.taskId)||!int(options.expectedSeconds,10,30)) throw Error('sonic_invalid_task');
+  const data=await request(options,'/query_result',{task_id_list:[options.taskId]});
+  if(!Array.isArray(data)||data.length!==1||data[0]?.task_id!==options.taskId||data[0].status!==1||typeof data[0].result!=='string') throw Error('sonic_result_not_ready');
+  let items;
+  try{items=JSON.parse(data[0].result);}catch{throw Error('sonic_invalid_result');}
+  if(!Array.isArray(items)||items.length!==1||items[0]?.status!==1) throw Error('sonic_invalid_result');
+  const url=sonicResultUrl(items[0].file,origin,options.outputRoot);
+  let response;
+  try{response=await (options.fetchImpl??fetch)(url,{method:'GET',headers:{authorization:'Bearer '+options.token},redirect:'error',cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(30000)});}
+  catch{throw Error('sonic_runtime_unreachable');}
+  if(!response.ok||response.redirected||!response.body) throw Error('sonic_http_failure');
+  const type=(response.headers.get('content-type')??'').split(';')[0].trim().toLowerCase();
+  if(!['audio/wav','audio/x-wav','application/octet-stream'].includes(type)) throw Error('sonic_invalid_content_type');
+  const reader=response.body.getReader(),chunks=[];let length=0;
+  try{
+    while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>SONIC_MAX_WAV_BYTES)throw Error('sonic_response_too_large');chunks.push(value);}
+  }finally{await reader.cancel().catch(()=>{});}
+  const bytes=Buffer.concat(chunks,length);
+  return {bytes,evidence:{taskId:options.taskId,...inspectSonicWav(bytes,options.expectedSeconds),modelProvenanceVerified:false}};
 }
