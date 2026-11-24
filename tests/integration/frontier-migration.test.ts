@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  `${process.cwd()}/supabase/migrations/20260919213000_atlas_frontier_vertical_slice.sql`,
+  `${process.cwd()}/supabase/migrations/20260919214201_atlas_frontier_vertical_slice.sql`,
   'utf8'
 );
 

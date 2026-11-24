@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync('supabase/migrations/20260924211000_atlas_knowledge_advisor_cleanup.sql', 'utf8');
+const sql = readFileSync('supabase/migrations/20260924204443_atlas_knowledge_advisor_cleanup.sql', 'utf8');
 
 describe('Knowledge Atlas Supabase advisor cleanup', () => {
   it('covers Library foreign keys used by provenance links', () => {

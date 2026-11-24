@@ -1,4 +1,3 @@
--- Correct string concatenation precedence in the signed certificate evidence adapter.
 CREATE OR REPLACE FUNCTION atlas_private.capture_certificate_from_infra_evidence()
  RETURNS trigger
  LANGUAGE plpgsql

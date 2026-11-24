@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const path = 'supabase/migrations/20260918114500_atlas_commerce_order_commit.sql';
+const path = 'supabase/migrations/20260918134130_atlas_commerce_order_commit.sql';
 const sql = existsSync(path) ? readFileSync(path, 'utf8') : '';
 
 describe('Commerce atomic order commit SQL contract', () => {

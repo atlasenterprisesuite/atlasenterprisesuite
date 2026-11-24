@@ -1,6 +1,3 @@
--- Harden ATLAS Accounting period close so a period cannot be marked complete by permission alone.
--- The close remains SECURITY INVOKER and therefore continues to respect RLS/auth context.
-
 create or replace function public.close_accounting_period(
   organization_uuid uuid,
   period_uuid uuid

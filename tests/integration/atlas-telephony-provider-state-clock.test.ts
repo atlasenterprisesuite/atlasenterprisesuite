@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  'supabase/migrations/20261004143000_atlas_telephony_provider_state_clock.sql',
+  'supabase/migrations/20261004134824_atlas_telephony_provider_state_clock.sql',
   'utf8'
 );
 

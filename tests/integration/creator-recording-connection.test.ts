@@ -5,7 +5,7 @@ const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('ATLAS Creator teleprompter recording connection', () => {
   it('creates a private organization-scoped recording bucket and metadata table', () => {
-    const sql = read('supabase/migrations/20260918_creator_teleprompter_recordings.sql');
+    const sql = read('supabase/migrations/20260918181721_creator_teleprompter_recordings.sql');
     expect(sql).toContain('create table if not exists public.creator_recordings');
     expect(sql).toContain("'atlas-creator-recordings'");
     expect(sql).toContain('false');
