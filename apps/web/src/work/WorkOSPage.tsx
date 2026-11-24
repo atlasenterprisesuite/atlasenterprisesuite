@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { WorkSubnav } from './WorkSubnav';
+import { BankingCalendarPanel } from './BankingCalendarPanel';
 
 type WorkAppStatus = 'active' | 'gated';
 
@@ -164,6 +165,8 @@ export function WorkOSPage() {
         <div className="work-summary-card work-os-summary-static"><span>Active routes</span><strong>{activeCount}</strong></div>
         <div className="work-summary-card work-os-summary-static"><span>Truthfully gated</span><strong>{gatedCount}</strong></div>
       </div>
+
+      <BankingCalendarPanel />
 
       {WORK_GROUPS.map(group => (
         <section className="execution-panel work-os-group" key={group.id} aria-labelledby={`work-os-${group.id}`}>
