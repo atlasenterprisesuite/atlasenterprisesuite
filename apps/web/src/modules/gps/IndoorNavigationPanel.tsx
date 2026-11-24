@@ -1,16 +1,21 @@
 import { useMemo, useState } from 'react';
-import { findIndoorRoute, type IndoorBuilding, type IndoorNode } from './immersiveSpatial';
+import { type IndoorBuilding, type IndoorNode } from './immersiveSpatial';
+import { findEvidenceGatedIndoorRoute, type VerifiedIndoorEdge } from './verifiedIndoorRoute';
 
 type IndoorNavigationPanelProps = {
   building: IndoorBuilding | null;
   enterLabel?: string;
   floorLabel?: string;
+  activeOrganizationId?: string | null;
+  verifiedEdges?: readonly VerifiedIndoorEdge[];
 };
 
 export function IndoorNavigationPanel({
   building,
   enterLabel = 'Entrar al edificio',
-  floorLabel = 'Piso'
+  floorLabel = 'Piso',
+  activeOrganizationId = null,
+  verifiedEdges = []
 }: IndoorNavigationPanelProps) {
   const [entered, setEntered] = useState(false);
   const [levelId, setLevelId] = useState(building?.levels[0]?.id || '');
@@ -47,7 +52,7 @@ export function IndoorNavigationPanel({
       setRoute([]);
       return;
     }
-    setRoute(findIndoorRoute(building!, entrance.id, nodeId));
+    setRoute(findEvidenceGatedIndoorRoute(building!, entrance.id, nodeId, activeOrganizationId || '', verifiedEdges));
   }
 
   if (!entered) {
@@ -106,7 +111,7 @@ export function IndoorNavigationPanel({
       <div className="gps4d-indoor-route" role="status">
         {route.length > 0 ? (
           <>
-            <strong>Ruta indoor verificada</strong>
+            <strong>Ruta con evidencia de conexiones registrada (pendiente de validación del servidor)</strong>
             <ol>
               {route.map((node) => (
                 <li key={node.id}>
@@ -116,7 +121,7 @@ export function IndoorNavigationPanel({
             </ol>
           </>
         ) : (
-          <span>Selecciona un destino interior.</span>
+          <span>Navegación bloqueada sin evidencia verificada de todas las conexiones.</span>
         )}
       </div>
     </section>
