@@ -330,3 +330,6 @@ export type {
   AtlasTransactionEvidence,
   AtlasTransactionTruth
 } from './transactionTruth';
+
+export { authorizeTransfer, canTransition, TRANSFER_TRANSITIONS } from './banking/transferEngine';
+export type { TransferIntent, TransferStatus, Decision } from './banking/transferEngine';
