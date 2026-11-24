@@ -17,6 +17,56 @@ import {
 const KINDS: AtlasMemoryKind[] = ['decision','requirement','workflow','configuration','evidence','note'];
 const PAGE_SIZE = 50;
 
+const HUMANITY_DOMAINS = [
+  { id: 'universe', label: 'Universe', terms: ['astronomy', 'constellation', 'cosmos', 'space'] },
+  { id: 'origins', label: 'Origins & civilizations', terms: ['origins', 'history', 'archaeology', 'chronos'] },
+  { id: 'nature', label: 'Nature & life', terms: ['nature', 'biology', 'regeneration', 'ecology'] },
+  { id: 'humanity', label: 'Humanity', terms: ['humanity', 'human', 'society', 'culture'] },
+  { id: 'symbols', label: 'Symbols & languages', terms: ['symbol', 'language', 'alphabet', 'mythology'] }
+] as const;
+
+function HumanityKnowledgeExplorer({ records }: { records: AtlasMemoryRecord[] | null }) {
+  const [domain, setDomain] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const approved = (records || []).filter(record => record.status === 'approved');
+  const selected = HUMANITY_DOMAINS.find(item => item.id === domain);
+  const visible = approved.filter(record => {
+    const haystack = [record.title, record.summary, ...record.module_ids, ...record.tags].join(' ').toLowerCase();
+    return (!selected || selected.terms.some(term => haystack.includes(term))) &&
+      haystack.includes(search.trim().toLowerCase());
+  });
+  return <section className="workspace-card page-stack" aria-labelledby="humanity-knowledge-heading">
+    <div>
+      <p className="eyebrow">Humanity Knowledge 777 · Private preview</p>
+      <h2 id="humanity-knowledge-heading">Connected knowledge explorer</h2>
+      <p className="muted">Read-only view of approved organizational records already accessible to your role. Approval does not independently verify a scientific claim. No records are made public here.</p>
+    </div>
+    <div className="toolbar">
+      <label className="field"><span>Knowledge domain</span>
+        <select value={domain} onChange={event => setDomain(event.target.value)}>
+          <option value="all">All domains</option>
+          {HUMANITY_DOMAINS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+        </select>
+      </label>
+      <label className="field wide-field"><span>Explore topics</span>
+        <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search approved knowledge" />
+      </label>
+    </div>
+    {records === null ? <p role="status" aria-busy="true">Loading knowledge explorer…</p> :
+      visible.length === 0 ? <p className="muted" role="status">No approved knowledge matches this selection in the currently loaded records.</p> :
+      <div className="module-grid" aria-label="Approved humanity knowledge">
+        {visible.map(record => <article className="module-card enabled" key={record.id}>
+          <span>{record.kind} · Approved organizational record</span>
+          <strong>{record.title}</strong>
+          <p>{record.summary}</p>
+          <small className="muted">Source: {record.source_type}{record.source_ref ? ` · ${record.source_ref}` : ' · not specified'}</small>
+        </article>)}
+      </div>}
+    <p className="muted">Results are limited to the loaded page. Public publication, evidence graph, and full-domain search require separate verified authorization and backend work.</p>
+  </section>;
+}
+
+
 function splitList(value: string) {
   return [...new Set(value.split(',').map(item => item.trim()).filter(Boolean))].slice(0, 40);
 }
@@ -297,6 +347,7 @@ export function KnowledgeAtlasPage({
       </div>
 
       <LibraryRegistryPanel moduleScope={moduleScope} />
+      {!moduleScope ? <HumanityKnowledgeExplorer records={records} /> : null}
 
       <section className="workspace-card" aria-label="Filter ATLAS Memory">
         <div className="toolbar">
