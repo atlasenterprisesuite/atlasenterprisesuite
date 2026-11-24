@@ -330,3 +330,5 @@ export type {
   AtlasTransactionEvidence,
   AtlasTransactionTruth
 } from './transactionTruth';
+export { deriveFinancingTruth } from './financingEvidence';
+export type { AtlasFinancingScope, AtlasFinancingEvidence, AtlasFinancingEvidenceKind, AtlasFinancingTruth } from './financingEvidence';
