@@ -46,11 +46,11 @@ function recorder(responses: Response[] = []) {
 }
 
 describe('SupabaseRpcPersistence', () => {
-  it('uses a publishable key plus a dedicated runtime token without bearer service-role auth', async () => {
+  it('uses a server-only secret plus a dedicated runtime token', async () => {
     const { calls, fetchImpl } = recorder();
     const persistence = new SupabaseRpcPersistence({
       url: 'https://example.supabase.co',
-      publishableKey: 'publishable',
+      secretKey: 'sb_secret_server_only',
       runtimeToken: 'runtime-secret',
       fetchImpl,
     });
@@ -60,7 +60,7 @@ describe('SupabaseRpcPersistence', () => {
     expect(persistence.durable).toBe(true);
     expect(calls[0].url).toBe('https://example.supabase.co/rest/v1/rpc/atlas_orchestrator_create_task');
     const h = new Headers(calls[0].init.headers);
-    expect(h.get('apikey')).toBe('publishable');
+    expect(h.get('apikey')).toBe('sb_secret_server_only');
     expect(h.get('x-atlas-runtime-token')).toBe('runtime-secret');
     expect(h.get('authorization')).toBeNull();
     expect(JSON.parse(String(calls[0].init.body))).toMatchObject({
@@ -79,7 +79,7 @@ describe('SupabaseRpcPersistence', () => {
     ]);
     const persistence = new SupabaseRpcPersistence({
       url: 'https://example.supabase.co/',
-      publishableKey: 'publishable',
+      secretKey: 'sb_secret_server_only',
       runtimeToken: 'runtime-secret',
       fetchImpl,
     });
@@ -101,7 +101,7 @@ describe('SupabaseRpcPersistence', () => {
     const { fetchImpl } = recorder([new Response('forbidden', { status: 403 })]);
     const persistence = new SupabaseRpcPersistence({
       url: 'https://example.supabase.co',
-      publishableKey: 'publishable',
+      secretKey: 'sb_secret_server_only',
       runtimeToken: 'runtime-secret-never-log',
       fetchImpl,
     });
