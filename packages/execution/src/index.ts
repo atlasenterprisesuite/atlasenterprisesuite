@@ -15,6 +15,7 @@ export * from './work-policy';
 export * from './work-connections';
 export * from './work-runtime';
 export * from './browser-executor';
+export * from './human-verification-handoff';
 export * from './dns-verification';
 export * from './work-templates';
 export * from './control-plane-contract';
