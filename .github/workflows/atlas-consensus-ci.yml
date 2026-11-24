@@ -60,11 +60,36 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+  postgres-runtime-claim:
+    name: PostgreSQL Atomic Claim Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atlas_runtime_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d atlas_runtime_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/atlas_runtime_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate atomic runtime claim against isolated PostgreSQL
+        run: bash tests/integration/atlas-runtime-postgres-claim.sh
+
   consensus:
     name: ATLAS 3-of-3 Consensus
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [product-ux, architecture, security]
+    needs: [product-ux, architecture, security, postgres-runtime-claim]
     if: ${{ always() }}
     steps:
       - name: Require unanimous consensus
@@ -72,4 +97,5 @@ jobs:
           test "${{ needs.product-ux.result }}" = "success"
           test "${{ needs.architecture.result }}" = "success"
           test "${{ needs.security.result }}" = "success"
-          echo "ATLAS consensus: 3/3 gates approved." >> "$GITHUB_STEP_SUMMARY"
+          test "${{ needs.postgres-runtime-claim.result }}" = "success"
+          echo "ATLAS consensus: 4/4 gates approved, including isolated PostgreSQL." >> "$GITHUB_STEP_SUMMARY"
