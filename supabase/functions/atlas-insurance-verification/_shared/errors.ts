@@ -14,6 +14,7 @@ export const INSURANCE_ERROR_CODES = [
   'delivery_failed',
   'verification_required',
   'verification_not_configured',
+  'mfa_required',
   'persistence_failed',
   'invalid_request',
   'internal_error'
@@ -71,6 +72,9 @@ export function normalizeInsuranceError(error: unknown) {
   }
   if (message === 'delivery_failed') {
     return { code: 'delivery_failed' as const, status: 502, retryAfterSeconds: null };
+  }
+  if (message === 'mfa_required') {
+    return { code: 'mfa_required' as const, status: 403, retryAfterSeconds: null };
   }
   return { code: 'internal_error' as const, status: 500, retryAfterSeconds: null };
 }
