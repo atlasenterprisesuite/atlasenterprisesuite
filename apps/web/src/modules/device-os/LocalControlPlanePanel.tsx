@@ -131,7 +131,7 @@ export function LocalControlPlanePanel() {
   async function healthCheck(device: AtlasLocalDevice) {
     setBusy(true);
     try {
-      const isDeviceDna = device.adapter === 'device-dna-linux' &&
+      const isDeviceDna = device.adapter.startsWith('device-dna-') &&
         device.capabilities.includes('device.dna.read');
       const capability = isDeviceDna
         ? 'device.dna.read'
