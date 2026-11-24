@@ -1,0 +1,8 @@
+.lumbar-layout { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:1.5rem; }
+.lumbar-explorer fieldset label { display:block; padding:.6rem; }
+.lumbar-controls { display:flex; flex-wrap:wrap; gap:.75rem; }
+.lumbar-explorer button { min-height:44px; padding:.6rem 1rem; }
+.lumbar-explorer button[aria-pressed="true"] { outline:3px solid currentColor; outline-offset:3px; }
+.lumbar-explorer :focus-visible { outline:3px solid currentColor; outline-offset:4px; }
+.lumbar-explorer figure { margin:0; }
+.lumbar-explorer svg { width:100%; max-height:420px; background:#18222e; border-radius:1rem; }

@@ -1,3 +1,4 @@
+import { LumbarExplorerPage } from '../modules/health/LumbarExplorerPage';
 import { Navigate } from 'react-router-dom';
 import { FuturisticEnterpriseHome } from '../components/FuturisticEnterpriseHome';
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
@@ -196,6 +197,7 @@ export function resolveAtlasExtension(pathname: string) {
     return <RequireAtlasIdentity><WebLaunchPage /></RequireAtlasIdentity>;
   }
 
+  if (pathname === '/health/anatomy/lumbar' || pathname === '/learning/anatomy/lumbar') return <LumbarExplorerPage />;
   if (pathname === '/health') return <HealthExperiencePage />;
   if (pathname === JAQUE_MATE_SENTINEL_LEGACY) return <Navigate to={JAQUE_MATE_SENTINEL_V2} replace />;
   if (pathname === JAQUE_MATE_SENTINEL_V2 || pathname === JAQUE_MATE_SENTINEL_CANONICAL) return <JaqueMateSentinelPage />;

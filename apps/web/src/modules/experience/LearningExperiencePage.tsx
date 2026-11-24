@@ -7,6 +7,9 @@ const learningSections: ModuleExperienceSection[] = [
     title: 'Learning routines with visible boundaries',
     description: 'ATLAS Learning exposes the implemented neuroplasticity practice route while broader learning intelligence remains explicit about what is and is not clinically measured.',
     cards: [
+      { label: 'Educational prototype', title: 'Explora la columna lumbar',
+        description: 'Esquema 2D interactivo por capas. Revisión anatómica profesional pendiente.',
+        to: '/learning/anatomy/lumbar' },
       {
         label: 'Practice Lab',
         title: 'Neuroplasticity Program',
