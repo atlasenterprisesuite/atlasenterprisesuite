@@ -1,6 +1,7 @@
 import {normalizeAgentContext} from './agentic-core.mjs';
 import {evaluateEmergencyFallbackPolicy,evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
+import {contextDataMessage} from './context-envelope.mjs';
 
 export const INTELLIGENCE_CAPABILITIES=Object.freeze(['generation','reasoning']);
 export const REASONING_PROFILES=Object.freeze({fast:Object.freeze({id:'fast'}),balanced:Object.freeze({id:'balanced'}),deep:Object.freeze({id:'deep'})});
@@ -109,7 +110,8 @@ export function createIntelligenceGateway({router,provider,registry,council,stor
       telemetry=await store.startRequest({context:principal,trace_id,conversation_id:conversation.id,module:normalized.module,intent:normalized.intent,capabilities_requested:normalized.capabilities_requested});
       const messages=await store.listMessages({context:principal,conversation_id:conversation.id,limit:50});
       const history=messages.map(m=>({role:m.role,content:m.content?.text??m.content}));
-      if(normalized.legacy_context)history.push({role:'user',content:`Current ATLAS context:\n${normalized.legacy_context}`});
+      const contextMessage=contextDataMessage(normalized.legacy_context);
+      if(contextMessage)history.push(contextMessage);
       const instructions=buildSovereignBrainInstructions({module:normalized.module,mode:route.mode,intent:normalized.intent,responsePreferences:normalized.client_metadata.response_preferences});
       let result,executionRoute=route,executionCostDecision=costDecision;
       const fallbackAttempts=[];
