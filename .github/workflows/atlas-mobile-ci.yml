@@ -1,0 +1,37 @@
+name: ATLAS Mobile CI
+
+on:
+  pull_request:
+    paths:
+      - 'packages/mobile-experience/**'
+      - 'apps/web/src/mobile/**'
+      - 'apps/web/src/modules/settings/**'
+      - 'supabase/functions/atlas-mobile/**'
+      - 'native/apple-mobile-bridge/**'
+      - 'native/apple-storekit-bridge/**'
+      - 'tests/unit/mobile-*.test.ts'
+      - 'tests/integration/mobile-*.test.ts*'
+      - 'tests/integration/atlas-mobile-shell.test.tsx'
+      - '.github/workflows/atlas-mobile-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Mobile contract tests
+        run: npx vitest run tests/unit/mobile-runtime.test.ts tests/unit/mobile-permissions.test.ts tests/unit/mobile-client.test.ts tests/unit/mobile-identity-diagnostics.test.ts
+      - name: Mobile gateway contract tests
+        run: npx vitest run tests/integration/mobile-gateway-auth.test.ts tests/integration/mobile-gateway-evidence.test.ts
+      - name: Mobile settings route tests
+        run: npx vitest run tests/integration/mobile-settings-routes.test.tsx tests/integration/atlas-mobile-shell.test.tsx tests/integration/mobile-identity-diagnostics-route.test.tsx
