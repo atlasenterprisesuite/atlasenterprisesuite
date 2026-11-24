@@ -1,6 +1,6 @@
 # ATLAS Blocker Recovery Runbook
 
-Last reviewed: 2026-09-16 UTC
+Last reviewed: 2026-10-08 UTC
 Canonical repository: `atlasenterprisesuite/atlasenterprisesuite`
 Canonical branch: `main`
 Authoritative Supabase project: `atlas-core` (`ggmanzcgtlrvqfoccgsh`)
@@ -323,6 +323,32 @@ For every blocker:
 7. Verify downstream gates were reached.
 8. Record evidence and update this runbook when the failure mode is reusable.
 9. Mark human-only, credential-only, billing-only, or provider-only dependencies explicitly instead of stalling unrelated work.
+
+## 14. Supabase preview branch migration replay failure (P0 #715)
+
+### Authentic observation (2026-10-08 UTC)
+
+- Authoritative Supabase project: `atlas-core` (`ggmanzcgtlrvqfoccgsh`), `ACTIVE_HEALTHY`. This is not evidence that a preview branch is healthy.
+- Branch `main` (`ec36b0eb-603c-4401-bdbc-915ac7cd8c51`), created 2026-10-04 10:15 UTC: `MIGRATIONS_FAILED`; `preview_project_status=ACTIVE_HEALTHY`.
+- Production database has **314** entries in `supabase_migrations.schema_migrations`, with SQL stored in the `statements` array for the historical baseline.
+- Canonical repository `main` has **137** SQL files in `supabase/migrations/`; **14** file versions match production versions exactly and **114** filenames match a recorded production migration *name*. Name equality is not SQL equality or replay proof. Historical versions and files have diverged.
+- Production logs queried for the October 4 branch-creation interval contained no branch replay error. They are **not** the failed preview database's workflow logs.
+- First SQL error, causative migration, and preview recovery status remain **unverified**. Do not attribute a failure dated October 4 to later PR #714.
+
+### Recovery procedure — fail closed
+
+1. Open Supabase Dashboard → project `atlas-core` → **Branches** → `main` → **View logs** and preserve the first failed migration name/version, SQLSTATE, full *sanitized* error, and UTC timestamp. Inspect the preview branch's Postgres logs for the first failed `execute <unnamed>:` statement. Do **not** substitute main/production logs.
+2. Reconcile production migration versions, `statements` and canonical GitHub files using exact versions and hashes, separating SQL applied through API/manual operations from replayable source. Avoid assuming version-by-name equivalence. Use documented `supabase migration fetch` in a secure local environment to recover the production migration chain.
+3. Identify dependencies/drift/non-idempotency of that **specific** SQL. Make a minimally scoped, forward-only correction on a GitHub branch or restore missing canonical historical sources with verified exact content. Never blindly rewrite already-applied history or modify production `supabase_migrations` metadata.
+4. After obtaining a backup/recovery plan and understanding side effects, create an isolated test preview or use an explicitly approved, safe branch-recovery action. Do not `reset`, `rebase`, `merge`, `delete`, or modify production merely to clear the red status.
+5. Require **successful migration replay**, branch status `ACTIVE_HEALTHY` *without* `MIGRATIONS_FAILED`, tenant-crossing/RLS-denial and legitimate-access tests, security advisors, CI exact-head SHA, and later exact-production SHA evidence.
+6. Keep issue #715 **P0 BLOCKED** and draft PR #714 **unmerged** until all gates are proven; log the first failing SQL and validation evidence in #715.
+
+### CI truth boundary
+
+Source-format/migration-file checks within `npm run verify:all` are **not** a database replay, do not check preview branch health, and cannot certify RLS in the preview. Never label a build-only green run as `MIGRATIONS VERIFIED`.
+
+Reference: https://supabase.com/docs/guides/troubleshooting/branch-in-migrations-failed-status
 
 ## Current known human-only / external blockers
 
