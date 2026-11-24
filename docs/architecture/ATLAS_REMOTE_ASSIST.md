@@ -89,3 +89,24 @@ Minimum tests for a native adapter before production activation:
 - Windows lock/UAC/secure-desktop boundaries are handled truthfully;
 - responsive Device OS states remain accurate on desktop/tablet/mobile;
 - P0 production verification does not label Remote Assist ready without actual end-to-end evidence.
+
+## ATLAS Pair Once — discovery-only staged increment (PR #923)
+
+After **first-time ATLAS Local Agent enrollment** (existing one-time challenge), Device OS
+may display enrolled desktop hosts using the canonical organization-scoped
+`agents.list` and `devices.list` APIs. The UI requires an online agent, an active
+mTLS certificate with a valid SHA-256 fingerprint and unexpired date, and a recent
+heartbeat (at most two minutes old). Other-tenant device metadata is not counted.
+The client refreshes the inventory every 30 seconds and provides a manual
+**Discover my ATLAS devices** control. Failed listing clears displayed presence.
+
+**Important:** This is recognition of an already enrolled ATLAS agent, *not*
+recognition of other ChatGPT installations or proof of shared OpenAI sessions.
+An identical email address is neither sufficient identity proof nor a remote
+access grant. No ChatGPT cookies, access tokens or chat history are accessed.
+
+Discovery never authorizes screen view, mouse/keyboard, automatic power-on, or
+unattended control. Those remain subject to signed native adapter, explicit scoped
+authorization/consent, audited ephemeral sessions, transport, real two-device
+E2E and P0 fail-closed production release gates. OpenAI identity federation,
+if officially supported, is a separate optional flow and is **not implemented**.
