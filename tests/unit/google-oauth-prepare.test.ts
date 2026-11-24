@@ -127,4 +127,50 @@ describe('ATLAS Google OAuth authorization preparation', () => {
       })
     ).rejects.toThrow(/nonce/i);
   });
+
+  it('adds PKCE S256 only when a valid challenge is supplied', async () => {
+    const prepareGoogleOAuthAuthorization = (core as Record<string, unknown>)
+      .prepareGoogleOAuthAuthorization as
+      | ((input: {
+          clientId: string;
+          redirectUri: string;
+          stateSecret: string;
+          userId: string;
+          organizationId: string;
+          permissions: readonly string[];
+          nonce: string;
+          now: number;
+          codeChallenge?: string;
+        }) => Promise<{ authorizationUrl: string; state: string; expiresAt: number }>)
+      | undefined;
+
+    const challenge = 'A'.repeat(43);
+    const prepared = await prepareGoogleOAuthAuthorization!({
+      clientId: 'atlas-google-client.apps.googleusercontent.com',
+      redirectUri: 'https://atlas.example/functions/v1/atlas-google-callback',
+      stateSecret,
+      userId: 'user-123',
+      organizationId: 'org-456',
+      permissions: ['google.youtube.upload'],
+      nonce: 'nonce-pkce',
+      now: 1_800_000_000_000,
+      codeChallenge: challenge
+    });
+    const url = new URL(prepared.authorizationUrl);
+    expect(url.searchParams.get('code_challenge')).toBe(challenge);
+    expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+
+    await expect(prepareGoogleOAuthAuthorization!({
+      clientId: 'atlas-google-client.apps.googleusercontent.com',
+      redirectUri: 'https://atlas.example/functions/v1/atlas-google-callback',
+      stateSecret,
+      userId: 'user-123',
+      organizationId: 'org-456',
+      permissions: ['google.youtube.upload'],
+      nonce: 'nonce-pkce',
+      now: 1_800_000_000_000,
+      codeChallenge: 'too-short'
+    })).rejects.toThrow(/pkce|challenge/i);
+  });
+
 });

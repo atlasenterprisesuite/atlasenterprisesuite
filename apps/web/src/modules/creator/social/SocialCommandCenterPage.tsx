@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { analyzeWeeklySocialMetrics, parseSocialMetrics, type WeeklySocialAnalysis } from '../../../../../../packages/social/src/analytics';
 import { buildConversationQuestions, buildFollowerWelcomeMessages, type FollowerWelcomeMessages } from '../../../../../../packages/social/src/drafting';
 import { buildSocialCrmHandoff, filterSocialInbox, type SocialInboxStatus, type SocialInboxThread } from '../../../../../../packages/social/src/inbox';
@@ -9,9 +9,12 @@ import {
   cancelSocialSchedule,
   createImportedSocialThread,
   createSocialSchedule,
+  getYouTubeConnectionStatus,
   listSocialInboxThreads,
   listSocialSchedules,
-  updateSocialThreadStatus
+  prepareYouTubeConnection,
+  updateSocialThreadStatus,
+  type YouTubeConnectionStatus
 } from './socialApi';
 import './social-command-center.css';
 
@@ -26,6 +29,7 @@ function defaultScheduleTime() {
 
 export function SocialCommandCenterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [tab, setTab] = useState<SocialTab>('inbox');
 
   const [metricsInput, setMetricsInput] = useState('');
@@ -56,6 +60,16 @@ export function SocialCommandCenterPage() {
   const [schedulePlatform, setSchedulePlatform] = useState<PlatformId>('instagram');
   const [scheduleCaption, setScheduleCaption] = useState('');
   const [scheduleFor, setScheduleFor] = useState(defaultScheduleTime);
+  const [youtubeChannelId, setYoutubeChannelId] = useState('');
+  const [youtubeConnection, setYoutubeConnection] = useState<YouTubeConnectionStatus | null>(null);
+  const [youtubeLoading, setYoutubeLoading] = useState(false);
+  const [youtubeNotice, setYoutubeNotice] = useState(() => {
+    const result = searchParams.get('youtube');
+    const code = searchParams.get('code');
+    if (result === 'connected') return 'YouTube authorization completed. Enter the channel ID to verify live connection status.';
+    if (result === 'error') return `YouTube authorization did not complete${code ? ` (${code})` : ''}.`;
+    return '';
+  });
 
   const visibleThreads = useMemo(
     () => filterSocialInbox(threads, { platform: inboxPlatform, status: inboxStatus, query: inboxQuery }),
@@ -133,6 +147,47 @@ export function SocialCommandCenterPage() {
     });
   }
 
+  async function refreshYouTubeConnection() {
+    const channelId = youtubeChannelId.trim();
+    if (!channelId) {
+      setYoutubeNotice('Enter the YouTube channel ID first.');
+      return;
+    }
+    setYoutubeLoading(true);
+    setYoutubeNotice('');
+    try {
+      const status = await getYouTubeConnectionStatus(channelId);
+      setYoutubeConnection(status);
+      setYoutubeNotice(
+        status.state === 'connected' && status.authorized && status.providerVerified
+          ? `Connected and verified${status.channelTitle ? `: ${status.channelTitle}` : ''}.`
+          : `YouTube connection state: ${status.state}.`
+      );
+    } catch (error) {
+      setYoutubeConnection(null);
+      setYoutubeNotice(error instanceof Error ? error.message : 'YouTube connection unavailable');
+    } finally {
+      setYoutubeLoading(false);
+    }
+  }
+
+  async function connectYouTube() {
+    const channelId = youtubeChannelId.trim();
+    if (!channelId) {
+      setYoutubeNotice('Enter the YouTube channel ID first.');
+      return;
+    }
+    setYoutubeLoading(true);
+    setYoutubeNotice('');
+    try {
+      const prepared = await prepareYouTubeConnection(channelId);
+      window.location.assign(prepared.authorizationUrl);
+    } catch (error) {
+      setYoutubeNotice(error instanceof Error ? error.message : 'Unable to start YouTube authorization');
+      setYoutubeLoading(false);
+    }
+  }
+
   async function schedulePost(event: FormEvent) {
     event.preventDefault();
     const scheduledDate = new Date(scheduleFor);
@@ -146,15 +201,37 @@ export function SocialCommandCenterPage() {
       setScheduleError(errors.join(' '));
       return;
     }
-    const connection = getPlatform(schedulePlatform).connectionStatus;
+
     setScheduleError('');
     try {
+      let connection = getPlatform(schedulePlatform).connectionStatus;
+      let status: SocialScheduledPost['status'] = initialScheduleStatus(connection);
+      let mediaManifest: Array<Record<string, unknown>> = [];
+
+      if (schedulePlatform === 'youtube') {
+        const channelId = youtubeChannelId.trim();
+        if (!channelId) {
+          setScheduleError('YouTube channel ID is required.');
+          return;
+        }
+        const youtube = await getYouTubeConnectionStatus(channelId);
+        setYoutubeConnection(youtube);
+        connection = youtube.state === 'connected' && youtube.authorized && youtube.providerVerified
+          ? 'ready'
+          : 'not_configured';
+        // A YouTube caption + time is not an executable video publication.
+        // Keep it draft until a verified video asset/draft is attached.
+        status = 'draft';
+        mediaManifest = [{ kind: 'youtube_target', channelId, mediaRequired: true }];
+      }
+
       const created = await createSocialSchedule({
         platform: schedulePlatform,
         caption: scheduleCaption,
         scheduledFor,
-        status: initialScheduleStatus(connection),
-        providerConnectionState: connection
+        status,
+        providerConnectionState: connection,
+        mediaManifest
       });
       setSchedules((current) => [...current, created].sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor)));
       setScheduleCaption('');
@@ -249,6 +326,15 @@ export function SocialCommandCenterPage() {
           <form className="social-schedule-form" onSubmit={schedulePost}>
             <label><span>Platform</span><select value={schedulePlatform} onChange={(event) => setSchedulePlatform(event.target.value as PlatformId)}>{socialPlatforms.map((platform) => <option key={platform.id} value={platform.id}>{platform.name}</option>)}</select></label>
             <label><span>Publish time</span><input type="datetime-local" value={scheduleFor} onChange={(event) => setScheduleFor(event.target.value)} /></label>
+            {schedulePlatform === 'youtube' ? <>
+              <label className="wide"><span>YouTube channel ID</span><input value={youtubeChannelId} onChange={(event) => { setYoutubeChannelId(event.target.value); setYoutubeConnection(null); }} placeholder="UC…" aria-describedby="youtube-connection-help" /></label>
+              <div className="wide social-thread-actions" aria-live="polite">
+                <button type="button" onClick={() => void refreshYouTubeConnection()} disabled={youtubeLoading || !youtubeChannelId.trim()}>Check connection</button>
+                <button type="button" className="creator-primary" onClick={() => void connectYouTube()} disabled={youtubeLoading || !youtubeChannelId.trim()}>Connect YouTube</button>
+                {youtubeConnection ? <span className={`status-chip ${youtubeConnection.state === 'connected' && youtubeConnection.authorized && youtubeConnection.providerVerified ? 'neutral' : 'warning'}`}>{youtubeConnection.state}</span> : null}
+              </div>
+              <p id="youtube-connection-help" className="wide social-helper">{youtubeNotice || 'Google consent opens only when you choose Connect YouTube. A saved schedule remains draft until a verified video asset is attached.'}</p>
+            </> : null}
             <label className="wide"><span>Caption</span><textarea rows={4} value={scheduleCaption} onChange={(event) => setScheduleCaption(event.target.value)} placeholder="Scheduled social copy" /></label>
             <button className="creator-primary" type="submit" disabled={!scheduleCaption.trim()}>Save schedule</button>
           </form>
