@@ -24,6 +24,7 @@ import { Photorealistic3DView } from './Photorealistic3DView';
 import { IndoorNavigationPanel } from './IndoorNavigationPanel';
 import { CoverageControlPanel } from './CoverageControlPanel';
 import { validateIndoorBuilding, type IndoorBuilding } from './immersiveSpatial';
+import { earthMapLinks } from './earthMapLinks';
 import './gps4d.css';
 
 type LivePosition = GpsPoint & {
@@ -175,6 +176,7 @@ export function Gps4DPage() {
 
   const activeRoute = routes[activeRouteIndex] || null;
   const activeStep = activeRoute?.steps?.[currentStepIndex] || null;
+  const externalMapLinks = selected ? earthMapLinks(selected) : null;
 
   useEffect(() => {
     activeRouteRef.current = activeRoute;
@@ -283,8 +285,11 @@ export function Gps4DPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const lat = Number(params.get('lat'));
-    const lon = Number(params.get('lon'));
+    const rawLat = params.get('lat');
+    const rawLon = params.get('lon');
+    if (rawLat === null || rawLon === null || !rawLat.trim() || !rawLon.trim()) return;
+    const lat = Number(rawLat);
+    const lon = Number(rawLon);
     if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
       setSelected({ lat, lon, label: params.get('label') || 'Destino compartido' });
     }
@@ -940,6 +945,27 @@ export function Gps4DPage() {
           />
 
           <CoverageControlPanel center={selected || current} />
+
+          {externalMapLinks && (
+            <nav aria-label="Abrir punto seleccionado en mapas externos" className="gps4d-actions">
+              <p id="gps4d-external-provider-privacy" className="gps4d-provider-privacy">
+                Al abrir Google Maps o Apple Maps, compartirás las coordenadas seleccionadas con
+                ese proveedor y se aplicará su política de privacidad.
+              </p>
+              <a href={externalMapLinks.googleMaps} target="_blank" rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+                aria-describedby="gps4d-external-provider-privacy"
+                aria-label="Abrir punto seleccionado en Google Maps (servicio externo)">
+                Google Maps ↗
+              </a>
+              <a href={externalMapLinks.appleMaps} target="_blank" rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+                aria-describedby="gps4d-external-provider-privacy"
+                aria-label="Abrir punto seleccionado en Apple Maps (servicio externo)">
+                Apple Maps ↗
+              </a>
+            </nav>
+          )}
 
           <div className="gps4d-actions">
             <button type="button" disabled={!activeRoute || !current || navigationActive} onClick={beginNavigation}>Iniciar navegación</button>

@@ -29,6 +29,34 @@
 .gps4d-metrics dt { font-size:12px; opacity:.7; }
 .gps4d-metrics dd { margin:4px 0 0; overflow-wrap:anywhere; }
 .gps4d-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px; }
+
+/* Outbound provider links appear only for a validated, user-selected destination. */
+.gps4d-actions a {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:44px;
+  padding:10px 12px;
+  border:1px solid rgba(105,192,255,.36);
+  border-radius:12px;
+  color:inherit;
+  background:rgba(15,31,58,.8);
+  text-align:center;
+  text-decoration:none;
+  font-weight:600;
+}
+.gps4d-actions a:hover { border-color:rgba(105,192,255,.85); }
+.gps4d-actions a:focus-visible { outline:3px solid #78d4ff; outline-offset:2px; }
+
+.gps4d-provider-privacy {
+  grid-column:1 / -1;
+  margin:0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--muted,#c5d1e7);
+}
+
+
 .gps4d-alternatives { display:grid; gap:8px; margin-bottom:16px; }
 .gps4d-alternatives button { text-align:left; padding:8px 10px; }
 .gps4d-alternatives button[aria-pressed="true"] { outline:2px solid currentColor; }
