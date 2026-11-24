@@ -143,7 +143,9 @@ export class AtlasOrchestrator {
   }
 
   async recordCiSuccess(scope: TenantScope, taskId: string, evidence: string, actor: AtlasActor): Promise<AtlasTask> {
+    // Reading CI evidence must not authorize recording a successful CI verdict.
     this.require(actor, 'ai.ci.read', scope);
+    this.require(actor, 'ai.task.update', scope);
     const task = await this.load(scope, taskId);
     if (task.state !== 'ci') throw new Error('CI success can only be recorded while task state is ci');
     const updated: AtlasTask = {
