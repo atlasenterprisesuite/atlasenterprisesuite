@@ -1,0 +1,32 @@
+name: ATLAS Rainbow P0 CI
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/src/atlas-rainbow-numbers.ts'
+      - 'apps/web/src/atlas-design-tokens.css'
+      - 'apps/web/src/modules/wellbeing/FaithReflectionPage.tsx'
+      - 'tests/unit/atlas-rainbow-numbers.test.ts'
+      - '.github/workflows/atlas-rainbow-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rainbow-p0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npx vitest run tests/unit/atlas-rainbow-numbers.test.ts
+      - name: Design contract
+        run: npm run verify:design
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
