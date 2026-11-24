@@ -198,3 +198,26 @@ The first production-capable ATLAS MAX increment is acceptable when:
 8. automated tests cover critical decision/state boundaries;
 9. existing ATLAS verification gates pass;
 10. the exact deployed revision passes production P0 verification before being reported as verified.
+
+## 17. Premium AI capability DNA — reference study (2026-11-06)
+
+This section extracts **public product-level principles** from ChatGPT Pro, not OpenAI proprietary internals or a claim of identical service. The official reference is https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers and https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex (checked 2026-11-06). Vendor packaging/allowances can change; ATLAS product readiness is never inferred from those pages.
+
+| Public capability category | Reused ATLAS owner | Acceptance gate |
+| --- | --- | --- |
+| Advanced model choice and reasoning profiles | atlas-copilot Intelligence Gateway and provider registry | Configured, verified capability and allowed tenant policy before dispatch |
+| Long-running research and project execution | ATLAS Work / existing orchestration | Tenant-scoped checkpoints, bounded permissions, inspectable completion evidence |
+| Coding and agent workflows | Work / authorized development runners | Isolated branches, TDD, required checks and human review as applicable |
+| Research with citations | Knowledge Atlas | Sources, dated provenance, confidence and contradiction handling |
+| Memory and files | ATLAS Memory and canonical storage services | Tenant ownership, retention, access checks and explicit provenance |
+| Accelerated execution tiers | ATLAS MAX Governor and provider adapters | Eligible speed, finite cost estimate, preflight budget and verified availability |
+| Tools and app connectors | ATLAS Tool Gateway | Tool-specific RBAC, least-privilege grants, approvals, audit |
+| Repeated work | ATLAS Operators and existing schedules | Idempotent checkpoints, no duplicate execution, revocation support |
+
+### Security-critical capacity invariant
+
+Never interpret a premium label as evidence of model entitlement, unlimited quota, a specific latency, available provider credits or guaranteed execution. The governor must deny non-finite or negative budget/cost values and must **not** automatically downgrade from MAX to Fast without *both* a trusted Fast estimate that fits the remaining budget and an eligible Fast speed. A numeric value or evidence reference supplied by a browser is not proof: these inputs must be sourced and enforced by the existing server authorization/cost boundary.
+
+### Current development scope
+
+The first isolated increment changes `apps/web/src/services/atlas-max/governor.ts` and its existing Vitest tests, with only pure preflight decisions. This is **not** billing integration, provider execution, server entitlement verification or a ready-for-production subscription. Required next checks: inspect all call sites, execute repository Vitest and TypeScript, validate cross-tenant/RBAC policy at the server boundary, review exact-SHA CI, and perform independent security review. Remain P0 NO-GO until evidence supports release.
