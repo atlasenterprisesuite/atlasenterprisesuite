@@ -101,7 +101,7 @@ begin
   -- Duplicate GitHub run references fail with a UNIQUE constraint; no replay overwrite.
   return new;
 end;
-$function$
+$function$;
 
 revoke all on function atlas_private.capture_certificate_from_infra_evidence()
   from public, anon, authenticated;
