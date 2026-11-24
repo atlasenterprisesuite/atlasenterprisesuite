@@ -50,6 +50,8 @@ export type AtlasDeployRequest = {
 
 export type AtlasDeployQueuePolicy = {
   maxConcurrent: number;
+  /** Explicit provider capacity; defaults to one active build per provider. */
+  maxConcurrentByProvider?: Partial<Record<AtlasDeployProvider, number>>;
   minProviderIntervalMs: number;
   coalesceSameSource: boolean;
 };
@@ -132,9 +134,15 @@ export function planAtlasDeployQueue(input: {
     throw new Error('ATLAS deploy clock is invalid');
   }
 
+  for (const capacity of Object.values(policy.maxConcurrentByProvider ?? {})) {
+    if (!Number.isInteger(capacity) || Number(capacity) < 1) {
+      throw new Error('ATLAS deploy provider capacity must be a positive integer');
+    }
+  }
+
   const available = Math.max(0, policy.maxConcurrent - input.inFlight.length);
   const sorted = [...input.requests].sort(stableQueueSort);
-  const seen = new Set<string>();
+  const seen = new Set<string>(input.inFlight.map(coalesceKey));
   const launch: AtlasDeployRequest[] = [];
   const deferred: AtlasDeployRequest[] = [];
   const coalesced: AtlasDeployRequest[] = [];
@@ -157,11 +165,18 @@ export function planAtlasDeployQueue(input: {
       typeof lastLaunch === 'number' &&
       input.now - lastLaunch < policy.minProviderIntervalMs;
 
-    const providerAlreadySelected = launch.some(
+    const activeForProvider = input.inFlight.filter(
       candidate => candidate.provider === request.provider
-    );
+    ).length;
+    const selectedForProvider = launch.filter(
+      candidate => candidate.provider === request.provider
+    ).length;
+    const capacity = policy.maxConcurrentByProvider?.[request.provider] ?? 1;
+    const providerAtCapacity = activeForProvider + selectedForProvider >= capacity;
+    // A nonzero cooldown also constrains launches within this planning batch.
+    const batchCooldown = policy.minProviderIntervalMs > 0 && selectedForProvider > 0;
 
-    if (providerCoolingDown || providerAlreadySelected) {
+    if (providerCoolingDown || providerAtCapacity || batchCooldown) {
       deferred.push(request);
       continue;
     }
