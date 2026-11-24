@@ -10,6 +10,7 @@ describe('ATLAS Health governed routes', () => {
     expect(screen.getByRole('heading', { name: 'Health' })).toBeInTheDocument();
     expect(document.querySelector('.module-experience-page')).toBeTruthy();
     expect(screen.getByText('Health intelligence, research and wellbeing with explicit evidence boundaries.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Urinalysis Guidance/i })).toHaveAttribute('href', '/health/labs/urinalysis');
     expect(screen.getByRole('link', { name: /Health Frontiers/i })).toHaveAttribute('href', '/health/research');
     expect(screen.getByRole('link', { name: /Neuroplasticity Program/i })).toHaveAttribute('href', '/health/wellbeing/neuroplasticity');
     expect(screen.getByText('Clinical systems').closest('[aria-disabled="true"]')).toBeTruthy();
