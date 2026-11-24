@@ -40,9 +40,17 @@ export async function handleAtlasChatGptHttp(req: AtlasChatGptHttpRequest, optio
     return {status:400,headers,body:{error:'invalid_jsonrpc'}};
   // Notifications do not receive JSON-RPC responses, but require valid authorization.
   if (rpc.method === 'notifications/initialized') {
-    if (!req.authorization) return unauthorized();
-    // A notification is deliberately unsupported until session lifecycle certification.
-    return {status:400,headers,body:{error:'session_lifecycle_not_certified'}};
+    if (rpc.id !== undefined) return {status:400,headers,body:{error:'invalid_notification'}};
+    // Reuse the catalog's complete authentication and live revocation boundary.
+    // A stateless notification neither creates a session nor grants tool access.
+    const authentication = await handleChatGptCatalogMcp({
+      request:{jsonrpc:'2.0',id:0,method:'ping'},
+      authorization:req.authorization,verifyToken:options.verifyToken,
+      expectedIssuer:metadata.authorization_servers[0],expectedAudience:metadata.resource,
+      nowSeconds:options.nowSeconds,
+    });
+    if (authentication.status !== 200) return unauthorized();
+    return {status:202,headers,body:null};
   }
   const result=await handleChatGptCatalogMcp({
     request:rpc as unknown as JsonRpcRequest, authorization:req.authorization,verifyToken:options.verifyToken,
