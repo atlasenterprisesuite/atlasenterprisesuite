@@ -37,7 +37,7 @@ The platform contract is:
 - Forms -> dedicated builder not yet implemented; no fake route.
 - Lists -> canonical domain data surfaced through Analytics.
 - Notes -> Knowledge Atlas.
-- Board -> dedicated collaborative board not yet implemented.
+- Board -> a read-only, tenant-authorized kanban-style projection of the canonical ATLAS Work workflow API at `/work/board`; search and filters operate on authorized records. Mutations continue through governed Execution.
 - Scheduling -> Work policies and automation.
 - Drive -> canonical ATLAS Drive route not yet registered.
 - Meetings -> ATLAS Connect / external provider boundary.
@@ -92,7 +92,7 @@ The platform contract is:
 
 ## Route
 
-`/work/os`
+`/work/os` and `/work/board`
 
 The route is mounted inside the existing identity-gated Work extension.
 
