@@ -29,6 +29,7 @@ import { PeopleRoutes } from '../modules/people/PeopleRoutes';
 import { CareRoutes } from '../modules/care/CareRoutes';
 import { HealthExperiencePage } from '../modules/experience/HealthExperiencePage';
 import { JaqueMateSentinelPage } from '../modules/health/JaqueMateSentinelPage';
+import { LabResultsGuidancePage } from '../modules/health/LabResultsGuidancePage';
 import { LearningExperiencePage } from '../modules/experience/LearningExperiencePage';
 import { NeuroplasticityProgramPage } from '../modules/learning/NeuroplasticityProgramPage';
 import { OracleRoutes } from '../modules/oracle/OracleRoutes';
@@ -197,6 +198,9 @@ export function resolveAtlasExtension(pathname: string) {
   }
 
   if (pathname === '/health') return <HealthExperiencePage />;
+  if (pathname === '/health/labs/urinalysis') {
+    return <RequireAtlasIdentity><LabResultsGuidancePage /></RequireAtlasIdentity>;
+  }
   if (pathname === JAQUE_MATE_SENTINEL_LEGACY) return <Navigate to={JAQUE_MATE_SENTINEL_V2} replace />;
   if (pathname === JAQUE_MATE_SENTINEL_V2 || pathname === JAQUE_MATE_SENTINEL_CANONICAL) return <JaqueMateSentinelPage />;
   if (pathname === '/health/wellbeing/neuroplasticity') return <NeuroplasticityProgramPage entry="health" />;
