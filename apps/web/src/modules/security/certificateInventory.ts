@@ -74,7 +74,7 @@ export async function loadCertificateInventory(): Promise<CertificateInventory> 
   };
 }
 
-export type CertificateVerdict = 'verified' | 'failed' | 'stale' | 'no_evidence';
+export type CertificateVerdict = 'verified' | 'expiring_soon' | 'failed' | 'stale' | 'no_evidence';
 export function certificateVerdict(
   target: CertificateTarget,
   observations: CertificateObservation[],
@@ -93,7 +93,8 @@ export function certificateVerdict(
       && (target.purpose === 'server_tls' || latest.mtls_verified)
       && Boolean(latest.certificate_sha256?.match(/^[a-f0-9]{64}$/))
       && latest.not_after && Date.parse(latest.not_after) > now) {
-    return 'verified';
+    return Date.parse(latest.not_after) - now <= 30 * 24 * 60 * 60 * 1000
+      ? 'expiring_soon' : 'verified';
   }
   return 'no_evidence';
 }
