@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { unavailableAssistantRouteError } from './assistantSubmissionState';
 import { useAssistantVoice } from '../../assistant/useAssistantVoice';
 import { detectPcmWavRecordingCapability, recordAssistantPcmWavChunk } from '../../assistant/voice';
 import {
@@ -395,7 +396,12 @@ export function UnifiedAIChatPage() {
 
   async function executeMessage(message: string) {
     const value = message.trim();
-    if (!value || busy || !routeReady) return;
+    if (!value || busy) return;
+    if (!routeReady) {
+      setError(unavailableAssistantRouteError(mode, status));
+      setPrompt((current) => current || value);
+      return;
+    }
 
     const optimisticKey = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     setMessages((current) => [
@@ -691,7 +697,11 @@ export function UnifiedAIChatPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     const message = prompt.trim();
-    if (!message || busy || !routeReady) return;
+    if (!message || busy) return;
+    if (!routeReady) {
+      setError(unavailableAssistantRouteError(mode, status));
+      return;
+    }
     setPrompt('');
     await executeMessage(message);
   }
@@ -1349,7 +1359,7 @@ export function UnifiedAIChatPage() {
                 <button
                   className="atlas-ai-send"
                   type="submit"
-                  disabled={busy || conversationTranslatorEnabled || !routeReady || !prompt.trim()}
+                  disabled={busy || conversationTranslatorEnabled || !prompt.trim()}
                   aria-label="Send message"
                 >
                   <span aria-hidden="true">↑</span>
