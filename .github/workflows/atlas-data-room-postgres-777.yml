@@ -1,0 +1,72 @@
+name: ATLAS Secure Data Room PostgreSQL 777
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261102000100_atlas_data_room_deny_default.sql'
+      - 'tests/postgres/secure-data-room-deny-default-777.sql'
+      - 'tests/postgres/secure-data-room-negative-authorization-777.sql'
+      - 'tests/postgres/secure-data-room-audit-integrity-777.sql'
+      - 'supabase/migrations/20261102000200_atlas_data_room_locked_authorization.sql'
+      - '.github/workflows/atlas-data-room-postgres-777.yml'
+      - 'packages/security/secure-data-room-*.ts'
+      - 'tests/unit/secure-data-room-*.test.ts'
+      - 'tests/integration/secure-data-room-*.test.ts'
+      - 'supabase/functions/atlas-secure-data-room/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deny-default:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap disposable Supabase-like roles and organization table
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create table public.organizations (id uuid primary key);
+          SQL
+      - name: Apply isolated deny-default migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102000100_atlas_data_room_deny_default.sql
+      - name: Assert PostgreSQL RLS and privileges
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/secure-data-room-deny-default-777.sql
+
+      - name: Apply locked authorization migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102000200_atlas_data_room_locked_authorization.sql
+      - name: Negative authorization and sequential revocation
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/secure-data-room-negative-authorization-777.sql
+
+      - name: Concurrent authorization and revocation with two PostgreSQL sessions
+        run: bash tests/postgres/secure-data-room-concurrent-revocation-777.sh
+      - name: Assert scoped audit document references
+        run: psql -v ON_ERROR_STOP=1 -f tests/postgres/secure-data-room-audit-integrity-777.sql
+
+      - name: Set up Node.js for focused security tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned dependencies without postinstall side effects
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test Data Room user-scoped sources and HTTP release denial
+        run: npx vitest run tests/unit/secure-data-room-authorization-777.test.ts tests/unit/secure-data-room-read-boundary-777.test.ts tests/unit/secure-data-room-trusted-adapter-777.test.ts tests/unit/secure-data-room-trusted-source-negative-777.test.ts tests/unit/secure-data-room-supabase-sources-777.test.ts tests/unit/secure-data-room-http-777.test.ts tests/unit/secure-data-room-http-hardening-777.test.ts tests/integration/secure-data-room-release-denial-777.test.ts
