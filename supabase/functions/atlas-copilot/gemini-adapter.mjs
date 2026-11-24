@@ -18,8 +18,11 @@ export function createGeminiAdapter({apiKey,models,fetchFn=fetch}={}){
     const e=errorForStatus(response.status);return {configured:true,verified:false,provider:'gemini',model,error:e.code};
   }
   async function execute({route,instructions,input,max_output_tokens=3000}={}){
-    const model=resolved[route?.profile];
+    const profile=route?.profile;
+    const model=Object.hasOwn(resolved,profile)?resolved[profile]:null;
     if(!apiKey||!model)throw fail('provider_not_configured',503,{provider:'gemini'});
+    if(!Number.isSafeInteger(max_output_tokens)||max_output_tokens<1||max_output_tokens>65536)throw fail('invalid_request',400,{provider:'gemini'});
+    if(!Array.isArray(input)||input.some(item=>!item||!['user','assistant'].includes(item.role)))throw fail('invalid_request',400,{provider:'gemini'});
     const contents=(Array.isArray(input)?input:[]).map(item=>({role:item?.role==='assistant'?'model':'user',parts:[{text:contentText(item?.content)}]}));
     let response;
     try{response=await fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':apiKey,'content-type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:String(instructions||'')}]},contents,generationConfig:{maxOutputTokens:max_output_tokens,thinkingConfig:{thinkingLevel:THINKING_LEVEL[route?.profile]||THINKING_LEVEL.balanced}}})});}catch{throw fail('provider_unavailable',502,{provider:'gemini'});}
