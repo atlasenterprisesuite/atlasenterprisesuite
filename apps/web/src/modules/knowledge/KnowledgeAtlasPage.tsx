@@ -13,6 +13,7 @@ import {
   type AtlasMemorySource,
   type AtlasMemoryStats
 } from './memoryApi';
+import { ChatImportReviewPanel } from './ChatImportReviewPanel';
 
 const KINDS: AtlasMemoryKind[] = ['decision','requirement','workflow','configuration','evidence','note'];
 const PAGE_SIZE = 50;
@@ -174,6 +175,7 @@ export function KnowledgeAtlasPage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [reviewedId, setReviewedId] = useState<string | null>(null);
 
   const canApprove = ['owner','admin','platform_admin'].includes(role);
 
@@ -266,12 +268,14 @@ export function KnowledgeAtlasPage({
   };
 
   const approve = async (id: string) => {
-    if (!canApprove || busy) return;
+    const candidate = records?.find(record => record.id === id);
+    if (!canApprove || busy || !candidate || (candidate.source_type === 'chat_import' && reviewedId !== id)) return;
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
-      await approveAtlasMemory(id);
+      await approveAtlasMemory(id, candidate.version, candidate.source_type === 'chat_import' && reviewedId === id);
+      setReviewedId(null);
       setSuccess('Memory approved and available as governed ATLAS organizational knowledge.');
       refresh();
     } catch (caught) {
@@ -297,6 +301,7 @@ export function KnowledgeAtlasPage({
       </div>
 
       <LibraryRegistryPanel moduleScope={moduleScope} />
+      {!moduleScope ? <ChatImportReviewPanel canImport={canApprove} onImported={refresh} /> : null}
 
       <section className="workspace-card" aria-label="Filter ATLAS Memory">
         <div className="toolbar">
@@ -365,7 +370,21 @@ export function KnowledgeAtlasPage({
               <small className="muted">Source: {record.source_type}{record.source_ref ? ` · ${record.source_ref}` : ''}</small>
               <small className="muted">Modules: {record.module_ids.length ? record.module_ids.join(', ') : 'Cross-module'} · v{record.version}</small>
               {record.status === 'draft' && canApprove ? (
-                <button className="execution-action" type="button" disabled={busy} onClick={() => void approve(record.id)}>Approve memory</button>
+                record.source_type === 'chat_import' ? (
+                  <details>
+                    <summary>Review imported conversation</summary>
+                    <p className="muted">Check source and remove personal information before approval. This view cannot edit a draft: if redaction is needed, do not approve it. Use a sanitized draft through the governed intake process.</p>
+                    <p className="muted">Source reference: {record.source_ref || 'Missing'} · Restricted: {record.sensitivity === 'restricted' ? 'Yes' : 'No'}</p>
+                    <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: 320, overflow: 'auto' }}>{String(record.content_json?.text ?? '')}</pre>
+                    <label className="field">
+                      <input type="checkbox" checked={reviewedId === record.id} onChange={event => setReviewedId(event.target.checked ? record.id : null)} />
+                      <span>I reviewed the source, its module mapping, and confirmed that this draft is safe to publish as organizational knowledge.</span>
+                    </label>
+                    <button className="execution-action" type="button" disabled={busy || reviewedId !== record.id} onClick={() => void approve(record.id)}>Approve reviewed memory</button>
+                  </details>
+                ) : (
+                  <button className="execution-action" type="button" disabled={busy} onClick={() => void approve(record.id)}>Approve memory</button>
+                )
               ) : null}
             </article>
           ))}

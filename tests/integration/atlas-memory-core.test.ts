@@ -41,6 +41,57 @@ describe('ATLAS Memory / Knowledge Layer', () => {
     expect(page).toContain('Save draft');
   });
 
+  it('requires an explicit source and privacy review before approving chat imports in the UI', () => {
+    expect(page).toContain('Review imported conversation');
+    expect(page).toContain('checked={reviewedId === record.id}');
+    expect(page).toContain('reviewedId !== record.id');
+    expect(page).toContain('Check source and remove personal information before approval');
+    expect(page).toContain('content_json?.text');
+  });
+
+  it('rejects automatic chat-import approval and invalid batch sizes before any write', () => {
+    expect(edge).toContain('memory_import_batch_limit');
+    expect(edge).toContain('chat_import_autoapproval_forbidden');
+    expect(edge).toContain('rows.map(item => normalizeDraft(item))');
+  });
+
+  it('makes organization imports and audit writes one database transaction', () => {
+    const atomic = readFileSync('supabase/migrations/20261123195500_atlas_memory_atomic_import.sql', 'utf8');
+    expect(atomic).toContain('returns setof public.atlas_memory_records');
+    expect(atomic).toContain('on conflict (organization_id, source_type, source_hash)');
+    expect(atomic).toContain('insert into public.audit_logs');
+    expect(atomic).toContain('organization_members');
+    expect(atomic).toContain('to service_role');
+    expect(edge).toContain("rpc('atlas_memory_import_drafts'");
+    expect(edge).toContain('memory_import_hash_required');
+    expect(edge).toContain('memory_import_autoapproval_forbidden');
+    expect(edge).not.toContain('const created = await saveDraft(ctx, item as Record<string, any>)');
+  });
+
+  it('offers a manually authorized local batch preview and redaction before upload', () => {
+    const panel = readFileSync('apps/web/src/modules/knowledge/ChatImportReviewPanel.tsx', 'utf8');
+    expect(page).toContain('<ChatImportReviewPanel');
+    expect(api).toContain('importAtlasMemoryDrafts');
+    expect(panel).toContain('type="file"');
+    expect(panel).toContain('type="checkbox"');
+    expect(api).toContain('approve: false');
+    expect(panel).toContain('batch.approve !== false');
+    expect(panel).toContain('crypto.subtle.digest');
+    expect(panel).toContain('Select records to import');
+    expect(panel).toContain('Import selected drafts');
+    expect(panel).toContain('restricted');
+  });
+
+  it('requires version-checked atomic memory approval and audit', () => {
+    const atomic = readFileSync('supabase/migrations/20261123195500_atlas_memory_atomic_import.sql', 'utf8');
+    expect(atomic).toContain('atlas_memory_approve_draft');
+    expect(atomic).toContain('for update');
+    expect(atomic).toContain('knowledge.memory.approved');
+    expect(atomic).toContain('memory_approval_stale_version');
+    expect(edge).toContain("rpc('atlas_memory_approve_draft'");
+    expect(api).toContain('expected_version');
+  });
+
   it('uses the canonical authenticated API boundary', () => {
     expect(api).toContain('authorizedAtlasFetch');
     expect(api).toContain('getActiveAtlasOrganization');

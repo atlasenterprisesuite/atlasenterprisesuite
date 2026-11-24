@@ -1,0 +1,59 @@
+# ATLAS 777 REVIEW — Chat conversations to canonical modules (offline intake)
+
+**Status:** experimental adapter on a feature branch. Not a deployed ChatGPT sync, production importer, or approval of imported information.
+
+## Reuse: one platform, one memory layer
+
+Reuse KnowledgeAtlasPage.tsx and the existing authenticated supabase/functions/atlas-memory/index.ts endpoint (api=import, max 50 records per request), rather than creating another memory table. The canonical public.atlas_memory_records already offers organization scoping, RLS, source references, and source-hash uniqueness. Existing issue #993 owns chat-ledger governance; PR #411 is the Knowledge foundation.
+
+## Local preparation
+
+1. Download your official ChatGPT data export and extract conversations.json, or use a user-supplied SRT transcript. Keep original files private.
+2. Run Node.js with arguments: node scripts/atlas-chat-to-memory.mjs --input /private/conversations.json --out-dir /private/atlas-chat-drafts
+3. Inspect manifest.json, skipped entries, provisional classifications, and each atlas-chat-drafts-NNNN.json file. No network request is made during this process. The same input and output directory may be retried safely after interruption: identical batches are reused; any altered existing batch or manifest is rejected without overwriting it. Do not manually edit these generated batches and then retry the same directory; create a separate sanitized intake folder instead.
+4. In the protected Knowledge Atlas workspace, authorized owners/admins can select a local atlas-chat-drafts-NNNN.json file. The browser previews records without uploading them. Review text, redact as needed, adjust provisional modules, explicitly select individual records, and acknowledge the privacy/organization authorization statement before clicking Import selected drafts. Nothing is selected or uploaded by default.
+5. Selected records are sent to the authenticated atlas-memory?api=import endpoint with approve:false and SHA-256 source hashes. The 20261123195500 migration must be deployed to the target environment first. The API rejects approve:true. Import and audit are atomic and repeatable by source hash; no source can bypass organization admin authorization.
+6. Imported records remain drafts. Open the record preview, inspect the full text, check sources and privacy, and explicitly approve; the server checks the expected version, requires a chat-review acknowledgment, and commits approval/supersession/audit together. Never import secrets or irrelevant personal content into organization memory.
+The local intake panel supports in-browser redaction before importing. After a draft has been imported, the existing record preview does not allow editing or redacting it. If a stored draft contains sensitive or irrelevant content, do not approve it. A governed server-side draft editing/erasure workflow is still required before production rollout.
+
+The adapter refuses to write private chat output under the current repository, uses restrictive output permissions on POSIX, and never alters originals. On Windows the user should additionally secure the output folder with account ACLs.
+
+## Preservation, boundaries and caveats
+
+- ChatGPT exports: read user/assistant text from the selected branch ending in current_node. System/tool messages and attachment binaries are excluded; inspect older exports with timestamp fallback because branch order may be ambiguous.
+- SRT: remove subtitle counters/times while retaining text. Input can be reviewed locally.
+- Text is split into 12,000-character segments, grouped into batches of at most 50 records; source references identify conversation and segment, and SHA-256 tracks source content for deduplication.
+- All candidates have source_type chat_import, kind note, and sensitivity restricted. Keyword module routing is a suggestion, not a verified fact or a claim of semantic understanding.
+- The adapter has no capability to read inaccessible personal ChatGPT chats, to sync the full personal chat history automatically, or to preserve all non-text material.
+- Avoid automatically routing personal financial, legal, health or family information to organization modules.
+
+## Illustrative module mapping
+
+| Topics | Canonical module IDs |
+| --- | --- |
+| ATLAS security, platform, CI/release | cloud, execution, release-control |
+| History and religious studies | knowledge, bible-os |
+| Medical and biomedical research | health, care |
+| Accounting, tax, payments and payroll | accounting, tax, finance, payroll |
+| Clients, inventory, business operations | crm, advisory, inventory |
+| Media, voice, language learning | studio, voice, learning |
+| Phones, networks, remote workspace | device-os, connect, telecom |
+| Maps, cities, transportation | gps, city, ride, aviation |
+| Unclear or multi-topic chats | knowledge pending manual review |
+
+## ATLAS 777 REVIEW acceptance gates
+
+- [x] Offline adapter, boundary-aware topic routing and regression tests added on feature branch (CI verification pending).
+- [x] No network call or automatic approval in the adapter.
+- [ ] Verify exact-head CI, code review, and test execution. On original b64205e1, 4/8 Actions workflows failed because the SRT test routed \"first\" as IRS/tax; fixes require a new complete exact-head run.
+- [ ] Prove authenticated import, RBAC/RLS tenant isolation, and unauthorized negative cases in staging.
+- [x] Add idempotent local generation and mismatch detection, strict API batch-size preflight and a draft-only PostgreSQL RPC with source-hash replay and in-transaction audit (implementation on branch; migration not deployed or runtime-verified).
+- [ ] Prove database RPC migration, all-or-nothing rollback on forced audit failure, parallel duplicate imports, organization/RBAC negative cases, and protected staging deployment. The individual save/approve endpoints retain separate non-atomic audit sequences and need additional hardening.
+- [ ] Govern sensitive-data retention, redaction, erasure and revocation.
+- [x] Add explicit browser-only local batch selection, optional pre-upload redaction, module review, consent, draft-only submission, and a full-text approval gate (feature-branch implementation; not yet verified end-to-end).
+- [x] Add transactional version-checked approval/supersession/audit RPC (feature-branch implementation; staging verification pending).
+- [ ] Verify UI authentication, rollback-on-audit-failure, version conflicts, duplicate/idempotent retries, accessibility, error recovery, and E2E behavior in a real staging tenant. The UI is manual and does not constitute an automatic full-chat sync.
+- [ ] Complete a source-filtered import queue, safe editing and erasure of already-stored drafts, explicit retention/revocation, and durable job progress across multiple files. A recovered local batch cannot be considered persisted until the server acknowledges its import transaction.
+- [ ] Verify production deployment, exact-SHA and end-to-end routes.
+
+**P0 NO-GO:** no merge, deploy or production-completion claim until security, integration and release evidence is verified.

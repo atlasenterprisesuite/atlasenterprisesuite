@@ -243,67 +243,65 @@ async function approve(ctx: MemoryContext, input: Record<string, any>) {
   if (!ADMIN_ROLES.has(ctx.role)) throw fail('memory_approval_role_required', 403);
   const id = safeText(input.id, 80);
   if (!uuid(id)) throw fail('memory_id_required', 422);
-  const sb = adminClient();
-  const { data: existing, error: existingError } = await sb
-    .from('atlas_memory_records')
-    .select('id,status,version,supersedes_id')
-    .eq('organization_id', ctx.orgId)
-    .eq('id', id)
-    .maybeSingle();
-  if (existingError) throw fail('memory_read_failed', 500);
-  if (!existing) throw fail('memory_not_found', 404);
-  if (existing.status === 'approved') return existing;
-  if (existing.status !== 'draft') throw fail('memory_not_approvable', 409);
-
-  const now = new Date().toISOString();
-  const { data, error } = await sb
-    .from('atlas_memory_records')
-    .update({
-      status: 'approved',
-      approved_by: ctx.userId,
-      approved_at: now,
-      updated_at: now,
-      version: Number(existing.version || 1) + 1
-    })
-    .eq('organization_id', ctx.orgId)
-    .eq('id', id)
-    .eq('status', 'draft')
-    .select('*')
-    .single();
-  if (error || !data) throw fail('memory_approval_failed', 500);
-
-  if (data.supersedes_id) {
-    await sb.from('atlas_memory_records')
-      .update({ status: 'superseded', updated_at: now })
-      .eq('organization_id', ctx.orgId)
-      .eq('id', data.supersedes_id)
-      .eq('status', 'approved');
+  const expectedVersion = Number(input.expected_version);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    throw fail('memory_approval_version_required', 422);
   }
-
-  await audit(ctx, 'knowledge.memory.approved', id, {
-    kind: data.kind,
-    source_type: data.source_type,
-    supersedes_id: data.supersedes_id || null
+  // Database row locking, optimistic version and audit are one transaction.
+  const { data, error } = await adminClient().rpc('atlas_memory_approve_draft', {
+    p_org_id: ctx.orgId,
+    p_user_id: ctx.userId,
+    p_record_id: id,
+    p_expected_version: expectedVersion,
+    p_reviewed: input.reviewed === true
   });
+  if (error) {
+    if (error.code === '40001') throw fail('memory_approval_stale_version', 409);
+    if (error.code === 'P0002') throw fail('memory_not_found', 404);
+    if (error.code === '23514') throw fail('memory_not_approvable', 409);
+    if (error.code === '42501') throw fail('memory_approval_role_or_review_required', 403);
+    throw fail('memory_approval_atomic_failed', 500);
+  }
+  if (!data || data.organization_id !== ctx.orgId) throw fail('memory_approval_result_invalid', 500);
   return data;
 }
 
 async function importRecords(ctx: MemoryContext, input: Record<string, any>) {
   if (!ADMIN_ROLES.has(ctx.role)) throw fail('memory_import_role_required', 403);
-  const rows = Array.isArray(input.records) ? input.records.slice(0, 50) : [];
+  const rows = Array.isArray(input.records) ? input.records : [];
   if (!rows.length) throw fail('memory_import_records_required', 422);
-  const approveImported = input.approve === true;
-  const results = [];
-  for (const item of rows) {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) throw fail('memory_import_record_invalid', 422);
-    const created = await saveDraft(ctx, item as Record<string, any>);
-    results.push(approveImported ? await approve(ctx, { id: created.id }) : created);
+  if (rows.length > 50) throw fail('memory_import_batch_limit', 422);
+  if (rows.some(item => !item || typeof item !== 'object' || Array.isArray(item))) {
+    throw fail('memory_import_record_invalid', 422);
   }
-  await audit(ctx, 'knowledge.memory.imported', null, {
-    count: results.length,
-    approved: approveImported
+  // Preflight every row before the first mutation to avoid partial writes on input errors.
+  const validated = rows.map(item => normalizeDraft(item));
+  const approveImported = input.approve === true;
+  if (approveImported && validated.some(item => item.source_type === 'chat_import')) {
+    throw fail('chat_import_autoapproval_forbidden', 422);
+  }
+  // Bulk imports are always drafts. An approval must be a separate, explicit
+  // authorized action after source review; no approval is coupled to an import.
+  if (approveImported) throw fail('memory_import_autoapproval_forbidden', 422);
+  if (validated.some(item => !/^[0-9a-f]{64}$/.test(item.source_hash || ''))) {
+    throw fail('memory_import_hash_required', 422);
+  }
+  // All inserts, deduplication and audits run as one Postgres RPC transaction.
+  // A failing insert or audit rolls back the entire batch.
+  const { data, error } = await adminClient().rpc('atlas_memory_import_drafts', {
+    p_org_id: ctx.orgId,
+    p_user_id: ctx.userId,
+    p_records: validated
   });
-  return results;
+  if (error) {
+    if (error.code === '23505') throw fail('memory_import_source_hash_conflict', 409);
+    if (error.code === '42501') throw fail('memory_import_role_required', 403);
+    throw fail('memory_import_atomic_failed', 500);
+  }
+  if (!Array.isArray(data) || data.length !== validated.length) {
+    throw fail('memory_import_result_mismatch', 500);
+  }
+  return data;
 }
 
 
