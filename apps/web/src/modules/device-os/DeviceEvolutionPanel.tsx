@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { DeviceDnaEvidencePanel } from './DeviceDnaEvidencePanel';
+import { ProtectiveWearPanel } from './ProtectiveWearPanel';
 import {
   ATLAS_BOOT_PIPELINE,
   ATLAS_HARDWARE_CONCEPTS,
@@ -68,6 +69,7 @@ export function DeviceEvolutionPanel() {
       </article>
 
       <DeviceDnaEvidencePanel />
+      <ProtectiveWearPanel />
 
       <article className="feature-card wide">
         <div className="card-heading">
