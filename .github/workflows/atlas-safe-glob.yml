@@ -1,0 +1,27 @@
+name: ATLAS Safe Glob (non-release validation)
+
+on:
+  pull_request:
+    paths:
+      - "packages/atlas-safe-glob/**"
+      - ".github/workflows/atlas-safe-glob.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safe-glob:
+    name: Bounded glob engine unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record checked-out source SHA
+        run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify independent matcher
+        run: node --test packages/atlas-safe-glob/safe-glob.test.mjs
+      - name: P0 fail-closed disclosure
+        run: |
+          echo "This is not a drop-in picomatch replacement and does not cure GHSA-fc5q-39xc-vjpf." >> "$GITHUB_STEP_SUMMARY"
+          echo "Do not merge or deploy while required audit and verify:all fail." >> "$GITHUB_STEP_SUMMARY"
