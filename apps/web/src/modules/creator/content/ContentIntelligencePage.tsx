@@ -10,6 +10,7 @@ import {
   generateHookVariants,
   repurposeDraft,
   reviewDraft,
+  type ContentIdea,
   type ContentPlatform,
   type ContentWorkspaceState,
   type RepurposedVariant
@@ -20,6 +21,8 @@ import {
   saveContentWorkspace,
   type ContentWorkspaceRecord
 } from '../../../lib/creatorApi';
+import { GameLaunchPlannerPanel } from './GameLaunchPlannerPanel';
+import { type GameLaunchIdea, type GameLaunchLanguage } from '../../../../../../packages/creator/game_launch';
 import './content-intelligence.css';
 
 const STAGES = ['Creator Profile', 'Audience', 'Ideas', 'Hooks', 'Content Builder', 'Repurpose', 'Review'] as const;
@@ -161,6 +164,51 @@ export function ContentIntelligencePage() {
     setNotice('Quality review completed against deterministic ATLAS criteria.');
   }
 
+  function chooseLaunchIdea(idea: GameLaunchIdea, gameName: string, language: GameLaunchLanguage) {
+    setWorkspace(current => {
+      const profile = {
+        ...current.profile,
+        niche: gameName,
+        objective: language === 'es'
+          ? 'Crear guiones originales verificados sobre un lanzamiento de videojuegos'
+          : 'Create verified original video game launch scripts',
+        audience: language === 'es' ? 'Jugadores y espectadores' : 'Players and viewers',
+        language: language === 'es' ? 'Spanish' : 'English',
+        platforms: [...new Set([...current.profile.platforms, 'youtube' as const])]
+      };
+      const contentIdea: ContentIdea = {
+        id: idea.id,
+        title: idea.title,
+        angle: idea.capturePlan,
+        audienceNeed: language === 'es'
+          ? 'Información útil demostrada con fuentes o capturas propias, no rumores.'
+          : 'Useful information proven with sources or original recordings, not rumors.',
+        format: 'education',
+        score: 0 // Hypothesis: no observed CTR, view count or relative performance.
+      };
+      const audienceSeed = language === 'es'
+        ? 'Se requieren fuentes comprobadas, grabaciones originales y permisos antes de publicar.'
+        : 'Verified sources, original footage and permissions are required before publishing.';
+      const hooks = generateHookVariants(contentIdea, profile);
+      return {
+        ...newWorkspace(),
+        title: idea.title,
+        profile,
+        audienceSeed,
+        audience: generateAudienceInsights(profile, audienceSeed),
+        ideas: [contentIdea],
+        selectedIdeaId: contentIdea.id,
+        hooks,
+        selectedHookId: hooks[0]?.id || null,
+        draft: null,
+        variants: [],
+        review: null
+      };
+    });
+    setActiveStage('Hooks');
+    setNotice('A new unsaved workspace was opened for this launch idea. Unverified launch concept selected. Editorial score is unranked; publisher handoff stays blocked until verified rights and evidence.');
+  }
+
   async function loadWorkspace(id: string) {
     if (!id) {
       setWorkspace(newWorkspace());
@@ -286,7 +334,8 @@ export function ContentIntelligencePage() {
 
         {activeStage === 'Ideas' && <section>
           <div className="content-section-heading"><div><p className="eyebrow">Opportunity</p><h2>Ideas</h2></div><button className="creator-secondary" type="button" disabled={!canGenerateIdeas} onClick={createIdeas}>Regenerate</button></div>
-          {workspace.ideas.length === 0 ? <div className="creator-empty"><strong>No ideas generated</strong><span>Audience intelligence is required before ATLAS can rank content opportunities.</span></div> : <div className="idea-grid">{workspace.ideas.map(idea => <button type="button" key={idea.id} className={workspace.selectedIdeaId === idea.id ? 'idea-card selected' : 'idea-card'} onClick={() => patch({ selectedIdeaId: idea.id, hooks: [], selectedHookId: null, draft: null, variants: [], review: null })}><span className="idea-score">{idea.score}</span><small>{idea.format}</small><strong>{idea.title}</strong><p>{idea.angle}</p><span>{idea.audienceNeed}</span></button>)}</div>}
+          <GameLaunchPlannerPanel onChoose={chooseLaunchIdea} />
+          {workspace.ideas.length === 0 ? <div className="creator-empty"><strong>No ideas generated</strong><span>Audience intelligence is required before ATLAS can rank content opportunities.</span></div> : <div className="idea-grid">{workspace.ideas.map(idea => <button type="button" key={idea.id} className={workspace.selectedIdeaId === idea.id ? 'idea-card selected' : 'idea-card'} onClick={() => patch({ selectedIdeaId: idea.id, hooks: [], selectedHookId: null, draft: null, variants: [], review: null })}><span className="idea-score">{idea.score > 0 ? idea.score : "Unranked"}</span><small>{idea.format}</small><strong>{idea.title}</strong><p>{idea.angle}</p><span>{idea.audienceNeed}</span></button>)}</div>}
           <button className="creator-primary" type="button" disabled={!canGenerateHooks} onClick={createHooks}>Create hooks for selected idea</button>
         </section>}
 
@@ -318,7 +367,8 @@ export function ContentIntelligencePage() {
         <div><span>Pipeline state</span><strong>{workspace.draft ? 'Draft ready' : workspace.ideas.length ? 'Ideation' : workspace.audience ? 'Audience ready' : 'Profile'}</strong><small>{workspace.variants.length} channel variant{workspace.variants.length === 1 ? '' : 's'}</small></div>
         <div><span>Execution boundary</span><strong>Local deterministic</strong><small>No paid provider call is made here.</small></div>
         {workspace.draft && <Link className="content-handoff-action" to="/studio/create?type=video" state={createDirectorHandoff(workspace.draft)}>Open in Director <span>→</span></Link>}
-        {selectedVariant && <Link className="content-handoff-action" to="/business/growth/social-publisher" state={createPublisherHandoff(selectedVariant as RepurposedVariant)}>Open in Social Publisher <span>→</span></Link>}
+        {selectedVariant && !workspace.draft?.ideaId.startsWith('launch-game-') && <Link className="content-handoff-action" to="/business/growth/social-publisher" state={createPublisherHandoff(selectedVariant as RepurposedVariant)}>Open in Social Publisher <span>→</span></Link>}
+        {selectedVariant && workspace.draft?.ideaId.startsWith('launch-game-') && <p>Publication blocked for game-launch concepts: capture original media, verify claims and commercial rights, provide captions/transcript, and obtain server-authorized human review before any publishing workflow.</p>}
         <p>Director and Publisher keep their existing permission, media, connection and approval gates. A handoff never authorizes rendering or publication.</p>
       </aside>
     </div>
