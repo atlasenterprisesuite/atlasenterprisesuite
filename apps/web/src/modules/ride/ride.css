@@ -197,3 +197,8 @@
   .ride-timeline-list li { flex-direction: column; gap: 4px; }
   .ride-timeline-list time { text-align: left; }
 }
+
+.transport-catalog-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--atlas-space-4); }
+.transport-catalog-grid h2 { font-size: 1.1rem; }
+.ride-page select, .ride-page input[type='search'] { display: block; width: 100%; max-width: 100%; min-height: 44px; box-sizing: border-box; background: var(--atlas-surface-1); color: var(--atlas-text); border: 1px solid var(--atlas-cyan); border-radius: var(--atlas-radius-md); padding: .5rem; }
+.ride-page select:focus-visible, .ride-page input[type='search']:focus-visible { outline: 3px solid rgba(77,183,255,.55); outline-offset: 2px; }
