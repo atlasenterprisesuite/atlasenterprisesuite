@@ -48,11 +48,12 @@ describe('ATLAS Payroll governed core routing', () => {
   it('renders the governed Payroll workspace behind ATLAS Identity', async () => {
     render(<MemoryRouter initialEntries={['/payroll']}><App /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: 'Payroll' })).toBeInTheDocument();
-    expect(screen.getByText(/Governed payroll preparation and approval/i)).toBeInTheDocument();
+    expect(screen.getByText(/Governed payroll preparation, deterministic tax calculation and evidence-gated execution/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/payroll');
     expect(screen.getByRole('link', { name: 'People' })).toHaveAttribute('href', '/payroll/people');
     expect(screen.getByRole('link', { name: 'Time & Earnings' })).toHaveAttribute('href', '/payroll/time-earnings');
     expect(screen.getByRole('link', { name: 'Pay Runs' })).toHaveAttribute('href', '/payroll/pay-runs');
+    expect(screen.getByRole('link', { name: 'Operations' })).toHaveAttribute('href', '/payroll/operations');
   });
 
   it('renders backend evidence-driven payroll capability blockers without false success claims', async () => {
@@ -75,7 +76,8 @@ describe('ATLAS Payroll governed core routing', () => {
   it.each([
     ['/payroll/people', 'People'],
     ['/payroll/time-earnings', 'Time & Earnings'],
-    ['/payroll/pay-runs', 'Pay Runs']
+    ['/payroll/pay-runs', 'Pay Runs'],
+    ['/payroll/operations', 'Operations']
   ])('keeps destination %s inside the authenticated route graph', async (path, label) => {
     render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: 'Payroll' })).toBeInTheDocument();
