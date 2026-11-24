@@ -30,7 +30,7 @@ describe('ATLAS Identity route', () => {
   it('authenticates with Supabase, validates active organization access, and returns to the requested ATLAS app', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'identity-token', refresh_token: 'refresh-token' }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }]), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(
@@ -45,7 +45,9 @@ describe('ATLAS Identity route', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Finance' })).toBeInTheDocument());
     expect(localStorage.getItem('atlas_access_token')).toBe('identity-token');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Finance may make its own authorized data request once navigation succeeds.
+    // Only the first two auth/organization calls are part of this sign-in contract.
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(String(fetchMock.mock.calls[0][0])).toContain('/auth/v1/token?grant_type=password');
     expect(String(fetchMock.mock.calls[1][0])).toContain('/rest/v1/organization_members');
   });
@@ -62,7 +64,7 @@ describe('ATLAS Identity route', () => {
   });
 
   it('returns an authenticated member to ATLAS Voice Studio with truthful native capability state', async () => {
-    const membership = [{ org_id: 'org-1', role: 'owner', status: 'active' }];
+    const membership = [{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }];
     const fetchMock = vi.fn((url: string) => {
       if (url.includes('/auth/v1/token')) return Promise.resolve(Response.json({ access_token: 'identity-token', refresh_token: 'refresh-token' }));
       if (url.includes('/auth/v1/user')) return Promise.resolve(Response.json({ id: 'user-1' }));
@@ -96,7 +98,7 @@ describe('ATLAS Identity route', () => {
   it('rejects external return targets and keeps navigation inside ATLAS', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'identity-token', refresh_token: 'refresh-token' }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }]), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(

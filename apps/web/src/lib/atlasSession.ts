@@ -198,6 +198,12 @@ export async function getActiveAtlasOrganization(): Promise<AtlasOrganization> {
     ? membership.organizations[0]
     : membership.organizations;
 
+  // Membership alone is not authorization to enter a disabled or missing tenant.
+  if (!relatedOrganization?.id || relatedOrganization.active !== true) {
+    setCachedAtlasShellOrganization(null);
+    throw new Error('no_active_organization');
+  }
+
   if (relatedOrganization?.id) {
     setCachedAtlasShellOrganization({
       id: String(membership.org_id),

@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 function orgResponse() {
-  return new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active' }]), { status: 200 });
+  return new Response(JSON.stringify([{ org_id: 'org-1', role: 'owner', status: 'active', organizations: { id: 'org-1', name: 'ATLAS', legal_name: null, active: true } }]), { status: 200 });
 }
 
 describe('ATLAS Accounts Receivable live bridge', () => {
