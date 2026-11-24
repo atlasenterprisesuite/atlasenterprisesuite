@@ -1,3 +1,4 @@
+import { createGovernedYouTubeUploadIntent } from './publishing_gate';
 export type ContentPlatform = 'instagram' | 'tiktok' | 'youtube' | 'linkedin' | 'x';
 
 export type CreatorProfile = {
@@ -362,4 +363,36 @@ export function createPublisherHandoff(variant: RepurposedVariant) {
       platform: variant.platform
     }
   };
+}
+
+
+/**
+ * Rights-aware YouTube handoff for the gated Creator pipeline.
+ * Unlike createPublisherHandoff, this function requires source, asset, tenant,
+ * authorization and SHA verification. A private upload still requires a
+ * separate trusted server-side worker and authorization recheck.
+ */
+export function createGovernedPublisherHandoff(
+  variant: RepurposedVariant,
+  request: import('./publishing_gate').CreatorPublishRequest,
+  currentTime: string
+) {
+  if (variant.platform !== 'youtube' || request.targetPlatform !== 'youtube') {
+    throw new Error('creator_publish_blocked:unsupported_platform');
+  }
+  const intent = requireGovernedIntent(request, currentTime);
+  return {
+    atlasContentHandoff: {
+      caption: variant.content,
+      platform: 'youtube' as const,
+      uploadIntent: intent
+    }
+  };
+}
+
+function requireGovernedIntent(
+  request: import('./publishing_gate').CreatorPublishRequest,
+  currentTime: string
+) {
+  return createGovernedYouTubeUploadIntent(request, currentTime);
 }
