@@ -44,6 +44,15 @@ describe('ATLAS navigation intelligence', () => {
   it('feeds canonical navigation context into the assistant for routes not hard-coded there', () => {
     expect(resolveAssistantModule('/gps')).toBe('gps');
     expect(resolveAssistantModule('/cloud')).toBe('cloud');
+    expect(resolveAssistantModule('/execution/workflow-123')).toBe('execution');
+    expect(resolveAssistantModule('/tax/returns/2026')).toBe('tax');
+  });
+
+  it('supports registered namespace and dynamic routes without reopening leaf-route guessing', () => {
+    expect(getAtlasNavigationNode('/execution/workflow-123')?.id).toBe('execution-workflow');
+    expect(getAtlasNavigationNode('/tax/returns/2026')?.id).toBe('tax-namespace');
+    expect(getAtlasNavigationNode('/payroll/runs/current')?.id).toBe('payroll-namespace');
+    expect(getAtlasNavigationNode('/gps/missing')).toBeUndefined();
   });
 
   it('keeps every parent relationship resolvable', () => {
