@@ -1,0 +1,98 @@
+name: ATLAS Apple Security Radar (read-only)
+
+on:
+  pull_request:
+    paths:
+      - 'packages/security/src/appleSecurityRadar*.mjs'
+      - 'tests/node/apple-security-radar.test.mjs'
+      - 'packages/security/src/appleCsafAdvisory*.mjs'
+      - 'tests/node/apple-csaf-advisory.test.mjs'
+      - '.github/workflows/apple-security-radar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-apple-security-radar-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate syntax
+        run: |
+          node --check packages/security/src/appleSecurityRadar.mjs
+          node --check packages/security/src/appleSecurityRadarCli.mjs
+          node --check packages/security/src/appleCsafAdvisory.mjs
+          node --check packages/security/src/appleCsafAdvisoryCli.mjs
+      - name: Test fail-closed rules with synthetic data
+        run: node --test tests/node/apple-security-radar.test.mjs tests/node/apple-csaf-advisory.test.mjs
+
+  catalog-observation:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore previous official catalog snapshot
+        uses: actions/cache/restore@v4
+        with:
+          path: .atlas-state/security/apple-radar
+          key: atlas-apple-radar-${{ github.run_id }}
+          restore-keys: |
+            atlas-apple-radar-
+      - name: Query official Apple Software Lookup Service (no device operations)
+        run: node packages/security/src/appleSecurityRadarCli.mjs
+      - name: Persist observed snapshot
+        uses: actions/cache/save@v4
+        with:
+          path: .atlas-state/security/apple-radar
+          key: atlas-apple-radar-${{ github.run_id }}
+      - name: Preserve review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-apple-security-radar-${{ github.run_id }}
+          path: .atlas-state/security/apple-radar
+          retention-days: 30
+
+  advisory-observation:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore previous advisory fingerprints
+        uses: actions/cache/restore@v4
+        with:
+          path: .atlas-state/security/apple-radar/advisories
+          key: atlas-apple-csaf-${{ github.run_id }}
+          restore-keys: |
+            atlas-apple-csaf-
+      - name: Query Apple CSAF advisory 149715 (no device operations)
+        run: node packages/security/src/appleCsafAdvisoryCli.mjs --advisory-id 149715
+      - name: Persist observed advisory
+        uses: actions/cache/save@v4
+        with:
+          path: .atlas-state/security/apple-radar/advisories
+          key: atlas-apple-csaf-${{ github.run_id }}
+      - name: Preserve CSAF review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-apple-csaf-${{ github.run_id }}
+          path: .atlas-state/security/apple-radar/advisories
+          retention-days: 30
