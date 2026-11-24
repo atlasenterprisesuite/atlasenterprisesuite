@@ -40,6 +40,7 @@ import {
 } from '../../lib/receivablesApi';
 import { ClientFinancialGuidancePage } from './ClientFinancialGuidancePage';
 import { EnterpriseAutomationPage } from './EnterpriseAutomationPage';
+import { CampaignEconomicsPage } from './CampaignEconomicsPage';
 import {
   AdvisoryAutomationsPage,
   AdvisoryCompliancePage,
@@ -57,6 +58,7 @@ const advisoryNav = [
   ['/advisory/engagements','Engagements'],
   ['/advisory/financial-guidance','Financial Guidance'],
   ['/advisory/enterprise-automation','Enterprise Automation'],
+  ['/advisory/campaign-economics','Campaign Economics'],
   ['/advisory/business-launch-360/workspace','Business Launch 360'],
   ['/advisory/readiness','Readiness'],
   ['/advisory/tasks','Tasks'],
@@ -584,6 +586,7 @@ function BoundaryPage({ title, description }: { title: string; description: stri
 
 export function AdvisoryRoutes() {
   return <Routes>
+    <Route path="/advisory/campaign-economics" element={<AdvisoryLayout><CampaignEconomicsPage /></AdvisoryLayout>} />
     <Route path="/advisory" element={<AdvisoryOverviewPage />} />
     <Route path="/advisory/firms/aw-finance-advisory-solutions" element={<Navigate to="/advisory" replace />} />
     <Route path="/advisory/clients" element={<ClientsPage />} />
