@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { compileWorkIntent, type WorkPlanPreview } from '../../../../packages/execution/src/work-intent';
 import { runtimeIsHealthy } from '../../../../packages/execution/src/work-runtime';
 import type { WorkAutonomyLevel, WorkExecutionMode, WorkRuntimePreference } from '../../../../packages/execution/src/work-types';
@@ -28,8 +28,10 @@ function runtimeMatchesPreference(runtime: WorkRuntimeSummary, preference: WorkR
 
 export function WorkComposerPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedOwner = searchParams.get('ownerModule');
   const [intent, setIntent] = useState('');
-  const [ownerModule, setOwnerModule] = useState('manager');
+  const [ownerModule, setOwnerModule] = useState(() => OWNER_MODULES.find(module => module.id === requestedOwner)?.id ?? 'manager');
   const [executionMode, setExecutionMode] = useState<WorkExecutionMode>('hybrid');
   const [autonomyLevel, setAutonomyLevel] = useState<WorkAutonomyLevel>('guided');
   const [runtimePreference, setRuntimePreference] = useState<WorkRuntimePreference>('auto');

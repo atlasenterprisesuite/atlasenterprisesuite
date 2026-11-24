@@ -94,3 +94,34 @@ describe('ATLAS Work routes', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'ATLAS Identity' })).toBeInTheDocument());
   });
 });
+
+
+describe('ATLAS enterprise department routes', () => {
+  it('shows all ten departments and canonical workflow links', async () => {
+    localStorage.setItem('atlas_access_token', 'test-token');
+    render(<MemoryRouter initialEntries={['/work/departments']}><App /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Enterprise departments' })).toBeInTheDocument();
+    const finance = (await screen.findByRole('heading', { name: 'Finance and accounting' })).closest('section')!;
+    expect(within(finance).getByRole('link', { name: 'Create department work' })).toHaveAttribute('href', '/work/new?ownerModule=accounting');
+    expect(within(finance).getByRole('link', { name: 'Approval queue' })).toHaveAttribute('href', '/work/approvals');
+    expect(finance.querySelector('a[href="/execution/wf-completed"]')).not.toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Create department work' })).toHaveLength(10);
+    expect(await screen.findByRole('heading', { name: 'Unassigned workflows' })).toBeInTheDocument();
+  });
+
+  it('does not expose the department screen without identity', async () => {
+    render(<MemoryRouter initialEntries={['/work/departments']}><App /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'ATLAS Identity' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Enterprise departments' })).not.toBeInTheDocument();
+    expect(listWorkflows).not.toHaveBeenCalled();
+  });
+
+  it('fails closed on workflow retrieval errors rather than rendering false zero activity', async () => {
+    vi.mocked(listWorkflows).mockRejectedValueOnce(new Error('access_denied'));
+    localStorage.setItem('atlas_access_token', 'test-token');
+    render(<MemoryRouter initialEntries={['/work/departments']}><App /></MemoryRouter>);
+    expect(await screen.findByText('Department activity unavailable: access_denied')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Finance and accounting' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Create department work' })).not.toBeInTheDocument();
+  });
+});

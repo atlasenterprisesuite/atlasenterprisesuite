@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { EnterpriseDepartmentsPage } from './EnterpriseDepartmentsPage';
 import { WorkCommandCenter } from './WorkCommandCenter';
 import { WorkComposerPage } from './WorkComposerPage';
 import { WorkConnectionsPage } from './WorkConnectionsPage';
@@ -14,6 +15,7 @@ export function WorkRoutes() {
   return (
     <Routes>
       <Route path="/work" element={<WorkCommandCenter />} />
+      <Route path="/work/departments" element={<EnterpriseDepartmentsPage />} />
       <Route path="/work/os" element={<WorkOSPage />} />
       <Route path="/work/new" element={<WorkComposerPage />} />
       <Route path="/work/active" element={<WorkListPage view="active" />} />
