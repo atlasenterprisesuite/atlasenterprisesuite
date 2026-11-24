@@ -46,3 +46,15 @@ The Assistant surface provides:
 - responsive desktop, tablet and mobile layouts.
 
 This document is the canonical parity contract for future additions such as organization knowledge retrieval, shared projects, richer workspace-agent management, analytics and identity-provider administration.
+
+
+## 2026-10-12 — Enterprise DNA evolution (design stage)
+
+The merged ATLAS Enterprise Intelligence workspace (PR #352) is an established **code baseline**, not proof that every enterprise workflow is live or that the deployed production SHA matches this branch. This registry remains canonical.
+
+- Target architecture and comparator evidence: `docs/superpowers/specs/2026-10-12-atlas-enterprise-intelligence-dna.md`
+- Incremental TDD, implementation, CI and E2E gates: `docs/superpowers/plans/2026-10-12-atlas-enterprise-intelligence-dna.md`
+- Priority gap: document-level, permission-aware organization knowledge retrieval with source-linked provenance and revocation. **Not verified as implemented**.
+- Next: governed action execution with bounded permissions, approval, idempotency and audited business outcome. **Not verified as implemented**.
+- Existing authenticated `/assistant`, `atlas-copilot`, Work Connections, Work Policies, Universal Execution and Tool Gateway remain the integration authorities; do not duplicate them.
+- Enterprise SSO/SCIM, full compliance export, connector-authenticated retrieval and production readiness require separate implementation and release evidence; comparison with ChatGPT Enterprise alone proves none of these.
