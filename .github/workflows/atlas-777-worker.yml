@@ -1,0 +1,87 @@
+name: ATLAS 777 Autonomous Worker (observation gate)
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/lib/atlas777*.ts'
+      - 'scripts/atlas-777/**'
+      - 'scripts/atlas-777-local-cycle.mjs'
+      - 'tests/unit/atlas-777-*.test.ts'
+      - '.github/workflows/atlas-777-worker.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only inspect; no issue comments"
+        type: boolean
+        required: true
+        default: true
+  schedule:
+    - cron: '13 * * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: atlas-777-observation-worker
+  cancel-in-progress: false
+
+jobs:
+  local-resume-proof:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Prove implementation, process restart and acceptance with synthetic repositories
+        run: >-
+          npm exec --no -- vitest run
+          tests/unit/atlas-777-local-cycle.test.ts
+          tests/unit/atlas-777-atomic-store.test.ts
+          tests/unit/atlas-777-executor.test.ts
+          --reporter=default --reporter=json
+          --outputFile=artifacts/atlas-777/local-resume-tests.json
+      - name: Require all three reviewed pilot suites and thirty-one passing tests
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('artifacts/atlas-777/local-resume-tests.json', 'utf8'));
+          assert.equal(report.success, true);
+          assert.equal(report.numPassedTests, 31);
+          assert.equal(report.numFailedTests, 0);
+          assert.equal(report.numPendingTests, 0);
+          const actual = report.testResults.map(result => result.name.replaceAll('\\', '/'));
+          const required = ['atlas-777-local-cycle.test.ts', 'atlas-777-atomic-store.test.ts', 'atlas-777-executor.test.ts'];
+          assert.equal(actual.length, required.length);
+          for (const name of required) assert.equal(actual.filter(path => path.endsWith('/tests/unit/' + name)).length, 1);
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-777-local-resume-${{ github.event.pull_request.head.sha }}
+          path: artifacts/atlas-777/local-resume-tests.json
+          if-no-files-found: error
+  observe-queue:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ATLAS_777_DRY_RUN: ${{ github.event_name == 'schedule' && 'true' || inputs.dry_run && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect explicitly queued issues (fail-closed)
+        run: node scripts/atlas-777-worker.mjs
