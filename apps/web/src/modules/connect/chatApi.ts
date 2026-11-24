@@ -95,8 +95,31 @@ export async function listChatMembers(): Promise<AtlasChatMember[]> {
   return Array.isArray(payload.members) ? payload.members : [];
 }
 
-export async function listChatConversations(): Promise<AtlasChatConversation[]> {
-  const payload = await callChatRpc<{ ok: boolean; conversations?: AtlasChatConversation[] }>('conversations');
+export async function listChatConversations(input: {
+  dateField?: 'activity' | 'created';
+  from?: string | null;
+  to?: string | null;
+  sort?: 'newest' | 'oldest';
+  limit?: number;
+} = {}): Promise<AtlasChatConversation[]> {
+  const organization = await getActiveAtlasOrganization();
+  const response = await authorizedAtlasFetch('/rest/v1/rpc/atlas_chat_list_conversations', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_org_id: organization.id,
+      p_date_field: input.dateField || 'activity',
+      p_from: input.from || null,
+      p_to: input.to || null,
+      p_sort: input.sort || 'newest',
+      p_limit: Math.min(Math.max(input.limit || 500, 1), 2000)
+    })
+  });
+  const payload = await parse<{
+    ok: boolean;
+    conversations?: AtlasChatConversation[];
+    total_count?: number;
+    truncated?: boolean;
+  }>(response);
   return Array.isArray(payload.conversations) ? payload.conversations : [];
 }
 
