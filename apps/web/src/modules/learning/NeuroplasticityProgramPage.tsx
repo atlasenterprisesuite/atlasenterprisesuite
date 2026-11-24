@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CognitivePracticeLab } from './CognitivePracticeLab';
 import {
   buildNeuroplasticityPlan,
   completionPercent,
@@ -137,6 +138,8 @@ export function NeuroplasticityProgramPage({ entry }: { entry: 'health' | 'learn
       </nav>
 
       <div className="notice strong">General education only. This program does not diagnose, treat or measure neurological change. Progress reflects completed activities, not clinical improvement.</div>
+
+      <CognitivePracticeLab />
 
       <div className="neuro-layout">
         <form className="feature-card neuro-form" onSubmit={submit} noValidate>
