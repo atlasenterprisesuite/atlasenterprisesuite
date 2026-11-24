@@ -21,7 +21,9 @@ permissions:
 
 jobs:
   verify-build-readiness:
-    runs-on: ubuntu-latest
+    # Pin stable runner: ubuntu-26.04 APT media downloads exhausted the 20m job limit
+    # on KNOW-01 run 42179473526 before npm ci / verify:all. Preserve every gate.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
