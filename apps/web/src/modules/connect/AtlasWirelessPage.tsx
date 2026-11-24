@@ -56,6 +56,7 @@ export function AtlasWirelessPage() {
       <div className="row-actions">
         <Link className="text-link" to="/connect/wireless/network">Open ATLAS-owned network control</Link>
         <Link className="text-link" to="/connect/wireless/mvno">Open MVNO / fallback control</Link>
+        <Link className="text-link" to="/connect/wireless/line">Register a personal line for verification</Link>
         <Link className="text-link" to="/connect">Back to ATLAS Connect</Link>
       </div>
     </section>
