@@ -150,6 +150,7 @@ export function Gps4DPage() {
   const [routingState, setRoutingState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [routeMessage, setRouteMessage] = useState('Activa el GPS y selecciona un destino.');
   const [navigationActive, setNavigationActive] = useState(false);
+  const [navigationSurface, setNavigationSurface] = useState<'drive3d' | 'map2d'>('drive3d');
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [deviationM, setDeviationM] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
@@ -801,7 +802,13 @@ export function Gps4DPage() {
       </div>
 
       <div className={`gps4d-layout ${navigationActive ? 'gps4d-layout-navigation' : ''}`}>
-        <div className={`gps4d-map-wrap ${navigationActive ? 'gps4d-map-wrap-navigation' : ''}`}>
+        <div className={`gps4d-map-wrap ${navigationActive ? `gps4d-map-wrap-navigation gps4d-single-view gps4d-single-view-${navigationSurface}` : ''}`}>
+          {navigationActive && (
+            <div className="gps4d-surface-switch" role="group" aria-label="Vista de navegación">
+              <button type="button" aria-pressed={navigationSurface === 'drive3d'} onClick={() => setNavigationSurface('drive3d')}>Calle 3D</button>
+              <button type="button" aria-pressed={navigationSurface === 'map2d'} onClick={() => setNavigationSurface('map2d')}>Mapa 2D</button>
+            </div>
+          )}
           {navigationActive && (
             <div className="gps4d-drive-view">
               <div ref={driveMapNode} className="gps4d-drive-map" aria-label="ATLAS 3D drive navigation view" />
