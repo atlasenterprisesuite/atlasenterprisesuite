@@ -1,11 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import { handleBioScan } from './bioscan.ts';
 
 const URL = Deno.env.get('SUPABASE_URL')!;
 const PUBLISHABLE_KEYS = JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '{}');
 const PUBLISHABLE = PUBLISHABLE_KEYS.default || Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SECRET_KEYS = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
 const SECRET = SECRET_KEYS.default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const VERSION = 1;
+const VERSION = 2;
 
 const URBAN_TWIN_ENTITY_TYPES = ['district','site','building','floor','space','asset','infrastructure'] as const;
 const URBAN_TWIN_BINDING_TYPES = ['cleanscan','device','gps','work','sensor','network','facility'] as const;
@@ -350,8 +351,9 @@ async function handleUrbanTwin(req: Request, api: string) {
 Deno.serve(async (req: Request) => {
   const u = new URL(req.url);
   const api = u.searchParams.get('api');
+  if ((api || '').startsWith('bioscan-v1-')) return await handleBioScan(req, api || '', { actor, permitted, audit, adminClient });
   if ((api || '').startsWith('urban-twin-')) return await handleUrbanTwin(req, api || '');
-  if (req.method === 'GET' && api === 'readiness') return json({ ok: true, service: 'atlas-platform-controls', version: VERSION, source_of_runtime_truth: 'supabase', github_required: false, domains: ['integrations','agents','voice'], checked_at: new Date().toISOString() });
+  if (req.method === 'GET' && api === 'readiness') return json({ ok: true, service: 'atlas-platform-controls', version: VERSION, source_of_runtime_truth: 'supabase', github_required: false, domains: ['integrations','agents','voice','urban-twin','bioscan'], checked_at: new Date().toISOString() });
   if (req.method !== 'POST') return fail('method_not_allowed', 405);
   let body: any = {}; try { body = await req.json(); } catch { return fail('invalid_json', 400); }
   try {
