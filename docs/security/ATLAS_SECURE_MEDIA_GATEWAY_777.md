@@ -22,3 +22,9 @@ Offline Python URL syntax preflight with conservative HTTPS DNS-name policy. No 
 4. RBAC/RLS negative tests, cross-tenant isolation, exact-SHA required CI, independent review and production E2E. Existing branch protections must not be bypassed. Canonical Cloudflare/Supabase deployment only; no Vercel or spending in this run.
 
 Status: offline prototype only. Production and network resolver NO_GO. No claims of antivirus or video hosting readiness.
+
+## RUN 002 — offline redirect observation policy
+- Prior HEAD 99abd770c556f317946ed9300ab83653fb093768: eight associated PR workflows completed successfully when rechecked.
+- Added redirect_policy.py and five test methods; isolated local execution on Python 3.13 passed all five after the expected initial missing-module failure. Existing URL policy was reused in the local harness. Repository CI for the new HEAD is separate.
+- Conservative address validation rejects mixed public/nonpublic answers, scoped IPv6, multicast, transition ranges, malformed inputs, repeated exact URLs, and excessive observations. Maximum six observations and sixteen addresses per hop. Output excludes raw URLs, hosts and IPs. Even accepted observations remain NO_GO, not evidence of an actual redirect chain.
+- No live resolver, sockets, remote fetch, sender verification or TLS validation was implemented. Actual network worker remains blocked pending egress isolation, trusted DNS evidence, address pinning, redirect and response validation, and independent review. Media runtime remains pending.
