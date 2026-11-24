@@ -102,6 +102,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Focused multimodal envelope security tests
+        run: node --test tests/unit/atlas-multimodal-envelope.test.mjs
+
       - name: Verify complete repository
         run: npm run verify:all
 
