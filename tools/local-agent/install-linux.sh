@@ -11,6 +11,8 @@ NODE_MAJOR="$(node -p "Number(process.versions.node.split('.')[0])")"
 [ "$NODE_MAJOR" -ge 22 ] || { echo "Node.js 22+ is required." >&2; exit 1; }
 command -v openssl >/dev/null 2>&1 || { echo "OpenSSL is required to create the mTLS key and CSR." >&2; exit 1; }
 
+AGENT_PROFILE="${ATLAS_AGENT_PROFILE:-standard}"
+case "$AGENT_PROFILE" in standard|certificate-trust) ;; *) echo "Invalid ATLAS agent profile." >&2; exit 1;; esac
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/atlas/local-agent"
 CONFIG_DIR="/etc/atlas/local-agent"
@@ -27,6 +29,11 @@ install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$CONFIG_DIR" "$STATE_D
 install -m 0755 "$SOURCE_DIR/atlas-local-agent.mjs" "$INSTALL_DIR/atlas-local-agent.mjs"
 install -m 0644 "$SOURCE_DIR/lib/realtime-client.mjs" "$INSTALL_DIR/lib/realtime-client.mjs"
 install -m 0644 "$SOURCE_DIR/lib/secure-state.mjs" "$INSTALL_DIR/lib/secure-state.mjs"
+install -m 0644 "$SOURCE_DIR/lib/browser-cdp.mjs" "$INSTALL_DIR/lib/browser-cdp.mjs"
+install -m 0644 "$SOURCE_DIR/lib/device-dna-linux.mjs" "$INSTALL_DIR/lib/device-dna-linux.mjs"
+install -m 0644 "$SOURCE_DIR/lib/agent-profile.mjs" "$INSTALL_DIR/lib/agent-profile.mjs"
+node --check "$INSTALL_DIR/atlas-local-agent.mjs"
+for module in "$INSTALL_DIR"/lib/*.mjs; do node --check "$module"; done
 
 if [ ! -f "$CONFIG_DIR/agent.key" ]; then
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out "$CONFIG_DIR/agent.key"
@@ -58,6 +65,7 @@ if [ ! -f "$CONFIG_DIR/devices.json" ]; then
 fi
 
 cat > "$CONFIG_DIR/agent.env" <<EOF
+ATLAS_AGENT_PROFILE=$AGENT_PROFILE
 ATLAS_AGENT_STATE_FILE=$STATE_DIR/state.json
 ATLAS_AGENT_ENROLLMENT_CODE_FILE=$CONFIG_DIR/enrollment.code
 ATLAS_LOCAL_DEVICES_FILE=$CONFIG_DIR/devices.json

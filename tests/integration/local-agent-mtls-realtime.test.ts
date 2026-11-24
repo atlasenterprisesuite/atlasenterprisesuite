@@ -6,6 +6,7 @@ const wrangler = readFileSync('wrangler.jsonc','utf8');
 const edge = readFileSync('supabase/functions/atlas-local-control/index.ts','utf8');
 const migration = readFileSync('supabase/migrations/20260918234500_atlas_local_agent_mtls_realtime.sql','utf8');
 const agent = readFileSync('tools/local-agent/atlas-local-agent.mjs','utf8');
+const agentProfile = readFileSync('tools/local-agent/lib/agent-profile.mjs','utf8');
 const state = readFileSync('tools/local-agent/lib/secure-state.mjs','utf8');
 const realtime = readFileSync('tools/local-agent/lib/realtime-client.mjs','utf8');
 const linux = readFileSync('tools/local-agent/install-linux.sh','utf8');
@@ -55,7 +56,7 @@ describe('ATLAS Local Agent mTLS + realtime contract', () => {
 
   it('uses mTLS realtime first and polling only as fallback', () => {
     expect(agent).toContain('connectMtlsWebSocket');
-    expect(agent).toContain('command.realtime');
+    expect(agentProfile).toContain('command.realtime');
     expect(agent).toContain('FALLBACK_POLL_MS = 30_000');
     expect(agent).toContain('if (!realtimeConnected)');
     expect(agent).toContain("event?.event === 'command.ready'");
