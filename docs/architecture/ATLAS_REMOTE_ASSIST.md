@@ -89,3 +89,39 @@ Minimum tests for a native adapter before production activation:
 - Windows lock/UAC/secure-desktop boundaries are handled truthfully;
 - responsive Device OS states remain accurate on desktop/tablet/mobile;
 - P0 production verification does not label Remote Assist ready without actual end-to-end evidence.
+
+## 2026-10-12 — Browser Screen Share pilot (separate from native adapter)
+
+The existing `RemoteAssistPanel` now embeds an **opt-in, peer-to-peer browser screen-sharing pilot**. This does not change native `remote.desktop.view`/`remote.desktop.control` capability eligibility or the Local Agent's mTLS, RBAC, approval and audit rules.
+
+User-visible pilot:
+- The presenter deliberately checks consent and clicks **Choose screen and create invitation**. `getDisplayMedia({video, audio:false})` opens the browser-native screen/window picker. Nothing is captured on page load.
+- The browser creates an ephemeral WebRTC offer (DTLS/SRTP media transport). The user copies the single-use signaling blob through a trusted **out-of-band** channel to the invited viewer. The viewer checks consent and returns a WebRTC answer; the presenter explicitly accepts it.
+- Signaling blobs contain peer ICE addresses, SDP, DTLS fingerprint, session ID and a ten-minute pairing deadline. They are held in ephemeral React memory only, not uploaded to ATLAS, persisted, sent to analytics or written to audit logs. Do not paste them into tickets or public messaging.
+- The browser screen track is stopped when the user revokes sharing, closes the page, or the 30-minute safety timer expires. The explicit Stop button closes the WebRTC peer, stops local tracks, clears visible pairing data and resets state.
+- A public Google STUN server is **optional** and off by default; turning it on may expose network metadata to that provider. No TURN relay is deployed, so internet/NAT traversal is not guaranteed.
+- **No data channel, input injection, arbitrary command execution, file transfer, recording, unattended access, remote desktop adapter or native OS control** is implemented by this pilot. The viewer could still independently capture a viewed screen. Operators must hide sensitive content before sharing.
+
+Security limitations **not papered over**:
+1. Manual out-of-band message exchange authenticates neither the remote user nor organizational tenant; both participants must verify each other's identities via a trusted independent channel. The pilot is **not a Zero Trust enterprise Remote Desktop session** and must never be classified as native Remote Assist `ready`.
+2. Device OS uses ATLAS page/session access, but direct WebRTC peer IDs are not cryptographically bound to ATLAS organization RBAC or audited in a server-side session ledger. Therefore deployment may only be labeled **browser view-only pilot**.
+3. The feature is unsuitable for unattended support, privileged administration or regulated data until authenticated signaling, identity binding, backend authorization, session audit and revocation are implemented and independently verified.
+4. The existing mTLS native-agent status remains in its own readiness section, unchanged. Local Agent `browser-cdp` browser automation is a separate governed command path.
+
+Next stage for TeamViewer-class remote desktop: authenticated room/signaling service with RLS and session audit; local explicit consent and independent revocation; native signed Windows/Ubuntu/macOS capture/input adapter behind Local Control Plane, screen lock/UAC boundaries, configurable TURN/TLS relay, per-action approval and E2E exact-SHA evidence. Reuse canonical ATLAS identity and execution; never create an independent password or unaudited resident agent.
+
+Status: implementation added to a PR branch with focused tests. **Neither browser pilot nor native desktop support is declared production-verified** until all required build, security, CI and actual two-device connectivity checks pass.
+
+## 2026-10-13 — Authenticated view-only room implementation (PR #788 extension)
+
+The **manual unauthenticated peer** limitation described in the initial 2026-10-12 pilot section above is now addressed **in branch code only**, not in deployed production. Existing native Local Agent capability gates remain completely separate.
+
+- `supabase/migrations/20261013181500_atlas_remote_assist_authenticated_rooms.sql` defines a service-role-only RLS table and one security-definer transactional room/audit RPC.
+- `supabase/functions/atlas-remote-assist/index.ts` verifies each Supabase JWT, active organization membership, and owner/admin role before invoking the service RPC. User-controlled org IDs alone cannot grant access.
+- Room lifecycle: **create → viewer joins → host explicitly approves identified viewer → viewer submits answer digest → host verifies digest and activates → stop/revoke/expire**. Either party may end a session.
+- The server persists room state, participant IDs, SHA-256 offer/answer digests and timestamps, **never SDP, ICE candidates, images, audio, private keys or reusable pairing secrets**. Every state mutation includes a canonical `audit_logs` event in the same SQL transaction; no audit means rollback.
+- Both memberships, current roles, scope and expiry are rechecked for every room request. The UI polls authorization every four seconds while connected, then closes all local tracks on any denied/revoked/expired/failed authorization response. It never connects to a viewer whose SDP digest lacks that viewer's authenticated approval flow.
+- The browser renders the actual viewer user ID for the host to confirm via the existing ATLAS Team directory before clicking **Approve viewer**. Until that explicit click, no WebRTC answer is generated.
+- Screen capture is always subject to a native browser permission prompt, session expiry, visible controls and explicit stop. Remote keyboard/mouse and file transfer remain **unavailable**. Optional STUN does not provide a TURN relay.
+
+**Production blockers P0 remain:** this table and function are not deployed merely by committing migration/configuration; the new Edge API must be deployed and verified against the exact schema, followed by authenticated **two-device** tests covering consent denial, member role revocation, session hijack/forged SDP, TLS/DTLS, stop/reconnect denial, browser/background tab behavior and production exact-SHA checks. No release or native-desktop-ready status should be claimed until evidence exists. Do not publish the earlier unauthenticated pilot as an enterprise remote-control feature.

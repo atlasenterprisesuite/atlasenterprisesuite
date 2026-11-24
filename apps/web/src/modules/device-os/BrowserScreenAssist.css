@@ -1,0 +1,65 @@
+.atlas-browser-assist{
+  border:1px solid rgba(125,211,252,.24);
+  border-radius:18px;
+  background:rgba(45,74,91,.12);
+  margin-top:20px;
+  padding:clamp(14px,2vw,22px);
+  display:grid;
+  gap:14px;
+  min-width:0;
+}
+.atlas-browser-assist .card-heading{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.atlas-browser-assist .card-heading h3{margin:4px 0 0}
+.atlas-browser-assist button{
+  border:1px solid rgba(125,211,252,.36);
+  color:inherit;
+  background:rgba(80,115,137,.24);
+  padding:10px 14px;
+  border-radius:10px;
+  min-height:42px;
+  cursor:pointer;
+  max-width:100%;
+}
+.atlas-browser-assist button:focus-visible,
+.atlas-browser-assist input:focus-visible,
+.atlas-browser-assist textarea:focus-visible{
+  outline:3px solid #7dd3fc;outline-offset:2px;
+}
+.atlas-browser-assist button:disabled{opacity:.5;cursor:not-allowed}
+.atlas-browser-assist-roles{display:flex;gap:10px;flex-wrap:wrap}
+.atlas-browser-assist-roles button[aria-pressed="true"]{border-color:#7dd3fc;background:rgba(125,211,252,.18)}
+.atlas-browser-assist-choice{display:flex;align-items:flex-start;gap:12px;line-height:1.45}
+.atlas-browser-assist-choice input{flex:0 0 auto;margin-top:5px}
+.atlas-browser-assist-code{display:grid;gap:7px;min-width:0}
+.atlas-browser-assist-code textarea{
+  display:block;
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  min-height:90px;
+  color:inherit;
+  background:rgba(12,23,31,.45);
+  border:1px solid rgba(125,211,252,.3);
+  border-radius:10px;
+  padding:10px;
+  overflow-wrap:anywhere;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:.8rem;
+}
+.atlas-browser-assist-video{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.atlas-browser-assist-video>div{display:grid;gap:8px;min-width:0}
+.atlas-browser-assist-video video{
+  width:100%;
+  aspect-ratio:16/9;
+  object-fit:contain;
+  background:#0b1318;
+  border:1px solid rgba(125,211,252,.22);
+  border-radius:12px;
+}
+.atlas-browser-assist .atlas-browser-assist-stop{
+  background:rgba(180,43,60,.18);
+  border-color:#e98a95;
+}
+.atlas-browser-assist small{color:inherit;opacity:.8;line-height:1.5}
+@media(max-width:700px){.atlas-browser-assist-video{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.atlas-browser-assist *{animation:none!important;transition:none!important}}
