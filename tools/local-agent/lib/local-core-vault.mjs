@@ -139,11 +139,18 @@ export async function memoryGet({ id, passphrase, directory } = {}) {
   return Object.hasOwn(entries, id) ? entries[id] : null;
 }
 export async function memoryPut({ id, value, passphrase, directory } = {}) {
+  return memoryUpdate({ id, update: () => value, passphrase, directory });
+}
+
+/** Atomic read/modify/write under the same exclusive file lock. */
+export async function memoryUpdate({ id, update, passphrase, directory } = {}) {
   validateId(id); validatePassphrase(passphrase);
-  if (typeof value !== 'string' || !value.trim() || Buffer.byteLength(value, 'utf8') > MAX_VALUE) throw new Error('vault_invalid_value');
+  if (typeof update !== 'function') throw new Error('vault_invalid_update');
   const dir = await prepareDirectory(directory);
   return withLock(dir, async () => {
     const entries = await load(dir, passphrase);
+    const value = update(Object.hasOwn(entries, id) ? entries[id] : null);
+    if (typeof value !== 'string' || !value.trim() || Buffer.byteLength(value, 'utf8') > MAX_VALUE) throw new Error('vault_invalid_value');
     if (Object.keys(entries).length >= MAX_ENTRIES && !Object.hasOwn(entries, id)) throw new Error('vault_entry_limit');
     entries[id] = value;
     await persist(dir, entries, passphrase);
