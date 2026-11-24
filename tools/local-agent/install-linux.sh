@@ -25,8 +25,9 @@ fi
 install -d -m 0755 "$INSTALL_DIR" "$INSTALL_DIR/lib"
 install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$CONFIG_DIR" "$STATE_DIR"
 install -m 0755 "$SOURCE_DIR/atlas-local-agent.mjs" "$INSTALL_DIR/atlas-local-agent.mjs"
-install -m 0644 "$SOURCE_DIR/lib/realtime-client.mjs" "$INSTALL_DIR/lib/realtime-client.mjs"
-install -m 0644 "$SOURCE_DIR/lib/secure-state.mjs" "$INSTALL_DIR/lib/secure-state.mjs"
+for library in "$SOURCE_DIR"/lib/*.mjs; do
+  install -m 0644 "$library" "$INSTALL_DIR/lib/$(basename "$library")"
+done
 
 if [ ! -f "$CONFIG_DIR/agent.key" ]; then
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out "$CONFIG_DIR/agent.key"

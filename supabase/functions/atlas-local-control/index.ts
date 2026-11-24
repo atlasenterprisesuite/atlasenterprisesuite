@@ -6,6 +6,8 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const MAX_REQUEST_BYTES = 64 * 1024;
 const SESSION_MINUTES = 60;
 const ROTATE_BEFORE_MINUTES = 15;
+const REMOTE_SESSION_MINUTES = 30;
+const REMOTE_VIEWER_TICKET_SECONDS = 90;
 const MTLS_FINGERPRINT = /^[a-f0-9]{64}$/;
 const GITHUB_SCOPE = createGitHubOidcScope(['local-agent-mtls.yml']);
 const GITHUB_REPO = GITHUB_SCOPE.canonicalRepository;
@@ -548,6 +550,113 @@ async function userOperation(req: Request, body: JsonObject, operation: string) 
     });
   }
 
+  if (operation === 'remote.sessions.create') {
+    requirePermission(context, 'device.agent.use');
+    const deviceId = requiredText(body.device_id, 'device_id_required', 80);
+    const mode = clean(body.mode, 20) || 'view';
+    if (mode !== 'view') throw new EdgeError('remote_view_only_required', 422);
+
+    const { data: device, error: deviceError } = await admin.from('atlas_local_devices')
+      .select('id,agent_id,adapter,capabilities')
+      .eq('id', deviceId).eq('org_id', context.orgId).maybeSingle();
+    if (deviceError) throw new EdgeError('persistence_error', 500);
+    if (!device) throw new EdgeError('device_not_found', 404);
+    if (
+      String(device.adapter) !== 'remote-desktop-windows' ||
+      !(device.capabilities || []).includes('remote.session')
+    ) throw new EdgeError('remote_device_not_capable', 409);
+
+    const expiresAt = new Date(Date.now() + REMOTE_SESSION_MINUTES * 60_000).toISOString();
+    const { data: remoteSession, error } = await admin.from('atlas_remote_sessions').insert({
+      org_id: context.orgId,
+      device_id: deviceId,
+      agent_id: String(device.agent_id),
+      requested_by: context.userId,
+      mode,
+      status: 'pending',
+      expires_at: expiresAt
+    }).select('id,org_id,device_id,agent_id,mode,status,consented_at,expires_at,ended_at,created_at').single();
+    if (error || !remoteSession) throw new EdgeError('remote_session_create_failed', 500);
+
+    await appendEvent(admin, {
+      orgId: context.orgId,
+      agentId: String(device.agent_id),
+      deviceId,
+      eventType: 'remote.session.created',
+      success: null,
+      safeDetail: { remote_session_id: String(remoteSession.id), mode }
+    });
+    return json(req, { ok: true, session: remoteSession }, 201);
+  }
+
+  if (operation === 'remote.sessions.status') {
+    requirePermission(context, 'device.agent.read');
+    const sessionId = requiredText(body.session_id, 'remote_session_id_required', 80);
+    const { data, error } = await admin.from('atlas_remote_sessions')
+      .select('id,org_id,device_id,agent_id,mode,status,consented_at,expires_at,ended_at,created_at')
+      .eq('id', sessionId).eq('org_id', context.orgId).eq('requested_by', context.userId).maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!data) throw new EdgeError('remote_session_not_found', 404);
+    const expired = !['ended','denied','expired'].includes(String(data.status)) &&
+      new Date(String(data.expires_at)).getTime() <= Date.now();
+    if (expired) {
+      await admin.from('atlas_remote_sessions').update({
+        status: 'expired', ended_at: new Date().toISOString(), updated_at: new Date().toISOString()
+      }).eq('id', sessionId).eq('org_id', context.orgId).neq('status', 'ended');
+      return json(req, { ok: true, session: { ...data, status: 'expired' } });
+    }
+    return json(req, { ok: true, session: data });
+  }
+
+  if (operation === 'remote.sessions.viewer-ticket') {
+    requirePermission(context, 'device.agent.use');
+    const sessionId = requiredText(body.session_id, 'remote_session_id_required', 80);
+    const now = new Date();
+    const { data: remoteSession, error: lookupError } = await admin.from('atlas_remote_sessions')
+      .select('id,status,expires_at')
+      .eq('id', sessionId).eq('org_id', context.orgId).eq('requested_by', context.userId).maybeSingle();
+    if (lookupError) throw new EdgeError('persistence_error', 500);
+    if (!remoteSession) throw new EdgeError('remote_session_not_found', 404);
+    if (String(remoteSession.status) !== 'active' || new Date(String(remoteSession.expires_at)).getTime() <= Date.now()) {
+      throw new EdgeError('remote_session_not_active', 409);
+    }
+    const ticket = randomSecret(32);
+    const ticketHash = await sha256(ticket);
+    const ticketExpiresAt = new Date(now.getTime() + REMOTE_VIEWER_TICKET_SECONDS * 1000).toISOString();
+    const { data: updated, error } = await admin.from('atlas_remote_sessions').update({
+      viewer_ticket_hash: ticketHash,
+      viewer_ticket_expires_at: ticketExpiresAt,
+      viewer_ticket_used_at: null,
+      updated_at: now.toISOString()
+    }).eq('id', sessionId).eq('org_id', context.orgId).eq('requested_by', context.userId)
+      .eq('status', 'active').select('id').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!updated) throw new EdgeError('remote_session_not_active', 409);
+    return json(req, { ok: true, viewer_ticket: ticket, expires_at: ticketExpiresAt });
+  }
+
+  if (operation === 'remote.sessions.end') {
+    requirePermission(context, 'device.agent.use');
+    const sessionId = requiredText(body.session_id, 'remote_session_id_required', 80);
+    const now = new Date().toISOString();
+    const { data: ended, error } = await admin.from('atlas_remote_sessions').update({
+      status: 'ended', ended_at: now, updated_at: now,
+      viewer_ticket_hash: null, viewer_ticket_expires_at: null
+    }).eq('id', sessionId).eq('org_id', context.orgId).eq('requested_by', context.userId)
+      .in('status', ['pending','active']).select('id,agent_id,device_id').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!ended) throw new EdgeError('remote_session_not_active', 409);
+    await appendEvent(admin, {
+      orgId: context.orgId,
+      agentId: String(ended.agent_id),
+      deviceId: String(ended.device_id),
+      eventType: 'remote.session.ended',
+      success: true,
+      safeDetail: { remote_session_id: sessionId, ended_by: 'requester' }
+    });
+    return json(req, { ok: true });
+  }
+
   if (operation === 'enrollment.create') {
     requirePermission(context, 'device.agent.admin');
     const agentName = requiredText(body.agent_name, 'agent_name_required', 120);
@@ -677,6 +786,113 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
     return json(req, { ok: true, bus: { org_id: orgId, agent_id: agentId } });
   }
 
+  if (operation === 'agent.remote.consent') {
+    const sessionId = requiredText(body.session_id, 'remote_session_id_required', 80);
+    const granted = body.granted === true;
+    const { data: remoteSession, error: lookupError } = await admin.from('atlas_remote_sessions')
+      .select('id,device_id,mode,status,expires_at')
+      .eq('id', sessionId).eq('org_id', orgId).eq('agent_id', agentId).maybeSingle();
+    if (lookupError) throw new EdgeError('persistence_error', 500);
+    if (!remoteSession) throw new EdgeError('remote_session_not_found', 404);
+    if (String(remoteSession.status) !== 'pending') throw new EdgeError('remote_session_not_pending', 409);
+    if (new Date(String(remoteSession.expires_at)).getTime() <= Date.now()) {
+      await admin.from('atlas_remote_sessions').update({ status: 'expired', ended_at: now, updated_at: now })
+        .eq('id', sessionId).eq('org_id', orgId).eq('agent_id', agentId);
+      throw new EdgeError('remote_session_expired', 409);
+    }
+
+    if (!granted) {
+      await admin.from('atlas_remote_sessions').update({
+        status: 'denied', ended_at: now, updated_at: now
+      }).eq('id', sessionId).eq('org_id', orgId).eq('agent_id', agentId).eq('status', 'pending');
+      await appendEvent(admin, {
+        orgId, agentId, deviceId: String(remoteSession.device_id),
+        eventType: 'remote.session.consent.denied', success: false,
+        safeDetail: { remote_session_id: sessionId, mode: String(remoteSession.mode) }
+      });
+      return json(req, { ok: true, status: 'denied' });
+    }
+
+    const expiresAt = new Date(Date.now() + REMOTE_SESSION_MINUTES * 60_000).toISOString();
+    const { data: activated, error } = await admin.from('atlas_remote_sessions').update({
+      status: 'active', consented_at: now, expires_at: expiresAt, updated_at: now
+    }).eq('id', sessionId).eq('org_id', orgId).eq('agent_id', agentId).eq('status', 'pending')
+      .select('id,mode,expires_at').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!activated) throw new EdgeError('remote_session_not_pending', 409);
+    await appendEvent(admin, {
+      orgId, agentId, deviceId: String(remoteSession.device_id),
+      eventType: 'remote.session.consent.granted', success: true,
+      safeDetail: { remote_session_id: sessionId, mode: String(remoteSession.mode) }
+    });
+    return json(req, { ok: true, status: 'active', expires_at: expiresAt, mode: activated.mode });
+  }
+
+  if (operation === 'agent.remote.verify') {
+    const sessionId = requiredText(body.session_id, 'remote_session_id_required', 80);
+    const fingerprint = requiredText(body.mtls_cert_fingerprint_sha256, 'mtls_fingerprint_required', 64).toLowerCase();
+    const serial = requiredText(body.mtls_cert_serial, 'mtls_serial_required', 160);
+    if (body.mtls_cert_verified !== true || !MTLS_FINGERPRINT.test(fingerprint)) {
+      throw new EdgeError('mtls_required', 401);
+    }
+    if (String(context.agent.mtls_status) !== 'active') throw new EdgeError('mtls_not_active', 403);
+    if (String(context.agent.mtls_cert_fingerprint_sha256 || '').toLowerCase() !== fingerprint) {
+      throw new EdgeError('mtls_fingerprint_mismatch', 403);
+    }
+    if (String(context.agent.mtls_cert_serial || '') !== serial) throw new EdgeError('mtls_serial_mismatch', 403);
+    const certExpiresAt = new Date(String(context.agent.mtls_cert_expires_at || ''));
+    if (!Number.isFinite(certExpiresAt.getTime()) || certExpiresAt.getTime() <= Date.now()) {
+      await admin.from('atlas_local_agents').update({
+        mtls_status: 'expired', realtime_last_connected_at: null, updated_at: now
+      }).eq('id', agentId).eq('org_id', orgId);
+      throw new EdgeError('mtls_certificate_expired', 403);
+    }
+
+    const { data: remoteSession, error } = await admin.from('atlas_remote_sessions')
+      .select('id,org_id,agent_id,device_id,mode,status,expires_at')
+      .eq('id', sessionId).eq('org_id', orgId).eq('agent_id', agentId).maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (!remoteSession) throw new EdgeError('remote_session_not_found', 404);
+    if (
+      String(remoteSession.status) !== 'active' ||
+      new Date(String(remoteSession.expires_at)).getTime() <= Date.now()
+    ) throw new EdgeError('remote_session_not_active', 409);
+
+    await appendEvent(admin, {
+      orgId, agentId, deviceId: String(remoteSession.device_id),
+      eventType: 'remote.relay.agent.authorized', success: true,
+      safeDetail: { remote_session_id: sessionId, mode: String(remoteSession.mode) }
+    });
+    return json(req, {
+      ok: true,
+      bus: {
+        org_id: orgId,
+        agent_id: agentId,
+        session_id: sessionId,
+        mode: String(remoteSession.mode),
+        expires_at: String(remoteSession.expires_at)
+      }
+    });
+  }
+
+  if (operation === 'agent.remote.end') {
+    const sessionId = requiredText(body.session_id, 'remote_session_id_required', 80);
+    const { data: ended, error } = await admin.from('atlas_remote_sessions').update({
+      status: 'ended', ended_at: now, updated_at: now,
+      viewer_ticket_hash: null, viewer_ticket_expires_at: null
+    }).eq('id', sessionId).eq('org_id', orgId).eq('agent_id', agentId)
+      .in('status', ['pending','active']).select('id,device_id').maybeSingle();
+    if (error) throw new EdgeError('persistence_error', 500);
+    if (ended) {
+      await appendEvent(admin, {
+        orgId, agentId, deviceId: String(ended.device_id),
+        eventType: 'remote.session.ended', success: true,
+        safeDetail: { remote_session_id: sessionId, ended_by: 'agent' }
+      });
+    }
+    return json(req, { ok: true });
+  }
+
   if (operation === 'agent.heartbeat') {
     const capabilities = body.capabilities === undefined ? context.agent.capabilities : stringArray(body.capabilities);
     const modules = body.modules === undefined ? context.agent.modules : stringArray(body.modules);
@@ -712,6 +928,14 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
       if (adapter === 'device-dna-linux') {
         if (deviceType !== 'computer') throw new EdgeError('device_dna_device_type_invalid', 422);
         await validateDeviceDnaMetadata(metadata, String(context.agent.platform || ''), capabilities);
+      }
+      if (adapter === 'remote-desktop-windows') {
+        if (!String(context.agent.platform || '').toLowerCase().startsWith('win32')) {
+          throw new EdgeError('remote_windows_agent_required', 422);
+        }
+        if (deviceType !== 'computer' || !capabilities.includes('remote.session')) {
+          throw new EdgeError('remote_device_capability_invalid', 422);
+        }
       }
       const row = {
         org_id: orgId, agent_id: agentId, external_id: externalId,
@@ -785,6 +1009,63 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
   throw new EdgeError('unsupported_agent_operation', 404);
 }
 
+
+async function verifyRemoteViewer(req: Request, body: JsonObject) {
+  const sessionId = requiredText(body.session_id, 'remote_session_id_required', 80);
+  const ticket = requiredText(body.viewer_ticket, 'remote_viewer_ticket_required', 500);
+  const ticketHash = await sha256(ticket);
+  const admin = adminClient();
+  const now = new Date().toISOString();
+
+  const { data: remoteSession, error: lookupError } = await admin.from('atlas_remote_sessions')
+    .select('id,org_id,agent_id,device_id,mode,status,expires_at,viewer_ticket_hash,viewer_ticket_expires_at,viewer_ticket_used_at')
+    .eq('id', sessionId).maybeSingle();
+  if (lookupError) throw new EdgeError('persistence_error', 500);
+  if (!remoteSession) throw new EdgeError('remote_session_not_found', 404);
+  if (
+    String(remoteSession.status) !== 'active' ||
+    new Date(String(remoteSession.expires_at)).getTime() <= Date.now()
+  ) throw new EdgeError('remote_session_not_active', 409);
+  if (
+    !remoteSession.viewer_ticket_hash ||
+    String(remoteSession.viewer_ticket_hash) !== ticketHash ||
+    remoteSession.viewer_ticket_used_at ||
+    new Date(String(remoteSession.viewer_ticket_expires_at || '')).getTime() <= Date.now()
+  ) throw new EdgeError('remote_viewer_ticket_invalid_or_expired', 401);
+
+  const { data: consumed, error } = await admin.from('atlas_remote_sessions').update({
+    viewer_ticket_used_at: now,
+    viewer_ticket_hash: null,
+    updated_at: now
+  }).eq('id', sessionId)
+    .eq('status', 'active')
+    .eq('viewer_ticket_hash', ticketHash)
+    .is('viewer_ticket_used_at', null)
+    .gt('viewer_ticket_expires_at', now)
+    .select('id').maybeSingle();
+  if (error) throw new EdgeError('persistence_error', 500);
+  if (!consumed) throw new EdgeError('remote_viewer_ticket_invalid_or_expired', 401);
+
+  await appendEvent(admin, {
+    orgId: String(remoteSession.org_id),
+    agentId: String(remoteSession.agent_id),
+    deviceId: String(remoteSession.device_id),
+    eventType: 'remote.relay.viewer.authorized',
+    success: true,
+    safeDetail: { remote_session_id: sessionId, mode: String(remoteSession.mode) }
+  });
+  return json(req, {
+    ok: true,
+    bus: {
+      org_id: String(remoteSession.org_id),
+      session_id: sessionId,
+      agent_id: String(remoteSession.agent_id),
+      mode: String(remoteSession.mode),
+      expires_at: String(remoteSession.expires_at)
+    }
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   const url = new URL(req.url);
@@ -805,6 +1086,7 @@ Deno.serve(async (req: Request) => {
     if (length > MAX_REQUEST_BYTES) throw new EdgeError('request_too_large', 413);
     const body = record(await req.json());
     const operation = requiredText(body.operation, 'operation_required', 80);
+    if (operation === 'remote.viewer.verify') return await verifyRemoteViewer(req, body);
     if (operation === 'agent.enroll') return await enrollAgent(req, body);
     if (operation.startsWith('agent.')) return await agentOperation(req, body, operation);
     return await userOperation(req, body, operation);
