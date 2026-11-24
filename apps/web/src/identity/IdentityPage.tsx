@@ -11,6 +11,7 @@ import './identity.css';
 
 const DEFAULT_TARGET = '/';
 const SUPPORTED_PREFIXES = [
+  '/security/persona-monitor',
   '/finance',
   '/health',
   '/studio',
