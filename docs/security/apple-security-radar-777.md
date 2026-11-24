@@ -56,3 +56,43 @@ The new GitHub Actions workflow runs tests on relevant pull requests. Its live p
 - [ ] Exact-SHA merge/deployment/production verification if a production-facing feature is subsequently added.
 
 **P0 release verdict: NO-GO.** All changes stay on a review branch pending evidence.
+
+
+## Increment 002 — Apple CSAF 2.1 advisory ingestion
+
+Apple advisory pages can expose vendor-supplied CSAF JSON. A verified example is article `149715`:
+- Human-readable page: https://support.apple.com/en-us/149715
+- Vendor CSAF JSON: https://support.apple.com/content/dam/edam/applecare/images/en_US/otherassets/security/149715.json
+- Schema URI: https://docs.oasis-open.org/csaf/csaf/v2.1/schema/csaf.json
+
+The `appleCsafAdvisory.mjs` adapter:
+- Constructs vendor URLs **only** from validated numeric advisory IDs (SSRF/path-injection boundary).
+- Checks `document.csaf_version`, category, publisher identity, tracking ID, final status and exact official self-link.
+- Validates nested product IDs and each CVE's `product_status.fixed` list against the product tree; rejects unsupported or inconsistent records.
+- Creates a **zero-alert baseline**, then reports newly published, changed and removed CVE entries for review.
+- Reports advisory-level aggregate severity only when provided by Apple; this must not be relabeled as individual CVE severity.
+- Never equates `fixed` with confirmation of a particular user's vulnerable installation.
+- Maintains evidence hashes, explicit reviewed/verified states and rejects provider errors.
+- Has no credentials, device identifiers, tenant records, automatic ticket creation or remediation.
+
+Local synthetic validation:
+
+```bash
+node --test tests/node/apple-security-radar.test.mjs tests/node/apple-csaf-advisory.test.mjs
+```
+
+Manual provider observation **after** the workflow is available on the default branch:
+
+```bash
+node packages/security/src/appleCsafAdvisoryCli.mjs --advisory-id 149715
+```
+
+No automatic scheduling or publication of unreviewed security advisories is enabled. CSAF data is a separate evidence source from the software release catalog; version-only matches are insufficient to establish exposure or device remediation.
+
+### Increment 002 pending gates
+
+- [ ] Validate the new Node test suite on the exact current PR HEAD.
+- [ ] Confirm the real CSAF 149715 document can be fetched and parsed on an authorized runner.
+- [ ] Audit changes to Apple CSAF schemas and product IDs on further advisories before scaling coverage.
+- [ ] Add explicit tenant-scoped inventory and RBAC before correlating a real personal device.
+- [ ] Review all CI checks, resolve any required failures, then consider merge/deploy through existing release protocol.
