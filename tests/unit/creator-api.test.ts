@@ -5,7 +5,9 @@ import {
   listCreativeEngines,
   listCreativePlans,
   saveCreativePlan,
-  listCreatorProviders
+  listCreatorProviders,
+  listCreatorRecordings,
+  getCreatorRecordingDownload
 } from '../../apps/web/src/lib/creatorApi';
 
 beforeEach(() => {
@@ -220,6 +222,31 @@ describe('ATLAS Creator browser API', () => {
     expect(init.method).toBe('POST');
     expect(JSON.parse(String(init.body)).expected_version).toBe(0);
     expect(saved.id).toBe(plan.id);
+  });
+
+  it('binds recording history requests to the active authenticated organization', async () => {
+    const orgId = '11111111-1111-4111-8111-111111111111';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ org_id: orgId, role: 'owner' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, recordings: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listCreatorRecordings()).resolves.toEqual([]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/rest/v1/organization_members?');
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(String(url)).toContain('api=recording-list');
+    expect(new Headers(init.headers).get('x-atlas-org-id')).toBe(orgId);
+    expect(new Headers(init.headers).get('authorization')).toBe('Bearer test-token');
+  });
+
+  it('fails closed before requesting a recording when active membership is missing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(getCreatorRecordingDownload('recording-a')).rejects.toThrow('no_active_organization');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/rest/v1/organization_members?');
   });
 
 });

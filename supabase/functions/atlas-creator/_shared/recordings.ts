@@ -84,6 +84,17 @@ export async function uploadCreatorRecording(
   return data;
 }
 
+export async function listCreatorRecordings(ctx: CreatorContext) {
+  // Read is organization-scoped server-side; never trust an organization supplied in the query.
+  const { data, error } = await adminClient().from('creator_recordings')
+    .select('id,organization_id,created_by,language,mime_type,file_size_bytes,duration_seconds,created_at')
+    .eq('organization_id', ctx.orgId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw creatorError('recording_list_unavailable', 503);
+  return data || [];
+}
+
 export async function createCreatorRecordingDownload(ctx: CreatorContext, recordingId: string) {
   const sb = adminClient();
   const { data: row, error } = await sb
@@ -99,8 +110,8 @@ export async function createCreatorRecordingDownload(ctx: CreatorContext, record
 
   const { data, error: signedError } = await sb.storage
     .from(CREATOR_RECORDING_BUCKET)
-    .createSignedUrl(String(row.storage_path), 900);
+    .createSignedUrl(String(row.storage_path), 120);
   if (signedError || !data?.signedUrl) throw creatorError('recording_download_unavailable', 503);
 
-  return { recording: row, signedUrl: data.signedUrl, expiresIn: 900 };
+  return { recording: row, signedUrl: data.signedUrl, expiresIn: 120 };
 }

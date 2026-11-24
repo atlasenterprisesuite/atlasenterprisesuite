@@ -15,3 +15,44 @@
 .teleprompter-reader.reader-position-center{padding-top:44vh;padding-bottom:44vh}
 .teleprompter-reader.reader-position-bottom{padding-top:70vh;padding-bottom:10vh}
 @media(prefers-reduced-motion:reduce){.teleprompter-reader .word{transition:none}}
+
+.teleprompter-library{margin-top:20px;padding:20px;border:1px solid rgba(140,169,216,.28);border-radius:16px;background:rgba(8,15,32,.84);color:#f2f5fc}
+.teleprompter-library h2{font-size:1.1rem;margin:0 0 12px}
+.teleprompter-library ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.teleprompter-library li{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,.055)}
+.teleprompter-library li span{overflow-wrap:anywhere}
+.teleprompter-library button{min-height:44px;min-width:44px;border-radius:8px;border:1px solid #9bb9ff;background:#1b2b50;color:#fff;cursor:pointer}
+.teleprompter-library button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media(max-width:640px){.teleprompter-library{padding:14px}.teleprompter-library li{align-items:stretch;flex-direction:column}.teleprompter-library button{width:100%}}
+
+.teleprompter-safety a{color:#9fdcff;text-decoration:underline;text-underline-offset:3px}
+.teleprompter-safety a:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+.teleprompter-playback{display:grid;gap:12px;padding:16px;border-radius:16px;border:1px solid rgba(112,184,239,.2);background:#06111c;color:#e6f1f7}.teleprompter-playback h2{font-size:1.125rem;margin:0}.teleprompter-playback video{display:block;width:100%;max-width:780px;max-height:70vh;border-radius:12px;background:#000}
+
+/* ATLAS 777 Blueprint Fidelity: functional studio, not a promotional mockup.
+   Desktop reads script alongside camera; mobile presents camera then script. */
+.teleprompter-page{max-width:1740px}
+.teleprompter-header{padding:16px 21px;border-radius:14px;align-items:center}
+.teleprompter-header h1{font-size:clamp(23px,3vw,37px);margin:3px 0 5px}
+.teleprompter-header p:not(.eyebrow){font-size:13px;margin:0}
+.teleprompter-toolbar{margin-top:12px}
+.teleprompter-design-controls{padding:8px 12px}
+.teleprompter-cloud{padding:8px 13px}
+.teleprompter-studio-frame{padding:10px;border:1px solid #2d6488;border-radius:14px;background:radial-gradient(circle at 60% 0,#12334a,#04111d 70%);box-shadow:0 16px 45px #0006}
+.teleprompter-workbench-status{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:9px;padding:8px 12px;border:1px solid #244b6a;border-radius:7px;color:#92c6e4;font-size:12px;letter-spacing:.035em;background:#061827}
+.teleprompter-workbench-brand{font-weight:800;letter-spacing:.1em;color:#a6e6ff}
+.teleprompter-stage{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:11px;min-height:0;align-items:stretch}
+.teleprompter-script-panel,.teleprompter-camera-panel{min-width:0;min-height:0;overflow:hidden;border:1px solid #2d5778;border-radius:10px;background:#061627}
+.teleprompter-panel-heading{display:flex;justify-content:space-between;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid #2d5876;background:linear-gradient(100deg,#102e48,#081b2a);color:#d7effd;font-size:12px}
+.teleprompter-panel-heading span{font-size:10px;color:#8bb9d8;letter-spacing:.05em}
+.teleprompter-reader{height:clamp(340px,45vh,495px);min-height:0;border:0;border-radius:0;padding:19vh 8% 24vh}
+.teleprompter-camera{height:clamp(340px,45vh,495px);min-height:0;border:0;border-radius:0}
+.teleprompter-camera video{height:100%;min-height:0}
+.teleprompter-reader .reading-guide{background:linear-gradient(90deg,transparent,#53c5ffdd,transparent);box-shadow:0 0 14px #2078bd77}
+.teleprompter-actions{justify-content:center;margin-top:10px;gap:8px}
+.teleprompter-actions button{min-height:43px}
+.teleprompter-actions .creator-primary{background:#1369b0;color:#fff}
+@media(max-width:1050px){.teleprompter-stage{grid-template-columns:1fr 1fr}.teleprompter-reader,.teleprompter-camera{height:clamp(300px,42vh,450px)}}
+@media(max-width:680px){.teleprompter-header{padding:12px}.teleprompter-header h1{font-size:23px}.teleprompter-workbench-status{gap:4px;font-size:10px}.teleprompter-stage{display:flex;flex-direction:column}.teleprompter-camera-panel{order:0}.teleprompter-script-panel{order:1}.teleprompter-camera{height:clamp(175px,26vh,250px)}.teleprompter-camera video{height:100%;min-height:0}.teleprompter-reader{height:clamp(320px,49vh,460px);padding:19vh 7% 25vh}.teleprompter-panel-heading{padding:8px 12px}.teleprompter-actions{position:sticky;bottom:env(safe-area-inset-bottom, 0px);z-index:4;background:#061827ed;border:1px solid #286795;border-radius:10px;padding:8px;backdrop-filter:blur(12px)}.teleprompter-actions button{min-height:44px}}
+@media(prefers-reduced-motion:reduce){.teleprompter-reader{scroll-behavior:auto}}

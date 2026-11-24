@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom';
 import {
   getCreatorRecordingDownload,
   getCreatorRecordingReadiness,
+  listCreatorRecordings,
   uploadCreatorRecording
 } from '../../../lib/creatorApi';
 import { TELEPROMPTER_SCRIPTS, type TeleprompterLanguage } from './teleprompterScripts';
+import type { CreatorRecordingSummary } from '../../../lib/creatorApi';
 import './teleprompter.css';
 
 type SyncMode = 'voice' | 'timed';
 type ReaderTheme = 'neon' | 'professional' | 'cinematic' | 'minimal';
-type RecorderState = 'idle' | 'countdown' | 'recording' | 'stopped' | 'error';
+type RecorderState = 'idle' | 'requesting' | 'countdown' | 'recording' | 'stopped' | 'error';
 type CloudState = 'checking' | 'connected' | 'unavailable' | 'saving' | 'saved' | 'error';
 
 type RecognitionResultLike = { 0: { transcript: string } };
@@ -109,6 +111,7 @@ const copy = {
     edit: 'Editar guion',
     saveEdit: 'Guardar guion',
     download: 'Descargar video',
+    playback: 'Reproducir video grabado',
     saveCloud: 'Guardar en ATLAS',
     cloudDownload: 'Abrir copia de ATLAS',
     font: 'Tamaño',
@@ -125,6 +128,7 @@ const copy = {
     permissionError: 'No se pudo acceder a la cámara o al micrófono. Revisa los permisos del navegador.',
     unsupported: 'Este navegador no permite grabar video con MediaRecorder.',
     localNotice: 'La descarga local permanece en tu dispositivo. La copia de ATLAS solo se crea mediante una sesión y organización autorizadas.',
+    library: 'Mis grabaciones en ATLAS', libraryEmpty: 'No hay grabaciones privadas guardadas todavía.', libraryError: 'No se pudo consultar el historial privado.', libraryOpen: 'Abrir grabación', cloudOpenLink: 'Abrir copia privada',
     editor: 'Guion actual'
   },
   en: {
@@ -145,6 +149,7 @@ const copy = {
     edit: 'Edit script',
     saveEdit: 'Save script',
     download: 'Download video',
+    playback: 'Play recorded video',
     saveCloud: 'Save to ATLAS',
     cloudDownload: 'Open ATLAS copy',
     font: 'Font size',
@@ -161,6 +166,7 @@ const copy = {
     permissionError: 'Camera or microphone access failed. Review browser permissions.',
     unsupported: 'This browser does not support MediaRecorder video recording.',
     localNotice: 'The local download stays on your device. An ATLAS copy is created only through an authorized session and organization.',
+    library: 'My ATLAS recordings', libraryEmpty: 'No private recordings have been saved yet.', libraryError: 'Private recording history is unavailable.', libraryOpen: 'Open recording', cloudOpenLink: 'Open private copy',
     editor: 'Current script'
   }
 } as const;
@@ -177,7 +183,7 @@ export function TeleprompterPage() {
   const [readerPosition, setReaderPosition] = useState<'top' | 'center' | 'bottom'>('center');
   const [wordsPerMinute, setWordsPerMinute] = useState(125);
   const [mirror, setMirror] = useState(true);
-  const [autoCloud, setAutoCloud] = useState(true);
+  const [autoCloud, setAutoCloud] = useState(false);
   const [autoLocal, setAutoLocal] = useState(true);
   const [editing, setEditing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -191,6 +197,8 @@ export function TeleprompterPage() {
   const [cloudAllowed, setCloudAllowed] = useState(false);
   const [recordingId, setRecordingId] = useState('');
   const [cloudUrl, setCloudUrl] = useState('');
+  const [recordings, setRecordings] = useState<CreatorRecordingSummary[]>([]);
+  const [libraryState, setLibraryState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -203,6 +211,12 @@ export function TeleprompterPage() {
   const autoCloudRef = useRef(autoCloud);
   const autoLocalRef = useRef(autoLocal);
   const elapsedRef = useRef(0);
+  const startAttemptRef = useRef(0);
+  const startingRef = useRef(false);
+  const cameraGenerationRef = useRef(0);
+  const cameraPromiseRef = useRef<Promise<MediaStream | null> | null>(null);
+  const uploadGenerationRef = useRef(0);
+  const uploadingBlobsRef = useRef(new Set<Blob>());
 
   const ui = copy[language];
   const script = scripts[language];
@@ -221,13 +235,23 @@ export function TeleprompterPage() {
       .then(result => {
         if (!active) return;
         setCloudAllowed(Boolean(result.connected && result.upload_allowed));
-        setCloudState(result.connected ? 'connected' : 'unavailable');
+        setCloudState(result.connected && result.upload_allowed ? 'connected' : 'unavailable');
       })
       .catch(() => {
         if (!active) return;
         setCloudAllowed(false);
         setCloudState('unavailable');
       });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    listCreatorRecordings().then(rows => {
+      if (!active) return;
+      setRecordings(rows);
+      setLibraryState('ready');
+    }).catch(() => { if (active) setLibraryState('error'); });
     return () => { active = false; };
   }, []);
 
@@ -257,34 +281,70 @@ export function TeleprompterPage() {
   }, [state]);
 
   useEffect(() => () => {
+    // Route changes must cancel pending countdowns and never save an uncompleted recording.
+    startAttemptRef.current += 1;
+    cameraGenerationRef.current += 1;
+    cameraPromiseRef.current = null;
+    startingRef.current = false;
     runningRef.current = false;
     recognitionRef.current?.stop();
+    const recorder = recorderRef.current;
+    if (recorder?.state === 'recording') {
+      recorder.onstop = null;
+      recorder.ondataavailable = null;
+      recorder.stop();
+    }
     streamRef.current?.getTracks().forEach(track => track.stop());
   }, []);
 
-  async function ensureCamera() {
-    if (streamRef.current) return streamRef.current;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => undefined);
+  useEffect(() => () => {
+    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+  }, [recordedUrl]);
+
+  async function ensureCamera(): Promise<MediaStream | null> {
+    if (streamRef.current && streamRef.current.active !== false) return streamRef.current;
+    if (cameraPromiseRef.current) return cameraPromiseRef.current;
+    const generation = cameraGenerationRef.current;
+    const request: Promise<MediaStream | null> = (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        if (generation !== cameraGenerationRef.current) {
+          stream.getTracks().forEach(track => track.stop());
+          return null;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
+        }
+        if (generation !== cameraGenerationRef.current) {
+          stream.getTracks().forEach(track => track.stop());
+          return null;
+        }
+        setCameraReady(true);
+        setNotice('');
+        return stream;
+      } catch {
+        if (generation === cameraGenerationRef.current) {
+          setState('error');
+          setNotice(ui.permissionError);
+        }
+        return null;
       }
-      setCameraReady(true);
-      setNotice('');
-      return stream;
-    } catch {
-      setState('error');
-      setNotice(ui.permissionError);
-      return null;
-    }
+    })();
+    cameraPromiseRef.current = request;
+    void request.finally(() => {
+      if (cameraPromiseRef.current === request) cameraPromiseRef.current = null;
+    });
+    return request;
   }
 
   function stopCamera() {
+    cameraGenerationRef.current += 1;
+    cameraPromiseRef.current = null;
     streamRef.current?.getTracks().forEach(track => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -309,15 +369,20 @@ export function TeleprompterPage() {
       setCursor(current => matchVoiceCursor(normalized, spoken, current));
     };
     recognition.onerror = event => {
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') setNotice(ui.voiceUnavailable);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        recognition.onend = null;
+        if (recognitionRef.current === recognition) recognitionRef.current = null;
+        setMode('timed');
+        setNotice(ui.voiceUnavailable);
+      }
     };
     recognition.onend = () => {
-      if (runningRef.current && mode === 'voice') {
+      if (runningRef.current && mode === 'voice' && recognitionRef.current === recognition) {
         try { recognition.start(); } catch { /* browser restart race */ }
       }
     };
     recognitionRef.current = recognition;
-    try { recognition.start(); } catch { setNotice(ui.voiceUnavailable); }
+    try { recognition.start(); } catch { setMode('timed'); setNotice(ui.voiceUnavailable); }
   }
 
   function triggerDownload(url: string, mimeType: string) {
@@ -330,78 +395,149 @@ export function TeleprompterPage() {
     anchor.remove();
   }
 
-  async function saveBlobToAtlas(blob: Blob, duration: number) {
-    if (!cloudAllowed) return;
+  async function saveBlobToAtlas(blob: Blob, duration: number, scriptLanguage: TeleprompterLanguage) {
+    if (!cloudAllowed || uploadingBlobsRef.current.has(blob)) return;
+    uploadingBlobsRef.current.add(blob);
+    const generation = uploadGenerationRef.current;
     setCloudState('saving');
     try {
-      const saved = await uploadCreatorRecording(blob, language, duration);
-      setRecordingId(saved.id);
-      setCloudState('saved');
+      const saved = await uploadCreatorRecording(blob, scriptLanguage, duration);
+      setRecordings(previous => [saved, ...previous.filter(item => item.id !== saved.id)].slice(0, 50));
+      if (generation === uploadGenerationRef.current) {
+        setRecordingId(saved.id);
+        setCloudState('saved');
+      }
     } catch (error) {
-      setCloudState('error');
-      setNotice(error instanceof Error ? error.message : 'recording_upload_failed');
+      if (generation === uploadGenerationRef.current) {
+        setCloudState('error');
+        setNotice(error instanceof Error ? error.message : 'recording_upload_failed');
+      }
+    } finally {
+      uploadingBlobsRef.current.delete(blob);
     }
   }
 
   async function startRecording() {
-    if (typeof MediaRecorder === 'undefined') {
-      setNotice(ui.unsupported);
-      setState('error');
-      return;
+    // A synchronous ref prevents repeated clicks from racing while camera permission resolves.
+    if (startingRef.current || recorderRef.current?.state === 'recording') return;
+    const attempt = ++startAttemptRef.current;
+    startingRef.current = true;
+    setState('requesting');
+    try {
+      if (typeof MediaRecorder === 'undefined') {
+        setNotice(ui.unsupported);
+        setState('error');
+        return;
+      }
+      const stream = await ensureCamera();
+      if (!stream) return;
+      if (startAttemptRef.current !== attempt) {
+        stopCamera();
+        return;
+      }
+
+      uploadGenerationRef.current += 1;
+      setCloudState(cloudAllowed ? 'connected' : 'unavailable');
+      setRecordedBlob(null);
+      setRecordedUrl('');
+      setRecordingId('');
+      setCloudUrl('');
+      setElapsed(0);
+      elapsedRef.current = 0;
+      setState('countdown');
+
+      for (let value = 3; value >= 1; value -= 1) {
+        if (startAttemptRef.current !== attempt) return;
+        setCountdown(value);
+        await new Promise(resolve => window.setTimeout(resolve, 700));
+      }
+      if (startAttemptRef.current !== attempt) return;
+      setCountdown(0);
+      if (stream.active === false) {
+        stopCamera();
+        setState('error');
+        setNotice(ui.permissionError);
+        return;
+      }
+
+      const mimeType = preferredMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      chunksRef.current = [];
+      let recorderFailed = false;
+      recorder.ondataavailable = event => { if (event.data.size) chunksRef.current.push(event.data); };
+      recorder.onerror = () => {
+        recorderFailed = true;
+        runningRef.current = false;
+        recognitionRef.current?.stop();
+        recognitionRef.current = null;
+        setState('error');
+        setNotice('recording_capture_failed');
+        stopCamera();
+      };
+      recorder.onstop = () => {
+        if (startAttemptRef.current !== attempt) return;
+        runningRef.current = false;
+        recognitionRef.current?.stop();
+        recognitionRef.current = null;
+        recorderRef.current = null;
+        stopCamera();
+        if (recorderFailed) return;
+        const finalType = String(recorder.mimeType || mimeType || 'video/webm').split(';')[0];
+        const blob = new Blob(chunksRef.current, { type: finalType });
+        if (!blob.size) {
+          setState('error');
+          setNotice('recording_empty_no_file_saved');
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        setRecordedBlob(blob);
+        setRecordedUrl(previous => {
+          if (previous) URL.revokeObjectURL(previous);
+          return url;
+        });
+        setState('stopped');
+        if (autoLocalRef.current) triggerDownload(url, finalType);
+        if (autoCloudRef.current && cloudAllowed) void saveBlobToAtlas(blob, elapsedRef.current, language);
+      };
+
+      recorderRef.current = recorder;
+      recorder.start(1000);
+      runningRef.current = true;
+      setState('recording');
+      beginVoiceTracking();
+    } catch {
+      if (startAttemptRef.current === attempt) {
+        stopCamera();
+        setState('error');
+        setNotice(ui.unsupported);
+      }
+    } finally {
+      if (startAttemptRef.current === attempt) startingRef.current = false;
     }
-    const stream = await ensureCamera();
-    if (!stream) return;
-    setRecordedBlob(null);
-    setRecordingId('');
-    setCloudUrl('');
-    setElapsed(0);
-    elapsedRef.current = 0;
-    setState('countdown');
-
-    for (let value = 3; value >= 1; value -= 1) {
-      setCountdown(value);
-      await new Promise(resolve => window.setTimeout(resolve, 700));
-    }
-    setCountdown(0);
-
-    const mimeType = preferredMimeType();
-    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    chunksRef.current = [];
-    recorder.ondataavailable = event => { if (event.data.size) chunksRef.current.push(event.data); };
-    recorder.onstop = () => {
-      const finalType = String(recorder.mimeType || mimeType || 'video/webm').split(';')[0];
-      const blob = new Blob(chunksRef.current, { type: finalType });
-      const url = URL.createObjectURL(blob);
-      setRecordedBlob(blob);
-      setRecordedUrl(previous => {
-        if (previous) URL.revokeObjectURL(previous);
-        return url;
-      });
-      setState('stopped');
-      if (autoLocalRef.current) triggerDownload(url, finalType);
-      if (autoCloudRef.current && cloudAllowed) void saveBlobToAtlas(blob, elapsedRef.current);
-    };
-
-    recorderRef.current = recorder;
-    recorder.start(1000);
-    runningRef.current = true;
-    setState('recording');
-    beginVoiceTracking();
   }
 
   function stopRecording() {
+    if (state === 'requesting' || state === 'countdown') {
+      // Invalidate the async countdown before its pending timeout can start MediaRecorder.
+      startAttemptRef.current += 1;
+      startingRef.current = false;
+      setCountdown(0);
+      stopCamera();
+      setState('idle');
+      return;
+    }
     runningRef.current = false;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
   }
 
-  async function openCloudCopy() {
-    if (!recordingId) return;
+  async function openCloudCopy(id: string) {
+    if (!id) return;
     try {
-      const result = await getCreatorRecordingDownload(recordingId);
+      const result = await getCreatorRecordingDownload(id);
+      // iOS Safari may block window.open after an awaited request.
       setCloudUrl(result.signed_url);
-      window.open(result.signed_url, '_blank', 'noopener,noreferrer');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'recording_download_unavailable');
     }
@@ -427,7 +563,7 @@ export function TeleprompterPage() {
     </header>
 
     <div className="teleprompter-toolbar">
-      <label><span>{ui.script}</span><select aria-label={ui.script} value={language} onChange={event => setLanguage(event.target.value as TeleprompterLanguage)}><option value="es">{ui.spanish}</option><option value="en">{ui.english}</option></select></label>
+      <label><span>{ui.script}</span><select aria-label={ui.script} value={language} disabled={state === 'requesting' || state === 'countdown' || state === 'recording'} onChange={event => setLanguage(event.target.value as TeleprompterLanguage)}><option value="es">{ui.spanish}</option><option value="en">{ui.english}</option></select></label>
       <div className="teleprompter-segmented" role="group" aria-label="Synchronization mode">
         <button type="button" className={mode === 'voice' ? 'active' : ''} disabled={!voiceAvailable || state === 'recording'} onClick={() => setMode('voice')}>{ui.voice}</button>
         <button type="button" className={mode === 'timed' ? 'active' : ''} disabled={state === 'recording'} onClick={() => setMode('timed')}>{ui.timed}</button>
@@ -447,31 +583,49 @@ export function TeleprompterPage() {
       <span>{cloudState === 'saved' ? ui.cloudSaved : cloudAllowed ? 'ATLAS Identity · organization scope · creator.write · private bucket' : 'Local recording remains available.'}</span>
     </div>
 
-    <div className="teleprompter-stage">
-      <div className="teleprompter-camera">
-        <video ref={videoRef} className={mirror ? 'mirrored' : ''} muted playsInline aria-label="Camera preview" />
-        {!cameraReady && <div className="camera-empty"><strong>ATLAS</strong><span>{ui.camera}</span></div>}
-        {state === 'countdown' && <div className="countdown"><span>ATLAS</span><strong>{countdown}</strong></div>}
+    <section className="teleprompter-studio-frame" aria-label={language === 'es' ? 'Estudio de grabación ATLAS' : 'ATLAS recording studio'}>
+      <div className="teleprompter-workbench-status">
+        <span className="teleprompter-workbench-brand">ATLAS · STUDIO 777</span>
+        <span>{ui.script} · {Math.min(cursor + 1, words.length)} / {words.length}</span>
+        <span>{state === 'recording' ? (language === 'es' ? 'Grabando' : 'Recording') : (language === 'es' ? 'Grabación local' : 'Local recording')} · {clock(elapsed)}</span>
       </div>
-      <div className={`teleprompter-reader reader-theme-${readerTheme} reader-position-${readerPosition}`} style={{ fontSize, backgroundColor: `rgba(16, 13, 35, ${readerOpacity / 100})` }} aria-label="Teleprompter script">
-        <div className="reading-guide" />
-        <p>{words.map((word, index) => <span key={index} ref={node => { wordRefs.current[index] = node; }} className={index < cursor ? 'word spoken' : index === cursor ? 'word current' : 'word'}>{word} </span>)}</p>
+      <div className="teleprompter-stage">
+        <section className="teleprompter-script-panel" aria-label={language === 'es' ? 'Panel de lectura' : 'Script reading panel'}>
+          <div className="teleprompter-panel-heading"><strong>{ui.script}</strong><span>{language === 'es' ? 'Lectura sincronizada' : 'Synchronized reading'}</span></div>
+          <div className={`teleprompter-reader reader-theme-${readerTheme} reader-position-${readerPosition}`} style={{ fontSize, backgroundColor: `rgba(16, 13, 35, ${readerOpacity / 100})` }} aria-label="Teleprompter script">
+            <div className="reading-guide" />
+            <p>{words.map((word, index) => <span key={index} ref={node => { wordRefs.current[index] = node; }} className={index < cursor ? 'word spoken' : index === cursor ? 'word current' : 'word'}>{word} </span>)}</p>
+          </div>
+        </section>
+        <section className="teleprompter-camera-panel" aria-label={language === 'es' ? 'Panel de cámara y micrófono' : 'Camera and microphone panel'}>
+          <div className="teleprompter-panel-heading"><strong>{ui.camera}</strong><span>VIDEO · LOCAL</span></div>
+          <div className="teleprompter-camera">
+            <video ref={videoRef} className={mirror ? 'mirrored' : ''} muted playsInline aria-label="Camera preview" />
+            {!cameraReady && <div className="camera-empty"><strong>ATLAS</strong><span>{ui.camera}</span></div>}
+            {state === 'countdown' && <div className="countdown"><span>ATLAS</span><strong>{countdown}</strong></div>}
+          </div>
+        </section>
       </div>
-    </div>
+    </section>
 
     <div className="teleprompter-actions">
-      {state === 'recording' || state === 'countdown'
+      {state === 'recording' || state === 'countdown' || state === 'requesting'
         ? <button type="button" className="stop" onClick={stopRecording}>{ui.stop}</button>
         : <button type="button" className="creator-primary" onClick={startRecording}>{ui.start}</button>}
-      <button type="button" onClick={cameraReady ? stopCamera : ensureCamera}>{cameraReady ? ui.cameraOff : ui.camera}</button>
+      <button type="button" disabled={state === 'requesting' || state === 'countdown' || state === 'recording'} onClick={cameraReady ? stopCamera : ensureCamera}>{cameraReady ? ui.cameraOff : ui.camera}</button>
       <button type="button" onClick={() => setCursor(value => Math.max(0, value - 30))}>{ui.rewind}</button>
       <button type="button" onClick={() => setCursor(0)}>{ui.reset}</button>
       <button type="button" onClick={enterFullscreen}>{ui.fullscreen}</button>
       <button type="button" onClick={() => setEditing(value => !value)}>{ui.edit}</button>
       {recordedUrl && <button type="button" onClick={() => triggerDownload(recordedUrl, recordedBlob?.type || 'video/webm')}>{ui.download}</button>}
-      {recordedBlob && cloudAllowed && cloudState !== 'saving' && cloudState !== 'saved' && <button type="button" onClick={() => saveBlobToAtlas(recordedBlob, elapsed)}>{ui.saveCloud}</button>}
-      {recordingId && <button type="button" onClick={openCloudCopy}>{ui.cloudDownload}</button>}
+      {recordedBlob && cloudAllowed && cloudState !== 'saving' && cloudState !== 'saved' && <button type="button" onClick={() => saveBlobToAtlas(recordedBlob, elapsed, language)}>{ui.saveCloud}</button>}
+      {recordingId && <button type="button" onClick={() => openCloudCopy(recordingId)}>{ui.cloudDownload}</button>}
     </div>
+
+    {recordedUrl && <section className="teleprompter-playback" aria-label={ui.playback}>
+      <h2>{ui.playback}</h2>
+      <video src={recordedUrl} controls playsInline preload="metadata" aria-label={ui.playback} />
+    </section>}
 
     <div className="teleprompter-options">
       <label><input type="checkbox" checked={mirror} onChange={event => setMirror(event.target.checked)} /> {ui.mirror}</label>
@@ -479,9 +633,24 @@ export function TeleprompterPage() {
       <label><input type="checkbox" checked={autoCloud} disabled={!cloudAllowed} onChange={event => setAutoCloud(event.target.checked)} /> {ui.autoCloud}</label>
     </div>
 
+    <section className="teleprompter-library" aria-label={ui.library}>
+      <h2>{ui.library}</h2>
+      {libraryState === 'error' && <p role="status">{ui.libraryError}</p>}
+      {libraryState === 'ready' && recordings.length === 0 && <p>{ui.libraryEmpty}</p>}
+      {recordings.length > 0 && <ul>
+        {recordings.map(item => <li key={item.id}>
+          <span>{new Date(item.created_at).toLocaleString(language)} · {item.language.toUpperCase()} · {item.duration_seconds === null ? '—' : clock(item.duration_seconds)}</span>
+          <button type="button" aria-label={`${ui.libraryOpen} ${item.id}`} onClick={() => openCloudCopy(item.id)}>{ui.libraryOpen}</button>
+        </li>)}
+      </ul>}
+    </section>
+
     {editing && <div className="teleprompter-editor"><label><span>{ui.editor}</span><textarea rows={18} value={draft} onChange={event => setDraft(event.target.value)} /></label><button type="button" className="creator-primary" onClick={saveScript}>{ui.saveEdit}</button></div>}
     {notice && <div className="creator-notice" role="status">{notice}</div>}
-    {cloudUrl && <div className="teleprompter-safety">ATLAS signed copy ready. The access link expires automatically.</div>}
+    {cloudUrl && <div className="teleprompter-safety">
+      <a href={cloudUrl} target="_blank" rel="noopener noreferrer">{ui.cloudOpenLink}</a>
+      <span> · {language === 'es' ? 'El enlace caduca automáticamente.' : 'This link expires automatically.'}</span>
+    </div>}
     <div className="teleprompter-safety">{ui.localNotice}</div>
   </section>;
 }

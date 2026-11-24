@@ -11,6 +11,7 @@ import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts
 import {
   createCreatorRecordingDownload,
   creatorRecordingReadiness,
+  listCreatorRecordings,
   uploadCreatorRecording
 } from './_shared/recordings.ts';
 import { creatorError, creatorErrorResponse, optionsResponse, withCors } from './_shared/errors.ts';
@@ -86,6 +87,14 @@ async function creatorContext(req: Request, permission: CreatorPermission) {
   const ctx = await resolveCreatorContext(req);
   requirePermission(ctx, permission);
   return ctx;
+}
+
+async function recordingContext(req: Request, permission: CreatorPermission) {
+  // A recording is tenant-private; never resolve an implicit first membership.
+  if (!(req.headers.get('x-atlas-org-id') || '').trim()) {
+    throw creatorError('organization_scope_required', 400);
+  }
+  return creatorContext(req, permission);
 }
 
 async function handleReadiness(req: Request) {
@@ -351,7 +360,7 @@ async function handleAssetPreview(req: Request, url: URL) {
 }
 
 async function handleRecordingReadiness(req: Request) {
-  const ctx = await creatorContext(req, 'creator.read');
+  const ctx = await recordingContext(req, 'creator.read');
   const storage = await creatorRecordingReadiness();
   const canUpload = ctx.permissions.includes('creator.admin') || ctx.permissions.includes('creator.write');
   return json({
@@ -367,7 +376,7 @@ async function handleRecordingReadiness(req: Request) {
 }
 
 async function handleRecordingUpload(req: Request) {
-  const ctx = await creatorContext(req, 'creator.write');
+  const ctx = await recordingContext(req, 'creator.write');
   const form = await req.formData().catch(() => { throw creatorError('invalid_form_data', 400); });
   const files = form.getAll('recording').filter((value): value is File => value instanceof File);
   if (files.length !== 1) throw creatorError('recording_required', 422);
@@ -393,8 +402,14 @@ async function handleRecordingUpload(req: Request) {
   return json({ ok: true, recording }, 201);
 }
 
+async function handleRecordingList(req: Request) {
+  const ctx = await recordingContext(req, 'creator.read');
+  const recordings = await listCreatorRecordings(ctx);
+  return json({ ok: true, recordings });
+}
+
 async function handleRecordingDownload(req: Request, url: URL) {
-  const ctx = await creatorContext(req, 'creator.read');
+  const ctx = await recordingContext(req, 'creator.read');
   const recordingId = String(url.searchParams.get('recording_id') || '').trim();
   if (!recordingId) throw creatorError('recording_id_required', 422);
   const result = await createCreatorRecordingDownload(ctx, recordingId);
@@ -518,6 +533,7 @@ async function route(req: Request) {
   if (api === 'image-edit-readiness' && req.method === 'GET') return handleImageEditReadiness(req);
   if (api === 'image-edit' && req.method === 'POST') return handleImageEdit(req);
   if (api === 'recording-readiness' && req.method === 'GET') return handleRecordingReadiness(req);
+  if (api === 'recording-list' && req.method === 'GET') return handleRecordingList(req);
   if (api === 'recording-upload' && req.method === 'POST') return handleRecordingUpload(req);
   if (api === 'recording-download' && req.method === 'GET') return handleRecordingDownload(req, url);
   if (api === 'submit') return handleSubmit(req);
