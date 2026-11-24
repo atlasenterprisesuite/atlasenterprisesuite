@@ -330,3 +330,6 @@ export type {
   AtlasTransactionEvidence,
   AtlasTransactionTruth
 } from './transactionTruth';
+
+export { quoteAtlasPaymentCost } from './costEngine';
+export type { AtlasCostBreakdown, AtlasCostQuote } from './costEngine';
