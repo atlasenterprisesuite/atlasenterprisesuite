@@ -1,6 +1,7 @@
 import {evaluateIntelligenceCostPolicy} from './cost-policy.mjs';
 import {normalizeIntelligenceRequest,reauthorizeIntelligenceContext} from './intelligence-gateway.mjs';
 import {buildSovereignBrainInstructions} from './sovereign-brain-prompt.mjs';
+import {contextDataMessage} from './context-envelope.mjs';
 
 function fail(code,status=500,details={}){return Object.assign(new Error(code),{code,status,...details});}
 function has(context,permission){return Array.isArray(context?.permissions)&&(context.permissions.includes(permission)||context.permissions.includes('*'));}
@@ -102,7 +103,8 @@ export function createBackgroundBrain({router,registry,store,costPolicy,authoriz
     });
     const messages=await store.listMessages({context,conversation_id:conversation.id,limit:50});
     const history=messages.map(message=>({role:message.role,content:message.content?.text??message.content}));
-    if(normalized.legacy_context)history.push({role:'user',content:`Current ATLAS context:\n${normalized.legacy_context}`});
+    const contextMessage=contextDataMessage(normalized.legacy_context);
+      if(contextMessage)history.push(contextMessage);
     const candidateRoute=Object.freeze({
       ...route,
       providers:[selected.providerId],
