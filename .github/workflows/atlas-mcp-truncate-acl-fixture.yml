@@ -1,0 +1,43 @@
+name: ATLAS MCP TRUNCATE PG17 ACL fixture (not production certification)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/atlas-mcp-truncate-acl-fixture.yml'
+      - 'tests/security/atlas-777-truncate-privilege-fixture.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disposable-acl-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: atlas_777_truncate_fixture
+          POSTGRES_USER: atlas_acl_fixture
+          POSTGRES_PASSWORD: fixture_only_never_production
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas_acl_fixture -d atlas_777_truncate_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGDATABASE: atlas_777_truncate_fixture
+      PGUSER: atlas_acl_fixture
+      PGPASSWORD: fixture_only_never_production
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Assert synthetic PostgreSQL 17 RED -> REVOKE -> GREEN without TRUNCATE
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/security/atlas-777-truncate-privilege-fixture.sql
+      - name: Document limits of the proof
+        run: |
+          echo 'PASS: isolated PG17 ACL mechanics only.'
+          echo 'P0 NO-GO remains: authentic Supabase Auth bootstrap, RLS A/B, OAuth revocation, production SQL review.'
