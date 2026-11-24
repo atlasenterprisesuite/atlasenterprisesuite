@@ -82,6 +82,11 @@ export function TaxProfessionalDashboard() {
         </div>
       </section>
 
+      <Link className="tax-governance-card" to="/tax/academy">
+        <span className="tax-governance-lock" aria-hidden="true">◆</span>
+        <p><strong>ATLAS Tax Academy:</strong> Practice &amp; Exams · 30 complete practical return templates · 300 variants · A0–A8 governed progression.</p>
+      </Link>
+
       <section className="tax-dashboard-workflow">
         <div className="tax-dashboard-section-head">
           <div>
