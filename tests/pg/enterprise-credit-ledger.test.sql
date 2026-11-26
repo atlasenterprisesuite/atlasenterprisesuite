@@ -57,32 +57,32 @@ begin
  exception when others then if sqlerrm='missing_failure' then raise; end if;
  end;
  begin
-   perform public.atlas_enterprise_credit_settle(r,3,false_e);
+   perform public.atlas_enterprise_credit_settle(r,3,false_e,u);
    raise exception 'missing_failure';
  exception when others then if sqlerrm='missing_failure' then raise; end if;
  end;
 
- perform public.atlas_enterprise_credit_settle(r,3,e);
- perform public.atlas_enterprise_credit_settle(r,3,e);
+ perform public.atlas_enterprise_credit_settle(r,3,e,u);
+ perform public.atlas_enterprise_credit_settle(r,3,e,u);
  select * into account from public.atlas_enterprise_credit_accounts
    where org_id=a and user_id=u and window_id='2026-11';
  if account.reserved_credits<>0 or account.spent_credits<>3 then
    raise exception 'P0 settlement balance or partial refund wrong';
  end if;
  begin
-   perform public.atlas_enterprise_credit_settle(r,4,e);
+   perform public.atlas_enterprise_credit_settle(r,4,e,u);
    raise exception 'missing_failure';
  exception when others then if sqlerrm='missing_failure' then raise; end if;
  end;
  begin
-   perform public.atlas_enterprise_credit_release(r);
+   perform public.atlas_enterprise_credit_release(r,u);
    raise exception 'missing_failure';
  exception when others then if sqlerrm='missing_failure' then raise; end if;
  end;
 
  select public.atlas_enterprise_credit_reserve(a,u,'2026-11','request-key-unit-004',t,2) into r2;
- perform public.atlas_enterprise_credit_release(r2);
- perform public.atlas_enterprise_credit_release(r2);
+ perform public.atlas_enterprise_credit_release(r2,u);
+ perform public.atlas_enterprise_credit_release(r2,u);
  select * into account from public.atlas_enterprise_credit_accounts
    where org_id=a and user_id=u and window_id='2026-11';
  if account.reserved_credits<>0 or account.spent_credits<>3 then
@@ -93,6 +93,20 @@ begin
  if events<>5 then
     raise exception 'P0 immutable audit count mismatch: %', events;
  end if;
+ begin
+   perform public.atlas_enterprise_credit_set_limit(a,u,'2026-11',10,true,
+     '00000000-0000-4000-8000-000000000201');
+   raise exception 'missing_failure';
+ exception when others then if sqlerrm='missing_failure' then raise; end if;
+ end;
+ begin
+   perform public.atlas_enterprise_credit_settle(r,3,e,
+     '00000000-0000-4000-8000-000000000201');
+   raise exception 'missing_failure';
+ exception when others then if sqlerrm='missing_failure' then raise; end if;
+ end;
+ -- Deliberately leave a reservation pending to verify release AFTER revocation.
+ perform public.atlas_enterprise_credit_reserve(a,u,'2026-11','request-key-pending-006',t,1);
  raise notice 'enterprise-credit-ledger unit invariants PASS';
 end;
 $$;
@@ -102,7 +116,8 @@ update public.organization_members set status='revoked'
  where org_id='00000000-0000-4000-8000-000000000001'
    and user_id='00000000-0000-4000-8000-000000000101';
 set role service_role;
-do $$
+do $
+declare pending uuid; operator uuid := '00000000-0000-4000-8000-000000000102';
 begin
  begin
   perform public.atlas_enterprise_credit_reserve(
@@ -113,7 +128,28 @@ begin
   raise exception 'missing_failure';
  exception when others then if sqlerrm='missing_failure' then raise; end if;
  end;
+ select id into pending from public.atlas_enterprise_credit_reservations
+   where request_key='request-key-pending-006';
+ if pending is null then raise exception 'pending reservation missing'; end if;
+ begin
+   perform public.atlas_enterprise_credit_release(pending,
+      '00000000-0000-4000-8000-000000000201');
+   raise exception 'missing_failure';
+ exception when others then if sqlerrm='missing_failure' then raise; end if;
+ end;
+ perform public.atlas_enterprise_credit_release(pending,operator);
+ perform public.atlas_enterprise_credit_release(pending,operator);
+ if not exists (
+   select 1 from public.atlas_enterprise_credit_events where reservation_id=pending
+   and operation='released' and actor_user_id=operator
+ ) then raise exception 'revoke cleanup actual operator not audited'; end if;
+ if (select reserved_credits from public.atlas_enterprise_credit_accounts
+   where org_id='00000000-0000-4000-8000-000000000001'
+   and user_id='00000000-0000-4000-8000-000000000101'
+   and window_id='2026-11') <> 0 then
+   raise exception 'revocation cleanup balance P0';
+ end if;
 end;
-$$;
+$;
 reset role;
 select 'enterprise-credit-ledger-pg17-pass' as verdict;
