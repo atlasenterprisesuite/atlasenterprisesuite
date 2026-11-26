@@ -74,7 +74,8 @@ begin
      and b.verification_state = 'verified'
      and jsonb_array_length(b.evidence_refs) > 0
      and e.verification_state = 'verified' and e.lifecycle_state = 'active'
-   for update of b;
+   for update of b
+   for share of e;
   if v_entity_id is null then
     raise exception 'bme688_binding_unverified' using errcode = 'P0001';
   end if;
