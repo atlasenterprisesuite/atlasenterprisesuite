@@ -27,12 +27,16 @@ export function parseAtlasWorkContext(value: unknown): AtlasWorkContext {
   const runtimePreference = WORK_RUNTIME_PREFERENCES.includes(raw.runtimePreference as WorkRuntimePreference)
     ? raw.runtimePreference as WorkRuntimePreference
     : 'auto';
-  const numericBudget = Number(raw.budgetLimit);
-  const budgetLimit = raw.budgetLimit === null
-    ? null
-    : Number.isFinite(numericBudget) && numericBudget >= 0
-      ? numericBudget
-      : 0;
+  const suppliedBudget = raw.budgetLimit;
+  let budgetLimit: number | null = 0;
+  if (suppliedBudget === null) {
+    budgetLimit = null;
+  } else if (suppliedBudget !== undefined) {
+    if (typeof suppliedBudget !== 'number' || !Number.isFinite(suppliedBudget) || suppliedBudget < 0) {
+      throw new Error('invalid_budget_limit');
+    }
+    budgetLimit = suppliedBudget;
+  }
 
   return {
     executionMode,
