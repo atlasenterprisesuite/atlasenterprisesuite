@@ -1,7 +1,7 @@
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AutomotiveRoutes } from '../../apps/web/src/modules/automotive/AutomotiveRoutes';
 
@@ -81,11 +81,26 @@ describe('ATLAS Automotive — browser-local photo lifecycle (not live SSO E2E)'
     choose(photoFile('slow.jpg', 'image/jpeg', jpegBytes, () => slowRead));
     choose(photoFile('new.jpg', 'image/jpeg', jpegBytes));
     expect(await screen.findByText(/new.jpg · Local preview only/)).toBeInTheDocument();
-    completeSlowRead?.(Uint8Array.from(jpegBytes).buffer);
-    await waitFor(() => {
-      expect(screen.getByText(/new.jpg · Local preview only/)).toBeInTheDocument();
-      expect(createObjectURL).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      completeSlowRead?.(Uint8Array.from(jpegBytes).buffer);
+      await slowRead;
     });
+    expect(screen.getByText(/new.jpg · Local preview only/)).toBeInTheDocument();
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('never creates a blob URL for a file that finishes reading after unmount', async () => {
+    let completeRead: ((data: ArrayBuffer) => void) | undefined;
+    const slowRead = new Promise<ArrayBuffer>((resolve) => { completeRead = resolve; });
+    const view = mount();
+    choose(photoFile('pending.jpg', 'image/jpeg', jpegBytes, () => slowRead));
+    view.unmount();
+    await act(async () => {
+      completeRead?.(Uint8Array.from(jpegBytes).buffer);
+      await slowRead;
+    });
+    expect(createObjectURL).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
