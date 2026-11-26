@@ -19,7 +19,7 @@ PR: #1147 (draft); prior checkpoint 2efb24ef445021348205ea139e23d961906e6633.
 - Migration deployment and database concurrency tests are NOT yet evidenced. Source code is not equivalent to a live SQL migration.
 - The six-per-minute quota is per org, not per user; a cross-region/infrastructure global rate or cache policy remains P0 before release. Periodic quota-table pruning needs a reviewed retention policy.
 - Audit coverage is mandatory for permitted fetches. Rejected over-quota attempts currently return HTTP 429 without a durable denial record; security review must decide whether to add bounded denial metrics.
-- Live NOAA API availability and compatibility, response geographic scope, long-running alerts (48h freshness), and error handling need real-world integration tests.
+- NOAA normalization now preserves long-lived alerts when still active by `effective`/`expires`, even if `sent` is older than 48h. The strict default 48h freshness gate continues for other evidence; real provider contract tests remain pending.
 - NOAA is the authoritative origin for its published feed, but this integration does not implement signature-based verification of individual records.
 - No real alerts/notifications, public emergency communications, UI map, production readiness, or deploy are claimed.
 - Budget remains $0 authorized incremental fees; no paid API, Vercel upgrade, or third-party changes.
