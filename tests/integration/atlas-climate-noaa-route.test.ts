@@ -65,7 +65,7 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
     expect(normalizer).toContain('rejectedCount');
     expect(normalizer).toContain('unprocessedCount');
     expect(policy).toContain('mayPublishAlert: false');
-    expect(edge).toContain("'climate.noaa.read'");
+    expect(edge).toContain("'climate.noaa.read.completed'");
     expect(edge).not.toContain("if (api === 'climate-noaa-alerts') return await fetch(");
   });
 });
