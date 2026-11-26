@@ -96,7 +96,10 @@ export function normalizeNoaaActiveAlerts(raw: unknown, context: NoaaNormalizati
       now: fetchedAt,
       trustedHosts: ['api.weather.gov'],
       providerAuthenticated: true,
-      organizationAuthorized: true
+      organizationAuthorized: true,
+      // Active NWS records may remain valid long after their original publication.
+      // The server has just fetched the active feed; effective/expires remain mandatory.
+      maxPublicationAgeHours: null
     });
     if (decision.state !== 'reviewable') { rejectedCount++; continue; }
     alerts.push({
