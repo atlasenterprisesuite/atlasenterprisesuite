@@ -5,6 +5,7 @@ const edge = readFileSync('supabase/functions/atlas-platform-controls/index.ts',
 const config = readFileSync('supabase/config.toml', 'utf8');
 const normalizer = readFileSync('packages/analytics/src/noaa-active-alerts.ts', 'utf8');
 const policy = readFileSync('packages/analytics/src/climate-resilience.ts', 'utf8');
+const client = readFileSync('apps/web/src/modules/city/climateNoaaApi.ts', 'utf8');
 
 describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
   it('uses the canonical JWT-protected control plane and no public endpoint', () => {
@@ -29,6 +30,14 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
     expect(edge).toContain('const limitBytes = 1_048_576');
     expect(edge).toContain("method: 'GET'");
     expect(edge).toContain("if (api === 'climate-noaa-alerts')");
+  });
+  it('calls the canonical session-scoped server endpoint rather than NOAA directly from a browser', () => {
+    expect(client).toContain('getActiveAtlasOrganization()');
+    expect(client).toContain('authorizedAtlasFetch(');
+    expect(client).toContain("'x-atlas-org-id': organization.id");
+    expect(client).toContain("api: 'climate-noaa-alerts'");
+    expect(client).not.toContain('https://api.weather.gov');
+    expect(edge).toContain('new globalThis.URL(req.url)');
   });
   it('does not broadcast alerts or promote unverified evidence', () => {
     expect(normalizer).toContain('mayPublishAlert: false');
