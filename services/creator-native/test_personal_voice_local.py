@@ -78,7 +78,21 @@ class PersonalVoiceLocalTests(unittest.TestCase):
         engine = FakeEngine()
         rendered = self.render(engine=engine)
         self.assertEqual(rendered[0:4], b'RIFF')
-        self.assertEqual(engine.calls, [('ATLAS es soberano.', 'es', self.path)])
+        self.assertEqual(len(engine.calls), 1)
+        self.assertEqual(engine.calls[0][:2], ('ATLAS es soberano.', 'es'))
+        # Inference reads a private short-lived snapshot; it does not retain or
+        # reuse the original Storage resolver's decrypted reference path.
+        self.assertNotEqual(engine.calls[0][2], self.path)
+        self.assertFalse(engine.calls[0][2].exists())
+
+    def test_private_reference_copy_matches_verified_original(self):
+        original_hash = hashlib.sha256(self.path.read_bytes()).hexdigest()
+        hashes = []
+        engine = FakeEngine(callback=lambda: hashes.append(
+            hashlib.sha256(engine.calls[-1][2].read_bytes()).hexdigest()))
+        self.render(engine=engine)
+        self.assertEqual(hashes, [original_hash])
+        self.assertFalse(engine.calls[-1][2].exists())
 
     def test_supports_english_request_without_claiming_language_quality(self):
         engine = FakeEngine()
