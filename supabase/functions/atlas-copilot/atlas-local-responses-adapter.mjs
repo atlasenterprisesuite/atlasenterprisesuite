@@ -60,10 +60,17 @@ function errorForStatus(status){
   if(status>=500)return fail('provider_unavailable',502,{provider:'atlas-local'});
   return fail('provider_unavailable',502,{provider:'atlas-local'});
 }
-export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientId='',accessClientSecret='',models,allowUnauthenticated=false,allowInsecure=false,fetchFn=fetch,timeoutMs=120000,probeTimeoutMs=15000,executionAttempts=LOCAL_EXECUTION_ATTEMPTS,retryDelayMs=LOCAL_RETRY_DELAY_MS,probeAttempts=LOCAL_PROBE_ATTEMPTS,probeRetryDelayMs=LOCAL_PROBE_RETRY_DELAY_MS}={}){
+export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientId='',accessClientSecret='',models,allowUnauthenticated=false,allowInsecure=false,verifyModelId=false,enforceHostAllowlist=false,allowedHosts=[],fetchFn=fetch,timeoutMs=120000,probeTimeoutMs=15000,executionAttempts=LOCAL_EXECUTION_ATTEMPTS,retryDelayMs=LOCAL_RETRY_DELAY_MS,probeAttempts=LOCAL_PROBE_ATTEMPTS,probeRetryDelayMs=LOCAL_PROBE_RETRY_DELAY_MS}={}){
   const base=normalizeBase(baseUrl,{allowInsecure});
+  const approvedHosts=new Set(
+    (Array.isArray(allowedHosts)?allowedHosts:[])
+      .map(value=>clean(value)?.toLowerCase())
+      .filter(value=>value&&/^[a-z0-9.-]+$/.test(value))
+  );
+  const hostAllowed=enforceHostAllowlist!==true
+    ||Boolean(base&&approvedHosts.has(new URL(base).hostname.toLowerCase()));
   const resolved=Object.freeze({fast:clean(models?.fast),balanced:clean(models?.balanced),deep:clean(models?.deep)});
-  const configured=Boolean(base)&&Object.values(resolved).some(Boolean)&&Boolean(token||allowUnauthenticated);
+  const configured=Boolean(base)&&hostAllowed&&Object.values(resolved).some(Boolean)&&Boolean(token||allowUnauthenticated);
   const accessProtected=Boolean(clean(accessClientId)&&clean(accessClientSecret));
   const boundedExecutionAttempts=Math.max(1,Math.min(6,Math.trunc(Number(executionAttempts)||LOCAL_EXECUTION_ATTEMPTS)));
   const boundedRetryDelayMs=Math.max(0,Math.min(5000,Math.trunc(Number(retryDelayMs)||0)));
@@ -87,26 +94,50 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     feature_support:{
       local_inference:true,
       responses_api:true,
+      model_id_verification:verifyModelId===true,
+      host_allowlist_enforced:enforceHostAllowlist===true,
       streaming:false,
       tool_calling:false,
       computer_use:false,
       mid_turn_steering:false
     }
   });
+  // In strict mode, do not send conversational content until the runtime
+  // advertises the exact configured model id. This checks routing readiness,
+  // NOT the provenance of its weights or the network's privacy properties.
+  async function verifyModelSelection(model){
+    if(verifyModelId!==true)return null;
+    let response;
+    try{
+      response=await fetchFn(`${base}/v1/models`,{
+        headers:{...authHeaders(),'content-type':'application/json'},
+        signal:AbortSignal.timeout(Math.min(timeoutMs,probeTimeoutMs)),
+        redirect:'error',
+      });
+    }catch{return 'provider_unavailable';}
+    if(!response.ok)return errorForStatus(response.status).code;
+    const payload=await response.json().catch(()=>null);
+    return Array.isArray(payload?.data)&&payload.data.some(item=>item?.id===model)
+      ?null:'provider_verification_required';
+  }
   async function probe({profile='balanced'}={}){
     const model=resolved[profile];
+    if(!hostAllowed)return {configured:false,verified:false,provider:'atlas-local',model:model||null,error:'provider_untrusted_endpoint'};
     if(!configured||!model)return {configured:false,verified:false,provider:'atlas-local',model:model||null,error:'provider_not_configured'};
     let lastError='provider_unavailable';
     for(let attempt=1;attempt<=boundedProbeAttempts;attempt+=1){
       let response;
       try{
-        response=await fetchFn(`${base}/health`,{headers:{...authHeaders(),'content-type':'application/json'},signal:AbortSignal.timeout(Math.min(timeoutMs,probeTimeoutMs))});
+        response=await fetchFn(`${base}/health`,{headers:{...authHeaders(),'content-type':'application/json'},signal:AbortSignal.timeout(Math.min(timeoutMs,probeTimeoutMs)),redirect:'error'});
       }catch{
         lastError='provider_unavailable';
         if(attempt<boundedProbeAttempts){await sleep(boundedProbeRetryDelayMs*attempt);continue;}
         break;
       }
-      if(response.ok)return {configured:true,verified:true,provider:'atlas-local',model,error:null};
+      if(response.ok){
+        const modelError=await verifyModelSelection(model);
+        return {configured:true,verified:modelError===null,provider:'atlas-local',model,error:modelError};
+      }
       const error=errorForStatus(response.status);
       lastError=error.code;
       if(retryableStatus(response.status)&&attempt<boundedProbeAttempts){await sleep(boundedProbeRetryDelayMs*attempt);continue;}
@@ -117,7 +148,10 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
   async function execute({route,instructions,input,max_output_tokens=3000,background=false}={}){
     const profile=route?.profile||'balanced';
     const model=resolved[profile];
+    if(!hostAllowed)throw fail('provider_untrusted_endpoint',503,{provider:'atlas-local'});
     if(!configured||!model)throw fail('provider_not_configured',503,{provider:'atlas-local'});
+    const modelError=await verifyModelSelection(model);
+    if(modelError)throw fail(modelError,503,{provider:'atlas-local'});
     const profileInstruction=profile==='deep'
       ? 'Use the deepest available local reasoning budget and verify important conclusions before answering.'
       : profile==='fast'
@@ -130,7 +164,7 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     const executionLimit=background?1:boundedExecutionAttempts;
     for(let attempt=1;attempt<=executionLimit;attempt+=1){
       try{
-        response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});
+        response=await fetchFn(`${base}/v1/responses`,{method:'POST',headers:{...authHeaders(),'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs),redirect:'error'});
       }catch{
         if(attempt<executionLimit){await sleep(boundedRetryDelayMs*attempt);continue;}
         throw fail('provider_unavailable',502,{provider:'atlas-local'});
@@ -141,6 +175,9 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     }
     if(!response?.ok)throw fail('provider_unavailable',502,{provider:'atlas-local'});
     const data=await response.json().catch(()=>({}));
+    // Catalog verification alone does not prove that inference used that model.
+    // Never publish a response reporting a different or unidentified model.
+    if(verifyModelId===true&&data?.model!==model)throw fail('provider_verification_required',503,{provider:'atlas-local'});
     const text=outputText(data);
     if(!text)throw fail('internal_error',500,{provider:'atlas-local'});
     return {provider:'atlas-local',model:data?.model||model,response_id:data?.id||null,text,capabilities_used:[...(route?.capabilities||['generation'])],usage:data?.usage||{},provenance:[],tool_calls:[]};
