@@ -7,6 +7,7 @@ import {
   type AtlasSovereignReleaseSummary
 } from '../../../../../packages/core/src/deploymentControl';
 import { CloudSubnav } from './AtlasCloudNextLevel';
+import { AtlasDeployDraftComposer } from './AtlasDeployDraftComposer';
 
 type ReleaseRow = AtlasSovereignReleaseSummary & {
   version: string;
@@ -53,6 +54,7 @@ function safeError(reason: unknown): string {
 export function AtlasSovereignDeployPage() {
   const [snapshot, setSnapshot] = useState<SovereignDeploySnapshot | null>(null);
   const [selectedId, setSelectedId] = useState('');
+  const [writePanelOpen, setWritePanelOpen] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [assessmentClock, setAssessmentClock] = useState(() => Date.now());
@@ -172,7 +174,7 @@ export function AtlasSovereignDeployPage() {
       <header className="atlas-cloud-header">
         <p className="eyebrow">ATLAS Enterprise Suite · Sovereign Cloud</p>
         <h1 id="atlas-native-deploy-title">ATLAS Deploy</h1>
-        <p>Native deployment evidence console, synchronized with ATLAS Manager and Release Control. Cloudflare is the default edge destination. Vercel is not required, and this screen does not trigger deployments or charge providers.</p>
+        <p>Native release read/write and deployment evidence console, synchronized with ATLAS Manager and Release Control. Cloudflare is the default edge destination. Vercel is optional. Creation is limited to authenticated release drafts; this screen does not deploy or charge providers.</p>
       </header>
 
       <div className="atlas-cloud-action-row">
@@ -269,6 +271,28 @@ export function AtlasSovereignDeployPage() {
                   ))}
                 </ul>
                 {!deploymentDetails.gates.length && <span>No gate records returned. P0 remains unverified.</span>}
+              </div>
+            )}
+          </section>
+
+          <section className="atlas-cloud-toolbox" aria-label="ATLAS Deploy read and write control">
+            <h2>Release records · Read and write</h2>
+            <p>Draft creation is governed by the existing releases.create permission, ATLAS organization membership and backend audit. It is not a production deployment.</p>
+            <button type="button" aria-expanded={writePanelOpen} aria-controls="atlas-deploy-write-panel"
+              onClick={() => setWritePanelOpen(open => !open)}>
+              {writePanelOpen ? 'Close controlled writes' : 'Enable controlled writes'}
+            </button>
+            {writePanelOpen && (
+              <div id="atlas-deploy-write-panel">
+                <AtlasDeployDraftComposer
+                  organizationId={snapshot.organizationId}
+                  infra={snapshot.infra}
+                  now={assessmentClock}
+                  onCreated={id => {
+                    setSelectedId(id);
+                    void synchronize();
+                  }}
+                />
               </div>
             )}
           </section>
