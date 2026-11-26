@@ -19,6 +19,8 @@ export type ClimateIntakeContext = {
   trustedHosts: readonly string[];
   providerAuthenticated: boolean;
   organizationAuthorized: boolean;
+  /** Null only in a trusted provider adapter for still-active, long-lived alerts. Defaults to 48h. */
+  maxPublicationAgeHours?: number | null;
 };
 
 export type ClimateIntakeResult = {
@@ -67,7 +69,12 @@ export function evaluateClimateEvidence(input: unknown, context: ClimateIntakeCo
       }
     } catch { reasons.push('invalid_source_url'); }
     const published = time(input.source.publishedAt);
-    if (!Number.isFinite(published) || !Number.isFinite(now) || published > now || now - published > 48 * 60 * 60 * 1000) {
+    const maxAgeHours = context.maxPublicationAgeHours === undefined ? 48 : context.maxPublicationAgeHours;
+    if (maxAgeHours !== null && (!Number.isFinite(maxAgeHours) || maxAgeHours <= 0 || maxAgeHours > 720)) {
+      reasons.push('invalid_freshness_policy');
+    }
+    if (!Number.isFinite(published) || !Number.isFinite(now) || published > now ||
+        (maxAgeHours !== null && Number.isFinite(maxAgeHours) && now - published > maxAgeHours * 60 * 60 * 1000)) {
       reasons.push('stale_or_invalid_publication');
     }
   }
