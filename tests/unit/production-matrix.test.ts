@@ -116,6 +116,14 @@ describe('ATLAS 777 production matrix — live-probe contract with controlled HT
     expect(simulated404.output.checks.required_routes.some((result:{path:string;ok:boolean})=>result.path==='/chronos/research/01.001'&&result.ok===false)).toBe(true);
   });
 
+  it('blocks public Automotive Intelligence release on a 404 even with a matching SHA',()=>{
+    expect(contract.public_routes).toContain('/automotive');
+    const result=verify({p0Fail:'/automotive'});
+    expect(result.exitCode).toBe(1);
+    expect(result.output.ok).toBe(false);
+    expect(result.output.checks.required_routes.some((entry:{path:string;ok:boolean})=>entry.path==='/automotive'&&entry.ok===false)).toBe(true);
+  });
+
   it('does not certify an older deployed SHA even when all routes return HTTP 200', () => {
     const result = verify({ sha: 'different-commit-sha' });
     expect(result.exitCode).toBe(1);
