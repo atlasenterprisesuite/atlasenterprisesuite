@@ -14,6 +14,27 @@ type ReleaseRow = AtlasSovereignReleaseSummary & {
   updated_at: string;
 };
 
+type DeploymentRow = {
+  id: string;
+  status: string;
+  environment: string;
+  provider_execution_state?: string | null;
+  health_state?: string | null;
+};
+
+type DeploymentGateRow = {
+  id: string;
+  gate_key: string;
+  status: string;
+  required: boolean;
+  evidence_ref?: string | null;
+};
+
+type DeploymentDetails = {
+  deployment: DeploymentRow;
+  gates: DeploymentGateRow[];
+};
+
 type SovereignDeploySnapshot = {
   organizationId: string;
   infra: AtlasSovereignInfraSnapshot;
@@ -34,12 +55,20 @@ export function AtlasSovereignDeployPage() {
   const [selectedId, setSelectedId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deploymentDetails, setDeploymentDetails] = useState<DeploymentDetails | null>(null);
+  const [deploymentMessage, setDeploymentMessage] = useState('');
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const generation = useRef(0);
+  const detailsGeneration = useRef(0);
 
   async function synchronize() {
     const token = ++generation.current;
     // Never display stale, cross-tenant or partial data after refresh failure.
     setSnapshot(null);
+    detailsGeneration.current += 1;
+    setDeploymentDetails(null);
+    setDeploymentMessage('');
+    setLoadingDetails(false);
     setLoading(true);
     setError('');
     try {
@@ -69,13 +98,52 @@ export function AtlasSovereignDeployPage() {
 
   useEffect(() => {
     void synchronize();
-    return () => { generation.current += 1; };
+    return () => { generation.current += 1; detailsGeneration.current += 1; };
   }, []);
 
   const selected = snapshot?.releases.find(item => item.id === selectedId)
     ?? snapshot?.releases.find(item => item.channel === 'production' && item.status === 'promoted')
     ?? snapshot?.releases[0]
     ?? null;
+
+  async function inspectDeploymentGates() {
+    if (!selected || !snapshot || loadingDetails) return;
+    const token = ++detailsGeneration.current;
+    setDeploymentDetails(null);
+    setDeploymentMessage('');
+    setLoadingDetails(true);
+    try {
+      const headers = { 'x-atlas-org-id': snapshot.organizationId };
+      const response = await atlasAuthorizedJson<{ ok: boolean; deployments: DeploymentRow[] }>(
+        `/functions/v1/atlas-release-control?api=deployments&release_id=${encodeURIComponent(selected.id)}`,
+        { method: 'GET', headers, cache: 'no-store' }
+      );
+      if (!response?.ok || !Array.isArray(response.deployments)) {
+        throw new Error('deployment_list_invalid');
+      }
+      const latest = response.deployments[0];
+      if (!latest) {
+        if (token === detailsGeneration.current) setDeploymentMessage('No deployment attempts recorded for this release.');
+        return;
+      }
+      if (typeof latest.id !== 'string' || !latest.id) throw new Error('deployment_id_invalid');
+      const detail = await atlasAuthorizedJson<{ ok: boolean; deployment: DeploymentRow; gates: DeploymentGateRow[] }>(
+        `/functions/v1/atlas-release-control?api=deployment&id=${encodeURIComponent(latest.id)}`,
+        { method: 'GET', headers, cache: 'no-store' }
+      );
+      if (!detail?.ok || !detail.deployment || !Array.isArray(detail.gates)) {
+        throw new Error('deployment_evidence_invalid');
+      }
+      if (token === detailsGeneration.current) setDeploymentDetails({
+        deployment: detail.deployment,
+        gates: detail.gates
+      });
+    } catch (reason) {
+      if (token === detailsGeneration.current) setDeploymentMessage(`Unable to inspect deployment gates: ${safeError(reason)}`);
+    } finally {
+      if (token === detailsGeneration.current) setLoadingDetails(false);
+    }
+  }
 
   const assessment = snapshot
     ? evaluateAtlasSovereignDeployReadiness({
@@ -129,7 +197,12 @@ export function AtlasSovereignDeployPage() {
               <select
                 value={selected?.id ?? ''}
                 disabled={snapshot.releases.length === 0}
-                onChange={event => setSelectedId(event.target.value)}
+                onChange={event => {
+                  setSelectedId(event.target.value);
+                  detailsGeneration.current += 1;
+                  setDeploymentDetails(null);
+                  setDeploymentMessage('');
+                }}
               >
                 {!snapshot.releases.length && <option value="">No releases visible</option>}
                 {snapshot.releases.map(item => (
@@ -162,6 +235,30 @@ export function AtlasSovereignDeployPage() {
               </ul>
             )}
             <p className="atlas-cloud-truth-note">Backend snapshot time: {snapshot.infra.evidence?.generated_at || 'unknown'}. No CI result, dashboard status, or provider configuration automatically proves production deployment.</p>
+          </section>
+
+          <section className="atlas-cloud-toolbox" aria-labelledby="atlas-deploy-gates-title">
+            <h2 id="atlas-deploy-gates-title">Deployment attempts and gates</h2>
+            <p>Read existing Release Control evaluations for the selected release. A passing gate does not itself prove the public runtime serves this commit.</p>
+            <div className="atlas-cloud-action-row">
+              <button type="button" disabled={!selected || loadingDetails} onClick={() => void inspectDeploymentGates()}>
+                {loadingDetails ? 'Reading deployment gates…' : 'Inspect deployment gates'}
+              </button>
+            </div>
+            {deploymentMessage && <p role="status">{deploymentMessage}</p>}
+            {deploymentDetails && (
+              <div className="atlas-cloud-state" role="status">
+                <strong>Deployment {deploymentDetails.deployment.id}</strong>
+                <span>{deploymentDetails.deployment.environment} · {deploymentDetails.deployment.status}</span>
+                <span>Provider execution: {deploymentDetails.deployment.provider_execution_state || 'unknown'} · Health: {deploymentDetails.deployment.health_state || 'unknown'}</span>
+                <ul aria-label="Existing deployment gates">
+                  {deploymentDetails.gates.map(gate => (
+                    <li key={gate.id}><code>{gate.gate_key}</code> · {gate.status} · {gate.required ? 'required' : 'optional'}</li>
+                  ))}
+                </ul>
+                {!deploymentDetails.gates.length && <span>No gate records returned. P0 remains unverified.</span>}
+              </div>
+            )}
           </section>
 
           <section className="atlas-cloud-toolbox" aria-labelledby="atlas-deploy-providers-title">
