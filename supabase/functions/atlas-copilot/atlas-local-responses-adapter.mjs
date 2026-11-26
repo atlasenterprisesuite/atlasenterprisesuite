@@ -175,6 +175,9 @@ export function createAtlasLocalResponsesAdapter({baseUrl,token='',accessClientI
     }
     if(!response?.ok)throw fail('provider_unavailable',502,{provider:'atlas-local'});
     const data=await response.json().catch(()=>({}));
+    // Catalog verification alone does not prove that inference used that model.
+    // Never publish a response reporting a different or unidentified model.
+    if(verifyModelId===true&&data?.model!==model)throw fail('provider_verification_required',503,{provider:'atlas-local'});
     const text=outputText(data);
     if(!text)throw fail('internal_error',500,{provider:'atlas-local'});
     return {provider:'atlas-local',model:data?.model||model,response_id:data?.id||null,text,capabilities_used:[...(route?.capabilities||['generation'])],usage:data?.usage||{},provenance:[],tool_calls:[]};
