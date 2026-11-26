@@ -370,6 +370,18 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'automotive-intelligence',
+    title: 'ATLAS Automotive Intelligence',
+    navLabel: 'Vehicle Intelligence',
+    area: 'Mobility',
+    route: '/automotive',
+    readiness: 'partial',
+    evolution: 'active',
+    requiresAuth: false,
+    description: 'Public source-backed McLaren model comparison and browser-local photo reference; automated image recognition and vehicle-level VIN and price verification remain gated.',
+    showInNavigation: true
+  },
+  {
     id: 'ride',
     title: 'ATLAS Ride',
     navLabel: 'Ride',
