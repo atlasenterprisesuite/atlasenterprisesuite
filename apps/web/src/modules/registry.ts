@@ -375,7 +375,7 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     navLabel: 'Automotive Intelligence',
     area: 'Mobility',
     route: '/mobility/automotive',
-    readiness: 'external-gated'
+    readiness: 'external-gated',
     requiresAuth: true,
     description: 'Local-only automotive photo intake and manufacturer source-backed model research; automatic recognition, VIN, live pricing, storage and provider feeds remain unavailable.',
     showInNavigation: true
