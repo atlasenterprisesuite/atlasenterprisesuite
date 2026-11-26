@@ -103,7 +103,8 @@ describe('ATLAS global production verification', () => {
       '/chronos/research/01.001',
       '/chronos/evidence',
       '/chronos/timeline',
-      '/chronos/review'
+      '/chronos/review',
+      '/automotive'
     ]);
     expect(contract.critical_network_routes).toEqual([
       '/business/network',
