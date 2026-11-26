@@ -12,7 +12,7 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
   it('uses the canonical JWT-protected control plane and no public endpoint', () => {
     expect(config).toContain('[functions.atlas-platform-controls]');
     expect(config).toContain('verify_jwt = true');
-    expect(edge).toContain("if (api === 'climate-noaa-alerts') return await handleClimateNoaaAlerts(req, u)");
+    expect(edge).toContain("if (api === 'climate-noaa-alerts') return await handleClimateNoaaAlerts(req)");
   });
   it('checks identity, organization membership and RBAC before provider request', () => {
     expect(edge).toContain('const ctx = await urbanTwinContext(req)');
@@ -45,7 +45,7 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
     expect(readGateSql).toContain('grant execute on function public.atlas_climate_acquire_read_slot(uuid, uuid) to service_role');
   });
   it('keeps the NOAA request server-side, fixed-origin, read-only and bounded', () => {
-    expect(edge).toContain("'https://api.weather.gov/alerts/active?point='");
+    expect(edge).toContain("'https://api.weather.gov/alerts?active=true&point='");
     expect(edge).toContain("redirect: 'error'");
     expect(edge).toContain('AbortSignal.timeout(8000)');
     expect(edge).toContain('const limitBytes = 1_048_576');
@@ -56,7 +56,12 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
     expect(client).toContain('getActiveAtlasOrganization()');
     expect(client).toContain('authorizedAtlasFetch(');
     expect(client).toContain("'x-atlas-org-id': organization.id");
-    expect(client).toContain("api: 'climate-noaa-alerts'");
+    expect(client).toContain("/functions/v1/atlas-platform-controls?api=climate-noaa-alerts");
+    expect(client).toContain("method: 'POST'");
+    expect(client).toContain('body: JSON.stringify({ latitude, longitude })');
+    expect(edge).toContain("if (req.method !== 'POST') return urbanTwinFail(req, 'method_not_allowed', 405)");
+    expect(edge).toContain('const coords: unknown = await req.json()');
+    expect(client).not.toContain('URLSearchParams');
     expect(client).not.toContain('https://api.weather.gov');
     expect(edge).toContain('new globalThis.URL(req.url)');
   });
