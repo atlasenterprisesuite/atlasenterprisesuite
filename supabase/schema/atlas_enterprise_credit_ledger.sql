@@ -103,9 +103,11 @@ begin
     select 1 from public.organization_members
      where org_id=p_org_id and user_id=p_operator_id
        and status='active' and role in ('owner','admin','platform_admin')
+    for share
   ) or not exists (
     select 1 from public.organization_members
      where org_id=p_org_id and user_id=p_user_id and status='active'
+    for share
   ) then
     raise exception 'enterprise_credit_membership_denied' using errcode='P0001';
   end if;
@@ -144,9 +146,11 @@ begin
   if not exists (
     select 1 from public.organization_members where org_id=p_org_id
       and user_id=p_user_id and status='active'
+    for share
   ) or not exists (
     select 1 from public.execution_tasks where id=p_task_id
       and org_id=p_org_id and owner_user_id=p_user_id
+    for share
   ) then
     raise exception 'enterprise_credit_scope_denied' using errcode='P0001';
   end if;
@@ -210,6 +214,7 @@ begin
     select 1 from public.organization_members where org_id=r.org_id
       and user_id=p_operator_id and status='active'
       and (user_id=r.user_id or role in ('owner','admin','platform_admin'))
+    for share
   ) then raise exception 'enterprise_credit_operator_denied' using errcode='P0001'; end if;
   if r.status = 'settled' then
     if r.settled_credits=p_charged and r.evidence_id=p_evidence_id then return r.id; end if;
@@ -220,9 +225,11 @@ begin
   end if;
   if not exists (
     select 1 from public.organization_members where org_id=r.org_id and user_id=r.user_id and status='active'
+    for share
   ) or not exists (
     select 1 from public.execution_evidence where id=p_evidence_id
       and org_id=r.org_id and task_id=r.task_id and verified=true
+    for share
   ) then
     raise exception 'enterprise_credit_evidence_or_membership_missing' using errcode='P0001';
   end if;
@@ -263,6 +270,7 @@ begin
     select 1 from public.organization_members where org_id=r.org_id
       and user_id=p_operator_id and status='active'
       and (user_id=r.user_id or role in ('owner','admin','platform_admin'))
+    for share
   ) then raise exception 'enterprise_credit_operator_denied' using errcode='P0001'; end if;
   if r.status='released' then return r.id; end if;
   if r.status<>'reserved' then
