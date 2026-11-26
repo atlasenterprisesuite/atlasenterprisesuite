@@ -475,7 +475,45 @@ async function handleSpatialPreview(req: Request) {
   // creatorContext resolves identity, active membership and creator.generate
   // on the server. Never accept tenant/actor/permission assertions in JSON.
   const ctx = await creatorContext(req, 'creator.generate');
-  const body = await bodyJson(req);
+  // Cap streamed request bytes, not just Content-Length (which may be absent).
+  // This endpoint only accepts a tiny JSON object with one primitive name.
+  const maxPayloadBytes = 2048;
+  const lengthHeader = req.headers.get('content-length');
+  if (lengthHeader && (!/^\d+$/.test(lengthHeader) || Number(lengthHeader) > maxPayloadBytes)) {
+    throw creatorError('spatial_request_too_large', 413);
+  }
+  if (!req.body) throw creatorError('spatial_preview_unsupported', 422);
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxPayloadBytes) {
+        await reader.cancel();
+        throw creatorError('spatial_request_too_large', 413);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const payloadBytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) { payloadBytes.set(chunk, offset); offset += chunk.byteLength; }
+  let body: Record<string, unknown>;
+  try {
+    const decoded = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(payloadBytes));
+    if (!decoded || Array.isArray(decoded) || typeof decoded !== 'object' ||
+        Object.keys(decoded).length !== 1 || !Object.hasOwn(decoded, 'prompt')) {
+      throw new Error('invalid_shape');
+    }
+    body = decoded as Record<string, unknown>;
+  } catch {
+    throw creatorError('spatial_preview_unsupported', 422);
+  }
   if (typeof body.prompt !== 'string' || !parseSpatialPrimitive(body.prompt)) {
     throw creatorError('spatial_preview_unsupported', 422);
   }
