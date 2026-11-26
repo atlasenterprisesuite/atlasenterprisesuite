@@ -373,6 +373,40 @@ export class AtlasVoiceApi {
     );
   }
 
+  async atlasNativeGenericStatus(): Promise<{
+    state: string;
+    configured: boolean;
+    synthesis_verified: boolean;
+    mode: 'generic';
+    locales: string[];
+  }> {
+    const { orgId } = await this.getContext();
+    return parseResponse(await this.transport('/functions/v1/atlas-voice-provider?api=status&provider=atlas_native_generic', {
+      method:'GET', headers:{'x-atlas-org-id':orgId}
+    }));
+  }
+
+  async synthesizeAtlasNativeGeneric(
+    input: { text: string; locale: 'es-ES' | 'es-MX' | 'en-US' | 'en-GB'; speechRate: number },
+    signal?: AbortSignal
+  ): Promise<Blob> {
+    const { orgId } = await this.getContext();
+    const response = await this.transport('/functions/v1/atlas-voice-provider?api=speech&provider=atlas_native_generic',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-atlas-org-id':orgId},
+      body:JSON.stringify({mode:'generic',...input}),
+      signal
+    });
+    if(!response.ok) await parseResponse(response);
+    if(!response.headers.get('content-type')?.startsWith('audio/wav') ||
+       response.headers.get('x-atlas-voice-mode') !== 'generic') {
+      throw new Error('native_invalid_response');
+    }
+    const blob = await response.blob();
+    if(blob.size <= 44 || blob.size > 20_000_000) throw new Error('native_invalid_response');
+    return blob;
+  }
+
   async elevenLabsStatus(): Promise<{ state: string; configured: boolean; synthesis_verified: boolean }> {
     const { orgId } = await this.getContext();
     return parseResponse(await this.transport('/functions/v1/atlas-voice-provider?api=status&provider=elevenlabs', {
