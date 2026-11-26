@@ -22,7 +22,8 @@ raw source recordings, private provider keys or unrestricted model access.
 4. `executeAgentSpeech` audits the decision **before** generation, dispatches to the
    selected server-side adapter and audits the result. Audit records exclude the script,
    recording, voice resource ID, raw audio and provider credentials.
-5. `atlas_local` is the preferred engine category. `external_adapter` is opt-in.
+5. `executeAgentSpeech` performs an additional trusted-store permission read **after synthesis and before returning bytes**. If consent/grant was revoked, grant expired, tenant changed, provider binding changed or the read fails, discard the generated audio. Abort signals suppress delivery, and cooperating adapters should cancel work promptly; the policy gate alone is not proof of instantaneous GPU-job termination.
+6. `atlas_local` is the preferred engine category. `external_adapter` is opt-in.
    There is no automatic fallback to HeyGen or any other third party.
 
 ## Languages and delivery
@@ -55,8 +56,7 @@ remain unavailable. Speech renders must not be labeled as genuine audio recordin
   assistant transcripts, logs or pull requests.
 - Implement server-side load/verification and persistence for grants, revocation,
   owner challenges, adapter bindings, per-language verification and audit events.
-- Bind authenticated agent routes to `executeAgentSpeech` and implement real
-  cancellation/permission revocation during concurrent synthesis.
+- Bind authenticated agent routes to `executeAgentSpeech` with `refreshAuthorization` sourcing trusted persistence; wire `AbortSignal` through all real adapters and prove revocation/cancellation against concurrent synthesis.
 - Verify consent coverage for public distribution and real communications.
 - Integration tests for organization RLS, storage, latency, idempotency, cancellation,
   render bytes, ASR pronunciation and voice quality using consented recordings.
@@ -66,6 +66,6 @@ remain unavailable. Speech renders must not be labeled as genuine audio recordin
 ## Verification evidence
 
 The changes are deliberately pure TypeScript with synthetic fixtures.
-A local isolated compile and 15 Node tests passed on the equivalent policy rules.
+A local isolated TypeScript compile and 20/20 Node tests passed, including cancellation and consent-revocation races, using synthetic data. These are isolated rule checks, not live provider integration.
 Repository Vitest, full CI, infrastructure and E2E remain unverified until their
 actual results are inspected. This document is not production certification.
