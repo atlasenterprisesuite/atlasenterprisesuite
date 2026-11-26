@@ -174,7 +174,7 @@ export function AtlasSovereignDeployPage() {
       <header className="atlas-cloud-header">
         <p className="eyebrow">ATLAS Enterprise Suite · Sovereign Cloud</p>
         <h1 id="atlas-native-deploy-title">ATLAS Deploy</h1>
-        <p>Native release read/write and deployment evidence console, synchronized with ATLAS Manager and Release Control. Cloudflare is the default edge destination. Vercel is optional. Creation is limited to authenticated release drafts; this screen does not deploy or charge providers.</p>
+        <p>Native release read/write and deployment evidence console, synchronized with ATLAS Manager and Release Control. Cloudflare is the default edge destination. Vercel is not required. Creation is limited to authenticated release drafts; this screen does not deploy or charge providers.</p>
       </header>
 
       <div className="atlas-cloud-action-row">
