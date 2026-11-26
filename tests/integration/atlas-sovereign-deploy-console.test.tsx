@@ -58,6 +58,21 @@ describe('ATLAS Deploy native cloud console', () => {
 
   });
 
+  it('expires a previously green read-only assessment when its evidence ages out on window focus', async () => {
+    render(<MemoryRouter><AtlasSovereignDeployPage /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText(/Review required — not production verified/i)).toBeInTheDocument());
+    const previousNow = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => previousNow + 16 * 60_000);
+    try {
+      fireEvent(window, new Event('focus'));
+      expect(screen.getByText(/Blocked — required evidence missing/i)).toBeInTheDocument();
+      expect(screen.getByText('infrastructure_evidence_stale')).toBeInTheDocument();
+      expect(screen.queryByText(/Review required — not production verified/i)).not.toBeInTheDocument();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('blocks when identity cannot be established; cannot present synthetic data', async () => {
     backend.getActiveAtlasOrganization.mockRejectedValueOnce(new Error('authentication_required'));
     render(<MemoryRouter><AtlasSovereignDeployPage /></MemoryRouter>);
