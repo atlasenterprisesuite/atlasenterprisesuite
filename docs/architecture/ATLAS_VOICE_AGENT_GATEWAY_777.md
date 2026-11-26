@@ -124,3 +124,60 @@ No independent platform, identity authority or new payment provider was introduc
 real authenticated E2E, per-tenant concurrency/quotas, CPU/memory cost limits,
 revocation race tests, and genuine user-owned multilingual clone evaluation.
 Passing build/CI cannot establish these production properties.
+
+## RUN 011 — bounded offline multilingual reference-voice worker
+
+**Dependency fact (upstream as of 2026-11-26):** the original Chatterbox
+project describes itself as archived research, no longer maintained since
+August 2026. It documents Multilingual V3 as a 500M-parameter model with
+23+ language support and zero-shot reference-based voice synthesis; published
+code/weights are under MIT, subject to independent artifact/license review.
+This is a candidate runtime, not an ATLAS-trained proprietary foundation model.
+
+Implementation: `services/creator-native/personal_voice_local.py` exposes
+a server-side **offline job primitive**, not a public HTTP endpoint:
+
+1. `PersonalVoiceJob` is created by trusted ATLAS Voice orchestration.
+2. The trusted `authorize(job)` callback must query **live** owner, tenant,
+   organization, purpose, permission and consent state. An expired, absent,
+   revoked or cross-scope permission returns false.
+3. `reference_resolver(job)` must fetch/decrypt one owner-scoped recording
+   to a private short-lived WAV file. Its `TrustedReference` object contains
+   owner/profile/organization/tenant IDs, consent version and exact SHA-256.
+   Refuse symlinks, mismatch, unsupported PCM WAV, duration outside 5–30s,
+   corrupt data and unexpected content hash.
+4. Only then can an injected engine synthesize. `ChatterboxV3Engine` uses
+   `ChatterboxMultilingualTTS.from_pretrained(device=..., t3_model='v3')`
+   and `generate(text, language_id=..., audio_prompt_path=...)`.
+5. `ATLAS_PERSONAL_VOICE_ENABLED=1`, `HF_HUB_OFFLINE=1` and
+   `TRANSFORMERS_OFFLINE=1` are mandatory before attempting loading.
+   The model weights and Python dependencies must already be installed in
+   a reviewed private runtime; this PR never downloads or installs them.
+6. Check output WAV bytes and re-read authorization after inference.
+   No audio is returned when permission was revoked during generation.
+
+The initial request-language mapping is ES/EN (es-ES, es-MX, en-US, en-GB).
+This does not certify pronunciation, accent or speaker similarity in those
+languages; these require evaluation on consented clips before activation.
+
+The model offers reference-based *zero-shot synthesis*: it does not mean
+the user's voice was locally trained into permanent weights. Cached
+reference audio must be private and deleted after the job according to
+ATLAS Voice retention policy.
+
+**P0 still pending:**
+- authenticated server-side adapter from `packages/voice/src/agentSpeech.ts`
+  to a secured queue invoking this worker; include pre/post authorization
+  and exact-output SHA evidence
+- a trusted reference resolver and audio decryption/ephemeral cleanup;
+  privacy controls and model-license inventory
+- real model installation, weights integrity and device-resource testing;
+  offline operation must not initiate model downloads
+- user sample identity challenge, quality check, ES/EN pronunciation,
+  cross-language similarity assessment and synthetic voice disclosure
+- cancellation, concurrency quotas, audit persistence and access revocation
+- end-to-end Windows/local deployment, GitHub CI, exact SHA and production E2E
+
+Tests in `services/creator-native/test_personal_voice_local.py` use only
+synthetic WAV and fake inference: they cannot certify the real Chatterbox
+model or any identifiable speaker. No personal recordings are committed.
