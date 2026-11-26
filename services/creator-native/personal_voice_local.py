@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import importlib.util
+import json
 import os
 import re
 import tempfile
@@ -106,15 +107,92 @@ def verify_reference(job: PersonalVoiceJob, reference: TrustedReference) -> None
         raise ValueError('personal_voice_reference_format_unsupported') from exc
 
 
+MODEL_REQUIRED_FILES = frozenset({
+    've.pt',
+    's3gen.pt',
+    't3_mtl23ls_v3.safetensors',
+    'grapheme_mtl_merged_expanded_v1.json',
+})
+MODEL_OPTIONAL_FILES = frozenset({'conds.pt'})
+MODEL_MANIFEST_NAME = 'atlas-model-manifest.json'
+MAX_MANIFEST_BYTES = 32768
+MAX_MODEL_FILE_BYTES = 4 * 1024 * 1024 * 1024
+
+
+def verified_model_directory() -> Path:
+    """Accept only a private, pre-provisioned model directory with exact-SHA manifest.
+
+    This avoids Chatterbox from_pretrained() -> snapshot_download(). No model
+    weights, model manifest hashes or user samples are embedded in the repo.
+    """
+    if (os.environ.get('ATLAS_PERSONAL_VOICE_ENABLED') != '1'
+        or os.environ.get('HF_HUB_OFFLINE') != '1'
+        or os.environ.get('TRANSFORMERS_OFFLINE') != '1'):
+        raise RuntimeError('personal_voice_offline_model_not_configured')
+    directory_value = os.environ.get('ATLAS_PERSONAL_VOICE_MODEL_DIR', '')
+    manifest_sha = os.environ.get('ATLAS_PERSONAL_VOICE_MANIFEST_SHA256', '')
+    if not directory_value or not _SHA256.fullmatch(manifest_sha):
+        raise RuntimeError('personal_voice_model_manifest_required')
+    directory = Path(directory_value)
+    if directory.is_symlink() or not directory.is_dir():
+        raise RuntimeError('personal_voice_model_directory_invalid')
+    manifest_file = directory / MODEL_MANIFEST_NAME
+    if manifest_file.is_symlink() or not manifest_file.is_file():
+        raise RuntimeError('personal_voice_model_manifest_missing')
+    if not 1 <= manifest_file.stat().st_size <= MAX_MANIFEST_BYTES:
+        raise RuntimeError('personal_voice_model_manifest_invalid')
+    content = manifest_file.read_bytes()
+    if not hmac.compare_digest(hashlib.sha256(content).hexdigest(), manifest_sha):
+        raise RuntimeError('personal_voice_model_manifest_integrity_failed')
+    try:
+        manifest = json.loads(content)
+        files = manifest['files']
+        if (not isinstance(files, dict)
+            or manifest['model'] != 'chatterbox_multilingual_v3'
+            or manifest['t3_model'] != 'v3'):
+            raise ValueError('invalid_model_descriptor')
+    except (ValueError, KeyError, TypeError) as exc:
+        raise RuntimeError('personal_voice_model_manifest_invalid') from exc
+    names = set(files)
+    if (not MODEL_REQUIRED_FILES.issubset(names)
+        or names - (MODEL_REQUIRED_FILES | MODEL_OPTIONAL_FILES)
+        or (directory / 'conds.pt').exists() != ('conds.pt' in files)):
+        raise RuntimeError('personal_voice_model_manifest_invalid')
+    for filename in names:
+        expected = files[filename]
+        if not isinstance(expected, str) or not _SHA256.fullmatch(expected):
+            raise RuntimeError('personal_voice_model_manifest_invalid')
+        path = directory / filename
+        if path.is_symlink() or not path.is_file():
+            raise RuntimeError('personal_voice_model_file_missing')
+        size = path.stat().st_size
+        if not 1 <= size <= MAX_MODEL_FILE_BYTES:
+            raise RuntimeError('personal_voice_model_file_invalid')
+        digest = hashlib.sha256()
+        with path.open('rb') as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                digest.update(chunk)
+        if not hmac.compare_digest(digest.hexdigest(), expected):
+            raise RuntimeError('personal_voice_model_file_integrity_failed')
+    return directory
+
+
 def personal_voice_readiness() -> dict[str, object]:
-    """No model probing that downloads weights or contacts external services."""
+    """Readiness cannot claim synthesis or weights before both are verified."""
     enabled = os.environ.get('ATLAS_PERSONAL_VOICE_ENABLED') == '1'
     offline = os.environ.get('HF_HUB_OFFLINE') == '1' and os.environ.get('TRANSFORMERS_OFFLINE') == '1'
     try:
         model_installed = importlib.util.find_spec('chatterbox.mtl_tts') is not None
-    except ModuleNotFoundError:
+    except (ModuleNotFoundError, ValueError):
         model_installed = False
-    configured = enabled and offline and model_installed
+    files_verified = False
+    if enabled and offline:
+        try:
+            verified_model_directory()
+            files_verified = True
+        except (OSError, RuntimeError):
+            pass
+    configured = enabled and offline and model_installed and files_verified
     return {
         'mode': 'personal_voice_offline',
         'state': 'configuration_ready' if configured else 'configuration_required',
@@ -124,20 +202,18 @@ def personal_voice_readiness() -> dict[str, object]:
         'enabled': enabled,
         'offline_enforced': offline,
         'library_installed': model_installed,
+        'model_files_verified': files_verified,
     }
 
 
 class ChatterboxV3Engine:
-    """Optional external open-source model runs entirely inside the ATLAS host.
+    """Only exact-hash, locally provisioned V3 weights; no snapshot_download.
 
-    A pinned, approved model artifact must already be present in the local cache.
-    Both HF_HUB_OFFLINE and TRANSFORMERS_OFFLINE are mandatory fail-closed controls.
+    Network egress must also be denied by the host/container security policy,
+    because environment flags alone cannot constrain every dependency.
     """
     def synthesize(self, text: str, language_id: str, reference_path: Path) -> bytes:
-        if (os.environ.get('ATLAS_PERSONAL_VOICE_ENABLED') != '1'
-            or os.environ.get('HF_HUB_OFFLINE') != '1'
-            or os.environ.get('TRANSFORMERS_OFFLINE') != '1'):
-            raise RuntimeError('personal_voice_offline_model_not_configured')
+        ckpt_dir = verified_model_directory()
         device = os.environ.get('ATLAS_PERSONAL_VOICE_DEVICE', 'cpu')
         if device not in {'cpu', 'cuda', 'mps'}:
             raise RuntimeError('personal_voice_device_invalid')
@@ -146,7 +222,7 @@ class ChatterboxV3Engine:
             from chatterbox.mtl_tts import ChatterboxMultilingualTTS
         except ImportError as exc:
             raise RuntimeError('personal_voice_model_not_installed') from exc
-        model = ChatterboxMultilingualTTS.from_pretrained(device=device, t3_model='v3')
+        model = ChatterboxMultilingualTTS.from_local(ckpt_dir, device, t3_model='v3')
         waveform = model.generate(text, language_id=language_id,
                                   audio_prompt_path=str(reference_path))
         with tempfile.TemporaryDirectory(prefix='atlas-voice-out-') as tmp:
