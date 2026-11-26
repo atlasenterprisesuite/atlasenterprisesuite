@@ -69,3 +69,29 @@ The changes are deliberately pure TypeScript with synthetic fixtures.
 A local isolated TypeScript compile and 20/20 Node tests passed, including cancellation and consent-revocation races, using synthetic data. These are isolated rule checks, not live provider integration.
 Repository Vitest, full CI, infrastructure and E2E remain unverified until their
 actual results are inspected. This document is not production certification.
+
+## RUN 009 — reuse existing generic Native Composer TTS
+
+ATLAS already contains `services/creator-native/native_composer.py`, which uses a
+locally installed eSpeak runtime for **generic** narration. Rather than adding
+a parallel service, this PR extends that exact Native Composer with:
+
+- `services/creator-native/speech.py`: bounded `synthesize_generic_speech`,
+  no network calls, no speaker training, no personal voice model or reference.
+- `POST /speech` on the existing token-protected `services/creator-native/app.py`,
+  requiring explicit `{"mode":"generic","text":"...","locale":"es-ES"}`.
+  Response: `audio/wav`, `x-atlas-voice-mode: generic`, `cache-control: private,no-store`.
+- Only explicitly supported Spanish/English locale mappings are accepted.
+  The speech text has a 1000-character cap, speed limits and short subprocess timeout.
+  The private/ephemeral WAV file is deleted after generation.
+- Tests verify no authentication -> 401, authenticated WAV output, and
+  reject personal-voice/speaker references, unsanctioned locales and malformed inputs.
+
+**Do not label eSpeak output as a user personal voice or as a clone.**
+This path is a first-party, self-hosted generic fallback only, and is not
+automatically mapped into agent personal-voice profiles. The `atlas_local`
+voice-agent adapter remains blocked until a user-owned model is verified and
+the secure, revocable Voice-to-Native transport is completed.
+
+No external provider fees or uploads are required for the generic TTS.
+Runtime deployment and real production synthesis remain P0 pending.
