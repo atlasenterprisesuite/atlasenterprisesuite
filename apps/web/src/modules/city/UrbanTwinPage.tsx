@@ -8,6 +8,7 @@ import {
   type UrbanTwinSnapshot
 } from './urbanTwinRepository';
 import { UrbanTwinIntakePanel } from './UrbanTwinIntakePanel';
+import { ClimateNoaaPanel } from './ClimateNoaaPanel';
 import './urbanTwin.css';
 
 const ENTITY_ORDER = ['district', 'site', 'building', 'floor', 'space', 'asset', 'infrastructure'] as const;
@@ -125,6 +126,8 @@ export function UrbanTwinPage() {
           </section>
 
           <UrbanTwinIntakePanel entities={snapshot.entities} bindings={snapshot.bindings} onChanged={refresh} />
+
+          <ClimateNoaaPanel entities={snapshot.entities} />
 
           <section className="urban-twin-layout">
             <div className="urban-twin-main">
