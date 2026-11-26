@@ -64,6 +64,19 @@ export const AUTOMOTIVE_CLAIMS: readonly AutomotiveClaim[] = [
   claim('mclaren-750s-spider', 'top_speed_kmh', 332, 'km/h', spider750, 'Full specification'),
   claim('mclaren-750s-spider', 'zero_to_100_seconds', 2.8, 's', spider750, 'Full specification')
 ];
+/**
+ * A trustworthy URL alone never authenticates a numeric claim.
+ * Only the curated, source-reviewed model assertions shipped with this build
+ * can be classified as verified; arbitrary caller records fail closed.
+ */
+function claimFingerprint(item: AutomotiveClaim): string {
+  return JSON.stringify([
+    item.modelId, item.key, item.value, item.unit,
+    item.source.publisher, item.source.url, item.source.section, item.source.checkedAt
+  ]);
+}
+const APPROVED_CLAIM_KEYS = new Set(AUTOMOTIVE_CLAIMS.map(claimFingerprint));
+
 const UNITS: Record<AutomotiveClaimKey, string> = {
   power_bhp: 'bhp',
   torque_nm: 'Nm',
@@ -92,7 +105,8 @@ export function resolveAutomotiveClaim(
   const valid = claims.filter((item) =>
     item.modelId === modelId && item.key === key &&
     item.unit === UNITS[key] && Number.isFinite(item.value) &&
-    item.value > 0 && isTrustedSource(item.source, now)
+    item.value > 0 && isTrustedSource(item.source, now) &&
+    APPROVED_CLAIM_KEYS.has(claimFingerprint(item))
   );
   const values = [...new Set(valid.map((item) => item.value))].sort((a, b) => a - b);
   const sources = valid.map((item) => item.source);
