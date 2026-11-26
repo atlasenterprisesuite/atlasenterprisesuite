@@ -62,11 +62,11 @@ export function WorkPoliciesPage() {
         {creditLoading ? <p role="status" aria-live="polite">Checking authenticated credit ledger status…</p> : null}
         {creditError ? <p role="alert" className="work-error">Unable to verify credit ledger: {creditError}. Spending remains blocked.</p> : null}
         {credit && (credit.status === 'unconfigured' || credit.status === 'not_installed')
-          ? <p className="notice">Credit limits are not configured in this integration. {credit.status === 'not_installed' ? 'The ledger schema is not installed.' : 'No allocation exists for this UTC month.'}</p>
+          ? <p className="notice">Credit limits are not configured in this integration. {credit.status === 'not_installed' ? 'The ledger schema is not installed or not exposed to the backend.' : 'No allocation exists for this UTC month.'}</p>
           : null}
         {credit ? (
           <dl className="work-preview-facts" aria-label="Authenticated credit ledger">
-            <div><dt>Ledger status</dt><dd>{credit.status === 'allocated' ? 'Allocated' : credit.status === 'disabled' ? 'Disabled' : credit.status === 'not_installed' ? 'Not installed' : 'Not configured'}</dd></div>
+            <div><dt>Ledger status</dt><dd>{credit.status === 'allocated' ? 'Allocated' : credit.status === 'disabled' ? 'Disabled' : credit.status === 'not_installed' ? 'Unavailable' : 'Not configured'}</dd></div>
             <div><dt>Period</dt><dd>{credit.period}</dd></div>
             <div><dt>Internal credit limit</dt><dd>{credit.limitCredits ?? '—'}</dd></div>
             <div><dt>Reserved / used</dt><dd>{credit.reservedCredits ?? '—'} / {credit.spentCredits ?? '—'}</dd></div>
